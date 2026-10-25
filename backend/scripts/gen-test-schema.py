@@ -394,10 +394,38 @@ def _h2_constant_json_append(stmt: str) -> str:
     return membership.sub(lambda m: f"LOCATE('\"{m.group(2)}\"',{m.group(1)})=0", stmt)
 
 
+def split_statements(sql):
+    """Split terminators outside SQL string/identifier literals; never discard unknown SQL."""
+    parts, start, quote, i = [], 0, None, 0
+    while i < len(sql):
+        ch = sql[i]
+        if quote:
+            if ch == "\\":
+                i += 2
+                continue
+            if ch == quote:
+                if i + 1 < len(sql) and sql[i + 1] == quote:
+                    i += 2
+                    continue
+                quote = None
+        elif ch in ("'", '"', '`'):
+            quote = ch
+        elif ch == ';':
+            if sql[start:i].strip():
+                parts.append(sql[start:i].strip())
+            start = i + 1
+        i += 1
+    if quote:
+        raise SystemExit("Unterminated SQL literal; refusing partial schema replay")
+    if sql[start:].strip():
+        parts.append(sql[start:].strip())
+    return parts
+
+
 def replay(sql, tables, order, seeds, renames, altered):
     sql = offline_receipt_drop(sql, tables)
-    # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
-    for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
+    # Literal COMMENT/default/seed values may contain semicolons.
+    for stmt in split_statements(strip_comments(sql)):
         if not stmt:
             continue
         stmt = _h2_constant_json_append(stmt)

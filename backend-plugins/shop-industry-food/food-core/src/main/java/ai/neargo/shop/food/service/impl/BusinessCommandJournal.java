@@ -38,8 +38,8 @@ final class BusinessCommandJournal {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         String scopeHash = FoodCommandFingerprint.hash(scope),
                 keyHash = FoodCommandFingerprint.hash(key);
-        var old = rows(scopeHash, keyHash);
-        if (!old.isEmpty()) return replay(old.getFirst(), actor, hash, type);
+        // Insert claims the unique key directly. Locking an absent key first can create
+        // compatible gap locks that deadlock when different commands subsequently insert.
         try {
             mapper.commandReceiptInsertBusinessCommand(scopeHash, keyHash, actor, hash);
         } catch (DuplicateKeyException duplicate) {

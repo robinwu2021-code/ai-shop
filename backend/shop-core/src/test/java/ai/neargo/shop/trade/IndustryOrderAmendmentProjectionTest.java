@@ -60,6 +60,13 @@ class IndustryOrderAmendmentProjectionTest {
         assertThat(f.original.saleQuantity()).isEqualByComparingTo("1");
     }
 
+    @Test
+    void legacyArrayAllocationsRemainReadable() {
+        var f = new Fixture(true);
+        when(f.persistence.applied(f.ref)).thenReturn(List.of());
+        assertThat(f.service.effectiveAllocations(f.ref,List.of(f.original)).allocations()).containsExactly(f.original);
+    }
+
     private static class Fixture {
         final IndustryOrderAmendmentMapper persistence = mock(IndustryOrderAmendmentMapper.class);
         final Reference ref =
@@ -81,7 +88,9 @@ class IndustryOrderAmendmentProjectionTest {
                         "KG");
         final IndustryOrderAmendmentServiceImpl service;
 
-        Fixture() {
+        Fixture() { this(false); }
+
+        Fixture(boolean legacy) {
             var json = new ObjectMapper();
             var sources = mock(IndustryOrderSourceMapper.class);
             var orders = mock(PaymentMapper.class);
@@ -93,7 +102,7 @@ class IndustryOrderAmendmentProjectionTest {
             source.setSourceNo("C");
             source.setSourceVersion(1L);
             source.setSourceHash("d".repeat(64));
-            source.setAllocationsJson(json.writeValueAsString(List.of(original)));
+            source.setAllocationsJson(json.writeValueAsString(legacy ? List.of(original) : java.util.Map.of("allocations",List.of(original),"evidence",List.of())));
             when(sources.selectOne(any())).thenReturn(source);
             var order = new OrdOrder();
             order.setPayAmount(0L);

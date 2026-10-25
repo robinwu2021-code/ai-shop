@@ -62463,6 +62463,300 @@
         ]
       },
       {
+        "method": "GET",
+        "path": "/biz/x/food/operating-reports/{view:daily|period|trend|payments|discounts|refunds|profit|rankings|inventory|health}",
+        "realm": "biz",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportController",
+        "handler": "query",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportController.java",
+        "sourceLine": 67,
+        "parameters": [
+          {
+            "name": "view",
+            "type": "String",
+            "declaration": "@PathVariable String view",
+            "binding": "PathVariable",
+            "qualifiedType": "String"
+          },
+          {
+            "name": "from",
+            "type": "LocalDate",
+            "declaration": "@RequestParam(required=false) LocalDate from",
+            "binding": "RequestParam",
+            "qualifiedType": "java.time.LocalDate"
+          },
+          {
+            "name": "to",
+            "type": "LocalDate",
+            "declaration": "@RequestParam(required=false) LocalDate to",
+            "binding": "RequestParam",
+            "qualifiedType": "java.time.LocalDate"
+          },
+          {
+            "name": "businessDate",
+            "type": "LocalDate",
+            "declaration": "@RequestParam(required=false) LocalDate businessDate",
+            "binding": "RequestParam",
+            "qualifiedType": "java.time.LocalDate"
+          },
+          {
+            "name": "granularity",
+            "type": "Granularity",
+            "declaration": "@RequestParam(defaultValue=\"DAY\") Granularity granularity",
+            "binding": "RequestParam",
+            "qualifiedType": "ai.neargo.shop.food.service.DiningReportService.Granularity"
+          },
+          {
+            "name": "inventoryView",
+            "type": "InventoryView",
+            "declaration": "@RequestParam(defaultValue=\"BALANCE\") InventoryView inventoryView",
+            "binding": "RequestParam",
+            "qualifiedType": "ai.neargo.shop.food.service.DiningReportService.InventoryView"
+          },
+          {
+            "name": "unit",
+            "type": "String",
+            "declaration": "@RequestParam(required=false) String unit",
+            "binding": "RequestParam",
+            "qualifiedType": "String"
+          },
+          {
+            "name": "currency",
+            "type": "String",
+            "declaration": "@RequestParam(required=false) String currency",
+            "binding": "RequestParam",
+            "qualifiedType": "String"
+          },
+          {
+            "name": "storeNos",
+            "type": "List<String>",
+            "declaration": "@RequestParam(required=false) List<String> storeNos",
+            "binding": "RequestParam",
+            "qualifiedType": "java.util.List"
+          },
+          {
+            "name": "metricVersion",
+            "type": "Integer",
+            "declaration": "@RequestParam(required=false) Integer metricVersion",
+            "binding": "RequestParam",
+            "qualifiedType": "Integer"
+          },
+          {
+            "name": "metricCodes",
+            "type": "Set<String>",
+            "declaration": "@RequestParam(required=false) Set<String> metricCodes",
+            "binding": "RequestParam",
+            "qualifiedType": "java.util.Set"
+          },
+          {
+            "name": "limit",
+            "type": "int",
+            "declaration": "@RequestParam(defaultValue=\"1000\") int limit",
+            "binding": "RequestParam",
+            "qualifiedType": "int"
+          },
+          {
+            "name": "request",
+            "type": "HttpServletRequest",
+            "declaration": "HttpServletRequest request",
+            "binding": "CONTEXT_OR_DIRECT",
+            "qualifiedType": "jakarta.servlet.http.HttpServletRequest"
+          }
+        ],
+        "securityAnnotations": [
+          "@PreAuthorize(\"@perm.canBiz('\"+BizPerms.FINANCE+\"')\")"
+        ],
+        "responseType": "Result",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/biz/x/food/operating-reports/exports",
+        "realm": "biz",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportExportController",
+        "handler": "create",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportExportController.java",
+        "sourceLine": 54,
+        "parameters": [
+          {
+            "name": "body",
+            "type": "DiningReportExportReq",
+            "declaration": "@Valid @RequestBody DiningReportExportReq body",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.food.dto.DiningReportExportReq"
+          },
+          {
+            "name": "key",
+            "type": "String",
+            "declaration": "@RequestHeader(\"Idempotency-Key\") String key",
+            "binding": "RequestHeader",
+            "qualifiedType": "String"
+          },
+          {
+            "name": "request",
+            "type": "HttpServletRequest",
+            "declaration": "HttpServletRequest request",
+            "binding": "CONTEXT_OR_DIRECT",
+            "qualifiedType": "jakarta.servlet.http.HttpServletRequest"
+          }
+        ],
+        "securityAnnotations": [
+          "@PreAuthorize(\"@perm.canBiz('\"+BizPerms.FINANCE+\"') and @perm.canBiz('\"+BizPerms.REPORT_EXPORT+\"')\")"
+        ],
+        "responseType": "ReportExportPort.Task",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/operating-reports/exports/{exportNo}",
+        "realm": "biz",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportExportController",
+        "handler": "get",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportExportController.java",
+        "sourceLine": 72,
+        "parameters": [
+          {
+            "name": "exportNo",
+            "type": "String",
+            "declaration": "@PathVariable @Pattern(regexp=\"[A-Za-z0-9_-]{1,32}\") String exportNo",
+            "binding": "PathVariable",
+            "qualifiedType": "String"
+          },
+          {
+            "name": "request",
+            "type": "HttpServletRequest",
+            "declaration": "HttpServletRequest request",
+            "binding": "CONTEXT_OR_DIRECT",
+            "qualifiedType": "jakarta.servlet.http.HttpServletRequest"
+          }
+        ],
+        "securityAnnotations": [
+          "@PreAuthorize(\"@perm.canBiz('\"+BizPerms.FINANCE+\"') and @perm.canBiz('\"+BizPerms.REPORT_EXPORT+\"')\")"
+        ],
+        "responseType": "ReportExportPort.Task",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/operating-reports/exports/{exportNo}/download",
+        "realm": "biz",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportExportController",
+        "handler": "download",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportExportController.java",
+        "sourceLine": 77,
+        "parameters": [
+          {
+            "name": "exportNo",
+            "type": "String",
+            "declaration": "@PathVariable @Pattern(regexp=\"[A-Za-z0-9_-]{1,32}\") String exportNo",
+            "binding": "PathVariable",
+            "qualifiedType": "String"
+          },
+          {
+            "name": "request",
+            "type": "HttpServletRequest",
+            "declaration": "HttpServletRequest request",
+            "binding": "CONTEXT_OR_DIRECT",
+            "qualifiedType": "jakarta.servlet.http.HttpServletRequest"
+          }
+        ],
+        "securityAnnotations": [
+          "@PreAuthorize(\"@perm.canBiz('\"+BizPerms.FINANCE+\"') and @perm.canBiz('\"+BizPerms.REPORT_EXPORT+\"')\")"
+        ],
+        "responseType": "ResponseEntity<ByteArrayResource>",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/operating-reports/inventory/realtime",
+        "realm": "biz",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportController",
+        "handler": "inventoryRealtime",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportController.java",
+        "sourceLine": 53,
+        "parameters": [
+          {
+            "name": "metricVersion",
+            "type": "int",
+            "declaration": "@RequestParam(defaultValue=\"1\") int metricVersion",
+            "binding": "RequestParam",
+            "qualifiedType": "int"
+          },
+          {
+            "name": "request",
+            "type": "HttpServletRequest",
+            "declaration": "HttpServletRequest request",
+            "binding": "CONTEXT_OR_DIRECT",
+            "qualifiedType": "jakarta.servlet.http.HttpServletRequest"
+          }
+        ],
+        "securityAnnotations": [
+          "@PreAuthorize(\"@perm.canBiz('\"+BizPerms.FINANCE+\"') and @perm.canBiz('\"+BizPerms.STOCK+\"')\")"
+        ],
+        "responseType": "ReportRealtimePort.Result",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/operating-reports/metrics",
+        "realm": "biz",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportController",
+        "handler": "metrics",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportController.java",
+        "sourceLine": 48,
+        "parameters": [
+          {
+            "name": "request",
+            "type": "HttpServletRequest",
+            "declaration": "HttpServletRequest request",
+            "binding": "CONTEXT_OR_DIRECT",
+            "qualifiedType": "jakarta.servlet.http.HttpServletRequest"
+          }
+        ],
+        "securityAnnotations": [
+          "@PreAuthorize(\"@perm.canBiz('\"+BizPerms.FINANCE+\"')\")"
+        ],
+        "responseType": "List<MetricDefinition>",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "GET",
+        "path": "/biz/x/food/operating-reports/realtime",
+        "realm": "biz",
+        "controllerClass": "ai.neargo.shop.food.api.biz.BizDiningReportController",
+        "handler": "realtime",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportController.java",
+        "sourceLine": 60,
+        "parameters": [
+          {
+            "name": "metricVersion",
+            "type": "int",
+            "declaration": "@RequestParam(defaultValue=\"1\") int metricVersion",
+            "binding": "RequestParam",
+            "qualifiedType": "int"
+          },
+          {
+            "name": "request",
+            "type": "HttpServletRequest",
+            "declaration": "HttpServletRequest request",
+            "binding": "CONTEXT_OR_DIRECT",
+            "qualifiedType": "jakarta.servlet.http.HttpServletRequest"
+          }
+        ],
+        "securityAnnotations": [
+          "@PreAuthorize(\"@perm.canBiz('\"+BizPerms.FINANCE+\"')\")"
+        ],
+        "responseType": "ReportRealtimePort.Result",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
         "method": "PUT",
         "path": "/biz/x/food/option-groups/{groupNo}/items",
         "realm": "biz",
@@ -70883,6 +71177,218 @@
       },
       {
         "method": "POST",
+        "path": "/internal/food/operating-report/affected-days",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "affectedDays",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 44,
+        "parameters": [
+          {
+            "name": "change",
+            "type": "ReportAffectedDaysPort.Change",
+            "declaration": "@RequestBody ReportAffectedDaysPort.Change change",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.spi.report.ReportAffectedDaysPort"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "List<ReportAffectedDaysPort.AffectedDay>",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/current-day",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "currentDay",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 57,
+        "parameters": [
+          {
+            "name": "scope",
+            "type": "Scope",
+            "declaration": "@RequestBody Scope scope",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.spi.report.ReportContracts.Scope"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "OperatingDay",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/day",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "day",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 71,
+        "parameters": [
+          {
+            "name": "q",
+            "type": "DayQuery",
+            "declaration": "@RequestBody DayQuery q",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.food.spi.DiningReportInternalApi.DayQuery"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "DayEvidence",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/export",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "export",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 58,
+        "parameters": [
+          {
+            "name": "command",
+            "type": "ExportQuery",
+            "declaration": "@RequestBody ExportQuery command",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.food.spi.DiningReportInternalApi.ExportQuery"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "ReportExportPort.Task",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/export-download",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "exportDownload",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 64,
+        "parameters": [
+          {
+            "name": "ref",
+            "type": "ExportReference",
+            "declaration": "@RequestBody ExportReference ref",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.food.spi.DiningReportInternalApi.ExportReference"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "ReportExportPort.Download",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/export-status",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "exportStatus",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 61,
+        "parameters": [
+          {
+            "name": "ref",
+            "type": "ExportReference",
+            "declaration": "@RequestBody ExportReference ref",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.food.spi.DiningReportInternalApi.ExportReference"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "ReportExportPort.Task",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/facts",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "facts",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 70,
+        "parameters": [
+          {
+            "name": "q",
+            "type": "SourceQuery",
+            "declaration": "@RequestBody SourceQuery q",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.spi.report.ReportContracts.SourceQuery"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "SourceSnapshot",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/metrics",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "metrics",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 56,
+        "parameters": [],
+        "securityAnnotations": [],
+        "responseType": "List<MetricDefinition>",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/query",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "query",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 67,
+        "parameters": [
+          {
+            "name": "q",
+            "type": "Query",
+            "declaration": "@RequestBody Query q",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.food.spi.DiningReportInternalApi.Query"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "Result",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
+        "path": "/internal/food/operating-report/realtime",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "handler": "realtime",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "sourceLine": 53,
+        "parameters": [
+          {
+            "name": "q",
+            "type": "RealtimeQuery",
+            "declaration": "@RequestBody RealtimeQuery q",
+            "binding": "RequestBody",
+            "qualifiedType": "ai.neargo.shop.food.spi.DiningReportInternalApi.RealtimeQuery"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "ReportRealtimePort.Result",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
         "path": "/internal/food/option-groups/create",
         "realm": "internal",
         "controllerClass": "ai.neargo.shop.food.server.api.InternalOptionGroupController",
@@ -73411,7 +73917,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "acknowledge",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 149,
+        "sourceLine": 170,
         "parameters": [
           {
             "name": "request",
@@ -73440,7 +73946,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "bindDevice",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 39,
+        "sourceLine": 60,
         "parameters": [
           {
             "name": "request",
@@ -73469,7 +73975,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "claim",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 137,
+        "sourceLine": 158,
         "parameters": [
           {
             "name": "request",
@@ -73498,7 +74004,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "configuration",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 32,
+        "sourceLine": 53,
         "parameters": [
           {
             "name": "scope",
@@ -73522,12 +74028,41 @@
       },
       {
         "method": "POST",
+        "path": "/internal/printing/deviceRecovery",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
+        "handler": "deviceRecovery",
+        "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
+        "sourceLine": 38,
+        "parameters": [
+          {
+            "name": "request",
+            "type": "RecoveryQuery",
+            "declaration": "@RequestBody RecoveryQuery request",
+            "binding": "RequestBody",
+            "qualifiedType": "RecoveryQuery"
+          },
+          {
+            "name": "given",
+            "type": "String",
+            "declaration": "@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given",
+            "binding": "RequestHeader",
+            "qualifiedType": "String"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "ResponseEntity<?>",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
         "path": "/internal/printing/enqueue",
         "realm": "internal",
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "enqueue",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 78,
+        "sourceLine": 99,
         "parameters": [
           {
             "name": "request",
@@ -73556,7 +74091,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "get",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 96,
+        "sourceLine": 117,
         "parameters": [
           {
             "name": "request",
@@ -73585,7 +74120,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "heartbeat",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 127,
+        "sourceLine": 148,
         "parameters": [
           {
             "name": "request",
@@ -73614,7 +74149,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "list",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 86,
+        "sourceLine": 107,
         "parameters": [
           {
             "name": "request",
@@ -73643,7 +74178,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "publishTemplate",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 62,
+        "sourceLine": 83,
         "parameters": [
           {
             "name": "request",
@@ -73672,7 +74207,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "putRoute",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 70,
+        "sourceLine": 91,
         "parameters": [
           {
             "name": "request",
@@ -73701,7 +74236,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "reprint",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 112,
+        "sourceLine": 133,
         "parameters": [
           {
             "name": "request",
@@ -73725,12 +74260,41 @@
       },
       {
         "method": "POST",
+        "path": "/internal/printing/resolveDeviceUncertainty",
+        "realm": "internal",
+        "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
+        "handler": "resolveDeviceUncertainty",
+        "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
+        "sourceLine": 31,
+        "parameters": [
+          {
+            "name": "request",
+            "type": "ResolveDeviceCommand",
+            "declaration": "@RequestBody ResolveDeviceCommand request",
+            "binding": "RequestBody",
+            "qualifiedType": "ResolveDeviceCommand"
+          },
+          {
+            "name": "given",
+            "type": "String",
+            "declaration": "@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given",
+            "binding": "RequestHeader",
+            "qualifiedType": "String"
+          }
+        ],
+        "securityAnnotations": [],
+        "responseType": "ResponseEntity<?>",
+        "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION",
+        "targetApiIds": []
+      },
+      {
+        "method": "POST",
         "path": "/internal/printing/retry",
         "realm": "internal",
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "retry",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 104,
+        "sourceLine": 125,
         "parameters": [
           {
             "name": "request",
@@ -73759,7 +74323,7 @@
         "controllerClass": "ai.neargo.shop.printing.api.internal.InternalPrintController",
         "handler": "revokeDevice",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "sourceLine": 47,
+        "sourceLine": 68,
         "parameters": [
           {
             "name": "request",
@@ -77687,6 +78251,29 @@
             "sourceLine": 21
           }
         ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.food.dto.DiningReportExportReq",
+        "name": "DiningReportExportReq",
+        "package": "ai.neargo.shop.food.dto",
+        "sourceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/dto/DiningReportExportReq.java",
+        "records": [
+          {
+            "name": "DiningReportExportReq",
+            "fields": [
+              "@NotNull View view",
+              "LocalDate from",
+              "LocalDate to",
+              "LocalDate businessDate",
+              "@Size(max=30) List<String> storeNos",
+              "Integer metricVersion",
+              "@Size(max=64) Set<String> metricCodes",
+              "Integer limit",
+              "MeasureFilter measure"
+            ]
+          }
+        ],
+        "methods": []
       },
       {
         "qualifiedName": "ai.neargo.shop.food.dto.DiningReturnApplyReq",
@@ -83085,6 +83672,63 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.food.service.DiningReportFactsService",
+        "name": "DiningReportFactsService",
+        "package": "ai.neargo.shop.food.service",
+        "sourceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/DiningReportFactsService.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.food.service.DiningReportService",
+        "name": "DiningReportService",
+        "package": "ai.neargo.shop.food.service",
+        "sourceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/service/DiningReportService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "realtime",
+            "declaration": "ReportRealtimePort.Result realtime(String entity,String store,String actor,int version,boolean inventory)",
+            "sourceLine": 13
+          },
+          {
+            "name": "metrics",
+            "declaration": "List<MetricDefinition> metrics()",
+            "sourceLine": 14
+          },
+          {
+            "name": "export",
+            "declaration": "ReportExportPort.Task export(String entity,List<String> stores,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> metricCodes,int limit,String key)",
+            "sourceLine": 15
+          },
+          {
+            "name": "getExport",
+            "declaration": "ReportExportPort.Task getExport(String entity,String actor,String exportNo)",
+            "sourceLine": 17
+          },
+          {
+            "name": "downloadExport",
+            "declaration": "ReportExportPort.Download downloadExport(String entity,String actor,String exportNo)",
+            "sourceLine": 18
+          },
+          {
+            "name": "query",
+            "declaration": "Result query(String entity,List<String> stores,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> metricCodes,int limit,MeasureFilter measure)",
+            "sourceLine": 22
+          },
+          {
+            "name": "export",
+            "declaration": "ReportExportPort.Task export(String entity,List<String> stores,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> metricCodes,int limit,String key,MeasureFilter measure)",
+            "sourceLine": 15
+          },
+          {
+            "name": "query",
+            "declaration": "Result query(String entity,List<String> stores,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> metricCodes,int limit)",
+            "sourceLine": 22
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.food.service.DiningReturnService",
         "name": "DiningReturnService",
         "package": "ai.neargo.shop.food.service",
@@ -86209,6 +86853,68 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.food.spi.DiningReportInternalApi",
+        "name": "DiningReportInternalApi",
+        "package": "ai.neargo.shop.food.spi",
+        "sourceFile": "backend-plugins/shop-industry-food/food-api/src/main/java/ai/neargo/shop/food/spi/DiningReportInternalApi.java",
+        "records": [
+          {
+            "name": "RealtimeQuery",
+            "fields": [
+              "String entity",
+              "String store",
+              "String actor",
+              "int version",
+              "boolean inventory"
+            ]
+          },
+          {
+            "name": "ExportQuery",
+            "fields": [
+              "Query query",
+              "String key"
+            ]
+          },
+          {
+            "name": "ExportReference",
+            "fields": [
+              "String entity",
+              "String actor",
+              "String exportNo"
+            ]
+          },
+          {
+            "name": "Query",
+            "fields": [
+              "String entity",
+              "List<String> stores",
+              "String actor",
+              "View view",
+              "LocalDate from",
+              "LocalDate to",
+              "Integer version",
+              "Set<String> metricCodes",
+              "int limit",
+              "MeasureFilter measure"
+            ]
+          },
+          {
+            "name": "DayQuery",
+            "fields": [
+              "Scope scope",
+              "LocalDate date"
+            ]
+          }
+        ],
+        "methods": [
+          {
+            "name": "affectedDays",
+            "declaration": "List<ReportAffectedDaysPort.AffectedDay> affectedDays( @RequestBody ReportAffectedDaysPort.Change change)",
+            "sourceLine": 23
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.food.spi.DiningReturnInternalApi",
         "name": "DiningReturnInternalApi",
         "package": "ai.neargo.shop.food.spi",
@@ -88764,6 +89470,30 @@
         "methods": []
       },
       {
+        "qualifiedName": "ai.neargo.shop.food.channel.config.FoodReportClientConfiguration",
+        "name": "FoodReportClientConfiguration",
+        "package": "ai.neargo.shop.food.channel.config",
+        "sourceFile": "backend-plugins/shop-industry-food/food-channel/src/main/java/ai/neargo/shop/food/channel/config/FoodReportClientConfiguration.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "create",
+            "declaration": "public Task create(Create command)",
+            "sourceLine": 22
+          },
+          {
+            "name": "get",
+            "declaration": "public Task get(Reference reference)",
+            "sourceLine": 23
+          },
+          {
+            "name": "download",
+            "declaration": "public Download download(Reference reference)",
+            "sourceLine": 24
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.food.channel.config.FoodStoreCardClientConfiguration",
         "name": "FoodStoreCardClientConfiguration",
         "package": "ai.neargo.shop.food.channel.config",
@@ -89441,6 +90171,14 @@
         "name": "DiningIdentityAutoConfiguration",
         "package": "ai.neargo.shop.food.config",
         "sourceFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/config/DiningIdentityAutoConfiguration.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.food.config.DiningReportFactsConfiguration",
+        "name": "DiningReportFactsConfiguration",
+        "package": "ai.neargo.shop.food.config",
+        "sourceFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/config/DiningReportFactsConfiguration.java",
         "records": [],
         "methods": []
       },
@@ -92043,6 +92781,45 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.food.port.DiningReportFactsPortAdapter",
+        "name": "DiningReportFactsPortAdapter",
+        "package": "ai.neargo.shop.food.port",
+        "sourceFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/port/DiningReportFactsPortAdapter.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "DiningReportFactsPortAdapter",
+            "declaration": "public DiningReportFactsPortAdapter(BusinessDayMapper days,StorePolicyMapper policies,OrderBatchMapper batches, CoreOrderBindingMapper bindings,OrderLineMapper lines,StoreCardQueryPort stores,PlatformTransactionManager manager)",
+            "sourceLine": 55
+          },
+          {
+            "name": "affectedDays",
+            "declaration": "public List<AffectedDay> affectedDays(Change change)",
+            "sourceLine": 62
+          },
+          {
+            "name": "source",
+            "declaration": "public SourceKey source()",
+            "sourceLine": 103
+          },
+          {
+            "name": "current",
+            "declaration": "public OperatingDay current(Scope scope)",
+            "sourceLine": 104
+          },
+          {
+            "name": "day",
+            "declaration": "public DayEvidence day(Scope scope,LocalDate date)",
+            "sourceLine": 128
+          },
+          {
+            "name": "readSnapshot",
+            "declaration": "public SourceSnapshot readSnapshot(SourceQuery query)",
+            "sourceLine": 164
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.food.port.LazyGoodsCatalogQueryPortImpl",
         "name": "LazyGoodsCatalogQueryPortImpl",
         "package": "ai.neargo.shop.food.port",
@@ -93295,6 +94072,60 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.food.service.impl.DiningReportServiceImpl",
+        "name": "DiningReportServiceImpl",
+        "package": "ai.neargo.shop.food.service.impl",
+        "sourceFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/service/impl/DiningReportServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "DiningReportServiceImpl",
+            "declaration": "public DiningReportServiceImpl(ObjectProvider<ReportQueryPort> reports,StoreCardQueryPort stores,ObjectProvider<ReportRealtimePort> realtime, ObjectProvider<ReportMetricCatalogPort> catalog,ObjectProvider<ReportExportPort> exports)",
+            "sourceLine": 30
+          },
+          {
+            "name": "metrics",
+            "declaration": "public List<MetricDefinition> metrics()",
+            "sourceLine": 34
+          },
+          {
+            "name": "realtime",
+            "declaration": "public ReportRealtimePort.Result realtime(String entity,String store,String actor,int version,boolean inventory)",
+            "sourceLine": 40
+          },
+          {
+            "name": "query",
+            "declaration": "public Result query(String entity,List<String> numbers,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> codes,int limit)",
+            "sourceLine": 50
+          },
+          {
+            "name": "export",
+            "declaration": "public ReportExportPort.Task export(String entity,List<String> numbers,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> codes,int limit,String key)",
+            "sourceLine": 54
+          },
+          {
+            "name": "query",
+            "declaration": "public Result query(String entity,List<String> numbers,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> codes,int limit,MeasureFilter measure)",
+            "sourceLine": 50
+          },
+          {
+            "name": "export",
+            "declaration": "public ReportExportPort.Task export(String entity,List<String> numbers,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> codes,int limit,String key,MeasureFilter measure)",
+            "sourceLine": 54
+          },
+          {
+            "name": "getExport",
+            "declaration": "public ReportExportPort.Task getExport(String entity,String actor,String exportNo)",
+            "sourceLine": 69
+          },
+          {
+            "name": "downloadExport",
+            "declaration": "public ReportExportPort.Download downloadExport(String entity,String actor,String exportNo)",
+            "sourceLine": 72
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.food.service.impl.DiningReturnServiceImpl",
         "name": "DiningReturnServiceImpl",
         "package": "ai.neargo.shop.food.service.impl",
@@ -93975,37 +94806,37 @@
           {
             "name": "adjust",
             "declaration": "public ConsumptionVO adjust( String entity, String store, String actor, String taskNo, ProductionContracts.AdjustmentReq req, String key)",
-            "sourceLine": 246
+            "sourceLine": 249
           },
           {
             "name": "reverse",
             "declaration": "public ConsumptionVO reverse( String entity, String store, String actor, String event, ProductionContracts.ReverseReq req, String key)",
-            "sourceLine": 370
+            "sourceLine": 373
           },
           {
             "name": "recover",
             "declaration": "public int recover(int limit)",
-            "sourceLine": 423
+            "sourceLine": 426
           },
           {
             "name": "list",
             "declaration": "public PageData<ConsumptionVO> list( String entity, String store, String actor, ListQuery query)",
-            "sourceLine": 461
+            "sourceLine": 464
           },
           {
             "name": "get",
             "declaration": "public ConsumptionVO get(String entity, String store, String actor, String eventNo)",
-            "sourceLine": 521
+            "sourceLine": 524
           },
           {
             "name": "fingerprint",
             "declaration": "public static String fingerprint(Command command)",
-            "sourceLine": 1046
+            "sourceLine": 1049
           },
           {
             "name": "validate",
             "declaration": "public static void validate(Command command, Receipt receipt)",
-            "sourceLine": 1050
+            "sourceLine": 1053
           }
         ]
       },
@@ -95687,6 +96518,75 @@
             "name": "businessFailure",
             "declaration": "public ResponseEntity<Void> businessFailure(BizException failure)",
             "sourceLine": 48
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.food.server.api.InternalDiningReportController",
+        "name": "InternalDiningReportController",
+        "package": "ai.neargo.shop.food.server.api",
+        "sourceFile": "backend-plugins/shop-industry-food/food-server/src/main/java/ai/neargo/shop/food/server/api/InternalDiningReportController.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "reportFailure",
+            "declaration": "public ResponseEntity<Void> reportFailure(RuntimeException failure)",
+            "sourceLine": 39
+          },
+          {
+            "name": "affectedDays",
+            "declaration": "public List<ReportAffectedDaysPort.AffectedDay> affectedDays( @RequestBody ReportAffectedDaysPort.Change change)",
+            "sourceLine": 44
+          },
+          {
+            "name": "InternalDiningReportController",
+            "declaration": "public InternalDiningReportController(DiningReportService reports,DiningReportFactsService facts)",
+            "sourceLine": 50
+          },
+          {
+            "name": "realtime",
+            "declaration": "public ReportRealtimePort.Result realtime(@RequestBody RealtimeQuery q)",
+            "sourceLine": 53
+          },
+          {
+            "name": "metrics",
+            "declaration": "public List<MetricDefinition> metrics()",
+            "sourceLine": 56
+          },
+          {
+            "name": "currentDay",
+            "declaration": "public OperatingDay currentDay(@RequestBody Scope scope)",
+            "sourceLine": 57
+          },
+          {
+            "name": "export",
+            "declaration": "public ReportExportPort.Task export(@RequestBody ExportQuery command)",
+            "sourceLine": 58
+          },
+          {
+            "name": "exportStatus",
+            "declaration": "public ReportExportPort.Task exportStatus(@RequestBody ExportReference ref)",
+            "sourceLine": 61
+          },
+          {
+            "name": "exportDownload",
+            "declaration": "public ReportExportPort.Download exportDownload(@RequestBody ExportReference ref)",
+            "sourceLine": 64
+          },
+          {
+            "name": "query",
+            "declaration": "public Result query(@RequestBody Query q)",
+            "sourceLine": 67
+          },
+          {
+            "name": "facts",
+            "declaration": "public SourceSnapshot facts(@RequestBody SourceQuery q)",
+            "sourceLine": 70
+          },
+          {
+            "name": "day",
+            "declaration": "public DayEvidence day(@RequestBody DayQuery q)",
+            "sourceLine": 71
           }
         ]
       },
@@ -98148,6 +99048,69 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.food.api.biz.BizDiningReportController",
+        "name": "BizDiningReportController",
+        "package": "ai.neargo.shop.food.api.biz",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportController.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "BizDiningReportController",
+            "declaration": "public BizDiningReportController(DiningReportService service,StoreDirectoryPort stores,FoodRequestScopeValidator validator)",
+            "sourceLine": 43
+          },
+          {
+            "name": "metrics",
+            "declaration": "public List<MetricDefinition> metrics(HttpServletRequest request)",
+            "sourceLine": 48
+          },
+          {
+            "name": "inventoryRealtime",
+            "declaration": "public ReportRealtimePort.Result inventoryRealtime(@RequestParam(defaultValue=\"1\") int metricVersion,HttpServletRequest request)",
+            "sourceLine": 53
+          },
+          {
+            "name": "realtime",
+            "declaration": "public ReportRealtimePort.Result realtime(@RequestParam(defaultValue=\"1\") int metricVersion,HttpServletRequest request)",
+            "sourceLine": 60
+          },
+          {
+            "name": "query",
+            "declaration": "public Result query(@PathVariable String view,@RequestParam(required=false) LocalDate from,@RequestParam(required=false) LocalDate to, @RequestParam(required=false) LocalDate businessDate,@RequestParam(defaultValue=\"DAY\") Granularity granularity,@RequestParam(defaultValue=\"BALANCE\") InventoryView inventoryView,@RequestParam(required=false) String unit,@RequestParam(required=false) String currency, @RequestParam(required=false) List<String> storeNos,@RequestParam(required=false) Integer metricVersion, @RequestParam(required=false) Set<String> metricCodes,@RequestParam(defaultValue=\"1000\") int limit, HttpServletRequest request)",
+            "sourceLine": 67
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.food.api.biz.BizDiningReportExportController",
+        "name": "BizDiningReportExportController",
+        "package": "ai.neargo.shop.food.api.biz",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/api/biz/BizDiningReportExportController.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "BizDiningReportExportController",
+            "declaration": "public BizDiningReportExportController(DiningReportService reports,StoreDirectoryPort stores,FoodRequestScopeValidator validator)",
+            "sourceLine": 49
+          },
+          {
+            "name": "create",
+            "declaration": "public ReportExportPort.Task create(@Valid @RequestBody DiningReportExportReq body,@RequestHeader(\"Idempotency-Key\") String key, HttpServletRequest request)",
+            "sourceLine": 54
+          },
+          {
+            "name": "get",
+            "declaration": "public ReportExportPort.Task get(@PathVariable @Pattern(regexp=\"[A-Za-z0-9_-]{1,32}\") String exportNo,HttpServletRequest request)",
+            "sourceLine": 72
+          },
+          {
+            "name": "download",
+            "declaration": "public ResponseEntity<ByteArrayResource> download(@PathVariable @Pattern(regexp=\"[A-Za-z0-9_-]{1,32}\") String exportNo,HttpServletRequest request)",
+            "sourceLine": 77
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.food.api.biz.BizDiningReturnController",
         "name": "BizDiningReturnController",
         "package": "ai.neargo.shop.food.api.biz",
@@ -99430,6 +100393,14 @@
         "methods": []
       },
       {
+        "qualifiedName": "ai.neargo.shop.food.config.FoodReportFactsAutoConfiguration",
+        "name": "FoodReportFactsAutoConfiguration",
+        "package": "ai.neargo.shop.food.config",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/config/FoodReportFactsAutoConfiguration.java",
+        "records": [],
+        "methods": []
+      },
+      {
         "qualifiedName": "ai.neargo.shop.food.config.FoodSupportWebAutoConfiguration",
         "name": "FoodSupportWebAutoConfiguration",
         "package": "ai.neargo.shop.food.config",
@@ -99447,12 +100418,12 @@
           {
             "name": "addInterceptors",
             "declaration": "public void addInterceptors(InterceptorRegistry registry)",
-            "sourceLine": 558
+            "sourceLine": 576
           },
           {
             "name": "matches",
             "declaration": "public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata)",
-            "sourceLine": 566
+            "sourceLine": 584
           }
         ]
       },
@@ -100446,6 +101417,60 @@
             "name": "customerConfirm",
             "declaration": "public QuoteVO customerConfirm(CartAccess access, String quote, DiningQuoteConfirmReq r)",
             "sourceLine": 42
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.food.foodclient.RemoteDiningReportService",
+        "name": "RemoteDiningReportService",
+        "package": "ai.neargo.shop.food.foodclient",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/foodclient/RemoteDiningReportService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "RemoteDiningReportService",
+            "declaration": "public RemoteDiningReportService(DiningReportInternalApi api)",
+            "sourceLine": 18
+          },
+          {
+            "name": "metrics",
+            "declaration": "public List<MetricDefinition> metrics()",
+            "sourceLine": 19
+          },
+          {
+            "name": "realtime",
+            "declaration": "public ReportRealtimePort.Result realtime(String entity,String store,String actor,int version,boolean inventory)",
+            "sourceLine": 20
+          },
+          {
+            "name": "export",
+            "declaration": "public ReportExportPort.Task export(String entity,List<String> stores,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> codes,int limit,String key)",
+            "sourceLine": 23
+          },
+          {
+            "name": "getExport",
+            "declaration": "public ReportExportPort.Task getExport(String entity,String actor,String exportNo)",
+            "sourceLine": 28
+          },
+          {
+            "name": "downloadExport",
+            "declaration": "public ReportExportPort.Download downloadExport(String entity,String actor,String exportNo)",
+            "sourceLine": 31
+          },
+          {
+            "name": "query",
+            "declaration": "public Result query(String entity,List<String> stores,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> codes,int limit,MeasureFilter measure)",
+            "sourceLine": 34
+          },
+          {
+            "name": "export",
+            "declaration": "public ReportExportPort.Task export(String entity,List<String> stores,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> codes,int limit,String key,MeasureFilter measure)",
+            "sourceLine": 23
+          },
+          {
+            "name": "query",
+            "declaration": "public Result query(String entity,List<String> stores,String actor,View view,LocalDate from,LocalDate to, Integer version,Set<String> codes,int limit)",
+            "sourceLine": 34
           }
         ]
       },
@@ -101571,6 +102596,45 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.food.port.RemoteDiningReportFactsPortAdapter",
+        "name": "RemoteDiningReportFactsPortAdapter",
+        "package": "ai.neargo.shop.food.port",
+        "sourceFile": "backend-plugins/shop-industry-food/food-web/src/main/java/ai/neargo/shop/food/port/RemoteDiningReportFactsPortAdapter.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "RemoteDiningReportFactsPortAdapter",
+            "declaration": "public RemoteDiningReportFactsPortAdapter(DiningReportInternalApi api)",
+            "sourceLine": 17
+          },
+          {
+            "name": "affectedDays",
+            "declaration": "public java.util.List<AffectedDay> affectedDays(Change change)",
+            "sourceLine": 18
+          },
+          {
+            "name": "source",
+            "declaration": "public SourceKey source()",
+            "sourceLine": 21
+          },
+          {
+            "name": "current",
+            "declaration": "public OperatingDay current(Scope scope)",
+            "sourceLine": 22
+          },
+          {
+            "name": "day",
+            "declaration": "public DayEvidence day(Scope scope,LocalDate date)",
+            "sourceLine": 25
+          },
+          {
+            "name": "readSnapshot",
+            "declaration": "public SourceSnapshot readSnapshot(SourceQuery query)",
+            "sourceLine": 28
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.food.service.FoodKdsStreamService",
         "name": "FoodKdsStreamService",
         "package": "ai.neargo.shop.food.service",
@@ -101605,6 +102669,250 @@
             "name": "shutdown",
             "declaration": "public void shutdown()",
             "sourceLine": 125
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintArtifactStorePort",
+        "name": "PrintArtifactStorePort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintArtifactStorePort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "put",
+            "declaration": "void put(PrivateArtifact input)",
+            "sourceLine": 19
+          },
+          {
+            "name": "exists",
+            "declaration": "boolean exists(String objectKey)",
+            "sourceLine": 21
+          },
+          {
+            "name": "verify",
+            "declaration": "ArtifactVerification verify(String objectKey)",
+            "sourceLine": 23
+          },
+          {
+            "name": "signedDownload",
+            "declaration": "DownloadGrant signedDownload(String objectKey, Duration ttl)",
+            "sourceLine": 25
+          },
+          {
+            "name": "delete",
+            "declaration": "void delete(String objectKey)",
+            "sourceLine": 27
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintCallbackVerifierPort",
+        "name": "PrintCallbackVerifierPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintCallbackVerifierPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "successAcknowledgement",
+            "declaration": "String successAcknowledgement()",
+            "sourceLine": 19
+          },
+          {
+            "name": "adapterCode",
+            "declaration": "String adapterCode()",
+            "sourceLine": 21
+          },
+          {
+            "name": "verify",
+            "declaration": "VerifiedPrintReceipt verify(RawPrintCallback callback)",
+            "sourceLine": 23
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintCredentialCipherPort",
+        "name": "PrintCredentialCipherPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintCredentialCipherPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "encrypt",
+            "declaration": "EncryptedPrintCredential encrypt(PrintScope scope, String credentialRef, byte[] secret)",
+            "sourceLine": 19
+          },
+          {
+            "name": "decrypt",
+            "declaration": "byte[] decrypt(PrintScope scope, EncryptedPrintCredential credential)",
+            "sourceLine": 21
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintCredentialLookupPort",
+        "name": "PrintCredentialLookupPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintCredentialLookupPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "get",
+            "declaration": "EncryptedPrintCredential get(PrintScope scope, String credentialRef)",
+            "sourceLine": 19
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintDeviceProbePort",
+        "name": "PrintDeviceProbePort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintDeviceProbePort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "adapterCode",
+            "declaration": "String adapterCode()",
+            "sourceLine": 6
+          },
+          {
+            "name": "probe",
+            "declaration": "PrinterProbeResult probe(PrintScope scope, String credentialRef, FrozenJson connection)",
+            "sourceLine": 8
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintDispatchPort",
+        "name": "PrintDispatchPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintDispatchPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "adapterCode",
+            "declaration": "String adapterCode()",
+            "sourceLine": 19
+          },
+          {
+            "name": "capabilities",
+            "declaration": "PrintAdapterCapabilities capabilities()",
+            "sourceLine": 21
+          },
+          {
+            "name": "submit",
+            "declaration": "DispatchResult submit(PrintDispatch dispatch)",
+            "sourceLine": 23
+          },
+          {
+            "name": "query",
+            "declaration": "QueryResult query(PrintAttemptRef ref)",
+            "sourceLine": 25
+          },
+          {
+            "name": "cancel",
+            "declaration": "CancelResult cancel(PrintAttemptRef ref)",
+            "sourceLine": 27
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintFontMetricsPort",
+        "name": "PrintFontMetricsPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintFontMetricsPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "measure",
+            "declaration": "GlyphMetrics measure(String text, FontRef font, BigDecimal pointSize)",
+            "sourceLine": 19
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintNotificationRecipientsPort",
+        "name": "PrintNotificationRecipientsPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintNotificationRecipientsPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "recipients",
+            "declaration": "List<String> recipients(PrintScope scope, Set<String> roleKeys)",
+            "sourceLine": 8
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintPdfPort",
+        "name": "PrintPdfPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintPdfPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "render",
+            "declaration": "PdfArtifact render(PdfRenderInput input)",
+            "sourceLine": 19
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintPrivateDownloadPort",
+        "name": "PrintPrivateDownloadPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintPrivateDownloadPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "read",
+            "declaration": "byte[] read(String objectKey, long expiresAt, String signature)",
+            "sourceLine": 7
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.spi.printing.PrintSourceFactsPort",
+        "name": "PrintSourceFactsPort",
+        "package": "ai.neargo.shop.spi.printing",
+        "sourceFile": "backend/print/print-api/src/main/java/ai/neargo/shop/spi/printing/PrintSourceFactsPort.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "referencesByOrder",
+            "declaration": "default List<PrintFactRef> referencesByOrder(PrintScope scope, String orderNo)",
+            "sourceLine": 19
+          },
+          {
+            "name": "scenes",
+            "declaration": "default Set<String> scenes()",
+            "sourceLine": 23
+          },
+          {
+            "name": "sourceTypes",
+            "declaration": "Set<String> sourceTypes()",
+            "sourceLine": 27
+          },
+          {
+            "name": "resolveReference",
+            "declaration": "PrintFactRef resolveReference(PrintSourceReference reference, PrintScope scope)",
+            "sourceLine": 29
+          },
+          {
+            "name": "snapshot",
+            "declaration": "PrintFact snapshot(PrintFactRef ref)",
+            "sourceLine": 31
+          },
+          {
+            "name": "scan",
+            "declaration": "PrintFactPage scan(PrintFactCursor cursor, int limit)",
+            "sourceLine": 33
+          },
+          {
+            "name": "executionGuard",
+            "declaration": "PrintExecutionGuard executionGuard(PrintFactRef ref)",
+            "sourceLine": 35
           }
         ]
       },
@@ -101894,77 +103202,117 @@
         "name": "InternalPrintController",
         "package": "ai.neargo.shop.printing.api.internal",
         "sourceFile": "backend/shop-app/src/main/java/ai/neargo/shop/printing/api/internal/InternalPrintController.java",
-        "records": [],
+        "records": [
+          {
+            "name": "ResolveDeviceCommand",
+            "fields": [
+              "Scope scope",
+              "PrintService.DeviceResolution resolution"
+            ]
+          },
+          {
+            "name": "RecoveryQuery",
+            "fields": [
+              "Scope scope",
+              "String deviceNo"
+            ]
+          }
+        ],
         "methods": [
+          {
+            "name": "setOwner",
+            "declaration": "public void setOwner(PrintService owner)",
+            "sourceLine": 27
+          },
+          {
+            "name": "ResolveDeviceCommand",
+            "declaration": "public record ResolveDeviceCommand(Scope scope, PrintService.DeviceResolution resolution)",
+            "sourceLine": 28
+          },
+          {
+            "name": "resolveDeviceUncertainty",
+            "declaration": "public ResponseEntity<?> resolveDeviceUncertainty(@RequestBody ResolveDeviceCommand request, @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given)",
+            "sourceLine": 31
+          },
+          {
+            "name": "RecoveryQuery",
+            "declaration": "public record RecoveryQuery(Scope scope,String deviceNo)",
+            "sourceLine": 36
+          },
+          {
+            "name": "deviceRecovery",
+            "declaration": "public ResponseEntity<?> deviceRecovery(@RequestBody RecoveryQuery request, @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given)",
+            "sourceLine": 38
+          },
           {
             "name": "InternalPrintController",
             "declaration": "public InternalPrintController( PrintPort service, @Value(\"${shop.services.internal-token:}\") String token)",
-            "sourceLine": 25
+            "sourceLine": 46
           },
           {
             "name": "configuration",
             "declaration": "public ResponseEntity<?> configuration( @RequestBody Scope scope, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 32
+            "sourceLine": 53
           },
           {
             "name": "bindDevice",
             "declaration": "public ResponseEntity<?> bindDevice( @RequestBody PrintInternalApi.DeviceCommand request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 39
+            "sourceLine": 60
           },
           {
             "name": "revokeDevice",
             "declaration": "public ResponseEntity<?> revokeDevice( @RequestBody PrintInternalApi.RevokeDeviceCommand request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 47
+            "sourceLine": 68
           },
           {
             "name": "publishTemplate",
             "declaration": "public ResponseEntity<?> publishTemplate( @RequestBody PrintInternalApi.TemplateCommand request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 62
+            "sourceLine": 83
           },
           {
             "name": "putRoute",
             "declaration": "public ResponseEntity<?> putRoute( @RequestBody PrintInternalApi.RouteCommand request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 70
+            "sourceLine": 91
           },
           {
             "name": "enqueue",
             "declaration": "public ResponseEntity<?> enqueue( @RequestBody PrintInternalApi.EnqueueCommand request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 78
+            "sourceLine": 99
           },
           {
             "name": "list",
             "declaration": "public ResponseEntity<?> list( @RequestBody PrintInternalApi.ListQuery request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 86
+            "sourceLine": 107
           },
           {
             "name": "get",
             "declaration": "public ResponseEntity<?> get( @RequestBody PrintInternalApi.JobQuery request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 96
+            "sourceLine": 117
           },
           {
             "name": "retry",
             "declaration": "public ResponseEntity<?> retry( @RequestBody PrintInternalApi.JobQuery request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 104
+            "sourceLine": 125
           },
           {
             "name": "reprint",
             "declaration": "public ResponseEntity<?> reprint( @RequestBody PrintInternalApi.ReprintCommand request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 112
+            "sourceLine": 133
           },
           {
             "name": "heartbeat",
             "declaration": "public ResponseEntity<?> heartbeat( @RequestBody PrintInternalApi.HeartbeatCommand request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 127
+            "sourceLine": 148
           },
           {
             "name": "claim",
             "declaration": "public ResponseEntity<?> claim( @RequestBody PrintInternalApi.DeviceQuery request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 137
+            "sourceLine": 158
           },
           {
             "name": "acknowledge",
             "declaration": "public ResponseEntity<?> acknowledge( @RequestBody PrintInternalApi.AckCommand request, @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given)",
-            "sourceLine": 149
+            "sourceLine": 170
           }
         ]
       },
@@ -104015,6 +105363,2080 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.printing.center.audit.PrintActionAppender",
+        "name": "PrintActionAppender",
+        "package": "ai.neargo.shop.printing.center.audit",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/audit/PrintActionAppender.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "setDeviceGate",
+            "declaration": "public void setDeviceGate(ai.neargo.shop.printing.service.PrintDeviceGate gate)",
+            "sourceLine": 18
+          },
+          {
+            "name": "PrintActionAppender",
+            "declaration": "public PrintActionAppender(PrnStoreStreamMapper s, PrnActionLogMapper l)",
+            "sourceLine": 22
+          },
+          {
+            "name": "lock",
+            "declaration": "public PrnStoreStream lock(PrintScope scope)",
+            "sourceLine": 28
+          },
+          {
+            "name": "appendInCurrentTransaction",
+            "declaration": "public long appendInCurrentTransaction(PrintScope scope, PrintAction a)",
+            "sourceLine": 43
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.PrintAdapterRegistry",
+        "name": "PrintAdapterRegistry",
+        "package": "ai.neargo.shop.printing.center.dispatch",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/PrintAdapterRegistry.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintAdapterRegistry",
+            "declaration": "public PrintAdapterRegistry(List<PrintDispatchPort> ports)",
+            "sourceLine": 15
+          },
+          {
+            "name": "requireCloud",
+            "declaration": "public PrintDispatchPort requireCloud(String code)",
+            "sourceLine": 23
+          },
+          {
+            "name": "all",
+            "declaration": "public Collection<PrintDispatchPort> all()",
+            "sourceLine": 29
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.PrintBatchProjection",
+        "name": "PrintBatchProjection",
+        "package": "ai.neargo.shop.printing.center.dispatch",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/PrintBatchProjection.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "calculate",
+            "declaration": "public BatchCounts calculate(List<PrintJobSnapshot> jobs)",
+            "sourceLine": 9
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.PrintDispatchService",
+        "name": "PrintDispatchService",
+        "package": "ai.neargo.shop.printing.center.dispatch",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/PrintDispatchService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "dispatchCloud",
+            "declaration": "PrintWorkReport dispatchCloud(PrintWorkerBudget budget)",
+            "sourceLine": 19
+          },
+          {
+            "name": "reconcileAttempt",
+            "declaration": "void reconcileAttempt(PrintAttemptRef ref)",
+            "sourceLine": 21
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.PrintReceiptService",
+        "name": "PrintReceiptService",
+        "package": "ai.neargo.shop.printing.center.dispatch",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/PrintReceiptService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "refreshBatchProjection",
+            "declaration": "void refreshBatchProjection(PrintScope scope, String batchNo)",
+            "sourceLine": 19
+          },
+          {
+            "name": "applyNow",
+            "declaration": "void applyNow(PrintScope scope, String receiptNo)",
+            "sourceLine": 21
+          },
+          {
+            "name": "ingest",
+            "declaration": "ReceiptAck ingest(VerifiedPrintReceipt receipt)",
+            "sourceLine": 23
+          },
+          {
+            "name": "applyPending",
+            "declaration": "PrintWorkReport applyPending(PrintWorkerBudget budget)",
+            "sourceLine": 25
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.PrintStateModels",
+        "name": "PrintStateModels",
+        "package": "ai.neargo.shop.printing.center.dispatch",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/PrintStateModels.java",
+        "records": [
+          {
+            "name": "PrintStateSnapshot",
+            "fields": [
+              "PrintJobStatus status",
+              "boolean cancelRequested",
+              "boolean partialOutput",
+              "int retryCount",
+              "int maxRetries"
+            ]
+          },
+          {
+            "name": "PrintObservation",
+            "fields": [
+              "ObservedPrintStatus status",
+              "PrintEvidenceLevel evidence",
+              "boolean queueTerminated",
+              "boolean partialOutput"
+            ]
+          },
+          {
+            "name": "PrintTransition",
+            "fields": [
+              "PrintJobStatus status",
+              "boolean releaseGate",
+              "boolean safeToRetry",
+              "String reason"
+            ]
+          },
+          {
+            "name": "PreparedPrintAttempt",
+            "fields": [
+              "PrintDispatch dispatch",
+              "String connectionType",
+              "String leaseToken",
+              "Instant leaseUntil"
+            ]
+          },
+          {
+            "name": "ReceiptAck",
+            "fields": [
+              "String receiptNo",
+              "String status"
+            ]
+          },
+          {
+            "name": "PrintIncidentCommand",
+            "fields": [
+              "PrintScope scope",
+              "String type",
+              "String targetType",
+              "String targetNo",
+              "String severity",
+              "FrozenJson details"
+            ]
+          },
+          {
+            "name": "PrintAction",
+            "fields": [
+              "String operationNo",
+              "String targetType",
+              "String targetNo",
+              "String action",
+              "String actorType",
+              "String actorNo",
+              "Long beforeRevision",
+              "Long afterRevision",
+              "String beforeStatus",
+              "String afterStatus",
+              "String reason",
+              "FrozenJson safeDetails"
+            ]
+          },
+          {
+            "name": "PrintJobSnapshot",
+            "fields": [
+              "PrintJobStatus status",
+              "boolean required",
+              "boolean replacementResolved"
+            ]
+          },
+          {
+            "name": "BatchCounts",
+            "fields": [
+              "int expected",
+              "int confirmed",
+              "int failed",
+              "int unknown",
+              "int cancelled",
+              "int resolved",
+              "PrintBatchStatus status"
+            ]
+          }
+        ],
+        "methods": [
+          {
+            "name": "PrintStateSnapshot",
+            "declaration": "public record PrintStateSnapshot( PrintJobStatus status, boolean cancelRequested, boolean partialOutput, int retryCount, int maxRetries)",
+            "sourceLine": 11
+          },
+          {
+            "name": "PrintObservation",
+            "declaration": "public record PrintObservation( ObservedPrintStatus status, PrintEvidenceLevel evidence, boolean queueTerminated, boolean partialOutput)",
+            "sourceLine": 18
+          },
+          {
+            "name": "PrintTransition",
+            "declaration": "public record PrintTransition( PrintJobStatus status, boolean releaseGate, boolean safeToRetry, String reason)",
+            "sourceLine": 24
+          },
+          {
+            "name": "PreparedPrintAttempt",
+            "declaration": "public record PreparedPrintAttempt( PrintDispatch dispatch, String connectionType, String leaseToken, Instant leaseUntil)",
+            "sourceLine": 27
+          },
+          {
+            "name": "ReceiptAck",
+            "declaration": "public record ReceiptAck(String receiptNo, String status)",
+            "sourceLine": 30
+          },
+          {
+            "name": "PrintIncidentCommand",
+            "declaration": "public record PrintIncidentCommand( PrintScope scope, String type, String targetType, String targetNo, String severity, FrozenJson details)",
+            "sourceLine": 32
+          },
+          {
+            "name": "PrintAction",
+            "declaration": "public record PrintAction( String operationNo, String targetType, String targetNo, String action, String actorType, String actorNo, Long beforeRevision, Long afterRevision, String beforeStatus, String afterStatus, String reason, FrozenJson safeDetails)",
+            "sourceLine": 40
+          },
+          {
+            "name": "PrintJobSnapshot",
+            "declaration": "public record PrintJobSnapshot( PrintJobStatus status, boolean required, boolean replacementResolved)",
+            "sourceLine": 54
+          },
+          {
+            "name": "BatchCounts",
+            "declaration": "public record BatchCounts( int expected, int confirmed, int failed, int unknown, int cancelled, int resolved, PrintBatchStatus status)",
+            "sourceLine": 57
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.PrintStatePolicy",
+        "name": "PrintStatePolicy",
+        "package": "ai.neargo.shop.printing.center.dispatch",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/PrintStatePolicy.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "decide",
+            "declaration": "public PrintTransition decide(PrintStateSnapshot before, PrintObservation observation)",
+            "sourceLine": 12
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.PrinterLeaseService",
+        "name": "PrinterLeaseService",
+        "package": "ai.neargo.shop.printing.center.dispatch",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/PrinterLeaseService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "prepare",
+            "declaration": "PreparedPrintAttempt prepare(PrintScope scope, String printerNo, String workerNo)",
+            "sourceLine": 19
+          },
+          {
+            "name": "releaseIfCurrent",
+            "declaration": "void releaseIfCurrent(PrintScope scope, String printerNo, String attemptNo, long fenceEpoch)",
+            "sourceLine": 21
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.impl.PrintDispatchServiceImpl",
+        "name": "PrintDispatchServiceImpl",
+        "package": "ai.neargo.shop.printing.center.dispatch.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/impl/PrintDispatchServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintDispatchServiceImpl",
+            "declaration": "public PrintDispatchServiceImpl( PrnPrinterMapper p, AttemptMapper a, JobMapper j, PrnRequestMapper r, PrinterLeaseService l, PrintAdapterRegistry ar, PrintReceiptService rc, PrintJsonCodec c, PrintSourceRegistry s, @Qualifier(\"transactionManager\") PlatformTransactionManager m)",
+            "sourceLine": 43
+          },
+          {
+            "name": "dispatchCloud",
+            "declaration": "public PrintWorkReport dispatchCloud(PrintWorkerBudget budget)",
+            "sourceLine": 66
+          },
+          {
+            "name": "reconcileAttempt",
+            "declaration": "public void reconcileAttempt(PrintAttemptRef ref)",
+            "sourceLine": 213
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.impl.PrintReceiptServiceImpl",
+        "name": "PrintReceiptServiceImpl",
+        "package": "ai.neargo.shop.printing.center.dispatch.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/impl/PrintReceiptServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "setDeviceGate",
+            "declaration": "public void setDeviceGate(ai.neargo.shop.printing.service.PrintDeviceGate gate)",
+            "sourceLine": 37
+          },
+          {
+            "name": "PrintReceiptServiceImpl",
+            "declaration": "public PrintReceiptServiceImpl( PrnReceiptMapper r, AttemptMapper a, JobMapper j, PrnBatchMapper b, PrintStatePolicy p, PrinterLeaseService l, PrintActionAppender au, PrintJsonCodec c, OutboxEventBus e, @Qualifier(\"transactionManager\") PlatformTransactionManager manager, PrnRequestMapper requests)",
+            "sourceLine": 51
+          },
+          {
+            "name": "ingest",
+            "declaration": "public ReceiptAck ingest(VerifiedPrintReceipt r)",
+            "sourceLine": 77
+          },
+          {
+            "name": "applyPending",
+            "declaration": "public PrintWorkReport applyPending(PrintWorkerBudget budget)",
+            "sourceLine": 115
+          },
+          {
+            "name": "applyNow",
+            "declaration": "public void applyNow(PrintScope scope, String no)",
+            "sourceLine": 135
+          },
+          {
+            "name": "refreshBatchProjection",
+            "declaration": "public void refreshBatchProjection(PrintScope scope, String batchNo)",
+            "sourceLine": 306
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.dispatch.impl.PrinterLeaseServiceImpl",
+        "name": "PrinterLeaseServiceImpl",
+        "package": "ai.neargo.shop.printing.center.dispatch.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/dispatch/impl/PrinterLeaseServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "setDeviceGate",
+            "declaration": "public void setDeviceGate(ai.neargo.shop.printing.service.PrintDeviceGate gate)",
+            "sourceLine": 32
+          },
+          {
+            "name": "PrinterLeaseServiceImpl",
+            "declaration": "public PrinterLeaseServiceImpl( PrnPrinterMapper p, PrnPrinterRuntimeMapper r, JobMapper j, AttemptMapper a, PrnRequestMapper req, PrintSourceRegistry s, PrintJsonCodec c, PrintActionAppender audit)",
+            "sourceLine": 42
+          },
+          {
+            "name": "prepare",
+            "declaration": "public PreparedPrintAttempt prepare(PrintScope scope, String printerNo, String worker)",
+            "sourceLine": 62
+          },
+          {
+            "name": "releaseIfCurrent",
+            "declaration": "public void releaseIfCurrent(PrintScope scope, String printerNo, String attemptNo, long epoch)",
+            "sourceLine": 189
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.export.PrintExportCleanupJob",
+        "name": "PrintExportCleanupJob",
+        "package": "ai.neargo.shop.printing.center.export",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/export/PrintExportCleanupJob.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintExportCleanupJob",
+            "declaration": "public PrintExportCleanupJob(PrnExportTaskMapper e, PrintArtifactStorePort s)",
+            "sourceLine": 30
+          },
+          {
+            "name": "expire",
+            "declaration": "public PrintWorkReport expire(PrintWorkerBudget budget)",
+            "sourceLine": 35
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.export.PrintExportRecoveryJob",
+        "name": "PrintExportRecoveryJob",
+        "package": "ai.neargo.shop.printing.center.export",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/export/PrintExportRecoveryJob.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintExportRecoveryJob",
+            "declaration": "public PrintExportRecoveryJob(PrnExportTaskMapper e)",
+            "sourceLine": 28
+          },
+          {
+            "name": "recover",
+            "declaration": "public PrintWorkReport recover(PrintWorkerBudget budget)",
+            "sourceLine": 33
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.export.PrintExportWorker",
+        "name": "PrintExportWorker",
+        "package": "ai.neargo.shop.printing.center.export",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/export/PrintExportWorker.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintExportWorker",
+            "declaration": "public PrintExportWorker( PrnExportTaskMapper e, PrintPdfPort p, PrintArtifactStorePort s, PrintJsonCodec j, @Qualifier(\"transactionManager\") PlatformTransactionManager m)",
+            "sourceLine": 36
+          },
+          {
+            "name": "generateNext",
+            "declaration": "public PrintWorkReport generateNext(PrintWorkerBudget budget)",
+            "sourceLine": 49
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.export.impl.DefaultPrintExportFacade",
+        "name": "DefaultPrintExportFacade",
+        "package": "ai.neargo.shop.printing.center.export.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/export/impl/DefaultPrintExportFacade.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "DefaultPrintExportFacade",
+            "declaration": "public DefaultPrintExportFacade( PrnExportTaskMapper e, PrnSimulationRunMapper s, PrnBatchMapper b, JobMapper j, PrintOperationService o, PrintJsonCodec c, PrintArtifactStorePort store)",
+            "sourceLine": 42
+          },
+          {
+            "name": "create",
+            "declaration": "public PrintOperation create(ExportCommand c, PrintActor a)",
+            "sourceLine": 59
+          },
+          {
+            "name": "page",
+            "declaration": "public PageData<ExportView> page(ExportQuery q, PrintActor a)",
+            "sourceLine": 225
+          },
+          {
+            "name": "get",
+            "declaration": "public ExportView get(String no, PrintActor a)",
+            "sourceLine": 250
+          },
+          {
+            "name": "download",
+            "declaration": "public DownloadGrant download(String no, PrintActor a)",
+            "sourceLine": 257
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.layout.CompactPrintLayout",
+        "name": "CompactPrintLayout",
+        "package": "ai.neargo.shop.printing.center.layout",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/layout/CompactPrintLayout.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.layout.DefaultPrintLayoutEngine",
+        "name": "DefaultPrintLayoutEngine",
+        "package": "ai.neargo.shop.printing.center.layout",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/layout/DefaultPrintLayoutEngine.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "DefaultPrintLayoutEngine",
+            "declaration": "public DefaultPrintLayoutEngine(PrintFontMetricsPort m, PrintJsonCodec j)",
+            "sourceLine": 18
+          },
+          {
+            "name": "layout",
+            "declaration": "public PrintLayout layout(PrintDocument d, LayoutProfile p)",
+            "sourceLine": 25
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.layout.LayoutProfileRegistry",
+        "name": "LayoutProfileRegistry",
+        "package": "ai.neargo.shop.printing.center.layout",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/layout/LayoutProfileRegistry.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "LayoutProfileRegistry",
+            "declaration": "public LayoutProfileRegistry(PrintFontMetricsPort metrics)",
+            "sourceLine": 16
+          },
+          {
+            "name": "require",
+            "declaration": "public LayoutProfile require(String code, String version)",
+            "sourceLine": 38
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.layout.PrintSystemSlotPolicy",
+        "name": "PrintSystemSlotPolicy",
+        "package": "ai.neargo.shop.printing.center.layout",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/layout/PrintSystemSlotPolicy.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintSystemSlotPolicy",
+            "declaration": "public PrintSystemSlotPolicy(PrintFontMetricsPort m, PrintJsonCodec j)",
+            "sourceLine": 26
+          },
+          {
+            "name": "initial",
+            "declaration": "public SystemPrintSlots initial(PrintFact f, String no, int copy)",
+            "sourceLine": 31
+          },
+          {
+            "name": "instantiateCopy",
+            "declaration": "public PrintLayout instantiateCopy(PrintLayout source, SystemPrintSlots marks)",
+            "sourceLine": 36
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.monitor.PrintIncidentService",
+        "name": "PrintIncidentService",
+        "package": "ai.neargo.shop.printing.center.monitor",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/monitor/PrintIncidentService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "open",
+            "declaration": "String open(PrintIncidentCommand command)",
+            "sourceLine": 19
+          },
+          {
+            "name": "resolveByEvidence",
+            "declaration": "void resolveByEvidence(PrintScope scope, String incidentNo, FrozenJson evidence)",
+            "sourceLine": 21
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.monitor.PrintMaintenanceService",
+        "name": "PrintMaintenanceService",
+        "package": "ai.neargo.shop.printing.center.monitor",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/monitor/PrintMaintenanceService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "maintain",
+            "declaration": "PrintWorkReport maintain(PrintWorkerBudget budget)",
+            "sourceLine": 18
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.monitor.PrintReconcileJob",
+        "name": "PrintReconcileJob",
+        "package": "ai.neargo.shop.printing.center.monitor",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/monitor/PrintReconcileJob.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintReconcileJob",
+            "declaration": "public PrintReconcileJob( PrnReconcileCursorMapper c, PrnRequestMapper r, PrintSourceRegistry s, PrintFacade f, PrintActionAppender a)",
+            "sourceLine": 32
+          },
+          {
+            "name": "reconcile",
+            "declaration": "public PrintMaintenanceReport reconcile(PrintMaintenanceCommand command)",
+            "sourceLine": 46
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.monitor.impl.PrintIncidentServiceImpl",
+        "name": "PrintIncidentServiceImpl",
+        "package": "ai.neargo.shop.printing.center.monitor.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/monitor/impl/PrintIncidentServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintIncidentServiceImpl",
+            "declaration": "public PrintIncidentServiceImpl( PrnIncidentMapper i, OutboxEventBus e, ai.neargo.shop.printing.center.audit.PrintActionAppender a, PrnRequestMapper requests, JobMapper jobs, PrintJsonCodec json)",
+            "sourceLine": 35
+          },
+          {
+            "name": "open",
+            "declaration": "public String open(PrintIncidentCommand c)",
+            "sourceLine": 51
+          },
+          {
+            "name": "resolveByEvidence",
+            "declaration": "public void resolveByEvidence(PrintScope s, String no, FrozenJson proof)",
+            "sourceLine": 92
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.monitor.impl.PrintMaintenanceServiceImpl",
+        "name": "PrintMaintenanceServiceImpl",
+        "package": "ai.neargo.shop.printing.center.monitor.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/monitor/impl/PrintMaintenanceServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintMaintenanceServiceImpl",
+            "declaration": "public PrintMaintenanceServiceImpl( AttemptMapper at, JobMapper j, PrnPrinterMapper p, PrnPrinterRuntimeMapper rt, PrnRequestMapper req, PrnScenePolicyMapper policy, PrnReconcileCursorMapper c, PrnOperationMapper o, PrnIncidentMapper ir, PrnAgentMapper a, PrintDispatchService d, PrintReceiptService r, PrintIncidentService i, PrintReconcileJob rc, PrintJsonCodec codec, List<PrintDeviceProbePort> probes, @Qualifier(\"transactionManager\") PlatformTransactionManager manager)",
+            "sourceLine": 53
+          },
+          {
+            "name": "maintain",
+            "declaration": "public PrintWorkReport maintain(PrintWorkerBudget budget)",
+            "sourceLine": 90
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.operation.PrintOperationService",
+        "name": "PrintOperationService",
+        "package": "ai.neargo.shop.printing.center.operation",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/operation/PrintOperationService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "execute",
+            "declaration": "PrintOperation execute( PrintActor actor, String commandType, String requestHash, Supplier<PrintOperation> localAction)",
+            "sourceLine": 8
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.operation.impl.PrintOperationServiceImpl",
+        "name": "PrintOperationServiceImpl",
+        "package": "ai.neargo.shop.printing.center.operation.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/operation/impl/PrintOperationServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintOperationServiceImpl",
+            "declaration": "public PrintOperationServiceImpl( PrnOperationMapper o, PrintActionAppender a, PrintJsonCodec j)",
+            "sourceLine": 24
+          },
+          {
+            "name": "execute",
+            "declaration": "public PrintOperation execute( PrintActor actor, String type, String hash, Supplier<PrintOperation> action)",
+            "sourceLine": 32
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnActionLog",
+        "name": "PrnActionLog",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnActionLog.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnAgent",
+        "name": "PrnAgent",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnAgent.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnBatch",
+        "name": "PrnBatch",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnBatch.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnCredentialVersion",
+        "name": "PrnCredentialVersion",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnCredentialVersion.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnExportTask",
+        "name": "PrnExportTask",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnExportTask.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnIncident",
+        "name": "PrnIncident",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnIncident.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnOperation",
+        "name": "PrnOperation",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnOperation.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnPolicyVersion",
+        "name": "PrnPolicyVersion",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnPolicyVersion.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnPrinter",
+        "name": "PrnPrinter",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnPrinter.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnPrinterRuntime",
+        "name": "PrnPrinterRuntime",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnPrinterRuntime.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnReceipt",
+        "name": "PrnReceipt",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnReceipt.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnReconcileCursor",
+        "name": "PrnReconcileCursor",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnReconcileCursor.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnRequest",
+        "name": "PrnRequest",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnRequest.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnRoute",
+        "name": "PrnRoute",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnRoute.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnRouteVersion",
+        "name": "PrnRouteVersion",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnRouteVersion.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnRow",
+        "name": "PrnRow",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnRow.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnScenePolicy",
+        "name": "PrnScenePolicy",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnScenePolicy.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnSimulationRun",
+        "name": "PrnSimulationRun",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnSimulationRun.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnStoreStream",
+        "name": "PrnStoreStream",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnStoreStream.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnTemplate",
+        "name": "PrnTemplate",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnTemplate.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.entity.PrnTemplateVersion",
+        "name": "PrnTemplateVersion",
+        "package": "ai.neargo.shop.printing.center.persistence.entity",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/entity/PrnTemplateVersion.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.persistence.mapper.PrintMappers",
+        "name": "PrintMappers",
+        "package": "ai.neargo.shop.printing.center.persistence.mapper",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/persistence/mapper/PrintMappers.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.port.PrintCredentialLookupPortImpl",
+        "name": "PrintCredentialLookupPortImpl",
+        "package": "ai.neargo.shop.printing.center.port",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/port/PrintCredentialLookupPortImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintCredentialLookupPortImpl",
+            "declaration": "public PrintCredentialLookupPortImpl(PrnCredentialVersionMapper c)",
+            "sourceLine": 25
+          },
+          {
+            "name": "get",
+            "declaration": "public EncryptedPrintCredential get(PrintScope s, String ref)",
+            "sourceLine": 29
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.PrintGenerationRecovery",
+        "name": "PrintGenerationRecovery",
+        "package": "ai.neargo.shop.printing.center.service",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/PrintGenerationRecovery.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "recoverGeneration",
+            "declaration": "PrintSubmission recoverGeneration(String requestNo, Long expectedRevision, PrintActor actor)",
+            "sourceLine": 6
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.PrintTestJobFactory",
+        "name": "PrintTestJobFactory",
+        "package": "ai.neargo.shop.printing.center.service",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/PrintTestJobFactory.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintTestJobFactory",
+            "declaration": "public PrintTestJobFactory( PrnPrinterMapper p, PrnPrinterRuntimeMapper rt, PrnRequestMapper r, PrnBatchMapper b, JobMapper j, PrintSceneRegistry s, PrintTemplateResolver t, PrintDocumentCompiler c, PrintLayoutEngine l, LayoutProfileRegistry profiles, PrintJsonCodec json)",
+            "sourceLine": 36
+          },
+          {
+            "name": "create",
+            "declaration": "public PrintSubmission create(String printerNo, Long expected, String pattern, PrintActor a)",
+            "sourceLine": 62
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.DefaultPrintFacade",
+        "name": "DefaultPrintFacade",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/DefaultPrintFacade.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "DefaultPrintFacade",
+            "declaration": "public DefaultPrintFacade( PrintSourceRegistry s, PrintSceneRegistry c, PrintJsonCodec j, PrintOperationService o, PrintActionAppender a, PrnRequestMapper r, PrnBatchMapper b, JobMapper jobs, PrnScenePolicyMapper p, PrnRouteMapper rt, PrnRouteVersionMapper rv, PrnPrinterMapper pr, PrnPrinterRuntimeMapper runtime, PrintRouteMatcher m, PrintTemplateResolver t, PrintDocumentCompiler compiler, PrintLayoutEngine l, LayoutProfileRegistry profiles, PrintQueryService q, PrintExportFacade exports, PrnPolicyVersionMapper policyVersions)",
+            "sourceLine": 50
+          },
+          {
+            "name": "submitBySource",
+            "declaration": "public PrintOperation submitBySource(SubmitPrintRequestReq r, PrintActor a)",
+            "sourceLine": 95
+          },
+          {
+            "name": "submit",
+            "declaration": "public PrintSubmission submit(PrintIntent intent, PrintActor actor)",
+            "sourceLine": 135
+          },
+          {
+            "name": "onFact",
+            "declaration": "public PrintSubmission onFact(PrintFactRef ref)",
+            "sourceLine": 143
+          },
+          {
+            "name": "recoverGeneration",
+            "declaration": "public PrintSubmission recoverGeneration(String no, Long expected, PrintActor a)",
+            "sourceLine": 454
+          },
+          {
+            "name": "getJob",
+            "declaration": "public PrintJobView getJob(PrintJobRef ref, PrintActor actor)",
+            "sourceLine": 474
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintAgentAuthenticationServiceImpl",
+        "name": "PrintAgentAuthenticationServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintAgentAuthenticationServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintAgentAuthenticationServiceImpl",
+            "declaration": "public PrintAgentAuthenticationServiceImpl(PrnAgentMapper a, PrintAgentSecrets s)",
+            "sourceLine": 26
+          },
+          {
+            "name": "authenticate",
+            "declaration": "public PrintAgentIdentity authenticate( OpaqueAgentCredential credential, AgentRequestPurpose purpose)",
+            "sourceLine": 31
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintAgentProtocolServiceImpl",
+        "name": "PrintAgentProtocolServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintAgentProtocolServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintAgentProtocolServiceImpl",
+            "declaration": "public PrintAgentProtocolServiceImpl( PrnAgentMapper a, PrnPrinterMapper p, PrnPrinterRuntimeMapper rt, AttemptMapper at, JobMapper j, PrnOperationMapper operations, PrintOperationService o, PrintReceiptService r, PrinterLeaseService l, PrintAgentSecrets s, PrintJsonCodec c)",
+            "sourceLine": 43
+          },
+          {
+            "name": "enroll",
+            "declaration": "public DeviceEnrollVO enroll(DeviceEnrollReq r)",
+            "sourceLine": 127
+          },
+          {
+            "name": "openSession",
+            "declaration": "public DeviceOpenSessionVO openSession(DeviceOpenSessionReq r, PrintAgentIdentity i)",
+            "sourceLine": 181
+          },
+          {
+            "name": "heartbeat",
+            "declaration": "public DeviceHeartbeatVO heartbeat(DeviceHeartbeatReq r, PrintAgentIdentity i)",
+            "sourceLine": 207
+          },
+          {
+            "name": "claim",
+            "declaration": "public DeviceClaimVO claim(DeviceClaimReq r, PrintAgentIdentity i)",
+            "sourceLine": 297
+          },
+          {
+            "name": "acceptDispatch",
+            "declaration": "public DeviceAcceptDispatchVO acceptDispatch( String key, DeviceAcceptDispatchReq r, PrintAgentIdentity i)",
+            "sourceLine": 388
+          },
+          {
+            "name": "renewLease",
+            "declaration": "public DeviceRenewLeaseVO renewLease(String key, DeviceRenewLeaseReq r, PrintAgentIdentity i)",
+            "sourceLine": 428
+          },
+          {
+            "name": "reportEvents",
+            "declaration": "public DeviceReportEventsVO reportEvents(DeviceReportEventsReq r, PrintAgentIdentity i)",
+            "sourceLine": 453
+          },
+          {
+            "name": "getDispatch",
+            "declaration": "public DeviceGetDispatchVO getDispatch(String key, PrintAgentIdentity i)",
+            "sourceLine": 493
+          },
+          {
+            "name": "recover",
+            "declaration": "public DeviceRecoverVO recover(DeviceRecoverReq r, PrintAgentIdentity i)",
+            "sourceLine": 506
+          },
+          {
+            "name": "reportCommandResult",
+            "declaration": "public DeviceReportCommandResultVO reportCommandResult( String command, DeviceReportCommandResultReq r, PrintAgentIdentity i)",
+            "sourceLine": 528
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintAgentServiceImpl",
+        "name": "PrintAgentServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintAgentServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintAgentServiceImpl",
+            "declaration": "public PrintAgentServiceImpl( PrnAgentMapper a, PrnPrinterMapper p, PrintAgentSecrets s, PrintOperationService o, PrintJsonCodec j)",
+            "sourceLine": 32
+          },
+          {
+            "name": "listAgents",
+            "declaration": "public PageData<AgentVO> listAgents(ListAgentsQuery q, PrintActor a)",
+            "sourceLine": 64
+          },
+          {
+            "name": "createAgent",
+            "declaration": "public PrintOperation createAgent(CreateAgentReq r, PrintActor a)",
+            "sourceLine": 81
+          },
+          {
+            "name": "getAgent",
+            "declaration": "public AgentDetailVO getAgent(String no, PrintActor a)",
+            "sourceLine": 112
+          },
+          {
+            "name": "issueEnrollment",
+            "declaration": "public PrintOperation issueEnrollment(String no, IssueEnrollmentReq r, PrintActor a)",
+            "sourceLine": 140
+          },
+          {
+            "name": "revokeAgent",
+            "declaration": "public PrintOperation revokeAgent(String no, RevokeAgentReq r, PrintActor a)",
+            "sourceLine": 172
+          },
+          {
+            "name": "rotateAgentCredential",
+            "declaration": "public PrintOperation rotateAgentCredential( String no, RotateAgentCredentialReq r, PrintActor a)",
+            "sourceLine": 191
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintCallbackServiceImpl",
+        "name": "PrintCallbackServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintCallbackServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintCallbackServiceImpl",
+            "declaration": "public PrintCallbackServiceImpl(List<PrintCallbackVerifierPort> ports, PrintReceiptService r)",
+            "sourceLine": 17
+          },
+          {
+            "name": "receive",
+            "declaration": "public String receive(RawPrintCallback callback)",
+            "sourceLine": 26
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintDeviceServiceImpl",
+        "name": "PrintDeviceServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintDeviceServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "setCanonicalDevices",
+            "declaration": "public void setCanonicalDevices(ai.neargo.shop.printing.mapper.PrintMappers.DeviceMapper mapper)",
+            "sourceLine": 33
+          },
+          {
+            "name": "PrintDeviceServiceImpl",
+            "declaration": "public PrintDeviceServiceImpl( PrnPrinterMapper p, PrnPrinterRuntimeMapper r, PrnCredentialVersionMapper c, PrnAgentMapper a, JobMapper j, PrnRouteVersionMapper rv, PrintAdapterRegistry ar, PrintCredentialCipherPort cp, PrintOperationService o, PrintJsonCodec codec, ai.neargo.shop.printing.center.service.PrintTestJobFactory testJobs)",
+            "sourceLine": 46
+          },
+          {
+            "name": "listAdapters",
+            "declaration": "public List<AdapterVO> listAdapters(ListAdaptersQuery q, PrintActor a)",
+            "sourceLine": 100
+          },
+          {
+            "name": "listPrinters",
+            "declaration": "public PageData<PrinterVO> listPrinters(ListPrintersQuery q, PrintActor a)",
+            "sourceLine": 120
+          },
+          {
+            "name": "createPrinter",
+            "declaration": "public PrintOperation createPrinter(CreatePrinterReq r, PrintActor a)",
+            "sourceLine": 142
+          },
+          {
+            "name": "getPrinter",
+            "declaration": "public PrinterDetailVO getPrinter(String no, PrintActor a)",
+            "sourceLine": 336
+          },
+          {
+            "name": "updatePrinter",
+            "declaration": "public PrintOperation updatePrinter(String no, UpdatePrinterReq r, PrintActor a)",
+            "sourceLine": 385
+          },
+          {
+            "name": "changeConnection",
+            "declaration": "public PrintOperation changeConnection(String no, ChangeConnectionReq r, PrintActor a)",
+            "sourceLine": 404
+          },
+          {
+            "name": "changeStatus",
+            "declaration": "public PrintOperation changeStatus(String no, ChangeStatusReq r, PrintActor a)",
+            "sourceLine": 424
+          },
+          {
+            "name": "rotateCredential",
+            "declaration": "public PrintOperation rotateCredential(String no, RotateCredentialReq r, PrintActor a)",
+            "sourceLine": 460
+          },
+          {
+            "name": "probe",
+            "declaration": "public PrintOperation probe(String no, ProbeReq r, PrintActor a)",
+            "sourceLine": 479
+          },
+          {
+            "name": "testPrint",
+            "declaration": "public PrintOperation testPrint(String no, TestPrintReq r, PrintActor a)",
+            "sourceLine": 509
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintJobCommandServiceImpl",
+        "name": "PrintJobCommandServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintJobCommandServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "setDeviceGate",
+            "declaration": "public void setDeviceGate(ai.neargo.shop.printing.service.PrintDeviceGate gate)",
+            "sourceLine": 31
+          },
+          {
+            "name": "PrintJobCommandServiceImpl",
+            "declaration": "public PrintJobCommandServiceImpl( JobMapper j, AttemptMapper a, PrnRequestMapper r, PrnPrinterMapper p, PrnPrinterRuntimeMapper rt, PrintOperationService o, PrintReceiptService rc, PrinterLeaseService l, PrintSourceRegistry s, PrintJsonCodec c, ai.neargo.shop.printing.center.audit.PrintActionAppender audit)",
+            "sourceLine": 45
+          },
+          {
+            "name": "retryJob",
+            "declaration": "public PrintOperation retryJob(String no, RetryJobReq r, PrintActor a)",
+            "sourceLine": 102
+          },
+          {
+            "name": "cancelJob",
+            "declaration": "public PrintOperation cancelJob(String no, CancelJobReq r, PrintActor a)",
+            "sourceLine": 128
+          },
+          {
+            "name": "queryResult",
+            "declaration": "public PrintOperation queryResult(String no, QueryResultReq r, PrintActor a)",
+            "sourceLine": 174
+          },
+          {
+            "name": "confirmManually",
+            "declaration": "public PrintOperation confirmManually(String no, ConfirmManuallyReq r, PrintActor a)",
+            "sourceLine": 194
+          },
+          {
+            "name": "releaseStale",
+            "declaration": "public PrintOperation releaseStale(String no, ReleaseStaleReq r, PrintActor a)",
+            "sourceLine": 249
+          },
+          {
+            "name": "resolveDeviceUncertainty",
+            "declaration": "public PrintOperation resolveDeviceUncertainty( String no, ResolveDeviceUncertaintyReq r, PrintActor a)",
+            "sourceLine": 278
+          },
+          {
+            "name": "applyControl",
+            "declaration": "public PrintMaintenanceReport applyControl(PrintControlFact fact)",
+            "sourceLine": 347
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintMonitorServiceImpl",
+        "name": "PrintMonitorServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintMonitorServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintMonitorServiceImpl",
+            "declaration": "public PrintMonitorServiceImpl( PrnPrinterMapper p, JobMapper j, PrnRequestMapper r, PrnIncidentMapper i, PrnActionLogMapper l, PrnStoreStreamMapper s, PrintOperationService o, PrintJsonCodec c)",
+            "sourceLine": 38
+          },
+          {
+            "name": "getHealth",
+            "declaration": "public GetHealthVO getHealth(GetHealthQuery q, PrintActor a)",
+            "sourceLine": 57
+          },
+          {
+            "name": "listIncidents",
+            "declaration": "public PageData<IncidentVO> listIncidents(ListIncidentsQuery q, PrintActor a)",
+            "sourceLine": 80
+          },
+          {
+            "name": "acknowledgeIncident",
+            "declaration": "public PrintOperation acknowledgeIncident(String no, AcknowledgeIncidentReq r, PrintActor a)",
+            "sourceLine": 99
+          },
+          {
+            "name": "listActionLogs",
+            "declaration": "public PageData<ActionLogVO> listActionLogs(ListActionLogsQuery q, PrintActor a)",
+            "sourceLine": 136
+          },
+          {
+            "name": "listChanges",
+            "declaration": "public ChangePageVO listChanges(ListChangesQuery q, PrintActor a)",
+            "sourceLine": 154
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintOpsServiceImpl",
+        "name": "PrintOpsServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintOpsServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintOpsServiceImpl",
+            "declaration": "public PrintOpsServiceImpl( PrintReconcileJob r, PrintMonitorService m, PrintQueryService q, PrintOperationService o, PrintJsonCodec j)",
+            "sourceLine": 32
+          },
+          {
+            "name": "reconcile",
+            "declaration": "public PrintOperation reconcile(OpsReconcileReq r, PrintOpsActor a)",
+            "sourceLine": 55
+          },
+          {
+            "name": "getOperation",
+            "declaration": "public PrintOperation getOperation(String no, OpsGetOperationQuery q, PrintOpsActor a)",
+            "sourceLine": 77
+          },
+          {
+            "name": "getFleetHealth",
+            "declaration": "public FleetHealthVO getFleetHealth(OpsGetFleetHealthQuery q, PrintOpsActor a)",
+            "sourceLine": 81
+          },
+          {
+            "name": "listIncidents",
+            "declaration": "public PageData<IncidentVO> listIncidents(OpsListIncidentsQuery q, PrintOpsActor a)",
+            "sourceLine": 87
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintQueryServiceImpl",
+        "name": "PrintQueryServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintQueryServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintQueryServiceImpl",
+            "declaration": "public PrintQueryServiceImpl( JobMapper j, PrnRequestMapper r, PrnBatchMapper b, AttemptMapper a, PrnReceiptMapper rc, PrnOperationMapper o, PrnExportTaskMapper e, PrintJsonCodec c, ai.neargo.shop.printing.center.source.PrintSourceRegistry sources)",
+            "sourceLine": 38
+          },
+          {
+            "name": "getBatch",
+            "declaration": "public PrintBatchVO getBatch(String no, PrintActor a)",
+            "sourceLine": 65
+          },
+          {
+            "name": "listJobs",
+            "declaration": "public PageData<PrintJobVO> listJobs(ListJobsQuery q, PrintActor a)",
+            "sourceLine": 80
+          },
+          {
+            "name": "getJob",
+            "declaration": "public PrintJobView getJob(PrintJobRef ref, PrintActor a)",
+            "sourceLine": 132
+          },
+          {
+            "name": "listAttempts",
+            "declaration": "public PageData<PrintAttemptVO> listAttempts(String no, ListAttemptsQuery q, PrintActor a)",
+            "sourceLine": 148
+          },
+          {
+            "name": "listReceipts",
+            "declaration": "public PageData<PrintReceiptVO> listReceipts(String no, ListReceiptsQuery q, PrintActor a)",
+            "sourceLine": 176
+          },
+          {
+            "name": "getDocument",
+            "declaration": "public DocumentPreviewVO getDocument(String no, PrintActor a)",
+            "sourceLine": 210
+          },
+          {
+            "name": "getOrderSummary",
+            "declaration": "public OrderPrintSummaryVO getOrderSummary(String no, GetOrderSummaryQuery q, PrintActor a)",
+            "sourceLine": 219
+          },
+          {
+            "name": "getOperation",
+            "declaration": "public PrintOperation getOperation(String no, PrintActor a)",
+            "sourceLine": 275
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintReprintServiceImpl",
+        "name": "PrintReprintServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintReprintServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintReprintServiceImpl",
+            "declaration": "public PrintReprintServiceImpl( JobMapper j, PrnBatchMapper b, PrnPrinterMapper p, PrnPrinterRuntimeMapper r, PrintOperationService o, PrintJsonCodec c, PrintSystemSlotPolicy s)",
+            "sourceLine": 32
+          },
+          {
+            "name": "reprint",
+            "declaration": "public PrintOperation reprint(String no, ReprintReq r, PrintActor a)",
+            "sourceLine": 49
+          },
+          {
+            "name": "batchReprint",
+            "declaration": "public PrintOperation batchReprint(BatchReprintReq r, PrintActor a)",
+            "sourceLine": 65
+          },
+          {
+            "name": "extraCopies",
+            "declaration": "public PrintOperation extraCopies(String no, ExtraCopiesReq r, PrintActor a)",
+            "sourceLine": 83
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintRequestServiceImpl",
+        "name": "PrintRequestServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintRequestServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintRequestServiceImpl",
+            "declaration": "public PrintRequestServiceImpl( PrnRequestMapper r, PrnBatchMapper b, ai.neargo.shop.printing.center.service.PrintGenerationRecovery f, PrintOperationService o, PrintJsonCodec j)",
+            "sourceLine": 31
+          },
+          {
+            "name": "listRequests",
+            "declaration": "public PageData<PrintRequestVO> listRequests(ListRequestsQuery q, PrintActor a)",
+            "sourceLine": 44
+          },
+          {
+            "name": "getRequest",
+            "declaration": "public RequestDetailVO getRequest(String no, PrintActor a)",
+            "sourceLine": 66
+          },
+          {
+            "name": "retryGeneration",
+            "declaration": "public PrintOperation retryGeneration(String no, RetryGenerationReq r, PrintActor a)",
+            "sourceLine": 81
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintRouteServiceImpl",
+        "name": "PrintRouteServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintRouteServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintRouteServiceImpl",
+            "declaration": "public PrintRouteServiceImpl( PrnRouteMapper h, PrnRouteVersionMapper v, PrnPrinterMapper p, PrintOperationService o, PrintJsonCodec j, PrintSceneRegistry s, PrintRouteMatcher m, PrintPreviewFacts previewFacts)",
+            "sourceLine": 33
+          },
+          {
+            "name": "listRoutes",
+            "declaration": "public PageData<RouteVO> listRoutes(ListRoutesQuery q, PrintActor a)",
+            "sourceLine": 71
+          },
+          {
+            "name": "createRoute",
+            "declaration": "public PrintOperation createRoute(CreateRouteReq r, PrintActor a)",
+            "sourceLine": 97
+          },
+          {
+            "name": "createRouteVersion",
+            "declaration": "public PrintOperation createRouteVersion(String no, CreateRouteVersionReq r, PrintActor a)",
+            "sourceLine": 119
+          },
+          {
+            "name": "publishRoute",
+            "declaration": "public PrintOperation publishRoute(String no, PublishRouteReq r, PrintActor a)",
+            "sourceLine": 153
+          },
+          {
+            "name": "dryRunRoute",
+            "declaration": "public RouteDryRunVO dryRunRoute(String no, DryRunRouteReq r, PrintActor a)",
+            "sourceLine": 201
+          },
+          {
+            "name": "listRouteVersions",
+            "declaration": "public PageData<RouteVersionVO> listRouteVersions( String no, ListRouteVersionsQuery q, PrintActor a)",
+            "sourceLine": 215
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintScenePolicyServiceImpl",
+        "name": "PrintScenePolicyServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintScenePolicyServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintScenePolicyServiceImpl",
+            "declaration": "public PrintScenePolicyServiceImpl( PrnScenePolicyMapper p, PrnPolicyVersionMapper v, PrintSceneRegistry s, PrintSourceRegistry r, PrintJsonCodec j, PrintOperationService o)",
+            "sourceLine": 32
+          },
+          {
+            "name": "listScenes",
+            "declaration": "public List<SceneVO> listScenes(ListScenesQuery q, PrintActor a)",
+            "sourceLine": 47
+          },
+          {
+            "name": "listScenePolicies",
+            "declaration": "public List<ScenePolicyVO> listScenePolicies(ListScenePoliciesQuery q, PrintActor a)",
+            "sourceLine": 76
+          },
+          {
+            "name": "saveScenePolicy",
+            "declaration": "public PrintOperation saveScenePolicy(String scene, SaveScenePolicyReq r, PrintActor a)",
+            "sourceLine": 90
+          },
+          {
+            "name": "listPolicyVersions",
+            "declaration": "public PageData<PolicyVersionVO> listPolicyVersions( String scene, ListPolicyVersionsQuery q, PrintActor a)",
+            "sourceLine": 197
+          },
+          {
+            "name": "getSceneFields",
+            "declaration": "public SceneFieldCatalogVO getSceneFields(String scene, GetSceneFieldsQuery q, PrintActor a)",
+            "sourceLine": 227
+          },
+          {
+            "name": "getSceneExample",
+            "declaration": "public GetSceneExampleVO getSceneExample(String scene, GetSceneExampleQuery q, PrintActor a)",
+            "sourceLine": 236
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.service.impl.PrintTemplateServiceImpl",
+        "name": "PrintTemplateServiceImpl",
+        "package": "ai.neargo.shop.printing.center.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/service/impl/PrintTemplateServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintTemplateServiceImpl",
+            "declaration": "public PrintTemplateServiceImpl( PrnTemplateMapper h, PrnTemplateVersionMapper v, PrintOperationService o, PrintJsonCodec j, PrintSceneRegistry s, DefaultPrintDocumentCompiler c, PrintTemplateResolver r, PrintPreviewFacts previewFacts)",
+            "sourceLine": 34
+          },
+          {
+            "name": "listTemplates",
+            "declaration": "public PageData<TemplateVO> listTemplates(ListTemplatesQuery q, PrintActor a)",
+            "sourceLine": 96
+          },
+          {
+            "name": "createTemplate",
+            "declaration": "public PrintOperation createTemplate(CreateTemplateReq r, PrintActor a)",
+            "sourceLine": 143
+          },
+          {
+            "name": "createTemplateVersion",
+            "declaration": "public PrintOperation createTemplateVersion( String no, CreateTemplateVersionReq r, PrintActor a)",
+            "sourceLine": 173
+          },
+          {
+            "name": "updateTemplateDraft",
+            "declaration": "public PrintOperation updateTemplateDraft(String no, UpdateTemplateDraftReq r, PrintActor a)",
+            "sourceLine": 226
+          },
+          {
+            "name": "publishTemplate",
+            "declaration": "public PrintOperation publishTemplate(String no, PublishTemplateReq r, PrintActor a)",
+            "sourceLine": 254
+          },
+          {
+            "name": "listTemplateVersions",
+            "declaration": "public PageData<TemplateVersionVO> listTemplateVersions( String no, ListTemplateVersionsQuery q, PrintActor a)",
+            "sourceLine": 288
+          },
+          {
+            "name": "previewTemplate",
+            "declaration": "public PreviewVO previewTemplate(String no, PreviewTemplateReq r, PrintActor a)",
+            "sourceLine": 306
+          },
+          {
+            "name": "previewResolution",
+            "declaration": "public TemplateResolutionPreviewVO previewResolution(PreviewResolutionReq r, PrintActor a)",
+            "sourceLine": 356
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.simulation.FixtureSimulatedDispatch",
+        "name": "FixtureSimulatedDispatch",
+        "package": "ai.neargo.shop.printing.center.simulation",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/simulation/FixtureSimulatedDispatch.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "FixtureSimulatedDispatch",
+            "declaration": "public FixtureSimulatedDispatch(SimulationFixtures fixtures)",
+            "sourceLine": 11
+          },
+          {
+            "name": "submit",
+            "declaration": "public SimulationStep submit(SimulationDispatch dispatch)",
+            "sourceLine": 15
+          },
+          {
+            "name": "query",
+            "declaration": "public SimulationStep query(SimulationDispatch dispatch)",
+            "sourceLine": 19
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.simulation.SimulatedDispatch",
+        "name": "SimulatedDispatch",
+        "package": "ai.neargo.shop.printing.center.simulation",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/simulation/SimulatedDispatch.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "submit",
+            "declaration": "SimulationStep submit(SimulationDispatch dispatch)",
+            "sourceLine": 7
+          },
+          {
+            "name": "query",
+            "declaration": "SimulationStep query(SimulationDispatch dispatch)",
+            "sourceLine": 9
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.simulation.SimulationFixtures",
+        "name": "SimulationFixtures",
+        "package": "ai.neargo.shop.printing.center.simulation",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/simulation/SimulationFixtures.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "require",
+            "declaration": "public SimulationFixture require(SimulationFixtureCode code, String version)",
+            "sourceLine": 14
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.simulation.SimulationModels",
+        "name": "SimulationModels",
+        "package": "ai.neargo.shop.printing.center.simulation",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/simulation/SimulationModels.java",
+        "records": [
+          {
+            "name": "SimulationDispatch",
+            "fields": [
+              "String documentKey",
+              "SimulationFixtureCode code",
+              "int queryIndex"
+            ]
+          },
+          {
+            "name": "SimulationStep",
+            "fields": [
+              "long virtualMillis",
+              "String eventNo",
+              "PrintObservation observation"
+            ]
+          },
+          {
+            "name": "SimulationFixture",
+            "fields": [
+              "SimulationFixtureCode code",
+              "String version",
+              "List<SimulationStep> steps",
+              "PrintJobStatus expectedStatus"
+            ]
+          },
+          {
+            "name": "SimulationInput",
+            "fields": [
+              "List<PrintLayout> layouts",
+              "Set<String> requiredDataScopes"
+            ]
+          }
+        ],
+        "methods": [
+          {
+            "name": "SimulationDispatch",
+            "declaration": "public record SimulationDispatch( String documentKey, SimulationFixtureCode code, int queryIndex)",
+            "sourceLine": 11
+          },
+          {
+            "name": "SimulationStep",
+            "declaration": "public record SimulationStep( long virtualMillis, String eventNo, PrintObservation observation)",
+            "sourceLine": 14
+          },
+          {
+            "name": "SimulationFixture",
+            "declaration": "public record SimulationFixture( SimulationFixtureCode code, String version, List<SimulationStep> steps, PrintJobStatus expectedStatus)",
+            "sourceLine": 17
+          },
+          {
+            "name": "SimulationInput",
+            "declaration": "public record SimulationInput(List<PrintLayout> layouts, Set<String> requiredDataScopes)",
+            "sourceLine": 27
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.simulation.SimulationRunner",
+        "name": "SimulationRunner",
+        "package": "ai.neargo.shop.printing.center.simulation",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/simulation/SimulationRunner.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "SimulationRunner",
+            "declaration": "public SimulationRunner( PrnSimulationRunMapper s, SimulationFixtures f, PrintStatePolicy p, PrintJsonCodec j, @Qualifier(\"transactionManager\") PlatformTransactionManager manager, SimulatedDispatch simulated)",
+            "sourceLine": 37
+          },
+          {
+            "name": "runNext",
+            "declaration": "public PrintWorkReport runNext(PrintWorkerBudget budget)",
+            "sourceLine": 52
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.simulation.impl.DefaultPrintSimulationFacade",
+        "name": "DefaultPrintSimulationFacade",
+        "package": "ai.neargo.shop.printing.center.simulation.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/simulation/impl/DefaultPrintSimulationFacade.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "DefaultPrintSimulationFacade",
+            "declaration": "public DefaultPrintSimulationFacade( PrnSimulationRunMapper s, JobMapper j, PrintSourceRegistry r, PrintSceneRegistry c, PrintTemplateResolver t, PrintDocumentCompiler compiler, PrintLayoutEngine l, LayoutProfileRegistry p, PrintJsonCodec codec, PrintOperationService o, PrintExportFacade exports)",
+            "sourceLine": 46
+          },
+          {
+            "name": "create",
+            "declaration": "public PrintOperation create(SimulationCommand c, PrintActor a)",
+            "sourceLine": 71
+          },
+          {
+            "name": "page",
+            "declaration": "public PageData<SimulationView> page(SimulationQuery q, PrintActor a)",
+            "sourceLine": 229
+          },
+          {
+            "name": "get",
+            "declaration": "public SimulationView get(String no, PrintActor a)",
+            "sourceLine": 247
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.source.PrintSourceRegistry",
+        "name": "PrintSourceRegistry",
+        "package": "ai.neargo.shop.printing.center.source",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/source/PrintSourceRegistry.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintSourceRegistry",
+            "declaration": "public PrintSourceRegistry(List<PrintSourceFactsPort> ports)",
+            "sourceLine": 15
+          },
+          {
+            "name": "require",
+            "declaration": "public PrintSourceFactsPort require(String type)",
+            "sourceLine": 24
+          },
+          {
+            "name": "supports",
+            "declaration": "public boolean supports(String type, String scene)",
+            "sourceLine": 30
+          },
+          {
+            "name": "supports",
+            "declaration": "public boolean supports(String type)",
+            "sourceLine": 30
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.support.PrintAgentSecrets",
+        "name": "PrintAgentSecrets",
+        "package": "ai.neargo.shop.printing.center.support",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/support/PrintAgentSecrets.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintAgentSecrets",
+            "declaration": "public PrintAgentSecrets(@Value(\"${shop.print.agent.lease-key:}\") String key)",
+            "sourceLine": 19
+          },
+          {
+            "name": "random",
+            "declaration": "public String random()",
+            "sourceLine": 23
+          },
+          {
+            "name": "seal",
+            "declaration": "public String seal(String text, String key)",
+            "sourceLine": 29
+          },
+          {
+            "name": "lease",
+            "declaration": "public String lease(String dispatch, long session, long fence, java.time.Instant until)",
+            "sourceLine": 57
+          },
+          {
+            "name": "matches",
+            "declaration": "public boolean matches(String raw, String hash)",
+            "sourceLine": 80
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.support.PrintJsonCodec",
+        "name": "PrintJsonCodec",
+        "package": "ai.neargo.shop.printing.center.support",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/support/PrintJsonCodec.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "freeze",
+            "declaration": "public FrozenJson freeze(String json)",
+            "sourceLine": 30
+          },
+          {
+            "name": "freeze",
+            "declaration": "public FrozenJson freeze(Object value)",
+            "sourceLine": 30
+          },
+          {
+            "name": "tree",
+            "declaration": "public JsonNode tree(FrozenJson value)",
+            "sourceLine": 64
+          },
+          {
+            "name": "tree",
+            "declaration": "public JsonNode tree(Object value)",
+            "sourceLine": 64
+          },
+          {
+            "name": "tree",
+            "declaration": "public JsonNode tree(String value)",
+            "sourceLine": 64
+          },
+          {
+            "name": "read",
+            "declaration": "public <T> T read(String value, Class<T> type)",
+            "sourceLine": 77
+          },
+          {
+            "name": "write",
+            "declaration": "public String write(Object value)",
+            "sourceLine": 81
+          },
+          {
+            "name": "verify",
+            "declaration": "public void verify(FrozenJson json)",
+            "sourceLine": 85
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.support.PrintSupport",
+        "name": "PrintSupport",
+        "package": "ai.neargo.shop.printing.center.support",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/support/PrintSupport.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "pageNumber",
+            "declaration": "public static int pageNumber(Integer value)",
+            "sourceLine": 14
+          },
+          {
+            "name": "pageSize",
+            "declaration": "public static int pageSize(Integer value)",
+            "sourceLine": 15
+          },
+          {
+            "name": "no",
+            "declaration": "public static String no(String prefix)",
+            "sourceLine": 17
+          },
+          {
+            "name": "scope",
+            "declaration": "public static PrintScope scope(PrintActor a)",
+            "sourceLine": 21
+          },
+          {
+            "name": "scoped",
+            "declaration": "public static <T> QueryWrapper<T> scoped(PrintScope s)",
+            "sourceLine": 25
+          },
+          {
+            "name": "ownedUpdate",
+            "declaration": "public static <T> com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<T> ownedUpdate( PrintScope s)",
+            "sourceLine": 32
+          },
+          {
+            "name": "owned",
+            "declaration": "public static <T> QueryWrapper<T> owned(PrintScope s)",
+            "sourceLine": 39
+          },
+          {
+            "name": "init",
+            "declaration": "public static <T extends PrnRow> T init(T r, PrintScope s)",
+            "sourceLine": 43
+          },
+          {
+            "name": "init",
+            "declaration": "public static ai.neargo.shop.printing.entity.PrnJob init(ai.neargo.shop.printing.entity.PrnJob r, PrintScope s)",
+            "sourceLine": 52
+          },
+          {
+            "name": "init",
+            "declaration": "public static ai.neargo.shop.printing.entity.PrnAttempt init(ai.neargo.shop.printing.entity.PrnAttempt r, PrintScope s)",
+            "sourceLine": 55
+          },
+          {
+            "name": "revision",
+            "declaration": "public static void revision(ai.neargo.shop.printing.entity.PrnJob row, Long expected)",
+            "sourceLine": 62
+          },
+          {
+            "name": "now",
+            "declaration": "public static LocalDateTime now()",
+            "sourceLine": 67
+          },
+          {
+            "name": "instant",
+            "declaration": "public static Instant instant(LocalDateTime t)",
+            "sourceLine": 71
+          },
+          {
+            "name": "require",
+            "declaration": "public static void require(boolean valid, String key)",
+            "sourceLine": 75
+          },
+          {
+            "name": "access",
+            "declaration": "public static void access(PrintScope scope, PrintActor actor, Set<String> fields)",
+            "sourceLine": 79
+          },
+          {
+            "name": "revision",
+            "declaration": "public static void revision(PrnRow row, Long expected)",
+            "sourceLine": 62
+          },
+          {
+            "name": "succeeded",
+            "declaration": "public static PrintOperation succeeded( String type, String targetType, String targetNo, FrozenJson result)",
+            "sourceLine": 89
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.support.PrintViews",
+        "name": "PrintViews",
+        "package": "ai.neargo.shop.printing.center.support",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/support/PrintViews.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "job",
+            "declaration": "public static PrintJobVO job(PrnJob j, ai.neargo.shop.print.api.PrintActor actor)",
+            "sourceLine": 13
+          },
+          {
+            "name": "job",
+            "declaration": "public static PrintJobVO job( PrnJob j, ai.neargo.shop.print.api.PrintActor actor, PrnRequest request)",
+            "sourceLine": 13
+          },
+          {
+            "name": "request",
+            "declaration": "public static PrintRequestVO request(PrnRequest r)",
+            "sourceLine": 73
+          },
+          {
+            "name": "incident",
+            "declaration": "public static IncidentVO incident(PrnIncident i)",
+            "sourceLine": 86
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.template.CompactReceiptRows",
+        "name": "CompactReceiptRows",
+        "package": "ai.neargo.shop.printing.center.template",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/template/CompactReceiptRows.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.template.DefaultPrintDocumentCompiler",
+        "name": "DefaultPrintDocumentCompiler",
+        "package": "ai.neargo.shop.printing.center.template",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/template/DefaultPrintDocumentCompiler.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "DefaultPrintDocumentCompiler",
+            "declaration": "public DefaultPrintDocumentCompiler(PrintJsonCodec j, PrintSceneRegistry s)",
+            "sourceLine": 30
+          },
+          {
+            "name": "compile",
+            "declaration": "public PrintDocument compile( PrintFact fact, ResolvedTemplate template, SystemPrintSlots slots)",
+            "sourceLine": 35
+          },
+          {
+            "name": "validateTemplate",
+            "declaration": "public void validateTemplate(String scene, String content)",
+            "sourceLine": 171
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.template.DefaultPrintTemplateResolver",
+        "name": "DefaultPrintTemplateResolver",
+        "package": "ai.neargo.shop.printing.center.template",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/template/DefaultPrintTemplateResolver.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "DefaultPrintTemplateResolver",
+            "declaration": "public DefaultPrintTemplateResolver( PrintSceneRegistry s, PrintJsonCodec j, PrnTemplateMapper t, PrnTemplateVersionMapper v)",
+            "sourceLine": 19
+          },
+          {
+            "name": "resolve",
+            "declaration": "public ResolvedTemplate resolve(TemplateResolutionCommand c)",
+            "sourceLine": 30
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.template.PrintPreviewFacts",
+        "name": "PrintPreviewFacts",
+        "package": "ai.neargo.shop.printing.center.template",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/template/PrintPreviewFacts.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintPreviewFacts",
+            "declaration": "public PrintPreviewFacts( PrintSceneRegistry scenes, PrintSourceRegistry sources, PrintJsonCodec json)",
+            "sourceLine": 23
+          },
+          {
+            "name": "get",
+            "declaration": "public PrintFact get(String scene, PrintSourceReference reference, PrintActor actor)",
+            "sourceLine": 30
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.template.PrintRouteMatcher",
+        "name": "PrintRouteMatcher",
+        "package": "ai.neargo.shop.printing.center.template",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/template/PrintRouteMatcher.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "match",
+            "declaration": "public List<RouteMatch> match(String documentKey, JsonNode payload, List<RouteRule> rules)",
+            "sourceLine": 14
+          },
+          {
+            "name": "validate",
+            "declaration": "public void validate(List<RouteRule> rules)",
+            "sourceLine": 45
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.center.template.PrintSceneRegistry",
+        "name": "PrintSceneRegistry",
+        "package": "ai.neargo.shop.printing.center.template",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/center/template/PrintSceneRegistry.java",
+        "records": [
+          {
+            "name": "SceneDefinition",
+            "fields": [
+              "String code",
+              "JsonNode definition",
+              "JsonNode example",
+              "Map<String, JsonNode> templates"
+            ]
+          }
+        ],
+        "methods": [
+          {
+            "name": "SceneDefinition",
+            "declaration": "public record SceneDefinition( String code, JsonNode definition, JsonNode example, Map<String, JsonNode> templates)",
+            "sourceLine": 14
+          },
+          {
+            "name": "PrintSceneRegistry",
+            "declaration": "public PrintSceneRegistry(PrintJsonCodec codec)",
+            "sourceLine": 19
+          },
+          {
+            "name": "require",
+            "declaration": "public SceneDefinition require(String scene)",
+            "sourceLine": 46
+          },
+          {
+            "name": "all",
+            "declaration": "public Collection<SceneDefinition> all()",
+            "sourceLine": 52
+          },
+          {
+            "name": "validateSource",
+            "declaration": "public void validateSource(PrintFact fact)",
+            "sourceLine": 56
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.printing.config.PrintDataScopeRegistration",
         "name": "PrintDataScopeRegistration",
         "package": "ai.neargo.shop.printing.config",
@@ -104042,7 +107464,18 @@
         "package": "ai.neargo.shop.printing.entity",
         "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/entity/PrnAttempt.java",
         "records": [],
-        "methods": []
+        "methods": [
+          {
+            "name": "getRevision",
+            "declaration": "public Long getRevision()",
+            "sourceLine": 48
+          },
+          {
+            "name": "setRevision",
+            "declaration": "public void setRevision(Long revision)",
+            "sourceLine": 49
+          }
+        ]
       },
       {
         "qualifiedName": "ai.neargo.shop.printing.entity.PrnDevice",
@@ -104058,7 +107491,28 @@
         "package": "ai.neargo.shop.printing.entity",
         "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/entity/PrnJob.java",
         "records": [],
-        "methods": []
+        "methods": [
+          {
+            "name": "getRevision",
+            "declaration": "public Long getRevision()",
+            "sourceLine": 74
+          },
+          {
+            "name": "setRevision",
+            "declaration": "public void setRevision(Long revision)",
+            "sourceLine": 75
+          },
+          {
+            "name": "getStatus",
+            "declaration": "public String getStatus()",
+            "sourceLine": 77
+          },
+          {
+            "name": "setStatus",
+            "declaration": "public void setStatus(String stage)",
+            "sourceLine": 82
+          }
+        ]
       },
       {
         "qualifiedName": "ai.neargo.shop.printing.entity.PrnRoute",
@@ -104099,32 +107553,32 @@
           {
             "name": "key",
             "declaration": "public static void key(String value)",
-            "sourceLine": 40
+            "sourceLine": 44
           },
           {
             "name": "scene",
             "declaration": "public static void scene(String value)",
-            "sourceLine": 46
+            "sourceLine": 50
           },
           {
             "name": "text",
             "declaration": "public static void text(String value, int max)",
-            "sourceLine": 52
+            "sourceLine": 56
           },
           {
             "name": "template",
             "declaration": "public static void template(String content)",
-            "sourceLine": 61
+            "sourceLine": 65
           },
           {
             "name": "document",
             "declaration": "public static void document(Document value)",
-            "sourceLine": 71
+            "sourceLine": 75
           },
           {
             "name": "render",
             "declaration": "public static String render( Document document, String template, String original, String reason)",
-            "sourceLine": 109
+            "sourceLine": 113
           }
         ]
       },
@@ -104208,76 +107662,188 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.printing.service.PreparedPrintJobs",
+        "name": "PreparedPrintJobs",
+        "package": "ai.neargo.shop.printing.service",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/service/PreparedPrintJobs.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "initialize",
+            "declaration": "public static void initialize(PrnJob job)",
+            "sourceLine": 14
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.service.PrintDeviceGate",
+        "name": "PrintDeviceGate",
+        "package": "ai.neargo.shop.printing.service",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/service/PrintDeviceGate.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PrintDeviceGate",
+            "declaration": "public PrintDeviceGate(DeviceMapper devices, JobMapper jobs)",
+            "sourceLine": 16
+          },
+          {
+            "name": "lockStore",
+            "declaration": "public void lockStore(PrintScope scope)",
+            "sourceLine": 17
+          },
+          {
+            "name": "lock",
+            "declaration": "public PrnDevice lock(PrintScope scope, String deviceNo)",
+            "sourceLine": 22
+          },
+          {
+            "name": "available",
+            "declaration": "public boolean available(PrnDevice device)",
+            "sourceLine": 35
+          },
+          {
+            "name": "occupy",
+            "declaration": "public void occupy(PrnDevice device,String job,String attempt,long fence)",
+            "sourceLine": 39
+          },
+          {
+            "name": "releaseIfCurrent",
+            "declaration": "public void releaseIfCurrent(PrintScope scope,String deviceNo,String attempt,long fence)",
+            "sourceLine": 46
+          },
+          {
+            "name": "release",
+            "declaration": "public void release(PrintScope scope,String deviceNo,String attempt)",
+            "sourceLine": 50
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.printing.service.PrintMerchantScopeBoundary",
+        "name": "PrintMerchantScopeBoundary",
+        "package": "ai.neargo.shop.printing.service",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/service/PrintMerchantScopeBoundary.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "postProcessAfterInitialization",
+            "declaration": "public Object postProcessAfterInitialization(Object bean,String name)",
+            "sourceLine": 17
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.printing.service.PrintService",
         "name": "PrintService",
         "package": "ai.neargo.shop.printing.service",
         "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/printing/service/PrintService.java",
-        "records": [],
+        "records": [
+          {
+            "name": "DeviceResolution",
+            "fields": [
+              "String deviceNo",
+              "long expectedVersion",
+              "String activeAttemptNo",
+              "String reason",
+              "String evidenceRef",
+              "boolean oldExecutorStopped",
+              "String requestKey"
+            ]
+          },
+          {
+            "name": "PendingExecution",
+            "fields": [
+              "String jobNo",
+              "String attemptNo",
+              "String status"
+            ]
+          },
+          {
+            "name": "DeviceRecovery",
+            "fields": [
+              "String deviceNo",
+              "long version",
+              "String activeAttemptNo",
+              "List<PendingExecution> pending"
+            ]
+          }
+        ],
         "methods": [
+          {
+            "name": "deviceRecovery",
+            "declaration": "DeviceRecovery deviceRecovery(Scope scope,String deviceNo)",
+            "sourceLine": 23
+          },
+          {
+            "name": "resolveDeviceUncertainty",
+            "declaration": "DeviceVO resolveDeviceUncertainty(Scope scope, DeviceResolution request)",
+            "sourceLine": 26
+          },
           {
             "name": "configuration",
             "declaration": "Configuration configuration(Scope scope)",
-            "sourceLine": 18
+            "sourceLine": 28
           },
           {
             "name": "bindDevice",
             "declaration": "DeviceVO bindDevice(Scope scope, DeviceReq request)",
-            "sourceLine": 20
+            "sourceLine": 30
           },
           {
             "name": "revokeDevice",
             "declaration": "DeviceVO revokeDevice(Scope scope, String deviceNo, String reason, String requestKey)",
-            "sourceLine": 22
+            "sourceLine": 32
           },
           {
             "name": "publishTemplate",
             "declaration": "TemplateReq publishTemplate(Scope scope, TemplateReq request)",
-            "sourceLine": 24
+            "sourceLine": 34
           },
           {
             "name": "putRoute",
             "declaration": "RouteReq putRoute(Scope scope, RouteReq request)",
-            "sourceLine": 26
+            "sourceLine": 36
           },
           {
             "name": "enqueue",
             "declaration": "List<JobVO> enqueue(Scope scope, Enqueue request)",
-            "sourceLine": 28
+            "sourceLine": 38
           },
           {
             "name": "list",
             "declaration": "List<JobVO> list(Scope scope, String afterJobNo, int limit)",
-            "sourceLine": 30
+            "sourceLine": 40
           },
           {
             "name": "get",
             "declaration": "JobVO get(Scope scope, String jobNo)",
-            "sourceLine": 32
+            "sourceLine": 42
           },
           {
             "name": "retry",
             "declaration": "JobVO retry(Scope scope, String jobNo)",
-            "sourceLine": 34
+            "sourceLine": 44
           },
           {
             "name": "reprint",
             "declaration": "JobVO reprint(Scope scope, String jobNo, String reason, String requestKey)",
-            "sourceLine": 36
+            "sourceLine": 46
           },
           {
             "name": "heartbeat",
             "declaration": "DeviceVO heartbeat(Scope scope, String deviceNo, boolean online)",
-            "sourceLine": 38
+            "sourceLine": 48
           },
           {
             "name": "claim",
             "declaration": "Claim claim(Scope scope, String deviceNo)",
-            "sourceLine": 40
+            "sourceLine": 50
           },
           {
             "name": "acknowledge",
             "declaration": "JobVO acknowledge(Scope scope, String deviceNo, Acknowledge request)",
-            "sourceLine": 42
+            "sourceLine": 52
           }
         ]
       },
@@ -104293,6 +107859,17 @@
               "String key",
               "String actor",
               "String reason",
+              "DeviceVO response"
+            ]
+          },
+          {
+            "name": "ResolutionAudit",
+            "fields": [
+              "String key",
+              "String actor",
+              "String attempt",
+              "String reason",
+              "String evidence",
               "DeviceVO response"
             ]
           }
@@ -104314,59 +107891,69 @@
             "sourceLine": 109
           },
           {
+            "name": "deviceRecovery",
+            "declaration": "public PrintService.DeviceRecovery deviceRecovery(Scope scope,String no)",
+            "sourceLine": 205
+          },
+          {
+            "name": "resolveDeviceUncertainty",
+            "declaration": "public DeviceVO resolveDeviceUncertainty(Scope scope, PrintService.DeviceResolution req)",
+            "sourceLine": 220
+          },
+          {
             "name": "revokeDevice",
             "declaration": "public DeviceVO revokeDevice(Scope scope, String no, String reason, String key)",
-            "sourceLine": 197
+            "sourceLine": 253
           },
           {
             "name": "publishTemplate",
             "declaration": "public TemplateReq publishTemplate(Scope scope, TemplateReq req)",
-            "sourceLine": 265
+            "sourceLine": 321
           },
           {
             "name": "putRoute",
             "declaration": "public RouteReq putRoute(Scope scope, RouteReq req)",
-            "sourceLine": 302
+            "sourceLine": 358
           },
           {
             "name": "enqueue",
             "declaration": "public List<JobVO> enqueue(Scope scope, Enqueue req)",
-            "sourceLine": 349
+            "sourceLine": 405
           },
           {
             "name": "list",
             "declaration": "public List<JobVO> list(Scope scope, String after, int limit)",
-            "sourceLine": 490
+            "sourceLine": 546
           },
           {
             "name": "get",
             "declaration": "public JobVO get(Scope scope, String no)",
-            "sourceLine": 512
+            "sourceLine": 568
           },
           {
             "name": "retry",
             "declaration": "public JobVO retry(Scope scope, String no)",
-            "sourceLine": 518
+            "sourceLine": 574
           },
           {
             "name": "reprint",
             "declaration": "public JobVO reprint(Scope scope, String no, String reason, String key)",
-            "sourceLine": 537
+            "sourceLine": 594
           },
           {
             "name": "heartbeat",
             "declaration": "public DeviceVO heartbeat(Scope scope, String no, boolean online)",
-            "sourceLine": 591
+            "sourceLine": 649
           },
           {
             "name": "claim",
             "declaration": "public Claim claim(Scope scope, String no)",
-            "sourceLine": 607
+            "sourceLine": 665
           },
           {
             "name": "acknowledge",
             "declaration": "public JobVO acknowledge(Scope scope, String no, Acknowledge req)",
-            "sourceLine": 665
+            "sourceLine": 724
           }
         ]
       },
@@ -104940,47 +108527,189 @@
           {
             "name": "confirmedReductions",
             "declaration": "public List<PricingFeeEvidenceRow> confirmedReductions(Reference ref)",
-            "sourceLine": 336
+            "sourceLine": 365
           },
           {
             "name": "contribution",
             "declaration": "public List<PricingFeeEvidenceRow> contribution(String app)",
-            "sourceLine": 350
+            "sourceLine": 379
           },
           {
             "name": "setContribution",
             "declaration": "public int setContribution(String app, long remaining)",
-            "sourceLine": 357
+            "sourceLine": 386
           },
           {
             "name": "changeGoodsBasis",
             "declaration": "public int changeGoodsBasis(String e, String store, String scope, String rule, long delta)",
-            "sourceLine": 365
+            "sourceLine": 394
           },
           {
             "name": "reconciliation",
             "declaration": "public List<PricingFeeEvidenceRow> reconciliation(String e, String app, String amendment)",
-            "sourceLine": 378
+            "sourceLine": 407
           },
           {
             "name": "recordReconciliation",
             "declaration": "public int recordReconciliation( String e, String store, String app, String amendment, String hash, long before, long after)",
-            "sourceLine": 387
+            "sourceLine": 416
           },
           {
             "name": "initializeContribution",
             "declaration": "public int initializeContribution(String app, long goods, BigDecimal quantity)",
-            "sourceLine": 408
+            "sourceLine": 437
           },
           {
             "name": "supersedeAdvice",
             "declaration": "public int supersedeAdvice(String e, String store, String scope, String rule)",
-            "sourceLine": 419
+            "sourceLine": 448
           },
           {
             "name": "quantityContribution",
             "declaration": "public int quantityContribution(String app, BigDecimal quantity)",
-            "sourceLine": 430
+            "sourceLine": 459
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.trade.order.printing.OrderPrintFact",
+        "name": "OrderPrintFact",
+        "package": "ai.neargo.shop.trade.order.printing",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/printing/OrderPrintFact.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.trade.order.printing.OrderPrintFactMapper",
+        "name": "OrderPrintFactMapper",
+        "package": "ai.neargo.shop.trade.order.printing",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/printing/OrderPrintFactMapper.java",
+        "records": [],
+        "methods": []
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.trade.order.printing.OrderPrintFactRecorder",
+        "name": "OrderPrintFactRecorder",
+        "package": "ai.neargo.shop.trade.order.printing",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/printing/OrderPrintFactRecorder.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "OrderPrintFactRecorder",
+            "declaration": "public OrderPrintFactRecorder( PaymentMapper o, StoreOrderMapper s, OrderItemMapper i, ObjectMapper j)",
+            "sourceLine": 26
+          },
+          {
+            "name": "capturePaidSubOrder",
+            "declaration": "public OrderPrintFact capturePaidSubOrder( String orderNo, String subNo, ConfirmedPayment confirmed)",
+            "sourceLine": 34
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.trade.order.printing.service.OrderPrintFactService",
+        "name": "OrderPrintFactService",
+        "package": "ai.neargo.shop.trade.order.printing.service",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/printing/service/OrderPrintFactService.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "referencesByOrder",
+            "declaration": "List<PrintFactRef> referencesByOrder(PrintScope scope, String orderNo)",
+            "sourceLine": 9
+          },
+          {
+            "name": "recordPaid",
+            "declaration": "List<PrintFactRef> recordPaid(String orderNo, ConfirmedPayment confirmed)",
+            "sourceLine": 11
+          },
+          {
+            "name": "resolveReference",
+            "declaration": "PrintFactRef resolveReference(PrintSourceReference reference, PrintScope scope)",
+            "sourceLine": 13
+          },
+          {
+            "name": "snapshot",
+            "declaration": "PrintFact snapshot(PrintFactRef ref)",
+            "sourceLine": 15
+          },
+          {
+            "name": "scan",
+            "declaration": "PrintFactPage scan(PrintFactCursor cursor, int limit)",
+            "sourceLine": 17
+          },
+          {
+            "name": "executionGuard",
+            "declaration": "PrintExecutionGuard executionGuard(PrintFactRef ref)",
+            "sourceLine": 19
+          },
+          {
+            "name": "recordControl",
+            "declaration": "void recordControl( String orderNo, String subOrderNo, String controlType, String controlFactNo, java.time.Instant occurredAt)",
+            "sourceLine": 21
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.trade.order.printing.service.impl.OrderPrintFactServiceImpl",
+        "name": "OrderPrintFactServiceImpl",
+        "package": "ai.neargo.shop.trade.order.printing.service.impl",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/printing/service/impl/OrderPrintFactServiceImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "OrderPrintFactServiceImpl",
+            "declaration": "public OrderPrintFactServiceImpl( OrderPrintFactMapper f, StoreOrderMapper s, PaymentMapper o, OrderPrintFactRecorder r, OutboxEventBus e, ObjectMapper j)",
+            "sourceLine": 30
+          },
+          {
+            "name": "recordPaid",
+            "declaration": "public List<PrintFactRef> recordPaid(String no, ConfirmedPayment confirmed)",
+            "sourceLine": 46
+          },
+          {
+            "name": "referencesByOrder",
+            "declaration": "public List<PrintFactRef> referencesByOrder(PrintScope s, String no)",
+            "sourceLine": 71
+          },
+          {
+            "name": "resolveReference",
+            "declaration": "public PrintFactRef resolveReference(PrintSourceReference r, PrintScope s)",
+            "sourceLine": 102
+          },
+          {
+            "name": "snapshot",
+            "declaration": "public PrintFact snapshot(PrintFactRef r)",
+            "sourceLine": 116
+          },
+          {
+            "name": "scan",
+            "declaration": "public PrintFactPage scan(PrintFactCursor c, int limit)",
+            "sourceLine": 136
+          },
+          {
+            "name": "executionGuard",
+            "declaration": "public PrintExecutionGuard executionGuard(PrintFactRef ref)",
+            "sourceLine": 178
+          },
+          {
+            "name": "recordControl",
+            "declaration": "public void recordControl( String orderNo, String subNo, String type, String controlNo, Instant occurredAt)",
+            "sourceLine": 199
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.trade.policy.IndustryOrderAllocationPolicy",
+        "name": "IndustryOrderAllocationPolicy",
+        "package": "ai.neargo.shop.trade.policy",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/IndustryOrderAllocationPolicy.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "read",
+            "declaration": "public static List<Allocation> read(ObjectMapper json, String snapshot)",
+            "sourceLine": 18
           }
         ]
       },
@@ -105180,6 +108909,84 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.trade.port.IndustryReportFactsPortAdapter",
+        "name": "IndustryReportFactsPortAdapter",
+        "package": "ai.neargo.shop.trade.port",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/IndustryReportFactsPortAdapter.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "IndustryReportFactsPortAdapter",
+            "declaration": "public IndustryReportFactsPortAdapter(IndustryOrderSourceMapper bindings,PaymentMapper orders,StoreOrderMapper subs, IndustryOrderAmendmentMapper amendments,MerchantScopeFactsPort scopes, @Qualifier(\"transactionManager\") PlatformTransactionManager manager)",
+            "sourceLine": 48
+          },
+          {
+            "name": "source",
+            "declaration": "public SourceKey source()",
+            "sourceLine": 56
+          },
+          {
+            "name": "readSnapshot",
+            "declaration": "public SourceSnapshot readSnapshot(SourceQuery query)",
+            "sourceLine": 57
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.trade.port.PricingFeePortImpl",
+        "name": "PricingFeePortImpl",
+        "package": "ai.neargo.shop.trade.port",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/port/PricingFeePortImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "PricingFeePortImpl",
+            "declaration": "public PricingFeePortImpl(PricingFeeRuleService service)",
+            "sourceLine": 17
+          },
+          {
+            "name": "resolve",
+            "declaration": "public Plan resolve(Snapshot source)",
+            "sourceLine": 18
+          },
+          {
+            "name": "applyPlan",
+            "declaration": "public void applyPlan(Scope scope, String actor, String order, String sub, String quote, Plan plan)",
+            "sourceLine": 19
+          },
+          {
+            "name": "reconcileOnAmendment",
+            "declaration": "public void reconcileOnAmendment(Reference ref, String amendment, String hash)",
+            "sourceLine": 22
+          },
+          {
+            "name": "originalReference",
+            "declaration": "public Reference originalReference(Scope scope, String application)",
+            "sourceLine": 25
+          },
+          {
+            "name": "pendingAdjustments",
+            "declaration": "public List<AdjustmentAuthority> pendingAdjustments(Scope scope, String no)",
+            "sourceLine": 28
+          },
+          {
+            "name": "adjustment",
+            "declaration": "public AdjustmentAuthority adjustment(Scope scope, String no, String application, String hash)",
+            "sourceLine": 31
+          },
+          {
+            "name": "authorizeAdjustment",
+            "declaration": "public AdjustmentAuthority authorizeAdjustment(Scope scope, String application, long target, String hash)",
+            "sourceLine": 34
+          },
+          {
+            "name": "completeAdjustment",
+            "declaration": "public void completeAdjustment(Scope scope, String application, long target, String hash, String actor, String key)",
+            "sourceLine": 37
+          }
+        ]
+      },
+      {
         "qualifiedName": "ai.neargo.shop.trade.service.IndustryAfterSaleService",
         "name": "IndustryAfterSaleService",
         "package": "ai.neargo.shop.trade.service",
@@ -105374,6 +109181,14 @@
         ]
       },
       {
+        "qualifiedName": "ai.neargo.shop.trade.service.IndustryReportFactsService",
+        "name": "IndustryReportFactsService",
+        "package": "ai.neargo.shop.trade.service",
+        "sourceFile": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/IndustryReportFactsService.java",
+        "records": [],
+        "methods": []
+      },
+      {
         "qualifiedName": "ai.neargo.shop.trade.service.IndustryTransactionRecoveryService",
         "name": "IndustryTransactionRecoveryService",
         "package": "ai.neargo.shop.trade.service",
@@ -105417,12 +109232,52 @@
           {
             "name": "save",
             "declaration": "Rule save(Scope scope, String actor, String ruleNo, SaveReq request, String key)",
-            "sourceLine": 10
+            "sourceLine": 15
           },
           {
             "name": "get",
             "declaration": "Rule get(Scope scope, String ruleNo)",
-            "sourceLine": 12
+            "sourceLine": 17
+          },
+          {
+            "name": "resolve",
+            "declaration": "Plan resolve(Snapshot source)",
+            "sourceLine": 19
+          },
+          {
+            "name": "applyPlan",
+            "declaration": "void applyPlan(Scope scope, String actor, String orderNo, String subOrderNo, String quoteNo, Plan plan)",
+            "sourceLine": 20
+          },
+          {
+            "name": "reconcileOnAmendment",
+            "declaration": "void reconcileOnAmendment(Reference reference, String amendmentNo, String sourceHash)",
+            "sourceLine": 21
+          },
+          {
+            "name": "originalReference",
+            "declaration": "Reference originalReference(Scope scope, String applicationNo)",
+            "sourceLine": 22
+          },
+          {
+            "name": "pendingAdjustments",
+            "declaration": "List<AdjustmentAuthority> pendingAdjustments(Scope scope, String scopeNo)",
+            "sourceLine": 23
+          },
+          {
+            "name": "adjustment",
+            "declaration": "AdjustmentAuthority adjustment(Scope scope, String scopeNo, String applicationNo, String sourceHash)",
+            "sourceLine": 24
+          },
+          {
+            "name": "authorizeAdjustment",
+            "declaration": "AdjustmentAuthority authorizeAdjustment(Scope scope, String applicationNo, long targetFeeMinor, String sourceHash)",
+            "sourceLine": 25
+          },
+          {
+            "name": "completeAdjustment",
+            "declaration": "void completeAdjustment(Scope scope, String applicationNo, long targetFeeMinor, String sourceHash, String actor, String key)",
+            "sourceLine": 26
           }
         ]
       },
@@ -105562,12 +109417,12 @@
           {
             "name": "verifyPickup",
             "declaration": "public Receipt verifyPickup(VerifyPickup command, String key)",
-            "sourceLine": 620
+            "sourceLine": 619
           },
           {
             "name": "query",
             "declaration": "public Receipt query(Reference ref, String actor, String key)",
-            "sourceLine": 728
+            "sourceLine": 727
           }
         ]
       },
@@ -105811,57 +109666,57 @@
           {
             "name": "PricingFeeRuleServiceImpl",
             "declaration": "public PricingFeeRuleServiceImpl(PricingFeeRuleMapper mapper, ObjectMapper json)",
-            "sourceLine": 52
+            "sourceLine": 50
           },
           {
             "name": "save",
             "declaration": "public Rule save(Scope scope, String actor, String no, SaveReq req, String key)",
-            "sourceLine": 59
+            "sourceLine": 57
           },
           {
             "name": "get",
             "declaration": "public Rule get(Scope scope, String no)",
-            "sourceLine": 111
+            "sourceLine": 109
           },
           {
             "name": "resolve",
             "declaration": "public Plan resolve(Snapshot source)",
-            "sourceLine": 124
+            "sourceLine": 122
           },
           {
             "name": "applyPlan",
             "declaration": "public void applyPlan( Scope scope, String actor, String order, String sub, String quote, Plan plan)",
-            "sourceLine": 163
+            "sourceLine": 161
           },
           {
             "name": "originalReference",
             "declaration": "public IndustryFulfillmentPort.Reference originalReference(Scope scope, String app)",
-            "sourceLine": 246
+            "sourceLine": 244
           },
           {
             "name": "pendingAdjustments",
             "declaration": "public List<AdjustmentAuthority> pendingAdjustments(Scope scope, String scopeNo)",
-            "sourceLine": 262
+            "sourceLine": 260
           },
           {
             "name": "adjustment",
             "declaration": "public AdjustmentAuthority adjustment(Scope scope, String scopeNo, String app, String hash)",
-            "sourceLine": 279
+            "sourceLine": 277
           },
           {
             "name": "authorizeAdjustment",
             "declaration": "public AdjustmentAuthority authorizeAdjustment( Scope scope, String app, long target, String hash)",
-            "sourceLine": 296
+            "sourceLine": 294
           },
           {
             "name": "completeAdjustment",
             "declaration": "public void completeAdjustment( Scope scope, String app, long target, String hash, String actor, String key)",
-            "sourceLine": 313
+            "sourceLine": 311
           },
           {
             "name": "reconcileOnAmendment",
             "declaration": "public void reconcileOnAmendment( IndustryFulfillmentPort.Reference ref, String amendment, String sourceHash)",
-            "sourceLine": 333
+            "sourceLine": 331
           }
         ]
       },
@@ -111746,6 +115601,51 @@
       "payUnchanged": true,
       "artifact": "/data/app/ai-shop/shop-app/shop-app-20261025-0903-cd1b6d4da.jar",
       "backup": "/data/app/ai-shop/backups/food-biz-20261025T005106Z-e0f8f7c0a"
+    }
+  },
+  "currentDelivery": {
+    "recordedDate": "2026-10-25",
+    "production": {
+      "sourceCommit": "fef7f00982c978819645a527d26b819d343d8aab",
+      "shape": "food-embedded",
+      "reportEnabled": false,
+      "paymentReleased": false
+    },
+    "schema": {
+      "food": 25,
+      "core": 581,
+      "inventory": 14
+    },
+    "businessAcceptance": "PENDING_TERMINAL_AND_REAL_OWNER_E2E",
+    "evidence": [
+      {
+        "label": "验收执行及发布记录",
+        "path": "../TDD-餐饮功能验收与接口测试.md"
+      },
+      {
+        "label": "逐项验收矩阵",
+        "path": "./餐饮功能验收标准与证据矩阵.md"
+      },
+      {
+        "label": "实际公开API",
+        "path": "./餐饮系统-实际公开API对照.md"
+      },
+      {
+        "label": "BIZ迁移及交付记录",
+        "path": "../TDD-餐饮系统-BIZ01-12-交付验证.md"
+      }
+    ],
+    "sourceSchema": {
+      "food": 25,
+      "core": 587,
+      "inventory": 15
+    },
+    "localChanges": {
+      "status": "UNRELEASED",
+      "report": "../餐饮非支付原生链路验收记录.md",
+      "coreMigration": 587,
+      "inventoryMigration": 15,
+      "legacyPricingRepublishRequired": true
     }
   }
 }

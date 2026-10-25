@@ -259,7 +259,7 @@ public class PricingFeeScopePersistenceTest {
                 "INSERT INTO"
                     + " ord_industry_order_source(entity_no,store_no,order_no,sub_order_no,quote_no,status,source_system,source_type,source_no,source_version,allocations_json)"
                     + " VALUES('E','S','O1','S1','Q1','BOUND','FOOD','CART','C1',0,?)",
-                json.writeValueAsString(allocations));
+                json.writeValueAsString(Map.of("allocations",allocations,"evidence",List.of())));
         db.update(
                 "INSERT INTO ord_price_quote VALUES('MAIN','E','S','Q1',?)",
                 json.writeValueAsString(

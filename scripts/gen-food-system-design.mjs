@@ -2,11 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {reconcileFoodSource,renderActualFoodSource} from './lib/food-source-inventory.mjs';
+import {renderFoodDeliveryStatus} from './lib/food-delivery-status.mjs';
 import {validateFoodDesign} from './lib/food-design-validation.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const src='docs/technical/design/schema/food-system-design.json';const s=JSON.parse(fs.readFileSync(path.join(root,src),'utf8'));
 const planFile=path.join(root,'docs/technical/design/schema/food-code-plan.json');
 const plan=JSON.parse(fs.readFileSync(planFile,'utf8'));
+const latestMigration=dir=>Math.max(...fs.readdirSync(path.join(root,dir)).map(n=>Number(/^V(\d+)__/.exec(n)?.[1]||0)));
+s.currentDelivery.sourceSchema={food:latestMigration('backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food'),core:latestMigration('backend/shop-app/src/main/resources/db/migration'),inventory:latestMigration('backend/shop-inventory/src/main/resources/db/inventory')};
 const actual=reconcileFoodSource(root,s,plan);
 fs.writeFileSync(path.join(root,src),JSON.stringify(s,null,2)+'\n');
 fs.writeFileSync(planFile,JSON.stringify(plan,null,2)+'\n');
@@ -21,7 +24,7 @@ const {instance}=await import(process.env.FOOD_ER_VIZ_MODULE||'@viz-js/viz');con
 const dir=path.join(root,'docs/technical/design');
 const e=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const parse=x=>x?x.split(';').map(p=>{const [name,type,...d]=p.split(':');return {name:name.replace(/\?$/,''),type,desc:d.join(':'),required:!name.endsWith('?')}}):[];
-const header=title=>`# ${title}\n\n> 源码核对：${s.reviewDate}；云端基线 FOOD V15（83张业务表＋历史表＝84张），当前源码目标 FOOD V${s.databaseInitialization.targetSchemaVersion} / CORE V581 / INVENTORY V14。交付核验状态：${s.deliveryVerification?.status || 'NOT_COMPILED_TESTED_OR_DEPLOYED'}；独立适配/原生专项及发布进展见交付验证记录，历史 V1/73 仅为当时初始化记录。PLANNED 对象保留为目标，不代表实现。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成；真源：[设计源](./schema/food-system-design.json)。实际 API、方法与迁移从原源码发现；不执行迁移。\n\n`;
+const header=title=>`# ${title}\n\n${renderFoodDeliveryStatus(s.currentDelivery)}> 历史与源码发现口径： 源码核对：${s.reviewDate}；云端基线 FOOD V15（83张业务表＋历史表＝84张），源码迁移目标 FOOD V${s.currentDelivery.sourceSchema.food} / CORE V${s.currentDelivery.sourceSchema.core} / INVENTORY V${s.currentDelivery.sourceSchema.inventory}（仅源码发现，不代表已部署）。交付核验状态：${s.deliveryVerification?.status || 'NOT_COMPILED_TESTED_OR_DEPLOYED'}；独立适配/原生专项及发布进展见交付验证记录，历史 V1/73 仅为当时初始化记录。PLANNED 对象保留为目标，不代表实现。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成；真源：[设计源](./schema/food-system-design.json)。实际 API、方法与迁移从原源码发现；不执行迁移。\n\n`;
 const statusNames={DEFINED:'目标已定义',CORE_CONTRACT:'依赖共享/核心合同',DESIGN_GAP:'尚缺专项设计'};
 const counts=Object.fromEntries(Object.keys(statusNames).map(k=>[k,s.requirementAlignment.filter(r=>r.status===k).length]));
 const moduleIndex=()=>`## 零、按业务模块阅读\n\n先查主责模块，再查表字段或接口编号。13个业务模块与A–L持久化域不是一一对应；模块可协作调用相同服务，不能据此复制实体。109项追踪结果：目标已定义${counts.DEFINED}项，依赖共享/核心合同${counts.CORE_CONTRACT}项，尚缺专项设计${counts.DESIGN_GAP}项。以上均为设计状态，非实现验收。\n\n| 模块 | 名称 | 需求数 | 关联表数 | 关联API数 |\n|---|---|---|---|---|\n`+s.businessModules.map(m=>`| ${m.id} | ${m.name} | ${m.requirements.length} | ${m.tables.length} | ${m.apis.length} |\n`).join('')+`\n逐需求表/API引用与未决缺口见API册第八节；首三模块扩展及评审结论见[评审对齐记录](../TDD-餐饮系统-数据库与API评审对齐.md)。\n\n`;
@@ -88,7 +91,7 @@ if(s.nonPaymentImplementation?.implementedApis){
  const code=value=>'`'+String(value??'—').replaceAll('`','')+'`';
  apiDoc+='\n## 十一、本批非支付实际API与目标对账\n\n';
  apiDoc+=`${n.implementedApis.length}条实际公开biz路由，均为 **CODED_PENDING_VERIFICATION**。该标记是逐接口完整目标/营业验收状态，后端批次编译及测试结果独立记录在verification和原TDD收据。此处逐项记录现有Controller/DTO/权限，与前文目标API并列；目标路径相同不表示DTO或完整业务验收一致。原始接口编号、表及历史V1迁移哈希保留。\n\n`;
- apiDoc+='当前差异：POSTPAY仅沿真实已登录H5/PICKUP身份和门店POSTPAY策略，采用原库存lifecycle3接受未付款履约；父单WAIT_PAY、paidAt为空。额度消费、FOOD ACCEPTED及厨房出站事实同本域事务，不代表收款。\n\n';
+ apiDoc+='历史早期差异（后续已扩展员工及匿名/设备POSTPAY，当前入口见实际公开API对照）：该切片POSTPAY仅沿真实已登录H5/PICKUP身份和门店POSTPAY策略，采用原库存lifecycle3接受未付款履约；父单WAIT_PAY、paidAt为空。额度消费、FOOD ACCEPTED及厨房出站事实同本域事务，不代表收款。\n\n';
  for(const boundary of n.boundaries||[])apiDoc+='- '+boundary+'\n';
  apiDoc+='\n### 11.1 实际路由、权限与目标映射\n\n| 实际编号 | 实际方法与路径 | 目标编号/对齐状态 | 请求DTO或参数 | data返回类型 | 实际权限 |\n|---|---|---|---|---|---|\n';
  for(const a of n.implementedApis){

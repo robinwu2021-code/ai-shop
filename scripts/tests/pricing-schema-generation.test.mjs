@@ -50,7 +50,9 @@ CREATE TABLE sv_recharge (
         assert.match(sql, /ck_sv_collection_receipt CHECK/);
         assert.match(sql, /MERCHANT_OFFLINE/);
         assert.match(sql, /CHECK \(principal_minor > 0\)/);
-        assert.equal((sql.match(/collection_method IN/g) ?? []).length, 1);
+        // H2 literal IN checks are emitted as nullable CASE expressions.
+        assert.equal((sql.match(/CASE collection_method WHEN 'CASH' THEN TRUE WHEN 'TRANSFER' THEN TRUE WHEN 'MERCHANT_OFFLINE' THEN TRUE/g) ?? []).length, 1);
+        assert.doesNotMatch(sql, /collection_method IN/);
         writeFileSync(join(dir, 'V2__offline.sql'), migration.replace('SELECT 1', 'DELETE FROM sv_recharge'));
         assert.throws(() => execFileSync('python3', ['backend/scripts/gen-test-schema.py', output, dir],
             { stdio: 'pipe' }));

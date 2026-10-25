@@ -484,8 +484,13 @@ class PricingConfigServiceTest {
 
     @Test
     void newAuditEventHasExplicitUnifiedArchiveRouteUntilThereIsACacheConsumer() throws Exception {
-        String configuration = Files.readString(Path.of("../shop-app/src/main/resources/application.yml"));
-        assertThat(configuration).contains("archive-only: [\"PLATFORM:PRICING_CONFIG_PUBLISHED\"]");
+        var yaml = new org.springframework.beans.factory.config.YamlPropertiesFactoryBean();
+        yaml.setResources(new org.springframework.core.io.FileSystemResource(
+                "../shop-app/src/main/resources/application.yml"));
+        assertThat(yaml.getObject().entrySet().stream()
+                .filter(e -> e.getKey().toString().startsWith("shop.outbox.archive-only["))
+                .map(java.util.Map.Entry::getValue).toList())
+                .contains("PLATFORM:PRICING_CONFIG_PUBLISHED");
     }
 
     @Test

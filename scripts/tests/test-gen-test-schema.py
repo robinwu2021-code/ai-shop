@@ -14,6 +14,24 @@ generator = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(generator)
 
 
+class StatementBoundaryTest(unittest.TestCase):
+    def test_actual_inventory_comment_semicolon_preserves_column_widening(self):
+        tables, order, seeds, renames, altered = {}, [], [], {}, set()
+        inventory = ROOT / 'backend/shop-inventory/src/main/resources/db/inventory'
+        generator.replay((inventory / 'V1__inventory_baseline.sql').read_text(),
+                         tables, order, seeds, renames, altered)
+        generator.replay((inventory / 'V15__production_ledger_reason_width.sql').read_text(),
+                         tables, order, seeds, renames, altered)
+        reason = [c for c in tables['inv_ledger'] if c.strip().startswith('reason_code ')][0]
+        self.assertIn('VARCHAR(32) NOT NULL', reason)
+        self.assertNotIn('COMMENT', reason)
+
+    def test_statement_boundaries_respect_quoted_semicolons_and_doubled_quotes(self):
+        sql = "SELECT 'a;''b'; SELECT \"c;d\"; SELECT `e;f`; SELECT 1;"
+        self.assertEqual(["SELECT 'a;''b'", 'SELECT "c;d"', 'SELECT `e;f`', 'SELECT 1'],
+                         generator.split_statements(sql))
+
+
 class ReleaseSourceConstraintTest(unittest.TestCase):
     def setUp(self):
         self.tables, self.order, self.seeds, self.renames, self.altered = {}, [], [], {}, set()

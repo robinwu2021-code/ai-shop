@@ -7207,5 +7207,209 @@
     "health": "UP",
     "productionBusinessWritesTested": false,
     "payRestarted": false
+  },
+  "nativeSupplement": {
+    "date": "2026-10-25",
+    "status": "PASS_SCOPED_NOT_FULL_BUSINESS_ACCEPTANCE",
+    "baseCommit": "ba44c7f0c",
+    "workingTreeUnreleased": true,
+    "report": "docs/technical/餐饮非支付原生链路验收记录.md",
+    "latestScopedSuites": 17,
+    "testInstances": 198,
+    "passed": 194,
+    "skipped": 4,
+    "failed": 0,
+    "errors": 0,
+    "nativeHttp": {
+      "class": "ai.neargo.shop.scenario.FoodNonPaymentNativeHttpIT",
+      "tests": 9,
+      "passed": 9,
+      "skipped": 0,
+      "includesInheritedHostStartup": true,
+      "payBoundary": "TWO_REAL_NEGATIVE_CAPABILITY_READ_IMPLEMENTATIONS_OVER_LOOPBACK_HTTP_NOT_FULL_PAY"
+    },
+    "sourceMigrations": {
+      "food": 25,
+      "core": 587,
+      "inventory": 15
+    },
+    "suites": [
+      {
+        "module": "shop-base",
+        "class": "ai.neargo.shop.common.pricing.PricingRuleCatalogRestartTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-base",
+        "class": "ai.neargo.shop.common.pricing.PricingConfigCompilerTest",
+        "tests": 18,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.PricingRuntimeConfigServiceTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.PricingCheckoutServiceTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.PricingPreparationServiceTest",
+        "tests": 10,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.PricingConfigServiceTest",
+        "tests": 24,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.IndustryOrderAllocationPolicyTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.IndustryOrderAmendmentProjectionTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.IndustryOrderServiceTest",
+        "tests": 29,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.IndustryFulfillmentServiceTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-core",
+        "class": "ai.neargo.shop.trade.PricingFeeScopePersistenceTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "food-core",
+        "class": "ai.neargo.shop.food.scenario.FoodBusinessOperationsPersistenceTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "food-core",
+        "class": "ai.neargo.shop.food.scenario.CheckServiceTest",
+        "tests": 22,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 4
+      },
+      {
+        "module": "food-core",
+        "class": "ai.neargo.shop.food.scenario.ProductionConsumptionTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "food-core",
+        "class": "ai.neargo.shop.food.scenario.BusinessShareServiceTest",
+        "tests": 13,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "food-core",
+        "class": "ai.neargo.shop.food.scenario.BusinessReturnServiceTest",
+        "tests": 16,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "module": "shop-app",
+        "class": "ai.neargo.shop.scenario.FoodNonPaymentNativeHttpIT",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "historical166CriteriaUnchanged": true,
+    "reportPathBase": "REPOSITORY_ROOT"
+  },
+  "operationsSupplement": {
+    "date": "2026-10-25",
+    "status": "PASS_SCOPED_NOT_FULL_BUSINESS_ACCEPTANCE",
+    "baseCommit": "ba44c7f0c",
+    "workingTreeUnreleased": true,
+    "report": "docs/technical/餐饮营业结转与换餐原生验收记录.md",
+    "reportPathBase": "REPOSITORY_ROOT",
+    "tests": 3,
+    "passed": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "businessScenarios": 2,
+    "inheritedHostStartupTests": 1,
+    "overlapsPriorNativeMain": true,
+    "additiveToHistoricalCounts": false,
+    "log": "/private/tmp/food-operations-native-reviewed.log",
+    "suites": [
+      {
+        "class": "FoodNonPaymentNativeHttpIT",
+        "selector": "realPostpayFlowPreservesOwnersAcrossAaMovesKitchenAndReturns",
+        "tests": 1
+      },
+      {
+        "class": "FoodOperationalCloseNativeHttpIT",
+        "tests": 2,
+        "includesInheritedHostStartup": true
+      }
+    ],
+    "boundaries": [
+      "LOCAL_HISTORICAL_PRINT_JOB_CASE_FIXTURE_NOT_REAL_PRINT_SOURCE",
+      "NO_NONZERO_HISTORICAL_FINANCIAL_CARRY",
+      "ORIGINAL_ITEM_SNAPSHOT_CAPTURED_AFTER_RETURN_APPROVAL",
+      "NO_PAY_MONEY_WRITES",
+      "NO_FULL_MULTISERVICE_E2E",
+      "NO_NEW_CROSS_STORE_NEGATIVE_PROOF"
+    ]
   }
 }
