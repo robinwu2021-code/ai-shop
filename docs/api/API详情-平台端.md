@@ -14764,8 +14764,8 @@ Explicit receivable fields; no original bank instructions or posting payloads.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `submittedAt` | `number` | 否 | — |
-| `reviewedAt` | `number` | 否 | — |
+| `submittedAt` | `number` | 否 | 资金申请提交时间，Unix 毫秒时间戳 |
+| `reviewedAt` | `number` | 否 | 资金申请审核时间，Unix 毫秒时间戳；尚未审核时为 0 |
 | `id` | `number` | 是 | 持久记录主键 |
 | `requestNo` | `string` | 是 | 原资金或申请请求号 |
 | `typeCode` | `string` | 是 | 积分类型唯一编码 |

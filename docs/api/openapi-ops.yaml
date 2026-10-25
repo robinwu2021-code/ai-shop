@@ -8929,8 +8929,10 @@ components:
       properties:
         submittedAt:
           type: "number"
+          description: "资金申请提交时间，Unix 毫秒时间戳"
         reviewedAt:
           type: "number"
+          description: "资金申请审核时间，Unix 毫秒时间戳；尚未审核时为 0"
         id:
           type: "number"
           description: "持久记录主键"
