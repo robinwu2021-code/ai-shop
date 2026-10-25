@@ -1,12 +1,12 @@
 # TDD-支付服务-I2渠道统一封装
 
-状态：实施中
+状态：已实现
 档位：1 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I2 · [渠道接入统一封装设计](./支付服务-渠道接入统一封装设计.md) §2–§17 · [数据库表结构说明 v4](./TDD-支付服务-数据库表结构说明.md)
 创建：2026-10-25 · 最后更新：2026-10-25
 
 把「支付 → 渠道」从「每个渠道一个网关类、各自重试各自记日志」改为**命令 + 管线 + 处理器**：
 对上一个门面，中间一条固定顺序的拦截器链（记录、日志、幂等、熔断、隔离、重试、超时、四态分类），底下每个「渠道 × 场景 × 操作」一个处理器。
-同时落四向记录（请求 / 调用 / 回调 / 答复）、「未知」补查、适配器生命周期与统一回调。**CN 现有支付行为不变。**
+同时落四向记录（请求 / 调用 / 回调 / 答复）、「未知」补查、适配器生命周期与统一回调。**CN 现有支付行为不变**，只有一处有意收紧：回调里渠道确认的金额与交易不符、或路径收款商户不符时不再推进成功（S7）。
 
 ## 切片
 
@@ -97,6 +97,7 @@
 - `spi.pay.PayCallbackPort`（新 SPI）· `pay.port.PayCallbackPortImpl` · `pay.callback.CallbackTemplate`：① 先落 `pay_callback_log`（原文 SHA-256、验签前只存指纹与前缀、来源 IP 取代理头）→ ③ 验签 → ④ 取单号 → ⑤ 路径收款商户 ≠ 这笔的 `pay_merchant_no` → `MERCHANT_MISMATCH` → ⑥ 回查（同一管线）→ ⑤′ 渠道确认金额 ≠ 这笔金额 → `amount_matched=0`、不推进 → 重复识别（同一原文已入账、账还在、渠道事实一致 → `DUPLICATE` 回成功）。每步失败：落原因、回失败 ack 让渠道重推。
 - ⑦ 入账与订单投影留在交易域控制器（`ChannelPayCallbackController` 只剩路由 + `settlePayment → markPaid` / `settleRefund`），之后 `handled` 回写 `APPLIED` / `REJECTED`。
 - `channel.callback.CallbackLogRecorder`：独立事务；落库失败不挡回调。
+- 注册表启动校验二（产品有处理器）挪到 shop-app `PayDataSourceConfig#channelProductCoverageCheck`，依赖 `PayMigrated`（见偏差 11）。
 - 注册表启动校验三：装了外部渠道（非 `PLATFORM_SUB`）收款处理器、却没有 `ChannelCallbackVerifier` → 启动失败（`CallbackConfiguration#callbackCoverageCheck`）。
 
 ### S8 · 旧报文表停写开关
@@ -121,11 +122,28 @@
 | S8 | `ChannelMessageRecordingSwitchTest`（2 条：both 照写；new 回调与外发都不写、报文号为空） | ✅ | 回调入口去掉开关判断 → `newStopsLegacyWrites` 红 ✅ |
 | AC1 | `MapperSmokeTest`（每个 Mapper 查自己的表）· `SchemaDriftTest` · `PayBaseEntityTest` · 本机 MySQL 启动执行 V4–V6 | ✅ | 把 `PayChannelCallLog.invocationNo` 改名 → `MapperSmokeTest` 红（`Column "invocation_no_x" not found`）✅ |
 
+**全量回归**（2026-10-25，4031 条）：与 I0 基线（`fails5`，43 条存量）相比无新增失败；基线里 `M7SettleFlowTest.rateCardIsVisibleToMerchant` 转绿。第一次全量曾新增 65 条（pay-svc 上下文起不来带倒 62 条 + 两道守卫），按偏差 11 修正后这 65 条复跑全绿。
+
 S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔断粒度、未登记码、精度、可用性范围）→ 7 条测试变红，还原后 pay-channel 84 / 84 绿。
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填）
+六个提交：`4c1df12bb` S1 · `360a6e0e9` S2 · `f416284bb` S3 · `9ec07d801` S4+S5 · `ca5d46a75` S6 · `c7afa5644` S7+S8。
+`git diff --stat`（相对 I1 分支，不含生成的 `schema-test.sql`）：**103 个文件，+6442 / −185**。按包对 §2：
+
+| 改动位置（文件数） | §2 | 对得上 |
+|---|---|---|
+| `db/pay` V4–V6（3）· `channel/entity`（6）· `pay/entity`（1，`PayBaseEntity` 搬家）· `mapper`（1） | S1 | ✅ |
+| `channel/api` + `api/command`（20）· `channel/handler`（4）· `channel/fault`（4）· `invoke` + `invoke/interceptor`（17）· 根 pom 与 `pay-channel/pom.xml`（resilience4j） | S2 | ✅ |
+| `invoke/record`（3）· `channel/log`（2） | S3 | ✅ |
+| `channel/legacy`（3）· `channel/catalog`（1）· `channel/config`（1）· `channel/port/PayQueryPortImpl` · `pay-domain/service/impl` 下单与退款（2） | S4 | ✅ |
+| `channel/followup`（6）· `shop-app/paybridge` 补查三件（3） | S5 | ✅ |
+| `channel/lifecycle`（3）· `ChannelInvoker` 准入 | S6 | ✅ |
+| `spi/pay/PayCallbackPort` · `pay-domain/callback`（2）+ `port/PayCallbackPortImpl` · `channel/callback`（1）· `trade/api/callback/ChannelPayCallbackController` | S7 | ✅ |
+| `ChannelMessageRecorder` 停写开关 | S8 | ✅ |
+| 测试：pay-channel 9 个类 · pay-domain 1 · shop-app 场景 3（`ChannelCallLogFlowTest` · `ChannelFollowUpFlowTest` · `CallbackTemplateTest`）· `MapperSmokeTest` 扩表 | §5 | ✅ |
+
+没有 §2 之外的文件；§2 列了而没动的：无。
 
 ### 偏差说明
 
@@ -141,3 +159,4 @@ S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔�
 8. **回调模板的 ⑦ 入账留在交易域，入口仍在 `shop-core`**：设计把 ①–⑨ 都放在支付侧，但订单投影（`markPaid`）属于交易域；I3 结果入口与 Outbox 事件就位后，⑦ 改为支付域发事件、交易域消费，控制器随之迁入 `pay-portal` 的 CALLBACK 面（ADR-042 补充随 I3）。
 9. **回调核对的边界**：收款商户比的是这笔交易落下的 `pay_merchant_no`（`pay_merchant` 表在 I4，`pay_merchant_id` 留空）；币种不比 —— 现有测试 / stub 网关查单恒报 CNY，比了会误拒；`notify_amount_minor` 记的是回查确认的金额（各家验签实现还没把通知里的声明金额规整出来）。重复识别放在回查之后而非验签之前：字节相同不代表事实相同，渠道改口（换了退款单号）要交入账一侧去拒（`StrictRefundCallbackFlowTest#confirmedRefundRejectsDifferentProviderReplay` 钉着）。进件 / 出款 / 跳回三种通知类型、原文加密落 `pay_raw_payload`、回调重放，随各自迭代。
 10. **补查服务改名 `ChannelFollowUpRunner`**：`ArchitectureTest#serviceMustBeInterface` 要求 `*Service` 是接口 —— S5 提交时没跑架构测试，S7 一并改正。
+11. **启动校验二装在 shop-app**：它读支付库的产品目录；独立的 pay-svc 不跑迁移、装配冒烟连空库（`PayApplicationBootTest`），放在 pay-channel 里会让 pay-svc 起不来。改为挂在跑迁移的进程上、显式依赖 `PayMigrated`。全量回归抓到的另外两处一并改：回调模板不再引用 `PayMessagePort` 的常量（反向依赖预算）；两张产品表登记为种子主数据（`TableHasProducerTest`，运营入口在 I5）。

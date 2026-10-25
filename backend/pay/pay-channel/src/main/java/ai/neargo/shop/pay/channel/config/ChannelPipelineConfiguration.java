@@ -47,7 +47,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -57,6 +56,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 /**
  * 渠道管线的装配（TDD-支付服务-I2渠道统一封装 S4）。拦截器顺序由各自的 {@code ORDER} 定，执行器构造时冻结；
  * 处理器 = 新写的 {@link ChannelHandler} bean + 每个现有 {@link PayGateway} 的过渡适配。
+ *
+ * <p>「开着的产品都有处理器」那条启动校验读库，装在跑支付库迁移的进程里（shop-app {@code PayDataSourceConfig}），
+ * 不在这里：独立的 pay-svc 不跑迁移，它的装配冒烟连的是空库。
  */
 @Configuration(proxyBeanMethods = false)
 public class ChannelPipelineConfiguration {
@@ -120,12 +122,6 @@ public class ChannelPipelineConfiguration {
             all.add(new LegacyGatewayHandler(g, LegacyAccessModes.of(g)));
         }
         return new ChannelHandlerRegistry(all, catalog);
-    }
-
-    /** 开着的产品都有处理器 —— 全部单例（含支付库迁移）就绪后再查，查不过启动失败 */
-    @Bean
-    SmartInitializingSingleton channelProductCoverageCheck(ChannelHandlerRegistry registry) {
-        return registry::verifyEnabledProducts;
     }
 
     @Bean

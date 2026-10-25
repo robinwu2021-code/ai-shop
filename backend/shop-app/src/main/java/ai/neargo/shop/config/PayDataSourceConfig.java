@@ -8,7 +8,9 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.flywaydb.core.Flyway;
 import org.mybatis.spring.annotation.MapperScan;
+import ai.neargo.shop.pay.channel.handler.ChannelHandlerRegistry;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationInitializer;
@@ -155,6 +157,15 @@ public class PayDataSourceConfig {
                 .baselineVersion("0")
                 .load();
         return new PayMigrated(PAY_HISTORY_TABLE, flyway.migrate().migrationsExecuted);
+    }
+
+    /**
+     * 渠道注册表启动校验二：{@code pay_channel_product} 里开着的产品都有处理器（TDD-支付服务-I2渠道统一封装 S4）。
+     * 产品目录在支付库里，所以<b>依赖迁移</b> —— 放在跑迁移的这个进程，迁移之后、全部单例就绪时查一次，查不过启动失败。
+     */
+    @Bean
+    SmartInitializingSingleton channelProductCoverageCheck(ChannelHandlerRegistry registry, PayMigrated payMigrated) {
+        return registry::verifyEnabledProducts;
     }
 
     /**

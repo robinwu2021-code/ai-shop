@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.callback;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.channel.ChannelMessageRecorder;
 import ai.neargo.shop.pay.channel.callback.CallbackLogRecorder;
+import ai.neargo.shop.pay.channel.entity.StlChannelMessage;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
@@ -12,7 +13,6 @@ import ai.neargo.shop.spi.pay.PayCallbackPort.Kind;
 import ai.neargo.shop.spi.pay.PayCallbackPort.Outcome;
 import ai.neargo.shop.spi.pay.PayCallbackPort.RouteStyle;
 import ai.neargo.shop.spi.pay.PayCallbackPort.Verdict;
-import ai.neargo.shop.spi.pay.PayMessagePort;
 import ai.neargo.shop.spi.pay.PayQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.List;
@@ -133,7 +133,7 @@ public final class CallbackTemplate {
                 x.setAckBody(v.ackOk());
                 x.setHandledAt(CallbackLogRecorder.now());
             });
-            legacySettle(c, PayMessagePort.ACCEPTED, "重复通知", no, payload);
+            legacySettle(c, StlChannelMessage.ACCEPTED, "重复通知", no, payload);
             return new Verdict(c.logNo, Outcome.DUPLICATE, "DUPLICATE", env.kind(), env.payChannel(), no, r,
                     v.ackOk(), v.ackFail(), payload, msgNo);
         }
@@ -159,7 +159,7 @@ public final class CallbackTemplate {
             r.setHandledAt(CallbackLogRecorder.now());
         });
         if (verdict.legacyMessageNo() != null) {
-            legacyMessages.settle(verdict.legacyMessageNo(), applied ? PayMessagePort.ACCEPTED : PayMessagePort.REJECTED,
+            legacyMessages.settle(verdict.legacyMessageNo(), applied ? StlChannelMessage.ACCEPTED : StlChannelMessage.REJECTED,
                     reason, verdict.outNo(), paymentNo(verdict.outNo()), verdict.payload());
         }
     }
@@ -178,7 +178,7 @@ public final class CallbackTemplate {
             x.setAckBody(c.verifier.ackFail());
             x.setHandledAt(CallbackLogRecorder.now());
         });
-        legacySettle(c, PayMessagePort.REJECTED, reason, outNo, payload);
+        legacySettle(c, StlChannelMessage.REJECTED, reason, outNo, payload);
         return new Verdict(c.logNo, Outcome.REJECT, reason, c.env.kind(), c.env.payChannel(), outNo, r,
                 c.verifier.ackOk(), c.verifier.ackFail(), payload, c.msgNo);
     }
