@@ -785,8 +785,8 @@
         "legacyCutoverInScope": false,
         "crossEntityEnabled": false,
         "remaining": [
-          "340 inactive-brand issuer settings read-only physical-device acceptance when connected",
-          "Financial issuance and settlement physical-device acceptance with approved configuration; financial switches stay closed",
+          "Existing issuer configuration read-only device acceptance when a configured test resource is available",
+          "Settlement list/detail device acceptance with authorized issuer and bill fixtures; current entry absent, no rights or financial data auto-created",
           "Real WeChat delivery after template configuration; no real sending performed"
         ]
       },
@@ -825,7 +825,7 @@
         "reviewPageCases": 12,
         "finalDelegationAffectedCases": 2,
         "fullRegression": false,
-        "physicalDevice": "339_BASIC_UI_VERIFIED_340_ADB_EMPTY",
+        "physicalDevice": "340_INSTALLED_INACTIVE_UNCONFIGURED_ISSUER_READONLY_UI_VERIFIED_NO_POSTING",
         "wechatRealSending": "TEMPLATE_UNCONFIGURED",
         "reviewFindingsRemaining": 0,
         "deviceFixDistinctCases": 5,
@@ -861,7 +861,7 @@
         "versionCode": 340,
         "apkMd5": "5ab3bc46fb3aadabe4ea5f375f3a088a",
         "apkBytes": 55568619,
-        "deviceInstalled": false,
+        "deviceInstalled": true,
         "financialWrite": false,
         "readonlyDiagnosticDataExported": false,
         "corePublished": true,
@@ -873,7 +873,15 @@
           "reportsReady": false,
           "settlementReady": false,
           "crossEntityReady": false
-        }
+        },
+        "deviceVersionVerified": true,
+        "deviceAcceptance": "INACTIVE_UNCONFIGURED_BRAND_READ_ONLY_ONLY",
+        "inactiveBrandHintVerified": true,
+        "emptyConfigurationVerified": true,
+        "saveAndActivateAbsent": true,
+        "existingConfigurationDeviceVerified": false,
+        "financeEntryVisible": false,
+        "settlementDeviceVerified": false
       }
     }
   ],
@@ -1050,7 +1058,7 @@
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "Inactive issuer read-only fix compiled, focused 1 Java/10 UI tests passed, reviewed and compatibility published; Core actual SHA and closed finance verified; 340 device acceptance pending connection",
+    "currentBatch": "340 installed and inactive/unconfigured brand issuer read-only UI verified; settlement entry absent under current resources and not accepted; no code or financial changes",
     "legacyCutoverInScope": false,
     "canonicalTarget": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
     "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
