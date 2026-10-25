@@ -82,6 +82,11 @@
 - 结算单粒度不比：一笔银行流水可对应一批结算单（批量出款），逐张比必然误报；放款单是一笔转账一条记录。
 - 差异类型多一个取值（`stl_recon_diff.diff_type`，无文案字典，运营端原样显示）。
 
+### F11 · 内部令牌常量时间比较；生产 pay-svc 停用
+- `InternalPayEndpoint#authorized`：`token.equals(given)` → `MessageDigest.isEqual`（其余 188 处早已走 `InternalServiceResponses.invoke`）。
+- 守卫 `InternalTokenComparisonTest`（pay-svc）：源码里出现 `xxxToken.equals(…)` / `.equals(xxxToken)` 即红。
+- R11 是**线上运维动作，不在代码里做**：已写进 `deploy/tencent/README.md` §8 第 9 条（`systemctl disable --now ai-shop-pay`，需人工执行）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -94,6 +99,7 @@
 | F07 | `PaymentOpenConcurrencyTest#concurrentOpenYieldsOneRow`（@RepeatedTest 20，4 线程） | ✅ 20/20；`PaymentRequestSnapshotTest` 等 5 类全绿 | 先红：只有唯一键时 5 轮全是 `DuplicateKeyException` 抛给调用方；加复用后第 5 轮仍出两行（计数含在途行）→ 只数终态后 20/20 ✅ |
 | F08 | `RefundSubMerchantTest#refundCarriesTheOriginalSubMerchant` · `#legacyRowFallsBackToRequestSnapshot` · `PaymentOpenConcurrencyTest`（加列断言） | ✅ 2/2 · 20/20；退款相关 6 类全绿 | 先红：两条均 `expected "SUB-…" but was null` ✅ |
 | F09 | `PayoutBankReconFlowTest#payoutAmountMismatchIsNotMatched` | ✅ 9/9（另 2 个对账类全绿） | 先红：银行只划 290 元，300 元的放款被标 MATCHED ✅ |
+| F11 | `InternalTokenComparisonTest#noStringEqualsOnTokens` · `#detectorFires` | ✅ pay-svc 71/71 | 先红：抓到 `InternalPayEndpoint.java` ✅。R11 未执行（线上操作，待人工） |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现

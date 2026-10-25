@@ -152,8 +152,13 @@ public class InternalPayEndpoint {
      *                   支付域不认用户身份，这条链路上没有会话
      */
 
-    /** 密钥没配时**一律拒绝** —— 「没配就不校验」等于这个口对任何人开放，且没有症状 */
+    /**
+     * 密钥没配时**一律拒绝** —— 「没配就不校验」等于这个口对任何人开放，且没有症状。
+     * 常量时间比较（F11 · Review R12）：{@code String.equals} 在第一个不同字节就返回，耗时泄露猜对了几位。
+     */
     private boolean authorized(String given) {
-        return !token.isBlank() && token.equals(given);
+        return !token.isBlank() && given != null
+                && java.security.MessageDigest.isEqual(token.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        given.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }
