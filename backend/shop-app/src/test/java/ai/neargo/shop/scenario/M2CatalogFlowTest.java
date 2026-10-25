@@ -65,10 +65,17 @@ class M2CatalogFlowTest {
 
         JsonNode tree = json.readTree(body).get("data");
         assertThat(tree).isNotEmpty();
-        JsonNode first = tree.get(0);
-        assertThat(first.get("level").asInt()).isEqualTo(1);
-        assertThat(first.get("children")).isNotEmpty();
-        assertThat(first.get("children").get(0).get("level").asInt()).isEqualTo(2);
+        // 两级结构：根都是一级、子都是二级。不假定排第一的根就有子类目 —— 全量里别的用例会建
+        // sort 更靠前、还没挂子类目的根（例如刚建好待补子类的一级类目）
+        JsonNode withChildren = null;
+        for (JsonNode root : tree) {
+            assertThat(root.get("level").asInt()).isEqualTo(1);
+            for (JsonNode child : root.get("children")) {
+                assertThat(child.get("level").asInt()).isEqualTo(2);
+            }
+            if (withChildren == null && !root.get("children").isEmpty()) withChildren = root;
+        }
+        assertThat(withChildren).as("一个带子类目的一级类目都没有 —— 种子里的 CAT100 等应当在").isNotNull();
 
         // 停用类目不能出现在树里 —— 出现了用户会点进一个空列表
         for (JsonNode c : tree) {
