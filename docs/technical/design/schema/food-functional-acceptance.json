@@ -7212,7 +7212,7 @@
     "date": "2026-10-25",
     "status": "PASS_SCOPED_NOT_FULL_BUSINESS_ACCEPTANCE",
     "baseCommit": "ba44c7f0c",
-    "workingTreeUnreleased": true,
+    "workingTreeUnreleased": false,
     "report": "docs/technical/餐饮非支付原生链路验收记录.md",
     "latestScopedSuites": 17,
     "testInstances": 198,
@@ -7372,13 +7372,15 @@
       }
     ],
     "historical166CriteriaUnchanged": true,
-    "reportPathBase": "REPOSITORY_ROOT"
+    "reportPathBase": "REPOSITORY_ROOT",
+    "unreleasedAtExecution": true,
+    "releasedInCommit": "4440eb46a23279b1fe6687bf7c012d26e9b3e687"
   },
   "operationsSupplement": {
     "date": "2026-10-25",
     "status": "PASS_SCOPED_NOT_FULL_BUSINESS_ACCEPTANCE",
     "baseCommit": "ba44c7f0c",
-    "workingTreeUnreleased": true,
+    "workingTreeUnreleased": false,
     "report": "docs/technical/餐饮营业结转与换餐原生验收记录.md",
     "reportPathBase": "REPOSITORY_ROOT",
     "tests": 3,
@@ -7410,6 +7412,50 @@
       "NO_PAY_MONEY_WRITES",
       "NO_FULL_MULTISERVICE_E2E",
       "NO_NEW_CROSS_STORE_NEGATIVE_PROOF"
+    ],
+    "unreleasedAtExecution": true,
+    "releasedInCommit": "4440eb46a23279b1fe6687bf7c012d26e9b3e687"
+  },
+  "releaseSupplement": {
+    "date": "2026-10-25",
+    "productionCommit": "4440eb46a23279b1fe6687bf7c012d26e9b3e687",
+    "report": "docs/technical/餐饮非支付修复发布记录.md",
+    "sourceMigrations": {
+      "food": 25,
+      "core": 587,
+      "inventory": 15
+    },
+    "scopedInstances": 200,
+    "passed": 196,
+    "skipped": 4,
+    "failures": 0,
+    "errors": 0,
+    "paymentReleased": false,
+    "reportEnabled": false,
+    "fullBusinessAcceptance": false
+  },
+  "multiSkuSupplement": {
+    "date": "2026-10-25",
+    "status": "PASS_SCOPED_NOT_FULL_BUSINESS_ACCEPTANCE",
+    "report": "docs/technical/餐饮多SKU多工位原生验收记录.md",
+    "scopedInstances": 12,
+    "passed": 12,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "inheritedStartupTests": 2,
+    "newBusinessScenarios": 1,
+    "overlapsPriorNativeSuites": true,
+    "productionCodeChanged": false,
+    "productionCommit": "4440eb46a23279b1fe6687bf7c012d26e9b3e687",
+    "selector": "FoodNonPaymentNativeHttpIT,FoodOperationalCloseNativeHttpIT",
+    "negativeEvidence": "CONTROLLED_WRONG_INVENTORY_ITEM_REJECTED_BY_EVENT_SCOPED_ASSERTION",
+    "boundaries": [
+      "COUNT_ONLY",
+      "ONE_SHARED_RECIPE_MATERIAL",
+      "NO_BUNDLE_MODIFIER_OR_MEASURED_QUANTITY",
+      "NO_REAL_KDS_PRINTER",
+      "NO_PAY_MONEY_WRITES"
     ]
   }
 }
