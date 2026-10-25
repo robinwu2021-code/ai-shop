@@ -785,23 +785,24 @@
         "legacyCutoverInScope": false,
         "crossEntityEnabled": false,
         "remaining": [
-          "Physical-device UI acceptance when an authorized device is available",
+          "Issuer settings failure needs follow-up; existing test brand inactive and no issuer configured",
+          "Financial issuance and settlement physical-device acceptance with approved configuration; no real funds or financial enablement authorized",
           "Real WeChat delivery after template configuration; no real sending performed"
         ]
       },
       "publication": {
         "date": "2026-10-25",
         "backendSha": "6dd0c43461f35e544d8861cfd5a337e44b7ba9b5",
-        "bH5": "589b0816e",
+        "bH5": "272a3a24e",
         "coreShape": "food-embedded",
         "coreHealth": 200,
         "payProtectedHealth": 401,
         "actualProcessShaVerified": true,
-        "apkVersion": "0.6.5",
-        "apkCode": 338,
-        "apkMd5": "f4160818c53a3207d1bf58270de7f376",
-        "apkBytes": 55567543,
-        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.5.apk",
+        "apkVersion": "0.6.6",
+        "apkCode": 339,
+        "apkMd5": "9314a4a7bccdc743734b1c17596641c2",
+        "apkBytes": 55568210,
+        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.6.apk",
         "financialEnablement": false,
         "historicalRecharge": "DEFERRED_UNCHANGED",
         "balanceTotalMinor": 36000,
@@ -811,7 +812,7 @@
         "receivedCount": 1,
         "newMigrations": [],
         "report": "docs/technical/delivery/P6-业务闭环-执行记录.md",
-        "site": "589b0816e",
+        "site": "272a3a24e",
         "siteAssetsChecked": 8,
         "latestMetadataVerified": true
       },
@@ -822,9 +823,29 @@
         "reviewPageCases": 12,
         "finalDelegationAffectedCases": 2,
         "fullRegression": false,
-        "physicalDevice": "ADB_EMPTY",
+        "physicalDevice": "INSTALLED_339_BASIC_BRAND_SUMMARY_UI_VERIFIED_NO_POSTING",
         "wechatRealSending": "TEMPLATE_UNCONFIGURED",
-        "reviewFindingsRemaining": 0
+        "reviewFindingsRemaining": 0,
+        "deviceFixDistinctCases": 5
+      },
+      "deviceFollowup": {
+        "sourceSha": "272a3a24e39aab2ed672eda6320ceb5bed826c32",
+        "version": "0.6.6",
+        "versionCode": 339,
+        "apkMd5": "9314a4a7bccdc743734b1c17596641c2",
+        "apkBytes": 55568210,
+        "deviceInstalled": true,
+        "basicChecks": [
+          "brand detail action width",
+          "market timezone timestamps",
+          "missing report empty state",
+          "period bottom sheet"
+        ],
+        "financialWrite": false,
+        "issuerSettingsAccepted": false,
+        "settlementFlowAccepted": false,
+        "publicationVerified": true,
+        "restrictedDiagnostic": "AWAITING_USER_APPROVAL_SERVER_ONLY_STATUS_NO_IDENTIFIER_EXPORT"
       }
     }
   ],
@@ -1001,9 +1022,9 @@
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "Business closure compiled, focused seam tests and review fixes passed; canonical push, backend/B H5 and APK publication complete",
+    "currentBatch": "Business closure compatibility publication complete; 339 installed and basic brand/summary UI verified after focused fixes; issuer settings and settlement device flow not accepted",
     "legacyCutoverInScope": false,
-    "canonicalTarget": "589b0816ea2e9a7fdc9ccebcb3cdfdf620064fd8",
+    "canonicalTarget": "272a3a24e39aab2ed672eda6320ceb5bed826c32",
     "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
     "implementationProtocol": 2,
     "onlineFinancialOpening": "CLOSED_UNCHANGED_P3_FOUNDATION_REQUIRED"
