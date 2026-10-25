@@ -1,0 +1,152 @@
+{
+  "base": "2b558d4eac7cf311813bbfba6e82374281b839a9",
+  "reviewPackage": "/tmp/task62-review-package-d1adf364-678a-4f9e-b863-fb5388a1949b.diff",
+  "packageSha256": "e12a6237c0f391d24acc318c6cd5798339a435abf788cd53037a94bc9d7f0f24",
+  "files": [
+    {
+      "path": "b-app/src/i18n/locale/ar.ts",
+      "bytes": 167667,
+      "sha256": "a4018db3377e33639c25b3959e7fe9ed88c9a69f92bd3316dc14c170755a7b6d",
+      "new": false
+    },
+    {
+      "path": "b-app/src/i18n/locale/en.ts",
+      "bytes": 128255,
+      "sha256": "c5738e010e5427be89f7eb1a8a4e52d28bf03dcb2ebf4e826cc5cff3b0d3cfa6",
+      "new": false
+    },
+    {
+      "path": "b-app/src/i18n/locale/zh-CN.ts",
+      "bytes": 134299,
+      "sha256": "41ace9e2fa04f6e77fd17ee7f5dda08cac94b5169e566740d70f0dd9f21ba279",
+      "new": false
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyMerchantClientConfiguration.java",
+      "bytes": 5418,
+      "sha256": "fc65f974540812d6503f09c3d57f4ab68d629413e56db4bedf7cf49ff8e73cd6",
+      "new": false
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemotePersonnelOperatorFactsPort.java",
+      "bytes": 4706,
+      "sha256": "8e2824efd48e1600fde6945c2b827d71fc2878d746a3cdc33d6cde4f3a9a2ccf",
+      "new": true
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemotePersonnelOperatorFactsPortTest.java",
+      "bytes": 16590,
+      "sha256": "f1760605e603dabc64c1857880b4f7e4f8b625e8817a94f0b2dffa99ff3631f7",
+      "new": true
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalPersonnelOperatorController.java",
+      "bytes": 3121,
+      "sha256": "8318b77f8ad5df5666611dc2ae4be88ba42bb2fdb216eac745e77e3d9ef52295",
+      "new": true
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PersonnelOperatorFactsIT.java",
+      "bytes": 36200,
+      "sha256": "6cb6f3f42e30d1f3fcdcb2e9a5472fa2e824a384c00b392f1a567e73e4139ae9",
+      "new": true
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PersonnelOperatorProtocolTest.java",
+      "bytes": 10387,
+      "sha256": "c1a999c0196958092077832c353adc274bc69d9d47c890048d304c20a175a017",
+      "new": true
+    },
+    {
+      "path": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java",
+      "bytes": 15365,
+      "sha256": "c40958f4f0674475b82e7bb4aa235016a01c11560ca7dca008d17dcef0d4cf8c",
+      "new": false
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/personnel/PersonnelOperatorFactsPort.java",
+      "bytes": 3613,
+      "sha256": "8e779220763642ab6fa5f630d7ff85d06160a51db464263e8dfc5dfe4b4b43d5",
+      "new": true
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/personnel/PersonnelOperatorInternalApi.java",
+      "bytes": 702,
+      "sha256": "2d70fc760432e4cedec14686d71b3a5f028b109f5b2e37cb624c761fb0f9f9f5",
+      "new": true
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalBindings.java",
+      "bytes": 8131,
+      "sha256": "078252ca3d328303acd6c2672dcd2530e67d14b8e34b181eba6d2d33296eefaf",
+      "new": false
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplyDeserializer.java",
+      "bytes": 8703,
+      "sha256": "1a48e6aa81374748746687396f8c841ce28a9ccae50dc41237d2e8bfb88d03d2",
+      "new": false
+    },
+    {
+      "path": "backend/shop-base/src/test/java/ai/neargo/shop/svc/BoundInternalProtocolTest.java",
+      "bytes": 12341,
+      "sha256": "2b2824706789574f41e189dcd1f2e91600418051f05d256e2cb91b23af9b8180",
+      "new": false
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/OperatorPersonnelFactRow.java",
+      "bytes": 467,
+      "sha256": "f148960c290262338f2fccda8c76e714728a9015125640c761e1746b1965dabd",
+      "new": true
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/MerchantMappers.java",
+      "bytes": 62179,
+      "sha256": "b19db20464b6017f378b4f9b33b54dce43cd7cfb9257da01391e6c06cef22c83",
+      "new": false
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/PersonnelOperatorFactsPortImpl.java",
+      "bytes": 6200,
+      "sha256": "94f6abaf9861c7247eaae0422eccad95ad9208fa77d5dcc702c3aeea2cd8aed8",
+      "new": true
+    },
+    {
+      "path": "docs/technical/reference/B端功能点-权限码-页面.md",
+      "bytes": 60804,
+      "sha256": "8b967e78f2412a6c67b42b1312b300be78072027c70a6a684077c3b1da5841e5",
+      "new": false
+    },
+    {
+      "path": "docs/technical/reference/B端功能矩阵-按角色.md",
+      "bytes": 16094,
+      "sha256": "f7951aa2f8b8205145b80842da94bfc9649437466aff8b9acceef3b00525749b",
+      "new": false
+    },
+    {
+      "path": "docs/technical/reference/三端权限矩阵-按业务域.md",
+      "bytes": 15987,
+      "sha256": "13a7d332049a90183f8d9bd8c4abdd4bb579a0f95607f0d76f82efdf6296a6fd",
+      "new": false
+    },
+    {
+      "path": "packages/shared/tests/biz-perm-label.test.ts",
+      "bytes": 7496,
+      "sha256": "b2e97d541ddb2368be421d8b29f10dc2dc1292b10a9838a52f5f1137424eadaa",
+      "new": false
+    },
+    {
+      "path": "scripts/tests/personnel-operator-runner.test.mjs",
+      "bytes": 3097,
+      "sha256": "927c2ae82fc201e0377ce9f7b7f6ac58b931942fd4591b38d9de46af1d427b06",
+      "new": true
+    },
+    {
+      "path": "scripts/verify-personnel-operator.mjs",
+      "bytes": 15061,
+      "sha256": "ddd29f7e3e9fa4523049189717727ef5a7263d6271cb6020e61af77ff55b7994",
+      "new": true
+    }
+  ],
+  "commit": "35e6f0f66dc67b6ca77d2ddcd22960b2e0f2de6f"
+}

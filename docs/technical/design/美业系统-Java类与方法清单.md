@@ -1434,7 +1434,7 @@ Unit/HTTP/native core evidence is distinct from full real-owner two-JVM acceptan
 
 ## Task62 BM05 shared current-personnel contract
 
-PLANNED_TASK62_S0_NOT_IMPLEMENTED_NOT_START_AUTHORITY
+IMPLEMENTED_TASK62_S0_CODE_TESTED_DEPLOYMENT_DEFERRED_NOT_START_AUTHORITY
 
 | Owner / class | Method |
 |---|---|
@@ -1447,7 +1447,7 @@ PLANNED_TASK62_S0_NOT_IMPLEMENTED_NOT_START_AUTHORITY
 
 InternalReply<PersonnelOperatorFactsPort.Observation>; LINKED/UNLINKED, observedAt, nullable personnel; personnelNo, assignmentNo, personnelRevision, assignmentRevision, linkRevision, validFrom, nullable validTo
 
-Planning only. S0 reuses the canonical current-permission account resolver at the personnel owner; accountNo never leaves that owner. No new schema, role seed grant or public API.
+S0 code and isolated owner/HTTP tests accepted. Canonical current-permission account resolution stays at the personnel owner; accountNo never leaves that owner. No new schema, role seed grant or public API.
 
 Only biz:service:task:self/view/coordinate/approve/close exact purposes. Business-person link, effective assignment and action permission are separate. Authorized absence is UNLINKED; denial or dependency failure is never absence.
 
@@ -1457,4 +1457,4 @@ Bound v1 endpoint PERSONNEL_OPERATOR_CURRENT/action CURRENT/target operatorNo; e
 
 Owner uses an RR observation with canonical account consistency checks before/inside/after; not durable service permission. Remote transport is five seconds, bad/absent binding and malformed success fail closed as 80107; opaque owner failures remain503.
 
-No ServiceTask start/fulfillment/provider enablement or canStart change. Actual native SQL/HTTP behavior, restored ablation, current combined reactor provenance and affected retail/food compilation are Task62 gates; formal deployment deferred.
+No ServiceTask start/fulfillment enablement or canStart change. Final current five suites33/0F/0E/0skip, label17, runner5 and affected current retail/food compilation passed; expiry ablation/restoration is explicitly versioned. Focused bean-registration tests do not prove deployed profiles. Formal deployment remains deferred.

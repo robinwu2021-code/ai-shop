@@ -1058,12 +1058,16 @@ Task61设计关口已通过：初审I1长期任职空结束语义已修订并由
 
 数据库结构：本片无DDL、无新表、不改冻结V532/V533或美业V1～V8。API/Java方法设计JSON增加明确PLANNED的S0合同并重新生成清单；不改变原160目标编号或49任务覆盖。后续Core/Pay执行保护与资源占用的迁移仍是候选，实际文件/hash及ADR关口在各片开工前执行。
 
-- [ ] 先写真实owner/SQL、协议与远程HTTP测试；取得行为RED，构建/环境故障不当业务红灯。
-- [ ] 仅实现设计§10的精确产品路径；有效账号在事务外及快照内核验，RR事实读取不成为持久授权；新实现按统一Java规范。
-- [ ] 原生MySQL9.7.2自有UUID环境验证身份、权限撤销、长期/过期/歧义任职；实际绑定HTTP验证null、范围/摘要/状态及上下文恢复。
-- [ ] 消融有效期上界取得对应断言RED；恢复精确源码并重新编译，恢复GREEN且源码/class指纹一致。
-- [ ] 当前共享与美业组合reactor验证四个实际测试报告和类来源；权限标签/生成物及相关零售/餐饮编译，保留存量告警。
-- [ ] 根核对实际证据与独立spec/quality审查；通过后提交本片，再细化S1，不以S0完成宣称BM05交付。
+S0实际协议接线补充：共享InternalReplyDeserializer与InternalBindings.tree原来不支持枚举标量，不能承载已冻结LinkState。精确扩展这两个现有辅助类与BoundInternalProtocolTest：只允许枚举精确name字符串、拒绝未知或数字，canonical用name且既有固定摘要不变。组合reactor明确增加该实际测试报告，由四类扩为五类；不放宽nullable字段必需性或其他标量。详见brief末尾root补充。
+
+S0临时组合reactor偏差：实际Maven3.9.16将绝对module文本拼接到basedir导致模型校验失败；改用从自有临时reactor到当前两个真实工程的标准相对路径，并断言canonical目标和class来源一致。不改仓库POM、不install、不复制旧缓存产物；模型失败不算行为RED或原生测试。
+
+- [x] 先写真实owner/SQL、协议与远程HTTP测试；取得行为RED，构建/环境故障不当业务红灯。
+- [x] 仅实现设计§10的精确产品路径；有效账号在事务外及快照内核验，RR事实读取不成为持久授权；新实现按统一Java规范。
+- [x] 原生MySQL9.7.2自有UUID环境验证身份、权限撤销、长期/过期/歧义任职；实际绑定HTTP验证null、范围/摘要/状态及上下文恢复。
+- [x] 消融有效期上界取得对应断言RED；恢复精确源码并重新编译，恢复GREEN且源码/class指纹一致。
+- [x] 当前共享与美业组合reactor验证五个实际测试报告和类来源；权限标签/生成物及相关零售/餐饮编译，保留存量告警。
+- [x] 根核对实际证据与独立spec/quality审查；通过后提交本片，再细化S1，不以S0完成宣称BM05交付。
 
 Ruling R1：采纳Pay所有者的订单行/单位受保护预算与永久managed来源标识方向，因为真实RefundPaymentStore与PaymentLedgerService的两条退款路径使用独立payTxManager，不受Core子订单锁覆盖。Core负责来源/数量/退款授权，Pay在同一原付款锁核验预算；不在美业记账，不永久冻结整笔付款。S1编码前仍须精确化并对账PRD/TDD/ADR/API/Java/schema和所有相反写者；本S0不建立任何Pay表或金融许可。已服务质量争议的资金返还须独立授权及数量口径，不得重用“未服务退款”不等式擦除历史履约或允许重复执行。代价是新增跨所有者恢复协议及保守阻断，不能用快照已付布尔值替代。
 
@@ -1115,14 +1119,47 @@ python3 scripts/gen-beauty-development-plan.py --check
 | 任务 | 实际文件/版本 | 红灯→绿灯/消融 | 真实环境与执行数 | 剩余阻塞/是否营业就绪 |
 |---|---|---|---|---|
 | 原49任务总体 | 基础工程与首批数据层见执行账本；本轮增量见§7 | 各切片记录实际红绿验证 | 不以计划检查代替业务测试 | 完整营业能力尚未完成 |
+| Task62-S0 | 35e6f0f66，精确24文件；§33.2 | 枚举/父链范围RED→GREEN，有效期消融/精确恢复 | 最终33项，标签17、runner5、当前三行业编译 | 人员事实前置已实现；完整BM05及部署未交付 |
 
 不在开始前承诺日历工期。先完成ENG-01/02和DATA-01～04测得真实构建/环境/合同成本，再估后续小切片；P2/P3/P4外部条件单列，不用任务数乘固定人日虚构排期。
 
 ## §6 下一次领取任务与本轮交付
 
-**当前交付：BM01～BM03后端模块及历史隔离部署验收完成，分别见§22/25/31。BM04 Task54～59及60A-A1～A11与模块I1修复已完成代码验收，模块代码关口见§32.24；Task61设计关口通过，当前Task62-S0实现共用操作人业务人员事实；完整BM05开工/作业/履约未交付。BM05作业及BM06完整任务日历尚未交付；全部P1～P4代码完成后统一正式部署。** 后续按BM-04接待工单等业务模块推进，详见§21。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前交付：BM01～BM03后端模块及历史隔离部署验收完成，分别见§22/25/31。BM04 Task54～59及60A-A1～A11与模块I1修复已完成代码验收，模块代码关口见§32.24；Task61设计与Task62-S0代码关口已通过（§33.2），下一片S1真实开工授权；完整BM05开工/作业/履约未交付。BM05作业及BM06完整任务日历尚未交付；全部P1～P4代码完成后统一正式部署。** 后续按§21的BM-05、BM-06等业务模块继续推进。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
+
+### Task62设计→实现对账（2026-10-25）
+
+对应§2.40及§33.2：精确24路径及已记录的两个共享协议辅助类扩展，无新DDL/角色默认授权。实际提交统计：
+
+```text
+ b-app/src/i18n/locale/ar.ts                                                                                                   |   5 +
+ b-app/src/i18n/locale/en.ts                                                                                                   |   5 +
+ b-app/src/i18n/locale/zh-CN.ts                                                                                                |   5 +
+ .../shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyMerchantClientConfiguration.java     |  17 ++
+ .../shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemotePersonnelOperatorFactsPort.java        | 114 ++++++++++++
+ .../shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemotePersonnelOperatorFactsPortTest.java    | 360 ++++++++++++++++++++++++++++++++++++
+ backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalPersonnelOperatorController.java                        |  69 +++++++
+ backend/shop-app/src/test/java/ai/neargo/shop/scenario/PersonnelOperatorFactsIT.java                                          | 667 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/shop-app/src/test/java/ai/neargo/shop/scenario/PersonnelOperatorProtocolTest.java                                     | 205 ++++++++++++++++++++
+ backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java                                                        |  20 ++
+ backend/shop-base/src/main/java/ai/neargo/shop/spi/personnel/PersonnelOperatorFactsPort.java                                  | 100 ++++++++++
+ backend/shop-base/src/main/java/ai/neargo/shop/spi/personnel/PersonnelOperatorInternalApi.java                                |  17 ++
+ backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalBindings.java                                                      |   3 +
+ backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplyDeserializer.java                                             |  10 +
+ backend/shop-base/src/test/java/ai/neargo/shop/svc/BoundInternalProtocolTest.java                                             |  48 +++++
+ backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/OperatorPersonnelFactRow.java                                 |  17 ++
+ backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/MerchantMappers.java                                       |  34 ++++
+ backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/PersonnelOperatorFactsPortImpl.java                          | 144 +++++++++++++++
+ docs/technical/reference/B端功能点-权限码-页面.md                                                                             |   7 +-
+ docs/technical/reference/B端功能矩阵-按角色.md                                                                                |   9 +-
+ docs/technical/reference/三端权限矩阵-按业务域.md                                                                             |   9 +-
+ packages/shared/tests/biz-perm-label.test.ts                                                                                  |   8 +
+ scripts/tests/personnel-operator-runner.test.mjs                                                                              |  55 ++++++
+ scripts/verify-personnel-operator.mjs                                                                                         | 216 ++++++++++++++++++++++
+ 24 files changed, 2139 insertions(+), 5 deletions(-)
+```
 
 ### 本轮计划校验记录 · 2026-10-20
 
@@ -1779,7 +1816,7 @@ BM-06当前属于后端计划，部署验证必须提供真实任务/占用数�
 未配置来源拒绝；未知结果不凭TTL解冻；相反写者共用根锁；改约失败保旧，三行业不拥有不同的容量权威。
 BM-03所需投影/恢复提前纳入，不能因为原编号为02b-6而拖到全部实际作业实现后。
 
-**当前BM-04收尾与BM-05前置：** Task54～59代码阶段验收见§32，60A-A1～A11和模块I1修复已验收，代码关口见§32.24，当前Task61按§2.39细化BM05；实际部署统一后置（§0.2）。60A代码审查和编译通过后进入下述BM-05内部顺序，开工前仍须冻结真实许可、占用、数量及履约合同，不重做已验收的接待/来源内核。
+**当前BM-04收尾与BM-05前置：** Task54～59代码阶段验收见§32，60A-A1～A11和模块I1修复已验收，代码关口见§32.24，Task61设计与Task62-S0代码关口已通过（§33.2），下一片S1真实开工授权；实际部署统一后置（§0.2）。60A代码审查和编译通过后进入下述BM-05内部顺序，开工前仍须冻结真实许可、占用、数量及履约合同，不重做已验收的接待/来源内核。
 
 **BM-05内部技术顺序：** 真实开工许可→预约单位交接实际占用→开放占用/结束清洁释放→超时阻断/活动调整→任务工作流/参与/数量→履约与关闭联验。
 实际占用与超时不再作为BM-03基础预约完成前的统一阻塞；缺这些能力时，实际开工入口继续门控。
@@ -2413,3 +2450,27 @@ root另完成全部五美业子模块当前快照测试编译BUILD SUCCESS，347
 代码现于锁外准备后及最终writer事务前重核真实当前C/活跃用户且buyer不变，事务内不新增TokenStore IO；已提交原key按真实新会话恢复。范围399产品路径（398存在/1删除），实际指纹匹配。原五子模块联合增量编译、当前修复默认零售编译及前片定向证据按真实快照保留，不宣称clean空缓存构建或将各批相加为完整营业通过。M1/M2/M3非阻塞覆盖/守卫边界/告警债保留最终分支和依赖关口。
 
 BM04当前状态为代码阶段完成、待统一部署验证；60B真实构件双形态、HTTP/SQL经济副作用、生产token消融、重启/外部设备均未验。BM05开工、实际占用、执行完工/履约及BM06日历尚未交付，全部P2～P4也继续。Task61先按§2.39审计现有真实提供方并细化完整BM05方案，独立设计审查后再发布精确编码任务，不重复领取已验收片。
+
+## §33 BM05服务作业与履约（代码阶段）
+
+### 33.1 Task61设计关口（2026-10-25）
+
+[完整设计](../../.superpowers/sdd/beauty-backend/bm05-design.md)完成实际所有者审计和S0～S6切片。初审长期任职空结束遗漏已修订并由同审查者限定复审通过，29个源码/迁移指纹一致；设计阶段未运行测试，不记为业务交付。顺序保持人员前置/真实开工许可→预约单位交接→开放占用/结束/清洁→超时/调整→作业/参与/数量→履约/关闭。
+
+### 33.2 Task62-S0共用当前操作人业务人员事实验收（2026-10-25）
+
+产品提交35e6f0f66dc67b6ca77d2ddcd22960b2e0f2de6f，精确24文件。[实现报告](../../.superpowers/sdd/beauty-backend/task-62-report.md)、[独立审查](../../.superpowers/sdd/beauty-backend/review-task-62.md)、[root证据核验](../../.superpowers/sdd/beauty-backend/task-62-root-evidence-gate.json)及[精确文件清单](../../.superpowers/sdd/beauty-backend/task-62-product-inventory.json)对应§2.40；规格PASS、质量Approved，无Critical/Important。
+
+共用人员所有者复用当前精确权限账号解析，在同一RR快照核验账号关联/人员/有效任职与主体门店，快照前后重核权限；MCH/USR同号隔离，账号号不出域。新增查询全父链binary精确关联，空validTo长期有效，重复任职/畸形事实失败关闭。美业通过同接口绑定远程适配，拒绝/依赖失败不伪装成UNLINKED。共享协议最小补齐枚举name标量，旧固定摘要不变；五权限及三语标签可分配，无默认角色种子授权、新表、人员账或开工入口。
+
+最终五类报告33项（owner13/controller3/remote7/shared7/roles3），失败/错误/跳过均0；标签17、Node runner5通过。AC→实际方法见brief及报告/最终方法清单，覆盖当前权限撤销、同号命名空间、长期/到期/歧义任职、显式null/畸形协议和范围。大小写父链用例先1断言RED/0error，修复后九变体通过。有效期消融目标过期用例自身断言失败；有限区间防线另1error单独归因。首轮漏class采集后按实际时点重采必要消融，95项仅Mapper源码/嵌套class两项变化，finally恢复编译后95项逐字一致、恢复32项通过。此消融明确属于binary父链修复前版本，上界条件未变；最终当前版本33项GREEN，不冒称再次消融。
+
+root核对148证据hash、24产品、95当前测试源码/class、七批XML和自有资源清理；32条既有SQL、ROLE_PERMS及五个known-*逐字未变。当前默认零售宿主在无food profile最终组合reactor中编译并执行所选测试；另以当前backend+beauty+food临时reactor完成food-api/web/core、宿主和beauty-channel测试编译BUILD SUCCESS，未install或改仓库POM。七UUID容器、临时目录及锁已清理。
+
+审查P3保留：profile命名的装配测试仅证明聚焦Bean注册/依赖关系，不能证明真实default/embedded/standalone/disabled/ops构件启动；统一部署须补核。原生使用MySQL9.7.2结构性认证夹具加冻结V532/V533，不是完整历史Flyway或正式部署。javac处理器/旧弃用/unchecked、Mockito agent/JVM CDS及已断言的缺传输/EOF告警原文保留；BM04 M1/M2/M3继续留最终分支关口。
+
+### 33.3 当前下一步及未交付范围
+
+下一片S1深化真实开工授权：Core来源/任务/绑定围栏，Pay同一原付款锁下行/单位保护与永久managed标识，所有相反退款/状态写者与原号未知恢复；精确PRD/TDD/ADR/API/Java/schema和新迁移实际文件hash在编码前对账。release先于迟到protect时须保留同原号终态，不凭一时不存在就宣告永无副作用，见[root实施检查草案](../../.superpowers/sdd/beauty-backend/bm05-s1-root-release-questions.md)。
+
+S0仅为人员前置，canStart仍关闭；BM05开工/占用/步骤参与/完工/履约关闭未交付，BM06日历、BM07、BM08/P2及全部P3/P4继续原规划。全部代码/测试/审查/编译完成后统一正式部署；未推送/合并/发布共享环境。
