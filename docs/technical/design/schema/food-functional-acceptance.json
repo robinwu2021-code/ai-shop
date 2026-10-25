@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "baselineCommit": "d5ea1b066",
-  "scope": "restaurant non-payment code and API acceptance; local fixes not deployed",
+  "scope": "restaurant non-payment code and API acceptance; fixes deployed in embedded host fef7f00982c978819645a527d26b819d343d8aab",
   "summary": {
     "criteria": 166,
     "staticReviewed": 166,
@@ -7192,5 +7192,20 @@
         "skipped": 0
       }
     }
-  ]
+  ],
+  "release": {
+    "sourceCommit": "fef7f00982c978819645a527d26b819d343d8aab",
+    "date": "2026-10-25",
+    "shape": "food-embedded",
+    "targetedTests": {
+      "classes": 4,
+      "tests": 34,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "health": "UP",
+    "productionBusinessWritesTested": false,
+    "payRestarted": false
+  }
 }
