@@ -2,9 +2,6 @@ package ai.neargo.shop.payclient;
 
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;
-import ai.neargo.job.api.JobInvocation;
-import ai.neargo.job.api.JobResult;
-import ai.neargo.job.api.JobStatus;
 import ai.neargo.shop.pay.points.job.PointsJobServices;
 import ai.neargo.shop.pay.points.job.PointsJobServices.Task;
 
@@ -208,53 +205,6 @@ public class PointsJobHandlers {
     }
 
     private JobHandler handler(String name, Task task, PointsJobServices services) {
-        return new JobHandler() {
-            @Override
-            public String name() {
-                return name;
-            }
-
-            @Override
-            public JobResult run(JobInvocation invocation) {
-                try {
-                    int limit = Integer.parseInt(invocation.param("limit", "50"));
-                    if (limit < 1 || limit > 200) {
-                        return JobResult.failed("每批条数必须为 1–200", "POINTS_BATCH_INVALID");
-                    }
-                    String type = invocation.param("typeCode", "");
-                    if (type.isBlank() && task != Task.DISPATCH) {
-                        return new JobResult(JobStatus.SKIPPED, "尚未配置积分类别，本轮未执行", null);
-                    }
-                    var result =
-                            services.run(
-                                    task,
-                                    type.isBlank() ? null : type,
-                                    limit,
-                                    clock.millis(),
-                                    invocation.bizDate());
-                    String detail =
-                            "已处理 "
-                                    + result.processed()
-                                    + " 项，等待 "
-                                    + result.deferred()
-                                    + " 项，待人工 "
-                                    + result.manual()
-                                    + " 项";
-                    if (result.manual() > 0) {
-                        return JobResult.failed(detail, "POINTS_MANUAL_REVIEW");
-                    }
-                    return result.available()
-                            ? JobResult.ok(detail)
-                            : new JobResult(JobStatus.SKIPPED, "依赖尚未就绪或核查未完整。" + detail, null);
-                } catch (RuntimeException failure) {
-                    String reason = failure.getMessage();
-                    String code =
-                            reason != null && reason.matches("POINTS_[A-Z_]+")
-                                    ? reason
-                                    : "UNEXPECTED";
-                    return JobResult.failed("本轮未完成：" + failure.getClass().getSimpleName(), code);
-                }
-            }
-        };
+        return new PointsScopedJobHandler(name, task, services, clock);
     }
 }
