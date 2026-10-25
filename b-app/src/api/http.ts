@@ -41,6 +41,7 @@ import type {
   RecognizeGoodsReq,
   ReplyReviewReq,
   ReportShortageReq,
+  ResolveMemberCodeReq,
   SaveGoodsReqBody,
   SaveShipSettingReq,
   SaveSpecTemplateReq,
@@ -82,6 +83,7 @@ import type {
   CouponRedeemView,
   CrossStoreCompare,
   CrossStoreOverview,
+  CustomerReference,
   DailyFlowPage,
   DailyReport,
   DeliveryRule,
@@ -623,6 +625,11 @@ export const httpApi: MerchantApi = {
     } satisfies ToggleCampaignReq),
 
   mCustomers: () => http.get<MerchantCustomer[]>(E.mCustomers.path),
+  mResolveMemberCode: (payload) =>
+    http.post<CustomerReference>(E.mResolveMemberCode.path, {
+      memberCode: payload.memberCode,
+      storeNo: payload.storeNo,
+    } satisfies ResolveMemberCodeReq),
   mMembers: (q) => http.get<PageResult<Member>>(E.mMembers.path, { ...(q ?? {}) }),
   mMemberStats: (storeNo) => http.get<MemberStats>(E.mMemberStats.path, { storeNo }),
   mMemberDetail: (memberNo) =>

@@ -110,6 +110,14 @@ export interface ShareKitQuery {
   goodsNo?: string;
 }
 
+// ---------------------------------------------------------------- 会员凭证
+
+/** 仅提交扫描凭证与选定门店；租户、主体及操作人身份由后端会话确定。 */
+export interface ResolveMemberCodeReq {
+  memberCode: string;
+  storeNo: string;
+}
+
 // ---------------------------------------------------------------- 商品
 
 export interface GoodsListQuery {

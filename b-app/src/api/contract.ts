@@ -44,6 +44,7 @@ import type {
   CrossStoreCompare,
   CrossStoreOverview,
   CurrencyCode,
+  CustomerReference,
   DailyFlowPage,
   DailyReport,
   DeliveryRule,
@@ -813,6 +814,7 @@ import type {
   ZipPlanReq,
   ZipImported,
   PickupSelfBuildReq,
+  ResolveMemberCodeReq,
   StaffLoginReq,
   StoreEditReq,
   StoreFulfillmentSaveReq,
@@ -1757,6 +1759,8 @@ export interface MerchantApi {
 
   // ---- 客户与复购（B-11.2.8）
   mCustomers(): Promise<MerchantCustomer[]>;
+  /** 识别会员码，返回仅在原主体、门店和操作人范围内有效的短期顾客引用；不代表支付授权。 */
+  mResolveMemberCode(payload: ResolveMemberCodeReq): Promise<CustomerReference>;
 
   /**
    * 会员列表。
