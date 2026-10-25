@@ -792,17 +792,17 @@
       },
       "publication": {
         "date": "2026-10-25",
-        "backendSha": "b722e076c2ddd1f0ff2cb38711f1bb44c26dae40",
-        "bH5": "b722e076c",
+        "backendSha": "8cc71c927d62ba9ccc5d4d645a4e6fa0f5b076f8",
+        "bH5": "efaf99ff0",
         "coreShape": "food-embedded",
         "coreHealth": 200,
         "payProtectedHealth": 401,
         "actualProcessShaVerified": true,
-        "apkVersion": "0.6.8",
-        "apkCode": 341,
-        "apkMd5": "212c7cbecca10e66477285382342e21c",
-        "apkBytes": 55568941,
-        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.8.apk",
+        "apkVersion": "0.6.9",
+        "apkCode": 342,
+        "apkMd5": "1c1ee1840d0b573807e54f163ee08a99",
+        "apkBytes": 55569027,
+        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.9.apk",
         "financialEnablement": false,
         "historicalRecharge": "DEFERRED_UNCHANGED",
         "balanceTotalMinor": 36000,
@@ -812,12 +812,13 @@
         "receivedCount": 1,
         "newMigrations": [],
         "report": "docs/technical/delivery/P6-业务闭环-执行记录.md",
-        "site": "b722e076c",
+        "site": "efaf99ff0",
         "siteAssetsChecked": 8,
         "latestMetadataVerified": true,
-        "coreSha": "b722e076c2ddd1f0ff2cb38711f1bb44c26dae40",
+        "coreSha": "8cc71c927d62ba9ccc5d4d645a4e6fa0f5b076f8",
         "paySourceSha": "6dd0c43461f35e544d8861cfd5a337e44b7ba9b5",
-        "financialBaselineRequeriedThisFollowup": false
+        "financialBaselineRequeriedThisFollowup": false,
+        "backendRedeployedThisFollowup": false
       },
       "verification": {
         "postMergeAffectedJavaCases": 43,
@@ -826,7 +827,7 @@
         "reviewPageCases": 12,
         "finalDelegationAffectedCases": 2,
         "fullRegression": false,
-        "physicalDevice": "341_ADB_EMPTY_NOT_INSTALLED;_340_INACTIVE_UNCONFIGURED_READONLY_PREVIOUSLY_VERIFIED",
+        "physicalDevice": "342_ADB_EMPTY_NOT_INSTALLED;_340_INACTIVE_UNCONFIGURED_READONLY_PREVIOUSLY_VERIFIED",
         "wechatRealSending": "TEMPLATE_UNCONFIGURED",
         "reviewFindingsRemaining": 0,
         "deviceFixDistinctCases": 5,
@@ -926,7 +927,7 @@
         "accountBaselineRequeried": false
       },
       "auditRefreshFollowup": {
-        "status": "LOCAL_VERIFIED_NOT_PUBLISHED",
+        "status": "PUBLISHED_DEVICE_AND_FIXTURES_PENDING",
         "baseSha": "b508628cd88944edd5a860b1a81f931d56333fad",
         "environmentDecision": "NO_ISOLATED_INSTANCE_LOCAL_TARGETED_VERIFICATION_FIRST",
         "newRedGreenCases": 2,
@@ -938,7 +939,25 @@
         "databaseChanged": false,
         "financialWrite": false,
         "deviceAcceptance": false,
-        "publication": false
+        "publication": true,
+        "sourceFixSha": "cb939f23eeca6ad07501e4149fcf85b95d4ae7cc",
+        "publicationSha": "efaf99ff078c8db3466020041a9139e69f8dcc45",
+        "version": "0.6.9",
+        "versionCode": 342,
+        "apkMd5": "1c1ee1840d0b573807e54f163ee08a99",
+        "apkBytes": 55569027,
+        "deviceInstalled": false,
+        "deviceStatus": "ADB_EMPTY",
+        "bH5AndSitePublished": true,
+        "latestMetadataVerified": true,
+        "backendRedeployed": false,
+        "observedCoreSha": "8cc71c927d62ba9ccc5d4d645a4e6fa0f5b076f8",
+        "observedPaySha": "6dd0c43461f35e544d8861cfd5a337e44b7ba9b5",
+        "financialReadiness": {
+          "reportsReady": false,
+          "settlementReady": false,
+          "crossEntityReady": false
+        }
       }
     }
   ],
@@ -1115,9 +1134,9 @@
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "UI-FIN-03 audit revocation cache fix locally verified (2 new + 3 affected page cases), not published; no isolated instance, user chose local targeted verification first",
+    "currentBatch": "UI-FIN-03 published as B H5/site efaf99ff0 and APK342; ADB empty; isolated environment/authorized roles/bills still unavailable",
     "legacyCutoverInScope": false,
-    "canonicalTarget": "b722e076c2ddd1f0ff2cb38711f1bb44c26dae40",
+    "canonicalTarget": "efaf99ff078c8db3466020041a9139e69f8dcc45",
     "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
     "implementationProtocol": 2,
     "onlineFinancialOpening": "CLOSED_UNCHANGED_P3_FOUNDATION_REQUIRED"
