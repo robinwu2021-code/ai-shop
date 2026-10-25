@@ -56,7 +56,29 @@
 - `PayBaseEntity` 从 `pay-domain` 移到 `pay-channel`（包名不变）：通道层的记录实体要继承它，而 `pay-channel` 不能依赖 `pay-domain`。
 - `pay_api_request_log`、`pay_biz_notify(+attempt)`、`pay_raw_payload` 的实体随用到它们的迭代（I3 / I5）建。
 
+### S2 · 通道模型、执行器、注册表、容错
+- `channel.api`：`ChannelKey`（+ `Pattern`：地区 null = 任意、场景 ANY = 任意，具体度 = 地区 2 + 场景 1）· `AccessMode` · `PayScene` · `ChannelOperation`（`readOnly` / `resendSafeAfterUncertainty`）· `Money` · `CallerType` · `ClientType` · `SourceInfo` · `InvocationMeta` · `ChannelAccountContext`（含币种与渠道精度）· 四态 `ChannelResult` · `PayErrorCode` · `ChannelTransportException`（6 种发送问题）· 门面 `ChannelGateway`。
+- `channel.api.command`：`ChannelCommand`（sealed）+ `PayCommand` / `QueryCommand` / `CloseCommand` / `RefundCommand` / `RefundQueryCommand`。confirm / void / 进件 / 对账单 / 出款随用到它们的迭代加入。
+- `channel.invoke`：`ChannelInvoker`（构造时排序冻结、同序号即抛；执行前后通知监听者）· `Chain` · `Invocation`（`requestSent` 区分「没发出去」与「发出去了不明」）· `InvocationState` · `InvocationListener`。
+- `channel.handler`：`ChannelHandler`（不重试 / 不写库 / 不打业务日志）· `UnsupportedHandler`（空对象）· `ChannelHandlerRegistry`（最具体者优先；启动校验 ① 同等具体两处理器 ② ENABLED 产品无收款处理器）· `ChannelProductCatalog`（接口，DB 实现在 S4）。
+- `channel.fault`：`FaultPolicy` · `FaultPolicyRegistry`（按操作的默认值；`override` 只能收紧）· `ChannelErrorMapper`（未登记码 → 空）· `OutcomeClassifier`（§8.2 逐行）。
+- `channel.invoke.interceptor`（S2 八环）：追踪 10 · 校验 20（金额 > 0、币种 = 地区币种、按 `java.util.Currency` 小数位与渠道精度判余数、退款 ≤ 原单）· 可用性 30（只拦新收款）· 熔断 90（Resilience4j，按渠道 × 收款商户；查询放行）· 隔离 100（Resilience4j，按渠道并发上限，满了立即 `CHANNEL_BUSY`）· 重试 110（没发出去可重发；纯读不明可重发；写操作发出后不重发）· 超时 120（虚拟线程，超时 = `Unknown`）· 分类 130（最内层）。记录 / 日志 / 指标 / 幂等 / 限流（40–80）在 S3。
+- 依赖：`resilience4j-circuitbreaker` / `-bulkhead` 2.3.0，版本钉在根 pom（Boot BOM 不管），依赖收敛通过。
+- **S2 不注册 Spring bean**：种子里两个微信产品是 ENABLED，注册表的启动校验在 S4 有处理器前会让应用起不来；S2 是纯类 + 单测，S4 统一装配。
+
 ## §5 对账三 · 实现 → 需求（测试）
+
+| AC | 测试方法 | 跑过 | 消融验证 |
+|---|---|---|---|
+| AC2 | `ChannelPipelineTest$InterceptorOrder`（2 条：注入顺序打乱仍固定；同序号即抛） | ✅ | — |
+| AC3 | `ChannelPipelineTest$Registry`（4 条：同等具体即抛；ENABLED 无处理器即抛；最具体者优先；无处理器 → `CHANNEL_UNSUPPORTED`） | ✅ | 见下：断「不可重试」的那条随重试消融变红 |
+| AC4 | `ChannelPipelineTest$Fault`（4 条：退款超时只发一次且为 Unknown；配置只能收紧；纯读与未发出可重发；超时 = Unknown） | ✅ | 重试判据放宽 → `refundNeverResent`、`readOnlyAndNeverSentAreRetried` 红 ✅ |
+| AC5 | `ChannelPipelineTest$Classifier#table` | ✅ | 未登记码改成 Failed → 红 ✅ |
+| AC6 | `ChannelPipelineTest$Breaker#perMerchantIsolation` | ✅ | 熔断器按渠道（去掉商户）→ 红 ✅ |
+| AC12（S2 部分） | `NoChannelBranchOutsideHandlersTest`（公共层无渠道码字面量 + 判据正反例） | ✅ | — |
+| — | `ChannelPipelineTest$Guards`（精度余数不发；币种 / 退款上限；停用只拦新收款） | ✅ | 精度判据恒真 → 红；可用性拦全部操作 → 红 ✅ |
+
+S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔断粒度、未登记码、精度、可用性范围）→ 7 条测试变红，还原后 pay-channel 84 / 84 绿。
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
