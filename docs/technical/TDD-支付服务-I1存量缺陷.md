@@ -108,6 +108,12 @@
   `WechatPayGateway`（收付通）查单改走 `/v3/pay/partner/transactions/out-trade-no/{no}?sp_mchid&sub_mchid`；新增 `queryRefund` 走 `/v3/ecommerce/refunds/out-refund-no/{no}?sub_mchid`；不知道子商户号按「查询失败」处理，不猜。
 - **未做**：收付通 `prepay`（合单下单）仍为默认「尚未实现」—— 收付通模式今天没开（`WX_PAY_MODE` 默认 direct），下单接入随渠道上线做。
 
+### F10 · 独立形态的发票列表显式收窄
+- **契约**（内部接口，两端都在本仓）：`PayInternalApi#settleInvoices` 加必填 `merchantScope`；编码 `*` = 不限、空串 = 一个都不能看、否则逗号分隔（`encode/decodeMerchantScope`）。
+- 主应用 `RemoteOpsSettleInvoiceAppService#merchantScope(DataScopeSpec)`：`all()` / 无上下文 → 不限（与内嵌拦截器一致）；有范围无商户维度 → 空集（宁严勿宽）。
+- pay-svc `InternalPayEndpoint#invoices`：缺 `merchantScope` 回 400，不默认成「不限」；`SettleInvoiceService#list(…, merchantNos)` 按 `entity_no IN` 过滤，空集直接空页。内嵌形态仍走数据域拦截器（传 null）。
+- **范围**：只修 R10 点名的发票列表。其余 `Remote*AppService` 的列表接口是否有同类问题，切独立形态（I3 之后）前逐个过一遍。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -125,6 +131,7 @@
 | F15 | `ReconFlowTest#sameIssueNextDayIsNotDuplicated` · `#autoNoteDoesNotOccupyResolution` | ✅ 23/23；对账 4 类全绿 | 先红：三天三条；说明占了 resolution ✅ |
 | F13 | `PayMessagePortImplTest#fillsPaymentNoFromOutTradeNo` · `#explicitWinsAndUnknownStillRecords` · `WechatDirectPayGatewayTest#refundNotifyUrlIsDerivedNotConcatenated` | ✅ 2/2 · pay-channel 64/64；回调 3 类全绿 | 先红：payment_no 落库为 null；退款地址拼成 `…/WECHAT//refund` ✅ |
 | F12 | `AlipaySwitchBootTest#bootsWithAlipaySwitchOn` · `WechatPayGatewayQueryTest`（3 条）· `PaymentOpenConcurrencyTest`（加查子商户号断言） | ✅ 1/1 · 3/3 · 20/20；pay-channel 67/67 | 先红：开关打开即 `NoSuchBeanDefinitionException: alipayChannelClient`；收付通查单路径不带服务商参数、查退款恒为查不通 ✅ |
+| F10 | `PayInternalApiRoundTripTest#settleInvoicesWithoutScopeIsRejected` · `#settleInvoicesParams` · `#merchantScopeEncodingKeepsAllAndNoneApart` · `RemoteOpsSettleInvoiceScopeTest`（2 条） | ✅ 11/11 · 2/2 | 契约变更，旧代码编译不过，无行为先红；消融：撤 400 校验（缺参当不限）→ `settleInvoicesWithoutScopeIsRejected` 红 ✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现
