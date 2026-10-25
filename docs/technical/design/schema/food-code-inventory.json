@@ -34907,7 +34907,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbDiningDevice.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/DiningIdentityMappers/DeviceMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -34943,7 +34943,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbIdentityAuthorization.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/DiningIdentityMappers/AuthorizationMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -34979,7 +34979,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbIdentityOperation.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/DiningIdentityMappers/OperationMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35024,7 +35024,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbCheckFreeze.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35077,7 +35077,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbCheckLineMembership.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/BusinessSharePlanMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35122,7 +35122,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbReservationPreorder.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35167,7 +35167,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbServiceSlot.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35212,7 +35212,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbCapacityClaim.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35257,7 +35257,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbServiceHandover.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35302,7 +35302,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbServiceHandoverItem.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35347,7 +35347,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbServiceResponsibility.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35392,7 +35392,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbOperationCase.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35437,7 +35437,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbBusinessCommand.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35482,7 +35482,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbScheduledDispatch.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35527,7 +35527,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbQueueNotice.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35564,7 +35564,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbKdsCursor.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodKdsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35601,7 +35601,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbKdsSubscription.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodKdsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35638,7 +35638,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbKdsEvent.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodKdsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35674,7 +35674,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbStationRuntime.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodStationRuntimeMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35710,7 +35710,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbKdsVoiceCommand.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodStationRuntimeMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35748,7 +35748,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbReturnAmendment.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/BusinessSharePlanMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35793,7 +35793,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbFeeSourceBinding.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35827,7 +35827,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbCartDelivery.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/DiningDeliveryMapper/DiningDeliveryMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35863,7 +35863,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbBusinessOrganization.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/ServiceFormMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35910,7 +35910,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbServiceForm.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35946,7 +35946,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbServiceAttendee.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/ServiceFormMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -35982,7 +35982,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbServiceFormBatch.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/ServiceFormMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {
@@ -36027,7 +36027,7 @@
       "entityFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/entity/FnbFeeContractClaim.java",
       "mapperFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/mapper/FoodBusinessOperationsMapper.java",
       "customMapperMethods": [],
-      "schemaStatus": "SOURCE_MIGRATION_PENDING_DEPLOYMENT",
+      "schemaStatus": "SOURCE_MIGRATION_DEPLOYED",
       "implementationStatus": "CODED_PENDING_VERIFICATION"
     },
     {

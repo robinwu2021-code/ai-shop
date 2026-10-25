@@ -21255,7 +21255,7 @@
       "food": 25,
       "core": 581,
       "inventory": 14,
-      "status": "COMPILED_FOCUSED_VERIFIED_PENDING_RELEASE"
+      "status": "DEPLOYED_EMBEDDED_VERIFIED"
     }
   },
   "catalogEnhancement": {
@@ -111726,13 +111726,26 @@
     "date": "2026-10-25",
     "batch": "BIZ-01..12",
     "baseline": "fe7160c9d2be15e3546d347992a9a47529fcaea3",
-    "status": "COMPILED_FOCUSED_VERIFIED_PENDING_RELEASE",
+    "status": "DEPLOYED_EMBEDDED_VERIFIED",
     "embeddedCompile": "PASSED",
     "standaloneCompile": "PASSED",
     "focusedBusinessTests": "PASSED_AFTER_TARGETED_FIXES",
     "nativeEmbeddedMigrationsAndStartup": "PASSED_CORE581_FOOD25_INVENTORY14",
     "designContractTests": "65/65_PASSED",
     "remainingNativeAndStandaloneTests": "PASSED_AFTER_TARGETED_FIXTURES",
-    "cloudRelease": "PENDING"
+    "cloudRelease": {
+      "gitSha": "cd1b6d4da84019fcbe81f2f32720a195d99a88e7",
+      "health": "UP",
+      "foodMode": "validate",
+      "coreVersion": 581,
+      "foodVersion": 25,
+      "inventoryVersion": 14,
+      "foodBusinessTables": 111,
+      "foodIncludingHistoryTables": 112,
+      "payPid": "1129197",
+      "payUnchanged": true,
+      "artifact": "/data/app/ai-shop/shop-app/shop-app-20261025-0903-cd1b6d4da.jar",
+      "backup": "/data/app/ai-shop/backups/food-biz-20261025T005106Z-e0f8f7c0a"
+    }
   }
 }
