@@ -46,13 +46,20 @@ class StoredValueNotificationSubscriberTest {
         verify(tasks).enqueue("MAIN", "EV1", "US1", "U1", "S1", "DC1",
                 Map.of("store", "门店", "title", "洗车", "amount", "1.25 CNY", "time", "2000"));
         verify(messages, never()).push(any(), any(), any(), any(), any(), any());
+        verify(messages, never()).pushTo(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void otherAssetKindsKeepTheirExistingInboxRoute() {
         consumer.consume(row("PAID_CARD"));
         verify(facts, never()).notificationFact(any(), any());
-        verify(messages).push(eq("U1"), eq("TRADE"), any(), any(), eq(null), any());
+        verify(tasks, never()).enqueue(any(), any(), any(), any(), any(), any(), any());
+        // Same C-side trade inbox route, now through the explicit transactional writer.
+        // Fixed EV1:USER:U1 digest pins both event identity and recipient into replay deduplication.
+        verify(messages).pushTo("USER", "U1", "TRADE", "核销成功",
+                "本次消费已核销，可在消费记录中查看。", null,
+                "EN4c8d49d8c17a5280979e5ce023cbcfc0d61f0b8e11b710e6ba5e1ee8aa0c793b");
+        verify(messages, never()).push(any(), any(), any(), any(), any(), any());
     }
 
     @Test

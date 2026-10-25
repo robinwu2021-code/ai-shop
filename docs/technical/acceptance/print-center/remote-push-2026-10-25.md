@@ -58,3 +58,5 @@ GoodsActivityOnly测试留下4笔成功创建但未支付订单，导致后续In
 M–N/O批次另有4条守卫失败。媒体引用SPI已有依赖DataSource并按真实表元数据工作的实现，旧反射测试仍假定所有实现均有无参构造；改为提供隔离H2 schema，并增加食品表存在/缺失回归，未知依赖仍失败。随后实际扫描发现品牌logo漏声明，已补CoreMediaRefs的mch_brand.logo真实引用，独立复核V544表列、brand_no业务键和品牌服务写入链。模板纯文本与打印事实SHA256业务意图键则逐项登记非媒体语义证据，不扩大启发式豁免。
 
 C端鉴权测试删除已无Handler的两个旧积分路径，将9个当前积分/储值路径登记为必须登录，补齐必填参数和合法探针请求，匿名仍须真实401，不进入待定清单。孤儿模块检查解析真实pom模块声明及标准源码根，承认食品插件实际reactor/profile归属，不豁免backend-plugins目录。媒体3、鉴权7、模块2与打印策略5共17项通过，见remote-push-architecture-results.json。原断言、known清单和生产鉴权未放宽。
+
+最后一批的储值通知测试仍verify旧push；生产已明确以pushTo进入代理事务。仅更新测试，精确验证USER、用户、TRADE、原标题正文、null链接和固定事件/接收者SHA256幂等键，并验证储值分支不走通用写入器。3项通过，见remote-push-notification-results.json，通知生产实现未改。
