@@ -27,6 +27,10 @@ import ai.neargo.shop.spi.resource.ResourcePlanContract;
 import ai.neargo.shop.spi.resource.ResourceSourceAuthorityPort;
 import ai.neargo.svc.client.CallOutcome;
 import ai.neargo.svc.client.ServiceCallException;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -41,6 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 /** Native source transactions; external directory and resource owner stay explicitly controlled. */
@@ -370,6 +375,204 @@ class WalkInRecoveryIT extends ReceptionFixture {
                     .recoverOperation("E", "S", "B", pending.operationNo()).state()).isEqualTo("SUCCEEDED");
         });
     }
+    @Test
+    void expectedRecoveryFailureEmitsAttributedWarningAndKeepsIntentRecoverable() {
+        var logger = (Logger) LoggerFactory.getLogger(ReceptionRecovery.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            business()
+                    .run(
+                            c -> {
+                                clockAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+                                login(LoginUser.merchant("A", "operator"));
+                                owner.authority = c.getBean(ResourceSourceAuthorityPort.class);
+                                owner.loseExecuteAction = "CONFIRM";
+                                var pending =
+                                        c.getBean(ReceptionService.class)
+                                                .receiveWalkIn(
+                                                        "E",
+                                                        "S",
+                                                        "A",
+                                                        walkIn(),
+                                                        "EXPECTED-WARNING");
+                                assertThat(pending.operationState()).isEqualTo("PENDING");
+                                String originalSql =
+                                        "SELECT"
+                                            + " key_hash,request_hash,derived_key_hash,appointment_operation_no"
+                                            + " FROM bty_reception_operation WHERE operation_no=?";
+                                var original = sql.queryForMap(originalSql, pending.operationNo());
+                                String commandSql =
+                                        "SELECT operation_no,state,SHA2(accept_payload,256) AS"
+                                            + " payload_hash,SHA2(receipt,256) AS receipt_hash FROM"
+                                            + " bty_appointment_operation ORDER BY operation_no";
+                                var commands = sql.queryForList(commandSql);
+                                String payloadHash =
+                                        sql.queryForObject(
+                                                "SELECT SHA2(frozen_payload,256) FROM"
+                                                    + " bty_reception_operation WHERE"
+                                                    + " operation_no=?",
+                                                String.class,
+                                                pending.operationNo());
+                                var receipts = new ArrayList<>(owner.receipts.values());
+                                assertThat(receipts)
+                                        .anySatisfy(
+                                                receipt -> {
+                                                    assertThat(receipt.binding().action())
+                                                            .isEqualTo("CONFIRM");
+                                                    assertThat(receipt.status())
+                                                            .isEqualTo("SUCCEEDED");
+                                                });
+                                int accepted = owner.accepts.size();
+                                int actors = owner.actors.size();
+                                owner.brokenSource = pending.appointmentNo();
+                                SecurityContextHolder.clearContext();
+                                var recovery = c.getBean(ReceptionRecovery.class);
+                                assertThat(recovery.scan()).isOne();
+                                var warnings =
+                                        appender.list.stream()
+                                                .filter(event -> event.getLevel() == Level.WARN)
+                                                .toList();
+                                assertThat(warnings).hasSize(1);
+                                var warning = warnings.getFirst();
+                                assertThat(warning.getLoggerName())
+                                        .isEqualTo(ReceptionRecovery.class.getName());
+                                assertThat(warning.getMessage())
+                                        .isEqualTo(
+                                                "Reception reconciliation deferred operation={}"
+                                                    + " failure={}");
+                                assertThat(warning.getArgumentArray())
+                                        .containsExactly(
+                                                pending.operationNo(), "IllegalStateException");
+                                assertThat(warning.getFormattedMessage())
+                                        .isEqualTo(
+                                                "Reception reconciliation deferred operation="
+                                                        + pending.operationNo()
+                                                        + " failure=IllegalStateException");
+                                assertThat(warning.getFormattedMessage())
+                                        .doesNotContain(
+                                                "cr1_", "EXPECTED-WARNING", "unavailable original");
+                                assertThat(warning.getThrowableProxy()).isNull();
+                                var failed =
+                                        sql.queryForMap(
+                                                "SELECT"
+                                                    + " phase,failure_code,lease_until,next_retry_at"
+                                                    + " FROM bty_reception_operation WHERE"
+                                                    + " operation_no=?",
+                                                pending.operationNo());
+                                assertThat(failed.get("phase")).isEqualTo("RESOURCE_PENDING");
+                                assertThat(failed.get("failure_code")).isNull();
+                                assertThat(failed.get("lease_until")).isNull();
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT"
+                                                            + " TIMESTAMPDIFF(SECOND,?,next_retry_at)"
+                                                            + " FROM bty_reception_operation WHERE"
+                                                            + " operation_no=?",
+                                                        Integer.class,
+                                                        LocalDateTime.ofInstant(
+                                                                clockAt, ZoneOffset.UTC),
+                                                        pending.operationNo()))
+                                        .isEqualTo(60);
+                                assertThat(sql.queryForMap(originalSql, pending.operationNo()))
+                                        .isEqualTo(original);
+                                assertThat(sql.queryForList(commandSql)).isEqualTo(commands);
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT SHA2(frozen_payload,256) FROM"
+                                                            + " bty_reception_operation WHERE"
+                                                            + " operation_no=?",
+                                                        String.class,
+                                                        pending.operationNo()))
+                                        .isEqualTo(payloadHash);
+                                assertThat(owner.receipts.values())
+                                        .containsExactlyElementsOf(receipts);
+                                assertThat(owner.reconciled)
+                                        .containsExactly(pending.appointmentNo());
+                                assertThat(owner.accepts).hasSize(accepted);
+                                assertThat(owner.actors).hasSize(actors);
+                                assertThat(SecurityContextHolder.getContext().getAuthentication())
+                                        .isNull();
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT COUNT(*) FROM bty_work_order",
+                                                        Integer.class))
+                                        .isZero();
+                                assertThat(recovery.scan()).isZero();
+
+                                owner.brokenSource = null;
+                                clockAt = clockAt.plusSeconds(61);
+                                assertThat(recovery.scan()).isOne();
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT phase FROM bty_reception_operation"
+                                                            + " WHERE operation_no=?",
+                                                        String.class,
+                                                        pending.operationNo()))
+                                        .isEqualTo("ARRIVAL_PENDING");
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT lease_until FROM"
+                                                            + " bty_reception_operation WHERE"
+                                                            + " operation_no=?",
+                                                        String.class,
+                                                        pending.operationNo()))
+                                        .isNull();
+                                assertThat(sql.queryForMap(originalSql, pending.operationNo()))
+                                        .isEqualTo(original);
+                                assertThat(owner.accepts).hasSize(accepted);
+                                assertThat(owner.actors).hasSize(actors);
+                                assertThat(SecurityContextHolder.getContext().getAuthentication())
+                                        .isNull();
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT COUNT(*) FROM bty_work_order",
+                                                        Integer.class))
+                                        .isZero();
+                                login(LoginUser.merchant("A", "operator"));
+                                assertThat(
+                                                c.getBean(ServiceOperationRecoveryService.class)
+                                                        .recoverOperation(
+                                                                "E",
+                                                                "S",
+                                                                "A",
+                                                                pending.operationNo())
+                                                        .state())
+                                        .isEqualTo("SUCCEEDED");
+                                assertThat(sql.queryForMap(originalSql, pending.operationNo()))
+                                        .isEqualTo(original);
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT COUNT(*) FROM"
+                                                            + " bty_reception_operation",
+                                                        Integer.class))
+                                        .isOne();
+                                assertThat(
+                                                sql.queryForObject(
+                                                        "SELECT COUNT(*) FROM bty_work_order",
+                                                        Integer.class))
+                                        .isOne();
+                                assertThat(owner.accepts).hasSize(accepted);
+                                assertThat(
+                                                appender.list.stream()
+                                                        .filter(
+                                                                event ->
+                                                                        event.getLevel()
+                                                                                == Level.WARN))
+                                        .hasSize(1);
+                            });
+        } finally {
+            SecurityContextHolder.clearContext();
+            clockAt = null;
+            owner.brokenSource = null;
+            owner.loseExecuteAction = null;
+            owner.loseQuery = false;
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
     @Test void recoverySkipsSixtyFiveUserBlockedRows() {
         business().run(c -> {
             login(LoginUser.merchant("A", "operator")); owner.authority = c.getBean(ResourceSourceAuthorityPort.class);

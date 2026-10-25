@@ -115,3 +115,34 @@ test('submission races allow exact aliases selectors and reject prefixes and cro
     }
   }
 });
+
+const warningMethod = 'expectedRecoveryFailureEmitsAttributedWarningAndKeepsIntentRecoverable';
+
+test('recovery warning has finite aliases class and exact method selectors', () => {
+  const selected = 'WalkInRecoveryIT#' + warningMethod;
+  for (const valid of ['WalkInRecoveryIT', selected]) {
+    assert.deepEqual(validateSelection('aliases', valid).selectors, [valid]);
+  }
+  for (const [mode, invalid] of [['aliases', selected + 'Unknown'], ['aliases', selected.slice(0, -1)],
+    ['aliases', 'WalkInRecoveryIT#backgroundReconcilesOnlyAcceptedOriginalCommands'],
+    ['owners', selected], ['embedded', selected], ['standalone', selected]]) {
+    assert.throws(() => validateSelection(mode, invalid));
+    const child = spawnSync(process.execPath, ['scripts/verify-beauty-bm04-wire.mjs', '--mode=' + mode], {
+      encoding: 'utf8', env: {PATH: '', BEAUTY_BM04_TESTS: invalid}
+    });
+    assert.notEqual(child.status, 0);
+    assert.match(child.stderr, /invalid Task59 selector/);
+    assert.doesNotMatch(child.stderr, /ENOENT|docker|limactl/);
+  }
+});
+
+test('warning selector requires its actual successful XML testcase without prefix fallback', () => {
+  const xml = '<testsuite tests="1" failures="0" errors="0" skipped="0">'
+    + `<testcase classname="ai.neargo.shop.beauty.scenario.WalkInRecoveryIT" name="${warningMethod}"/></testsuite>`;
+  assert.deepEqual(inspectReport(xml, [warningMethod]), {tests: 1, failures: 0, errors: 0, skipped: 0});
+  for (const invalid of [xml.replace(warningMethod, warningMethod + 'Unknown'),
+    xml.replace('skipped="0"', 'skipped="1"'), xml.replace('failures="0"', 'failures="1"'),
+    xml.replace('errors="0"', 'errors="1"'), xml.replace('tests="1"', 'tests="0"')]) {
+    assert.throws(() => inspectReport(invalid, [warningMethod]));
+  }
+});

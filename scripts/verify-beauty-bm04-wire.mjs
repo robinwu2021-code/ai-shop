@@ -30,6 +30,7 @@ const approved = {
   aliases: {
     WorkOrderScopeIT: ['openAliasesShareCanonicalIntentAndPreserveOriginalProofReplay',
       'openAliasRaceAcceptsEitherWinnerAndLegacyRowsStayOriginal'],
+    WalkInRecoveryIT: ['expectedRecoveryFailureEmitsAttributedWarningAndKeepsIntentRecoverable'],
     ReceptionBusinessIT: [],
     ServiceSubmissionIT: ['absentFindAfterQuoteFencesKnownBindingTicketAndEndsLease',
       'postCheckoutClaimedGuestAbsencePropagatesWithoutAvailabilityCompletion',

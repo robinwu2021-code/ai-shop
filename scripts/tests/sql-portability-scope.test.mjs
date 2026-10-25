@@ -175,3 +175,26 @@ test('onlyExistingBuildMetadataDirectoriesAreSkipped', () => fixture((root, put)
     'backend/src/test/kept.sql', `${plugin}/src/test/kept.sql`,
   ].sort());
 }));
+
+// Java source terminators must end // noise and preserve physical source positions.
+for (const [label, newline] of [['LF', '\n'], ['CRLF', '\r\n'], ['CR', '\r']]) {
+  test(`javaLineCommentEndsAt${label}`, () => fixture((root, put) => {
+    put(`${plugin}/Newline.java`, `class Newline {${newline}// ignored${newline}String sql = "${bad}";${newline}}`);
+    assert.deepEqual(scanSqlPortability(root).hits.map(({line, id}) => [line, id]), [[3, rule]]);
+  }));
+  test(`textblockContinuationSkips${label}AndMapsOriginalOffset`, () => fixture((root, put) => {
+    put(`${plugin}/Continuation.java`, `class Continuation {${newline}String sql = """${newline}CREATE\\${newline} INDEX IF NOT EXISTS idx ON demo(id);${newline}\\${newline}DROP INDEX IF EXISTS idx ON demo;${newline}""";${newline}}`);
+    assert.deepEqual(scanSqlPortability(root).hits.map(({line, id}) => [line, id]), [
+      [3, rule], [6, 'drop-index-if-exists'],
+    ]);
+  }));
+}
+
+test('mixedSourceTerminatorsCountCrLfOnceAndJavaEscapesAddNoSourceLines', () => fixture((root, put) => {
+  put(`${plugin}/Mixed.java`, 'class Mixed {\r// ignored\r\nString safe = "SELECT 1\\n";\n'
+    + `String sql = "SELECT 1\\n${bad}";\r}`);
+  put(`${plugin}/mixed.sql`, `SELECT 1;\rSELECT 2;\r\nSELECT 3;\n${bad}`);
+  assert.deepEqual(scanSqlPortability(root).hits.map(({file, line, id}) => [file, line, id]).sort(), [
+    [`${plugin}/Mixed.java`, 4, rule], [`${plugin}/mixed.sql`, 4, rule],
+  ].sort());
+}));

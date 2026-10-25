@@ -148,7 +148,7 @@ function targets(root, scanRoots) {
 
 /** 行号：报「哪一行」比报「哪个文件」有用得多 —— 大迁移动辄几百行 */
 function lineOf(src, idx) {
-  return src.slice(0, idx).split("\n").length;
+  return src.slice(0, idx).split(/\r\n|\r|\n/).length;
 }
 
 /**
@@ -164,7 +164,7 @@ function javaSqlPayloads(source) {
   let i = 0;
   while (i < source.length) {
     if (source.startsWith("//", i)) {
-      while (i < source.length && source[i] !== "\n") i++;
+      while (i < source.length && source[i] !== "\n" && source[i] !== "\r") i++;
     } else if (source.startsWith("/*", i)) {
       const end = source.indexOf("*/", i + 2);
       i = end < 0 ? source.length : end + 2;
@@ -186,7 +186,7 @@ function javaSqlPayloads(source) {
           const escaped = source[i++];
           // Java textblock line continuation contributes no SQL characters.
           if (escaped === "\n") continue;
-          if (escaped === "\r" && source[i] === "\n") { i++; continue; }
+          if (escaped === "\r") { if (source[i] === "\n") i++; continue; }
           value = escapes[escaped] ?? `\\${escaped}`;
         }
         text += value;
