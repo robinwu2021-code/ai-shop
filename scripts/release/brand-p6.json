@@ -122,5 +122,9 @@
   "scripts/release/brand-p6.mjs",
   "scripts/release/brand-p6.test.mjs",
   "site/lib/site.config.ts",
-  "b-app/src/shared/management.ts"
+  "b-app/src/shared/management.ts",
+  "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/IssuerAuthorityServiceImpl.java",
+  "backend/shop-merchant/src/test/java/ai/neargo/shop/merchant/brand/IssuerAuthorityTest.java",
+  "b-app/src/pages/stored-value-issuer/index.vue",
+  "b-app/tests/stored-value-issuer-context.test.ts"
 ]

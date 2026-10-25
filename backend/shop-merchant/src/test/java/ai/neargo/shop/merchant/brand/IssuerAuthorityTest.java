@@ -11,6 +11,22 @@ import static ai.neargo.shop.merchant.brand.ManagementModels.*;
 import static org.assertj.core.api.Assertions.*;
 
 class IssuerAuthorityTest {
+    @Test void inactiveBrandRemainsReadableButAllConfigurationWritesStayBlocked() throws Exception {
+        var f=new BrandFixture();String m=f.no(f.space(),"managementNo");
+        var brands=new ai.neargo.shop.merchant.brand.impl.BrandServiceImpl(f.repo,f.scopes,new ManagementTokenCodec("0123456789abcdefghijklmnopqrstuvwxyz-secret",f.repo.json),(a,e,st)->new ai.neargo.shop.spi.storedvalue.BrandChangeImpactPort.Impact(true,false,0,0,0,0),f.numbers());
+        String b=f.no(brands.create(f.owner,new BrandCreate(m,"只读品牌",null,"ACTIVE"),"inactive-read"),"brandNo");
+        var service=new IssuerAuthorityServiceImpl(f.repo,f.scopes,new PaymentMerchantScopeServiceImpl(f.repo,f.scopes));
+        f.jdbc.update("UPDATE mch_brand SET status='INACTIVE' WHERE brand_no=?",b);
+        assertThat(service.readScope(f.owner,m,"BRAND",b).scopeNo()).isEqualTo(b);
+        assertThatThrownBy(()->service.configurationLookup(f.owner,m,"BRAND",b)).isInstanceOfSatisfying(BizException.class,e->assertThat(e.errorCode().code()).isEqualTo(10404));
+        assertThatThrownBy(()->service.requireConfigurationWritable(f.owner,m,"BRAND",b)).isInstanceOf(BizException.class);
+        assertThatThrownBy(()->service.settlementCandidates(f.owner,m,"BRAND",b)).isInstanceOf(BizException.class);
+        assertThatThrownBy(()->service.readScope(f.other,m,"BRAND",b)).isInstanceOf(BizException.class);
+        assertThatThrownBy(()->service.readScope(new Actor("OTHER",f.owner.actorKey()),m,"BRAND",b)).isInstanceOf(BizException.class);
+        f.jdbc.update("UPDATE mch_brand SET deleted=1 WHERE brand_no=?",b);
+        assertThatThrownBy(()->service.readScope(f.owner,m,"BRAND",b)).isInstanceOf(BizException.class);
+    }
+
     @Test void preparationUsesLiveStoreOwnerWithoutInventingManagementOrSettlementGrant() throws Exception {
         var f=new BrandFixture();var service=new IssuerAuthorityServiceImpl(f.repo,f.scopes,new PaymentMerchantScopeServiceImpl(f.repo,f.scopes));
         f.jdbc.update("UPDATE mch_store SET version=7 WHERE store_no='S1'");
