@@ -6,9 +6,12 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.flywaydb.core.Flyway;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.flyway.autoconfigure.FlywayMigrationInitializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -107,6 +110,46 @@ public class PayDataSourceConfig {
         return manager;
     }
 
+    /** 支付自己的 Flyway 历史表，不与平台的 {@code flyway_schema_history} 混用。 */
+    static final String PAY_HISTORY_TABLE = "pay_flyway_history";
+
+    /** 支付迁移跑完的凭据。工厂依赖它，于是 Mapper 第一次查询前表一定已建好。 */
+    public record PayMigrated(String historyTable, int applied) {}
+
+    /**
+     * 支付服务 v4 的新表走**独立迁移目录** {@code db/pay}（在 pay-domain 里，跟着支付模块走），
+     * 历史记在 {@code pay_flyway_history} —— 迁移号从 V1 起，不与平台 10+ 个并行会话抢号（开发计划 P2）。
+     *
+     * <p><b>返回类型刻意不是 {@code Flyway}</b>：Spring Boot 的 {@code FlywayAutoConfiguration} 挂着
+     * {@code @ConditionalOnMissingBean(Flyway.class)}，容器里出现任何一个 Flyway bean 平台迁移就整体不跑
+     * （进销存 2026-08-27 实测过；{@code ArchitectureTest#noBeanMayExposeFlyway} 守着）。
+     *
+     * <p><b>排在平台迁移之后</b>：后续支付迁移会改平台已有的 {@code stl_payment} 等表，空库上先跑支付的就会
+     * 「表不存在」。{@code platformFlyway} 取一下就会触发平台迁移；H2 测试关了平台 Flyway，它为空，直接跳过。
+     */
+    @Bean
+    PayMigrated payFlyway(@Qualifier("payDataSource") DataSource ds,
+                          ObjectProvider<FlywayMigrationInitializer> platformFlyway,
+                          @Value("${shop.pay.flyway.enabled:true}") boolean enabled,
+                          @Value("${shop.pay.flyway.locations:classpath:db/pay}") String locations) {
+        platformFlyway.ifAvailable(initializer -> { });
+        return migratePay(ds, enabled, locations);
+    }
+
+    static PayMigrated migratePay(DataSource ds, boolean enabled, String locations) {
+        if (!enabled) {
+            return new PayMigrated(PAY_HISTORY_TABLE, 0);
+        }
+        Flyway flyway = Flyway.configure()
+                .dataSource(ds)
+                .locations(locations.split(","))
+                .table(PAY_HISTORY_TABLE)
+                .baselineOnMigrate(true)
+                .baselineVersion("0")
+                .load();
+        return new PayMigrated(PAY_HISTORY_TABLE, flyway.migrate().migrationsExecuted);
+    }
+
     /**
      * @param interceptor <b>平台的那一个</b>，不是新建的 ——
      *                    数据域、分页、乐观锁三个拦截器都要跟过来。
@@ -115,7 +158,8 @@ public class PayDataSourceConfig {
     @Bean
     SqlSessionFactory paySqlSessionFactory(@Qualifier("payDataSource") DataSource ds,
                                               MybatisPlusInterceptor interceptor,
-                                              MetaObjectHandler metaObjectHandler)
+                                              MetaObjectHandler metaObjectHandler,
+                                              PayMigrated payMigrated)
             throws Exception {
         MybatisSqlSessionFactoryBean bean = new MybatisSqlSessionFactoryBean();
         bean.setDataSource(ds);

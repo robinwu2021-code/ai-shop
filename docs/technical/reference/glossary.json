@@ -40540,6 +40540,9 @@
           "SV_SETTLEMENT_BILL",
           "SV_SETTLEMENT_PAYMENT",
           "SV_SETTLEMENT_EVENT",
+          "PAY_ORDER",
+          "PAY_REFUND",
+          "LEDGER_VOUCHER",
           "BRAND_CHANGE"
         ],
         "zh": "Human-facing document namespace。",
@@ -40920,8 +40923,8 @@
           "DIRECT",
           "AGGREGATED"
         ],
-        "zh": "",
-        "module": "pay/pay-domain"
+        "zh": "资金路径：钱从消费者出发后**先落到谁的账上**。",
+        "module": "shop-base"
       },
       {
         "name": "FundsPurpose",
@@ -41535,6 +41538,18 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "PortalFace",
+        "values": [
+          "OPS",
+          "OPEN",
+          "TERMINAL",
+          "BIZ",
+          "CHECKOUT"
+        ],
+        "zh": "支付接入层的五个入口：每个入口一个子包、一个 URL 前缀、一套鉴权（ADR-042 §2-3）。",
+        "module": "pay/pay-portal"
       },
       {
         "name": "PreviewReason",
@@ -47167,6 +47182,14 @@
       "value": "\"COALESCE(SUM(CASE WHEN v.occurred_at<period_scope.start_at THEN \"+DELTA+\" ELSE 0 END),0) AS opening,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN e.principal_delta ELSE 0 END),0) AS paid,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN e.bonus_delta ELSE 0 END),0) AS bonus,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='CONSUME' THEN -\"+DELTA+\" ELSE 0 END),0) AS consumed,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type NOT IN ('RECHARGE','CONSUME') THEN \"+DELTA+\" ELSE 0 END),0) AS reversed,COALESCE(SUM(CASE WHEN v.occurred_at<period_scope.end_at THEN \"+DELTA+\" ELSE 0 END),0) AS closing,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN v.voucher_no END) AS recharges,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" AND v.biz_type='CONSUME' THEN v.voucher_no END) AS uses,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" THEN a.customer_no END) AS customers,COALESCE(MAX(e.id),0) AS watermark,COALESCE(SUM(CASE WHEN s.voucher_no IS NULL OR s.store_no IS NULL OR l.issuer_no IS NULL OR r.issuer_no IS NULL OR l.release_no IS NULL OR CAST(l.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) OR CAST(r.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) THEN 1 ELSE 0 END),0) AS missing\"",
       "zh": "",
       "module": "pay/pay-domain"
+    },
+    {
+      "host": "PortalFace",
+      "name": "API_PACKAGE",
+      "type": "String",
+      "value": "\"ai.neargo.shop.pay.api\"",
+      "zh": "所有入口共用的包根",
+      "module": "pay/pay-portal"
     },
     {
       "host": "CacheConfig",

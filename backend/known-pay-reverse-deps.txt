@@ -32,3 +32,20 @@ MerchantQueryPort	30
 # 判据与上一条是**同一个常量** `SHIP_PLATFORM_CALL`（import + 一处使用）。不复制到 pay 的理由同上。
 # 2026-10-18：旧积分引擎退出生产源码，移除其 SettleSourcePort import，17 → 16。
 SettleSourcePort	16
+
+# ── 2026-10-25 扫全部 spi Port 后补登（TDD-支付服务-I0地基 AC7，修 Review R28）──────────
+# 此前只数上面两个，下面这些「只在支付之外有实现、却被 pay 引用」的 Port 一直没人数。
+# 数字是登记当天的实测值，从此同样只准变少；判据见 PayReverseDependencyBudgetTest#reversePortsReferencedFromPay。
+# SettlePort 的 53 处绝大多数是它的嵌套记录 / 常量（SettlePort.xxx），不是调用；I3 SettlePort 收款方法转调 PaymentPort 时复核。
+ActivityParticipationPort	2
+MemberQueryPort	1
+OpsAlertPort	5
+OpsStaffPort	3
+PayoutAccountPort	4
+PickupQueryPort	4
+RefundSplitBackPort	8
+SettlePort	53
+SourceFactsPort	3
+StatementNoticePort	5
+StoreDirectoryPort	4
+UserInboxPort	4

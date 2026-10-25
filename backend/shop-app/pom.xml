@@ -56,6 +56,12 @@
             <artifactId>pay-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 支付接入层，内嵌形态（ADR-042）：controller 由 ShopApplication 的组件扫描装上 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-portal</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>shop-inventory</artifactId>
