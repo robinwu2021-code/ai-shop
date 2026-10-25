@@ -1333,6 +1333,8 @@ export interface PointsRequestReview {
   reason: string;
 }
 export interface PointsRequestView {
+  submittedAt?: number;
+  reviewedAt?: number;
   /** 持久记录主键 */
   id: number;
   /** 原资金或申请请求号 */

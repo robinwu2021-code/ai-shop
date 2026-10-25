@@ -100,7 +100,7 @@ function openOrder(no: string) {
         {{ $t("points.held", { n: account.heldBalance }) }}
       </text>
       <text v-if="account.frozen" class="txt-caption hero__pending txt-primary">{{ $t("points.frozen") }}</text>
-      <text class="txt-caption hero__scope">{{ $t("points.typeStatus") }}: {{ $t(pointsTypeStatusKey(account.status)) }}</text>
+      <text class="txt-caption hero__scope">{{ $t("points.typeStatus") }}: {{ $t(pointsTypeStatusKey(account.status, account.earningPaused)) }}</text>
     </view>
 
     <view v-if="account" class="sh-card block rules">

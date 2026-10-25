@@ -73,6 +73,8 @@ export function PointsAdjustments({ typeCode, typeName, canMake, canCheck }: { t
           [t("方向", "Direction"), directionLabel(selected.direction)], [t("积分数量", "Points"), selected.points.toLocaleString()],
           [t("状态", "Status"), stateLabel(selected.state)], [t("版本", "Version"), selected.version],
           [t("申请人", "Submitted by"), selected.submittedBy], [t("复核人", "Reviewed by"), selected.approvedBy ?? "—"],
+          [t("申请时间", "Submitted at"), selected.submittedAt ? new Date(selected.submittedAt).toLocaleString() : "—"],
+          [t("复核时间", "Reviewed at"), selected.reviewedAt ? new Date(selected.reviewedAt).toLocaleString() : "—"],
           [t("申请原因", "Submission reason"), selected.reason],
         ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></section>
         {canCheck && selected.state === "SUBMITTED" && <div className="space-y-3"><label className="space-y-1 block">{t("复核原因", "Review reason")}<Input value={reason} maxLength={1000} disabled={blocked} onChange={e => setReason(e.target.value)} /></label><div className="flex gap-2">{[true, false].map(approve => <Button key={String(approve)} variant={approve ? "default" : "outline"} disabled={blocked || !reason.trim()} onClick={() => send({ kind: "REVIEW", value: { requestId: "", adjustmentNo: selected.adjustmentNo, typeCode: selected.typeCode, expectedVersion: selected.version, approve, reason: reason.trim() } })}>{approve ? t("批准", "Approve") : t("驳回", "Reject")}</Button>)}</div></div>}

@@ -128,5 +128,15 @@
   "docs/technical/积分1%规则与多端展示验收-2026-10-25.md",
   "c-app/scripts/with-biz.mjs",
   "c-app/scripts/pack-biz-locales.mjs",
-  "c-app/scripts/pack-biz-locales.test.mjs"
+  "c-app/scripts/pack-biz-locales.test.mjs",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/admin/PointsAdjustmentService.java",
+  "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/admin/impl/PointsAdjustmentServiceImpl.java",
+  "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsUserAdjustmentTest.java",
+  "ops-web/app/points/adjustments.tsx",
+  "ops-web/lib/api/points-adjustment-types.ts",
+  "ops-web/lib/points-display.ts",
+  "ops-web/lib/points-display.test.ts",
+  "ops-web/lib/points-settlements-workspace.test.ts",
+  "docs/superpowers/plans/2026-10-25-points-remaining-delivery.md",
+  "docs/technical/积分剩余开发交付-2026-10-25.md"
 ]

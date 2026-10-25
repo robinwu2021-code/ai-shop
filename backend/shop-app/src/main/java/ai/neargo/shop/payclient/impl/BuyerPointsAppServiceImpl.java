@@ -53,7 +53,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
                             type.deductRatioBp(),
                             type.idleDays(),
                             balance.frozen(),
-                            balance.expireAt()));
+                            balance.expireAt(), type.earningPaused()));
         }
         return List.copyOf(accounts);
     }

@@ -54,9 +54,16 @@ public class PointsAdjustmentServiceImpl implements PointsAdjustmentService {
   require(text(type,40) && after>=0 && limit>=1 && limit<=100,"POINTS_PAGE_INVALID");
   var result=rows.page(type,after,limit).stream().map(row->{
    var r=json.readValue((String)row.get("payload_json"),Submission.class);
-   return new View(number(row,"id"),r.adjustmentNo(),r.typeCode(),r.userNo(),r.direction(),r.points(),r.reason(),(String)row.get("state"),(String)row.get("submitted_by"),(String)row.get("approved_by"),number(row,"version"));
+   return new View(number(row,"id"),r.adjustmentNo(),r.typeCode(),r.userNo(),r.direction(),r.points(),r.reason(),(String)row.get("state"),(String)row.get("submitted_by"),(String)row.get("approved_by"),number(row,"version"), timestamp(row.get("created_at")), "SUBMITTED".equals(row.get("state")) ? null : timestamp(row.get("updated_at")));
   }).toList();
   return new Page(result,result.isEmpty()?after:result.getLast().id(),result.size()==limit);
+ }
+ private Long timestamp(Object value) {
+  if(value instanceof java.sql.Timestamp t) return t.toInstant().toEpochMilli();
+  if(value instanceof java.time.LocalDateTime t) return t.atZone(java.time.ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli();
+  if(value instanceof java.time.OffsetDateTime t) return t.toInstant().toEpochMilli();
+  if(value instanceof java.util.Date d) return d.getTime();
+  return null;
  }
  private long number(Map<String,Object> row,String key){return ((Number)row.get(key)).longValue();}
  private boolean text(String value,int max){return value!=null && !value.isBlank() && value.length()<=max;}

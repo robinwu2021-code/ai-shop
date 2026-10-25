@@ -38,4 +38,7 @@ if(files.includes('packages/shared/src/utils/points-status.ts')) {
   run('npm',['test','--','tests/points-account.test.ts'],'c-app');
 }
 if(files.includes('c-app/scripts/pack-biz-locales.mjs') || files.includes('c-app/scripts/with-biz.mjs')) run('node',['--test','scripts/pack-biz-locales.test.mjs'],'c-app');
+if(files.includes('ops-web/app/points/settlements-tab.tsx') || files.includes('ops-web/lib/points-display.ts')) run('npm',['test','--','lib/points-settlements-workspace.test.ts','lib/points-display.test.ts','lib/points-budget-page.test.ts','lib/points-recovery-workspaces.test.ts','lib/points-transactions-page.test.ts','lib/api/points-configuration.test.ts'],'ops-web');
+if(files.includes('backend/shop-app/src/main/java/ai/neargo/shop/payclient/BuyerPointsAppService.java') || files.includes('backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/admin/PointsAdjustmentService.java')) run('mvn',['-o','-pl','shop-app','-am','-Dtest=BuyerPointsAppServiceTest,MpBuyerPointsReadTest,PointsUserAdjustmentTest,PointsUserAdjustmentDatabaseTest','-Dsurefire.failIfNoSpecifiedTests=false','test','-q'],'backend');
+if(files.includes('c-app/src/pages/points/index.vue')) run('npm',['test','--','tests/points-account.test.ts'],'c-app');
 console.log(`points-bc scoped checks passed: ${head} (${files.length} files)`);
