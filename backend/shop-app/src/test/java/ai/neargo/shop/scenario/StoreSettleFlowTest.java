@@ -210,6 +210,61 @@ class StoreSettleFlowTest {
         }
     }
 
+    // ---------------------------------------------------------------- F02 · 一处解析（Review R02 / R26）
+
+    @Autowired
+    private ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort;
+
+    @Autowired
+    private ai.neargo.shop.merchant.service.MerchantGovernService governService;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Test
+    @DisplayName("★★★ F02 能力 / 额度与结算解析到同一个收款号 —— 门店绑了微信号，能力却从支付宝那行读，支付方式与额度就判错")
+    void capabilityFollowsTheSameAccountAsSettlement() throws Exception {
+        String biz = merchant("12600210084", "一处解析店");
+        String m = merchantNo(biz);
+        String store = defaultStoreNo(biz);
+        String wechat = activatePayment(biz, null);
+        String alipay = activeAccount(m, null, "ALIPAY", "PM-F02-ALI-" + m);
+        jdbc.update("UPDATE mch_payment_merchant SET pay_methods='[\"APP\"]' WHERE pay_merchant_no=?", alipay);
+        jdbc.update("UPDATE mch_payment_merchant SET pay_methods='[\"JSAPI\"]' WHERE pay_merchant_no=?", wechat);
+        // 门店显式绑微信号。旧的能力解析不看门店绑定，主体级 LIMIT 1 在 H2 上按唯一索引取到 ALIPAY
+        setStorePayment(biz, store, wechat);
+
+        assertThat(merchantQueryPort.payMerchantNoOf(m, store, "OFFLINE")).contains(wechat);
+        assertThat(merchantQueryPort.payCapabilityOf(m, store).payMethods())
+                .as("门店绑的是微信号，能力就该读微信那一行")
+                .containsExactly("JSAPI");
+
+        merchantAdminPort.accruePayQuota(m, store, "ALIPAY", 1_234L);
+        assertThat(jdbc.queryForObject("SELECT quota_used_minor FROM mch_payment_merchant WHERE pay_merchant_no=?",
+                Long.class, alipay)).as("支付宝的单记到支付宝号上，不记到门店绑的微信号").isEqualTo(1_234L);
+        merchantAdminPort.accruePayQuota(m, store, "WECHAT", 100L);
+        assertThat(jdbc.queryForObject("SELECT quota_used_minor FROM mch_payment_merchant WHERE pay_merchant_no=?",
+                Long.class, wechat)).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("★★★ F02 · R26 门店换了主体，不再认旧主体为它进件的号 —— 只按 store_no 查会把新主体的钱打进旧主体")
+    void storeMovedToAnotherEntityDropsOldEntitysAccount() throws Exception {
+        String oldBiz = merchant("12600210085", "旧主体");
+        TestPlan.grantPro(mvc(), json, planMapper, oldBiz);
+        String movingStore = createStore(oldBiz, "要搬走的店");
+        activatePayment(oldBiz, movingStore);
+        String newBiz = merchant("12600210086", "新主体");
+        String newM = merchantNo(newBiz);
+        jdbc.update("UPDATE mch_store SET entity_no=? WHERE store_no=?", newM, movingStore);
+
+        var mode = governService.storeModes(newM).stream()
+                .filter(v -> movingStore.equals(v.storeNo())).findFirst().orElseThrow();
+        assertThat(mode.payMerchantNo())
+                .as("新主体一个收款号都没有 —— 读到的号是旧主体为这家店开的，钱会进旧主体的账户")
+                .isNull();
+    }
+
     @Test
     @DisplayName("★★★ F03 B 店专属号不能绑给 A 店 —— 绑上之后 A 店的钱进了 B 店的结算账户")
     void cannotBindAnotherStoresAccount() throws Exception {

@@ -2497,7 +2497,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
              * 跨商家合单时一笔支付要分别记到各家头上。
              * 方法开头「已 PAID 直接返回」保证了不会重复累加。
              */
-            merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(),
+            merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(), order.getPayChannel(),
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount());
 
 

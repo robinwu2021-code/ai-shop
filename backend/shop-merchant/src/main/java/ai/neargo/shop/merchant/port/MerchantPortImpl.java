@@ -904,69 +904,82 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public Optional<String> payMerchantNoOf(String merchantNo, String storeNo, String channel) {
-        if (merchantNo == null || merchantNo.isBlank()) {
-            return Optional.empty();
-        }
-        boolean anyChannel = channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel);
         /*
          * 只认**本主体已 ACTIVE** 的收款号 —— 与 StoreAdminServiceImpl.setPayment 同一条门槛。
          * 门店上存着的号可能在配好之后被停用（进件被驳回、账户被冻结），
          * 那时不能继续往它打款：不校验的话，症状是打款接口报错而账面显示已打，
          * 比一开始就解析不出号难查得多。
-         *
-         * 按 id 升序在内存里排：「第一个」必须是建档最早的那个，不能取决于数据库返回顺序（F01 · R01）。
          */
-        List<MchPaymentMerchant> usable = DataScopeContext.executeWithoutScope(() ->
+        return accountOf(merchantNo, storeNo, channel, true).map(MchPaymentMerchant::getPayMerchantNo);
+    }
+
+    /**
+     * 「门店 × 渠道 → 收款记录」的**唯一**解析（F01 / F02 · Review R01 / R02）。结算取号、收款能力、额度累加都走这里；
+     * 此前三处各一套规则，同一门店 × 渠道会落到三行上。
+     *
+     * <p>顺序：门店显式绑定的号 → 本店专属号 → 默认门店绑定的号 → 主体级号；同档按建档先后（id 升序），
+     * 不取决于数据库返回顺序。别家门店的专属号永不参与。渠道为真实通道时只在同渠道里找；
+     * {@link #CHANNEL_FREE_PAY_CHANNELS} 与空渠道不按渠道过滤。
+     *
+     * @param activeOnly 结算取号只认 ACTIVE；能力 / 额度沿用原口径，不限状态（审核中的号也有它的支付方式与额度）
+     */
+    private Optional<MchPaymentMerchant> accountOf(String merchantNo, String storeNo, String channel, boolean activeOnly) {
+        if (merchantNo == null || merchantNo.isBlank()) {
+            return Optional.empty();
+        }
+        boolean anyChannel = channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel);
+        String store = storeNo == null ? "" : storeNo;
+        List<MchPaymentMerchant> candidates = DataScopeContext.executeWithoutScope(() ->
                         merchantPaymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                                .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)))
+                                .eq(MchPaymentMerchant::getEntityNo, merchantNo)))
                 .stream()
-                .filter(p -> p.getPayMerchantNo() != null && !p.getPayMerchantNo().isBlank())
+                .filter(p -> !activeOnly || MchPaymentMerchant.ACTIVE.equals(p.getApplyStatus()))
                 .filter(p -> anyChannel || channel.equals(p.getPayChannel()))
+                // 只有主体级与本店专属两档有资格；别家门店的专属号是那家店的结算账户
+                .filter(p -> MchPaymentMerchant.ENTITY_LEVEL.equals(Objects.toString(p.getStoreNo(), ""))
+                        || (!store.isEmpty() && store.equals(p.getStoreNo())))
                 .sorted(java.util.Comparator.comparing(MchPaymentMerchant::getId,
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
                 .toList();
-        if (usable.isEmpty()) {
+        if (candidates.isEmpty()) {
             return Optional.empty();
         }
-        java.util.function.Predicate<String> isUsable = no -> no != null && !no.isBlank()
-                && usable.stream().anyMatch(p -> no.equals(p.getPayMerchantNo()));
+        java.util.function.Function<String, Optional<MchPaymentMerchant>> byNo = no -> no == null || no.isBlank()
+                ? Optional.empty()
+                : candidates.stream().filter(p -> no.equals(p.getPayMerchantNo())).findFirst();
 
-        if (storeNo != null && !storeNo.isBlank()) {
-            String configured = Optional.ofNullable(DataScopeContext.executeWithoutScope(() ->
+        if (!store.isEmpty()) {
+            String bound = Optional.ofNullable(DataScopeContext.executeWithoutScope(() ->
                             storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
                                     .eq(MchStore::getEntityNo, merchantNo)
-                                    .eq(MchStore::getStoreNo, storeNo)
+                                    .eq(MchStore::getStoreNo, store)
                                     .last("limit 1"))))
                     .map(MchStore::getPayMerchantNo)
                     .orElse(null);
-            // 配了但已不可用（或不是这个渠道的号）→ 落回兜底，而不是解析失败：
-            // 钱照收了，不能因为商家把号停了就把这笔结算卡死
-            if (isUsable.test(configured)) {
-                return Optional.of(configured);
+            // 配了但已不可用（或不是这个渠道的号）→ 往下落，而不是解析失败：钱照收了，不能把结算卡死
+            Optional<MchPaymentMerchant> hit = byNo.apply(bound);
+            if (hit.isPresent()) {
+                return hit;
+            }
+            Optional<MchPaymentMerchant> own = candidates.stream().filter(p -> store.equals(p.getStoreNo())).findFirst();
+            if (own.isPresent()) {
+                return own;
             }
         }
-        /*
-         * 兜底只在「主体级号 + 本店专属号」里找 —— 别家门店单独进件的号是那家店的结算账户，
-         * A 店的钱打进去就是打错人（F01 · R01）。
-         */
-        List<MchPaymentMerchant> fallback = usable.stream()
-                .filter(p -> MchPaymentMerchant.ENTITY_LEVEL.equals(Objects.toString(p.getStoreNo(), ""))
-                        || (storeNo != null && storeNo.equals(p.getStoreNo())))
-                .toList();
-        if (fallback.isEmpty()) {
-            return Optional.empty();
-        }
-        // 主体默认号 = 默认门店配的号（须在兜底范围内）；否则取兜底里建档最早的
-        String byDefaultStore = defaultStoreNo(merchantNo)
+        Optional<MchPaymentMerchant> byDefaultStore = defaultStoreNo(merchantNo)
                 .map(sn -> DataScopeContext.executeWithoutScope(() ->
                         storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
                                 .eq(MchStore::getStoreNo, sn)
                                 .last("limit 1"))))
                 .map(MchStore::getPayMerchantNo)
-                .filter(no -> fallback.stream().anyMatch(p -> no.equals(p.getPayMerchantNo())))
-                .orElse(null);
-        return Optional.of(byDefaultStore != null ? byDefaultStore : fallback.get(0).getPayMerchantNo());
+                .flatMap(byNo)
+                .filter(p -> MchPaymentMerchant.ENTITY_LEVEL.equals(Objects.toString(p.getStoreNo(), "")));
+        if (byDefaultStore.isPresent()) {
+            return byDefaultStore;
+        }
+        return candidates.stream()
+                .filter(p -> MchPaymentMerchant.ENTITY_LEVEL.equals(Objects.toString(p.getStoreNo(), "")))
+                .findFirst();
     }
 
     @Override
@@ -1647,7 +1660,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public PayCapability payCapabilityOf(String merchantNo, String storeNo) {
-        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo);
+        // 付款前还不知道渠道：按门店绑定解析（与 OFFLINE 结算取号同一行）
+        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo, null);
         if (pm == null) {
             /*
              * 进件还没走完的商家：全放行。
@@ -1754,11 +1768,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     @Transactional
-    public void accruePayQuota(String merchantNo, String storeNo, long amountMinor) {
+    public void accruePayQuota(String merchantNo, String storeNo, String channel, long amountMinor) {
         if (amountMinor <= 0) {
             return;
         }
-        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo);
+        MchPaymentMerchant pm = resolvePayment(merchantNo, storeNo, channel);
         if (pm == null) {
             // 进件还没走完：没有额度可记，也不该因此让支付回调失败
             return;
@@ -1799,23 +1813,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         return String.valueOf(java.time.LocalDate.now().getYear());
     }
 
-    /** 本店专属收款记录优先，回落到主体默认号 —— 不配店号就是「合并结算，走主体号」。 */
-    private MchPaymentMerchant resolvePayment(String merchantNo, String storeNo) {
-        if (storeNo != null && !storeNo.isBlank()) {
-            MchPaymentMerchant own = DataScopeContext.executeWithoutScope(() ->
-                    merchantPaymentMapper.selectOne(
-                    Wrappers.<MchPaymentMerchant>lambdaQuery()
-                            .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                            .eq(MchPaymentMerchant::getStoreNo, storeNo)
-                            .last("LIMIT 1")));
-            if (own != null) {
-                return own;
-            }
-        }
-        return merchantPaymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
-                .eq(MchPaymentMerchant::getEntityNo, merchantNo)
-                .eq(MchPaymentMerchant::getStoreNo, MchPaymentMerchant.ENTITY_LEVEL)
-                .last("LIMIT 1"));
+    /** 能力 / 额度用的收款记录：与结算取号同一条解析（{@link #accountOf}），不限状态（F02 · R02） */
+    private MchPaymentMerchant resolvePayment(String merchantNo, String storeNo, String channel) {
+        return accountOf(merchantNo, storeNo, channel, false).orElse(null);
     }
 
     private java.util.Set<String> readList(String rawJson) {

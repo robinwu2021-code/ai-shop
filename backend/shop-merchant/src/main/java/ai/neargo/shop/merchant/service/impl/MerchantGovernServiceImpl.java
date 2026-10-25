@@ -880,7 +880,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
      * 只查店号会把所有合并结算的门店误判成「没有收款账户」。
      */
     private String activePayMerchantNo(MchStore store) {
+        // 带上主体：门店换了主体后，旧主体为这家店开的号不再是它的（F02 · Review R26）
         var own = paymentMapper.selectOne(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                .eq(MchPaymentMerchant::getEntityNo, store.getEntityNo())
                 .eq(MchPaymentMerchant::getStoreNo, store.getStoreNo())
                 .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE)
                 .last("LIMIT 1"));

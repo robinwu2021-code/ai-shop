@@ -130,7 +130,7 @@ class MicroPayCapabilityFlowTest {
         pm.setQuotaUsedMinor(999_999L);
         paymentMapper.updateById(pm);
 
-        merchantAdminPort.accruePayQuota(MERCHANT, null, 10_000L);
+        merchantAdminPort.accruePayQuota(MERCHANT, null, "WECHAT", 10_000L);
 
         var cap = merchantQueryPort.payCapabilityOf(MERCHANT, null);
         assertThat(cap.quotaUsedMinor())
@@ -149,7 +149,7 @@ class MicroPayCapabilityFlowTest {
         for (int i = 0; i < threads; i++) {
             futures.add(pool.submit(() -> {
                 start.await();
-                merchantAdminPort.accruePayQuota(MERCHANT, null, 1_000L);
+                merchantAdminPort.accruePayQuota(MERCHANT, null, "WECHAT", 1_000L);
                 return null;
             }));
         }
@@ -168,7 +168,7 @@ class MicroPayCapabilityFlowTest {
     @DisplayName("★ 运营只能设上限，不能改已用量 —— 能改就等于能把账做平")
     void opsCanOnlySetTheLimit() {
         payAccount(MERCHANT, 0L, 0L, "[\"JSAPI\"]", false);
-        merchantAdminPort.accruePayQuota(MERCHANT, null, 30_000L);
+        merchantAdminPort.accruePayQuota(MERCHANT, null, "WECHAT", 30_000L);
 
         admissionService.setPayQuotaLimit(MERCHANT, null, 500_000L, "OPS");
 

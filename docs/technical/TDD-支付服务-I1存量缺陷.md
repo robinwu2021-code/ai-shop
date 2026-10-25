@@ -47,6 +47,13 @@
 - `submit`：驳回原因改为 `clearRejectReason`（显式 `set(null)`），回查路径早已如此。
 - 测试支撑：`StubApplymentGateway#keepApplyingFor`（与既有 `rejectWithoutReasonFor` 同类的测试钩子）。
 
+### F02 · 门店 × 渠道 → 收款记录只有一处解析
+- `MerchantPortImpl#accountOf(merchantNo, storeNo, channel, activeOnly)`：门店显式绑定的号 → 本店专属号 → 默认门店绑定的号 → 主体级号（同档 id 升序）；别店专属号不参与；渠道规则同 F01。
+- 结算取号（`payMerchantNoOf`，`activeOnly=true`）、能力（`payCapabilityOf`，渠道未知传 null）、额度（`accruePayQuota`）三处都走它；能力 / 额度沿用不限状态的原口径。
+- **契约**：`MerchantAdminPort#accruePayQuota` 加 `channel` 参数，唯一调用方 `OrderServiceImpl` 传 `order.getPayChannel()`。
+- R26：`MerchantGovernServiceImpl#activePayMerchantNo` 查本店专属号时加主体条件。
+- `activeChannelsOf` 本就按「主体级 + 本店」过滤，不改。
+
 ### F03 · 门店只能绑「主体级号或本店专属号」
 - `StoreAdminServiceImpl#setPayment`：在原「本主体 ACTIVE」校验之外，号若是某家门店的专属号（`store_no` 非空），只能绑给那家店。
 - 渠道维度不校验：`mch_store.pay_merchant_no` 一店一列、不分渠道，绑定时没有目标渠道可比（按渠道取号由 F01 在解析侧保证）。
@@ -64,6 +71,7 @@
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
 | F01 | `StoreSettleFlowTest#resolvesByChannel` · `#fallbackNeverBorrowsAnotherStoresAccount` · `#offlineKeepsEntityDefaultDeterministically` | ✅ 11/11 | 先红：旧实现问微信号返回了支付宝号（无排序）、A 店取到 B 店专属号。消融去渠道过滤 / 去门店过滤 → 前两条红 ✅ |
+| F02 | `StoreSettleFlowTest#capabilityFollowsTheSameAccountAsSettlement` · `#storeMovedToAnotherEntityDropsOldEntitysAccount` | ✅ 14/14（另 9 个相关类全绿） | 先红：门店绑微信号，能力读到支付宝行（`["APP"]`）；换主体后读到旧主体的号。注：能力那条初版在旧代码上是绿的（H2 按唯一索引让 LIMIT 1 碰巧命中绑定的号），把绑定换成微信后才量到 ✅ |
 | F03 | `StoreSettleFlowTest#cannotBindAnotherStoresAccount` | ✅ 12/12 | 先红：B 店专属号绑给 A 店 code=0；撤掉新校验即回到该状态 ✅ |
 | F04 | `ApplymentGatewayTest#outRequestNoIsPerApplyment` | ✅ 9/9 | 先红：字段已加、网关仍发主体编号时 `expected "E-1-E-100" but was "E-1"` ✅ |
 | F06 | `MicroPayCapabilityFlowTest#concurrentAccrualsAllLand` · `ApplymentGatewayTest#alipayQueryUsesDifferentApi`（加断言） | ✅ 9/9 · 9/9 | 先红：10 个并发累加只落 1 笔（`expected 10000 but was 1000`）；支付宝查询参数为空 ✅ |
