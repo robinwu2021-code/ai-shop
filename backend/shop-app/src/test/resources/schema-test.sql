@@ -578,6 +578,9 @@ CREATE TABLE IF NOT EXISTS ord_item
     paid_share_minor BIGINT(20) NOT NULL DEFAULT 0,
     refunded_qty     INT(11)    NOT NULL DEFAULT 0,
     refunded_minor   BIGINT(20) NOT NULL DEFAULT 0,
+    sale_quantity DECIMAL(20,6) NULL,
+    quantity_unit VARCHAR(32) NULL,
+    source_component_ref VARCHAR(64) NULL,
     PRIMARY KEY (id)
 );
 
@@ -609,6 +612,7 @@ CREATE TABLE IF NOT EXISTS ord_order
     offline_confirmed_by VARCHAR(64) DEFAULT NULL,
     offline_confirmed_at BIGINT DEFAULT NULL,
     points_integrated TINYINT NOT NULL DEFAULT 0,
+    fee_minor BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_order_no UNIQUE (order_no)
 );
@@ -694,6 +698,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     open_after_sale_no VARCHAR(40) DEFAULT NULL,
     receiver_salutation VARCHAR(16) DEFAULT NULL,
     inventory_lifecycle_version INT NOT NULL DEFAULT 1,
+    fee_minor BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)
@@ -9239,6 +9244,12 @@ CREATE TABLE IF NOT EXISTS ord_industry_order_source
     updated_by VARCHAR(32) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    party_no VARCHAR(32) NULL,
+    party_snapshot TEXT NULL,
+    demand_plan_no VARCHAR(64) NULL,
+    demand_plan_hash VARCHAR(64) NULL,
+    demand_plan_snapshot TEXT NULL,
+    delivery_snapshot LONGTEXT NULL,
     CONSTRAINT uk_industry_order_no UNIQUE (tenant_no, order_no),
     CONSTRAINT uk_industry_source_version UNIQUE (tenant_no, entity_no, store_no, source_system, source_type, source_no, source_version)
 );
@@ -9403,6 +9414,11 @@ CREATE TABLE IF NOT EXISTS prn_device
     updated_by VARCHAR(32) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    authorization_version BIGINT NOT NULL DEFAULT 0,
+    revoke_reason VARCHAR(255) NULL,
+    revoked_by VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    revoke_key VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    revocation_history MEDIUMTEXT NULL,
     CONSTRAINT uk_prn_device_no UNIQUE (device_no),
     CONSTRAINT ck_prn_device_caps CHECK ((capabilities IS JSON))
 );
@@ -9547,6 +9563,9 @@ CREATE TABLE IF NOT EXISTS ord_industry_fulfillment
     updated_by VARCHAR(32) NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted INT NOT NULL DEFAULT 0,
+    fulfillment_kind VARCHAR(32) NULL,
+    plan_hash VARCHAR(64) NULL,
+    command_snapshot TEXT NULL,
     CONSTRAINT uk_industry_fulfillment_no UNIQUE (fulfillment_no),
     CONSTRAINT uk_industry_fulfillment_sub UNIQUE (tenant_no,sub_order_no),
     CONSTRAINT uk_industry_fulfillment_key UNIQUE (tenant_no,entity_no,store_no,operation_key)
@@ -9901,6 +9920,123 @@ CREATE TABLE IF NOT EXISTS sv_financial_membership_change
     CHECK ((CASE direction WHEN 'LEAVE' THEN TRUE WHEN 'JOIN' THEN TRUE ELSE CASE WHEN direction IS NULL THEN NULL ELSE FALSE END END)),
     CHECK ((CASE status WHEN 'PREPARED' THEN TRUE WHEN 'ACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CHECK (new_revision>old_revision)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_fulfillment_progress
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL, sub_order_no VARCHAR(32) NOT NULL, order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL, fulfilled_qty DECIMAL(24,6) NOT NULL,
+    unit VARCHAR(16) NOT NULL, plan_hash VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,updated_by VARCHAR(32) NULL,
+    version BIGINT NOT NULL DEFAULT 0,deleted INT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_industry_fulfill_progress UNIQUE (tenant_no,entity_no,sub_order_no,order_item_id,source_component_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_amendment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,order_no VARCHAR(32) NOT NULL,sub_order_no VARCHAR(32) NOT NULL,
+    amendment_no VARCHAR(32) NOT NULL,operation_key VARCHAR(64) NOT NULL,request_hash VARCHAR(64) NOT NULL,
+    kind VARCHAR(16) NOT NULL,source_return_no VARCHAR(32) NULL,source_hash VARCHAR(64) NOT NULL,
+    command_snapshot TEXT NOT NULL,evidence_snapshot TEXT NULL,inventory_snapshot TEXT NULL,
+    status VARCHAR(24) NOT NULL,actor_no VARCHAR(32) NOT NULL,expected_sub_version BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,receivable_delta_minor BIGINT NOT NULL DEFAULT 0,replacement_cart_no VARCHAR(32) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,updated_by VARCHAR(32) NULL,
+    net_delta_minor BIGINT NULL,
+    tax_delta_minor BIGINT NULL,
+    CONSTRAINT uk_industry_amendment_no UNIQUE (amendment_no),UNIQUE KEY uk_industry_amendment_key(tenant_no,entity_no,operation_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_amendment_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,amendment_no VARCHAR(32) NOT NULL,order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL,quantity DECIMAL(24,6) NOT NULL,physical_reduction_qty DECIMAL(24,6) NOT NULL,
+    cancel_qty DECIMAL(24,6) NOT NULL,unit VARCHAR(16) NOT NULL,disposition VARCHAR(16) NOT NULL,
+    receivable_reduction_minor BIGINT NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by VARCHAR(32) NOT NULL,
+    net_reduction_minor BIGINT NOT NULL,
+    tax_reduction_minor BIGINT NOT NULL,
+    CONSTRAINT uk_industry_amendment_line UNIQUE (amendment_no,order_item_id,source_component_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_receivable_adjustment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,order_no VARCHAR(32) NOT NULL,sub_order_no VARCHAR(32) NOT NULL,
+    amendment_no VARCHAR(32) NOT NULL,currency VARCHAR(3) NOT NULL,amount_minor BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,reason VARCHAR(255) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,UNIQUE KEY uk_receivable_amendment(amendment_no),KEY ix_receivable_order(order_no,id),
+    net_delta_minor BIGINT NULL,
+    tax_delta_minor BIGINT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ord_industry_fee_line_adjustment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,amendment_no VARCHAR(32) NOT NULL,order_item_id BIGINT NOT NULL,
+    source_component_ref VARCHAR(64) NOT NULL,amount_minor BIGINT NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(32) NOT NULL,UNIQUE KEY uk_fee_line_adjustment(amendment_no,order_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_rule
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL,updated_at DATETIME(3) NOT NULL,updated_by VARCHAR(32) NOT NULL,
+    CONSTRAINT uk_pricing_fee_rule UNIQUE (entity_no,store_no,rule_no),CHECK (status IN ('ACTIVE','DISABLED'))
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_revision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,definition_snapshot TEXT NOT NULL,
+    request_key CHAR(64) NOT NULL,request_hash CHAR(64) NOT NULL,actor_no VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL,reason VARCHAR(255) NOT NULL,created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_pricing_fee_revision UNIQUE (revision_no),UNIQUE KEY uk_pricing_fee_rule_command (entity_no,store_no,request_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_scope
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
+    scope_no VARCHAR(32) NOT NULL,rule_no VARCHAR(32) NOT NULL,currency CHAR(3) NOT NULL,
+    goods_basis_minor BIGINT NOT NULL,fee_minor BIGINT NOT NULL,version BIGINT NOT NULL,
+    CONSTRAINT uk_pricing_fee_scope UNIQUE (entity_no,store_no,scope_no,rule_no),
+    CHECK (goods_basis_minor>=0 AND fee_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_application
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,order_no VARCHAR(32) NOT NULL,sub_order_no VARCHAR(32) NOT NULL,quote_no VARCHAR(32) NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,scope_no VARCHAR(32) NOT NULL,currency CHAR(3) NOT NULL,
+    original_goods_basis_minor BIGINT NOT NULL DEFAULT 0,current_goods_basis_minor BIGINT NOT NULL DEFAULT 0,current_quantity DECIMAL(20,6) NOT NULL DEFAULT 0,
+    fee_minor BIGINT NOT NULL,adjusted_fee_minor BIGINT NOT NULL,source_hash CHAR(64) NOT NULL,created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_pricing_fee_application UNIQUE (application_no),UNIQUE KEY uk_pricing_fee_quote_scope (entity_no,store_no,quote_no,rule_no,scope_no),
+    CHECK (fee_minor>=0 AND adjusted_fee_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_advice
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,quote_no VARCHAR(32) NOT NULL,current_fee_minor BIGINT NOT NULL,target_fee_minor BIGINT NOT NULL,
+    source_hash CHAR(64) NOT NULL,status VARCHAR(16) NOT NULL,
+    CONSTRAINT uk_pricing_fee_advice UNIQUE (entity_no,store_no,application_no,source_hash),
+    CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'APPLIED' THEN TRUE WHEN 'SUPERSEDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),CHECK (target_fee_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_pricing_fee_reconciliation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
+    application_no VARCHAR(32) NOT NULL,amendment_no VARCHAR(32) NOT NULL,source_hash CHAR(64) NOT NULL,
+    before_goods_minor BIGINT NOT NULL,after_goods_minor BIGINT NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    CONSTRAINT uk_fee_reconciliation UNIQUE (entity_no,application_no,amendment_no)
 );
 
 -- 种子数据

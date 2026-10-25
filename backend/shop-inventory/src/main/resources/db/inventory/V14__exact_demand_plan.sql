@@ -4,7 +4,7 @@ ALTER TABLE inv_ledger MODIFY qty_delta DECIMAL(24,6) NOT NULL, MODIFY balance_a
 ALTER TABLE inv_outbound_line MODIFY qty DECIMAL(24,6) NOT NULL;
 ALTER TABLE inv_outbound_order MODIFY total_qty DECIMAL(24,6) NOT NULL, MODIFY total_cost_minor BIGINT NULL;
 ALTER TABLE inv_ledger ADD cost_currency VARCHAR(3) NULL;
-ALTER TABLE inv_item ADD cost_currency VARCHAR(3) NULL COMMENT 'Inventory owner valuation currency; unknown remains null';
+ALTER TABLE inv_item ADD cost_currency VARCHAR(3) NULL COMMENT 'Inventory owner valuation currency, unknown remains null';
 CREATE TABLE inv_demand_plan (
  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, owner_id VARCHAR(32) NOT NULL,
  external_ref VARCHAR(64) NOT NULL, plan_no VARCHAR(32) NOT NULL, plan_hash VARCHAR(64) NOT NULL,

@@ -57270,11 +57270,11 @@
             "field": {
               "name": "cost_currency",
               "type": "varchar(3)",
-              "label": "Inventory owner valuation currency; unknown remains null",
+              "label": "Inventory owner valuation currency, unknown remains null",
               "nullable": true,
               "ref": null,
               "introducedIn": "V14",
-              "sqlDeclaration": "cost_currency VARCHAR(3) NULL COMMENT 'Inventory owner valuation currency; unknown remains null'"
+              "sqlDeclaration": "cost_currency VARCHAR(3) NULL COMMENT 'Inventory owner valuation currency, unknown remains null'"
             }
           },
           {
@@ -105851,17 +105851,17 @@
           {
             "name": "authorizeAdjustment",
             "declaration": "public AdjustmentAuthority authorizeAdjustment( Scope scope, String app, long target, String hash)",
-            "sourceLine": 286
+            "sourceLine": 296
           },
           {
             "name": "completeAdjustment",
             "declaration": "public void completeAdjustment( Scope scope, String app, long target, String hash, String actor, String key)",
-            "sourceLine": 303
+            "sourceLine": 313
           },
           {
             "name": "reconcileOnAmendment",
             "declaration": "public void reconcileOnAmendment( IndustryFulfillmentPort.Reference ref, String amendment, String sourceHash)",
-            "sourceLine": 323
+            "sourceLine": 333
           }
         ]
       },
@@ -110538,11 +110538,11 @@
           "field": {
             "name": "cost_currency",
             "type": "varchar(3)",
-            "label": "Inventory owner valuation currency; unknown remains null",
+            "label": "Inventory owner valuation currency, unknown remains null",
             "nullable": true,
             "ref": null,
             "introducedIn": "V14",
-            "sqlDeclaration": "cost_currency VARCHAR(3) NULL COMMENT 'Inventory owner valuation currency; unknown remains null'"
+            "sqlDeclaration": "cost_currency VARCHAR(3) NULL COMMENT 'Inventory owner valuation currency, unknown remains null'"
           }
         },
         {
