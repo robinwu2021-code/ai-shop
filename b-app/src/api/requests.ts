@@ -1073,15 +1073,31 @@ export interface SvBrandActivationRequest {managementNo:string;expectedRevision:
 // P6 finance wire bodies; the API adapter consumes these exact types.
 export type {SvReportQuery,SvFinanceQuery,SvGenerationRequest,SvDecisionRequest,SvResolutionRequest,SvAdjustmentRequest,SvPaymentRequest,SvReceiptRequest,SvVoidRequest} from "./stored-value-finance";
 import type {SvReportQuery} from "./stored-value-finance";
-export interface SvFinanceManagementQuery {managementNo:string}
-export interface SvFinanceDirectoryQuery extends SvFinanceManagementQuery {scopeType?:"STORE"|"BRAND"}
-export interface SvFinanceCursorQuery extends SvFinanceManagementQuery {cursor?:string;size?:number}
-export interface SvFinanceActivityQuery extends SvReportQuery {issuerNo:string}
-export interface SvFinanceResolutionQuery extends SvFinanceManagementQuery {commandKey:string}
+export interface SvFinanceManagementQuery {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string}
+export interface SvFinanceDirectoryQuery extends SvFinanceManagementQuery {
+/** Restricts the directory to store (STORE) or brand (BRAND) issuers; omit for both. */
+scopeType?:"STORE"|"BRAND"}
+export interface SvFinanceCursorQuery extends SvFinanceManagementQuery {
+/** Opaque continuation cursor from the preceding page; omit for the first page. */
+cursor?:string;
+/** Maximum records per page; server default 20, at most 100. */
+size?:number}
+export interface SvFinanceActivityQuery extends SvReportQuery {
+/** Issuer whose ledger is attributed; its currency must equal the requested currency. */
+issuerNo:string}
+export interface SvFinanceResolutionQuery extends SvFinanceManagementQuery {
+/** Idempotency-Key of the original payment registration to look up. */
+commandKey:string}
 
 export type {SvFinancialBrandRequest} from "./stored-value-finance";
 
-export interface SvFinancialOriginalQuery {managementNo:string;commandKey:string}
+export interface SvFinancialOriginalQuery {
+/** Management-space identifier under which the operation is authorized. */
+managementNo:string;
+/** Idempotency-Key of the original financial brand change request to look up. */
+commandKey:string}
 export interface SvConsumptionStoreQuery {
 /** Store identifier for the service or ledger record; null when no single store applies. */
 storeNo:string}

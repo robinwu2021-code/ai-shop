@@ -1253,7 +1253,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 73,
         "c-app": 27
       }
     },
@@ -5467,7 +5467,7 @@
         "sh-sheet",
         "sh-tabs"
       ],
-      "libClassHits": 67,
+      "libClassHits": 69,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []

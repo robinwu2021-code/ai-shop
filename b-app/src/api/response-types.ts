@@ -268,13 +268,55 @@ export type {SvPolicyTargetOption,SvGovernanceContext} from './stored-value-gove
 
 export type {SvFinanceCapability,SvFinanceResource,SvSummary,SvSettlementBill,SvBillActions,SvSettlementPayment,SvGenerated,SvPaymentResolution} from "./stored-value-finance";
 import type {SvSummary,SvStoreAttribution,SvActivityAttribution,SvSettlementBill,SvSettlementItem,SvSettlementEvent,SvSettlementPayment} from "./stored-value-finance";
-export interface SvFinanceSummaryPage {records:SvSummary[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceStorePage {records:SvStoreAttribution[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceActivityPage {records:SvActivityAttribution[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceBillPage {records:SvSettlementBill[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceItemPage {records:SvSettlementItem[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceEventPage {records:SvSettlementEvent[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinancePaymentPage {records:SvSettlementPayment[];nextCursor:string|null;hasMore:boolean}
+export interface SvFinanceSummaryPage {
+/** Records of the current cursor page. */
+records:SvSummary[];
+/** Opaque cursor for the next page; null when the result is exhausted. */
+nextCursor:string|null;
+/** Whether a further page is available using nextCursor. */
+hasMore:boolean}
+export interface SvFinanceStorePage {
+/** Records of the current cursor page. */
+records:SvStoreAttribution[];
+/** Opaque cursor for the next page; null when the result is exhausted. */
+nextCursor:string|null;
+/** Whether a further page is available using nextCursor. */
+hasMore:boolean}
+export interface SvFinanceActivityPage {
+/** Records of the current cursor page. */
+records:SvActivityAttribution[];
+/** Opaque cursor for the next page; null when the result is exhausted. */
+nextCursor:string|null;
+/** Whether a further page is available using nextCursor. */
+hasMore:boolean}
+export interface SvFinanceBillPage {
+/** Records of the current cursor page. */
+records:SvSettlementBill[];
+/** Opaque cursor for the next page; null when the result is exhausted. */
+nextCursor:string|null;
+/** Whether a further page is available using nextCursor. */
+hasMore:boolean}
+export interface SvFinanceItemPage {
+/** Records of the current cursor page. */
+records:SvSettlementItem[];
+/** Opaque cursor for the next page; null when the result is exhausted. */
+nextCursor:string|null;
+/** Whether a further page is available using nextCursor. */
+hasMore:boolean}
+export interface SvFinanceEventPage {
+/** Records of the current cursor page. */
+records:SvSettlementEvent[];
+/** Opaque cursor for the next page; null when the result is exhausted. */
+nextCursor:string|null;
+/** Whether a further page is available using nextCursor. */
+hasMore:boolean}
+export interface SvFinancePaymentPage {
+/** Records of the current cursor page. */
+records:SvSettlementPayment[];
+/** Opaque cursor for the next page; null when the result is exhausted. */
+nextCursor:string|null;
+/** Whether a further page is available using nextCursor. */
+hasMore:boolean}
 
 export type {SvFinancialBrandChange} from "./stored-value-finance";
 
