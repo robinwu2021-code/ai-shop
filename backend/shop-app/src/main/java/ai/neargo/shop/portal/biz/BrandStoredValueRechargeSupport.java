@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 @Component
 public class BrandStoredValueRechargeSupport {
+ @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.merchantbridge.StoredValueCollectionContext collection;
  private final StoredValueIssuerRechargeAppService pay;private final EntitlementScopeResolver stores;private final StoredValueExecutionScopePort facts;
  private final CustomerIdentityPort customers;private final MerchantQueryPort merchants;private final MarketPort markets;private final StoreDirectoryPort directory;
  private final StoredValueRequestFingerprint fingerprints;private final boolean enabled;
@@ -24,11 +25,11 @@ public class BrandStoredValueRechargeSupport {
   this.pay=pay;this.stores=stores;this.facts=facts;this.customers=customers;this.merchants=merchants;this.markets=markets;this.directory=directory;this.fingerprints=fingerprints;this.enabled=enabled;
  }
  public boolean enabled(){return enabled;}
- public StoredValueIssuers.StoreOptions issuers(String store){return pay.issuers(scope(store));}
+ public StoredValueIssuers.StoreOptions issuers(String store){var s=scope(store);return collection==null?pay.issuers(s):collection.options(s);}
  public CursorPage<StoredValueIssuerRecharges.Option> options(String store,String customer,String cursor,int size){
   requireEnabled();var ctx=context("brand-recharge-options");var scope=scope(store);
   var person=customers.resolveReference(ctx,new CustomerIdentityPort.ReferenceQuery(scope.entityNo(),store,customer));
-  return pay.options(new Query(scope,new Customer(person.customerNo(),person.userNo())),cursor,size);
+  return pay.options(query(scope,new Customer(person.customerNo(),person.userNo())),cursor,size);
  }
  public StoredValueRechargeProgress confirm(String store,BizStoredValueIssuerOperationsController.StoreRechargeRequest c,String key){
   var ctx=context(key);String entity=entity(store);var replay=replay(store,c);
@@ -38,7 +39,7 @@ public class BrandStoredValueRechargeSupport {
   requireEnabled();var s=scope(store);
   var person=customers.resolveReference(ctx,new CustomerIdentityPort.ReferenceQuery(entity,store,c.customerRef()));
   var card=directory.cards(List.of(store)).get(store);if(card==null||!card.active()||!entity.equals(card.entityNo()))throw BizException.of(ErrorCode.NOT_FOUND);
-  return StoredValueRechargeProgress.from(pay.confirm(ctx,entity,new StoredValueIssuerRecharges.Create(new Query(s,new Customer(person.customerNo(),person.userNo())),c.optionRef(),replay.customerReferenceHash(),card.storeName())));
+  return StoredValueRechargeProgress.from(pay.confirm(ctx,entity,new StoredValueIssuerRecharges.Create(query(s,new Customer(person.customerNo(),person.userNo())),c.optionRef(),replay.customerReferenceHash(),card.storeName())));
  }
  public BizStoredValuePlanRechargeController.ResolveView resolve(String store,BizStoredValueIssuerOperationsController.StoreRechargeRequest c,String key){
   var r=pay.replay(context(key),entity(store),replay(store,c));return new BizStoredValuePlanRechargeController.ResolveView(r.found(),r.found()?StoredValueRechargeProgress.from(r.recharge()):null);
@@ -50,6 +51,7 @@ public class BrandStoredValueRechargeSupport {
   if(c.storeNo()!=null&&!store.equals(c.storeNo()))throw BizException.of(ErrorCode.BAD_REQUEST);
   return new StoredValueIssuerRecharges.Replay(store,fingerprints.issuerOption(c.optionRef()),fingerprints.reference(c.customerRef(),store,"BRAND",c.optionRef()));
  }
+ private Query query(ExecutionScope s,Customer c){return collection==null?new Query(s,c):collection.query(s,c);}
  private ExecutionScope scope(String store){
   String entity=entity(store);var u=SecurityUtils.requireUser();
   var market=markets.find(merchants.marketOf(entity)).filter(MarketPort.MarketBrief::enabled).orElseThrow(()->BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));

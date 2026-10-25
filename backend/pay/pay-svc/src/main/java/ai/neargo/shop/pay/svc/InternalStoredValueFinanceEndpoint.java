@@ -57,4 +57,10 @@ public class InternalStoredValueFinanceEndpoint {
  public ResponseEntity<?> prepareMembership(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMembership.Prepare c,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->pay.prepareMembership(c));}
  @PostMapping(PayInternalPaths.SV_FINANCE_COMMIT_MEMBERSHIP)
  public ResponseEntity<?> commitMembership(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMembership.Commit c,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->pay.commitMembership(c));}
+ @PostMapping(PayInternalPaths.SV_FINANCE_COLLECTION_REQUIREMENT)
+ public ResponseEntity<?> collectionRequirement(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope c,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->pay.collectionRequirement(c));}
+ @PostMapping(PayInternalPaths.SV_FINANCE_COLLECTION_OPTIONS)
+ public ResponseEntity<?> collectionOptions(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueCollections.Options c,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->pay.collectionOptions(c));}
+ @PostMapping(PayInternalPaths.SV_FINANCE_REBUILD)
+ public ResponseEntity<?> rebuild(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueReports.Projection c,@RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false)String given){return InternalServiceResponses.invoke(token,given,()->pay.rebuild(c));}
 }

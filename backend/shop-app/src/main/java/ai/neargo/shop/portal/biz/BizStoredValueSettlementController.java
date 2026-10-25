@@ -22,6 +22,17 @@ public class BizStoredValueSettlementController {
  }
  public record ReceiptRequest(String managementNo,long expectedRevision,Instant receivedAt){}
  public record VoidRequest(String managementNo,long expectedRevision,String reason){}
+ public record PermissionRequest(String managementNo){public PermissionRequest{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);}}
+ @PostMapping("/biz/management/entities/{entityNo}/stored-value/financial-permissions")
+ public Map<String,Object> preparePermissions(@PathVariable String entityNo,@RequestBody PermissionRequest c){return context.prepare(c.managementNo(),entityNo);}
+ public record BillAccess(Set<String> payerActions,Set<String> payeeActions){}
+ @GetMapping("/biz/management/stored-value/financial-capability")
+ public StoredValueFinance.Capabilities capability(){return finance.capabilities();}
+ @GetMapping("/biz/management/stored-value/settlement-bills/{billNo}/actions")
+ public BillAccess actions(@PathVariable String billNo,@RequestParam String managementNo){
+  var authority=context.bill(managementNo,billNo,"BILL");var bill=finance.detail(new StoredValueFinance.BillRead(authority,billNo,null,20));
+  return new BillAccess(authority.entityPermissions().getOrDefault(bill.payerEntityNo(),Set.of()),authority.entityPermissions().getOrDefault(bill.payeeEntityNo(),Set.of()));
+ }
  @GetMapping("/biz/management/stored-value/financial-resources")
  public List<StoredValueFinance.Resource> resources(@RequestParam String managementNo,@RequestParam(required=false)String scopeType){return context.directory(managementNo,scopeType);}
  @GetMapping("/biz/management/stored-value/settlement-bills")

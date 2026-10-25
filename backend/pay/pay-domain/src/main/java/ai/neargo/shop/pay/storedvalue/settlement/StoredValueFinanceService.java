@@ -12,7 +12,11 @@ import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.*;
 /** Same Pay-owned entry points are used by embedded calls and authenticated private HTTP adapters. */
 @Service
 public class StoredValueFinanceService {
- private final ai.neargo.shop.pay.storedvalue.issuer.StoredValueFinancialMembershipService membership;private final IssuerRepository db;private final StoredValueCrossEntityReadiness readiness;private final StoredValueSummaryService reports;private final StoredValueSettlementQueryService queries;private final StoredValueSettlementService bills;private final StoredValueSettlementDecisionService decisions;private final StoredValueSettlementPaymentService payments;private final StoredValueCursorCodec cursors;
+ private final ai.neargo.shop.pay.storedvalue.issuer.StoredValueFinancialMembershipService membership;@org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueCollectionGuard collection;
+ @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueIssuerQueryService issuerQueries;
+ @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.report.StoredValueDailySummaryProjector projector;
+ public StoredValueReports.ProjectionResult rebuild(StoredValueReports.Projection c){return projector.rebuild(c.scope(),c.date(),c.afterRelease(),c.afterStore(),c.size());}
+ private final IssuerRepository db;private final StoredValueCrossEntityReadiness readiness;private final StoredValueSummaryService reports;private final StoredValueSettlementQueryService queries;private final StoredValueSettlementService bills;private final StoredValueSettlementDecisionService decisions;private final StoredValueSettlementPaymentService payments;private final StoredValueCursorCodec cursors;
  public StoredValueFinanceService(IssuerRepository db,StoredValueCrossEntityReadiness readiness,StoredValueSummaryService reports,StoredValueSettlementQueryService queries,StoredValueSettlementService bills,StoredValueSettlementDecisionService decisions,StoredValueSettlementPaymentService payments,StoredValueCursorCodec cursors,ai.neargo.shop.pay.storedvalue.issuer.StoredValueFinancialMembershipService membership){this.membership=membership;this.db=db;this.readiness=readiness;this.reports=reports;this.queries=queries;this.bills=bills;this.decisions=decisions;this.payments=payments;this.cursors=cursors;}
  public StoredValueFinance.Capabilities capabilities(){var c=readiness.capability();return new StoredValueFinance.Capabilities(2,readiness.reportsReady(),readiness.settlementReady(),c.ready(),false,c.blockers());}
  public List<StoredValueFinance.Resource> directory(StoredValueFinance.Directory c){
@@ -47,4 +51,6 @@ public class StoredValueFinanceService {
  public StoredValueMembership.Ack prepareMembership(StoredValueMembership.Prepare c){return membership.prepare(c);}
  public StoredValueMembership.Ack commitMembership(StoredValueMembership.Commit c){return membership.commit(c);}
 
+ public StoredValueCollections.Lookup collectionRequirement(StoredValueWallets.ExecutionScope c){return new StoredValueCollections.Lookup(collection.requirement(c));}
+ public StoredValueIssuers.StoreOptions collectionOptions(StoredValueCollections.Options c){return issuerQueries.storeOptions(c.scope(),c.proof());}
 }

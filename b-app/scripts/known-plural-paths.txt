@@ -114,3 +114,12 @@ mSvConsumptionCancel	P5 verified Java namespace retained for API compatibility.
 mSvConsumptionOrder	P5 verified Java namespace retained for API compatibility.
 mSvWallets	P5 verified Java namespace retained for API compatibility.
 mSvBrandActivate	P5 verified Java namespace retained for API compatibility.
+
+# P6: align published Java resource paths; no alternate aliases.
+mSvBrandSummary	/biz/management/brands/:no/stored-value/summary
+mSvStoreSummary	/biz/stores/:no/stored-value/store-summary
+mSvBrandStoreBreakdown	/biz/management/brands/:no/stored-value/store-breakdown
+mSvActivitySummary	/biz/management/stored-value/activities/:no/summary
+mSvFinancialBrandStart	/biz/management/stores/:store/stored-value/financial-brand-changes
+mSvPrepareFinancePermissions	/biz/management/entities/:entity/stored-value/financial-permissions
+mSvFinancialBrandOriginal	/biz/management/stores/:store/stored-value/financial-brand-change-original

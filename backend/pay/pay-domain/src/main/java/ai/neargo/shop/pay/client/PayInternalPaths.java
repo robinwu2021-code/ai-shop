@@ -220,4 +220,7 @@ public final class PayInternalPaths {
  public static final String SV_FINANCE_MEMBERSHIP_TARGETS="/internal/pay/stored-value/finance/membership-targets";
  public static final String SV_FINANCE_PREPARE_MEMBERSHIP="/internal/pay/stored-value/finance/prepare-membership";
  public static final String SV_FINANCE_COMMIT_MEMBERSHIP="/internal/pay/stored-value/finance/commit-membership";
+ public static final String SV_FINANCE_COLLECTION_REQUIREMENT="/internal/pay/stored-value/finance/collection-requirement";
+ public static final String SV_FINANCE_COLLECTION_OPTIONS="/internal/pay/stored-value/finance/collection-options";
+ public static final String SV_FINANCE_REBUILD="/internal/pay/stored-value/finance/rebuild-summary";
 }

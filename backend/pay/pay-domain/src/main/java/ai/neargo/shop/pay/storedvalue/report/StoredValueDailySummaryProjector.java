@@ -12,10 +12,9 @@ import static ai.neargo.shop.pay.storedvalue.settlement.StoredValueSettlementRep
 /** Bounded, repeatable rebuilding of the daily cache. Financial reports retain immutable ledgers as their authority. */
 @Service
 public class StoredValueDailySummaryProjector {
- public record Result(String issuerNo,LocalDate date,String afterRelease,String afterStore,boolean hasMore,int rows,Instant projectedAt){}
  private final IssuerRepository db;private final StoredValueSummaryService reports;
  public StoredValueDailySummaryProjector(IssuerRepository db,StoredValueSummaryService reports){this.db=db;this.reports=reports;}
- public Result rebuild(Scope scope,LocalDate date,String afterRelease,String afterStore,int size){
+ public ProjectionResult rebuild(Scope scope,LocalDate date,String afterRelease,String afterStore,int size){
   if(scope.activityNo()!=null||scope.occurrenceStoreNo()!=null||date==null||size<1||size>500||(afterRelease==null)!=(afterStore==null))throw BizException.of(ErrorCode.BAD_REQUEST);
   return db.write(()->{
    // Same issuer lock as writers and membership changes. A later posting is picked up by an explicit rebuild.
@@ -29,7 +28,7 @@ public class StoredValueDailySummaryProjector {
     db.update("INSERT INTO sv_activity_daily_summary(tenant_no,issuer_no,activity_no,source_kind,release_no,occurrence_store_no,currency,business_date,credited_paid_minor,credited_bonus_minor,used_principal_minor,used_bonus_minor,reversed_minor,clearing_minor,recharge_count,usage_count,customer_count,source_watermark,projection_at,version,deleted,created_at,updated_at,created_by,updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,0,?,?,?,?) ON DUPLICATE KEY UPDATE activity_no=VALUES(activity_no),source_kind=VALUES(source_kind),credited_paid_minor=VALUES(credited_paid_minor),credited_bonus_minor=VALUES(credited_bonus_minor),used_principal_minor=VALUES(used_principal_minor),used_bonus_minor=VALUES(used_bonus_minor),reversed_minor=VALUES(reversed_minor),clearing_minor=VALUES(clearing_minor),recharge_count=VALUES(recharge_count),usage_count=VALUES(usage_count),customer_count=VALUES(customer_count),source_watermark=VALUES(source_watermark),projection_at=VALUES(projection_at),updated_at=VALUES(updated_at),updated_by=VALUES(updated_by),deleted=0,version=version+1",
      scope.tenantNo(),scope.issuerNo(),row.get("activity_no"),text(row,"source_kind"),text(row,"release_no"),text(row,"store_no"),scope.currency(),java.sql.Date.valueOf(date),exact(row.get("paid")),exact(row.get("bonus")),exact(row.get("used_principal")),exact(row.get("used_bonus")),exact(row.get("reversed")),exact(clear.get("n")),exact(row.get("recharges")),exact(row.get("uses")),exact(row.get("customers")),exact(row.get("watermark")),Timestamp.from(now),Timestamp.from(now),Timestamp.from(now),scope.actorNo(),scope.actorNo());
    }
-   var last=shown.isEmpty()?null:shown.getLast();return new Result(scope.issuerNo(),date,last==null?null:text(last,"release_no"),last==null?null:text(last,"store_no"),more,shown.size(),now);
+   var last=shown.isEmpty()?null:shown.getLast();return new ProjectionResult(scope.issuerNo(),date,last==null?null:text(last,"release_no"),last==null?null:text(last,"store_no"),more,shown.size(),now);
   });
  }
 }

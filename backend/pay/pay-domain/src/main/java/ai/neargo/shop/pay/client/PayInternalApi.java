@@ -575,4 +575,10 @@ public interface PayInternalApi {
  ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack svFinancePrepareMembership(@org.springframework.web.bind.annotation.RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMembership.Prepare c);
  @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_FINANCE_COMMIT_MEMBERSHIP)
  ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack svFinanceCommitMembership(@org.springframework.web.bind.annotation.RequestBody ai.neargo.shop.spi.storedvalue.StoredValueMembership.Commit c);
+ @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_FINANCE_COLLECTION_REQUIREMENT)
+ ai.neargo.shop.spi.storedvalue.StoredValueCollections.Lookup svFinanceCollectionRequirement(@org.springframework.web.bind.annotation.RequestBody ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope c);
+ @org.springframework.web.service.annotation.PostExchange(PayInternalPaths.SV_FINANCE_COLLECTION_OPTIONS)
+ ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions svFinanceCollectionOptions(@org.springframework.web.bind.annotation.RequestBody ai.neargo.shop.spi.storedvalue.StoredValueCollections.Options c);
+ @PostExchange(PayInternalPaths.SV_FINANCE_REBUILD)
+ ai.neargo.shop.spi.storedvalue.StoredValueReports.ProjectionResult svFinanceRebuild(@RequestBody ai.neargo.shop.spi.storedvalue.StoredValueReports.Projection c);
 }

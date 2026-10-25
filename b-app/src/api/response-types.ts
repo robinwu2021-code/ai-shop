@@ -192,3 +192,19 @@ export interface SvGovernancePresetsPage {records:SvGovernancePreset[];total:num
 export interface SvGovernanceSchedule {startAt:string;endAt:string;zone:string;currency:CurrencyCode;currencyScale:number}
 
 export type {SvPolicyTargetOption,SvGovernanceContext} from './stored-value-governance';
+
+export type {SvFinanceCapability,SvFinanceResource,SvSummary,SvSettlementBill,SvBillActions,SvSettlementPayment,SvGenerated,SvPaymentResolution} from "./stored-value-finance";
+import type {SvSummary,SvStoreAttribution,SvActivityAttribution,SvSettlementBill,SvSettlementItem,SvSettlementEvent,SvSettlementPayment} from "./stored-value-finance";
+export interface SvFinanceSummaryPage {records:SvSummary[];nextCursor:string|null;hasMore:boolean}
+export interface SvFinanceStorePage {records:SvStoreAttribution[];nextCursor:string|null;hasMore:boolean}
+export interface SvFinanceActivityPage {records:SvActivityAttribution[];nextCursor:string|null;hasMore:boolean}
+export interface SvFinanceBillPage {records:SvSettlementBill[];nextCursor:string|null;hasMore:boolean}
+export interface SvFinanceItemPage {records:SvSettlementItem[];nextCursor:string|null;hasMore:boolean}
+export interface SvFinanceEventPage {records:SvSettlementEvent[];nextCursor:string|null;hasMore:boolean}
+export interface SvFinancePaymentPage {records:SvSettlementPayment[];nextCursor:string|null;hasMore:boolean}
+
+export type {SvFinancialBrandChange} from "./stored-value-finance";
+
+export type {SvFinancialPermissionResult} from "./stored-value-finance";
+
+export type {SvFinancialBrandOriginal} from "./stored-value-finance";

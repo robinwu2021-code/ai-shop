@@ -27,7 +27,7 @@ public final class StoredValueWallets {
     }
     public record AvailableAccount(String scopeType,String issuerRef,String name,String currency,String accountRef,
             Balance account,boolean canRecharge,boolean canRedeem,String unavailableReason) { }
-    public record Query(ExecutionScope scope,Customer customer) {public Query{ContractChecks.present(scope);ContractChecks.present(customer);}}
+    public record Query(ExecutionScope scope,Customer customer,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) StoredValueCollections.Proof collectionProof) {public Query(ExecutionScope scope,Customer customer){this(scope,customer,null);}public Query{ContractChecks.present(scope);ContractChecks.present(customer);}}
     /** Internal immutable selection. Account number/issuer must stay bound through quote and consumer consent. */
     public record Selected(String issuerNo,String issuerVersionNo,String scopeType,String scopeNo,String accountNo,
             String customerNo,String currency,long assetRevision,String issuerName) { }

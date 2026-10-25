@@ -32,10 +32,10 @@ public class ManagementQueryService {
   var items=chosen.stream().filter(row->brandSummary||scopes.can(a,m,type,str(row,column),permission)).map(row->{
    // Organization summaries do not serialize full merchant entity/store rows.
    var result=new LinkedHashMap<String,Object>();result.put("resourceType",type);result.put("resourceNo",str(row,column));result.put(switch(type){case "BRAND"->"brandNo";case "ENTITY"->"entityNo";default->"storeNo";},str(row,column));result.put("name",str(row,"name"));result.put("status",str(row,"status"));result.put("revision",num(row,"version"));
-   if("ENTITY".equals(type))result.put("canManageLegacy",scopes.ownerAccounts(a).stream().anyMatch(account->Objects.equals(str(account,"entity_no"),str(row,"entity_no"))));
+   if("ENTITY".equals(type)){boolean owned=scopes.ownerAccounts(a).stream().anyMatch(account->Objects.equals(str(account,"entity_no"),str(row,"entity_no")));result.put("canManageLegacy",owned);result.put("canPrepareFinance",owned&&scopes.can(a,m,"SPACE",m,"management.grant.manage"));}
    if("STORE".equals(type))result.put("canConfigureBrand",scopes.can(a,m,"STORE",str(row,"store_no"),"store.brand.change"));
    if("STORE".equals(type)&&!brandSummary)result.put("entityNo",str(row,"entity_no"));
-   if("BRAND".equals(type))result.put("scopeRevision",num(row,"scope_revision"));return (Map<String,Object>)result;
+   if("BRAND".equals(type)){result.put("scopeRevision",num(row,"scope_revision"));result.put("storedValueStatus",str(row,"stored_value_status"));}return (Map<String,Object>)result;
   }).toList();
   String next=raw.size()>size?tokens.encode("RESOURCE_CURSOR",Map.of("scope",fingerprint,"before",num(chosen.getLast(),"id")),900):null;return new Page(items,next);
  }
@@ -66,12 +66,12 @@ public class ManagementQueryService {
  }
  public Map<String,Object> operating(Actor a,String m,String store){
   scopes.resolve(a,m);scopes.require(a,m,"STORE",store,"store.read");var row=db.one("SELECT store_no,entity_no,name,status,version FROM mch_store WHERE tenant_no=? AND store_no=? AND deleted=0",a.tenantNo(),store);if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
-  var binding=db.one("SELECT b.brand_no,b.scope_revision,r.name,r.status FROM mch_brand_store_binding b JOIN mch_brand r ON r.tenant_no=b.tenant_no AND r.brand_no=b.brand_no WHERE b.tenant_no=? AND b.store_no=? AND b.status='ACTIVE' AND b.deleted=0",a.tenantNo(),store);
+  var binding=db.one("SELECT b.brand_no,b.scope_revision,r.name,r.status,r.stored_value_status FROM mch_brand_store_binding b JOIN mch_brand r ON r.tenant_no=b.tenant_no AND r.brand_no=b.brand_no WHERE b.tenant_no=? AND b.store_no=? AND b.status='ACTIVE' AND b.deleted=0",a.tenantNo(),store);
   var result=db.view(row);result.put("managementNo",m);
   var pending=db.one("SELECT change_no,status,version FROM mch_brand_change WHERE tenant_no=? AND store_no=? AND status IN ('CHECKED','PREPARING') AND deleted=0",a.tenantNo(),store);
-  var issuerActions=new java.util.ArrayList<>(List.of("store.read","store.brand.change","sv.issuer.read","sv.issuer.configure").stream().filter(p->scopes.can(a,m,"STORE",store,p)).toList());
+  var issuerActions=new java.util.ArrayList<>(List.of("store.read","store.brand.change","sv.issuer.read","sv.issuer.configure","sv.store.report").stream().filter(p->scopes.can(a,m,"STORE",store,p)).toList());
   if(scopes.can(a,m,"SPACE",m,"management.grant.manage")&&scopes.ownerAccounts(a).stream().anyMatch(account->str(row,"entity_no").equals(str(account,"entity_no"))))issuerActions.add("sv.issuer.prepare");
-  result.put("pendingChange",pending==null?null:db.view(pending));result.put("brand",binding==null?null:db.view(binding));result.put("storedValue",Map.of("store",Map.of("availability","LEGACY_STORE"),"brand",Map.of("availability","NOT_ENABLED")));result.put("actions",issuerActions);return result;
+  if(pending!=null){pending=new java.util.LinkedHashMap<>(pending);pending.put("financial",db.one("SELECT change_no FROM mch_brand_financial_change WHERE tenant_no=? AND change_no=? AND deleted=0",a.tenantNo(),str(pending,"change_no"))!=null);}result.put("pendingChange",pending==null?null:db.view(pending));result.put("brand",binding==null?null:db.view(binding));result.put("storedValue",Map.of("store",Map.of("availability","LEGACY_STORE"),"brand",Map.of("availability","NOT_ENABLED")));result.put("actions",issuerActions);return result;
  }
  public Page audit(Actor a,String brand,String cursor,int size){
   var row=db.one("SELECT management_no FROM mch_brand WHERE tenant_no=? AND brand_no=? AND deleted=0",a.tenantNo(),brand);if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);String m=str(row,"management_no");scopes.resolve(a,m);scopes.require(a,m,"BRAND",brand,"brand.audit.read");

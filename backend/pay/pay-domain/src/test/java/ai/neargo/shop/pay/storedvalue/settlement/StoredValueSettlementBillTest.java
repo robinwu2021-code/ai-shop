@@ -9,6 +9,13 @@ import static org.assertj.core.api.Assertions.*;
 class StoredValueSettlementBillTest {
  Period september(){return new Period(Instant.parse("2026-09-01T00:00:00Z"),Instant.parse("2026-10-01T00:00:00Z"));}
  Generation command(StoredValueSettlementFixture f,Period period,String key){return new Generation(f.payer(),"I1",period,"CNY",key);}
+ @Test void subMillisecondPeriodUsesOneCanonicalDatabasePrecision()throws Exception{
+  var f=new StoredValueSettlementFixture();f.clearing("C1","E2",2000,600,2000,"2026-09-15T00:00:00Z","2026-09-14T00:00:00Z");
+  var period=new Period(Instant.parse("2026-09-01T00:00:00.123456Z"),Instant.parse("2026-10-01T00:00:00.123456Z"));
+  var result=f.bills.generate(command(f,period,"PRECISE"));assertThat(result.bills()).hasSize(1);
+  assertThat(result.bills().getFirst().periodTo()).isEqualTo(Instant.parse("2026-10-01T00:00:00.123Z"));
+  assertThat(f.bills.generate(command(f,period,"PRECISE"))).isEqualTo(result);
+ }
  @Test void generateBillTwiceConsumesEachClearingOnlyOnce()throws Exception{
   var f=new StoredValueSettlementFixture();f.clearing("C1","E2",2000,600,2000,"2026-09-15T00:00:00Z","2026-09-14T00:00:00Z");
   var first=f.bills.generate(command(f,september(),"GEN1"));assertThat(first.bills()).hasSize(1);assertThat(first.bills().getFirst().payableMinor()).isEqualTo(2000);assertThat(first.bills().getFirst().bonusMinor()).isEqualTo(600);

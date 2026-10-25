@@ -748,7 +748,7 @@
         "CL12"
       ],
       "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
-      "status": "PARTIAL_BACKEND_COMPATIBILITY_PUBLISHED_FULL_STAGE_IN_PROGRESS",
+      "status": "PARTIAL_BACKEND_PUBLISHED_BUSINESS_CLOSURE_CODING",
       "codingProgress": {
         "reports": "Pay aggregate, bounded daily projector, RP01-05 BFF drafted",
         "settlements": "Generation, queries, reconcile/dispute/adjust/payment/independent receipt drafted",
@@ -785,6 +785,17 @@
           "576"
         ],
         "financialBaselineUnchanged": true
+      },
+      "closureProgress": {
+        "membershipCore": "Journal/coordinator/query/resume coded; 5 Core and 2 RPC recovery tests pass; not committed or deployed",
+        "legacyCutoverInScope": false,
+        "crossEntityEnabled": false,
+        "remaining": [
+          "Central collection proof and cross-entity funding attribution",
+          "B UI and permission actions",
+          "Read model job integration",
+          "Focused new-seam integration and final review/publication"
+        ]
       }
     }
   ],
@@ -956,11 +967,14 @@
   },
   "nextStagePreparation": {
     "stage": "P6",
-    "status": "PARTIAL_BACKEND_COMPATIBILITY_PUBLISHED_FULL_STAGE_IN_PROGRESS",
+    "status": "BUSINESS_CLOSURE_REVIEW_PENDING_CANONICAL_ARCHITECTURE_MERGE",
     "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "Pay reports/bills/decisions/payments; RP01-05/CL01-14 and typed remote/embedded; Pay membership participant. Core saga, collection proof, B UI, unified compile/tests/review/publication remain."
+    "currentBatch": "Core/Pay saga, central collection, foreign funding and B finance pages coded; focused H2/MySQL/HTTP/UI verification passed; one review and merge adaptation pending",
+    "legacyCutoverInScope": false,
+    "canonicalTarget": "99d3fa516",
+    "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING"
   }
 }

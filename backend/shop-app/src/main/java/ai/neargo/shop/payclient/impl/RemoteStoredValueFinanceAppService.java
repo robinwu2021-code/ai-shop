@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 @Service @ConditionalOnProperty(name="shop.pay.deployment",havingValue="standalone",matchIfMissing=false)
 public class RemoteStoredValueFinanceAppService implements StoredValueFinanceAppService {
  private final PayInternalApi pay;public RemoteStoredValueFinanceAppService(PayInternalApi pay){this.pay=pay;}
+ public ai.neargo.shop.spi.storedvalue.StoredValueReports.ProjectionResult rebuild(ai.neargo.shop.spi.storedvalue.StoredValueReports.Projection c){return RemoteEntitlementCalls.call(()->pay.svFinanceRebuild(c));}
  public ai.neargo.shop.spi.storedvalue.StoredValueFinance.Capabilities capabilities(){return RemoteEntitlementCalls.call(()->pay.svFinanceCapabilities());}
  public java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueFinance.Resource> directory(ai.neargo.shop.spi.storedvalue.StoredValueFinance.Directory c){return RemoteEntitlementCalls.call(()->pay.svFinanceDirectory(c));}
  public ai.neargo.shop.spi.storedvalue.StoredValueReports.Summary summary(ai.neargo.shop.spi.storedvalue.StoredValueFinance.SummaryRequest c){return RemoteEntitlementCalls.call(()->pay.svFinanceSummary(c));}
@@ -32,4 +33,6 @@ public class RemoteStoredValueFinanceAppService implements StoredValueFinanceApp
  public java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueMembership.Target> membershipTargets(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Describe c){return RemoteEntitlementCalls.call(()->pay.svFinanceMembershipTargets(c));}
  public ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack prepareMembership(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Prepare c){return RemoteEntitlementCalls.call(()->pay.svFinancePrepareMembership(c));}
  public ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack commitMembership(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Commit c){return RemoteEntitlementCalls.call(()->pay.svFinanceCommitMembership(c));}
+ public ai.neargo.shop.spi.storedvalue.StoredValueCollections.Lookup collectionRequirement(ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope c){return RemoteEntitlementCalls.call(()->pay.svFinanceCollectionRequirement(c));}
+ public ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions collectionOptions(ai.neargo.shop.spi.storedvalue.StoredValueCollections.Options c){return RemoteEntitlementCalls.call(()->pay.svFinanceCollectionOptions(c));}
 }

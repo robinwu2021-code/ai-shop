@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 @Service @ConditionalOnProperty(name="shop.pay.deployment",havingValue="embedded",matchIfMissing=true)
 public class StoredValueFinanceAppServiceImpl implements StoredValueFinanceAppService {
  private final StoredValueFinanceService pay;public StoredValueFinanceAppServiceImpl(StoredValueFinanceService pay){this.pay=pay;}
+ public ai.neargo.shop.spi.storedvalue.StoredValueReports.ProjectionResult rebuild(ai.neargo.shop.spi.storedvalue.StoredValueReports.Projection c){return pay.rebuild(c);}
  public ai.neargo.shop.spi.storedvalue.StoredValueFinance.Capabilities capabilities(){return pay.capabilities();}
  public java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueFinance.Resource> directory(ai.neargo.shop.spi.storedvalue.StoredValueFinance.Directory c){return pay.directory(c);}
  public ai.neargo.shop.spi.storedvalue.StoredValueReports.Summary summary(ai.neargo.shop.spi.storedvalue.StoredValueFinance.SummaryRequest c){return pay.summary(c);}
@@ -31,4 +32,6 @@ public class StoredValueFinanceAppServiceImpl implements StoredValueFinanceAppSe
  public java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueMembership.Target> membershipTargets(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Describe c){return pay.membershipTargets(c);}
  public ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack prepareMembership(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Prepare c){return pay.prepareMembership(c);}
  public ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack commitMembership(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Commit c){return pay.commitMembership(c);}
+ public ai.neargo.shop.spi.storedvalue.StoredValueCollections.Lookup collectionRequirement(ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope c){return pay.collectionRequirement(c);}
+ public ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions collectionOptions(ai.neargo.shop.spi.storedvalue.StoredValueCollections.Options c){return pay.collectionOptions(c);}
 }
