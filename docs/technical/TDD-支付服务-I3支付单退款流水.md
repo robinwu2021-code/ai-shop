@@ -60,11 +60,21 @@
 - `acquiring.port.InternalCallers`：内部调用方的唯一构造点。`system(app, store)` = INTERNAL（不能退款）；`merchantOperator(app, store, operator)` = BIZ（商家在业务系统里点的退款，操作员必填）。app id 按 `pay_app.app_no` 取。
 - 错误码 70082–70088（`PAY_FORBIDDEN` 等 7 个）+ 三语文案。
 
+### S3 · 支付单
+- `spi.pay.PaymentPort`（`createPayment` · `queryPayment`；关单与退款随 S6 / S7 加）· `InternalCreatePaymentCmd` · `PaymentHandle`。
+- `MerchantQueryPort#payStoreOf(storeNo) → PayStore(storeId, 名称, 主体, 市场)`：**由调用方（交易域）解析门店身份交给支付**，支付不反向依赖商户域。
+- `acquiring.statemachine`：`PayOrderStatus` · `PayOrderEvent` · `PayOrderStateMachine`（迁移表；CLOSED → SUCCEEDED 不存在）。
+- `acquiring.service.PaymentService` / `impl.PaymentServiceImpl`：第一行 `callerPolicy.check`；`(pay_app_id, out_order_no)` 幂等 + `request_sha256`（app、业务类型、单号、门店、市场、币种、金额；标题与截止时间不算）；撞唯一键回读再比；`attachAttempt` 在开尝试的同一事务里写 `stl_payment.pay_order_id` / `market`，支付单 CREATED → AWAITING_PAYMENT。
+- `acquiring.port.PaymentPortImpl`（bizType → 内部 app → `InternalCallers.system`）；装配在 shop-app `payclient.OrdinaryPaymentRouting`（embedded 装本地实现，支付域不读形态开关 —— `PayHasNoControllerTest` 守）；`shop.pay.order.enabled` 默认 true，关掉返回 null、调用方照旧。
+- 接入：商城 `OrderServiceImpl#pay` 在 `initPayment` 前建单（门店 = 首个子单的门店）；餐饮 `IndustryCheckoutServiceImpl` 在 `open` 前建单（门店 = 账单门店）；`PaymentLedgerServiceImpl#open` 新行落库后 `attachAttempt`。
+- 单号前缀 `BizKey.PAY_ORDER = PYO`（另预留 `PYR` 退款单、`LVC` 凭证）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
 | AC2 | `CallerPolicyMatrixTest`（69 条：6 类 × 11 动作逐格，期望值在测试里另抄一份；`internalSystemCannotRefund`；`refundWithoutOperatorRejected`；`storeScope`） | ✅ | 给 INTERNAL 加退款 + 去掉操作员判断 → 3 条红 ✅ |
+| AC3 | `PayOrderFlowTest`（3 条：`createIsIdempotent` · `sameKeyDifferentContentRejected` · `mallPaymentHasPayOrder` 真下单去支付：门店 id、应付、AWAITING_PAYMENT、尝试挂 `pay_order_id`）· `IndustryCheckoutServiceTest#firstPaymentCreatesFoodPayOrderBeforeOpeningTheAttempt`（FOOD_CHECK、门店 id 42，先建单后开尝试） | ✅ | ① 商城不建单 + 摘要不含金额 → 两条红 ② 尝试不挂支付单 → `mallPaymentHasPayOrder` 红 ③ 餐饮不建单 → 餐饮那条红 ✅ |
 | AC1 | `MapperSmokeTest`（新 9 个 mapper 各查自己的表）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V7–V9（种子落库、CHECK 生效） | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -73,4 +83,4 @@
 
 ### 偏差说明
 
-（实现中记）
+0. **I2 收尾的启动校验在切片测试里装不起来**：`PayDataSourceConfig#channelProductCoverageCheck` 硬依赖渠道注册表，只装了部分支付配置的切片测试（`RefundBackingTest` 等 6 个类）上下文起不来 —— I2 收尾时只复跑了被点名的那 65 条，没再跑全量。S3 的受影响回归抓到，改为 `ObjectProvider`，没有注册表就跳过。

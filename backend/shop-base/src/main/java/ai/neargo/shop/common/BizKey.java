@@ -157,6 +157,12 @@ public final class BizKey {
 
     /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
     public static final String PAY_MERCHANT = "PM";
+    /** 支付单号（pay_order.pay_order_no，TDD-支付服务-I3支付单退款流水） */
+    public static final String PAY_ORDER = "PYO";
+    /** 退款单号（pay_refund.pay_refund_no） */
+    public static final String PAY_REFUND = "PYR";
+    /** 记账凭证号（pay_ledger_voucher.voucher_no） */
+    public static final String LEDGER_VOUCHER = "LVC";
     /** 对账差异单 */
     public static final String RECON_DIFF = "RD";
     /** 资金风控影子期日志 */

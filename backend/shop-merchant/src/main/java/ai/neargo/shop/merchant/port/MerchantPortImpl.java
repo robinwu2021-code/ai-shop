@@ -865,6 +865,25 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public Optional<PayStore> payStoreOf(String storeNo) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return Optional.empty();
+        }
+        return DataScopeContext.executeWithoutScope(() -> {
+            MchStore store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery().eq(MchStore::getStoreNo, storeNo));
+            if (store == null) {
+                return Optional.empty();
+            }
+            MchEntity entity = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                    .eq(MchEntity::getEntityNo, store.getEntityNo()));
+            String market = entity == null || entity.getMarket() == null || entity.getMarket().isBlank()
+                    ? "CN" : entity.getMarket();
+            return Optional.of(new PayStore(store.getId(), storeNo, store.getName(), store.getEntityNo(),
+                    entity == null ? store.getEntityNo() : entity.getName(), market));
+        });
+    }
+
+    @Override
     @Transactional(transactionManager = "transactionManager", readOnly = true,
             isolation = Isolation.REPEATABLE_READ)
     public Optional<PaymentRoute> paymentRouteOf(String merchantNo, String storeNo, String channel) {

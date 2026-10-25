@@ -164,8 +164,10 @@ public class PayDataSourceConfig {
      * 产品目录在支付库里，所以<b>依赖迁移</b> —— 放在跑迁移的这个进程，迁移之后、全部单例就绪时查一次，查不过启动失败。
      */
     @Bean
-    SmartInitializingSingleton channelProductCoverageCheck(ChannelHandlerRegistry registry, PayMigrated payMigrated) {
-        return registry::verifyEnabledProducts;
+    SmartInitializingSingleton channelProductCoverageCheck(ObjectProvider<ChannelHandlerRegistry> registry,
+                                                           PayMigrated payMigrated) {
+        // 切片测试只装了一部分支付配置、没有渠道注册表：没有注册表就没有可比的处理器
+        return () -> registry.ifAvailable(ChannelHandlerRegistry::verifyEnabledProducts);
     }
 
     /**

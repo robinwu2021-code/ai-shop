@@ -1,5 +1,8 @@
 package ai.neargo.shop.pay.service.impl;
 
+import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.pay.acquiring.service.PaymentService;
 import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -111,6 +114,10 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             return reuse(winner, cmd);
         }
         documents.bind(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo());
+        if (payOrders != null) {
+            // 尝试挂到支付单上（I3 S3）；调用方没建支付单（开关关、存量单）时什么都不做
+            payOrders.attachAttempt(cmd.orderNo(), p.getId());
+        }
         return outTradeNo;
     }
 
@@ -126,6 +133,14 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
         }
         return open.getOutTradeNo();
+    }
+
+    /** 支付单（I3 S3）；手工构造的单测里没有 */
+    private PaymentService payOrders;
+
+    @Autowired(required = false)
+    void setPayOrders(@Lazy PaymentService payOrders) {
+        this.payOrders = payOrders;
     }
 
     @Override

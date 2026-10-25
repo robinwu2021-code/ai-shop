@@ -356,6 +356,20 @@ public interface MerchantQueryPort {
     }
 
     /** 门店仍为业务维度；accountVersion 是实际收款档案业务键与行版本组成的保守版本。 */
+    /**
+     * 收款时冻结进支付单的门店身份（TDD-支付服务-I3支付单退款流水 S3）。支付新表按 {@code mch_store.id} 关联核心系统，
+     * 而交易域手里只有门店号 —— 由调用方（交易域）解析好再交给支付，支付不反向依赖商户域。
+     *
+     * @param market 主体所在市场（{@code mch_entity.market}）；未填按 CN
+     */
+    record PayStore(Long storeId, String storeNo, String storeName, String entityNo, String entityName, String market) {
+    }
+
+    /** 门店号 → 支付单要冻结的门店身份；门店不存在为空。不论营业状态（关单、退款时门店可能已停用） */
+    default Optional<PayStore> payStoreOf(String storeNo) {
+        return Optional.empty();
+    }
+
     record PaymentRoute(String merchantNo, String storeNo, String payMerchantNo, String channel,
                         String subMerchantId, String accountVersion, String fundsPath) {
     }

@@ -71,7 +71,6 @@ class TableHasProducerTest {
     static {
         // Stage C retires the old engine. These tables remain only for historical test fixtures.
         // 支付服务 I3（TDD-支付服务-I3支付单退款流水）：表先建、写入逐片落地，落地一片删一行
-        NO_PRODUCER.put("pay_order", "I3 S3 PaymentService 建单");
         NO_PRODUCER.put("pay_exception", "I3 S4 PaymentOutcomeService 关单后到账");
         NO_PRODUCER.put("pay_ledger_voucher", "I3 S5 LedgerService");
         NO_PRODUCER.put("pay_ledger_entry", "I3 S5 LedgerService");
