@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -107,6 +108,13 @@ public class GlobalExceptionHandler {
          */
         log.warn("入参被拒 {} {} · {}", req.getMethod(), req.getRequestURI(), rejectedFields(e));
         return ApiResult.error(ErrorCode.BAD_REQUEST.code(), firstMessage(e));
+    }
+
+    /** MVC方法参数校验沿用统一入参错误；返回值校验失败仍是服务端缺陷。 */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ApiResult<Void> onMethodValidation(HandlerMethodValidationException e,
+            jakarta.servlet.http.HttpServletRequest req) throws Exception {
+        return e.isForReturnValue() ? onAny(e) : onInvalid(e, req);
     }
 
     /**

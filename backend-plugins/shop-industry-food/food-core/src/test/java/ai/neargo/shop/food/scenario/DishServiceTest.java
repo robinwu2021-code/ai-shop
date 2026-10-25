@@ -17,6 +17,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.DishOptionGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.OptionGroupItemMapper;
 import ai.neargo.shop.food.service.DishService;
+import ai.neargo.shop.food.policy.DiningMeasurementPolicy;
 import ai.neargo.shop.food.service.impl.DishServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
@@ -140,7 +141,7 @@ class DishServiceTest extends FoodWriteGuardFixture {
         });
     }
 
-    @Test void refusesUnverifiedMediaAndWeightUnitsRatherThanPretendingTheyAreSupported() {
+    @Test void refusesUnverifiedMediaAndInvalidMeasurementPoliciesBeforeAnyWrite() {
         runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Dishes.class).run(c -> {
             var f = fixture(c);
             var s = c.getBean(DishService.class);
@@ -150,12 +151,40 @@ class DishServiceTest extends FoodWriteGuardFixture {
                     new SaveDishReq("SINGLE", 0, media, base.measurement(), null), "media"))
                     .isInstanceOf(BizException.class);
             for (var measurement : List.of(new MeasurementPolicy("g", "WEIGHT", 1, new BigDecimal("0.1")),
-                    new MeasurementPolicy("arbitrary", "COUNT", 0, null))) {
+                    new MeasurementPolicy("EA", "COUNT", 1, null),
+                    new MeasurementPolicy("KG", "WEIGHT", 0, null),
+                    new MeasurementPolicy("KG", "WEIGHT", 7, null),
+                    new MeasurementPolicy("", "COUNT", 0, null))) {
                 assertThatThrownBy(() -> s.saveDish("E", "A", "G", "actor",
                         new SaveDishReq("SINGLE", 0, base.presentation(), measurement, null), "unit"))
                         .isInstanceOf(BizException.class);
             }
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_dish", Integer.class)).isZero();
+            for (String table : List.of("fnb_dish", "fnb_action_log", "sys_idempotent", "sys_outbox"))
+                assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).isZero();
+        });
+    }
+
+    @Test void preservesExplicitSalesBaseUnitsAndDoesNotInferWeightOrPackageConversions() {
+        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Dishes.class).run(c -> {
+            var f = fixture(c); var service = c.getBean(DishService.class); var json = c.getBean(ObjectMapper.class);
+            var measurements = List.of(new MeasurementPolicy("KG", "WEIGHT", 3, null),
+                    new MeasurementPolicy("g", "WEIGHT", 1, null), new MeasurementPolicy("BOX", "COUNT", 0, null));
+            var unrelatedStockUnits = List.of("g", "KG", "EA");
+            for (int i = 0; i < measurements.size(); i++) {
+                var measurement = measurements.get(i);
+                var saved = service.saveDish("E", "A", "G", "actor", new SaveDishReq("SINGLE", 0,
+                        req(null, "明确计量单位").presentation(), measurement, i == 0 ? null : (long) i - 1), "unit-" + i);
+                assertThat(saved.dish().measurement()).isEqualTo(measurement);
+                var persisted = json.readValue(f.sql().queryForObject("SELECT measurement_policy FROM fnb_dish", String.class),
+                        MeasurementPolicy.class);
+                assertThat(persisted).isEqualTo(measurement);
+                assertThat(DiningMeasurementPolicy.sameBaseUnit(persisted, measurement.unit())).isTrue();
+                // A declared sales base unit grants neither KG/g conversion nor BOX/EA packaging ratios.
+                assertThat(DiningMeasurementPolicy.sameBaseUnit(persisted, unrelatedStockUnits.get(i))).isFalse();
+            }
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_dish", Integer.class)).isOne();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log", Integer.class)).isEqualTo(3);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(3);
         });
     }
 

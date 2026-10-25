@@ -57,7 +57,7 @@ public class BizKitchenTaskController {
             @RequestParam(defaultValue="20") int size,HttpServletRequest request) {
         var c=requireStore(storeNo,request,Set.of("stationNo","status","page","size"));
         if (page<1 || size<1 || size>100 || status!=null
-                && !Set.of("HELD","QUEUED","MAKING","READY","SERVED","VOIDED").contains(status)) throw bad();
+                && !Set.of("HELD","QUEUED","MAKING","READY").contains(status)) throw bad();
         var rows=service.queue(c.merchantNo(),storeNo,stationNo,null).stream()
                 .filter(t -> status==null?!Set.of("SERVED","VOIDED").contains(t.status()):status.equals(t.status()))
                 .toList();
