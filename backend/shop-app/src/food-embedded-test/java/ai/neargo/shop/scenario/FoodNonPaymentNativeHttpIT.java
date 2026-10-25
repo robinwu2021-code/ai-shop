@@ -1832,4 +1832,568 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
                                 placed.path("orderNo").asString()))
                 .isEqualTo(1);
     }
+
+    @Order(3)
+    @Test
+    void realMultiSkuOrderRoutesBothStationsAndRetainsExactConsumptionAfterReturn()
+            throws Exception {
+        String token = token();
+        var table = table(token);
+        sql.update(
+                "UPDATE mch_store SET open_hours='00:00-00:00' WHERE store_no=? AND"
+                        + " entity_no='M0001'",
+                STORE);
+        String check =
+                post("/biz/x/food/stores/" + STORE + "/checks", openBody(table), token, key())
+                        .path("check")
+                        .path("checkNo")
+                        .asString();
+        // Original DevSeeder supplies two distinct SKUs of the same merchant-owned product.
+        sql.update(
+                "UPDATE prd_goods SET store_no=?,fulfillments=? WHERE goods_no='G0001' AND"
+                        + " entity_no='M0001'",
+                STORE,
+                "[\"STORE_PICKUP\",\"DINE_IN\"]");
+        var dish =
+                new LinkedHashMap<String, Object>(
+                        Map.of(
+                                "dishKind",
+                                "SINGLE",
+                                "prepSeconds",
+                                0,
+                                "presentation",
+                                Map.of(),
+                                "measurement",
+                                Map.of(
+                                        "unit",
+                                        "EA",
+                                        "mode",
+                                        "COUNT",
+                                        "scale",
+                                        0,
+                                        "allowedDeviation",
+                                        0)));
+        var versions =
+                sql.queryForList("SELECT version FROM fnb_dish WHERE goods_no='G0001'", Long.class);
+        if (!versions.isEmpty()) dish.put("version", versions.getFirst());
+        ok("PUT", "/biz/x/food/stores/" + STORE + "/dishes/G0001", dish, token);
+        var skus = List.of("SK0001", "SK0002");
+        var recipes = new ArrayList<Map<String, String>>();
+        var stationNos = new ArrayList<String>();
+        for (String sku : skus) {
+            prepareStock(sku);
+            recipes.add(Map.of("skuNo", sku, "recipeNo", recipe(token, sku)));
+            if (sql.queryForObject(
+                            "SELECT COUNT(*) FROM prd_sku_pricing_policy WHERE sku_no=? AND"
+                                    + " entity_no='M0001' AND store_no=?",
+                            Integer.class,
+                            sku,
+                            STORE)
+                    == 0)
+                context.getBean(GoodsPricingPolicyService.class)
+                        .save(
+                                new GoodsPricingPolicyCommands.Context(
+                                        new GoodsPricingPolicyPort.Scope("MAIN", "M0001", STORE),
+                                        "SF-M0001"),
+                                "G0001",
+                                sku,
+                                new GoodsPricingPolicyCommands.SaveReq(0, true, TaxClass.STANDARD),
+                                key());
+            var station =
+                    post(
+                            "/biz/x/food/stores/" + STORE + "/stations",
+                            Map.of("name", "multi " + sku, "stationType", "HOT"),
+                            token,
+                            key());
+            String stationNo = station.path("configNo").asString();
+            stationNos.add(stationNo);
+            var routes =
+                    ok("GET", "/biz/x/food/stores/" + STORE + "/sku-routes/" + sku, null, token);
+            ok(
+                    "PUT",
+                    "/biz/x/food/stores/" + STORE + "/sku-routes/" + sku,
+                    Map.of(
+                            "version",
+                            routes.path("version").asLong(),
+                            "routes",
+                            List.of(Map.of("stationNo", stationNo, "taskRole", "MAKE"))),
+                    token);
+        }
+        // Publish the changed route drafts, including retractions from earlier fixture stations.
+        for (var station :
+                sql.queryForList(
+                        "SELECT station_no,version FROM fnb_station WHERE entity_no='M0001' AND"
+                                + " store_no=?",
+                        STORE))
+            post(
+                    "/biz/x/food/stores/"
+                            + STORE
+                            + "/stations/"
+                            + station.get("station_no")
+                            + ":publish",
+                    Map.of(
+                            "version",
+                            ((Number) station.get("version")).longValue(),
+                            "effectiveAt",
+                            Instant.now().truncatedTo(ChronoUnit.MILLIS).toString()),
+                    token,
+                    key());
+        String menu =
+                post(
+                                "/biz/x/food/stores/" + STORE + "/menus",
+                                Map.of(
+                                        "name",
+                                        "multi sku menu",
+                                        "menuType",
+                                        "STANDARD",
+                                        "timezone",
+                                        "UTC",
+                                        "priority",
+                                        0),
+                                token,
+                                key())
+                        .path("configNo")
+                        .asString();
+        var composed =
+                ok(
+                        "PUT",
+                        "/biz/x/food/menus/" + menu + "/definition",
+                        Map.of(
+                                "section",
+                                "COMPOSITION",
+                                "version",
+                                0,
+                                "categories",
+                                List.of(
+                                        Map.of(
+                                                "name",
+                                                "multi",
+                                                "sortNo",
+                                                0,
+                                                "items",
+                                                List.of(
+                                                        Map.of(
+                                                                "goodsNo",
+                                                                "G0001",
+                                                                "sortNo",
+                                                                0,
+                                                                "enabled",
+                                                                true,
+                                                                "skuScope",
+                                                                "EXPLICIT",
+                                                                "skuNos",
+                                                                skus,
+                                                                "optionMode",
+                                                                "INHERIT",
+                                                                "optionGroupNos",
+                                                                List.of(),
+                                                                "skuRecipes",
+                                                                recipes))))),
+                        token);
+        var contexts =
+                ok(
+                        "PUT",
+                        "/biz/x/food/menus/" + menu + "/definition",
+                        Map.of(
+                                "section",
+                                "CONTEXT",
+                                "version",
+                                composed.path("menu").path("version").asLong(),
+                                "contexts",
+                                List.of(Map.of("orderSource", "POS", "fulfillment", "DINE_IN"))),
+                        token);
+        var schedule =
+                ok(
+                        "PUT",
+                        "/biz/x/food/menus/" + menu + "/definition",
+                        Map.of(
+                                "section",
+                                "SCHEDULE",
+                                "version",
+                                contexts.path("menu").path("version").asLong(),
+                                "weekSchedules",
+                                IntStream.rangeClosed(1, 7)
+                                        .mapToObj(
+                                                day ->
+                                                        Map.of(
+                                                                "weekday",
+                                                                day,
+                                                                "startTime",
+                                                                "00:00",
+                                                                "endTime",
+                                                                "00:00",
+                                                                "endDayOffset",
+                                                                1))
+                                        .toList(),
+                                "exceptions",
+                                List.of()),
+                        token);
+        String revision =
+                post(
+                                "/biz/x/food/stores/" + STORE + "/menus/" + menu + ":publish",
+                                Map.of(
+                                        "version",
+                                        schedule.path("menu").path("version").asLong(),
+                                        "effectiveAt",
+                                        Instant.now()
+                                                .minusSeconds(1)
+                                                .truncatedTo(ChronoUnit.MILLIS)
+                                                .toString()),
+                                token,
+                                key())
+                        .path("publication")
+                        .path("revisionNo")
+                        .asString();
+        String menuItem =
+                sql.queryForObject(
+                        "SELECT i.menu_item_no FROM fnb_menu_item i JOIN fnb_menu_category c ON"
+                                + " i.category_no=c.category_no WHERE c.menu_no=?",
+                        String.class,
+                        menu);
+        var cart = cart(token, check);
+        for (int i = 0; i < skus.size(); i++) {
+            String lineRef = "MULTI-" + i;
+            cart =
+                    ok(
+                            "PUT",
+                            "/biz/x/food/carts/"
+                                    + cart.path("cartNo").asString()
+                                    + "/lines/"
+                                    + lineRef,
+                            Map.of(
+                                    "version",
+                                    cart.path("version").asLong(),
+                                    "line",
+                                    Map.of(
+                                            "sourceLineRef",
+                                            lineRef,
+                                            "menuNo",
+                                            menu,
+                                            "menuItemNo",
+                                            menuItem,
+                                            "menuRevisionNo",
+                                            revision,
+                                            "goodsNo",
+                                            "G0001",
+                                            "skuNo",
+                                            skus.get(i),
+                                            "qty",
+                                            i + 1,
+                                            "selections",
+                                            List.of(),
+                                            "bundleChoices",
+                                            List.of())),
+                            token);
+        }
+        try (var pay =
+                new FoodReadOnlyPayFixture(
+                        context.getBean(ConfigServiceLocator.class), json, "food-native-only")) {
+            pricingConfiguration();
+            awaitCapabilityWindow();
+            var quote =
+                    post(
+                            "/biz/x/food/stores/" + STORE + "/quotes",
+                            Map.of(
+                                    "cartNo",
+                                    cart.path("cartNo").asString(),
+                                    "version",
+                                    cart.path("version").asLong()),
+                            token,
+                            key());
+            var login =
+                    post(
+                            "/mp/user/login",
+                            Map.of(
+                                    "grantType",
+                                    "WECHAT_MP",
+                                    "principal",
+                                    "multi-" + key(),
+                                    "agreed",
+                                    true),
+                            null,
+                            key());
+            String buyer =
+                    ok("GET", "/mp/user/profile", null, login.path("token").asString())
+                            .path("userNo")
+                            .asString();
+            var placeBody =
+                    Map.of(
+                            "buyerNo",
+                            buyer,
+                            "cartNo",
+                            cart.path("cartNo").asString(),
+                            "version",
+                            cart.path("version").asLong(),
+                            "quoteNo",
+                            quote.path("quoteNo").asString(),
+                            "confirmationDigest",
+                            quote.path("confirmationDigest").asString(),
+                            "payMode",
+                            "POSTPAY");
+            String placeKey = key();
+            var batch =
+                    post("/biz/x/food/stores/" + STORE + "/batches", placeBody, token, placeKey);
+            assertThat(batch.path("status").asString()).isEqualTo("ACCEPTED");
+            assertThat(post("/biz/x/food/stores/" + STORE + "/batches", placeBody, token, placeKey))
+                    .isEqualTo(batch);
+            String batchNo = batch.path("batchNo").asString(),
+                    order = batch.path("orderNo").asString();
+            var originalItems =
+                    sql.queryForList("SELECT * FROM ord_item WHERE order_no=? ORDER BY id", order);
+            assertThat(originalItems).hasSize(2);
+            assertThat(
+                            sql.queryForList(
+                                    "SELECT sku_no FROM ord_item WHERE order_no=? ORDER BY sku_no",
+                                    String.class,
+                                    order))
+                    .containsExactlyElementsOf(skus);
+            assertThat(
+                            sql.queryForObject(
+                                    "SELECT pay_amount FROM ord_order WHERE order_no=?",
+                                    Long.class,
+                                    order))
+                    .isEqualTo(24140L);
+            String accepted =
+                    sql.queryForObject(
+                            "SELECT event_no FROM sys_outbox WHERE aggregate_id=? AND"
+                                    + " event_type='DINING_ORDER_ACCEPTED'",
+                            String.class,
+                            batchNo);
+            deliver(accepted, FoodOutboxRouting.KITCHEN_ACCEPTED_HANDLER);
+            var tasks =
+                    sql.queryForList(
+                            "SELECT t.task_no,t.station_no,t.qty,l.sku_no,l.qty AS line_qty FROM"
+                                + " fnb_kitchen_task t JOIN fnb_kitchen_ticket k ON"
+                                + " k.ticket_no=t.ticket_no JOIN fnb_order_line l ON"
+                                + " l.food_line_no=t.food_line_no AND l.batch_no=k.batch_no WHERE"
+                                + " k.batch_no=? AND k.kind='MAKE' ORDER BY t.qty",
+                            batchNo);
+            assertThat(tasks).hasSize(2);
+            assertThat(tasks.stream().map(t -> t.get("station_no").toString()).toList())
+                    .containsExactlyInAnyOrderElementsOf(stationNos);
+            var inv = new JdbcTemplate(context.getBean("invDataSource", DataSource.class));
+            var acl = context.getBean(InventoryAclService.class);
+            String inventoryOwner = acl.ownerIdOf("M0001");
+            String inventoryLocation = acl.stockLocationOfExistingStore("M0001", STORE);
+            String ingredient = acl.itemIdOf("M0001", "SK0003");
+            assertThat(ingredient).isNotBlank();
+            long ledgerBefore = inv.queryForObject("SELECT COUNT(*) FROM inv_ledger", Long.class);
+            var quantityBefore =
+                    inv.queryForObject(
+                            "SELECT COALESCE(SUM(qty_delta),0) FROM inv_ledger",
+                            java.math.BigDecimal.class);
+            for (var task : tasks) {
+                String taskNo = task.get("task_no").toString();
+                int skuIndex = skus.indexOf(task.get("sku_no").toString());
+                assertThat(skuIndex).isNotNegative();
+                var expectedQty = java.math.BigDecimal.valueOf(skuIndex + 1L);
+                assertThat(task.get("station_no")).isEqualTo(stationNos.get(skuIndex));
+                assertThat((java.math.BigDecimal) task.get("qty"))
+                        .isEqualByComparingTo(expectedQty);
+                assertThat((java.math.BigDecimal) task.get("line_qty"))
+                        .isEqualByComparingTo(expectedQty);
+                var started =
+                        post(
+                                "/biz/x/food/tasks/" + taskNo + ":start",
+                                Map.of(
+                                        "version",
+                                        taskVersion(taskNo),
+                                        "qty",
+                                        task.get("qty"),
+                                        "reason",
+                                        "multi preparation"),
+                                token,
+                                key());
+                String consumePath =
+                        "/biz/x/food/production-events/"
+                                + started.path("eventNo").asString()
+                                + ":consume";
+                String consumeKey = key();
+                var consumed = post(consumePath, Map.of(), token, consumeKey);
+                assertThat(consumed.path("status").asString()).isEqualTo("CONFIRMED");
+                assertThat(post(consumePath, Map.of(), token, consumeKey)).isEqualTo(consumed);
+                String productionEvent = started.path("eventNo").asString();
+                assertThat(
+                                sql.queryForObject(
+                                        "SELECT task_no FROM fnb_service_event WHERE event_no=?",
+                                        String.class,
+                                        productionEvent))
+                        .isEqualTo(taskNo);
+                var receipt =
+                        json.readTree(
+                                inv.queryForObject(
+                                        "SELECT receipt_snapshot FROM inv_production_operation"
+                                            + " WHERE owner_id=? AND store_no=? AND event_no=?",
+                                        String.class,
+                                        inventoryOwner,
+                                        STORE,
+                                        productionEvent));
+                assertThat(receipt.path("eventNo").asString()).isEqualTo(productionEvent);
+                assertThat(receipt.path("issuedLines")).hasSize(1);
+                var issued = receipt.path("issuedLines").get(0);
+                assertThat(issued.path("itemRef").asString()).isEqualTo(ingredient);
+                assertThat(new java.math.BigDecimal(issued.path("quantity").asString()))
+                        .isEqualByComparingTo(expectedQty);
+                long ledgerId = Long.parseLong(issued.path("ledgerRef").asString());
+                var ledger = inv.queryForMap("SELECT * FROM inv_ledger WHERE id=?", ledgerId);
+                assertThat(ledger.get("owner_id")).isEqualTo(inventoryOwner);
+                assertThat(ledger.get("location_id")).isEqualTo(inventoryLocation);
+                assertThat(ledger.get("item_id")).isEqualTo(ingredient);
+                assertThat(ledger.get("doc_no")).isEqualTo(issued.path("documentNo").asString());
+                assertThat(ledger.get("doc_no")).isEqualTo(receipt.path("documentNo").asString());
+                assertThat(ledger.get("reason_code")).isEqualTo("PRODUCTION");
+                assertThat((java.math.BigDecimal) ledger.get("qty_delta"))
+                        .isEqualByComparingTo(expectedQty.negate());
+                post(
+                        "/biz/x/food/tasks/" + taskNo + ":ready",
+                        Map.of(
+                                "version",
+                                taskVersion(taskNo),
+                                "qty",
+                                task.get("qty"),
+                                "reason",
+                                "multi ready"),
+                        token,
+                        key());
+            }
+            assertThat(inv.queryForObject("SELECT COUNT(*) FROM inv_ledger", Long.class))
+                    .isEqualTo(ledgerBefore + 2);
+            assertThat(
+                            inv.queryForObject(
+                                            "SELECT SUM(qty_delta) FROM inv_ledger",
+                                            java.math.BigDecimal.class)
+                                    .subtract(quantityBefore))
+                    .isEqualByComparingTo("-3");
+            var consumedLedger =
+                    inv.queryForList(
+                            "SELECT * FROM inv_ledger WHERE owner_id=? AND location_id=? ORDER BY"
+                                + " id",
+                            inventoryOwner,
+                            inventoryLocation);
+            var consumedOnHand =
+                    inv.queryForList(
+                            "SELECT item_id,on_hand FROM inv_stock_balance WHERE owner_id=? AND"
+                                + " location_id=? ORDER BY item_id",
+                            inventoryOwner,
+                            inventoryLocation);
+            var lines =
+                    sql.queryForList(
+                            "SELECT food_line_no,qty FROM fnb_order_line WHERE batch_no=? ORDER BY"
+                                    + " sku_no",
+                            batchNo);
+            var quantities =
+                    lines.stream()
+                            .map(
+                                    l ->
+                                            Map.of(
+                                                    "foodLineNo",
+                                                    l.get("food_line_no"),
+                                                    "qty",
+                                                    l.get("qty")))
+                            .toList();
+            var handover =
+                    post(
+                            "/biz/x/food/batches/" + batchNo + ":handover",
+                            Map.of(
+                                    "kind",
+                                    "DINE_IN",
+                                    "lines",
+                                    quantities,
+                                    "reason",
+                                    "multi delivery"),
+                            token,
+                            key());
+            assertThat(handover.path("deliveryPending").asBoolean()).isFalse();
+            assertThat(handover.path("coreDeliveryRef").asString()).isNotBlank();
+            var returned =
+                    post(
+                            "/biz/x/food/batches/" + batchNo + "/business-returns",
+                            Map.of(
+                                    "batchVersion",
+                                    sql.queryForObject(
+                                            "SELECT version FROM fnb_order_batch WHERE batch_no=?",
+                                            Long.class,
+                                            batchNo),
+                                    "lines",
+                                    quantities,
+                                    "reason",
+                                    "multi return"),
+                            token,
+                            key());
+            String returnNo = returned.path("returnNo").asString();
+            var approval =
+                    Map.of(
+                            "version",
+                            returned.path("version").asLong(),
+                            "reason",
+                            "multi approval");
+            String approvalPath = "/biz/x/food/business-returns/" + returnNo + ":approve",
+                    approvalKey = key();
+            assertThat(post(approvalPath, approval, token, approvalKey).path("pending").asBoolean())
+                    .isTrue();
+            var kitchen = ok("GET", "/biz/x/food/returns/" + returnNo + "/kitchen", null, token);
+            var decisions = new ArrayList<Map<String, String>>();
+            for (var item : kitchen.path("items"))
+                decisions.add(
+                        Map.of(
+                                "returnItemNo",
+                                item.path("returnItemNo").asString(),
+                                "disposition",
+                                "KEEP"));
+            assertThat(decisions).hasSize(2);
+            post(
+                    "/biz/x/food/returns/" + returnNo + "/kitchen",
+                    Map.of(
+                            "version",
+                            kitchen.path("version").asLong(),
+                            "decisions",
+                            decisions,
+                            "reason",
+                            "retain consumed materials"),
+                    token,
+                    key());
+            var approved = post(approvalPath, approval, token, approvalKey);
+            assertThat(approved.path("pending").asBoolean()).isFalse();
+            assertThat(post(approvalPath, approval, token, approvalKey)).isEqualTo(approved);
+            assertThat(
+                            sql.queryForObject(
+                                    "SELECT SUM(amount_minor) FROM"
+                                        + " ord_industry_receivable_adjustment WHERE order_no=?",
+                                    Long.class,
+                                    order))
+                    .isEqualTo(-24140L);
+            assertThat(
+                            sql.queryForList(
+                                    "SELECT * FROM ord_item WHERE order_no=? ORDER BY id", order))
+                    .isEqualTo(originalItems);
+            assertThat(inv.queryForObject("SELECT COUNT(*) FROM inv_ledger", Long.class))
+                    .isEqualTo(ledgerBefore + 2);
+            assertThat(
+                            inv.queryForList(
+                                    "SELECT * FROM inv_ledger WHERE owner_id=? AND location_id=?"
+                                        + " ORDER BY id",
+                                    inventoryOwner,
+                                    inventoryLocation))
+                    .isEqualTo(consumedLedger);
+            assertThat(
+                            inv.queryForList(
+                                    "SELECT item_id,on_hand FROM inv_stock_balance WHERE owner_id=?"
+                                        + " AND location_id=? ORDER BY item_id",
+                                    inventoryOwner,
+                                    inventoryLocation))
+                    .isEqualTo(consumedOnHand);
+            assertThat(
+                            sql.queryForObject(
+                                    "SELECT status FROM ord_order WHERE order_no=?",
+                                    String.class,
+                                    order))
+                    .isEqualTo("WAIT_PAY");
+            assertThat(
+                            sql.queryForObject(
+                                    "SELECT paid_at FROM ord_order WHERE order_no=?",
+                                    Object.class,
+                                    order))
+                    .isNull();
+        }
+    }
 }

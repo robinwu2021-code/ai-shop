@@ -115606,18 +115606,22 @@
   "currentDelivery": {
     "recordedDate": "2026-10-25",
     "production": {
-      "sourceCommit": "fef7f00982c978819645a527d26b819d343d8aab",
+      "sourceCommit": "4440eb46a23279b1fe6687bf7c012d26e9b3e687",
       "shape": "food-embedded",
       "reportEnabled": false,
       "paymentReleased": false
     },
     "schema": {
       "food": 25,
-      "core": 581,
-      "inventory": 14
+      "core": 587,
+      "inventory": 15
     },
     "businessAcceptance": "PENDING_TERMINAL_AND_REAL_OWNER_E2E",
     "evidence": [
+      {
+        "label": "非支付修复集成发布",
+        "path": "../餐饮非支付修复发布记录.md"
+      },
       {
         "label": "验收执行及发布记录",
         "path": "../TDD-餐饮功能验收与接口测试.md"
@@ -115639,13 +115643,6 @@
       "food": 25,
       "core": 587,
       "inventory": 15
-    },
-    "localChanges": {
-      "status": "UNRELEASED",
-      "report": "../餐饮非支付原生链路验收记录.md",
-      "coreMigration": 587,
-      "inventoryMigration": 15,
-      "legacyPricingRepublishRequired": true
     }
   }
 }
