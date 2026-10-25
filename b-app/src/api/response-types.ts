@@ -268,13 +268,55 @@ export type {SvPolicyTargetOption,SvGovernanceContext} from './stored-value-gove
 
 export type {SvFinanceCapability,SvFinanceResource,SvSummary,SvSettlementBill,SvBillActions,SvSettlementPayment,SvGenerated,SvPaymentResolution} from "./stored-value-finance";
 import type {SvSummary,SvStoreAttribution,SvActivityAttribution,SvSettlementBill,SvSettlementItem,SvSettlementEvent,SvSettlementPayment} from "./stored-value-finance";
-export interface SvFinanceSummaryPage {records:SvSummary[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceStorePage {records:SvStoreAttribution[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceActivityPage {records:SvActivityAttribution[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceBillPage {records:SvSettlementBill[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceItemPage {records:SvSettlementItem[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinanceEventPage {records:SvSettlementEvent[];nextCursor:string|null;hasMore:boolean}
-export interface SvFinancePaymentPage {records:SvSettlementPayment[];nextCursor:string|null;hasMore:boolean}
+export interface SvFinanceSummaryPage {
+  /** Authorized financial summary records returned on this page. */
+  records:SvSummary[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceStorePage {
+  /** Authorized store attribution records returned on this page. */
+  records:SvStoreAttribution[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceActivityPage {
+  /** Authorized activity attribution records returned on this page. */
+  records:SvActivityAttribution[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceBillPage {
+  /** Authorized settlement bill records returned on this page. */
+  records:SvSettlementBill[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceItemPage {
+  /** Authorized settlement clearing item records returned on this page. */
+  records:SvSettlementItem[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinanceEventPage {
+  /** Authorized settlement audit event records returned on this page. */
+  records:SvSettlementEvent[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
+export interface SvFinancePaymentPage {
+  /** Authorized registered settlement payment records returned on this page. */
+  records:SvSettlementPayment[];
+  /** Opaque continuation cursor; null when this query has no further records. */
+  nextCursor:string|null;
+  /** Whether the server has another page available through nextCursor. */
+  hasMore:boolean}
 
 export type {SvFinancialBrandChange} from "./stored-value-finance";
 

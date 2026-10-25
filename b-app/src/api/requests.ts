@@ -1073,15 +1073,31 @@ export interface SvBrandActivationRequest {managementNo:string;expectedRevision:
 // P6 finance wire bodies; the API adapter consumes these exact types.
 export type {SvReportQuery,SvFinanceQuery,SvGenerationRequest,SvDecisionRequest,SvResolutionRequest,SvAdjustmentRequest,SvPaymentRequest,SvReceiptRequest,SvVoidRequest} from "./stored-value-finance";
 import type {SvReportQuery} from "./stored-value-finance";
-export interface SvFinanceManagementQuery {managementNo:string}
-export interface SvFinanceDirectoryQuery extends SvFinanceManagementQuery {scopeType?:"STORE"|"BRAND"}
-export interface SvFinanceCursorQuery extends SvFinanceManagementQuery {cursor?:string;size?:number}
-export interface SvFinanceActivityQuery extends SvReportQuery {issuerNo:string}
-export interface SvFinanceResolutionQuery extends SvFinanceManagementQuery {commandKey:string}
+export interface SvFinanceManagementQuery {
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string}
+export interface SvFinanceDirectoryQuery extends SvFinanceManagementQuery {
+  /** Whether the stored-value issuer belongs to a store or a brand. */
+  scopeType?:"STORE"|"BRAND"}
+export interface SvFinanceCursorQuery extends SvFinanceManagementQuery {
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records requested per page; the financial reporting API accepts 1–100. */
+  size?:number}
+export interface SvFinanceActivityQuery extends SvReportQuery {
+  /** Stored-value issuer identifier whose activity attribution is queried. */
+  issuerNo:string}
+export interface SvFinanceResolutionQuery extends SvFinanceManagementQuery {
+  /** Original command’s idempotency key used to recover an uncertain result without repeating the operation. */
+  commandKey:string}
 
 export type {SvFinancialBrandRequest} from "./stored-value-finance";
 
-export interface SvFinancialOriginalQuery {managementNo:string;commandKey:string}
+export interface SvFinancialOriginalQuery {
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Original command’s idempotency key used to recover an uncertain result without repeating the operation. */
+  commandKey:string}
 export interface SvConsumptionStoreQuery {
 /** Store identifier for the service or ledger record; null when no single store applies. */
 storeNo:string}

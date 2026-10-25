@@ -14491,18 +14491,25 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code; monetary fields use this currency’s minor units."
         startDate:
           type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         endDate:
           type: "string"
+          description: "Exclusive end business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         activityNo:
           type: "string"
+          description: "Optional stored-value activity identifier restricting the report to that activity."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       required:
         - "managementNo"
         - "currency"
@@ -14514,25 +14521,34 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         scopeType:
           type: "string"
           enum:
             - "STORE"
             - "BRAND"
+          description: "Whether the stored-value issuer belongs to a store or a brand."
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier whose ledger or settlement data is requested."
         currency:
           type: "string"
+          description: "ISO currency code; monetary fields use this currency’s minor units."
         status:
           type: "string"
+          description: "Server-owned lifecycle state used to filter settlement bills."
         periodFrom:
           type: "string"
+          description: "Inclusive start of the settlement period as an ISO instant."
         periodTo:
           type: "string"
+          description: "Exclusive end of the settlement period as an ISO instant."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       required:
         - "managementNo"
       additionalProperties: false
@@ -14541,14 +14557,19 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier whose ledger or settlement data is requested."
         periodFrom:
           type: "string"
+          description: "Inclusive first settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone."
         periodTo:
           type: "string"
+          description: "Exclusive end settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code; monetary fields use this currency’s minor units."
       required:
         - "managementNo"
         - "issuerNo"
@@ -14561,15 +14582,19 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         expectedRevision:
           type: "number"
+          description: "Previously read revision of the target bill or payment; stale commands are rejected."
         side:
           type: "string"
           enum:
             - "PAYER"
             - "PAYEE"
+          description: "Bill party performing reconciliation or raising a dispute: PAYER or PAYEE."
         reason:
           type: "string"
+          description: "Business reason for the decision; required for a dispute and optional for reconciliation, at most 255 characters."
       required:
         - "managementNo"
         - "expectedRevision"
@@ -14580,17 +14605,22 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         expectedRevision:
           type: "number"
+          description: "Previously read revision of the target bill or payment; stale commands are rejected."
         disputeNo:
           type: "string"
+          description: "Settlement dispute identifier; null when the bill has no dispute."
         decision:
           type: "string"
           enum:
             - "ACCEPT"
             - "REJECT"
+          description: "Dispute resolution decision: ACCEPT or REJECT."
         reason:
           type: "string"
+          description: "Business reason recorded for this settlement operation; limited to 255 characters when supplied."
       required:
         - "managementNo"
         - "expectedRevision"
@@ -14603,14 +14633,19 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         clearingNo:
           type: "string"
+          description: "Source stored-value clearing entry represented by or adjusted through this line."
         expectedRevision:
           type: "number"
+          description: "Previously read revision of the target bill or payment; stale commands are rejected."
         payableDeltaMinor:
           type: "number"
+          description: "Nonzero signed change to the clearing entry’s payable amount, in minor currency units."
         reason:
           type: "string"
+          description: "Business reason recorded for this settlement operation; limited to 255 characters when supplied."
       required:
         - "managementNo"
         - "clearingNo"
@@ -14623,24 +14658,31 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         expectedRevision:
           type: "number"
+          description: "Previously read revision of the target bill or payment; stale commands are rejected."
         amountMinor:
           type: "number"
+          description: "Positive payment amount to register, in the bill currency’s minor units."
         paidAt:
           type: "string"
+          description: "ISO instant when the payer made the registered payment."
         method:
           type: "string"
           enum:
             - "TRANSFER"
             - "CASH"
             - "OTHER"
+          description: "Declared settlement payment method: bank transfer, cash or other."
         receiptReference:
           type: "string"
+          description: "Payer’s receipt or transfer reference; required and limited to 160 characters."
         evidenceRefs:
           type: "array"
           minItems: 0
           maxItems: 0
+          description: "Receipt attachment references; this client currently sends an empty list."
       required:
         - "managementNo"
         - "expectedRevision"
@@ -14655,10 +14697,13 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         expectedRevision:
           type: "number"
+          description: "Previously read revision of the target bill or payment; stale commands are rejected."
         receivedAt:
           type: "string"
+          description: "ISO instant at which the payee confirms receipt of the payment."
       required:
         - "managementNo"
         - "expectedRevision"
@@ -14669,10 +14714,13 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         expectedRevision:
           type: "number"
+          description: "Previously read revision of the target bill or payment; stale commands are rejected."
         reason:
           type: "string"
+          description: "Business reason recorded for this settlement operation; limited to 255 characters when supplied."
       required:
         - "managementNo"
         - "expectedRevision"
@@ -14683,6 +14731,7 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
       required:
         - "managementNo"
       additionalProperties: false
@@ -14691,11 +14740,13 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         scopeType:
           type: "string"
           enum:
             - "STORE"
             - "BRAND"
+          description: "Whether the stored-value issuer belongs to a store or a brand."
       additionalProperties: false
       required:
         - "managementNo"
@@ -14704,10 +14755,13 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       additionalProperties: false
       required:
         - "managementNo"
@@ -14716,20 +14770,28 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code; monetary fields use this currency’s minor units."
         startDate:
           type: "string"
+          description: "Inclusive first business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         endDate:
           type: "string"
+          description: "Exclusive end business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         activityNo:
           type: "string"
+          description: "Optional stored-value activity identifier restricting the report to that activity."
         cursor:
           type: "string"
+          description: "Opaque continuation cursor from the preceding page; omit for the first page."
         size:
           type: "number"
+          description: "Maximum records requested per page; the financial reporting API accepts 1–100."
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier whose activity attribution is queried."
       required:
         - "currency"
         - "endDate"
@@ -14742,8 +14804,10 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         commandKey:
           type: "string"
+          description: "Original command’s idempotency key used to recover an uncertain result without repeating the operation."
       required:
         - "commandKey"
         - "managementNo"
@@ -14753,14 +14817,18 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         toBrandNo:
           type:
             - "string"
             - "null"
+          description: "Destination brand identifier; null requests removal of the store’s brand binding."
         expectedStoreRevision:
           type: "number"
+          description: "Previously read store revision used to reject a stale financial brand-binding change."
         reason:
           type: "string"
+          description: "Business reason recorded for this settlement operation; limited to 255 characters when supplied."
       required:
         - "managementNo"
         - "toBrandNo"
@@ -14772,8 +14840,10 @@ components:
       properties:
         managementNo:
           type: "string"
+          description: "Management space authorizing this financial query or command; the server verifies access."
         commandKey:
           type: "string"
+          description: "Original command’s idempotency key used to recover an uncertain result without repeating the operation."
       required:
         - "managementNo"
         - "commandKey"
@@ -15188,6 +15258,7 @@ components:
       properties:
         canPrepareFinance:
           type: "boolean"
+          description: "Whether the authenticated operator may prepare financial permissions for this resource."
         canManageLegacy:
           type: "boolean"
           description: "Whether the operator retains management access to legacy resources."
@@ -15290,6 +15361,7 @@ components:
       properties:
         canPrepareFinance:
           type: "boolean"
+          description: "Whether the authenticated operator may prepare financial permissions for this resource."
         canManageLegacy:
           type: "boolean"
           description: "Whether the operator retains management access to legacy resources."
@@ -15333,6 +15405,7 @@ components:
       properties:
         canPrepareFinance:
           type: "boolean"
+          description: "Whether the authenticated operator may prepare financial permissions for this resource."
         canManageLegacy:
           type: "boolean"
           description: "Whether the operator retains management access to legacy resources."
@@ -15368,6 +15441,7 @@ components:
           description: "Current revision of the resource's management-scope bindings."
         storedValueStatus:
           type: "string"
+          description: "Server-owned stored-value activation state of this brand."
         managementNo:
           type: "string"
           description: "Management-space identifier under which the operation is authorized."
@@ -15449,6 +15523,7 @@ components:
       properties:
         financial:
           type: "boolean"
+          description: "Whether this brand-binding change uses the financial stored-value migration workflow."
         changeNo:
           type: "string"
           description: "Identifier of the requested brand/store binding change."
@@ -16946,18 +17021,24 @@ components:
       properties:
         protocol:
           type: "number"
+          description: "Server capability protocol version for the stored-value finance integration."
         reportsReady:
           type: "boolean"
+          description: "Whether the server can provide stored-value financial reports."
         settlementReady:
           type: "boolean"
+          description: "Whether settlement generation and settlement commands are available."
         crossEntityReady:
           type: "boolean"
+          description: "Whether settlement between different operating entities is available."
         receiptAttachmentsSupported:
           type: "boolean"
+          description: "Whether this deployment accepts receipt evidence attachments."
         blockers:
           type: "array"
           items:
             type: "string"
+          description: "Server capability blocker codes explaining unavailable financial features."
       required:
         - "protocol"
         - "reportsReady"
@@ -16971,19 +17052,25 @@ components:
       properties:
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier whose ledger or settlement data is requested."
         scopeType:
           type: "string"
           enum:
             - "STORE"
             - "BRAND"
+          description: "Whether the stored-value issuer belongs to a store or a brand."
         scopeNo:
           type: "string"
+          description: "Store or brand identifier selected by scopeType."
         name:
           type: "string"
+          description: "Display name of the stored-value resource represented by this row."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code; monetary fields use this currency’s minor units."
         businessTimeZone:
           type: "string"
+          description: "IANA business time zone used to interpret report date boundaries."
         canGenerate:
           type: "boolean"
           description: "Current server-verified generate permission for this issuer; absent values fail closed."
@@ -17001,12 +17088,16 @@ components:
       properties:
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier whose ledger or settlement data is requested."
         scopeType:
           type: "string"
+          description: "Reported stored-value resource scope, such as STORE or BRAND."
         name:
           type: "string"
+          description: "Display name of the stored-value resource represented by this row."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code; monetary fields use this currency’s minor units."
         period:
           type: "object"
           properties:
@@ -17018,32 +17109,46 @@ components:
             - "from"
             - "to"
           additionalProperties: false
+          description: "Report interval with an inclusive from instant and an exclusive to instant."
         asOf:
           type: "string"
+          description: "ISO instant at which this report snapshot was computed."
         sourceWatermark:
           type: "number"
+          description: "Source-ledger high-water mark included in the report or generated bills."
         openingMinor:
           type: "number"
+          description: "Stored-value balance at the start of the report period, in minor currency units."
         creditedPaidMinor:
           type: "number"
+          description: "Recharge principal credited during the period, in minor currency units."
         creditedBonusMinor:
           type: "number"
+          description: "Recharge bonus credited during the period, in minor currency units."
         consumedMinor:
           type: "number"
+          description: "Stored-value amount consumed during the period, in minor currency units."
         reversedMinor:
           type: "number"
+          description: "Previously consumed amount restored by reversals during the period, in minor currency units."
         closingMinor:
           type: "number"
+          description: "Stored-value balance at period end: opening plus credits and reversals minus consumption, in minor units."
         heldMinor:
           type: "number"
+          description: "Stored-value amount reserved by unfinished operations, in minor currency units."
         rechargeCount:
           type: "number"
+          description: "Number of recharge operations included in this report row."
         usageCount:
           type: "number"
+          description: "Number of stored-value consumption operations included in this report row."
         customerCount:
           type: "number"
+          description: "Number of customers represented in this report row."
         payableMinor:
           type: "number"
+          description: "Net settlement amount payable for the reported scope or bill, in minor currency units."
       required:
         - "issuerNo"
         - "scopeType"
@@ -17069,54 +17174,76 @@ components:
       properties:
         billNo:
           type: "string"
+          description: "Settlement bill identifier used for authorized detail queries and commands."
         issuerNo:
           type: "string"
+          description: "Stored-value issuer identifier whose ledger or settlement data is requested."
         payerEntityNo:
           type: "string"
+          description: "Operating entity responsible for paying this settlement bill."
         payeeEntityNo:
           type: "string"
+          description: "Operating entity entitled to receive this settlement bill’s payment."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code; monetary fields use this currency’s minor units."
         periodFrom:
           type: "string"
+          description: "Inclusive start of the settlement period as an ISO instant."
         periodTo:
           type: "string"
+          description: "Exclusive end of the settlement period as an ISO instant."
         billKind:
           type: "string"
+          description: "Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation."
         status:
           type: "string"
+          description: "Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state."
         payableMinor:
           type: "number"
+          description: "Net settlement amount payable for the reported scope or bill, in minor currency units."
         registeredPaymentMinor:
           type: "number"
+          description: "Total amount of registered bill payments, in minor currency units."
         confirmedReceiptMinor:
           type: "number"
+          description: "Total amount whose receipt the payee has confirmed, in minor currency units."
         principalMinor:
           type: "number"
+          description: "Principal component attributed to this settlement bill or clearing item, in minor currency units."
         bonusMinor:
           type: "number"
+          description: "Bonus component attributed to this settlement bill or clearing item, in minor currency units."
         sourceCount:
           type: "number"
+          description: "Number of source clearing entries included in this bill."
         sourceWatermark:
           type: "number"
+          description: "Source-ledger high-water mark included in the report or generated bills."
         payerReconciledBy:
           type:
             - "string"
             - "null"
+          description: "Actor who reconciled the payer side; null before payer reconciliation."
         payeeReconciledBy:
           type:
             - "string"
             - "null"
+          description: "Actor who reconciled the payee side; null before payee reconciliation."
         disputeNo:
           type:
             - "string"
             - "null"
+          description: "Settlement dispute identifier; null when the bill has no dispute."
         revision:
           type: "number"
+          description: "Current server revision used for optimistic concurrency on the returned resource."
         createdAt:
           type: "string"
+          description: "ISO instant when the settlement bill was created."
         updatedAt:
           type: "string"
+          description: "ISO instant when the settlement bill was last updated."
       required:
         - "billNo"
         - "issuerNo"
@@ -17148,10 +17275,12 @@ components:
           type: "array"
           items:
             type: "string"
+          description: "Settlement permission codes currently available to this actor on the payer side."
         payeeActions:
           type: "array"
           items:
             type: "string"
+          description: "Settlement permission codes currently available to this actor on the payee side."
       required:
         - "payerActions"
         - "payeeActions"
@@ -17161,30 +17290,41 @@ components:
       properties:
         paymentNo:
           type: "string"
+          description: "Registered settlement payment identifier used for receipt confirmation and voiding."
         billNo:
           type: "string"
+          description: "Settlement bill identifier used for authorized detail queries and commands."
         currency:
           "$ref": "#/components/schemas/CurrencyCode"
+          description: "ISO currency code; monetary fields use this currency’s minor units."
         method:
           type: "string"
+          description: "Declared settlement payment method: bank transfer, cash or other."
         amountMinor:
           type: "number"
+          description: "Registered settlement payment amount in the bill currency’s minor units."
         paidAt:
           type: "string"
+          description: "ISO instant when the payer made the registered payment."
         status:
           type: "string"
+          description: "Registered payment lifecycle state, distinguishing registered, received and voided payments."
         registeredBy:
           type: "string"
+          description: "Actor who registered this settlement payment."
         receivedBy:
           type:
             - "string"
             - "null"
+          description: "Actor who confirmed receipt; null until the payee confirms."
         receivedAt:
           type:
             - "string"
             - "null"
+          description: "ISO instant of receipt confirmation; null until receipt is confirmed."
         revision:
           type: "number"
+          description: "Current server revision used for optimistic concurrency on the returned resource."
       required:
         - "paymentNo"
         - "billNo"
@@ -17205,8 +17345,10 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvSettlementBill"
+          description: "Settlement bills created or returned idempotently for the generation request."
         sourceWatermark:
           type: "number"
+          description: "Source-ledger high-water mark included in the report or generated bills."
       required:
         - "bills"
         - "sourceWatermark"
@@ -17216,10 +17358,12 @@ components:
       properties:
         found:
           type: "boolean"
+          description: "Whether the server found the original payment command for the supplied idempotency key."
         payment:
           anyOf:
             - "$ref": "#/components/schemas/SvSettlementPayment"
             - type: "null"
+          description: "Original registered payment when found; null when the command has no recorded result."
       required:
         - "found"
         - "payment"
@@ -17231,12 +17375,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvSummary"
+          description: "Authorized financial summary records returned on this page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque continuation cursor; null when this query has no further records."
         hasMore:
           type: "boolean"
+          description: "Whether the server has another page available through nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -17249,12 +17396,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvStoreAttribution"
+          description: "Authorized store attribution records returned on this page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque continuation cursor; null when this query has no further records."
         hasMore:
           type: "boolean"
+          description: "Whether the server has another page available through nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -17265,26 +17415,37 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Store identifier used to attribute this report row."
         storeName:
           type: "string"
+          description: "Display name of the store represented by this attribution row."
         creditedPaidMinor:
           type: "number"
+          description: "Recharge principal credited during the period, in minor currency units."
         creditedBonusMinor:
           type: "number"
+          description: "Recharge bonus credited during the period, in minor currency units."
         consumedMinor:
           type: "number"
+          description: "Stored-value amount consumed during the period, in minor currency units."
         payableMinor:
           type: "number"
+          description: "Net settlement amount payable for the reported scope or bill, in minor currency units."
         rechargeCount:
           type: "number"
+          description: "Number of recharge operations included in this report row."
         usageCount:
           type: "number"
+          description: "Number of stored-value consumption operations included in this report row."
         customerCount:
           type: "number"
+          description: "Number of customers represented in this report row."
         asOf:
           type: "string"
+          description: "ISO instant at which this report snapshot was computed."
         sourceWatermark:
           type: "number"
+          description: "Source-ledger high-water mark included in the report or generated bills."
       required:
         - "storeNo"
         - "storeName"
@@ -17305,12 +17466,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvActivityAttribution"
+          description: "Authorized activity attribution records returned on this page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque continuation cursor; null when this query has no further records."
         hasMore:
           type: "boolean"
+          description: "Whether the server has another page available through nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -17321,32 +17485,46 @@ components:
       properties:
         activityNo:
           type: "string"
+          description: "Optional stored-value activity identifier restricting the report to that activity."
         releaseNo:
           type: "string"
+          description: "Immutable published activity release to which these ledger amounts are attributed."
         sourceKind:
           type: "string"
+          description: "Stored-value activity source classification used to interpret activityNo and releaseNo."
         name:
           type: "string"
+          description: "Display name of the stored-value resource represented by this row."
         creditedPaidMinor:
           type: "number"
+          description: "Recharge principal credited during the period, in minor currency units."
         creditedBonusMinor:
           type: "number"
+          description: "Recharge bonus credited during the period, in minor currency units."
         consumedPrincipalMinor:
           type: "number"
+          description: "Recharge principal consumed from this activity’s credits, in minor currency units."
         consumedBonusMinor:
           type: "number"
+          description: "Recharge bonus consumed from this activity’s credits, in minor currency units."
         remainingMinor:
           type: "number"
+          description: "Unused stored-value balance attributed to this activity, in minor currency units."
         rechargeCount:
           type: "number"
+          description: "Number of recharge operations included in this report row."
         usageCount:
           type: "number"
+          description: "Number of stored-value consumption operations included in this report row."
         customerCount:
           type: "number"
+          description: "Number of customers represented in this report row."
         asOf:
           type: "string"
+          description: "ISO instant at which this report snapshot was computed."
         sourceWatermark:
           type: "number"
+          description: "Source-ledger high-water mark included in the report or generated bills."
       required:
         - "activityNo"
         - "releaseNo"
@@ -17370,12 +17548,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvSettlementBill"
+          description: "Authorized settlement bill records returned on this page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque continuation cursor; null when this query has no further records."
         hasMore:
           type: "boolean"
+          description: "Whether the server has another page available through nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -17388,12 +17569,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvSettlementItem"
+          description: "Authorized settlement clearing item records returned on this page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque continuation cursor; null when this query has no further records."
         hasMore:
           type: "boolean"
+          description: "Whether the server has another page available through nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -17404,30 +17588,42 @@ components:
       properties:
         itemNo:
           type: "string"
+          description: "Settlement line identifier within the bill detail."
         clearingNo:
           type: "string"
+          description: "Source stored-value clearing entry represented by or adjusted through this line."
         amountMinor:
           type: "number"
+          description: "Monetary amount in the settlement bill’s minor currency units."
         principalMinor:
           type: "number"
+          description: "Principal component attributed to this settlement bill or clearing item, in minor currency units."
         bonusMinor:
           type: "number"
+          description: "Bonus component attributed to this settlement bill or clearing item, in minor currency units."
         rechargeStoreNo:
           type: "string"
+          description: "Store where the stored-value credit was recharged."
         redemptionStoreNo:
           type: "string"
+          description: "Store where the credited stored value was redeemed."
         occurredAt:
           type: "string"
+          description: "ISO instant when the source business operation occurred."
         postedAt:
           type: "string"
+          description: "ISO instant when the source clearing entry was posted to the ledger."
         carriedForward:
           type: "boolean"
+          description: "Whether the source entry was carried into this bill from an earlier settlement period."
         entryType:
           type: "string"
+          description: "Source clearing classification, such as USE or a reversal."
         originalClearingNo:
           type:
             - "string"
             - "null"
+          description: "Original clearing entry referenced by a reversal; null for an original entry."
       required:
         - "itemNo"
         - "clearingNo"
@@ -17449,12 +17645,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvSettlementEvent"
+          description: "Authorized settlement audit event records returned on this page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque continuation cursor; null when this query has no further records."
         hasMore:
           type: "boolean"
+          description: "Whether the server has another page available through nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -17465,18 +17664,24 @@ components:
       properties:
         eventNo:
           type: "string"
+          description: "Immutable settlement audit event identifier."
         type:
           type: "string"
+          description: "Settlement audit event type used to interpret the recorded action."
         billRevision:
           type: "number"
+          description: "Settlement bill revision to which this audit event applies."
         actorNo:
           type: "string"
+          description: "Actor identifier recorded for the settlement event."
         reason:
           type:
             - "string"
             - "null"
+          description: "Business reason recorded for this settlement operation; limited to 255 characters when supplied."
         occurredAt:
           type: "string"
+          description: "ISO instant when this settlement audit event occurred."
       required:
         - "eventNo"
         - "type"
@@ -17492,12 +17697,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/SvSettlementPayment"
+          description: "Authorized registered settlement payment records returned on this page."
         nextCursor:
           type:
             - "string"
             - "null"
+          description: "Opaque continuation cursor; null when this query has no further records."
         hasMore:
           type: "boolean"
+          description: "Whether the server has another page available through nextCursor."
       required:
         - "records"
         - "nextCursor"
@@ -17508,10 +17716,13 @@ components:
       properties:
         changeNo:
           type: "string"
+          description: "Financial brand-binding change identifier used to query or resume the change."
         state:
           type: "string"
+          description: "Server-owned lifecycle state of the financial brand-binding change."
         staged:
           type: "boolean"
+          description: "Whether the financial brand-binding change is staged pending completion."
       required:
         - "changeNo"
         - "state"
@@ -17522,12 +17733,15 @@ components:
       properties:
         prepared:
           type: "boolean"
+          description: "Whether the server successfully prepared the requested financial permission setup."
         entityNo:
           type: "string"
+          description: "Operating entity whose financial permissions were prepared."
         permissions:
           type: "array"
           items:
             type: "string"
+          description: "Financial permission codes returned by the server for the prepared entity."
       required:
         - "prepared"
         - "entityNo"
@@ -17540,6 +17754,7 @@ components:
           anyOf:
             - "$ref": "#/components/schemas/SvFinancialBrandChange"
             - type: "null"
+          description: "Original financial brand-binding command result; null when the command is not recorded."
       required:
         - "original"
       additionalProperties: false
@@ -18102,11 +18317,13 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "commandKey"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Original command’s idempotency key used to recover an uncertain result without repeating the operation."
       responses:
         "200":
           description: "OK"
@@ -18228,6 +18445,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
       responses:
         "200":
           description: "OK"
@@ -18328,6 +18546,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "scopeType"
           in: "query"
           required: false
@@ -18336,6 +18555,7 @@ paths:
             enum:
               - "STORE"
               - "BRAND"
+            description: "Whether the stored-value issuer belongs to a store or a brand."
       responses:
         "200":
           description: "OK"
@@ -18376,36 +18596,43 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code; monetary fields use this currency’s minor units."
         - name: "startDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "endDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Exclusive end business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "activityNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Optional stored-value activity identifier restricting the report to that activity."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       responses:
         "200":
           description: "OK"
@@ -18444,36 +18671,43 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code; monetary fields use this currency’s minor units."
         - name: "startDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "endDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Exclusive end business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "activityNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Optional stored-value activity identifier restricting the report to that activity."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       responses:
         "200":
           description: "OK"
@@ -18512,36 +18746,43 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code; monetary fields use this currency’s minor units."
         - name: "startDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "endDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Exclusive end business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "activityNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Optional stored-value activity identifier restricting the report to that activity."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       responses:
         "200":
           description: "OK"
@@ -18575,36 +18816,43 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code; monetary fields use this currency’s minor units."
         - name: "startDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "endDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Exclusive end business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "activityNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Optional stored-value activity identifier restricting the report to that activity."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       responses:
         "200":
           description: "OK"
@@ -18643,41 +18891,49 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "currency"
           in: "query"
           required: true
           schema:
             "$ref": "#/components/schemas/CurrencyCode"
+            description: "ISO currency code; monetary fields use this currency’s minor units."
         - name: "startDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Inclusive first business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "endDate"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Exclusive end business date in YYYY-MM-DD format, interpreted in the resource’s business time zone."
         - name: "activityNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Optional stored-value activity identifier restricting the report to that activity."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
         - name: "issuerNo"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Stored-value issuer identifier whose activity attribution is queried."
       responses:
         "200":
           description: "OK"
@@ -18711,6 +18967,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "scopeType"
           in: "query"
           required: false
@@ -18719,41 +18976,49 @@ paths:
             enum:
               - "STORE"
               - "BRAND"
+            description: "Whether the stored-value issuer belongs to a store or a brand."
         - name: "issuerNo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Stored-value issuer identifier whose ledger or settlement data is requested."
         - name: "currency"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "ISO currency code; monetary fields use this currency’s minor units."
         - name: "status"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Server-owned lifecycle state used to filter settlement bills."
         - name: "periodFrom"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Inclusive start of the settlement period as an ISO instant."
         - name: "periodTo"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Exclusive end of the settlement period as an ISO instant."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       responses:
         "200":
           description: "OK"
@@ -18792,6 +19057,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
       responses:
         "200":
           description: "OK"
@@ -18830,6 +19096,7 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
       responses:
         "200":
           description: "OK"
@@ -18868,16 +19135,19 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       responses:
         "200":
           description: "OK"
@@ -18916,16 +19186,19 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       responses:
         "200":
           description: "OK"
@@ -18964,16 +19237,19 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "cursor"
           in: "query"
           required: false
           schema:
             type: "string"
+            description: "Opaque continuation cursor from the preceding page; omit for the first page."
         - name: "size"
           in: "query"
           required: false
           schema:
             type: "number"
+            description: "Maximum records requested per page; the financial reporting API accepts 1–100."
       responses:
         "200":
           description: "OK"
@@ -19270,11 +19546,13 @@ paths:
           required: true
           schema:
             type: "string"
+            description: "Management space authorizing this financial query or command; the server verifies access."
         - name: "commandKey"
           in: "query"
           required: true
           schema:
             type: "string"
+            description: "Original command’s idempotency key used to recover an uncertain result without repeating the operation."
       responses:
         "200":
           description: "OK"

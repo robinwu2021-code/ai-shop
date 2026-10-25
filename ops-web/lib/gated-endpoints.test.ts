@@ -17,9 +17,23 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { NAV } from "./nav";
 
 const BACKEND = join(process.cwd(), "..", "backend");
+const ROOT = join(process.cwd(), "..");
+const normalize = (path: string) => path.replace(/\{[^}]*\}/g, "*");
+
+// A domain with no delivered ops UI has no menu to mark. Honor only the existing
+// explicit delivery plan, after its handler/contract/no-connected-UI checks pass.
+execFileSync(process.execPath, [join(ROOT, "scripts/check-ops-orphan.mjs"), "--check"], {cwd: ROOT, stdio: "pipe"});
+const staged = JSON.parse(readFileSync(join(ROOT, "docs/api/backend-ops-ui-delivery.json"), "utf8"));
+const deferred = new Set<string>(staged.entries.map((row: {method: string; path: string}) => `${row.method} ${normalize(row.path)}`));
+
+function fullyDeferred(src: string, entries: Set<string>): boolean {
+  const endpoints = [...src.matchAll(/@(Get|Post|Put|Delete|Patch)Mapping\(\s*(?:value\s*=\s*)?"(\/ops[^\"]*)"/g)];
+  return endpoints.length > 0 && endpoints.every(match => entries.has(`${match[1].toUpperCase()} ${normalize(match[2])}`));
+}
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
@@ -34,7 +48,7 @@ function walk(dir: string, out: string[] = []): string[] {
 /** `@ConditionalOnInventory` 是 `shop.inventory.enabled` 的别名（见那个注解本身） */
 const ALIAS: Record<string, string> = { ConditionalOnInventory: "shop.inventory.enabled" };
 
-function gatesOfOpsControllers(): Map<string, string[]> {
+function gatesOfOpsControllers(includeDeferred = false): Map<string, string[]> {
   const out = new Map<string, string[]>();
   for (const f of walk(BACKEND)) {
     const src = readFileSync(f, "utf8");
@@ -52,7 +66,7 @@ function gatesOfOpsControllers(): Map<string, string[]> {
       // 默认开的开关没有「关着」的态，不需要菜单信号
       if (name && !matchIfMissing) gate = prefix ? `${prefix}.${name}` : name;
     }
-    if (gate) out.set(gate, [...(out.get(gate) ?? []), f.split("/").pop()!]);
+    if (gate && (includeDeferred || !fullyDeferred(src, deferred))) out.set(gate, [...(out.get(gate) ?? []), f.split("/").pop()!]);
   }
   return out;
 }
@@ -72,7 +86,7 @@ describe("运行时开关 ↔ 菜单登记", () => {
   });
 
   it("菜单里登记的开关必须真的门着某个运营端端点 —— 陈了的登记会白白灰掉可用的页", () => {
-    const backend = gatesOfOpsControllers();
+    const backend = gatesOfOpsControllers(true);
     const stale = [...declared()].filter((g) => !backend.has(g));
     expect(stale, `这些 gated 登记在后端找不到对应的 @ConditionalOnProperty：\n${stale.join("\n")}`)
       .toEqual([]);
@@ -94,5 +108,14 @@ describe("运行时开关 ↔ 菜单登记", () => {
     const backend = gatesOfOpsControllers();
     const n = [...backend.values()].reduce((a, b) => a + b.length, 0);
     expect(n, "一个带开关的运营端控制器都没扫到 —— 多半是路径或正则坏了").toBeGreaterThan(4);
+  });
+
+  it("只允许整组已验证延期的端点没有菜单，部分登记或新增端点仍需开关信号", () => {
+    const source = '@GetMapping("/ops/example") @PostMapping("/ops/example/{no}")';
+    const complete = new Set(["GET /ops/example", "POST /ops/example/*"]);
+    expect(fullyDeferred(source, complete)).toBe(true);
+    expect(fullyDeferred(source, new Set(["GET /ops/example"]))).toBe(false);
+    expect(fullyDeferred(source + ' @GetMapping("/ops/example/new")', complete)).toBe(false);
+    expect(fullyDeferred("", complete)).toBe(false);
   });
 });
