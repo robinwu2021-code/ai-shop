@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-25 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7真实身份及资源组合已代码验收，A8及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-25 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7真实身份及资源组合已代码验收，A8词条已按范围验收，B端类型检查缺口待A8b补修，A9及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -919,17 +919,34 @@ Owned仅纯lineage模块、原lineage测试、生成器live说明行和其实际
 
 | AC | 实施 | 验证 |
 |---|---|---|
-| A8-1 | 三语perm补预约查看/管理文案，中文逐字对应后端；英文/阿文补缺失common.delete | 真实权限标签守卫、键集及三语占位符对齐；重复权限词条不得静默覆盖 |
+| A8-1 | 三语perm补预约查看/管理文案，中文逐字对应后端；英文/阿文补缺失common.delete；中文补既有mySpecs.delete三语缺项 | 真实权限标签守卫、键集及三语占位符对齐；重复权限词条不得静默覆盖 |
 | A8-2 | 库存共用来源提示明确当前店{0}与冲突店{1}，保留独立库位整改说明 | 新stock-shared-source-label测试覆盖三语实际条目及两个真实Java参数顺序；旧文案已有{1}，不误称全吞参 |
 | A8-3 | StockReconcile仅将邻近BizException/ErrorCode全限定名换正常import，保留storeNo/other | InventoryWriteback已有正确调用不改；不放宽message-placeholder或known棘轮 |
 | A8-4 | 默认后端及B端受影响闸门 | 四个shared文件、BackendI18nParityTest实际XML、B端vue-tsc；缺{0}/错参数顺序消融及精确恢复 |
 
 Owned为三份B端locale、三份后端properties、StockReconcileService必要import/相邻调用、原biz-perm-label与新stock-shared-source-label，共9文件；InventoryWriteback只读。现有root Vitest/vue-tsc可执行，使用既有依赖、不安装或改锁文件。无原生数据库或正式部署。
 
-- [ ] 先补针对真实缺词条/缺{0}的行为断言并取得RED，再做最小产品修改。
+- [x] 先补针对真实缺词条/缺{0}的行为断言并取得RED，再做最小产品修改。
 - [ ] 四个shared守卫及后端三语守卫实际通过，B端类型检查记录真实结果。
-- [ ] 两类必要消融失败并finally恢复精确bytes；生成manifest及完整diff，问题按真实归属处理。
-- [ ] 独立规格/质量审查及精确提交，更新实际证据后继续A9，不宣布BM04或部署完成。
+- [x] 两类必要消融失败并finally恢复精确bytes；生成manifest及完整diff，问题按真实归属处理。
+- [ ] 独立规格/质量审查及精确提交；已按范围验收，B端类型关口必须经A8b关闭再继续A9，不宣布BM04或部署完成。
+
+### 2.33 Task60A-A8b：统一会员码B端契约及真实适配补齐（2026-10-25）
+
+档位1；A8实际B端vue-tsc暴露既有缺口：endpoints和marketing mock已登记mResolveMemberCode，但MerchantApi及真实httpApi缺失。该问题不由词条改动引入，A8范围审查通过不代表类型关口关闭。本片必须先于A9完成。依据既有共用会员C08合同及Java MemberResolveCommand/MemberCodeViews，精确范围见[A8b brief](../../.superpowers/sdd/beauty-backend/task-60a-a8b-brief.md)。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A8b-1 | MerchantApi补mResolveMemberCode，复用现有shared CustomerReference；本端requests补两字段入参 | 不复制响应、不扩顾客身份/资金字段，不以any/index signature规避检查 |
+| A8b-2 | 原httpApi按既有endpoint发POST，仅投影memberCode/storeNo | 新真实适配单测验证路径/请求体、额外身份字段不转发、返回引用不改写、传输异常透传 |
+| A8b-3 | 端上编译及契约对账 | 新适配方法缺失行为RED→GREEN；必要wire消融RED/精确恢复；完整B端vue-tsc零错误；受影响shared字段守卫 |
+
+Owned仅b-app/src/api/contract.ts、requests.ts、http.ts及新tests/member-code-api.test.ts四文件。既有端点、拒绝签发身份的演示mock、共享CustomerReference类型与Java均只读。不新增页面、会话/凭据存储、日志、后端接口或权限。凭证只在POST body，不进URL/query；无外部真实身份或资金动作。
+
+- [ ] 读取现有owner合同/共享类型和API单测模式后，先复现实际适配方法缺失的行为RED。
+- [ ] 最小补齐四文件，定向测试、完整B端vue-tsc及必要字段守卫实际通过。
+- [ ] 最小wire消融必须失败并精确恢复，不重复无关后端/native套件。
+- [ ] 独立规格/质量审查及精确提交后，关闭A8继承的类型Important，继续A9。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2229,3 +2246,11 @@ A5b审查另确认继承Important：quote_no使结算报价误连到营销。本
 Node真实19通过/1失败到最终20通过；正常原生三方法3/0失败/0错误/0跳过。唯一实时权限allowed表达式消融得到1项断言失败，finally恢复生产原SHA并实际重新编译后同定向1项通过；正常三绿与最终一绿为两批，不虚称再跑完整三例。最终默认零售733份测试源码test-compile BUILD SUCCESS，反射编译边界成立。生产源码/字节码及冻结迁移精确不变，七个自有UUID容器及串行锁无遗留。
 
 前置缺publication归档配置、HELD与测试冻结时钟的失败历史保留：根批准单次原号诊断定位许可尚未生效，最终删除诊断，只保留测试局部systemUTC及既有archive-only配置。不是生产业务缺陷修复。实际环境/构建警告未压制，仍限隔离开发证据。独立规格PASS/质量PASS，无发现。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a7-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a7.md)。根manifest/真实XML/源码与字节码/精确提交父树核验通过；下一片A8，全部P1～P4正式部署仍统一后置。
+
+### 32.19 60A-A8词条与库存提示范围验收（2026-10-25）
+
+产品`b31ebd4dd47c1170e30ab8121fc5ec151f24954f`精确九文件：三份B端locale、三份后端properties、StockReconcile必要import/相邻调用及两个TS守卫。补预约查看/管理词条、英阿common.delete、中文既有mySpecs.delete缺项；库存提示补当前门店{0}，原冲突门店{1}与两调用参数顺序保留。无权限授予变化、known弱化或无关格式重排。
+
+真实初次12失败/12通过；补原中文缺项后最终四文件24项通过。移除{0}和反转真实Java调用参数均得到断言失败，finally精确恢复。后端实际XML六方法零失败/错误/跳过及BUILD SUCCESS；相关源码哈希与编译结果一致。独立范围规格PASS/质量APPROVED，[报告](../../.superpowers/sdd/beauty-backend/task-60a-a8-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a8.md)。
+
+整体B端类型检查仍FAILED：两处BASE相同的mResolveMemberCode缺MerchantApi声明；根另确认真实httpApi亦缺实现。此继承Important保持OPEN，必须由§2.33 A8b真实编译通过关闭，不能以本片范围验收豁免。审查Minor：重复检测只覆盖既有解析器捕获的biz:项，pay/trade项未扩扫；描述保持该边界，最终分支审查triage。现有javac处理器/弃用/unchecked输出保留A11，不声称输出无警告。CannotVerify的既有授权运行时及Java MessageFormat不因本片静态词条守卫自动取得新结论；未改相应实现，完整运行验证仍后置。

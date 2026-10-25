@@ -19,3 +19,6 @@ Mutation remove only {0} from one actual translation -> focused new stock assert
 
 ## Report
 Write task-60a-a8-report.md with exact products/SHA/BASE diff, real RED/GREEN/mutations/restoration, command outcomes and fresh XML, frontend type-check outcome and source attribution of any unrelated failures. Warnings remain explicit. No native resources required. Return status/test one-line/evidence pointers/concerns. Fresh independent spec+quality review before product commit. A7 and all prior accepted product bytes outside scope frozen.
+
+## Root ruling: baseline parity exposed after common.delete (2026-10-25)
+Actual first combined attempt23/24 passed: existing mySpecs.delete in en/ar:264 has no zh counterpart (zh mySpecs block starts305, save/cancel row341). Root checked actual BASE and current source, and current UI uses common.delete at notify-settings/index.vue:213. Preserve both existing translated nested keys, and add only missing zh mySpecs.delete="删除" beside its save/cancel siblings. This is a bounded same-owned-file three-language parity correction under A8-1, not deletion or relocation of nested keys, no page/behavior change or guard loosening. Cost if wrong: one unused translated key, preferable to removing existing locale contract. Keep original mismatch attribution/report exact extra key; no other parity repairs authorized.
