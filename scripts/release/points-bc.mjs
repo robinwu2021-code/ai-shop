@@ -9,7 +9,7 @@ const [,sha,ref,base]=rows[0].split(/\s+/);
 if(sha!==head||ref!=='refs/heads/codex/ai-shop-codex'||!base||/^0+$/.test(base))throw new Error('Only existing unified branch supported');
 git('merge-base','--is-ancestor',base,head);
 const allowed=new Set(JSON.parse(readFileSync('scripts/release/points-bc.json','utf8')));
-const files=git('diff','--name-only',base,head).split('\n').filter(Boolean);
+const files=git('diff','--name-only','-z','--no-renames',base,head).split('\0').filter(Boolean);
 for(const file of files)if(!allowed.has(file))throw new Error(`Out of points B/C scope: ${file}`);
 git('diff','--check',base,head);
 const run=(cmd,args,cwd)=>execFileSync(cmd,args,{cwd,stdio:'inherit'});
