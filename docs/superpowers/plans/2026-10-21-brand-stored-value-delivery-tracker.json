@@ -785,24 +785,24 @@
         "legacyCutoverInScope": false,
         "crossEntityEnabled": false,
         "remaining": [
-          "Issuer settings failure needs follow-up; existing test brand inactive and no issuer configured",
-          "Financial issuance and settlement physical-device acceptance with approved configuration; no real funds or financial enablement authorized",
+          "340 inactive-brand issuer settings read-only physical-device acceptance when connected",
+          "Financial issuance and settlement physical-device acceptance with approved configuration; financial switches stay closed",
           "Real WeChat delivery after template configuration; no real sending performed"
         ]
       },
       "publication": {
         "date": "2026-10-25",
-        "backendSha": "6dd0c43461f35e544d8861cfd5a337e44b7ba9b5",
-        "bH5": "272a3a24e",
+        "backendSha": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
+        "bH5": "895024b18",
         "coreShape": "food-embedded",
         "coreHealth": 200,
         "payProtectedHealth": 401,
         "actualProcessShaVerified": true,
-        "apkVersion": "0.6.6",
-        "apkCode": 339,
-        "apkMd5": "9314a4a7bccdc743734b1c17596641c2",
-        "apkBytes": 55568210,
-        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.6.apk",
+        "apkVersion": "0.6.7",
+        "apkCode": 340,
+        "apkMd5": "5ab3bc46fb3aadabe4ea5f375f3a088a",
+        "apkBytes": 55568619,
+        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.7.apk",
         "financialEnablement": false,
         "historicalRecharge": "DEFERRED_UNCHANGED",
         "balanceTotalMinor": 36000,
@@ -812,9 +812,11 @@
         "receivedCount": 1,
         "newMigrations": [],
         "report": "docs/technical/delivery/P6-业务闭环-执行记录.md",
-        "site": "272a3a24e",
+        "site": "895024b18",
         "siteAssetsChecked": 8,
-        "latestMetadataVerified": true
+        "latestMetadataVerified": true,
+        "coreSha": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
+        "paySourceSha": "6dd0c43461f35e544d8861cfd5a337e44b7ba9b5"
       },
       "verification": {
         "postMergeAffectedJavaCases": 43,
@@ -823,10 +825,12 @@
         "reviewPageCases": 12,
         "finalDelegationAffectedCases": 2,
         "fullRegression": false,
-        "physicalDevice": "INSTALLED_339_BASIC_BRAND_SUMMARY_UI_VERIFIED_NO_POSTING",
+        "physicalDevice": "339_BASIC_UI_VERIFIED_340_ADB_EMPTY",
         "wechatRealSending": "TEMPLATE_UNCONFIGURED",
         "reviewFindingsRemaining": 0,
-        "deviceFixDistinctCases": 5
+        "deviceFixDistinctCases": 5,
+        "inactiveBrandIssuerGuardCases": 1,
+        "issuerSettingsPageCases": 10
       },
       "deviceFollowup": {
         "sourceSha": "272a3a24e39aab2ed672eda6320ceb5bed826c32",
@@ -845,7 +849,31 @@
         "issuerSettingsAccepted": false,
         "settlementFlowAccepted": false,
         "publicationVerified": true,
-        "restrictedDiagnostic": "AWAITING_USER_APPROVAL_SERVER_ONLY_STATUS_NO_IDENTIFIER_EXPORT"
+        "restrictedDiagnostic": "APPROVED_SERVER_ONLY_STATES_CONFIRMED_INACTIVE_READ_GUARD_10404_NO_IDENTIFIER_EXPORT"
+      },
+      "issuerReadFollowup": {
+        "sourceSha": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
+        "scope": "INACTIVE only for authorized sv.issuer.read; configuration and activation gates unchanged",
+        "apiContractChanged": false,
+        "databaseMigration": false,
+        "reviewFindings": 0,
+        "version": "0.6.7",
+        "versionCode": 340,
+        "apkMd5": "5ab3bc46fb3aadabe4ea5f375f3a088a",
+        "apkBytes": 55568619,
+        "deviceInstalled": false,
+        "financialWrite": false,
+        "readonlyDiagnosticDataExported": false,
+        "corePublished": true,
+        "coreMd5": "bddc0b716cb7fa05bd5e2d6951a34af4",
+        "coreHealth": 200,
+        "bH5AndSitePublished": true,
+        "latestMetadataVerified": true,
+        "financialReadiness": {
+          "reportsReady": false,
+          "settlementReady": false,
+          "crossEntityReady": false
+        }
       }
     }
   ],
@@ -1022,9 +1050,9 @@
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "Business closure compatibility publication complete; 339 installed and basic brand/summary UI verified after focused fixes; issuer settings and settlement device flow not accepted",
+    "currentBatch": "Inactive issuer read-only fix compiled, focused 1 Java/10 UI tests passed, reviewed and compatibility published; Core actual SHA and closed finance verified; 340 device acceptance pending connection",
     "legacyCutoverInScope": false,
-    "canonicalTarget": "272a3a24e39aab2ed672eda6320ceb5bed826c32",
+    "canonicalTarget": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
     "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
     "implementationProtocol": 2,
     "onlineFinancialOpening": "CLOSED_UNCHANGED_P3_FOUNDATION_REQUIRED"
