@@ -2328,6 +2328,8 @@ CREATE TABLE IF NOT EXISTS stl_recon_diff
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     axis VARCHAR(16) NOT NULL DEFAULT 'PAYMENT',
+    dedup_key VARCHAR(191) DEFAULT NULL,
+    note VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_recon_diff_no UNIQUE (diff_no),
     CONSTRAINT uk_recon_diff_payment UNIQUE (bill_date,pay_channel,payment_no,diff_type)

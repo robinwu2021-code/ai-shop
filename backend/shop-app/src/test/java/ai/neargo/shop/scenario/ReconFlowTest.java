@@ -128,7 +128,33 @@ class ReconFlowTest {
                 p.getPayChannel(), p.getOutTradeNo(), p.getDirection(), p.getAmountMinor(),
                 true, false, false, 9900L, "LONG-ERROR", "2026-10-15");
         reconService.recordFinding(finding, StlReconDiff.PLATFORM_ONLY, "database failure ".repeat(40));
-        assertThat(diffsOf(p).getFirst().getResolution()).hasSize(255).startsWith("database failure");
+        assertThat(diffsOf(p).getFirst().getNote()).hasSize(255).startsWith("database failure");
+    }
+
+    @Test
+    @DisplayName("★★★ F15 同一个没解决的问题，第二天不再新开一条 —— 去重键不能带日期")
+    void sameIssueNextDayIsNotDuplicated() {
+        StlPayment p = stalePayment();
+        for (String day : new String[] {"2026-10-15", "2026-10-16", "2026-10-17"}) {
+            reconService.recordFinding(new ReconService.Finding(p.getPaymentNo(), p.getOrderNo(),
+                    p.getPayChannel(), p.getOutTradeNo(), p.getDirection(), p.getAmountMinor(),
+                    true, false, false, 9900L, "TX-DUP", day), StlReconDiff.PLATFORM_ONLY, "通道有、我方没有");
+        }
+        assertThat(diffsOf(p))
+                .as("自查每天跑，同一笔掉单每天新开一条，运营要逐条点开才知道是同一笔")
+                .hasSize(1);
+    }
+
+    @Test
+    @DisplayName("★★ F15 系统说明写进 note，resolution 留给运营的处置结论")
+    void autoNoteDoesNotOccupyResolution() {
+        StlPayment p = stalePayment();
+        reconService.recordFinding(new ReconService.Finding(p.getPaymentNo(), p.getOrderNo(),
+                p.getPayChannel(), p.getOutTradeNo(), p.getDirection(), p.getAmountMinor(),
+                true, false, false, 9900L, "TX-NOTE", "2026-10-15"), StlReconDiff.PLATFORM_ONLY, "通道有、我方没有");
+        StlReconDiff d = diffsOf(p).getFirst();
+        assertThat(d.getNote()).isEqualTo("通道有、我方没有");
+        assertThat(d.getResolution()).as("运营还没处置，结论那一列必须是空的").isNull();
     }
 
     @Test
@@ -418,7 +444,7 @@ class ReconFlowTest {
                 .as("没记差异 —— 说明这一行走的是收款那条路（关订单），"
                         + "而那会关掉一笔用户已经付过钱的订单")
                 .isNotEmpty();
-        assertThat(diffsOf(r).getFirst().getResolution())
+        assertThat(diffsOf(r).getFirst().getNote())
                 .contains(r.getOutTradeNo(), "需人工核对", "不得自动释放或重新付款");
         assertThat(fakeQuery.askedRefund()).contains(r.getOutTradeNo());
         assertThat(fakeQuery.asked()).doesNotContain(r.getOutTradeNo());
@@ -493,7 +519,7 @@ class ReconFlowTest {
 
         // 订单被关了：markPaid 会被状态机拒（CANCELLED → PAID 不合法）
         seedOrder(p.getOrderNo(), ai.neargo.shop.trade.entity.OrdOrder.CANCELLED);
-        String before = diffsOf(p.getPaymentNo()).getFirst().getResolution();
+        String before = diffsOf(p.getPaymentNo()).getFirst().getNote();
 
         int[] settled = paymentRecon.settlePendingDiffs();
 
@@ -502,8 +528,8 @@ class ReconFlowTest {
                 .filteredOn(d -> StlReconDiff.PLATFORM_ONLY.equals(d.getDiffType()))
                 .allSatisfy(d -> {
                     assertThat(d.getStatus()).isEqualTo(StlReconDiff.PENDING);
-                    assertThat(d.getResolution())
-                            .as("每轮覆盖 resolution 的话，「从哪天起一直补不回来」就没了")
+                    assertThat(d.getNote())
+                            .as("每轮覆盖说明的话，「从哪天起一直补不回来」就没了")
                             .isEqualTo(before);
                 });
     }

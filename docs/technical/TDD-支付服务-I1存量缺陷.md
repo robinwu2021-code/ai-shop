@@ -92,6 +92,12 @@
 - **偏差：不拒空集。** 空的市场集合在本系统是有意的「不限市场」语义（`MarketChannelAndWithdrawTest#unrestrictedChannelVisibleEverywhere` 守着，测试渠道 TEST 即如此配置）。
   R22 的真实风险是「中途失败留下空集 = 意外全市场开放」，原子化即消除；显式传空仍表示「不限」。若要改成显式标记（如 `["*"]`），属运营端契约变更，另议。
 
+### F15 · 差异单不按天去重、说明与结论分列
+- **迁移** `db/pay/V3__stl_recon_diff_dedup_note.sql`：`stl_recon_diff` 加 `dedup_key`（可空，唯一键在 I6 迁移 13 回填后加）、`note`。
+- `ReconServiceImpl#recordDiff`：去重条件去掉账期日，只对 PENDING 去重（处置后再出问题是新事）；`dedup_key = 通道|流水号|差异类型`；系统说明写 `note`，`resolution` 留给运营。
+- **契约**：`ReconDiffVO` 末尾加 `note`（只加不改，运营端不读也不受影响）。
+- 3 条旧断言原本断的是「说明在 resolution 里」（即缺陷本身），改为断 `note`；3 个直接引入 `PayDataSourceConfig` 的测试类补 `shop.pay.flyway.enabled=false`（I0 时 `db/pay` 为空没暴露）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -106,6 +112,7 @@
 | F09 | `PayoutBankReconFlowTest#payoutAmountMismatchIsNotMatched` | ✅ 9/9（另 2 个对账类全绿） | 先红：银行只划 290 元，300 元的放款被标 MATCHED ✅ |
 | F11 | `InternalTokenComparisonTest#noStringEqualsOnTokens` · `#detectorFires` | ✅ pay-svc 71/71 | 先红：抓到 `InternalPayEndpoint.java` ✅。R11 未执行（线上操作，待人工） |
 | F14 | `PayChannelMarketAtomicityTest#failedReplaceLeavesOldMarketsIntact`（spy 让第二个市场插入时抛错） | ✅ 1/1；`MarketChannelAndWithdrawTest` 8/8 | 先红：中途失败后市场集合变成 `[HK]`（CN 已删）✅ |
+| F15 | `ReconFlowTest#sameIssueNextDayIsNotDuplicated` · `#autoNoteDoesNotOccupyResolution` | ✅ 23/23；对账 4 类全绿 | 先红：三天三条；说明占了 resolution ✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现

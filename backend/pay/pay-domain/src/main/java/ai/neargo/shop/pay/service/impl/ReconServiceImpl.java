@@ -215,18 +215,21 @@ public class ReconServiceImpl implements ReconService {
     /**
      * 落一条差异。
      *
-     * <p>同一笔流水在同一账期只留一条（唯一键 {@code uk_recon_diff_payment}）——
-     * 自查每小时跑一轮，不去重的话一笔掉单会在列表里堆成几十条，
-     * 而运营要逐条点开才知道是同一笔。
+     * <p><b>同一个没解决的问题只有一条</b>，不论哪天发现的（F15 · Review R19）。
+     * 此前去重条件带账期日：自查每天跑，一笔掉单每天新开一条，运营要逐条点开才知道是同一笔。
+     * 已处置（非 PENDING）的不算 —— 同一笔处置后又出问题，是一件新的事，要新开。
+     *
+     * <p>系统生成的说明写 {@code note}；{@code resolution} 只放运营的处置结论（此前被说明占用）。
      */
     private void recordDiff(String day, StlPayment p, PayQueryPort.Result r,
                             String type, String note, Long expectedAmount) {
+        String dedupKey = p.getPayChannel() + "|" + p.getPaymentNo() + "|" + type;
         boolean exists = DataScopeContext.executeWithoutScope(() -> diffMapper.exists(
                 Wrappers.<StlReconDiff>lambdaQuery()
-                        .eq(StlReconDiff::getBillDate, day)
                         .eq(StlReconDiff::getPayChannel, p.getPayChannel())
                         .eq(StlReconDiff::getPaymentNo, p.getPaymentNo())
-                        .eq(StlReconDiff::getDiffType, type)));
+                        .eq(StlReconDiff::getDiffType, type)
+                        .eq(StlReconDiff::getStatus, StlReconDiff.PENDING)));
         if (exists) {
             return;
         }
@@ -242,7 +245,8 @@ public class ReconServiceImpl implements ReconService {
         d.setChannelAmountMinor(r.amountMinor());
         d.setPlatformAmountMinor(expectedAmount == null ? 0L : expectedAmount);
         d.setStatus(StlReconDiff.PENDING);
-        d.setResolution(note == null ? null : note.substring(0, Math.min(note.length(), 255)));
+        d.setDedupKey(dedupKey);
+        d.setNote(note == null ? null : note.substring(0, Math.min(note.length(), 255)));
         DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
     }
 
@@ -323,6 +327,6 @@ public class ReconServiceImpl implements ReconService {
                 d.getStatus(), d.getResolution(), d.getRecoveredOrderNo(),
                 d.getCreatedAt() == null ? 0L
                         : d.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                d.getResolvedAt(), d.getResolvedBy());
+                d.getResolvedAt(), d.getResolvedBy(), d.getNote());
     }
 }
