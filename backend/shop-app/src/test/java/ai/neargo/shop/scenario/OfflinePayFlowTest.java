@@ -232,6 +232,8 @@ class OfflinePayFlowTest {
         second.setStoreNo("ST-" + suffix);
         second.setName("线下跨店测试分店");
         second.setIsDefault(false);
+        // 门店码全局唯一：种子店若已被前面的用例分配过码，原样复制就撞 uk_mch_store_code
+        second.setStoreCode(null);
         storeMapper.insert(second);
         return second;
     }

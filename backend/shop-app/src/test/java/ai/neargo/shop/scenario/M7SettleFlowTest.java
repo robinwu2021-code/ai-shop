@@ -134,6 +134,8 @@ class M7SettleFlowTest {
     @DisplayName("★★★ I8：支付流水成功而订单没转已支付时，巡检要能自己补回来")
     void invariantI8RepairsOrderStuckInWaitPay() throws Exception {
         String token = login("12800128099");
+        // 只扫本条之后成功的支付：从 0 扫且限 100 笔的话，全量里库中早已过百，本笔根本排不进这一轮
+        long since = System.currentTimeMillis() - 1_000;
         String payOrderNo = buyAndPay(token, "G0002", "SK0003", null, "m7-i8");
 
         /*
@@ -155,7 +157,7 @@ class M7SettleFlowTest {
                 .isEqualTo(1);
         assertThat(statusOf(payOrderNo)).isEqualTo(ai.neargo.shop.trade.entity.OrdOrder.WAIT_PAY);
 
-        var r = reconciler.reconcile(0L, 100);
+        var r = reconciler.reconcile(since, 100);
 
         assertThat(r.scanned())
                 .as("一笔成功支付都没扫到 —— 那「没有不一致」只是「没有在看」")

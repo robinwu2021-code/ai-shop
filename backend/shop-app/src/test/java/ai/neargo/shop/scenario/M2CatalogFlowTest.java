@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,6 +31,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class M2CatalogFlowTest {
 
     @Autowired
+    private CacheManager cacheManager;
+
+    @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
@@ -50,6 +54,10 @@ class M2CatalogFlowTest {
     @Test
     @DisplayName("类目树：三级嵌套，按 sort 排序，停用类目不出现")
     void categoryTree() throws Exception {
+        // 类目树带 30s 缓存且全局一份。全量里前面的用例可能在类目被临时归档时读过一次、
+        // 又用 SQL 直接还原（绕过 @CacheEvict），留下一份空树。本条验的是库里的真树，先清缓存
+        var cached = cacheManager.getCache("categoryTree");
+        if (cached != null) cached.clear();
         String body = mvc().perform(get("/mp/category/tree"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))

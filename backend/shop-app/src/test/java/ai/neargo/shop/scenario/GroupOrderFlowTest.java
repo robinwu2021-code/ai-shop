@@ -273,6 +273,10 @@ class GroupOrderFlowTest {
     @DisplayName("★ 商品详情拼团块：开团价与人数来自活动，只列还在拼、且有人付过款的团（s21）")
     void goodsPageGroupBlock() throws Exception {
         String groupNo = merchantGroup();
+        // 拼团块只列「差人最少的 3 个」。全量里别的用例在同一个种子商品上留下的开团会把本条的挤出去，
+        // 于是先把它们收掉 —— 本条要验的是取数口径，不是在一堆残留里排第几
+        jdbc.update("update mkt_group_buy set status='FAILED' where goods_no=? and status='OPEN' and group_no<>?",
+                GOODS, groupNo);
         JsonNode d = json.readTree(mvc().perform(get("/mp/goods/" + GOODS + "/group"))
                 .andReturn().getResponse().getContentAsString()).get("data");
         assertThat(d.get("groupPrice").asLong()).isEqualTo(GROUP_PRICE);

@@ -84,11 +84,19 @@ class MediaHostMigrationTest {
         return all;
     }
 
+    /**
+     * V347 之后才有、且只收站内相对路径的列：它们从未存过 COS 域名，不需要（也不可能）进那条已冻结的迁移。
+     * 加进这里要写清它为什么不会出现旧域名。
+     */
+    private static final Map<String, String> AFTER_V347_RELATIVE_ONLY = Map.of(
+            "mch_brand.logo", "V544 建表；BrandServiceImpl.validateLogo 只收以 / 开头的站内路径");
+
     @Test
     @DisplayName("★★★ 覆盖面：迁移的字段 = 回收扫描登记表的字段 —— 漏一列，那一列就一直直连 COS")
     void coversExactlyTheRegistry() throws Exception {
         Set<String> registered = new TreeSet<>();
         registry().forEach(c -> registered.add(c.table() + "." + c.column()));
+        registered.removeAll(AFTER_V347_RELATIVE_ONLY.keySet());
         Set<String> migrated = new TreeSet<>(statements().keySet());
 
         assertThat(registered).as("登记表本身不能是空的 —— 空集会让下面这条断言恒真").hasSizeGreaterThan(20);
