@@ -1214,3 +1214,14 @@ Task64: fix round2/5 (1addressed,0open—R1-N1terminalshipping; commits03a4a704.
 Task64: complete (commits03a4a704..fb8fc86d50a394422be408b94278d50989d8ef8a, reviewclean forM1scope with4trackednonblockingMinors). Rootverifiedall305pins/reviewhash/exact75dirtyset/indexempty, stagedexactNUL75, cachedcheckclean, committed75files8318insertions241deletions andverifiedparent/pathset/indexempty/allproductbytes unchanged. No push/merge/deploy; M2–M7 stillrequired/canStartfalse. Main2.42/5.4/6actualstat/33.5,ADR/paired24methods/schema/generationstatus reconciled toCODE_TESTED_REVIEWED_NOT_DEPLOYED; first2DDL code+isolatedexecuted, futurecandidatesnotcreated. Historicalreport12512/25502 snapshots preserved withactualhashes, oldsourcepins kept. Next exactM2implementationdesign freezes currenttrueUSER/GUEST/counter/claim/source/bill/discountcontracts; no PayS1release.
 
 Task64 acceptance reconciliation checks: actual5beautygenerators --checkPASS,49tasks160API118features41tables unchanged; identical24consumedmanualmethods, generatorASTparsePASS. Database generator nowprintsindividualDDLstatus (M1isolatedexecuted vsfutureuncreated), notallcandidates/notimplemented. Actualnode gen-doc-index ran; technicalREADMEunchanged. RootownR1brief trailingblank trimmed beforedocumentationstage only, no product/evidencehash/testchange. Sourcecommitfb8fc86d5 dated2026-10-25T23:55:48+08:00; acceptance documentation finalized2026-10-26.
+
+Task64 acceptance docs committed exact30paths bfc0d1732ce70ad86c81df95f4ceaf1c9a4525c6 (parentfb8fc86d5),5030insertions67deletions; cachedcheckclean/indexempty/pathset+parent verified. Source75 unchanged. No push/deploy.
+Task65 design-only release prepared from cleanHEADbfc0d1732: only bm05-m2-counter-source-design.md +task-65-design-report.md, actualM1 source truth; rootowns main/metadata. Ruling: M2 counter supports both genuineUSER andGUEST withoutCsession via same explicitmerchant-in-person authority, retains actualCflow; needed normalfrontdeskcustomeruse, notnewproxyledger. Alltypedparty/key/hash/claim/source/bill/discount contracts exactbeforecode.
+Preflight continuation table:
+| Pair/task | Producer vs consumer | Ruling/result |
+|---|---|---|
+| 64→65 | acceptedUSER-only Core manualsource vs typedcounter design | preservelegacy USER hashes/guards, addexplicit newauthority/model; no relabel |
+| M2a→M2b | canonicalparty/confirmation/order/claim proof vs manualobservation/bill | freezeexactinterfaces beforecode; no guest-useralias/membertablejoin |
+| M2b→M3 | binding/manualsource facts vs executionquantity | canStart=false; grantremainsM3 |
+| M2c→legacy | sharedmerchant pricing vs oldUSER/funded snapshots | supportedsubset/source-backedhashes; no accountbenefitbypass |
+| Task65self | design2files vs no product/native/build | exactscopeconsistent, independentdesigngatebeforecoding |
