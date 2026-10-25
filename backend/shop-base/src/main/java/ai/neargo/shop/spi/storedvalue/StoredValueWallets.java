@@ -1,5 +1,8 @@
 package ai.neargo.shop.spi.storedvalue;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import ai.neargo.shop.spi.entitlement.ContractChecks;
 import java.util.List;
 
@@ -7,7 +10,9 @@ import java.util.List;
 public final class StoredValueWallets {
     private StoredValueWallets() { }
     public record ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,
-            long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT) int coreFinanceProtocol) {
+            long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision,@JsonInclude(JsonInclude.Include.NON_DEFAULT) @JsonSetter(nulls = Nulls.AS_EMPTY) int coreFinanceProtocol) {
+        // 0 is omitted on write (legacy snapshot text and hashes stay identical), so an absent field must read back
+        // as 0: Jackson 3 fails on null-for-primitive by default and every stored wallet proof became unreadable.
         public ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency,long brandRevision){this(tenantNo,actorNo,managementNo,entityNo,storeNo,storeRevision,brandNo,brandBindingNo,brandBindingRevision,currency,brandRevision,0);}
         public ExecutionScope(String tenantNo,String actorNo,String managementNo,String entityNo,String storeNo,long storeRevision,String brandNo,String brandBindingNo,long brandBindingRevision,String currency){this(tenantNo,actorNo,managementNo,entityNo,storeNo,storeRevision,brandNo,brandBindingNo,brandBindingRevision,currency,brandNo==null?-1:0);}
         public ExecutionScope {
