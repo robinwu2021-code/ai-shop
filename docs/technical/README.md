@@ -46,6 +46,19 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 真正剩下的是 **56 篇没有状态行**（基线只降不升）。补一篇要确认它到底落地没有，
 属于逐篇评审，不是脚本能编的。
 
+## 旧模块名对照：读老文档时先查这张表
+
+不少设计文档写于模块合并之前，正文里的模块名**在当时是对的**，所以不逐篇改写。现在的模块见 [backend/README](../../backend/README.md)。
+
+| 文档里写的 | 现在是 | 何时、哪次提交 |
+|---|---|---|
+| `shop-common` · `shop-spi` | `shop-base`（spi 在其 `spi` 包下） | 2026-08-09 · `be7aad85e` |
+| `shop-svc-*`（user/product/trade/…） | `shop-core`（一个工程多个包；商户另为 `shop-merchant`） | 2026-08-09 · `ff2a95a29` |
+| `shop-settle`（包 `shop.settle`） | `backend/pay/pay-domain`（包 `shop.pay`，结算在 `pay.settle`） | 2026-08-31 · `c160adccb` |
+| `shop-job` 及其 `shop-job-*` | `backend/job/` 下 `job-api` · `job-store` · `job-core` · `job-worker` | 2026-09-23 · `05d025afb` |
+| `elec-core` · `elec-svc` · `elec-app` | 已迁到独立仓库 ai-hxkey，本仓只剩 `elec/elec-api` | 2026-09-30 · 见 [元器件-已迁到ai-hxkey](./元器件-已迁到ai-hxkey.md) |
+| `shop-industry-spi` · `shop-member` | 只在方案里出现过，从未建成模块 | — |
+
 ---
 
 ## 订单重构专题 · 当前入口

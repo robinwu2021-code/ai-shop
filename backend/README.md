@@ -1,7 +1,7 @@
 # ai-shop backend
 
-模块化单体（Spring Boot 4.0.x + Java 21）。架构与取舍见 [docs/technical/TDD-backend.md](../docs/technical/TDD-backend.md)，
-端点全集见 [docs/technical/API清单.md](../docs/technical/API清单.md)。
+模块化单体（Spring Boot 4.0.x + Java 21）。架构与取舍见 [TDD-backend](../docs/technical/design/TDD-backend.md)，
+端点全集见 [API清单](../docs/technical/reference/API清单.md)，分层现状见 [后端分层清单](../docs/technical/reference/后端分层清单.md)（生成物）。
 
 ## 构建
 
@@ -15,36 +15,37 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 ## 模块
 
+> 2026-10-25 按 `backend/pom.xml` 的 reactor 重写。此前这张表还是 2026-08 的
+> `shop-common / shop-spi / shop-svc-*`，那三者早已合并进 `shop-base` 与 `shop-core`。
+> 每个模块为什么单独成工程，写在 `pom.xml` 对应 `<module>` 上方的注释里 —— 以那里为准。
+
 | 模块 | 职责 |
 |------|------|
-| `shop-common` | 契约包 · 认证双池 · 数据域 · Outbox · 幂等 · 异常 · i18n。**零业务依赖** |
-| `shop-spi` | 跨域契约：Port 接口 + 领域事件。只有接口与 record，零实现 |
-| `shop-svc-*` | 八个领域服务（user/product/trade/fulfillment/marketing/settle/message/platform） |
-| `shop-app` | 启动模块：`portal/{mp,biz,ops}` + config + 装配 |
+| `shop-base` | 地基：横切基础设施 + 跨域契约（`spi` 下的 Port 与 record）。零业务依赖 |
+| `shop-store-mybatis` | 持久层的 MyBatis 实现，依赖 shop-base、被业务域依赖 |
+| `shop-auth-store` · `shop-base-auth` | 会话与登录日志的存储 · 鉴权与 web 接入 |
+| `svc-client` | 服务间调用的传输零件（`@HttpExchange` + RestClient），只依赖 spring-web |
+| `shop-core` | 核心领域服务（交易、订单、商品、营销、消息……一个工程多个包） |
+| `shop-merchant` | 商户主数据与门店（变更节奏不同，单独成工程） |
+| `pay/`（`pay-channel` · `pay-domain` · `pay-svc`） | 支付域：通道适配 · 领域（积分、储值、权益）· 独立部署形态 |
+| `shop-inventory` | 进销存，独立数据源与迁移历史（`db/inventory`） |
+| `shop-report` | 报表持久层，独立库、只存可重建的派生数据 |
+| `logistics/`（`logistics-domain` · `logistics-channel`） | 物流：运单与轨迹 · 渠道适配（ADR-032） |
+| `shop-channel` | 外部通道适配，只装适配器不装业务判断 |
+| `shop-notify` | 触达中台：短信 / 邮件 / 微信订阅 / 推送通道 |
+| `job/`（`job-api` · `job-store` · `job-core` · `job-worker`） | 定时任务：契约 · 持久层 · 调度引擎 · 独立调度器（包名 `ai.neargo.job.*`） |
+| `elec/elec-api` | 元器件内部契约。元器件本体 2026-09-30 已迁到独立仓库 ai-hxkey |
+| `shop-app` | 启动模块：`portal/{mp,biz,ops}` 三端 Controller + config + 装配 |
 
-**模块依赖规则由 `ArchitectureTest` 强制**：svc 之间不得互相依赖、Controller 只能在 `portal` 下、
-领域 Service 必须接口化、Controller 不得碰 Mapper。违反即构建失败。
+行业插件在仓库根的 `backend-plugins/`：餐饮 `shop-industry-food`（`food-api/core/web/channel/server`），
+见它自己的 [README](../backend-plugins/shop-industry-food/README.md)；
+`-P food-embedded` 时 api/core/web 三个模块并入本 reactor。
 
-## 当前状态（S0 + S1 完成，20 个测试全绿）
-
-**S0 地基**：三条过滤器链（`/mp` `/biz` `/ops`）· 数据域防线 ①③ · Outbox · 幂等 · i18n · Flyway · 契约包。
-
-**S1 逛的链路**（8 个端点）：
-
-| 端点 | 说明 |
-|------|------|
-| `POST /mp/user/otp/send` · `POST /mp/user/login` | 三种 grantType 共用一条建户主干；微信/Apple 的渠道校验待 S4 |
-| `GET /mp/user/profile` · `POST /mp/user/community` | 归属绑定会校验「自提点属于该社区」 |
-| `GET /mp/community/nearby` | 社区 + 自提点 + 承接商家，按距离排序 |
-| `GET /mp/goods` · `GET /mp/goods/{no}` | 平台逛 / 频道 / 搜索 / **店内搜索**同一端点 |
-| `GET /mp/merchant` · `GET /mp/merchant/{no}` | 商家列表与详情 |
-
-**价格模型已按 TDD-backend §6.3 落地**：`prd_sku` 唯一键 `(merchant_no, sku_no, market)`，
-社区池只决定可见性不存价 —— 双入口不同价在结构上不可能发生。
+**模块依赖规则由 `ArchitectureTest` 强制**：域间依赖、Controller 只能在 `portal` 下、
+领域 Service 必须接口化、Controller 不得碰 Mapper、Port 只在 spi。违反即构建失败。
 
 **演示数据**：`shop.seed.enabled=true` 才灌（默认关），2 社区 / 2 自提点 / 2 商家 / 4 商品。
-
-下一步 S2：`svc-trade` 购物车 → 拆单 → 支付 → 订单。
+**生产不要开**：它会建出口令为公开约定的运营账号。
 
 ## 本地运行
 
