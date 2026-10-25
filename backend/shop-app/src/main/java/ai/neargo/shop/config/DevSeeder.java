@@ -479,7 +479,13 @@ public class DevSeeder {
         g.setCover(cover);
         g.setImages("[]");
         g.setType(type);
-        g.setCategoryNo("CAT210");   // 纸品清洁：无资质门槛，演示商品不该卡在准入上
+        /*
+         * 无资质门槛的类目，演示商品不该卡在准入上。**类目要与 type 一致**：生鲜挂 CAT120（水果），
+         * 其余挂 CAT210（纸品清洁）。此前一律挂 CAT210，而建库脚本里有一句按类目回填 type 的语句
+         * （CAT210 → NORMAL）——测试里每起一个新的 Spring 上下文都会对共享 H2 重放它，
+         * 于是生鲜的 G0003/G0004 中途变成日用品，生鲜售后规则跟着失效。
+         */
+        g.setCategoryNo("FRESH".equals(type) ? "CAT120" : "CAT210");
         g.setFulfillments("[\"STORE_PICKUP\"]");
         g.setSpecGroups("[{\"name\":\"规格\",\"options\":" + optionsJson(skus) + "}]");
         // 同上：商品评分也是派生的，不灌一个假的评价数
