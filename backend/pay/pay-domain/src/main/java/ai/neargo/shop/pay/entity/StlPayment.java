@@ -99,6 +99,30 @@ public class StlPayment extends BaseEntity {
     /** 收款商户号业务键（DIRECT 路径） */
     private String payMerchantNo;
 
+    /** 所属支付单 pay_order.id（db/pay V8 · I3；回填后对新数据必填） */
+    private Long payOrderId;
+
+    /** REFUND 方向：所属退款单 pay_refund.id */
+    private Long payRefundId;
+
+    /** 冻结的收款商户 pay_merchant.id（I4 之前为空） */
+    private Long payMerchantId;
+
+    /** 冻结的资金路径 DIRECT / AGGREGATED */
+    private String fundsPath;
+
+    /** 市场 */
+    private String market;
+
+    /** 冻结的密钥版本号 */
+    private Integer secKeyVersion;
+
+    /** 通道回执金额；<b>不覆盖 {@link #amountMinor}</b>（修 R20：应付与实收是两件事，覆盖之后金额不符就再也看不出来） */
+    private Long channelAmountMinor;
+
+    /** 通道回执币种 */
+    private String channelCurrency;
+
     /**
      * 付款人 openid。**按 {@link #wxAppid} 隔离** —— 同一个人在不同小程序下是不同的 openid。
      *
