@@ -57,6 +57,12 @@ class OrphanModuleTest {
             if (name.equals("backend") || name.startsWith(".") || ALLOWED.contains(name)) {
                 continue;
             }
+            if (name.equals("backend-plugins")) {
+                // 行业插件是独立的 Maven 工程（自带聚合 pom，也可 -P food-embedded 并入主 reactor）。
+                // 放行的前提是「真的在构建里」：每个插件要有 pom，带 Java 的子目录都登记成它的 <module>。
+                orphans.addAll(unbuiltPluginSources(top));
+                continue;
+            }
             try (var files = Files.walk(top)) {
                 files.filter(f -> f.toString().endsWith(".java"))
                         .filter(f -> ALLOWED.stream().noneMatch(a -> f.toString().contains("/" + a + "/")))
@@ -75,6 +81,29 @@ class OrphanModuleTest {
                           要么删掉。**删之前先与真身逐个比对**：
                           上一个孤儿副本里有两行真身已经丢掉的注释。""", orphans)
                 .isEmpty();
+    }
+
+    private static List<String> unbuiltPluginSources(Path plugins) throws IOException {
+        List<String> out = new ArrayList<>();
+        for (Path plugin : Files.list(plugins).filter(Files::isDirectory).toList()) {
+            Path pom = plugin.resolve("pom.xml");
+            String aggregator = Files.exists(pom) ? Files.readString(pom, StandardCharsets.UTF_8) : "";
+            for (Path child : Files.list(plugin).filter(Files::isDirectory).toList()) {
+                String module = child.getFileName().toString();
+                if (module.startsWith(".") || ALLOWED.contains(module)) {
+                    continue;
+                }
+                try (var files = Files.walk(child)) {
+                    var java = files.filter(f -> f.toString().endsWith(".java"))
+                            .filter(f -> ALLOWED.stream().noneMatch(a -> f.toString().contains("/" + a + "/")))
+                            .findFirst();
+                    if (java.isPresent() && !aggregator.contains("<module>" + module + "</module>")) {
+                        out.add(REPO.relativize(java.get()).toString());
+                    }
+                }
+            }
+        }
+        return out;
     }
 
     @Test

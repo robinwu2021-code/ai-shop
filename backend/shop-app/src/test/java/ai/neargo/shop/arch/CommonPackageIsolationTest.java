@@ -94,6 +94,22 @@ class CommonPackageIsolationTest {
         }
     }
 
+    private static final List<String> MODULE_INTERNAL_ENDPOINTS = List.of(
+            "shop-inventory/src/main/java/ai/neargo/shop/inventory/api/internal/InternalMaterialCatalogController.java",
+            "shop-app/src/main/java/ai/neargo/shop/reportbridge/api/InternalReportQueryController.java");
+
+    /** 上面白名单的前提：信封按请求路径放行 /internal/，与控制器在哪个包无关。 */
+    @Test
+    @DisplayName("★★ 白名单的前提 —— 信封按路径排除 /internal/，不按包")
+    void wrapperExcludesInternalByPath() throws IOException {
+        String src = Files.readString(Path.of("..", "shop-base-auth", "src", "main", "java",
+                "ai", "neargo", "shop", "common", "ApiResponseWrapper.java"));
+        assertThat(src)
+                .as("ApiResponseWrapper 不再按路径排除 /internal/ 了，MODULE_INTERNAL_ENDPOINTS 的免检随之失效")
+                .contains("INTERNAL_PATH_PREFIX = \"/internal/\"")
+                .contains("isInternal(request)");
+    }
+
     @Test
     @DisplayName("★★ /internal 端点必须都在 portal.internal 包里 —— 否则会被全局信封裹住且不报错")
     void internalEndpointsStayInTheirPackage() throws IOException {
@@ -105,6 +121,10 @@ class CommonPackageIsolationTest {
                     .filter(f -> !f.toString().contains("/portal/internal/"))
                     // pay-svc 是**另一个应用**，信封在那边压根没注册 —— 理由在下面当场验
                     .filter(f -> !f.toString().contains("/pay/pay-svc/"))
+                    // 模块自带的内部口（进销存的物料目录、报表的内部查询）不在 shop-app 里，搬不进
+                    // portal.internal。它们不被套信封靠的是 ApiResponseWrapper「按路径排除 /internal/」
+                    // （2026-09-24 起），这个前提由 wrapperExcludesInternalByPath 当场验。
+                    .filter(f -> MODULE_INTERNAL_ENDPOINTS.stream().noneMatch(m -> f.toString().endsWith(m)))
                     .filter(f -> {
                         try {
                             return Files.readString(f).contains("Mapping(\"/internal");

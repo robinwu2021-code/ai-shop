@@ -2,6 +2,8 @@ package ai.neargo.shop.arch;
 
 import ai.neargo.shop.media.MediaRefColumn;
 import ai.neargo.shop.media.MediaRefSource;
+import javax.sql.DataSource;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -71,6 +73,7 @@ class MediaRefCoverageTest {
 
     static {
         NOT_MEDIA.put("sv_voucher.biz_no","储值凭证关联的业务号，注释中的意图是业务意图，不是图片");
+        NOT_MEDIA.put("prn_template.content","小票模板正文（V567，TEXT）；打印模块不处理图片，命中的是「长文本列」启发式");
         NOT_MEDIA.put("ent_use_allocation.operation_no","核销操作编号，关联使用意图，不是图片地址");
         NOT_MEDIA.put("ent_usage.operation_no","核销操作编号，关联使用意图，不是图片地址");
         NOT_MEDIA.put("pmt_recharge_intent.intent_no","充值业务意图号，不存上传资产");
@@ -173,9 +176,23 @@ class MediaRefCoverageTest {
             if (type.isInterface()) {
                 continue;
             }
-            found.add((MediaRefSource) type.getDeclaredConstructor().newInstance());
+            found.add(instantiate(type));
         }
         assertThat(found).as("一个 MediaRefSource 实现都没扫到，这条守卫等于没跑").isNotEmpty();
         return found;
+    }
+
+    /**
+     * 无参构造优先。按库里实际有哪些表来声明的实现（如 {@code FoodPresentationMediaRefs}：
+     * 餐饮表在餐饮自己的库）构造时只要一个 {@link DataSource}，给它一个空的 H2 —— 这条规则扫的是
+     * shop 主库 schema，那里本来就没有它那几张表，所以它声明出的列为空，与主库的事实一致。
+     */
+    private static MediaRefSource instantiate(Class<?> type) throws Exception {
+        try {
+            return (MediaRefSource) type.getDeclaredConstructor().newInstance();
+        } catch (NoSuchMethodException needsDataSource) {
+            DataSource empty = new DriverManagerDataSource("jdbc:h2:mem:media-ref-" + type.getSimpleName(), "sa", "");
+            return (MediaRefSource) type.getDeclaredConstructor(DataSource.class).newInstance(empty);
+        }
     }
 }
