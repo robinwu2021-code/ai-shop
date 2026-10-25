@@ -1,17 +1,26 @@
 package ai.neargo.shop.printbridge;
 
-import ai.neargo.shop.event.*;
+import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.message.notify.PushSender;
-import ai.neargo.shop.print.api.*;
+import ai.neargo.shop.print.api.PrintBatchResolved;
+import ai.neargo.shop.print.api.PrintHashes;
+import ai.neargo.shop.print.api.PrintIncidentOpened;
+import ai.neargo.shop.print.api.PrintIncidentResolved;
+import ai.neargo.shop.print.api.PrintNotificationRecipientsPort;
+import ai.neargo.shop.print.api.PrintScope;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+@ConditionalOnProperty(
         name = "shop.print.enabled",
         havingValue = "true")
 @Component
@@ -42,6 +51,7 @@ public class PrintNotifyBridge implements OutboxConsumer {
         PrintScope scope;
         String title, body, target;
         boolean sendPush = false;
+        boolean sendInApp = false;
         var roleKeys = new HashSet<String>();
         roleKeys.add("STORE_MANAGER");
         if (row.getEventType().equals("PRINT_BATCH_RESOLVED")) {
@@ -52,7 +62,10 @@ public class PrintNotifyBridge implements OutboxConsumer {
             if (!p.path("onBatchResolved").asBoolean(false)) return;
             roleKeys.clear();
             p.path("recipientRoleKeys").forEach(n -> roleKeys.add(n.asText()));
-            for (var n : p.path("channels")) if (n.asText().equals("PUSH")) sendPush = true;
+            for (var n : p.path("channels")) {
+                if (n.asText().equals("PUSH")) sendPush = true;
+                if (n.asText().equals("IN_APP")) sendInApp = true;
+            }
             title =
                     e.resolvedStatus().equals("REPLACEMENT_RESOLVED")
                             ? "打印问题已由补票解决"
@@ -68,7 +81,10 @@ public class PrintNotifyBridge implements OutboxConsumer {
             if (!policy.path("onIncident").asBoolean(false)) return;
             roleKeys.clear();
             policy.path("recipientRoleKeys").forEach(n -> roleKeys.add(n.asText()));
-            for (var n : policy.path("channels")) if (n.asText().equals("PUSH")) sendPush = true;
+            for (var n : policy.path("channels")) {
+                if (n.asText().equals("PUSH")) sendPush = true;
+                if (n.asText().equals("IN_APP")) sendInApp = true;
+            }
             title = "打印异常待处理";
             body = "任务或设备 " + target + " 需要核实，请查看打印中心。";
         } else {
@@ -79,16 +95,22 @@ public class PrintNotifyBridge implements OutboxConsumer {
             if (!policy.path("onIncident").asBoolean(false)) return;
             roleKeys.clear();
             policy.path("recipientRoleKeys").forEach(n -> roleKeys.add(n.asText()));
-            for (var n : policy.path("channels")) if (n.asText().equals("PUSH")) sendPush = true;
+            for (var n : policy.path("channels")) {
+                if (n.asText().equals("PUSH")) sendPush = true;
+                if (n.asText().equals("IN_APP")) sendInApp = true;
+            }
             title = "打印异常已解决";
             body = "异常 " + target + " 已有处置证据。";
         }
+        if (!sendInApp && !sendPush) return;
         String link =
                 "/pages/print-center/index?storeNo="
                         + java.net.URLEncoder.encode(
                                 scope.storeNo(), java.nio.charset.StandardCharsets.UTF_8);
         for (String receiver : recipients.recipients(scope, roleKeys)) {
-            messages.pushTo(
+            OutboxLease.check();
+            if (sendInApp) {
+                messages.pushTo(
                     "STAFF",
                     receiver,
                     MessageService.SYSTEM,
@@ -96,7 +118,11 @@ public class PrintNotifyBridge implements OutboxConsumer {
                     body,
                     link,
                     "PRINT:" + PrintHashes.sha256(row.getEventNo() + ":" + receiver));
-            if (sendPush) push.notify("STAFF", receiver, title, body, link);
+            }
+            if (sendPush) {
+                OutboxLease.check();
+                push.notify("STAFF", receiver, title, body, link);
+            }
         }
     }
 }
