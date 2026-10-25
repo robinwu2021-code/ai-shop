@@ -54,11 +54,21 @@
 - `merchant.service.PayMerchantBindingService` / impl：`bind`（商户 ACTIVE、渠道一致、市场与门店一致、开户门店与本门店同主体；同一门店 × 渠道旧的 ACTIVE 先转 INACTIVE，同事务）· `unbind`。门店属于哪个主体、哪个市场经 `MerchantQueryPort#payStoreById`（新增，核心系统 Port）判断。
 - 错误码 `PAY_BINDING_INVALID`（70089，回显原因）+ 三语。
 
+### S3 · 回填 B1–B4
+- 支付域 `merchant.backfill.PayMerchantBackfill` / impl（读不到 `mch_*`，只收解析好的行；一行一个事务）：
+  - **B1** `platformMerchant`：平台级收款商户（`owner_type = PLATFORM`），按（渠道, 渠道商户号, 子商户号 ''）幂等；微信取 `shop.pay.wechat.mchid`，没配或别的渠道用 `PLATFORM-{渠道}` 占位。
+  - **B2** `merchant`：进件单 `LEGACY-{旧行 id}` + v1（外部单号 `LEGACY-{id}-V1`），状态 NONE→DRAFT · APPLYING→CHANNEL_REVIEW · ACTIVE / FROZEN→APPROVED · REJECTED→REJECTED，在途键只给在途单；已开户（有号）才建收款商户，**沿用原号**，ACTIVE→ACTIVE · FROZEN→SUSPENDED · 其余 ONBOARDING。直连（MERCHANT_OWN）渠道商户号 = 旧子商户号；服务商模式渠道商户号 = 父商户号、子商户号另列、挂 B1 父商户。
+  - **B4**：旧 `pay_methods` 逐项按（渠道, 接入模式, 渠道方式码）映射 `pay_channel_product`；映射不到 → `METHOD` 冲突；额度落 JSAPI 那一条；来源 CHANNEL_RECEIPT。
+- shop-app `paybridge.PayMerchantBackfillRunner#run(entityNos)`（常驻组件，按主体跑；调度壳 `PayMerchantBackfillJob` `pay-merchant-backfill` 只手动触发、全量跑、有冲突记失败）：读旧三表，`store_no` 非空 → 该店，空串 → 主体默认门店，找不到 → **Q2**；接入模式按部署（微信 `ecommerce` → SERVICE_PROVIDER、`direct` → MERCHANT_OWN；支付宝 SERVICE_PROVIDER；测试 / 桩渠道 PLATFORM_SUB）。
+  - **B3** 门店绑定：来源 = 门店上指定的号 + 门店自己那行（ACTIVE）的号；**两者都没有才展开主体级号**；两来源不同 → **Q3**、不绑；新模型里已有不同的绑定 → `BOUND`、不改。经 `PayMerchantBindingService#bind`，同主体 / 同市场 / ACTIVE 的校验照走。
+  - 报告 `Report(merchants, bindings, conflicts)`，冲突一行一条、以类别打头（Q2 / Q3 / METHOD / UNKNOWN / BOUND / STORE / NO_SUB_MCHID / CURRENCY）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
 | AC2 / AC3 | `PayMerchantRoutingFlowTest`（5 条：`onlyStoreBindingResolves` 同主体没绑的店解析不到；`suspendedMerchantNotCollectableButRefundable`；`collectableRoutesByPriority`；`bindingRules` 别的主体 / 别的市场 / 非 ACTIVE / 渠道不符；`rebindKeepsOneActive`） | ✅ | ① 不看状态 + 不查同主体 → 两条红 ② 没绑定兜底取任一 ACTIVE（R01 的样子）+ 改绑不释放 → 两条红 ✅ |
+| AC4 | `PayMerchantBackfillFlowTest`（3 条：`merchantsMigrated` 主体级号落默认门店、原号、资金路径取主体、默认额度落产品；`bindingsExpandedAndConflictsReported` 默认店 / 门店自己的号 / 主体级号展开 / Q3 不绑，Q2、METHOD 进报告；`idempotent` 再跑五张表行数不变） | ✅ 3/3 | ① 不展开 + Q3 自动取第一个 → `bindings…` 红 ② 进件与商户不按号幂等 → `idempotent` 红 ③ 映射不到时默默跳过 → `bindings…` 红 ✅ |
 | AC1 | `MapperSmokeTest`（新 7 个 mapper）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V10 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -69,3 +79,6 @@
 
 1. **V10 不建 `ck_pay_merchant_2`**，理由见 §2 S1。
 2. **反向依赖预算 MerchantQueryPort 31 → 35**：绑定校验要知道门店的主体与市场，新增 `payStoreById`（真的跨域调用，pay-svc 独立时要补一个 HTTP 客户端方法），已登记 `known-pay-reverse-deps.txt`。
+3. **回填报告不数开通产品**：设计稿的报告有产品数，实现只回 `merchants / bindings / conflicts` —— 产品是商户的附属，五张表的行数由比对（S5）与幂等用例看。
+4. **微信直连（`direct`）旧行按 MERCHANT_OWN 迁、渠道商户号取旧子商户号**：旧模型直连时实际收款用平台商户号、子商户号只作标识；这样迁可保住（渠道, 渠道商户号, 子商户号）唯一，但「收款到底用谁的号」要在 S5 比对与 S6 读切时以旧解析为准核一遍。
+5. **市场 → 币种在回填里写死**（CN / AE / SA）：`pay_channel_product_market` 是按产品配的，没有「市场的本币」一处真源；其他市场进 `CURRENCY` 冲突、不迁。
