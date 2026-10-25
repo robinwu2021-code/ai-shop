@@ -12,6 +12,9 @@ public interface ChannelProductCatalog {
     /** 每个 ENABLED 产品在每个 ENABLED 地区上的 PAY 键 */
     Set<ChannelKey> enabledPayKeys();
 
-    /** 收款前的运营开关：这个键对应的产品此刻是否开着 */
+    /**
+     * 收款前的运营开关。<b>只有产品表里显式停用的组合才返回 false</b>：没建模的渠道（I2 之前就在跑的）照旧放行 ——
+     * 引入产品表不能把现有收款拦掉。键的地区为空（调用方还不知道地区）时，只要该渠道 × 接入模式 × 场景有任一开着的地区即可。
+     */
     boolean payEnabled(ChannelKey key);
 }

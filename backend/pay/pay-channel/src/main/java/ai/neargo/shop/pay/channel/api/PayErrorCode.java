@@ -14,6 +14,8 @@ public enum PayErrorCode {
     CHANNEL_BUSY,
     CHANNEL_REJECTED,
     CHANNEL_CONNECT_FAILED,
+    /** 渠道说没有这笔 —— 与「查不通」不同：前者可以安全关单 */
+    TRADE_NOT_FOUND,
     REFUND_REJECTED,
     SYSTEM_ERROR
 }

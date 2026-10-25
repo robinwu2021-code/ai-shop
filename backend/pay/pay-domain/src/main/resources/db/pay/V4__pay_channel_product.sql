@@ -72,4 +72,5 @@ INSERT INTO pay_channel_product (product_code, pay_channel, access_mode, pay_typ
 INSERT INTO pay_channel_product_market (pay_channel_product_id, market, currency, single_min_minor, single_max_minor,
     amount_scale, status, created_at, updated_at)
 SELECT p.id, 'CN', 'CNY', 1, 0, 2, 'ENABLED', NOW(3), NOW(3) FROM pay_channel_product p
- WHERE p.product_code IN ('WECHAT_JSAPI_DIRECT', 'WECHAT_JSAPI_SP', 'ALIPAY_APP_SP', 'TEST_ONLINE');
+ WHERE p.product_code IN ('WECHAT_JSAPI_DIRECT', 'WECHAT_JSAPI_SP', 'ALIPAY_APP_SP', 'TEST_ONLINE')
+   AND NOT EXISTS (SELECT 1 FROM pay_channel_product_market x WHERE x.pay_channel_product_id = p.id AND x.market = 'CN');

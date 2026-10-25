@@ -64,6 +64,7 @@ public final class Invocation {
     /** 管线外层只调一次：通知监听者最后一次发送的结果 */
     public void end(ChannelResult result) {
         listeners.forEach(l -> l.attemptFinished(this, result));
+        listeners.forEach(l -> l.invocationEnded(this, result));
     }
 
     public String invocationNo() {

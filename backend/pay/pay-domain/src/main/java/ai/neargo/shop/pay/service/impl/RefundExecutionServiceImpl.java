@@ -6,6 +6,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.channel.PayGatewayRouter;
+import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.service.RefundExecutionService;
 import ai.neargo.shop.spi.settle.RefundDispatchResult;
@@ -38,6 +39,14 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     @org.springframework.beans.factory.annotation.Autowired
     void setLedger(ai.neargo.shop.pay.service.PaymentLedgerService ledger) {
         this.ledger = ledger;
+    }
+
+    /** 渠道管线（TDD-支付服务-I2 S4）；手工构造的单测里没有，直调原网关 */
+    private LegacyChannelBridge channels;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setChannels(LegacyChannelBridge channels) {
+        this.channels = channels;
     }
 
     /**
@@ -103,9 +112,11 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             if (!gateway.supportsRefundCurrency(row.getCurrency())) {
                 return failed(row, "REFUND_CURRENCY_UNSUPPORTED");
             }
-            PayGateway.Result sent = gateway.refund(new PayGateway.TxContext(subMerchantOf(origin), origin.getTradeNo(),
-                    origin.getOutTradeNo(), origin.getAmountMinor(), row.getCurrency()), row.getAmountMinor(),
-                    row.getOutTradeNo(), request.reason());
+            var ctx = new PayGateway.TxContext(subMerchantOf(origin), origin.getTradeNo(),
+                    origin.getOutTradeNo(), origin.getAmountMinor(), row.getCurrency());
+            PayGateway.Result sent = channels == null
+                    ? gateway.refund(ctx, row.getAmountMinor(), row.getOutTradeNo(), request.reason())
+                    : channels.refund(row.getPayChannel(), ctx, row.getAmountMinor(), row.getOutTradeNo(), request.reason());
             if (sent == null || (!sent.success() && sent.retryable())) {
                 return unknown(row, "REFUND_SEND_UNKNOWN");
             }

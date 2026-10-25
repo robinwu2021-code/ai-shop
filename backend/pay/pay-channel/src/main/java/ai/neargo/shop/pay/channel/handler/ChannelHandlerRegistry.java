@@ -4,6 +4,8 @@ import ai.neargo.shop.pay.channel.api.ChannelKey;
 import ai.neargo.shop.pay.channel.api.PayScene;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +28,7 @@ public final class ChannelHandlerRegistry {
     }
 
     private final List<Entry> entries;
+    private final ChannelProductCatalog catalog;
 
     public ChannelHandlerRegistry(List<? extends ChannelHandler> handlers, ChannelProductCatalog catalog) {
         List<Entry> all = new ArrayList<>();
@@ -36,8 +39,8 @@ public final class ChannelHandlerRegistry {
         }
         all.sort(Comparator.comparingInt((Entry e) -> e.pattern().specificity()).reversed());
         this.entries = List.copyOf(all);
+        this.catalog = catalog;
         verifyNoAmbiguity();
-        verifyEnabledProducts(catalog);
     }
 
     /** 找不到 → 空对象（明确失败），不是 null、更不是别的渠道的处理器 */
@@ -83,10 +86,20 @@ public final class ChannelHandlerRegistry {
                         || b.scene() == PayScene.ANY);
     }
 
-    private void verifyEnabledProducts(ChannelProductCatalog catalog) {
+    /**
+     * 只比「本部署实际装了处理器的渠道 × 接入模式」：没配凭据的渠道整个不装（比如测试环境没有微信），
+     * 只开直连的部署也不会有收付通处理器 —— 那些是部署配置，不是「代码漏实现」。要抓的是：渠道装上了，
+     * 却漏了一个开着的场景。
+     *
+     * <p>不在构造器里做：产品目录在库里，构造时支付库的迁移可能还没跑（空库启动、测试）。
+     * 由装配在全部单例就绪后调一次，失败照样让启动失败。
+     */
+    public void verifyEnabledProducts() {
+        Set<String> wired = new HashSet<>();
+        entries.forEach(e -> wired.add(e.pattern().payChannel() + "|" + e.pattern().accessMode()));
         Set<String> missing = new TreeSet<>();
         for (ChannelKey key : catalog.enabledPayKeys()) {
-            if (!has(key)) {
+            if (wired.contains(key.payChannel() + "|" + key.accessMode()) && !has(key)) {
                 missing.add(key.toString());
             }
         }
@@ -98,7 +111,7 @@ public final class ChannelHandlerRegistry {
 
     /** 供排障：键 → 处理器类名 */
     public Map<String, String> describe() {
-        Map<String, String> m = new java.util.LinkedHashMap<>();
+        Map<String, String> m = new LinkedHashMap<>();
         entries.forEach(e -> m.put(e.pattern().toString(), e.handler().getClass().getSimpleName()));
         return m;
     }

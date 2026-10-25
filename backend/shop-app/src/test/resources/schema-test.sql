@@ -15894,3 +15894,8 @@ INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, 
 ('WECHAT_JSAPI_SP', 'WECHAT', 'SERVICE_PROVIDER', 'ONLINE', 'WECHAT_PAY', 'JSAPI', 'DIRECT', 'ONLINE', 1, 50, 60, 365, 0, 'ENABLED', 11, NOW(3), NOW(3)),
 ('ALIPAY_APP_SP', 'ALIPAY', 'SERVICE_PROVIDER', 'ONLINE', 'ALIPAY', 'APP', 'DIRECT', 'ONLINE', 1, 0, 0, 365, 0, 'DISABLED', 20, NOW(3), NOW(3)),
 ('TEST_ONLINE', 'TEST', 'PLATFORM_SUB', 'ONLINE', 'TEST_PAY', 'TEST_PAY', 'DIRECT,AGGREGATED', 'ONLINE', 1, 20, 0, 365, 0, 'ENABLED', 90, NOW(3), NOW(3));
+INSERT IGNORE INTO pay_channel_product_market (pay_channel_product_id, market, currency, single_min_minor, single_max_minor,
+    amount_scale, status, created_at, updated_at)
+SELECT p.id, 'CN', 'CNY', 1, 0, 2, 'ENABLED', NOW(3), NOW(3) FROM pay_channel_product p
+ WHERE p.product_code IN ('WECHAT_JSAPI_DIRECT', 'WECHAT_JSAPI_SP', 'ALIPAY_APP_SP', 'TEST_ONLINE')
+   AND NOT EXISTS (SELECT 1 FROM pay_channel_product_market x WHERE x.pay_channel_product_id = p.id AND x.market = 'CN');

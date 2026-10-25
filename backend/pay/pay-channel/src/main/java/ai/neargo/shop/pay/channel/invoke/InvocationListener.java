@@ -13,4 +13,8 @@ public interface InvocationListener {
 
     default void attemptFinished(Invocation inv, ChannelResult result) {
     }
+
+    /** 整次调用的最终结果（重试、分类之后），在最后一次 {@link #attemptFinished} 之后 */
+    default void invocationEnded(Invocation inv, ChannelResult result) {
+    }
 }

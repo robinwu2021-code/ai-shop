@@ -93,11 +93,15 @@ class ChannelPipelineTest {
         }
 
         @Test
-        @DisplayName("★★★ 运营开着、代码没实现的产品 → 启动失败")
+        @DisplayName("★★★ 渠道装上了、却漏了一个开着的场景 → 启动失败；整个没装的渠道（部署没配）不算")
         void enabledProductWithoutHandlerFailsStartup() {
+            var onlyQr = new ScriptedHandler(Set.of(new ChannelKey.Pattern(null, "WECHAT", AccessMode.MERCHANT_OWN,
+                    PayScene.ONLINE_QR, ChannelOperation.PAY)), n -> null);
+            assertThatThrownBy(() -> new ChannelHandlerRegistry(List.of(onlyQr), new Catalog(Set.of(payKey())))
+                    .verifyEnabledProducts())
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("ONLINE_SDK");
             var alipay = new ChannelKey("CN", "ALIPAY", AccessMode.SERVICE_PROVIDER, PayScene.ONLINE_SDK, ChannelOperation.PAY);
-            assertThatThrownBy(() -> new ChannelHandlerRegistry(List.of(handler(n -> null)), new Catalog(Set.of(alipay))))
-                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("ALIPAY");
+            new ChannelHandlerRegistry(List.of(onlyQr), new Catalog(Set.of(alipay))).verifyEnabledProducts();
         }
 
         @Test
