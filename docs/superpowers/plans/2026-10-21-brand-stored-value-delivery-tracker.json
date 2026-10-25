@@ -924,6 +924,21 @@
           "crossEntityReady": false
         },
         "accountBaselineRequeried": false
+      },
+      "auditRefreshFollowup": {
+        "status": "LOCAL_VERIFIED_NOT_PUBLISHED",
+        "baseSha": "b508628cd88944edd5a860b1a81f931d56333fad",
+        "environmentDecision": "NO_ISOLATED_INSTANCE_LOCAL_TARGETED_VERIFICATION_FIRST",
+        "newRedGreenCases": 2,
+        "affectedCases": 3,
+        "typeCheckPassed": true,
+        "reviewFindings": 0,
+        "backendChanged": false,
+        "apiChanged": false,
+        "databaseChanged": false,
+        "financialWrite": false,
+        "deviceAcceptance": false,
+        "publication": false
       }
     }
   ],
@@ -1100,7 +1115,7 @@
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "Settlement read/generate permission fixes b722e076c published; APK341 available; ADB empty; positive device cases need isolated authorized roles and issuer/bill fixtures",
+    "currentBatch": "UI-FIN-03 audit revocation cache fix locally verified (2 new + 3 affected page cases), not published; no isolated instance, user chose local targeted verification first",
     "legacyCutoverInScope": false,
     "canonicalTarget": "b722e076c2ddd1f0ff2cb38711f1bb44c26dae40",
     "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",

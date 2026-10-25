@@ -54,3 +54,23 @@ it('retains an unknown original generation but does not expose or retry it after
 it('can recover the exact unknown generation with retained permission when new settlement is disabled',async()=>{
  m.bills.mockResolvedValue(empty);m.capability.mockResolvedValue({settlementReady:false});m.resources.mockResolvedValue([{issuerNo:'I1',name:'One',currency:'CNY',canGenerate:true}]);const original={body:{managementNo:'M1',issuerNo:'I1',periodFrom:'2026-09-01',periodTo:'2026-10-01',currency:'CNY'},key:'ORIGINAL'};uni.setStorageSync('sv-generation:MCH%3AA:M1',JSON.stringify(original));m.generate.mockResolvedValue({bills:[],sourceWatermark:1});const w=mount(ListPage,{global:{mocks:{$t:(k:string)=>k}}});m.load({m:'M1'});m.show();await flushPromises();expect(w.find('[data-testid="finance-generate-open"]').exists()).toBe(false);expect(w.text()).toContain('svGov.unknown');const vm=w.vm as unknown as {generate:()=>Promise<void>};await vm.generate();expect(m.generate).toHaveBeenCalledWith(original.body,original.key);w.unmount();
 });
+
+it('clears prior audit records and blocks event pagination after audit permission is revoked',async()=>{
+ m.actions.mockResolvedValue({payerActions:['sv.settlement.audit'],payeeActions:[]});
+ m.events.mockResolvedValue({records:[{eventNo:'EV1',type:'ADJUSTED',reason:'AUDIT-ONLY-REASON',occurredAt:'2026-10-25T00:00:00Z'}],nextCursor:'EVENT-CURSOR',hasMore:true});
+ const w=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',bill:'B1'});await flushPromises();
+ const vm=w.vm as unknown as {tab:string;events:unknown[];eventNext:string|null;load:()=>Promise<void>;more:(section:'events')=>Promise<void>};
+ vm.tab='events';await flushPromises();expect(w.text()).toContain('AUDIT-ONLY-REASON');
+ m.actions.mockResolvedValue({payerActions:[],payeeActions:[]});await vm.load();await flushPromises();
+ expect(vm.events).toEqual([]);expect(vm.eventNext).toBeNull();expect(vm.tab).toBe('items');expect(w.text()).not.toContain('AUDIT-ONLY-REASON');
+ await vm.more('events');expect(m.events).toHaveBeenCalledOnce();w.unmount();
+});
+it('discards cached audit data when refreshing current authority fails',async()=>{
+ m.actions.mockResolvedValue({payerActions:['sv.settlement.audit'],payeeActions:[]});
+ m.events.mockResolvedValue({records:[{eventNo:'EV1',type:'ADJUSTED',reason:'AUDIT-ONLY-REASON',occurredAt:'2026-10-25T00:00:00Z'}],nextCursor:'EVENT-CURSOR',hasMore:true});
+ const w=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',bill:'B1'});await flushPromises();
+ const vm=w.vm as unknown as {tab:string;events:unknown[];eventNext:string|null;load:()=>Promise<void>;more:(section:'events')=>Promise<void>};
+ vm.tab='events';m.actions.mockRejectedValue(new Error('authority unavailable'));await vm.load();await flushPromises();
+ expect(vm.events).toEqual([]);expect(vm.eventNext).toBeNull();expect(w.text()).not.toContain('AUDIT-ONLY-REASON');
+ await vm.more('events');expect(m.events).toHaveBeenCalledOnce();w.unmount();
+});
