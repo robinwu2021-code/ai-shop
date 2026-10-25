@@ -1,6 +1,6 @@
 # TDD-支付服务-I1存量缺陷
 
-状态：实施中
+状态：已实现（2026-10-25 · `23af41cf4` … `6a7e79f8d`，分支 `codex/pay-i1-defects`）
 档位：1 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I1 · [代码 Review](./支付服务-代码Review-2026-10-24.md) R01–R32 · [任务表](./任务表-支付服务.md) F01–F15
 创建：2026-10-25 · 最后更新：2026-10-25
 
@@ -136,4 +136,51 @@
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填）
+14 个提交（`23af41cf4` … `640e52076`，基线 `5a0450779`），`git diff --stat 5a0450779..640e52076`：67 个文件，+1753 / −160。
+逐条与 §2 对上（主代码；测试见 §5）：
+
+| §2 条目 | 实际改动的主代码 |
+|---|---|
+| F01 / F02 | `spi/user/MerchantQueryPort` · `spi/user/MerchantAdminPort` · `MerchantPortImpl` · `MerchantGovernServiceImpl`（R26）· `SettleGenerationOrchestrator` · `OrderServiceImpl`（传渠道） |
+| F03 | `StoreAdminServiceImpl` |
+| F04 | `spi/pay/PayApplymentGateway` · `WechatApplymentGateway` · `AbstractApplymentGateway`（F06 同改）· `StubApplymentGateway` · `MerchantPaymentServiceImpl` |
+| F05 | `MerchantPaymentServiceImpl` · `StubApplymentGateway`（测试钩子）· `application.yml`（`shop.pay.stub-channels`） |
+| F06 | `MerchantPortImpl#accruePayQuota` · `AbstractApplymentGateway` · `AlipayApplymentGateway` |
+| F07 | `db/pay/V1` · `PaymentLedgerServiceImpl` · `gen-test-schema.py` · `schema-test.sql`（生成物） |
+| F08 | `db/pay/V2` · `StlPayment` · `DirectAccounts` · `OrdinaryPaymentInitiationServiceImpl` · `PaymentLedgerServiceImpl` · `RefundExecutionServiceImpl` |
+| F09 | `PayoutReconAxis` |
+| F10 | `PayInternalApi` · `SettleInvoiceService(Impl)` · `InternalPayEndpoint` · `RemoteOpsSettleInvoiceAppService` |
+| F11 | `InternalPayEndpoint` · `deploy/tencent/README.md`（R11 待人工） |
+| F12 | `AlipayPayGateway` · `AlipayApplymentGateway` · `AlipayChannelConfig` · `PaymentAccountLookup(Impl)` · `WechatPayGateway` · `WechatApis` · `WechatPayChannelConfig` |
+| F13 | `PaymentLedgerService(Impl)#paymentNoOf` · `PayMessagePortImpl` · `WechatDirectPayGateway` · `WechatPayChannelConfig` · `application.yml`（`refund-notify-url`） |
+| F14 | `PayChannelMasterServiceImpl` |
+| F15 | `db/pay/V3` · `StlReconDiff` · `ReconServiceImpl` · `ReconService`（VO 加 `note`） |
+
+| 差异 | 说明 |
+|---|---|
+| TDD 里没有、实际改了的 | `SchemaDriftTest`（随 `gen-test-schema.py` 接上 `db/pay`）；3 个直接引入 `PayDataSourceConfig` 的测试类加 `shop.pay.flyway.enabled=false`（I0 遗漏，`db/pay` 有了真迁移才暴露）；生成物 `glossary.json` / `静态常量清单.md` |
+| TDD 列了、实际没动的 | 无 |
+
+### 偏差说明
+
+1. **F01 / F05 测试环境渠道**：初稿设想「测试进件改用 STUB」作废 —— STUB 不是主数据渠道，测试订单实际走 `TEST`。改为：stub 只替 `shop.pay.stub-channels` 点名的渠道进件；结算取号时 `OFFLINE / FREE / STUB / TEST` 不按渠道过滤。
+2. **F03 不校验渠道**：`mch_store.pay_merchant_no` 一店一列不分渠道，绑定时无目标渠道可比；按渠道取号由 F01 在解析侧保证。
+3. **F09 只比放款单**：一笔银行流水对一批结算单（批量出款），结算单粒度比金额必然误报。
+4. **F11 的 R11 未执行**：生产停 pay-svc 是线上运维动作，写进部署待办，需人工。
+5. **F12 未做收付通 prepay**：收付通模式未启用，下单随渠道上线；支付宝客户端（RSA2 / 凭据）属 I8。
+6. **F14 不拒空集**：空集是有意的「不限市场」，原子化已消除「意外变空」。
+7. **F10 只修发票列表**：其余 `Remote*AppService`（共 23 个）的列表接口在切独立形态前逐个过。
+8. **I0 遗漏的修补**：直接引入 `PayDataSourceConfig` 的测试类未关支付 Flyway，在 F15 时暴露并修正。
+
+## §7 确认与完成
+
+| 日期 | 事件 |
+|---|---|
+| 2026-10-25 | 用户「开始 I1：按开发计划逐条修复 F01–F15，每条先写会变红的测试」 |
+| 2026-10-25 | 15 条全部实现，14 个提交；每条先红后绿，消融见 §5 |
+| 2026-10-25 | 迁移：`db/pay` V1–V3 在本机 MySQL 9.7.4 上由应用启动执行成功（`pay_flyway_history` 记 4 行含基线；唯一键与 4 列核对无误；平台迁移 499 条未动）；H2 由 `gen-test-schema.py` 接上 `db/pay` |
+| 2026-10-25 | 全量 `mvn test`：4022 条、0 次 OOM，失败 42 条**全部为 I0 基线既有**，无新增；另修好 1 条（`M7SettleFlowTest#rateCardIsVisibleToMerchant`）。第一轮回归抓到「支付迁移在无平台 Flyway 的切片测试里空跑」与反向依赖计数 +4，已修（`6a7e79f8d`） |
+| 2026-10-25 | `pre-push`：除餐饮会话既有的 `PrintDeliveryTest.setup`（`3b48c8957`，H2 多列 ALTER）外全部通过；生成物与共享守卫因本机无 node_modules 跳过 |
+
+**上线前置**（不在代码里）：执行方案 Q1 在生产库确认 `stl_payment.out_trade_no` 无重复；R11 人工停用生产 pay-svc（`deploy/tencent/README.md` §8 第 9 条）。
+

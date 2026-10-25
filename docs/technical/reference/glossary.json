@@ -45393,6 +45393,22 @@
     },
     {
       "host": "WechatApis",
+      "name": "PARTNER_TRANSACTION_BY_OUT_TRADE_NO",
+      "type": "String",
+      "value": "\"/v3/pay/partner/transactions/out-trade-no/\"",
+      "zh": "服务商（含电商收付通）查单：必须带 sp_mchid 与 sub_mchid（F12 · Review R14）",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "WechatApis",
+      "name": "ECOMMERCE_REFUND_BY_OUT_REFUND_NO",
+      "type": "String",
+      "value": "\"/v3/ecommerce/refunds/out-refund-no/\"",
+      "zh": "电商收付通查退款：带 sub_mchid",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "WechatApis",
       "name": "APPLYMENT",
       "type": "String",
       "value": "\"/v3/ecommerce/applyments/\"",
