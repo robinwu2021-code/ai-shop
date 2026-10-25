@@ -41037,6 +41037,24 @@
         "module": "shop-base"
       },
       {
+        "name": "InitializationMode",
+        "values": [
+          "STRICT",
+          "ISOLATED"
+        ],
+        "zh": "",
+        "module": "shop-report"
+      },
+      {
+        "name": "InitializationRole",
+        "values": [
+          "VALIDATOR",
+          "MIGRATOR"
+        ],
+        "zh": "",
+        "module": "shop-report"
+      },
+      {
         "name": "IntentKind",
         "values": [
           "QUOTE_ONLY",
@@ -41939,6 +41957,17 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_READY",
+          "INITIALIZING",
+          "READY",
+          "FAILED"
+        ],
+        "zh": "",
+        "module": "shop-report"
       },
       {
         "name": "StatementAction",
