@@ -35,6 +35,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @org.mybatis.spring.annotation.MapperScan("ai.neargo.shop.pay.mapper")
 /*
+ * 审计填充器同理：它在 ai.neargo.shop.common，不在本进程的扫描包里。
+ * 排掉框架那份（见下方 exclude）之后若不显式引入，就没有任何填充器 ——
+ * MyBatis-Plus 会把 null 显式写进 created_at / created_by，顶掉 DDL 默认值。
+ * 取不到登录态时它填 SYSTEM，正是独立形态（只有 /internal 与 /callback）要的值。
+ */
+@org.springframework.context.annotation.Import(ai.neargo.shop.common.AuditMetaObjectHandler.class)
+/*
  * **排掉鉴权的自动配置。**
  *
  * 支付域没有 controller、不认用户身份，这个进程只暴露 /internal（共享密钥）
@@ -72,6 +79,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
             ai.neargo.common.security.SecurityAutoConfiguration.class,
             ai.neargo.common.security.SessionStoreAutoConfiguration.class,
             ai.neargo.common.security.rbac.RbacAutoConfiguration.class,
+            // 与 shop-app 的 application.yml 一致：框架的审计填充写 regionId / Instant，
+            // 与本仓库实体的 createdAt(LocalDateTime) / createdBy / tenantNo 对不上（PayApplicationBootTest）
+            ai.neargo.common.data.DataAutoConfiguration.class,
         })
 public class PayApplication {
 
