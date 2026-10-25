@@ -66,6 +66,12 @@
 - 依赖：`resilience4j-circuitbreaker` / `-bulkhead` 2.3.0，版本钉在根 pom（Boot BOM 不管），依赖收敛通过。
 - **S2 不注册 Spring bean**：种子里两个微信产品是 ENABLED，注册表的启动校验在 S4 有处理器前会让应用起不来；S2 是纯类 + 单测，S4 统一装配。
 
+### S3 · 调用记录、结构化日志、幂等
+- `channel.invoke.record`：`CallLogStore`（读写口）· `MybatisCallLogStore`（**独立事务**：业务回滚不带走「调没调渠道」）· `ChannelCallRecorder`（追踪号、调用号、五维键、关联 id、来源两维、请求金额 / 按精度的金额字符串 / 响应金额 / 手续费、四态与统一错误码、容错摘要与熔断状态；写失败只计数不阻断）。
+- `channel.log`：`PayLogger` · `JsonPayLogger`（单行 JSON 固定字段，成功 INFO / 失败 WARN / 不明 ERROR；不写报文）。
+- 拦截器：记录 40（发送前开行；借监听者在每次再发时关行开行，重试每次一行，`retry_of_id` 串起）· 日志 50 · 幂等 70（同渠道同操作同单号已明确成功 → 返回记录结果不再发；纯读不拦）。
+- `http_method` / `url_path` 发送前写占位 `-`，由传输层（S4 `RecordingChannelClient`）覆盖成真实值。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -78,6 +84,8 @@
 | AC12（S2 部分） | `NoChannelBranchOutsideHandlersTest`（公共层无渠道码字面量 + 判据正反例） | ✅ | — |
 | — | `ChannelPipelineTest$Guards`（精度余数不发；币种 / 退款上限；停用只拦新收款） | ✅ | 精度判据恒真 → 红；可用性拦全部操作 → 红 ✅ |
 
+| AC7 | `ChannelRecordingTest`（6 条：11 环顺序；`amountTrace`；`sourceTrace`；`retryRowPerAttempt`；`recordingFailureDoesNotBlock`；`succeededRefundIsNotResent`） | ✅ | 去掉重试开新行 / 金额不按精度 / 关幂等 / 记录失败抛出 → 4 条各自红 ✅ |
+
 S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔断粒度、未登记码、精度、可用性范围）→ 7 条测试变红，还原后 pay-channel 84 / 84 绿。
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -89,6 +97,8 @@ S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔�
 （实现后填）
 
 ### 偏差说明
+
+0. **管线 13 环先落 11 环**：指标（60）与限流（80）推迟 —— 指标要 Micrometer 进 pay-channel、限流要按产品读 `refund_interval_seconds`，二者都不影响「钱打对、记对」；调用量与耗时今天可由调用记录（`elapsed_ms`）与结构化日志得到。
 
 1. **`sys_pay_channel_market` 只加 `status` 列、不改语义**：v4 模型要改为「无行 = 不可用」，与现有「空集 = 不限市场」相反（I1 F14 刚确认），且改变现有渠道可用性。语义切换随新渠道上线（I8）。
 2. **新渠道（蓝新 / LINE Pay / PayBy）的 `sys_pay_channel` 行留到 I8**：今天没有处理器，开了也路由不到。
