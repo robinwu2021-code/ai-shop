@@ -792,17 +792,17 @@
       },
       "publication": {
         "date": "2026-10-25",
-        "backendSha": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
-        "bH5": "895024b18",
+        "backendSha": "b722e076c2ddd1f0ff2cb38711f1bb44c26dae40",
+        "bH5": "b722e076c",
         "coreShape": "food-embedded",
         "coreHealth": 200,
         "payProtectedHealth": 401,
         "actualProcessShaVerified": true,
-        "apkVersion": "0.6.7",
-        "apkCode": 340,
-        "apkMd5": "5ab3bc46fb3aadabe4ea5f375f3a088a",
-        "apkBytes": 55568619,
-        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.7.apk",
+        "apkVersion": "0.6.8",
+        "apkCode": 341,
+        "apkMd5": "212c7cbecca10e66477285382342e21c",
+        "apkBytes": 55568941,
+        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.8.apk",
         "financialEnablement": false,
         "historicalRecharge": "DEFERRED_UNCHANGED",
         "balanceTotalMinor": 36000,
@@ -812,11 +812,12 @@
         "receivedCount": 1,
         "newMigrations": [],
         "report": "docs/technical/delivery/P6-业务闭环-执行记录.md",
-        "site": "895024b18",
+        "site": "b722e076c",
         "siteAssetsChecked": 8,
         "latestMetadataVerified": true,
-        "coreSha": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
-        "paySourceSha": "6dd0c43461f35e544d8861cfd5a337e44b7ba9b5"
+        "coreSha": "b722e076c2ddd1f0ff2cb38711f1bb44c26dae40",
+        "paySourceSha": "6dd0c43461f35e544d8861cfd5a337e44b7ba9b5",
+        "financialBaselineRequeriedThisFollowup": false
       },
       "verification": {
         "postMergeAffectedJavaCases": 43,
@@ -825,12 +826,15 @@
         "reviewPageCases": 12,
         "finalDelegationAffectedCases": 2,
         "fullRegression": false,
-        "physicalDevice": "340_INSTALLED_INACTIVE_UNCONFIGURED_ISSUER_READONLY_UI_VERIFIED_NO_POSTING",
+        "physicalDevice": "341_ADB_EMPTY_NOT_INSTALLED;_340_INACTIVE_UNCONFIGURED_READONLY_PREVIOUSLY_VERIFIED",
         "wechatRealSending": "TEMPLATE_UNCONFIGURED",
         "reviewFindingsRemaining": 0,
         "deviceFixDistinctCases": 5,
         "inactiveBrandIssuerGuardCases": 1,
-        "issuerSettingsPageCases": 10
+        "issuerSettingsPageCases": 10,
+        "financeViewJavaCases": 2,
+        "financeViewPageCases": 5,
+        "financeViewContractCases": 1
       },
       "deviceFollowup": {
         "sourceSha": "272a3a24e39aab2ed672eda6320ceb5bed826c32",
@@ -884,7 +888,7 @@
         "settlementDeviceVerified": false
       },
       "financeViewFollowup": {
-        "status": "CODE_VERIFIED_PUBLICATION_PENDING",
+        "status": "COMPATIBILITY_PUBLISHED_DEVICE_FIXTURES_PENDING",
         "resourcePreflight": {
           "management": "ACTIVE",
           "brand": "INACTIVE",
@@ -901,7 +905,25 @@
         "apiChange": "Additive canGenerate; readable issuer directory",
         "databaseMigration": false,
         "financialWrite": false,
-        "positiveDeviceAcceptance": false
+        "positiveDeviceAcceptance": false,
+        "sourceSha": "b722e076c2ddd1f0ff2cb38711f1bb44c26dae40",
+        "version": "0.6.8",
+        "versionCode": 341,
+        "apkMd5": "212c7cbecca10e66477285382342e21c",
+        "apkBytes": 55568941,
+        "deviceInstalled": false,
+        "deviceStatus": "ADB_EMPTY",
+        "corePublished": true,
+        "coreMd5": "d3e2e05a3e4faf3f6312ba6eff3dcf47",
+        "coreHealth": 200,
+        "bH5AndSitePublished": true,
+        "latestMetadataVerified": true,
+        "financialReadiness": {
+          "reportsReady": false,
+          "settlementReady": false,
+          "crossEntityReady": false
+        },
+        "accountBaselineRequeried": false
       }
     }
   ],
@@ -1078,9 +1100,9 @@
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "Settlement resource read/generate permission fixes verified; 341 publication pending, positive device cases depend on isolated roles and bills",
+    "currentBatch": "Settlement read/generate permission fixes b722e076c published; APK341 available; ADB empty; positive device cases need isolated authorized roles and issuer/bill fixtures",
     "legacyCutoverInScope": false,
-    "canonicalTarget": "895024b18a0d6d5a7e4b96462e6ea0f188ba1f68",
+    "canonicalTarget": "b722e076c2ddd1f0ff2cb38711f1bb44c26dae40",
     "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
     "implementationProtocol": 2,
     "onlineFinancialOpening": "CLOSED_UNCHANGED_P3_FOUNDATION_REQUIRED"
