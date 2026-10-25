@@ -49,6 +49,10 @@ public class PrintMaintenanceServiceImpl implements PrintMaintenanceService {
     private final PrintJsonCodec json;
     private final List<PrintDeviceProbePort> probes;
     private final TransactionTemplate tx;
+    private ai.neargo.shop.printing.center.source.PrintSourceRegistry sourceRegistry;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setSourceRegistry(ai.neargo.shop.printing.center.source.PrintSourceRegistry registry) { sourceRegistry=registry; }
+
 
     public PrintMaintenanceServiceImpl(
             AttemptMapper at,
@@ -337,37 +341,27 @@ public class PrintMaintenanceServiceImpl implements PrintMaintenanceService {
                                         "resolutionStatus",
                                         j.getResolutionStatus())));
         }
-        for (var policy :
-                policies.selectList(
-                        new QueryWrapper<PrnScenePolicy>()
-                                .eq("enabled", 1)
-                                .eq("scene", "ORDER_PAID")
-                                .last(
-                                        "ORDER BY (SELECT c.last_success_at FROM"
-                                                + " prn_reconcile_cursor c WHERE"
-                                                + " c.tenant_no=prn_scene_policy.tenant_no AND"
-                                                + " c.entity_no=prn_scene_policy.entity_no AND"
-                                                + " c.store_no=prn_scene_policy.store_no AND"
-                                                + " c.source_kind='SUB_ORDER'), id LIMIT "
-                                                + budget.maxItems()))) {
+        var supportedScenes = sourceRegistry == null ? Set.<String>of() : sourceRegistry.scenes();
+        for (var policy : supportedScenes.isEmpty() ? List.<PrnScenePolicy>of() : policies.selectList(new QueryWrapper<PrnScenePolicy>()
+                .eq("enabled", 1).in("scene",supportedScenes)
+                .last("ORDER BY (SELECT MIN(c.last_success_at) FROM prn_reconcile_cursor c WHERE"
+                        + " c.tenant_no=prn_scene_policy.tenant_no AND c.entity_no=prn_scene_policy.entity_no"
+                        + " AND c.store_no=prn_scene_policy.store_no), id LIMIT " + budget.maxItems()))) {
             if (System.nanoTime() >= end) break;
-            try {
-                var scope =
-                        new PrintScope(
-                                policy.getTenantNo(), policy.getEntityNo(), policy.getStoreNo());
-                var cursor =
-                        cursors.selectOne(
-                                PrintSupport.<PrnReconcileCursor>scoped(scope)
-                                        .eq("source_kind", "SUB_ORDER"));
-                Instant from =
-                        cursor != null && cursor.getWatermarkAt() != null
-                                ? instant(cursor.getWatermarkAt()).minusSeconds(60)
-                                : Instant.now().minus(Duration.ofDays(1));
-                reconcile.reconcile(
-                        new PrintMaintenanceCommand(
-                                scope, "SUB_ORDER", from, Instant.now(), 100, false));
-            } catch (Exception e) {
-                failed++;
+            if (sourceRegistry == null) continue;
+            for (var sourceKind : sourceRegistry.sourceTypesForScene(policy.getScene())) {
+                if (System.nanoTime() >= end) break;
+                try {
+                    var scope = new PrintScope(policy.getTenantNo(), policy.getEntityNo(), policy.getStoreNo());
+                    var cursor = cursors.selectOne(PrintSupport.<PrnReconcileCursor>scoped(scope)
+                            .eq("source_kind", sourceKind));
+                    Instant from = cursor != null && cursor.getWatermarkAt() != null
+                            ? instant(cursor.getWatermarkAt()).minusSeconds(60)
+                            : Instant.now().minus(Duration.ofDays(1));
+                    reconcile.reconcile(new PrintMaintenanceCommand(scope, sourceKind, from, Instant.now(), 100, false));
+                } catch (Exception e) {
+                    failed++;
+                }
             }
         }
         for (var o :

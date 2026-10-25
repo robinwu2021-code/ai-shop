@@ -1,3 +1,4 @@
+import type { PrintApi } from "./contracts/print";
 // 单一 API 契约（组合根）。按域切片在 lib/api/contracts/*.ts，本文件只做组合与再导出。
 // mock 与真实后端各实现一份（lib/api/mock.ts / http.ts），页面只依赖此接口，
 // 切换靠 lib/api/index.ts 一处开关（消除散落的 if(USE_MOCK)）。
@@ -38,6 +39,6 @@ export type {
 };
 
 export interface Api
-  extends DashboardApi, MerchantApi, OrderApi, PaymentApi, CommunityApi, FulfillmentApi, StoreApi,
+  extends PrintApi, DashboardApi, MerchantApi, OrderApi, PaymentApi, CommunityApi, FulfillmentApi, StoreApi,
     MarketingApi, ReviewApi, AfterSaleApi, GroupApi, ProductApi, FinanceApi, IamApi, GrowthApi, RiskApi,
     MessageApi, ContentApi, SystemApi, MemberApi, InventoryApi, JobApi {}

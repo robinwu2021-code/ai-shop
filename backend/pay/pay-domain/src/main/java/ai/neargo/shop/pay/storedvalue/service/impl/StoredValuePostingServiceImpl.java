@@ -150,6 +150,12 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         events.publish(new StoredValueCredited(no("SC", List.of(ctx.tenantNo(), c.rechargeNo()), json), c.rechargeNo(),
                 account.getAccountNo(), recharge.getUserNo(), recharge.getEntityNo(), recharge.getStoreNo(),
                 principal, total, recharge.getCurrency(), instant(at).toEpochMilli(),recharge.customerIdentity()));
+        // Distinct event preserves the canonical hashes of the existing v1 credit contract.
+        if ("MAIN".equals(ctx.tenantNo()) && recharge.getStoreNo()!=null && !recharge.getStoreNo().isBlank())
+            events.publish(new ai.neargo.shop.spi.entitlement.EntitlementEvents.StoredValueReceiptConfirmed(
+                no("SP", List.of("STORED_VALUE_RECEIPT_CONFIRMED", ctx.tenantNo(), c.rechargeNo()), json), ctx.tenantNo(), recharge.getRechargeNo(),
+                account.getAccountNo(), recharge.getEntityNo(), recharge.getStoreNo(), principal, bonus,
+                Math.addExact(afterPrincipal, afterBonus), recharge.getCurrency(), instant(at).toEpochMilli()));
         return view(recharge);
     }
     private RechargeView view(SvRecharge row) {

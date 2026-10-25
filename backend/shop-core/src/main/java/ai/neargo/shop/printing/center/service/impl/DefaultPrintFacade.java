@@ -101,7 +101,7 @@ public class DefaultPrintFacade
                     require(
                             a.storeNo().equals(r.storeNo()) && !"PRINTER_TEST".equals(r.scene()),
                             "print.forbidden");
-                    require(a.dataScopes().contains("SOURCE_ORDER_READ"), "print.sourceForbidden");
+                    require(a.dataScopes().containsAll(PrintSourceDataScopes.required(r.sourceRef().type())), "print.sourceForbidden");
                     require(
                             r.printMode() == PrintMode.EXISTING_FACT,
                             "print.sourceModeUnavailable");
@@ -149,7 +149,7 @@ public class DefaultPrintFacade
                         "SYSTEM",
                         "print-fact-ready",
                         ref.factNo(),
-                        Set.of("SOURCE_ORDER_READ"));
+                        PrintSourceDataScopes.required(ref.sourceType()));
         audit.lock(scope(actor));
         return generate(new PrintIntent(ref, PrintMode.EXISTING_FACT, null), actor, true);
     }

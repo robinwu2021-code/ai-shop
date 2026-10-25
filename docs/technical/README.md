@@ -488,7 +488,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [TDD-经营范围排除地区](./TDD-经营范围排除地区.md) | 已实现 |
 | [TDD-经营范围改门店级](./TDD-经营范围改门店级.md) | 已实现（可见性会话确认 reach 系统已稳定、本会话实现、对方 review） |
 | [TDD-经营范围文字录入](./TDD-经营范围文字录入.md) | 已实现（P1 + P2 规则；§7 大模型识别为主、规则兜底；语音另议） |
-| [TDD · 统一打印域兼容整合](./TDD-统一打印域兼容整合.md) | 适配实现及集中专项验收完成，已完成最新统一基线47c0aaed0的交叉验证；全仓既有失败见合并记录。 |
+| [TDD · 统一打印域兼容整合](./TDD-统一打印域兼容整合.md) | 适配实现、集中专项与正常全量闸门完成，已推送统一分支ba44c7f0c；后端6213项无失败，前端保留既有4项共享基线。实机与生产启用未验收，后续新增业务场景独 |
 | [餐饮、零售、美业详细规则与配置规则引擎](./TDD-统一试算引擎-三行业规则与规则引擎.md) | 设计提案，未实现 · 2026-10-22 · 档位2。依据已确认的行业模板、门店个性化及用户最新要求细化。规则目录54条：共用12条＋餐饮14条＋零售14条＋ |
 | [统一试算引擎：初始规则、结账阶段与地区税费](./TDD-统一试算引擎-初始规则与结账税费.md) | 纯税内核已实现（CKO-07），配置发布及应用接线待实施 · 2026-10-22 · 档位2。补充存储与Java实施方案，本篇覆盖规则初始数据、订单结账逐阶段 |
 | [统一试算引擎：存储与Java实施方案](./TDD-统一试算引擎-存储与Java实施方案.md) | 部分实施（CKO-02～08共享内核及4表配置发布事务），其余按计划待开发 · 2026-10-22 · 档位2。本文细化已讨论规则的存储、Java职责、接口和 |
@@ -554,7 +554,12 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [餐饮订单结账完整开发计划](./TDD-餐饮订单结账-完整开发计划.md) | — |
 | [小票紧凑排版 V2 验收记录](./acceptance/print-center/compact-v2.md) | — |
 | [打印模块合入集成线核对](./acceptance/print-center/integration-2026-10-23.md) | 按用户最新要求先保存独立分支 `codex/order-printing`；暂不合入集成线。全量验收尚未完成。 |
-| [统一打印分支正常推送记录 · 2026-10-25](./acceptance/print-center/remote-push-2026-10-25.md) | 推送阻断修复和定向回归完成，等待正常全量推送闸门；未绕过检查、未强制推送。 |
+| [打印运营与退款、充值来源验收](./acceptance/print-center/operations-and-sources-2026-10-25.md) | 本批软件范围验证完成；代码保存于独立开发分支，未推送、合并、部署或启用生产。实机及私有COS另行验收。 |
+| [商家打印浏览器验收结果](./acceptance/print-center/operations-and-sources-evidence/browser-results.md) | — |
+| [商家打印入口最终小差异审查](./acceptance/print-center/operations-and-sources-evidence/merchant-review.md) | — |
+| [运营打印页面独立只读审查](./acceptance/print-center/operations-and-sources-evidence/operations-review.md) | — |
+| [新增退款/充值打印来源独立审查](./acceptance/print-center/operations-and-sources-evidence/source-review.md) | — |
+| [统一打印分支正常推送记录 · 2026-10-25](./acceptance/print-center/remote-push-2026-10-25.md) | 本轮正常全量闸门及远端推送完成，最终提交ba44c7f0c；未绕过检查、未强制推送。 |
 | [订单支付打印软件闭环 · 2026-10-25](./acceptance/print-center/software-closure-2026-10-25.md) | — |
 | [打印模块合入统一分支核对 · 2026-10-25](./acceptance/print-center/unified-merge-2026-10-25.md) | 统一域适配及集中专项验收完成，形成包含最新统一基线的合并候选。本记录不包含远端推送，未执行生产迁移。 |
 | [P1 经营组织与品牌管理交付记录](./delivery/P1-经营组织与品牌管理-交付记录.md) | 已上线并完成阶段验收（2026-10-22）。目标分支 codex/ai-shop-codex；功能分支 codex/store-stored-value。 |

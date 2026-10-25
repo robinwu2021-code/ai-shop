@@ -8688,6 +8688,95 @@ _无字段_
 | `resolvedBy` | `string,null` | 否 | 处置人（STAFF 账号）。未处置为 null |
 
 
+### print
+
+#### GET `/ops/print/health`
+
+Scoped fleet health from PrintMonitorDtos. */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PrintFleetHealth`](#printfleethealth)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `stores` | [`PrintHealth`](#printhealth)\[\] | 是 | — |
+| `asOf` | `string` | 是 | — |
+
+
+#### GET `/ops/print/incidents`
+
+Scoped incident page; backend status codes pass through unchanged. */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PrintIncidentPage`](#printincidentpage)
+
+_无字段_
+
+
+#### GET `/ops/print/operations/{operationNo}`
+
+Read an operation only within the explicit target. */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `operationNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`PrintOperation`](#printoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 是 | Operation business reference. |
+| `type` | `string` | 是 | Backend operation type. |
+| `status` | `PENDING` \| `UNKNOWN` \| `SUCCEEDED` \| `FAILED` | 是 | PENDING/UNKNOWN are unfinished; SUCCEEDED describes operation only, never physical output. |
+| `targetType` | `string` | 是 | Backend target type. |
+| `targetNo` | `string` | 是 | Backend target reference. |
+| `result` | `object`（见下） \| `null` | 是 | Frozen backend result, may be absent while pending. |
+| `error` | `object`（见下） \| `null` | 是 | Backend error metadata, not a retry authorization. |
+| `createdAt` | `string` | 是 | Creation Instant. |
+| `finishedAt` | `string,null` | 是 | Completion Instant, absent when unfinished. |
+
+
+#### POST `/ops/print/reconciliations`
+
+Audited maintenance; same key is retained for exact-intent error recovery. */
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PrintOperation`](#printoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 是 | Operation business reference. |
+| `type` | `string` | 是 | Backend operation type. |
+| `status` | `PENDING` \| `UNKNOWN` \| `SUCCEEDED` \| `FAILED` | 是 | PENDING/UNKNOWN are unfinished; SUCCEEDED describes operation only, never physical output. |
+| `targetType` | `string` | 是 | Backend target type. |
+| `targetNo` | `string` | 是 | Backend target reference. |
+| `result` | `object`（见下） \| `null` | 是 | Frozen backend result, may be absent while pending. |
+| `error` | `object`（见下） \| `null` | 是 | Backend error metadata, not a retry authorization. |
+| `createdAt` | `string` | 是 | Creation Instant. |
+| `finishedAt` | `string,null` | 是 | Completion Instant, absent when unfinished. |
+
+
 ### product
 
 #### GET `/ops/banned-word`
@@ -14121,6 +14210,15 @@ OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
+### Page<PrintIncident>
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`PrintIncident`](#printincident)\[\] | 是 | 当前页数据 |
+| `total` | `number` | 是 | 满足条件的总条数（不是总页数） |
+| `page` | `number` | 是 | 当前页码，从 1 起 |
+| `size` | `number` | 是 | 每页条数 |
+
 ### Partial<Record<("zh"|"en"|"ar"),string>>
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -14952,6 +15050,65 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 - `PASSED`
 - `REJECTED`
 - `OFFLINE`
+
+### PrintFleetHealth
+
+PrintMonitorDtos.FleetHealthVO; store order is backend-owned.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `stores` | [`PrintHealth`](#printhealth)\[\] | 是 | — |
+| `asOf` | `string` | 是 | — |
+
+### PrintHealth
+
+PrintMonitorDtos.GetHealthVO; counts are integer jobs/devices, timestamps are ISO-8601 Instant.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activePrinters` | `number` | 是 | Active printer count. |
+| `pendingJobs` | `number` | 是 | Pending job count. |
+| `unknownJobs` | `number` | 是 | Unknown outcome job count; never implies completion. |
+| `blockedRequests` | `number` | 是 | Blocked request count. |
+| `asOf` | `string` | 是 | Server snapshot Instant. |
+
+### PrintIncident
+
+PrintMonitorDtos.IncidentVO.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `incidentNo` | `string` | 是 | Incident business reference. |
+| `storeNo` | `string` | 是 | Owning store reference. |
+| `incidentType` | `string` | 是 | Backend incident classification. |
+| `targetType` | `string` | 是 | Backend target classification. |
+| `targetNo` | `string` | 是 | Target business reference. |
+| `severity` | `string` | 是 | Backend severity code. |
+| `status` | `string` | 是 | Backend status code. |
+| `occurrenceCount` | `number` | 是 | Number of occurrences. |
+| `firstSeenAt` | `string` | 是 | First observed Instant. |
+| `lastSeenAt` | `string` | 是 | Last observed Instant. |
+| `revision` | `number` | 是 | Optimistic revision, no UI write endpoint. |
+
+### PrintIncidentPage
+
+类型：`Page<PrintIncident>`
+
+### PrintOperation
+
+PrintOperation and FrozenJson preserve canonical JSON/hash without inventing execution counts.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 是 | Operation business reference. |
+| `type` | `string` | 是 | Backend operation type. |
+| `status` | `PENDING` \| `UNKNOWN` \| `SUCCEEDED` \| `FAILED` | 是 | PENDING/UNKNOWN are unfinished; SUCCEEDED describes operation only, never physical output. |
+| `targetType` | `string` | 是 | Backend target type. |
+| `targetNo` | `string` | 是 | Backend target reference. |
+| `result` | `object`（见下） \| `null` | 是 | Frozen backend result, may be absent while pending. |
+| `error` | `object`（见下） \| `null` | 是 | Backend error metadata, not a retry authorization. |
+| `createdAt` | `string` | 是 | Creation Instant. |
+| `finishedAt` | `string,null` | 是 | Completion Instant, absent when unfinished. |
 
 ### ProductGoods
 

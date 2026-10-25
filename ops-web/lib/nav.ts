@@ -525,8 +525,8 @@ export const NAV: NavSection[] = [
 
   // ── P-1 账号与权限 ──────────────────────────────────────────────────────
   {
-    key: "iam", label: "平台管理", icon: "UserCog", modules: ["iam", "system"], href: "/iam",
-    match: ["/iam", "/jobs", "/system"],
+    key: "iam", label: "平台管理", icon: "UserCog", modules: ["iam", "system", "ops"], href: "/iam",
+    match: ["/iam", "/jobs", "/system", "/printing"],
     children: [
       // 数据域授权（1.1.3）是员工行上的动作，二次校验（1.1.5）是动作上的一层 ——
       // 两者都不单独成页：拆出去就会出现"改完角色忘了配数据域"的空档。
@@ -552,6 +552,7 @@ export const NAV: NavSection[] = [
       // 组名用「定时任务」而不是「运行配置」：系统配置那边已经有一个同名组，
       // 而 groupedLeaves 会把同名组并成一段 —— 并进去之后「任务与执行日志」
       // 会和市场/货币、开关灰度挤在一个标题下，它是监控页不是配置页
+      { href: "/printing", label: "打印运营", perm: "ops:print:read", group: "打印运营", matrix: "P-17.1", ready: true, gated: "shop.print.enabled" },
       { href: "/jobs", label: "任务与执行日志", perm: "system:job:read", group: "定时任务", matrix: "P-17.1", ready: true , gated: "shop.job.enabled"},
 
 

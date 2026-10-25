@@ -14,7 +14,7 @@ const agentName=ref(''), existingDeviceNo=ref('');
 let epoch=0;
 const discoveredNames=computed(()=>discovered.value.map(d=>d.queueName));
 function fail(e:unknown){error.value=e instanceof Error?e.message:String(t('printCenter.failed'));}
-async function load(){if(USE_MOCK)return;loading.value=true;await merchant.ensureScope();const version=++epoch,storeNo=merchant.storeNo;try{const [p,a]=await Promise.all([callPrint<PrintPage<Printer>>('P02',{storeNo,page:1,size:100}),callPrint<PrintPage<Agent>>('A01',{storeNo,page:1,size:100})]);if(version!==epoch||storeNo!==merchant.storeNo)return;printers.value=p.records;agents.value=a.records;}catch(e){fail(e);}finally{if(version===epoch)loading.value=false;}}
+async function load(){if(USE_MOCK)return;await merchant.ensureScope();if(!merchant.can('biz:print:device'))return;loading.value=true;const version=++epoch,storeNo=merchant.storeNo;try{const [p,a]=await Promise.all([callPrint<PrintPage<Printer>>('P02',{storeNo,page:1,size:100}),callPrint<PrintPage<Agent>>('A01',{storeNo,page:1,size:100})]);if(version!==epoch||storeNo!==merchant.storeNo)return;printers.value=p.records;agents.value=a.records;}catch(e){fail(e);}finally{if(version===epoch)loading.value=false;}}
 async function run(action:()=>Promise<unknown>){if(busy.value)return;busy.value=true;error.value='';try{await action();await load();}catch(e){fail(e);}finally{busy.value=false;}}
 async function chooseAgent(event:{detail:{value:string|number}}){agentNo.value=agents.value[Number(event.detail.value)]?.agentNo||'';physical.value='';queue.value='';try{const detail=await callPrint<AgentDetail>('A03',undefined,{agentNo:agentNo.value});discovered.value=detail.discoveredPrinters;}catch(e){fail(e);}}
 function chooseQueue(event:{detail:{value:string|number}}){const value=discovered.value[Number(event.detail.value)];physical.value=value?.physicalRegistrationRef||'';queue.value=value?.queueName||'';}
@@ -28,7 +28,7 @@ async function clearGate(item:Printer){const detail=await callPrint<PrinterDetai
 async function createAgent(){await run(()=>commands.run('A02',{storeNo:merchant.storeNo,name:agentName.value.trim(),platform:'WINDOWS'}));}
 async function enroll(item:Agent){const key=await prompt({title:String(t('printCenter.publicKey')),maxlength:4096});if(!key?.trim())return;await run(async()=>{const result=await commands.run('A04',{expectedRevision:item.revision,clientPublicKey:key.trim()},{agentNo:item.agentNo});pairing.value=operationResult<{sealedEnrollment:string}>(result).sealedEnrollment;uni.setClipboardData({data:pairing.value});});}
 async function revoke(item:Agent){if(!await confirm({title:String(t('printCenter.revokeAgent')),hint:String(t('printCenter.revokeHint')),danger:true}))return;await run(()=>commands.run('A05',{expectedRevision:item.revision,reason:'MERCHANT_REVOKED'},{agentNo:item.agentNo}));}
-watch(()=>merchant.storeNo,()=>{epoch++;printers.value=[];agents.value=[];discovered.value=[];pairing.value='';vendorKey.value='';existingDeviceNo.value='';commands.clear();void load();});
+watch(()=>merchant.storeNo,()=>{epoch++;printers.value=[];agents.value=[];discovered.value=[];agentNo.value='';physical.value='';queue.value='';pairing.value='';vendorKey.value='';existingDeviceNo.value='';commands.clear();void load();});
 onShow(()=>{void load();});onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
 </script>
 <template>

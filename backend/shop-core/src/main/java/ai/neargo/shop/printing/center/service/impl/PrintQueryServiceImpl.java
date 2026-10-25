@@ -222,7 +222,9 @@ public class PrintQueryServiceImpl implements PrintQueryService {
                 requests.selectList(
                         PrintSupport.<PrnRequest>scoped(scope(a))
                                 .and(w -> w.eq("order_no", no).or().eq("sub_order_no", no))
-                                .last("LIMIT 1001"));
+                                .last("LIMIT 1001")).stream()
+                        .filter(row -> a.dataScopes().containsAll(PrintSourceDataScopes.requiredForScene(row.getScene())))
+                        .toList();
         require(req.size() <= 1000, "print.queryRangeTooLarge");
         var list =
                 req.isEmpty()
@@ -269,7 +271,9 @@ public class PrintQueryServiceImpl implements PrintQueryService {
                 latest == null ? null : latest.getExportNo(),
                 latest == null ? null : latest.getStatus(),
                 Instant.now(),
-                sources.require("SUB_ORDER").referencesByOrder(scope(a), no));
+                sources.referencesByOrder(scope(a), no).stream()
+                        .filter(ref -> a.dataScopes().containsAll(PrintSourceDataScopes.required(ref.sourceType())))
+                        .toList());
     }
 
     public PrintOperation getOperation(String no, PrintActor a) {

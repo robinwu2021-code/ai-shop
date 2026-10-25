@@ -1,3 +1,4 @@
+import { printMock } from "./mocks/print";
 // Mock 实现（组合根）。按域切片在 lib/api/mocks/*.ts，全部走 lib/mock/db 内存数据 + 模拟延迟。
 // 切片之间方法名不得重叠（后者会静默覆盖前者），由 contract.test.ts 断言。
 import type { Api } from "./contract";
@@ -26,6 +27,7 @@ import { systemMock } from "./mocks/system";
 
 /** 各域 mock 切片。contract.test.ts 用它逐片校验 key 集合、检测重复实现。 */
 export const MOCK_SLICES = {
+  print: printMock,
   dashboard: dashboardMock,
   merchant: merchantMock,
   order: orderMock,
@@ -51,7 +53,7 @@ export const MOCK_SLICES = {
 } as const;
 
 export const mockApi: Api = {
-  ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock,
+  ...printMock, ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock,
   ...communityMock, ...fulfillmentMock, ...storeMock,
   ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock,
 };

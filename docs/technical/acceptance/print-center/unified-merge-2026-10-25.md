@@ -2,6 +2,8 @@
 
 状态：统一域适配及集中专项验收完成，形成包含最新统一基线的合并候选。本记录不包含远端推送，未执行生产迁移。
 
+> 本页为合并准备阶段的历史记录。后续正常全量检查及远端推送已完成，最终ba44c7f0c、6213项后端无失败，见[最终推送结果](remote-push-final-results.json)。下文历史既有失败已在后续处理，不能据此将其继续列为当前阻断。生产迁移与实机不在该结论内。
+
 - 目标基线：远端 `codex/ai-shop-codex`，`d0e1b93ee`，已 fetch 核对。
 - 待合入：`codex/order-printing`，`98632ce4c`。
 - 准备分支：`codex/print-unified-integration`，位于现有隔离工作区。

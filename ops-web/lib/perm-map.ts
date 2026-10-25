@@ -39,6 +39,8 @@
 export const UNIMPLEMENTED = Symbol("backend-unimplemented");
 
 export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
+  "ops:print:read": "ops:print:read",
+  "ops:print:resolve": "ops:print:resolve",
   "merchant:apply:audit": "merchant:apply:audit",
   "merchant:merchant:ban": "merchant:merchant:ban",
   // 主动触达商家（M2）。**必须登记** —— 后端有码而这里没有的话 can() 一律判无权限，

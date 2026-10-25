@@ -144,7 +144,7 @@ public final class DefaultPrintDocumentCompiler implements PrintDocumentCompiler
         if (compact) rows = new ArrayList<>(CompactReceiptRows.build(data, content, notice));
         var scopes = new HashSet<String>();
         if (!Set.of("SAMPLE", "DEVICE_TEST").contains(fact.triggerType()))
-            scopes.add("SOURCE_ORDER_READ");
+            scopes.addAll(PrintSourceDataScopes.required(fact.ref().sourceType()));
         for (var f : scene.definition().path("requiredDataScopes")) scopes.add(f.asText());
         return new PrintDocument(
                 fact.ref().factNo() + ":" + fact.ref().scene(),

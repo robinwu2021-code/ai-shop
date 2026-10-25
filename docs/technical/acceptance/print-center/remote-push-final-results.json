@@ -1,0 +1,30 @@
+{
+  "status": "NORMAL_PUSH_PASSED_WITH_EXISTING_FRONTEND_BASELINE",
+  "commit": "ba44c7f0c7339d9ca8f3e0ff620b2536c4697bdb",
+  "remoteBranch": "origin/codex/ai-shop-codex",
+  "backend": {
+    "compile": "PASS",
+    "tests": 6213,
+    "modules": 31,
+    "failures": 0,
+    "knownFailures": 0,
+    "testDurationSeconds": 1480
+  },
+  "frontend": {
+    "sharedPassed": 596,
+    "sharedExistingKnownFailures": 4,
+    "opsPassed": 853,
+    "buyerPassed": 635,
+    "merchantPassed": 344
+  },
+  "generatedArtifacts": "25 generators current",
+  "pushGateBypassed": false,
+  "physicalAcceptance": "NOT_RUN_RESOURCES_UNAVAILABLE",
+  "productionEnablement": "NOT_PERFORMED",
+  "evidence": {
+    "logSha256": "ac82fea768987d7f390687190f4ba8fc54fdb5dffb5beffe2d6512e0ec2590c5",
+    "gitReceipt": [
+      "   37a5b3d1a..ba44c7f0c  HEAD -> codex/ai-shop-codex"
+    ]
+  }
+}

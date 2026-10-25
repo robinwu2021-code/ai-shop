@@ -1,0 +1,313 @@
+{
+  "mode": "REAL_ISOLATED_H2_HTTP_FINAL",
+  "simulation": "SMa2beffcd322e439fb112f26f4d22",
+  "exportNo": "EX4473770ac7e54f7692e86f640f14",
+  "replayedOperationUnchanged": true,
+  "rejections": 8,
+  "evidence": [
+    {
+      "path": "/biz/print/orders/PRINT-BROWSER-ORDER/summary?storeNo=ST261025NVAWB6F3SF",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "code": 0,
+        "msg": "success",
+        "data": {
+          "generationState": "NO_PRINT_REQUIRED",
+          "expectedCount": 0,
+          "confirmedCount": 0,
+          "replacementResolvedCount": 0,
+          "unknownCount": 0,
+          "failedCount": 0,
+          "exportCount": 0,
+          "latestExportNo": null,
+          "latestExportStatus": null,
+          "asOf": "2026-10-25T13:36:22.852855Z",
+          "sourceFacts": [
+            {
+              "tenantNo": "MAIN",
+              "entityNo": "M261025VCD4V9481J",
+              "storeNo": "ST261025NVAWB6F3SF",
+              "sourceType": "SUB_ORDER",
+              "factNo": "OF656d2c61a19c46f3b01f4865efe7",
+              "bizRevision": "0",
+              "scene": "ORDER_PAID",
+              "snapshotHash": "03a8e7937872c52f0465117b9e1c6006494304b5003ca8e6b48174da0c93f142"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "path": "/biz/print/simulations",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "code": 0,
+        "msg": "success",
+        "data": {
+          "operationNo": "POc2907e26e6d8489c98beb0d3f1e4",
+          "type": "CREATE_SIMULATION",
+          "status": "SUCCEEDED",
+          "targetType": "SIMULATION",
+          "targetNo": "SMa2beffcd322e439fb112f26f4d22",
+          "result": {
+            "canonicalJson": "{\"exportNos\":[],\"simulationNo\":\"SMa2beffcd322e439fb112f26f4d22\"}",
+            "sha256": "70cfe5812a5953ad5168c3802f9ac02da3a6e3bee05d525d853c1b9fec682c45"
+          },
+          "error": null,
+          "createdAt": "2026-10-25T13:34:29.827512Z",
+          "finishedAt": "2026-10-25T13:34:29.827512Z"
+        }
+      }
+    },
+    {
+      "path": "/biz/print/simulations",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "code": 0,
+        "msg": "success",
+        "data": {
+          "operationNo": "POc2907e26e6d8489c98beb0d3f1e4",
+          "type": "CREATE_SIMULATION",
+          "status": "SUCCEEDED",
+          "targetType": "SIMULATION",
+          "targetNo": "SMa2beffcd322e439fb112f26f4d22",
+          "result": {
+            "canonicalJson": "{\"exportNos\":[],\"simulationNo\":\"SMa2beffcd322e439fb112f26f4d22\"}",
+            "sha256": "70cfe5812a5953ad5168c3802f9ac02da3a6e3bee05d525d853c1b9fec682c45"
+          },
+          "error": null,
+          "createdAt": "2026-10-25T13:34:29.827512Z",
+          "finishedAt": "2026-10-25T13:34:29.827512Z"
+        }
+      }
+    },
+    {
+      "path": "/biz/print/simulations/SMa2beffcd322e439fb112f26f4d22",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "code": 0,
+        "msg": "success",
+        "data": {
+          "simulationNo": "SMa2beffcd322e439fb112f26f4d22",
+          "scene": "ORDER_PAID",
+          "status": "PASSED",
+          "fixtureCode": "SUCCESS",
+          "expectedResults": {
+            "canonicalJson": "{\"status\":\"COMPLETED\"}",
+            "sha256": "f6497865a366334fa5f5c7495ad6e587057da9093acbc79c144a3f57ed528068"
+          },
+          "actualResults": {
+            "canonicalJson": "{\"statuses\":[\"COMPLETED\"]}",
+            "sha256": "726ad96fdb084187c7de11873cbac431b2d1804c26d3bae55e61225927e7d97b"
+          },
+          "eventJournal": {
+            "canonicalJson": "[{\"at\":0,\"eventNo\":\"e1\",\"layoutHash\":\"9b5f004fb4f3eab63f400eb172bffd76d02a887ea12e6a71271c6c4574663fe7\",\"status\":\"ACCEPTED\"},{\"at\":100,\"eventNo\":\"e2\",\"layoutHash\":\"9b5f004fb4f3eab63f400eb172bffd76d02a887ea12e6a71271c6c4574663fe7\",\"status\":\"COMPLETED\"}]",
+            "sha256": "35c15a03ec64ea30e92193c1555b83fcb433b365980d169560ce6e192983fa1b"
+          },
+          "revision": 1
+        }
+      }
+    },
+    {
+      "path": "/biz/print/exports",
+      "method": "POST",
+      "status": 200,
+      "result": {
+        "code": 0,
+        "msg": "success",
+        "data": {
+          "operationNo": "PO2c4300b15fd74f2c9abb81bc1710",
+          "type": "CREATE_EXPORT",
+          "status": "SUCCEEDED",
+          "targetType": "EXPORT",
+          "targetNo": "EX4473770ac7e54f7692e86f640f14",
+          "result": {
+            "canonicalJson": "{\"exportNo\":\"EX4473770ac7e54f7692e86f640f14\"}",
+            "sha256": "54d3db38061577816b3794c1198e78d774e6112f676ef008400f3d9e0a15f52b"
+          },
+          "error": null,
+          "createdAt": "2026-10-25T13:34:30.242157Z",
+          "finishedAt": "2026-10-25T13:34:30.242157Z"
+        }
+      }
+    },
+    {
+      "path": "/biz/print/exports/EX4473770ac7e54f7692e86f640f14",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "code": 0,
+        "msg": "success",
+        "data": {
+          "exportNo": "EX4473770ac7e54f7692e86f640f14",
+          "sourceType": "SIMULATION",
+          "sourceNo": "SMa2beffcd322e439fb112f26f4d22",
+          "status": "READY",
+          "fileSize": 17779,
+          "pageCount": 1,
+          "expiresAt": "2026-11-01T13:34:30.238Z",
+          "revision": 2
+        }
+      }
+    },
+    {
+      "path": "/biz/print/orders/PRINT-BROWSER-ORDER/summary?storeNo=ST261025ZPZS68XYDR",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "code": 0,
+        "msg": "success",
+        "data": {
+          "generationState": "NO_PRINT_REQUIRED",
+          "expectedCount": 0,
+          "confirmedCount": 0,
+          "replacementResolvedCount": 0,
+          "unknownCount": 0,
+          "failedCount": 0,
+          "exportCount": 0,
+          "latestExportNo": null,
+          "latestExportStatus": null,
+          "asOf": "2026-10-25T13:36:22.920268Z",
+          "sourceFacts": []
+        }
+      }
+    },
+    {
+      "path": "/biz/print/simulations/SMa2beffcd322e439fb112f26f4d22",
+      "method": "GET",
+      "status": 404,
+      "result": {
+        "code": 10404,
+        "msg": "数据不存在",
+        "data": {
+          "key": "print.notFound",
+          "retryable": false,
+          "traceNo": "d3980d3d-ef51-48e1-95dd-3a85813a2f59",
+          "conflicts": {
+            "canonicalJson": "{}",
+            "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        }
+      }
+    },
+    {
+      "path": "/biz/print/exports/EX4473770ac7e54f7692e86f640f14",
+      "method": "GET",
+      "status": 404,
+      "result": {
+        "code": 10404,
+        "msg": "数据不存在",
+        "data": {
+          "key": "print.notFound",
+          "retryable": false,
+          "traceNo": "62b31cce-4ed4-4f8e-9b84-490afd43aa83",
+          "conflicts": {
+            "canonicalJson": "{}",
+            "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        }
+      }
+    },
+    {
+      "path": "/biz/print/exports/EX4473770ac7e54f7692e86f640f14/download-grants",
+      "method": "POST",
+      "status": 404,
+      "result": {
+        "code": 10404,
+        "msg": "数据不存在",
+        "data": {
+          "key": "print.notFound",
+          "retryable": false,
+          "traceNo": "812a66cd-dcd0-49ee-b3e2-a4a297853b3d",
+          "conflicts": {
+            "canonicalJson": "{}",
+            "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        }
+      }
+    },
+    {
+      "path": "/biz/print/simulations",
+      "method": "POST",
+      "status": 403,
+      "result": {
+        "code": 10403,
+        "msg": "没有操作权限",
+        "data": {
+          "key": "print.forbidden",
+          "retryable": false,
+          "traceNo": "5234212e-9eea-4ab6-bb30-160e7127c9ba",
+          "conflicts": {
+            "canonicalJson": "{}",
+            "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+          }
+        }
+      }
+    },
+    {
+      "path": "/biz/context",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "code": 0,
+        "msg": "success",
+        "data": {
+          "merchantNo": "M261025VCD4V9481J",
+          "currentStoreNo": "ST261025NVAWB6F3SF",
+          "owner": false,
+          "storeNos": [
+            "ST261025NVAWB6F3SF"
+          ],
+          "pickupNos": [],
+          "groupNos": [],
+          "staffRoles": [
+            "COURIER"
+          ],
+          "perms": [
+            "biz:ship",
+            "biz:order:view"
+          ],
+          "categoryCodes": [],
+          "switches": {
+            "categoryGate": false,
+            "stockByInventory": false
+          }
+        }
+      }
+    },
+    {
+      "path": "/biz/print/printers?storeNo=ST261025NVAWB6F3SF",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "code": 70006,
+        "msg": "这一步需要「查看打印任务」的权限，你在这家店的角色没有——让店主给你加个角色",
+        "data": null
+      }
+    },
+    {
+      "path": "/biz/print/templates?storeNo=ST261025NVAWB6F3SF",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "code": 70006,
+        "msg": "这一步需要「配置打印模板与路由」的权限，你在这家店的角色没有——让店主给你加个角色",
+        "data": null
+      }
+    },
+    {
+      "path": "/biz/print/simulations/SMa2beffcd322e439fb112f26f4d22",
+      "method": "GET",
+      "status": 200,
+      "result": {
+        "code": 70006,
+        "msg": "这一步需要「模拟打印」的权限，你在这家店的角色没有——让店主给你加个角色",
+        "data": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "status": "PASS_WITH_EXPLICIT_SCOPE_LIMITS",
+  "baseCommit": "ba44c7f0c7339d9ca8f3e0ff620b2536c4697bdb",
+  "branch": "codex/print-operations-and-sources",
+  "validationSequence": [
+    "all product and test code",
+    "unified compile",
+    "concentrated tests; fix, recompile and scoped regressions"
+  ],
+  "backend": {
+    "classes": 29,
+    "tests": 154,
+    "passed": 153,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skipReason": "opt-in browser server tested separately",
+    "fullRepositorySuiteRerun": false
+  },
+  "isolatedBrowserServer": {
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "status": "PASS"
+  },
+  "frontend": {
+    "ops": {
+      "files": 86,
+      "passed": 881,
+      "typecheck": "PASS",
+      "productionBuild": "PASS_WEBPACK",
+      "prodArtifactAssertion": "PASS"
+    },
+    "merchant": {
+      "files": 65,
+      "passed": 358,
+      "typecheck": "PASS",
+      "h5Build": "PASS"
+    }
+  },
+  "nativeMysql": {
+    "version": "9.7.2",
+    "network": "none",
+    "migrations": [
+      "V587__business_print_facts.sql",
+      "V588__print_ops_navigation.sql"
+    ],
+    "checks": [
+      "64-character frozen fact refs and JSON",
+      "ready ops menu unique on replay",
+      "super admin point unique on replay",
+      "custom role unchanged"
+    ],
+    "limits": [
+      "focused new migrations with minimal real table fixtures, not complete application Flyway upgrade"
+    ],
+    "status": "PASS"
+  },
+  "review": {
+    "source": "PASS_STATIC",
+    "ops": "PASS_STATIC",
+    "merchant": "PASS_STATIC",
+    "unresolvedImportant": 0
+  },
+  "guards": {
+    "api-guards": {
+      "status": "PASS",
+      "logSha256": "bbafc4a788269e9acf519fd9668f1dd2299105414a832a08283b1c7df39f47ac"
+    },
+    "data-guards": {
+      "status": "PASS",
+      "logSha256": "6cbaa22b63ebf38748ebb6e0dab6dd61aa89bf36bf1e21a356141c604d413d6c"
+    },
+    "ui-guards": {
+      "status": "PASS",
+      "logSha256": "9bf344c62355ae1e9f4506359b349e66bf8c232f382cc0ac8c27ae5726ae59dc"
+    },
+    "generated-check": {
+      "status": "PASS",
+      "logSha256": "3c8fc86e2adc9a49711c7effd7fcbaa5238e92f4eece9971c3cb45cdd4feac4f"
+    }
+  },
+  "notValidated": [
+    "real Feie account/device",
+    "Windows printer and 58/80mm physical output",
+    "private COS deployment",
+    "production enablement"
+  ],
+  "closedSources": [
+    "CASHIER_RECEIPT: missing authoritative POS settlement owner",
+    "legacy ordinary cash refund: asynchronous benefits not a reliable closed owner contract",
+    "historical recharge without frozen after-balance",
+    "refund monetary composition or original payment evidence not satisfying catalog"
+  ],
+  "buildEnvironmentNotes": [
+    "existing local UI links restored using scripts/link-ui.mjs",
+    "Turbopack cannot follow external worktree dependency link; documented webpack build used",
+    "ops typecheck run after build to avoid .next generation race",
+    "no app production CORS or guard baseline widened"
+  ],
+  "logs": {
+    "backend-compile-final.log": {
+      "sha256": "b7cbe353fa89fb94b3f170ae000ffb850ac0a4c3a2a2328c5c5346271a55a89f"
+    },
+    "backend-focused-final-all.log": {
+      "sha256": "35dc6e4c01b5fd0d3ef864c56a76cf608e7ac8a453ddd437693e1e1dd65edd0c"
+    },
+    "browser-real-backend-final.log": {
+      "sha256": "14326e5154c7902c67af7d845c40304532c710e611886f01e60f6b23e8596335"
+    },
+    "ops-typecheck.log": {
+      "sha256": "f87c8c938039efe314d49f052253256902028f65cf8b5993408f753fcea6d207"
+    },
+    "ops-build-webpack.log": {
+      "sha256": "dcdc292616309aa7a5412956912728433d5802c523ac7899cf21e3dedc5b4dff"
+    },
+    "ops-tests-final.log": {
+      "sha256": "492dacf1aaa2c0ab21371adfd89766430d0abad958876a44be8450bfe4f5a593"
+    },
+    "ops-prod-assert.log": {
+      "sha256": "719ca895784a3fd5821b8885034d4d1a8c68730282cca3c9f69797675220475d"
+    },
+    "merchant-typecheck-final.log": {
+      "sha256": "946417da732dd7fc51054196b1e672365097df7c14324668d9377d98d94fc8a1"
+    },
+    "merchant-build-final.log": {
+      "sha256": "8469c9104dbdb5738feb794863d5e76395d6d8640c092c0558e5593dff023245"
+    },
+    "merchant-tests-final.log": {
+      "sha256": "1bbf0753d7172d474fff189e4229697c64e3d8ffd8cc56e5fcb459d32d448620"
+    },
+    "mysql-migrations.log": {
+      "sha256": "98bfa6848276059148d093f4520fc4adf895c1cc5f0c475e29be12afc27921f2"
+    },
+    "generation-final.log": {
+      "sha256": "2edb54d12b901d930b45d3b27709ccb767d44ae803c27fa6fc3ac4d4433ad833"
+    },
+    "doc-index-final.log": {
+      "sha256": "5fa1242b6ed652b0e0328c26377efc1e0bce2db6b2e7bd7345f08c3853a07d08"
+    }
+  },
+  "evidence": {
+    "source-review.md": {
+      "bytes": 7525,
+      "sha256": "d2155f2b7df2bca5a975b2bcc241f531bd94d6ed9ffad72ea36ad9f9edf7e8b0"
+    },
+    "ops-real-http.json": {
+      "bytes": 1109,
+      "sha256": "e8e30675459519b3c03fea83edf219593c6a7ca4c04b6c1e7f3d6bd33c4ffe32"
+    },
+    "merchant-review.md": {
+      "bytes": 5273,
+      "sha256": "132380e13f35e91121e8ac21dc30920d77be5e41725b273e975ca02e9781794b"
+    },
+    "merchant-real-http.json": {
+      "bytes": 9788,
+      "sha256": "d36d7bf9ee9da77c3af3eb1b5b22c544c7e4b6b1c6a68e82d8a282ae6ecb77ed"
+    },
+    "operations-review.md": {
+      "bytes": 5214,
+      "sha256": "aa5518bf3656fbf830977652992305f0296cc8e2279c1cce16d7df7156f6cf0a"
+    },
+    "merchant-contract-requests.jsonl": {
+      "bytes": 13962,
+      "sha256": "ae4fcc439ee3de74d34691083f5a1f1d1831241deee82d0c3a4b1e0c3254881c"
+    },
+    "browser-results.md": {
+      "bytes": 2132,
+      "sha256": "a165e6ebe227475d5f35267e3fadcfbda8dedf044bf747e57bb1c160ea4b42e7"
+    },
+    "isolated-order-simulation.pdf": {
+      "bytes": 17565,
+      "sha256": "bfa821b763204379705d9e4c004b5c3cd4d5acaab8539787a448668511c81a40"
+    }
+  }
+}
