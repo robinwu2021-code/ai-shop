@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 33 个权限点 × 321 个受控端点**。
+统计：**6 个角色 × 42 个权限点 × 384 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,26 +16,31 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STOCK` | 改库存（含门店库存） | 50 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `STOCK` | 改库存（含门店库存） | 51 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 32 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
+| `PRINT_READ` | 角色 → 权限码 | 15 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_CONFIG` | 角色 → 权限码 | 15 | ✅ | ✅ | — | — | — | — |
+| `PRINT_RESOLVE` | 角色 → 权限码 | 14 | ✅ | ✅ | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 7 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
+| `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
+| `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
+| `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 4 | ✅ | — | — | — | — | — |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
-| `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 3 | ✅ | — | — | — | — | — |
-| `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 3 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `PRINT_EXPORT` | 角色 → 权限码 | 3 | ✅ | ✅ | ✅ | — | — | — |
 | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
 | `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read, draf | 2 | ✅ | — | — | — | — | — |
 | `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
@@ -44,13 +49,17 @@
 | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `PRINT_REPRINT` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_SIMULATE` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
+| `PRINT_SUBMIT` | 角色 → 权限码 | 1 | ✅ | ✅ | ✅ | — | — | — |
+| `PRINT_EXTRA` | 角色 → 权限码 | 1 | ✅ | ✅ | — | — | — | — |
 | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
 | `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 22 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`SV_CONSUME_CREATE`、`ENT_READ`、`PRICING_CONFIG_READ`、`PRICING_CONFIG_PUBLISH`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 22 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -81,6 +90,7 @@
 - `/biz/inventory/item-by-sku`
 - `/biz/inventory/items/by-barcode`
 - `/biz/inventory/items/{itemId}`
+- `/biz/inventory/items/{item}/valuation`
 - `/biz/inventory/ledger`
 - `/biz/inventory/locations`
 - `/biz/inventory/outbounds`
@@ -306,6 +316,59 @@
 - `/biz/stores/{storeNo}/fulfillment`
 - `/biz/stores/{storeNo}/fulfillment/{channel}/impact`
 
+### `PRINT_READ`　（OWNER、MANAGER、CLERK）
+
+- `/biz/print/adapters`
+- `/biz/print/batches/{batchNo}`
+- `/biz/print/changes`
+- `/biz/print/health`
+- `/biz/print/jobs`
+- `/biz/print/jobs/{jobNo}`
+- `/biz/print/jobs/{jobNo}/attempts`
+- `/biz/print/jobs/{jobNo}/document`
+- `/biz/print/operations/{operationNo}`
+- `/biz/print/orders/{orderNo}/summary`
+- `/biz/print/printers`
+- `/biz/print/printers/{printerNo}`
+- `/biz/print/requests`
+- `/biz/print/requests/{requestNo}`
+- `/biz/print/scenes`
+
+### `PRINT_CONFIG`　（OWNER、MANAGER）
+
+- `/biz/print/route-versions/{versionNo}/dry-run`
+- `/biz/print/route-versions/{versionNo}/publish`
+- `/biz/print/routes`
+- `/biz/print/routes/{routeNo}/versions`
+- `/biz/print/scene-policies`
+- `/biz/print/scene-policies/{scene}`
+- `/biz/print/scene-policies/{scene}/versions`
+- `/biz/print/scenes/{scene}/examples`
+- `/biz/print/scenes/{scene}/fields`
+- `/biz/print/template-resolutions/preview`
+- `/biz/print/template-versions/{versionNo}`
+- `/biz/print/template-versions/{versionNo}/preview`
+- `/biz/print/template-versions/{versionNo}/publish`
+- `/biz/print/templates`
+- `/biz/print/templates/{templateNo}/versions`
+
+### `PRINT_RESOLVE`　（OWNER、MANAGER）
+
+- `/biz/print/action-logs`
+- `/biz/print/agents/{agentNo}/credential-rotations`
+- `/biz/print/agents/{agentNo}/revocations`
+- `/biz/print/incidents`
+- `/biz/print/incidents/{incidentNo}/acknowledgements`
+- `/biz/print/jobs/{jobNo}/manual-confirmations`
+- `/biz/print/jobs/{jobNo}/receipts`
+- `/biz/print/jobs/{jobNo}/result-queries`
+- `/biz/print/jobs/{jobNo}/retries`
+- `/biz/print/jobs/{jobNo}/stale-releases`
+- `/biz/print/printers/{printerNo}/connection-changes`
+- `/biz/print/printers/{printerNo}/credential-rotations`
+- `/biz/print/printers/{printerNo}/uncertainty-resolutions`
+- `/biz/print/requests/{requestNo}/generation-retries`
+
 ### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
 
 - `/biz/order/{subOrderNo}/delivered`
@@ -372,6 +435,23 @@
 - `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/accounts`
 - `/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records`
 
+### `PRINT_DEVICE`　（OWNER、MANAGER）
+
+- `/biz/print/agents`
+- `/biz/print/agents/{agentNo}`
+- `/biz/print/agents/{agentNo}/enrollments`
+- `/biz/print/printers/{printerNo}/probes`
+- `/biz/print/printers/{printerNo}/status-changes`
+- `/biz/print/printers/{printerNo}/test-jobs`
+
+### `PRICING_CONFIG_PUBLISH`　（OWNER）
+
+- `/biz/pricing-configs/initialize`
+- `/biz/pricing-configs/{no}/publish`
+- `/biz/pricing-configs/{no}/rollback`
+- `/biz/pricing/fee-rules/{ruleNo}`
+- `/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply`
+
 ### `SV_CONSUME_CREATE`　（OWNER）
 
 - `/biz/stored-value/consumptions`
@@ -379,6 +459,13 @@
 - `/biz/stored-value/consumptions/orders/{orderNo}/cancel`
 - `/biz/stored-value/consumptions/preview`
 - `/biz/stored-value/consumptions/resolve`
+
+### `PRICING_CONFIG_READ`　（OWNER）
+
+- `/biz/pricing-configs/{no}/draft`
+- `/biz/pricing-configs/{no}/preview`
+- `/biz/pricing-configs/{no}/revisions/{revisionNo}`
+- `/biz/pricing/fee-scopes/{scopeNo}/adjustments`
 
 ### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
 
@@ -394,18 +481,6 @@
 - `/biz/entitlement-uses/{operationNo}`
 - `/biz/entitlements/{instanceNo}`
 
-### `PRICING_CONFIG_READ`　（OWNER）
-
-- `/biz/pricing-configs/{no}/draft`
-- `/biz/pricing-configs/{no}/preview`
-- `/biz/pricing-configs/{no}/revisions/{revisionNo}`
-
-### `PRICING_CONFIG_PUBLISH`　（OWNER）
-
-- `/biz/pricing-configs/initialize`
-- `/biz/pricing-configs/{no}/publish`
-- `/biz/pricing-configs/{no}/rollback`
-
 ### `REVIEW`　（OWNER、MANAGER、CS）
 
 - `/biz/review`
@@ -417,6 +492,12 @@
 - `/biz/entitlement-uses`
 - `/biz/entitlement-uses/preview`
 - `/biz/entitlement-uses/{operationNo}/cancel`
+
+### `PRINT_EXPORT`　（OWNER、MANAGER、CLERK）
+
+- `/biz/print/exports`
+- `/biz/print/exports/{exportNo}`
+- `/biz/print/exports/{exportNo}/download-grants`
 
 ### `PRICING_TAX_UPDATE`　（OWNER）
 
@@ -458,6 +539,16 @@
 - `/biz/entitlement-templates/{templateNo}/publish`
 - `/biz/entitlement-templates/{templateNo}/status`
 
+### `PRINT_REPRINT`　（OWNER、MANAGER、CLERK）
+
+- `/biz/print/jobs/{jobNo}/reprints`
+- `/biz/print/reprints`
+
+### `PRINT_SIMULATE`　（OWNER、MANAGER、CLERK）
+
+- `/biz/print/simulations`
+- `/biz/print/simulations/{simulationNo}`
+
 ### `ENT_ISSUE`　（OWNER）
 
 - `/biz/entitlement-issue-batches`
@@ -465,6 +556,14 @@
 ### `ENT_ISSUE_MANAGE`　（OWNER）
 
 - `/biz/entitlement-templates/{templateNo}/issue-policy`
+
+### `PRINT_SUBMIT`　（OWNER、MANAGER、CLERK）
+
+- `/biz/print/jobs/{jobNo}/cancellations`
+
+### `PRINT_EXTRA`　（OWNER、MANAGER）
+
+- `/biz/print/jobs/{jobNo}/extra-copies`
 
 > **空角色 = 零权限**，不是「零权限 = 全放行」——`BizPerms.can` 对空集合直接返回 false。
 

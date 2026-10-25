@@ -1,0 +1,93 @@
+{
+  "classes": [
+    {
+      "class": "ai.neargo.shop.trade.PricingFeeScopePersistenceTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-push-backend-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.brand.BrandFinancialChangeTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-push-backend-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.merchant.port.MemberOperatingScopeLockTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-push-backend-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.arch.ArchitectureTest",
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-push-backend-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.arch.BizEndpointPermTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-push-backend-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.merchantbridge.BrandFinancialChangeCoordinatorTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-push-backend-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.portal.biz.StoredValueFinanceAccessTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-push-backend-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.scenario.BrandStoredValueRedemptionTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-protocol-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.spi.storedvalue.StoredValueWalletsCompatibilityTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-protocol-focused.log"
+    },
+    {
+      "class": "ai.neargo.shop.unit.EntitlementServiceSnapshotJsonTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "/tmp/print-snapshot-policy-focused.log"
+    }
+  ],
+  "totals": {
+    "tests": 54,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "initial_real_gate": "/tmp/print-push-backend-head-gate.log",
+  "initial_protocol_red": "/tmp/print-protocol-red.log",
+  "note": "Latest focused result per class; original failed scene rerun after targeted contract fix. Full normal push gate remains parent task."
+}

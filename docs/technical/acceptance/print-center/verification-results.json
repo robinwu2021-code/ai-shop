@@ -1,0 +1,142 @@
+{
+  "date": "2026-10-23",
+  "status": "SCOPED_SOFTWARE_PASS_FULL_REPOSITORY_FAIL",
+  "executionOrder": [
+    "A all implementation and test sources",
+    "B unified compilation with test execution skipped",
+    "C centralized acceptance and necessary fixes"
+  ],
+  "backendPackage": {
+    "status": "PASS",
+    "modules": 30,
+    "log": "/tmp/print-delivery-build.log",
+    "testsExecuted": false
+  },
+  "printTests": {
+    "status": "PASS",
+    "tests": 54,
+    "classes": [
+      {
+        "name": "ai.neargo.shop.print.PrintFontInitializationTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.PrintStatePolicyTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.agent.AgentDurabilityTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.channel.PrintDatabaseAcceptanceTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.print.channel.ReceiptSoftwareAcceptanceTest",
+        "tests": 26,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.scenario.PrintEnabledAssemblyTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0
+      },
+      {
+        "name": "ai.neargo.shop.trade.order.printing.OrderPrintFactRecorderTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0
+      }
+    ]
+  },
+  "nativeMysql": {
+    "status": "PASS",
+    "tests": 7,
+    "evidence": "native-mysql-results.json"
+  },
+  "frontend": {
+    "typeCheck": "PASS",
+    "h5Build": "PASS",
+    "testFiles": 48,
+    "tests": 266,
+    "status": "PASS"
+  },
+  "schemaGenerator": {
+    "status": "PASS",
+    "tests": 2
+  },
+  "uiSmoke": {
+    "status": "PASS",
+    "scope": "Three routes and explicit mock-mode protection only; no live backend interaction",
+    "evidence": "ui-smoke-results.json"
+  },
+  "pdf": {
+    "status": "PASS",
+    "samples": 40,
+    "manifest": "pdf-manifest.json",
+    "visualReview": "All 20 scene 58mm contact sheets; final ORDER_PAID 58/80mm samples rendered and inspected"
+  },
+  "fullRepository": {
+    "status": "FAIL",
+    "completedModules": 29,
+    "failedModule": "shop-app",
+    "reportedTests": 1507,
+    "failures": 4,
+    "errors": 53,
+    "skipped": 19,
+    "abortedBy": "OutOfMemoryError: Java heap space",
+    "log": "/tmp/print-whole-final.log",
+    "notes": [
+      "The run did not finish all application tests. Counts are reported by Surefire before fork termination.",
+      "ShippingRefundSnapshotFlowTest failures also reproduce in focused execution.",
+      "Points policy throws POINTS_STORE_POLICY_UNSUPPORTED in existing implementation; payment evidence conflicts also appear. Not all errors have been classified as unrelated.",
+      "Unrelated financial policy and existing failing assertions were not weakened to obtain a green result."
+    ]
+  },
+  "notRun": [
+    "Feie real account and physical 58/80mm printers",
+    "Windows installation, DPAPI and real driver/spool output",
+    "Private COS account/bucket deployment"
+  ],
+  "productionScenes": [
+    "ORDER_PAID"
+  ],
+  "templateOnlyScenes": 19,
+  "artifacts": [
+    {
+      "file": "backend/shop-app/target/shop-app-0.1.0-SNAPSHOT.jar",
+      "size": 112174396,
+      "sha256": "e6fe95d9f5fb1e57093159b84ca06bc7480faa457d4a6cfa0e937eda98935c5a"
+    },
+    {
+      "file": "backend/print/print-agent/target/print-agent-0.1.0-SNAPSHOT.jar",
+      "size": 6373330,
+      "sha256": "c4b5e43d332baa074af24651af3804c69ce47f5d69ef94354c21517d049c3bd4"
+    }
+  ],
+  "integration": "No commit, push, merge, deployment or production migration performed",
+  "precommitIsolatedSnapshot": {
+    "packageStatus": "PASS",
+    "reactorModules": 32,
+    "packageSeconds": 45.016,
+    "printTests": 47,
+    "printTestStatus": "PASS",
+    "testSeconds": 12.701,
+    "scope": "Only print feature changes over HEAD; unrelated electronics retirement and marketing changes excluded",
+    "logs": [
+      "/tmp/print-staged-build.log",
+      "/tmp/print-staged-tests.log"
+    ]
+  }
+}

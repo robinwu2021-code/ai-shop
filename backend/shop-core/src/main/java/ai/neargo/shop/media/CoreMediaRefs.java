@@ -19,6 +19,8 @@ public class CoreMediaRefs implements MediaRefSource {
     @Override
     public List<MediaRefColumn> columns() {
         return List.of(
+                // A brand keeps its uploaded logo even when no store or product reuses it.
+                of("mch_brand", "logo", "品牌 · 标识图片", "brand_no"),
                 // —— 商品 ——
                 of("prd_goods", "cover", "商品 · 主图", "goods_no"),
                 of("prd_goods", "images", "商品 · 图集", "goods_no"),

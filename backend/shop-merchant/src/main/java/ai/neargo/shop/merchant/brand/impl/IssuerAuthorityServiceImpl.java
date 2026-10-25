@@ -114,8 +114,12 @@ public class IssuerAuthorityServiceImpl implements IssuerAuthorityService {
             var store=db.one("SELECT s.entity_no FROM mch_store s JOIN mch_entity e ON e.tenant_no=s.tenant_no AND e.entity_no=s.entity_no WHERE s.tenant_no=? AND s.store_no=? AND s.status='ACTIVE' AND s.deleted=0 AND e.status='ACTIVE' AND e.deleted=0",actor.tenantNo(),no);
             if(store==null) throw BizException.of(ErrorCode.NOT_FOUND);
             entity=str(store,"entity_no");
-        } else if(db.one("SELECT brand_no FROM mch_brand WHERE tenant_no=? AND management_no=? AND brand_no=? AND status IN ('DRAFT','ACTIVE') AND deleted=0",actor.tenantNo(),management,no)==null)
-            throw BizException.of(ErrorCode.NOT_FOUND);
+        } else {
+            // Stopping a brand blocks configuration, not authorized inspection of its existing issuer.
+            boolean readOnly="sv.issuer.read".equals(permission);
+            if(db.one("SELECT brand_no FROM mch_brand WHERE tenant_no=? AND management_no=? AND brand_no=? AND deleted=0 AND (status IN ('DRAFT','ACTIVE') OR (?=true AND status='INACTIVE'))",actor.tenantNo(),management,no,readOnly)==null)
+                throw BizException.of(ErrorCode.NOT_FOUND);
+        }
         return new AuthorizedScope(actor.tenantNo(),actor.actorKey(),management,type,no,
                 num(scopes.space(actor,management),"auth_revision"),entity,entities,routes);
     }

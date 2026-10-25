@@ -3,10 +3,10 @@ import './component-setup';
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 import {mount,flushPromises} from '@vue/test-utils';
 import {setActivePinia,createPinia} from 'pinia';
-const m=vi.hoisted(()=>({load:(_q:Record<string,string>)=>{},show:()=>{},context:vi.fn(),bill:vi.fn(),actions:vi.fn(),capability:vi.fn(),items:vi.fn(),payments:vi.fn(),events:vi.fn(),register:vi.fn(),resolution:vi.fn(),get:vi.fn(),post:vi.fn(),summary:vi.fn(),stores:vi.fn(),resources:vi.fn(),bills:vi.fn()}));
+const m=vi.hoisted(()=>({load:(_q:Record<string,string>)=>{},show:()=>{},context:vi.fn(),bill:vi.fn(),actions:vi.fn(),capability:vi.fn(),items:vi.fn(),payments:vi.fn(),events:vi.fn(),register:vi.fn(),resolution:vi.fn(),get:vi.fn(),post:vi.fn(),summary:vi.fn(),stores:vi.fn(),resources:vi.fn(),bills:vi.fn(),generate:vi.fn()}));
 vi.mock('@dcloudio/uni-app',()=>({onLoad:(f:typeof m.load)=>{m.load=f},onShow:(f:typeof m.show)=>{m.show=f},onHide:()=>{}}));
 vi.mock('vue-i18n',()=>({useI18n:()=>({t:(s:string)=>s})}));
-vi.mock('@/api',()=>({api:{mManagementContext:m.context,mSvBrandSummary:m.summary,mSvBrandStoreBreakdown:m.stores,mSvFinanceResources:m.resources,mSvSettlementBills:m.bills,mSvSettlementBill:m.bill,mSvSettlementActions:m.actions,mSvFinanceCapability:m.capability,mSvSettlementItems:m.items,mSvSettlementPayments:m.payments,mSvSettlementEvents:m.events,mSvSettlementRegister:m.register,mSvSettlementPaymentResolution:m.resolution}}));
+vi.mock('@/api',()=>({api:{mManagementContext:m.context,mSvBrandSummary:m.summary,mSvBrandStoreBreakdown:m.stores,mSvFinanceResources:m.resources,mSvSettlementBills:m.bills,mSvSettlementGenerate:m.generate,mSvSettlementBill:m.bill,mSvSettlementActions:m.actions,mSvFinanceCapability:m.capability,mSvSettlementItems:m.items,mSvSettlementPayments:m.payments,mSvSettlementEvents:m.events,mSvSettlementRegister:m.register,mSvSettlementPaymentResolution:m.resolution}}));
 vi.mock('@shared/net/http-client',async()=>({...await vi.importActual('@shared/net/http-client'),http:{get:m.get,post:m.post}}));
 import SummaryPage from '@/pages/stored-value-summary/index.vue';
 import ListPage from '@/pages/stored-value-settlement/index.vue';
@@ -39,4 +39,38 @@ it('shows the actual report failure instead of claiming every failure is a netwo
 
 it('shows an unavailable report as an empty state without fabricated zero balances or a network warning',async()=>{
  m.summary.mockRejectedValueOnce(new ApiError(10404,'Not found'));const w=mount(SummaryPage,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',b:'B1'});await flushPromises();expect(w.text()).toContain('svFinance.noReportData');expect(w.find('.sh-failed').exists()).toBe(false);expect(w.text()).not.toContain('common.loadFailedTip');expect(m.stores).not.toHaveBeenCalled();w.unmount();
+});
+
+it('does not offer or submit generation for a read-only issuer even when settlement is ready',async()=>{
+ m.bills.mockResolvedValue(empty);m.resources.mockResolvedValue([{issuerNo:'I1',name:'One',currency:'CNY',canGenerate:false}]);const w=mount(ListPage,{global:{mocks:{$t:(k:string)=>k}}});m.load({m:'M1',issuer:'I1'});m.show();await flushPromises();expect(w.find('[data-testid="finance-generate-open"]').exists()).toBe(false);const vm=w.vm as unknown as {generate:()=>Promise<void>;from:string;to:string};vm.from='2026-09-01';vm.to='2026-10-01';await vm.generate();expect(m.generate).not.toHaveBeenCalled();w.unmount();
+});
+it('offers generation only when the selected issuer has current generate permission and readiness',async()=>{
+ m.bills.mockResolvedValue(empty);m.resources.mockResolvedValue([{issuerNo:'I1',name:'One',currency:'CNY',canGenerate:true}]);const w=mount(ListPage,{global:{mocks:{$t:(k:string)=>k}}});m.load({m:'M1',issuer:'I1'});m.show();await flushPromises();expect(w.find('[data-testid="finance-generate-open"]').exists()).toBe(true);m.resources.mockResolvedValue([{issuerNo:'I1',name:'One',currency:'CNY',canGenerate:false}]);m.show();await flushPromises();expect(w.find('[data-testid="finance-generate-open"]').exists()).toBe(false);w.unmount();
+});
+it('retains an unknown original generation but does not expose or retry it after permission revocation',async()=>{
+ m.bills.mockResolvedValue(empty);const original={body:{managementNo:'M1',issuerNo:'I1',periodFrom:'2026-09-01',periodTo:'2026-10-01',currency:'CNY'},key:'ORIGINAL'};uni.setStorageSync('sv-generation:MCH%3AA:M1',JSON.stringify(original));m.resources.mockResolvedValue([{issuerNo:'I1',name:'One',currency:'CNY',canGenerate:false}]);const w=mount(ListPage,{global:{mocks:{$t:(k:string)=>k}}});m.load({m:'M1'});m.show();await flushPromises();expect(w.text()).not.toContain('svGov.unknown');const vm=w.vm as unknown as {generate:()=>Promise<void>};await vm.generate();expect(m.generate).not.toHaveBeenCalled();expect(uni.getStorageSync('sv-generation:MCH%3AA:M1')).toBe(JSON.stringify(original));w.unmount();
+});
+
+it('can recover the exact unknown generation with retained permission when new settlement is disabled',async()=>{
+ m.bills.mockResolvedValue(empty);m.capability.mockResolvedValue({settlementReady:false});m.resources.mockResolvedValue([{issuerNo:'I1',name:'One',currency:'CNY',canGenerate:true}]);const original={body:{managementNo:'M1',issuerNo:'I1',periodFrom:'2026-09-01',periodTo:'2026-10-01',currency:'CNY'},key:'ORIGINAL'};uni.setStorageSync('sv-generation:MCH%3AA:M1',JSON.stringify(original));m.generate.mockResolvedValue({bills:[],sourceWatermark:1});const w=mount(ListPage,{global:{mocks:{$t:(k:string)=>k}}});m.load({m:'M1'});m.show();await flushPromises();expect(w.find('[data-testid="finance-generate-open"]').exists()).toBe(false);expect(w.text()).toContain('svGov.unknown');const vm=w.vm as unknown as {generate:()=>Promise<void>};await vm.generate();expect(m.generate).toHaveBeenCalledWith(original.body,original.key);w.unmount();
+});
+
+it('clears prior audit records and blocks event pagination after audit permission is revoked',async()=>{
+ m.actions.mockResolvedValue({payerActions:['sv.settlement.audit'],payeeActions:[]});
+ m.events.mockResolvedValue({records:[{eventNo:'EV1',type:'ADJUSTED',reason:'AUDIT-ONLY-REASON',occurredAt:'2026-10-25T00:00:00Z'}],nextCursor:'EVENT-CURSOR',hasMore:true});
+ const w=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',bill:'B1'});await flushPromises();
+ const vm=w.vm as unknown as {tab:string;events:unknown[];eventNext:string|null;load:()=>Promise<void>;more:(section:'events')=>Promise<void>};
+ vm.tab='events';await flushPromises();expect(w.text()).toContain('AUDIT-ONLY-REASON');
+ m.actions.mockResolvedValue({payerActions:[],payeeActions:[]});await vm.load();await flushPromises();
+ expect(vm.events).toEqual([]);expect(vm.eventNext).toBeNull();expect(vm.tab).toBe('items');expect(w.text()).not.toContain('AUDIT-ONLY-REASON');
+ await vm.more('events');expect(m.events).toHaveBeenCalledOnce();w.unmount();
+});
+it('discards cached audit data when refreshing current authority fails',async()=>{
+ m.actions.mockResolvedValue({payerActions:['sv.settlement.audit'],payeeActions:[]});
+ m.events.mockResolvedValue({records:[{eventNo:'EV1',type:'ADJUSTED',reason:'AUDIT-ONLY-REASON',occurredAt:'2026-10-25T00:00:00Z'}],nextCursor:'EVENT-CURSOR',hasMore:true});
+ const w=mount(Page,{global:{mocks:{$t:(key:string)=>key}}});m.load({m:'M1',bill:'B1'});await flushPromises();
+ const vm=w.vm as unknown as {tab:string;events:unknown[];eventNext:string|null;load:()=>Promise<void>;more:(section:'events')=>Promise<void>};
+ vm.tab='events';m.actions.mockRejectedValue(new Error('authority unavailable'));await vm.load();await flushPromises();
+ expect(vm.events).toEqual([]);expect(vm.eventNext).toBeNull();expect(w.text()).not.toContain('AUDIT-ONLY-REASON');
+ await vm.more('events');expect(m.events).toHaveBeenCalledOnce();w.unmount();
 });

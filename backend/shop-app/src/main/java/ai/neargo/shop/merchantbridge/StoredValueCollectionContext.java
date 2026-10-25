@@ -1,11 +1,11 @@
 package ai.neargo.shop.merchantbridge;
+import ai.neargo.shop.spi.storedvalue.StoredValueCollections;
 import ai.neargo.shop.merchant.brand.StoredValueFinancialAuthorityService;
 import ai.neargo.shop.payclient.StoredValueFinanceAppService;
 import ai.neargo.shop.spi.storedvalue.StoredValueCollections.*;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions;
 import ai.neargo.shop.spi.storedvalue.StoredValueWallets.*;
 import org.springframework.stereotype.Component;
-import ai.neargo.shop.spi.storedvalue.StoredValueCollections;
 /** Resolve before a Pay financial command; actual MCH/USER subject kind is never inferred from a raw identifier. */
 @Component
 public class StoredValueCollectionContext {

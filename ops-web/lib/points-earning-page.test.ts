@@ -42,16 +42,37 @@ it("switching to no reward removes ratio input and saving uses zero basis points
  expect(mock.change.mock.calls[0][0]).toMatchObject({scope:"C",action:"SAVE",ratioBp:0,expectedRevision:0});
 });
 
+const earningEvent={id:1,eventNo:"E",kind:"EARN_GRANT",state:"MANUAL",attempt:12,nextAttempt:0,version:3,subOrderNo:"O",reason:"POINTS_POOL_INSUFFICIENT"};
+async function openEarningEvent(state:string,canRetry:boolean){
+ mock.events.mockResolvedValue({rows:[{...earningEvent,state}],next:1,hasMore:false});
+ await act(async()=>root.render(h(QueryClientProvider,{client:query},h(EarningEvents,{typeCode:"P",open:true,onOpenChange:()=>{},canRetry}))));
+ await vi.waitFor(async()=>{
+  await act(async()=>{});
+  expect([...host.querySelectorAll('button[role="button"]')].find(b=>b.querySelector("span")?.textContent==="E")).toBeDefined();
+ });
+ await act(async()=>[...host.querySelectorAll('button[role="button"]')].find(b=>b.querySelector("span")?.textContent==="E")!.click());
+}
 it("offers audited resubmission only for manually recoverable events",async()=>{
- const event={id:1,eventNo:"E",kind:"EARN_GRANT",state:"MANUAL",attempt:12,nextAttempt:0,version:3,subOrderNo:"O",reason:"POINTS_POOL_INSUFFICIENT"};
- mock.events.mockResolvedValue({rows:[event],next:1,hasMore:false});mock.retry.mockResolvedValue({requestId:"R"});
- await act(async()=>root.render(h(QueryClientProvider,{client:query},h(EarningEvents,{typeCode:"P",open:true,onOpenChange:()=>{},canRetry:true}))));
- await act(async()=>{await new Promise(r=>setTimeout(r,25));});
- await act(async()=>[...host.querySelectorAll("button")].find(b=>b.textContent?.includes("POINTS_POOL_INSUFFICIENT"))!.click());
+ mock.retry.mockResolvedValue({requestId:"R"});
+ await openEarningEvent("MANUAL",true);
+ expect(host.textContent).toContain("平台预算不足，请补足预算后重试");
+ expect([...host.querySelectorAll("dd")].map(dd=>dd.textContent)).toContain("POINTS_POOL_INSUFFICIENT");
  expect(host.textContent).toContain("重新提交处理");
  (host.querySelector('input[name="remark"]') as HTMLInputElement).value="预算已补足";
  await act(async()=>host.querySelector("form")!.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true})));
- expect(mock.retry.mock.calls[0][0]).toMatchObject({typeCode:"P",eventId:1,expectedVersion:3,reason:"预算已补足"});
+ expect(mock.retry).toHaveBeenCalledTimes(1);
+ expect(mock.retry.mock.calls[0][0]).toEqual({requestId:expect.any(String),typeCode:"P",eventId:1,expectedVersion:3,reason:"预算已补足"});
+ expect(mock.retry.mock.calls[0][0].requestId).not.toBe("");
+});
+it.each([
+ ["RETRY",true],
+ ["MANUAL",false],
+])("withholds audited resubmission for state %s and permission %s",async(state,canRetry)=>{
+ await openEarningEvent(state,canRetry);
+ expect(host.querySelector("form")).toBeNull();
+ expect(host.querySelector('input[name="remark"]')).toBeNull();
+ expect(host.textContent).not.toContain("重新提交处理");
+ expect(mock.retry).not.toHaveBeenCalled();
 });
 
 it("selects a separate points type for a new rule and submits its code",async()=>{

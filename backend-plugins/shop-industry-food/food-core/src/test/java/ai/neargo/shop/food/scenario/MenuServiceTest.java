@@ -91,7 +91,8 @@ class MenuServiceTest extends FoodWriteGuardFixture {
             }
             if ("true".equals(System.getenv("FOOD_TEST_DISPOSABLE"))) {
                 new ResourceDatabasePopulator(new ClassPathResource(
-                        "db/industry/food/V6__menu_composition.sql")).execute(f.source());
+                        "db/industry/food/V6__menu_composition.sql"), new ClassPathResource(
+                        "db/industry/food/V25__food_menu_item_prices.sql")).execute(f.source());
             } else {
                 f.sql().execute("CREATE TABLE fnb_menu_category (" + common + "menu_no VARCHAR(32),"
                         + "category_no VARCHAR(32) UNIQUE,name VARCHAR(64),sort_no INT)");

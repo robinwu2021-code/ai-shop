@@ -11,6 +11,7 @@ import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,20 +74,16 @@ class CampaignDiscountFlowTest {
     private CouponMapper couponMapper;
 
     /**
-     * 清掉本测试自己造的活动。
+     * 每条用例开始前和结束后清掉本测试自己造的活动。
      *
      * <p>不清的话测试之间会互相污染：同一个 H2 库里，前一条用例建的 RUNNING 满减
      * 对后一条仍然生效 —— 「未开始/已结束的活动不生效」那条因此会拿到上一条的 800。
-     * 按 name 精确删而不是清空整张表：别的用例（以及 DevSeeder）可能也有活动，
+     * 结束后也必须清理：仅在开始前清理会让最后一条用例的活动泄漏到下一个测试类。
+     * 按本类前缀（兼容旧名字）精确删而不是清空整张表：别的用例（以及 DevSeeder）可能也有活动，
      * 清空会把它们一起带走，那种失败最难查。
      */
-    /*
-     * 前后都清：只在 BeforeEach 清的话，本类**最后一条**用例建的 RUNNING 满减会留在共享的 H2 里，
-     * 按字母序排在后面的类（CheckoutOffers、Combo、CouponBest、M3、M6b、M7……）全部多减 800，
-     * 而报错指向的是它们自己 —— 正是上面注释说的那种「最难查」的失败。
-     */
     @org.junit.jupiter.api.BeforeEach
-    @org.junit.jupiter.api.AfterEach
+    @AfterEach
     void clearOwnCampaigns() {
         ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
                 campaignMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers

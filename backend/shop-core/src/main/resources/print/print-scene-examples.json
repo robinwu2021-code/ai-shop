@@ -1,0 +1,898 @@
+{
+  "schemaVersion": 1,
+  "status": "BUILTIN_V1",
+  "examples": [
+    {
+      "scene": "ORDER_PAID",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "邻里优选·示例店",
+        "timezone": "Asia/Shanghai",
+        "address": "示例路88号",
+        "phone": "021-12345678"
+      },
+      "source": {
+        "type": "SUB_ORDER",
+        "no": "SO202610230001",
+        "factNo": "PF202610230001",
+        "revision": "3",
+        "occurredAt": "2026-10-23T02:26:08Z"
+      },
+      "fields": {
+        "paidAmount": {
+          "minor": "8800",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "paymentNo": "PAY202610230001",
+        "orderNo": "O202610230001",
+        "orderCreatedAt": "2026-10-23T02:25:30Z",
+        "paidAt": "2026-10-23T02:26:08Z",
+        "fulfillmentLabel": "门店自提",
+        "pickupCode": "1028",
+        "goodsQuantity": "3",
+        "goodsAmount": {
+          "minor": "10000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "discountAmount": {
+          "minor": "1200",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "freightAmount": {
+          "minor": "0",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "orderRemark": "请准备购物袋"
+      },
+      "system": {
+        "ticketNo": "PJ202610230001",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:26:10Z",
+        "warnings": []
+      },
+      "currency": "CNY",
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "鲜牛奶",
+          "variant": "950ml",
+          "quantity": "2",
+          "unit": "瓶",
+          "lineAmount": {
+            "minor": "3600",
+            "currency": "CNY",
+            "scale": 2
+          }
+        },
+        {
+          "lineRef": "LINE002",
+          "title": "五常大米",
+          "variant": "5kg",
+          "quantity": "1",
+          "unit": "袋",
+          "lineAmount": {
+            "minor": "6400",
+            "currency": "CNY",
+            "scale": 2
+          }
+        }
+      ],
+      "payments": [
+        {
+          "paymentNo": "PAY202610230001",
+          "methodLabel": "微信支付",
+          "receivedAmount": {
+            "minor": "8800",
+            "currency": "CNY",
+            "scale": 2
+          }
+        }
+      ]
+    },
+    {
+      "scene": "CASHIER_RECEIPT",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "POS_SETTLEMENT",
+        "no": "SRC-CASHIER_RECEIPT",
+        "factNo": "FACT-CASHIER_RECEIPT",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "receivableAmount": {
+          "minor": "8800",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "paidAmount": {
+          "minor": "8800",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "tenderedAmount": {
+          "minor": "10000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "changeAmount": {
+          "minor": "1200",
+          "currency": "CNY",
+          "scale": 2
+        }
+      },
+      "system": {
+        "ticketNo": "PJ-CASHIER_RECEIPT",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "currency": "CNY",
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例商品",
+          "quantity": "1",
+          "unit": "件",
+          "variant": "标准",
+          "lineAmount": {
+            "minor": "8800",
+            "currency": "CNY",
+            "scale": 2
+          }
+        }
+      ],
+      "payments": [
+        {
+          "paymentNo": "PAY001",
+          "methodLabel": "现金",
+          "receivedAmount": {
+            "minor": "8800",
+            "currency": "CNY",
+            "scale": 2
+          }
+        }
+      ]
+    },
+    {
+      "scene": "PICKING",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "PICKING_TASK",
+        "no": "SRC-PICKING",
+        "factNo": "FACT-PICKING",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "pickingNo": "PK001",
+        "zoneName": "A区",
+        "fulfillmentLabel": "门店自提"
+      },
+      "system": {
+        "ticketNo": "PJ-PICKING",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例商品",
+          "quantity": "1",
+          "unit": "件",
+          "variant": "标准",
+          "location": "A-01"
+        }
+      ]
+    },
+    {
+      "scene": "DELIVERY_HANDOVER",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "DELIVERY_TASK",
+        "no": "SRC-DELIVERY_HANDOVER",
+        "factNo": "FACT-DELIVERY_HANDOVER",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "deliveryNo": "DL001",
+        "packageCount": 2,
+        "recipientDisplay": "王**",
+        "maskedPhone": "138****1234",
+        "addressSummary": "示例小区（脱敏预览）"
+      },
+      "system": {
+        "ticketNo": "PJ-DELIVERY_HANDOVER",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例商品",
+          "quantity": "1",
+          "unit": "件",
+          "variant": "标准",
+          "location": "A-01"
+        }
+      ]
+    },
+    {
+      "scene": "REFUND_RECEIPT",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "REFUND",
+        "no": "SRC-REFUND_RECEIPT",
+        "factNo": "FACT-REFUND_RECEIPT",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "refundNo": "RF001",
+        "originalPaymentNo": "PAY001",
+        "refundedAmount": {
+          "minor": "2000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "refundChannel": "原路退回",
+        "refundReason": "部分退货"
+      },
+      "system": {
+        "ticketNo": "PJ-REFUND_RECEIPT",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "currency": "CNY",
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例商品",
+          "quantity": "1",
+          "unit": "件",
+          "refundAmount": {
+            "minor": "2000",
+            "currency": "CNY",
+            "scale": 2
+          }
+        }
+      ]
+    },
+    {
+      "scene": "RECHARGE_RECEIPT",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "RECHARGE",
+        "no": "SRC-RECHARGE_RECEIPT",
+        "factNo": "FACT-RECHARGE_RECEIPT",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "rechargeNo": "RC001",
+        "principalAmount": {
+          "minor": "10000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "giftAmount": {
+          "minor": "1000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "balanceAfter": {
+          "minor": "18000",
+          "currency": "CNY",
+          "scale": 2
+        }
+      },
+      "system": {
+        "ticketNo": "PJ-RECHARGE_RECEIPT",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "currency": "CNY"
+    },
+    {
+      "scene": "HANDOVER",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "SHIFT_REPORT",
+        "no": "SRC-HANDOVER",
+        "factNo": "FACT-HANDOVER",
+        "revision": "1",
+        "occurredAt": "2026-10-23T08:00:00Z"
+      },
+      "fields": {
+        "shiftNo": "SH001",
+        "periodLabel": "2026-10-23 08:00–16:00",
+        "transactionCount": 12,
+        "netReceivedAmount": {
+          "minor": "88000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "cashShouldAmount": {
+          "minor": "30000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "cashActualAmount": {
+          "minor": "30000",
+          "currency": "CNY",
+          "scale": 2
+        }
+      },
+      "system": {
+        "ticketNo": "PJ-HANDOVER",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T08:01:00Z",
+        "warnings": []
+      },
+      "currency": "CNY"
+    },
+    {
+      "scene": "DAY_END",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "DAY_REPORT",
+        "no": "SRC-DAY_END",
+        "factNo": "FACT-DAY_END",
+        "revision": "1",
+        "occurredAt": "2026-10-23T16:00:00Z"
+      },
+      "fields": {
+        "reportNo": "DR001",
+        "businessDate": "2026-10-23",
+        "transactionCount": 50,
+        "grossReceivedAmount": {
+          "minor": "400000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "refundTotalAmount": {
+          "minor": "10000",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "netReceivedAmount": {
+          "minor": "390000",
+          "currency": "CNY",
+          "scale": 2
+        }
+      },
+      "system": {
+        "ticketNo": "PJ-DAY_END",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T16:01:00Z",
+        "warnings": []
+      },
+      "currency": "CNY"
+    },
+    {
+      "scene": "PRINTER_TEST",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "PRINTER_TEST",
+        "no": "SRC-PRINTER_TEST",
+        "factNo": "FACT-PRINTER_TEST",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "printerName": "前台80mm",
+        "paperWidthMm": 80,
+        "testText": "中文测试 ABC 123 ￥"
+      },
+      "system": {
+        "ticketNo": "PJ-PRINTER_TEST",
+        "jobKind": "TEST",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      }
+    },
+    {
+      "scene": "KITCHEN",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "KITCHEN_RELEASE",
+        "no": "SRC-KITCHEN",
+        "factNo": "FACT-KITCHEN",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "tableLabel": "A08",
+        "releaseNo": "KR001",
+        "stationName": "热菜",
+        "diningMode": "堂食"
+      },
+      "system": {
+        "ticketNo": "PJ-KITCHEN",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例菜品",
+          "quantity": "1",
+          "unit": "份",
+          "variant": "标准",
+          "preparationNote": "微辣"
+        }
+      ]
+    },
+    {
+      "scene": "KITCHEN_ADD",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "KITCHEN_ADDITION",
+        "no": "SRC-KITCHEN_ADD",
+        "factNo": "FACT-KITCHEN_ADD",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "tableLabel": "A08",
+        "additionNo": "KA001",
+        "originalReleaseNo": "KR001",
+        "stationName": "热菜"
+      },
+      "system": {
+        "ticketNo": "PJ-KITCHEN_ADD",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例菜品",
+          "quantity": "1",
+          "unit": "份",
+          "variant": "标准",
+          "preparationNote": "微辣"
+        }
+      ]
+    },
+    {
+      "scene": "KITCHEN_VOID",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "KITCHEN_VOID",
+        "no": "SRC-KITCHEN_VOID",
+        "factNo": "FACT-KITCHEN_VOID",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "tableLabel": "A08",
+        "voidNo": "KV001",
+        "originalReleaseNo": "KR001",
+        "originalTicketNo": "PJ001",
+        "stationName": "热菜",
+        "voidReason": "顾客取消"
+      },
+      "system": {
+        "ticketNo": "PJ-KITCHEN_VOID",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": [
+          "ORIGINAL_TICKET_RESULT_UNKNOWN"
+        ],
+        "originalTicketState": {
+          "jobNo": "PJ001",
+          "revision": 4,
+          "status": "UNKNOWN",
+          "observedAt": "2026-10-23T01:59:59Z"
+        }
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例菜品",
+          "quantity": "1",
+          "unit": "份",
+          "variant": "标准",
+          "preparationNote": "微辣"
+        }
+      ]
+    },
+    {
+      "scene": "URGE",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "KITCHEN_URGE",
+        "no": "SRC-URGE",
+        "factNo": "FACT-URGE",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "tableLabel": "A08",
+        "urgeNo": "KU001",
+        "originalReleaseNo": "KR001",
+        "originalTicketNo": "PJ001",
+        "stationName": "热菜"
+      },
+      "system": {
+        "ticketNo": "PJ-URGE",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": [],
+        "originalTicketState": {
+          "jobNo": "PJ001",
+          "revision": 4,
+          "status": "ACCEPTED",
+          "observedAt": "2026-10-23T01:59:59Z"
+        }
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例菜品",
+          "quantity": "1",
+          "unit": "份",
+          "variant": "标准",
+          "preparationNote": "微辣"
+        }
+      ]
+    },
+    {
+      "scene": "PRE_BILL",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "FOOD_BILL",
+        "no": "SRC-PRE_BILL",
+        "factNo": "FACT-PRE_BILL",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "tableLabel": "A08",
+        "billRevision": "7",
+        "receivableAmount": {
+          "minor": "8800",
+          "currency": "CNY",
+          "scale": 2
+        }
+      },
+      "system": {
+        "ticketNo": "PJ-PRE_BILL",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "currency": "CNY",
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例菜品",
+          "quantity": "1",
+          "unit": "份",
+          "variant": "标准",
+          "lineAmount": {
+            "minor": "8800",
+            "currency": "CNY",
+            "scale": 2
+          }
+        }
+      ]
+    },
+    {
+      "scene": "CHECKOUT",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "FOOD_SETTLEMENT",
+        "no": "SRC-CHECKOUT",
+        "factNo": "FACT-CHECKOUT",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "tableLabel": "A08",
+        "settlementNo": "FS001",
+        "receivableAmount": {
+          "minor": "8800",
+          "currency": "CNY",
+          "scale": 2
+        },
+        "paidAmount": {
+          "minor": "8800",
+          "currency": "CNY",
+          "scale": 2
+        }
+      },
+      "system": {
+        "ticketNo": "PJ-CHECKOUT",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "currency": "CNY",
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例菜品",
+          "quantity": "1",
+          "unit": "份",
+          "variant": "标准",
+          "lineAmount": {
+            "minor": "8800",
+            "currency": "CNY",
+            "scale": 2
+          }
+        }
+      ],
+      "payments": [
+        {
+          "paymentNo": "PAY001",
+          "methodLabel": "微信支付",
+          "receivedAmount": {
+            "minor": "8800",
+            "currency": "CNY",
+            "scale": 2
+          }
+        }
+      ]
+    },
+    {
+      "scene": "TAKEOUT_PACKING",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "PACKING_TASK",
+        "no": "SRC-TAKEOUT_PACKING",
+        "factNo": "FACT-TAKEOUT_PACKING",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "pickupCode": "1028",
+        "packingNo": "FP001",
+        "packageCount": 2,
+        "utensilCount": 2
+      },
+      "system": {
+        "ticketNo": "PJ-TAKEOUT_PACKING",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "示例菜品",
+          "quantity": "1",
+          "unit": "份",
+          "variant": "标准",
+          "packingNote": "酱汁分装"
+        }
+      ]
+    },
+    {
+      "scene": "APPT_CONFIRM",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "APPOINTMENT",
+        "no": "SRC-APPT_CONFIRM",
+        "factNo": "FACT-APPT_CONFIRM",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "appointmentNo": "AP001",
+        "customerDisplay": "王**",
+        "appointmentAt": "2026-10-24T02:00:00Z",
+        "personnelDisplay": "李技师"
+      },
+      "system": {
+        "ticketNo": "PJ-APPT_CONFIRM",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "护理项目",
+          "quantity": "1",
+          "unit": "次"
+        }
+      ]
+    },
+    {
+      "scene": "SERVICE_START",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "SERVICE_TASK",
+        "no": "SRC-SERVICE_START",
+        "factNo": "FACT-SERVICE_START",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "workOrderNo": "WO001",
+        "serviceTaskNo": "ST001",
+        "customerDisplay": "王**",
+        "personnelDisplay": "李技师",
+        "safetyNotice": "使用产品前核对已授权的安全提示"
+      },
+      "system": {
+        "ticketNo": "PJ-SERVICE_START",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "护理项目",
+          "quantity": "1",
+          "unit": "次"
+        }
+      ]
+    },
+    {
+      "scene": "SERVICE_COMPLETE",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "SERVICE_COMPLETION",
+        "no": "SRC-SERVICE_COMPLETE",
+        "factNo": "FACT-SERVICE_COMPLETE",
+        "revision": "1",
+        "occurredAt": "2026-10-23T03:00:00Z"
+      },
+      "fields": {
+        "workOrderNo": "WO001",
+        "completionNo": "SC001",
+        "completedAt": "2026-10-23T03:00:00Z",
+        "personnelDisplay": "李技师"
+      },
+      "system": {
+        "ticketNo": "PJ-SERVICE_COMPLETE",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T03:01:00Z",
+        "warnings": []
+      },
+      "lines": [
+        {
+          "lineRef": "LINE001",
+          "title": "护理项目",
+          "quantity": "1",
+          "unit": "次"
+        }
+      ]
+    },
+    {
+      "scene": "CARD_BALANCE",
+      "payloadSchemaVersion": 1,
+      "store": {
+        "name": "示例门店",
+        "timezone": "Asia/Shanghai"
+      },
+      "source": {
+        "type": "ENTITLEMENT_CONSUMPTION",
+        "no": "SRC-CARD_BALANCE",
+        "factNo": "FACT-CARD_BALANCE",
+        "revision": "1",
+        "occurredAt": "2026-10-23T02:00:00Z"
+      },
+      "fields": {
+        "consumptionNo": "EC001",
+        "maskedCardNo": "****1008",
+        "entitlementName": "护理套餐",
+        "usedQuantity": "1",
+        "remainingAfter": "9"
+      },
+      "system": {
+        "ticketNo": "PJ-CARD_BALANCE",
+        "jobKind": "INITIAL",
+        "copyIndex": 1,
+        "generatedAt": "2026-10-23T02:00:00Z",
+        "warnings": []
+      }
+    }
+  ]
+}

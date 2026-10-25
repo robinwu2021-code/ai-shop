@@ -10,8 +10,9 @@ import type {PaymentMerchant,ManagementGrant} from '@/api/management-types';
 const {t}=useI18n();const merchant=useMerchantStore();
 const type=ref<'STORE'|'BRAND'>('STORE'),no=ref(''),management=ref('');
 const issuer=ref<IssuerView|null>(null),options=ref<StoreIssuerOptions|null>(null),entities=ref<Array<{entityNo:string;name:string;accepted:boolean;canAccept:boolean}>>([]),routes=ref<IssuerRoute[]>([]),candidates=ref<IssuerRoute[]>([]);
-const name=ref(''),entity=ref(''),choosingEntity=ref(false),choosingRoute=ref(false),busy=ref(false),loading=ref(true),failed=ref(false),error=ref(''),canEdit=ref(false);
+const name=ref(''),entity=ref(''),choosingEntity=ref(false),choosingRoute=ref(false),busy=ref(false),loading=ref(true),failed=ref(false),denied=ref(false),error=ref(''),canEdit=ref(false);
 type Pending={configuration:IssuerConfiguration;key:string;issuerNo:string|null};
+const brandInactive=ref(false);
 const canPrepare=ref(false),needsPrepare=ref(false),brandReady=ref(false);
 const activation=ref<{key:string;expectedRevision:number}|null>(null);
 const pending=ref<Pending|null>(null);let generation=0,originStore='';
@@ -20,11 +21,12 @@ const locked=computed(()=>busy.value||!!pending.value);
 const entityName=computed(()=>entities.value.find(e=>e.entityNo===entity.value)?.name||entity.value);
 const scopeLabel=computed(()=>t(type.value==='BRAND'?'issuer.brandScope':'issuer.storeScope'));
 const status=computed(()=>issuer.value?.status||options.value?.issuers[0]?.status||(options.value?.legacyMode?'ACTIVE':'DRAFT'));
+const noConfiguration=computed(()=>!issuer.value&&!options.value?.legacyMode&&!options.value?.issuers.length&&!canEdit.value&&!needsPrepare.value);
 const valid=computed(()=>name.value.trim()&&entity.value&&routes.value.length&&entities.value.some(e=>e.entityNo===entity.value&&e.accepted));
 function live(token:number){return token===generation&&(type.value==='BRAND'||!originStore||originStore===merchant.storeNo);}
 function restore(configuration:IssuerConfiguration){name.value=configuration.name;entity.value=configuration.settlementEntityNo;routes.value=configuration.routes.map(r=>({...r}));}
 async function load(){
- const token=++generation;loading.value=true;failed.value=false;error.value='';canEdit.value=false;
+ const token=++generation;loading.value=true;failed.value=false;denied.value=false;brandInactive.value=false;error.value='';canEdit.value=false;
  try{
   if(!management.value){
    options.value=await api.mSvStoreIssuers(no.value);
@@ -35,13 +37,19 @@ async function load(){
   try{result=await api.mSvIssuer(type.value,no.value,management.value);}catch(e){if(canPrepare.value&&(e as {code?:number}).code===10403){needsPrepare.value=true;name.value=t('issuer.storeScope');return;}throw e;}
   if(!live(token))return;needsPrepare.value=false;
   issuer.value=result.issuer;
-  if(type.value==='BRAND'){const capability=await api.mSvBrandCapability();brandReady.value=capability.ready;const original=uni.getStorageSync(storage.value+':activation');activation.value=original?JSON.parse(String(original)):null;}
+  if(type.value==='BRAND'){
+   const capability=await api.mSvBrandCapability();if(!live(token))return;brandReady.value=capability.ready;
+   // Profile access is optional: an issuer reader need not also hold brand-profile permission.
+   try{const brand=await api.mBrand(no.value);if(!live(token))return;brandInactive.value=brand.status==='INACTIVE';}catch{}
+   if(!live(token))return;
+   const original=uni.getStorageSync(storage.value+':activation');activation.value=original?JSON.parse(String(original)):null;
+  }
   if(result.issuer){const v=result.issuer;restore({...v,expectedRevision:v.revision});}
   else{name.value=t(type.value==='BRAND'?'issuer.brandScope':'issuer.storeScope');entity.value='';routes.value=[];}
-  try{const list=await api.mSvIssuerEntities(management.value,type.value,no.value);if(!live(token))return;entities.value=list;canEdit.value=list.length>0;}catch{canEdit.value=false;}
+  try{if(brandInactive.value){entities.value=[];canEdit.value=false;return;}const list=await api.mSvIssuerEntities(management.value,type.value,no.value);if(!live(token))return;entities.value=list;canEdit.value=list.length>0;}catch{canEdit.value=false;}
   const saved=uni.getStorageSync(storage.value);
   if(saved&&canEdit.value){const p=JSON.parse(String(saved)) as Pending;if(p.key&&p.configuration){pending.value=p;restore(p.configuration);}}
- }catch(e){if(live(token)){failed.value=true;error.value=(e as Error).message;}}
+ }catch(e){if(live(token)){denied.value=[10403,70006].includes((e as {code?:number}).code||0);failed.value=!denied.value;error.value=(e as Error).message;}}
  finally{if(token===generation)loading.value=false;}
 }
 async function prepareSettings(){
@@ -108,17 +116,19 @@ async function activateBrand(){
 watch(()=>merchant.storeNo,()=>{if(originStore&&type.value==='STORE'&&originStore!==merchant.storeNo){generation++;failed.value=true;error.value=t('storedValue.leaveStore');canEdit.value=false;choosingEntity.value=false;choosingRoute.value=false;}});
 onLoad(q=>{type.value=q?.b?'BRAND':'STORE';no.value=q?.b||q?.s||merchant.storeNo;management.value=q?.m||'';canPrepare.value=q?.prepare==='1';originStore=q?.local==='1'?merchant.storeNo:'';void load();});
 </script>
-<template><sh-scaffold title-key="issuer.title" :pending="loading" :failed="failed" @retry="load">
+<template><sh-scaffold title-key="issuer.title" :pending="loading" :failed="failed" :failed-text="error" :denied="denied" :denied-text="error" @retry="load">
  <view v-if="!loading&&!failed" class="sh-card">
-  <view class="sh-row sh-row--between"><text class="txt-title">{{scopeLabel}}</text><text class="sh-chip">{{t('issuer.states.'+status)}}</text></view>
-  <text v-if="type==='BRAND'&&!brandReady" class="sh-hint">{{t('issuer.brandNotReady')}}</text>
+  <view class="sh-row sh-row--between"><text class="txt-title">{{scopeLabel}}</text><text v-if="!noConfiguration" class="sh-chip">{{t('issuer.states.'+status)}}</text></view>
+  <text v-if="brandInactive" class="sh-hint">{{t('issuer.brandInactive')}}</text>
+  <text v-else-if="type==='BRAND'&&!brandReady" class="sh-hint">{{t('issuer.brandNotReady')}}</text>
   <template v-if="canEdit">
    <view class="field"><text class="field__label">{{t('issuer.name')}}</text><input v-model="name" class="field__input" maxlength="64" :disabled="locked"/></view>
    <view data-testid="issuer-entity" role="button" class="sh-cell sh-row sh-row--between sh-hit" @tap="!locked&&(choosingEntity=true)"><text>{{t('issuer.settlementEntity')}}</text><view class="sh-row"><text>{{entityName||t('issuer.chooseEntity')}}</text><sh-go/></view></view>
   </template>
-  <template v-else><sh-kv :label="t('issuer.name')">{{name}}</sh-kv><sh-kv v-if="issuer" :label="t('issuer.settlementEntity')">{{issuer.settlementEntityNo}}</sh-kv><text v-if="options&&!options.legacyMode&&options.issuers[0]?.unavailableReason" class="sh-hint">{{t('issuer.blockers.'+options.issuers[0].unavailableReason)}}</text></template>
+  <template v-else-if="!noConfiguration"><sh-kv :label="t('issuer.name')">{{name}}</sh-kv><sh-kv v-if="issuer" :label="t('issuer.settlementEntity')">{{issuer.settlementEntityNo}}</sh-kv><text v-if="options&&!options.legacyMode&&options.issuers[0]?.unavailableReason" class="sh-hint">{{t('issuer.blockers.'+options.issuers[0].unavailableReason)}}</text></template>
  </view>
- <view v-if="management&&!loading&&!failed" class="sh-card">
+ <sh-empty v-if="!loading&&!failed&&!denied&&noConfiguration" :text="t('issuer.noConfiguration')"/>
+ <view v-if="management&&!loading&&!failed&&!noConfiguration" class="sh-card">
   <view class="sh-row sh-row--between"><text class="txt-strong">{{t('issuer.routes')}}</text><view v-if="canEdit&&entity" role="button" class="sh-link sh-hit" @tap="chooseRoutes">{{t('issuer.addRoute')}}</view></view>
   <view v-for="(route,index) in routes" :key="route.channel+route.scene+route.storeNo" class="sh-cell sh-row sh-row--between"><view><text>{{t('issuer.channels.'+route.channel)}}</text><view v-if="route.paymentMerchantNo" class="sh-muted txt-sub">{{route.paymentMerchantNo}} · {{route.scene}}</view></view><view v-if="canEdit&&!locked" role="button" class="sh-link sh-hit" @tap="removeRoute(index)">{{t('issuer.remove')}}</view></view>
   <sh-empty :pending="loading" v-if="!routes.length" compact :text="t('issuer.noRoutes')"/>

@@ -3,256 +3,44 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 113,
+      "count": 116,
       "domains": [
-        {
-          "name": "工作台",
-          "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/home/index",
-              "title": "工作台",
-              "domain": "工作台",
-              "tab": true,
-              "status": "已实现",
-              "proto": "s01",
-              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-              "preview": "http://localhost:5175/#/pages/home/index"
-            }
-          ]
-        },
-        {
-          "name": "订单与履约",
-          "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/orders/index",
-              "title": "订单",
-              "domain": "订单与履约",
-              "tab": true,
-              "status": "已实现",
-              "proto": "s02",
-              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-              "preview": "http://localhost:5175/#/pages/orders/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/order/index",
-              "title": "详情",
-              "domain": "订单与履约",
-              "tab": false,
-              "status": "已实现",
-              "proto": "s03",
-              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-              "preview": "http://localhost:5175/#/pages/order/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/verify/index",
-              "title": "核销台",
-              "domain": "订单与履约",
-              "tab": false,
-              "status": "已实现",
-              "proto": "s17",
-              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
-              "preview": "http://localhost:5175/#/pages/verify/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/picking/index",
-              "title": "分拣单",
-              "domain": "订单与履约",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/picking/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/delivery/index",
-              "title": "商家配送",
-              "domain": "订单与履约",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/delivery/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/after-sale/index",
-              "title": "售后处理",
-              "domain": "订单与履约",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/after-sale/index"
-            }
-          ]
-        },
-        {
-          "name": "商品",
-          "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/goods-list/index",
-              "title": "商品",
-              "domain": "商品",
-              "tab": true,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/goods-list/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/goods-edit/index",
-              "title": "编辑商品",
-              "domain": "商品",
-              "tab": false,
-              "status": "已实现",
-              "proto": "s19",
-              "protoUrl": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
-              "preview": "http://localhost:5175/#/pages/goods-edit/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/goods-publish/index",
-              "title": "发布修改",
-              "domain": "商品",
-              "tab": false,
-              "status": "已实现",
-              "proto": "s12",
-              "protoUrl": "https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd",
-              "preview": "http://localhost:5175/#/pages/goods-publish/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/store-categories/index",
-              "title": "经营类目",
-              "domain": "商品",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/store-categories/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/my-specs/index",
-              "title": "商品规格",
-              "domain": "商品",
-              "tab": false,
-              "status": "已实现",
-              "proto": "s23",
-              "protoUrl": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
-              "preview": "http://localhost:5175/#/pages/my-specs/index"
-            }
-          ]
-        },
-        {
-          "name": "账号与设置",
-          "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/me/index",
-              "title": "我的",
-              "domain": "账号与设置",
-              "tab": true,
-              "status": "已实现",
-              "proto": "s01",
-              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
-              "preview": "http://localhost:5175/#/pages/me/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/login/index",
-              "title": "商家登录",
-              "domain": "账号与设置",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/login/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/apply/index",
-              "title": "入驻申请",
-              "domain": "账号与设置",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/apply/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/staff-detail/index",
-              "title": "员工详情",
-              "domain": "账号与设置",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/staff-detail/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/role-detail/index",
-              "title": "角色",
-              "domain": "账号与设置",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/role-detail/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/staff/index",
-              "title": "员工",
-              "domain": "账号与设置",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/staff/index"
-            }
-          ]
-        },
-        {
-          "name": "消息与评价",
-          "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/messages/index",
-              "title": "消息",
-              "domain": "消息与评价",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/messages/index"
-            },
-            {
-              "app": "b-app",
-              "route": "/pages/reviews/index",
-              "title": "评价与回复",
-              "domain": "消息与评价",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:5175/#/pages/reviews/index"
-            }
-          ]
-        },
         {
           "name": "其它",
           "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/print-center/index",
+              "title": "打印中心",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/print-center/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/print-devices/index",
+              "title": "打印设备",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/print-devices/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/print-templates/index",
+              "title": "小票模板",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/print-templates/index"
+            },
             {
               "app": "b-app",
               "route": "/pages/goods-revisions/index",
@@ -791,6 +579,251 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stored-value-activity-edit/index"
+            }
+          ]
+        },
+        {
+          "name": "工作台",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/home/index",
+              "title": "工作台",
+              "domain": "工作台",
+              "tab": true,
+              "status": "已实现",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/home/index"
+            }
+          ]
+        },
+        {
+          "name": "订单与履约",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/orders/index",
+              "title": "订单",
+              "domain": "订单与履约",
+              "tab": true,
+              "status": "已实现",
+              "proto": "s02",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/orders/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/order/index",
+              "title": "详情",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s03",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/order/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/verify/index",
+              "title": "核销台",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s17",
+              "protoUrl": "https://claude.ai/artifact/EeKjhCyJ9P3i5iDVNbhUPt",
+              "preview": "http://localhost:5175/#/pages/verify/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/picking/index",
+              "title": "分拣单",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/picking/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/delivery/index",
+              "title": "商家配送",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/delivery/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/after-sale/index",
+              "title": "售后处理",
+              "domain": "订单与履约",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/after-sale/index"
+            }
+          ]
+        },
+        {
+          "name": "商品",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/goods-list/index",
+              "title": "商品",
+              "domain": "商品",
+              "tab": true,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/goods-list/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/goods-edit/index",
+              "title": "编辑商品",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s19",
+              "protoUrl": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
+              "preview": "http://localhost:5175/#/pages/goods-edit/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/goods-publish/index",
+              "title": "发布修改",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s12",
+              "protoUrl": "https://claude.ai/artifact/XtoeDXzLTob2Dc3osQcUBd",
+              "preview": "http://localhost:5175/#/pages/goods-publish/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-categories/index",
+              "title": "经营类目",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store-categories/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/my-specs/index",
+              "title": "商品规格",
+              "domain": "商品",
+              "tab": false,
+              "status": "已实现",
+              "proto": "s23",
+              "protoUrl": "https://claude.ai/code/artifact/9eb1a32a-a74b-40d2-b6c3-1a4cb394f02e",
+              "preview": "http://localhost:5175/#/pages/my-specs/index"
+            }
+          ]
+        },
+        {
+          "name": "账号与设置",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/me/index",
+              "title": "我的",
+              "domain": "账号与设置",
+              "tab": true,
+              "status": "已实现",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/459462f5-e7f7-485a-85b0-096ba9918b15",
+              "preview": "http://localhost:5175/#/pages/me/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/login/index",
+              "title": "商家登录",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/login/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/apply/index",
+              "title": "入驻申请",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/apply/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/staff-detail/index",
+              "title": "员工详情",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/staff-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/role-detail/index",
+              "title": "角色",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/role-detail/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/staff/index",
+              "title": "员工",
+              "domain": "账号与设置",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/staff/index"
+            }
+          ]
+        },
+        {
+          "name": "消息与评价",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/messages/index",
+              "title": "消息",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/messages/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/reviews/index",
+              "title": "评价与回复",
+              "domain": "消息与评价",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/reviews/index"
             }
           ]
         },
@@ -3759,5 +3792,5 @@
       ]
     }
   ],
-  "total": 300
+  "total": 303
 }

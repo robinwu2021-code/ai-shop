@@ -1,0 +1,28 @@
+{
+  "build": "SUCCESS",
+  "tests": 19,
+  "classes": [
+    {
+      "class": "ai.neargo.shop.scenario.GroupOrderFlowTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "ai.neargo.shop.scenario.GroupAuditFlowTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "red": {
+    "tests": 19,
+    "failures": 1,
+    "method": "GroupOrderFlowTest.goodsPageGroupBlock"
+  },
+  "redLog": "/tmp/print-group-fixture-red.log",
+  "greenLog": "/tmp/print-group-fixture-green.log",
+  "scope": "Only exact owned activity/group fixture cleanup; all ranking and business assertions preserved"
+}

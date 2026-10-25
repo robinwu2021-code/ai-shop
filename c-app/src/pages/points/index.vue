@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { pointsTypeStatusKey } from "@shared/utils/points-status";
 import { datetime, isoDate } from "@shared/utils/format";
 import type { BuyerPointsAccount, BuyerPointsEntry } from "@/api/contract";
 
@@ -99,9 +100,7 @@ function openOrder(no: string) {
         {{ $t("points.held", { n: account.heldBalance }) }}
       </text>
       <text v-if="account.frozen" class="txt-caption hero__pending txt-primary">{{ $t("points.frozen") }}</text>
-      <text v-if="account.status !== 'ACTIVE'" class="txt-caption hero__pending txt-primary">
-        {{ $t("points.notActive") }}
-      </text>
+      <text class="txt-caption hero__scope">{{ $t("points.typeStatus") }}: {{ $t(pointsTypeStatusKey(account.status, account.earningPaused)) }}</text>
     </view>
 
     <view v-if="account" class="sh-card block rules">

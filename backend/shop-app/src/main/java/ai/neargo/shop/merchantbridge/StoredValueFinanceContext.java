@@ -13,6 +13,17 @@ public class StoredValueFinanceContext {
  public StoredValueFinanceContext(ManagementAccess access,StoredValueFinancialAuthorityService authority,StoredValueIssuerAppService issuers,StoredValueFinanceAppService finance,ai.neargo.shop.promotion.service.StoredValueActivityReportOwnership activityOwnership){this.access=access;this.authority=authority;this.issuers=issuers;this.finance=finance;this.activityOwnership=activityOwnership;}
  public Map<String,Object> prepare(String management,String entity){return authority.prepare(access.actor(),management,entity);}
  public List<StoredValueFinance.Resource> directory(String management,String type){var actor=access.actor();var resources=authority.financeResources(actor,management,type);return finance.directory(new StoredValueFinance.Directory(actor.tenantNo(),actor.actorKey(),management,"FINANCE",resources,authority.financialEntities(actor,management).keySet()));}
+ public record ReadableResource(StoredValueFinance.Resource resource,boolean canGenerate){}
+ /** View discovery and command authority are distinct. Pay intersects each party set with issuer relationships. */
+ public List<ReadableResource> readableDirectory(String management,String type){
+  var actor=access.actor();var refs=authority.financeResources(actor,management,type);var permissions=authority.financialEntities(actor,management);
+  var readers=permissions.entrySet().stream().filter(e->e.getValue().contains("sv.settlement.read")).map(Map.Entry::getKey).collect(java.util.stream.Collectors.toSet());
+  if(readers.isEmpty())return List.of();
+  var visible=finance.directory(new StoredValueFinance.Directory(actor.tenantNo(),actor.actorKey(),management,"FINANCE",refs,readers));if(visible.isEmpty())return List.of();
+  var generators=permissions.entrySet().stream().filter(e->e.getValue().contains("sv.settlement.generate")).map(Map.Entry::getKey).collect(java.util.stream.Collectors.toSet());
+  var generatable=generators.isEmpty()?Set.<String>of():finance.directory(new StoredValueFinance.Directory(actor.tenantNo(),actor.actorKey(),management,"FINANCE",refs,generators)).stream().map(StoredValueFinance.Resource::issuerNo).collect(java.util.stream.Collectors.toSet());
+  return visible.stream().map(r->new ReadableResource(r,generatable.contains(r.issuerNo()))).toList();
+ }
  public StoredValueSettlements.Authority financial(String management,String issuer){var actor=access.actor();var ref=issuers.locate(actor.tenantNo(),issuer);authority.financialLookup(actor,management,ref);return authority.financial(actor,management,List.of(new StoredValueSettlements.IssuerGrant(issuer,ref.scopeType(),ref.scopeNo())),Set.of());}
  public StoredValueSettlements.Authority bill(String management,String no,String kind){var location=finance.locate(new StoredValueSettlements.Resource(access.actor().tenantNo(),no,kind));return financial(management,location.issuerNo());}
  public StoredValueSettlements.Authority allFinancial(String management,String type,String issuer){if(issuer!=null){var a=financial(management,issuer);if(type!=null&&!type.equals(a.issuers().getFirst().scopeType()))throw BizException.of(ErrorCode.BAD_REQUEST);return a;}var actor=access.actor();var resources=directory(management,type);if(resources.isEmpty())throw BizException.of(ErrorCode.NOT_FOUND);return authority.financial(actor,management,resources.stream().map(r->new StoredValueSettlements.IssuerGrant(r.issuerNo(),r.scopeType(),r.scopeNo())).toList(),Set.of());}

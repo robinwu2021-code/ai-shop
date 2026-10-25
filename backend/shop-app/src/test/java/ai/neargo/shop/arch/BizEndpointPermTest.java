@@ -114,6 +114,72 @@ class BizEndpointPermTest {
      * {@code docs/requirements/三端角色权限功能对齐清单.md} §4。
      */
     private static final Map<String, String> REQUIRED = new LinkedHashMap<>() {{
+        // Method-specific pricing read/publish guards remain on each handler.
+        put("/biz/inventory/items/{item}/valuation", BizPerms.STOCK);
+        put("/biz/pricing/fee-rules/{ruleNo}", BizPerms.PRICING_CONFIG_PUBLISH);
+        put("/biz/pricing/fee-scopes/{scopeNo}/adjustments", BizPerms.PRICING_CONFIG_READ);
+        put("/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply", BizPerms.PRICING_CONFIG_PUBLISH);
+        // These sensitive print operations additionally require PRINT_DEVICE in their annotations.
+        put("/biz/print/agents/{agentNo}/credential-rotations", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/agents/{agentNo}/revocations", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/printers/{printerNo}/connection-changes", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/printers/{printerNo}/credential-rotations", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/printers/{printerNo}/uncertainty-resolutions", BizPerms.PRINT_RESOLVE);
+        // Print center (HTTP method-specific permissions remain enforced by controller annotations).
+        put("/biz/print/action-logs", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/adapters", BizPerms.PRINT_READ);
+        put("/biz/print/agents", BizPerms.PRINT_DEVICE);
+        put("/biz/print/agents/{agentNo}", BizPerms.PRINT_DEVICE);
+        put("/biz/print/agents/{agentNo}/enrollments", BizPerms.PRINT_DEVICE);
+        put("/biz/print/batches/{batchNo}", BizPerms.PRINT_READ);
+        put("/biz/print/changes", BizPerms.PRINT_READ);
+        put("/biz/print/exports", BizPerms.PRINT_EXPORT);
+        put("/biz/print/exports/{exportNo}", BizPerms.PRINT_EXPORT);
+        put("/biz/print/exports/{exportNo}/download-grants", BizPerms.PRINT_EXPORT);
+        put("/biz/print/health", BizPerms.PRINT_READ);
+        put("/biz/print/incidents", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/incidents/{incidentNo}/acknowledgements", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs", BizPerms.PRINT_READ);
+        put("/biz/print/jobs/{jobNo}", BizPerms.PRINT_READ);
+        put("/biz/print/jobs/{jobNo}/attempts", BizPerms.PRINT_READ);
+        put("/biz/print/jobs/{jobNo}/cancellations", BizPerms.PRINT_SUBMIT);
+        put("/biz/print/jobs/{jobNo}/document", BizPerms.PRINT_READ);
+        put("/biz/print/jobs/{jobNo}/extra-copies", BizPerms.PRINT_EXTRA);
+        put("/biz/print/jobs/{jobNo}/manual-confirmations", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs/{jobNo}/receipts", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs/{jobNo}/reprints", BizPerms.PRINT_REPRINT);
+        put("/biz/print/jobs/{jobNo}/result-queries", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs/{jobNo}/retries", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/jobs/{jobNo}/stale-releases", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/operations/{operationNo}", BizPerms.PRINT_READ);
+        put("/biz/print/orders/{orderNo}/summary", BizPerms.PRINT_READ);
+        put("/biz/print/printers", BizPerms.PRINT_READ);
+        put("/biz/print/printers/{printerNo}", BizPerms.PRINT_READ);
+        put("/biz/print/printers/{printerNo}/probes", BizPerms.PRINT_DEVICE);
+        put("/biz/print/printers/{printerNo}/status-changes", BizPerms.PRINT_DEVICE);
+        put("/biz/print/printers/{printerNo}/test-jobs", BizPerms.PRINT_DEVICE);
+        put("/biz/print/reprints", BizPerms.PRINT_REPRINT);
+        put("/biz/print/requests", BizPerms.PRINT_READ);
+        put("/biz/print/requests/{requestNo}", BizPerms.PRINT_READ);
+        put("/biz/print/requests/{requestNo}/generation-retries", BizPerms.PRINT_RESOLVE);
+        put("/biz/print/route-versions/{versionNo}/dry-run", BizPerms.PRINT_CONFIG);
+        put("/biz/print/route-versions/{versionNo}/publish", BizPerms.PRINT_CONFIG);
+        put("/biz/print/routes", BizPerms.PRINT_CONFIG);
+        put("/biz/print/routes/{routeNo}/versions", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scene-policies", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scene-policies/{scene}", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scene-policies/{scene}/versions", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scenes", BizPerms.PRINT_READ);
+        put("/biz/print/scenes/{scene}/examples", BizPerms.PRINT_CONFIG);
+        put("/biz/print/scenes/{scene}/fields", BizPerms.PRINT_CONFIG);
+        put("/biz/print/simulations", BizPerms.PRINT_SIMULATE);
+        put("/biz/print/simulations/{simulationNo}", BizPerms.PRINT_SIMULATE);
+        put("/biz/print/template-resolutions/preview", BizPerms.PRINT_CONFIG);
+        put("/biz/print/template-versions/{versionNo}", BizPerms.PRINT_CONFIG);
+        put("/biz/print/template-versions/{versionNo}/preview", BizPerms.PRINT_CONFIG);
+        put("/biz/print/template-versions/{versionNo}/publish", BizPerms.PRINT_CONFIG);
+        put("/biz/print/templates", BizPerms.PRINT_CONFIG);
+        put("/biz/print/templates/{templateNo}/versions", BizPerms.PRINT_CONFIG);
         // Resource registry uses stricter write permission; method security tests verify read/write separately.
         put("/biz/pricing-tax-settings", BizPerms.PRICING_TAX_UPDATE);
         put("/biz/pricing-tax-settings/reset", BizPerms.PRICING_TAX_UPDATE);
@@ -586,12 +652,6 @@ class BizEndpointPermTest {
         put("/biz/pricing-manual-adjustments/{no}:approve", BizPerms.FINANCE);
         put("/biz/pricing-manual-adjustments/{no}:quote", BizPerms.CAMPAIGN);
         put("/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy", BizPerms.STOCK);
-        // Fee rules/scopes: GET carries pricing-config read, writes carry publish; same path records the stricter one.
-        put("/biz/pricing/fee-rules/{ruleNo}", BizPerms.PRICING_CONFIG_PUBLISH);
-        put("/biz/pricing/fee-scopes/{scopeNo}/adjustments", BizPerms.PRICING_CONFIG_READ);
-        put("/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply", BizPerms.PRICING_CONFIG_PUBLISH);
-        // Valuation policy is inventory configuration: GET and POST both enforce biz:stock.
-        put("/biz/inventory/items/{item}/valuation", BizPerms.STOCK);
         put("/biz/stored-value/plan-recharges/confirm-offline", BizPerms.SV_RECHARGE_CREATE);
         put("/biz/stores/{storeNo}/stored-value/customer-candidates", "biz:customer");
         put("/biz/stores/{storeNo}/stored-value/customer-selections", "biz:customer");

@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 599,
+        "b-app": 620,
         "c-app": 105
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 441,
+        "b-app": 443,
         "c-app": 320
       }
     },
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 46,
-        "c-app": 55
+        "c-app": 54
       }
     },
     {
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 172,
+        "b-app": 182,
         "c-app": 61
       }
     },
@@ -635,7 +635,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 329,
+        "b-app": 356,
         "c-app": 98
       }
     },
@@ -677,7 +677,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 199,
+        "b-app": 207,
         "c-app": 34
       }
     },
@@ -1035,7 +1035,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 157,
+        "b-app": 158,
         "c-app": 30
       }
     },
@@ -1457,7 +1457,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 681,
+        "b-app": 698,
         "c-app": 218
       }
     },
@@ -1489,7 +1489,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 400,
+        "b-app": 406,
         "c-app": 110
       }
     },
@@ -1655,7 +1655,7 @@
         "margin-top": "10px"
       },
       "usage": {
-        "b-app": 64,
+        "b-app": 65,
         "c-app": 0
       }
     },
@@ -1982,7 +1982,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 14,
+        "b-app": 16,
         "c-app": 5,
         "lib": 0
       },
@@ -2143,7 +2143,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 86,
+        "b-app": 87,
         "c-app": 42,
         "lib": 1
       },
@@ -2225,7 +2225,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 31,
+        "b-app": 32,
         "c-app": 4,
         "lib": 0
       },
@@ -2594,7 +2594,7 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 113,
+        "b-app": 116,
         "c-app": 43,
         "lib": 1
       },
@@ -4458,7 +4458,7 @@
         "sh-sheet",
         "sh-trace"
       ],
-      "libClassHits": 218,
+      "libClassHits": 220,
       "localSelectors": 20,
       "localCssLines": 80,
       "rolled": []
@@ -4612,7 +4612,7 @@
         "sh-scaffold",
         "StorePointStatements"
       ],
-      "libClassHits": 38,
+      "libClassHits": 42,
       "localSelectors": 3,
       "localCssLines": 3,
       "rolled": [
@@ -4637,6 +4637,46 @@
       "libClassHits": 24,
       "localSelectors": 0,
       "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "print-center",
+      "key": "b-app/print-center",
+      "file": "b-app/src/pages/print-center/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 38,
+      "localSelectors": 8,
+      "localCssLines": 2,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "print-devices",
+      "key": "b-app/print-devices",
+      "file": "b-app/src/pages/print-devices/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 22,
+      "localSelectors": 6,
+      "localCssLines": 2,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "print-templates",
+      "key": "b-app/print-templates",
+      "file": "b-app/src/pages/print-templates/index.vue",
+      "components": [
+        "sh-check",
+        "sh-scaffold"
+      ],
+      "libClassHits": 26,
+      "localSelectors": 5,
+      "localCssLines": 2,
       "rolled": []
     },
     {
@@ -5338,7 +5378,7 @@
         "sh-scaffold",
         "sh-sheet"
       ],
-      "libClassHits": 47,
+      "libClassHits": 48,
       "localSelectors": 0,
       "localCssLines": 0,
       "rolled": []
@@ -6044,7 +6084,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 41,
+      "libClassHits": 40,
       "localSelectors": 12,
       "localCssLines": 12,
       "rolled": []
@@ -6715,7 +6755,7 @@
     "tokens": 16,
     "blocks": 82,
     "components": 42,
-    "pages": 195,
+    "pages": 198,
     "gapKinds": 3
   }
 }

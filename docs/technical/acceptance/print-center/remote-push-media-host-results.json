@@ -1,0 +1,104 @@
+{
+  "sourceHead": "fef7f0098",
+  "classes": [
+    {
+      "className": "ai.neargo.shop.scenario.InternalMediaAssetApiTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-InternalMediaAssetApiTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.media.MediaAssetQueryPortTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaAssetQueryPortTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.scenario.MediaBackfillFlowTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaBackfillFlowTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.scenario.MediaDirectDeliveryFlowTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaDirectDeliveryFlowTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.scenario.MediaHostMigrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaHostMigrationTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.channel.media.MediaHostRewriteFilterTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaHostRewriteFilterTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.channel.media.MediaKeyRoundTripTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaKeyRoundTripTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.scenario.MediaPurgeFlowTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaPurgeFlowTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.arch.MediaRefCoverageTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaRefCoverageTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.scenario.MediaScanFlowTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaScanFlowTest.xml"
+    },
+    {
+      "className": "ai.neargo.shop.scenario.MediaUploadFlowTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml": "/tmp/print-brand-media-green-MediaUploadFlowTest.xml"
+    }
+  ],
+  "totals": {
+    "tests": 45,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "logs": [
+    "/tmp/print-brand-media-host-red.log",
+    "/tmp/print-brand-media-host-green.log",
+    "/tmp/print-brand-media-direct-green.log"
+  ]
+}

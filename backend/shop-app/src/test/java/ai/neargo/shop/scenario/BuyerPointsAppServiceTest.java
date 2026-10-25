@@ -15,6 +15,22 @@ import java.util.Map;
 
 class BuyerPointsAppServiceTest {
     @Test
+    void buyer_receives_real_earning_pause_without_losing_balance() {
+        var types = mock(PointsAdministrationService.class);
+        var inspection = mock(PointsInspectionService.class);
+        when(types.types()).thenReturn(List.of(new PointType("P", "平台积分", "CN", "CNY", 2,
+                new RedeemRate(1,1), 10000, 30, PointType.Status.ACTIVE, true, true)));
+        when(inspection.account("P", HolderType.USER, "U1")).thenReturn(
+                new PointsInspectionService.AccountView(new AccountSnapshot("P", HolderType.USER, "U1",
+                        Map.of(Bucket.AVAILABLE, 10L), false, null, 0), true, 1));
+        var account = new BuyerPointsAppServiceImpl(types, inspection).accounts("U1").getFirst();
+        assertThat(account.earningPaused()).isTrue();
+        assertThat(account.balance()).isEqualTo(10);
+        assertThat(account.status()).isEqualTo("ACTIVE");
+        assertThat(account.frozen()).isFalse();
+    }
+
+    @Test
     void buyer_sees_each_point_type_separately_including_retired_obligations() {
         var types = mock(PointsAdministrationService.class);
         var inspection = mock(PointsInspectionService.class);

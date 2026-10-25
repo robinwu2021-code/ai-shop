@@ -232,8 +232,9 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
   // 先把多子句拆成多条单子句语句，正则那边就不用动。
   const flatSql = sql.replace(/ALTER TABLE\s+(\w+)\s+([\s\S]*?);/gi, (full, table, body) => {
     const parts = splitTopLevel(body).map((part) => part.replace(
-      new RegExp(`^(ADD|MODIFY)\\s+(?!COLUMN\\b)(\\w+)\\s+(${COL_TYPES})(?=[\\s(]|$)`, "i"),
-      "$1 COLUMN $2 $3",
+      // MariaDB's bare ADD IF NOT EXISTS keeps the existence guard after COLUMN.
+      new RegExp(`^(ADD|MODIFY)\\s+(?!COLUMN\\b)((?:IF\\s+(?:NOT\\s+)?EXISTS\\s+)?)(\\w+)\\s+(${COL_TYPES})(?=[\\s(]|$)`, "i"),
+      "$1 COLUMN $2$3 $4",
     ));
     return parts.map((c) => `ALTER TABLE ${table} ${c.trim()};`).join("\n");
   });

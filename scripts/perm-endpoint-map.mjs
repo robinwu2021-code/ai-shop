@@ -23,6 +23,8 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  ["GET", /^\/ops\/print\/(?:health|incidents|operations\/[^/]+)$/, "ops:print:read"],
+  ["POST", /^\/ops\/print\/reconciliations$/, "ops:print:resolve"],
   ["GET", /^\/ops\/pay\/entitlement-(?:dead-letters|exceptions(?:\/[^/]+(?:\/actions)?)?|reconciliations(?:\/[^/]+(?:\/differences)?)?)$/, "ops:pay:ent:read"],
   ["GET", /^\/ops\/pay\/entitlements\/[^/]+\/lifecycle$/, "ops:pay:ent:read"],
   ["POST", /^\/ops\/pay\/entitlements\/[^/]+\/freeze$/, "ops:pay:ent:freeze"],

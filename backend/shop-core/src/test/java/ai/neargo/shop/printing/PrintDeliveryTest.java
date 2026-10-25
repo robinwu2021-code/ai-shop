@@ -46,6 +46,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Executes real mapper transactions and durable attempt history; physical printing is deliberately
@@ -63,10 +64,12 @@ class PrintDeliveryTest {
                     null,
                     List.of(new Line("SKU", "2", null, "座位 1")),
                     "不代表收款");
-    private PrintService service;
-    private JdbcTemplate jdbc;
+    PrintService service;
+    JdbcTemplate jdbc;
     private OutboxPublisher outbox;
-    private TestClock clock;
+    TestClock clock;
+    DeviceMapper devices;
+    JobMapper jobs;
 
     @BeforeEach
     void setup() throws Exception {
@@ -93,11 +96,20 @@ class PrintDeliveryTest {
             }
         }
         jdbc.execute("ALTER TABLE prn_device ADD authorization_version BIGINT NOT NULL DEFAULT 0");
-        // Mirrors V579; H2 accepts one ADD per ALTER, MySQL's multi-ADD form is a syntax error here.
+        // H2 supports one ADD clause per ALTER; retain all production revocation columns.
         jdbc.execute("ALTER TABLE prn_device ADD revoke_reason VARCHAR(255)");
         jdbc.execute("ALTER TABLE prn_device ADD revoked_by VARCHAR(32)");
         jdbc.execute("ALTER TABLE prn_device ADD revoke_key VARCHAR(128)");
         jdbc.execute("ALTER TABLE prn_device ADD revocation_history CLOB");
+        applyCanonicalPrintColumns(jdbc);
+        // Runtime is a secondary projection of the canonical gate, including when the center is disabled.
+        jdbc.execute("CREATE TABLE prn_printer_runtime (tenant_no VARCHAR(32), entity_no VARCHAR(32), printer_no VARCHAR(32), active_job_no VARCHAR(32), active_attempt_no VARCHAR(32), lease_owner VARCHAR(64), lease_token_hash VARCHAR(64), lease_until TIMESTAMP, blocked_reason VARCHAR(64), updated_at TIMESTAMP, revision BIGINT DEFAULT 0)");
+        // Replay the actual compatibility widening for this legacy-only fixture subset.
+        String ownerWidths = Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
+                + "V585__print_owner_identity_width.sql"));
+        var widthChanges = Pattern.compile(
+                "ALTER TABLE (prn_device|prn_template|prn_route|prn_job|prn_attempt|prn_printer_runtime) MODIFY COLUMN (entity_no|store_no|created_by|updated_by|requested_by|revoked_by) VARCHAR\\(64\\)[^;]*;").matcher(ownerWidths);
+        while (widthChanges.find()) jdbc.execute(widthChanges.group().replace(" CHARACTER SET utf8mb4 COLLATE utf8mb4_bin", ""));
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var plugins = new MybatisPlusInterceptor();
@@ -116,14 +128,16 @@ class PrintDeliveryTest {
         factory.setDataSource(source);
         factory.setConfiguration(config);
         var session = new SqlSessionTemplate(factory.getObject());
+        devices = session.getMapper(DeviceMapper.class);
+        jobs = session.getMapper(JobMapper.class);
         outbox = mock(OutboxPublisher.class);
         clock = new TestClock();
         service =
                 new PrintServiceImpl(
-                        session.getMapper(DeviceMapper.class),
+                        devices,
                         session.getMapper(TemplateMapper.class),
                         session.getMapper(RouteMapper.class),
-                        session.getMapper(JobMapper.class),
+                        jobs,
                         session.getMapper(AttemptMapper.class),
                         JsonMapper.builder().build(),
                         clock,
@@ -135,6 +149,26 @@ class PrintDeliveryTest {
         service.publishTemplate(
                 OWNER, new TemplateReq("TPL1", "ORDER", 1, "ORDER", "{{reprint}}{{document}}"));
         service.putRoute(OWNER, new RouteReq("ROUTE", "ORDER", null, "DEVICE", "TPL1", 1));
+    }
+
+    @Test
+    void canonicalMerchantOperatorIdentityIsRetainedAcrossEnqueueClaimAndRevocation() {
+        String operator = "U".repeat(64);
+        var owner = new Scope("E", "S", operator);
+        service.publishTemplate(owner, new TemplateReq("TPL64", "ORDER", 2, "ORDER", "{{document}}"));
+        service.putRoute(owner, new RouteReq("ROUTE", "ORDER", null, "DEVICE", "TPL64", 1));
+        var job = service.enqueue(owner, new Enqueue("LONG-ACTOR", null, "PART", DOCUMENT)).getFirst();
+        assertThat(jdbc.queryForObject("SELECT requested_by FROM prn_job WHERE job_no=?", String.class, job.jobNo()))
+                .isEqualTo(operator);
+        assertThat(jdbc.queryForObject("SELECT created_by FROM prn_job WHERE job_no=?", String.class, job.jobNo()))
+                .isEqualTo(operator);
+        assertThat(jdbc.queryForObject("SELECT created_by FROM prn_template WHERE template_no='TPL64'", String.class))
+                .isEqualTo(operator);
+        service.heartbeat(BRIDGE, "DEVICE", true);
+        assertThat(service.claim(BRIDGE, "DEVICE").jobNo()).isEqualTo(job.jobNo());
+        service.revokeDevice(owner, "DEVICE", "owner stopped executor", "LONG-ACTOR-REVOKE");
+        assertThat(jdbc.queryForObject("SELECT revoked_by FROM prn_device WHERE device_no='DEVICE'", String.class))
+                .isEqualTo(operator);
     }
 
     @Test
@@ -349,7 +383,23 @@ class PrintDeliveryTest {
         assertThat(service.configuration(OWNER).devices().getFirst().status()).isEqualTo("ACTIVE");
     }
 
-    private static class TestClock extends Clock {
+    /** Replay only canonical column extensions; production data backfill remains a migration concern. */
+    static void applyCanonicalPrintColumns(JdbcTemplate jdbc) throws Exception {
+        String migration = Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
+                + "V582__unified_print_capabilities.sql"));
+        var statements = Pattern.compile(
+                "ALTER\\s+TABLE\\s+(prn_job|prn_attempt|prn_device)\\s+(.+?);(?=\\s*(?:\\r?\\n|$))",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL).matcher(migration);
+        while (statements.find()) {
+            for (String addition : statements.group(2).split(",\\s*(?=ADD\\s)")) {
+                if (addition.stripLeading().matches("(?is)ADD\\s+COLUMN\\s+.*")) {
+                    jdbc.execute("ALTER TABLE " + statements.group(1) + " " + addition.strip());
+                }
+            }
+        }
+    }
+
+    static class TestClock extends Clock {
         private Instant instant = Instant.parse("2026-10-24T01:00:00Z");
 
         void advance(long seconds) {

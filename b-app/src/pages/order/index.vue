@@ -512,6 +512,7 @@ onPullDownRefresh(async () => {
   if (currentNo.value) await load(currentNo.value);
   uni.stopPullDownRefresh();
 });
+function openPrintCenter(){if(order.value)uni.navigateTo({url:ROUTES.printCenter+'?orderNo='+encodeURIComponent(order.value.payOrderNo||order.value.orderNo)});}
 </script>
 
 <template>
@@ -522,6 +523,10 @@ onPullDownRefresh(async () => {
   >
     <template v-if="order">
       <ShPointsEarning :rows="earningRows" :failed="earningFailed" @retry="loadEarning" />
+      <view v-if="merchant.can('biz:print:read')" class="sh-card sh-cell"
+        @tap="openPrintCenter">
+        <text>{{ $t('printCenter.orderEntry') }}</text><sh-go :text="String($t('printCenter.viewTasks'))" />
+      </view>
       <view v-if="activeAfterSale" class="sh-card sh-mb-sm sh-row sh-row--between" @tap="openActiveAfterSale">
         <view>
           <text class="txt-strong is-danger">{{ $t('order.tabAfterSale') }}</text>

@@ -61,6 +61,8 @@ class GoodsActivityOnlyFlowTest {
     @Autowired private JdbcTemplate jdbc;
 
     private final List<String> started = new ArrayList<>();
+    private record CreatedOrder(String orderNo, String token) {}
+    private final List<CreatedOrder> createdOrders = new ArrayList<>();
 
     @BeforeEach
     void makeActivityOnly() {
@@ -68,16 +70,28 @@ class GoodsActivityOnlyFlowTest {
     }
 
     @AfterEach
-    void restore() {
-        for (String no : started) {
-            try {
-                activityService.setStatus(ENTITY, no, PmtActivity.ENDED);
-            } catch (RuntimeException ignored) {
-                // 用例里已经结束过的，再结束一次会被拒，无妨
+    void restore() throws Exception {
+        try {
+            // Cancel only this fixture's unpaid orders as their authenticated buyers.
+            // Leaving holds on shared SK0003 corrupts later inventory reconciliation.
+            for (CreatedOrder order : createdOrders) {
+                mvc().perform(post("/mp/order/" + order.orderNo() + "/cancel")
+                                .header("Authorization", "Bearer " + order.token()))
+                        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .jsonPath("$.code").value(0));
             }
+        } finally {
+            createdOrders.clear();
+            for (String no : started) {
+                try {
+                    activityService.setStatus(ENTITY, no, PmtActivity.ENDED);
+                } catch (RuntimeException ignored) {
+                    // 用例里已经结束过的，再结束一次会被拒，无妨
+                }
+            }
+            started.clear();
+            jdbc.update("update prd_goods set sale_mode='NORMAL' where goods_no=?", GOODS);
         }
-        started.clear();
-        jdbc.update("update prd_goods set sale_mode='NORMAL' where goods_no=?", GOODS);
     }
 
     // ---------------------------------------------------------------- §3 判定表，一行一条
@@ -256,10 +270,12 @@ class GoodsActivityOnlyFlowTest {
     private JsonNode order(String token, boolean openGroup) throws Exception {
         String body = "{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\""
                 + (openGroup ? ",\"openGroup\":true" : "") + "}";
-        return json.readTree(mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+        JsonNode result = json.readTree(mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
                         .header("Idempotency-Key", "ao-" + (++seq))
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andReturn().getResponse().getContentAsString());
+        if (code(result) == 0) createdOrders.add(new CreatedOrder(result.get("data").get("payOrderNo").asString(), token));
+        return result;
     }
 
     private JsonNode detail() throws Exception {

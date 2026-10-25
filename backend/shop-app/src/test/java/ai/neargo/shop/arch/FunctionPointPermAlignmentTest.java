@@ -137,12 +137,9 @@ class FunctionPointPermAlignmentTest {
     private Set<String> permCodesUsedByEndpoints() throws IOException {
         Map<String, String> literal = permLiterals();
         Set<String> out = new TreeSet<>();
-        /*
-         * 元器件的六个运营码（ElecInternal.OPS_PERMS）不计入：端点在独立项目 ai-hxkey 里（2026-09-30 迁出），
-         * 而 V528 已把运营端入口与这批功能点、角色授权一并下线 —— 主系统里不再有可配置的元器件能力，
-         * InternalElecEndpoint 只是按角色把码现算给 hxkey（眼下只有持 * 的超管算得出来）。
-         * 此前这里按 V370/V371 把它们算作「有端点」，V528 之后那个前提不成立，守卫就一直红着。
-         */
+        // V528 retired the electronic-components menus and grants after their
+        // endpoints moved to ai-hxkey. Count only actual endpoints in this repo;
+        // the external client's permission constants do not constitute handlers.
         for (Path p : sources()) {
             String src = Files.readString(p);
             if (!src.contains("@perm.can")) {

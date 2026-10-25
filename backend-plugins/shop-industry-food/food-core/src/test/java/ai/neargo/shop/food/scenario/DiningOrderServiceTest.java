@@ -124,7 +124,8 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
             AtomicBoolean timeout,
             AtomicInteger coreCalls,
             AtomicReference<IndustryOrderPort.Result> receipt,
-            IndustryOrderPort core) {}
+            IndustryOrderPort core,
+            CheckCartService carts) {}
 
     private void run(Consumer<Context> test) {
         run(false, test);
@@ -577,7 +578,8 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
                                             timeout,
                                             calls,
                                             receipt,
-                                            core));
+                                            core,
+                                            carts));
                         });
     }
 
@@ -878,9 +880,14 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
     }
 
     private static DiningPriceFacts facts(ObjectMapper json, boolean staff, boolean dineIn) {
+        return facts(json, staff, dineIn, "C", "SRC");
+    }
+
+    private static DiningPriceFacts facts(
+            ObjectMapper json, boolean staff, boolean dineIn, String cartNo, String sourceLineRef) {
         OrderLineInput line =
                 new OrderLineInput(
-                        "SRC",
+                        sourceLineRef,
                         "MENU",
                         "ITEM",
                         "REV",
@@ -893,7 +900,7 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
                         List.of());
         CartVO cart =
                 new CartVO(
-                        "C",
+                        cartNo,
                         "A",
                         dineIn ? "CHECK" : null,
                         dineIn ? null : "SESSION",
@@ -1054,6 +1061,98 @@ class DiningOrderServiceTest extends FoodWriteGuardFixture {
 
     private static CreateStaffDiningOrderReq staffRequest() {
         return new CreateStaffDiningOrderReq("BUYER", "C", 0, "Q", DIGEST, "POSTPAY");
+    }
+
+    @Test
+    void sameCheckSecondCartCreatesIndependentBatchAndCoreOrderWithoutOverwritingFirstRound() {
+        run(true, true, true, c -> {
+            var first = c.service.staffPlace("E", "A", "STAFF", staffRequest(), "DINING-ROUND-1");
+            var db = c.fixture.sql();
+            var firstBatch = db.queryForMap("SELECT * FROM fnb_order_batch WHERE batch_no=?", first.batchNo());
+            var firstLines = db.queryForList("SELECT * FROM fnb_order_line WHERE batch_no=? ORDER BY id", first.batchNo());
+            var firstAllocations = db.queryForList("SELECT a.* FROM fnb_core_line_allocation a JOIN fnb_order_line l ON l.entity_no=a.entity_no AND l.food_line_no=a.food_line_no WHERE l.batch_no=? ORDER BY a.id", first.batchNo());
+            var firstBinding = db.queryForMap("SELECT * FROM fnb_core_order_binding WHERE batch_no=?", first.batchNo());
+            assertThat(first.status()).isEqualTo("ACCEPTED");
+            assertThat(first.checkNo()).isEqualTo("CHECK");
+            assertThat(firstLines).hasSize(1);
+            assertThat(firstAllocations).hasSize(1);
+
+            db.update("INSERT INTO fnb_check_cart(entity_no,cart_no,store_no,status,order_source,fulfillment,check_no) VALUES ('E','C2','A','OPEN','POS','DINE_IN','CHECK')");
+            var json = new ObjectMapper();
+            var secondFacts = facts(json, true, true, "C2", "SRC2");
+            var secondSource = new PricingSourceRef("FOOD", "CART", "C2", 0, null, null);
+            var secondProjection = DiningPricingSourcePolicy.project(secondFacts, null, secondSource, null);
+            var secondComponent = secondFacts.payload().units().getFirst().componentRef();
+            var secondQuote = new PricingCheckoutPort.QuoteVO(
+                    "Q2", "CONFIRMED", "2026-10-23T13:00:00Z", 0,
+                    secondProjection.prices().sourceSnapshotHash(), "CNY",
+                    List.of(new PricingCheckoutPort.LineVO("SRC2", secondComponent, "SRC2", "MAIN", "G", "SKU", BigDecimal.ZERO, new BigDecimal("2"), 1010, 918, 92, 1010)),
+                    new PricingCheckoutPort.TotalsVO(1010, 0, 918, 92, 1010, 1010), DIGEST);
+            when(c.carts.getCart("E", "A", "C2")).thenReturn(new CartResultVO(secondFacts.payload().cart()));
+            when(c.facts.staff("E", "A", "C2", 0)).thenAnswer(call -> { outside(); return secondFacts; });
+            var secondAuthority = new AtomicInteger();
+            doAnswer(call -> {
+                if (secondAuthority.incrementAndGet() == 2)
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
+                return null;
+            }).when(c.carts).requireDiningRoomCart("E", "A", "C2");
+            // Only this new round uses the local authoritative quote; original retries use receipts.
+            doAnswer(call -> {
+                outside();
+                assertThat(call.getArgument(2, PricingSourceRef.class)).isEqualTo(secondSource);
+                assertThat(call.getArgument(3, String.class)).isEqualTo("Q2");
+                return secondQuote;
+            }).when(c.pricing).revalidateStaff(any(), anyString(), any(), anyString(), anyString());
+            var secondReceipt = new IndustryOrderPort.Result(
+                    "ORDER2", "SUB2", "Q2", "WAIT_PAY", "CNY", 1010L, 0, 3,
+                    List.of(new IndustryOrderPort.Allocation("SRC2", secondComponent, 43, 2, 1010, "CNY", "c".repeat(64))),
+                    "POSTPAY", "WAIT_FULFILL", true);
+            doAnswer(call -> {
+                outside();
+                assertThat(secondAuthority).hasValue(2);
+                IndustryOrderPort.Command command = call.getArgument(0);
+                String batch = call.getArgument(1);
+                assertThat(command.identity()).isEqualTo(new IndustryOrderPort.Identity("MAIN", "E", "A", "BUYER", "STAFF"));
+                assertThat(command.source()).isEqualTo(secondSource);
+                assertThat(call.getArgument(2, String.class)).isEqualTo("DINE_IN");
+                assertThat(db.queryForObject("SELECT cart_no FROM fnb_order_batch WHERE batch_no=?", String.class, batch)).isEqualTo("C2");
+                assertThat(db.queryForObject("SELECT check_no FROM fnb_order_batch WHERE batch_no=?", String.class, batch)).isEqualTo("CHECK");
+                c.coreCalls.incrementAndGet();
+                db.update("INSERT INTO core_owner_document_fixture VALUES (?,?,?)", batch, secondReceipt.orderNo(), json.writeValueAsString(secondReceipt));
+                return secondReceipt;
+            }).when(c.core).placeForService(any(), anyString(), anyString(), anyBoolean());
+            doAnswer(call -> {
+                outside();
+                assertThat(call.getArgument(0, ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope.class))
+                        .isEqualTo(new ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope("MAIN", "E", "A"));
+                assertThat(call.getArgument(1, String.class)).isEqualTo("STAFF");
+                return json.readValue(db.queryForObject("SELECT receipt FROM core_owner_document_fixture WHERE order_no=?", String.class, call.getArgument(2, String.class)), IndustryOrderPort.Result.class);
+            }).when(c.core).getForStore(any(), anyString(), anyString());
+            var secondRequest = new CreateStaffDiningOrderReq("BUYER", "C2", 0, "Q2", DIGEST, "POSTPAY");
+            var second = c.service.staffPlace("E", "A", "STAFF", secondRequest, "DINING-ROUND-2");
+            assertThat(second.status()).isEqualTo("ACCEPTED");
+            assertThat(second.checkNo()).isEqualTo("CHECK");
+            assertThat(second.batchNo()).isNotEqualTo(first.batchNo());
+            assertThat(second.orderNo()).isEqualTo("ORDER2").isNotEqualTo(first.orderNo());
+            assertThat(second.subOrderNo()).isEqualTo("SUB2").isNotEqualTo(first.subOrderNo());
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM fnb_order_batch WHERE check_no='CHECK'", Long.class)).isEqualTo(2);
+            assertThat(db.queryForList("SELECT cart_no FROM fnb_order_batch ORDER BY cart_no", String.class)).containsExactly("C", "C2");
+            assertThat(db.queryForObject("SELECT COUNT(DISTINCT request_key) FROM fnb_order_batch", Long.class)).isEqualTo(2);
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM core_owner_document_fixture", Long.class)).isEqualTo(2);
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM food_acceptance_outbox_fixture", Long.class)).isEqualTo(2);
+            assertThat(db.queryForObject("SELECT source_line_ref FROM fnb_order_line WHERE batch_no=?", String.class, second.batchNo())).isEqualTo("SRC2");
+            assertThat(db.queryForObject("SELECT frozen_request FROM fnb_order_batch WHERE batch_no=?", String.class, second.batchNo())).isNotEqualTo(firstBatch.get("frozen_request"));
+            assertThat(db.queryForList("SELECT status FROM fnb_check_cart ORDER BY cart_no", String.class)).containsExactly("CLOSED", "CLOSED");
+            assertThat(c.service.staffGet("E", "A", "STAFF", first.batchNo()).orderNo()).isEqualTo(first.orderNo());
+            assertThat(c.service.staffGet("E", "A", "STAFF", second.batchNo()).orderNo()).isEqualTo("ORDER2");
+            assertThat(c.restart.get().staffPlace("E", "A", "STAFF", staffRequest(), "DINING-ROUND-1").batchNo()).isEqualTo(first.batchNo());
+            assertThat(c.restart.get().staffPlace("E", "A", "STAFF", secondRequest, "DINING-ROUND-2").batchNo()).isEqualTo(second.batchNo());
+            assertThat(c.coreCalls).hasValue(2);
+            assertThat(db.queryForMap("SELECT * FROM fnb_order_batch WHERE batch_no=?", first.batchNo())).isEqualTo(firstBatch);
+            assertThat(db.queryForList("SELECT * FROM fnb_order_line WHERE batch_no=? ORDER BY id", first.batchNo())).isEqualTo(firstLines);
+            assertThat(db.queryForList("SELECT a.* FROM fnb_core_line_allocation a JOIN fnb_order_line l ON l.entity_no=a.entity_no AND l.food_line_no=a.food_line_no WHERE l.batch_no=? ORDER BY a.id", first.batchNo())).isEqualTo(firstAllocations);
+            assertThat(db.queryForMap("SELECT * FROM fnb_core_order_binding WHERE batch_no=?", first.batchNo())).isEqualTo(firstBinding);
+        });
     }
 
     @Test

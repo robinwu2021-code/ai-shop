@@ -1,0 +1,7 @@
+{
+  "bundleVersion": "NOTO_SC_V1",
+  "sha256": "25f66a7ded5ffac6a6f173718a227c252abfa963c6f99fba3aaacb1bfb704b1e",
+  "source": "https://github.com/notofonts/noto-cjk",
+  "weight": 400,
+  "license": "OFL-1.1"
+}

@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import StorePointStatements from "@/components/points/StorePointStatements.vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { pointsTypeStatusKey } from "@shared/utils/points-status";
 import { datetime } from "@shared/utils/datetime";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StorePointAccount, StorePointAgreement, StorePointType } from "@shared/types";
@@ -114,8 +115,10 @@ onShow(() => { void load(); });
       </view>
       <text v-if="current" class="txt-caption sh-muted note">
         {{ current.typeCode }} · {{ current.currency }} · {{ current.rate.pointsUnit }} {{ $t("points.pointsUnit") }} =
-        {{ current.rate.minorUnit }} {{ $t("points.minorUnit") }} · {{ current.status }}
+        {{ current.rate.minorUnit }} {{ $t("points.minorUnit") }}
       </text>
+      <text v-if="current" class="txt-caption sh-muted note">{{ $t("points.typeStatus") }}: {{ $t(pointsTypeStatusKey(current.status, current.earningPaused)) }}</text>
+      <text v-if="current?.status === 'ACTIVE' && current.earningPaused" class="txt-caption sh-muted note">{{ $t("points.earningPausedHint") }}</text>
     </view>
     <view v-if="account" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("points.accountBuckets") }}</text>

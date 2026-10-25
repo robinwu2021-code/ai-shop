@@ -1,11 +1,11 @@
 package ai.neargo.shop.payclient;
-import ai.neargo.shop.common.CursorPage;
-import ai.neargo.shop.spi.storedvalue.*;
-import java.util.List;
 import ai.neargo.shop.spi.storedvalue.StoredValueCollections;
 import ai.neargo.shop.spi.storedvalue.StoredValueIssuers;
 import ai.neargo.shop.spi.storedvalue.StoredValueMembership;
 import ai.neargo.shop.spi.storedvalue.StoredValueWallets;
+import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.spi.storedvalue.*;
+import java.util.List;
 /** Exact same contract for embedded and remote Pay deployment. */
 public interface StoredValueFinanceAppService {
  StoredValueFinance.Capabilities capabilities();

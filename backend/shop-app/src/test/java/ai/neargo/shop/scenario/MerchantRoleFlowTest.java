@@ -236,9 +236,9 @@ class MerchantRoleFlowTest {
                 "pay:sv:plan:read","pay:sv:plan:manage","pay:sv:consume:create","pay:ent:use","pay:ent:issue","pay:ent:read","pay:ent:template:read",
                 "pay:ent:template:write","pay:ent:template:publish","pay:ent:issue:manage",
                 "biz:pricing:config:read","biz:pricing:config:update","biz:pricing:config:publish",
-                "biz:pricing:tax:read",
-                // 报表导出（f0cfe667b）：含毛利与销量的私有文件，与 biz:customer 同档，可单独授给店长
-                "biz:report:export"));
+                "biz:pricing:tax:read","biz:report:export",
+                "biz:print:read","biz:print:submit","biz:print:reprint","biz:print:extra",
+                "biz:print:device","biz:print:config","biz:print:resolve","biz:print:simulate","biz:print:export"));
     }
 
     @Test

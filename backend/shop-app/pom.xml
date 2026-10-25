@@ -16,6 +16,9 @@
     <description>启动模块：portal(三端 Controller) + config + 装配。单体形态依赖全部 svc。</description>
 
     <dependencies>
+<dependency><groupId>ai.neargo.shop</groupId><artifactId>print-domain</artifactId><version>${project.version}</version></dependency>
+<dependency><groupId>ai.neargo.shop</groupId><artifactId>print-channel</artifactId><version>${project.version}</version></dependency>
+
         <!-- 定时任务调度引擎。**业务实例内的 worker 用它**（J2/G2 阶段）——
              与独立 worker 跑的是同一套代码，「先在业务实例内跑通、观察一周、再拆出去」
              这条路上才不会变成两套各自演进的实现 -->
@@ -244,6 +247,88 @@
     </properties>
 
     <profiles>
+        <!-- Each Surefire execution owns a fresh fork: close Spring contexts and release
+             JVM/static caches between bounded batches. Override default-test rather than
+             adding an unfiltered ninth run. A focused -Dtest uses the usual single run.
+             Keep Surefire's four default naming conventions and nested-class exclusion. -->
+        <profile>
+            <id>bounded-test-batches</id>
+            <activation><property><name>!test</name></property></activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <executions>
+                        <execution>
+                            <id>default-test</id>
+                            <phase>test</phase>
+                            <goals><goal>test</goal></goals>
+                            <configuration>
+                                <includes><include>%regex[(?:.*/)?(?=[A-Ca-c])(?:Test[^/]*|[^/]*Test|[^/]*Tests|[^/]*TestCase)\.class]</include></includes>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>test-batch-d-f</id>
+                            <phase>test</phase>
+                            <goals><goal>test</goal></goals>
+                            <configuration>
+                                <includes><include>%regex[(?:.*/)?(?=[D-Fd-f])(?:Test[^/]*|[^/]*Test|[^/]*Tests|[^/]*TestCase)\.class]</include></includes>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>test-batch-g-l</id>
+                            <phase>test</phase>
+                            <goals><goal>test</goal></goals>
+                            <configuration>
+                                <includes><include>%regex[(?:.*/)?(?=[G-Lg-l])(?:Test[^/]*|[^/]*Test|[^/]*Tests|[^/]*TestCase)\.class]</include></includes>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>test-batch-m-n</id>
+                            <phase>test</phase>
+                            <goals><goal>test</goal></goals>
+                            <configuration>
+                                <includes><include>%regex[(?:.*/)?(?=[M-Nm-n])(?:Test[^/]*|[^/]*Test|[^/]*Tests|[^/]*TestCase)\.class]</include></includes>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>test-batch-o</id>
+                            <phase>test</phase>
+                            <goals><goal>test</goal></goals>
+                            <configuration>
+                                <includes><include>%regex[(?:.*/)?(?=[Oo])(?:Test[^/]*|[^/]*Test|[^/]*Tests|[^/]*TestCase)\.class]</include></includes>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>test-batch-p</id>
+                            <phase>test</phase>
+                            <goals><goal>test</goal></goals>
+                            <configuration>
+                                <includes><include>%regex[(?:.*/)?(?=[Pp])(?:Test[^/]*|[^/]*Test|[^/]*Tests|[^/]*TestCase)\.class]</include></includes>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>test-batch-q-r</id>
+                            <phase>test</phase>
+                            <goals><goal>test</goal></goals>
+                            <configuration>
+                                <includes><include>%regex[(?:.*/)?(?=[Q-Rq-r])(?:Test[^/]*|[^/]*Test|[^/]*Tests|[^/]*TestCase)\.class]</include></includes>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>test-batch-rest</id>
+                            <phase>test</phase>
+                            <goals><goal>test</goal></goals>
+                            <configuration>
+                                <includes><include>%regex[(?:.*/)?(?=(?:[S-Zs-z]|[^A-Za-z]))(?:Test[^/]*|[^/]*Test|[^/]*Tests|[^/]*TestCase)\.class]</include></includes>
+                            </configuration>
+                        </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!-- 显式构建形态；运行时仍必须设置 shop.food.enabled/deployment。 -->
         <profile>
             <id>food-embedded</id>

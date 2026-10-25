@@ -1,0 +1,205 @@
+{
+  "kind": "SAMPLE_SIMULATION_ONLY",
+  "files": [
+    {
+      "file": "output/pdf/print-acceptance/APPT_CONFIRM-58.pdf",
+      "sha256": "338ac85ad528c5dcf593a5c51d3501c57cb07b03e6a460a05826b07607873ccc",
+      "size": 13756
+    },
+    {
+      "file": "output/pdf/print-acceptance/APPT_CONFIRM-80.pdf",
+      "sha256": "3be0a91a49adf0f8405d7890307b238407093c950388848c3cfc4ccbe5bac92f",
+      "size": 13724
+    },
+    {
+      "file": "output/pdf/print-acceptance/CARD_BALANCE-58.pdf",
+      "sha256": "b96ae9277b4393c747f3a21dad28db886006f5af8609824c9aba873fe0f7671d",
+      "size": 14565
+    },
+    {
+      "file": "output/pdf/print-acceptance/CARD_BALANCE-80.pdf",
+      "sha256": "a803143a74a234fb53be0c9ef8b85bfc57f5802dbae0855d7e5734aabdef9f2e",
+      "size": 14527
+    },
+    {
+      "file": "output/pdf/print-acceptance/CASHIER_RECEIPT-58.pdf",
+      "sha256": "f93ec6d4a1681ec2f3108afdbe895e2ce25470612564102304f07e3deae1e1ae",
+      "size": 13364
+    },
+    {
+      "file": "output/pdf/print-acceptance/CASHIER_RECEIPT-80.pdf",
+      "sha256": "bb2d4e3b5df0b13af9d5b8c2830c6645b5589bb147756caca2037e2a64e1f91a",
+      "size": 13337
+    },
+    {
+      "file": "output/pdf/print-acceptance/CHECKOUT-58.pdf",
+      "sha256": "e9534136bf19ae6322270c669b727c61dd1fe345008b85fe8670ac358f0a2430",
+      "size": 13295
+    },
+    {
+      "file": "output/pdf/print-acceptance/CHECKOUT-80.pdf",
+      "sha256": "5d6255cfe8c4ad8ce2b050cb4a8b535ed6d0763334c538553aa2c19da8f298f6",
+      "size": 13260
+    },
+    {
+      "file": "output/pdf/print-acceptance/DAY_END-58.pdf",
+      "sha256": "dad66e31aa2497b29fe8b7ae6acab162c7e6e7ba1da85c8c01c657712433bae9",
+      "size": 13208
+    },
+    {
+      "file": "output/pdf/print-acceptance/DAY_END-80.pdf",
+      "sha256": "5ac9d34942d5f642691a123d5912c52c4aceec788546843e2c332b637dc4e8ec",
+      "size": 13209
+    },
+    {
+      "file": "output/pdf/print-acceptance/DELIVERY_HANDOVER-58.pdf",
+      "sha256": "dd2753fbbe042d213828a1f78ca54c87e37cd219634549a33379777a568ffd6c",
+      "size": 15745
+    },
+    {
+      "file": "output/pdf/print-acceptance/DELIVERY_HANDOVER-80.pdf",
+      "sha256": "fc29a0b55528f756f961628959cb809fe55c4d3c3f0afec8b50f5db1193b5aeb",
+      "size": 15705
+    },
+    {
+      "file": "output/pdf/print-acceptance/HANDOVER-58.pdf",
+      "sha256": "f64268c031108c56c33fc4919aae7ad429e36c0b8adee1814f6a39de2ac6a85a",
+      "size": 13526
+    },
+    {
+      "file": "output/pdf/print-acceptance/HANDOVER-80.pdf",
+      "sha256": "3c0ab99f47506b0aa1b0e85265d11dac24f4276d23e4aee11187e7fc9250b0a5",
+      "size": 13503
+    },
+    {
+      "file": "output/pdf/print-acceptance/KITCHEN-58.pdf",
+      "sha256": "2836cd38988dd985fb620e022079607845a3feb4e5e19b76f2902d769f471faa",
+      "size": 14508
+    },
+    {
+      "file": "output/pdf/print-acceptance/KITCHEN-80.pdf",
+      "sha256": "d6b49ef70ab4c524d47d83d5da6844b5df444a2240cb7eca6d5a97fdb31a8788",
+      "size": 14504
+    },
+    {
+      "file": "output/pdf/print-acceptance/KITCHEN_ADD-58.pdf",
+      "sha256": "42831ae5834d334a56dbc16badc2928d8dba846a0302b09a36ed51a11a4bea56",
+      "size": 14732
+    },
+    {
+      "file": "output/pdf/print-acceptance/KITCHEN_ADD-80.pdf",
+      "sha256": "e60287e0fd3d118b7fe32fa3f75bf05c70d46afa23d1bde0ae7ed074af6e1bf8",
+      "size": 14687
+    },
+    {
+      "file": "output/pdf/print-acceptance/KITCHEN_VOID-58.pdf",
+      "sha256": "f47864d2d3e251bbc9d3094f32f2174439e88ba97f472fab1998c71f2f645fdc",
+      "size": 16366
+    },
+    {
+      "file": "output/pdf/print-acceptance/KITCHEN_VOID-80.pdf",
+      "sha256": "dcdd0bf42d8fc4b9cd1e96070436f9c6996819b74bb567eb0b3f37417924464d",
+      "size": 16326
+    },
+    {
+      "file": "output/pdf/print-acceptance/ORDER_PAID-58.pdf",
+      "sha256": "657ca6094e1968552f3f63134ae9937754d10a807e7eac7f275ca14e3843b478",
+      "size": 22958
+    },
+    {
+      "file": "output/pdf/print-acceptance/ORDER_PAID-80.pdf",
+      "sha256": "ee96059e55a489592d6d9e9ddc9320f925468eceab67f3f1c40f6838e28c21c9",
+      "size": 22932
+    },
+    {
+      "file": "output/pdf/print-acceptance/PICKING-58.pdf",
+      "sha256": "7446d4b82b96f745063bdf98af6b68a9aa6ec8dbec9a4223067ceb07284d65e2",
+      "size": 13250
+    },
+    {
+      "file": "output/pdf/print-acceptance/PICKING-80.pdf",
+      "sha256": "e4a572b5c03c1a67c36977ae47cf43c909429f47aa2a4240cc03ad07ccf1e17c",
+      "size": 13236
+    },
+    {
+      "file": "output/pdf/print-acceptance/PRE_BILL-58.pdf",
+      "sha256": "55e62224a082fe89a9c109bf78575b8fc436271c846d59b247bc577f7005475f",
+      "size": 13045
+    },
+    {
+      "file": "output/pdf/print-acceptance/PRE_BILL-80.pdf",
+      "sha256": "c17a7ace4aa717340d7b7cf8ddd5b440bc0240dafd07c725495cd6ce93179a82",
+      "size": 13003
+    },
+    {
+      "file": "output/pdf/print-acceptance/PRINTER_TEST-58.pdf",
+      "sha256": "395ee692d34ab6034a741a133d8f3f7af383bb004decd61df8d9e14556be7976",
+      "size": 12368
+    },
+    {
+      "file": "output/pdf/print-acceptance/PRINTER_TEST-80.pdf",
+      "sha256": "60d61d72fe158ff0940c7912fa9feef7182ef7acfd8f7337eb5cfef1ec0e5f40",
+      "size": 12346
+    },
+    {
+      "file": "output/pdf/print-acceptance/RECHARGE_RECEIPT-58.pdf",
+      "sha256": "25b098a8042a57191e00aa4c60de9726dc85feca0608090747ea7aa1a2222225",
+      "size": 12595
+    },
+    {
+      "file": "output/pdf/print-acceptance/RECHARGE_RECEIPT-80.pdf",
+      "sha256": "4f555df5a97225e7fe8dcfe226b92ccc3844f106c87fd3b58f179ed71ddaf244",
+      "size": 12583
+    },
+    {
+      "file": "output/pdf/print-acceptance/REFUND_RECEIPT-58.pdf",
+      "sha256": "20521f78032f53a9b1fc6432b3e5d0890ca596b6b041d9be094aaf288b83aba4",
+      "size": 13725
+    },
+    {
+      "file": "output/pdf/print-acceptance/REFUND_RECEIPT-80.pdf",
+      "sha256": "f2845cfd24ffbd21a7715b0ada007b188a8ece4572cdaa7d077b73db06199403",
+      "size": 13680
+    },
+    {
+      "file": "output/pdf/print-acceptance/SERVICE_COMPLETE-58.pdf",
+      "sha256": "9651264c97ebfaa91a7e8a82ab611f1244020e42bcfd58c35f841833a6ab4995",
+      "size": 12998
+    },
+    {
+      "file": "output/pdf/print-acceptance/SERVICE_COMPLETE-80.pdf",
+      "sha256": "84418c35078aa11e556b8a8ba4580cd1af847747b4dfd4019e794b197e8a52af",
+      "size": 12982
+    },
+    {
+      "file": "output/pdf/print-acceptance/SERVICE_START-58.pdf",
+      "sha256": "8eb5c4f5520a2a50d99065a999b3ec4814b3aa158c5c5bd7d24cfcc24eeb7576",
+      "size": 15973
+    },
+    {
+      "file": "output/pdf/print-acceptance/SERVICE_START-80.pdf",
+      "sha256": "1634eead99964119ee4b20360b3ac292cfa4905360a44af2c667c7284f5f7e24",
+      "size": 15943
+    },
+    {
+      "file": "output/pdf/print-acceptance/TAKEOUT_PACKING-58.pdf",
+      "sha256": "5d7eef4af490d548ef4904bb0223b6faae94cef23c110d9bd852549d8c4c22c7",
+      "size": 13556
+    },
+    {
+      "file": "output/pdf/print-acceptance/TAKEOUT_PACKING-80.pdf",
+      "sha256": "2fec66b12f0af6bc1b25ae6c04efd0e1b7389d5b5e166114f969a48843281770",
+      "size": 13533
+    },
+    {
+      "file": "output/pdf/print-acceptance/URGE-58.pdf",
+      "sha256": "41d00ec2bc5ceb9e8aaca25ad668011379148939f1672536396eb1141e59c5bf",
+      "size": 14489
+    },
+    {
+      "file": "output/pdf/print-acceptance/URGE-80.pdf",
+      "sha256": "775ab357e89866c69b039fbb89b9379d283342d21709ab75f5b4302af54f58ea",
+      "size": 14472
+    }
+  ]
+}

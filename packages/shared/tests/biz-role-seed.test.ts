@@ -18,7 +18,7 @@
 //
 // **比的是种子 SQL，不是活库**：守卫要能在没有数据库的机器上跑，
 // 而且新环境的库正是由这段 SQL 建起来的 —— 它才是「库里应该是什么」的定义。
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -66,6 +66,19 @@ function fromSeed(): Record<string, Set<string>> {
   // 形如 ('*', 'MANAGER', '店长', '["biz:receive",…]', 1, …)
   for (const m of sql.matchAll(/\(\s*'\*'\s*,\s*'(\w+)'\s*,\s*'[^']*'\s*,\s*'(\[[^']*\])'/g)) {
     out[m[1]!] = new Set(JSON.parse(m[2]!) as string[]);
+  }
+  // V71 remains immutable; later additive migrations contribute to the effective role seed.
+  const dir = join(SEED, "..");
+  for (const file of readdirSync(dir).filter((f) => /^V\d+__.*\.sql$/.test(f))
+    .sort((a, b) => Number(a.match(/^V(\d+)/)![1]) - Number(b.match(/^V(\d+)/)![1]))) {
+    for (const statement of readFileSync(join(dir, file), "utf8").split(";")) {
+      if (!/UPDATE\s+mch_role\s+SET\s+perms\s*=\s*JSON_ARRAY_APPEND/i.test(statement)) continue;
+      if (!/entity_no\s*=\s*'\*'/.test(statement) || !/builtin\s*=\s*1/.test(statement)) continue;
+      const role = statement.match(/role_code\s*=\s*'(\w+)'/i)?.[1];
+      const code = statement.match(/JSON_ARRAY_APPEND\(perms\s*,\s*'\$'\s*,\s*'([^']+)'\)/i)?.[1];
+      if (!role || !code || !out[role]) throw new Error(`Unparsed role permission update: ${file}`);
+      out[role]!.add(code);
+    }
   }
   return out;
 }

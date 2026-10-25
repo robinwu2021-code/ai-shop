@@ -1,10 +1,10 @@
 package ai.neargo.shop.merchant.brand.impl;
-import static ai.neargo.shop.merchant.brand.ManagementRepository.*;
-import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchant.brand.BrandFinancialChangeService;
 import ai.neargo.shop.merchant.brand.ManagementRepository;
 import ai.neargo.shop.merchant.brand.ManagementScopeService;
 import ai.neargo.shop.merchant.brand.ManagementModels;
+import static ai.neargo.shop.merchant.brand.ManagementRepository.*;
+import ai.neargo.shop.common.*;
 import ai.neargo.shop.merchant.brand.ManagementModels.Actor;
 import ai.neargo.shop.numbering.*;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
@@ -16,10 +16,14 @@ import java.util.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 /** Core-local durable participant. No Pay call, balance change or identity merge occurs in these transactions. */
-@Service
+@Service("brandFinancialChangeService")
 public class BrandFinancialChangeServiceImpl implements BrandFinancialChangeService {
  private final ManagementRepository db;private final ManagementScopeService scopes;private final DocumentNumberCoordinator numbers;
  public BrandFinancialChangeServiceImpl(ManagementRepository db,ManagementScopeService scopes,@Qualifier("coreDocumentNumberCoordinator")DocumentNumberCoordinator numbers){this.db=db;this.scopes=scopes;this.numbers=numbers;}
+
+
+
+
  public Source source(Actor a,String management,String store,String to){authorize(a,management,store,from(a,store),to);var st=store(a,store,false);var brands=new ArrayList<String>();String old=from(a,store);if(old!=null)brands.add(old);if(to!=null&&!to.equals(old))brands.add(to);if(Objects.equals(old,to))bad();return new Source(management,store,str(st,"entity_no"),brands);}
  public Pending original(Actor a,String management,String no){var row=row(a,management,no,false);authorize(a,management,str(row,"store_no"),str(row,"from_brand_no"),str(row,"to_brand_no"));return pending(row);}
  public Pending findOriginal(Actor a,String management,String store,String key){ContractChecks.id(key);scopes.resolve(a,management);scopes.require(a,management,"STORE",store,"store.read");var row=db.one("SELECT change_no FROM mch_brand_financial_change WHERE tenant_no=? AND original_actor_no=? AND command_key=? AND management_no=? AND store_no=? AND deleted=0",a.tenantNo(),a.actorKey(),key,management,store);return row==null?null:original(a,management,str(row,"change_no"));}

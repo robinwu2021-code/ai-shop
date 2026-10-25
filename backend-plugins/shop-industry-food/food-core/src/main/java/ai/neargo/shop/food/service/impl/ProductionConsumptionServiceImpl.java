@@ -162,16 +162,19 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                     if (heads.updateById(current) != 1) throw conflict();
                     return null;
                 });
+        boolean reversing = row.getReversalSnapshot() != null;
         try {
             var receipt =
-                    row.getReversalSnapshot() == null
+                    !reversing
                             ? inventory.query(command)
                             : inventory.reverse(
                                     json.readValue(
                                             row.getReversalSnapshot(),
                                             InventoryProductionPort.Reverse.class));
             validate(command, receipt);
-            if ("ABSENT".equals(receipt.status())) {
+            // A forward issue confirmation cannot complete a persisted reversal intent.
+            if (reversing && "CONFIRMED".equals(receipt.status())) throw conflict();
+            if (!reversing && "ABSENT".equals(receipt.status())) {
                 receipt = inventory.consume(command);
                 validate(command, receipt);
             }

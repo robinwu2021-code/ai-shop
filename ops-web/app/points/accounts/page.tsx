@@ -1,4 +1,6 @@
 "use client";
+import { PointsAdjustments } from "../adjustments";
+import { useCan } from "@/lib/use-can";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -21,6 +23,7 @@ const bucketNames: Record<PointsBucket, [string, string]> = {
 };
 const accountKey = (r: PointsAccountView) => `${r.snapshot.typeCode}:${r.snapshot.holderType}:${r.snapshot.holderNo}`;
 export default function PointsAccountsPage() {
+  const can = useCan(); const [adjustmentsOpen, setAdjustmentsOpen] = useState(false);
   const { t, locale } = usePointsText();
   const types = useQuery({ queryKey: ["points-types"], queryFn: () => api.pointsTypes() });
   const [chosenType, setChosenType] = useState("");
@@ -50,19 +53,22 @@ export default function PointsAccountsPage() {
     { header: t("状态", "Status"), cell: status },
   ];
   return <main className={`space-y-3 ${styles.page}`}>
-    <TabHeader tabs={[{ key: "accounts", label: t("积分账户", "Points accounts") }]} value="accounts" onChange={() => {}} desc={t("查询积分账户余额与流水", "View points account balances and entries")} />
+    <div className="flex flex-wrap items-center justify-between gap-2"><TabHeader tabs={[{ key: "accounts", label: t("积分账户", "Points accounts") }]} value="accounts" onChange={() => {}} desc={t("查询积分账户余额与流水", "View points account balances and entries")} />{can("finance:settle:read") && <Button variant="outline" disabled={!typeCode} onClick={() => setAdjustmentsOpen(true)}>{t("调账记录", "Adjustment records")}</Button>}</div>
     <form className={styles.filters} onSubmit={e => { e.preventDefault(); searchAccounts(); }}>
-      <label>{t("积分名称", "Points name")}<Select value={typeCode} onChange={e => { setChosenType(e.target.value); setHolderNo(""); setSearch(""); resetSelection(); }}>{types.data?.map(x => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>
+      <label>{t("积分名称", "Points name")}<Select value={typeCode} onChange={e => { setChosenType(e.target.value); setAdjustmentsOpen(false); setHolderNo(""); setSearch(""); resetSelection(); }}>{types.data?.map(x => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>
       <label>{t("账户对象", "Account holder")}<Select value={holderType} onChange={e => { setHolderType(e.target.value as PointsHolder); setHolderNo(""); setSearch(""); resetSelection(); }}><option value="USER">{t("会员", "Member")}</option><option value="STORE">{t("门店", "Store")}</option></Select></label>
       <label>{holderType === "STORE" ? t("门店编号", "Store number") : t("会员编号", "Member number")}<Input type="text" dir="ltr" value={holderNo} onChange={e => setHolderNo(e.target.value)} placeholder={t("输入完整编号", "Enter exact number")} /></label>
       <Button variant="outline" type="submit" disabled={!typeCode}>{t("查询", "Search")}</Button>
       <Button variant="ghost" type="button" onClick={() => { setHolderNo(""); setSearch(""); resetSelection(); }}>{t("重置", "Reset")}</Button>
       <Button variant="ghost" type="button" className={styles.help} aria-expanded={showHelp} aria-controls="points-account-help" onClick={() => setShowHelp(!showHelp)}>{t("使用说明", "Help")}</Button>
     </form>
-    {showHelp && <div id="points-account-help"><Notice>{t("余额单位为积分。未建账与余额为零是两种状态；本页只读，不提供人工改余额。编号支持精确查询。", "Balances are in points. A missing account differs from a zero balance. This page is read-only; numbers use exact matching.")}</Notice></div>}
+    {showHelp && <div id="points-account-help"><Notice>{t("余额单位为积分。未建账与余额为零是两种状态；人工调账通过调账记录申请并由另一人复核。编号支持精确查询。", "Balances are in points. A missing account differs from a zero balance. Adjustments require a request and independent review. Numbers use exact matching.")}</Notice></div>}
     {types.error && <Notice tone="warning">{types.error.message}<Button onClick={() => void types.refetch()}>{t("重试", "Retry")}</Button></Notice>}
     <DataTable columns={columns} rows={query.data?.rows} loading={types.isPending || (!!typeCode && query.isPending)} error={query.error} onRetry={() => void query.refetch()} rowKey={accountKey} empty={t("没有匹配的积分账户。", "No matching points accounts.")} rowProps={r => ({ role: "button", tabIndex: 0, className: "cursor-pointer hover:bg-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary", onClick: () => openAccount(r), onKeyDown: e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openAccount(r); } } })} />
     <div className="flex justify-end gap-2"><Button variant="outline" disabled={!after} onClick={() => { setAfter(0); setSelectedKey(null); }}>{t("首页", "First page")}</Button><Button variant="outline" disabled={!query.data?.hasMore || query.isFetching} onClick={() => { setAfter(query.data?.next ?? 0); setSelectedKey(null); }}>{t("下一页", "Next page")}</Button></div>
+    <Drawer open={adjustmentsOpen && can("finance:settle:read")} onOpenChange={setAdjustmentsOpen} title={t("调账记录", "Adjustment records")} width="w-[900px]" headerClassName={styles.drawerHead} bodyClassName={styles.drawerBody}>
+      {adjustmentsOpen && can("finance:settle:read") && <PointsAdjustments key={typeCode} typeCode={typeCode} typeName={type?.name} canMake={can("finance:settle:execute")} canCheck={can("finance:payout:execute")} />}
+    </Drawer>
     <Drawer open={!!selected} onOpenChange={open => { if (!open) setSelectedKey(null); }} title={t("账户详情", "Account details")} desc={t("余额与流水均以积分为单位。", "Balances and entries are in points.")} width="w-[680px]" headerClassName={styles.drawerHead} bodyClassName={styles.drawerBody}>
       {account && selected && <div className="space-y-3">
         <section className={styles.surface}><h3>{t("账户信息", "Account information")}</h3><dl className={styles.fields}>

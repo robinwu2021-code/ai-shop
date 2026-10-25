@@ -10,7 +10,7 @@ import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.GlobalExceptionHandler;
-import ai.neargo.shop.inventory.api.internal.InternalMaterialCatalogController;
+import ai.neargo.shop.portal.internal.InternalMaterialCatalogController;
 import ai.neargo.shop.inventory.config.InventoryDataSourceConfig;
 import ai.neargo.shop.inventory.port.MaterialCatalogQueryPortImpl;
 import ai.neargo.shop.inventory.service.impl.InventoryAclServiceImpl;

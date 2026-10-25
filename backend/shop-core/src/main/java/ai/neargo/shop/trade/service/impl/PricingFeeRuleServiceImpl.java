@@ -43,7 +43,8 @@ import java.util.Objects;
 import java.util.Set;
 
 @Service
-public class PricingFeeRuleServiceImpl implements PricingFeeRuleService {
+public class PricingFeeRuleServiceImpl
+        implements PricingFeeRuleService {
     private final PricingFeeRuleMapper mapper;
     private final ObjectMapper json;
 

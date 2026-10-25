@@ -10,6 +10,8 @@ import ai.neargo.shop.promotion.dto.ActivityVOs.ActivityVO;
 import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.service.ActivityService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -54,6 +56,30 @@ class GroupAuditFlowTest {
     private ai.neargo.shop.marketing.group.GroupService groupService;
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    private static final java.util.Set<String> fixtureActivities = new java.util.LinkedHashSet<>();
+    private static final java.util.Set<String> fixtureGroups = new java.util.LinkedHashSet<>();
+
+    @BeforeEach
+    @AfterEach
+    void cleanOwnedGroupFixtures() {
+        for (String activity : List.copyOf(fixtureActivities)) dropActivity(activity);
+        for (String group : List.copyOf(fixtureGroups)) {
+            jdbc.update("delete from mkt_group_member where group_no=?", group);
+            jdbc.update("delete from mkt_group_buy where group_no=?", group);
+            fixtureGroups.remove(group);
+        }
+    }
+
+    private void dropActivity(String activity) {
+        // Activity deletion alone leaves merchant-created OPEN groups in goods-page rankings.
+        jdbc.update("delete from mkt_group_member where group_no in"
+                + " (select group_no from mkt_group_buy where activity_no=?)", activity);
+        jdbc.update("delete from mkt_group_buy where activity_no=?", activity);
+        jdbc.update("delete from pmt_activity_goods where activity_no=?", activity);
+        jdbc.update("delete from pmt_activity where activity_no=?", activity);
+        fixtureActivities.remove(activity);
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -223,6 +249,7 @@ class GroupAuditFlowTest {
                 PmtActivity.BENEFIT_PRICE, 800L, null, null,
                 PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null, 100, null,
                 List.of(), List.of("G0001")), "TEST");
+        fixtureActivities.add(a.activityNo());
         try {
             var vo = groupService.createMerchantGroup("M0001", "G0001", null, null);
             assertThat(vo.groupPrice())
@@ -232,8 +259,7 @@ class GroupAuditFlowTest {
                     .as("★ 成团人数也来自活动")
                     .isEqualTo(5);
         } finally {
-            jdbc.update("delete from pmt_activity_goods where activity_no=?", a.activityNo());
-            jdbc.update("delete from pmt_activity where activity_no=?", a.activityNo());
+            dropActivity(a.activityNo());
         }
     }
 
@@ -247,6 +273,7 @@ class GroupAuditFlowTest {
                 PmtActivity.BENEFIT_PRICE, 900L, null, null,
                 PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null, 100, null,
                 List.of(), List.of("G0001")), "TEST");
+        fixtureActivities.add(a.activityNo());
         try {
             // 先证明这条路本来是通的 —— 不然下面那条断言证明不了是「停掉」起的作用
             assertThat(groupService.createMerchantGroup("M0001", "G0001", null, null).groupPrice())
@@ -258,8 +285,7 @@ class GroupAuditFlowTest {
                     .as("★ 活动停了还能开团的话，商家点「暂停」之后团照样在开，而界面写着已暂停")
                     .isInstanceOf(BizException.class);
         } finally {
-            jdbc.update("delete from pmt_activity_goods where activity_no=?", a.activityNo());
-            jdbc.update("delete from pmt_activity where activity_no=?", a.activityNo());
+            dropActivity(a.activityNo());
         }
     }
 
@@ -282,11 +308,11 @@ class GroupAuditFlowTest {
                 PmtActivity.BENEFIT_PRICE, 1_000L, null, null,
                 PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null, 100, null,
                 List.of(), List.of(goodsNo)), "TEST");
+        fixtureActivities.add(a.activityNo());
         try {
             body.run();
         } finally {
-            jdbc.update("delete from pmt_activity_goods where activity_no=?", a.activityNo());
-            jdbc.update("delete from pmt_activity where activity_no=?", a.activityNo());
+            dropActivity(a.activityNo());
         }
     }
 
@@ -323,6 +349,7 @@ class GroupAuditFlowTest {
         g.setEndAt(System.currentTimeMillis() + 86_400_000L);
         g.setStatus(status);
         groupBuyMapper.insert(g);
+        fixtureGroups.add(g.getGroupNo());
         return g.getGroupNo();
     }
 

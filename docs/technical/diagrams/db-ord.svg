@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="2072" viewBox="0 0 680 2072" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>交易 表关系</title><desc>57 张表，箭头由引用方指向被引用方。</desc>
+<title>交易 表关系</title><desc>58 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
@@ -37,9 +37,9 @@
 <path class="ar" d="M580 726 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M100 842 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M260 842 L260 440 L100 440 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M340 1930 L340 1984 L340 1984 L340 1999" marker-end="url(#a)"/>
 <path class="ar" d="M340 2002 L340 1948 L340 1948 L340 1933" marker-end="url(#a)"/>
-<path class="ar" d="M340 2002 L340 440 L100 440 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M340 1930 L340 1984 L340 1984 L340 1999" marker-end="url(#a)"/>
+<path class="ar" d="M340 1886 L340 440 L100 440 L100 425" marker-end="url(#a)"/>
 <path class="ar" d="M420 842 L420 452 L100 452 L100 425" marker-end="url(#a)"/>
 <path class="ar" d="M100 1190 L100 904 L420 904 L420 889" marker-end="url(#a)"/>
 <path class="ar" d="M100 1538 L100 904 L420 904 L420 889" marker-end="url(#a)"/>
@@ -51,19 +51,21 @@
 <path class="ar" d="M580 1190 L580 104 L100 104 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 1190 L580 684 L100 684 L100 657" marker-end="url(#a)"/>
 <path class="ar" d="M580 842 L580 464 L260 464 L260 425" marker-end="url(#a)"/>
-<path class="ar" d="M148 1306 L148 672 L100 672 L100 657" marker-end="url(#a)"/>
-<path class="ar" d="M340 1306 L340 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M340 1306 L340 684 L100 684 L100 657" marker-end="url(#a)"/>
-<path class="ar" d="M260 1538 L260 1368 L340 1368 L340 1353" marker-end="url(#a)"/>
+<path class="ar" d="M100 1306 L100 672 L100 672 L100 657" marker-end="url(#a)"/>
+<path class="ar" d="M260 1306 L260 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 1306 L260 684 L100 684 L100 657" marker-end="url(#a)"/>
+<path class="ar" d="M260 1538 L260 1368 L260 1368 L260 1353" marker-end="url(#a)"/>
 <path class="ar" d="M420 1538 L420 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M420 1538 L420 672 L100 672 L100 657" marker-end="url(#a)"/>
-<path class="ar" d="M420 1538 L420 1380 L340 1380 L340 1353" marker-end="url(#a)"/>
-<path class="ar" d="M580 1538 L580 1392 L340 1392 L340 1353" marker-end="url(#a)"/>
-<path class="ar" d="M532 1306 L532 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M532 1306 L532 696 L100 696 L100 657" marker-end="url(#a)"/>
-<path class="ar" d="M244 1654 L244 1368 L532 1368 L532 1353" marker-end="url(#a)"/>
-<path class="ar" d="M436 1654 L436 1380 L532 1380 L532 1353" marker-end="url(#a)"/>
-<path class="ar" d="M436 1654 L436 1392 L340 1392 L340 1353" marker-end="url(#a)"/>
+<path class="ar" d="M420 1538 L420 1380 L260 1380 L260 1353" marker-end="url(#a)"/>
+<path class="ar" d="M580 1538 L580 1392 L260 1392 L260 1353" marker-end="url(#a)"/>
+<path class="ar" d="M420 1306 L420 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M420 1306 L420 696 L100 696 L100 657" marker-end="url(#a)"/>
+<path class="ar" d="M244 1654 L244 1368 L420 1368 L420 1353" marker-end="url(#a)"/>
+<path class="ar" d="M436 1654 L436 1380 L420 1380 L420 1353" marker-end="url(#a)"/>
+<path class="ar" d="M436 1654 L436 1392 L260 1392 L260 1353" marker-end="url(#a)"/>
+<path class="ar" d="M580 1306 L580 116 L100 116 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 1306 L580 672 L100 672 L100 657" marker-end="url(#a)"/>
 <rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="50" text-anchor="middle" font-size="13">ord_order</text>
 <text class="s" x="100" y="65" text-anchor="middle">主订单：用户视角，一次…</text>
@@ -187,15 +189,18 @@
 <rect x="511" y="1190" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="580" y="1216" text-anchor="middle" font-size="9.5">ord_industry_fulfillment</text>
 
-<rect x="63" y="1306" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="148" y="1332" text-anchor="middle" font-size="9.5">ord_industry_fulfillment_progress</text>
+<rect x="31" y="1306" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="1332" text-anchor="middle" font-size="9.5">ord_industry_fulfillment_progress</text>
 
-<rect x="255" y="1306" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="1332" text-anchor="middle" font-size="11">ord_industry_amendment</text>
+<rect x="191" y="1306" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="1332" text-anchor="middle" font-size="9.5">ord_industry_amendment</text>
 
-<rect x="447" y="1306" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="1332" text-anchor="middle" font-size="9.5">ord_pricing_fee_application</text>
+<rect x="351" y="1306" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="1332" text-anchor="middle" font-size="9.5">ord_pricing_fee_application</text>
 
+<rect x="511" y="1306" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="1326" text-anchor="middle" font-size="13">ord_print_fact</text>
+<text class="s" x="580" y="1341" text-anchor="middle">订单事务内冻结的不可…</text>
 <rect x="31" y="1422" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="1442" text-anchor="middle" font-size="11">ord_after_sale_item</text>
 <text class="s" x="100" y="1457" text-anchor="middle">售后行：一张售后单退哪…</text>
@@ -230,10 +235,10 @@
 <text class="n" x="340" y="1796" text-anchor="middle" font-size="13">ord_refund_obligation</text>
 
 <rect x="255" y="1886" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="1912" text-anchor="middle" font-size="11">ord_store_pricing_config</text>
+<text class="n" x="340" y="1912" text-anchor="middle" font-size="11">ord_store_pricing_revision</text>
 
 <rect x="255" y="2002" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="2028" text-anchor="middle" font-size="11">ord_store_pricing_revision</text>
+<text class="n" x="340" y="2028" text-anchor="middle" font-size="11">ord_store_pricing_config</text>
 
 <text class="l" x="100" y="668" text-anchor="middle">sub_order_no</text>
 <text class="l" x="100" y="88" text-anchor="middle">order_no</text>
@@ -268,8 +273,8 @@
 <text class="l" x="340" y="88" text-anchor="middle">order_no</text>
 <text class="l" x="100" y="88" text-anchor="middle">order_no</text>
 <text class="l" x="180" y="436" text-anchor="middle">active_revision_no</text>
-<text class="l" x="340" y="1980" text-anchor="middle">active_revision_no</text>
-<text class="l" x="340" y="1944" text-anchor="middle">config_no</text>
+<text class="l" x="340" y="1944" text-anchor="middle">active_revision_no</text>
+<text class="l" x="340" y="1980" text-anchor="middle">config_no</text>
 <text class="l" x="220" y="436" text-anchor="middle">template_revision_no</text>
 <text class="l" x="260" y="448" text-anchor="middle">template_revision_no</text>
 <text class="l" x="260" y="900" text-anchor="middle">quote_no</text>
@@ -282,16 +287,18 @@
 <text class="l" x="340" y="100" text-anchor="middle">order_no</text>
 <text class="l" x="340" y="680" text-anchor="middle">sub_order_no</text>
 <text class="l" x="420" y="460" text-anchor="middle">policy_no</text>
-<text class="l" x="124" y="668" text-anchor="middle">sub_order_no</text>
-<text class="l" x="220" y="88" text-anchor="middle">order_no</text>
-<text class="l" x="220" y="680" text-anchor="middle">sub_order_no</text>
-<text class="l" x="300" y="1364" text-anchor="middle">amendment_no</text>
+<text class="l" x="100" y="668" text-anchor="middle">sub_order_no</text>
+<text class="l" x="180" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="180" y="680" text-anchor="middle">sub_order_no</text>
+<text class="l" x="260" y="1364" text-anchor="middle">amendment_no</text>
 <text class="l" x="260" y="88" text-anchor="middle">order_no</text>
 <text class="l" x="260" y="668" text-anchor="middle">sub_order_no</text>
-<text class="l" x="380" y="1376" text-anchor="middle">amendment_no</text>
-<text class="l" x="460" y="1388" text-anchor="middle">amendment_no</text>
-<text class="l" x="316" y="100" text-anchor="middle">order_no</text>
-<text class="l" x="316" y="692" text-anchor="middle">sub_order_no</text>
-<text class="l" x="388" y="1364" text-anchor="middle">application_no</text>
-<text class="l" x="484" y="1376" text-anchor="middle">application_no</text>
-<text class="l" x="388" y="1388" text-anchor="middle">amendment_no</text></svg>
+<text class="l" x="340" y="1376" text-anchor="middle">amendment_no</text>
+<text class="l" x="420" y="1388" text-anchor="middle">amendment_no</text>
+<text class="l" x="260" y="100" text-anchor="middle">order_no</text>
+<text class="l" x="260" y="692" text-anchor="middle">sub_order_no</text>
+<text class="l" x="332" y="1364" text-anchor="middle">application_no</text>
+<text class="l" x="428" y="1376" text-anchor="middle">application_no</text>
+<text class="l" x="348" y="1388" text-anchor="middle">amendment_no</text>
+<text class="l" x="340" y="112" text-anchor="middle">order_no</text>
+<text class="l" x="340" y="668" text-anchor="middle">sub_order_no</text></svg>

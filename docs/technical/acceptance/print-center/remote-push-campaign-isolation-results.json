@@ -1,0 +1,30 @@
+{
+  "rootCause": "CampaignDiscountFlowTest only cleared its own CPTEST campaigns before each method; final RUNNING campaign leaked into next classes sharing seeded M0001.",
+  "isolated": {
+    "log": "/tmp/print-checkout-focused.log",
+    "tests": 10,
+    "failures": 0
+  },
+  "reproduced": {
+    "log": "/tmp/print-checkout-leak-red.log",
+    "tests": 28,
+    "failures": 4,
+    "sameOriginalFailures": true
+  },
+  "fixed": {
+    "log": "/tmp/print-checkout-leak-green.log",
+    "tests": 28,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "build": "SUCCESS"
+  },
+  "change": "Add @AfterEach to existing precise owned campaign cleanup; preserve @BeforeEach and all production code/amount assertions.",
+  "classes": {
+    "CampaignDiscountFlowTest": 18,
+    "CheckoutOffersFlowTest": 5,
+    "ComboActivityFlowTest": 3,
+    "CouponBestConsistencyTest": 2
+  },
+  "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH mvn -o -B -f /tmp/print-unified-reactor-pom.xml -P '!food-embedded' -pl :shop-app -am -Dtest=CampaignDiscountFlowTest,CheckoutOffersFlowTest,ComboActivityFlowTest,CouponBestConsistencyTest -Dsurefire.runOrder=alphabetical -Dsurefire.failIfNoSpecifiedTests=false test"
+}

@@ -3500,7 +3500,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `financial` | `boolean` | 否 | Whether the pending change is a financial brand change that must continue through the financial-brand-change flow. |
+| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
 | `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
@@ -3538,7 +3538,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `financial` | `boolean` | 否 | Whether the pending change is a financial brand change that must continue through the financial-brand-change flow. |
+| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
 | `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
@@ -3587,7 +3587,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `canPrepareFinance` | `boolean` | 否 | Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. |
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -3599,7 +3599,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
-| `storedValueStatus` | `string` | 否 | Brand-level stored-value activation state, e.g. NONE, PREPARING or ACTIVE. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -3626,7 +3626,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `canPrepareFinance` | `boolean` | 否 | Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. |
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -3638,7 +3638,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
-| `storedValueStatus` | `string` | 否 | Brand-level stored-value activation state, e.g. NONE, PREPARING or ACTIVE. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -3667,7 +3667,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `canPrepareFinance` | `boolean` | 否 | Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. |
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -3679,7 +3679,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
-| `storedValueStatus` | `string` | 否 | Brand-level stored-value activation state, e.g. NONE, PREPARING or ACTIVE. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -3733,7 +3733,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `canPrepareFinance` | `boolean` | 否 | Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. |
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -3745,7 +3745,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
-| `storedValueStatus` | `string` | 否 | Brand-level stored-value activation state, e.g. NONE, PREPARING or ACTIVE. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -3884,9 +3884,9 @@ mSvBrandStoreBreakdown　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvStoreAttribution`](#svstoreattribution)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvStoreAttribution`](#svstoreattribution)\[\] | 是 | Authorized store attribution records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 
 #### GET `/biz/management/brands/{no}/stored-value/summary`
@@ -3912,31 +3912,31 @@ mSvBrandSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `issuerNo` | `string` | 是 | Stored-value issuer whose ledger is summarized. |
-| `scopeType` | `string` | 是 | Issuer scope type: STORE or BRAND. |
-| `name` | `string` | 是 | Display name of the issuer. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts; amounts are in currency minor units. |
-| `period` | `object`（见下） | 是 | Report window as instants, derived from startDate/endDate in the issuer's business time zone. |
-| `asOf` | `string` | 是 | Server time at which the figures were computed. |
-| `sourceWatermark` | `number` | 是 | Highest ledger-entry id included in the figures; identifies the data snapshot. |
-| `openingMinor` | `number` | 是 | Principal plus bonus balance before the window start, in minor units. |
-| `creditedPaidMinor` | `number` | 是 | Paid principal credited by recharges within the window, in minor units. |
-| `creditedBonusMinor` | `number` | 是 | Bonus credited by recharges within the window, in minor units. |
-| `consumedMinor` | `number` | 是 | Principal plus bonus consumed within the window, in minor units. |
-| `reversedMinor` | `number` | 是 | Signed net change from entries that are neither recharge nor consumption (e.g. reversals) within the window, in minor units. |
-| `closingMinor` | `number` | 是 | Balance at the window end, in minor units; equals opening + creditedPaid + creditedBonus + reversed − consumed. |
-| `heldMinor` | `number` | 是 | Principal plus bonus currently held (frozen) on credited lots, in minor units; current state, not bounded by the window. |
-| `rechargeCount` | `number` | 是 | Distinct recharge vouchers within the window. |
-| `usageCount` | `number` | 是 | Distinct consumption vouchers within the window. |
-| `customerCount` | `number` | 是 | Distinct customers with any ledger activity within the window. |
-| `payableMinor` | `number` | 是 | Inter-entity clearing payable of clearing entries occurring within the window, in minor units. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `scopeType` | `string` | 是 | Reported stored-value resource scope, such as STORE or BRAND. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `period` | `object`（见下） | 是 | Report interval with an inclusive from instant and an exclusive to instant. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `openingMinor` | `number` | 是 | Stored-value balance at the start of the report period, in minor currency units. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedMinor` | `number` | 是 | Stored-value amount consumed during the period, in minor currency units. |
+| `reversedMinor` | `number` | 是 | Previously consumed amount restored by reversals during the period, in minor currency units. |
+| `closingMinor` | `number` | 是 | Stored-value balance at period end: opening plus credits and reversals minus consumption, in minor units. |
+| `heldMinor` | `number` | 是 | Stored-value amount reserved by unfinished operations, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
 
 `period` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `from` | `string` | 是 | Inclusive window start instant (ISO-8601). |
-| `to` | `string` | 是 | Exclusive window end instant (ISO-8601). |
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
 
 
 #### GET `/biz/management/brands/{store}/stored-value/activities`
@@ -4347,7 +4347,7 @@ mSvBrandSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
 
 **出参**（`data`）
 
@@ -4355,9 +4355,9 @@ mSvBrandSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `prepared` | `boolean` | 是 | Whether the settlement permissions are now granted; true on success. |
-| `entityNo` | `string` | 是 | Operating entity the permissions were granted on. |
-| `permissions` | `string`\[\] | 是 | Settlement permission codes now held by the caller on the entity. |
+| `prepared` | `boolean` | 是 | Whether the server successfully prepared the requested financial permission setup. |
+| `entityNo` | `string` | 是 | Operating entity whose financial permissions were prepared. |
+| `permissions` | `string`\[\] | 是 | Financial permission codes returned by the server for the prepared entity. |
 
 
 #### POST `/biz/management/spaces`
@@ -4379,7 +4379,7 @@ mSvBrandSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `canPrepareFinance` | `boolean` | 否 | Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. |
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -4564,9 +4564,9 @@ mSvActivitySummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvActivityAttribution`](#svactivityattribution)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvActivityAttribution`](#svactivityattribution)\[\] | 是 | Authorized activity attribution records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 
 #### GET `/biz/management/stored-value/activity-approvals`
@@ -4694,9 +4694,9 @@ mSvActivitySummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `changeNo` | `string` | 是 | Financial brand change identifier. |
-| `state` | `string` | 是 | Change state: PREPARING, PAY_PREPARED or COMPLETED. |
-| `staged` | `boolean` | 是 | Whether the store's brand binding change has been staged in the merchant core and awaits the payment-service commit. |
+| `changeNo` | `string` | 是 | Financial brand-binding change identifier used to query or resume the change. |
+| `state` | `string` | 是 | Server-owned lifecycle state of the financial brand-binding change. |
+| `staged` | `boolean` | 是 | Whether the financial brand-binding change is staged pending completion. |
 
 
 #### POST `/biz/management/stored-value/financial-brand-changes/{no}/resumptions`
@@ -4713,7 +4713,7 @@ mSvActivitySummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
 
 **出参**（`data`）
 
@@ -4721,9 +4721,9 @@ mSvActivitySummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `changeNo` | `string` | 是 | Financial brand change identifier. |
-| `state` | `string` | 是 | Change state: PREPARING, PAY_PREPARED or COMPLETED. |
-| `staged` | `boolean` | 是 | Whether the store's brand binding change has been staged in the merchant core and awaits the payment-service commit. |
+| `changeNo` | `string` | 是 | Financial brand-binding change identifier used to query or resume the change. |
+| `state` | `string` | 是 | Server-owned lifecycle state of the financial brand-binding change. |
+| `staged` | `boolean` | 是 | Whether the financial brand-binding change is staged pending completion. |
 
 
 #### GET `/biz/management/stored-value/financial-capability`
@@ -4738,12 +4738,12 @@ mSvFinanceCapability　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `protocol` | `number` | 是 | Finance contract protocol version reported by the payment service (currently 2). |
-| `reportsReady` | `boolean` | 是 | Whether stored-value financial reports can be served. |
-| `settlementReady` | `boolean` | 是 | Whether settlement bills can be read and processed. |
-| `crossEntityReady` | `boolean` | 是 | Whether new cross-entity settlement (bill generation and payment registration) is ready. |
-| `receiptAttachmentsSupported` | `boolean` | 是 | Whether settlement payments may carry evidence attachments; currently always false. |
-| `blockers` | `string`\[\] | 是 | Machine-readable reasons cross-entity settlement is not ready; empty when ready. |
+| `protocol` | `number` | 是 | Server capability protocol version for the stored-value finance integration. |
+| `reportsReady` | `boolean` | 是 | Whether the server can provide stored-value financial reports. |
+| `settlementReady` | `boolean` | 是 | Whether settlement generation and settlement commands are available. |
+| `crossEntityReady` | `boolean` | 是 | Whether settlement between different operating entities is available. |
+| `receiptAttachmentsSupported` | `boolean` | 是 | Whether this deployment accepts receipt evidence attachments. |
+| `blockers` | `string`\[\] | 是 | Server capability blocker codes explaining unavailable financial features. |
 
 
 #### GET `/biz/management/stored-value/financial-resources`
@@ -5000,9 +5000,9 @@ mSvSettlementBills　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Authorized settlement bill records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 
 #### GET `/biz/management/stored-value/settlement-bills/{no}`
@@ -5022,28 +5022,28 @@ mSvSettlementBill　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `billNo` | `string` | 是 | Settlement bill identifier. |
-| `issuerNo` | `string` | 是 | Stored-value issuer whose clearing entries the bill settles. |
-| `payerEntityNo` | `string` | 是 | Operating entity that owes payableMinor. |
-| `payeeEntityNo` | `string` | 是 | Operating entity that receives payableMinor; equals payerEntityNo for internal reconciliation bills. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts on the bill. |
-| `periodFrom` | `string` | 是 | Inclusive posting-period start instant (ISO-8601). |
-| `periodTo` | `string` | 是 | Exclusive posting-period end instant; unclaimed clearing entries posted before it are included. |
-| `billKind` | `string` | 是 | CROSS_ENTITY when payer and payee differ; INTERNAL_RECON when they are the same entity (reconciliation only, no payment). |
-| `status` | `string` | 是 | Bill status: DRAFT, RECONCILED, DISPUTED, PART_PAID, WAIT_RECEIPT, SETTLED or INTERNAL_RECONCILED. |
-| `payableMinor` | `number` | 是 | Amount the payer owes the payee, in minor units; never negative (payer and payee are swapped at generation instead). |
-| `registeredPaymentMinor` | `number` | 是 | Total of non-voided offline payments registered by the payer, in minor units. |
-| `confirmedReceiptMinor` | `number` | 是 | Total of payments whose receipt the payee has confirmed, in minor units. |
-| `principalMinor` | `number` | 是 | Principal used across the source clearing entries, in minor units. |
-| `bonusMinor` | `number` | 是 | Bonus used across the source clearing entries, in minor units. |
-| `sourceCount` | `number` | 是 | Number of clearing entries claimed by the bill, including adjustments. |
-| `sourceWatermark` | `number` | 是 | Highest clearing-entry id considered when the bill was generated. |
-| `payerReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payer; null until confirmed or after an adjustment resets it. |
-| `payeeReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payee; null until confirmed or after an adjustment resets it. |
-| `disputeNo` | `string,null` | 是 | Open dispute identifier; null when no dispute is open. |
-| `revision` | `number` | 是 | Current bill revision; send it as expectedRevision on bill commands. |
-| `createdAt` | `string` | 是 | Time the bill was generated. |
-| `updatedAt` | `string` | 是 | Time the bill last changed. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
 
 
 #### GET `/biz/management/stored-value/settlement-bills/{no}/actions`
@@ -5063,8 +5063,8 @@ mSvSettlementActions　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `payerActions` | `string`\[\] | 是 | Settlement permission codes the caller holds on the bill's payer entity. |
-| `payeeActions` | `string`\[\] | 是 | Settlement permission codes the caller holds on the bill's payee entity. |
+| `payerActions` | `string`\[\] | 是 | Settlement permission codes currently available to this actor on the payer side. |
+| `payeeActions` | `string`\[\] | 是 | Settlement permission codes currently available to this actor on the payee side. |
 
 
 #### POST `/biz/management/stored-value/settlement-bills/{no}/adjustments`
@@ -5082,11 +5082,11 @@ mSvSettlementAdjust　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `clearingNo` | `string` | 是 | Cross-entity USE clearing entry on this bill whose payable is corrected. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `payableDeltaMinor` | `number` | 是 | Signed, non-zero change to the entry's payable in minor units; the effective payable must stay between 0 and the principal used. |
-| `reason` | `string` | 是 | Business reason for the adjustment, at most 255 characters. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `clearingNo` | `string` | 是 | Source stored-value clearing entry represented by or adjusted through this line. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `payableDeltaMinor` | `number` | 是 | Nonzero signed change to the clearing entry’s payable amount, in minor currency units. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
 
 **出参**（`data`）
 
@@ -5094,28 +5094,28 @@ mSvSettlementAdjust　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `billNo` | `string` | 是 | Settlement bill identifier. |
-| `issuerNo` | `string` | 是 | Stored-value issuer whose clearing entries the bill settles. |
-| `payerEntityNo` | `string` | 是 | Operating entity that owes payableMinor. |
-| `payeeEntityNo` | `string` | 是 | Operating entity that receives payableMinor; equals payerEntityNo for internal reconciliation bills. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts on the bill. |
-| `periodFrom` | `string` | 是 | Inclusive posting-period start instant (ISO-8601). |
-| `periodTo` | `string` | 是 | Exclusive posting-period end instant; unclaimed clearing entries posted before it are included. |
-| `billKind` | `string` | 是 | CROSS_ENTITY when payer and payee differ; INTERNAL_RECON when they are the same entity (reconciliation only, no payment). |
-| `status` | `string` | 是 | Bill status: DRAFT, RECONCILED, DISPUTED, PART_PAID, WAIT_RECEIPT, SETTLED or INTERNAL_RECONCILED. |
-| `payableMinor` | `number` | 是 | Amount the payer owes the payee, in minor units; never negative (payer and payee are swapped at generation instead). |
-| `registeredPaymentMinor` | `number` | 是 | Total of non-voided offline payments registered by the payer, in minor units. |
-| `confirmedReceiptMinor` | `number` | 是 | Total of payments whose receipt the payee has confirmed, in minor units. |
-| `principalMinor` | `number` | 是 | Principal used across the source clearing entries, in minor units. |
-| `bonusMinor` | `number` | 是 | Bonus used across the source clearing entries, in minor units. |
-| `sourceCount` | `number` | 是 | Number of clearing entries claimed by the bill, including adjustments. |
-| `sourceWatermark` | `number` | 是 | Highest clearing-entry id considered when the bill was generated. |
-| `payerReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payer; null until confirmed or after an adjustment resets it. |
-| `payeeReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payee; null until confirmed or after an adjustment resets it. |
-| `disputeNo` | `string,null` | 是 | Open dispute identifier; null when no dispute is open. |
-| `revision` | `number` | 是 | Current bill revision; send it as expectedRevision on bill commands. |
-| `createdAt` | `string` | 是 | Time the bill was generated. |
-| `updatedAt` | `string` | 是 | Time the bill last changed. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
 
 
 #### POST `/biz/management/stored-value/settlement-bills/{no}/dispute-resolutions`
@@ -5133,11 +5133,11 @@ mSvSettlementResolveDispute　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `disputeNo` | `string` | 是 | Dispute currently open on the bill. |
-| `decision` | `ACCEPT` \| `REJECT` | 是 | Recorded resolution decision: ACCEPT or REJECT; either way the bill returns to its pre-dispute state. |
-| `reason` | `string` | 是 | Business reason for the resolution, at most 255 characters. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `disputeNo` | `string` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `decision` | `ACCEPT` \| `REJECT` | 是 | Dispute resolution decision: ACCEPT or REJECT. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
 
 **出参**（`data`）
 
@@ -5145,28 +5145,28 @@ mSvSettlementResolveDispute　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `billNo` | `string` | 是 | Settlement bill identifier. |
-| `issuerNo` | `string` | 是 | Stored-value issuer whose clearing entries the bill settles. |
-| `payerEntityNo` | `string` | 是 | Operating entity that owes payableMinor. |
-| `payeeEntityNo` | `string` | 是 | Operating entity that receives payableMinor; equals payerEntityNo for internal reconciliation bills. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts on the bill. |
-| `periodFrom` | `string` | 是 | Inclusive posting-period start instant (ISO-8601). |
-| `periodTo` | `string` | 是 | Exclusive posting-period end instant; unclaimed clearing entries posted before it are included. |
-| `billKind` | `string` | 是 | CROSS_ENTITY when payer and payee differ; INTERNAL_RECON when they are the same entity (reconciliation only, no payment). |
-| `status` | `string` | 是 | Bill status: DRAFT, RECONCILED, DISPUTED, PART_PAID, WAIT_RECEIPT, SETTLED or INTERNAL_RECONCILED. |
-| `payableMinor` | `number` | 是 | Amount the payer owes the payee, in minor units; never negative (payer and payee are swapped at generation instead). |
-| `registeredPaymentMinor` | `number` | 是 | Total of non-voided offline payments registered by the payer, in minor units. |
-| `confirmedReceiptMinor` | `number` | 是 | Total of payments whose receipt the payee has confirmed, in minor units. |
-| `principalMinor` | `number` | 是 | Principal used across the source clearing entries, in minor units. |
-| `bonusMinor` | `number` | 是 | Bonus used across the source clearing entries, in minor units. |
-| `sourceCount` | `number` | 是 | Number of clearing entries claimed by the bill, including adjustments. |
-| `sourceWatermark` | `number` | 是 | Highest clearing-entry id considered when the bill was generated. |
-| `payerReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payer; null until confirmed or after an adjustment resets it. |
-| `payeeReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payee; null until confirmed or after an adjustment resets it. |
-| `disputeNo` | `string,null` | 是 | Open dispute identifier; null when no dispute is open. |
-| `revision` | `number` | 是 | Current bill revision; send it as expectedRevision on bill commands. |
-| `createdAt` | `string` | 是 | Time the bill was generated. |
-| `updatedAt` | `string` | 是 | Time the bill last changed. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
 
 
 #### POST `/biz/management/stored-value/settlement-bills/{no}/disputes`
@@ -5184,10 +5184,10 @@ mSvSettlementDispute　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `side` | `PAYER` \| `PAYEE` | 是 | Party side being confirmed: PAYER or PAYEE; required for reconciliation, not used by disputes. |
-| `reason` | `string` | 否 | Business reason, at most 255 characters; optional for reconciliation, required for disputes. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `side` | `PAYER` \| `PAYEE` | 是 | Bill party performing reconciliation or raising a dispute: PAYER or PAYEE. |
+| `reason` | `string` | 否 | Business reason for the decision; required for a dispute and optional for reconciliation, at most 255 characters. |
 
 **出参**（`data`）
 
@@ -5195,28 +5195,28 @@ mSvSettlementDispute　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `billNo` | `string` | 是 | Settlement bill identifier. |
-| `issuerNo` | `string` | 是 | Stored-value issuer whose clearing entries the bill settles. |
-| `payerEntityNo` | `string` | 是 | Operating entity that owes payableMinor. |
-| `payeeEntityNo` | `string` | 是 | Operating entity that receives payableMinor; equals payerEntityNo for internal reconciliation bills. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts on the bill. |
-| `periodFrom` | `string` | 是 | Inclusive posting-period start instant (ISO-8601). |
-| `periodTo` | `string` | 是 | Exclusive posting-period end instant; unclaimed clearing entries posted before it are included. |
-| `billKind` | `string` | 是 | CROSS_ENTITY when payer and payee differ; INTERNAL_RECON when they are the same entity (reconciliation only, no payment). |
-| `status` | `string` | 是 | Bill status: DRAFT, RECONCILED, DISPUTED, PART_PAID, WAIT_RECEIPT, SETTLED or INTERNAL_RECONCILED. |
-| `payableMinor` | `number` | 是 | Amount the payer owes the payee, in minor units; never negative (payer and payee are swapped at generation instead). |
-| `registeredPaymentMinor` | `number` | 是 | Total of non-voided offline payments registered by the payer, in minor units. |
-| `confirmedReceiptMinor` | `number` | 是 | Total of payments whose receipt the payee has confirmed, in minor units. |
-| `principalMinor` | `number` | 是 | Principal used across the source clearing entries, in minor units. |
-| `bonusMinor` | `number` | 是 | Bonus used across the source clearing entries, in minor units. |
-| `sourceCount` | `number` | 是 | Number of clearing entries claimed by the bill, including adjustments. |
-| `sourceWatermark` | `number` | 是 | Highest clearing-entry id considered when the bill was generated. |
-| `payerReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payer; null until confirmed or after an adjustment resets it. |
-| `payeeReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payee; null until confirmed or after an adjustment resets it. |
-| `disputeNo` | `string,null` | 是 | Open dispute identifier; null when no dispute is open. |
-| `revision` | `number` | 是 | Current bill revision; send it as expectedRevision on bill commands. |
-| `createdAt` | `string` | 是 | Time the bill was generated. |
-| `updatedAt` | `string` | 是 | Time the bill last changed. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
 
 
 #### GET `/biz/management/stored-value/settlement-bills/{no}/events`
@@ -5238,9 +5238,9 @@ mSvSettlementEvents　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSettlementEvent`](#svsettlementevent)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSettlementEvent`](#svsettlementevent)\[\] | 是 | Authorized settlement audit event records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 
 #### GET `/biz/management/stored-value/settlement-bills/{no}/items`
@@ -5262,9 +5262,9 @@ mSvSettlementItems　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSettlementItem`](#svsettlementitem)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSettlementItem`](#svsettlementitem)\[\] | 是 | Authorized settlement clearing item records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 
 #### GET `/biz/management/stored-value/settlement-bills/{no}/payment-resolutions`
@@ -5285,8 +5285,8 @@ mSvSettlementPaymentResolution　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `found` | `boolean` | 是 | Whether a completed payment registration exists for the given commandKey. |
-| `payment` | [`SvSettlementPayment`](#svsettlementpayment) \| `null` | 是 | The payment created by that registration; null when not found. |
+| `found` | `boolean` | 是 | Whether the server found the original payment command for the supplied idempotency key. |
+| `payment` | [`SvSettlementPayment`](#svsettlementpayment) \| `null` | 是 | Original registered payment when found; null when the command has no recorded result. |
 
 
 #### GET `/biz/management/stored-value/settlement-bills/{no}/payments`
@@ -5308,9 +5308,9 @@ mSvSettlementPayments　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSettlementPayment`](#svsettlementpayment)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSettlementPayment`](#svsettlementpayment)\[\] | 是 | Authorized registered settlement payment records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 
 #### POST `/biz/management/stored-value/settlement-bills/{no}/payments`
@@ -5328,13 +5328,13 @@ mSvSettlementRegister　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `amountMinor` | `number` | 是 | Positive payment amount in minor units; at most payableMinor − registeredPaymentMinor. |
-| `paidAt` | `string` | 是 | ISO-8601 instant the offline payment was made; must not be in the future. |
-| `method` | `TRANSFER` \| `CASH` \| `OTHER` | 是 | Offline payment method. |
-| `receiptReference` | `string` | 是 | Offline payment reference (e.g. transfer serial), at most 160 characters; normalized, stored encrypted and unique per payer while active. |
-| `evidenceRefs` | —\[\] | 是 | Reserved evidence attachment references; must be empty because attachments are not supported. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `amountMinor` | `number` | 是 | Positive payment amount to register, in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `method` | `TRANSFER` \| `CASH` \| `OTHER` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `receiptReference` | `string` | 是 | Payer’s receipt or transfer reference; required and limited to 160 characters. |
+| `evidenceRefs` | —\[\] | 是 | Receipt attachment references; this client currently sends an empty list. |
 
 **出参**（`data`）
 
@@ -5342,17 +5342,17 @@ mSvSettlementRegister　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `paymentNo` | `string` | 是 | Settlement payment identifier. |
-| `billNo` | `string` | 是 | Settlement bill the payment pays. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of amountMinor. |
-| `method` | `string` | 是 | Offline payment method: TRANSFER, CASH or OTHER. |
-| `amountMinor` | `number` | 是 | Registered payment amount, in minor units. |
-| `paidAt` | `string` | 是 | Time the payer states the offline payment was made. |
-| `status` | `string` | 是 | Payment status: REGISTERED, RECEIPT_CONFIRMED or VOIDED. |
-| `registeredBy` | `string` | 是 | Payer-side actor who registered the payment. |
-| `receivedBy` | `string,null` | 是 | Payee-side actor who confirmed receipt; null until confirmed. |
-| `receivedAt` | `string,null` | 是 | Receipt time stated by the payee; null until confirmed. |
-| `revision` | `number` | 是 | Current payment revision; send it as expectedRevision for receipt confirmation or void. |
+| `paymentNo` | `string` | 是 | Registered settlement payment identifier used for receipt confirmation and voiding. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `method` | `string` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `amountMinor` | `number` | 是 | Registered settlement payment amount in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `status` | `string` | 是 | Registered payment lifecycle state, distinguishing registered, received and voided payments. |
+| `registeredBy` | `string` | 是 | Actor who registered this settlement payment. |
+| `receivedBy` | `string,null` | 是 | Actor who confirmed receipt; null until the payee confirms. |
+| `receivedAt` | `string,null` | 是 | ISO instant of receipt confirmation; null until receipt is confirmed. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
 
 
 #### POST `/biz/management/stored-value/settlement-bills/{no}/reconciliation-confirmations`
@@ -5370,10 +5370,10 @@ mSvSettlementReconcile　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `side` | `PAYER` \| `PAYEE` | 是 | Party side being confirmed: PAYER or PAYEE; required for reconciliation, not used by disputes. |
-| `reason` | `string` | 否 | Business reason, at most 255 characters; optional for reconciliation, required for disputes. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `side` | `PAYER` \| `PAYEE` | 是 | Bill party performing reconciliation or raising a dispute: PAYER or PAYEE. |
+| `reason` | `string` | 否 | Business reason for the decision; required for a dispute and optional for reconciliation, at most 255 characters. |
 
 **出参**（`data`）
 
@@ -5381,28 +5381,28 @@ mSvSettlementReconcile　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `billNo` | `string` | 是 | Settlement bill identifier. |
-| `issuerNo` | `string` | 是 | Stored-value issuer whose clearing entries the bill settles. |
-| `payerEntityNo` | `string` | 是 | Operating entity that owes payableMinor. |
-| `payeeEntityNo` | `string` | 是 | Operating entity that receives payableMinor; equals payerEntityNo for internal reconciliation bills. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts on the bill. |
-| `periodFrom` | `string` | 是 | Inclusive posting-period start instant (ISO-8601). |
-| `periodTo` | `string` | 是 | Exclusive posting-period end instant; unclaimed clearing entries posted before it are included. |
-| `billKind` | `string` | 是 | CROSS_ENTITY when payer and payee differ; INTERNAL_RECON when they are the same entity (reconciliation only, no payment). |
-| `status` | `string` | 是 | Bill status: DRAFT, RECONCILED, DISPUTED, PART_PAID, WAIT_RECEIPT, SETTLED or INTERNAL_RECONCILED. |
-| `payableMinor` | `number` | 是 | Amount the payer owes the payee, in minor units; never negative (payer and payee are swapped at generation instead). |
-| `registeredPaymentMinor` | `number` | 是 | Total of non-voided offline payments registered by the payer, in minor units. |
-| `confirmedReceiptMinor` | `number` | 是 | Total of payments whose receipt the payee has confirmed, in minor units. |
-| `principalMinor` | `number` | 是 | Principal used across the source clearing entries, in minor units. |
-| `bonusMinor` | `number` | 是 | Bonus used across the source clearing entries, in minor units. |
-| `sourceCount` | `number` | 是 | Number of clearing entries claimed by the bill, including adjustments. |
-| `sourceWatermark` | `number` | 是 | Highest clearing-entry id considered when the bill was generated. |
-| `payerReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payer; null until confirmed or after an adjustment resets it. |
-| `payeeReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payee; null until confirmed or after an adjustment resets it. |
-| `disputeNo` | `string,null` | 是 | Open dispute identifier; null when no dispute is open. |
-| `revision` | `number` | 是 | Current bill revision; send it as expectedRevision on bill commands. |
-| `createdAt` | `string` | 是 | Time the bill was generated. |
-| `updatedAt` | `string` | 是 | Time the bill last changed. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
 
 
 #### POST `/biz/management/stored-value/settlement-bills/generations`
@@ -5419,11 +5419,11 @@ mSvSettlementGenerate　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `issuerNo` | `string` | 是 | Issuer to generate bills for; it must be in the caller's financial directory. |
-| `periodFrom` | `string` | 是 | Inclusive first posting date (yyyy-MM-dd) in the issuer's business time zone. |
-| `periodTo` | `string` | 是 | Exclusive end posting date (yyyy-MM-dd) in the issuer's business time zone; the period must already have ended. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; must equal the issuer's current currency. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `periodFrom` | `string` | 是 | Inclusive first settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. |
+| `periodTo` | `string` | 是 | Exclusive end settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
 
 **出参**（`data`）
 
@@ -5431,8 +5431,8 @@ mSvSettlementGenerate　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `bills` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Bills for the issuer and period visible to the caller, including ones generated earlier. |
-| `sourceWatermark` | `number` | 是 | Highest clearing-entry id considered by the generation. |
+| `bills` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Settlement bills created or returned idempotently for the generation request. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
 
 
 #### GET `/biz/management/stored-value/settlement-entity-candidates`
@@ -5467,9 +5467,9 @@ mSvSettlementReceipt　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Payment revision the client last read; stale revisions are rejected. |
-| `receivedAt` | `string` | 是 | ISO-8601 instant the payee received the funds; not before paidAt and not in the future. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `receivedAt` | `string` | 是 | ISO instant at which the payee confirms receipt of the payment. |
 
 **出参**（`data`）
 
@@ -5477,17 +5477,17 @@ mSvSettlementReceipt　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `paymentNo` | `string` | 是 | Settlement payment identifier. |
-| `billNo` | `string` | 是 | Settlement bill the payment pays. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of amountMinor. |
-| `method` | `string` | 是 | Offline payment method: TRANSFER, CASH or OTHER. |
-| `amountMinor` | `number` | 是 | Registered payment amount, in minor units. |
-| `paidAt` | `string` | 是 | Time the payer states the offline payment was made. |
-| `status` | `string` | 是 | Payment status: REGISTERED, RECEIPT_CONFIRMED or VOIDED. |
-| `registeredBy` | `string` | 是 | Payer-side actor who registered the payment. |
-| `receivedBy` | `string,null` | 是 | Payee-side actor who confirmed receipt; null until confirmed. |
-| `receivedAt` | `string,null` | 是 | Receipt time stated by the payee; null until confirmed. |
-| `revision` | `number` | 是 | Current payment revision; send it as expectedRevision for receipt confirmation or void. |
+| `paymentNo` | `string` | 是 | Registered settlement payment identifier used for receipt confirmation and voiding. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `method` | `string` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `amountMinor` | `number` | 是 | Registered settlement payment amount in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `status` | `string` | 是 | Registered payment lifecycle state, distinguishing registered, received and voided payments. |
+| `registeredBy` | `string` | 是 | Actor who registered this settlement payment. |
+| `receivedBy` | `string,null` | 是 | Actor who confirmed receipt; null until the payee confirms. |
+| `receivedAt` | `string,null` | 是 | ISO instant of receipt confirmation; null until receipt is confirmed. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
 
 
 #### POST `/biz/management/stored-value/settlement-payments/{no}/voids`
@@ -5505,9 +5505,9 @@ mSvSettlementVoid　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Payment revision the client last read; stale revisions are rejected. |
-| `reason` | `string` | 是 | Business reason for voiding the registration, at most 255 characters. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
 
 **出参**（`data`）
 
@@ -5515,17 +5515,17 @@ mSvSettlementVoid　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `paymentNo` | `string` | 是 | Settlement payment identifier. |
-| `billNo` | `string` | 是 | Settlement bill the payment pays. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of amountMinor. |
-| `method` | `string` | 是 | Offline payment method: TRANSFER, CASH or OTHER. |
-| `amountMinor` | `number` | 是 | Registered payment amount, in minor units. |
-| `paidAt` | `string` | 是 | Time the payer states the offline payment was made. |
-| `status` | `string` | 是 | Payment status: REGISTERED, RECEIPT_CONFIRMED or VOIDED. |
-| `registeredBy` | `string` | 是 | Payer-side actor who registered the payment. |
-| `receivedBy` | `string,null` | 是 | Payee-side actor who confirmed receipt; null until confirmed. |
-| `receivedAt` | `string,null` | 是 | Receipt time stated by the payee; null until confirmed. |
-| `revision` | `number` | 是 | Current payment revision; send it as expectedRevision for receipt confirmation or void. |
+| `paymentNo` | `string` | 是 | Registered settlement payment identifier used for receipt confirmation and voiding. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `method` | `string` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `amountMinor` | `number` | 是 | Registered settlement payment amount in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `status` | `string` | 是 | Registered payment lifecycle state, distinguishing registered, received and voided payments. |
+| `registeredBy` | `string` | 是 | Actor who registered this settlement payment. |
+| `receivedBy` | `string,null` | 是 | Actor who confirmed receipt; null until the payee confirms. |
+| `receivedAt` | `string,null` | 是 | ISO instant of receipt confirmation; null until receipt is confirmed. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
 
 
 #### GET `/biz/management/stored-value/store-issuer-summary`
@@ -5550,9 +5550,9 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSummary`](#svsummary)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSummary`](#svsummary)\[\] | 是 | Authorized financial summary records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 
 #### GET `/biz/management/stores/{no}/stored-value/issuer`
@@ -5698,7 +5698,7 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `original` | [`SvFinancialBrandChange`](#svfinancialbrandchange) \| `null` | 是 | Change originally created with the given commandKey; null when no such change exists. |
+| `original` | [`SvFinancialBrandChange`](#svfinancialbrandchange) \| `null` | 是 | Original financial brand-binding command result; null when the command is not recorded. |
 
 
 #### POST `/biz/management/stores/{store}/stored-value/financial-brand-changes`
@@ -5716,10 +5716,10 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `toBrandNo` | `string,null` | 是 | Destination brand; null removes the store from its current brand. |
-| `expectedStoreRevision` | `number` | 是 | Store revision the client last read; stale revisions are rejected. |
-| `reason` | `string` | 是 | Business reason for the change, at most 255 characters. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `toBrandNo` | `string,null` | 是 | Destination brand identifier; null requests removal of the store’s brand binding. |
+| `expectedStoreRevision` | `number` | 是 | Previously read store revision used to reject a stale financial brand-binding change. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
 
 **出参**（`data`）
 
@@ -5727,9 +5727,9 @@ mSvLocalIssuerSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `changeNo` | `string` | 是 | Financial brand change identifier. |
-| `state` | `string` | 是 | Change state: PREPARING, PAY_PREPARED or COMPLETED. |
-| `staged` | `boolean` | 是 | Whether the store's brand binding change has been staged in the merchant core and awaits the payment-service commit. |
+| `changeNo` | `string` | 是 | Financial brand-binding change identifier used to query or resume the change. |
+| `state` | `string` | 是 | Server-owned lifecycle state of the financial brand-binding change. |
+| `staged` | `boolean` | 是 | Whether the financial brand-binding change is staged pending completion. |
 
 
 ### marketing
@@ -10879,31 +10879,31 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `issuerNo` | `string` | 是 | Stored-value issuer whose ledger is summarized. |
-| `scopeType` | `string` | 是 | Issuer scope type: STORE or BRAND. |
-| `name` | `string` | 是 | Display name of the issuer. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts; amounts are in currency minor units. |
-| `period` | `object`（见下） | 是 | Report window as instants, derived from startDate/endDate in the issuer's business time zone. |
-| `asOf` | `string` | 是 | Server time at which the figures were computed. |
-| `sourceWatermark` | `number` | 是 | Highest ledger-entry id included in the figures; identifies the data snapshot. |
-| `openingMinor` | `number` | 是 | Principal plus bonus balance before the window start, in minor units. |
-| `creditedPaidMinor` | `number` | 是 | Paid principal credited by recharges within the window, in minor units. |
-| `creditedBonusMinor` | `number` | 是 | Bonus credited by recharges within the window, in minor units. |
-| `consumedMinor` | `number` | 是 | Principal plus bonus consumed within the window, in minor units. |
-| `reversedMinor` | `number` | 是 | Signed net change from entries that are neither recharge nor consumption (e.g. reversals) within the window, in minor units. |
-| `closingMinor` | `number` | 是 | Balance at the window end, in minor units; equals opening + creditedPaid + creditedBonus + reversed − consumed. |
-| `heldMinor` | `number` | 是 | Principal plus bonus currently held (frozen) on credited lots, in minor units; current state, not bounded by the window. |
-| `rechargeCount` | `number` | 是 | Distinct recharge vouchers within the window. |
-| `usageCount` | `number` | 是 | Distinct consumption vouchers within the window. |
-| `customerCount` | `number` | 是 | Distinct customers with any ledger activity within the window. |
-| `payableMinor` | `number` | 是 | Inter-entity clearing payable of clearing entries occurring within the window, in minor units. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `scopeType` | `string` | 是 | Reported stored-value resource scope, such as STORE or BRAND. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `period` | `object`（见下） | 是 | Report interval with an inclusive from instant and an exclusive to instant. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `openingMinor` | `number` | 是 | Stored-value balance at the start of the report period, in minor currency units. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedMinor` | `number` | 是 | Stored-value amount consumed during the period, in minor currency units. |
+| `reversedMinor` | `number` | 是 | Previously consumed amount restored by reversals during the period, in minor currency units. |
+| `closingMinor` | `number` | 是 | Stored-value balance at period end: opening plus credits and reversals minus consumption, in minor units. |
+| `heldMinor` | `number` | 是 | Stored-value amount reserved by unfinished operations, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
 
 `period` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `from` | `string` | 是 | Inclusive window start instant (ISO-8601). |
-| `to` | `string` | 是 | Exclusive window end instant (ISO-8601). |
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
 
 
 #### POST `/biz/stores/{s}/brand-changes`
@@ -10924,7 +10924,7 @@ mSvStoreSummary　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `financial` | `boolean` | 否 | Whether the pending change is a financial brand change that must continue through the financial-brand-change flow. |
+| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
 | `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
@@ -12244,7 +12244,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `canPrepareFinance` | `boolean` | 否 | Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. |
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -12256,7 +12256,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
-| `storedValueStatus` | `string` | 否 | Brand-level stored-value activation state, e.g. NONE, PREPARING or ACTIVE. |
+| `storedValueStatus` | `string` | 否 | Server-owned stored-value activation state of this brand. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -12270,7 +12270,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `financial` | `boolean` | 否 | Whether the pending change is a financial brand change that must continue through the financial-brand-change flow. |
+| `financial` | `boolean` | 否 | Whether this brand-binding change uses the financial stored-value migration workflow. |
 | `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
@@ -13498,7 +13498,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `canPrepareFinance` | `boolean` | 否 | Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. |
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -13519,7 +13519,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `canPrepareFinance` | `boolean` | 否 | Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. |
+| `canPrepareFinance` | `boolean` | 否 | Whether the authenticated operator may prepare financial permissions for this resource. |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -16840,20 +16840,20 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `activityNo` | `string` | 是 | Activity whose recharges produced the lots; null for plan-sourced recharges. |
-| `releaseNo` | `string` | 是 | Issuer release the lots belong to; rows are grouped and ordered by it. |
-| `sourceKind` | `string` | 是 | Recharge source: ACTIVITY or PLAN. |
-| `name` | `string` | 是 | Display name of the release. |
-| `creditedPaidMinor` | `number` | 是 | Paid principal credited within the window, in minor units. |
-| `creditedBonusMinor` | `number` | 是 | Bonus credited within the window, in minor units. |
-| `consumedPrincipalMinor` | `number` | 是 | Principal consumed within the window, in minor units. |
-| `consumedBonusMinor` | `number` | 是 | Bonus consumed within the window, in minor units. |
-| `remainingMinor` | `number` | 是 | Current remaining principal plus bonus on this release's lots, in minor units; not bounded by the window. |
-| `rechargeCount` | `number` | 是 | Distinct recharge vouchers within the window. |
-| `usageCount` | `number` | 是 | Distinct consumption vouchers within the window. |
-| `customerCount` | `number` | 是 | Distinct customers with ledger activity within the window. |
-| `asOf` | `string` | 是 | Server time at which the row was computed. |
-| `sourceWatermark` | `number` | 是 | Highest ledger-entry id included in this row. |
+| `activityNo` | `string` | 是 | Optional stored-value activity identifier restricting the report to that activity. |
+| `releaseNo` | `string` | 是 | Immutable published activity release to which these ledger amounts are attributed. |
+| `sourceKind` | `string` | 是 | Stored-value activity source classification used to interpret activityNo and releaseNo. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedPrincipalMinor` | `number` | 是 | Recharge principal consumed from this activity’s credits, in minor currency units. |
+| `consumedBonusMinor` | `number` | 是 | Recharge bonus consumed from this activity’s credits, in minor currency units. |
+| `remainingMinor` | `number` | 是 | Unused stored-value balance attributed to this activity, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
 
 ### SvActivityCheck
 
@@ -16937,11 +16937,11 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `clearingNo` | `string` | 是 | Cross-entity USE clearing entry on this bill whose payable is corrected. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `payableDeltaMinor` | `number` | 是 | Signed, non-zero change to the entry's payable in minor units; the effective payable must stay between 0 and the principal used. |
-| `reason` | `string` | 是 | Business reason for the adjustment, at most 255 characters. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `clearingNo` | `string` | 是 | Source stored-value clearing entry represented by or adjusted through this line. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `payableDeltaMinor` | `number` | 是 | Nonzero signed change to the clearing entry’s payable amount, in minor currency units. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
 
 ### SvApproval
 
@@ -16968,8 +16968,8 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `payerActions` | `string`\[\] | 是 | Settlement permission codes the caller holds on the bill's payer entity. |
-| `payeeActions` | `string`\[\] | 是 | Settlement permission codes the caller holds on the bill's payee entity. |
+| `payerActions` | `string`\[\] | 是 | Settlement permission codes currently available to this actor on the payer side. |
+| `payeeActions` | `string`\[\] | 是 | Settlement permission codes currently available to this actor on the payee side. |
 
 ### SvBrandActivation
 
@@ -17083,10 +17083,10 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `side` | `PAYER` \| `PAYEE` | 是 | Party side being confirmed: PAYER or PAYEE; required for reconciliation, not used by disputes. |
-| `reason` | `string` | 否 | Business reason, at most 255 characters; optional for reconciliation, required for disputes. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `side` | `PAYER` \| `PAYEE` | 是 | Bill party performing reconciliation or raising a dispute: PAYER or PAYEE. |
+| `reason` | `string` | 否 | Business reason for the decision; required for a dispute and optional for reconciliation, at most 255 characters. |
 
 ### SvEffectivePolicy
 
@@ -17113,133 +17113,134 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvActivityAttribution`](#svactivityattribution)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvActivityAttribution`](#svactivityattribution)\[\] | 是 | Authorized activity attribution records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 ### SvFinanceBillPage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Authorized settlement bill records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 ### SvFinanceCapability
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `protocol` | `number` | 是 | Finance contract protocol version reported by the payment service (currently 2). |
-| `reportsReady` | `boolean` | 是 | Whether stored-value financial reports can be served. |
-| `settlementReady` | `boolean` | 是 | Whether settlement bills can be read and processed. |
-| `crossEntityReady` | `boolean` | 是 | Whether new cross-entity settlement (bill generation and payment registration) is ready. |
-| `receiptAttachmentsSupported` | `boolean` | 是 | Whether settlement payments may carry evidence attachments; currently always false. |
-| `blockers` | `string`\[\] | 是 | Machine-readable reasons cross-entity settlement is not ready; empty when ready. |
+| `protocol` | `number` | 是 | Server capability protocol version for the stored-value finance integration. |
+| `reportsReady` | `boolean` | 是 | Whether the server can provide stored-value financial reports. |
+| `settlementReady` | `boolean` | 是 | Whether settlement generation and settlement commands are available. |
+| `crossEntityReady` | `boolean` | 是 | Whether settlement between different operating entities is available. |
+| `receiptAttachmentsSupported` | `boolean` | 是 | Whether this deployment accepts receipt evidence attachments. |
+| `blockers` | `string`\[\] | 是 | Server capability blocker codes explaining unavailable financial features. |
 
 ### SvFinanceEventPage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSettlementEvent`](#svsettlementevent)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSettlementEvent`](#svsettlementevent)\[\] | 是 | Authorized settlement audit event records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 ### SvFinanceItemPage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSettlementItem`](#svsettlementitem)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSettlementItem`](#svsettlementitem)\[\] | 是 | Authorized settlement clearing item records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 ### SvFinanceManagementQuery
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
 
 ### SvFinancePaymentPage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSettlementPayment`](#svsettlementpayment)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSettlementPayment`](#svsettlementpayment)\[\] | 是 | Authorized registered settlement payment records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 ### SvFinanceResource
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `issuerNo` | `string` | 是 | Stored-value issuer identifier. |
-| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the issuer belongs to a single store (STORE) or a brand (BRAND). |
-| `scopeNo` | `string` | 是 | Store or brand identifier owning the issuer, according to scopeType. |
-| `name` | `string` | 是 | Display name of the issuer resource. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of the issuer's current version. |
-| `businessTimeZone` | `string` | 是 | IANA time zone (issuer market zone) used to turn report and settlement dates into instants. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `scopeType` | `STORE` \| `BRAND` | 是 | Whether the stored-value issuer belongs to a store or a brand. |
+| `scopeNo` | `string` | 是 | Store or brand identifier selected by scopeType. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `businessTimeZone` | `string` | 是 | IANA business time zone used to interpret report date boundaries. |
+| `canGenerate` | `boolean` | 是 | Current server-verified generate permission for this issuer; absent values fail closed. |
 
 ### SvFinanceStorePage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvStoreAttribution`](#svstoreattribution)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvStoreAttribution`](#svstoreattribution)\[\] | 是 | Authorized store attribution records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 ### SvFinanceSummaryPage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`SvSummary`](#svsummary)\[\] | 是 | Records of the current cursor page. |
-| `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
-| `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
+| `records` | [`SvSummary`](#svsummary)\[\] | 是 | Authorized financial summary records returned on this page. |
+| `nextCursor` | `string,null` | 是 | Opaque continuation cursor; null when this query has no further records. |
+| `hasMore` | `boolean` | 是 | Whether the server has another page available through nextCursor. |
 
 ### SvFinancialBrandChange
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `changeNo` | `string` | 是 | Financial brand change identifier. |
-| `state` | `string` | 是 | Change state: PREPARING, PAY_PREPARED or COMPLETED. |
-| `staged` | `boolean` | 是 | Whether the store's brand binding change has been staged in the merchant core and awaits the payment-service commit. |
+| `changeNo` | `string` | 是 | Financial brand-binding change identifier used to query or resume the change. |
+| `state` | `string` | 是 | Server-owned lifecycle state of the financial brand-binding change. |
+| `staged` | `boolean` | 是 | Whether the financial brand-binding change is staged pending completion. |
 
 ### SvFinancialBrandOriginal
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `original` | [`SvFinancialBrandChange`](#svfinancialbrandchange) \| `null` | 是 | Change originally created with the given commandKey; null when no such change exists. |
+| `original` | [`SvFinancialBrandChange`](#svfinancialbrandchange) \| `null` | 是 | Original financial brand-binding command result; null when the command is not recorded. |
 
 ### SvFinancialBrandRequest
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `toBrandNo` | `string,null` | 是 | Destination brand; null removes the store from its current brand. |
-| `expectedStoreRevision` | `number` | 是 | Store revision the client last read; stale revisions are rejected. |
-| `reason` | `string` | 是 | Business reason for the change, at most 255 characters. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `toBrandNo` | `string,null` | 是 | Destination brand identifier; null requests removal of the store’s brand binding. |
+| `expectedStoreRevision` | `number` | 是 | Previously read store revision used to reject a stale financial brand-binding change. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
 
 ### SvFinancialPermissionResult
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `prepared` | `boolean` | 是 | Whether the settlement permissions are now granted; true on success. |
-| `entityNo` | `string` | 是 | Operating entity the permissions were granted on. |
-| `permissions` | `string`\[\] | 是 | Settlement permission codes now held by the caller on the entity. |
+| `prepared` | `boolean` | 是 | Whether the server successfully prepared the requested financial permission setup. |
+| `entityNo` | `string` | 是 | Operating entity whose financial permissions were prepared. |
+| `permissions` | `string`\[\] | 是 | Financial permission codes returned by the server for the prepared entity. |
 
 ### SvGenerated
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `bills` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Bills for the issuer and period visible to the caller, including ones generated earlier. |
-| `sourceWatermark` | `number` | 是 | Highest clearing-entry id considered by the generation. |
+| `bills` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | Settlement bills created or returned idempotently for the generation request. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
 
 ### SvGenerationRequest
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `issuerNo` | `string` | 是 | Issuer to generate bills for; it must be in the caller's financial directory. |
-| `periodFrom` | `string` | 是 | Inclusive first posting date (yyyy-MM-dd) in the issuer's business time zone. |
-| `periodTo` | `string` | 是 | Exclusive end posting date (yyyy-MM-dd) in the issuer's business time zone; the period must already have ended. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; must equal the issuer's current currency. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `periodFrom` | `string` | 是 | Inclusive first settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. |
+| `periodTo` | `string` | 是 | Exclusive end settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
 
 ### SvGovernanceActivitiesPage
 
@@ -17443,20 +17444,20 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `amountMinor` | `number` | 是 | Positive payment amount in minor units; at most payableMinor − registeredPaymentMinor. |
-| `paidAt` | `string` | 是 | ISO-8601 instant the offline payment was made; must not be in the future. |
-| `method` | `TRANSFER` \| `CASH` \| `OTHER` | 是 | Offline payment method. |
-| `receiptReference` | `string` | 是 | Offline payment reference (e.g. transfer serial), at most 160 characters; normalized, stored encrypted and unique per payer while active. |
-| `evidenceRefs` | —\[\] | 是 | Reserved evidence attachment references; must be empty because attachments are not supported. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `amountMinor` | `number` | 是 | Positive payment amount to register, in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `method` | `TRANSFER` \| `CASH` \| `OTHER` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `receiptReference` | `string` | 是 | Payer’s receipt or transfer reference; required and limited to 160 characters. |
+| `evidenceRefs` | —\[\] | 是 | Receipt attachment references; this client currently sends an empty list. |
 
 ### SvPaymentResolution
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `found` | `boolean` | 是 | Whether a completed payment registration exists for the given commandKey. |
-| `payment` | [`SvSettlementPayment`](#svsettlementpayment) \| `null` | 是 | The payment created by that registration; null when not found. |
+| `found` | `boolean` | 是 | Whether the server found the original payment command for the supplied idempotency key. |
+| `payment` | [`SvSettlementPayment`](#svsettlementpayment) \| `null` | 是 | Original registered payment when found; null when the command has no recorded result. |
 
 ### SvPlan
 
@@ -17581,9 +17582,9 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Payment revision the client last read; stale revisions are rejected. |
-| `receivedAt` | `string` | 是 | ISO-8601 instant the payee received the funds; not before paidAt and not in the future. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `receivedAt` | `string` | 是 | ISO instant at which the payee confirms receipt of the payment. |
 
 ### SvReceive
 
@@ -17635,11 +17636,11 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Bill revision the client last read; stale revisions are rejected. |
-| `disputeNo` | `string` | 是 | Dispute currently open on the bill. |
-| `decision` | `ACCEPT` \| `REJECT` | 是 | Recorded resolution decision: ACCEPT or REJECT; either way the bill returns to its pre-dispute state. |
-| `reason` | `string` | 是 | Business reason for the resolution, at most 255 characters. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `disputeNo` | `string` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `decision` | `ACCEPT` \| `REJECT` | 是 | Dispute resolution decision: ACCEPT or REJECT. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
 
 ### SvSelectCustomerReq
 
@@ -17693,88 +17694,88 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `billNo` | `string` | 是 | Settlement bill identifier. |
-| `issuerNo` | `string` | 是 | Stored-value issuer whose clearing entries the bill settles. |
-| `payerEntityNo` | `string` | 是 | Operating entity that owes payableMinor. |
-| `payeeEntityNo` | `string` | 是 | Operating entity that receives payableMinor; equals payerEntityNo for internal reconciliation bills. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts on the bill. |
-| `periodFrom` | `string` | 是 | Inclusive posting-period start instant (ISO-8601). |
-| `periodTo` | `string` | 是 | Exclusive posting-period end instant; unclaimed clearing entries posted before it are included. |
-| `billKind` | `string` | 是 | CROSS_ENTITY when payer and payee differ; INTERNAL_RECON when they are the same entity (reconciliation only, no payment). |
-| `status` | `string` | 是 | Bill status: DRAFT, RECONCILED, DISPUTED, PART_PAID, WAIT_RECEIPT, SETTLED or INTERNAL_RECONCILED. |
-| `payableMinor` | `number` | 是 | Amount the payer owes the payee, in minor units; never negative (payer and payee are swapped at generation instead). |
-| `registeredPaymentMinor` | `number` | 是 | Total of non-voided offline payments registered by the payer, in minor units. |
-| `confirmedReceiptMinor` | `number` | 是 | Total of payments whose receipt the payee has confirmed, in minor units. |
-| `principalMinor` | `number` | 是 | Principal used across the source clearing entries, in minor units. |
-| `bonusMinor` | `number` | 是 | Bonus used across the source clearing entries, in minor units. |
-| `sourceCount` | `number` | 是 | Number of clearing entries claimed by the bill, including adjustments. |
-| `sourceWatermark` | `number` | 是 | Highest clearing-entry id considered when the bill was generated. |
-| `payerReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payer; null until confirmed or after an adjustment resets it. |
-| `payeeReconciledBy` | `string,null` | 是 | Actor who confirmed reconciliation for the payee; null until confirmed or after an adjustment resets it. |
-| `disputeNo` | `string,null` | 是 | Open dispute identifier; null when no dispute is open. |
-| `revision` | `number` | 是 | Current bill revision; send it as expectedRevision on bill commands. |
-| `createdAt` | `string` | 是 | Time the bill was generated. |
-| `updatedAt` | `string` | 是 | Time the bill last changed. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `payerEntityNo` | `string` | 是 | Operating entity responsible for paying this settlement bill. |
+| `payeeEntityNo` | `string` | 是 | Operating entity entitled to receive this settlement bill’s payment. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `periodFrom` | `string` | 是 | Inclusive start of the settlement period as an ISO instant. |
+| `periodTo` | `string` | 是 | Exclusive end of the settlement period as an ISO instant. |
+| `billKind` | `string` | 是 | Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. |
+| `status` | `string` | 是 | Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `registeredPaymentMinor` | `number` | 是 | Total amount of registered bill payments, in minor currency units. |
+| `confirmedReceiptMinor` | `number` | 是 | Total amount whose receipt the payee has confirmed, in minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `sourceCount` | `number` | 是 | Number of source clearing entries included in this bill. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `payerReconciledBy` | `string,null` | 是 | Actor who reconciled the payer side; null before payer reconciliation. |
+| `payeeReconciledBy` | `string,null` | 是 | Actor who reconciled the payee side; null before payee reconciliation. |
+| `disputeNo` | `string,null` | 是 | Settlement dispute identifier; null when the bill has no dispute. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
+| `createdAt` | `string` | 是 | ISO instant when the settlement bill was created. |
+| `updatedAt` | `string` | 是 | ISO instant when the settlement bill was last updated. |
 
 ### SvSettlementEvent
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `eventNo` | `string` | 是 | Settlement event identifier. |
-| `type` | `string` | 是 | Event type: GENERATED, RECON_CONFIRM, DISPUTE, DISPUTE_RESOLVE, ADJUST, PAYMENT, RECEIPT or PAYMENT_VOID. |
-| `billRevision` | `number` | 是 | Bill revision after the event was applied. |
-| `actorNo` | `string` | 是 | Actor who performed the action. |
-| `reason` | `string,null` | 是 | Reason supplied with the command; null when none was given. |
-| `occurredAt` | `string` | 是 | Time the event was recorded. |
+| `eventNo` | `string` | 是 | Immutable settlement audit event identifier. |
+| `type` | `string` | 是 | Settlement audit event type used to interpret the recorded action. |
+| `billRevision` | `number` | 是 | Settlement bill revision to which this audit event applies. |
+| `actorNo` | `string` | 是 | Actor identifier recorded for the settlement event. |
+| `reason` | `string,null` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
+| `occurredAt` | `string` | 是 | ISO instant when this settlement audit event occurred. |
 
 ### SvSettlementItem
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `itemNo` | `string` | 是 | Bill item identifier. |
-| `clearingNo` | `string` | 是 | Clearing entry claimed by this item. |
-| `amountMinor` | `number` | 是 | Payable contributed to the bill in the bill's payer→payee direction, in minor units; negated when the bill direction was reversed. |
-| `principalMinor` | `number` | 是 | Principal used by the clearing entry, in minor units; 0 for adjustments. |
-| `bonusMinor` | `number` | 是 | Bonus used by the clearing entry, in minor units; 0 for adjustments. |
-| `rechargeStoreNo` | `string` | 是 | Store where the consumed value was recharged. |
-| `redemptionStoreNo` | `string` | 是 | Store where the value was consumed. |
-| `occurredAt` | `string` | 是 | Business time of the underlying clearing event. |
-| `postedAt` | `string` | 是 | Time the clearing entry was posted. |
-| `carriedForward` | `boolean` | 是 | Whether the entry was posted before the bill's period start and carried forward from an earlier period. |
-| `entryType` | `string` | 是 | Clearing entry type: USE, REVERSAL or ADJUSTMENT. |
-| `originalClearingNo` | `string,null` | 是 | Original clearing entry corrected by an ADJUSTMENT entry; null for other entry types. |
+| `itemNo` | `string` | 是 | Settlement line identifier within the bill detail. |
+| `clearingNo` | `string` | 是 | Source stored-value clearing entry represented by or adjusted through this line. |
+| `amountMinor` | `number` | 是 | Monetary amount in the settlement bill’s minor currency units. |
+| `principalMinor` | `number` | 是 | Principal component attributed to this settlement bill or clearing item, in minor currency units. |
+| `bonusMinor` | `number` | 是 | Bonus component attributed to this settlement bill or clearing item, in minor currency units. |
+| `rechargeStoreNo` | `string` | 是 | Store where the stored-value credit was recharged. |
+| `redemptionStoreNo` | `string` | 是 | Store where the credited stored value was redeemed. |
+| `occurredAt` | `string` | 是 | ISO instant when the source business operation occurred. |
+| `postedAt` | `string` | 是 | ISO instant when the source clearing entry was posted to the ledger. |
+| `carriedForward` | `boolean` | 是 | Whether the source entry was carried into this bill from an earlier settlement period. |
+| `entryType` | `string` | 是 | Source clearing classification, such as USE or a reversal. |
+| `originalClearingNo` | `string,null` | 是 | Original clearing entry referenced by a reversal; null for an original entry. |
 
 ### SvSettlementPayment
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `paymentNo` | `string` | 是 | Settlement payment identifier. |
-| `billNo` | `string` | 是 | Settlement bill the payment pays. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of amountMinor. |
-| `method` | `string` | 是 | Offline payment method: TRANSFER, CASH or OTHER. |
-| `amountMinor` | `number` | 是 | Registered payment amount, in minor units. |
-| `paidAt` | `string` | 是 | Time the payer states the offline payment was made. |
-| `status` | `string` | 是 | Payment status: REGISTERED, RECEIPT_CONFIRMED or VOIDED. |
-| `registeredBy` | `string` | 是 | Payer-side actor who registered the payment. |
-| `receivedBy` | `string,null` | 是 | Payee-side actor who confirmed receipt; null until confirmed. |
-| `receivedAt` | `string,null` | 是 | Receipt time stated by the payee; null until confirmed. |
-| `revision` | `number` | 是 | Current payment revision; send it as expectedRevision for receipt confirmation or void. |
+| `paymentNo` | `string` | 是 | Registered settlement payment identifier used for receipt confirmation and voiding. |
+| `billNo` | `string` | 是 | Settlement bill identifier used for authorized detail queries and commands. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `method` | `string` | 是 | Declared settlement payment method: bank transfer, cash or other. |
+| `amountMinor` | `number` | 是 | Registered settlement payment amount in the bill currency’s minor units. |
+| `paidAt` | `string` | 是 | ISO instant when the payer made the registered payment. |
+| `status` | `string` | 是 | Registered payment lifecycle state, distinguishing registered, received and voided payments. |
+| `registeredBy` | `string` | 是 | Actor who registered this settlement payment. |
+| `receivedBy` | `string,null` | 是 | Actor who confirmed receipt; null until the payee confirms. |
+| `receivedAt` | `string,null` | 是 | ISO instant of receipt confirmation; null until receipt is confirmed. |
+| `revision` | `number` | 是 | Current server revision used for optimistic concurrency on the returned resource. |
 
 ### SvStoreAttribution
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | Store where the recharge or consumption occurred; rows are ordered by it. |
-| `storeName` | `string` | 是 | Display name of the store. |
-| `creditedPaidMinor` | `number` | 是 | Paid principal credited at this store within the window, in minor units. |
-| `creditedBonusMinor` | `number` | 是 | Bonus credited at this store within the window, in minor units. |
-| `consumedMinor` | `number` | 是 | Principal plus bonus consumed at this store within the window, in minor units. |
-| `payableMinor` | `number` | 是 | Clearing payable of entries redeemed at this store within the window, in minor units. |
-| `rechargeCount` | `number` | 是 | Distinct recharge vouchers at this store within the window. |
-| `usageCount` | `number` | 是 | Distinct consumption vouchers at this store within the window. |
-| `customerCount` | `number` | 是 | Distinct customers with ledger activity at this store within the window. |
-| `asOf` | `string` | 是 | Server time at which the row was computed. |
-| `sourceWatermark` | `number` | 是 | Highest ledger-entry id included in this row. |
+| `storeNo` | `string` | 是 | Store identifier used to attribute this report row. |
+| `storeName` | `string` | 是 | Display name of the store represented by this attribution row. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedMinor` | `number` | 是 | Stored-value amount consumed during the period, in minor currency units. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
 
 ### SvSubmission
 
@@ -17796,39 +17797,39 @@ StorePointType 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `issuerNo` | `string` | 是 | Stored-value issuer whose ledger is summarized. |
-| `scopeType` | `string` | 是 | Issuer scope type: STORE or BRAND. |
-| `name` | `string` | 是 | Display name of the issuer. |
-| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code of all monetary amounts; amounts are in currency minor units. |
-| `period` | `object`（见下） | 是 | Report window as instants, derived from startDate/endDate in the issuer's business time zone. |
-| `asOf` | `string` | 是 | Server time at which the figures were computed. |
-| `sourceWatermark` | `number` | 是 | Highest ledger-entry id included in the figures; identifies the data snapshot. |
-| `openingMinor` | `number` | 是 | Principal plus bonus balance before the window start, in minor units. |
-| `creditedPaidMinor` | `number` | 是 | Paid principal credited by recharges within the window, in minor units. |
-| `creditedBonusMinor` | `number` | 是 | Bonus credited by recharges within the window, in minor units. |
-| `consumedMinor` | `number` | 是 | Principal plus bonus consumed within the window, in minor units. |
-| `reversedMinor` | `number` | 是 | Signed net change from entries that are neither recharge nor consumption (e.g. reversals) within the window, in minor units. |
-| `closingMinor` | `number` | 是 | Balance at the window end, in minor units; equals opening + creditedPaid + creditedBonus + reversed − consumed. |
-| `heldMinor` | `number` | 是 | Principal plus bonus currently held (frozen) on credited lots, in minor units; current state, not bounded by the window. |
-| `rechargeCount` | `number` | 是 | Distinct recharge vouchers within the window. |
-| `usageCount` | `number` | 是 | Distinct consumption vouchers within the window. |
-| `customerCount` | `number` | 是 | Distinct customers with any ledger activity within the window. |
-| `payableMinor` | `number` | 是 | Inter-entity clearing payable of clearing entries occurring within the window, in minor units. |
+| `issuerNo` | `string` | 是 | Stored-value issuer identifier whose ledger or settlement data is requested. |
+| `scopeType` | `string` | 是 | Reported stored-value resource scope, such as STORE or BRAND. |
+| `name` | `string` | 是 | Display name of the stored-value resource represented by this row. |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code; monetary fields use this currency’s minor units. |
+| `period` | `object`（见下） | 是 | Report interval with an inclusive from instant and an exclusive to instant. |
+| `asOf` | `string` | 是 | ISO instant at which this report snapshot was computed. |
+| `sourceWatermark` | `number` | 是 | Source-ledger high-water mark included in the report or generated bills. |
+| `openingMinor` | `number` | 是 | Stored-value balance at the start of the report period, in minor currency units. |
+| `creditedPaidMinor` | `number` | 是 | Recharge principal credited during the period, in minor currency units. |
+| `creditedBonusMinor` | `number` | 是 | Recharge bonus credited during the period, in minor currency units. |
+| `consumedMinor` | `number` | 是 | Stored-value amount consumed during the period, in minor currency units. |
+| `reversedMinor` | `number` | 是 | Previously consumed amount restored by reversals during the period, in minor currency units. |
+| `closingMinor` | `number` | 是 | Stored-value balance at period end: opening plus credits and reversals minus consumption, in minor units. |
+| `heldMinor` | `number` | 是 | Stored-value amount reserved by unfinished operations, in minor currency units. |
+| `rechargeCount` | `number` | 是 | Number of recharge operations included in this report row. |
+| `usageCount` | `number` | 是 | Number of stored-value consumption operations included in this report row. |
+| `customerCount` | `number` | 是 | Number of customers represented in this report row. |
+| `payableMinor` | `number` | 是 | Net settlement amount payable for the reported scope or bill, in minor currency units. |
 
 `period` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `from` | `string` | 是 | Inclusive window start instant (ISO-8601). |
-| `to` | `string` | 是 | Exclusive window end instant (ISO-8601). |
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
 
 ### SvVoidRequest
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
-| `expectedRevision` | `number` | 是 | Payment revision the client last read; stale revisions are rejected. |
-| `reason` | `string` | 是 | Business reason for voiding the registration, at most 255 characters. |
+| `managementNo` | `string` | 是 | Management space authorizing this financial query or command; the server verifies access. |
+| `expectedRevision` | `number` | 是 | Previously read revision of the target bill or payment; stale commands are rejected. |
+| `reason` | `string` | 是 | Business reason recorded for this settlement operation; limited to 255 characters when supplied. |
 
 ### SvWallet
 

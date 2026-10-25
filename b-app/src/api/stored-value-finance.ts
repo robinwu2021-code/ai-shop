@@ -1,376 +1,374 @@
 import type {CurrencyCode} from '@shared/types';
 import type {SvPage} from './stored-value-types';
 export interface SvFinanceQuery {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Restricts bills to issuers of this scope type; omit for both store and brand issuers. */
-scopeType?:'STORE'|'BRAND';
-/** Restricts bills to this stored-value issuer; it must be in the caller's financial directory. */
-issuerNo?:string;
-/** ISO currency code filter; omit for all currencies. */
-currency?:string;
-/** Bill status filter: DRAFT, RECONCILED, DISPUTED, PART_PAID, WAIT_RECEIPT, SETTLED or INTERNAL_RECONCILED. */
-status?:string;
-/** Inclusive ISO-8601 instant; returns bills whose period overlaps [periodFrom, periodTo). Must be sent together with periodTo. */
-periodFrom?:string;
-/** Exclusive ISO-8601 instant ending the period-overlap filter. Must be sent together with periodFrom. */
-periodTo?:string;
-/** Opaque continuation cursor from the preceding page; omit for the first page. */
-cursor?:string;
-/** Maximum records per page; server default 20, at most 100. */
-size?:number}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Whether the stored-value issuer belongs to a store or a brand. */
+  scopeType?:'STORE'|'BRAND';
+  /** Stored-value issuer identifier whose ledger or settlement data is requested. */
+  issuerNo?:string;
+  /** ISO currency code; monetary fields use this currency’s minor units. */
+  currency?:string;
+  /** Server-owned lifecycle state used to filter settlement bills. */
+  status?:string;
+  /** Inclusive start of the settlement period as an ISO instant. */
+  periodFrom?:string;
+  /** Exclusive end of the settlement period as an ISO instant. */
+  periodTo?:string;
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records requested per page; the financial reporting API accepts 1–100. */
+  size?:number}
 export interface SvReportQuery {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** ISO currency code; must equal the issuer's configured currency or the request is rejected. */
-currency:CurrencyCode;
-/** Inclusive first business date (yyyy-MM-dd), starting at midnight in the issuer's business time zone. */
-startDate:string;
-/** Exclusive end business date (yyyy-MM-dd): the window ends at midnight of this day in the issuer's business time zone; at most 367 days after startDate. */
-endDate:string;
-/** Optional activity filter restricting totals to recharges of this activity; ignored by the store-issuer summary. */
-activityNo?:string;
-/** Opaque continuation cursor from the preceding page; omit for the first page. Paged reports only. */
-cursor?:string;
-/** Maximum records per page; server default 20, at most 100. Paged reports only. */
-size?:number}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** ISO currency code; monetary fields use this currency’s minor units. */
+  currency:CurrencyCode;
+  /** Inclusive first business date in YYYY-MM-DD format, interpreted in the resource’s business time zone. */
+  startDate:string;
+  /** Exclusive end business date in YYYY-MM-DD format, interpreted in the resource’s business time zone. */
+  endDate:string;
+  /** Optional stored-value activity identifier restricting the report to that activity. */
+  activityNo?:string;
+  /** Opaque continuation cursor from the preceding page; omit for the first page. */
+  cursor?:string;
+  /** Maximum records requested per page; the financial reporting API accepts 1–100. */
+  size?:number}
 export interface SvFinanceResource {
-/** Stored-value issuer identifier. */
-issuerNo:string;
-/** Whether the issuer belongs to a single store (STORE) or a brand (BRAND). */
-scopeType:'STORE'|'BRAND';
-/** Store or brand identifier owning the issuer, according to scopeType. */
-scopeNo:string;
-/** Display name of the issuer resource. */
-name:string;
-/** ISO currency code of the issuer's current version. */
-currency:CurrencyCode;
-/** IANA time zone (issuer market zone) used to turn report and settlement dates into instants. */
-businessTimeZone:string}
+  /** Stored-value issuer identifier whose ledger or settlement data is requested. */
+  issuerNo:string;
+  /** Whether the stored-value issuer belongs to a store or a brand. */
+  scopeType:'STORE'|'BRAND';
+  /** Store or brand identifier selected by scopeType. */
+  scopeNo:string;
+  /** Display name of the stored-value resource represented by this row. */
+  name:string;
+  /** ISO currency code; monetary fields use this currency’s minor units. */
+  currency:CurrencyCode;
+  /** IANA business time zone used to interpret report date boundaries. */
+  businessTimeZone:string;
+/** Current server-verified generate permission for this issuer; absent values fail closed. */
+canGenerate:boolean}
 export interface SvFinanceCapability {
-/** Finance contract protocol version reported by the payment service (currently 2). */
-protocol:number;
-/** Whether stored-value financial reports can be served. */
-reportsReady:boolean;
-/** Whether settlement bills can be read and processed. */
-settlementReady:boolean;
-/** Whether new cross-entity settlement (bill generation and payment registration) is ready. */
-crossEntityReady:boolean;
-/** Whether settlement payments may carry evidence attachments; currently always false. */
-receiptAttachmentsSupported:boolean;
-/** Machine-readable reasons cross-entity settlement is not ready; empty when ready. */
-blockers:string[]}
+  /** Server capability protocol version for the stored-value finance integration. */
+  protocol:number;
+  /** Whether the server can provide stored-value financial reports. */
+  reportsReady:boolean;
+  /** Whether settlement generation and settlement commands are available. */
+  settlementReady:boolean;
+  /** Whether settlement between different operating entities is available. */
+  crossEntityReady:boolean;
+  /** Whether this deployment accepts receipt evidence attachments. */
+  receiptAttachmentsSupported:boolean;
+  /** Server capability blocker codes explaining unavailable financial features. */
+  blockers:string[]}
 export interface SvSummary {
-/** Stored-value issuer whose ledger is summarized. */
-issuerNo:string;
-/** Issuer scope type: STORE or BRAND. */
-scopeType:string;
-/** Display name of the issuer. */
-name:string;
-/** ISO currency code of all monetary amounts; amounts are in currency minor units. */
-currency:CurrencyCode;
-/** Report window as instants, derived from startDate/endDate in the issuer's business time zone. */
-period:{
-/** Inclusive window start instant (ISO-8601). */
-from:string;
-/** Exclusive window end instant (ISO-8601). */
-to:string};
-/** Server time at which the figures were computed. */
-asOf:string;
-/** Highest ledger-entry id included in the figures; identifies the data snapshot. */
-sourceWatermark:number;
-/** Principal plus bonus balance before the window start, in minor units. */
-openingMinor:number;
-/** Paid principal credited by recharges within the window, in minor units. */
-creditedPaidMinor:number;
-/** Bonus credited by recharges within the window, in minor units. */
-creditedBonusMinor:number;
-/** Principal plus bonus consumed within the window, in minor units. */
-consumedMinor:number;
-/** Signed net change from entries that are neither recharge nor consumption (e.g. reversals) within the window, in minor units. */
-reversedMinor:number;
-/** Balance at the window end, in minor units; equals opening + creditedPaid + creditedBonus + reversed − consumed. */
-closingMinor:number;
-/** Principal plus bonus currently held (frozen) on credited lots, in minor units; current state, not bounded by the window. */
-heldMinor:number;
-/** Distinct recharge vouchers within the window. */
-rechargeCount:number;
-/** Distinct consumption vouchers within the window. */
-usageCount:number;
-/** Distinct customers with any ledger activity within the window. */
-customerCount:number;
-/** Inter-entity clearing payable of clearing entries occurring within the window, in minor units. */
-payableMinor:number}
+  /** Stored-value issuer identifier whose ledger or settlement data is requested. */
+  issuerNo:string;
+  /** Reported stored-value resource scope, such as STORE or BRAND. */
+  scopeType:string;
+  /** Display name of the stored-value resource represented by this row. */
+  name:string;
+  /** ISO currency code; monetary fields use this currency’s minor units. */
+  currency:CurrencyCode;
+  /** Report interval with an inclusive from instant and an exclusive to instant. */
+  period:{from:string;to:string};
+  /** ISO instant at which this report snapshot was computed. */
+  asOf:string;
+  /** Source-ledger high-water mark included in the report or generated bills. */
+  sourceWatermark:number;
+  /** Stored-value balance at the start of the report period, in minor currency units. */
+  openingMinor:number;
+  /** Recharge principal credited during the period, in minor currency units. */
+  creditedPaidMinor:number;
+  /** Recharge bonus credited during the period, in minor currency units. */
+  creditedBonusMinor:number;
+  /** Stored-value amount consumed during the period, in minor currency units. */
+  consumedMinor:number;
+  /** Previously consumed amount restored by reversals during the period, in minor currency units. */
+  reversedMinor:number;
+  /** Stored-value balance at period end: opening plus credits and reversals minus consumption, in minor units. */
+  closingMinor:number;
+  /** Stored-value amount reserved by unfinished operations, in minor currency units. */
+  heldMinor:number;
+  /** Number of recharge operations included in this report row. */
+  rechargeCount:number;
+  /** Number of stored-value consumption operations included in this report row. */
+  usageCount:number;
+  /** Number of customers represented in this report row. */
+  customerCount:number;
+  /** Net settlement amount payable for the reported scope or bill, in minor currency units. */
+  payableMinor:number}
 export interface SvStoreAttribution {
-/** Store where the recharge or consumption occurred; rows are ordered by it. */
-storeNo:string;
-/** Display name of the store. */
-storeName:string;
-/** Paid principal credited at this store within the window, in minor units. */
-creditedPaidMinor:number;
-/** Bonus credited at this store within the window, in minor units. */
-creditedBonusMinor:number;
-/** Principal plus bonus consumed at this store within the window, in minor units. */
-consumedMinor:number;
-/** Clearing payable of entries redeemed at this store within the window, in minor units. */
-payableMinor:number;
-/** Distinct recharge vouchers at this store within the window. */
-rechargeCount:number;
-/** Distinct consumption vouchers at this store within the window. */
-usageCount:number;
-/** Distinct customers with ledger activity at this store within the window. */
-customerCount:number;
-/** Server time at which the row was computed. */
-asOf:string;
-/** Highest ledger-entry id included in this row. */
-sourceWatermark:number}
+  /** Store identifier used to attribute this report row. */
+  storeNo:string;
+  /** Display name of the store represented by this attribution row. */
+  storeName:string;
+  /** Recharge principal credited during the period, in minor currency units. */
+  creditedPaidMinor:number;
+  /** Recharge bonus credited during the period, in minor currency units. */
+  creditedBonusMinor:number;
+  /** Stored-value amount consumed during the period, in minor currency units. */
+  consumedMinor:number;
+  /** Net settlement amount payable for the reported scope or bill, in minor currency units. */
+  payableMinor:number;
+  /** Number of recharge operations included in this report row. */
+  rechargeCount:number;
+  /** Number of stored-value consumption operations included in this report row. */
+  usageCount:number;
+  /** Number of customers represented in this report row. */
+  customerCount:number;
+  /** ISO instant at which this report snapshot was computed. */
+  asOf:string;
+  /** Source-ledger high-water mark included in the report or generated bills. */
+  sourceWatermark:number}
 export interface SvActivityAttribution {
-/** Activity whose recharges produced the lots; null for plan-sourced recharges. */
-activityNo:string;
-/** Issuer release the lots belong to; rows are grouped and ordered by it. */
-releaseNo:string;
-/** Recharge source: ACTIVITY or PLAN. */
-sourceKind:string;
-/** Display name of the release. */
-name:string;
-/** Paid principal credited within the window, in minor units. */
-creditedPaidMinor:number;
-/** Bonus credited within the window, in minor units. */
-creditedBonusMinor:number;
-/** Principal consumed within the window, in minor units. */
-consumedPrincipalMinor:number;
-/** Bonus consumed within the window, in minor units. */
-consumedBonusMinor:number;
-/** Current remaining principal plus bonus on this release's lots, in minor units; not bounded by the window. */
-remainingMinor:number;
-/** Distinct recharge vouchers within the window. */
-rechargeCount:number;
-/** Distinct consumption vouchers within the window. */
-usageCount:number;
-/** Distinct customers with ledger activity within the window. */
-customerCount:number;
-/** Server time at which the row was computed. */
-asOf:string;
-/** Highest ledger-entry id included in this row. */
-sourceWatermark:number}
+  /** Optional stored-value activity identifier restricting the report to that activity. */
+  activityNo:string;
+  /** Immutable published activity release to which these ledger amounts are attributed. */
+  releaseNo:string;
+  /** Stored-value activity source classification used to interpret activityNo and releaseNo. */
+  sourceKind:string;
+  /** Display name of the stored-value resource represented by this row. */
+  name:string;
+  /** Recharge principal credited during the period, in minor currency units. */
+  creditedPaidMinor:number;
+  /** Recharge bonus credited during the period, in minor currency units. */
+  creditedBonusMinor:number;
+  /** Recharge principal consumed from this activity’s credits, in minor currency units. */
+  consumedPrincipalMinor:number;
+  /** Recharge bonus consumed from this activity’s credits, in minor currency units. */
+  consumedBonusMinor:number;
+  /** Unused stored-value balance attributed to this activity, in minor currency units. */
+  remainingMinor:number;
+  /** Number of recharge operations included in this report row. */
+  rechargeCount:number;
+  /** Number of stored-value consumption operations included in this report row. */
+  usageCount:number;
+  /** Number of customers represented in this report row. */
+  customerCount:number;
+  /** ISO instant at which this report snapshot was computed. */
+  asOf:string;
+  /** Source-ledger high-water mark included in the report or generated bills. */
+  sourceWatermark:number}
 export interface SvSettlementBill {
-/** Settlement bill identifier. */
-billNo:string;
-/** Stored-value issuer whose clearing entries the bill settles. */
-issuerNo:string;
-/** Operating entity that owes payableMinor. */
-payerEntityNo:string;
-/** Operating entity that receives payableMinor; equals payerEntityNo for internal reconciliation bills. */
-payeeEntityNo:string;
-/** ISO currency code of all monetary amounts on the bill. */
-currency:CurrencyCode;
-/** Inclusive posting-period start instant (ISO-8601). */
-periodFrom:string;
-/** Exclusive posting-period end instant; unclaimed clearing entries posted before it are included. */
-periodTo:string;
-/** CROSS_ENTITY when payer and payee differ; INTERNAL_RECON when they are the same entity (reconciliation only, no payment). */
-billKind:string;
-/** Bill status: DRAFT, RECONCILED, DISPUTED, PART_PAID, WAIT_RECEIPT, SETTLED or INTERNAL_RECONCILED. */
-status:string;
-/** Amount the payer owes the payee, in minor units; never negative (payer and payee are swapped at generation instead). */
-payableMinor:number;
-/** Total of non-voided offline payments registered by the payer, in minor units. */
-registeredPaymentMinor:number;
-/** Total of payments whose receipt the payee has confirmed, in minor units. */
-confirmedReceiptMinor:number;
-/** Principal used across the source clearing entries, in minor units. */
-principalMinor:number;
-/** Bonus used across the source clearing entries, in minor units. */
-bonusMinor:number;
-/** Number of clearing entries claimed by the bill, including adjustments. */
-sourceCount:number;
-/** Highest clearing-entry id considered when the bill was generated. */
-sourceWatermark:number;
-/** Actor who confirmed reconciliation for the payer; null until confirmed or after an adjustment resets it. */
-payerReconciledBy:string|null;
-/** Actor who confirmed reconciliation for the payee; null until confirmed or after an adjustment resets it. */
-payeeReconciledBy:string|null;
-/** Open dispute identifier; null when no dispute is open. */
-disputeNo:string|null;
-/** Current bill revision; send it as expectedRevision on bill commands. */
-revision:number;
-/** Time the bill was generated. */
-createdAt:string;
-/** Time the bill last changed. */
-updatedAt:string}
+  /** Settlement bill identifier used for authorized detail queries and commands. */
+  billNo:string;
+  /** Stored-value issuer identifier whose ledger or settlement data is requested. */
+  issuerNo:string;
+  /** Operating entity responsible for paying this settlement bill. */
+  payerEntityNo:string;
+  /** Operating entity entitled to receive this settlement bill’s payment. */
+  payeeEntityNo:string;
+  /** ISO currency code; monetary fields use this currency’s minor units. */
+  currency:CurrencyCode;
+  /** Inclusive start of the settlement period as an ISO instant. */
+  periodFrom:string;
+  /** Exclusive end of the settlement period as an ISO instant. */
+  periodTo:string;
+  /** Settlement classification, including CROSS_ENTITY payments and INTERNAL_RECON reconciliation. */
+  billKind:string;
+  /** Settlement bill lifecycle state, such as DRAFT, DISPUTED, RECONCILED or a payment/receipt state. */
+  status:string;
+  /** Net settlement amount payable for the reported scope or bill, in minor currency units. */
+  payableMinor:number;
+  /** Total amount of registered bill payments, in minor currency units. */
+  registeredPaymentMinor:number;
+  /** Total amount whose receipt the payee has confirmed, in minor currency units. */
+  confirmedReceiptMinor:number;
+  /** Principal component attributed to this settlement bill or clearing item, in minor currency units. */
+  principalMinor:number;
+  /** Bonus component attributed to this settlement bill or clearing item, in minor currency units. */
+  bonusMinor:number;
+  /** Number of source clearing entries included in this bill. */
+  sourceCount:number;
+  /** Source-ledger high-water mark included in the report or generated bills. */
+  sourceWatermark:number;
+  /** Actor who reconciled the payer side; null before payer reconciliation. */
+  payerReconciledBy:string|null;
+  /** Actor who reconciled the payee side; null before payee reconciliation. */
+  payeeReconciledBy:string|null;
+  /** Settlement dispute identifier; null when the bill has no dispute. */
+  disputeNo:string|null;
+  /** Current server revision used for optimistic concurrency on the returned resource. */
+  revision:number;
+  /** ISO instant when the settlement bill was created. */
+  createdAt:string;
+  /** ISO instant when the settlement bill was last updated. */
+  updatedAt:string}
 export interface SvSettlementItem {
-/** Bill item identifier. */
-itemNo:string;
-/** Clearing entry claimed by this item. */
-clearingNo:string;
-/** Payable contributed to the bill in the bill's payer→payee direction, in minor units; negated when the bill direction was reversed. */
-amountMinor:number;
-/** Principal used by the clearing entry, in minor units; 0 for adjustments. */
-principalMinor:number;
-/** Bonus used by the clearing entry, in minor units; 0 for adjustments. */
-bonusMinor:number;
-/** Store where the consumed value was recharged. */
-rechargeStoreNo:string;
-/** Store where the value was consumed. */
-redemptionStoreNo:string;
-/** Business time of the underlying clearing event. */
-occurredAt:string;
-/** Time the clearing entry was posted. */
-postedAt:string;
-/** Whether the entry was posted before the bill's period start and carried forward from an earlier period. */
-carriedForward:boolean;
-/** Clearing entry type: USE, REVERSAL or ADJUSTMENT. */
-entryType:string;
-/** Original clearing entry corrected by an ADJUSTMENT entry; null for other entry types. */
-originalClearingNo:string|null}
+  /** Settlement line identifier within the bill detail. */
+  itemNo:string;
+  /** Source stored-value clearing entry represented by or adjusted through this line. */
+  clearingNo:string;
+  /** Monetary amount in the settlement bill’s minor currency units. */
+  amountMinor:number;
+  /** Principal component attributed to this settlement bill or clearing item, in minor currency units. */
+  principalMinor:number;
+  /** Bonus component attributed to this settlement bill or clearing item, in minor currency units. */
+  bonusMinor:number;
+  /** Store where the stored-value credit was recharged. */
+  rechargeStoreNo:string;
+  /** Store where the credited stored value was redeemed. */
+  redemptionStoreNo:string;
+  /** ISO instant when the source business operation occurred. */
+  occurredAt:string;
+  /** ISO instant when the source clearing entry was posted to the ledger. */
+  postedAt:string;
+  /** Whether the source entry was carried into this bill from an earlier settlement period. */
+  carriedForward:boolean;
+  /** Source clearing classification, such as USE or a reversal. */
+  entryType:string;
+  /** Original clearing entry referenced by a reversal; null for an original entry. */
+  originalClearingNo:string|null}
 export interface SvSettlementEvent {
-/** Settlement event identifier. */
-eventNo:string;
-/** Event type: GENERATED, RECON_CONFIRM, DISPUTE, DISPUTE_RESOLVE, ADJUST, PAYMENT, RECEIPT or PAYMENT_VOID. */
-type:string;
-/** Bill revision after the event was applied. */
-billRevision:number;
-/** Actor who performed the action. */
-actorNo:string;
-/** Reason supplied with the command; null when none was given. */
-reason:string|null;
-/** Time the event was recorded. */
-occurredAt:string}
+  /** Immutable settlement audit event identifier. */
+  eventNo:string;
+  /** Settlement audit event type used to interpret the recorded action. */
+  type:string;
+  /** Settlement bill revision to which this audit event applies. */
+  billRevision:number;
+  /** Actor identifier recorded for the settlement event. */
+  actorNo:string;
+  /** Business reason recorded for this settlement operation; limited to 255 characters when supplied. */
+  reason:string|null;
+  /** ISO instant when this settlement audit event occurred. */
+  occurredAt:string}
 export interface SvSettlementPayment {
-/** Settlement payment identifier. */
-paymentNo:string;
-/** Settlement bill the payment pays. */
-billNo:string;
-/** ISO currency code of amountMinor. */
-currency:CurrencyCode;
-/** Offline payment method: TRANSFER, CASH or OTHER. */
-method:string;
-/** Registered payment amount, in minor units. */
-amountMinor:number;
-/** Time the payer states the offline payment was made. */
-paidAt:string;
-/** Payment status: REGISTERED, RECEIPT_CONFIRMED or VOIDED. */
-status:string;
-/** Payer-side actor who registered the payment. */
-registeredBy:string;
-/** Payee-side actor who confirmed receipt; null until confirmed. */
-receivedBy:string|null;
-/** Receipt time stated by the payee; null until confirmed. */
-receivedAt:string|null;
-/** Current payment revision; send it as expectedRevision for receipt confirmation or void. */
-revision:number}
+  /** Registered settlement payment identifier used for receipt confirmation and voiding. */
+  paymentNo:string;
+  /** Settlement bill identifier used for authorized detail queries and commands. */
+  billNo:string;
+  /** ISO currency code; monetary fields use this currency’s minor units. */
+  currency:CurrencyCode;
+  /** Declared settlement payment method: bank transfer, cash or other. */
+  method:string;
+  /** Registered settlement payment amount in the bill currency’s minor units. */
+  amountMinor:number;
+  /** ISO instant when the payer made the registered payment. */
+  paidAt:string;
+  /** Registered payment lifecycle state, distinguishing registered, received and voided payments. */
+  status:string;
+  /** Actor who registered this settlement payment. */
+  registeredBy:string;
+  /** Actor who confirmed receipt; null until the payee confirms. */
+  receivedBy:string|null;
+  /** ISO instant of receipt confirmation; null until receipt is confirmed. */
+  receivedAt:string|null;
+  /** Current server revision used for optimistic concurrency on the returned resource. */
+  revision:number}
 export interface SvBillActions {
-/** Settlement permission codes the caller holds on the bill's payer entity. */
-payerActions:string[];
-/** Settlement permission codes the caller holds on the bill's payee entity. */
-payeeActions:string[]}
+  /** Settlement permission codes currently available to this actor on the payer side. */
+  payerActions:string[];
+  /** Settlement permission codes currently available to this actor on the payee side. */
+  payeeActions:string[]}
 export interface SvGenerationRequest {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Issuer to generate bills for; it must be in the caller's financial directory. */
-issuerNo:string;
-/** Inclusive first posting date (yyyy-MM-dd) in the issuer's business time zone. */
-periodFrom:string;
-/** Exclusive end posting date (yyyy-MM-dd) in the issuer's business time zone; the period must already have ended. */
-periodTo:string;
-/** ISO currency code; must equal the issuer's current currency. */
-currency:CurrencyCode}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Stored-value issuer identifier whose ledger or settlement data is requested. */
+  issuerNo:string;
+  /** Inclusive first settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. */
+  periodFrom:string;
+  /** Exclusive end settlement business date in YYYY-MM-DD format, interpreted in the issuer’s business time zone. */
+  periodTo:string;
+  /** ISO currency code; monetary fields use this currency’s minor units. */
+  currency:CurrencyCode}
 export interface SvDecisionRequest {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Bill revision the client last read; stale revisions are rejected. */
-expectedRevision:number;
-/** Party side being confirmed: PAYER or PAYEE; required for reconciliation, not used by disputes. */
-side:'PAYER'|'PAYEE';
-/** Business reason, at most 255 characters; optional for reconciliation, required for disputes. */
-reason?:string}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Previously read revision of the target bill or payment; stale commands are rejected. */
+  expectedRevision:number;
+  /** Bill party performing reconciliation or raising a dispute: PAYER or PAYEE. */
+  side:'PAYER'|'PAYEE';
+  /** Business reason for the decision; required for a dispute and optional for reconciliation, at most 255 characters. */
+  reason?:string}
 export interface SvResolutionRequest {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Bill revision the client last read; stale revisions are rejected. */
-expectedRevision:number;
-/** Dispute currently open on the bill. */
-disputeNo:string;
-/** Recorded resolution decision: ACCEPT or REJECT; either way the bill returns to its pre-dispute state. */
-decision:'ACCEPT'|'REJECT';
-/** Business reason for the resolution, at most 255 characters. */
-reason:string}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Previously read revision of the target bill or payment; stale commands are rejected. */
+  expectedRevision:number;
+  /** Settlement dispute identifier; null when the bill has no dispute. */
+  disputeNo:string;
+  /** Dispute resolution decision: ACCEPT or REJECT. */
+  decision:'ACCEPT'|'REJECT';
+  /** Business reason recorded for this settlement operation; limited to 255 characters when supplied. */
+  reason:string}
 export interface SvAdjustmentRequest {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Cross-entity USE clearing entry on this bill whose payable is corrected. */
-clearingNo:string;
-/** Bill revision the client last read; stale revisions are rejected. */
-expectedRevision:number;
-/** Signed, non-zero change to the entry's payable in minor units; the effective payable must stay between 0 and the principal used. */
-payableDeltaMinor:number;
-/** Business reason for the adjustment, at most 255 characters. */
-reason:string}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Source stored-value clearing entry represented by or adjusted through this line. */
+  clearingNo:string;
+  /** Previously read revision of the target bill or payment; stale commands are rejected. */
+  expectedRevision:number;
+  /** Nonzero signed change to the clearing entry’s payable amount, in minor currency units. */
+  payableDeltaMinor:number;
+  /** Business reason recorded for this settlement operation; limited to 255 characters when supplied. */
+  reason:string}
 export interface SvPaymentRequest {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Bill revision the client last read; stale revisions are rejected. */
-expectedRevision:number;
-/** Positive payment amount in minor units; at most payableMinor − registeredPaymentMinor. */
-amountMinor:number;
-/** ISO-8601 instant the offline payment was made; must not be in the future. */
-paidAt:string;
-/** Offline payment method. */
-method:'TRANSFER'|'CASH'|'OTHER';
-/** Offline payment reference (e.g. transfer serial), at most 160 characters; normalized, stored encrypted and unique per payer while active. */
-receiptReference:string;
-/** Reserved evidence attachment references; must be empty because attachments are not supported. */
-evidenceRefs:[]}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Previously read revision of the target bill or payment; stale commands are rejected. */
+  expectedRevision:number;
+  /** Positive payment amount to register, in the bill currency’s minor units. */
+  amountMinor:number;
+  /** ISO instant when the payer made the registered payment. */
+  paidAt:string;
+  /** Declared settlement payment method: bank transfer, cash or other. */
+  method:'TRANSFER'|'CASH'|'OTHER';
+  /** Payer’s receipt or transfer reference; required and limited to 160 characters. */
+  receiptReference:string;
+  /** Receipt attachment references; this client currently sends an empty list. */
+  evidenceRefs:[]}
 export interface SvReceiptRequest {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Payment revision the client last read; stale revisions are rejected. */
-expectedRevision:number;
-/** ISO-8601 instant the payee received the funds; not before paidAt and not in the future. */
-receivedAt:string}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Previously read revision of the target bill or payment; stale commands are rejected. */
+  expectedRevision:number;
+  /** ISO instant at which the payee confirms receipt of the payment. */
+  receivedAt:string}
 export interface SvVoidRequest {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Payment revision the client last read; stale revisions are rejected. */
-expectedRevision:number;
-/** Business reason for voiding the registration, at most 255 characters. */
-reason:string}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Previously read revision of the target bill or payment; stale commands are rejected. */
+  expectedRevision:number;
+  /** Business reason recorded for this settlement operation; limited to 255 characters when supplied. */
+  reason:string}
 export interface SvGenerated {
-/** Bills for the issuer and period visible to the caller, including ones generated earlier. */
-bills:SvSettlementBill[];
-/** Highest clearing-entry id considered by the generation. */
-sourceWatermark:number}
+  /** Settlement bills created or returned idempotently for the generation request. */
+  bills:SvSettlementBill[];
+  /** Source-ledger high-water mark included in the report or generated bills. */
+  sourceWatermark:number}
 export interface SvPaymentResolution {
-/** Whether a completed payment registration exists for the given commandKey. */
-found:boolean;
-/** The payment created by that registration; null when not found. */
-payment:SvSettlementPayment|null}
+  /** Whether the server found the original payment command for the supplied idempotency key. */
+  found:boolean;
+  /** Original registered payment when found; null when the command has no recorded result. */
+  payment:SvSettlementPayment|null}
 export interface SvFinancialBrandChange {
-/** Financial brand change identifier. */
-changeNo:string;
-/** Change state: PREPARING, PAY_PREPARED or COMPLETED. */
-state:string;
-/** Whether the store's brand binding change has been staged in the merchant core and awaits the payment-service commit. */
-staged:boolean}
+  /** Financial brand-binding change identifier used to query or resume the change. */
+  changeNo:string;
+  /** Server-owned lifecycle state of the financial brand-binding change. */
+  state:string;
+  /** Whether the financial brand-binding change is staged pending completion. */
+  staged:boolean}
 export interface SvFinancialBrandRequest {
-/** Management-space identifier under which the operation is authorized. */
-managementNo:string;
-/** Destination brand; null removes the store from its current brand. */
-toBrandNo:string|null;
-/** Store revision the client last read; stale revisions are rejected. */
-expectedStoreRevision:number;
-/** Business reason for the change, at most 255 characters. */
-reason:string}
+  /** Management space authorizing this financial query or command; the server verifies access. */
+  managementNo:string;
+  /** Destination brand identifier; null requests removal of the store’s brand binding. */
+  toBrandNo:string|null;
+  /** Previously read store revision used to reject a stale financial brand-binding change. */
+  expectedStoreRevision:number;
+  /** Business reason recorded for this settlement operation; limited to 255 characters when supplied. */
+  reason:string}
 export interface SvFinancialPermissionResult {
-/** Whether the settlement permissions are now granted; true on success. */
-prepared:boolean;
-/** Operating entity the permissions were granted on. */
-entityNo:string;
-/** Settlement permission codes now held by the caller on the entity. */
-permissions:string[]}
+  /** Whether the server successfully prepared the requested financial permission setup. */
+  prepared:boolean;
+  /** Operating entity whose financial permissions were prepared. */
+  entityNo:string;
+  /** Financial permission codes returned by the server for the prepared entity. */
+  permissions:string[]}
 export interface SvFinancialBrandOriginal {
-/** Change originally created with the given commandKey; null when no such change exists. */
-original:SvFinancialBrandChange|null}
+  /** Original financial brand-binding command result; null when the command is not recorded. */
+  original:SvFinancialBrandChange|null}
 export interface StoredValueFinanceApi {
  mSvFinancialBrandOriginal(store:string,managementNo:string,commandKey:string):Promise<SvFinancialBrandOriginal>;
  mSvPrepareFinancePermissions(entity:string,body:{managementNo:string}):Promise<SvFinancialPermissionResult>;

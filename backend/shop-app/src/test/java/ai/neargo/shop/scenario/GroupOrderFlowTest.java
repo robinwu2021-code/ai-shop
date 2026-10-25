@@ -76,10 +76,13 @@ class GroupOrderFlowTest {
                 .isEqualTo("SUCCESS");
     }
 
+    // Exact activities owned by this fixture, including an interrupted previous cleanup.
+    private static final java.util.Set<String> fixtureActivities = new java.util.LinkedHashSet<>();
     private String activityNo;
 
     @BeforeEach
     void startGroupActivity() {
+        dropGroupActivity();
         long now = System.currentTimeMillis();
         activityNo = activityService.save(ENTITY, new ActivityDraft(
                 null, "两人团 · " + (++seq), "GROUP", null,
@@ -88,12 +91,21 @@ class GroupOrderFlowTest {
                 PmtActivity.ONE_OFF, now - 1000, now + 86_400_000L, null, 100, null,
                 List.of(), List.of(GOODS),
                 null, null, null, null, null, null, 6), "TEST").activityNo();
+        fixtureActivities.add(activityNo);
     }
 
     @AfterEach
     void dropGroupActivity() {
-        jdbc.update("delete from pmt_activity_goods where activity_no=?", activityNo);
-        jdbc.update("delete from pmt_activity where activity_no=?", activityNo);
+        // Groups survive activity deletion and otherwise compete in the goods-page top three.
+        // Delete only this fixture's group members and groups before deleting their activity.
+        for (String owned : List.copyOf(fixtureActivities)) {
+            jdbc.update("delete from mkt_group_member where group_no in"
+                    + " (select group_no from mkt_group_buy where activity_no=?)", owned);
+            jdbc.update("delete from mkt_group_buy where activity_no=?", owned);
+            jdbc.update("delete from pmt_activity_goods where activity_no=?", owned);
+            jdbc.update("delete from pmt_activity where activity_no=?", owned);
+            fixtureActivities.remove(owned);
+        }
     }
 
     // ---------------------------------------------------------------- 用例

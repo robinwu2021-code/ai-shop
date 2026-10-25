@@ -4,6 +4,7 @@ import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const mock = vi.hoisted(() => ({ types: vi.fn(), accounts: vi.fn(), entries: vi.fn() }));
+vi.mock("@/lib/use-can", () => ({ useCan: () => () => true }));
 vi.mock("@/lib/api", () => ({ api: { pointsTypes: mock.types, pointsAccounts: mock.accounts, pointsEntries: mock.entries } }));
 vi.mock("@/components/ui/drawer", () => ({ Drawer: ({ open, title, children }: { open: boolean; title: string; children: unknown }) => open ? h("aside", {}, h("h2", {}, title), children as never) : null }));
 vi.mock("@/components/ui/data-table", () => ({ DataTable: ({ rows = [], columns, rowProps }: { rows: never[]; columns: { header: string; cell: (r: never) => unknown }[]; rowProps?: (r: never) => object }) => h("div", {}, h("div", {}, ...columns.map((c, i) => h("span", { key: i }, c.header))), ...rows.map((r, i) => h("div", { key: i, ...rowProps?.(r) }, ...columns.map((c, j) => h("span", { key: j }, c.cell(r) as never))))) }));
@@ -46,4 +47,8 @@ it("does not present a missing account as active or fetch nonexistent ledger ent
   await render(); await act(async () => (host.querySelector('[role="button"]') as HTMLElement).click()); await flush();
   expect(host.querySelector("aside")!.textContent).toContain("未建账"); expect(host.querySelector("aside")!.textContent).not.toContain("正常");
   expect(mock.entries).not.toHaveBeenCalled();
+});
+
+it("exposes adjustment records from the accounts workspace", async () => {
+  await render(); expect([...host.querySelectorAll("button")].some(b => b.textContent === "调账记录")).toBe(true);
 });

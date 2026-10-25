@@ -4,7 +4,8 @@ export interface ManagementPage<T> {
   /** Opaque cursor for the next page; null when the result is exhausted. */
   nextCursor:string|null}
 export interface ManagementResource {
-  /** Whether the operator may prepare settlement permissions on this entity (owns its account and holds management.grant.manage); ENTITY resources only. */
+
+  /** Whether the authenticated operator may prepare financial permissions for this resource. */
   canPrepareFinance?:boolean;
   /** Whether the operator retains management access to legacy resources. */
   canManageLegacy?:boolean;
@@ -59,7 +60,8 @@ export interface ManagementContext {
   /** Payment merchant identifier under the operating entity. */
   payMerchantNo:string}>}>}
 export interface Brand extends ManagementResource {
-  /** Brand-level stored-value activation state, e.g. NONE, PREPARING or ACTIVE. */
+
+  /** Server-owned stored-value activation state of this brand. */
   storedValueStatus?:string;
   /** Brand identifier; null when the scope has no brand binding. */
   brandNo:string;
@@ -174,7 +176,8 @@ export interface BrandChangeSubmit {
   /** Business reason recorded for the operation, rejection or manual recovery. */
   reason:string}
 export interface BrandChange {
-  /** Whether the pending change is a financial brand change that must continue through the financial-brand-change flow. */
+
+  /** Whether this brand-binding change uses the financial stored-value migration workflow. */
   financial?:boolean;
   /** Identifier of the requested brand/store binding change. */
   changeNo:string;

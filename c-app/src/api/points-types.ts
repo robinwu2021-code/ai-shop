@@ -58,6 +58,8 @@ export interface BuyerPointsAccount {
   currency: string;
   /** 服务端业务状态 */
   status: BuyerPointsAccountStatus;
+  /** 仅暂停新增赠送，不代表禁止已有余额抵扣 */
+  earningPaused?: boolean;
   /** 可用积分余额 */
   balance: number;
   /** 待激活积分余额 */

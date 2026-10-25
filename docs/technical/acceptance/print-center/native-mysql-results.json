@@ -1,0 +1,20 @@
+{
+  "database": "MySQL 8.4 dedicated temporary container",
+  "tests": 7,
+  "failures": 0,
+  "errors": 0,
+  "cases": [
+    "cloudPrinterBeyondFirstPageStillGetsScheduled",
+    "cleanupAdvancesBeyondAlreadyDeletedArtifacts",
+    "sampleSimulationAndPdfExportNeverCreateProductionJobs",
+    "agentEnrollmentSessionFenceAndClaimAreDurable",
+    "idempotencyIsDurableConflictsAreRejectedAndFailedCommandsRollBack",
+    "stableOutboxInsertReturnsDatabaseIdentity",
+    "productionFlowRequiresReceiptEvidenceAndPreservesOriginalAcrossReprint"
+  ],
+  "evidenceSource": "Native MySQL Maven invocation summary, not subsequent H2 XML",
+  "durationSeconds": 13.91,
+  "buildSuccess": true,
+  "includesSkippedFactManualRecovery": true,
+  "includesLazyFontInitialization": true
+}
