@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-24 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
+> 状态：实施中 · 2026-10-25 · 按用户最新要求，先完成P1及P2～P4全部既定后端代码、审查、测试和编译，再统一部署验证；不再以逐模块部署通过作为下一模块编码前置。BM01～BM03历史隔离部署结果保留；BM04 Task54～59代码阶段已验收，60A-A1架构收尾已验收，A2已代码验收，A3已代码验收，A4已代码验收，A5已代码验收，A5b已按范围验收，A5c报价误连已修复验收，A6已代码验收，A7真实身份及资源组合已代码验收，A8及其余质量收尾继续，整体部署待统一关口。完整作业和任务日历尚未完成。
 > **执行方式：** 使用`superpowers:subagent-driven-development`逐任务实施及独立审查，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -908,10 +908,28 @@ Owned仅纯lineage模块、原lineage测试、生成器live说明行和其实际
 
 唯一临时生产消融限MerchantMappers.OperatorAccessMapper的allowed表达式置真，观察撤权例真实RED后finally逐字恢复、重编译当前bytecode再GREEN；绝不进入产品提交。采用既有cached MySQL9.7.2/DISK64M/内存guard/共享串行锁/env凭据/ownUUID finally清理，仅必要隔离开发测试，正式部署仍后置。
 
-- [ ] 新selector真实行为RED，三产品最小接入/Node GREEN；组合已有业务正确可首次native GREEN，不制造假业务RED。
-- [ ] native三方法真实零fail/error/skip，身份/持久命令/新旧资源与历史共同断言。
-- [ ] 临时实时权限防线消融RED/精确恢复定向GREEN、默认retail test-compile与bytecode来源证明。
-- [ ] 独立规格/质量审查及精确提交，环境失败和警告单列，不宣称BM05或BM04部署完成。
+- [x] 新selector真实行为RED，三产品最小接入/Node GREEN；组合已有业务正确可首次native GREEN，不制造假业务RED。
+- [x] native三方法真实零fail/error/skip，身份/持久命令/新旧资源与历史共同断言。
+- [x] 临时实时权限防线消融RED/精确恢复定向GREEN、默认retail test-compile与bytecode来源证明。
+- [x] 独立规格/质量审查及精确提交，环境失败和警告单列，不宣称BM05或BM04部署完成。
+
+### 2.32 Task60A-A8：预约权限词条与库存冲突提示（2026-10-25）
+
+档位1；依据60A AC7与已有统一i18n合同。精确文件及命令见[A8 brief](../../.superpowers/sdd/beauty-backend/task-60a-a8-brief.md)。不改变权限码或授予关系，不新增接口、字段、配置或账本。复用BizPerms.LABELS及现有三语properties；A7及以前产品保持冻结。
+
+| AC | 实施 | 验证 |
+|---|---|---|
+| A8-1 | 三语perm补预约查看/管理文案，中文逐字对应后端；英文/阿文补缺失common.delete | 真实权限标签守卫、键集及三语占位符对齐；重复权限词条不得静默覆盖 |
+| A8-2 | 库存共用来源提示明确当前店{0}与冲突店{1}，保留独立库位整改说明 | 新stock-shared-source-label测试覆盖三语实际条目及两个真实Java参数顺序；旧文案已有{1}，不误称全吞参 |
+| A8-3 | StockReconcile仅将邻近BizException/ErrorCode全限定名换正常import，保留storeNo/other | InventoryWriteback已有正确调用不改；不放宽message-placeholder或known棘轮 |
+| A8-4 | 默认后端及B端受影响闸门 | 四个shared文件、BackendI18nParityTest实际XML、B端vue-tsc；缺{0}/错参数顺序消融及精确恢复 |
+
+Owned为三份B端locale、三份后端properties、StockReconcileService必要import/相邻调用、原biz-perm-label与新stock-shared-source-label，共9文件；InventoryWriteback只读。现有root Vitest/vue-tsc可执行，使用既有依赖、不安装或改锁文件。无原生数据库或正式部署。
+
+- [ ] 先补针对真实缺词条/缺{0}的行为断言并取得RED，再做最小产品修改。
+- [ ] 四个shared守卫及后端三语守卫实际通过，B端类型检查记录真实结果。
+- [ ] 两类必要消融失败并finally恢复精确bytes；生成manifest及完整diff，问题按真实归属处理。
+- [ ] 独立规格/质量审查及精确提交，更新实际证据后继续A9，不宣布BM04或部署完成。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2203,3 +2221,11 @@ A5b审查另确认继承Important：quote_no使结算报价误连到营销。本
 真实RED9项/7失败、最小修复及最终9项通过；移除beauty目录与回退Java整文件mask两次消融真实1/3失败、逐字恢复。实际--check exit0：162处/51文件、54已知、fresh0/stale0，未扩baseline；SQLmask和known逐字不变。独立规格PASS/质量APPROVE，无重要问题。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a6-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a6.md)。
 
 审查Minor：Java仅bare-CR换行时//注释终止与原行计数仍有边界缺口，已带到最终分支审查triage，未声称所有合法Java格式全覆盖。无AST/Unicode/octal/跨字符串拼接或动态运行时SQL证明，报告明确静态边界。未执行Java编译/数据库/部署，下一项A7才运行必要隔离原生组合测试；全部P1～P4正式部署顺序保持。
+
+### 32.18 60A-A7认领身份与真实资源替换代码验收（2026-10-25）
+
+产品`7203aa3924f1527c3d2f74aa4c9a374cdf5ac4fa`仅新BeautyClaimedGuestResourceIT及原checkout runner/Node测试三文件。真实临客预约/认领/当前身份签到/换人开单验证USER归一、原历史不变、REPLACE成功与回放；非owner USR撤管理权限后精确FORBIDDEN；独立人员A行锁及真实peerB预约导致owner实际CAPACITY_UNAVAILABLE，原A和peerB占用均保留。无伪造预约/资源事实或业务provider替换。
+
+Node真实19通过/1失败到最终20通过；正常原生三方法3/0失败/0错误/0跳过。唯一实时权限allowed表达式消融得到1项断言失败，finally恢复生产原SHA并实际重新编译后同定向1项通过；正常三绿与最终一绿为两批，不虚称再跑完整三例。最终默认零售733份测试源码test-compile BUILD SUCCESS，反射编译边界成立。生产源码/字节码及冻结迁移精确不变，七个自有UUID容器及串行锁无遗留。
+
+前置缺publication归档配置、HELD与测试冻结时钟的失败历史保留：根批准单次原号诊断定位许可尚未生效，最终删除诊断，只保留测试局部systemUTC及既有archive-only配置。不是生产业务缺陷修复。实际环境/构建警告未压制，仍限隔离开发证据。独立规格PASS/质量PASS，无发现。[报告](../../.superpowers/sdd/beauty-backend/task-60a-a7-report.md)、[审查](../../.superpowers/sdd/beauty-backend/review-task-60a-a7.md)。根manifest/真实XML/源码与字节码/精确提交父树核验通过；下一片A8，全部P1～P4正式部署仍统一后置。
