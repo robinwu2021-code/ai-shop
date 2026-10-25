@@ -1119,6 +1119,14 @@ export default {
 
 
   points: {
+    typeStatus: "积分状态",
+    typeStateActive: "生效中",
+    typeStateDraft: "草稿",
+    typeStateDraining: "清偿中",
+    typeStateRetired: "已终止",
+    typeStateEarningPaused: "已暂停新增赠送",
+    typeStateUnknown: "状态待核实",
+    earningPausedHint: "已暂停新增赠送，已有余额使用以结算页报价为准。",
     directionFINALIZE: "完成入账",
     redemptionPROCESSING: "抵扣处理中",
     redemptionHELD: "已预占积分",

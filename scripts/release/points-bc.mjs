@@ -32,4 +32,9 @@ if(files.some(file => file.includes('/points/type/') || file.includes('PointsAdm
   run('mvn',['-o','-pl','shop-app','-am','-Dtest=PointsOpsConfigurationTest,PointsConfigurationAuditTest,PointsOpsPermissionTest,PointsOpsErrorsTest,PointTypeActivationTest,PointsOrderTermsPortTest,AcceptedEarnBudgetTest,PointsDefaultLockOrderTest','-Dsurefire.failIfNoSpecifiedTests=false','test','-q'],'backend');
 }
 if(files.includes('ops-web/app/points/types-tab.tsx')) run('npm',['test','--','lib/points-types-page.test.ts','lib/api/points-configuration.test.ts'],'ops-web');
+if(files.includes('packages/shared/src/utils/points-status.ts')) {
+  run('npm',['test','--','tests/points-status.test.ts'],'packages/shared');
+  run('npm',['test','--','tests/points-account.test.ts','tests/points-status-locales.test.ts'],'b-app');
+  run('npm',['test','--','tests/points-account.test.ts'],'c-app');
+}
 console.log(`points-bc scoped checks passed: ${head} (${files.length} files)`);
