@@ -97,7 +97,7 @@ JAVA_HOME=... mvn -o -f backend/pom.xml -pl shop-app -am test
 JAVA_HOME=... mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=ArchitectureTest
 ```
 
-- `-o`（离线）是必须的：私有父 POM `ai.neargo:neargo-parent` 只在本机 `~/.m2`，联网解析会失败。
+- `-o`（离线）**不再是必须的**（2026-10-25）：父 POM 已是 `neargo-build-parent:2.0.0-SNAPSHOT`，在公司 Nexus 上。首次构建联网并带 `-U`，之后 `-o` 只是为了快。`JAVA_HOME` 指向任一 JDK 21 即可，上面的 Homebrew 路径只是一例。
 - **改了 `shop-core` 要先 `install`**，否则本地 dev server 验的是 `.m2` 里的旧包。
 - **端点还 404 就 `clean`**：`package` 会复用旧 lib，jar 的 mtime 不可信。
 - **别覆盖正在跑的 jar**：接口挂起且无日志，多半是 `mvn package` 把在跑的 jar 覆盖了。
