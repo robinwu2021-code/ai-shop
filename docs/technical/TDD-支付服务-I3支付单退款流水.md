@@ -69,12 +69,28 @@
 - 接入：商城 `OrderServiceImpl#pay` 在 `initPayment` 前建单（门店 = 首个子单的门店）；餐饮 `IndustryCheckoutServiceImpl` 在 `open` 前建单（门店 = 账单门店）；`PaymentLedgerServiceImpl#open` 新行落库后 `attachAttempt`。
 - 单号前缀 `BizKey.PAY_ORDER = PYO`（另预留 `PYR` 退款单、`LVC` 凭证）。
 
+### S4 · 结果唯一入口
+- 两层分开：**通道尝试照记事实**（钱确实到了 → `stl_payment` SUCCESS，交易域据回执给用户看「支付异常、等待处理」，这一层沿用）；**支付单是严格的那一层**，只有结果入口能把它推进 SUCCEEDED。
+- `acquiring.service.PaymentOutcomeService` / `impl.PaymentOutcomeServiceImpl#apply(ChannelOutcome)`：锁支付单 → CLOSED 记 `LATE_PAYMENT`（R18）· 已成功记 `DUPLICATE_PAYMENT` · 实收 ≠ 应收记 `AMOUNT_MISMATCH` · 否则 SUCCEEDED + `paid_minor` + `succeeded_at`。异常按 `uk (kind, stl_payment_id)` 只记一次。
+- 接入点只有一个：`PaymentLedgerServiceImpl#settle`（回调、补查、掉单巡检、餐饮刷新、免单都经它）在尝试**第一次**转 SUCCESS 的同一事务里调；重推走「已 SUCCESS」幂等分支，不再进来 —— 「只入账一次」由此保证。
+- R20：**应收以支付单 `pay_order.amount_minor` 为准**（建单后不改）；尝试行 `amount_minor` / `currency` 仍记渠道事实（实收），另在 `channel_amount_minor` / `channel_currency` 显式留一份。不改尝试行口径的理由见偏差 5。
+- 状态机兜底：CLOSED → SUCCEEDED 不在迁移表里，即使绕过入口的判断也会抛 `PAY_ORDER_STATE`。
+
+### S5 · 流水
+- `ledger.LedgerAccount`（含平台外备查的 `MERCHANT_CHANNEL` / `MERCHANT_SALES`，见偏差 3）· `ledger.LedgerVoucher`（构造即校验：借贷平衡、金额为正、至少两行、平台外备查账不与 `PLATFORM_*` 同票 —— AC18）。
+- `ledger.service.LedgerService` / `impl.LedgerServiceImpl`：`post`（`uk idem_key` 幂等，撞键回读）· `reverse`（追加反向凭证，`reversal_of_id` 指回原凭证）；只 insert。
+- `funds.FundsPathStrategy` + `Direct…`（借 MERCHANT_CHANNEL / 贷 MERCHANT_SALES）· `Aggregated…`（借 PLATFORM_CHANNEL / 贷 MERCHANT_PAYABLE）；退款方向相反。`FundsPaths` 按支付单冻结的 `funds_path` 选；`BizDates` 按市场时区切业务日。
+- 接入：`PaymentOutcomeServiceImpl` 在支付单进 SUCCEEDED 的同一事务里记 `PAY_SUCCEEDED`（`shop.pay.ledger.enabled` 默认 true）；退款成功凭证随 S6。
+- 守卫 `LedgerAppendOnlyTest`：扫描 pay-domain，流水 mapper 上调 update / delete 即红（带判据自测）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
 | AC2 | `CallerPolicyMatrixTest`（69 条：6 类 × 11 动作逐格，期望值在测试里另抄一份；`internalSystemCannotRefund`；`refundWithoutOperatorRejected`；`storeScope`） | ✅ | 给 INTERNAL 加退款 + 去掉操作员判断 → 3 条红 ✅ |
 | AC3 | `PayOrderFlowTest`（3 条：`createIsIdempotent` · `sameKeyDifferentContentRejected` · `mallPaymentHasPayOrder` 真下单去支付：门店 id、应付、AWAITING_PAYMENT、尝试挂 `pay_order_id`）· `IndustryCheckoutServiceTest#firstPaymentCreatesFoodPayOrderBeforeOpeningTheAttempt`（FOOD_CHECK、门店 id 42，先建单后开尝试） | ✅ | ① 商城不建单 + 摘要不含金额 → 两条红 ② 尝试不挂支付单 → `mallPaymentHasPayOrder` 红 ③ 餐饮不建单 → 餐饮那条红 ✅ |
+| AC4 | `PaymentOutcomeFlowTest`（3 条：`notifyTwiceBooksOnce` · `latePaymentCreatesException` · `amountMismatchKeepsRequestedAmountOnPayOrder`）· `OrderPaymentLifecycleWiringFlowTest` 8 条 · `OrderPaymentRecoveryWiringFlowTest` 6 条 · `PointsPaymentSnapshotTest` 3 条原样全绿 | ✅ | ① 关单后照常成功 → `latePayment…` 红（被状态机兜成 `PAY_ORDER_STATE`）② 不比金额 → `amountMismatch…` 红 ✅ |
+| AC5 | `LedgerVoucherTest`（4 条：不平、混账、非正金额 / 单行、平衡）· `LedgerFlowTest`（4 条：AGGREGATED 回执两次一张凭证且分录正确、业务日按上海；DIRECT 只记备查账；Q7 = 0；同一幂等键记两次一张 + 冲正追加反向凭证）· `LedgerAppendOnlyTest`（2 条） | ✅ | ① 成功不记账 → 两条红 ② 去掉幂等 + DIRECT 记进平台账户 → 幂等那条撞唯一键、DIRECT 那条被凭证自身的混账校验拦下 ✅ |
 | AC1 | `MapperSmokeTest`（新 9 个 mapper 各查自己的表）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V7–V9（种子落库、CHECK 生效） | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -83,4 +99,9 @@
 
 ### 偏差说明
 
+1. （撤回）S4 起初让尝试行 `amount_minor` 保持应收、实收只进 `channel_*`，并改了两条现有断言。受影响回归随即抓到真回归：`PointsPaymentSnapshotPortImpl` 按 `amount_minor` 核实收，金额不符被放过（`PointsPaymentSnapshotTest#mismatched_verified_cash…` 红）—— 全仓读「成功收款」的地方都按实收口径读这一列。已撤回，见偏差 5。
+2. **币种不进支付单的成功判据**：测试 / stub 网关查单恒报 CNY（同 I2 偏差 9），比了会把 KWD 等单全部误判；渠道币种照记 `channel_currency`，判据随 I8 各渠道查单带真实币种后补上。
+3. **流水补一个账户 `MERCHANT_SALES`**：DIRECT 收款只记平台外备查账，而设计的账户表里没有与 `MERCHANT_CHANNEL` 配对的对方科目；拿任何 `PLATFORM_*` 配都违反 AC18。补「商户销售（平台外备查）」作对方科目，表结构说明的账户值域随之补一项。
+4. **资金路径在建单时冻结**：设计是「选定方式时冻结路由快照」，而选方式（`PaymentService#start` + 收款路由）随 I4 才有；I3 由调用方按主体 `mch_entity.funds_mode` 带进来冻结进 `pay_order.funds_path`，记流水按它分录。未冻结的存量单不记（不猜），交给回填 B7。
+5. **R20 由支付单解决，尝试行口径不变**：R20 的害处是「应收被实收覆盖后再也看不出来」。支付单 `amount_minor` 建单后不改，应收从此有处可查；尝试行 `amount_minor` 继续表示实收（结算、对账、积分核验、退款上限都按这个口径读），渠道事实另写 `channel_*`。真把尝试行改成应收要逐个改这些读方，留到 I6 对账结算一并做。
 0. **I2 收尾的启动校验在切片测试里装不起来**：`PayDataSourceConfig#channelProductCoverageCheck` 硬依赖渠道注册表，只装了部分支付配置的切片测试（`RefundBackingTest` 等 6 个类）上下文起不来 —— I2 收尾时只复跑了被点名的那 65 条，没再跑全量。S3 的受影响回归抓到，改为 `ObjectProvider`，没有注册表就跳过。

@@ -2238,7 +2238,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 : System.currentTimeMillis() + 15 * 60_000L;
         paymentPort.createPayment(new PaymentPort.InternalCreatePaymentCmd(PaymentPort.MALL_ORDER, order.getOrderNo(),
                 order.getOrderNo(), s.storeId(), s.storeName(), s.entityName(), s.market(), open.amountMinor(),
-                open.currency(), open.subject(), expireAt));
+                open.currency(), open.subject(), expireAt, s.fundsPath()));
     }
 
     @Override

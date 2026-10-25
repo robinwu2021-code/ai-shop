@@ -9,5 +9,5 @@ import java.time.Instant;
  */
 public record CreatePaymentCmd(String bizType, String bizNo, String outOrderNo, Long storeId, String storeName,
                                String entityName, String market, long amountMinor, String currency, String subject,
-                               String scene, Instant expireAt) {
+                               String scene, Instant expireAt, String fundsPath) {
 }

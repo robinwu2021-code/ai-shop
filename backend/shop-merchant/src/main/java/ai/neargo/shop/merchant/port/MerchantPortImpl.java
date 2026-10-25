@@ -879,7 +879,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             String market = entity == null || entity.getMarket() == null || entity.getMarket().isBlank()
                     ? "CN" : entity.getMarket();
             return Optional.of(new PayStore(store.getId(), storeNo, store.getName(), store.getEntityNo(),
-                    entity == null ? store.getEntityNo() : entity.getName(), market));
+                    entity == null ? store.getEntityNo() : entity.getName(), market,
+                    entity == null ? null : entity.getFundsMode()));
         });
     }
 

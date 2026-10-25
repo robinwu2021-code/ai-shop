@@ -250,7 +250,8 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
         merchants.payStoreOf(request.stores().get(0).route().storeNo()).ifPresent(s -> port.createPayment(
                 new PaymentPort.InternalCreatePaymentCmd(PaymentPort.FOOD_CHECK, request.orderNo(), request.orderNo(),
                         s.storeId(), s.storeName(), s.entityName(), s.market(), request.amountMinor(),
-                        request.currency(), request.subject(), System.currentTimeMillis() + 15 * 60_000L)));
+                        request.currency(), request.subject(), System.currentTimeMillis() + 15 * 60_000L,
+                        s.fundsPath())));
     }
 
     @Autowired(required = false) private ObjectProvider<PaymentPort> paymentPorts;

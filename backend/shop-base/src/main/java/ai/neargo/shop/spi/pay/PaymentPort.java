@@ -22,10 +22,11 @@ public interface PaymentPort {
      * @param outOrderNo 调用方单号：与内部 app 联合唯一。商城、餐饮都用核心订单号
      * @param storeId    {@code mch_store.id}：调用方用 {@code MerchantQueryPort#payStoreOf} 解析
      * @param expireAt   支付截止（epoch 毫秒）
+     * @param fundsPath  主体的资金路径（DIRECT / AGGREGATED），冻结进支付单，记流水按它分录
      */
     record InternalCreatePaymentCmd(String bizType, String bizNo, String outOrderNo, Long storeId, String storeName,
                                     String entityName, String market, long amountMinor, String currency,
-                                    String subject, long expireAt) {
+                                    String subject, long expireAt, String fundsPath) {
     }
 
     record PaymentHandle(Long payOrderId, String payOrderNo, String status) {

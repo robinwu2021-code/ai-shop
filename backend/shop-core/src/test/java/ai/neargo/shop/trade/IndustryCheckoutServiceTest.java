@@ -273,7 +273,7 @@ class IndustryCheckoutServiceTest {
         when(ports.getIfAvailable()).thenReturn(port);
         ReflectionTestUtils.setField(service, "paymentPorts", ports);
         when(merchants.payStoreOf("S")).thenReturn(Optional.of(new MerchantQueryPort.PayStore(42L, "S", "Store", "E",
-                "Merchant", "CN")));
+                "Merchant", "CN", "DIRECT")));
         service.pay(command("WECHAT"));
         var cmd = ArgumentCaptor.forClass(PaymentPort.InternalCreatePaymentCmd.class);
         var order = inOrder(port, ledger);

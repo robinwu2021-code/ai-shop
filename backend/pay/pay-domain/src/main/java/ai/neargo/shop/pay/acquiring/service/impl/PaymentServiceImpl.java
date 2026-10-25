@@ -84,6 +84,8 @@ public class PaymentServiceImpl implements PaymentService {
         o.setUserId(caller.userId());
         o.setRequestSha256(sha);
         o.setExpireAt(LocalDateTime.ofInstant(cmd.expireAt(), ZoneOffset.UTC));
+        // I4 之前没有「选方式」这一步：资金路径在建单时按主体冻结（偏差 4）
+        o.setFundsPath(cmd.fundsPath());
         try {
             tx.executeWithoutResult(s -> DataScopeContext.executeWithoutScope(() -> orders.insert(o)));
             return o;

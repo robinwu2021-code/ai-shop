@@ -29,7 +29,8 @@ public class PaymentPortImpl implements PaymentPort {
         }
         PayOrder o = payments.create(callers.system(appOf(c.bizType()), c.storeId()),
                 new CreatePaymentCmd(c.bizType(), c.bizNo(), c.outOrderNo(), c.storeId(), c.storeName(), c.entityName(),
-                        c.market(), c.amountMinor(), c.currency(), c.subject(), "ONLINE", Instant.ofEpochMilli(c.expireAt())));
+                        c.market(), c.amountMinor(), c.currency(), c.subject(), "ONLINE", Instant.ofEpochMilli(c.expireAt()),
+                        c.fundsPath()));
         return handle(o);
     }
 

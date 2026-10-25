@@ -49,7 +49,7 @@ class PayOrderFlowTest {
 
     private InternalCreatePaymentCmd cmd(String no, long amount) {
         return new InternalCreatePaymentCmd(PaymentPort.MALL_ORDER, no, no, anyStore(), "门店", "主体", "CN", amount,
-                "CNY", "goods", System.currentTimeMillis() + 900_000);
+                "CNY", "goods", System.currentTimeMillis() + 900_000, "AGGREGATED");
     }
 
     @Test

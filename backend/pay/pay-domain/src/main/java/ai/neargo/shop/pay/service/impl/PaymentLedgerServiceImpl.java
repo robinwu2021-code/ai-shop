@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.acquiring.dto.ChannelOutcome;
+import ai.neargo.shop.pay.acquiring.service.PaymentOutcomeService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.pay.acquiring.service.PaymentService;
@@ -137,6 +139,13 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     /** 支付单（I3 S3）；手工构造的单测里没有 */
     private PaymentService payOrders;
+    /** 结果唯一入口（I3 S4） */
+    private PaymentOutcomeService outcomes;
+
+    @Autowired(required = false)
+    void setOutcomes(@Lazy PaymentOutcomeService outcomes) {
+        this.outcomes = outcomes;
+    }
 
     @Autowired(required = false)
     void setPayOrders(@Lazy PaymentService payOrders) {
@@ -577,10 +586,18 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         patch.setStatus(StlPayment.SUCCESS);
         patch.setTradeNo(cmd.tradeNo());
         patch.setSucceededAt(cmd.succeededAt());
-        // Preserve the channel's actual money. Order projection independently compares its immutable amount.
+        // 尝试行记的是渠道事实（实收），全仓读成功收款的地方都按这个口径；渠道事实另在 channel_* 显式留一份。
+        // 应收以支付单 pay_order.amount_minor 为准（R20 的「原始值丢失」由支付单解决，见 TDD 偏差 5）
         patch.setAmountMinor(cmd.amountMinor());
         patch.setCurrency(cmd.currency());
+        patch.setChannelAmountMinor(cmd.amountMinor());
+        patch.setChannelCurrency(cmd.currency());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        if (outcomes != null) {
+            // 支付单这一层由结果唯一入口决定（I3 S4）：关单后到账、实收不符、重复支付都转异常，不进成功
+            outcomes.apply(new ChannelOutcome(existing.getId(), existing.getPayOrderId(), existing.getPayChannel(), cmd.tradeNo(),
+                    cmd.amountMinor(), cmd.currency(), cmd.succeededAt()));
+        }
         return existing.getOrderNo();
     }
 

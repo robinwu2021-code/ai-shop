@@ -360,9 +360,11 @@ public interface MerchantQueryPort {
      * 收款时冻结进支付单的门店身份（TDD-支付服务-I3支付单退款流水 S3）。支付新表按 {@code mch_store.id} 关联核心系统，
      * 而交易域手里只有门店号 —— 由调用方（交易域）解析好再交给支付，支付不反向依赖商户域。
      *
-     * @param market 主体所在市场（{@code mch_entity.market}）；未填按 CN
+     * @param market    主体所在市场（{@code mch_entity.market}）；未填按 CN
+     * @param fundsPath 主体的资金路径（{@code mch_entity.funds_mode}：DIRECT / AGGREGATED）
      */
-    record PayStore(Long storeId, String storeNo, String storeName, String entityNo, String entityName, String market) {
+    record PayStore(Long storeId, String storeNo, String storeName, String entityNo, String entityName, String market,
+                    String fundsPath) {
     }
 
     /** 门店号 → 支付单要冻结的门店身份；门店不存在为空。不论营业状态（关单、退款时门店可能已停用） */
