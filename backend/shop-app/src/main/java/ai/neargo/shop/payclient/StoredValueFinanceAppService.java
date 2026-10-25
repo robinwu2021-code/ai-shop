@@ -2,6 +2,10 @@ package ai.neargo.shop.payclient;
 import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.spi.storedvalue.*;
 import java.util.List;
+import ai.neargo.shop.spi.storedvalue.StoredValueCollections;
+import ai.neargo.shop.spi.storedvalue.StoredValueIssuers;
+import ai.neargo.shop.spi.storedvalue.StoredValueMembership;
+import ai.neargo.shop.spi.storedvalue.StoredValueWallets;
 /** Exact same contract for embedded and remote Pay deployment. */
 public interface StoredValueFinanceAppService {
  StoredValueFinance.Capabilities capabilities();
@@ -26,9 +30,9 @@ public interface StoredValueFinanceAppService {
  StoredValueSettlements.Payment confirm(StoredValueSettlements.Receipt c);
  StoredValueSettlements.Payment voidPayment(StoredValueSettlements.VoidPayment c);
  StoredValueFinance.Resolution resolvePayment(StoredValueFinance.ResolvePayment c);
- java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueMembership.Target> membershipTargets(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Describe c);
- ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack prepareMembership(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Prepare c);
- ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack commitMembership(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Commit c);
- ai.neargo.shop.spi.storedvalue.StoredValueCollections.Lookup collectionRequirement(ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope c);
- ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions collectionOptions(ai.neargo.shop.spi.storedvalue.StoredValueCollections.Options c);
+ java.util.List<StoredValueMembership.Target> membershipTargets(StoredValueMembership.Describe c);
+ StoredValueMembership.Ack prepareMembership(StoredValueMembership.Prepare c);
+ StoredValueMembership.Ack commitMembership(StoredValueMembership.Commit c);
+ StoredValueCollections.Lookup collectionRequirement(StoredValueWallets.ExecutionScope c);
+ StoredValueIssuers.StoreOptions collectionOptions(StoredValueCollections.Options c);
 }

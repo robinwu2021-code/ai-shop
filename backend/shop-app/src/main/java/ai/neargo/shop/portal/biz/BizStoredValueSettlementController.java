@@ -9,6 +9,7 @@ import java.util.*;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import ai.neargo.shop.spi.entitlement.ContractChecks;
 @Profile("api") @RestController @PreAuthorize("@managementAccess.authenticated()")
 public class BizStoredValueSettlementController {
  private final StoredValueFinanceContext context;private final StoredValueFinanceAppService finance;
@@ -22,7 +23,7 @@ public class BizStoredValueSettlementController {
  }
  public record ReceiptRequest(String managementNo,long expectedRevision,Instant receivedAt){}
  public record VoidRequest(String managementNo,long expectedRevision,String reason){}
- public record PermissionRequest(String managementNo){public PermissionRequest{ai.neargo.shop.spi.entitlement.ContractChecks.id(managementNo);}}
+ public record PermissionRequest(String managementNo){public PermissionRequest{ContractChecks.id(managementNo);}}
  @PostMapping("/biz/management/entities/{entityNo}/stored-value/financial-permissions")
  public Map<String,Object> preparePermissions(@PathVariable String entityNo,@RequestBody PermissionRequest c){return context.prepare(c.managementNo(),entityNo);}
  public record BillAccess(Set<String> payerActions,Set<String> payeeActions){}

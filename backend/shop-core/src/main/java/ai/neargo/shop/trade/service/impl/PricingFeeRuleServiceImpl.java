@@ -18,8 +18,7 @@ import ai.neargo.shop.spi.trade.PricingFeeFacts.Resolved;
 import ai.neargo.shop.spi.trade.PricingFeeFacts.Rule;
 import ai.neargo.shop.spi.trade.PricingFeeFacts.ScopeBasis;
 import ai.neargo.shop.spi.trade.PricingFeeFacts.Source;
-import ai.neargo.shop.spi.trade.PricingFeeRulePort;
-import ai.neargo.shop.spi.trade.PricingFeeScopePort;
+import ai.neargo.shop.spi.trade.PricingFeeScopePort.AdjustmentAuthority;
 import ai.neargo.shop.spi.trade.PricingSourceFacts;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Snapshot;
@@ -44,8 +43,7 @@ import java.util.Objects;
 import java.util.Set;
 
 @Service
-public class PricingFeeRuleServiceImpl
-        implements PricingFeeRuleService, PricingFeeRulePort, PricingFeeScopePort {
+public class PricingFeeRuleServiceImpl implements PricingFeeRuleService {
     private final PricingFeeRuleMapper mapper;
     private final ObjectMapper json;
 
