@@ -1154,6 +1154,14 @@ R1独立复审已确认原I1/I2/I3修复，但新增PointsRefundResourceServiceI
 
 下一编码片Task66为M2a：共用USER/GUEST柜台购买、真实会员身份/当前认领、类型化订单与原库存分段恢复和读取隐私；M2b/M2c分别后续。API/Java增量单列DESIGN_REVIEWED_NOT_IMPLEMENTED，不改变M1代码验收状态或原目标计数。候选V542/V9仍未创建，开工与首次隔离执行前重新核号、审查实际文件。
 
+### 2.44 Task66：M2a共用柜台购买与顾客归属编码（2026-10-26）
+
+档位2；依据§2.43已审查设计与§0.3现金优先。按[Task66 brief](../../.superpowers/sdd/beauty-backend/task-66-brief.md)及[精确文件清单](../../.superpowers/sdd/beauty-backend/task-66-release-inventory.json)编码：7个候选产品新文件（含V542）、65个既有修改路径，另列有限测试/runner；M2c相关所有者本片仅补齐零优惠fail-closed依赖，不提前开放满减。真实USER通过现有member→person→active-user所有者解析，不查跨域表或要求C凭证；guest使用现有权威事实。
+
+本片完成柜台报价/当面确认/原订单与库存恢复、当前认领及Core订单读取隐私。A6的美业MP155由本片提供会员证明生产方，实际消费与B3在M2b；A1实际任务canStart=false也由M2b绑定用例证明，本片不虚构Core开工字段。统一编译所有受影响消费者，因共用writer重构额外复验原M1真实C购买单项；不重复全M1/BM04。M2b来源/账单、M2c优惠与M3–M7仍后续。
+
+V542开工重核号，首实际SQL、fixture/runner/当前类与源指纹由root审查后才有限批准隔离native；当前gate=false，不授权部署或支付。具体接口/并发/普通资金兼容/行为消融均沿冻结设计和brief；发现新增依赖先补精确清单，不默改旧迁移。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。

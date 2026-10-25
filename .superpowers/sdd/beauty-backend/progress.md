@@ -1242,3 +1242,14 @@ Task65 R1 frozenDONE report29425bytesSHA21ae346a3eb15b9c9f8cf2877e4da7839b4d3287
 Task65: fix round1/5 (2addressed,0open; MinorM1 separatelyaddressed; HEADdf39678f3 unchanged). Finalreviewa98c07ce1a8b1a3a52ac528ae3420516f2842e7e43869522a09862389f463ea4 fullyread, scopedSpecApproved/designApproved,0newCriticalImportantMinor. Root accepts DESIGNONLY, notM2code. ActualB2a mustretain oldactiveV2submission andadapt sameoriginalsource overlap gate; no fixturedelete bypass. PublicAPI/Java plannedcounterblock andcandidateDB statuses reconciled independently ofacceptedM1; no executedtest/DDL/compileclaim.
 
 Task65 acceptance reconciliation: actual5generators --checkPASS;2generatorASTparse/paired8plannedroutes44plannedboundarymethods/M1actual24 equality checksPASS; original49/160/118/41counts unchanged. Actualnode gen-doc-index ran (inherited321uncategorized); later actualdiffread confirms one generatedREADME main-TDD date correction2026-10-25→26, not unchanged. Final2artifacts/reviewhashes unchanged; V542/V9 notcreated; no productcode or runtimeclaim. Initial reviewed2artifacts preserved as repo-local immutable snapshots withactualhashes; rootgate records versionbound inputs anddesign-only acceptance.
+
+Task65: complete (design/doc commit e6655701a47db56df71fd32842564d3f1621cb9b; finalindependentdesignreviewclean). Rootstagedexact21paths, cachedcheckclean, committed1768insertions7deletions; parent/pathset/indexempty/cleantreeverified. No productcode/runtime/deployclaim.
+Task66 release preflight:
+| Pair/task | Producer vs consumer | Ruling/result |
+|---|---|---|
+| 65→66 | reviewed counter/member/stock contracts→M2a code | frozen design SHA f9eda33c…; no member witness; actual MbrMember.personNo→PersonPort.find→UserScopeFacts active |
+| 66→M2b | current claim producer/Core readers→MP155 consumer | A6 Core only now; actual MP155/B3 later, not dropped; two native schemas now |
+| 66→64 | staged shared writer/model→old actualCmanual path | preserve hashes/guards, run one actualM1Ccontrol due sharedwriter changes, no full39 replay |
+| 66→M2c | zero-discount campaign closure→FULL_CUT economics | all listed owners available failclosed now, no silent offer suppression; FULL_CUT later |
+| 66self | source/SQL/test/runner inventory→finite verification | exact7create65modify+8newtest/runner+1financialtest+3conditionalctor-only tests; V542 notexists/max541; no V9, nativegatefalse |
+Task66 scope ruling: MP155 andbeauty canStart actualbinding assertions are M2b consumers, not impossible M2aCore-only assertions/thirdschema; keep all outcomes andtypeproducer tests. Formaldeployment staysafterallcode. Newinternalcurrentclaim paths useexistingGuestRegistrationInternalApi.BASE +current-claim/current-claims; no genericbinding changes.
