@@ -41,6 +41,18 @@ class BeautyBm04EmbeddedHttpIT {
         new Fixture().lifecycle(false);
     }
 
+    static Map<String, Object> confirmationBody(JsonNode quote) {
+        return Map.of(
+                "quoteNo", quote.path("quoteNo").asString(),
+                "quoteRevision", quote.path("quoteRevision").asLong(),
+                "quoteHash", quote.path("quoteHash").asString());
+    }
+
+    static void assertWrongRealmConfirmation(int status, JsonNode body) {
+        assertThat(status).as("wrong-realm confirmation HTTP status").isEqualTo(401);
+        assertThat(body.path("code").asInt()).as("wrong-realm authority failure").isEqualTo(10401);
+    }
+
     /**
      * Shared HTTP driver uses real child owners; SQL only verifies facts or mutates explicit fault
      * prerequisites.
@@ -270,19 +282,29 @@ class BeautyBm04EmbeddedHttpIT {
             assertThat(quote.isObject()).isTrue();
             String operation = quote.path("operation").path("operationNo").asString();
             String checkout = "/mp/checkout/" + operation;
-            denied("merchant", checkout + "/confirmations", key(), Map.of(), store);
-            var confirmation =
-                    post(
-                            "consumer",
+            Map<String, Object> confirmationBody = confirmationBody(quote);
+            assertMalformedConfirmationRejected(checkout);
+            String merchantResource = "/biz/x/beauty/work-orders/" + number;
+            assertThat(get("merchant", merchantResource).path("workOrderNo").asString())
+                    .as("same merchant session is valid before wrong-realm request")
+                    .isEqualTo(number);
+            var effectsBefore = confirmationEffects(operation);
+            var wrongRealm =
+                    request(
+                            "merchant",
                             checkout + "/confirmations",
                             key(),
-                            Map.of(
-                                    "quoteNo",
-                                    quote.path("quoteNo").asString(),
-                                    "quoteRevision",
-                                    quote.path("quoteRevision").asLong(),
-                                    "quoteHash",
-                                    quote.path("quoteHash").asString()));
+                            confirmationBody,
+                            store);
+            assertWrongRealmConfirmation(wrongRealm.statusCode(), json.readTree(wrongRealm.body()));
+            assertThat(get("merchant", merchantResource).path("workOrderNo").asString())
+                    .as("same merchant session remains valid after wrong-realm request")
+                    .isEqualTo(number);
+            assertThat(confirmationEffects(operation))
+                    .as("wrong-realm confirmation cannot change checkout or economic owners")
+                    .isEqualTo(effectsBefore);
+            var confirmation =
+                    post("consumer", checkout + "/confirmations", key(), confirmationBody);
             post(
                     "consumer",
                     checkout + "/orders",
@@ -373,6 +395,52 @@ class BeautyBm04EmbeddedHttpIT {
             assertThat(count(false, "SELECT COUNT(*) FROM ord_checkout_operation WHERE store_no=?", store))
                     .isEqualTo(checkoutBefore + 1);
             return bound;
+        }
+
+        private void assertMalformedConfirmationRejected(String checkout) throws Exception {
+            var malformedBody =
+                    request("consumer", checkout + "/confirmations", key(), Map.of(), store);
+            assertThat(malformedBody.statusCode())
+                    .as("malformed body validation HTTP status")
+                    .isEqualTo(200);
+            assertThat(json.readTree(malformedBody.body()).path("code").asInt())
+                    .as("malformed body validation is separate from wrong-realm authorization")
+                    .isEqualTo(10400);
+        }
+
+        private Map<String, Long> confirmationEffects(String operation) throws Exception {
+            long confirmations =
+                    count(
+                            false,
+                            "SELECT COUNT(*) FROM ord_checkout_confirmation WHERE tenant_no='MAIN'"
+                                    + " AND caller='BEAUTY' AND operation_no=?",
+                            operation);
+            long quoted =
+                    count(
+                            false,
+                            "SELECT COUNT(*) FROM ord_checkout_operation WHERE tenant_no='MAIN' AND"
+                                + " caller='BEAUTY' AND operation_no=? AND phase='QUOTED' AND"
+                                + " confirmation_no IS NULL AND order_no IS NULL AND sub_order_no"
+                                + " IS NULL",
+                            operation);
+            assertThat(confirmations).as("no confirmation for prepared operation").isZero();
+            assertThat(quoted)
+                    .as("prepared operation retains its phase and null economic pointers")
+                    .isEqualTo(1);
+            // The deployment driver owns a fresh isolated HOST database; totals also catch unlinked
+            // writes.
+            return Map.of(
+                    "confirmations", confirmations,
+                    "quoted", quoted,
+                    "orders", count(false, "SELECT COUNT(*) FROM ord_order"),
+                    "subOrders", count(false, "SELECT COUNT(*) FROM ord_sub_order"),
+                    "paymentOperations", count(false, "SELECT COUNT(*) FROM stl_payment_operation"),
+                    "paymentOrderGuards",
+                            count(false, "SELECT COUNT(*) FROM stl_payment_order_guard"),
+                    "payments", count(false, "SELECT COUNT(*) FROM stl_payment"),
+                    "pointsLedger", count(false, "SELECT COUNT(*) FROM pts_ledger_entry"),
+                    "entitlementLedger", count(false, "SELECT COUNT(*) FROM ent_ledger"),
+                    "storedValueLedger", count(false, "SELECT COUNT(*) FROM sv_entry"));
         }
 
         private void consumerArrival() throws Exception {
@@ -710,7 +778,7 @@ class BeautyBm04EmbeddedHttpIT {
             }
         }
 
-        long count(boolean beauty, String statement, String argument) throws Exception {
+        long count(boolean beauty, String statement, String... arguments) throws Exception {
             try (var connection =
                             DriverManager.getConnection(
                                     required(
@@ -720,7 +788,9 @@ class BeautyBm04EmbeddedHttpIT {
                                     "root",
                                     required("MYSQL_PWD"));
                     var query = connection.prepareStatement(statement)) {
-                query.setString(1, argument);
+                for (int i = 0; i < arguments.length; i++) {
+                    query.setString(i + 1, arguments[i]);
+                }
                 try (var rows = query.executeQuery()) {
                     assertThat(rows.next()).isTrue();
                     return rows.getLong(1);
