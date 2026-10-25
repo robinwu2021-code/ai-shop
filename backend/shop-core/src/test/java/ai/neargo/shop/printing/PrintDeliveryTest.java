@@ -93,9 +93,11 @@ class PrintDeliveryTest {
             }
         }
         jdbc.execute("ALTER TABLE prn_device ADD authorization_version BIGINT NOT NULL DEFAULT 0");
-        jdbc.execute(
-                "ALTER TABLE prn_device ADD revoke_reason VARCHAR(255), ADD revoked_by VARCHAR(32),"
-                        + " ADD revoke_key VARCHAR(128), ADD revocation_history CLOB");
+        // Mirrors V579; H2 accepts one ADD per ALTER, MySQL's multi-ADD form is a syntax error here.
+        jdbc.execute("ALTER TABLE prn_device ADD revoke_reason VARCHAR(255)");
+        jdbc.execute("ALTER TABLE prn_device ADD revoked_by VARCHAR(32)");
+        jdbc.execute("ALTER TABLE prn_device ADD revoke_key VARCHAR(128)");
+        jdbc.execute("ALTER TABLE prn_device ADD revocation_history CLOB");
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var plugins = new MybatisPlusInterceptor();

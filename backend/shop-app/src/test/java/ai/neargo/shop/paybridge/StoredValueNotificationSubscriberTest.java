@@ -2,6 +2,7 @@ package ai.neargo.shop.paybridge;
 
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.notify.StoredValueNotificationService;
 import ai.neargo.shop.payclient.StoredValueConsumerQueryAppService;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementUsed;
@@ -45,14 +46,15 @@ class StoredValueNotificationSubscriberTest {
         consumer.consume(row("STORED_VALUE"));
         verify(tasks).enqueue("MAIN", "EV1", "US1", "U1", "S1", "DC1",
                 Map.of("store", "门店", "title", "洗车", "amount", "1.25 CNY", "time", "2000"));
-        verify(messages, never()).push(any(), any(), any(), any(), any(), any());
+        verify(messages, never()).pushTo(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void otherAssetKindsKeepTheirExistingInboxRoute() {
         consumer.consume(row("PAID_CARD"));
         verify(facts, never()).notificationFact(any(), any());
-        verify(messages).push(eq("U1"), eq("TRADE"), any(), any(), eq(null), any());
+        // c5b14b2b7 起走 pushTo（经事务代理的写入）；push() 内部自调用 pushTo，不带事务
+        verify(messages).pushTo(eq(MsgMessage.RECEIVER_USER), eq("U1"), eq("TRADE"), any(), any(), eq(null), any());
     }
 
     @Test
