@@ -37,4 +37,5 @@ if(files.includes('packages/shared/src/utils/points-status.ts')) {
   run('npm',['test','--','tests/points-account.test.ts','tests/points-status-locales.test.ts'],'b-app');
   run('npm',['test','--','tests/points-account.test.ts'],'c-app');
 }
+if(files.includes('c-app/scripts/pack-biz-locales.mjs') || files.includes('c-app/scripts/with-biz.mjs')) run('node',['--test','scripts/pack-biz-locales.test.mjs'],'c-app');
 console.log(`points-bc scoped checks passed: ${head} (${files.length} files)`);
