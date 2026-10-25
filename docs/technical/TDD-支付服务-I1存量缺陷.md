@@ -66,6 +66,12 @@
 - `MerchantPortImpl#accruePayQuota`：改为一条原子 `UPDATE … SET quota_used_minor = CASE WHEN quota_period = ? THEN quota_used_minor + ? ELSE ? END, quota_period = ?, version = version + 1 WHERE id = ?`，影响行数 ≠ 1 即抛（让回调重推，不静默少记）。不用「读改写 + 重试」：常在回调事务里调，REPEATABLE READ 下重读仍是旧快照。
 - `AbstractApplymentGateway` 加 `buildQuery(channelApplyNo)`（默认空），`AlipayApplymentGateway` 覆写为 `{order_id: …}`。
 
+### F07 · 同一订单并发「去支付」只落一行
+- **迁移** `db/pay/V1__stl_payment_out_trade_unique.sql`：`stl_payment` 加 `UNIQUE (out_trade_no)`。上线前置：执行方案 Q1 查存量重复为 0。
+- `PaymentLedgerServiceImpl#open`：插入撞唯一键 → `lockPayment`（加锁读，REPEATABLE READ 下普通读看不到对方刚提交的行）读回 → 同一套快照比对 → 返回同一单号。
+- 尝试序号只数终态（不含 INIT / PENDING）：否则并发一方把对方的在途行数进去，算出「订单号-2」绕开唯一键（并发测试第 5 轮实测抓到）。
+- **测试建表**：`gen-test-schema.py` 与 `SchemaDriftTest` 接上 `db/pay`（在平台迁移之后重放，与生产执行顺序一致）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -75,6 +81,7 @@
 | F03 | `StoreSettleFlowTest#cannotBindAnotherStoresAccount` | ✅ 12/12 | 先红：B 店专属号绑给 A 店 code=0；撤掉新校验即回到该状态 ✅ |
 | F04 | `ApplymentGatewayTest#outRequestNoIsPerApplyment` | ✅ 9/9 | 先红：字段已加、网关仍发主体编号时 `expected "E-1-E-100" but was "E-1"` ✅ |
 | F06 | `MicroPayCapabilityFlowTest#concurrentAccrualsAllLand` · `ApplymentGatewayTest#alipayQueryUsesDifferentApi`（加断言） | ✅ 9/9 · 9/9 | 先红：10 个并发累加只落 1 笔（`expected 10000 but was 1000`）；支付宝查询参数为空 ✅ |
+| F07 | `PaymentOpenConcurrencyTest#concurrentOpenYieldsOneRow`（@RepeatedTest 20，4 线程） | ✅ 20/20；`PaymentRequestSnapshotTest` 等 5 类全绿 | 先红：只有唯一键时 5 轮全是 `DuplicateKeyException` 抛给调用方；加复用后第 5 轮仍出两行（计数含在途行）→ 只数终态后 20/20 ✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现

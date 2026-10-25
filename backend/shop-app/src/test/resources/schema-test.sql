@@ -1,4 +1,4 @@
--- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql 得到。
+-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql 得到。
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
@@ -1110,6 +1110,7 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_query_at BIGINT DEFAULT NULL,
     refund_terminal_proof LONGTEXT DEFAULT NULL,
     refund_recovery_proof LONGTEXT DEFAULT NULL,
+    CONSTRAINT uk_stl_payment_out_trade_no UNIQUE (out_trade_no),
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),

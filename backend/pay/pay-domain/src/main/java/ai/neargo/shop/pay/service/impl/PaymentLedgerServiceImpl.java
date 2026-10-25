@@ -56,16 +56,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
          */
         StlPayment open = openPaymentOf(cmd.orderNo());
         if (open != null) {
-            var original = paymentRequest(open.getOutTradeNo()).orElseThrow(
-                    () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
-            if (!Objects.equals(original.userNo(), cmd.userNo())
-                    || !Objects.equals(original.entityNo(), cmd.entityNo())
-                    || !Objects.equals(original.payChannel(), cmd.payChannel())
-                    || !Objects.equals(original.currency(), cmd.currency())
-                    || original.amountMinor() != cmd.amountMinor()) {
-                throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
-            }
-            return open.getOutTradeNo();
+            return reuse(open, cmd);
         }
         validateRequest(cmd);
         /*
@@ -99,9 +90,37 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         p.setAmountMinor(cmd.amountMinor());
         p.setCurrency(cmd.currency());
         p.setPaymentRequestJson(json.writeValueAsString(cmd));
-        DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        try {
+            DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        } catch (org.springframework.dao.DuplicateKeyException race) {
+            /*
+             * 并发的另一次「去支付」先落了同号的行（F07 · Review R07）。上面的检查不加锁，两边都会过；
+             * 兜底的是 out_trade_no 唯一键。撞键的这一方读回那一行、按同一套快照比对，返回同一个单号 ——
+             * 对用户而言两次点击就是同一笔。
+             * 必须用加锁读：REPEATABLE READ 下普通读用的是本事务开头的快照，看不到对方刚提交的行。
+             */
+            StlPayment winner = lockPayment(outTradeNo);
+            if (winner == null) {
+                throw race;
+            }
+            return reuse(winner, cmd);
+        }
         documents.bind(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo());
         return outTradeNo;
+    }
+
+    /** 复用一笔未终态的收款：请求快照必须一致，否则是另一笔请求冒用了同一订单 */
+    private String reuse(StlPayment open, SettlePort.PaymentOpen cmd) {
+        var original = paymentRequest(open.getOutTradeNo()).orElseThrow(
+                () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
+        if (!Objects.equals(original.userNo(), cmd.userNo())
+                || !Objects.equals(original.entityNo(), cmd.entityNo())
+                || !Objects.equals(original.payChannel(), cmd.payChannel())
+                || !Objects.equals(original.currency(), cmd.currency())
+                || original.amountMinor() != cmd.amountMinor()) {
+            throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
+        }
+        return open.getOutTradeNo();
     }
 
     @Override
@@ -162,12 +181,20 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         return value != null && !value.isBlank();
     }
 
-    /** 这个订单已经向通道下过几次单 —— 决定下一个商户单号的后缀 */
+    /**
+     * 这个订单**已经结束**的下单次数 —— 决定下一个商户单号的后缀。
+     *
+     * <p>只数终态（不含 INIT / PENDING）：能走到新开一笔，说明这单没有未终态的收款，
+     * 此刻数到的在途行只可能是并发的另一次「去支付」。把它也数进去，两边就算出不同的单号
+     * （「订单号」与「订单号-2」），绕开唯一键各插一行（F07 · Review R07，并发测试实测抓到）。
+     * 只数终态时两边算出同一个号，唯一键兜住、后到的复用先到的。
+     */
     private long countPayAttempts(String orderNo) {
         return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(
                 Wrappers.<StlPayment>lambdaQuery()
                         .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOrderNo, orderNo)));
+                        .eq(StlPayment::getOrderNo, orderNo)
+                        .notIn(StlPayment::getStatus, StlPayment.INIT, StlPayment.PENDING)));
     }
 
     @Override
