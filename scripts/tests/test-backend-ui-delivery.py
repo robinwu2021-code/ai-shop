@@ -41,4 +41,11 @@ class DeferredBackendDeliveryTest(unittest.TestCase):
         missing = {f"{row['app']} {row['method']} {module.norm(row['path'])}" for row in data['entries']}
         self.assertEqual(module.read_deferred_delivery(file, 'docs/api/pricing-config.openapi.json', missing), missing)
 
+    def test_food_support_staging_requires_actual_handlers_and_contract(self):
+        file = 'docs/api/food-business-support-ui-delivery.json'
+        data = json.loads((module.ROOT / file).read_text())
+        missing = {f"{row['app']} {row['method']} {module.norm(row['path'])}" for row in data['entries']}
+        self.assertEqual(len(missing), 6)
+        self.assertEqual(module.read_deferred_delivery(file, 'docs/api/food-business-support.openapi.json', missing), missing)
+
 if __name__ == '__main__': unittest.main()

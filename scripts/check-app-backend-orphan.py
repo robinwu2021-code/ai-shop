@@ -84,7 +84,9 @@ def deferred_delivery(missing):
     return (read_deferred_delivery("docs/api/backend-ui-delivery.json",
                                   "docs/api/entitlement-backend.openapi.json", missing)
             | read_deferred_delivery("docs/api/pricing-config-biz-ui-delivery.json",
-                                     "docs/api/pricing-config.openapi.json", missing))
+                                     "docs/api/pricing-config.openapi.json", missing)
+            | read_deferred_delivery("docs/api/food-business-support-ui-delivery.json",
+                                     "docs/api/food-business-support.openapi.json", missing))
 
 # **按设计就没有端上出口的端点** —— 服务器到服务器调用。
 # 把它们记进「只准变短」的名单是错的：那种行永远变不短，而一份含着

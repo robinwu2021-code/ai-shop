@@ -278,16 +278,26 @@ public class PricingFeeRuleServiceImpl
     @Override
     public AdjustmentAuthority adjustment(Scope scope, String scopeNo, String app, String hash) {
         var row = one(mapper.adjustment(scope.entityNo(), scope.storeNo(), app, hash, false));
-        if (!scopeNo.equals(row.get("scope_no"))) conflict();
-        return authorizeAdjustment(scope, app, number(row, "target_fee_minor"), hash);
+        if (!scopeNo.equals(row.get("scope_no"))
+                || !Set.of("OPEN", "APPLIED").contains(row.get("advice_status"))) conflict();
+        // An applied immutable advice stays readable for original-key HTTP replay.
+        // New mutations still require OPEN in authorizeAdjustment, inside the CORE transaction.
+        return new AdjustmentAuthority(
+                app,
+                (String) row.get("order_no"),
+                (String) row.get("sub_order_no"),
+                (String) row.get("currency"),
+                number(row, "current_fee_minor"),
+                number(row, "target_fee_minor"),
+                hash);
     }
 
     @Override
     public AdjustmentAuthority authorizeAdjustment(
             Scope scope, String app, long target, String hash) {
         var row = one(mapper.adjustment(scope.entityNo(), scope.storeNo(), app, hash, false));
-        if (number(row, "target_fee_minor") != target
-                || !"OPEN".equals(row.get("advice_status"))) conflict();
+        if (number(row, "target_fee_minor") != target || !"OPEN".equals(row.get("advice_status")))
+            conflict();
         return new AdjustmentAuthority(
                 app,
                 (String) row.get("order_no"),

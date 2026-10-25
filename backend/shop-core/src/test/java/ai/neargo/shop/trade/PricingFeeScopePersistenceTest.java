@@ -210,6 +210,11 @@ public class PricingFeeScopePersistenceTest {
                             scope, advice.applicationNo(), 0, advice.sourceHash(), "A", "correct");
                     return null;
                 });
+        assertThat(
+                        service.adjustment(
+                                        scope, "CHECK", advice.applicationNo(), advice.sourceHash())
+                                .targetFeeMinor())
+                .isZero();
         assertThatThrownBy(
                         () ->
                                 service.authorizeAdjustment(

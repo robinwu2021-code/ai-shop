@@ -1,7 +1,7 @@
 {
   "version": 1,
   "stage": "JAVA_BACKEND_UI_DEFERRED",
-  "reason": "按用户要求优先完整交付Java后端；B/C/运营新页面另阶段接入，不伪造已上线入口。",
+  "reason": "按用户要求优先完整交付Java后端；B/C/运营新页面另阶段接入，不伪造已上线入口。 既有P6后端兼容发布的汇总与清分接口按《任务表-品牌与门店双线储值-P6执行》登记，P6-07页面仍待开发，不表示完整资金阶段已开放。",
   "plan": "docs/technical/任务表-活动权益-前端接入.md",
   "entries": [
     {
@@ -233,6 +233,106 @@
       "app": "b-app",
       "method": "POST",
       "path": "/biz/stored-value/plan-recharges/resolve"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stored-value/store-breakdown"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/brands/{brandNo}/stored-value/summary"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/activities/{activityNo}/summary"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/financial-resources"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/events"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/items"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/payments"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/management/stored-value/store-issuer-summary"
+    },
+    {
+      "app": "b-app",
+      "method": "GET",
+      "path": "/biz/stores/{storeNo}/stored-value/store-summary"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/adjustments"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/dispute-resolutions"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/disputes"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/payments"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/{billNo}/reconciliation-confirmations"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-bills/generations"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations"
+    },
+    {
+      "app": "b-app",
+      "method": "POST",
+      "path": "/biz/management/stored-value/settlement-payments/{paymentNo}/voids"
     }
   ]
 }
