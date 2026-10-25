@@ -121,7 +121,7 @@ class MenuPublicationSourceTest {
     }
     @Test void unsupportedMeasurementCannotBecomeFrozenMenuMetadata() {
         var f=dishFixture();
-        f.dish().setMeasurementPolicy(f.json().writeValueAsString(new MeasurementPolicy("KG","WEIGHT",3,null)));
+        f.dish().setMeasurementPolicy(f.json().writeValueAsString(new MeasurementPolicy("KG","WEIGHT",7,null)));
         assertThatThrownBy(() -> f.source().capture("E","A","M",false,(kind,no) -> null))
                 .isInstanceOf(BizException.class);
     }

@@ -43,6 +43,10 @@ public class CoreIndustryOrderPortImpl implements IndustryOrderPort {
     @Override public Result queryForStore(Identity identity, String key) {
         return invoke(() -> api.get().queryForStore(new IndustryOrderInternalApi.Query(identity, key)), null);
     }
+    @Override public Result placeForService(Command command, String key, String fulfillment, boolean staff) {
+        return invoke(() -> api.get().placeForService(
+                new IndustryOrderInternalApi.ServicePlace(command, key, fulfillment, staff)), null);
+    }
     @Override public Result place(Command command, String key) {
         return invoke(() -> api.get().place(new IndustryOrderInternalApi.Place(command, key)), null);
     }

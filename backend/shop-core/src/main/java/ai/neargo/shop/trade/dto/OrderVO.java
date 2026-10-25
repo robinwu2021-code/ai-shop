@@ -1,6 +1,9 @@
 package ai.neargo.shop.trade.dto;
 
 import java.util.List;
+import java.math.BigDecimal;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
 
 /**
@@ -708,7 +711,22 @@ public record OrderVO(String orderNo,
                          /** 每人限购（只在设了限购且开关开着时给） */
                          Integer limitPerUser,
                          /** 已买量（口径见 PurchaseLimitGuard）。与 limitPerUser 同时出现 */
-                         Integer boughtQty) {
+                         Integer boughtQty,
+                         @JsonInclude(JsonInclude.Include.NON_NULL) @JsonFormat(shape = JsonFormat.Shape.STRING)
+                         BigDecimal saleQuantity,
+                         @JsonInclude(JsonInclude.Include.NON_NULL) String quantityUnit,
+                         @JsonInclude(JsonInclude.Include.NON_NULL) String sourceComponentRef) {
+        public ItemVO(String goods, String merchant, String sku, String title, String cover, String spec,
+                long price, int qty, long amount, String type, boolean gift, Integer max,
+                String reason, Integer perUser, Integer bought) {
+            this(goods, merchant, sku, title, cover, spec, price, qty, amount, type, gift, max,
+                    reason, perUser, bought, null, null, null);
+        }
+        /** Original exact industry quantity is independent from the legacy integer billing-unit counter. */
+        public ItemVO withPhysicalQuantity(BigDecimal quantity, String unit, String component) {
+            return new ItemVO(goodsNo, merchantNo, skuNo, title, cover, spec, price, qty, amount, type,
+                    isGift, maxQty, limitReason, limitPerUser, boughtQty, quantity, unit, component);
+        }
 
         public static final String LIMIT_STOCK = "STOCK";
         public static final String LIMIT_PER_USER = "PER_USER";

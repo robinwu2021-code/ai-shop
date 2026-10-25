@@ -3700,7 +3700,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     private OrderVO.ItemVO toItemVO(OrdItem i) {
         return new OrderVO.ItemVO(i.getGoodsNo(), null, i.getSkuNo(), i.getTitle(), i.getCover(),
                 i.getSpec(), nz(i.getPrice()), i.getQty() == null ? 0 : i.getQty(),
-                nz(i.getAmount()), i.getCategoryType(), Boolean.TRUE.equals(i.getIsGift()));
+                nz(i.getAmount()), i.getCategoryType(), Boolean.TRUE.equals(i.getIsGift()))
+                .withPhysicalQuantity(i.getSaleQuantity(), i.getQuantityUnit(), i.getSourceComponentRef());
     }
 
     private List<OrderVO.TimelineNode> timelineOf(String subOrderNo) {

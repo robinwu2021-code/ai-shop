@@ -18,6 +18,7 @@ import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.service.BusinessCloseService;
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.service.FoodPrintService;
+import ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler;
 import ai.neargo.shop.food.service.impl.BusinessCloseServiceImpl;
 import ai.neargo.shop.food.service.impl.KitchenTaskServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodPrintServiceImpl;
@@ -69,8 +70,9 @@ public class FoodOperationsConfiguration {
         return new FoodPrintDocumentAssembler(batches,lines,allocations,returns,items,checks,kitchen,manager);
     }
     @Bean @ConditionalOnMissingBean(FoodPrintService.class)
-    FoodPrintService foodPrintService(FoodPrintDocumentAssembler documents,ObjectProvider<PrintPort> printing) {
-        return new FoodPrintServiceImpl(documents,printing::getIfAvailable);
+    FoodPrintService foodPrintService(FoodPrintDocumentAssembler documents, ObjectProvider<PrintPort> printing,
+            FoodEventPrintDocumentAssembler eventDocuments) {
+        return new FoodPrintServiceImpl(documents, printing::getIfAvailable, eventDocuments);
     }
 
     @Bean @ConditionalOnMissingBean(ProductionConsumptionService.class)

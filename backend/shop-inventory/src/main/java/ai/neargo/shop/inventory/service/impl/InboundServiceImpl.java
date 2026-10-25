@@ -1,8 +1,8 @@
 package ai.neargo.shop.inventory.service.impl;
 
-import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.entity.InvInboundLine;
 import ai.neargo.shop.inventory.entity.InvInboundOrder;
 import ai.neargo.shop.inventory.entity.InvItem;
@@ -13,7 +13,9 @@ import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.StockPostingService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.inventory.support.InvKeys;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,8 +34,12 @@ public class InboundServiceImpl implements InboundService {
     private final StockPostingService posting;
     private final InventoryMutationGuard mutationGuard;
 
-    public InboundServiceImpl(InboundOrderMapper orderMapper, InboundLineMapper lineMapper,
-                              ItemMapper itemMapper, StockPostingService posting, InventoryMutationGuard mutationGuard) {
+    public InboundServiceImpl(
+            InboundOrderMapper orderMapper,
+            InboundLineMapper lineMapper,
+            ItemMapper itemMapper,
+            StockPostingService posting,
+            InventoryMutationGuard mutationGuard) {
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
         this.itemMapper = itemMapper;
@@ -79,8 +85,8 @@ public class InboundServiceImpl implements InboundService {
         head.setRemark(draft.remark());
         applyTotals(head, draft.lines());
         orderMapper.updateById(head);
-        lineMapper.delete(Wrappers.<InvInboundLine>lambdaQuery()
-                .eq(InvInboundLine::getInboundNo, inboundNo));
+        lineMapper.delete(
+                Wrappers.<InvInboundLine>lambdaQuery().eq(InvInboundLine::getInboundNo, inboundNo));
         saveLines(inboundNo, draft);
     }
 
@@ -125,18 +131,40 @@ public class InboundServiceImpl implements InboundService {
     // ────────────────────────────────────────────────────────────────────
 
     private void doPost(InvInboundOrder head, String operator) {
-        List<InvInboundLine> rows = lineMapper.selectList(Wrappers.<InvInboundLine>lambdaQuery()
-                .eq(InvInboundLine::getInboundNo, head.getInboundNo())
-                .orderByAsc(InvInboundLine::getLineNo));
+        List<InvInboundLine> rows =
+                lineMapper.selectList(
+                        Wrappers.<InvInboundLine>lambdaQuery()
+                                .eq(InvInboundLine::getInboundNo, head.getInboundNo())
+                                .orderByAsc(InvInboundLine::getLineNo));
         List<StockPostingService.Line> lines = new ArrayList<>();
-        String countNo = InvEnums.InboundSource.COUNT_GAIN.equals(head.getSourceType()) ? head.getSourceRef() : null;
+        String countNo =
+                InvEnums.InboundSource.COUNT_GAIN.equals(head.getSourceType())
+                        ? head.getSourceRef()
+                        : null;
         for (InvInboundLine r : rows) {
-            mutationGuard.assertMutable(head.getOwnerId(), head.getLocationId(), r.getItemId(), countNo);
-            lines.add(new StockPostingService.Line(
-                    r.getLineNo(), r.getItemId(), head.getLocationId(), r.getQty(), r.getUnitCostMinor()));
+            mutationGuard.assertMutable(
+                    head.getOwnerId(), head.getLocationId(), r.getItemId(), countNo);
+            lines.add(
+                    new StockPostingService.Line(
+                            r.getLineNo(),
+                            r.getItemId(),
+                            head.getLocationId(),
+                            r.getQty(),
+                            r.getUnitCostMinor(),
+                            r.getBatchNo(),
+                            r.getExpireAt(),
+                            null,
+                            null));
         }
-        posting.post(new StockPostingService.PostingDoc(head.getOwnerId(), InvEnums.DocKind.IN,
-                head.getInboundNo(), head.getSourceType(), head.getOccurredAt(), operator, lines));
+        posting.post(
+                new StockPostingService.PostingDoc(
+                        head.getOwnerId(),
+                        InvEnums.DocKind.IN,
+                        head.getInboundNo(),
+                        head.getSourceType(),
+                        head.getOccurredAt(),
+                        operator,
+                        lines));
 
         head.setStatus(InvEnums.DocStatus.POSTED);
         head.setPostedAt(LocalDateTime.now());
@@ -151,15 +179,17 @@ public class InboundServiceImpl implements InboundService {
     /**
      * 采购过账把成本带进来。
      *
-     * <p>只动 {@code cost_method = LATEST} 的物料 —— 商家显式设了手工价，
-     * 就是不想让进货价盖掉它；盖掉的话他下次看毛利会以为自己算错了。
+     * <p>只动 {@code cost_method = LATEST} 的物料 —— 商家显式设了手工价， 就是不想让进货价盖掉它；盖掉的话他下次看毛利会以为自己算错了。
      */
     private void updateCost(String ownerId, InvInboundLine row) {
         if (row.getUnitCostMinor() == null) {
             return;
         }
-        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
-                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, row.getItemId()));
+        InvItem item =
+                itemMapper.selectOne(
+                        Wrappers.<InvItem>lambdaQuery()
+                                .eq(InvItem::getOwnerId, ownerId)
+                                .eq(InvItem::getItemId, row.getItemId()));
         if (item == null || !InvEnums.CostMethod.LATEST.equals(item.getCostMethod())) {
             return;
         }
@@ -172,8 +202,11 @@ public class InboundServiceImpl implements InboundService {
         if (given != null && !given.isBlank()) {
             return given;
         }
-        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
-                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, itemId));
+        InvItem item =
+                itemMapper.selectOne(
+                        Wrappers.<InvItem>lambdaQuery()
+                                .eq(InvItem::getOwnerId, ownerId)
+                                .eq(InvItem::getItemId, itemId));
         return item == null ? "PIECE" : item.getBaseUom();
     }
 
@@ -187,7 +220,8 @@ public class InboundServiceImpl implements InboundService {
             }
             // 采购必须有单价：允许空的话 LATEST 会把成本读成 null，
             // 而毛利 =（售价 − null）在界面上会静默变成「等于售价」
-            if (InvEnums.InboundSource.PURCHASE.equals(draft.sourceType()) && l.unitCostMinor() == null) {
+            if (InvEnums.InboundSource.PURCHASE.equals(draft.sourceType())
+                    && l.unitCostMinor() == null) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
         }
@@ -215,14 +249,18 @@ public class InboundServiceImpl implements InboundService {
             row.setQty(l.qty());
             row.setUom(uomOf(draft.ownerId(), l.itemId(), l.uom()));
             row.setUnitCostMinor(l.unitCostMinor());
+            row.setBatchNo(l.batchNo());
+            row.setExpireAt(l.expireAt());
             lineMapper.insert(row);
         }
     }
 
     private InvInboundOrder mine(String ownerId, String inboundNo) {
-        InvInboundOrder head = orderMapper.selectOne(Wrappers.<InvInboundOrder>lambdaQuery()
-                .eq(InvInboundOrder::getOwnerId, ownerId)
-                .eq(InvInboundOrder::getInboundNo, inboundNo));
+        InvInboundOrder head =
+                orderMapper.selectOne(
+                        Wrappers.<InvInboundOrder>lambdaQuery()
+                                .eq(InvInboundOrder::getOwnerId, ownerId)
+                                .eq(InvInboundOrder::getInboundNo, inboundNo));
         if (head == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

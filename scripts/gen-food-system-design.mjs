@@ -1,22 +1,35 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {reconcileFoodSource,renderActualFoodSource} from './lib/food-source-inventory.mjs';
 import {validateFoodDesign} from './lib/food-design-validation.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const src='docs/technical/design/schema/food-system-design.json';const s=JSON.parse(fs.readFileSync(path.join(root,src),'utf8'));
+const planFile=path.join(root,'docs/technical/design/schema/food-code-plan.json');
+const plan=JSON.parse(fs.readFileSync(planFile,'utf8'));
+const actual=reconcileFoodSource(root,s,plan);
+fs.writeFileSync(path.join(root,src),JSON.stringify(s,null,2)+'\n');
+fs.writeFileSync(planFile,JSON.stringify(plan,null,2)+'\n');
+// The legacy catalog is a generated view of the same canonical table contracts.
+const legacyCatalogFile=path.join(root,'docs/technical/design/schema/food-catalog.schema.json');
+const legacyCatalog=JSON.parse(fs.readFileSync(legacyCatalogFile,'utf8'));
+const canonicalTables=new Map(s.tables.map(t=>[t.name,t]));
+legacyCatalog.tables=legacyCatalog.tables.map(t=>canonicalTables.get(t.name)??t);
+fs.writeFileSync(legacyCatalogFile,JSON.stringify(legacyCatalog,null,2)+'\n');
 validateFoodDesign(s);
 const {instance}=await import(process.env.FOOD_ER_VIZ_MODULE||'@viz-js/viz');const viz=await instance();
 const dir=path.join(root,'docs/technical/design');
 const e=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const parse=x=>x?x.split(';').map(p=>{const [name,type,...d]=p.split(':');return {name:name.replace(/\?$/,''),type,desc:d.join(':'),required:!name.endsWith('?')}}):[];
-const header=title=>`# ${title}\n\n> 状态：待评审 · ${s.reviewDate||'2026-10-19'} · ${s.databaseInitialization?`V1含73张fnb_业务表；当前目标${s.tables.filter(t=>t.name.startsWith('fnb_')).length}张，后续迁移可用至V${s.databaseInitialization.targetSchemaVersion}（含V9耗用、V10排队及V11～V15当前业务增量，均不表示经营库已应用），另${s.tables.filter(t=>t.name.startsWith('fnb_')&&t.deployment==='PLANNED').length}张PLANNED；历史经营库执行证据仍V1/73；目标API不代表全部交付；共享打印V556可用，报表保持原共享owner，不声明生产已应用`:"目标设计，未执行迁移或实现端点"}。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成，勿手改；真源：[领域数据库API设计源](./schema/food-system-design.json)。生成依赖沿用 @viz-js/viz，可用 FOOD_ER_VIZ_MODULE 指定模块路径。\n> 业务入口：[后端业务模块功能清单](../../requirements/餐饮系统-后端业务模块功能清单.md) · [数据库与API评审对齐](../TDD-餐饮系统-数据库与API评审对齐.md)。按桌台→菜品→订单查阅，A–L仍保留为持久化分域编号。\n> 项目约束：[底座兼容对齐](./餐饮系统-项目底座兼容对齐.md)，账号、门店、营业时间、公共实体及协议冲突时优先按该对齐说明修订。
-> 产品依据：[完整需求文档](../../requirements/餐饮系统-完整需求文档.md) · [109项需求矩阵](../../requirements/餐饮系统-需求矩阵.md)。\n\n`;
+const header=title=>`# ${title}\n\n> 源码核对：${s.reviewDate}；云端基线 FOOD V15（83张业务表＋历史表＝84张），当前源码目标 FOOD V${s.databaseInitialization.targetSchemaVersion} / CORE V581 / INVENTORY V14。交付核验状态：${s.deliveryVerification?.status || 'NOT_COMPILED_TESTED_OR_DEPLOYED'}；独立适配/原生专项及发布进展见交付验证记录，历史 V1/73 仅为当时初始化记录。PLANNED 对象保留为目标，不代表实现。\n> 由 \`node scripts/gen-food-system-design.mjs\` 生成；真源：[设计源](./schema/food-system-design.json)。实际 API、方法与迁移从原源码发现；不执行迁移。\n\n`;
 const statusNames={DEFINED:'目标已定义',CORE_CONTRACT:'依赖共享/核心合同',DESIGN_GAP:'尚缺专项设计'};
 const counts=Object.fromEntries(Object.keys(statusNames).map(k=>[k,s.requirementAlignment.filter(r=>r.status===k).length]));
 const moduleIndex=()=>`## 零、按业务模块阅读\n\n先查主责模块，再查表字段或接口编号。13个业务模块与A–L持久化域不是一一对应；模块可协作调用相同服务，不能据此复制实体。109项追踪结果：目标已定义${counts.DEFINED}项，依赖共享/核心合同${counts.CORE_CONTRACT}项，尚缺专项设计${counts.DESIGN_GAP}项。以上均为设计状态，非实现验收。\n\n| 模块 | 名称 | 需求数 | 关联表数 | 关联API数 |\n|---|---|---|---|---|\n`+s.businessModules.map(m=>`| ${m.id} | ${m.name} | ${m.requirements.length} | ${m.tables.length} | ${m.apis.length} |\n`).join('')+`\n逐需求表/API引用与未决缺口见API册第八节；首三模块扩展及评审结论见[评审对齐记录](../TDD-餐饮系统-数据库与API评审对齐.md)。\n\n`;
 const by=new Map(s.tables.map(t=>[t.name,t]));if(by.size!==s.tables.length)throw Error('Duplicate tables');
 for(const t of s.tables){const fields=new Set([...s.commonFields.map(f=>f[0]),...t.fields.map(f=>f.name)]);for(const u of t.unique)for(const f of u)if(!fields.has(f))throw Error(`Bad unique ${t.name}.${f}`);for(const f of t.fields)if(f.ref){const [tn,fn]=f.ref.split('.');if(by.has(tn)&&!by.get(tn).fields.some(x=>x.name===fn))throw Error(`Bad reference ${f.ref}`)}}
 const groups=[];for(const d of s.domains){const ts=s.tables.filter(t=>t.domain===d.code);for(let i=0;i<ts.length;i+=8)groups.push({id:d.code.toLowerCase()+(1+i/8),label:d.name+' '+(1+i/8),tables:ts.slice(i,i+8)});}
+const generatedDiagramNames=new Set(groups.map(g=>'food-system-'+g.id+'.svg'));
+for(const name of fs.readdirSync(path.join(root,'docs/technical/diagrams')))if(/^food-system-[a-l]\d+\.svg$/.test(name)&&!generatedDiagramNames.has(name))fs.unlinkSync(path.join(root,'docs/technical/diagrams',name));
 for(const g of groups){const lines=['digraph G { graph [rankdir=LR,bgcolor="white",pad="0.3",nodesep="0.35"]; node [shape=plain,fontname="Arial"]; edge [fontsize=10,fontname="Arial",color="#64748b"];'];
  for(const t of g.tables){const rows=t.fields.filter(f=>f.ref||t.unique.some(u=>u.includes(f.name))).slice(0,5);lines.push(`"${t.name}" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="8"><TR><TD BGCOLOR="#dcfce7"><B>${e(t.name)}</B><BR/>${e(t.label)}</TD></TR>${rows.map(f=>`<TR><TD ALIGN="LEFT">${e(f.name)}<BR/><FONT POINT-SIZE="10">${e(f.label)}</FONT></TD></TR>`).join('')}</TABLE>>];`)}
  for(const t of g.tables)for(const f of t.fields)if(f.ref&&g.tables.some(x=>x.name===f.ref.split('.')[0]))lines.push(`"${t.name}" -> "${f.ref.split('.')[0]}" [label="${f.name} / ${f.nullable?'0..1':'1'}"];`);
@@ -29,18 +42,18 @@ for(const d of s.domains)overview+=`| ${d.code} | ${d.requirements.join('、')} 
 overview+=`\n## 五、现状依据与取舍\n\n当前真实OrderService.create/createFor/preview/pay/payResult可适配；其Item(goodsNo,skuNo,int qty)没有源行、选配及小数计量透传。ord_order是支付根，ord_sub_order是门店订单，ord_item.id是稳定成交行。基础商品字典prd_spec_dim/prd_spec_value继续复用。源行映射、堂食交付、后付库存、跨根收款、部分退款分别补合同，不能因目标表存在就认定已实现。当前退款仍为整门店订单全额边界。\n\n餐饮菜单不用基础后台类目替代；餐饮口味不再复制字典；套餐/配料组合是配置候选，通用Bundle/Modifier能力确认后复用或迁移，不能双维护。共享打印prn_device与历史prn_printer需选其一；报表新增营业日维度不改变原自然日统计。旧菜品ER被本源中的口味与行分配修订取代，不把两份DDL同时执行。\n\n## 六、实施前验证闸门\n\n领域及表数量是本轮候选设计，不是最终迁移预算。必须逐项确认通用资源/选配/计量/审批/资金接口实现、匿名主体、日结资金对账及专项业态合同；数据库逻辑引用不自动转跨库FK。12域及109项仅表示设计追踪覆盖，完整性能和所有边缘场景仍按需求验收。\n`;
 fs.writeFileSync(path.join(dir,'餐饮系统-领域对象与设计总览.md'),overview);
 let db=header('餐饮系统数据库设计')+moduleIndex();
-db+=`## 一、总览与复用边界\n\n共${s.tables.length}张候选表，按领域分图；先看归属，再看字段。只新增行业业务和缺失共享能力，不复制商品价格、库存、订单金额或资金账。\n\n| 基础事实 | 复用对象 | 餐饮关联 |\n|---|---|---|\n| 商品与销售规格 | prd_goods.goods_no / prd_sku.sku_no | dish、菜单、套餐、收费配料 |\n| 属性字典 | prd_spec_dim.dim_no / prd_spec_value.value_no | 免费做法选择，规则仍由餐饮授权 |\n| 门店上架价格库存 | prd_store_goods / prd_store_price / prd_store_stock及库存服务 | 只通过端口读取，不另建价格库存账 |\n| 支付根与门店订单 | ord_order.order_no / ord_sub_order.sub_order_no | 核心绑定及结账范围 |\n| 成交行 | ord_item.id | food_line分配表 |\n| 身份资源审批会员营销票据资金 | 各权威服务，编号由正式合同定义 | 只保存ref，表名不臆造 |\n| 自然日报表 | rpt_daily_store / rpt_daily_goods / rpt_job_watermark | 原口径保留；新增餐饮指标投影在共享报表库 |\n\n## 二、公共字段与索引规范\n\n所有新表沿用BaseEntity：id自增、tenant_no、审计、version及deleted；entity_no是业务范围不是租户。物理主键为id；业务号唯一，不直接用旧草案PK替换物理主键。下列公共字段合并到每张表，已显式列出的字段不重复。本文是逻辑设计，不是已执行的生产DDL。\n\n| 字段 | 类型 | 约束/意义 |\n|---|---|---|\n`;
+db+=`## 一、总览与复用边界\n\n共${s.tables.length}张候选表，按领域分图；先看归属，再看字段。只新增行业业务和缺失共享能力，不复制商品价格、库存、订单金额或资金账。\n\n| 基础事实 | 复用对象 | 餐饮关联 |\n|---|---|---|\n| 商品与销售规格 | prd_goods.goods_no / prd_sku.sku_no | dish、菜单、套餐、收费配料 |\n| 属性字典 | prd_spec_dim.dim_no / prd_spec_value.value_no | 免费做法选择，规则仍由餐饮授权 |\n| 门店上架价格库存 | prd_store_goods / prd_store_price / prd_store_stock及库存服务 | 只通过端口读取，不另建价格库存账 |\n| 支付根与门店订单 | ord_order.order_no / ord_sub_order.sub_order_no | 核心绑定及结账范围 |\n| 成交行 | ord_item.id | food_line分配表 |\n| 身份资源审批会员营销票据资金 | 各权威服务，编号由正式合同定义 | 只保存ref，表名不臆造 |\n| 自然日报表 | rpt_daily_store / rpt_daily_goods / rpt_job_watermark | 原口径保留；新增餐饮指标投影在共享报表库 |\n\n## 二、公共字段与索引规范\n\n沿BaseEntity的表使用公共字段；明确usesBaseEntity=false的追加迁移表按完整物理字段及primaryKey展示，不补造id或审计列。原公共约定：id自增、tenant_no、审计、version及deleted；entity_no是业务范围不是租户。物理主键为id；业务号唯一，不直接用旧草案PK替换物理主键。下列公共字段合并到每张表，已显式列出的字段不重复。本文是逻辑设计，不是已执行的生产DDL。\n\n| 字段 | 类型 | 约束/意义 |\n|---|---|---|\n`;
 for(const f of s.commonFields)db+=`| ${f.join(' | ')} |\n`;
 db+=`\n公共字段均NOT NULL；id为PK，其余业务可空以字典为准。外部业务号/幂等键以二进制或大小写敏感排序规则存储，避免幂等键大小写被合并。JSON只存冻结展示、受限配置或引用，不作为金额权威。金额bigint为最小单位且必须有币种上下文；数量decimal须单位、精度与核心能力一致；营业事件保留可还原时刻与业务时区/规则版本；持久化沿用现有LocalDateTime和数据源时区约定，先验证UTC转换，不私自改变全项目时间语义。\n\n每表默认追加审计索引(entity_no,created_at,id)，含store_no表追加(entity_no,store_no,updated_at,id)；按父子查询字段追加(entity_no,parent_no,id)。唯一业务号按当前全局编号生成，跨主体查询仍必须加entity_no。静态配置仅停用不删除；流水和正式签核禁止软删覆盖，保留策略另审。\n\n活动桌容量、活动钱箱、活跃应收范围与边缘写者依赖仲裁行锁/CAS及受控写入口，MySQL可空唯一键不能替代这些并发守卫。按需落地占用槽/预占行，实施DDL中必须给出原子SQL及竞态测试。\n\n## 三、分域表关系\n\n箭头表示显式逻辑引用，跨图及跨库引用见字段字典。每图不超过8表；没有箭头的表仍可经服务合同关联，不意味着同一事务。\n`;
 for(const g of groups)db+=`\n### ${g.label}\n\n![${g.label}](../diagrams/food-system-${g.id}.svg)\n\n${g.tables.map(t=>'`'+t.name+'` '+t.label).join('；')}。跨模块编号通过受权服务验证，避免跨库外键或直接JOIN。\n`;
 db+='\n## 四、逐表字段与约束\n';
 for(const m of s.businessModules)db+=`\n**${m.id} ${m.name} 查表索引：** ${m.tables.map(t=>'`'+t+'`').join('、')||'复用共享能力，无餐饮专属表'}。\n`;
-for(const t of s.tables){db+=`\n### ${t.name} · ${t.label}\n\n归属：${t.owner||'餐饮域 '+t.domain}。${t.deployment?'实施状态：'+t.deployment+(t.deployment.startsWith('MIGRATION_')?'（提供'+t.deployment.replace('MIGRATION_','')+'迁移，业务库执行单独验收）。':'（尚未迁移）。'):''}合并公共字段；下面仅列业务列。\n\n| 字段 | 类型 | 必填 | 含义/逻辑引用 |\n|---|---|---|---|\n`;
-for(const f of t.fields)db+=`| \`${f.name}\` | ${f.type} | ${f.nullable?'否':'是'} | ${f.label}${f.ref?' → `'+f.ref+'`':''} |\n`;
+for(const t of s.tables){db+=`\n### ${t.name} · ${t.label}\n\n归属：${t.owner||'餐饮域 '+t.domain}。${t.deployment?'实施状态：'+t.deployment+(t.deployment.startsWith('MIGRATION_')?'（提供'+t.deployment.replace('MIGRATION_','')+'迁移，业务库执行单独验收）。':'（尚未迁移）。'):''}${t.usesBaseEntity===false?'按迁移列出完整字段；主键 '+(t.primaryKey||[]).join(','):'合并公共字段；下面仅列业务列'}。\n\n| 字段 | 类型 | 必填 | 含义/逻辑引用 | 引入/变更 |\n|---|---|---|---|---|\n`;
+for(const f of t.fields)db+=`| \`${f.name}\` | ${f.type} | ${f.nullable?'否':'是'} | ${f.label}${f.ref?' → `'+f.ref+'`':''} | ${f.introducedIn||t.introducedIn||'原设计'}${f.modifiedIn?' / '+f.modifiedIn:''} |\n`;
 db+=`\n唯一键：${t.unique.map(x=>'`('+x.join(', ')+')`').join('；')}。\n\n约束：${t.rules||'同主体、引用有效、状态转换受聚合守卫；配置修改不影响历史快照。'}\n`;}
 db+=`\n## 五、事务、恢复与数据安全\n\n1. 点单先保存批次和请求哈希，调用核心建单后绑定；超时查询同键恢复。受理与厨房任务/事件在餐饮事务落定；outbox与消费去重复用公共设施，不另造通用事件总线。\n2. 核心行分配及退餐数量须锁定同一源行容量或CAS聚合版本；同SKU不同价格、赠品不能仅靠SKU分配。\n3. 结账预占核心应收范围，收款意图落库后调用资金域；调用后未回写可用原业务号查询恢复。取消结账与支付回调竞争由资金权威合同决定，不凭前端状态解冻。\n4. 日结冻结水位与证据，签核不覆盖；晚到事件产生新版本或当前日调整。签核快照与可重算报表投影分开保存。\n5. 非销售现金表不重复存销售收款；资金流水归班映射唯一。跨班跨日归属分别计算，备用金与押金不计营收。\n6. 联系人、凭证、PMS授权与设备密钥只存加密引用；所有查询绑定entity_no及获准门店，不依赖报表库隐式拦截器。\n\n配置发布：当前关系表是草稿头，fnb_config_revision保存聚合完整定义及依赖发布号的不可变快照；可售读取已发布内容，回滚发布新修订。桌台协作用fnb_table_operation保存意图与恢复；批次原始归属和核心资金不可覆盖。销售配额以fnb_sales_quota_claim对每批幂等预占，UNKNOWN不释放；制作与结账去重键使用非空规范键，不能依赖MySQL NULL唯一行为。\n\n候选模型需在正式迁移前补充每表容量、物理分区/归档、索引执行计划和锁SQL；本轮不执行数据库迁移。表名与外部引用以本源为当前评审草案，不能叠加旧表清单。\n`;
 fs.writeFileSync(path.join(dir,'餐饮系统-数据库设计.md'),db);
-let apiDoc=header('餐饮系统API设计')+moduleIndex();
+let apiDoc=header('餐饮系统API设计')+renderActualFoodSource(actual)+moduleIndex();
 apiDoc+=`## 一、协议与能力边界\n\n${s.apis.length}个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。\n\n- /biz为商家作业，/mp为顾客，/ops为平台，/internal仅服务身份。老板App/收银/厨房复用biz服务，按角色门店工位鉴权，不把平台管理员当商家收银员。\n- Authorization为获准身份；X-Request-Id用于追踪。所有有副作用操作必需Idempotency-Key；作用域含entity/store/operation/key，规范payload哈希同键异参返回409。operator/entity从身份获取，不接受客户端冒充。\n- 版本字段为CAS expected version；配置发布、结账冻结、日结签核还核验规则版/指纹/水位。path同名字段不得在body覆盖。GET只读，普通分页沿用PageData(records,total,page,size)，page默认1、size默认20最大100；报告专有metadata不改变统一外层。\n- 输出沿用ApiResult<T>：{code:0,msg:"success",data:T}，Controller直接返回VO，由ApiResponseWrapper包装；异常沿用ErrorCode/BizException与现有全局处理器。追踪号使用既有链路，不新增必填requestId响应字段。业务处理中状态放data.status，HTTP状态/异步语义按宿主异常与包装链校验，不建立另一套HTTP-only错误规范。
 - 普通分页沿用PageData(records,total,page,size)；DTO示意不得迫使现有前端改分页壳。int64金额与业务号遵循现有共享序列化，不能将全项目金额强制改字符串；新增decimal数量使用明确精度合同。UTC对外时刻与数据库LocalDateTime转换必须通过现有配置验证，date明确营业日或自然日基准。
 - B端复用Realm.MERCHANT和BizContext；X-Store-No用于解析主体门店。路径/body显式门店必须与已解析的获准门店匹配，不能因过滤器回落默认店而把显式目标写到另一店。跨店报表逐店验证主体及权限集合。
@@ -155,3 +168,9 @@ if(s.businessCodingImplementation){
 
 fs.writeFileSync(path.join(dir,'餐饮系统-API设计.md'),apiDoc);
 console.log(`Generated 3 design documents, ${groups.length} SVGs; ${s.tables.length} tables, ${s.apis.length} APIs, ${s.domains.reduce((n,d)=>n+d.requirements.length,0)} requirements`);
+
+let tableList=header('餐饮系统数据库表清单')+'| 表 | 引入版本 | 状态 | 实体/SQL映射 |\n|---|---|---|---|\n';
+for(const t of s.tables)tableList+=`| ${t.name} | ${t.introducedIn||t.deployment||'原目标'} | ${t.deployment==='PLANNED'?'PLANNED':Number(t.introducedIn?.slice(1))>15?'源码迁移待部署':'云端V15基线范围/共享独立owner'} | ${t.sourceImplementation?.entityClass||t.sourceImplementation?.mapperClasses.join(', ')||'见原owner'} |\n`;
+tableList+='\n## 共享库本批迁移（原owner）\n\n| Owner | 版本 | 文件 | 变更 |\n|---|---|---|---|\n';
+for(const m of s.sharedSchemaChanges)tableList+=`| ${m.owner} | V${m.version} | ${m.file} | ${m.changes.map(c=>c.action+' '+c.table+(c.field?'.'+c.field.name:'')).join('<br>')} |\n`;
+fs.writeFileSync(path.join(dir,'餐饮系统-数据库表清单.md'),tableList);

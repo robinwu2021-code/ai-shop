@@ -1,9 +1,12 @@
 package ai.neargo.shop.inventory.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /** 入库单行 */
@@ -21,7 +24,16 @@ public class InvInboundLine extends InvMutableEntity {
     private String itemId;
 
     /** 实收数量。留位：将来加 expected_qty 做部分收货 */
-    private Integer qty;
+    @TableField("qty")
+    private BigDecimal qtyQuantity;
+
+    public Integer getQty() {
+        return qtyQuantity == null ? null : qtyQuantity.intValueExact();
+    }
+
+    public void setQty(Integer value) {
+        qtyQuantity = value == null ? null : BigDecimal.valueOf(value);
+    }
 
     /** 快照。base_uom 将来改了，历史行仍然可解释 */
     private String uom;
@@ -34,5 +46,4 @@ public class InvInboundLine extends InvMutableEntity {
 
     /** 留位 */
     private LocalDate expireAt;
-
 }

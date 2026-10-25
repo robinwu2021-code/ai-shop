@@ -67,7 +67,7 @@ import org.springframework.context.annotation.Import;
         // 子接口，由上面那个 scan 收；按 @Mapper 注解扫只会收到真正标注了的那个。
         "ai.neargo.shop.merchant.mapper",
         // StatusCasMapper（订单状态机转换门）：四个聚合各一对读 / 条件写，跨四张表，绑不到单一实体
-        "ai.neargo.shop.trade.order.mapper",
+        "ai.neargo.shop.trade.order.mapper", "ai.neargo.shop.trade.mapper",
         // Unified activity CAS/accounting updates span resource tables, without a single BaseMapper entity.
         "ai.neargo.shop.promotion.mapper", "ai.neargo.shop.paybridge.mapper"},
         annotationClass = org.apache.ibatis.annotations.Mapper.class,

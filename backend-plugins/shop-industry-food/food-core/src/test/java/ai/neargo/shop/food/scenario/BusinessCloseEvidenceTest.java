@@ -53,6 +53,10 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.service.impl.BusinessCloseServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.user.StoreCardQueryPort;
+import ai.neargo.shop.spi.trade.IndustryOrderPort;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import java.util.concurrent.atomic.AtomicInteger;
 import ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -109,6 +113,52 @@ class BusinessCloseEvidenceTest {
         assertThat(report.issues()).contains(new Issue("PAY_UNKNOWN","SET"),new Issue("AR",batch.getBatchNo()));
     }
 
+    @Test void originalCoreCorrectionsInvalidateCloseEvidenceWithoutHoldingFoodLocksDuringRpc() {
+        var fixture = new Fixture(); fixture.batch();
+        var binding = new FnbCoreOrderBinding(); binding.setStatus("BOUND");
+        binding.setPaymentRootNo("ROOT"); binding.setStoreOrderNo("SUB");
+        when(fixture.bindings.selectList(any())).thenReturn(List.of(binding));
+        var before = fixture.service.report("E", "S", "A", fixture.query);
+        var core = mock(IndustryOrderPort.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<IndustryOrderPort> providers = mock(ObjectProvider.class);
+        when(providers.getIfUnique()).thenReturn(core);
+        fixture.service.effectiveSourceProvider(providers);
+        when(core.getForStore(any(), anyString(), anyString())).thenAnswer(call -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return new IndustryOrderPort.Result("ROOT", "SUB", "Q", "WAIT_PAY", "CNY", 1200L, 1, 3,
+                    List.of(), "POSTPAY", "COMPLETED", true, null, 0L, -1200L);
+        });
+        var current = fixture.service.report("E", "S", "A", fixture.query);
+        assertThat(current.effectiveReceivableMinor()).isZero();
+        assertThat(current.receivableAdjustmentMinor()).isEqualTo(-1200);
+        assertThat(current.originalOrderReceivables()).singleElement().satisfies(source -> {
+            assertThat(source.originalMinor()).isEqualTo(1200);
+            assertThat(source.effectiveMinor()).isZero();
+        });
+        assertThat(current.sourceHash()).isNotEqualTo(before.sourceHash());
+        assertThat(current.issues()).doesNotContain(new Issue("AR", "B"));
+        verify(core, times(2)).getForStore(any(), anyString(), anyString());
+    }
+    @Test void coreSourceChangingBetweenAuthorizedReadsCannotFreezeAnOldAmount() {
+        var fixture = new Fixture(); fixture.batch();
+        var binding = new FnbCoreOrderBinding(); binding.setStatus("BOUND");
+        binding.setPaymentRootNo("ROOT"); binding.setStoreOrderNo("SUB");
+        when(fixture.bindings.selectList(any())).thenReturn(List.of(binding));
+        var core = mock(IndustryOrderPort.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<IndustryOrderPort> providers = mock(ObjectProvider.class);
+        when(providers.getIfUnique()).thenReturn(core);
+        fixture.service.effectiveSourceProvider(providers);
+        var calls = new AtomicInteger();
+        when(core.getForStore(any(), anyString(), anyString())).thenAnswer(call ->
+                new IndustryOrderPort.Result("ROOT", "SUB", "Q", "WAIT_PAY", "CNY", 1200L, 1, 3,
+                        List.of(), "POSTPAY", "WAIT_FULFILL", true, null, calls.getAndIncrement() == 0 ? 1200L : 1000L,
+                        0L));
+        assertThatThrownBy(() -> fixture.service.report("E", "S", "A", fixture.query))
+                .isInstanceOf(BizException.class);
+        verifyNoInteractions(fixture.balances);
+    }
     @Test void unresolvedReceivablePreventsSigningAndLeavesSnapshotUnchanged() {
         var f=new Fixture(); f.batch();
         var snapshot=f.service.report("E","S","A",f.query);

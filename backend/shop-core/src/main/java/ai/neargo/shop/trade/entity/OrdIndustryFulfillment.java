@@ -28,4 +28,7 @@ public class OrdIndustryFulfillment extends BaseEntity {
     private String status;
     private String inventoryReceiptJson;
     private String errorCode;
+    private String fulfillmentKind;
+    private String planHash;
+    private String commandSnapshot;
 }

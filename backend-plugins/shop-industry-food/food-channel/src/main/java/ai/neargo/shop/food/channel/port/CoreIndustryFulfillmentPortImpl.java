@@ -14,6 +14,9 @@ import java.util.function.Supplier;
 public class CoreIndustryFulfillmentPortImpl implements IndustryFulfillmentPort {
     private final Supplier<IndustryFulfillmentInternalApi> api;
     public CoreIndustryFulfillmentPortImpl(Supplier<IndustryFulfillmentInternalApi> api) { this.api=api; }
+    @Override public Receipt fulfill(Fulfill c,String key) {
+        return invoke(c.reference(),()->api.get().fulfill(new IndustryFulfillmentInternalApi.Partial(c,key)));
+    }
     @Override public Receipt verifyPickup(VerifyPickup c,String key) {
         return invoke(c.reference(),() -> api.get().verifyPickup(new IndustryFulfillmentInternalApi.Verify(c,key)));
     }
@@ -25,9 +28,9 @@ public class CoreIndustryFulfillmentPortImpl implements IndustryFulfillmentPort 
             var result=ServiceCalls.call(ServiceName.PLATFORM,call);
             if (result==null || !ref.equals(result.reference()) || result.status()==null
                     || !Set.of("NOT_STARTED","NOT_READY_CODE","PREPARED","UNKNOWN","VERIFIED",
-                    "BUYER_CONFIRM_PENDING").contains(result.status()) || result.subOrderVersion()<0
+                    "BUYER_CONFIRM_PENDING","PARTIAL","HANDOVER_COMPLETE").contains(result.status()) || result.subOrderVersion()<0
                     || result.inventoryLifecycleVersion()<2 || result.inventoryLifecycleVersion()>3) invalid();
-            if (!result.pending() && (result.fulfillmentNo()==null || result.inventoryReservationNo()==null
+            if (!result.pending() && result.lines().isEmpty() && (result.fulfillmentNo()==null || result.inventoryReservationNo()==null
                     || !("COMMITTED".equals(result.inventoryState()) || "ISSUED_UNPAID".equals(result.inventoryState()))
                     || "VERIFIED".equals(result.status()) && !"COMPLETED".equals(result.subOrderStatus())
                     || "BUYER_CONFIRM_PENDING".equals(result.status()) && (!result.requireBuyerConfirm()

@@ -42,6 +42,6 @@ public final class DiningPricingSourcePolicy {
         if (snapshot.prices().baseTotal().minor() != p.amountMinor()) {
             throw new IllegalArgumentException("Restaurant source amount must conserve shared price facts");
         }
-        return snapshot;
+        return PricingSourceFacts.withFees(snapshot,p.feeSources());
     }
 }

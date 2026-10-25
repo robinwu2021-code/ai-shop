@@ -15,13 +15,18 @@ public final class IndustryOrderCompositionFacts {
         PricingSourceFacts.validate(source);
         var roots = new HashSet<String>();
         for (var part : source.composition()) {
-            if (part.kind() != Kind.MAIN && (part.kind() != Kind.ADDON || mode != Mode.POSTPAY)) throw unavailable();
+            if (part.kind() == null || mode != Mode.POSTPAY && part.kind() != Kind.MAIN) throw unavailable();
             if (part.unit().componentRef() == null || !part.unit().componentRef().matches("[0-9a-f]{64}")) {
                 throw unavailable();
             }
-            try {
-                if (part.unit().quantity().intValueExact() <= 0) throw unavailable();
-            } catch (ArithmeticException fraction) { throw unavailable(); }
+            var quantity = part.unit().quantity();
+            if (quantity == null || quantity.signum() <= 0 || quantity.stripTrailingZeros().scale() > 6) {
+                throw unavailable();
+            }
+            if (mode != Mode.POSTPAY) {
+                try { if (quantity.intValueExact() <= 0) throw unavailable(); }
+                catch (ArithmeticException fraction) { throw unavailable(); }
+            }
             if (part.kind() == Kind.MAIN && !roots.add(part.unit().sourceLineNo())) throw unavailable();
         }
         for (var part : source.composition()) {

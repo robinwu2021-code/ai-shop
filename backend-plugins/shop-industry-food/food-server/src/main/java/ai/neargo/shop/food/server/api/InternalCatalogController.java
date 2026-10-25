@@ -24,6 +24,10 @@ public class InternalCatalogController {
     private final CatalogService service;
     public InternalCatalogController(CatalogService service) { this.service = service; }
 
+    @PostMapping(CatalogInternalApi.SCHEDULED_PATH)
+    public CatalogVO scheduledCart(@RequestBody CatalogInternalApi.ScheduledQuery query) {
+        return service.scheduledCart(query.entityNo(), query.storeNo(), query.cartNo());
+    }
     @PostMapping(CatalogInternalApi.READ_PATH)
     public CatalogVO read(@Valid @RequestBody CatalogInternalApi.Query q) {
         return service.read(q.entityNo(), q.storeNo(), q.definition());

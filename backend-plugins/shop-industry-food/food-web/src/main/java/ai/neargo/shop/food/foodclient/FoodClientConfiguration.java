@@ -32,6 +32,15 @@ import ai.neargo.shop.food.spi.DiningReturnInternalApi;
 import ai.neargo.shop.food.spi.DiningOrderInternalApi;
 import ai.neargo.shop.food.spi.DiningPricingInternalApi;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
+import ai.neargo.shop.food.service.DiningOrderAuthorityService;
+import ai.neargo.shop.food.service.BusinessReturnApprovalService;
+import ai.neargo.shop.food.spi.BusinessReturnApprovalInternalApi;
+import ai.neargo.shop.spi.trade.IndustryAmendmentSourcePort;
+import ai.neargo.shop.spi.trade.IndustryAmendmentSourceInternalApi;
+import ai.neargo.svc.client.ServiceCalls;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.food.spi.DiningOrderAuthorityInternalApi;
 import ai.neargo.shop.food.spi.PricingSourceInternalApi;
 import ai.neargo.shop.food.service.DiningBatchQueryService;
 import ai.neargo.shop.food.spi.DiningBatchQueryInternalApi;
@@ -93,6 +102,22 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean @ConditionalOnMissingBean(BusinessReturnApprovalService.class)
+    BusinessReturnApprovalService remoteBusinessReturnApprovalService(InternalHttp http) {
+        return new RemoteBusinessReturnApprovalService(http.client(ServiceName.FOOD,
+                BusinessReturnApprovalInternalApi.class, Duration.ofSeconds(5)));
+    }
+    @Bean @ConditionalOnMissingBean(IndustryAmendmentSourcePort.class)
+    IndustryAmendmentSourcePort remoteFoodAmendmentSource(InternalHttp http) {
+        var api = http.client(ServiceName.FOOD, IndustryAmendmentSourceInternalApi.class, Duration.ofSeconds(5));
+        return (reference, sourceReturnNo) -> {
+            var result = ServiceCalls.call(ServiceName.FOOD, () -> api.get(
+                    new IndustryAmendmentSourceInternalApi.Query(reference, sourceReturnNo)));
+            if (result == null || !reference.equals(result.reference()) || !sourceReturnNo.equals(result.returnNo()))
+                throw BizException.of(ErrorCode.CONFLICT);
+            return result;
+        };
+    }
     @Bean @ConditionalOnMissingBean(DiningBatchQueryService.class)
     DiningBatchQueryService remoteDiningBatchQueryService(InternalHttp http) {
         return new RemoteDiningBatchQueryService(http.client(ServiceName.FOOD,
@@ -170,6 +195,12 @@ public class FoodClientConfiguration {
     DiningPricingService remoteDiningPricingService(InternalHttp http) {
         return new RemoteDiningPricingService(http.client(ServiceName.FOOD, DiningPricingInternalApi.class,
                 Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(DiningOrderAuthorityService.class)
+    DiningOrderAuthorityService remoteDiningOrderAuthorityService(InternalHttp http) {
+        return new RemoteDiningOrderAuthorityService(http.client(ServiceName.FOOD,
+                DiningOrderAuthorityInternalApi.class, Duration.ofSeconds(5)));
     }
     @Bean
     @ConditionalOnMissingBean(DiningPricingFactsService.class)

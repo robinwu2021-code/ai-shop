@@ -9,6 +9,8 @@ import org.springframework.web.service.annotation.PostExchange;
 /** Service-token transport carries original-source proof and preserves the original operation key. */
 public interface IndustryFulfillmentInternalApi {
     String ROOT="/internal/trade/industry-fulfillment";
+    record Partial(IndustryFulfillmentPort.Fulfill command,String key) { }
+    @PostExchange(ROOT+"/fulfill") Receipt fulfill(@RequestBody Partial command);
     @PostExchange(ROOT+"/pickup/verify") Receipt verifyPickup(@RequestBody Verify command);
     @PostExchange(ROOT+"/query") Receipt query(@RequestBody Query command);
     record Verify(VerifyPickup command,String key) {

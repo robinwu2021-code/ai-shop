@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -29,6 +30,10 @@ public class OrdItem extends BaseEntity {
     /** 成交单价（分）——快照，不随商品调价变动。 */
     private Long price;
     private Integer qty;
+    /** Exact source quantity for measured industry lines; qty remains compatible billing-unit count. */
+    private BigDecimal saleQuantity;
+    private String quantityUnit;
+    private String sourceComponentRef;
     private Long amount;
 
     private String categoryType;

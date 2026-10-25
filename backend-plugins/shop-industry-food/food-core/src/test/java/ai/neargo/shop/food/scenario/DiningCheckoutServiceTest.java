@@ -63,7 +63,7 @@ class DiningCheckoutServiceTest extends FoodWriteGuardFixture {
                     + "created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),updated_by VARCHAR(32),"
                     + "version BIGINT DEFAULT 0,deleted INT DEFAULT 0,";
             f.sql().execute("CREATE TABLE fnb_order_batch (" + common + "batch_no VARCHAR(32),store_no VARCHAR(32),check_no VARCHAR(32),"
-                    + "request_key VARCHAR(64),request_hash VARCHAR(64),source VARCHAR(32),buyer_no VARCHAR(32),operator_no VARCHAR(32),"
+                    + "request_key VARCHAR(64),request_hash VARCHAR(64),source VARCHAR(32),buyer_no VARCHAR(32),party_no VARCHAR(32),operator_no VARCHAR(32),"
                     + "status VARCHAR(24),frozen_request TEXT,accepted_at DATETIME(3),cart_no VARCHAR(32),cart_version BIGINT,quote_ref VARCHAR(32),"
                     + "quote_hash VARCHAR(64),business_date DATE,policy_no VARCHAR(32),fulfillment VARCHAR(32),pay_mode VARCHAR(16),"
                     + "scheduled_at DATETIME(3),actor_realm VARCHAR(32),payer_ref VARCHAR(32),quota_claim_refs TEXT,next_recovery_at DATETIME(3))");
@@ -71,7 +71,7 @@ class DiningCheckoutServiceTest extends FoodWriteGuardFixture {
                     + "store_order_no VARCHAR(32) UNIQUE,status VARCHAR(24))");
             f.sql().execute("CREATE TABLE fnb_settlement (" + common + "settlement_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),currency VARCHAR(3),"
                     + "status VARCHAR(24),scope_hash VARCHAR(64),quote_ref VARCHAR(64),due_minor BIGINT,core_cashier_ref VARCHAR(64),"
-                    + "expires_at DATETIME(3),request_key VARCHAR(64),request_hash VARCHAR(64),request_snapshot TEXT,buyer_no VARCHAR(32),next_recovery_at DATETIME(3),"
+                    + "expires_at DATETIME(3),request_key VARCHAR(64),request_hash VARCHAR(64),request_snapshot TEXT,buyer_no VARCHAR(32),party_no VARCHAR(32),next_recovery_at DATETIME(3),"
                     + "UNIQUE(entity_no,store_no,request_key))");
             f.sql().execute("CREATE TABLE fnb_settlement_item (" + common + "scope_no VARCHAR(32) UNIQUE,settlement_no VARCHAR(32),check_no VARCHAR(32),"
                     + "payment_root_no VARCHAR(32),store_order_no VARCHAR(32),allocation_ref VARCHAR(64),due_minor BIGINT,core_version VARCHAR(64),"

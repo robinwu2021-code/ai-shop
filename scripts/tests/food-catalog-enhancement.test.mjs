@@ -7,9 +7,9 @@ const source=()=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design
 const added=['fnb_menu_channel_binding','fnb_menu_item_option_group','fnb_recipe','fnb_recipe_line','fnb_recipe_adjustment','fnb_production_consumption','fnb_production_consumption_line','fnb_catalog_sync_job','fnb_catalog_sync_item'];
 test('enhancement schema traces nine target objects without pretending to have migrated them',()=>{
  const s=source();assert.equal(s.catalogEnhancement?.version,1);
- assert.equal(s.tables.filter(t=>t.name.startsWith('fnb_')).length,85);
+ assert.equal(s.tables.filter(t=>t.name.startsWith('fnb_')).length,113);
  for(const name of added)assert.equal(s.tables.find(t=>t.name===name)?.deployment,['fnb_recipe','fnb_recipe_line'].includes(name)?'MIGRATION_V4':name==='fnb_recipe_adjustment'?'MIGRATION_V5':name==='fnb_menu_item_option_group'?'MIGRATION_V6':name==='fnb_menu_channel_binding'?'MIGRATION_V7':['fnb_production_consumption','fnb_production_consumption_line'].includes(name)?'MIGRATION_V9':'PLANNED',name);
- assert.equal(s.databaseInitialization.targetSchemaVersion,15);
+ assert.equal(s.databaseInitialization.targetSchemaVersion,25);
  assert.equal(s.catalogEnhancement.runtimeEnabled,false);
  assertFrozenFoodV1(renderFoodV1(s));
 });

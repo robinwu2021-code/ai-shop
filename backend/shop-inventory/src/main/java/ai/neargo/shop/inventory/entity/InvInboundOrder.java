@@ -1,9 +1,12 @@
 package ai.neargo.shop.inventory.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /** 入库单：方向恒为正 */
@@ -31,15 +34,23 @@ public class InvInboundOrder extends InvMutableEntity {
     /**
      * 指向 {@link InvSupplier}；空 = 老单或未建档，此时以 {@link #supplierName} 为准。
      *
-     * <p><b>两列并存不是冗余。</b> {@code supplierName} 是**下单当时的名字快照**：
-     * 供应商三个月后改了名，历史单该显示当时那个名字，而不是跟着变。
+     * <p><b>两列并存不是冗余。</b> {@code supplierName} 是**下单当时的名字快照**： 供应商三个月后改了名，历史单该显示当时那个名字，而不是跟着变。
      */
     private String supplierNo;
 
     /** DRAFT / POSTED / VOIDED。只有 POSTED 改余额 */
     private String status;
 
-    private Integer totalQty;
+    @TableField("total_qty")
+    private BigDecimal totalQtyQuantity;
+
+    public Integer getTotalQty() {
+        return totalQtyQuantity == null ? null : totalQtyQuantity.intValueExact();
+    }
+
+    public void setTotalQty(Integer value) {
+        totalQtyQuantity = value == null ? null : BigDecimal.valueOf(value);
+    }
 
     /** 仅 PURCHASE 有意义 */
     private Long totalCostMinor;
@@ -54,5 +65,4 @@ public class InvInboundOrder extends InvMutableEntity {
     private String operator;
 
     private String remark;
-
 }

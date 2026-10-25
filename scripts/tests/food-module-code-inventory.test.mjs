@@ -5,11 +5,11 @@ import {buildFoodModuleInventory} from '../lib/food-module-code-inventory.mjs';
 const read=n=>JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/'+n,import.meta.url)));
 const source=read('food-system-design.json'),inventory=read('food-code-inventory.json'),plan=read('food-code-plan.json'),baseline=read('food-code-baselines.json');
 const build=(s=source,p=plan)=>buildFoodModuleInventory(s,inventory,p,baseline);
-test('each of 165 APIs and91tables has one primary business module',()=>{
- const v=build();assert.equal(v.endpoints.length,165);assert.equal(v.persistence.length,91);
+test('each of 165 target APIs and119 target tables has one primary business module',()=>{
+ const v=build();assert.equal(v.endpoints.length,165);assert.equal(v.persistence.length,119);
  assert.equal(new Set(v.modules.flatMap(m=>m.ownedApiIds)).size,165);
- assert.equal(new Set(v.modules.flatMap(m=>m.ownedTables)).size,91);
- assert.equal(v.persistence.filter(p=>p.schemaStatus==='CREATED_LOCAL').length,73);
+ assert.equal(new Set(v.modules.flatMap(m=>m.ownedTables)).size,119);
+ assert.equal(v.persistence.filter(p=>p.schemaStatus==='CLOUD_BASELINE_V15').length,83);
 });
 test('reject absent or invalid primary owner instead of silently falling back',()=>{
  const p=structuredClone(plan);delete p.apiOwners['FOOD-API-001'];assert.throws(()=>build(source,p),/owner/i);
@@ -49,7 +49,7 @@ test('shared printing/reporting never get food-owned mapper/entity copies',()=>{
  for(const p of build().persistence.filter(p=>p.table.startsWith('prn_')||p.table.startsWith('rpt_'))){
   assert(!p.entityClass.startsWith('ai.neargo.shop.food.'));
   assert(!p.mapperClass.startsWith('ai.neargo.shop.food.'));
-  assert.equal(p.schemaStatus,p.table.startsWith('prn_')?'SHARED_MIGRATION_AVAILABLE_NOT_APPLIED':'SHARED_NOT_CREATED');
+  assert.equal(p.schemaStatus,p.table.startsWith('prn_')?'SHARED_MIGRATION_AVAILABLE_NOT_APPLIED':'PLANNED_NOT_CREATED');
   if(p.table.startsWith('prn_')){
    assert(p.entityClass.startsWith('ai.neargo.shop.printing.'));
    assert(p.entityFile.startsWith('backend/shop-core/src/main/java/'));
@@ -61,7 +61,7 @@ test('diff preserves every old API and table, with additions traced by stable ID
  const v=build();assert.equal(v.diffs.committed.filter(r=>r.status==='ADDED').length,74);
  assert(!v.diffs.committed.some(r=>r.status==='REMOVED'));
  assert(!v.diffs.previous.some(r=>r.status==='REMOVED'));
- assert.equal(v.tableDiffs.filter(r=>r.status==='ADDED').length,18);
+ assert.equal(v.tableDiffs.filter(r=>r.status==='ADDED').length,46);
 });
 test('shared class reuse has one owning module rather than duplicated source files',()=>{
  const v=build();const classes=v.modules.flatMap(m=>m.ownedControllerClasses);

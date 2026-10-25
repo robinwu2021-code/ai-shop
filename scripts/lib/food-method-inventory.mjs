@@ -151,7 +151,7 @@ export function renderFoodMethodInventory(v,code){
    md+=`\n#### ${e.apiId} · ${e.httpMethod} ${e.path}\n\nController：\`${e.controllerClass}\`\n\n\`\`\`java\n${short(e.controllerSignature)};\n\`\`\`\n\nService / Impl：\`${e.serviceClass}\` / \`${e.implClass}\`\n\n\`\`\`java\n${short(e.serviceSignature)};\n\`\`\`\n\n持久化：${e.mapperCalls.map(c=>'`'+c.mapperClass.split('.').slice(-2).join('.')+'.'+c.method+'`（'+c.access+'）').join('；')||'无餐饮本地表写入/查询'}。\n\n跨域：${e.portCalls.map(p=>'`'+p+'`').join('、')||'无新增跨域调用'}。\n\n事务：**${e.transaction}**。${e.transactionRule}${e.note?' '+e.note:''}\n`;
   }
  }
- md+='\n## 三、逐Mapper / DAO的方法签名\n\n共享prn_/rpt_为待建设能力的目标方法，不能在food-core创建其副本。下列原子写方法返回int时必须处理0行冲突；不能把核心金额/库存/资金守卫伪装成餐饮表单条SQL。\n';
+ md+='\n## 三、逐Mapper / DAO的方法签名\n\n本节保留原目标方法；共享打印真实实现见前置源码清单，rpt_继续由原共享owner负责，不能在food-core创建副本。下列原子写方法返回int时必须处理0行冲突；不能把核心金额/库存/资金守卫伪装成餐饮表单条SQL。\n';
  for(const m of v.mappers){
   md+=`\n### ${m.table}\n\n\`${m.className}\`；文件：\`${m.sourceFile}\`。\n\n\`\`\`java\n${m.methods.map(f=>(f.inherited?'// inherited BaseMapper\n':'')+short(f.signature)+';').join('\n')}\n\`\`\`\n\n${m.methods.filter(f=>!f.inherited).map(f=>'- `'+f.name+'`：'+f.guard).join('\n')}\n`;
  }

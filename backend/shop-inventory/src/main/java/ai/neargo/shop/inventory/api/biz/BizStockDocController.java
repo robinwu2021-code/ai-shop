@@ -1,9 +1,9 @@
 package ai.neargo.shop.inventory.api.biz;
 
-import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.dto.InventoryVOs;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
@@ -11,26 +11,26 @@ import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.service.StockCountService;
 import ai.neargo.shop.inventory.service.TransferService;
+
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 /**
  * 商家端 · 单据（s03 盘点 · s04 进货 · s05 单据 · s06 报损 · s07 调拨）。
  *
- * <p>按**资源**拆而不按屏拆：一屏可能用到两个资源，一个资源也可能出现在两屏 ——
- * 按屏拆的话，改一次交互就要动控制器的边界。
+ * <p>按**资源**拆而不按屏拆：一屏可能用到两个资源，一个资源也可能出现在两屏 —— 按屏拆的话，改一次交互就要动控制器的边界。
  *
- * <p><b>没有创建销售出库的入口</b>：它只能由预留 {@code commit} 产生。
- * 这里放行的话，商家能凭空造一笔销量，而动销榜、毛利、月报全按它算。
+ * <p><b>没有创建销售出库的入口</b>：它只能由预留 {@code commit} 产生。 这里放行的话，商家能凭空造一笔销量，而动销榜、毛利、月报全按它算。
  */
 @Profile("api")
 @ConditionalOnInventory
@@ -44,9 +44,13 @@ public class BizStockDocController {
     private final InventoryAclService acl;
     private final LocationService locations;
 
-    public BizStockDocController(InboundService inbound, OutboundService outbound,
-                                 StockCountService counts, TransferService transfers,
-                                 InventoryAclService acl, LocationService locations) {
+    public BizStockDocController(
+            InboundService inbound,
+            OutboundService outbound,
+            StockCountService counts,
+            TransferService transfers,
+            InventoryAclService acl,
+            LocationService locations) {
         this.inbound = inbound;
         this.outbound = outbound;
         this.counts = counts;
@@ -85,11 +89,24 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds")
     public InventoryVOs.DocNoVO createOutbound(@RequestBody OutboundReq req) {
-        List<OutboundService.Line> lines = req.lines().stream()
-                .map(l -> new OutboundService.Line(l.itemId(), l.qty(), l.uom())).toList();
-        return new InventoryVOs.DocNoVO(outbound.createDraft(new OutboundService.Draft(
-                owner(), location(), req.purpose(), null, null, req.reasonCode(),
-                req.occurredAt(), req.remark(), req.targetType(), req.targetNo(), lines)));
+        List<OutboundService.Line> lines =
+                req.lines().stream()
+                        .map(l -> new OutboundService.Line(l.itemId(), l.qty(), l.uom()))
+                        .toList();
+        return new InventoryVOs.DocNoVO(
+                outbound.createDraft(
+                        new OutboundService.Draft(
+                                owner(),
+                                location(),
+                                req.purpose(),
+                                null,
+                                null,
+                                req.reasonCode(),
+                                req.occurredAt(),
+                                req.remark(),
+                                req.targetType(),
+                                req.targetNo(),
+                                lines)));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -112,10 +129,7 @@ public class BizStockDocController {
                 counts.open(owner(), location(), req.itemIds(), SecurityUtils.currentUserNo()));
     }
 
-    /**
-     * 读回一张盘点单。<b>{@code bookQty} 是开单那一刻的快照</b>，端上直接用它算差异 ——
-     * 拿当前余额顶替的话，盘的过程中卖掉的量会被算成盘亏。
-     */
+    /** 读回一张盘点单。<b>{@code bookQty} 是开单那一刻的快照</b>，端上直接用它算差异 —— 拿当前余额顶替的话，盘的过程中卖掉的量会被算成盘亏。 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/counts/{no}")
     public InventoryVOs.CountVO count(@PathVariable String no) {
@@ -124,7 +138,8 @@ public class BizStockDocController {
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/counts/{no}/lines")
-    public void fillCount(@PathVariable String no, @RequestBody List<StockCountService.Filled> lines) {
+    public void fillCount(
+            @PathVariable String no, @RequestBody List<StockCountService.Filled> lines) {
         counts.fill(owner(), no, lines);
     }
 
@@ -138,10 +153,17 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers")
     public InventoryVOs.DocNoVO createTransfer(@RequestBody TransferReq req) {
-        List<TransferService.Line> lines = req.lines().stream()
-                .map(l -> new TransferService.Line(l.itemId(), l.qty())).toList();
-        return new InventoryVOs.DocNoVO(transfers.create(owner(), req.fromLocationId(), req.toLocationId(),
-                lines, SecurityUtils.currentUserNo()));
+        List<TransferService.Line> lines =
+                req.lines().stream()
+                        .map(l -> new TransferService.Line(l.itemId(), l.qty()))
+                        .toList();
+        return new InventoryVOs.DocNoVO(
+                transfers.create(
+                        owner(),
+                        req.fromLocationId(),
+                        req.toLocationId(),
+                        lines,
+                        SecurityUtils.currentUserNo()));
     }
 
     /** 读回一张调拨单。**草稿态没有行**（行在发出的那张出库单上），不是空单 */
@@ -156,7 +178,12 @@ public class BizStockDocController {
     public void ship(@PathVariable String no, @RequestBody(required = false) ShipReq req) {
         // 请求体可空：自己送、没记承运方也要发得出去 —— 强制填的话商家就学会乱填一个
         ShipReq r = req == null ? new ShipReq(null, null, null) : req;
-        transfers.ship(owner(), no, r.carrierNo(), r.carrierName(), r.trackingNo(),
+        transfers.ship(
+                owner(),
+                no,
+                r.carrierNo(),
+                r.carrierName(),
+                r.trackingNo(),
                 SecurityUtils.currentUserNo());
     }
 
@@ -169,16 +196,14 @@ public class BizStockDocController {
     /**
      * 作废一张<b>还没发出</b>的调拨单 —— 「建错了怎么办」的答案。
      *
-     * <p>此前调拨没有任何撤销路径：单据列表的作废按钮只放行出入库单，
-     * 而调拨详情页也没有口子，于是建错一张就永远挂在那儿（2026-09-02 生产上
+     * <p>此前调拨没有任何撤销路径：单据列表的作废按钮只放行出入库单， 而调拨详情页也没有口子，于是建错一张就永远挂在那儿（2026-09-02 生产上
      * 有三张这样的草稿）。已发出的不给作废，见 {@link TransferService#cancel}。
      */
     /**
      * 作废一张<b>还在盘的</b>盘点单 —— 「开错了怎么办」的答案。
      *
-     * <p>自从「一个库位同时只许开一张」那道闸立起来，开错的那张就从
-     * 「不管它」变成了<b>挡路的</b>：不处理掉，这个库位再也盘不了。
-     * 已过账的不给作废，见 {@link StockCountService#cancel}。
+     * <p>自从「一个库位同时只许开一张」那道闸立起来，开错的那张就从 「不管它」变成了<b>挡路的</b>：不处理掉，这个库位再也盘不了。 已过账的不给作废，见 {@link
+     * StockCountService#cancel}。
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/void")
@@ -193,45 +218,72 @@ public class BizStockDocController {
     }
 
     // ── 请求体 ────────────────────────────────────────────────────────
-    public record LineReq(String itemId, int qty, String uom, Long unitCostMinor) {
+    public record LineReq(
+            String itemId,
+            int qty,
+            String uom,
+            Long unitCostMinor,
+            String batchNo,
+            LocalDate expireAt) {
+        public LineReq(String itemId, int qty, String uom, Long unitCostMinor) {
+            this(itemId, qty, uom, unitCostMinor, null, null);
+        }
     }
 
     /**
-     * @param carrierName <b>端上带下来的名字快照</b>。承运方档案在主库，
-     *                    进销存读不了它 —— 让端上把选中那条的名字一起发过来，
-     *                    比在服务层做一次跨库查询干净得多。
+     * @param carrierName <b>端上带下来的名字快照</b>。承运方档案在主库， 进销存读不了它 —— 让端上把选中那条的名字一起发过来， 比在服务层做一次跨库查询干净得多。
      */
-    public record ShipReq(String carrierNo, String carrierName, String trackingNo) {
-    }
+    public record ShipReq(String carrierNo, String carrierName, String trackingNo) {}
 
-    public record InboundReq(String sourceType, String supplierNo, String supplierName,
-                            LocalDateTime occurredAt,
-                             String remark, List<LineReq> lines) {
-    }
+    public record InboundReq(
+            String sourceType,
+            String supplierNo,
+            String supplierName,
+            LocalDateTime occurredAt,
+            String remark,
+            List<LineReq> lines) {}
 
     /**
      * @param targetType 去向类型（{@code SUPPLIER}），空 = 没有去向（报损）
-     * @param targetNo   去向对象编号。<b>名字不收</b> —— 由服务端查了写快照，
-     *                   端上传的话，改个名字就能让历史单据说谎
+     * @param targetNo 去向对象编号。<b>名字不收</b> —— 由服务端查了写快照， 端上传的话，改个名字就能让历史单据说谎
      */
-    public record OutboundReq(String purpose, String reasonCode, LocalDateTime occurredAt,
-                              String remark, String targetType, String targetNo,
-                              List<LineReq> lines) {
-    }
+    public record OutboundReq(
+            String purpose,
+            String reasonCode,
+            LocalDateTime occurredAt,
+            String remark,
+            String targetType,
+            String targetNo,
+            List<LineReq> lines) {}
 
-    public record CountOpenReq(List<String> itemIds) {
-    }
+    public record CountOpenReq(List<String> itemIds) {}
 
-    public record TransferReq(String fromLocationId, String toLocationId, List<LineReq> lines) {
-    }
+    public record TransferReq(String fromLocationId, String toLocationId, List<LineReq> lines) {}
 
     // ────────────────────────────────────────────────────────────────
     private InboundService.Draft draftOf(InboundReq req) {
-        List<InboundService.Line> lines = req.lines().stream()
-                .map(l -> new InboundService.Line(l.itemId(), l.qty(), l.uom(), l.unitCostMinor()))
-                .toList();
-        return new InboundService.Draft(owner(), location(), req.sourceType(), null,
-                req.supplierNo(), req.supplierName(), req.occurredAt(), req.remark(), lines);
+        List<InboundService.Line> lines =
+                req.lines().stream()
+                        .map(
+                                l ->
+                                        new InboundService.Line(
+                                                l.itemId(),
+                                                l.qty(),
+                                                l.uom(),
+                                                l.unitCostMinor(),
+                                                l.batchNo(),
+                                                l.expireAt()))
+                        .toList();
+        return new InboundService.Draft(
+                owner(),
+                location(),
+                req.sourceType(),
+                null,
+                req.supplierNo(),
+                req.supplierName(),
+                req.occurredAt(),
+                req.remark(),
+                lines);
     }
 
     private String owner() {
@@ -240,7 +292,8 @@ public class BizStockDocController {
 
     private String location() {
         BizContext ctx = BizContext.current();
-        return locations.resolveStockLocation(acl.ownerIdOf(ctx.merchantNo()),
+        return locations.resolveStockLocation(
+                acl.ownerIdOf(ctx.merchantNo()),
                 acl.locationIdOf(ctx.merchantNo(), ctx.currentStoreNo()));
     }
 }

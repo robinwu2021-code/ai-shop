@@ -15,6 +15,9 @@ public class IndustryOrderPortImpl implements IndustryOrderPort {
     @Override public Result placeForDiningRoom(Command command, String key) {
         return service.placeForDiningRoom(command, key);
     }
+    @Override public Result placeForService(Command command, String key, String fulfillment, boolean staff) {
+        return service.placeForService(command, key, fulfillment, staff);
+    }
     @Override public Result placeForStore(Command command, String key) { return service.placeForStore(command, key); }
     @Override public Result queryForStore(Identity identity, String key) { return service.queryForStore(identity, key); }
     @Override public Result place(Command command, String key) { return service.place(command, key); }

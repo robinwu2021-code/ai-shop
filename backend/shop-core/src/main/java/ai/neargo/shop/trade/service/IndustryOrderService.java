@@ -14,6 +14,9 @@ public interface IndustryOrderService {
     default Result placeForDiningRoom(Command command, String key) {
         throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
     }
+    default Result placeForService(Command command, String key, String fulfillment, boolean staff) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
     Result queryForStore(Identity identity, String key);
     Result place(Command command, String key);
     Result cancel(Command command, String key);

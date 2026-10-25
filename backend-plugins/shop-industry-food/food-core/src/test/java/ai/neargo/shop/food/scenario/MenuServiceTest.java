@@ -97,7 +97,7 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                         + "category_no VARCHAR(32) UNIQUE,name VARCHAR(64),sort_no INT)");
                 f.sql().execute("CREATE TABLE fnb_menu_item (" + common + "menu_item_no VARCHAR(32) UNIQUE,"
                         + "category_no VARCHAR(32),goods_no VARCHAR(32),sort_no INT,enabled BOOLEAN,"
-                        + "sku_scope VARCHAR(16),option_mode VARCHAR(16),UNIQUE(category_no,goods_no))");
+                        + "sku_scope VARCHAR(16),option_mode VARCHAR(16),price_overrides TEXT,UNIQUE(category_no,goods_no))");
                 f.sql().execute("CREATE TABLE fnb_menu_item_sku (" + common + "menu_item_no VARCHAR(32),"
                         + "sku_no VARCHAR(32),selection_mode VARCHAR(16),recipe_no VARCHAR("
                                 + "32),UNIQUE(menu_item_no,sku_no))");

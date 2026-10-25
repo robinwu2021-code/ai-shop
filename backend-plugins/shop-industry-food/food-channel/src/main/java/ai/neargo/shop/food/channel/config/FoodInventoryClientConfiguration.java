@@ -6,6 +6,9 @@ import ai.neargo.shop.spi.inventory.InventoryProductionPort;
 import ai.neargo.shop.spi.inventory.InventoryProductionInternalApi;
 import ai.neargo.shop.spi.inventory.InventoryReservationInternalApi;
 import ai.neargo.shop.spi.inventory.InventoryReservationPort;
+import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
+import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi;
+import ai.neargo.shop.food.channel.port.CoreInventoryDemandPlanPortImpl;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
 import java.time.Duration;
@@ -18,6 +21,14 @@ import org.springframework.context.annotation.Lazy;
 /** Standalone food-server import only; embedded PLATFORM retains its authoritative local inventory port. */
 @Configuration(proxyBeanMethods = false)
 public class FoodInventoryClientConfiguration {
+    @Bean @Lazy
+    InventoryDemandPlanInternalApi inventoryDemandPlanInternalApi(InternalHttp http) {
+        return http.client(ServiceName.PLATFORM, InventoryDemandPlanInternalApi.class, Duration.ofSeconds(5));
+    }
+    @Bean @ConditionalOnMissingBean(InventoryDemandPlanPort.class)
+    InventoryDemandPlanPort coreInventoryDemandPlanPort(ObjectProvider<InventoryDemandPlanInternalApi> api) {
+        return new CoreInventoryDemandPlanPortImpl(api::getObject);
+    }
     @Bean @Lazy
     InventoryProductionInternalApi inventoryProductionInternalApi(InternalHttp http) {
         return http.client(ServiceName.PLATFORM,InventoryProductionInternalApi.class,Duration.ofSeconds(5));

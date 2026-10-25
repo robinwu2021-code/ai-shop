@@ -14,12 +14,16 @@ public interface IndustryOrderInternalApi {
     @PostExchange(ROOT + "/store/dining-room/place") Result placeForDiningRoom(@RequestBody Place request);
     @PostExchange(ROOT + "/store/place") Result placeForStore(@RequestBody Place request);
     @PostExchange(ROOT + "/store/query") Result queryForStore(@RequestBody Query request);
+    @PostExchange(ROOT + "/service/place") Result placeForService(@RequestBody ServicePlace request);
     @PostExchange(ROOT + "/place") Result place(@RequestBody Place request);
     @PostExchange(ROOT + "/query") Result query(@RequestBody Query request);
     @PostExchange(ROOT + "/get") Result get(@RequestBody Get request);
     @PostExchange(ROOT + "/cancel") Result cancel(@RequestBody Place request);
     @PostExchange(ROOT + "/store/get") Result getForStore(@RequestBody StoreGet request);
     @PostExchange(ROOT + "/store/cancel") Result cancelForStore(@RequestBody StoreCancel request);
+    record ServicePlace(Command command, String key, String fulfillment, boolean staff) {
+        @Override public String toString() { return "IndustryServicePlace[REDACTED]"; }
+    }
     record StoreCancel(Command command, String key, String fulfillment) {
         @Override public String toString() { return "IndustryStoreCancel[REDACTED]"; }
     }

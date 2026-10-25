@@ -704,6 +704,202 @@
       "writeService": "BusinessShareService",
       "customMapperMethods": [],
       "mapperClass": "ai.neargo.shop.food.mapper.BusinessSharePlanMapper"
+    },
+    "fnb_dining_device": {
+      "moduleId": "MOD-07",
+      "writeService": "DiningIdentityService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.DiningIdentityMappers.DeviceMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_identity_authorization": {
+      "moduleId": "MOD-07",
+      "writeService": "DiningIdentityService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.DiningIdentityMappers.AuthorizationMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_identity_operation": {
+      "moduleId": "MOD-07",
+      "writeService": "DiningIdentityService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.DiningIdentityMappers.OperationMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_check_freeze": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckBusinessGuardService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_check_line_membership": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckCollaborationService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.BusinessSharePlanMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_reservation_preorder": {
+      "moduleId": "MOD-01",
+      "writeService": "ReservationPreorderService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_service_slot": {
+      "moduleId": "MOD-01",
+      "writeService": "ServiceSlotService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_capacity_claim": {
+      "moduleId": "MOD-01",
+      "writeService": "ServiceSlotService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_service_handover": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckCollaborationService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_service_handover_item": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckCollaborationService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_service_responsibility": {
+      "moduleId": "MOD-01",
+      "writeService": "CheckCollaborationService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_operation_case": {
+      "moduleId": "MOD-01",
+      "writeService": "BusinessOperationsService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_business_command": {
+      "moduleId": "MOD-01",
+      "writeService": "BusinessOperationsService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_scheduled_dispatch": {
+      "moduleId": "MOD-03",
+      "writeService": "ScheduledDiningDispatchService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_queue_notice": {
+      "moduleId": "MOD-01",
+      "writeService": "QueueNotificationService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_kds_cursor": {
+      "moduleId": "MOD-07",
+      "writeService": "FoodKdsService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodKdsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_kds_subscription": {
+      "moduleId": "MOD-07",
+      "writeService": "FoodKdsService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodKdsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_kds_event": {
+      "moduleId": "MOD-07",
+      "writeService": "FoodKdsService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodKdsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_station_runtime": {
+      "moduleId": "MOD-07",
+      "writeService": "FoodStationRuntimeService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodStationRuntimeMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_kds_voice_command": {
+      "moduleId": "MOD-07",
+      "writeService": "FoodStationRuntimeService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodStationRuntimeMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_return_amendment": {
+      "moduleId": "MOD-06",
+      "writeService": "BusinessReturnService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.BusinessSharePlanMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_fee_source_binding": {
+      "moduleId": "MOD-03",
+      "writeService": "FoodFeeSourceService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_cart_delivery": {
+      "moduleId": "MOD-03",
+      "writeService": "DiningDeliveryService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.DiningDeliveryMapper.DiningDeliveryMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_business_organization": {
+      "moduleId": "MOD-11",
+      "writeService": "ServiceFormService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.ServiceFormMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_service_form": {
+      "moduleId": "MOD-11",
+      "writeService": "ServiceFormService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_service_attendee": {
+      "moduleId": "MOD-11",
+      "writeService": "ServiceFormService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.ServiceFormMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_service_form_batch": {
+      "moduleId": "MOD-11",
+      "writeService": "ServiceFormService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.ServiceFormMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
+    },
+    "fnb_fee_contract_claim": {
+      "moduleId": "MOD-03",
+      "writeService": "FoodFeeSourceService",
+      "customMapperMethods": [],
+      "mapperClass": "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
+      "status": "SOURCE_PRESENT_PENDING_CURRENT_BATCH_VERIFICATION"
     }
   },
   "methodOverrides": {
