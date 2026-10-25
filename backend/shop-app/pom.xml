@@ -226,7 +226,9 @@
                          在 16GB 机器上只有 4GB，全量跑到 Payment*/Points* 一带就 OutOfMemoryError ——
                          表现成几十条「Failed to load ApplicationContext」与 H2「database has been closed」。
                          按比例给而不是写死 -Xmx：内存小的机器不会因此被撑爆。 -->
-                    <argLine>-XX:MaxRAMPercentage=40</argLine>
+                    <!-- 时区与生产一致（国内节点，Asia/Shanghai）。积分统计等按 JVM 本地时间落库、按北京营业日取数，
+                         开发机在别的时区时每天有几个小时两边的「今天」不是同一天，相关用例就固定变红。 -->
+                    <argLine>-XX:MaxRAMPercentage=40 -Duser.timezone=Asia/Shanghai</argLine>
                     <!-- 用属性而不是写死：空的 <excludedGroups/> 在 profile 合并时不会覆盖父值 -->
                     <systemPropertyVariables>
                         <food.build.shape>${food.build.shape}</food.build.shape>
