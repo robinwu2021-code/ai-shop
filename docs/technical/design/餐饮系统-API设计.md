@@ -3,7 +3,9 @@
 > 源码核对：2026-10-25；云端基线 FOOD V15（83张业务表＋历史表＝84张），当前源码目标 FOOD V25 / CORE V581 / INVENTORY V14。交付核验状态：COMPILED_FOCUSED_VERIFIED_PENDING_RELEASE；独立适配/原生专项及发布进展见交付验证记录，历史 V1/73 仅为当时初始化记录。PLANNED 对象保留为目标，不代表实现。
 > 由 `node scripts/gen-food-system-design.mjs` 生成；真源：[设计源](./schema/food-system-design.json)。实际 API、方法与迁移从原源码发现；不执行迁移。
 
-## 当前源码实现清单（待集中编译与验证）
+## 当前源码实现清单（交付核验见记录）
+
+> 状态：静态源码投影，编译、专项测试和部署证据见[本批交付验证](../TDD-餐饮系统-BIZ01-12-交付验证.md)。
 
 云端基线为 FOOD V15，83 张业务表加 fnb_flyway_history 共84张；当前源码目标 FOOD V25 / CORE V581 / INVENTORY V14。实际三端注册数量以本节路由为准，未精确匹配的原ops专项目标继续保留规划。实际共享内部入口按原owner列出。本节仅静态读取源码，不表示测试通过、迁移已执行或已部署。后文目标规划及历史验收记录分别保留。
 

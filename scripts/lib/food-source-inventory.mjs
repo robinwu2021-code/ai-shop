@@ -258,7 +258,7 @@ export function reconcileFoodSource(root, s, plan) {
 }
 export function renderActualFoodSource(actual, section = 'api') {
   const cell = x => String(x ?? '—').replaceAll('|', '\\|').replaceAll('\n', ' ');
-  let md = '## 当前源码实现清单（待集中编译与验证）\n\n云端基线为 FOOD V15，83 张业务表加 fnb_flyway_history 共84张；当前源码目标 FOOD V25 / CORE V581 / INVENTORY V14。实际三端注册数量以本节路由为准，未精确匹配的原ops专项目标继续保留规划。实际共享内部入口按原owner列出。本节仅静态读取源码，不表示测试通过、迁移已执行或已部署。后文目标规划及历史验收记录分别保留。\n\n';
+  let md = '## 当前源码实现清单（交付核验见记录）\n\n> 状态：静态源码投影，编译、专项测试和部署证据见[本批交付验证](../TDD-餐饮系统-BIZ01-12-交付验证.md)。\n\n云端基线为 FOOD V15，83 张业务表加 fnb_flyway_history 共84张；当前源码目标 FOOD V25 / CORE V581 / INVENTORY V14。实际三端注册数量以本节路由为准，未精确匹配的原ops专项目标继续保留规划。实际共享内部入口按原owner列出。本节仅静态读取源码，不表示测试通过、迁移已执行或已部署。后文目标规划及历史验收记录分别保留。\n\n';
   if (section === 'api') {
   md += '| 端 | HTTP | 实际路径 | Controller方法 | 参数声明 | 返回类型 | 权限声明（源码） |\n|---|---|---|---|---|---|---|\n';
   for (const e of actual.endpoints) md += `| ${e.realm} | ${e.method} | ${cell(e.path)} | ${cell(e.controllerClass + '.' + e.handler)} | ${cell(e.parameters.map(p => p.declaration).join('; '))} | ${cell(e.responseType)} | ${cell(e.securityAnnotations.join('; '))} |\n`;
