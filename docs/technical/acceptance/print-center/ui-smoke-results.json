@@ -1,0 +1,24 @@
+{
+  "mode": "VITE_USE_MOCK=1",
+  "result": "PASS",
+  "scope": "Browser route rendering and safe demo-mode protection; not live-backend interaction acceptance",
+  "pages": [
+    {
+      "path": "/pages/print-center/index",
+      "title": "打印中心",
+      "result": "PASS"
+    },
+    {
+      "path": "/pages/print-devices/index",
+      "title": "打印设备",
+      "result": "PASS"
+    },
+    {
+      "path": "/pages/print-templates/index",
+      "title": "小票模板",
+      "result": "PASS"
+    }
+  ],
+  "observedText": "当前为演示数据。连接真实后端后可管理打印、运行模拟和导出PDF。",
+  "sideEffects": "No real print operations or live business API calls; temporary server and tab closed"
+}

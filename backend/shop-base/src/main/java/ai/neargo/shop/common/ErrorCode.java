@@ -13,6 +13,9 @@ public enum ErrorCode {
     PRICING_OWNER_UNSUPPORTED(40190, "err.pricing.owner_unsupported"),
 
     // ---- 1xxxx 通用 ----
+    PRINT_BLOCKED(82001, "err.print.blocked"),
+    PRINT_CONFLICT(82002, "err.print.conflict"),
+    PRINT_UNAVAILABLE(82003, "err.print.unavailable"),
     BAD_REQUEST(10400, "err.bad_request"),
     UNAUTHORIZED(10401, "err.unauthorized"),
     /*

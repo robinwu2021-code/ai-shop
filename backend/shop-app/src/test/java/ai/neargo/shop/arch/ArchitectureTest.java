@@ -704,7 +704,9 @@ class ArchitectureTest {
                 // **不是业务域**：没有业务规则，只有一张「码查目标」的表与一个跳转控制器，
                 // 与 report / media 同构（有表，但那是工具不是业务）。谁要发条短链就用它，
                 // 它不认识任何业务概念、也不依赖任何域。见 TDD-收件人物流触达与分享裂变 §4.2。
-                "link");
+                "link",
+                "print", // print-api DTOs and channel adapters; durable state belongs to printing.
+                "printbridge");
         List<String> known = new ArrayList<>(infra);
         known.addAll(List.of(DOMAINS));
 

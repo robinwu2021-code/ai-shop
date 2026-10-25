@@ -208,6 +208,12 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     @Autowired private PaymentLifecycleService paymentLifecycle;
     @Autowired private PaymentResolutionService paymentResolutions;
 
+    private ai.neargo.shop.trade.order.printing.service.OrderPrintFactService orderPrintFacts;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOrderPrintFacts(ai.neargo.shop.trade.order.printing.service.OrderPrintFactService facts) {
+        this.orderPrintFacts = facts;
+    }
+
     private ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator pointsRefundSource;
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setPointsRefundSource(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator source) {
@@ -2525,6 +2531,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          */
         AfterCommit.run("生成结算单 orderNo=" + orderNo,
                 () -> settlePort.generateForOrder(orderNo));
+
+        if (orderPrintFacts != null) orderPrintFacts.recordPaid(orderNo, confirmed);
 
         eventBus.publish(new OrderEvents.OrderPaid(orderNo, order.getUserNo(),
                 order.getPayAmount(), payChannel));

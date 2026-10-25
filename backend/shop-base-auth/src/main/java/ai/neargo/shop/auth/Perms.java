@@ -46,6 +46,8 @@ import java.util.Map;
  * 一个能审商家又能改价又能退款的角色，出事时无法定位是谁的职责。
  */
 public final class Perms {
+    public static final String PRINT_READ="ops:print:read";
+    public static final String PRINT_RESOLVE="ops:print:resolve";
 
     /** 查看平台默认税配置。 */
     public static final String PRICING_TAX_READ = "pricing:tax:read";

@@ -63,10 +63,12 @@ class PrintDeliveryTest {
                     null,
                     List.of(new Line("SKU", "2", null, "座位 1")),
                     "不代表收款");
-    private PrintService service;
-    private JdbcTemplate jdbc;
+    PrintService service;
+    JdbcTemplate jdbc;
     private OutboxPublisher outbox;
-    private TestClock clock;
+    TestClock clock;
+    DeviceMapper devices;
+    JobMapper jobs;
 
     @BeforeEach
     void setup() throws Exception {
@@ -93,9 +95,13 @@ class PrintDeliveryTest {
             }
         }
         jdbc.execute("ALTER TABLE prn_device ADD authorization_version BIGINT NOT NULL DEFAULT 0");
-        jdbc.execute(
-                "ALTER TABLE prn_device ADD revoke_reason VARCHAR(255), ADD revoked_by VARCHAR(32),"
-                        + " ADD revoke_key VARCHAR(128), ADD revocation_history CLOB");
+        jdbc.execute("ALTER TABLE prn_device ADD revoke_reason VARCHAR(255)");
+        jdbc.execute("ALTER TABLE prn_device ADD revoked_by VARCHAR(32)");
+        jdbc.execute("ALTER TABLE prn_device ADD revoke_key VARCHAR(128)");
+        jdbc.execute("ALTER TABLE prn_device ADD revocation_history CLOB");
+        applyCanonicalPrintColumns(jdbc);
+        // Runtime is a secondary projection of the canonical gate, including when the center is disabled.
+        jdbc.execute("CREATE TABLE prn_printer_runtime (tenant_no VARCHAR(32), entity_no VARCHAR(32), printer_no VARCHAR(32), active_job_no VARCHAR(32), active_attempt_no VARCHAR(32), lease_owner VARCHAR(64), lease_token_hash VARCHAR(64), lease_until TIMESTAMP, blocked_reason VARCHAR(64), updated_at TIMESTAMP, revision BIGINT DEFAULT 0)");
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var plugins = new MybatisPlusInterceptor();
@@ -114,14 +120,16 @@ class PrintDeliveryTest {
         factory.setDataSource(source);
         factory.setConfiguration(config);
         var session = new SqlSessionTemplate(factory.getObject());
+        devices = session.getMapper(DeviceMapper.class);
+        jobs = session.getMapper(JobMapper.class);
         outbox = mock(OutboxPublisher.class);
         clock = new TestClock();
         service =
                 new PrintServiceImpl(
-                        session.getMapper(DeviceMapper.class),
+                        devices,
                         session.getMapper(TemplateMapper.class),
                         session.getMapper(RouteMapper.class),
-                        session.getMapper(JobMapper.class),
+                        jobs,
                         session.getMapper(AttemptMapper.class),
                         JsonMapper.builder().build(),
                         clock,
@@ -347,7 +355,23 @@ class PrintDeliveryTest {
         assertThat(service.configuration(OWNER).devices().getFirst().status()).isEqualTo("ACTIVE");
     }
 
-    private static class TestClock extends Clock {
+    /** Replay only canonical column extensions; production data backfill remains a migration concern. */
+    static void applyCanonicalPrintColumns(JdbcTemplate jdbc) throws Exception {
+        String migration = Files.readString(Path.of("../shop-app/src/main/resources/db/migration/"
+                + "V582__unified_print_capabilities.sql"));
+        var statements = java.util.regex.Pattern.compile(
+                "ALTER\\s+TABLE\\s+(prn_job|prn_attempt|prn_device)\\s+(.+?);(?=\\s*(?:\\r?\\n|$))",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL).matcher(migration);
+        while (statements.find()) {
+            for (String addition : statements.group(2).split(",\\s*(?=ADD\\s)")) {
+                if (addition.stripLeading().matches("(?is)ADD\\s+COLUMN\\s+.*")) {
+                    jdbc.execute("ALTER TABLE " + statements.group(1) + " " + addition.strip());
+                }
+            }
+        }
+    }
+
+    static class TestClock extends Clock {
         private Instant instant = Instant.parse("2026-10-24T01:00:00Z");
 
         void advance(long seconds) {

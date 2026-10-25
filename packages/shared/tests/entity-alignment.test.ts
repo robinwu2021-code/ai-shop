@@ -119,15 +119,32 @@ const NO_ENTITY_YET: Record<string, string> = {
 };
 
 /** 收集 backend 下所有 `@TableName("xxx")` 的实体，键是表名 */
-function scanEntities(dir: string, out = new Map<string, { file: string; fields: Set<string> }>()) {
+function scanEntities(dir: string, out = new Map<string, { file: string; fields: Set<string>; source: string }>()) {
   for (const e of readdirSync(dir)) {
     if (e === "target" || e === "node_modules") continue;
     const p = join(dir, e);
     if (statSync(p).isDirectory()) scanEntities(p, out);
     else if (e.endsWith(".java")) {
-      const src = readFileSync(p, "utf8");
+      let src = readFileSync(p, "utf8");
       const t = src.match(/@TableName\("(\w+)"\)/)?.[1];
       if (!t) continue;
+      const seen = new Set<string>([p]);
+      let child = src;
+      let childFile = p;
+      for (;;) {
+        const parent = child.match(/\bclass\s+\w+\s+extends\s+(\w+)/)?.[1];
+        if (!parent || parent === "BaseEntity") break;
+        const imported = child.match(new RegExp(`import\\s+([\\w.]+\\.${parent});`))?.[1];
+        const samePackage = join(childFile, "..", `${parent}.java`);
+        const parentFile = existsSync(samePackage) ? samePackage : imported
+          ? join(childFile.slice(0, childFile.indexOf("/src/main/java/")), "src/main/java", ...imported.split(".")) + ".java" : null;
+        if (!parentFile || !existsSync(parentFile)) throw new Error(`Cannot resolve entity parent ${parent}: ${p}`);
+        if (seen.has(parentFile)) throw new Error(`Cyclic entity inheritance: ${p}`);
+        seen.add(parentFile);
+        childFile = parentFile;
+        child = readFileSync(parentFile, "utf8");
+        src += "\n" + child;
+      }
       // `private Long x;` / `private List<String> y;` / `private Map<String, X> z;`
       // `@TableField("col")` 显式映射优先 —— 全库改名（merchant_no→entity_no）后
       // 字段名与列名分离是常态，对齐要按**实际映射到的列**算。
@@ -136,7 +153,7 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
         [...src.matchAll(
           /((?:@[\w.]+(?:\([^)]*\))?\s*)*)private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
         )].map((m) => {
-          const column = m[1]!.match(/@TableField\(\s*"(\w+)"\s*\)/)?.[1];
+          const column = m[1]!.match(/@(?:[\w]+\.)*TableField\(\s*"(\w+)"\s*\)/)?.[1];
           return column ? camel(column) : m[2]!;
         }),
       );
@@ -147,8 +164,8 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
        */
       const prev = out.get(t);
       out.set(t, prev
-        ? { file: `${prev.file} + ${p.slice(ROOT.length + 1)}`, fields: new Set([...prev.fields, ...fields]) }
-        : { file: p.slice(ROOT.length + 1), fields });
+        ? { file: `${prev.file} + ${p.slice(ROOT.length + 1)}`, fields: new Set([...prev.fields, ...fields]), source: prev.source + "\n" + src }
+        : { file: p.slice(ROOT.length + 1), fields, source: src });
     }
   }
   return out;
@@ -174,6 +191,11 @@ describe("Java 实体与库表对齐", () => {
     const fields = entities.get("trd_shipping_upload")?.fields;
     expect(fields?.has("sourceSnapshot")).toBe(true);
     expect(fields?.has("sourceSnapshotJson")).toBe(false);
+  });
+
+  it("打印实体继承的业务归属与修订字段参与真实列对齐", () => {
+    expect(entities.get("prn_agent")?.fields.has("entityNo")).toBe(true);
+    expect(entities.get("prn_agent")?.fields.has("revision")).toBe(true);
   });
 
   it("解析到了实体与表 —— 一个都没有多半是路径或注解写法变了", () => {
@@ -228,12 +250,12 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
 
   it("实体没有库里不存在的字段 —— 那种写入会在运行时才炸", () => {
     const ghost: string[] = [];
-    for (const [table, { file, fields }] of entities) {
+    for (const [table, { file, fields, source }] of entities) {
       const cols = new Set(businessCols(table));
       // @TableField(exist = false) 的字段不落库，扫描认不出来，所以只报有把握的：
       // 名字看起来像列（非集合、非 transient）却在库里没有
       const extra = [...fields].filter(
-        (f) => !cols.has(f) && !BASE_FIELDS.has(f) && !readFileSync(join(ROOT, file), "utf8")
+        (f) => !cols.has(f) && !BASE_FIELDS.has(f) && !source
           .match(new RegExp(`exist\\s*=\\s*false[^;]*?\\b${f}\\b|\\b${f}\\b[^;]*?exist\\s*=\\s*false`)),
       );
       if (extra.length) ghost.push(`${table}（${file}）多出：${extra.join("、")}`);

@@ -30,4 +30,9 @@ public class PrnDevice extends BaseEntity {
     private String revokedBy;
     private String revokeKey;
     private String revocationHistory;
+    private String physicalKey;
+    private String executionResolutionHistory;
+    private String activeJobNo;
+    private String activeAttemptNo;
+    private Long activeFenceEpoch;
 }

@@ -1,0 +1,72 @@
+[
+  {
+    "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/PricingFeeRuleServiceImpl.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "5226d31968145bf2075a810c97ac648c405e769d669ceab0511aa49a44cbc838",
+    "current_sha256": "5226d31968145bf2075a810c97ac648c405e769d669ceab0511aa49a44cbc838"
+  },
+  {
+    "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/BrandFinancialChangeService.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "d3491b96c9cdc0ab174f152b8cbf8cd548701d2914133b2e168f9cbd64653ba0",
+    "current_sha256": "d3491b96c9cdc0ab174f152b8cbf8cd548701d2914133b2e168f9cbd64653ba0"
+  },
+  {
+    "path": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/StoredValueFinanceAppService.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "b2a705080db09418a534fb772a0a875cf9efc646e0216f162c2a7bf9926f3dc6",
+    "current_sha256": "b2a705080db09418a534fb772a0a875cf9efc646e0216f162c2a7bf9926f3dc6"
+  },
+  {
+    "path": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/impl/StoredValueFinanceAppServiceImpl.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "2e1ab18cb8c0982ff13dc517c8c41807b8ee05096f6ea9aff5d4d46a8bfd216e",
+    "current_sha256": "2e1ab18cb8c0982ff13dc517c8c41807b8ee05096f6ea9aff5d4d46a8bfd216e"
+  },
+  {
+    "path": "backend/shop-app/src/main/java/ai/neargo/shop/payclient/impl/RemoteStoredValueFinanceAppService.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "214e879cff5316a0c652060cab95426df98e6a73f380a7bedaa78914a7637fd7",
+    "current_sha256": "214e879cff5316a0c652060cab95426df98e6a73f380a7bedaa78914a7637fd7"
+  },
+  {
+    "path": "backend/shop-app/src/main/java/ai/neargo/shop/merchantbridge/StoredValueCollectionContext.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "1c24aa1b67993b178b13be9e9bbbdedef313a2d52dffcf4bd004a5cef258ab0c",
+    "current_sha256": "1c24aa1b67993b178b13be9e9bbbdedef313a2d52dffcf4bd004a5cef258ab0c"
+  },
+  {
+    "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BizStoredValueSettlementController.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "b49675de6bef128cb2deab2da369a655bb86e576a2afe649d83f0e62aae1faea",
+    "current_sha256": "b49675de6bef128cb2deab2da369a655bb86e576a2afe649d83f0e62aae1faea"
+  },
+  {
+    "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/biz/BrandStoredValueRechargeSupport.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "f344a2a76036ae3dd9e0561415135cf9467ac629837c9f84d1f8b44382979716",
+    "current_sha256": "f344a2a76036ae3dd9e0561415135cf9467ac629837c9f84d1f8b44382979716"
+  },
+  {
+    "path": "backend/shop-app/src/test/java/ai/neargo/shop/arch/BizResourceAuthorization.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "1d744bd55ba9bc6f6bf757ff4aeb8d22cbaf783ce95aad7493e9243f588fbfee",
+    "current_sha256": "1d744bd55ba9bc6f6bf757ff4aeb8d22cbaf783ce95aad7493e9243f588fbfee"
+  },
+  {
+    "path": "backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointSource.java",
+    "baseline": "d0e1b93ee",
+    "same_bytes": true,
+    "baseline_sha256": "2618d10d82e1c6eeb30bd145dc4579eeb31997118e47e5aa97feb5f2efb8bb9a",
+    "current_sha256": "2618d10d82e1c6eeb30bd145dc4579eeb31997118e47e5aa97feb5f2efb8bb9a"
+  }
+]

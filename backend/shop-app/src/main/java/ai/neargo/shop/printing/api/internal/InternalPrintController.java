@@ -1,5 +1,8 @@
 package ai.neargo.shop.printing.api.internal;
 
+import ai.neargo.shop.printing.service.PrintService;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ai.neargo.shop.spi.printing.PrintInternalApi;
 import ai.neargo.shop.spi.printing.PrintPort;
 import ai.neargo.shop.spi.printing.PrintPort.Scope;
@@ -19,6 +22,24 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 public class InternalPrintController {
+    private PrintService owner;
+    @Autowired
+    public void setOwner(PrintService owner) {this.owner=owner;}
+    public record ResolveDeviceCommand(Scope scope, PrintService.DeviceResolution resolution) {}
+
+    @PostMapping(PrintInternalApi.ROOT + "/resolveDeviceUncertainty")
+    public ResponseEntity<?> resolveDeviceUncertainty(@RequestBody ResolveDeviceCommand request,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
+        return InternalServiceResponses.invoke(token,given,()->owner.resolveDeviceUncertainty(request.scope(),request.resolution()));
+    }
+
+    public record RecoveryQuery(Scope scope,String deviceNo) {}
+    @PostMapping(PrintInternalApi.ROOT + "/deviceRecovery")
+    public ResponseEntity<?> deviceRecovery(@RequestBody RecoveryQuery request,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given) {
+        return InternalServiceResponses.invoke(token,given,()->owner.deviceRecovery(request.scope(),request.deviceNo()));
+    }
+
     private final PrintPort service;
     private final String token;
 

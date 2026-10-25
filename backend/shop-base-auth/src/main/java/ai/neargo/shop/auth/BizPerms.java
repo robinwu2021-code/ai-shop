@@ -132,11 +132,24 @@ public final class BizPerms {
      *   <li><b>理货员没有 ORDER_VIEW。</b> 分拣单本身够他用且不含金额，给了是多给。</li>
      * </ul>
      */
+    public static final String PRINT_READ = "biz:print:read";
+    public static final String PRINT_SUBMIT = "biz:print:submit";
+    public static final String PRINT_REPRINT = "biz:print:reprint";
+    public static final String PRINT_EXTRA = "biz:print:extra";
+    public static final String PRINT_DEVICE = "biz:print:device";
+    public static final String PRINT_CONFIG = "biz:print:config";
+    public static final String PRINT_RESOLVE = "biz:print:resolve";
+    public static final String PRINT_SIMULATE = "biz:print:simulate";
+    public static final String PRINT_EXPORT = "biz:print:export";
+
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
             OWNER, List.of("*"),
             MANAGER, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK,
-                    GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE),
-            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK),
+                    GOODS, CAMPAIGN, REVIEW, AFTERSALE, CUSTOMER, STORE,
+                    PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_EXTRA, PRINT_DEVICE, PRINT_CONFIG,
+                    PRINT_RESOLVE, PRINT_SIMULATE, PRINT_EXPORT),
+            CLERK, List.of(RECEIVE, VERIFY, SHIP, ORDER_VIEW, STOCK,
+                    PRINT_READ, PRINT_SUBMIT, PRINT_REPRINT, PRINT_SIMULATE, PRINT_EXPORT),
             PICKER, List.of(RECEIVE, STOCK),
             COURIER, List.of(SHIP, ORDER_VIEW),
             // 只对着顾客说话：回评价、处理售后、看得到那张单。不碰货、不碰钱
@@ -153,6 +166,15 @@ public final class BizPerms {
      * {@code BizRoleSeedTest} 断言这里覆盖了全部权限码 —— 加码忘了加说明就红。
      */
     public static final Map<String, String> LABELS = Map.ofEntries(
+            Map.entry(PRINT_READ, "查看打印任务"),
+            Map.entry(PRINT_SUBMIT, "提交打印"),
+            Map.entry(PRINT_REPRINT, "补打小票"),
+            Map.entry(PRINT_EXTRA, "加印小票"),
+            Map.entry(PRINT_DEVICE, "管理打印设备"),
+            Map.entry(PRINT_CONFIG, "配置打印模板与路由"),
+            Map.entry(PRINT_RESOLVE, "核实打印异常"),
+            Map.entry(PRINT_SIMULATE, "模拟打印"),
+            Map.entry(PRINT_EXPORT, "导出打印PDF"),
             Map.entry(PRICING_TAX_READ, "查看商家税配置"),
             Map.entry(PRICING_TAX_UPDATE, "维护商家税配置（仅主体属主）"),
             Map.entry(PRICING_CONFIG_READ, "查看门店结账规则"),

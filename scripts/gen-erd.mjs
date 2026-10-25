@@ -67,6 +67,11 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  active_job_no: "prn_job",
+  active_attempt_no: "prn_attempt",
+  agent_no: "prn_agent",
+  printer_no: "prn_printer",
+  route_version_no: "prn_route_version",
   active_store_no: "mch_store",
   from_brand_no: "mch_brand",
   to_brand_no: "mch_brand",
@@ -302,6 +307,10 @@ const TOPICS = [
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
 const NAME_COLLISIONS_WHY = {
+  trace_no: "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
+  receipt_no: "权益迁移返回凭证与打印设备回执是独立证据族，必须按来源表选择所属域。",
+  route_no: "打印管理路由目录与统一投递目标路由是不同层级；管理版本引用catalog，投递路由仍由统一服务持有。",
+  policy_version_no: "储值发行政策版本与打印场景政策版本各自发布，必须结合来源表选择所属版本族。",
   source_event_no: "来源系统各自产生的事件号；必须结合source_system及原始来源，不能仅按同名跨系统关联。",
   rule_no: "stl_fee_rule是结算费率规则；ord_price_quote_allocation保存本次试算规则标识，两套规则目录独立。",
   subject_no: "角色成员与报价/人工改价都使用主体多态编号；需同时核验各自subject_type，不能当成单一外键。",
@@ -338,6 +347,11 @@ const NAME_COLLISIONS_WHY = {
 const NAME_COLLISIONS = new Set(Object.keys(NAME_COLLISIONS_WHY));
 
 export const SCOPED_KEY_OWNERS = {
+  "prn_route_version.route_no": "prn_route_catalog",
+  "prn_request.policy_version_no": "prn_policy_version",
+  "sv_issue_policy_version.policy_version_no": "sv_issue_policy_version",
+  "prn_receipt.receipt_no": "prn_receipt",
+  "ent_migration_return.receipt_no": "ent_migration_return",
   "pts_ledger_entry.voucher_no": "pts_voucher",
   "pts_pool_flow.voucher_no": "pts_voucher",
   "sv_entry.voucher_no": "sv_voucher",

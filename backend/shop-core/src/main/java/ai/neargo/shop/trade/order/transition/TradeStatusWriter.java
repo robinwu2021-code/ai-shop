@@ -50,6 +50,9 @@ import java.util.List;
 @Component
 public class TradeStatusWriter {
 
+    private ai.neargo.shop.trade.order.printing.service.OrderPrintFactService printFacts;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPrintFacts(ai.neargo.shop.trade.order.printing.service.OrderPrintFactService facts) {this.printFacts=facts;}
     private final StateTransitionGate gate;
     private final StatusCasMapper casMapper;
     private PaymentMapper orderMapper;
@@ -89,6 +92,10 @@ public class TradeStatusWriter {
                         operatorNo, reason, ctx));
         sync(sub, f.changed());
         sub.setStatus(f.to().name());
+        if (f.changed() && f.to() == OrderStatus.CANCELLED && printFacts != null) {
+            printFacts.recordControl(sub.getOrderNo(),sub.getSubOrderNo(),"CANCELLED",
+                "CANCEL:"+sub.getSubOrderNo()+":"+sub.getVersion(),java.time.Instant.now());
+        }
         if (f.changed() && f.to() == OrderStatus.COMPLETED) {
             // 售后期起算点（TDD-订单状态机 AC21）。所有到 COMPLETED 的路径都经这里（步 4）
             long now = System.currentTimeMillis();

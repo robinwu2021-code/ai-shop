@@ -138,7 +138,15 @@ public class PrintServiceImpl implements PrintService {
                                             .eq("device_no", req.deviceNo())
                                             .last("FOR UPDATE"));
                     if (row == null) {
+                        var physicalKey=json.readTree(req.capabilities()).path("physicalKey").asText(null);
+                        long rich=devices.selectCount(PrintServiceImpl.<PrnDevice>q(scope).isNotNull("physical_key"));
+                        if(rich>0 && (physicalKey==null || physicalKey.isBlank())) conflict();
+                        if(physicalKey!=null) {
+                            var known=devices.selectOne(Wrappers.<PrnDevice>query().eq("physical_key",physicalKey));
+                            if(known!=null && !req.deviceNo().equals(known.getDeviceNo())) conflict();
+                        }
                         row = new PrnDevice();
+                        row.setPhysicalKey(physicalKey);
                         init(row, scope);
                         row.setEntityNo(scope.entityNo());
                         row.setStoreNo(scope.storeNo());
@@ -194,6 +202,54 @@ public class PrintServiceImpl implements PrintService {
     private record RevokeAudit(String key, String actor, String reason, DeviceVO response) {}
 
     @Override
+    public PrintService.DeviceRecovery deviceRecovery(Scope scope,String no) {
+        PrintDocumentPolicy.key(no);
+        return sql(scope,()-> {
+            var device=device(scope,no,false);
+            var pending=jobs.selectList(PrintServiceImpl.<PrnJob>q(scope).eq("device_no",no)
+                    .in("status","SENT","UNKNOWN").isNull("execution_released_at")
+                    .isNotNull("current_attempt_no").orderByAsc("id")).stream()
+                    .map(j->new PrintService.PendingExecution(j.getJobNo(),j.getCurrentAttemptNo(),j.getLegacyStatus())).toList();
+            return new PrintService.DeviceRecovery(no,device.getVersion(),device.getActiveAttemptNo(),pending);
+        });
+    }
+
+    private record ResolutionAudit(String key, String actor, String attempt, String reason, String evidence, DeviceVO response) {}
+
+    @Override
+    public DeviceVO resolveDeviceUncertainty(Scope scope, PrintService.DeviceResolution req) {
+        if(req==null || !req.oldExecutorStopped()) bad();
+        PrintDocumentPolicy.key(req.deviceNo()); PrintDocumentPolicy.key(req.activeAttemptNo());
+        PrintDocumentPolicy.text(req.reason(),255); PrintDocumentPolicy.text(req.evidenceRef(),128);
+        PrintDocumentPolicy.text(req.requestKey(),128);
+        return sql(scope,()-> {
+            var device=device(scope,req.deviceNo(),true);
+            var history=new ArrayList<ResolutionAudit>();
+            if(device.getExecutionResolutionHistory()!=null)
+                history.addAll(Arrays.asList(json.readValue(device.getExecutionResolutionHistory(),ResolutionAudit[].class)));
+            for(var previous:history) if(req.requestKey().equals(previous.key())) {
+                if(!scope.actorNo().equals(previous.actor()) || !req.activeAttemptNo().equals(previous.attempt())
+                        || !req.reason().equals(previous.reason()) || !req.evidenceRef().equals(previous.evidence())) conflict();
+                return previous.response();
+            }
+            if(device.getVersion()!=req.expectedVersion() || !req.activeAttemptNo().equals(device.getActiveAttemptNo())) conflict();
+            var row=job(scope,device.getActiveJobNo(),true);
+            if(!Set.of("SENT","UNKNOWN").contains(row.getLegacyStatus())) conflict();
+            if(row.getRequestNo()==null) row.setLegacyStatus("UNKNOWN"); else row.setStatus("UNKNOWN");
+            row.setLastErrorCode("print.queueManuallyTerminated"); checked(jobs.updateById(row));
+            new ai.neargo.shop.printing.service.PrintDeviceGate(devices,jobs).release(
+                    new ai.neargo.shop.print.api.PrintScope(device.getTenantNo(),scope.entityNo(),scope.storeNo()),
+                    req.deviceNo(),req.activeAttemptNo());
+            device=device(scope,req.deviceNo(),true);
+            var response=deviceVO(device);
+            history.add(new ResolutionAudit(req.requestKey(),scope.actorNo(),req.activeAttemptNo(),req.reason(),req.evidenceRef(),response));
+            device.setExecutionResolutionHistory(json.writeValueAsString(history));checked(devices.updateById(device));
+            publish(row);
+            return response;
+        });
+    }
+
+    @Override
     public DeviceVO revokeDevice(Scope scope, String no, String reason, String key) {
         PrintDocumentPolicy.key(no);
         PrintDocumentPolicy.text(reason, 255);
@@ -245,7 +301,7 @@ public class PrintServiceImpl implements PrintService {
                                 .eq("device_no", no)
                                 .eq("status", "SENT")
                                 .last("FOR UPDATE"))) {
-            row.setStatus("UNKNOWN");
+            row.setLegacyStatus("UNKNOWN");
             checked(jobs.updateById(row));
             var attempt =
                     attempts.selectOne(
@@ -474,7 +530,7 @@ public class PrintServiceImpl implements PrintService {
                                 if (result.isEmpty()) {
                                     row.setEventRootKey(eventRoot);
                                 }
-                                row.setStatus("PENDING");
+                                row.setLegacyStatus("PENDING");
                                 row.setAttemptCount(0);
                                 jobs.insert(row);
                                 publish(row);
@@ -521,12 +577,13 @@ public class PrintServiceImpl implements PrintService {
                 scope,
                 () -> {
                     var row = job(scope, no, true);
-                    if (!"FAILED".equals(row.getStatus())) {
+                    if(row.getRequestNo()!=null) conflict();
+                    if (!"FAILED".equals(row.getLegacyStatus())) {
                         conflict();
                     }
                     // FAILED means an explicit NOT_PRINTED device receipt. UNKNOWN requires an
                     // audited reprint.
-                    row.setStatus("PENDING");
+                    row.setLegacyStatus("PENDING");
                     checked(jobs.updateById(row));
                     publish(row);
                     return view(scope, row);
@@ -542,6 +599,7 @@ public class PrintServiceImpl implements PrintService {
                 scope,
                 () -> {
                     var original = job(scope, no, true);
+                    if(original.getRequestNo()!=null) conflict();
                     String dedup =
                             PricingSnapshotHash.of(
                                     List.of(scope.entityNo(), scope.storeNo(), "REPRINT", no, key));
@@ -579,7 +637,7 @@ public class PrintServiceImpl implements PrintService {
                     row.setRequestedBy(scope.actorNo());
                     row.setDedupKey(dedup);
                     row.setRequestHash(hash);
-                    row.setStatus("PENDING");
+                    row.setLegacyStatus("PENDING");
                     row.setAttemptCount(0);
                     jobs.insert(row);
                     publish(row);
@@ -615,18 +673,13 @@ public class PrintServiceImpl implements PrintService {
                     if (!online(device)) {
                         conflict();
                     }
-                    if (jobs.selectCount(
-                                    PrintServiceImpl.<PrnJob>q(scope)
-                                            .eq("device_no", no)
-                                            .eq("status", "SENT"))
-                            > 0) {
-                        return null;
-                    }
+                    if (!new ai.neargo.shop.printing.service.PrintDeviceGate(devices,jobs).available(device)) return null;
                     var row =
                             jobs.selectOne(
                                     PrintServiceImpl.<PrnJob>q(scope)
                                             .eq("device_no", no)
                                             .eq("status", "PENDING")
+                                            .isNull("request_no")
                                             .orderByAsc("id")
                                             .last("LIMIT 1 FOR UPDATE"));
                     if (row == null) {
@@ -643,8 +696,14 @@ public class PrintServiceImpl implements PrintService {
                     attempt.setStartedAt(now());
                     attempt.setLeaseToken(UUID.randomUUID().toString());
                     attempt.setBridgeActorNo(scope.actorNo());
+                    attempt.setAuthorizationEpoch(device.getAuthorizationVersion());
                     attempts.insert(attempt);
-                    row.setStatus("SENT");
+                    device.setActiveJobNo(row.getJobNo());
+                    device.setActiveAttemptNo(attempt.getAttemptNo());
+                    device.setActiveFenceEpoch((device.getActiveFenceEpoch()==null?0:device.getActiveFenceEpoch())+1);
+                    checked(devices.updateById(device));
+                    row.setExecutionReleasedAt(null);
+                    row.setLegacyStatus("SENT");
                     row.setCurrentAttemptNo(attempt.getAttemptNo());
                     row.setAttemptCount(attempt.getSequenceNo());
                     row.setLeaseToken(attempt.getLeaseToken());
@@ -696,7 +755,11 @@ public class PrintServiceImpl implements PrintService {
                             || !scope.actorNo().equals(attempt.getBridgeActorNo())
                             || !req.leaseToken().equals(attempt.getLeaseToken())
                             || !req.attemptNo().equals(row.getCurrentAttemptNo())
-                            || !req.leaseToken().equals(row.getLeaseToken())) {
+                            || !req.leaseToken().equals(row.getLeaseToken())
+                            || (!Set.of("SUCCESS","FAILED").contains(attempt.getStatus())
+                                && !req.attemptNo().equals(device.getActiveAttemptNo()))
+                            || (attempt.getAuthorizationEpoch()!=null
+                                && !attempt.getAuthorizationEpoch().equals(device.getAuthorizationVersion()))) {
                         forbidden();
                     }
                     String status =
@@ -717,8 +780,13 @@ public class PrintServiceImpl implements PrintService {
                     attempt.setResponseCode(req.responseCode());
                     attempt.setFinishedAt(now());
                     checked(attempts.updateById(attempt));
-                    row.setStatus(status);
+                    row.setLegacyStatus(status);
                     checked(jobs.updateById(row));
+                    if (Set.of("SUCCESS", "FAILED").contains(status)) {
+                        new ai.neargo.shop.printing.service.PrintDeviceGate(devices,jobs).release(
+                                new ai.neargo.shop.print.api.PrintScope(device.getTenantNo(),scope.entityNo(),scope.storeNo()),
+                                no,attempt.getAttemptNo());
+                    }
                     publish(row);
                     return view(scope, row);
                 });
@@ -732,7 +800,7 @@ public class PrintServiceImpl implements PrintService {
                                 .eq("status", "SENT")
                                 .le("lease_until", now())
                                 .last("FOR UPDATE"))) {
-            row.setStatus("UNKNOWN");
+            row.setLegacyStatus("UNKNOWN");
             checked(jobs.updateById(row));
             var attempt =
                     attempts.selectOne(
@@ -794,9 +862,9 @@ public class PrintServiceImpl implements PrintService {
     private JobVO view(Scope scope, PrnJob row) {
         // A read reports a timed-out lease as UNKNOWN even if the bridge has not polled again yet.
         String status =
-                "SENT".equals(row.getStatus()) && !row.getLeaseUntil().isAfter(now())
+                "SENT".equals(row.getLegacyStatus()) && row.getLeaseUntil()!=null && !row.getLeaseUntil().isAfter(now())
                         ? "UNKNOWN"
-                        : row.getStatus();
+                        : row.getLegacyStatus();
         var history =
                 attempts
                         .selectList(
@@ -876,13 +944,13 @@ public class PrintServiceImpl implements PrintService {
 
     private static <T> QueryWrapper<T> q(Scope scope) {
         return Wrappers.<T>query()
-                .eq("tenant_no", "MAIN")
+                .eq("tenant_no", tenantNo())
                 .eq("entity_no", scope.entityNo())
                 .eq("store_no", scope.storeNo());
     }
 
     private void init(BaseEntity row, Scope scope) {
-        row.setTenantNo("MAIN");
+        row.setTenantNo(tenantNo());
         row.setCreatedAt(now());
         row.setCreatedBy(scope.actorNo());
         row.setUpdatedAt(now());
@@ -897,14 +965,27 @@ public class PrintServiceImpl implements PrintService {
                         row.getEntityNo(),
                         row.getStoreNo(),
                         row.getJobNo(),
-                        row.getStatus(),
+                        row.getLegacyStatus(),
                         row.getDeviceNo(),
                         row.getAttemptCount()),
                 new PublishOptions("PRINT:" + row.getJobNo(), 1));
     }
 
+    private static String tenantNo() {
+        // Scope v1 has no tenant: an authenticated caller supplies it; token-authenticated
+        // internal v1 callers remain explicitly bound to the existing MAIN tenant contract.
+        return ai.neargo.shop.auth.SecurityUtils.currentUser().map(ai.neargo.shop.auth.LoginUser::tenantNo).orElse("MAIN");
+    }
+
     private <T> T sql(Scope scope, Supplier<T> action) {
         PrintDocumentPolicy.scope(scope);
+        ai.neargo.shop.auth.SecurityUtils.currentUser().ifPresent(user -> {
+            if(user.realm()==ai.neargo.shop.auth.Realm.MERCHANT
+                    && (!scope.entityNo().equals(ai.neargo.shop.auth.BizContext.requireMerchantNo())
+                    || !scope.storeNo().equals(ai.neargo.shop.auth.BizContext.requireStoreNo()))) {
+                throw BizException.of(ErrorCode.FORBIDDEN);
+            }
+        });
         return DataScopeContext.executeWithoutScope(() -> tx.execute(status -> action.get()));
     }
 

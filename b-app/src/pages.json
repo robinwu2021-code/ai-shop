@@ -9,6 +9,9 @@
     }
   },
   "pages": [
+{"path": "pages/print-center/index", "style": {"navigationBarTitleText": "打印中心", "enablePullDownRefresh": true}},
+{"path": "pages/print-devices/index", "style": {"navigationBarTitleText": "打印设备", "enablePullDownRefresh": true}},
+{"path": "pages/print-templates/index", "style": {"navigationBarTitleText": "小票模板", "enablePullDownRefresh": true}},
     {
       "path": "pages/home/index",
       "style": {

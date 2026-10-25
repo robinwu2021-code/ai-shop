@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "database": "MySQL 9.7.2",
+  "migrations": [
+    "V567__shared_print_delivery.sql",
+    "V579__print_device_revocation_epoch.sql",
+    "V582__unified_print_capabilities.sql",
+    "V583__order_print_fact.sql",
+    "V584__print_permissions.sql"
+  ],
+  "checks": [
+    "empty-printing-install",
+    "legacy-upgrade-preserves-frozen-data-and-leases",
+    "legacy-uncertainty-gate-and-revocation-epoch-backfill",
+    "applied-migration-hashes-frozen",
+    "permission-append-idempotent",
+    "custom-role-unchanged"
+  ],
+  "limits": [
+    "Focused printing migrations with minimal role fixtures; not full application Flyway acceptance.",
+    "No printer, provider, application database or production connection."
+  ]
+}

@@ -15,6 +15,16 @@ import java.util.List;
 
 /** Local owner contract keeps transport adapters separate from the durable delivery policy. */
 public interface PrintService {
+    record DeviceResolution(String deviceNo, long expectedVersion, String activeAttemptNo,
+            String reason, String evidenceRef, boolean oldExecutorStopped, String requestKey) {}
+
+    record PendingExecution(String jobNo,String attemptNo,String status) {}
+    record DeviceRecovery(String deviceNo,long version,String activeAttemptNo,List<PendingExecution> pending) {}
+    DeviceRecovery deviceRecovery(Scope scope,String deviceNo);
+
+    /** Always-on governance for legacy and rich devices; never an automatic retry. */
+    DeviceVO resolveDeviceUncertainty(Scope scope, DeviceResolution request);
+
     Configuration configuration(Scope scope);
 
     DeviceVO bindDevice(Scope scope, DeviceReq request);

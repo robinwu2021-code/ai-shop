@@ -3500,6 +3500,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `financial` | `boolean` | 否 | — |
 | `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
@@ -3537,6 +3538,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `financial` | `boolean` | 否 | — |
 | `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
@@ -3585,6 +3587,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | — |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -3596,6 +3599,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | — |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -3622,6 +3626,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | — |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -3633,6 +3638,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | — |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -3661,6 +3667,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | — |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -3672,6 +3679,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | — |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -3725,6 +3733,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | — |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -3736,6 +3745,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | — |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -3849,6 +3859,84 @@ Activate original brand snapshot　🔒
 | `scopeNo` | `string` | 是 | Brand or store identifier selected by scopeType. |
 | `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
 | `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+
+#### GET `/biz/management/brands/{no}/stored-value/store-breakdown`
+
+mSvBrandStoreBreakdown　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceStorePage`](#svfinancestorepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvStoreAttribution`](#svstoreattribution)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
+#### GET `/biz/management/brands/{no}/stored-value/summary`
+
+mSvBrandSummary　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvSummary`](#svsummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | — |
+| `scopeType` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `period` | `object`（见下） | 是 | — |
+| `asOf` | `string` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `openingMinor` | `number` | 是 | — |
+| `creditedPaidMinor` | `number` | 是 | — |
+| `creditedBonusMinor` | `number` | 是 | — |
+| `consumedMinor` | `number` | 是 | — |
+| `reversedMinor` | `number` | 是 | — |
+| `closingMinor` | `number` | 是 | — |
+| `heldMinor` | `number` | 是 | — |
+| `rechargeCount` | `number` | 是 | — |
+| `usageCount` | `number` | 是 | — |
+| `customerCount` | `number` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+
+`period` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
 
 
 #### GET `/biz/management/brands/{store}/stored-value/activities`
@@ -4245,6 +4333,33 @@ Activate original brand snapshot　🔒
 类型：[`PaymentMerchant`](#paymentmerchant)\[\]
 
 
+#### POST `/biz/management/entities/{entity}/stored-value/financial-permissions`
+
+准备所有人结算权限　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `entity` | path | `string` | 是 | — |
+
+请求体：[`SvFinanceManagementQuery`](#svfinancemanagementquery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinancialPermissionResult`](#svfinancialpermissionresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `prepared` | `boolean` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `permissions` | `string`\[\] | 是 | — |
+
+
 #### POST `/biz/management/spaces`
 
 创建管理空间　🔒
@@ -4264,6 +4379,7 @@ Activate original brand snapshot　🔒
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | — |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -4424,6 +4540,35 @@ _无字段_
 _无字段_
 
 
+#### GET `/biz/management/stored-value/activities/{no}/summary`
+
+mSvActivitySummary　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+| `issuerNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinanceActivityPage`](#svfinanceactivitypage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvActivityAttribution`](#svactivityattribution)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
 #### GET `/biz/management/stored-value/activity-approvals`
 
 储值活动审批列表　🔒
@@ -4530,6 +4675,91 @@ _无字段_
 | `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
 | `reason` | `string,null` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
 | `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+
+
+#### GET `/biz/management/stored-value/financial-brand-changes/{no}`
+
+金融品牌变更原单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinancialBrandChange`](#svfinancialbrandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+| `staged` | `boolean` | 是 | — |
+
+
+#### POST `/biz/management/stored-value/financial-brand-changes/{no}/resumptions`
+
+恢复金融品牌变更原单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+请求体：[`SvFinanceManagementQuery`](#svfinancemanagementquery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinancialBrandChange`](#svfinancialbrandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+| `staged` | `boolean` | 是 | — |
+
+
+#### GET `/biz/management/stored-value/financial-capability`
+
+mSvFinanceCapability　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`SvFinanceCapability`](#svfinancecapability)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `protocol` | `number` | 是 | — |
+| `reportsReady` | `boolean` | 是 | — |
+| `settlementReady` | `boolean` | 是 | — |
+| `crossEntityReady` | `boolean` | 是 | — |
+| `receiptAttachmentsSupported` | `boolean` | 是 | — |
+| `blockers` | `string`\[\] | 是 | — |
+
+
+#### GET `/biz/management/stored-value/financial-resources`
+
+mSvFinanceResources　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `scopeType` | query | `STORE` \| `BRAND` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinanceResource`](#svfinanceresource)\[\]
 
 
 #### GET `/biz/management/stored-value/issuers/{no}/collection-routes`
@@ -4746,6 +4976,465 @@ Authorized stored-value policy targets　🔒
 类型：[`SvPolicyTargetOption`](#svpolicytargetoption)\[\]
 
 
+#### GET `/biz/management/stored-value/settlement-bills`
+
+mSvSettlementBills　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `scopeType` | query | `STORE` \| `BRAND` | 否 | — |
+| `issuerNo` | query | `string` | 否 | — |
+| `currency` | query | `string` | 否 | — |
+| `status` | query | `string` | 否 | 状态筛选，取值见对应枚举 |
+| `periodFrom` | query | `string` | 否 | — |
+| `periodTo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceBillPage`](#svfinancebillpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}`
+
+mSvSettlementBill　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | — |
+| `issuerNo` | `string` | 是 | — |
+| `payerEntityNo` | `string` | 是 | — |
+| `payeeEntityNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `periodFrom` | `string` | 是 | — |
+| `periodTo` | `string` | 是 | — |
+| `billKind` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+| `registeredPaymentMinor` | `number` | 是 | — |
+| `confirmedReceiptMinor` | `number` | 是 | — |
+| `principalMinor` | `number` | 是 | — |
+| `bonusMinor` | `number` | 是 | — |
+| `sourceCount` | `number` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `payerReconciledBy` | `string,null` | 是 | — |
+| `payeeReconciledBy` | `string,null` | 是 | — |
+| `disputeNo` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `createdAt` | `string` | 是 | — |
+| `updatedAt` | `string` | 是 | — |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/actions`
+
+mSvSettlementActions　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvBillActions`](#svbillactions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payerActions` | `string`\[\] | 是 | — |
+| `payeeActions` | `string`\[\] | 是 | — |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/adjustments`
+
+mSvSettlementAdjust　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvAdjustmentRequest`](#svadjustmentrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `clearingNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `payableDeltaMinor` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | — |
+| `issuerNo` | `string` | 是 | — |
+| `payerEntityNo` | `string` | 是 | — |
+| `payeeEntityNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `periodFrom` | `string` | 是 | — |
+| `periodTo` | `string` | 是 | — |
+| `billKind` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+| `registeredPaymentMinor` | `number` | 是 | — |
+| `confirmedReceiptMinor` | `number` | 是 | — |
+| `principalMinor` | `number` | 是 | — |
+| `bonusMinor` | `number` | 是 | — |
+| `sourceCount` | `number` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `payerReconciledBy` | `string,null` | 是 | — |
+| `payeeReconciledBy` | `string,null` | 是 | — |
+| `disputeNo` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `createdAt` | `string` | 是 | — |
+| `updatedAt` | `string` | 是 | — |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/dispute-resolutions`
+
+mSvSettlementResolveDispute　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvResolutionRequest`](#svresolutionrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `disputeNo` | `string` | 是 | — |
+| `decision` | `ACCEPT` \| `REJECT` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | — |
+| `issuerNo` | `string` | 是 | — |
+| `payerEntityNo` | `string` | 是 | — |
+| `payeeEntityNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `periodFrom` | `string` | 是 | — |
+| `periodTo` | `string` | 是 | — |
+| `billKind` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+| `registeredPaymentMinor` | `number` | 是 | — |
+| `confirmedReceiptMinor` | `number` | 是 | — |
+| `principalMinor` | `number` | 是 | — |
+| `bonusMinor` | `number` | 是 | — |
+| `sourceCount` | `number` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `payerReconciledBy` | `string,null` | 是 | — |
+| `payeeReconciledBy` | `string,null` | 是 | — |
+| `disputeNo` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `createdAt` | `string` | 是 | — |
+| `updatedAt` | `string` | 是 | — |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/disputes`
+
+mSvSettlementDispute　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvDecisionRequest`](#svdecisionrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `side` | `PAYER` \| `PAYEE` | 是 | — |
+| `reason` | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | — |
+| `issuerNo` | `string` | 是 | — |
+| `payerEntityNo` | `string` | 是 | — |
+| `payeeEntityNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `periodFrom` | `string` | 是 | — |
+| `periodTo` | `string` | 是 | — |
+| `billKind` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+| `registeredPaymentMinor` | `number` | 是 | — |
+| `confirmedReceiptMinor` | `number` | 是 | — |
+| `principalMinor` | `number` | 是 | — |
+| `bonusMinor` | `number` | 是 | — |
+| `sourceCount` | `number` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `payerReconciledBy` | `string,null` | 是 | — |
+| `payeeReconciledBy` | `string,null` | 是 | — |
+| `disputeNo` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `createdAt` | `string` | 是 | — |
+| `updatedAt` | `string` | 是 | — |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/events`
+
+mSvSettlementEvents　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceEventPage`](#svfinanceeventpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementEvent`](#svsettlementevent)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/items`
+
+mSvSettlementItems　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceItemPage`](#svfinanceitempage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementItem`](#svsettlementitem)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/payment-resolutions`
+
+mSvSettlementPaymentResolution　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `commandKey` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvPaymentResolution`](#svpaymentresolution)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | — |
+| `payment` | [`SvSettlementPayment`](#svsettlementpayment) \| `null` | 是 | — |
+
+
+#### GET `/biz/management/stored-value/settlement-bills/{no}/payments`
+
+mSvSettlementPayments　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinancePaymentPage`](#svfinancepaymentpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementPayment`](#svsettlementpayment)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/payments`
+
+mSvSettlementRegister　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvPaymentRequest`](#svpaymentrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `paidAt` | `string` | 是 | — |
+| `method` | `TRANSFER` \| `CASH` \| `OTHER` | 是 | — |
+| `receiptReference` | `string` | 是 | — |
+| `evidenceRefs` | —\[\] | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementPayment`](#svsettlementpayment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | — |
+| `billNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `method` | `string` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `paidAt` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `registeredBy` | `string` | 是 | — |
+| `receivedBy` | `string,null` | 是 | — |
+| `receivedAt` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/{no}/reconciliation-confirmations`
+
+mSvSettlementReconcile　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvDecisionRequest`](#svdecisionrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `side` | `PAYER` \| `PAYEE` | 是 | — |
+| `reason` | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementBill`](#svsettlementbill)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | — |
+| `issuerNo` | `string` | 是 | — |
+| `payerEntityNo` | `string` | 是 | — |
+| `payeeEntityNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `periodFrom` | `string` | 是 | — |
+| `periodTo` | `string` | 是 | — |
+| `billKind` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+| `registeredPaymentMinor` | `number` | 是 | — |
+| `confirmedReceiptMinor` | `number` | 是 | — |
+| `principalMinor` | `number` | 是 | — |
+| `bonusMinor` | `number` | 是 | — |
+| `sourceCount` | `number` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `payerReconciledBy` | `string,null` | 是 | — |
+| `payeeReconciledBy` | `string,null` | 是 | — |
+| `disputeNo` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `createdAt` | `string` | 是 | — |
+| `updatedAt` | `string` | 是 | — |
+
+
+#### POST `/biz/management/stored-value/settlement-bills/generations`
+
+mSvSettlementGenerate　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvGenerationRequest`](#svgenerationrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `issuerNo` | `string` | 是 | — |
+| `periodFrom` | `string` | 是 | — |
+| `periodTo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvGenerated`](#svgenerated)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bills` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+
+
 #### GET `/biz/management/stored-value/settlement-entity-candidates`
 
 有授权的结算主体　🔒
@@ -4761,6 +5450,109 @@ Authorized stored-value policy targets　🔒
 **出参**（`data`）
 
 类型：[`SvIssuerEntity`](#svissuerentity)\[\]
+
+
+#### POST `/biz/management/stored-value/settlement-payments/{no}/receipt-confirmations`
+
+mSvSettlementReceipt　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvReceiptRequest`](#svreceiptrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `receivedAt` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementPayment`](#svsettlementpayment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | — |
+| `billNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `method` | `string` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `paidAt` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `registeredBy` | `string` | 是 | — |
+| `receivedBy` | `string,null` | 是 | — |
+| `receivedAt` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+
+
+#### POST `/biz/management/stored-value/settlement-payments/{no}/voids`
+
+mSvSettlementVoid　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvVoidRequest`](#svvoidrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvSettlementPayment`](#svsettlementpayment)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | — |
+| `billNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `method` | `string` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `paidAt` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `registeredBy` | `string` | 是 | — |
+| `receivedBy` | `string,null` | 是 | — |
+| `receivedAt` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+
+
+#### GET `/biz/management/stored-value/store-issuer-summary`
+
+mSvLocalIssuerSummary　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvFinanceSummaryPage`](#svfinancesummarypage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSummary`](#svsummary)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
 
 
 #### GET `/biz/management/stores/{no}/stored-value/issuer`
@@ -4886,6 +5678,58 @@ Authorized stored-value policy targets　🔒
 | `scopeNo` | `string` | 是 | Brand or store identifier selected by scopeType. |
 | `status` | `string` | 是 | Current server-owned lifecycle state of this resource. |
 | `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
+
+
+#### GET `/biz/management/stores/{store}/stored-value/financial-brand-change-original`
+
+核对金融品牌变更原请求　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `managementNo` | query | `string` | 是 | — |
+| `commandKey` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinancialBrandOriginal`](#svfinancialbrandoriginal)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `original` | [`SvFinancialBrandChange`](#svfinancialbrandchange) \| `null` | 是 | — |
+
+
+#### POST `/biz/management/stores/{store}/stored-value/financial-brand-changes`
+
+金融品牌门店变更　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `store` | path | `string` | 是 | — |
+| `Idempotency-Key` | header | `string` | 是 | — |
+
+请求体：[`SvFinancialBrandRequest`](#svfinancialbrandrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `toBrandNo` | `string,null` | 是 | — |
+| `expectedStoreRevision` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`SvFinancialBrandChange`](#svfinancialbrandchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+| `staged` | `boolean` | 是 | — |
 
 
 ### marketing
@@ -10012,6 +10856,56 @@ _无字段_
 
 ### stores
 
+#### GET `/biz/stores/{no}/stored-value/store-summary`
+
+mSvStoreSummary　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+| `managementNo` | query | `string` | 是 | — |
+| `currency` | query | [`CurrencyCode`](#currencycode) | 是 | — |
+| `startDate` | query | `string` | 是 | — |
+| `endDate` | query | `string` | 是 | — |
+| `activityNo` | query | `string` | 否 | — |
+| `cursor` | query | `string` | 否 | — |
+| `size` | query | `number` | 否 | 每页条数 |
+
+**出参**（`data`）
+
+类型：[`SvSummary`](#svsummary)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | — |
+| `scopeType` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `period` | `object`（见下） | 是 | — |
+| `asOf` | `string` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `openingMinor` | `number` | 是 | — |
+| `creditedPaidMinor` | `number` | 是 | — |
+| `creditedBonusMinor` | `number` | 是 | — |
+| `consumedMinor` | `number` | 是 | — |
+| `reversedMinor` | `number` | 是 | — |
+| `closingMinor` | `number` | 是 | — |
+| `heldMinor` | `number` | 是 | — |
+| `rechargeCount` | `number` | 是 | — |
+| `usageCount` | `number` | 是 | — |
+| `customerCount` | `number` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+
+`period` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
+
+
 #### POST `/biz/stores/{s}/brand-changes`
 
 提交品牌变更　🔒
@@ -10030,6 +10924,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `financial` | `boolean` | 否 | — |
 | `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
@@ -11349,6 +12244,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | — |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -11360,6 +12256,7 @@ _无字段_
 | `entityNo` | `string` | 否 | Operating entity identifier; authorization remains server-derived. |
 | `storeNo` | `string` | 否 | Store identifier scoping the requested operation or returned business record. |
 | `scopeRevision` | `number` | 是 | Current revision of the resource's management-scope bindings. |
+| `storedValueStatus` | `string` | 否 | — |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `logo` | `string` | 否 | Brand logo URL; null clears the configured logo. |
 | `storeCount` | `number` | 否 | Number of stores currently bound to this brand. |
@@ -11373,6 +12270,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `financial` | `boolean` | 否 | — |
 | `changeNo` | `string` | 是 | Identifier of the requested brand/store binding change. |
 | `managementNo` | `string` | 是 | Management-space identifier under which the operation is authorized. |
 | `storeNo` | `string` | 是 | Store identifier scoping the requested operation or returned business record. |
@@ -12600,6 +13498,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | — |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -12620,6 +13519,7 @@ Delivery state of an inventory/order synchronization event.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `canPrepareFinance` | `boolean` | 否 | — |
 | `canManageLegacy` | `boolean` | 否 | Whether the operator retains management access to legacy resources. |
 | `canConfigureBrand` | `boolean` | 否 | Whether the operator may configure the resource's brand binding. |
 | `resourceType` | `string` | 否 | Business resource category used to resolve resourceNo and enforce authorization. |
@@ -15936,6 +16836,25 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
 | `documentNo` | `string,null` | 否 | Human-facing document number; null or absent for historical unmapped records. |
 
+### SvActivityAttribution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `activityNo` | `string` | 是 | — |
+| `releaseNo` | `string` | 是 | — |
+| `sourceKind` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `creditedPaidMinor` | `number` | 是 | — |
+| `creditedBonusMinor` | `number` | 是 | — |
+| `consumedPrincipalMinor` | `number` | 是 | — |
+| `consumedBonusMinor` | `number` | 是 | — |
+| `remainingMinor` | `number` | 是 | — |
+| `rechargeCount` | `number` | 是 | — |
+| `usageCount` | `number` | 是 | — |
+| `customerCount` | `number` | 是 | — |
+| `asOf` | `string` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+
 ### SvActivityCheck
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -16014,6 +16933,16 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `mode` | `ALL` \| `STORES` | 是 | Calculation or scope mode determining how the associated value and references are interpreted. |
 | `refs` | `string`\[\] | 是 | Business identifiers selected by the associated scope mode. |
 
+### SvAdjustmentRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `clearingNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `payableDeltaMinor` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
+
 ### SvApproval
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -16034,6 +16963,13 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `revision` | `number` | 是 | Current revision used for optimistic concurrency or snapshot traceability. |
 | `reason` | `string,null` | 是 | Business reason recorded for the operation, rejection or manual recovery. |
 | `definition` | [`SvActivityDefinition`](#svactivitydefinition) | 是 | Versioned activity definition, including schedule, scope and recharge tiers. |
+
+### SvBillActions
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payerActions` | `string`\[\] | 是 | — |
+| `payeeActions` | `string`\[\] | 是 | — |
 
 ### SvBrandActivation
 
@@ -16143,6 +17079,15 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `currencyScale` | `number` | 是 | Number of decimal places in the currency's major unit. |
 | `timeZone` | `string` | 是 | IANA time zone used for business-date filtering and activity scheduling. |
 
+### SvDecisionRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `side` | `PAYER` \| `PAYEE` | 是 | — |
+| `reason` | `string` | 否 | — |
+
 ### SvEffectivePolicy
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -16163,6 +17108,138 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `brandNo` | `string,null` | 是 | Brand identifier; null when the scope has no brand binding. |
 | `currency` | [`CurrencyCode`](#currencycode) | 是 | ISO currency code determining the interpretation of monetary amounts. |
 | `storeRevision` | `number` | 是 | Store revision included in the effective-policy snapshot. |
+
+### SvFinanceActivityPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvActivityAttribution`](#svactivityattribution)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### SvFinanceBillPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### SvFinanceCapability
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `protocol` | `number` | 是 | — |
+| `reportsReady` | `boolean` | 是 | — |
+| `settlementReady` | `boolean` | 是 | — |
+| `crossEntityReady` | `boolean` | 是 | — |
+| `receiptAttachmentsSupported` | `boolean` | 是 | — |
+| `blockers` | `string`\[\] | 是 | — |
+
+### SvFinanceEventPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementEvent`](#svsettlementevent)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### SvFinanceItemPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementItem`](#svsettlementitem)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### SvFinanceManagementQuery
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+
+### SvFinancePaymentPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSettlementPayment`](#svsettlementpayment)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### SvFinanceResource
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | — |
+| `scopeType` | `STORE` \| `BRAND` | 是 | — |
+| `scopeNo` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `businessTimeZone` | `string` | 是 | — |
+
+### SvFinanceStorePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvStoreAttribution`](#svstoreattribution)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### SvFinanceSummaryPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`SvSummary`](#svsummary)\[\] | 是 | — |
+| `nextCursor` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### SvFinancialBrandChange
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `changeNo` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+| `staged` | `boolean` | 是 | — |
+
+### SvFinancialBrandOriginal
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `original` | [`SvFinancialBrandChange`](#svfinancialbrandchange) \| `null` | 是 | — |
+
+### SvFinancialBrandRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `toBrandNo` | `string,null` | 是 | — |
+| `expectedStoreRevision` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+### SvFinancialPermissionResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `prepared` | `boolean` | 是 | — |
+| `entityNo` | `string` | 是 | — |
+| `permissions` | `string`\[\] | 是 | — |
+
+### SvGenerated
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bills` | [`SvSettlementBill`](#svsettlementbill)\[\] | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+
+### SvGenerationRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `issuerNo` | `string` | 是 | — |
+| `periodFrom` | `string` | 是 | — |
+| `periodTo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
 
 ### SvGovernanceActivitiesPage
 
@@ -16362,6 +17439,25 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `nextCursor` | `string,null` | 是 | Opaque cursor for the next page; null when the result is exhausted. |
 | `hasMore` | `boolean` | 是 | Whether a further page is available using nextCursor. |
 
+### SvPaymentRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `paidAt` | `string` | 是 | — |
+| `method` | `TRANSFER` \| `CASH` \| `OTHER` | 是 | — |
+| `receiptReference` | `string` | 是 | — |
+| `evidenceRefs` | —\[\] | 是 | — |
+
+### SvPaymentResolution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `found` | `boolean` | 是 | — |
+| `payment` | [`SvSettlementPayment`](#svsettlementpayment) \| `null` | 是 | — |
+
 ### SvPlan
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -16481,6 +17577,14 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `collectionMethod` | `CASH` \| `TRANSFER` | 是 | Offline collection method: cash or bank transfer. |
 | `receiptNo` | `string` | 是 | Operator-provided collection evidence reference used to confirm the same receipt. |
 
+### SvReceiptRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `receivedAt` | `string` | 是 | — |
+
 ### SvReceive
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -16526,6 +17630,16 @@ StorePointType 的 status 取值域，按服务端契约校验。
 ### SvRecordPage
 
 类型：`SvPage_SvRecord`
+
+### SvResolutionRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `disputeNo` | `string` | 是 | — |
+| `decision` | `ACCEPT` \| `REJECT` | 是 | — |
+| `reason` | `string` | 是 | — |
 
 ### SvSelectCustomerReq
 
@@ -16575,6 +17689,93 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `title` | `string` | 是 | Human-readable service item title. |
 | `quantity` | `number` | 是 | Positive quantity of the selected service item. |
 
+### SvSettlementBill
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `billNo` | `string` | 是 | — |
+| `issuerNo` | `string` | 是 | — |
+| `payerEntityNo` | `string` | 是 | — |
+| `payeeEntityNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `periodFrom` | `string` | 是 | — |
+| `periodTo` | `string` | 是 | — |
+| `billKind` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+| `registeredPaymentMinor` | `number` | 是 | — |
+| `confirmedReceiptMinor` | `number` | 是 | — |
+| `principalMinor` | `number` | 是 | — |
+| `bonusMinor` | `number` | 是 | — |
+| `sourceCount` | `number` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `payerReconciledBy` | `string,null` | 是 | — |
+| `payeeReconciledBy` | `string,null` | 是 | — |
+| `disputeNo` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `createdAt` | `string` | 是 | — |
+| `updatedAt` | `string` | 是 | — |
+
+### SvSettlementEvent
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `eventNo` | `string` | 是 | — |
+| `type` | `string` | 是 | — |
+| `billRevision` | `number` | 是 | — |
+| `actorNo` | `string` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+| `occurredAt` | `string` | 是 | — |
+
+### SvSettlementItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemNo` | `string` | 是 | — |
+| `clearingNo` | `string` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `principalMinor` | `number` | 是 | — |
+| `bonusMinor` | `number` | 是 | — |
+| `rechargeStoreNo` | `string` | 是 | — |
+| `redemptionStoreNo` | `string` | 是 | — |
+| `occurredAt` | `string` | 是 | — |
+| `postedAt` | `string` | 是 | — |
+| `carriedForward` | `boolean` | 是 | — |
+| `entryType` | `string` | 是 | — |
+| `originalClearingNo` | `string,null` | 是 | — |
+
+### SvSettlementPayment
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `paymentNo` | `string` | 是 | — |
+| `billNo` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `method` | `string` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `paidAt` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `registeredBy` | `string` | 是 | — |
+| `receivedBy` | `string,null` | 是 | — |
+| `receivedAt` | `string,null` | 是 | — |
+| `revision` | `number` | 是 | — |
+
+### SvStoreAttribution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `storeName` | `string` | 是 | — |
+| `creditedPaidMinor` | `number` | 是 | — |
+| `creditedBonusMinor` | `number` | 是 | — |
+| `consumedMinor` | `number` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+| `rechargeCount` | `number` | 是 | — |
+| `usageCount` | `number` | 是 | — |
+| `customerCount` | `number` | 是 | — |
+| `asOf` | `string` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+
 ### SvSubmission
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -16590,6 +17791,44 @@ StorePointType 的 status 取值域，按服务端契约校验。
 | `approvalRequired` | `boolean` | 是 | Whether publication must obtain a separate approval first. |
 | `approvalNo` | `string,null` | 是 | Approval request identifier; null when approval is not required or not yet created. |
 | `activityVersionNo` | `string,null` | 是 | Published activity-version identifier; null until publication completes. |
+
+### SvSummary
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `issuerNo` | `string` | 是 | — |
+| `scopeType` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `currency` | [`CurrencyCode`](#currencycode) | 是 | — |
+| `period` | `object`（见下） | 是 | — |
+| `asOf` | `string` | 是 | — |
+| `sourceWatermark` | `number` | 是 | — |
+| `openingMinor` | `number` | 是 | — |
+| `creditedPaidMinor` | `number` | 是 | — |
+| `creditedBonusMinor` | `number` | 是 | — |
+| `consumedMinor` | `number` | 是 | — |
+| `reversedMinor` | `number` | 是 | — |
+| `closingMinor` | `number` | 是 | — |
+| `heldMinor` | `number` | 是 | — |
+| `rechargeCount` | `number` | 是 | — |
+| `usageCount` | `number` | 是 | — |
+| `customerCount` | `number` | 是 | — |
+| `payableMinor` | `number` | 是 | — |
+
+`period` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `from` | `string` | 是 | — |
+| `to` | `string` | 是 | — |
+
+### SvVoidRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `managementNo` | `string` | 是 | — |
+| `expectedRevision` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
 
 ### SvWallet
 

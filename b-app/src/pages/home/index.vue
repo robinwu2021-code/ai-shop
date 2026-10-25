@@ -278,6 +278,7 @@ const cells = computed(() => {
  */
 const entries = computed(() =>
   [
+    { key: "printing", label: t("printCenter.title"), route: ROUTES.printCenter, perm: "biz:print:read" },
     { key: "notice", label: t("home.noticeEntry"), route: ROUTES.storeNotice, perm: "biz:store" },
     { key: "scope", label: t("home.scopeEntry"), route: ROUTES.storeScope, perm: "biz:store" },
     { key: "store", label: t("home.storeEntry"), route: ROUTES.store, perm: "biz:store" },

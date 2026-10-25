@@ -67,6 +67,35 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  // Print API status fields are open strings except PrintOperation.status; keep each DDL domain explicit.
+  { concept: "ord_print_fact.printability（打印取值域）", field: "ord_print_fact.printability", backend: { ddl: ["ord_print_fact", "printability"] }, clients: [] },
+  { concept: "prn_agent.platform（打印取值域）", field: "prn_agent.platform", backend: { ddl: ["prn_agent", "platform"] }, clients: [] },
+  { concept: "prn_agent.status（打印取值域）", field: "prn_agent.status", backend: { ddl: ["prn_agent", "status"] }, clients: [] },
+  { concept: "prn_batch.batch_kind（打印取值域）", field: "prn_batch.batch_kind", backend: { ddl: ["prn_batch", "batch_kind"] }, clients: [] },
+  { concept: "prn_batch.resolved_status（打印取值域）", field: "prn_batch.resolved_status", backend: { ddl: ["prn_batch", "resolved_status"] }, clients: [] },
+  { concept: "prn_batch.status（打印取值域）", field: "prn_batch.status", backend: { ddl: ["prn_batch", "status"] }, clients: [] },
+  { concept: "prn_credential_version.status（打印取值域）", field: "prn_credential_version.status", backend: { ddl: ["prn_credential_version", "status"] }, clients: [] },
+  { concept: "prn_export_task.artifact_kind（打印取值域）", field: "prn_export_task.artifact_kind", backend: { ddl: ["prn_export_task", "artifact_kind"] }, clients: [] },
+  { concept: "prn_export_task.output_profile（打印取值域）", field: "prn_export_task.output_profile", backend: { ddl: ["prn_export_task", "output_profile"] }, clients: [] },
+  { concept: "prn_export_task.source_type（打印取值域）", field: "prn_export_task.source_type", backend: { ddl: ["prn_export_task", "source_type"] }, clients: [] },
+  { concept: "prn_export_task.status（打印取值域）", field: "prn_export_task.status", backend: { ddl: ["prn_export_task", "status"] }, clients: [] },
+  { concept: "prn_incident.status（打印取值域）", field: "prn_incident.status", backend: { ddl: ["prn_incident", "status"] }, clients: [] },
+  { concept: "prn_job.job_kind（打印取值域）", field: "prn_job.job_kind", backend: { ddl: ["prn_job", "job_kind"] }, clients: [] },
+  { concept: "prn_job.result_evidence（打印取值域）", field: "prn_job.result_evidence", backend: { ddl: ["prn_job", "result_evidence"] }, clients: [] },
+  { concept: "prn_operation.status（打印取值域）", field: "prn_operation.status", backend: { ddl: ["prn_operation", "status"] }, clients: [{ file: "b-app/src/api/print.ts", type: "PrintOperation", property: "status" }] },
+  { concept: "prn_printer.connection_type（打印取值域）", field: "prn_printer.connection_type", backend: { ddl: ["prn_printer", "connection_type"] }, clients: [] },
+  { concept: "prn_printer.status（打印取值域）", field: "prn_printer.status", backend: { ddl: ["prn_printer", "status"] }, clients: [] },
+  { concept: "prn_receipt.source_type（打印取值域）", field: "prn_receipt.source_type", backend: { ddl: ["prn_receipt", "source_type"] }, clients: [] },
+  { concept: "prn_receipt.status（打印取值域）", field: "prn_receipt.status", backend: { ddl: ["prn_receipt", "status"] }, clients: [] },
+  { concept: "prn_request.status（打印取值域）", field: "prn_request.status", backend: { ddl: ["prn_request", "status"] }, clients: [] },
+  { concept: "prn_route_catalog.status（打印取值域）", field: "prn_route_catalog.status", backend: { ddl: ["prn_route_catalog", "status"] }, clients: [] },
+  { concept: "prn_route_version.status（打印取值域）", field: "prn_route_version.status", backend: { ddl: ["prn_route_version", "status"] }, clients: [] },
+  { concept: "prn_simulation_run.source_type（打印取值域）", field: "prn_simulation_run.source_type", backend: { ddl: ["prn_simulation_run", "source_type"] }, clients: [] },
+  { concept: "prn_simulation_run.status（打印取值域）", field: "prn_simulation_run.status", backend: { ddl: ["prn_simulation_run", "status"] }, clients: [] },
+  { concept: "prn_template_catalog.scope_key（打印取值域）", field: "prn_template_catalog.scope_key", backend: { ddl: ["prn_template_catalog", "scope_key"] }, clients: [] },
+  { concept: "prn_template_catalog.status（打印取值域）", field: "prn_template_catalog.status", backend: { ddl: ["prn_template_catalog", "status"] }, clients: [] },
+  { concept: "prn_template_catalog.variant_code（打印取值域）", field: "prn_template_catalog.variant_code", backend: { ddl: ["prn_template_catalog", "variant_code"] }, clients: [] },
+  { concept: "prn_template_version.status（打印取值域）", field: "prn_template_version.status", backend: { ddl: ["prn_template_version", "status"] }, clients: [] },
   // JDBC-backed business domains; current client DTOs use open strings, so no finite client parity is claimed.
   {"concept": "inv_return_receipt.quality（数据库取值域）", "field": "inv_return_receipt.quality", "backend": {"ddl": ["inv_return_receipt", "quality"]}, "clients": []},
   {"concept": "mbr_scope_legacy_link.status（数据库取值域）", "field": "mbr_scope_legacy_link.status", "backend": {"ddl": ["mbr_scope_legacy_link", "status"]}, "clients": []},
@@ -807,6 +836,13 @@ function unionValues(src, name) {
   return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
 }
 
+/** Closed union declared on a DTO field, including the print operation response. */
+function interfaceUnionValues(src, type, property) {
+  const body = src.match(new RegExp(`export\\s+interface\\s+${type}\\s*\\{([\\s\\S]*?)\\}`))?.[1];
+  const value = body?.match(new RegExp(`\\b${property}\\s*:\\s*((?:["'][^"']+["']\\s*\\|?\\s*)+)(?:;|$)`))?.[1];
+  return value ? [...value.matchAll(/["']([^"']+)["']/g)].map((m) => m[1]) : null;
+}
+
 /** 端上：常量对象 `export const X = { A: "a" } as const;` */
 function constValues(src, name) {
   const m = src.match(new RegExp(`export const ${name} = \\{([^}]*)\\} as const;`));
@@ -1044,7 +1080,9 @@ export function audit() {
         ? readdirSync(path).filter((f) => f.endsWith(".ts"))
           .map((f) => readFileSync(join(path, f), "utf8")).join("\n")
         : readFileSync(path, "utf8");
-      const declared = c.type ? unionValues(src, c.type) : constValues(src, c.const);
+      const declared = c.property
+        ? interfaceUnionValues(src, c.type, c.property)
+        : c.type ? unionValues(src, c.type) : constValues(src, c.const);
       if (!declared) {
         problems.push({
           concept: f.concept, field: f.field, client: key,
