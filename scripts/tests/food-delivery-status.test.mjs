@@ -21,6 +21,7 @@ test('delivery metadata rejects missing evidence or accidental full acceptance',
 test('generated original books lead with current release evidence and label historical boundaries',()=>{
  for(const name of ['餐饮系统-API设计.md','餐饮系统-数据库设计.md','餐饮系统-领域对象与设计总览.md']) {
   const text=fs.readFileSync(new URL('../../docs/technical/design/'+name,import.meta.url),'utf8');
+  assert.match(text.split('\n').slice(0,8).join('\n'),/状态[：:]/);
   assert.match(text.slice(0,2200),/当前交付证据/);assert.match(text.slice(0,2200),/fef7f0098/);
  }
 });
