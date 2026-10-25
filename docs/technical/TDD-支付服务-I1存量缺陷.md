@@ -55,6 +55,10 @@
 - **契约**：`PayApplymentGateway.SubmitCommand` 加 `storeNo`、`requestNo`。`requestNo = 主体 + 门店（主体级记 E）+ 提交时刻`，由进件服务生成，重提也换新号。
 - 微信 `out_request_no`、支付宝 `out_biz_no` 改用 `requestNo`；缺了直接抛 `ChannelException`，不退回主体编号。stub 的申请单号同样按 `requestNo`（原先也按主体编号，同一类撞单）。
 
+### F06 · 额度并发累加、支付宝回查带单号
+- `MerchantPortImpl#accruePayQuota`：改为一条原子 `UPDATE … SET quota_used_minor = CASE WHEN quota_period = ? THEN quota_used_minor + ? ELSE ? END, quota_period = ?, version = version + 1 WHERE id = ?`，影响行数 ≠ 1 即抛（让回调重推，不静默少记）。不用「读改写 + 重试」：常在回调事务里调，REPEATABLE READ 下重读仍是旧快照。
+- `AbstractApplymentGateway` 加 `buildQuery(channelApplyNo)`（默认空），`AlipayApplymentGateway` 覆写为 `{order_id: …}`。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -62,6 +66,7 @@
 | F01 | `StoreSettleFlowTest#resolvesByChannel` · `#fallbackNeverBorrowsAnotherStoresAccount` · `#offlineKeepsEntityDefaultDeterministically` | ✅ 11/11 | 先红：旧实现问微信号返回了支付宝号（无排序）、A 店取到 B 店专属号。消融去渠道过滤 / 去门店过滤 → 前两条红 ✅ |
 | F03 | `StoreSettleFlowTest#cannotBindAnotherStoresAccount` | ✅ 12/12 | 先红：B 店专属号绑给 A 店 code=0；撤掉新校验即回到该状态 ✅ |
 | F04 | `ApplymentGatewayTest#outRequestNoIsPerApplyment` | ✅ 9/9 | 先红：字段已加、网关仍发主体编号时 `expected "E-1-E-100" but was "E-1"` ✅ |
+| F06 | `MicroPayCapabilityFlowTest#concurrentAccrualsAllLand` · `ApplymentGatewayTest#alipayQueryUsesDifferentApi`（加断言） | ✅ 9/9 · 9/9 | 先红：10 个并发累加只落 1 笔（`expected 10000 but was 1000`）；支付宝查询参数为空 ✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现

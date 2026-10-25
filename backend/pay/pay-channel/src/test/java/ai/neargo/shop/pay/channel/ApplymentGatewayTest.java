@@ -150,6 +150,9 @@ class ApplymentGatewayTest {
 
         assertThat(g.query("ORD-1").status()).isEqualTo("ACTIVE");
         assertThat(c.api).isEqualTo(AlipayApis.SUB_MERCHANT_QUERY);
+        assertThat(c.body)
+                .as("F06 · R25：查询要带申请单号 —— 空参数查，支付宝不知道查哪一单，回查永远查不到")
+                .containsEntry("order_id", "ORD-1");
         assertThat(c.api).isNotEqualTo(AlipayApis.SUB_MERCHANT_CREATE);
     }
 

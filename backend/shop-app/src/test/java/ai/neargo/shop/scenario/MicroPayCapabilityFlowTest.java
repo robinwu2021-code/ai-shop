@@ -139,6 +139,32 @@ class MicroPayCapabilityFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ F06 并发累加不丢 —— updateById 撞乐观锁返回 0 而没人看，那一笔额度就静默丢了")
+    void concurrentAccrualsAllLand() throws Exception {
+        payAccount(MERCHANT, 0L, 0L, "[\"JSAPI\"]", false);
+        int threads = 10;
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
+        for (int i = 0; i < threads; i++) {
+            futures.add(pool.submit(() -> {
+                start.await();
+                merchantAdminPort.accruePayQuota(MERCHANT, null, 1_000L);
+                return null;
+            }));
+        }
+        start.countDown();
+        for (var f : futures) {
+            f.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        pool.shutdown();
+
+        assertThat(merchantQueryPort.payCapabilityOf(MERCHANT, null).quotaUsedMinor())
+                .as("10 次支付回调各记 1000，额度只涨了一部分 —— 小微超限就是这样漏过去的")
+                .isEqualTo(10_000L);
+    }
+
+    @Test
     @DisplayName("★ 运营只能设上限，不能改已用量 —— 能改就等于能把账做平")
     void opsCanOnlySetTheLimit() {
         payAccount(MERCHANT, 0L, 0L, "[\"JSAPI\"]", false);

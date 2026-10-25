@@ -1763,19 +1763,29 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             // 进件还没走完：没有额度可记，也不该因此让支付回调失败
             return;
         }
+        /*
+         * 周期由这里按当前时间算而不是让调用方传 —— 传进来的话，
+         * 补发的历史回调会把去年的钱记进今年的额度里。
+         */
         String period = currentQuotaPeriod();
-        if (!period.equals(pm.getQuotaPeriod())) {
-            /*
-             * 周期翻篇：清零重算。
-             *
-             * 周期由这里按当前时间算而不是让调用方传 —— 传进来的话，
-             * 补发的历史回调会把去年的钱记进今年的额度里。
-             */
-            pm.setQuotaPeriod(period);
-            pm.setQuotaUsedMinor(0L);
+        /*
+         * **一条原子 UPDATE 累加，周期翻篇也在同一条里判**（F06 · Review R24）。
+         *
+         * 此前是「读出来 → 内存里加 → updateById」：带 @Version，并发回调时后到的那条撞乐观锁、
+         * 返回 0，而返回值没人看 —— 10 个并发回调实测只记上 1 笔，小微超限就这样漏过去。
+         * 也不用「失败重读重试」：这里常在支付回调的事务里调用，REPEATABLE READ 下重读拿到的还是旧快照。
+         * 版本号照样 +1，别处按版本做的乐观并发不受影响。
+         */
+        int updated = merchantPaymentMapper.update(null, Wrappers.<MchPaymentMerchant>lambdaUpdate()
+                .setSql("quota_used_minor = CASE WHEN quota_period = {0} THEN COALESCE(quota_used_minor, 0) + {1} ELSE {1} END",
+                        period, amountMinor)
+                .set(MchPaymentMerchant::getQuotaPeriod, period)
+                .setSql("version = COALESCE(version, 0) + 1")
+                .eq(MchPaymentMerchant::getId, pm.getId()));
+        if (updated != 1) {
+            // 行在读与写之间被删了：宁可让这次回调失败重推，也不要静默少记
+            throw new IllegalStateException("额度累加未落库：payment merchant id=" + pm.getId());
         }
-        pm.setQuotaUsedMinor((pm.getQuotaUsedMinor() == null ? 0L : pm.getQuotaUsedMinor()) + amountMinor);
-        merchantPaymentMapper.updateById(pm);
     }
 
     /**

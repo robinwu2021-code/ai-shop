@@ -39,8 +39,14 @@ public class AlipayApplymentGateway extends AbstractApplymentGateway {
 
     @Override
     protected String queryApi(String channelApplyNo) {
-        // 直付通查询与创建是两个接口名，参数带申请单号 —— 由 ChannelClient 拼进业务参数
+        // 直付通查询与创建是两个接口名
         return AlipayApis.SUB_MERCHANT_QUERY;
+    }
+
+    /** 申请单号进业务参数。此前注释说「由 ChannelClient 拼」，实际发出去的是空参数（F06 · R25） */
+    @Override
+    protected Map<String, Object> buildQuery(String channelApplyNo) {
+        return Map.of("order_id", channelApplyNo);
     }
 
     /**
