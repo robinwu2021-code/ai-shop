@@ -77,6 +77,11 @@
 - `DirectAccounts#of(PaymentOpen)`：DIRECT 取第一家门店的路由、AGGREGATED 为空 —— 下单（`OrdinaryPaymentInitiationServiceImpl`）、开单落库（`PaymentLedgerServiceImpl#open`）、退款（`RefundExecutionServiceImpl`）同一条规则。
 - 退款 `TxContext.subMchId`：先取原交易的列，存量行为空时回退到原交易请求快照（`PaymentLedgerService#paymentRequest`）。
 
+### F09 · 出款对账比金额
+- `PayoutReconAxis`：放款单勾上银行流水时比金额，不等 → 不标 MATCHED、开 `PAYOUT_AMOUNT_MISMATCH`（平台侧 = 放款额，通道侧 = 银行金额）。
+- 结算单粒度不比：一笔银行流水可对应一批结算单（批量出款），逐张比必然误报；放款单是一笔转账一条记录。
+- 差异类型多一个取值（`stl_recon_diff.diff_type`，无文案字典，运营端原样显示）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -88,6 +93,7 @@
 | F06 | `MicroPayCapabilityFlowTest#concurrentAccrualsAllLand` · `ApplymentGatewayTest#alipayQueryUsesDifferentApi`（加断言） | ✅ 9/9 · 9/9 | 先红：10 个并发累加只落 1 笔（`expected 10000 but was 1000`）；支付宝查询参数为空 ✅ |
 | F07 | `PaymentOpenConcurrencyTest#concurrentOpenYieldsOneRow`（@RepeatedTest 20，4 线程） | ✅ 20/20；`PaymentRequestSnapshotTest` 等 5 类全绿 | 先红：只有唯一键时 5 轮全是 `DuplicateKeyException` 抛给调用方；加复用后第 5 轮仍出两行（计数含在途行）→ 只数终态后 20/20 ✅ |
 | F08 | `RefundSubMerchantTest#refundCarriesTheOriginalSubMerchant` · `#legacyRowFallsBackToRequestSnapshot` · `PaymentOpenConcurrencyTest`（加列断言） | ✅ 2/2 · 20/20；退款相关 6 类全绿 | 先红：两条均 `expected "SUB-…" but was null` ✅ |
+| F09 | `PayoutBankReconFlowTest#payoutAmountMismatchIsNotMatched` | ✅ 9/9（另 2 个对账类全绿） | 先红：银行只划 290 元，300 元的放款被标 MATCHED ✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现

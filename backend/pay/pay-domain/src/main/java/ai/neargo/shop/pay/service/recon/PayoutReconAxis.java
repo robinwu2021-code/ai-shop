@@ -42,6 +42,8 @@ public class PayoutReconAxis implements ReconAxis {
     private static final String DIFF_NO_BANK_FLOW = "PAYOUT_NO_BANK_FLOW";
     /** 银行划出去了，而系统里没有对应的付款登记。B 侧的反向 */
     private static final String DIFF_BANK_UNMATCHED = "PAYOUT_BANK_UNMATCHED";
+    /** 流水号对上、金额不符（F09 · Review R09）。此前只比流水号，少付 / 多付都被勾平 */
+    private static final String DIFF_AMOUNT_MISMATCH = "PAYOUT_AMOUNT_MISMATCH";
 
     private final SettleMappers.BillMapper billMapper;
     private final SettleMappers.ReconDiffMapper diffMapper;
@@ -174,6 +176,17 @@ public class PayoutReconAxis implements ReconAxis {
                 continue;
             }
             hitFlowNos.add(f.getFlowNo().trim());
+            /*
+             * **金额也要对上**（F09 · Review R09）。一笔放款就是一笔转账，两边金额必须相等；
+             * 不等就不勾平、记一条差异，银行给的数记在通道侧 —— 少付是欠商家的钱，多付是要追回的钱，
+             * 两种都不能因为「流水号对上了」就当成付清。
+             */
+            long expected = p.getAmountMinor() == null ? 0L : p.getAmountMinor();
+            long actual = f.getAmountMinor() == null ? 0L : f.getAmountMinor();
+            if (expected != actual) {
+                opened += openPayout(p, DIFF_AMOUNT_MISMATCH, ref, actual);
+                continue;
+            }
             if (!p.getPayoutNo().equals(f.getMatchedPayoutNo())) {
                 f.setMatchedPayoutNo(p.getPayoutNo());
                 DataScopeContext.executeWithoutScope(() -> bankFlowMapper.updateById(f));
@@ -232,6 +245,11 @@ public class PayoutReconAxis implements ReconAxis {
 
     /** 放款粒度的差异：锚点是放款单号（payment_no 列），金额是放款额 */
     private int openPayout(StlPayout p, String type, String ref) {
+        return openPayout(p, type, ref, null);
+    }
+
+    /** @param bankAmountMinor 银行侧金额（已知时记在通道侧那一列）；未知传 null */
+    private int openPayout(StlPayout p, String type, String ref, Long bankAmountMinor) {
         boolean exists = DataScopeContext.executeWithoutScope(() ->
                 diffMapper.selectCount(Wrappers.<StlReconDiff>lambdaQuery()
                         .eq(StlReconDiff::getAxis, CODE)
@@ -251,6 +269,9 @@ public class PayoutReconAxis implements ReconAxis {
         d.setPayChannel(CHANNEL_NA);
         d.setChannelTxnNo(ref);
         d.setPlatformAmountMinor(p.getAmountMinor() == null ? 0L : p.getAmountMinor());
+        if (bankAmountMinor != null) {
+            d.setChannelAmountMinor(bankAmountMinor);
+        }
         d.setStatus("PENDING");
         d.setTenantNo("MAIN");
         d.setCreatedAt(LocalDateTime.now());
