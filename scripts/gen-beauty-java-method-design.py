@@ -296,6 +296,13 @@ def generate():
             if row.get('status', '').startswith('IMPLEMENTED_TASK59'):
                 increment.append(f"| {row['owner']}<br>`{row['method']} {row['path']}` | `{row['request']}`<br>{row['response']} |")
         increment += [''] + [rule + '\n' for rule in bm04['contracts']]
+    foundation = d.get('serviceOperatorFoundation')
+    if foundation:
+        increment += ['', '## Task62 BM05 shared current-personnel contract', '', foundation['status'], '',
+                      '| Owner / class | Method |', '|---|---|']
+        for row in foundation['methods']:
+            increment.append(f"| `{row['owner']}` | `{row['signature']}` |")
+        increment += ['', foundation['response'], ''] + [rule + '\n' for rule in foundation['contracts']]
     classes += increment
     methods += increment
     stats={'controllers':len(controllers),'services':len(services),'serviceMethods':method_count,'dtos':len(dtos),'mappers':len(mappers),'customMapperMethods':sum(len(m['customMethods']) for m in mappers),'ownedHttp':len(eps),'sharedHttp':len(d['sharedHttpMethods'])}

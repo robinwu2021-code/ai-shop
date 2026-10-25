@@ -99,6 +99,12 @@ def render():
         for row in bm04['publicMethods']:
             lines.append(f"| {row['apiId']} / `{row['method']} {row['path']}` | `{row['service']}.{row['name']}` | {row['permission']} / {row['idempotency']} |")
         lines += [''] + [rule + '\n' for rule in bm04['contracts']]
+    foundation = data.get('serviceOperatorFoundation')
+    if foundation:
+        lines += ['', '## Task62 BM05 shared current-personnel contract', '', foundation['status'], '',
+                  '| Private route / owner | Request | Response |', '|---|---|---|',
+                  f"| `{foundation['method']} {foundation['path']}`<br>{foundation['owner']} | `{foundation['request']}` | `{foundation['response']}` |", '']
+        lines += [rule + '\n' for rule in foundation['contracts']]
     return '\n'.join(lines)
 
 

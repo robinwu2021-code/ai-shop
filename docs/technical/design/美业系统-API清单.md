@@ -620,3 +620,24 @@ Appointment OPEN052/054 canonical052 schema2 stores only original endpoint/fullh
 Default BizEndpointPermTest scans backend only and excludes this external plugin reactor. No false single-code annotation or PUBLIC grant is introduced; composite permissions are enforced by actual Service policy and owner scopes.
 
 Unit/HTTP/native core evidence is distinct from full real-owner two-JVM acceptance, which is DEFERRED by the user until unified P1–P4 deployment verification. No Task60 packaged JAR claim.
+
+
+## Task62 BM05 shared current-personnel contract
+
+PLANNED_TASK62_S0_NOT_IMPLEMENTED_NOT_START_AUTHORITY
+
+| Private route / owner | Request | Response |
+|---|---|---|
+| `POST /internal/merchant/personnel-operator/current`<br>shop-merchant; shop-app private ingress; beauty-channel remote adapter | `InternalCall<PersonnelOperatorFactsPort.Query>; Query(MerchantOperatorAccessPort.Query access)` | `InternalReply<PersonnelOperatorFactsPort.Observation>; LINKED/UNLINKED, observedAt, nullable personnel; personnelNo, assignmentNo, personnelRevision, assignmentRevision, linkRevision, validFrom, nullable validTo` |
+
+Planning only. S0 reuses the canonical current-permission account resolver at the personnel owner; accountNo never leaves that owner. No new schema, role seed grant or public API.
+
+Only biz:service:task:self/view/coordinate/approve/close exact purposes. Business-person link, effective assignment and action permission are separate. Authorized absence is UNLINKED; denial or dependency failure is never absence.
+
+Effective assignment: validFrom <= observedAt AND (validTo IS NULL OR observedAt < validTo). NULL validTo means indefinite; JSON key remains required and explicitly nullable. No manufactured future date.
+
+Bound v1 endpoint PERSONNEL_OPERATOR_CURRENT/action CURRENT/target operatorNo; exact MERCHANT realm MCH/USR identity, tenant/entity/store and complete request digest; current authorization outside caller transaction.
+
+Owner uses an RR observation with canonical account consistency checks before/inside/after; not durable service permission. Remote transport is five seconds, bad/absent binding and malformed success fail closed as 80107; opaque owner failures remain503.
+
+No ServiceTask start/fulfillment/provider enablement or canStart change. Actual native SQL/HTTP behavior, restored ablation, current combined reactor provenance and affected retail/food compilation are Task62 gates; formal deployment deferred.
