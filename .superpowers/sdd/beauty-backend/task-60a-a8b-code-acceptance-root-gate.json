@@ -1,0 +1,46 @@
+{
+  "base": "4ed3745dce4b0959486f3dd141333dce6adc0a3f",
+  "products": [
+    {
+      "path": "b-app/src/api/contract.ts",
+      "sha256": "a325399a923e1a74b3f40c982c758290880c8370af2bb8e46dab0f218eeab2b6",
+      "gitBlob": "a4336da7827143b1a8c5c410ddf7e9a3e836c10e",
+      "bytes": 109095,
+      "baselineSha256": "fd9b092128f04e4cb30d3655aeaf0200e95ef555d4ef47673c4c36d6a1147ad9"
+    },
+    {
+      "path": "b-app/src/api/requests.ts",
+      "sha256": "12bc1e04ad3e6a2b76f976db0ca97dde666e551b1dd61aefd77266aea3704810",
+      "gitBlob": "69889a8e6865c79db5374812a1528c1b763b450d",
+      "bytes": 32732,
+      "baselineSha256": "eaecdec8163cb3c0579c1588fa9ed869944a13bc5c499d998c357ff24674cf01"
+    },
+    {
+      "path": "b-app/src/api/http.ts",
+      "sha256": "8b89041d7272ab22648e79f5e3057a8ce26f540084efc6317ea53f799d3f2209",
+      "gitBlob": "22f349f4fab508cbea165f5a9d9ea56b05af346b",
+      "bytes": 46014,
+      "baselineSha256": "e8311584b7fc186fca1b6aefa0d5def1ce1cd36f5e4b48afc347e5b18e350cec"
+    },
+    {
+      "path": "b-app/tests/member-code-api.test.ts",
+      "sha256": "3236f37b6ace489dddec2041a28f775d508cf3b8b201ad1411fdbd19f4309da1",
+      "gitBlob": "a1fde7ce9ae46adea40d3a46969bde48aea6b09d",
+      "bytes": 1994,
+      "baselineSha256": null
+    }
+  ],
+  "reportSHA": "68e7ea4044dc0cb746ffd3e3e1ec32c588b5327d6d592c42565699bd3cfb815c",
+  "reviewPackage": "/tmp/task60a-a8b-review-package-9db08531-4292-4799-9835-6fb3078768a2.diff",
+  "reviewPackageSHA": "7bb7f9cf6752c454c9a6107c380c0f4a805a7bda2535a4e7c86164e9d1e38584",
+  "focused3pass": true,
+  "shared8pass": true,
+  "fullB242pass": true,
+  "fullBTypecheckZeroDiagnostics": true,
+  "wireMutationREDExactRestore": true,
+  "productCommit": "44f460cde2994cf3090cde9daeb47f5b15436606",
+  "reviewSHA256": "b3b7aa4cbd91d5db71b1c993ef0d8766396c6f0727ced612634f6c9082beb025",
+  "spec": "PASS",
+  "quality": "APPROVED",
+  "inheritedA8TypecheckImportant": "CLOSED"
+}
