@@ -136,6 +136,14 @@ def generate():
         lines.append(f"| {field['name']} | {field['type']} | {field['nullable']} | {field['description']} |")
     lines += ['', 'Highest owner pair never decreases; verified pair/quantity lines preserve historical evidence. '
               'Current UNKNOWN/BLOCKED does not erase that history. No automatic allocation release; canStart=false.', '']
+    manual = schema.get('manualServiceFoundation')
+    if manual:
+        lines += ['', '## 现金线下核心：共用订单存储增量（候选，非41项目标扩表）', '', manual['status'], '',
+                  '| Candidate migration | Shared owner purpose |', '|---|---|']
+        for row in manual['candidates']:
+            lines.append(f"| `{row['path']}` | {row['purpose']} |")
+        lines += ['', '原41项表设计及历史迁移不变；不以此表宣称已创建/应用迁移。Task64首次原生测试前root逐文件审查实际SQL/实体/字段/索引及原操作结果合同。', '']
+        lines += [rule + '\n' for rule in manual['contracts']]
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables
 

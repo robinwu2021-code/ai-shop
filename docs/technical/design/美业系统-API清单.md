@@ -22,7 +22,7 @@
 
 ## 二、统一请求、权限和结果约定
 
-- 身份：tenantNo/entityNo/operator由可信登录上下文产生；storeNo是需验证的业务范围，不接受请求体自行提升主体、操作人或买家。C端customerNo由本人身份解析；代约可保留临客但付款时仍需真实买家及正式接管。平台诊断需目标范围授权与审计。
+- 身份：tenantNo/entityNo/operator由可信登录上下文产生；storeNo是需验证的业务范围，不接受请求体自行提升主体、操作人或买家。C端customerNo由本人身份解析；原正式资金模式下临客付款仍需真实买家及正式接管。现金线下普通服务临客按Task63 M2显式GUEST与线下购买证据接入，不冒充C。平台诊断需目标范围授权与审计。
 - 权限：表中端范围仅是入口。每个BAPI编号实施时绑定独立读/写权限与对象范围，例如`beauty.appointment.read/change`（候选权限名）；技师默认仅本人已分派任务及必要字段，管理操作按功能矩阵申/审/管分离。人员业务岗位与账号权限角色独立。
 - 写请求：业务命令使用`Idempotency-Key`；同键同载荷返回原处理结果，同键不同载荷拒绝。预览、查询类POST不产生业务写入；长期异步命令返回操作号，超时/未知必须查原号。客户端自报成功不作为账或履约事实。
 - 并发：修改携带`expectedRevision`；任务涉及来源另带`bindingRevision`。预览返回previewNo、expiresAt、目标修订及资源水位；提交由服务端重算并原子仲裁，预览不是资源锁。
@@ -641,3 +641,33 @@ Bound v1 endpoint PERSONNEL_OPERATOR_CURRENT/action CURRENT/target operatorNo; e
 Owner uses an RR observation with canonical account consistency checks before/inside/after; not durable service permission. Remote transport is five seconds, bad/absent binding and malformed success fail closed as 80107; opaque owner failures remain503.
 
 No ServiceTask start/fulfillment enablement or canStart change. Final current five suites33/0F/0E/0skip, label17, runner5 and affected current retail/food compilation passed; expiry ablation/restoration is explicitly versioned. Focused bean-registration tests do not prove deployed profiles. Formal deployment remains deferred.
+
+
+## 现金线下核心：共用人工订单准入（Task64 M1）
+
+PLANNED_TASK64_M1_DESIGN_REVIEWED_NOT_IMPLEMENTED
+
+主TDD§0.3/2.41/2.42；ADR050；Task63现金线下核心设计§1–4/8–10；不改变原160目标API编号
+
+| Method / route | Operation / input | Result |
+|---|---|---|
+| `POST /biz/service-orders/manual-quotes` | `prepare`<br>PrepareCheckoutReq；OFFLINE；真实customerRef及原operation/requestKey；不允许caller设置admissionKind | CheckoutQuote；持久MANUAL_OFFLINE；真实C仍须原confirm/place |
+| `POST /biz/service-orders/{orderNo}/manual-receipts` | `confirm`<br>ConfirmManualReceipt(operation,requestKey,expectedOrderRevision,method,declaredMinor,currency,receivedAt,note) | ManualAdmissionView；人工声明不是Pay回执；库存未知不准入 |
+| `GET /biz/service-orders/{orderNo}/manual-admission` | `query`<br>ManualLookup；原declarationNo/requestKey二选一；当前受权门店 | ManualAdmissionView；原号与声明/库存待处理阶段 |
+| `GET /biz/service-orders/{orderNo}/manual-source` | `source`<br>SourceLookup(operation)；当前受权订单范围 | ManualSourceFacts；同ord_checkout_line；独立MANUAL_SOURCE_V1观察，不改旧金融哈希 |
+
+私有四方法：POST /internal/trade/manual-service-admission/{prepare,confirm,query,source}；绑定MERCHANT真实身份/范围/原operation/完整digest。
+
+M1仅已识别真实顾客、普通正价单店SERVICE/STORE_VERIFY/COUNT；C购买确认不等于在线支付，不冒充C，临客M2仍属本阶段必做。
+
+MANUAL_OFFLINE只由专用服务器操作持久；旧在线/资产/正式资金来源不能改标签降级。商品/价格/门店/业务资格仍复用，支付渠道配置/资金查询/点数协调不作为人工模式前置。
+
+受权现金经办人+CASH_RECEIVE+trade:manual-service:confirm；原额/CNY/时间/作用域及原键幂等校验，真实声明可推进人工PAID；不调用旧markPaid或发布普通金融已付事件。
+
+原库存命令已接受或void调用成功不等于成功结果；必须读取冻结原权威、生命周期及完整行数量的一致终态；未知保留原号和实收声明，不能ADMITTED。
+
+人工准入/来源观察与金融回执分开；旧source保持UNKNOWN且不得先查Pay；金额及经办审计按权限裁剪。M1不开放canStart/任务实际占用/履约。
+
+PAID/paid_at自动结算选择器在LIMIT前排除人工；普通支付/正式线下receipt/售后退款/修复/通用履约入口拒绝人工；原资金路径及SERVICE_EXECUTION旧完成门禁保持。
+
+部署未执行；状态为计划，不能根据文档中的候选路由/方法或迁移认定已实现。M2临客及绑定→M3数量许可→M4真实占用→M5作业→M6履约关闭→M7具体任务日历。

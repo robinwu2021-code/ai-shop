@@ -45,7 +45,7 @@ def render():
              '| P1/P2/P3/P4 | 最低接线阶段；仍须门店能力、权限、来源和合同全部验收，不按日期自动打开 |', '',
              '前=前台/POS；技=技师；管=商家Web；B=老板/店长App；平=平台。前/技/管/B复用商家认证及同一组业务API，服务端按门店、本人任务和字段权限裁剪。C端只使用`/mp`和已有共用消费者合同，不调用商家工作台。', '',
              '## 二、统一请求、权限和结果约定', '',
-             '- 身份：tenantNo/entityNo/operator由可信登录上下文产生；storeNo是需验证的业务范围，不接受请求体自行提升主体、操作人或买家。C端customerNo由本人身份解析；代约可保留临客但付款时仍需真实买家及正式接管。平台诊断需目标范围授权与审计。',
+             '- 身份：tenantNo/entityNo/operator由可信登录上下文产生；storeNo是需验证的业务范围，不接受请求体自行提升主体、操作人或买家。C端customerNo由本人身份解析；原正式资金模式下临客付款仍需真实买家及正式接管。现金线下普通服务临客按Task63 M2显式GUEST与线下购买证据接入，不冒充C。平台诊断需目标范围授权与审计。',
              '- 权限：表中端范围仅是入口。每个BAPI编号实施时绑定独立读/写权限与对象范围，例如`beauty.appointment.read/change`（候选权限名）；技师默认仅本人已分派任务及必要字段，管理操作按功能矩阵申/审/管分离。人员业务岗位与账号权限角色独立。',
              '- 写请求：业务命令使用`Idempotency-Key`；同键同载荷返回原处理结果，同键不同载荷拒绝。预览、查询类POST不产生业务写入；长期异步命令返回操作号，超时/未知必须查原号。客户端自报成功不作为账或履约事实。',
              '- 并发：修改携带`expectedRevision`；任务涉及来源另带`bindingRevision`。预览返回previewNo、expiresAt、目标修订及资源水位；提交由服务端重算并原子仲裁，预览不是资源锁。',
@@ -105,6 +105,14 @@ def render():
                   '| Private route / owner | Request | Response |', '|---|---|---|',
                   f"| `{foundation['method']} {foundation['path']}`<br>{foundation['owner']} | `{foundation['request']}` | `{foundation['response']}` |", '']
         lines += [rule + '\n' for rule in foundation['contracts']]
+    manual = data.get('manualServiceFoundation')
+    if manual:
+        lines += ['', '## 现金线下核心：共用人工订单准入（Task64 M1）', '', manual['status'], '', manual['authority'], '',
+                  '| Method / route | Operation / input | Result |', '|---|---|---|']
+        for row in manual['routes']:
+            lines.append(f"| `{row['method']} {row['path']}` | `{row['name']}`<br>{row['request']} | {row['response']} |")
+        lines += ['', '私有四方法：POST /internal/trade/manual-service-admission/{prepare,confirm,query,source}；绑定MERCHANT真实身份/范围/原operation/完整digest。', '']
+        lines += [rule + '\n' for rule in manual['contracts']]
     return '\n'.join(lines)
 
 

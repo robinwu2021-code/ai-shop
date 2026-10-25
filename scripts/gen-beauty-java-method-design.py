@@ -303,6 +303,14 @@ def generate():
         for row in foundation['methods']:
             increment.append(f"| `{row['owner']}` | `{row['signature']}` |")
         increment += ['', foundation['response'], ''] + [rule + '\n' for rule in foundation['contracts']]
+    manual = d.get('manualServiceFoundation')
+    if manual:
+        increment += ['', '## 现金线下核心：共用人工订单准入（Task64 M1）', '', manual['status'], '', manual['authority'], '',
+                      '| Owner / class | Method |', '|---|---|']
+        for row in manual['methods']:
+            increment.append(f"| `{row['owner']}` | `{row['signature']}` |")
+        increment += ['', '精确类/DTO/Mapper/SQL/AC清单：主TDD§2.42及Task63设计§9；原160目标编号不变。', '']
+        increment += [rule + '\n' for rule in manual['contracts']]
     classes += increment
     methods += increment
     stats={'controllers':len(controllers),'services':len(services),'serviceMethods':method_count,'dtos':len(dtos),'mappers':len(mappers),'customMapperMethods':sum(len(m['customMethods']) for m in mappers),'ownedHttp':len(eps),'sharedHttp':len(d['sharedHttpMethods'])}
