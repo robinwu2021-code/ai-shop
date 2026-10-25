@@ -67,6 +67,15 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  active_store_no: "mch_store",
+  from_brand_no: "mch_brand",
+  to_brand_no: "mch_brand",
+  clearing_no: "sv_clearing_entry",
+  payer_entity_no: "mch_entity",
+  payee_entity_no: "mch_entity",
+  bill_no: "sv_settlement_bill",
+  amendment_no: "ord_industry_amendment",
+  application_no: "ord_pricing_fee_application",
   first_store_no: "mch_store",
   recharge_store_no: "mch_store",
   execution_no: "ord_refund_execution",

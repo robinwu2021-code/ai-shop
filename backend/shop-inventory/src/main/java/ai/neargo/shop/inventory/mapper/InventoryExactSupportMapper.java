@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.mapper;
 
 import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -13,6 +14,7 @@ import java.util.List;
  * Native inventory factory owns every query; no business database or parallel balance table is
  * used.
  */
+@Mapper
 public interface InventoryExactSupportMapper {
     record PolicyRow(
             long version,

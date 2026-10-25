@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **391** 张表、**694** 条引用关系，分 **16** 个域。
+全库 **409** 张表、**753** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,21 +14,21 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 11 | 17 |
-| 商家主体与门店 | `mch_*` | 37 | 17 |
+| 商家主体与门店 | `mch_*` | 38 | 17 |
 | 社区与自提点 | `cmt_*` | 3 | 7 |
 | 商品与类目 | `prd_*` | 34 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
-| 交易 | `ord_*` | 46 | 9 |
+| 交易 | `ord_*` | 57 | 9 |
 | 履约 | `ful_*` | 5 | 0 |
 | 营销与团购 | `mkt_*` | 17 | 4 |
 | 积分 | `pts_*` | 41 | 0 |
-| 结算 | `stl_*` | 18 | 2 |
+| 结算 | `stl_*` | 18 | 3 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 1 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
 | 会员 | `mbr_*` | 14 | 1 |
 | 券与活动 | `pmt_*` | 30 | 5 |
-| 系统 | `sys_*` | 30 | 5 |
+| 系统 | `sys_*` | 30 | 6 |
 
 > `usr` 被 17 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
@@ -54,7 +54,7 @@
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_store_favorite.store_no` → `mch_store`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`、`usr_store_view.store_no` → `mch_store`、`usr_store_view.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（37 张）
+### 商家主体与门店 `mch_*`（38 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -97,6 +97,7 @@
 | `mch_brand_store_binding` | — |
 | `mch_brand_change` | — |
 | `mch_brand_financial_activation` | — |
+| `mch_brand_financial_change` | — |
 
 **跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`、`mch_channel_pickup.pickup_no` → `cmt_pickup_point`、`mch_session.user_no` → `usr_account`、`mch_login_log.user_no` → `usr_account`、`mch_brand_financial_activation.issuer_no` → `sv_issuer`
 
@@ -166,7 +167,7 @@
 
 **跨域引用**：`trd_cart_item.user_no` → `usr_account`、`trd_cart_item.goods_no` → `prd_goods`、`trd_cart_item.sku_no` → `prd_sku`、`trd_shipping_upload.order_no` → `ord_order`、`trd_shipping_upload.out_trade_no` → `stl_payment`
 
-### 交易 `ord_*`（46 张）
+### 交易 `ord_*`（57 张）
 
 ![交易表关系](../diagrams/db-ord.svg)
 
@@ -218,8 +219,19 @@
 | `ord_industry_fulfillment` | — |
 | `ord_manual_price_policy` | — |
 | `ord_manual_price_adjustment` | — |
+| `ord_industry_fulfillment_progress` | — |
+| `ord_industry_amendment` | — |
+| `ord_industry_amendment_line` | — |
+| `ord_industry_receivable_adjustment` | — |
+| `ord_industry_fee_line_adjustment` | — |
+| `ord_pricing_fee_rule` | — |
+| `ord_pricing_fee_revision` | — |
+| `ord_pricing_fee_scope` | — |
+| `ord_pricing_fee_application` | — |
+| `ord_pricing_fee_advice` | — |
+| `ord_pricing_fee_reconciliation` | — |
 
-**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_item.shipment_no` → `lgs_waybill`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`、`ord_shipment.shipment_no` → `lgs_waybill`、`ord_create_intent.user_no` → `usr_account`、`ord_payment_resolution.payment_no` → `stl_payment`、`ord_payment_resolution.user_no` → `usr_account`、`ord_refund_execution.origin_payment_no` → `stl_payment`、`ord_refund_execution.payment_no` → `stl_payment`、`ord_points_refund_execution.cash_payment_no` → `stl_payment`、`ord_points_integration_policy.store_no` → `mch_store`、`ord_points_binding.store_no` → `mch_store`、`ord_points_source_fact.event_no` → `sys_outbox`、`ord_points_source_fact.store_no` → `mch_store`、`ord_points_refund_binding.cash_payment_no` → `stl_payment`、`ord_refund_coupon_scope.coupon_no` → `mkt_coupon`、`ord_ent_authorization.user_no` → `usr_account`、`ord_ent_authorization.entity_no` → `mch_entity`、`ord_ent_authorization.store_no` → `mch_store`、`ord_ent_source_decision.user_no` → `usr_account`、`ord_ent_source_decision.entity_no` → `mch_entity`、`ord_ent_source_decision.store_no` → `mch_store`、`ord_card_sale_snapshot.user_no` → `usr_account`、`ord_card_sale_snapshot.entity_no` → `mch_entity`、`ord_card_sale_snapshot.store_no` → `mch_store`、`ord_card_sale_snapshot.goods_no` → `prd_goods`、`ord_card_sale_snapshot.sku_no` → `prd_sku`、`ord_card_sale_snapshot.template_version_no` → `ent_template_version`、`ord_ent_order_use.entity_no` → `mch_entity`、`ord_ent_order_use.user_no` → `usr_account`、`ord_ent_service_order.entity_no` → `mch_entity`、`ord_ent_service_order.store_no` → `mch_store`、`ord_ent_service_order.user_no` → `usr_account`、`ord_legacy_coupon_checkout.user_no` → `usr_account`、`ord_legacy_coupon_checkout.entity_no` → `mch_entity`、`ord_store_pricing_config.entity_no` → `mch_entity`、`ord_store_pricing_config.store_no` → `mch_store`、`ord_store_pricing_revision.entity_no` → `mch_entity`、`ord_store_pricing_revision.store_no` → `mch_store`、`ord_price_quote.entity_no` → `mch_entity`、`ord_price_quote.store_no` → `mch_store`、`ord_price_quote_line.goods_no` → `prd_goods`、`ord_price_quote_line.sku_no` → `prd_sku`、`ord_pricing_funding_source.entity_no` → `mch_entity`、`ord_pricing_funding_source.store_no` → `mch_store`、`ord_pricing_funding_source.user_no` → `usr_account`、`ord_industry_order_source.entity_no` → `mch_entity`、`ord_industry_order_source.store_no` → `mch_store`、`ord_industry_fulfillment.entity_no` → `mch_entity`、`ord_industry_fulfillment.store_no` → `mch_store`、`ord_manual_price_policy.entity_no` → `mch_entity`、`ord_manual_price_policy.store_no` → `mch_store`、`ord_manual_price_adjustment.entity_no` → `mch_entity`、`ord_manual_price_adjustment.store_no` → `mch_store`
+**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_item.shipment_no` → `lgs_waybill`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`、`ord_shipment.shipment_no` → `lgs_waybill`、`ord_create_intent.user_no` → `usr_account`、`ord_payment_resolution.payment_no` → `stl_payment`、`ord_payment_resolution.user_no` → `usr_account`、`ord_refund_execution.origin_payment_no` → `stl_payment`、`ord_refund_execution.payment_no` → `stl_payment`、`ord_points_refund_execution.cash_payment_no` → `stl_payment`、`ord_points_integration_policy.store_no` → `mch_store`、`ord_points_binding.store_no` → `mch_store`、`ord_points_source_fact.event_no` → `sys_outbox`、`ord_points_source_fact.store_no` → `mch_store`、`ord_points_refund_binding.cash_payment_no` → `stl_payment`、`ord_refund_coupon_scope.coupon_no` → `mkt_coupon`、`ord_ent_authorization.user_no` → `usr_account`、`ord_ent_authorization.entity_no` → `mch_entity`、`ord_ent_authorization.store_no` → `mch_store`、`ord_ent_source_decision.user_no` → `usr_account`、`ord_ent_source_decision.entity_no` → `mch_entity`、`ord_ent_source_decision.store_no` → `mch_store`、`ord_card_sale_snapshot.user_no` → `usr_account`、`ord_card_sale_snapshot.entity_no` → `mch_entity`、`ord_card_sale_snapshot.store_no` → `mch_store`、`ord_card_sale_snapshot.goods_no` → `prd_goods`、`ord_card_sale_snapshot.sku_no` → `prd_sku`、`ord_card_sale_snapshot.template_version_no` → `ent_template_version`、`ord_ent_order_use.entity_no` → `mch_entity`、`ord_ent_order_use.user_no` → `usr_account`、`ord_ent_service_order.entity_no` → `mch_entity`、`ord_ent_service_order.store_no` → `mch_store`、`ord_ent_service_order.user_no` → `usr_account`、`ord_legacy_coupon_checkout.user_no` → `usr_account`、`ord_legacy_coupon_checkout.entity_no` → `mch_entity`、`ord_store_pricing_config.entity_no` → `mch_entity`、`ord_store_pricing_config.store_no` → `mch_store`、`ord_store_pricing_revision.entity_no` → `mch_entity`、`ord_store_pricing_revision.store_no` → `mch_store`、`ord_price_quote.entity_no` → `mch_entity`、`ord_price_quote.store_no` → `mch_store`、`ord_price_quote_line.goods_no` → `prd_goods`、`ord_price_quote_line.sku_no` → `prd_sku`、`ord_pricing_funding_source.entity_no` → `mch_entity`、`ord_pricing_funding_source.store_no` → `mch_store`、`ord_pricing_funding_source.user_no` → `usr_account`、`ord_industry_order_source.entity_no` → `mch_entity`、`ord_industry_order_source.store_no` → `mch_store`、`ord_industry_fulfillment.entity_no` → `mch_entity`、`ord_industry_fulfillment.store_no` → `mch_store`、`ord_manual_price_policy.entity_no` → `mch_entity`、`ord_manual_price_policy.store_no` → `mch_store`、`ord_manual_price_adjustment.entity_no` → `mch_entity`、`ord_manual_price_adjustment.store_no` → `mch_store`、`ord_industry_fulfillment_progress.entity_no` → `mch_entity`、`ord_industry_amendment.entity_no` → `mch_entity`、`ord_industry_amendment.store_no` → `mch_store`、`ord_industry_receivable_adjustment.entity_no` → `mch_entity`、`ord_industry_receivable_adjustment.store_no` → `mch_store`、`ord_pricing_fee_rule.entity_no` → `mch_entity`、`ord_pricing_fee_rule.store_no` → `mch_store`、`ord_pricing_fee_revision.entity_no` → `mch_entity`、`ord_pricing_fee_revision.store_no` → `mch_store`、`ord_pricing_fee_scope.entity_no` → `mch_entity`、`ord_pricing_fee_scope.store_no` → `mch_store`、`ord_pricing_fee_application.entity_no` → `mch_entity`、`ord_pricing_fee_application.store_no` → `mch_store`、`ord_pricing_fee_advice.entity_no` → `mch_entity`、`ord_pricing_fee_advice.store_no` → `mch_store`、`ord_pricing_fee_reconciliation.entity_no` → `mch_entity`、`ord_pricing_fee_reconciliation.store_no` → `mch_store`
 
 ### 履约 `ful_*`（5 张）
 

@@ -130,6 +130,15 @@ const LINEAGE: Hop[] = [
  * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
+  active_store_no: { table: "mch_store", col: "store_no" },
+  from_brand_no: { table: "mch_brand", col: "brand_no" },
+  to_brand_no: { table: "mch_brand", col: "brand_no" },
+  clearing_no: { table: "sv_clearing_entry" },
+  payer_entity_no: { table: "mch_entity", col: "entity_no" },
+  payee_entity_no: { table: "mch_entity", col: "entity_no" },
+  bill_no: { table: "sv_settlement_bill" },
+  amendment_no: { table: "ord_industry_amendment" },
+  application_no: { table: "ord_pricing_fee_application" },
   // Current merchant, stored-value, pricing and print migration ownership.
   first_store_no: { table: "mch_store", col: "store_no" },
   // Original recharge store remains the same merchant-store identity in lots and clearing entries.
