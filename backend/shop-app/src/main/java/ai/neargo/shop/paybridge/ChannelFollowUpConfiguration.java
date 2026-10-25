@@ -1,7 +1,7 @@
 package ai.neargo.shop.paybridge;
 
 import ai.neargo.shop.pay.channel.api.ChannelGateway;
-import ai.neargo.shop.pay.channel.followup.ChannelFollowUpService;
+import ai.neargo.shop.pay.channel.followup.ChannelFollowUpRunner;
 import ai.neargo.shop.pay.channel.followup.FollowUpResolver;
 import ai.neargo.shop.pay.channel.followup.FollowUpStore;
 import java.time.Clock;
@@ -13,8 +13,8 @@ import org.springframework.context.annotation.Configuration;
 public class ChannelFollowUpConfiguration {
 
     @Bean
-    ChannelFollowUpService channelFollowUpService(FollowUpStore store, ChannelGateway channels,
+    ChannelFollowUpRunner channelFollowUpRunner(FollowUpStore store, ChannelGateway channels,
                                                   FollowUpResolver resolver) {
-        return new ChannelFollowUpService(store, channels, resolver, Clock.systemUTC());
+        return new ChannelFollowUpRunner(store, channels, resolver, Clock.systemUTC());
     }
 }

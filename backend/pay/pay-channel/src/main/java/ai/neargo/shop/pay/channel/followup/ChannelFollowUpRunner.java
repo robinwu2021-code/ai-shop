@@ -18,9 +18,9 @@ import org.slf4j.LoggerFactory;
  * 补查一轮（渠道接入统一封装设计 §8.3）：领取到期任务 → 用<b>原追踪号</b>查单 → 有结论就交业务入账，没有就指数退避，
  * 超过上限转人工。调度壳在应用层（{@code ChannelFollowUpJob}），这里不知道自己多久跑一次。
  */
-public final class ChannelFollowUpService {
+public final class ChannelFollowUpRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(ChannelFollowUpService.class);
+    private static final Logger log = LoggerFactory.getLogger(ChannelFollowUpRunner.class);
     static final int MAX_ATTEMPTS = 12;
     static final Duration MAX_BACKOFF = Duration.ofHours(1);
     private static final Duration LEASE = Duration.ofMinutes(2);
@@ -30,7 +30,7 @@ public final class ChannelFollowUpService {
     private final FollowUpResolver resolver;
     private final Clock clock;
 
-    public ChannelFollowUpService(FollowUpStore store, ChannelGateway channels, FollowUpResolver resolver, Clock clock) {
+    public ChannelFollowUpRunner(FollowUpStore store, ChannelGateway channels, FollowUpResolver resolver, Clock clock) {
         this.store = store;
         this.channels = channels;
         this.resolver = resolver;

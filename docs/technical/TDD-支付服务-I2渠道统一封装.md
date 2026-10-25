@@ -83,7 +83,7 @@
 ### S5 · 「未知」补查
 - `InvocationListener#invocationEnded`：整次调用的最终结果（重试、分类之后）。
 - `channel.followup.FollowUpScheduler`（监听者）：收款结果为 Unknown → 登记 `pay_channel_followup`（30 秒后首查）；`open_key` 唯一 → 同一笔只有一条进行中；登记失败只记日志。
-- `channel.followup.ChannelFollowUpService#runOnce`：到期任务 → 乐观锁领取（多实例只有一个查）→ 以<b>原追踪号</b>查单 → 已付交 `FollowUpResolver` 入账并结案；渠道没有这笔 → 结案不入账；未付 / 查不通 / 不明 → 退避 30 秒起翻倍、封顶 1 小时；第 12 次仍无结论 → `ESCALATED`。
+- `channel.followup.ChannelFollowUpRunner#runOnce`：到期任务 → 乐观锁领取（多实例只有一个查）→ 以<b>原追踪号</b>查单 → 已付交 `FollowUpResolver` 入账并结案；渠道没有这笔 → 结案不入账；未付 / 查不通 / 不明 → 退避 30 秒起翻倍、封顶 1 小时；第 12 次仍无结论 → `ESCALATED`。
 - `channel.followup.MybatisFollowUpStore`：独立事务（同调用记录）；调用坐标（地区、接入模式、币种）从原调用记录取。
 - 应用层 `paybridge`：`PaymentFollowUpResolver`（`SettlePort.settlePayment` → `OrderRepairPort.markPaid`，与渠道回调同序同幂等键）· `ChannelFollowUpJob`（每分钟，`shop.job.enabled` 守卫，ShedLock）· `ChannelFollowUpConfiguration`。
 
@@ -91,6 +91,16 @@
 - `channel.lifecycle.ChannelLifecycleManager`（`SmartLifecycle` + 监听者 + 准入）：按首次发送登记在途、调用结束移除；`stop()` 停收新调用 → 等在途（`shop.pay.channel.drain-timeout`，默认 20s）→ 等不完的以 `Unknown("SHUTDOWN_DRAIN_TIMEOUT")` 通知补查登记后放行。相位 `DEFAULT_PHASE - 1536`：排在 Web 优雅关闭之后。
 - `ChannelInvoker` 加准入：不收时直接 `Failed(CHANNEL_UNAVAILABLE, retryable)`，不进管线、不留调用记录（没发出去）。
 - `pay_channel_lifecycle_log`：`ACTIVE→DRAINING`、`DRAINING→STOPPED` 两行，原因里带在途数与超时清单；渠道码记 `*`（应用级）。写失败只记日志（关闭期库可能已断）。
+
+### S7 · 统一回调
+- 地址：`POST|GET /pay/callback/{channel}/{notifyType}/{ref}`（`notifyType` = pay / refund，`ref` = 收款商户号，`route_style=PATH`）；旧地址 `POST /pay/callback/{channel}`、`/{channel}/refund` 保留为别名（`LEGACY`，`path_ref='-'`）。三者进同一个支付侧模板。
+- `spi.pay.PayCallbackPort`（新 SPI）· `pay.port.PayCallbackPortImpl` · `pay.callback.CallbackTemplate`：① 先落 `pay_callback_log`（原文 SHA-256、验签前只存指纹与前缀、来源 IP 取代理头）→ ③ 验签 → ④ 取单号 → ⑤ 路径收款商户 ≠ 这笔的 `pay_merchant_no` → `MERCHANT_MISMATCH` → ⑥ 回查（同一管线）→ ⑤′ 渠道确认金额 ≠ 这笔金额 → `amount_matched=0`、不推进 → 重复识别（同一原文已入账、账还在、渠道事实一致 → `DUPLICATE` 回成功）。每步失败：落原因、回失败 ack 让渠道重推。
+- ⑦ 入账与订单投影留在交易域控制器（`ChannelPayCallbackController` 只剩路由 + `settlePayment → markPaid` / `settleRefund`），之后 `handled` 回写 `APPLIED` / `REJECTED`。
+- `channel.callback.CallbackLogRecorder`：独立事务；落库失败不挡回调。
+- 注册表启动校验三：装了外部渠道（非 `PLATFORM_SUB`）收款处理器、却没有 `ChannelCallbackVerifier` → 启动失败（`CallbackConfiguration#callbackCoverageCheck`）。
+
+### S8 · 旧报文表停写开关
+- `shop.pay.log.recording`：`both`（默认）= 照写 `stl_channel_message`；`new` = 回调与外发都只写四向记录。开关在 `ChannelMessageRecorder` 自身，回调模板拿到空报文号时自然跳过回填。
 
 ## §5 对账三 · 实现 → 需求（测试）
 
@@ -105,8 +115,10 @@
 | — | `ChannelPipelineTest$Guards`（精度余数不发；币种 / 退款上限；停用只拦新收款） | ✅ | 精度判据恒真 → 红；可用性拦全部操作 → 红 ✅ |
 | AC7 | `ChannelRecordingTest`（6 条：11 环顺序；`amountTrace`；`sourceTrace`；`retryRowPerAttempt`；`recordingFailureDoesNotBlock`；`succeededRefundIsNotResent`） | ✅ | 去掉重试开新行 / 金额不按精度 / 关幂等 / 记录失败抛出 → 4 条各自红 ✅ |
 | AC8 | `ChannelCallLogFlowTest#payQueryRefundEachLeaveACallLogRow`（TEST 渠道 CNY 12.34：收款 PENDING、查单 SUCCEEDED、退款 3.00 PENDING 各一行；接入模式 PLATFORM_SUB、金额字符串 `12.34`、来源 INTERNAL、三个追踪号） | ✅ | 去掉 `LegacyChannelBridge` 的 `@Bean`（调用点退回直调原网关）→ 红：`PAY … 应有且只有一行调用记录 Expected size: 1 but was: 0` ✅ |
-| AC9 | `ChannelFollowUpFlowTest`（2 条：`unknownPrepayIsFollowedUpAndBooked` 下单超时 → 登记 → 用户付款后补查独自转已支付、查单沿用原追踪号；`followUpRacingCallbackBooksOnce` 补查与 stub 回调并发 → 一笔成功流水、订单只转一次、补查结案）· `ChannelFollowUpServiceTest`（5 条：已付入账、没有这笔结案、退避与封顶、12 次转人工、一条进行中、多实例只领一次） | ✅ | ① 去掉补查登记 → 两条红（`EmptyResultDataAccess`）② 解析器不入账 → `unknownPrepay…` 红（订单仍待支付）③ 订单转已支付去掉「已支付即返回」→ `followUpRacing…` 红（落败一方抛错、补查未结案）✅ |
+| AC9 | `ChannelFollowUpFlowTest`（2 条：`unknownPrepayIsFollowedUpAndBooked` 下单超时 → 登记 → 用户付款后补查独自转已支付、查单沿用原追踪号；`followUpRacingCallbackBooksOnce` 补查与 stub 回调并发 → 一笔成功流水、订单只转一次、补查结案）· `ChannelFollowUpRunnerTest`（5 条：已付入账、没有这笔结案、退避与封顶、12 次转人工、一条进行中、多实例只领一次） | ✅ | ① 去掉补查登记 → 两条红（`EmptyResultDataAccess`）② 解析器不入账 → `unknownPrepay…` 红（订单仍待支付）③ 订单转已支付去掉「已支付即返回」→ `followUpRacing…` 红（落败一方抛错、补查未结案）✅ |
 | AC10 | `LifecycleDrainTest`（2 条：`drainsInFlightBeforeStopping` 在途未完不放行、新调用 `CHANNEL_UNAVAILABLE`、完成后结果照常不登记补查；`drainTimeoutRegistersFollowUp` 200ms 超时 → 收款登记补查、日志列出 `WECHAT PAY OD1`） | ✅ | ① 准入恒放行 + 超时不通知补查 → 两条红 ② 不等在途（第一轮即跳出）→ `drainsInFlight…` 红「在途没跑完，不能放行关闭」✅ |
+| AC11 | `CallbackTemplateTest`（6 条，带真实安全过滤链：`badSignature` · `merchantMismatch` · `amountMismatch` · `duplicate`（第二次 `DUPLICATE`、`markPaid` 恰一次）· `legacyAliasStillWorks` · `unknownTypeOrChannel`）· `CallbackCoverageCheckTest`（2 条：外部渠道无回调验签即抛；平台自有账户豁免）· 既有 `ChannelPayCallbackFlowTest` 14 · `StrictRefundCallbackFlowTest` 5 · `BasicRefundRecoveryFlowTest` 9 · `PhaseOneOrderEndToEndFlowTest` 2 全绿 | ✅ | 一次去掉 4 处（商户核对、金额核对、重复识别、启动校验三）→ `merchantMismatch` / `amountMismatch` / `duplicate` / `externalChannelWithoutCallbackFails` 各自红 ✅ |
+| S8 | `ChannelMessageRecordingSwitchTest`（2 条：both 照写；new 回调与外发都不写、报文号为空） | ✅ | 回调入口去掉开关判断 → `newStopsLegacyWrites` 红 ✅ |
 | AC1 | `MapperSmokeTest`（每个 Mapper 查自己的表）· `SchemaDriftTest` · `PayBaseEntityTest` · 本机 MySQL 启动执行 V4–V6 | ✅ | 把 `PayChannelCallLog.invocationNo` 改名 → `MapperSmokeTest` 红（`Column "invocation_no_x" not found`）✅ |
 
 S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔断粒度、未登记码、精度、可用性范围）→ 7 条测试变红，还原后 pay-channel 84 / 84 绿。
@@ -126,3 +138,6 @@ S2 是新组件、无旧行为可先红：一次性消融 5 处（重试、熔�
 5. **管线判出的明确失败在退款上译为「明确拒绝」**：管线里的 Failed 只有两种来源 —— 渠道明确拒绝，或根本没发出去（校验、熔断开、产品停用）—— 两者都可据以判失败；未发出的那种由售后重新发起。
 6. **补查只跟收款**：退款「未知」已有 `RefundExecutionService.query` 与退款坐标恢复两条收口，且它要的是五态退款查询（偏差 3）；随 I3 退款单拆分接入。转人工今天只记 ERROR 日志、`pay_exception_id` 留空 —— `pay_exception` 表在 I5。`open_key` 用「操作|渠道|单号」而非表设计的「操作|stl_payment_id|pay_refund_id」：两个 id 要到 I3 才进调用元数据。
 7. **生命周期先做应用级排空**：设计里「渠道 × 收款商户」实例的七态（含熔断带来的 DEGRADED / SUSPENDED）要等 `pay_merchant`（I4）；今天日志只记应用关闭这一种变化，渠道码记 `*`。
+8. **回调模板的 ⑦ 入账留在交易域，入口仍在 `shop-core`**：设计把 ①–⑨ 都放在支付侧，但订单投影（`markPaid`）属于交易域；I3 结果入口与 Outbox 事件就位后，⑦ 改为支付域发事件、交易域消费，控制器随之迁入 `pay-portal` 的 CALLBACK 面（ADR-042 补充随 I3）。
+9. **回调核对的边界**：收款商户比的是这笔交易落下的 `pay_merchant_no`（`pay_merchant` 表在 I4，`pay_merchant_id` 留空）；币种不比 —— 现有测试 / stub 网关查单恒报 CNY，比了会误拒；`notify_amount_minor` 记的是回查确认的金额（各家验签实现还没把通知里的声明金额规整出来）。重复识别放在回查之后而非验签之前：字节相同不代表事实相同，渠道改口（换了退款单号）要交入账一侧去拒（`StrictRefundCallbackFlowTest#confirmedRefundRejectsDifferentProviderReplay` 钉着）。进件 / 出款 / 跳回三种通知类型、原文加密落 `pay_raw_payload`、回调重放，随各自迭代。
+10. **补查服务改名 `ChannelFollowUpRunner`**：`ArchitectureTest#serviceMustBeInterface` 要求 `*Service` 是接口 —— S5 提交时没跑架构测试，S7 一并改正。

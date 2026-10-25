@@ -20,7 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /** 补查一轮的判断（TDD-支付服务-I2渠道统一封装 S5）：结论、退避、转人工、多实例领取 */
-class ChannelFollowUpServiceTest {
+class ChannelFollowUpRunnerTest {
 
     private static final Instant NOW = Instant.parse("2026-10-25T08:00:00Z");
 
@@ -93,8 +93,8 @@ class ChannelFollowUpServiceTest {
     private final List<String> queriedTraces = new ArrayList<>();
     private ChannelResult answer;
 
-    private ChannelFollowUpService service(Instant now) {
-        return new ChannelFollowUpService(store, (account, cmd) -> {
+    private ChannelFollowUpRunner service(Instant now) {
+        return new ChannelFollowUpRunner(store, (account, cmd) -> {
             queriedTraces.add(cmd.meta().traceId() + ":" + ((QueryCommand) cmd).outTradeNo());
             return answer;
         }, (ch, out, trade, amount, currency) -> booked.add(out + "/" + trade + "/" + amount + currency),
@@ -137,17 +137,17 @@ class ChannelFollowUpServiceTest {
     @Test
     @DisplayName("★★★ 一直不明 → 退避封顶 1 小时，第 12 次转人工，不无限查下去")
     void escalatesAfterMaxAttempts() {
-        assertThat(ChannelFollowUpService.delay(1)).isEqualTo(Duration.ofMinutes(1));
-        assertThat(ChannelFollowUpService.delay(30)).isEqualTo(Duration.ofHours(1));
+        assertThat(ChannelFollowUpRunner.delay(1)).isEqualTo(Duration.ofMinutes(1));
+        assertThat(ChannelFollowUpRunner.delay(30)).isEqualTo(Duration.ofHours(1));
         open("D");
         answer = new ChannelResult.Unknown("TIMEOUT");
         Instant t = NOW;
-        for (int i = 0; i < ChannelFollowUpService.MAX_ATTEMPTS; i++) {
+        for (int i = 0; i < ChannelFollowUpRunner.MAX_ATTEMPTS; i++) {
             service(t).runOnce(10);
             t = t.plus(Duration.ofHours(2));
         }
         assertThat(store.status.get(1L)).isEqualTo("ESCALATED");
-        assertThat(queriedTraces).hasSize(ChannelFollowUpService.MAX_ATTEMPTS);
+        assertThat(queriedTraces).hasSize(ChannelFollowUpRunner.MAX_ATTEMPTS);
         assertThat(booked).isEmpty();
     }
 

@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.channel.config;
 import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.channel.PayGatewayRouter;
 import ai.neargo.shop.pay.channel.api.ChannelGateway;
+import ai.neargo.shop.pay.channel.callback.CallbackLogRecorder;
 import ai.neargo.shop.pay.channel.catalog.DbChannelProductCatalog;
 import ai.neargo.shop.pay.channel.fault.ChannelErrorMapper;
 import ai.neargo.shop.pay.channel.followup.FollowUpScheduler;
@@ -36,6 +37,7 @@ import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.channel.legacy.LegacyGatewayHandler;
 import ai.neargo.shop.pay.channel.log.JsonPayLogger;
 import ai.neargo.shop.pay.channel.log.PayLogger;
+import ai.neargo.shop.pay.mapper.ChannelMappers.PayCallbackLogMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelCallLogMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelFollowupMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelLifecycleLogMapper;
@@ -84,6 +86,12 @@ public class ChannelPipelineConfiguration {
     FollowUpStore channelFollowUpStore(PayChannelFollowupMapper mapper, PayChannelCallLogMapper calls,
                                        @Qualifier("payTxManager") PlatformTransactionManager payTxManager) {
         return new MybatisFollowUpStore(mapper, calls, payTxManager);
+    }
+
+    @Bean
+    CallbackLogRecorder callbackLogRecorder(PayCallbackLogMapper mapper,
+                                            @Qualifier("payTxManager") PlatformTransactionManager payTxManager) {
+        return new CallbackLogRecorder(mapper, payTxManager);
     }
 
     @Bean

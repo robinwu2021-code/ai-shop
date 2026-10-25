@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.channel.handler;
 
+import ai.neargo.shop.pay.channel.api.AccessMode;
 import ai.neargo.shop.pay.channel.api.ChannelKey;
 import ai.neargo.shop.pay.channel.api.PayScene;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 /**
@@ -41,6 +43,17 @@ public final class ChannelHandlerRegistry {
         this.entries = List.copyOf(all);
         this.catalog = catalog;
         verifyNoAmbiguity();
+    }
+
+    /** 本部署装了处理器的渠道 → 接入模式（回调启动校验用：有收款处理器的渠道必须有回调处理器） */
+    public Map<String, Set<AccessMode>> wired() {
+        Map<String, Set<AccessMode>> out = new TreeMap<>();
+        for (Entry e : entries) {
+            if (e.pattern().payChannel() != null && e.pattern().accessMode() != null) {
+                out.computeIfAbsent(e.pattern().payChannel(), k -> new TreeSet<>()).add(e.pattern().accessMode());
+            }
+        }
+        return out;
     }
 
     /** 找不到 → 空对象（明确失败），不是 null、更不是别的渠道的处理器 */

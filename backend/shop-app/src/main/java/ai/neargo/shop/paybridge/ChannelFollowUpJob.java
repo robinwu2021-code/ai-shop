@@ -5,7 +5,7 @@ import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
-import ai.neargo.shop.pay.channel.followup.ChannelFollowUpService;
+import ai.neargo.shop.pay.channel.followup.ChannelFollowUpRunner;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,7 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 「未知」补查的调度壳 —— 判断都在 {@link ChannelFollowUpService}（TDD-支付服务-I2渠道统一封装 S5）。
+ * 「未知」补查的调度壳 —— 判断都在 {@link ChannelFollowUpRunner}（TDD-支付服务-I2渠道统一封装 S5）。
  * 每分钟一轮；任务自带退避（30 秒起、封顶 1 小时、12 次转人工），这里只决定多久看一次到期的。
  */
 @Component
@@ -24,10 +24,10 @@ public class ChannelFollowUpJob implements JobHandler {
     @Value("${shop.job.channel-follow-up.limit:200}")
     private int limit;
 
-    private final ChannelFollowUpService followUps;
+    private final ChannelFollowUpRunner followUps;
     private final JobSupport jobs;
 
-    public ChannelFollowUpJob(ChannelFollowUpService followUps, JobSupport jobs) {
+    public ChannelFollowUpJob(ChannelFollowUpRunner followUps, JobSupport jobs) {
         this.followUps = followUps;
         this.jobs = jobs;
     }

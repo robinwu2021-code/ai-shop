@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.pay.channel.TestPayGateway;
 import ai.neargo.shop.pay.channel.api.ChannelTransportException;
-import ai.neargo.shop.pay.channel.followup.ChannelFollowUpService;
+import ai.neargo.shop.pay.channel.followup.ChannelFollowUpRunner;
 import ai.neargo.shop.support.TestLogin;
 import java.util.Map;
 import java.util.UUID;
@@ -48,7 +48,7 @@ class ChannelFollowUpFlowTest {
     @Autowired private ObjectMapper json;
     @Autowired private OtpStore otp;
     @Autowired private JdbcTemplate jdbc;
-    @Autowired private ChannelFollowUpService followUps;
+    @Autowired private ChannelFollowUpRunner followUps;
     @MockitoSpyBean private TestPayGateway bank;
 
     @AfterEach
