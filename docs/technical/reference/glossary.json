@@ -13370,6 +13370,12 @@
           "ar": "لم يتم تفعيل رصيد العلامة"
         },
         {
+          "key": "issuer.blockers.COLLECTION_CONFIRMATION_REQUIRED",
+          "zh-CN": "请先取得结算主体的集中收款授权",
+          "en": "Central collection authorization is required",
+          "ar": "يلزم تفويض التحصيل المركزي"
+        },
+        {
           "key": "issuer.blockers.CROSS_ENTITY_SETTLEMENT_UNAVAILABLE",
           "zh-CN": "跨主体结算尚未开通",
           "en": "Cross-entity settlement is not enabled",
@@ -13850,6 +13856,12 @@
           "ar": "المزايا المشتركة غير جاهزة"
         },
         {
+          "key": "management.blocker.FINANCIAL_COORDINATION_PENDING",
+          "zh-CN": "品牌变更待核对，请重试原操作",
+          "en": "Brand change awaiting verification; retry the original operation",
+          "ar": "تغيير العلامة بانتظار التحقق؛ أعد المحاولة الأصلية"
+        },
+        {
           "key": "management.blocker.IMPACT_UNKNOWN",
           "zh-CN": "业务影响尚未确认，请稍后重试",
           "en": "Impact is not confirmed. Retry later",
@@ -14126,6 +14138,12 @@
           "ar": "عرض المتجر"
         },
         {
+          "key": "management.permission.sv_activity_report",
+          "zh-CN": "查看储值活动汇总",
+          "en": "View recharge activity reports",
+          "ar": "عرض تقارير أنشطة الشحن"
+        },
+        {
           "key": "management.permission.sv_brand_activity_approve",
           "zh-CN": "审批品牌储值活动",
           "en": "Approve brand recharge activities",
@@ -14148,6 +14166,18 @@
           "zh-CN": "查看品牌储值活动",
           "en": "View brand recharge activities",
           "ar": "عرض أنشطة رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_brand_report",
+          "zh-CN": "查看品牌储值汇总",
+          "en": "View brand stored-value reports",
+          "ar": "عرض تقارير رصيد العلامة"
+        },
+        {
+          "key": "management.permission.sv_issuer_collection_confirm",
+          "zh-CN": "授权集中收款",
+          "en": "Authorize central collection",
+          "ar": "تفويض التحصيل المركزي"
         },
         {
           "key": "management.permission.sv_issuer_configure",
@@ -14180,6 +14210,66 @@
           "ar": "عرض قواعد الإصدار"
         },
         {
+          "key": "management.permission.sv_settlement_adjust",
+          "zh-CN": "调整结算金额",
+          "en": "Adjust settlement amounts",
+          "ar": "تعديل مبالغ التسوية"
+        },
+        {
+          "key": "management.permission.sv_settlement_audit",
+          "zh-CN": "查看结算操作记录",
+          "en": "View settlement audit history",
+          "ar": "عرض سجل عمليات التسوية"
+        },
+        {
+          "key": "management.permission.sv_settlement_dispute",
+          "zh-CN": "提出结算争议",
+          "en": "Raise settlement disputes",
+          "ar": "فتح اعتراضات التسوية"
+        },
+        {
+          "key": "management.permission.sv_settlement_dispute_resolve",
+          "zh-CN": "处理结算争议",
+          "en": "Resolve settlement disputes",
+          "ar": "معالجة اعتراضات التسوية"
+        },
+        {
+          "key": "management.permission.sv_settlement_generate",
+          "zh-CN": "生成结算账单",
+          "en": "Generate settlement bills",
+          "ar": "إنشاء فواتير التسوية"
+        },
+        {
+          "key": "management.permission.sv_settlement_payment_register",
+          "zh-CN": "登记结算付款",
+          "en": "Register settlement payments",
+          "ar": "تسجيل دفعات التسوية"
+        },
+        {
+          "key": "management.permission.sv_settlement_payment_void",
+          "zh-CN": "撤销付款登记",
+          "en": "Void payment registrations",
+          "ar": "إلغاء تسجيل الدفعات"
+        },
+        {
+          "key": "management.permission.sv_settlement_read",
+          "zh-CN": "查看结算账单",
+          "en": "View settlement bills",
+          "ar": "عرض فواتير التسوية"
+        },
+        {
+          "key": "management.permission.sv_settlement_receipt_confirm",
+          "zh-CN": "确认结算收款",
+          "en": "Confirm settlement receipts",
+          "ar": "تأكيد مقبوضات التسوية"
+        },
+        {
+          "key": "management.permission.sv_settlement_reconcile",
+          "zh-CN": "确认结算对账",
+          "en": "Confirm reconciliation",
+          "ar": "تأكيد المطابقة"
+        },
+        {
           "key": "management.permission.sv_store_activity_approve",
           "zh-CN": "审批储值活动",
           "en": "Approve recharge activities",
@@ -14202,6 +14292,18 @@
           "zh-CN": "查看储值活动",
           "en": "View recharge activities",
           "ar": "عرض أنشطة الشحن"
+        },
+        {
+          "key": "management.permission.sv_store_report",
+          "zh-CN": "查看门店储值汇总",
+          "en": "View store stored-value reports",
+          "ar": "عرض تقارير رصيد المتجر"
+        },
+        {
+          "key": "management.permission.sv_store_report_all",
+          "zh-CN": "查看本店发行汇总",
+          "en": "View local issuer reports",
+          "ar": "عرض تقارير الإصدار المحلي"
         },
         {
           "key": "management.reason",
@@ -17964,6 +18066,12 @@
           "zh-CN": "到货登记与分拣",
           "en": "Goods-in and picking",
           "ar": "استلام البضائع والفرز"
+        },
+        {
+          "key": "perm.biz:report:export",
+          "zh-CN": "导出经营报表",
+          "en": "Export business reports",
+          "ar": "تصدير تقارير الأعمال"
         },
         {
           "key": "perm.biz:review",
@@ -25992,6 +26100,522 @@
           "zh-CN": "供应商",
           "en": "Suppliers",
           "ar": "المورّدون"
+        },
+        {
+          "key": "svFinance.adjust",
+          "zh-CN": "调整应结金额",
+          "en": "Adjust payable",
+          "ar": "تعديل المستحق"
+        },
+        {
+          "key": "svFinance.adjustmentAmount",
+          "zh-CN": "调整金额（增加为正，减少为负）",
+          "en": "Adjustment (positive adds, negative reduces)",
+          "ar": "التعديل (موجب للزيادة وسالب للتخفيض)"
+        },
+        {
+          "key": "svFinance.amount",
+          "zh-CN": "付款金额",
+          "en": "Payment amount",
+          "ar": "مبلغ الدفعة"
+        },
+        {
+          "key": "svFinance.asOf",
+          "zh-CN": "数据更新至",
+          "en": "As of",
+          "ar": "البيانات حتى"
+        },
+        {
+          "key": "svFinance.billDetail",
+          "zh-CN": "结算账单",
+          "en": "Settlement bill",
+          "ar": "فاتورة التسوية"
+        },
+        {
+          "key": "svFinance.carriedForward",
+          "zh-CN": "结转明细",
+          "en": "Carried forward",
+          "ar": "بند مرحّل"
+        },
+        {
+          "key": "svFinance.chooseIssuer",
+          "zh-CN": "选择发行方",
+          "en": "Choose issuer",
+          "ar": "اختر الجهة المصدرة"
+        },
+        {
+          "key": "svFinance.closingMinor",
+          "zh-CN": "期末余额",
+          "en": "Closing balance",
+          "ar": "الرصيد الختامي"
+        },
+        {
+          "key": "svFinance.confirmed",
+          "zh-CN": "已确认收款",
+          "en": "Confirmed receipts",
+          "ar": "المقبوضات المؤكدة"
+        },
+        {
+          "key": "svFinance.consumedMinor",
+          "zh-CN": "核销金额",
+          "en": "Redeemed amount",
+          "ar": "المبلغ المستخدم"
+        },
+        {
+          "key": "svFinance.creditedBonusMinor",
+          "zh-CN": "储值赠送",
+          "en": "Recharge bonus",
+          "ar": "مكافأة الشحن"
+        },
+        {
+          "key": "svFinance.creditedPaidMinor",
+          "zh-CN": "储值实收",
+          "en": "Paid recharge",
+          "ar": "شحن مدفوع"
+        },
+        {
+          "key": "svFinance.customerCount",
+          "zh-CN": "顾客人数",
+          "en": "Customers",
+          "ar": "العملاء"
+        },
+        {
+          "key": "svFinance.decisions.ACCEPT",
+          "zh-CN": "认可争议",
+          "en": "Accept dispute",
+          "ar": "قبول الاعتراض"
+        },
+        {
+          "key": "svFinance.decisions.REJECT",
+          "zh-CN": "驳回争议",
+          "en": "Reject dispute",
+          "ar": "رفض الاعتراض"
+        },
+        {
+          "key": "svFinance.dispute",
+          "zh-CN": "提出争议",
+          "en": "Raise dispute",
+          "ar": "فتح اعتراض"
+        },
+        {
+          "key": "svFinance.empty",
+          "zh-CN": "暂无结算账单",
+          "en": "No settlement bills",
+          "ar": "لا توجد فواتير تسوية"
+        },
+        {
+          "key": "svFinance.endExclusive",
+          "zh-CN": "结束日期（不含）",
+          "en": "End date (exclusive)",
+          "ar": "تاريخ النهاية (غير شامل)"
+        },
+        {
+          "key": "svFinance.eventTypes.ADJUST",
+          "zh-CN": "调整应结",
+          "en": "Payable adjusted",
+          "ar": "تعديل المستحق"
+        },
+        {
+          "key": "svFinance.eventTypes.DISPUTE",
+          "zh-CN": "提出争议",
+          "en": "Dispute raised",
+          "ar": "فتح اعتراض"
+        },
+        {
+          "key": "svFinance.eventTypes.DISPUTE_RESOLVE",
+          "zh-CN": "处理争议",
+          "en": "Dispute resolved",
+          "ar": "معالجة الاعتراض"
+        },
+        {
+          "key": "svFinance.eventTypes.GENERATED",
+          "zh-CN": "生成账单",
+          "en": "Bill generated",
+          "ar": "إنشاء الفاتورة"
+        },
+        {
+          "key": "svFinance.eventTypes.PAYMENT",
+          "zh-CN": "登记付款",
+          "en": "Payment registered",
+          "ar": "تسجيل دفعة"
+        },
+        {
+          "key": "svFinance.eventTypes.PAYMENT_VOID",
+          "zh-CN": "撤销付款",
+          "en": "Payment voided",
+          "ar": "إلغاء الدفعة"
+        },
+        {
+          "key": "svFinance.eventTypes.RECEIPT",
+          "zh-CN": "确认收款",
+          "en": "Receipt confirmed",
+          "ar": "تأكيد الاستلام"
+        },
+        {
+          "key": "svFinance.eventTypes.RECON_CONFIRM",
+          "zh-CN": "确认对账",
+          "en": "Reconciliation confirmed",
+          "ar": "تأكيد المطابقة"
+        },
+        {
+          "key": "svFinance.events",
+          "zh-CN": "操作记录",
+          "en": "Audit history",
+          "ar": "سجل العمليات"
+        },
+        {
+          "key": "svFinance.generate",
+          "zh-CN": "生成账单",
+          "en": "Generate bills",
+          "ar": "إنشاء الفواتير"
+        },
+        {
+          "key": "svFinance.heldMinor",
+          "zh-CN": "预占金额",
+          "en": "Held amount",
+          "ar": "المبلغ المحجوز"
+        },
+        {
+          "key": "svFinance.internal",
+          "zh-CN": "同主体内部对账",
+          "en": "Internal reconciliation",
+          "ar": "مطابقة داخلية"
+        },
+        {
+          "key": "svFinance.invalidAmount",
+          "zh-CN": "请填写有效金额",
+          "en": "Enter a valid amount",
+          "ar": "أدخل مبلغاً صالحاً"
+        },
+        {
+          "key": "svFinance.invalidPayment",
+          "zh-CN": "请填写付款金额和凭据编号",
+          "en": "Enter amount and receipt reference",
+          "ar": "أدخل المبلغ ومرجع الإيصال"
+        },
+        {
+          "key": "svFinance.invalidPeriod",
+          "zh-CN": "请选择有效账期",
+          "en": "Choose a valid period",
+          "ar": "اختر فترة صالحة"
+        },
+        {
+          "key": "svFinance.items",
+          "zh-CN": "账单明细",
+          "en": "Bill items",
+          "ar": "بنود الفاتورة"
+        },
+        {
+          "key": "svFinance.methods.CASH",
+          "zh-CN": "现金",
+          "en": "Cash",
+          "ar": "نقد"
+        },
+        {
+          "key": "svFinance.methods.OTHER",
+          "zh-CN": "其他",
+          "en": "Other",
+          "ar": "أخرى"
+        },
+        {
+          "key": "svFinance.methods.TRANSFER",
+          "zh-CN": "转账",
+          "en": "Transfer",
+          "ar": "تحويل"
+        },
+        {
+          "key": "svFinance.noPayments",
+          "zh-CN": "暂无付款记录",
+          "en": "No payments",
+          "ar": "لا توجد دفعات"
+        },
+        {
+          "key": "svFinance.openingMinor",
+          "zh-CN": "期初余额",
+          "en": "Opening balance",
+          "ar": "الرصيد الافتتاحي"
+        },
+        {
+          "key": "svFinance.operation.adjust",
+          "zh-CN": "调整应结金额",
+          "en": "Adjust payable",
+          "ar": "تعديل المستحق"
+        },
+        {
+          "key": "svFinance.operation.dispute",
+          "zh-CN": "提出争议",
+          "en": "Raise dispute",
+          "ar": "فتح اعتراض"
+        },
+        {
+          "key": "svFinance.operation.receipt",
+          "zh-CN": "确认收款",
+          "en": "Confirm receipt",
+          "ar": "تأكيد الاستلام"
+        },
+        {
+          "key": "svFinance.operation.reconcile",
+          "zh-CN": "付款方对账",
+          "en": "Reconcile as payer",
+          "ar": "مطابقة الجهة الدافعة"
+        },
+        {
+          "key": "svFinance.operation.register",
+          "zh-CN": "登记付款",
+          "en": "Register payment",
+          "ar": "تسجيل دفعة"
+        },
+        {
+          "key": "svFinance.operation.resolve",
+          "zh-CN": "处理争议",
+          "en": "Resolve dispute",
+          "ar": "معالجة الاعتراض"
+        },
+        {
+          "key": "svFinance.operation.void",
+          "zh-CN": "撤销付款登记",
+          "en": "Void payment registration",
+          "ar": "إلغاء تسجيل الدفعة"
+        },
+        {
+          "key": "svFinance.operatorChanged",
+          "zh-CN": "账号已切换，请重新打开账单",
+          "en": "Operator changed. Reopen the bill.",
+          "ar": "تم تغيير الحساب. أعد فتح الفاتورة."
+        },
+        {
+          "key": "svFinance.payableMinor",
+          "zh-CN": "应结金额",
+          "en": "Amount payable",
+          "ar": "المبلغ المستحق"
+        },
+        {
+          "key": "svFinance.payee",
+          "zh-CN": "收款主体",
+          "en": "Receiving entity",
+          "ar": "الجهة المستلمة"
+        },
+        {
+          "key": "svFinance.payer",
+          "zh-CN": "付款主体",
+          "en": "Paying entity",
+          "ar": "الجهة الدافعة"
+        },
+        {
+          "key": "svFinance.payments",
+          "zh-CN": "付款记录",
+          "en": "Payments",
+          "ar": "الدفعات"
+        },
+        {
+          "key": "svFinance.period",
+          "zh-CN": "统计周期",
+          "en": "Reporting period",
+          "ar": "فترة التقرير"
+        },
+        {
+          "key": "svFinance.preparePermissions",
+          "zh-CN": "配置储值结算权限",
+          "en": "Set up settlement permissions",
+          "ar": "إعداد صلاحيات التسوية"
+        },
+        {
+          "key": "svFinance.query",
+          "zh-CN": "查询",
+          "en": "Search",
+          "ar": "بحث"
+        },
+        {
+          "key": "svFinance.reason",
+          "zh-CN": "原因",
+          "en": "Reason",
+          "ar": "السبب"
+        },
+        {
+          "key": "svFinance.reasonRequired",
+          "zh-CN": "请填写原因",
+          "en": "Enter a reason",
+          "ar": "أدخل السبب"
+        },
+        {
+          "key": "svFinance.receipt",
+          "zh-CN": "确认收款",
+          "en": "Confirm receipt",
+          "ar": "تأكيد الاستلام"
+        },
+        {
+          "key": "svFinance.receiptHint",
+          "zh-CN": "请核对线下实际到账金额",
+          "en": "Verify the amount actually received offline",
+          "ar": "تحقق من المبلغ المستلم فعلياً"
+        },
+        {
+          "key": "svFinance.receiptReference",
+          "zh-CN": "收款凭据编号",
+          "en": "Receipt reference",
+          "ar": "مرجع الإيصال"
+        },
+        {
+          "key": "svFinance.rechargeCount",
+          "zh-CN": "储值笔数",
+          "en": "Recharges",
+          "ar": "عمليات الشحن"
+        },
+        {
+          "key": "svFinance.rechargeStore",
+          "zh-CN": "储值门店",
+          "en": "Recharge store",
+          "ar": "متجر الشحن"
+        },
+        {
+          "key": "svFinance.reconcilePayee",
+          "zh-CN": "收款方对账",
+          "en": "Reconcile as payee",
+          "ar": "مطابقة الجهة المستلمة"
+        },
+        {
+          "key": "svFinance.reconcilePayer",
+          "zh-CN": "付款方对账",
+          "en": "Reconcile as payer",
+          "ar": "مطابقة الجهة الدافعة"
+        },
+        {
+          "key": "svFinance.redemptionStore",
+          "zh-CN": "核销门店",
+          "en": "Redemption store",
+          "ar": "متجر الاستخدام"
+        },
+        {
+          "key": "svFinance.reenterReceipt",
+          "zh-CN": "请重新填写原收款凭据编号",
+          "en": "Re-enter the original receipt reference",
+          "ar": "أعد إدخال مرجع الإيصال الأصلي"
+        },
+        {
+          "key": "svFinance.register",
+          "zh-CN": "登记付款",
+          "en": "Register payment",
+          "ar": "تسجيل دفعة"
+        },
+        {
+          "key": "svFinance.registered",
+          "zh-CN": "已登记付款",
+          "en": "Registered payments",
+          "ar": "الدفعات المسجلة"
+        },
+        {
+          "key": "svFinance.resolve",
+          "zh-CN": "处理争议",
+          "en": "Resolve dispute",
+          "ar": "معالجة الاعتراض"
+        },
+        {
+          "key": "svFinance.reversedMinor",
+          "zh-CN": "核销冲回",
+          "en": "Redemption reversal",
+          "ar": "عكس الاستخدام"
+        },
+        {
+          "key": "svFinance.settlement",
+          "zh-CN": "储值结算",
+          "en": "Stored-value settlement",
+          "ar": "تسوية الرصيد"
+        },
+        {
+          "key": "svFinance.states.ALL",
+          "zh-CN": "全部",
+          "en": "All",
+          "ar": "الكل"
+        },
+        {
+          "key": "svFinance.states.DISPUTED",
+          "zh-CN": "争议中",
+          "en": "Disputed",
+          "ar": "قيد الاعتراض"
+        },
+        {
+          "key": "svFinance.states.DRAFT",
+          "zh-CN": "待对账",
+          "en": "Awaiting reconciliation",
+          "ar": "بانتظار المطابقة"
+        },
+        {
+          "key": "svFinance.states.INTERNAL_RECONCILED",
+          "zh-CN": "内部对账完成",
+          "en": "Internally reconciled",
+          "ar": "اكتملت المطابقة الداخلية"
+        },
+        {
+          "key": "svFinance.states.PART_PAID",
+          "zh-CN": "部分到账",
+          "en": "Partially received",
+          "ar": "استلام جزئي"
+        },
+        {
+          "key": "svFinance.states.RECEIPT_CONFIRMED",
+          "zh-CN": "已收款",
+          "en": "Received",
+          "ar": "تم الاستلام"
+        },
+        {
+          "key": "svFinance.states.RECONCILED",
+          "zh-CN": "已对账",
+          "en": "Reconciled",
+          "ar": "تمت المطابقة"
+        },
+        {
+          "key": "svFinance.states.REGISTERED",
+          "zh-CN": "已登记",
+          "en": "Registered",
+          "ar": "مسجل"
+        },
+        {
+          "key": "svFinance.states.SETTLED",
+          "zh-CN": "已结清",
+          "en": "Settled",
+          "ar": "تمت التسوية"
+        },
+        {
+          "key": "svFinance.states.VOIDED",
+          "zh-CN": "已撤销",
+          "en": "Voided",
+          "ar": "ملغى"
+        },
+        {
+          "key": "svFinance.states.WAIT_RECEIPT",
+          "zh-CN": "待确认收款",
+          "en": "Awaiting receipt",
+          "ar": "بانتظار تأكيد الاستلام"
+        },
+        {
+          "key": "svFinance.submit",
+          "zh-CN": "提交",
+          "en": "Submit",
+          "ar": "إرسال"
+        },
+        {
+          "key": "svFinance.summary",
+          "zh-CN": "储值汇总",
+          "en": "Stored-value summary",
+          "ar": "ملخص الرصيد"
+        },
+        {
+          "key": "svFinance.unavailable",
+          "zh-CN": "当前操作不可用，请刷新",
+          "en": "Operation unavailable; refresh",
+          "ar": "العملية غير متاحة؛ أعد التحميل"
+        },
+        {
+          "key": "svFinance.usageCount",
+          "zh-CN": "核销笔数",
+          "en": "Redemptions",
+          "ar": "عمليات الاستخدام"
+        },
+        {
+          "key": "svFinance.void",
+          "zh-CN": "撤销付款登记",
+          "en": "Void payment registration",
+          "ar": "إلغاء تسجيل الدفعة"
         },
         {
           "key": "svGov.activities",
@@ -40079,6 +40703,16 @@
     ],
     "javaEnums": [
       {
+        "name": "AccessRole",
+        "values": [
+          "READER",
+          "WRITER",
+          "MIGRATOR"
+        ],
+        "zh": "",
+        "module": "shop-report"
+      },
+      {
         "name": "Action",
         "values": [
           "TOPUP_U",
@@ -40262,6 +40896,17 @@
         "module": "shop-core"
       },
       {
+        "name": "Aggregation",
+        "values": [
+          "SUM",
+          "LAST",
+          "DISTINCT",
+          "DERIVED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Algorithm",
         "values": [
           "SHARED_COUPON_V1",
@@ -40308,6 +40953,16 @@
           "EXHAUSTED",
           "EXPIRED",
           "REVOKED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Attribution",
+        "values": [
+          "ORIGINAL_ORDER",
+          "OCCURRENCE",
+          "SCHEDULED_SERVICE"
         ],
         "zh": "",
         "module": "shop-base"
@@ -40363,6 +41018,19 @@
         ],
         "zh": "Separates spendable points, outstanding promises, and refund-protected receiving points.",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "BuildStatus",
+        "values": [
+          "QUEUED",
+          "RUNNING",
+          "VALIDATING",
+          "PUBLISHED",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "CallOutcome",
@@ -40431,6 +41099,26 @@
         "values": [
           "SINGLE",
           "MULTI"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Coverage",
+        "values": [
+          "COMPLETE",
+          "EMPTY_VERIFIED",
+          "PARTIAL",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "DayKind",
+        "values": [
+          "FROZEN_BUSINESS_DAY",
+          "POLICY_INTERVAL"
         ],
         "zh": "",
         "module": "shop-base"
@@ -40836,6 +41524,18 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "FailureKind",
+        "values": [
+          "NONE",
+          "TEMPORARY",
+          "MISCONFIGURED",
+          "SCHEMA_NOT_READY",
+          "MIGRATION_FAILED"
+        ],
+        "zh": "",
+        "module": "shop-report"
       },
       {
         "name": "Family",
@@ -41286,6 +41986,19 @@
       {
         "name": "Mode",
         "values": [
+          "DAILY",
+          "PERIOD",
+          "RANKING",
+          "WEEKLY",
+          "MONTHLY",
+          "HEALTH"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Mode",
+        "values": [
           "PREPAY",
           "POSTPAY"
         ],
@@ -41422,6 +42135,19 @@
           "DISJOINT",
           "BEST_ONE",
           "STACK"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Owner",
+        "values": [
+          "CORE",
+          "FOOD",
+          "PAY",
+          "INVENTORY",
+          "EXPENSE",
+          "REPORT"
         ],
         "zh": "",
         "module": "shop-base"
@@ -42041,6 +42767,18 @@
       {
         "name": "Status",
         "values": [
+          "QUEUED",
+          "RUNNING",
+          "SUCCEEDED",
+          "FAILED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
           "SUPPORTED",
           "TENANT_UNSUPPORTED",
           "SOURCE_UNSUPPORTED",
@@ -42210,6 +42948,17 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "ValueType",
+        "values": [
+          "COUNT",
+          "QUANTITY",
+          "MONEY",
+          "DURATION"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "ZeroCashReason",
@@ -44150,6 +44899,9 @@
         "name": "ROUTES",
         "client": "b-app",
         "values": [
+          "/pages/stored-value-summary/index",
+          "/pages/stored-value-settlement/index",
+          "/pages/stored-value-settlement-detail/index",
           "/pages/stored-value-policy/index",
           "/pages/stored-value-approval/index",
           "/pages/stored-value-activity/index",
@@ -47073,6 +47825,30 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_COLLECTION_REQUIREMENT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/collection-requirement\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_COLLECTION_OPTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/collection-options\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FINANCE_REBUILD",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/finance/rebuild-summary\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "CouponQuotePolicy",
       "name": "FREIGHT_LINE",
       "type": "String",
@@ -47580,7 +48356,7 @@
       "host": "StoredValueMembership",
       "name": "COORDINATION_IMPLEMENTATION_PROTOCOL",
       "type": "int",
-      "value": "0",
+      "value": "2",
       "zh": "Build-level capability, raised only when the Core saga and central-collection proof are implemented and verified.",
       "module": "shop-base"
     },
@@ -47702,6 +48478,14 @@
       "type": "String",
       "value": "\"biz:stock\"",
       "zh": "改库存（含门店库存）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "REPORT_EXPORT",
+      "type": "String",
+      "value": "\"biz:report:export\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -47884,7 +48668,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -49447,6 +50231,46 @@
       "value": "java.util.Set.of(MANAGER, CLERK, PICKER, COURIER, CS)",
       "zh": "预置的可授予角色。",
       "module": "shop-merchant"
+    },
+    {
+      "host": "ReportCsvWriter",
+      "name": "MAX_BYTES",
+      "type": "int",
+      "value": "1048576",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "GROSS",
+      "type": "String",
+      "value": "\"GOODS_GROSS_PROFIT_AMOUNT\",GROSS_RATE=\"GOODS_GROSS_PROFIT_RATE\"",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "NET",
+      "type": "String",
+      "value": "\"OPERATING_NET_PROFIT_AMOUNT\",NET_RATE=\"OPERATING_NET_PROFIT_RATE\"",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "OUTPUTS",
+      "type": "Set<String>",
+      "value": "Set.of(GROSS,GROSS_RATE,NET,NET_RATE)",
+      "zh": "",
+      "module": "shop-report"
+    },
+    {
+      "host": "ReportProfitCalculator",
+      "name": "INPUTS",
+      "type": "List<String>",
+      "value": "List.of(\"GOODS_TRANSACTED_NET_AMOUNT\",\"GOODS_SALES_COST_AMOUNT\", \"OPERATING_OTHER_INCOME_AMOUNT\",\"PAYMENT_ALLOCATED_FEE_COST_AMOUNT\",\"DELIVERY_FEE_COST_AMOUNT\", \"PLATFORM_COMMISSION_AMOUNT\",\"OPERATING_EXPENSE_AMOUNT\",\"OPERATING_UNALLOCATED_LOSS_AMOUNT\")",
+      "zh": "",
+      "module": "shop-report"
     },
     {
       "host": "OutboxDispatcher",

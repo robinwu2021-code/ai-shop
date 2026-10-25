@@ -10,8 +10,9 @@ import static ai.neargo.shop.pay.storedvalue.issuer.IssuerRepository.*;
 /** Pay-local SQL helpers; callers must authorize exact party action before mutation or projection. */
 @Repository
 public class StoredValueSettlementRepository {
- public final IssuerRepository db;
+ private final IssuerRepository db;
  public StoredValueSettlementRepository(IssuerRepository db){this.db=db;}
+ public IssuerRepository database(){return db;}
  public Map<String,Object> issuer(Authority a,String no,boolean lock){
   var grant=a.issuers().stream().filter(g->g.issuerNo().equals(no)).findFirst().orElseThrow(()->BizException.of(ErrorCode.NOT_FOUND));
   var row=db.one("SELECT * FROM sv_issuer WHERE tenant_no=? AND issuer_no=? AND deleted=0"+(lock?" FOR UPDATE":""),a.tenantNo(),no);

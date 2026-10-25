@@ -1,1 +1,1 @@
-CREATE TABLE report_init_probe (id BIGINT PRIMARY KEY);
+CREATE TABLE rpt_init_probe (id BIGINT PRIMARY KEY);

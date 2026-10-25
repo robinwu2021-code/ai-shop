@@ -1065,6 +1065,23 @@ reason:string;
 expectedRevision:number}}
 
 export type {SvConsumptionCreate} from './stored-value-types';
+export interface SvConsumptionStoreQuery {storeNo:string}
+export interface SvConsumptionSubmit {orderNo:string;orderRevision:number;customerRef:string;authorizationRef:null}
+export interface SvWalletRecordsQuery {issuerRef:string;accountRef:string;type:'ALL'|'RECHARGE'|'REDEMPTION';startDate?:string;endDate?:string;cursor?:string;size?:number}
+export interface SvBrandActivationRequest {managementNo:string;expectedRevision:number}
+
+// P6 finance wire bodies; the API adapter consumes these exact types.
+export type {SvReportQuery,SvFinanceQuery,SvGenerationRequest,SvDecisionRequest,SvResolutionRequest,SvAdjustmentRequest,SvPaymentRequest,SvReceiptRequest,SvVoidRequest} from "./stored-value-finance";
+import type {SvReportQuery} from "./stored-value-finance";
+export interface SvFinanceManagementQuery {managementNo:string}
+export interface SvFinanceDirectoryQuery extends SvFinanceManagementQuery {scopeType?:"STORE"|"BRAND"}
+export interface SvFinanceCursorQuery extends SvFinanceManagementQuery {cursor?:string;size?:number}
+export interface SvFinanceActivityQuery extends SvReportQuery {issuerNo:string}
+export interface SvFinanceResolutionQuery extends SvFinanceManagementQuery {commandKey:string}
+
+export type {SvFinancialBrandRequest} from "./stored-value-finance";
+
+export interface SvFinancialOriginalQuery {managementNo:string;commandKey:string}
 export interface SvConsumptionStoreQuery {
 /** Store identifier for the service or ledger record; null when no single store applies. */
 storeNo:string}

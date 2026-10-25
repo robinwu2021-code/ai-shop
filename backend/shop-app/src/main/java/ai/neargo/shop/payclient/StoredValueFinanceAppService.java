@@ -5,6 +5,7 @@ import java.util.List;
 /** Exact same contract for embedded and remote Pay deployment. */
 public interface StoredValueFinanceAppService {
  StoredValueFinance.Capabilities capabilities();
+ StoredValueReports.ProjectionResult rebuild(StoredValueReports.Projection c);
  List<StoredValueFinance.Resource> directory(StoredValueFinance.Directory c);
  StoredValueReports.Summary summary(StoredValueFinance.SummaryRequest c);
  CursorPage<StoredValueReports.StoreAttribution> stores(StoredValueReports.Query c);
@@ -28,4 +29,6 @@ public interface StoredValueFinanceAppService {
  java.util.List<ai.neargo.shop.spi.storedvalue.StoredValueMembership.Target> membershipTargets(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Describe c);
  ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack prepareMembership(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Prepare c);
  ai.neargo.shop.spi.storedvalue.StoredValueMembership.Ack commitMembership(ai.neargo.shop.spi.storedvalue.StoredValueMembership.Commit c);
+ ai.neargo.shop.spi.storedvalue.StoredValueCollections.Lookup collectionRequirement(ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope c);
+ ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions collectionOptions(ai.neargo.shop.spi.storedvalue.StoredValueCollections.Options c);
 }

@@ -4,6 +4,7 @@ export interface ManagementPage<T> {
   /** Opaque cursor for the next page; null when the result is exhausted. */
   nextCursor:string|null}
 export interface ManagementResource {
+  canPrepareFinance?:boolean;
   /** Whether the operator retains management access to legacy resources. */
   canManageLegacy?:boolean;
   /** Whether the operator may configure the resource's brand binding. */
@@ -57,6 +58,7 @@ export interface ManagementContext {
   /** Payment merchant identifier under the operating entity. */
   payMerchantNo:string}>}>}
 export interface Brand extends ManagementResource {
+  storedValueStatus?:string;
   /** Brand identifier; null when the scope has no brand binding. */
   brandNo:string;
   /** Management-space identifier under which the operation is authorized. */
@@ -170,6 +172,7 @@ export interface BrandChangeSubmit {
   /** Business reason recorded for the operation, rejection or manual recovery. */
   reason:string}
 export interface BrandChange {
+  financial?:boolean;
   /** Identifier of the requested brand/store binding change. */
   changeNo:string;
   /** Management-space identifier under which the operation is authorized. */
@@ -212,7 +215,7 @@ export interface OperatingContext {
   /** Human-readable name displayed for this business resource. */
   name:string;
   /** Current revision of the resource's management-scope bindings. */
-  scopeRevision:number}|null;
+  scopeRevision:number;storedValueStatus?:string}|null;
   /** Actions currently permitted by the server for this resource. */
   actions:string[];
   /** Unfinished store/brand binding change; null when none exists. */

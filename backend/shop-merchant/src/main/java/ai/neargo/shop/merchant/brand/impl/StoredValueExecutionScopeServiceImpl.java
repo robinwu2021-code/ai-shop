@@ -23,6 +23,7 @@ public class StoredValueExecutionScopeServiceImpl implements StoredValueExecutio
         for(String value:List.of(tenant,actor,entity,store))ContractChecks.id(value);ContractChecks.currency(currency);
         var row=db.one("SELECT s.version FROM mch_store s JOIN mch_entity e ON CAST(e.tenant_no AS BINARY(256))=CAST(s.tenant_no AS BINARY(256)) AND CAST(e.entity_no AS BINARY(256))=CAST(s.entity_no AS BINARY(256)) WHERE s.tenant_no=? AND s.store_no=? AND s.entity_no=? AND s.status='ACTIVE' AND s.deleted=0 AND e.status='ACTIVE' AND e.deleted=0",tenant,store,entity);
         if(row==null)throw BizException.of(ErrorCode.NOT_FOUND);
+        if(db.one("SELECT binding_no FROM mch_brand_store_binding WHERE tenant_no=? AND store_no=? AND status='PREPARING' AND deleted=0 LIMIT 1",tenant,store)!=null)throw BizException.of(ErrorCode.CONFLICT);
         var binding=db.one("SELECT * FROM mch_brand_store_binding WHERE tenant_no=? AND store_no=? AND status='ACTIVE' AND deleted=0",tenant,store);
         if(binding==null)return new StoredValueWallets.ExecutionScope(tenant,actor,null,entity,store,num(row,"version"),null,null,-1,currency);
         var brand=db.one("SELECT b.management_no,b.version FROM mch_brand b JOIN mch_management_space m ON CAST(m.tenant_no AS BINARY(256))=CAST(b.tenant_no AS BINARY(256)) AND CAST(m.management_no AS BINARY(256))=CAST(b.management_no AS BINARY(256)) WHERE b.tenant_no=? AND b.brand_no=? AND b.status='ACTIVE' AND b.deleted=0 AND m.status='ACTIVE' AND m.deleted=0",tenant,str(binding,"brand_no"));

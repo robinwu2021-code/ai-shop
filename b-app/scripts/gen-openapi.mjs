@@ -171,6 +171,35 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+ mSvFinancialBrandOriginal:"SvFinancialBrandOriginal",
+ mSvPrepareFinancePermissions:"SvFinancialPermissionResult",
+mSvFinancialBrandStart:"SvFinancialBrandChange",
+mSvFinancialBrandChange:"SvFinancialBrandChange",
+mSvFinancialBrandResume:"SvFinancialBrandChange",
+
+  mSvFinanceCapability: "SvFinanceCapability",
+  mSvFinanceResources: "SvFinanceResource[]",
+  mSvBrandSummary: "SvSummary",
+  mSvStoreSummary: "SvSummary",
+  mSvBrandStoreBreakdown: "SvFinanceStorePage",
+  mSvLocalIssuerSummary: "SvFinanceSummaryPage",
+  mSvActivitySummary: "SvFinanceActivityPage",
+  mSvSettlementBills: "SvFinanceBillPage",
+  mSvSettlementBill: "SvSettlementBill",
+  mSvSettlementActions: "SvBillActions",
+  mSvSettlementItems: "SvFinanceItemPage",
+  mSvSettlementEvents: "SvFinanceEventPage",
+  mSvSettlementPayments: "SvFinancePaymentPage",
+  mSvSettlementGenerate: "SvGenerated",
+  mSvSettlementReconcile: "SvSettlementBill",
+  mSvSettlementDispute: "SvSettlementBill",
+  mSvSettlementResolveDispute: "SvSettlementBill",
+  mSvSettlementAdjust: "SvSettlementBill",
+  mSvSettlementRegister: "SvSettlementPayment",
+  mSvSettlementPaymentResolution: "SvPaymentResolution",
+  mSvSettlementReceipt: "SvSettlementPayment",
+  mSvSettlementVoid: "SvSettlementPayment",
+
   mSvBrandActivities: "SvGovernanceActivitiesPage",
   mSvBrandActivity: "SvGovernanceDetail",
   mSvBrandActivitySave: "SvActivity",
@@ -628,6 +657,32 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+ mSvFinancialBrandOriginal:"SvFinancialOriginalQuery",
+ mSvPrepareFinancePermissions:"SvFinanceManagementQuery",
+mSvFinancialBrandStart:"SvFinancialBrandRequest",mSvFinancialBrandChange:"SvFinanceManagementQuery",mSvFinancialBrandResume:"SvFinanceManagementQuery",
+
+  mSvFinanceResources: "SvFinanceDirectoryQuery",
+  mSvBrandSummary: "SvReportQuery",
+  mSvStoreSummary: "SvReportQuery",
+  mSvBrandStoreBreakdown: "SvReportQuery",
+  mSvLocalIssuerSummary: "SvReportQuery",
+  mSvActivitySummary: "SvFinanceActivityQuery",
+  mSvSettlementBills: "SvFinanceQuery",
+  mSvSettlementBill: "SvFinanceManagementQuery",
+  mSvSettlementActions: "SvFinanceManagementQuery",
+  mSvSettlementItems: "SvFinanceCursorQuery",
+  mSvSettlementEvents: "SvFinanceCursorQuery",
+  mSvSettlementPayments: "SvFinanceCursorQuery",
+  mSvSettlementGenerate: "SvGenerationRequest",
+  mSvSettlementReconcile: "SvDecisionRequest",
+  mSvSettlementDispute: "SvDecisionRequest",
+  mSvSettlementResolveDispute: "SvResolutionRequest",
+  mSvSettlementAdjust: "SvAdjustmentRequest",
+  mSvSettlementRegister: "SvPaymentRequest",
+  mSvSettlementPaymentResolution: "SvFinanceResolutionQuery",
+  mSvSettlementReceipt: "SvReceiptRequest",
+  mSvSettlementVoid: "SvVoidRequest",
+
   mSvBrandActivities: "SvGovernanceActivityQuery",
   mSvBrandActivity: "SvGovernanceStoreQuery",
   mSvBrandActivitySave: "SvGovernanceDraft",
@@ -849,6 +904,8 @@ for (const [key, ep] of Object.entries(endpoints)) {
   }));
   if ((ep.method === "GET" || ep.method === "DELETE") && reqType) params.push(...queryParams(reqType));
 
+  // Existing published P6 Java routes require the original command identity for all finance mutations.
+  if (["mSvFinancialBrandStart", "mSvSettlementGenerate", "mSvSettlementReconcile", "mSvSettlementDispute", "mSvSettlementResolveDispute", "mSvSettlementAdjust", "mSvSettlementRegister", "mSvSettlementReceipt", "mSvSettlementVoid"].includes(key)) params.push({name:"Idempotency-Key",in:"header",required:true,schema:{type:"string"}});
   const op = {
     operationId: key,
     summary: ep.summary,

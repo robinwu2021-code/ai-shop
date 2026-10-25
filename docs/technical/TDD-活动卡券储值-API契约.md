@@ -1156,3 +1156,15 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | P130 | GET | /biz/management/stored-value/settlement-bills/{billNo}/payment-resolutions | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
 | P131 | POST | /biz/management/stored-value/settlement-payments/{paymentNo}/receipt-confirmations | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
 | P132 | POST | /biz/management/stored-value/settlement-payments/{paymentNo}/voids | 实际 Java DTO，金额为最小货币单位 | Core/BFF → Pay | managementAccess.authenticated；服务内核验实际 BRAND/STORE/ENTITY 资源权限 | P6 compatibility |
+
+## P6 业务闭环增量接口
+
+| 编号 | 方法 | 路径 | 请求/返回 | 所属模块 | 权限 | 状态 |
+|---|---|---|---|---|---|---|
+| P133 | GET | /biz/management/stored-value/financial-capability | 实际能力和阻断原因 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P134 | GET | /biz/management/stored-value/settlement-bills/{billNo}/actions | 按账单双方实际主体权限返回动作 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P135 | POST | /biz/management/entities/{entityNo}/stored-value/financial-permissions | 主体所有人显式准备财务权限 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P136 | POST | /biz/management/stores/{storeNo}/stored-value/financial-brand-changes | Start + Idempotency-Key；Core 持久原单 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P137 | GET | /biz/management/stored-value/financial-brand-changes/{changeNo} | 金融品牌变更状态与暂存标记 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P138 | POST | /biz/management/stored-value/financial-brand-changes/{changeNo}/resumptions | 按原单恢复，不新建资金操作 | Core/BFF → Merchant/Pay | managementAccess.authenticated；实际门店、品牌与主体分别授权 | P6 closure |
+| P139 | GET | /biz/management/stores/{storeNo}/stored-value/financial-brand-change-original | managementNo/commandKey → 原请求定位，未建单返回 original=null | Core/BFF → Merchant | managementAccess.authenticated；实际操作人和门店授权 | P6 closure |

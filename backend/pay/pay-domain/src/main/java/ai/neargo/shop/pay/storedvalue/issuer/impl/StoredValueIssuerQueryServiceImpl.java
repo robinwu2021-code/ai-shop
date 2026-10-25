@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 @Service("storedValueIssuerQueryService")
 public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQueryService {
     @Autowired private StoredValueCrossEntityReadiness financialReadiness;
+    @Autowired private ai.neargo.shop.pay.storedvalue.issuer.StoredValueCollectionGuard collectionGuard;
     private final IssuerRepository db;private final StoredValueCursorCodec refs;private final boolean enabled;private final boolean brandEnabled;private final boolean crossEntityEnabled;
     public StoredValueIssuerQueryServiceImpl(IssuerRepository db,StoredValueCursorCodec refs,
             @Value("${shop.pay.stored-value.issuer-mode:false}")boolean enabled,
@@ -45,10 +46,11 @@ public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQuery
         requireEnabled();var scope=query.scope();var result=new ArrayList<AvailableAccount>();
         for(var issuer:issuers(scope))result.add(option(query,issuer));return List.copyOf(result);
     }
-    public StoredValueIssuers.StoreOptions storeOptions(ExecutionScope scope){
+    public ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions storeOptions(ExecutionScope scope){return storeOptions(scope,null);}
+    public ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions storeOptions(ExecutionScope scope,ai.neargo.shop.spi.storedvalue.StoredValueCollections.Proof proof){
         requireEnabled();
-        return new StoredValueIssuers.StoreOptions(scope.storeNo(),false,issuers(scope).stream().map(i->
-            new StoredValueIssuers.StoreOption(text(i,"issuer_no"),text(i,"scope_type"),text(i,"scope_no"),text(i,"name"),text(i,"currency"),text(i,"status"),text(i,"write_mode"),unavailable(scope,i,true)==null,unavailable(scope,i,false)==null,unavailable(scope,i,true))).toList());
+        return new ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions(scope.storeNo(),false,issuers(scope).stream().map(i->
+            new ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOption(text(i,"issuer_no"),text(i,"scope_type"),text(i,"scope_no"),text(i,"name"),text(i,"currency"),text(i,"status"),text(i,"write_mode"),unavailable(scope,i,true,proof)==null,unavailable(scope,i,false)==null,unavailable(scope,i,true,proof))).toList());
     }
     public Selected select(Query query,String issuerRef,String accountRef){return selection(query,issuerRef,accountRef,true);}
     public Selected readSelection(Query query,String issuerRef,String accountRef){return selection(query,issuerRef,accountRef,false);}
@@ -81,7 +83,7 @@ public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQuery
         Balance balance=null;boolean active=account!=null&&"ACTIVE".equals(text(account,"status"));
         if(account!=null){long amount=Math.addExact(number(account,"principal_minor"),number(account,"bonus_minor"));long held=Math.addExact(number(account,"held_principal_minor"),number(account,"held_bonus_minor"));balance=new Balance(amount,held,Math.subtractExact(amount,held));}
         String reason=unavailable(s,issuer,false);
-        return new AvailableAccount(text(issuer,"scope_type"),issuerRef,text(issuer,"name"),s.currency(),accountRef,balance,unavailable(s,issuer,true)==null,active&&reason==null,reason==null&&!active?(account==null?"NO_ACCOUNT":"ACCOUNT_FROZEN"):reason);
+        return new AvailableAccount(text(issuer,"scope_type"),issuerRef,text(issuer,"name"),s.currency(),accountRef,balance,unavailable(s,issuer,true,query.collectionProof())==null,active&&reason==null,reason==null&&!active?(account==null?"NO_ACCOUNT":"ACCOUNT_FROZEN"):reason);
     }
     private List<Map<String,Object>> issuers(ExecutionScope s){
         return db.rows("SELECT i.*,v.settlement_entity_no,v.currency FROM sv_issuer i JOIN sv_issuer_version v ON CAST(v.tenant_no AS BINARY(256))=CAST(i.tenant_no AS BINARY(256)) AND CAST(v.issuer_no AS BINARY(256))=CAST(i.issuer_no AS BINARY(256)) AND CAST(v.issuer_version_no AS BINARY(256))=CAST(i.current_issuer_version_no AS BINARY(256)) WHERE i.tenant_no=? AND i.deleted=0 AND v.deleted=0 AND v.currency=? AND ((i.scope_type='STORE' AND i.scope_no=?) OR (i.scope_type='BRAND' AND i.scope_no=?)) ORDER BY CASE WHEN i.scope_type='STORE' THEN 0 ELSE 1 END",s.tenantNo(),s.currency(),s.storeNo(),s.brandNo());
@@ -92,12 +94,14 @@ public class StoredValueIssuerQueryServiceImpl implements StoredValueIssuerQuery
         if(!Objects.equals(text(account,"entity_no"),text(issuer,"settlement_entity_no"))||!Objects.equals(text(account,"user_no"),person.userNo())||("STORE".equals(text(issuer,"scope_type"))?!s.storeNo().equals(text(account,"store_no")):text(account,"store_no")!=null))throw BizException.of(ErrorCode.CONFLICT);
         return account;
     }
-    private String unavailable(ExecutionScope s,Map<String,Object> issuer,boolean issue){
+    private String unavailable(ExecutionScope s,Map<String,Object> issuer,boolean issue){return unavailable(s,issuer,issue,null);}
+    private String unavailable(ExecutionScope s,Map<String,Object> issuer,boolean issue,ai.neargo.shop.spi.storedvalue.StoredValueCollections.Proof proof){
         String type=text(issuer,"scope_type");
         if("BRAND".equals(type)&&!brandEnabled)return "BRAND_EXECUTION_DISABLED";
         if(!"ISSUER".equals(text(issuer,"write_mode")))return "ISSUER_NOT_READY";
         if(!(issue?"ACTIVE".equals(text(issuer,"status")):Set.of("ACTIVE","ISSUE_STOPPED").contains(text(issuer,"status"))))return "ISSUER_INACTIVE";
         if(!s.entityNo().equals(text(issuer,"settlement_entity_no"))&&(!crossEntityEnabled||s.coreFinanceProtocol()<2||financialReadiness==null||!financialReadiness.capability().ready()))return "CROSS_ENTITY_SETTLEMENT_UNAVAILABLE";
+        if(issue&&!s.entityNo().equals(text(issuer,"settlement_entity_no"))&&(collectionGuard==null||!collectionGuard.canCollect(s,proof,text(issuer,"issuer_no"),text(issuer,"current_issuer_version_no"),text(issuer,"settlement_entity_no"))))return "COLLECTION_CONFIRMATION_REQUIRED";
         var access=db.one("SELECT * FROM sv_issuer_store_access WHERE tenant_no=? AND issuer_no=? AND store_no=? AND deleted=0",s.tenantNo(),text(issuer,"issuer_no"),s.storeNo());
         if(access==null||!"ACTIVE".equals(text(access,"status"))||!s.entityNo().equals(text(access,"operating_entity_no"))||number(access,issue?"can_issue":"can_redeem")!=1)return "STORE_NOT_ACCEPTED";
         String binding="STORE".equals(type)?s.storeNo():s.brandBindingNo();long revision="STORE".equals(type)?s.storeRevision():s.brandBindingRevision();

@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.storedvalue.settlement;
 
 import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.spi.storedvalue.*;
 import ai.neargo.shop.spi.storedvalue.StoredValueFinance;
 import ai.neargo.shop.spi.storedvalue.StoredValueMembership;
 import ai.neargo.shop.spi.storedvalue.StoredValueReports;
@@ -56,4 +57,7 @@ public interface StoredValueFinanceService {
     StoredValueMembership.Ack prepareMembership(StoredValueMembership.Prepare c);
 
     StoredValueMembership.Ack commitMembership(StoredValueMembership.Commit c);
+ StoredValueCollections.Lookup collectionRequirement(StoredValueWallets.ExecutionScope c);
+ StoredValueIssuers.StoreOptions collectionOptions(StoredValueCollections.Options c);
+ StoredValueReports.ProjectionResult rebuild(StoredValueReports.Projection c);
 }

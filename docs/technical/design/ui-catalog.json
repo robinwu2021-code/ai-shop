@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 110,
+      "count": 113,
       "domains": [
         {
           "name": "工作台",
@@ -714,6 +714,39 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stored-value-issuer/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-summary/index",
+              "title": "储值汇总",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-summary/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-settlement/index",
+              "title": "储值结算",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-settlement/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stored-value-settlement-detail/index",
+              "title": "结算账单",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stored-value-settlement-detail/index"
             },
             {
               "app": "b-app",
@@ -3726,5 +3759,5 @@
       ]
     }
   ],
-  "total": 297
+  "total": 300
 }

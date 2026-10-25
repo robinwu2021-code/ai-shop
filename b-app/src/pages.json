@@ -1228,6 +1228,9 @@
         }
       }
     },
+    {"path": "pages/stored-value-summary/index", "style": {"navigationBarTitleText": "储值汇总", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {"path": "pages/stored-value-settlement/index", "style": {"navigationBarTitleText": "储值结算", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
+    {"path": "pages/stored-value-settlement-detail/index", "style": {"navigationBarTitleText": "结算账单", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
     {"path": "pages/stored-value-policy/index", "style": {"navigationBarTitleText": "储值管控", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
     {"path": "pages/stored-value-approval/index", "style": {"navigationBarTitleText": "储值活动审批", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},
     {"path": "pages/stored-value-activity/index", "style": {"navigationBarTitleText": "本店储值活动", "app-plus": {"navigationStyle": "custom"}, "h5": {"navigationStyle": "custom"}}},

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @Profile("api") @RestController
 public class BizStoredValueWalletController {
     @Autowired private StoredValueCustomerProfilePort profiles;
+    @Autowired private ai.neargo.shop.merchantbridge.StoredValueCollectionContext collection;
     private final StoredValueWalletAppService wallets;private final CustomerIdentityPort customers;private final EntitlementScopeResolver stores;private final StoredValueExecutionScopePort facts;private final MerchantQueryPort merchants;private final MarketPort markets;
     public BizStoredValueWalletController(StoredValueWalletAppService wallets,CustomerIdentityPort customers,EntitlementScopeResolver stores,StoredValueExecutionScopePort facts,MerchantQueryPort merchants,MarketPort markets){this.wallets=wallets;this.customers=customers;this.stores=stores;this.facts=facts;this.merchants=merchants;this.markets=markets;}
     @PreAuthorize("@perm.canBiz('pay:sv:account:read')")
@@ -37,7 +38,7 @@ public class BizStoredValueWalletController {
         var context=new EntitlementContext(user.tenantNo(),user.userNo(),"wallet-query","0".repeat(64));
         var customer=customers.resolveReference(context,new CustomerIdentityPort.ReferenceQuery(store.entityNo(),storeNo,customerRef));
         var scope=facts.current(user.tenantNo(),user.userNo(),store.entityNo(),storeNo,market.currency());
-        return new Query(scope,new Customer(customer.customerNo(),customer.userNo()));
+        return collection.query(scope,new Customer(customer.customerNo(),customer.userNo()));
     }
     @PreAuthorize("@perm.canBiz('pay:sv:account:read')")
     @GetMapping("/biz/stores/{storeNo}/stored-value/customer-selections/{customerRef}/records")

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1032 个接口**：后端已实现 891（86%）· 前端在调 951
+**合计 1059 个接口**：后端已实现 896（85%）· 前端在调 978
 
 ---
 
@@ -316,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **423** 个接口 ｜ 后端已实现 **350**（83%）｜ 前端在调 **422**
+共 **450** 个接口 ｜ 后端已实现 **355**（79%）｜ 前端在调 **449**
 
 ### activities（4）
 
@@ -577,7 +577,7 @@
 | POST | `/biz/inventory/transfers/{no}/ship` | 调拨发出 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/inventory/transfers/{no}/void` | 作废调拨草稿 | — | — | 🔒 | ✅ | ✅ |
 
-### management（48）
+### management（74）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -593,6 +593,8 @@
 | POST | `/biz/management/brands/{brandNo}/stored-value/issuer/activation` | Activate original brand snapshot | `SvBrandActivationRequest` | `SvBrandActivation` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/brands/{no}/stored-value/issuer` | 品牌储值发行设置 | — | `SvIssuerLookup` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/brands/{no}/stored-value/issuer` | 保存品牌发行草稿 | `IssuerConfigureRequest` | `IssuerView` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{no}/stored-value/store-breakdown` | mSvBrandStoreBreakdown | — | `SvFinanceStorePage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/brands/{no}/stored-value/summary` | mSvBrandSummary | — | `SvSummary` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/brands/{store}/stored-value/activities` | 门店储值活动 | — | `SvGovernanceActivitiesPage` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/brands/{store}/stored-value/activities` | 保存储值活动草稿 | `SvGovernanceDraft` | `SvActivity` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/brands/{store}/stored-value/activities/{no}` | 储值活动详情 | — | `SvGovernanceDetail` | 🔒 | ⬜ | ✅ |
@@ -606,6 +608,7 @@
 | GET | `/biz/management/brands/{store}/stored-value/activity-schedules` | 按门店时区换算活动日期 | — | `SvGovernanceSchedule` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/context` | 管理空间上下文 | — | `ManagementContext` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/entities/{e}/payment-merchants` | 支付商户候选 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/entities/{entity}/stored-value/financial-permissions` | 准备所有人结算权限 | `SvFinanceManagementQuery` | `SvFinancialPermissionResult` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/spaces` | 创建管理空间 | `ManagementSpaceCreateReq` | `ManagementSpace` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/spaces/{m}/entities` | 管理主体列表 | — | `ManagementResourcePage` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/spaces/{m}/grants` | 授予资源能力 | `ManagementGrantReq` | `ManagementGrant` | 🔒 | ⬜ | ✅ |
@@ -613,9 +616,14 @@
 | GET | `/biz/management/spaces/{m}/recipients` | 管理空间可授权人员 | — | `ManagementRecipientPage` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/spaces/{m}/resources` | 资源与授权列表 | — | `ManagementGrantPage` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/spaces/{m}/stores` | 管理门店列表 | — | `ManagementResourcePage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/activities/{no}/summary` | mSvActivitySummary | — | `SvFinanceActivityPage` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/management/stored-value/activity-approvals` | 储值活动审批列表 | — | `SvGovernanceApprovalsPage` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/stored-value/activity-approvals/{no}` | 储值活动审批详情 | — | `SvApproval` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/stored-value/activity-approvals/{no}/decisions` | 审批储值活动 | `SvGovernanceDecision` | `SvApproval` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/financial-brand-changes/{no}` | 金融品牌变更原单 | — | `SvFinancialBrandChange` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/financial-brand-changes/{no}/resumptions` | 恢复金融品牌变更原单 | `SvFinanceManagementQuery` | `SvFinancialBrandChange` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/financial-capability` | mSvFinanceCapability | — | `SvFinanceCapability` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/financial-resources` | mSvFinanceResources | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/stored-value/issuers/{no}/collection-routes` | 已配置收款路由 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/stored-value/issuers/{no}/configuration-checks` | 检查发行配置影响 | `IssuerConfigureRequest` | `IssuerImpact` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/stored-value/issuers/{no}/configuration-versions` | 保存发行配置版本 | `IssuerConfigureRequest` | `IssuerView` | 🔒 | ⬜ | ✅ |
@@ -624,11 +632,29 @@
 | PUT | `/biz/management/stored-value/policies/{no}` | 修订发行策略 | `SvGovernancePolicyEdit` | `SvPolicy` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/stored-value/policy-permissions/prepare` | 准备已有管控权限的授权项 | `SvGovernanceManagement` | `SvGovernancePrepared` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/stored-value/policy-targets` | Authorized stored-value policy targets | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills` | mSvSettlementBills | — | `SvFinanceBillPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}` | mSvSettlementBill | — | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/actions` | mSvSettlementActions | — | `SvBillActions` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/adjustments` | mSvSettlementAdjust | `SvAdjustmentRequest` | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/dispute-resolutions` | mSvSettlementResolveDispute | `SvResolutionRequest` | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/disputes` | mSvSettlementDispute | `SvDecisionRequest` | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/events` | mSvSettlementEvents | — | `SvFinanceEventPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/items` | mSvSettlementItems | — | `SvFinanceItemPage` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/payment-resolutions` | mSvSettlementPaymentResolution | — | `SvPaymentResolution` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/settlement-bills/{no}/payments` | mSvSettlementPayments | — | `SvFinancePaymentPage` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/payments` | mSvSettlementRegister | `SvPaymentRequest` | `SvSettlementPayment` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/{no}/reconciliation-confirmations` | mSvSettlementReconcile | `SvDecisionRequest` | `SvSettlementBill` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-bills/generations` | mSvSettlementGenerate | `SvGenerationRequest` | `SvGenerated` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/stored-value/settlement-entity-candidates` | 有授权的结算主体 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/management/stored-value/settlement-payments/{no}/receipt-confirmations` | mSvSettlementReceipt | `SvReceiptRequest` | `SvSettlementPayment` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stored-value/settlement-payments/{no}/voids` | mSvSettlementVoid | `SvVoidRequest` | `SvSettlementPayment` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stored-value/store-issuer-summary` | mSvLocalIssuerSummary | — | `SvFinanceSummaryPage` | 🔒 | ✅ | ✅ |
 | GET | `/biz/management/stores/{no}/stored-value/issuer` | 门店发行设置 | — | `SvIssuerLookup` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/stores/{no}/stored-value/issuer` | 保存门店发行配置 | `IssuerConfigureRequest` | `IssuerView` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/stores/{no}/stored-value/issuer/access-refresh` | 同步原门店准入修订 | `SvIssuerManagementQuery` | `IssuerAccessAck` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/management/stores/{no}/stored-value/issuer/prepare` | 准备门店发行元数据 | `SvIssuerManagementQuery` | `IssuerView` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/management/stores/{store}/stored-value/financial-brand-change-original` | 核对金融品牌变更原请求 | — | `SvFinancialBrandOriginal` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/management/stores/{store}/stored-value/financial-brand-changes` | 金融品牌门店变更 | `SvFinancialBrandRequest` | `SvFinancialBrandChange` | 🔒 | ⬜ | ✅ |
 
 ### marketing（1）
 
@@ -1045,10 +1071,11 @@
 | GET | `/biz/stored-value/plans/{planNo}` | 储值方案详情 | — | `SvPlan` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/stored-value/plans/{planNo}/status` | 启停门店储值方案 | `SvPlanStatusReq` | `SvPlan` | 🔒 | ✅ | ✅ |
 
-### stores（35）
+### stores（36）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/stores/{no}/stored-value/store-summary` | mSvStoreSummary | — | `SvSummary` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/stores/{s}/brand-changes` | 提交品牌变更 | `ManagementBrandChangeSubmitReq` | `BrandChange` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/stores/{s}/brand-changes/check` | 品牌变更影响检查 | `ManagementBrandCheckReq` | `BrandImpact` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/stores/{s}/operating-context` | 门店组织上下文 | — | `OperatingContext` | 🔒 | ⬜ | ✅ |

@@ -748,20 +748,14 @@
         "CL12"
       ],
       "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
-      "status": "PARTIAL_BACKEND_COMPATIBILITY_PUBLISHED_FULL_STAGE_IN_PROGRESS",
+      "status": "BUSINESS_CLOSURE_COMPATIBILITY_PUBLISHED_ENABLEMENT_DEFERRED",
       "codingProgress": {
-        "reports": "Pay aggregate, bounded daily projector, RP01-05 BFF drafted",
-        "settlements": "Generation, queries, reconcile/dispute/adjust/payment/independent receipt drafted",
-        "integration": "24 typed internal operations, remote/embedded adapters drafted",
-        "membership": "Pay prepare/commit and describe drafted; Core journal/coordinator not yet implemented",
-        "tests": "Behavior assertions written, not run; no compilation yet",
-        "remaining": [
-          "Core financial membership journal/coordinator and recovery",
-          "Central collection permission proof and cross-entity funding attribution",
-          "B report/settlement pages, entry/action permissions and three locales",
-          "Whole-phase compilation, focused MySQL/HTTP/UI test chain and one final review",
-          "Exact release gate, commit, push and compatibility publication"
-        ]
+        "reports": "Ledger-backed reports, attribution watermarks and bounded private daily projection implemented",
+        "settlements": "Generation, reconciliation, disputes, adjustments, payment registration and independent receipt implemented",
+        "integration": "27 typed internal calls, remote/embedded adapters and public finance contracts implemented",
+        "membership": "Durable Core journal/coordinator, Pay participant, staged fence and original request recovery implemented",
+        "tests": "Java compile; 43 affected post-merge seam cases; native schema protocol case; affected B tests and type/build checks passed",
+        "remaining": []
       },
       "partialRelease": {
         "asOf": "2026-10-24",
@@ -785,6 +779,52 @@
           "576"
         ],
         "financialBaselineUnchanged": true
+      },
+      "closureProgress": {
+        "membershipCore": "Implemented, tested and deployed at 6dd0c4346",
+        "legacyCutoverInScope": false,
+        "crossEntityEnabled": false,
+        "remaining": [
+          "Physical-device UI acceptance when an authorized device is available",
+          "Real WeChat delivery after template configuration; no real sending performed"
+        ]
+      },
+      "publication": {
+        "date": "2026-10-25",
+        "backendSha": "6dd0c43461f35e544d8861cfd5a337e44b7ba9b5",
+        "bH5": "589b0816e",
+        "coreShape": "food-embedded",
+        "coreHealth": 200,
+        "payProtectedHealth": 401,
+        "actualProcessShaVerified": true,
+        "apkVersion": "0.6.5",
+        "apkCode": 338,
+        "apkMd5": "f4160818c53a3207d1bf58270de7f376",
+        "apkBytes": 55567543,
+        "apkUrl": "https://www.hxmall.top/dl/hxmall-merchant-0.6.5.apk",
+        "financialEnablement": false,
+        "historicalRecharge": "DEFERRED_UNCHANGED",
+        "balanceTotalMinor": 36000,
+        "heldMinor": 0,
+        "accountCount": 2,
+        "creditedCount": 4,
+        "receivedCount": 1,
+        "newMigrations": [],
+        "report": "docs/technical/delivery/P6-业务闭环-执行记录.md",
+        "site": "589b0816e",
+        "siteAssetsChecked": 8,
+        "latestMetadataVerified": true
+      },
+      "verification": {
+        "postMergeAffectedJavaCases": 43,
+        "nativeProtocolSchemaCases": 1,
+        "affectedSettlementCasesPreviouslyPassedH2AndMysql": 18,
+        "reviewPageCases": 12,
+        "finalDelegationAffectedCases": 2,
+        "fullRegression": false,
+        "physicalDevice": "ADB_EMPTY",
+        "wechatRealSending": "TEMPLATE_UNCONFIGURED",
+        "reviewFindingsRemaining": 0
       }
     }
   ],
@@ -956,11 +996,16 @@
   },
   "nextStagePreparation": {
     "stage": "P6",
-    "status": "PARTIAL_BACKEND_COMPATIBILITY_PUBLISHED_FULL_STAGE_IN_PROGRESS",
+    "status": "BUSINESS_CLOSURE_COMPATIBILITY_PUBLISHED_ENABLEMENT_DEFERRED",
     "planFile": "2026-10-21-brand-stored-value-settlement-reporting.md",
     "releaseDependsOn": "P5 compatibility published; actual financial opening remains blocked by P3 historical-original decision",
     "testOrder": "Complete all phase coding and compilation, then one focused chain; no unrelated reruns",
     "scope": "Reports, bills, disputes, payment registration/independent receipt, organization membership saga, cross-entity readiness",
-    "currentBatch": "Pay reports/bills/decisions/payments; RP01-05/CL01-14 and typed remote/embedded; Pay membership participant. Core saga, collection proof, B UI, unified compile/tests/review/publication remain."
+    "currentBatch": "Business closure compiled, focused seam tests and review fixes passed; canonical push, backend/B H5 and APK publication complete",
+    "legacyCutoverInScope": false,
+    "canonicalTarget": "589b0816ea2e9a7fdc9ccebcb3cdfdf620064fd8",
+    "legacyCutover": "OUT_OF_SCOPE_NO_HISTORICAL_POSTING",
+    "implementationProtocol": 2,
+    "onlineFinancialOpening": "CLOSED_UNCHANGED_P3_FOUNDATION_REQUIRED"
   }
 }

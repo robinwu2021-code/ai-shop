@@ -12,6 +12,9 @@ import ai.neargo.shop.food.spi.KitchenReturnInternalApi;
 
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.service.BusinessCloseService;
+import ai.neargo.shop.food.service.DiningReportService;
+import ai.neargo.shop.food.service.DiningReportFactsService;
+import ai.neargo.shop.food.spi.DiningReportInternalApi;
 import ai.neargo.shop.food.service.FoodPrintService;
 import ai.neargo.shop.food.spi.KitchenInternalApi;
 import ai.neargo.shop.food.spi.BusinessCloseInternalApi;
@@ -102,6 +105,11 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean @ConditionalOnMissingBean(DiningReportService.class)
+    DiningReportService remoteDiningReportService(InternalHttp http) {
+        return new RemoteDiningReportService(http.client(ServiceName.FOOD,DiningReportInternalApi.class,Duration.ofSeconds(15)));
+    }
+
     @Bean @ConditionalOnMissingBean(BusinessReturnApprovalService.class)
     BusinessReturnApprovalService remoteBusinessReturnApprovalService(InternalHttp http) {
         return new RemoteBusinessReturnApprovalService(http.client(ServiceName.FOOD,

@@ -14486,6 +14486,298 @@ components:
         - "managementNo"
         - "expectedRevision"
       additionalProperties: false
+    SvReportQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        startDate:
+          type: "string"
+        endDate:
+          type: "string"
+        activityNo:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      required:
+        - "managementNo"
+        - "currency"
+        - "startDate"
+        - "endDate"
+      additionalProperties: false
+    SvFinanceQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+        issuerNo:
+          type: "string"
+        currency:
+          type: "string"
+        status:
+          type: "string"
+        periodFrom:
+          type: "string"
+        periodTo:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    SvGenerationRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        issuerNo:
+          type: "string"
+        periodFrom:
+          type: "string"
+        periodTo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+      required:
+        - "managementNo"
+        - "issuerNo"
+        - "periodFrom"
+        - "periodTo"
+        - "currency"
+      additionalProperties: false
+    SvDecisionRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        expectedRevision:
+          type: "number"
+        side:
+          type: "string"
+          enum:
+            - "PAYER"
+            - "PAYEE"
+        reason:
+          type: "string"
+      required:
+        - "managementNo"
+        - "expectedRevision"
+        - "side"
+      additionalProperties: false
+    SvResolutionRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        expectedRevision:
+          type: "number"
+        disputeNo:
+          type: "string"
+        decision:
+          type: "string"
+          enum:
+            - "ACCEPT"
+            - "REJECT"
+        reason:
+          type: "string"
+      required:
+        - "managementNo"
+        - "expectedRevision"
+        - "disputeNo"
+        - "decision"
+        - "reason"
+      additionalProperties: false
+    SvAdjustmentRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        clearingNo:
+          type: "string"
+        expectedRevision:
+          type: "number"
+        payableDeltaMinor:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "managementNo"
+        - "clearingNo"
+        - "expectedRevision"
+        - "payableDeltaMinor"
+        - "reason"
+      additionalProperties: false
+    SvPaymentRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        expectedRevision:
+          type: "number"
+        amountMinor:
+          type: "number"
+        paidAt:
+          type: "string"
+        method:
+          type: "string"
+          enum:
+            - "TRANSFER"
+            - "CASH"
+            - "OTHER"
+        receiptReference:
+          type: "string"
+        evidenceRefs:
+          type: "array"
+          minItems: 0
+          maxItems: 0
+      required:
+        - "managementNo"
+        - "expectedRevision"
+        - "amountMinor"
+        - "paidAt"
+        - "method"
+        - "receiptReference"
+        - "evidenceRefs"
+      additionalProperties: false
+    SvReceiptRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        expectedRevision:
+          type: "number"
+        receivedAt:
+          type: "string"
+      required:
+        - "managementNo"
+        - "expectedRevision"
+        - "receivedAt"
+      additionalProperties: false
+    SvVoidRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        expectedRevision:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "managementNo"
+        - "expectedRevision"
+        - "reason"
+      additionalProperties: false
+    SvFinanceManagementQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+      required:
+        - "managementNo"
+      additionalProperties: false
+    SvFinanceDirectoryQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+      additionalProperties: false
+      required:
+        - "managementNo"
+    SvFinanceCursorQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+      additionalProperties: false
+      required:
+        - "managementNo"
+    SvFinanceActivityQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        startDate:
+          type: "string"
+        endDate:
+          type: "string"
+        activityNo:
+          type: "string"
+        cursor:
+          type: "string"
+        size:
+          type: "number"
+        issuerNo:
+          type: "string"
+      required:
+        - "currency"
+        - "endDate"
+        - "issuerNo"
+        - "managementNo"
+        - "startDate"
+      additionalProperties: false
+    SvFinanceResolutionQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        commandKey:
+          type: "string"
+      required:
+        - "commandKey"
+        - "managementNo"
+      additionalProperties: false
+    SvFinancialBrandRequest:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        toBrandNo:
+          type:
+            - "string"
+            - "null"
+        expectedStoreRevision:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "managementNo"
+        - "toBrandNo"
+        - "expectedStoreRevision"
+        - "reason"
+      additionalProperties: false
+    SvFinancialOriginalQuery:
+      type: "object"
+      properties:
+        managementNo:
+          type: "string"
+        commandKey:
+          type: "string"
+      required:
+        - "managementNo"
+        - "commandKey"
+      additionalProperties: false
     MerchantOrderActionKind:
       type: "string"
       enum:
@@ -14894,6 +15186,8 @@ components:
     ManagementSpace:
       type: "object"
       properties:
+        canPrepareFinance:
+          type: "boolean"
         canManageLegacy:
           type: "boolean"
           description: "Whether the operator retains management access to legacy resources."
@@ -14994,6 +15288,8 @@ components:
     ManagementResource:
       type: "object"
       properties:
+        canPrepareFinance:
+          type: "boolean"
         canManageLegacy:
           type: "boolean"
           description: "Whether the operator retains management access to legacy resources."
@@ -15035,6 +15331,8 @@ components:
     Brand:
       type: "object"
       properties:
+        canPrepareFinance:
+          type: "boolean"
         canManageLegacy:
           type: "boolean"
           description: "Whether the operator retains management access to legacy resources."
@@ -15068,6 +15366,8 @@ components:
         scopeRevision:
           type: "number"
           description: "Current revision of the resource's management-scope bindings."
+        storedValueStatus:
+          type: "string"
         managementNo:
           type: "string"
           description: "Management-space identifier under which the operation is authorized."
@@ -15147,6 +15447,8 @@ components:
     BrandChange:
       type: "object"
       properties:
+        financial:
+          type: "boolean"
         changeNo:
           type: "string"
           description: "Identifier of the requested brand/store binding change."
@@ -15226,6 +15528,8 @@ components:
                 scopeRevision:
                   type: "number"
                   description: "Current revision of the resource's management-scope bindings."
+                storedValueStatus:
+                  type: "string"
               required:
                 - "brandNo"
                 - "name"
@@ -16637,6 +16941,604 @@ components:
         - "canManage"
         - "canPublish"
       additionalProperties: false
+    SvFinanceCapability:
+      type: "object"
+      properties:
+        protocol:
+          type: "number"
+        reportsReady:
+          type: "boolean"
+        settlementReady:
+          type: "boolean"
+        crossEntityReady:
+          type: "boolean"
+        receiptAttachmentsSupported:
+          type: "boolean"
+        blockers:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "protocol"
+        - "reportsReady"
+        - "settlementReady"
+        - "crossEntityReady"
+        - "receiptAttachmentsSupported"
+        - "blockers"
+      additionalProperties: false
+    SvFinanceResource:
+      type: "object"
+      properties:
+        issuerNo:
+          type: "string"
+        scopeType:
+          type: "string"
+          enum:
+            - "STORE"
+            - "BRAND"
+        scopeNo:
+          type: "string"
+        name:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        businessTimeZone:
+          type: "string"
+      required:
+        - "issuerNo"
+        - "scopeType"
+        - "scopeNo"
+        - "name"
+        - "currency"
+        - "businessTimeZone"
+      additionalProperties: false
+    SvSummary:
+      type: "object"
+      properties:
+        issuerNo:
+          type: "string"
+        scopeType:
+          type: "string"
+        name:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        period:
+          type: "object"
+          properties:
+            from:
+              type: "string"
+            to:
+              type: "string"
+          required:
+            - "from"
+            - "to"
+          additionalProperties: false
+        asOf:
+          type: "string"
+        sourceWatermark:
+          type: "number"
+        openingMinor:
+          type: "number"
+        creditedPaidMinor:
+          type: "number"
+        creditedBonusMinor:
+          type: "number"
+        consumedMinor:
+          type: "number"
+        reversedMinor:
+          type: "number"
+        closingMinor:
+          type: "number"
+        heldMinor:
+          type: "number"
+        rechargeCount:
+          type: "number"
+        usageCount:
+          type: "number"
+        customerCount:
+          type: "number"
+        payableMinor:
+          type: "number"
+      required:
+        - "issuerNo"
+        - "scopeType"
+        - "name"
+        - "currency"
+        - "period"
+        - "asOf"
+        - "sourceWatermark"
+        - "openingMinor"
+        - "creditedPaidMinor"
+        - "creditedBonusMinor"
+        - "consumedMinor"
+        - "reversedMinor"
+        - "closingMinor"
+        - "heldMinor"
+        - "rechargeCount"
+        - "usageCount"
+        - "customerCount"
+        - "payableMinor"
+      additionalProperties: false
+    SvSettlementBill:
+      type: "object"
+      properties:
+        billNo:
+          type: "string"
+        issuerNo:
+          type: "string"
+        payerEntityNo:
+          type: "string"
+        payeeEntityNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        periodFrom:
+          type: "string"
+        periodTo:
+          type: "string"
+        billKind:
+          type: "string"
+        status:
+          type: "string"
+        payableMinor:
+          type: "number"
+        registeredPaymentMinor:
+          type: "number"
+        confirmedReceiptMinor:
+          type: "number"
+        principalMinor:
+          type: "number"
+        bonusMinor:
+          type: "number"
+        sourceCount:
+          type: "number"
+        sourceWatermark:
+          type: "number"
+        payerReconciledBy:
+          type:
+            - "string"
+            - "null"
+        payeeReconciledBy:
+          type:
+            - "string"
+            - "null"
+        disputeNo:
+          type:
+            - "string"
+            - "null"
+        revision:
+          type: "number"
+        createdAt:
+          type: "string"
+        updatedAt:
+          type: "string"
+      required:
+        - "billNo"
+        - "issuerNo"
+        - "payerEntityNo"
+        - "payeeEntityNo"
+        - "currency"
+        - "periodFrom"
+        - "periodTo"
+        - "billKind"
+        - "status"
+        - "payableMinor"
+        - "registeredPaymentMinor"
+        - "confirmedReceiptMinor"
+        - "principalMinor"
+        - "bonusMinor"
+        - "sourceCount"
+        - "sourceWatermark"
+        - "payerReconciledBy"
+        - "payeeReconciledBy"
+        - "disputeNo"
+        - "revision"
+        - "createdAt"
+        - "updatedAt"
+      additionalProperties: false
+    SvBillActions:
+      type: "object"
+      properties:
+        payerActions:
+          type: "array"
+          items:
+            type: "string"
+        payeeActions:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "payerActions"
+        - "payeeActions"
+      additionalProperties: false
+    SvSettlementPayment:
+      type: "object"
+      properties:
+        paymentNo:
+          type: "string"
+        billNo:
+          type: "string"
+        currency:
+          "$ref": "#/components/schemas/CurrencyCode"
+        method:
+          type: "string"
+        amountMinor:
+          type: "number"
+        paidAt:
+          type: "string"
+        status:
+          type: "string"
+        registeredBy:
+          type: "string"
+        receivedBy:
+          type:
+            - "string"
+            - "null"
+        receivedAt:
+          type:
+            - "string"
+            - "null"
+        revision:
+          type: "number"
+      required:
+        - "paymentNo"
+        - "billNo"
+        - "currency"
+        - "method"
+        - "amountMinor"
+        - "paidAt"
+        - "status"
+        - "registeredBy"
+        - "receivedBy"
+        - "receivedAt"
+        - "revision"
+      additionalProperties: false
+    SvGenerated:
+      type: "object"
+      properties:
+        bills:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvSettlementBill"
+        sourceWatermark:
+          type: "number"
+      required:
+        - "bills"
+        - "sourceWatermark"
+      additionalProperties: false
+    SvPaymentResolution:
+      type: "object"
+      properties:
+        found:
+          type: "boolean"
+        payment:
+          anyOf:
+            - "$ref": "#/components/schemas/SvSettlementPayment"
+            - type: "null"
+      required:
+        - "found"
+        - "payment"
+      additionalProperties: false
+    SvFinanceSummaryPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvSummary"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvFinanceStorePage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvStoreAttribution"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvStoreAttribution:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        storeName:
+          type: "string"
+        creditedPaidMinor:
+          type: "number"
+        creditedBonusMinor:
+          type: "number"
+        consumedMinor:
+          type: "number"
+        payableMinor:
+          type: "number"
+        rechargeCount:
+          type: "number"
+        usageCount:
+          type: "number"
+        customerCount:
+          type: "number"
+        asOf:
+          type: "string"
+        sourceWatermark:
+          type: "number"
+      required:
+        - "storeNo"
+        - "storeName"
+        - "creditedPaidMinor"
+        - "creditedBonusMinor"
+        - "consumedMinor"
+        - "payableMinor"
+        - "rechargeCount"
+        - "usageCount"
+        - "customerCount"
+        - "asOf"
+        - "sourceWatermark"
+      additionalProperties: false
+    SvFinanceActivityPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvActivityAttribution"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvActivityAttribution:
+      type: "object"
+      properties:
+        activityNo:
+          type: "string"
+        releaseNo:
+          type: "string"
+        sourceKind:
+          type: "string"
+        name:
+          type: "string"
+        creditedPaidMinor:
+          type: "number"
+        creditedBonusMinor:
+          type: "number"
+        consumedPrincipalMinor:
+          type: "number"
+        consumedBonusMinor:
+          type: "number"
+        remainingMinor:
+          type: "number"
+        rechargeCount:
+          type: "number"
+        usageCount:
+          type: "number"
+        customerCount:
+          type: "number"
+        asOf:
+          type: "string"
+        sourceWatermark:
+          type: "number"
+      required:
+        - "activityNo"
+        - "releaseNo"
+        - "sourceKind"
+        - "name"
+        - "creditedPaidMinor"
+        - "creditedBonusMinor"
+        - "consumedPrincipalMinor"
+        - "consumedBonusMinor"
+        - "remainingMinor"
+        - "rechargeCount"
+        - "usageCount"
+        - "customerCount"
+        - "asOf"
+        - "sourceWatermark"
+      additionalProperties: false
+    SvFinanceBillPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvSettlementBill"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvFinanceItemPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvSettlementItem"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvSettlementItem:
+      type: "object"
+      properties:
+        itemNo:
+          type: "string"
+        clearingNo:
+          type: "string"
+        amountMinor:
+          type: "number"
+        principalMinor:
+          type: "number"
+        bonusMinor:
+          type: "number"
+        rechargeStoreNo:
+          type: "string"
+        redemptionStoreNo:
+          type: "string"
+        occurredAt:
+          type: "string"
+        postedAt:
+          type: "string"
+        carriedForward:
+          type: "boolean"
+        entryType:
+          type: "string"
+        originalClearingNo:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "itemNo"
+        - "clearingNo"
+        - "amountMinor"
+        - "principalMinor"
+        - "bonusMinor"
+        - "rechargeStoreNo"
+        - "redemptionStoreNo"
+        - "occurredAt"
+        - "postedAt"
+        - "carriedForward"
+        - "entryType"
+        - "originalClearingNo"
+      additionalProperties: false
+    SvFinanceEventPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvSettlementEvent"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvSettlementEvent:
+      type: "object"
+      properties:
+        eventNo:
+          type: "string"
+        type:
+          type: "string"
+        billRevision:
+          type: "number"
+        actorNo:
+          type: "string"
+        reason:
+          type:
+            - "string"
+            - "null"
+        occurredAt:
+          type: "string"
+      required:
+        - "eventNo"
+        - "type"
+        - "billRevision"
+        - "actorNo"
+        - "reason"
+        - "occurredAt"
+      additionalProperties: false
+    SvFinancePaymentPage:
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/SvSettlementPayment"
+        nextCursor:
+          type:
+            - "string"
+            - "null"
+        hasMore:
+          type: "boolean"
+      required:
+        - "records"
+        - "nextCursor"
+        - "hasMore"
+      additionalProperties: false
+    SvFinancialBrandChange:
+      type: "object"
+      properties:
+        changeNo:
+          type: "string"
+        state:
+          type: "string"
+        staged:
+          type: "boolean"
+      required:
+        - "changeNo"
+        - "state"
+        - "staged"
+      additionalProperties: false
+    SvFinancialPermissionResult:
+      type: "object"
+      properties:
+        prepared:
+          type: "boolean"
+        entityNo:
+          type: "string"
+        permissions:
+          type: "array"
+          items:
+            type: "string"
+      required:
+        - "prepared"
+        - "entityNo"
+        - "permissions"
+      additionalProperties: false
+    SvFinancialBrandOriginal:
+      type: "object"
+      properties:
+        original:
+          anyOf:
+            - "$ref": "#/components/schemas/SvFinancialBrandChange"
+            - type: "null"
+      required:
+        - "original"
+      additionalProperties: false
     SvBrandOption:
       type: "object"
       properties:
@@ -17177,6 +18079,1305 @@ components:
         - "nextCursor"
       additionalProperties: false
 paths:
+  "/biz/management/stores/{store}/stored-value/financial-brand-change-original":
+    get:
+      operationId: "mSvFinancialBrandOriginal"
+      summary: "核对金融品牌变更原请求"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "commandKey"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinancialBrandOriginal"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/entities/{entity}/stored-value/financial-permissions":
+    post:
+      operationId: "mSvPrepareFinancePermissions"
+      summary: "准备所有人结算权限"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "entity"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinancialPermissionResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvFinanceManagementQuery"
+  "/biz/management/stores/{store}/stored-value/financial-brand-changes":
+    post:
+      operationId: "mSvFinancialBrandStart"
+      summary: "金融品牌门店变更"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "store"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinancialBrandChange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvFinancialBrandRequest"
+  "/biz/management/stored-value/financial-brand-changes/{no}":
+    get:
+      operationId: "mSvFinancialBrandChange"
+      summary: "金融品牌变更原单"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinancialBrandChange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/financial-brand-changes/{no}/resumptions":
+    post:
+      operationId: "mSvFinancialBrandResume"
+      summary: "恢复金融品牌变更原单"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinancialBrandChange"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvFinanceManagementQuery"
+  "/biz/management/stored-value/financial-capability":
+    get:
+      operationId: "mSvFinanceCapability"
+      summary: "mSvFinanceCapability"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinanceCapability"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/financial-resources":
+    get:
+      operationId: "mSvFinanceResources"
+      summary: "mSvFinanceResources"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "scopeType"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "STORE"
+              - "BRAND"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/SvFinanceResource"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands/{no}/stored-value/summary":
+    get:
+      operationId: "mSvBrandSummary"
+      summary: "mSvBrandSummary"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "startDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "endDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "activityNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSummary"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/stores/{no}/stored-value/store-summary":
+    get:
+      operationId: "mSvStoreSummary"
+      summary: "mSvStoreSummary"
+      tags:
+        - "stores"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "startDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "endDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "activityNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSummary"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/brands/{no}/stored-value/store-breakdown":
+    get:
+      operationId: "mSvBrandStoreBreakdown"
+      summary: "mSvBrandStoreBreakdown"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "startDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "endDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "activityNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinanceStorePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/store-issuer-summary":
+    get:
+      operationId: "mSvLocalIssuerSummary"
+      summary: "mSvLocalIssuerSummary"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "startDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "endDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "activityNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinanceSummaryPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/activities/{no}/summary":
+    get:
+      operationId: "mSvActivitySummary"
+      summary: "mSvActivitySummary"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: true
+          schema:
+            "$ref": "#/components/schemas/CurrencyCode"
+        - name: "startDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "endDate"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "activityNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+        - name: "issuerNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinanceActivityPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/settlement-bills":
+    get:
+      operationId: "mSvSettlementBills"
+      summary: "mSvSettlementBills"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "scopeType"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+            enum:
+              - "STORE"
+              - "BRAND"
+        - name: "issuerNo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "currency"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "status"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "periodFrom"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "periodTo"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinanceBillPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/settlement-bills/{no}":
+    get:
+      operationId: "mSvSettlementBill"
+      summary: "mSvSettlementBill"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSettlementBill"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/settlement-bills/{no}/actions":
+    get:
+      operationId: "mSvSettlementActions"
+      summary: "mSvSettlementActions"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvBillActions"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/settlement-bills/{no}/items":
+    get:
+      operationId: "mSvSettlementItems"
+      summary: "mSvSettlementItems"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinanceItemPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/settlement-bills/{no}/events":
+    get:
+      operationId: "mSvSettlementEvents"
+      summary: "mSvSettlementEvents"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinanceEventPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/settlement-bills/{no}/payments":
+    get:
+      operationId: "mSvSettlementPayments"
+      summary: "mSvSettlementPayments"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "cursor"
+          in: "query"
+          required: false
+          schema:
+            type: "string"
+        - name: "size"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvFinancePaymentPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mSvSettlementRegister"
+      summary: "mSvSettlementRegister"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSettlementPayment"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvPaymentRequest"
+  "/biz/management/stored-value/settlement-bills/generations":
+    post:
+      operationId: "mSvSettlementGenerate"
+      summary: "mSvSettlementGenerate"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvGenerated"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvGenerationRequest"
+  "/biz/management/stored-value/settlement-bills/{no}/reconciliation-confirmations":
+    post:
+      operationId: "mSvSettlementReconcile"
+      summary: "mSvSettlementReconcile"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSettlementBill"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvDecisionRequest"
+  "/biz/management/stored-value/settlement-bills/{no}/disputes":
+    post:
+      operationId: "mSvSettlementDispute"
+      summary: "mSvSettlementDispute"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSettlementBill"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvDecisionRequest"
+  "/biz/management/stored-value/settlement-bills/{no}/dispute-resolutions":
+    post:
+      operationId: "mSvSettlementResolveDispute"
+      summary: "mSvSettlementResolveDispute"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSettlementBill"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvResolutionRequest"
+  "/biz/management/stored-value/settlement-bills/{no}/adjustments":
+    post:
+      operationId: "mSvSettlementAdjust"
+      summary: "mSvSettlementAdjust"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSettlementBill"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvAdjustmentRequest"
+  "/biz/management/stored-value/settlement-bills/{no}/payment-resolutions":
+    get:
+      operationId: "mSvSettlementPaymentResolution"
+      summary: "mSvSettlementPaymentResolution"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "managementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "commandKey"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvPaymentResolution"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/management/stored-value/settlement-payments/{no}/receipt-confirmations":
+    post:
+      operationId: "mSvSettlementReceipt"
+      summary: "mSvSettlementReceipt"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSettlementPayment"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvReceiptRequest"
+  "/biz/management/stored-value/settlement-payments/{no}/voids":
+    post:
+      operationId: "mSvSettlementVoid"
+      summary: "mSvSettlementVoid"
+      tags:
+        - "management"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "Idempotency-Key"
+          in: "header"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/SvSettlementPayment"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/SvVoidRequest"
   "/biz/management/brands/{store}/stored-value/activity-context":
     get:
       operationId: "mSvBrandActivityContext"

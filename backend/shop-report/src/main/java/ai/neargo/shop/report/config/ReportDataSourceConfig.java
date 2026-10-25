@@ -69,6 +69,7 @@ public class ReportDataSourceConfig {
         hikari.setPassword(ds.getPassword());
         hikari.setMaximumPoolSize(ds.getMaxPoolSize());
         hikari.setPoolName(POOL_NAME);
+        if (props.getFood().isEnabled()) hikari.setConnectionTimeout(3000);
         return hikari;
     }
 

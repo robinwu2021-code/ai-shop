@@ -44,4 +44,5 @@ public interface StoredValueFinancialAuthorityService {
 
     /** Grant financial capabilities only after live space and entity-owner authorization. */
     Map<String,Object> prepare(Actor actor,String management,String entity);
+ ai.neargo.shop.spi.storedvalue.StoredValueCollections.Proof collectionProof(Actor actor,ai.neargo.shop.spi.storedvalue.StoredValueWallets.ExecutionScope scope,ai.neargo.shop.spi.storedvalue.StoredValueCollections.Requirement requirement);
 }

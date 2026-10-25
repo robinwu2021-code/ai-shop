@@ -18,4 +18,5 @@ public interface StoredValueIssuerQueryService {
     Selected readSelection(Query query,String issuerRef,String accountRef);
 
     CursorPage<ai.neargo.shop.spi.storedvalue.StoredValueIssuerRecharges.FundedCustomer> funded(ExecutionScope scope,String cursor,int size);
+    ai.neargo.shop.spi.storedvalue.StoredValueIssuers.StoreOptions storeOptions(ExecutionScope scope,ai.neargo.shop.spi.storedvalue.StoredValueCollections.Proof proof);
 }

@@ -14,7 +14,9 @@ public final class StoredValueReports {
   long rechargeCount,long usageCount,long customerCount,long payableMinor){
   public Summary{ContractChecks.require(Math.addExact(Math.addExact(openingMinor,Math.addExact(creditedPaidMinor,creditedBonusMinor)),Math.subtractExact(reversedMinor,consumedMinor))==closingMinor);}
  }
- public record StoreAttribution(String storeNo,String storeName,long creditedPaidMinor,long creditedBonusMinor,long consumedMinor,long payableMinor,long rechargeCount,long usageCount,long customerCount){}
- public record ActivityAttribution(String activityNo,String releaseNo,String sourceKind,String name,long creditedPaidMinor,long creditedBonusMinor,long consumedPrincipalMinor,long consumedBonusMinor,long remainingMinor,long rechargeCount,long usageCount,long customerCount){}
+ public record Projection(Scope scope,LocalDate date,String afterRelease,String afterStore,int size){public Projection{Objects.requireNonNull(scope);Objects.requireNonNull(date);ContractChecks.require(size>0&&size<=500&&(afterRelease==null)==(afterStore==null));ContractChecks.optionalId(afterRelease);ContractChecks.optionalId(afterStore);}}
+ public record ProjectionResult(String issuerNo,LocalDate date,String afterRelease,String afterStore,boolean hasMore,int rows,Instant projectedAt){}
+ public record StoreAttribution(String storeNo,String storeName,long creditedPaidMinor,long creditedBonusMinor,long consumedMinor,long payableMinor,long rechargeCount,long usageCount,long customerCount,Instant asOf,long sourceWatermark){}
+ public record ActivityAttribution(String activityNo,String releaseNo,String sourceKind,String name,long creditedPaidMinor,long creditedBonusMinor,long consumedPrincipalMinor,long consumedBonusMinor,long remainingMinor,long rechargeCount,long usageCount,long customerCount,Instant asOf,long sourceWatermark){}
  public record Query(Scope scope,Period period,String cursor,int size){public Query{Objects.requireNonNull(scope);Objects.requireNonNull(period);ContractChecks.require(size>0&&size<=100);}}
 }

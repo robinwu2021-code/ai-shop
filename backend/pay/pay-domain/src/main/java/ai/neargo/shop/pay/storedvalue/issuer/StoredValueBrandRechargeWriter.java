@@ -25,6 +25,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Invoked only inside the facade's Pay transaction, after number ranges were reserved. */
 @Service
 public class StoredValueBrandRechargeWriter {
+    @org.springframework.beans.factory.annotation.Autowired private StoredValueCollectionGuard collectionGuard;
+    @org.springframework.beans.factory.annotation.Autowired private ai.neargo.shop.pay.storedvalue.settlement.StoredValueCrossEntityReadiness financialReadiness;
     private final IssuerRepository db;
     private final SvRechargeMapper recharges;
     private final EntitlementCommandDeduplicator commands;
@@ -91,10 +93,11 @@ public class StoredValueBrandRechargeWriter {
                     ||!s.brandBindingNo().equals(text(access,"source_binding_no"))||s.brandBindingRevision()!=number(access,"source_revision")
                     ||now.isBefore(instant(access.get("effective_from")))||access.get("effective_to")!=null&&!now.isBefore(instant(access.get("effective_to"))))unavailable();
             var version=db.one("SELECT * FROM sv_issuer_version WHERE tenant_no=? AND issuer_no=? AND issuer_version_no=? AND deleted=0",ctx.tenantNo(),scope.issuerNo(),text(release,"issuer_version_no"));
-            // P5 deliberately admits same-entity execution only; P6 owns inter-entity collection/clearing.
-            if(version==null||!entity.equals(text(version,"settlement_entity_no"))||!s.currency().equals(text(version,"currency"))
+            // The recharge belongs to its operating store; the wallet and collection route belong to the frozen issuer settlement entity.
+            if(version==null||!s.currency().equals(text(version,"currency"))
                     ||!"CENTRALIZED".equals(text(version,"collection_mode"))||!"PRO_RATA".equals(text(version,"debit_allocation_mode")))unavailable();
-            var routes=db.routes(text(version,"collection_config")).stream().filter(r->entity.equals(r.entityNo())&&"MERCHANT_OFFLINE".equals(r.channel())&&"OFFLINE".equals(r.scene())&&(r.storeNo()==null||s.storeNo().equals(r.storeNo()))).toList();
+            if(!entity.equals(text(version,"settlement_entity_no"))){if(collectionGuard==null||financialReadiness==null)unavailable();financialReadiness.requireCross(s.coreFinanceProtocol());collectionGuard.require(c.query(),scope.issuerNo(),text(release,"issuer_version_no"),text(version,"settlement_entity_no"));}
+            var routes=db.routes(text(version,"collection_config")).stream().filter(r->text(version,"settlement_entity_no").equals(r.entityNo())&&"MERCHANT_OFFLINE".equals(r.channel())&&"OFFLINE".equals(r.scene())&&(r.storeNo()==null||s.storeNo().equals(r.storeNo()))).toList();
             if(routes.size()!=1)unavailable();
             var quota=quotas.lockIssuerQuota(ctx,scope.issuerNo(),s.currency());
             var schedule=evidence.original();

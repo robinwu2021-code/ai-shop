@@ -31,7 +31,7 @@ class ReportStorageInitializerTest {
             assertThatThrownBy(() -> initializer.guardedDataSource().getConnection())
                     .isInstanceOf(SQLException.class).hasMessage("REPORT_STORAGE_NOT_READY");
             assertThatThrownBy(() -> initializer.guardedDataSource().getConnection("sa", ""))
-                    .isInstanceOf(SQLException.class).hasMessage("REPORT_STORAGE_NOT_READY");
+                    .isInstanceOf(SQLException.class).hasMessage("REPORT_PER_CALL_CREDENTIALS_FORBIDDEN");
             assertThat(ds.getHikariPoolMXBean()).isNull();
         }
     }
@@ -58,24 +58,24 @@ class ReportStorageInitializerTest {
     void validatorNeverMigratesAndCanRecoverAfterWorkerMigration() throws Exception {
         ReportStoreProperties validator = isolated();
         try (HikariDataSource ds = database()) {
-            var reader = new ReportStorageInitializer(ds, validator);
+            var reader = initializer(ds, validator);
             assertThatThrownBy(reader::initialize).isInstanceOf(RuntimeException.class);
             assertThat(reader.state()).isEqualTo(ReportStorageInitializer.State.FAILED);
             try (Connection c = ds.getConnection()) {
-                assertThat(c.getMetaData().getTables(null, null, "REPORT_INIT_PROBE", null).next())
+                assertThat(c.getMetaData().getTables(null, null, "RPT_INIT_PROBE", null).next())
                         .isFalse();
             }
             ReportStoreProperties worker = isolated();
             worker.setInitializationRole(ReportStoreProperties.InitializationRole.MIGRATOR);
-            var writer = new ReportStorageInitializer(ds, worker);
+            var writer = initializer(ds, worker);
             writer.initialize();
             assertThat(JdbcClient.create(reader.guardedDataSource())
-                    .sql("SELECT COUNT(*) FROM report_init_probe").query(Long.class).single()).isZero();
+                    .sql("SELECT COUNT(*) FROM rpt_init_probe").query(Long.class).single()).isZero();
             assertThat(reader.state()).isEqualTo(ReportStorageInitializer.State.READY);
             assertThat(reader.failureCode()).isNull();
             reader.initialize();
             assertThat(JdbcClient.create(reader.guardedDataSource())
-                    .sql("SELECT COUNT(*) FROM report_init_probe").query(Long.class).single()).isZero();
+                    .sql("SELECT COUNT(*) FROM rpt_init_probe").query(Long.class).single()).isZero();
         }
     }
 
@@ -85,7 +85,7 @@ class ReportStorageInitializerTest {
         props.setFlywayEnabled(false);
         props.setInitializationRole(ReportStoreProperties.InitializationRole.MIGRATOR);
         try (HikariDataSource ds = database()) {
-            var initializer = new ReportStorageInitializer(ds, props);
+            var initializer = initializer(ds, props);
             assertThatThrownBy(initializer::initialize).isInstanceOf(RuntimeException.class);
             assertThat(initializer.state()).isEqualTo(ReportStorageInitializer.State.FAILED);
         }
@@ -96,26 +96,52 @@ class ReportStorageInitializerTest {
         ReportStoreProperties props = isolated();
         props.setInitializationRole(ReportStoreProperties.InitializationRole.MIGRATOR);
         try (HikariDataSource ds = database()) {
-            var initializer = new ReportStorageInitializer(ds, props);
+            var initializer = initializer(ds, props);
             initializer.initialize();
             assertThat(initializer.guardedDataSource()).isSameAs(initializer.guardedDataSource());
             JdbcClient jdbc = JdbcClient.create(initializer.guardedDataSource());
             TransactionTemplate tx = new TransactionTemplate(
                     new DataSourceTransactionManager(initializer.guardedDataSource()));
             tx.executeWithoutResult(status -> {
-                jdbc.sql("INSERT INTO report_init_probe(id) VALUES(1)").update();
+                jdbc.sql("INSERT INTO rpt_init_probe(id) VALUES(1)").update();
                 status.setRollbackOnly();
             });
-            assertThat(jdbc.sql("SELECT COUNT(*) FROM report_init_probe")
+            assertThat(jdbc.sql("SELECT COUNT(*) FROM rpt_init_probe")
                     .query(Long.class).single()).isZero();
+        }
+    }
+
+    @Test void runtimeSchemaFailureInvalidatesReadinessAndValidatorCanRecoverAfterRepair() {
+        var worker=isolated();worker.setInitializationRole(ReportStoreProperties.InitializationRole.MIGRATOR);
+        try(var ds=database()) {
+            initializer(ds,worker).initialize();var reader=initializer(ds,isolated());reader.initialize();
+            var jdbc=JdbcClient.create(reader.guardedDataSource());
+            assertThatThrownBy(()->jdbc.sql("SELECT COUNT(*) FROM rpt_late_probe").query(Long.class).single()).isInstanceOf(RuntimeException.class);
+            assertThat(reader.state()).isEqualTo(ReportStorageInitializer.State.FAILED);
+            assertThat(reader.failureKind()).isEqualTo(ReportStorageInitializer.FailureKind.SCHEMA_NOT_READY);
+            JdbcClient.create(ds).sql("CREATE TABLE rpt_late_probe(id INT)").update();
+            assertThat(jdbc.sql("SELECT COUNT(*) FROM rpt_late_probe").query(Long.class).single()).isZero();
+            assertThat(reader.state()).isEqualTo(ReportStorageInitializer.State.READY);
         }
     }
 
     private static ReportStoreProperties isolated() {
         ReportStoreProperties props = new ReportStoreProperties();
         props.setInitializationMode(ReportStoreProperties.InitializationMode.ISOLATED);
+        props.setRetryDelayMillis(0);
         props.setFlywayLocations("classpath:db/report-init-test");
         return props;
+    }
+
+    private static ReportStorageInitializer initializer(HikariDataSource ds, ReportStoreProperties props) {
+        try (Connection c = ds.getConnection()) {
+            props.setExpectedCatalog(c.getCatalog());
+            props.setExpectedInstance(c.getMetaData().getURL());
+            props.getMigrationDatasource().setUrl(ds.getJdbcUrl());
+            props.getMigrationDatasource().setUsername(ds.getUsername());
+            props.getMigrationDatasource().setPassword(ds.getPassword());
+            return new ReportStorageInitializer(ds, props);
+        } catch (SQLException ex) { throw new IllegalStateException(ex); }
     }
 
     private static HikariDataSource database() {

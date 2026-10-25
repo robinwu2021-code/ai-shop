@@ -1,6 +1,6 @@
 # TDD-B端报表库与日结
 
-> **当前进度（2026-10-25）：** BIZ-01～12非支付后端已交付，开始原§9报表实施。§10 S1-A隔离初始化、API按需验证和J13已编码并完成定向验证，已于2026-10-25集成发布到云端（运行9b2b52798，health UP）；六张统计控制/事实表、汇总补偿及查询导出仍待S1-B～S4。既有零售报表及J00保持原用途。
+> **当前进度（2026-10-25）：** BIZ-01～12非支付后端已交付。餐饮经营报表首批后端（独立统计库七表迁移、唯一每日任务、历史/实时查询与私有导出）已集成发布云端，运行99d3fa516、health UP。统计库/跑批/导出未启用，成本及费用等指标仍有真实来源依赖；详见[上线实证](../TDD-餐饮经营报表-数据库任务与API.md#38-集成上线实证2026-10-25)。既有零售报表和J00保留原用途。
 
 > **2026-10-24 餐饮补充：** [§9 实时查询与独立统计库方案](#9-餐饮实时查询与独立统计库方案2026-10-24设计待实现)为分阶段设计；除§10明确列出的初始化能力外，统计表/汇总与查询导出仍未实现，未在生产启用。§0～§8保留原零售实现及历史验收。餐饮历史报表每日汇总至独立报表库，当前营业日和现场操作读取实时业务事实。
 
@@ -440,7 +440,7 @@ A=非支付优先；B=补齐行业事实后；C=依赖资金/成本真实owner�
 - 调度/运行记录使用原独立任务设施；即使report库不可用也能记录失败。worker完全未启动的检测由独立任务管理/外部健康巡检比较最后执行时间，不能只依靠停掉的worker自己发告警。
 
 
-每日调度以“门店上一营业日结束＋建议30分钟缓冲”到期为准，不以全球统一01:30为准。10分钟扫描一次到期门店；每个已结束营业日正常生成一次，任务失败/迟到修订可以额外重算。03:00/04:00夜宵店不在尚未结束时提前生成最终日报。
+每日调度以“门店上一营业日结束＋建议30分钟缓冲”到期为准，不以全球统一01:30为准。按门店或相同时区/切点分组配置每日任务；每个已结束营业日正常生成一次，任务失败/迟到修订可以额外重算。03:00/04:00夜宵店不在尚未结束时提前生成最终日报。
 
 1. **计划。** 从真实获准门店及原营业日策略确定应生成范围，持久化分区请求；firstStatDate建议从报表启用日开始，历史数据显式回填。停机多天后按scopeCursor分批补齐所有欠缺日期，不因7天回看窗口而漏掉更早未生成日。
 2. **领取。** 锁定原scope/day/metricVersion，生成buildNo、fence和冻结统计定义；已存在成功的同请求直接查回。任务重试不新建第二个未知构建。
@@ -456,18 +456,18 @@ A=非支付优先；B=补齐行业事实后；C=依赖资金/成本真实owner�
 
 读端在同一个只读report事务中读取所有分区指针与事实，跨日查询可以固定本次选中的build集合；不同HTTP分页请求如需同一版本，携带服务端签发querySnapshotRef，绑定授权范围及build集合、设置期限。没有此token仅承诺单次请求一致，不承诺跨页同水位。
 
-### L3.5 定时任务与事件清单
+### L3.5 定时任务与事件清单（历史功能拆分，执行收敛见§17）
 
 以下为餐饮新增/复用计划，不表示当前已注册。初始频率是建议配置；JobDeclaration默认只首次入库生效，后续运营调整不得被发版覆盖。统一任务平台负责触发、停启、人工重跑和日志，行业handler负责编排；event consumer不是额外cron。
 
 | ID / handler | 类型/建议频率 | 具体工作 | 幂等/失败边界 |
 |---|---|---|---|
 | J00 report-daily-rollup | 已有零售任务01:30 | 原自然日门店/商品统计与原回看3天 | 保留原行为，不拿来直接生成餐饮日报 |
-| J01 food-report-plan | 定时/每10分钟 | 找到已过日切＋缓冲的门店，按游标补计划日请求 | scope/date/version唯一；全局扫描分批，失败不推进未计划部分游标 |
-| J02 food-report-build | 定时/每分钟领取待办 | 仅领取营业日结束＋缓冲已到期的请求，按原build全日读取、聚合、校验及发布 | 分区锁＋fence；有界批数、租约超时、原号查回 |
+| J01 food-report-daily | 每店每日一次主批 | 已过日切＋缓冲后，计划并调用J02构建，按游标恢复漏跑 | scope/date/version唯一；全局扫描分批，失败不推进未计划部分游标 |
+| J02 food-report-build | 主批/补算内部执行，无独立cron | 仅领取营业日结束＋缓冲已到期的请求，按原build全日读取、聚合、校验及发布 | 分区锁＋fence；有界批数、租约超时、原号查回 |
 | J03 food-report-dirty | 事件驱动 | 接单、改单/取消、厨房动作、退餐、更正等只标记受影响日期 | 原outbox事件去重；仅置脏，不增量加金额/数量 |
-| J04 food-report-lookback | 每店每日主批后 | 建议重算最近7个已结束营业日，补常见迟到/漏标 | 不负责代替全历史补算；每个分区仍走J02同一路径 |
-| J05 food-report-catchup | 定时/每10分钟 | 检查逾期、异常构建及租约；查询是否已发布，重试/告警 | UNKNOWN先查原build，重试退避；不得把尚在执行的构建当已失败 |
+| J04 food-report-lookback | 每店每日主批后 | 检查最近7个已结束营业日，按缺口/dirty必要补算，不默认全量重算 | 不负责代替全历史补算；每个分区仍走J02同一路径 |
+| J05 food-report-catchup | 失败退避/下一每日主批/人工补算 | 检查逾期、异常构建及租约；查询是否已发布，重试/告警 | UNKNOWN先查原build，重试退避；不得把尚在执行的构建当已失败 |
 | J06 food-report-quality | 每日发布后＋人工 | 同scope/date/version的行数、来源hash、量额守恒、缺失日期与控制总数校验 | 只生成差异/修复请求，不改业务原单或签核 |
 | J07 food-report-backfill | 人工异步 | 指定门店、日期、口径版本，整日补历史或修复 | 原请求key/hash，分日分批；大范围暂停/续跑，不能一次长事务 |
 | J08 food-report-version-rebuild | 发布新口径时人工启动 | 新metricVersion完整重建、对比，验证后切默认读版本 | 旧版保留；切换前不混用两版指标 |
@@ -542,7 +542,7 @@ J03事件覆盖规则：交易变更标记原订单归属日；退款/付款标�
 
 方案不承诺：统计跑批就是商家日结签核；一次来源查询参数asOf就形成全系统原子快照；所有日指标都能直接SUM；所有派生/审计数据都能随意删除。统计旧版本可按策略清理，原交易、签核和审计由各自owner保留，不能因“可重算”随意删除来源证据。
 
-默认建议参数（尚非上线配置）：日切后缓冲30分钟、计划扫描10分钟、执行补扫1分钟、回看7个已结束营业日、健康巡检5分钟。历史启算日期、并发/限流、源查询上限、导出和版本保留周期在实施配置中显式设置；不硬编码全球统一时区、币种或税率。
+默认建议参数（尚非上线配置）：日报每门店每日一次，日切后缓冲30分钟，计划与构建同一主批执行；回看7个已结束营业日仅检查缺口/变更并必要补算，健康巡检5分钟。历史启算日期、并发/限流、源查询上限、导出和版本保留周期在实施配置中显式设置；不硬编码全球统一时区、币种或税率。
 
 设计可实施性审阅（2026-10-24，只读）：发现“现有同步Flyway启动耦合”与“局部族补算/整日单指针冲突”两项重要问题，现已明确选择ISOLATED惰性初始化＋指定迁移执行者、首版整日全量重算。两项均是待实施合同，不声称源码已支持。具体连接池参数、任务并发和保留时间由实施配置决定，不能改变以上数据与发布语义。
 
@@ -591,3 +591,632 @@ J03事件覆盖规则：交易变更标记原订单归属日；退款/付款标�
 - 发布前业务库、独立库存库及配置已备份：`/data/app/ai-shop/backups/food-report-20261025T014118Z-9b2b52798`。配置文件SHA256与发布前一致；未启用ISOLATED或新统计任务。
 - PAY仍为PID1129197，进程启动指纹相同，受保护接口401；未部署或重启支付。旧主应用cd1b6d4da包保留可回退。
 - 发布日志`/tmp/food-report-deploy.log`，最终核验`/tmp/food-report-cloud-final-verify.log`。当前仅初始化能力随集成包交付，餐饮历史统计、六表和日报汇总仍待后续阶段，不宣称报表业务已可用。
+
+
+## §11 S1-B 任务清单与方案 Review（2026-10-25，待实施）
+
+### L1 结论与边界
+
+**Review结论：原方向可沿用，但须先补齐下列控制合同；当前不能直接启用餐饮统计。** 下一阶段是S1-B“独立统计库及整日版本发布”，不是立即开放20张报表。S1-A运行基线为`9b2b52798`，发布记录位于`c843decd3`；本节仅整理方案和待办，没有新增Java、DDL、公开API或生产配置。
+
+沿用：独立report数据库、shop-report的record/JdbcClient/DAO、原统一任务平台、整日重算与单次原子发布。采用固定指标白名单，不引入通用SQL/JSON表达式引擎、CDC、新应用或新调度器。资金、Keeta、离线和前端实机仍按原边界后置。
+
+**本批交付目标：** 得到可证明隔离、可重试、不会覆盖在读版本的统计持久层。真实营业事实提取及J01～J12编排属于后续S2/S3；S1-B的合成测试数据不代表真实日报已产出。生产统计开放须同时满足S2/S3及对应查询入口的验收。
+
+### L2.1 本次 Review 发现与处理
+
+| 编号/级别 | 现状与风险 | 本次收口决定/落点 |
+|---|---|---|
+| R01 重要 | ReportDataSourceConfig.mustBeOwnDataSource仅检查rpt-pool名称；相同名称仍可连接业务库。initializer在真实身份校验前可能migrate | 在任何迁移DDL前校验实际实例和catalog、期望库名及禁入的业务库；别名/代理不能靠URL字符串判定。不能证明隔离则拒绝餐饮统计，不能退回主库；S1B-02 |
+| R02 重要 | ISOLATED的VALIDATOR/MIGRATOR目前是代码角色，同一组连接配置不能证明账号最小权限 | API只读、worker统计DML、迁移DDL三类数据库权限分离；ISOLATED迁移使用独立凭据，不向API注入DDL账号。平台/库存/PAY原凭据不复制给report；S1B-02 |
+| R03 重要 | initializer将异常统一记FAILED，J13下一分钟可再次migrate；API失败后每次访问都可同步重试；READY后也无失效策略 | 区分临时不可达、配置/身份错误、schema未就绪及迁移失败。仅临时失败退避重试；迁移失败暂停，禁止自动repair或在已有未知schema上baseline。每实例只允许一个探测，其余请求快速返回未就绪；S1B-03 |
+| R04 重要 | 原事实唯一键仅buildNo/metric/dimension，未描述同请求失败重领后的半成品与旧worker写入 | 保持逻辑buildNo，增加attemptNo；事实、manifest、发布指针均绑定attemptNo。分区fence递增，所有写入/发布同时核验attempt和fence；S1B-04～06 |
+| R05 重要 | 仅有成功指针CAS不足以证明读取一致；默认事务隔离配置可能改变 | 发布在单个report短事务完成；读端显式只读REPEATABLE_READ事务一次选定指针及事实。跨HTTP分页快照留S4，不先承诺；S1B-06 |
+| R06 重要 | rpt_job_watermark是全局任务概览；有日期水位不代表每店每日真实完整 | 门店/日publication＋required manifest才证明覆盖。没有扫描证明不能发布空日；缺分区/未知不得补0；S1B-01/06 |
+| R07 重要 | 原机器设计只规划1张rpt投影；FOOD V1已经有fnb_metric_definition/fnb_report_run物理表，但无现成报表Service/Mapper实现 | 新版六表须先对齐原设计真源与生成清单。历史fnb表保留，不作为第二套build/发布水位，也不双写；指标定义用固定版本目录，暂不开放历史定义表为可执行规则；S1B-01/04 |
+| R08 重要 | 如果以当前门店策略重算旧日报，修改日切会改变历史归属；UTC边界也不能按固定24小时推算 | 复用原营业日证据及原策略版本，冻结UTC起止。BusinessCloseServiceImpl.boundaries已按当地日期分别换算，保留23/25小时日；历史边界不可证明时阻塞该分区；S1B-01 |
+| R09 中等 | 所有新表/新配置若直接挂report.enabled，会随旧零售启用而自动开放餐饮跑批 | 餐饮构建/调度另设默认关闭的子开关；旧STRICT和零售DAO语义保留。Flyway仍由真实迁移角色执行，新统计构建权限与schema就绪分开；S1B-03/08 |
+| R10 重要 | V3与旧V1/V2共用迁移目录；新API包先于迁移上线会因pending拒绝读取；STRICT也不能绕过新DDL身份校验 | 先预检并准备迁移凭据/配置，再由指定角色升级，最后发布API。新增DDL在STRICT/ISOLATED均须身份校验；保留旧指标语义不代表旧配置零改动升级。原生验证旧读SQL与升级时序；S1B-02/04/08 |
+
+以上是源码及方案审阅发现，不宣称已通过并发/原生数据库实验，也不把“重要问题”描述为当前生产业务已故障。
+
+### L2.2 前置合同：先完成最小S0，再写迁移
+
+1. **范围键PartitionKey**：`tenantNo/entityNo/storeNo/businessDate/dateBasis/metricVersion`，来自原主体/门店授权及真实营业日。当前tenant为MAIN也必须显式携带。dateBasis首批固定BUSINESS_DATE，不在请求里接受任意时区或日切覆盖。
+2. **营业日证据**：优先读取原FnbBusinessDay的dayNo、policyNo、startsAt/endsAt；当前实现边界是UTC LocalDateTime，转换时明确UTC，禁止二次套门店时区。无原日记录时，由FOOD owner基于可证明的历史策略提供边界，不由report库读取“当前策略”猜旧日。冻结timezone、cutoverMinute、policyNo/version和UTC边界，存于build证据快照。
+3. **固定指标目录**：每个metricCode声明owner/family、valueType、单位/币种要求、允许维度、归属基准、聚合方式、去重规则与前置能力；目录版本＋内容hash不可变。S1-B冻结字段及校验机制，S2接通实际来源后才能发布相应指标，不能把requiredFamilies设为空绕过来源检查。
+4. **来源合同**：返回scope、固定查询边界、sourceSnapshotRef、sourceVersion或水位、rowCount/checksum、completeness及unknownReason。单次有界完整读取优先；不能形成稳定快照的普通分页拒绝标COMPLETE。asOfAt只表示来源自己的截至，不代表跨库原子快照。
+5. **空日证明**：已启用必需事实族全部完成扫描，manifest记录真实0行，才允许EMPTY_VERIFIED；COUNT类指标可为0。没有单位/币种依据时不凭空生成EA/CNY的数量或金额0。可选资金/成本族保持UNKNOWN。
+6. **授权**：公开入口未来从既有账号/主体/门店范围构造scope；内部worker用已验证的门店任务上下文。DAO仍必须逐条带scope；不能只验证buildNo就跨店查询。S1-B不新增C/B/Ops公开端点或权限码。
+
+### L3.1 六表字段与约束细化（候选，未执行）
+
+既有零售三表继续原用途；首批新增6表，导出阶段再新增rpt_export_task。迁移位于`backend/shop-report/src/main/resources/db/report/`，当前最新V2，候选V3编号在编码前重新检查；不改V1/V2，不向经营库fnb迁移目录追加统计表。
+
+下面“scope”均为完整tenant/entity/store；“partition”另含营业日、dateBasis、metricVersion。标识符沿原owner长度及校验，不另造商家身份。
+
+| 表 | 必需字段/唯一约束 | 职责与禁止事项 |
+|---|---|---|
+| rpt_scope_cursor | scope/dateBasis/metricVersion唯一；firstStatDate、lastPlannedDate、enabled、version | lastPlannedDate只代表任务已持久规划，不代表已成功生成；全范围完整性从publication逐日判断 |
+| rpt_build_batch | buildNo唯一；scope/requestKey唯一、requestHash；partition、attemptNo、fence、leaseOwner、leaseUntil、status、specHash、requiredFamilies快照、营业日证据、dirtyGeneration、错误分类/时间 | 同key不同hash冲突；已PUBLISHED重放查原结果；未发布失败重领attempt递增。不能因重试覆盖已发布数据 |
+| rpt_source_manifest | scope/buildNo/attemptNo/owner/family唯一；snapshotRef/sourceVersion、asOfUtc、rowCount、checksum、completeness/unknownReason | 每次attempt证据独立，来源缺失不得冒充EMPTY_VERIFIED；必需族缺一即拒绝发布 |
+| rpt_day_publication | partition唯一；activeBuildNo/activeAttemptNo、generation、publishedAt；currentFence、leaseOwner/Until | 可先存在无active指针的分区锁行，此时仍是MISSING。领取时fence递增，发布时切换active指针，generation只在成功发布递增 |
+| rpt_dirty_day | partition唯一；dirtyGeneration、ackedGeneration、first/lastEventRef、reason、readyAfter、version | ack仅推进到本次捕获的generation，新事件仍保留；待处理=dirtyGeneration>ackedGeneration，不依赖易被覆盖的单一DONE状态 |
+| rpt_food_metric_daily | scope/buildNo/attemptNo/metricCode/dimensionKey唯一；metricVersion、family、attributionBasis、typed维度快照、valueType、countValue/quantityValue/amountMinor、unit/currency、completeness/unknownReason | dimensionKey=规范typed维度SHA256；包含单位/币种/归属等区分项。事实不可覆盖已发布attempt，不把套餐父叶合并重复计量 |
+
+已知值按valueType恰好一个数值列非空；未知值三列均空且有原因。COUNT/MONEY使用BIGINT并检验溢出，QUANTITY沿已交付精确数量使用DECIMAL(24,6)，拒绝截断/隐式四舍五入；允许负值与否由固定指标定义决定，不给所有指标统一套非负约束。币种与单位按指标要求验证，不做跨币种/单位SUM。
+
+schema索引需覆盖partition查询、待领取/lease到期、scope/requestKey重放、build/attempt事实读取；联合索引长度在目标MySQL验证，不用H2成功替代。写入时校验完整scope及partition与build一致，禁止只凭外来buildNo定位。历史未发布attempt可延后清理，不在本批删除已发布事实。
+
+**对原§9的明确修订：** 原唯一键`(buildNo,metricCode,dimensionKey)`扩充attemptNo；activeBuildNo对应增加activeAttemptNo。这样仍只有六张表，不另建一套重试引擎。文档中旧键是早期候选，实施以本节为准，迁移前同步机器真源。
+
+### L3.2 数据库身份与账号隔离
+
+- 先确认真实引擎/版本，再读取其可验证的服务器实例身份与`DATABASE()`/catalog；MySQL可采用server_uuid。host/port、连接池名、URL路径和单独的server_id都不能独立证明物理身份。别名或代理无法可靠解析时拒绝餐饮统计启用，不用字符串比较兜底。
+- 以批准的期望report catalog及实例身份做正向匹配，并与业务/库存/PAY已知数据库身份比对；report实例不必独立于业务实例，但catalog必须隔离。发现平台/FNB/库存/PAY迁移历史等禁入业务结构也拒绝迁移。拒绝时无任何report建表/写入。
+- 账号分为API只读、统计worker读写report、独立migration账号DDL。有效权限审计包括全局/通配符/角色继承，不能只看直接schema grants。业务来源仍经原typed owner查询，不把业务库账号授予report worker。
+- 账号创建/授权由既有部署流程显式执行，应用不自动GRANT。身份与权限校验不能证明时不产生READY；迁移凭据与口令不写日志/文档，不让API拥有migration连接池。
+- 建库及账号资源先准备，应用只迁移已批准的空report库或已证明属于report的V1/V2基线。新ISOLATED路径禁用自动baseline；已有零售STRICT的历史合同保留，不借本批静默变更。
+
+具体新配置键在S1B-02设计对账时登记到原ReportStoreProperties：期望catalog/实例、独立migration datasource、探测退避/连接超时、餐饮构建子开关。均为候选，当前源码及生产配置尚未增加。
+
+### L3.3 构建、重试与发布算法
+
+1. **请求冻结**：校验授权scope、原营业日边界和specHash；相同scope/requestKey先比hash，已发布直接查回。新的整日重算使用新的请求key/dirty代次；恢复同一请求不更换buildNo。
+2. **领取**：按partition锁行，再锁build行，统一锁顺序。使用数据库UTC时间判断lease；领取递增partition fence及本次attemptNo，冻结本轮dirtyGeneration。旧worker不能延续原fence写入。同一逻辑请求保留最初捕获的dirtyGeneration，新事件留待下一请求。失败后的新attempt可重读来源但证据隔离；已PUBLISHED请求只查回，不刷新。
+3. **提取与暂存**：不持有业务事务等待report写入；先从各owner获取有界一致证据，再按当前attempt写暂存事实和manifest。每次暂存写事务必须验证partition/build/attempt/fence和lease，不能只在领取时检查一次。首版超过单日上限明确失败，不静默截断或用普通分页拼快照。
+4. **校验**：完整scope、目录hash、必需manifest、空日证明、维度唯一、单位/币种、量额守恒、未来/未结束营业日门禁。可选UNKNOWN不补0；必需族失败则保持旧active。
+5. **发布**：一个短`reportTransactionManager`事务内重新锁partition→build，验证最新attempt/fence、lease、校验结果与预期generation；切activeBuild/attempt并generation+1，标build PUBLISHED，仅确认捕获的dirtyGeneration。任一步异常全部回滚，不先删除旧事实。
+6. **查回**：响应丢失使用scope/requestKey或buildNo读取已发布结果；禁止换key重复计算后猜哪次生效。lease过期的旧响应不能把成功版本改成失败。
+7. **读取**：同一只读REPEATABLE_READ report事务选定partition指针集合，再按其build/attempt读取事实。MISSING不等于0；单次请求一致。跨HTTP分页固定快照及授权token在S4实现。
+
+重复事件可能造成一次额外的幂等整日重算；不宣称exactly-once事件消费。结果不会增量叠加，同分区事件以dirtyGeneration保留，先持久化dirty再ACK；跨库ACK响应丢失可安全重放。S3再接真实producer及现有outbox投递合同。
+
+### L3.4 代码归属及内部方法清单（均待新增）
+
+| 位置 | 类/方法建议 | 输出与约束 |
+|---|---|---|
+| shop-report/config | ReportDatabaseIdentityGuard、ReportDatabaseAccessVerifier；扩展原ReportStorageInitializer/Properties | 校验真实库/权限；错误分类、退避及单探测；不依赖food实体 |
+| shop-report/dto | ReportPartitionKey、ReportBuildRequest、ReportBuildLease、ReportPublicationRef、ReportSourceManifestRow及其余五表Row | record不可变，完整scope；build lease含attempt/fence/expiry；名字实施前再核对全仓 |
+| shop-report/dao | ReportScopeCursorDao、ReportBuildBatchDao、ReportSourceManifestDao、ReportDayPublicationDao、ReportDirtyDayDao、ReportFoodMetricDailyDao | 显式reportJdbcClient，每个方法带scope；锁顺序partition→build，SQL留DAO |
+| shop-report/service及service/impl | ReportBuildService/Impl：beginBuild(request)→lease；stage(lease,snapshot)→receipt；publish(lease)→publication；fail(lease,error)；findResult(scope,key) | 只管理派生数据及发布；publish内部读取当前attempt事实/manifest并校验，不接受调用方自报成功；不在Service里直接拼SQL、不读取food Mapper |
+| 同上 | ReportPublicationService/Impl：readDay(partition)→publishedDay；findRange(scope,range,version)→固定本次build集合及coverage | 只读一致事务，缺分区显式MISSING；不回扫业务库 |
+| shop-app/reportbridge | 原ReportStorageInitJob适配classified retry；后续构建编排仍归reportbridge | 原job-api/JobSupport；不新增调度器；来源owner调用在后续S2 |
+| food-api/core/server/web | S1-B无新增公开Controller；S2按原typed合同增加行业快照能力 | 独立/集成语义相同，Controller仍归food，来源适配不偷渡到report DAO |
+
+若需要跨域ReportSourceSnapshotPort，归既有shop-base.spi下的report能力包；当前尚未发现现成report SPI，编码前做唯一归属检索与依赖对账，不预先制造空接口。
+
+### §2 下一批执行清单
+
+以下全部未开始。顺序有依赖，不按Controller/Service/Mapper分层空转。执行时先整批编码及测试源码，再串行编译，最后集中专项验证；本轮只review方案，不执行这些步骤。
+
+| ID | 工作及依赖 | 完成标志/交付件 |
+|---|---|---|
+| S1B-01 | 冻结最小S0合同与原设计真源；前置无 | partition/营业日证据/指标目录/required族/来源快照/权限及历史fnb两表归属明确；六表/attempt新键回填原schema/API/类清单，不宣称已迁移 |
+| S1B-02 | 实际库及权限隔离；依赖01 | 身份校验在DDL前；API/worker/migration权限验证；候选配置登记；源账号不复制到report；含别名同库拒绝用例 |
+| S1B-03 | 初始化恢复收口；依赖02 | 分类错误、退避与单探测、API校验only、迁移失败停止、schema失效后保护；STRICT/ISOLATED开关矩阵与每实例行为明确 |
+| S1B-04 | 六表迁移与Row/DAO；依赖01/02 | 新空库及真实V1/V2基线升级均成功；表/列/索引/约束真实核验；旧SQL冻结；完整scope和attempt贯穿 |
+| S1B-05 | 领取/重试/暂存；依赖03/04 | 同key/hash查回、冲突拒绝；lease/attempt/fence约束每次写入；旧worker延迟写入被拒绝，无半成品读出 |
+| S1B-06 | 校验/原子发布/读取/dirty确认；依赖05 | 整日必需族及空日证明、事务切换、响应丢失查回、代次不倒退、只读一致性、dirty不丢；不以全局watermark冒充完整 |
+| S1B-07 | 测试源码与证据准备；随01～06编码补齐 | 覆盖下表验收；原生引擎隔离夹具、故障注入、并发时序与旧零售回归，不在编码阶段执行 |
+| S1B-08 | 串行编译→一次集中专项验证→交付Review；依赖01～07 | 默认宿主及food-embedded/standalone受影响形态编译；专项结果和跳过项分开；问题仅定向复测；无未处理重要项后形成可审阅提交 |
+
+**S1-B出口：** 持久层与控制流程可验证，不启用真实营业跑批。S2接真实非支付来源与J01/J02/J05/J12；S3接事件、回看、质量与补算；S4接商家历史查询和私有导出。完成对应上线门槛后再授权执行生产建库/迁移及开关启用，本节本身不执行部署。
+
+### §5 集中验收矩阵（计划，不是已执行测试）
+
+| AC/计划测试 | 必须验证的失败与成功场景 |
+|---|---|
+| A01 ReportDatabaseIsolationNativeTest | 池名正确但指向业务库、DNS别名同库、全局写权限或角色继承越权均拒绝；拒绝后业务库零新增rpt表；真正隔离report成功 |
+| A02 ReportInitializationRecoveryTest | report断网不阻断业务启动；临时失败退避及并发探测；迁移错误不自动重复DDL/repair；API无job也能恢复；READY失效不漏写 |
+| A03 ReportSchemaUpgradeNativeTest | 新空库、已安装V1/V2、重复启动、两个迁移实例并发；六表索引/约束、Flyway历史、旧三表与数据均核对 |
+| A04 ReportBuildScopeTest | 空scope、同主体越店、跨tenant/entity、仅伪造buildNo均拒绝；worker范围不扩大；原零售DAO语义不改 |
+| A05 ReportBuildLeaseNativeTest | 相同key同hash重放/异hash冲突；lease过期后旧attempt写入/发布/失败响应均不能影响新attempt；数据库时钟而非JVM时钟判断 |
+| A06 ReportPublicationNativeTest | 失败不换active；publish中途异常全回滚；成功响应丢失查回；并发读只见旧整日或新整日；同日不同口径隔离 |
+| A07 ReportCoverageTest | 无扫描、缺必需族、未知成本、确证空日、金额溢出、小数精度、不同币种/单位；UNKNOWN不变0，无完整total时不拼假合计 |
+| A08 ReportDirtyGenerationNativeTest | 构建中加入新事件、重复/乱序、ACK丢失、lease恢复；仅确认已捕获代次，后续仍待处理 |
+| A09 ReportBusinessDayEvidenceTest | 04:00夜宵日切、23/25小时日、策略修改后的历史日、UTC边界、未来/未结束日阻塞；不按当前策略重写过去 |
+| A10 ReportCompatibilityWiringTest | report关闭、STRICT旧零售、ISOLATED API/worker/migrator、job关闭；默认/餐饮集成/独立宿主的实际适用组合分别记录 |
+
+H2用于快速DAO语义，原生MySQL用于迁移/约束/锁/CAS/事务读取，不用Mock/H2结果替代原生证据。不对生产造测试订单或误配测试。验证指令在编码前基于最终真实类名写入本节，不能把以上计划类名描述为已存在。
+
+### §6 本轮交付记录
+
+本轮只读核对已部署代码、原需求与设计，输出R01～R10及S1B-01～08。未修改运行代码、迁移、账号、权限或云端；未运行Maven测试。后续编码以本节与原§9共同为合同；优先处理R01/R02，不能先建表再补隔离。
+
+
+## §12 统计维度与指标目录（2026-10-25，方案待实施）
+
+### L1 先明确看什么
+
+维度回答“按什么看”，指标回答“看多少”。先固定指标口径，再限定可搭配维度；不允许把全部维度任意组合，避免同一订单被菜品/配料/员工关联重复放大。
+
+本目录沿餐饮需求第七节和原F01～F20报表整理，不增加交易或资金功能。**A=首批非支付候选；B=需补齐历史事实/分摊或专项能力；C=资金或销售成本专项后置；L=实时状态；S=统计系统自身。** A也只表示优先接入，其真实快照提取与统计生成尚未实现，不能称为已上线指标。
+
+首批允许读取CORE冻结订单金额及应收更正；不因支付摘除就禁用全部金额。应收不叫实收，订单金额不自动叫销售收入。原§9 F07“金额C”细分为：原单/有效应收A、完成履约商品净额B、资金收退款与毛利C。本节细化原目录，以此口径为准。
+
+### L2.1 统计维度清单
+
+| 维度组 | 字段/例子 | 来源与使用规则 |
+|---|---|---|
+| 组织与范围 Organization | tenantNo、entityNo、storeNo；品牌/区域/门店类型 | 前三项为每次查询强制隔离条件，不是可绕开的普通筛选；主体/品牌/区域沿原主数据。跨店按获准门店集合，历史品牌归属缺证据时不拿当前归属冒充 |
+| 时间 Time | businessDate、周/月、weekday、hourBucket | 门店冻结IANA时区和营业日切点；日区间左闭右开。周一为报表周起点、月按营业日标签归月；ISO周用week-based-year。小时维度只在对应事实时间可核实后启用 |
+| 事实归属 Attribution | ORIGINAL_ORDER、OCCURRENCE、SCHEDULED_SERVICE；实时SNAPSHOT | 原单日、动作发生日、预约服务日分开；同一指标只声明一个默认口径，另一视图另给版本/明确基准，不把几种视图加总 |
+| 餐段与餐牌 Menu | 早餐/午餐/晚餐/特殊餐段、menuNo/version | 来自原单冻结餐牌/餐段；不能按当前菜单重归类。餐段是业务餐牌分类，小时是时间桶，两者不互相替代 |
+| 渠道与终端 Channel | 下单渠道、外送平台、收银/服务员/H5/点餐机、线上/线下 | 分开保存业务渠道与终端类型；source/actorRealm等真实值通过固定映射形成候选枚举，未证明时UNKNOWN。Keeta仅规划，不造实际渠道记录 |
+| 履约 Fulfillment | 堂食、自提、自营外送、平台外送 | 沿原订单冻结履约方式；“平台外送”只有真实接入后启用，终端H5不等于外送 |
+| 付款模式 Pay mode | PREPAY先付、POSTPAY后付 | 原单冻结模式；不能由是否已付款反推模式，未接通的复杂预付场景不假装有事实 |
+| 商品 Dish | goodsNo、skuNo、原分类、商品名称/规格快照 | 使用成交时商品归属及名称快照；缺历史分类标UNKNOWN，不拿当前分类改历史 |
+| 成交角色 Component | 普通主项、套餐容器、套餐组成项、小料/配料、赠送/收费 | 沿冻结componentRef/父子关系；套餐容器销量、组成品制作量、小料选择量各有口径。赠送是价格/操作属性，不作为第二份同一数量重复累计 |
+| 桌台与服务 Table | 桌区、桌台、就餐单check、用餐session、AA份额 | 桌台等是受控钻取维度；check/session/份额不都放入日汇总分组。移桌/合拆单保留原责任链；当前责任与历史发生责任分开 |
+| 厨房 Kitchen | stationNo、任务类型、course、制作轮次 | 原任务/事件工位和阶段；补做/重做单独标识。不能用当前菜品默认工位替换历史任务工位 |
+| 员工与原因 Staff | 接单员、服务员、操作员、审批员；原因分类 | 按具体动作对应角色统计，不给一笔单无规则分摊多人业绩；SYSTEM、顾客、设备不算员工绩效，身份不明标UNKNOWN |
+| 预约与业态 Service | 预约来源、服务类型、宴会/自助餐/团餐、时段资源 | 使用已启用专项和原预约/方案版本；预订人数不等于实际用餐人数 |
+| 物料与库存 Material | 物料/SKU、配方版本、工位、用途、批次、库存owner | 理论需求与实际领耗分列；批次为钻取维度，默认不展开全部库存批次；单位严格沿原事实 |
+| 金额与数量计量 Measure | currency、quantityUnit | 必须分组或固定筛选，不跨币种/单位相加；COUNT一般无单位币种，金额用最小币种单位，数量DECIMAL(24,6) |
+| 状态与完整性 Evidence | 原业务状态、原因；metricVersion、buildRef、coverage、unknownReason | 业务状态与数据质量分开。订单/退款申请状态不是资金成功。build/水位为结果元数据，通常不是商业分析维度 |
+| 会员与优惠 Customer | 会员/匿名、新老客、券/活动/人工优惠类型、支付工具 | 真实身份及原权益/资金事实有证据才开；手机号、地址、卡号不入统计维度。匿名party不是唯一自然人；权益及资金维度按专项后置 |
+
+所有名字/类目只保存必要的非敏感历史快照。订单号、行号、batchNo、checkNo、任务号、库存批次号主要用于钻取及去重，不按这些高基数字段建立全量日汇总组合。
+
+### L2.2 时间锚点和汇总粒度
+
+| 事实族 | 默认归日/时间锚点 | 原始去重粒度 |
+|---|---|---|
+| 核心订单、点餐批次、原成交数量/应收 | ORIGINAL_ORDER，原订单/批次冻结businessDate | 核心subOrderNo、FOOD batchNo、原行业source/行/componentRef分别使用，不混号 |
+| 接单动作量 | OCCURRENCE，首次有效acceptedAt | batchNo＋唯一首次受理动作；与“归属于服务日的批次数”是不同指标 |
+| 厨房/交付/退餐处理/领耗/员工动作 | OCCURRENCE，动作真实成功时间 | 原事件/操作业务号＋原行/任务；重复投递不再次累计 |
+| 用餐完成与耗时 | OCCURRENCE，原用餐session最终完成时间 | 原session责任链去重；仅按原owner确认的完成，不用资金结清代替 |
+| 预约与排队 | 预约按SCHEDULED_SERVICE；排队处理按OCCURRENCE | reservationNo、queueTicketNo及其终态动作；预约建单日另列，不混入服务日转化 |
+| 收款/退款/充值 | OCCURRENCE，资金owner确认成功时间 | 原资金流水/分配业务号；原单归属分析另列 |
+| 当前桌台/队列/厨房待办 | SNAPSHOT，asOf时刻 | 当前实体去重；不SUM一天中的多次快照 |
+
+归属于原营业日的预点单不等于当日发生的接单动作。计划服务日、实际受理日、履约发生日可能不同；跨日不可强行塞入同一时间桶。
+
+### L3.1 订单、应收与业务调整指标
+
+本组COUNT为整数，AMOUNT为对应币种最小单位；A的来源是已有FOOD/CORE业务事实，但统计快照仍待接入。
+
+| metricCode | 中文指标 | 定义/公式及边界 | 默认归属/阶段 |
+|---|---|---|---|
+| ORDER_CREATED_COUNT | 餐饮原订单数 | 有真实FOOD来源的核心门店子单去重；不含报价/购物车/失败建单，不以AA付款次数代替 | 原单/A |
+| ORDER_TRANSACTED_COUNT | 原成交订单数 | 原CORE已核验成交口径的子单去重；沿原成交时间/状态，受理与完成履约均不能擅自替代成交 | 原单/B，须原成交owner证明 |
+| ORDER_COMPLETED_COUNT | 已完成履约订单数 | 原CORE owner确认履约完成的餐饮子单去重；不从ACCEPTED或应收余额猜完成 | 履约完成发生日/A，须核验原完成时间 |
+| ORDER_BATCH_COUNT | 点餐批次数 | 真实已受理batch去重，归原冻结营业日；同一就餐单多轮加菜是多个batch | 原单/A |
+| BATCH_ACCEPTED_EVENT_COUNT | 当日接单动作数 | 首次有效acceptedAt归发生营业日的batch数；不重复计算恢复/重试 | 发生日/A |
+| CHECK_OPENED_COUNT | 新开就餐单数 | 真实首次开单check去重；拆分派生台账单独识别，不作为新到店客单 | 开单发生日/B，需原始/派生关系 |
+| CHECK_OPEN_COUNT | 当前未关闭就餐单数 | asOf时刻原owner确认未关闭的有效check；不能解释为未收金额 | 实时/L |
+| ORDER_ORIGINAL_DUE_AMOUNT | 原订单应收 | 按核心原单唯一分配汇总原始应收，原值冻结；非充值/押金工具款 | 原单/A |
+| ORDER_EFFECTIVE_DUE_AMOUNT | 当前有效应收 | 原单应收＋CORE已经生效的应收更正；只统计当前原金额的累计视图，不另与更正重复相加 | 原单/A |
+| RECEIVABLE_ADJUSTMENT_AMOUNT | 当日应收更正额 | 原CORE已应用更正事件有符号金额SUM；建议/申请/审批中不计入 | 更正发生日/A |
+| RETURN_REQUEST_COUNT | 当日退餐申请数 | 原退餐申请业务号去重，包含未决状态并分列；不是退款笔数 | 申请发生日/A |
+| RETURN_EXECUTED_QTY | 当日已执行退餐量 | 原行已生效处理的数量，按CANCEL/LOSS/KEEP与单位分别展示；KEEP不自动减少交付量或应收 | 处理发生日/A |
+| ORIGINAL_ORDER_RETURN_RATE | 原单退餐涉及率 | 原单队列中至少一次有效退餐处理的子单数÷相同队列有效子单数；先原单去重再比值 | 原单/B；分子分母不同发生日不能硬相除 |
+
+ORDER_EFFECTIVE_DUE_AMOUNT是“截至某次build的原日订单累计有效应收”；RECEIVABLE_ADJUSTMENT_AMOUNT是当日变化流量，二者时间语义不同。后付未收金额需原收款分配/未决事实，不能直接把全部有效应收称为欠款。
+
+### L3.2 菜品、套餐与配料指标
+
+| metricCode | 中文指标 | 定义/公式及边界 | 默认归属/阶段 |
+|---|---|---|---|
+| DISH_ORDERED_QTY | 原下单菜品量 | 原有效受理行的精确物理数量SUM，按SKU/单位/角色；报价billing qty=1不能替代实际称重量 | 原单/A |
+| DISH_CANCELLED_QTY | 已执行取消菜品量 | 原业务取消/改单中确已执行的取消量；不从所有退餐申请推算 | 取消发生日/A |
+| DISH_DELIVERED_QTY | 实际交付菜品量 | 原行部分交付成功事件SUM，补充交付去重；补做/赠送角色保留 | 交付发生日/A |
+| DISH_GIFT_QTY | 赠送菜品量 | 原已生效赠送事实数量；是下单/交付数量的可筛选子集，不能再加一次 | 原单/B，需明确赠送事实与作用行 |
+| BUNDLE_ORDERED_QTY | 套餐销售份数 | 套餐容器原行份数；不将子项数量再合计为套餐份数 | 原单/A |
+| BUNDLE_COMPONENT_QTY | 套餐组成品需求量 | 原冻结套餐组成叶子的实际需求数量，父层容器不重复计入 | 原单/A |
+| ADDON_SELECTED_QTY | 小料/配料选择量 | 原选配叶子的精确数量，可按收费/包含/赠送分列；跨单位不合并 | 原单/A |
+| ADDON_CHARGE_AMOUNT | 小料原加价金额 | 原CORE唯一行/组件金额分配中的小料加价；包含项0元需真实证据，不能用现价乘历史数量 | 原单/A，依赖原金额归属可核验 |
+| DISH_ORIGINAL_AMOUNT | 菜品原单分配金额 | 按原CORE行分配金额，套餐父/叶选择同一金额归属层，不重复累计 | 原单/A |
+| GOODS_TRANSACTED_NET_AMOUNT | 成交商品税前净额 | 原CORE同一成交队列的商品优惠后税前金额，排除税及非商品费用，不以收款工具抵用再减一次 | 原单/B，须最终行分配 |
+| GOODS_FULFILLED_NET_AMOUNT | 完成履约商品净额 | 原CORE确认的完成履约商品税前净额分配，排除非商品款，实际退餐/更正按原分配处理；不是实收或财务收入确认 | 原单/B，未核实最终商品/费用分配不开放 |
+| DISH_ORDER_SHARE | 菜品订单覆盖率 | 含该菜品的原子单去重数÷同队列子单去重数；一单多菜可令各菜占比之和超过100% | 原单/B；不能用菜品件数当订单数 |
+
+菜品分类用于排行时必须先固定数量或金额口径。套餐销售与组成品制作是两张视图；只在固定角色层级内求和。销量默认展示“原下单量、取消量、实际交付量”三列，不用简单相减猜业务净销量，后续由原行有效数量合同支持再增加净量指标。
+
+### L3.3 厨房、出品与服务时效指标
+
+| metricCode | 中文指标 | 定义/公式及边界 | 默认归属/阶段 |
+|---|---|---|---|
+| KITCHEN_PENDING_COUNT | 当前待制作任务数 | 当前有效待制任务去重；与菜品份数分开 | 实时/L |
+| KITCHEN_STARTED_QTY | 当日开做量 | 原制作开始事件精确数量，按单位/工位；原单昨日下单也可计入今日实际开做 | 发生日/A |
+| KITCHEN_READY_QTY | 当日出品量 | 原出品成功事件数量；部分出品分次累计，重复事件去重 | 发生日/A |
+| KITCHEN_HANDED_OVER_QTY | 当日交接量 | 原厨房交接/上菜成功量；厨房交接与顾客签收分别命名，不互相代替 | 发生日/A |
+| KITCHEN_REWORK_QTY | 当日重做量 | 原有效重做操作数量，区分重做/补做原因；不记为新增销售量 | 发生日/A |
+| KITCHEN_LOSS_QTY | 当日报损量 | 原制作/成品实际报损事件数量，按阶段/单位；不与退餐申请数量直接相加 | 发生日/A |
+| KITCHEN_WAIT_DURATION_SUM / KITCHEN_WAIT_DURATION_COUNT | 排队耗时总和/样本数 | 原任务有效受理→首次开做，保存秒数SUM及可核实样本数；hold暂停另列 | 开做完成该区间的发生日/B |
+| KITCHEN_PREPARE_DURATION_SUM / KITCHEN_PREPARE_DURATION_COUNT | 制作耗时总和/样本数 | 原任务有效开做→对应有效出品；部分制作须有原执行片段配对，不猜摊分 | 出品发生日/B |
+| KITCHEN_PASS_DURATION_SUM / KITCHEN_PASS_DURATION_COUNT | 出品待交接耗时/样本数 | 对应出品→对应交接；缺事件配对不计样本并标覆盖不足 | 交接发生日/B |
+| KITCHEN_OVERTIME_COUNT / KITCHEN_ELIGIBLE_COUNT | 超时任务数/可判任务数 | 使用任务执行时冻结SLA和暂停规则，超时数÷可核实SLA任务数 | 任务完成发生日/B |
+| KITCHEN_DURATION_P50 / KITCHEN_DURATION_P90 | 耗时分位数 | 需要原样本或可合并分布证据；不能SUM/平均每日P90，首版无分布模型不开放 | 期间查询/B，明确后续模型 |
+
+平均耗时=SUM(秒数)/SUM(样本数)。部分出品可以形成多个执行片段，因此须区分“片段平均”和“整任务平均”，首个版本固定一种、禁止混算；暂停扣除须同时保留原始耗时和扣除量。
+
+### L3.4 桌台、预约、排队及员工指标
+
+| metricCode | 中文指标 | 定义/公式及边界 | 默认归属/阶段 |
+|---|---|---|---|
+| TABLE_AVAILABLE_COUNT / TABLE_OCCUPIED_COUNT | 当前可用/占用桌数 | asOf有效桌资源状态去重；合桌资源与占用份额不直接SUM成桌数 | 实时/L |
+| DINING_SESSION_COMPLETED_COUNT | 完成接待次数 | 原owner确认终态的有效用餐session责任链去重；移桌/拼拆桌不凭空多记一次接待 | 完成发生日/B，需责任链合同 |
+| DINING_CONFIRMED_GUEST_COUNT | 实际用餐人数 | 每次有效接待确认人数一次，排除取消/仅预订人数；多轮加菜不重复加人 | 完成接待归属/B |
+| DINING_DURATION_SUM / DINING_DURATION_COUNT | 用餐耗时/样本数 | 原有效入座至实际用餐完成，保存秒数与样本数；不是开单至付款时长 | 完成发生日/B |
+| TABLE_TURNOVER_RATE | 门店翻台率 | 完成接待次数÷当日有效营业桌数；全天开放资源集合须有历史证据 | 营业日/B；分母不可证明则null |
+| SEAT_UTILIZATION_RATE | 座位利用率 | 真实占用座位分钟÷实际开放座位分钟，按可核实区间求交 | 营业日/B；不以当前座位数×24小时推算 |
+| RESERVATION_DUE_COUNT | 应履约预约数 | 归指定服务日、在规定观察截止时有效应履约的预约去重；与预约创建数分开 | 计划服务日/B |
+| RESERVATION_ARRIVED_COUNT / RESERVATION_NO_SHOW_COUNT | 到店/爽约预约数 | 同一应履约队列中的确认到店/按冻结宽限规则确认爽约数；取消单分列 | 计划服务日/B；未到观察截止不算最终爽约 |
+| RESERVATION_ARRIVAL_RATE | 预约到店率 | 同队列确认到店数÷有效应履约数；未决预约显示未决，不伪装最终比率 | 计划服务日/B |
+| QUEUE_CREATED_COUNT / QUEUE_SEATED_COUNT / QUEUE_LEFT_COUNT | 取号/入座/流失次数 | 原ticket及状态动作去重；日发生量分列，不把取号数当到店人数 | 发生日/A，流失需真实终态 |
+| QUEUE_WAIT_DURATION_SUM / QUEUE_WAIT_DURATION_COUNT | 入座等位耗时/样本数 | 对已入座ticket：入座时刻−有效取号时刻；未入座等待时长另作实时值 | 入座发生日/B |
+| STAFF_ACTION_COUNT | 员工有效操作数 | 按原操作员和动作类型计唯一成功业务操作；接单/催菜/传菜/退餐分列 | 发生日/A |
+| STAFF_APPROVAL_COUNT | 员工审核处理数 | 原审批决策去重，按通过/拒绝分列，不把审批意见当执行结果 | 决策发生日/A |
+
+门店完成接待次数是session去重指标。桌台层“到访次数”如涉及转台，同一session可能到访多桌，不能把桌台到访次数SUM回门店接待次数。完整历史资源/责任链尚未接通时，翻台与利用率不优先开放。
+
+### L3.5 原料耗用、损耗与成本指标
+
+| metricCode | 中文指标 | 定义/公式及边界 | 默认归属/阶段 |
+|---|---|---|---|
+| MATERIAL_SALES_THEORETICAL_QTY | 销售理论耗用 | 原单冻结排他需求树/配方的理论物料叶子量，保留配方版本；不重复展开父SKU | 原单/B |
+| MATERIAL_PRODUCTION_THEORETICAL_QTY | 制作理论耗用 | 按真实已开始制作的执行量和冻结原料计划计算，含重做/补料的各自计划 | 开做发生日/B |
+| MATERIAL_ACTUAL_ISSUE_QTY | 实际领耗量 | 原独立库存确认成功的生产领耗出库量，按SKU/原单位/用途；HELD/理论需求不计 | 库存成功发生日/A |
+| MATERIAL_ACTUAL_REVERSAL_QTY | 实际冲销量 | 原领耗关联的已成功冲销量，独立列示，不能将冲销请求视为完成 | 冲销成功发生日/A |
+| MATERIAL_NET_ISSUE_QTY | 净领耗量 | 同单位实际领耗−实际冲销；用途维度保留，已含报损的领耗不再额外加一份报损 | 库存发生日/A |
+| MATERIAL_WASTE_QTY | 原料实际报损量 | 原库存用途/报损事实中的真实损耗量；制作成品报损与原料报损分别看 | 库存发生日/A |
+| MATERIAL_MATCHED_VARIANCE_QTY | 同批制作耗用差异 | 已匹配同一生产执行范围的实际净领耗−制作理论量；不能把不同时间队列的两个日总量直接相减 | 对应生产队列/B |
+| MATERIAL_ISSUE_COST_AMOUNT | 实际领耗历史成本 | 原库存成功领耗及冲销回执上的原历史估值；任一相关成本未知则完整合计null，另列knownSubtotal和覆盖 | 库存发生日/B，已有回执仍须逐项核验 |
+| GOODS_SALES_COST_AMOUNT | 商品历史销售成本 | 库存owner可关联到实际销售履约的COGS，不用当前进价或全部领耗成本代替 | 原销售队列/C |
+| GOODS_GROSS_PROFIT_AMOUNT / GOODS_GROSS_PROFIT_RATE | 商品毛利额/率 | 同队列商品净额−历史销售成本；毛利率=毛利额÷商品净额；零分母null | 原销售队列/C |
+
+本目录把“菜品消耗”拆成成交数量、制作数量、理论原料需求和实际物料出库，四者分别可追溯；库存预占不等于消耗。材料领耗成本不自动等于销售成本，损耗和在制品不能直接混入商品毛利。
+
+### L3.6 资金、税费、顾客与专项指标（条件开放）
+
+| metricCode | 中文指标 | 定义/公式及边界 | 默认归属/阶段 |
+|---|---|---|---|
+| GOODS_DISCOUNT_AMOUNT | 商品优惠额 | 原CORE冻结并最终确认的商品优惠分配，活动/券/人工分列；赠送如已包含优惠分配不再减一次 | 原单/B，只读原金额不执行权益扣减 |
+| ORDER_TAXABLE_AMOUNT / ORDER_TAX_AMOUNT | 税基/税额 | 原订单最终确认的税快照分配，按税分类/币种；不按当前税率重算，不拿预估税冒充最终税 | 原单/B，最终税证据缺失则未知 |
+| SERVICE_FEE_AMOUNT | 服务及专项费用 | 原CORE确认的费用分配，服务费/茶位/包装/最低消费补差等分列，和商品金额互斥归属 | 原单/A，依赖已确认费用事实 |
+| PAYMENT_SUCCESS_COUNT / PAYMENT_SUCCESS_AMOUNT | 成功结算笔数/金额 | 原PAY确认且关联订单的成功结算分配，按工具分别列；储值/积分抵用不伪装外部现金流 | 成功发生日/C |
+| REFUND_SUCCESS_COUNT / REFUND_SUCCESS_AMOUNT | 成功退款笔数/金额 | 原PAY确认成功的退款/退回分配；退款申请不计为成功 | 成功发生日/C |
+| EXTERNAL_NET_CASHFLOW_AMOUNT | 外部净资金流入 | 同币种确认的外部收款流入−外部退款流出；储值消费等内部抵用不记外部流入 | 资金发生日/C |
+| STORED_VALUE_REDEEM_AMOUNT | 储值消费核销额 | 原储值owner成功消费核销金额，本金/赠金分列；充值、消费、撤销各自独立，不相加当收入 | 核销发生日/C |
+| RECEIVABLE_OUTSTANDING_AMOUNT | 真实未收应收余额 | 期初＋新增应收＋更正−真实收款核销−批准减免/核销；需原付款分配及UNKNOWN门禁 | 截至时点/C；不能SUM每日余额 |
+| SHIFT_CASH_DIFFERENCE_AMOUNT | 现金班次盘差 | 原现金owner确认实盘−原应有现金，保留班次/币种/签核版本 | 班次签核/C |
+| CUSTOMER_DISTINCT_COUNT | 已识别顾客去重数 | 真实已识别buyer/member按获准范围去重；匿名另列，不生成虚拟顾客 | 原单/B；期间去重需独立事实模型 |
+| CUSTOMER_NEW_COUNT / CUSTOMER_REPEAT_RATE | 新客数/复购率 | 新客数=owner可证明首次有效成交落在本期的识别顾客数；期间复购率=本期至少两笔有效成交的识别顾客数÷本期至少一笔有效成交的识别顾客数；固定经营范围/观察期 | 原单/B；不由本店本日首次出现推断新会员 |
+| SPECIAL_SERVICE_COUNT / SPECIAL_SERVICE_QTY | 业态专项服务量 | 按自助餐入场、宴会确认履约、团餐交付等分别定义原有效凭证和单位，不做一个混合总量 | 计划/实际完成日/B，按专项逐项启用 |
+
+实收、结算工具抵用、资金到账、充值、订单应收必须分别命名。订单优惠/税/费用的只读统计并不授予执行支付、扣券、扣储值或退款权限。正式日结的签核及差异读取原日结owner，统计build不得覆盖其签核版本。
+
+### L3.7 统计健康与数据质量指标
+
+| metricCode | 中文指标 | 定义/公式及边界 | 阶段 |
+|---|---|---|---|
+| REPORT_EXPECTED_PARTITION_COUNT | 应生成分区数 | 已到期且已启用的获准门店/营业日/口径分区数 | S |
+| REPORT_PUBLISHED_PARTITION_COUNT | 已发布分区数 | 对应范围存在合法activeBuild/attempt且必需族覆盖通过的分区数 | S |
+| REPORT_MISSING_PARTITION_COUNT | 缺失分区数 | 应生成−合法已发布；不拿全局watermark推测 | S |
+| REPORT_DELAY_SECONDS | 统计延迟 | 对尚未发布分区：now−readyAfter；成功分区另列首次发布时间−readyAfter，不混成同一指标 | S，按分区可取MAX，不SUM |
+| REPORT_FAILED_BUILD_COUNT | 失败构建次数 | 原build/attempt真实失败数，临时/配置/迁移/来源/校验分列 | S |
+| REPORT_UNKNOWN_METRIC_COUNT | 未知指标数 | 固定指标目录与必需/可选覆盖中当前未知项数量，原因可见；不能当业务0 | S，必须声明目录及维度范围 |
+
+### L3.8 汇总规则、限制与默认查询组合
+
+| 指标类型 | 正确汇总方式 | 必须避免 |
+|---|---|---|
+| 互斥事实COUNT、同单位数量、同币种流量金额 | 在相同metricVersion/归属基准且分区互斥时SUM | 订单按多菜品展开后再加总；把原单视图和发生日视图相加 |
+| 平均时长/客单/人均 | 保存并SUM原分子/分母，再相除 | 平均每天平均值；平均门店客单价 |
+| 比率 | 同观察队列的分子/分母分别汇总再计算 | 直接平均每日比率；把未成熟预约当最终失败 |
+| 去重人数、含菜订单数、接待责任链 | 在所请求范围重新去重或使用经验证可合并模型 | SUM每日去重人数；将各菜品含单数相加当订单总数 |
+| 当前状态、库存/应收余额 | 查询截至快照，期间取最后一个可核实点 | SUM每日余额或多个实时快照 |
+| P50/P90 | 可核实样本/可合并分布上计算 | 对每日P90取平均或最大冒充期间P90 |
+
+商品客单价沿原需求默认成交队列：同一已成交核心门店订单的可核实商品税前净额÷成交订单数；不能把完成履约订单数替换为成交订单数。桌均=同一有效接待队列商品税前净额÷接待次数；人均=同一队列商品税前净额÷确认人数。三个指标单独命名，分子分母范围不一致时不计算。首批可以展示原单“平均应收”，必须明确是原单应收÷相同队列原单数，不叫实收客单价。
+
+默认只支持如下组合，之后按查询性能和真实需求扩展，不预生成全部笛卡尔积：
+
+- 营业总览：门店×营业日×履约方式/渠道，COUNT与金额分别选择允许维度；跨币种分行。
+- 菜品/套餐/小料：门店×营业日×SKU×成交角色×单位；金额另按唯一归属层及币种，分类/餐牌作为已冻结的允许过滤。
+- 餐牌餐段：门店×营业日×餐牌版本×来源渠道，不把同一原单的多餐牌关联金额重复累计。
+- 厨房：门店×发生营业日×工位×动作×单位；时效按原任务/片段角色分别给分子分母。
+- 桌台：门店×营业日为默认接待队列；桌区/桌台明细须能证明原责任/资源归属，首版不任意跨层SUM。
+- 物料：门店×发生营业日×物料SKU×单位×用途；理论与实际按相同生产队列比较，不跨队列直接扣减。
+- 员工：门店×发生营业日×操作员×动作，不和菜品/审批员任意JOIN分摊“销售业绩”。
+
+每个指标目录还必须登记valueType、owner、sourceStatus、timeAnchor、dateBasis/attributionBasis、dedupKey、allowedDimensions、aggregation、formula、unknownReason、drillRef、metricVersion；计划编码只实现固定目录校验，禁止客户端提交自定义SQL或任意计算脚本。
+
+### §2 首批候选与实施顺序
+
+1. **最小必需族候选FOOD_ORDER**：ORDER_CREATED_COUNT、ORDER_BATCH_COUNT、DISH_ORDERED_QTY，以及可证明的原单/有效应收。冻结数量按SKU/角色/单位；无单日COUNT确证0，有数量但单位缺失时不得伪造0。必需清单实际按(owner,family)冻结：FOOD批次证据不能替代CORE建单/金额证据。最终required集合须以S1B-01的真实快照合同核验结果冻结，不能靠本目录直接开启。
+2. **同批可选事实族**：厨房开做/出品/交接量、有效退餐处理、实际库存领耗及冲销、员工操作；各族独立来源覆盖。已声明为必需的族失联则本次构建失败，不发布半日；未接通的可选族明确UNKNOWN。
+金额口径补充：ORDER_*_DUE_AMOUNT沿CORE原含税含费应收，不自行重算；本目录商品净额/客单/人均/毛利使用税前商品净额，界面必须标注。若需含税商品额应增加独立明确指标，不能在同一metricCode下切换含税口径。税基不等于全部税前商品额，不能用TAXABLE_AMOUNT代替商品净额。
+
+3. **随后补B**：套餐选配更细归因、耗时片段、桌台/预约队列、历史资源/成本、顾客去重模型；商品净额、税费按原确认事实逐项核验，不先承诺财务口径。
+4. **C继续后置**：真实收退款/储值积分、现金班次、账龄/坏账、销售成本与毛利。统计方案不启动资金执行开发。
+
+### §5 本轮核对与剩余问题
+
+已对照原需求第七节、§9指标原则、FnbOrderBatch.acceptedAt/businessDate/frozenRequest、FnbCheck.partySize/openedAt/closedAt、原BusinessClose应收与数量回执核对。此为指标合同整理，不是每项来源字段全部审计完成；特别是partySize不自动成为确认到店人数，closedAt不自动成为真实就餐完成时间。
+
+仍需在S1B-01逐指标确认：acceptedAt等时间的owner语义、所有数量的排他角色、原单/调整金额是否具备唯一组件归属、历史类别/工位/员工快照、预约观察截止、桌台资源历史和跨日去重证据。缺证据的指标降为UNKNOWN或不开放，不用默认值补齐。
+
+本轮只更新原设计与需求入口，未写业务代码、DDL、任务或API，未执行统计、Maven测试及生产变更。
+
+
+## §13 日报任务、存储与TopN清单（2026-10-25，方案待实施）
+
+### L1 整体方案
+
+采用三层：**原业务事实→独立报表库完整日汇总→日报/趋势/期间TopN查询**。这里“完整”指所启用指标和维度粒度的全部汇总行，不是复制所有订单明细，也不是宣称全部94个规划指标均已接通。
+
+- 日报生成：按门店已结束营业日构建，复用J01/J02及原source/manifest/fence/发布协议，不为每张报表建一个定时任务。
+- 数据落库：复用原六张候选表，事实统一写rpt_food_metric_daily；指标按明确aggregationSet组织。周/月不建第二套汇总表，TopN不先建榜单表。
+- 查询：先固定获准范围和active build/attempt，再聚合排序。当前营业日走实时；第一版历史TopN仅查询已结束营业日，不把今日未完成事实混成最终排行。
+- 性能优化：后续确有查询瓶颈时再增加可重建的专用投影/缓存；必须固定build集合和权限范围，不能先丢弃长尾数据来“优化”。
+
+例：昨日A销量100、B60；今日C100、B60。每天Top1只有A/C，两天销量最高却是B120。故期间TopN必须从期间完整SKU日汇总生成，不能合并每日TopN。
+
+### L2.1 日报处理能力清单（沿用历史编号，实际任务注册见§17）
+
+| ID / 任务 | 触发方式/建议频率 | 输入→输出 | 当前状态/边界 |
+|---|---|---|---|
+| J00 原零售日结 | 已有01:30 | 原零售自然日事实→原rpt_daily_store/goods/watermark | 已有，保持原语义，不替代餐饮营业日任务 |
+| J13 统计库初始化 | 现有分钟任务/任务平台 | 批准的report连接与schema→实际READY或失败 | S1-A已随包交付；身份/权限、分类退避等仍待S1-B，未启用生产统计 |
+| J01 日报每日主批 | 每门店每日一次 | 获准门店/启算日/原营业日边界/游标→计划并执行到期分区 | 待实现；门店日切后建议缓冲30分钟，跨天停机补齐所有未规划日期 |
+| J02 日报构建发布 | 由每日主批/补算直接调用，无独立cron | 分区请求→真实来源快照→指标日事实/manifest→active publication | 待实现；唯一写入主流程，整日构建，失败保留旧版 |
+| J03 变更标脏 | 原业务事件驱动 | 接单/改退餐/厨房/领耗等原事件→受影响日dirtyGeneration | 待实现；只置脏，不增量加总。重复投递可多触发一次重算，不能重复累计业务数值 |
+| J04 近期回看 | 每店每日主批后 | 检查最近7个结束日缺口/dirty→必要补算请求 | 待实现；与J03互补，不替代超过窗口的历史修复 |
+| J05 漏跑与恢复 | 失败退避/下一每日主批/人工补算 | 未发布请求/过期lease/未知结果→原号查回、重领或告警 | 待实现；确认已发布再判重试，不把超时直接当确定失败 |
+| J06 日报质量检查 | 发布前强校验＋发布后巡检 | 来源控制数、维度/量额/覆盖→校验结果及修复请求 | 待实现；发布前门禁由J02同步执行，发布后handler审计复核，不事后补救替代发布门禁 |
+| J07 指定日期补算 | 人工异步 | 授权门店/日期/版本/原因→按日分片请求 | 待实现；实际仍走J02，不写第二套计算逻辑 |
+| J08 口径版本重建 | 人工发布新口径时 | 新metricVersion→全范围日重建与对比→读版本切换 | 待实现；旧版保留，未补齐前不混读 |
+| J12 日报健康巡检 | 每5分钟 | 应生成/已发布分区、任务记录、dirty积压→缺口/延迟/故障 | 待实现；不能依赖停掉的worker自己报告“没运行” |
+| J09 报表导出 | 请求异步＋每分钟补扫 | 固定build集合及查询参数→私有CSV/XLSX | 后续S4；日报/趋势/TopN共用导出，不为每种报表另建导出任务体系 |
+| J10 导出过期清理 | 每日低峰 | 已到期任务/对象引用→清理临时文件及下载授权 | 后续S4；保留必要审计 |
+| J11 统计旧版本清理 | 每日低峰 | 过期且无有效引用的旧build/attempt→派生数据清理 | 后续S4；active及签核/查询/导出引用版本不能删除 |
+
+J02构建顺序：确认到期→claim lease/attempt/fence→冻结本次目录与营业日→读取各owner→按aggregationSet聚合全部有效分组→校验→原子发布→确认捕获的dirty代次。临时来源失联不得发布不完整的必需事实族。
+
+幂等请求键必须区分初次日报、回看轮次、dirty代次、人工补算和版本重建；同一次调用恢复仍使用原key/hash/buildNo。不能永久以“门店＋日期”作唯一重算键，否则原日发布后所有合法更正都会被当旧结果返回。分区键保持不变，新的重算请求生成新build，失败恢复用原build的新attempt。
+
+### L2.2 落库数据集清单：数据集不等于物理表
+
+以下是同一事实表中的受控aggregationSet。只保存真实出现的完整分组，以及可证明的总计/零业务证据，不生成全维度笛卡尔积。不同set代表不同统计粒度，查询固定选择一个set，禁止将总计行与分组行再次相加。
+
+| setCode | 日汇总粒度 | 存储指标与内容 | 接入顺序 |
+|---|---|---|---|
+| STORE_ORDER_DAY | 门店×原营业日×币种（金额项） | 原订单/批次数、原应收/有效应收等权威总计；COUNT无币种不复制到各币种 | 首批A |
+| ORDER_CHANNEL_DAY | 门店×原营业日×原订单渠道×履约×付款模式×币种（按指标） | 原订单去重数及可唯一归属的原应收；订单渠道由原owner确定，不由其多条菜品推断 | 首批A，先核实原渠道 |
+| DISH_COMPONENT_DAY | 门店×原营业日×SKU×组件角色×单位/币种（按指标） | 原下单量、套餐份数、组成叶子量、小料量、原唯一分配金额；数量与金额为不同metric行 | 首批A |
+| MENU_LINE_DAY | 门店×原营业日×餐牌/版本×餐段×行来源渠道×SKU×组件角色×计量 | 可唯一归属的行数量/金额；菜单总额不含无法归属该菜单的整单费用。不能据此SUM出订单数 | A，缺原冻结维度时UNKNOWN |
+| ORDER_ACTION_DAY | 门店×动作发生营业日×动作/结果/原因×计量 | 接单动作、更正额、退餐申请/处理、取消/赠送；次数和数量独立 | 首批A/赠送细归因B |
+| DISH_FULFILLMENT_DAY | 门店×履约动作发生营业日×SKU×组件角色×动作/结果×单位 | 实际交付/取消/有效退餐数量等原行事件；用于交付量榜，不能由原单日数量替代 | 首批A，须原行关联 |
+| KITCHEN_STATION_DAY | 门店×发生营业日×工位×动作×任务/片段角色×单位 | 开做/出品/交接/重做/报损量，耗时SUM及COUNT，超时分子分母 | 数量A、时效B |
+| MATERIAL_USAGE_DAY | 门店×发生营业日×物料SKU×单位×用途 | 实际领耗、冲销、净领耗、物料报损；已核实历史成本独立币种行 | 数量A、成本B |
+| PRODUCTION_COHORT_DAY | 门店×生产队列归属日×物料SKU×单位×配方版本 | 同一生产执行队列的理论/实际匹配差异；不能将任意两天总量直接相减 | B |
+| STAFF_ACTION_DAY | 门店×发生营业日×员工×动作/结果/原因 | 唯一成功操作/审批次数；不将流水金额任意分给操作员工 | 首批A |
+| DINING_SESSION_DAY | 门店×完成接待营业日；可核实桌区等明细另定 | 完成接待次数、确认人数、用餐秒数/样本、有效桌/座位时间分母 | B，需历史责任/资源 |
+| RESERVATION_QUEUE_DAY | 门店×计划服务日/处理发生日×事实类型×状态 | 预约有效队列/到店/爽约、排队入座/流失、等待秒数/样本；两种归属不得合成一个分母 | 队列动作A、转化B |
+| FINANCE_DAY | 门店×真实资金发生日×工具/渠道×币种 | 成功收退款、储值核销等，仅在原owner能力接通后；原单分析另set | C后置 |
+
+菜品分类、名称、规格、餐牌等展示字段沿原事实快照。若同一SKU在同日同set存在不同历史分类，应把categoryNo加入实际分组或明确不提供分类过滤，不能随便选一个名称/分类再把金额全部归过去。展示名称可选择确定的历史版本并标明规则，不能通过当前商品改名重写历史。
+
+**派生值存储：** 日事实保存可合并的原分子/分母；平均、占比、差异在查询时按固定公式计算。净领耗等若作为校验冗余指标落表，仍须与原领耗/冲销守恒，并禁止同原两列相加。P50/P90和精确跨日顾客去重模型尚未落地，不为其伪造可SUM数值。
+
+### L3.1 物理存储清单
+
+所有新增统计表只进入独立`ai_shop_report`候选库，表前缀rpt_；实际库身份/账号按S1-B先核验。数据库不是业务主库的另一组前缀。
+
+| 表 | 保存什么 | 与日报/TopN的关系 |
+|---|---|---|
+| rpt_scope_cursor | 每店口径启算日、已规划游标 | 驱动每天计划及长期停机补齐 |
+| rpt_build_batch | scope/requestKey/hash、分区、目录/边界、attempt、fence、状态 | 同日整份日报的构建记录，不按每张报表各建一次 |
+| rpt_source_manifest | 每build/attempt/owner/family来源快照及完整性 | 证明数据来自哪里、为什么为0或未知 |
+| rpt_day_publication | 每分区activeBuild/attempt、generation | 日报/趋势/TopN都只读同一组合法已发布指针 |
+| rpt_dirty_day | 分区dirty与ackedGeneration、readyAfter | 控制原日修改后重算，不直接加减日金额 |
+| rpt_food_metric_daily | 全量已启用日粒度指标分组，含aggregationSet/metricCode/维度与值 | 日报、周/月趋势和期间TopN的共同底座 |
+| rpt_export_task | 后续导出参数、授权、固定build清单、私有对象引用 | S4新增第七表，日报/TopN复用，不保存公开永久URL |
+
+沿§11追加字段：aggregationSet为固定目录枚举，纳入dimensionKey/hash及事实唯一性；完整scope、businessDate、metricVersion、buildNo/attemptNo、attributionBasis、currency/unit均须可校验。NONE（不适用）和UNKNOWN（缺证据）不能当成同一种分组值。
+
+SQL常用过滤/分组字段使用白名单类型化列或明确可索引投影，例如sku_no、channel、menu_no、station_no、material_sku_no、actor_no及aggregation_set；其值须与规范维度一致。不要仅有dimensionKey哈希/任意JSON后再无界加载到Java筛选排序。具体列/索引在S1B-04结合真实查询计划冻结，当前未生成DDL。一个metricCode可以声明多个合法aggregationSet，但每次查询只能选择覆盖其筛选条件的一个set；例如按餐牌过滤菜品榜必须读取MENU_LINE_DAY，不能在DISH_COMPONENT_DAY粗粒度数据上猜分配。
+
+候选索引优先覆盖：①scope＋营业日/metricVersion读取publication；②build/attempt＋aggregationSet/metricCode读取事实；③按实际TopN路径的SKU/工位/物料聚合；④待构建/lease与dirty领取。主体多店查询仍逐店授权，不允许空门店范围退化为全库。
+
+### L3.2 日报与趋势查询清单
+
+| 查询 | 日期/来源 | 默认内容与计算 |
+|---|---|---|
+| 门店营业日报 | 一个已结束营业日，读日事实 | 订单/批次、菜品量、原/有效应收、厨房/退餐/实际耗用及覆盖；不同单位/币种分行 |
+| 多店日报对比 | 同一门店当地营业日标签集合 | 同metricVersion、指标、计量与观察范围逐店对比；跨时区分别给UTC边界和完成情况 |
+| 菜品/套餐/小料日报 | 日事实相应SKU/角色set | 数量、原分配金额、餐牌/渠道切片；父子金额按唯一层级 |
+| 餐牌餐段/渠道日报 | 日事实MENU_LINE/ORDER_CHANNEL分别查询 | 行数量/金额和原订单统计分开；不跨set拼接后再重复求和 |
+| 厨房工位日报 | 发生日日事实 | 制作/交接/报损及有效耗时；不同阶段、任务/片段角色分列 |
+| 原料耗用日报 | 库存发生日日事实 | 实际领耗/冲销/净领耗/损耗；理论差异仅用匹配生产队列 |
+| 员工操作日报 | 发生日日事实 | 接单/催菜/传菜/退餐/审核等有效动作量，保留角色和原因 |
+| 桌台/预约专项日报 | B来源接通后 | 接待/确认人数、资源分母、预约成熟队列、等位耗时 |
+| 周报/月报/自定义趋势 | 同口径日事实聚合 | 可加值SUM；均值/比率重算；不另建周/月定时任务或金额表 |
+| 同比/环比 | 两段完整且可比日事实 | 两段口径/范围/币种一致才比较；缺分区不算正式增幅，上期为0时增幅null并展示绝对差 |
+| 今日概览 | 原实时业务查询 | asOf及非最终状态；不伪装已发布日报 |
+| 含今日的期间总览 | 历史统计＋今日实时分别展示 | 标MIXED/isFinal=false；跨段指标口径/去重不可合并时分别展示，不强行求期间总计 |
+
+### L3.3 TopN榜单清单
+
+| 榜单 | 排序指标/候选集合 | 允许维度与阶段 |
+|---|---|---|
+| 菜品下单量TopN | DISH_ORDERED_QTY；已出现有效菜品分组 | 固定商品角色和数量单位，按SKU或已证明可合并的商品，首批A |
+| 菜品原单金额TopN | DISH_ORIGINAL_AMOUNT；有原唯一分配金额的菜品 | 同币种、同金额归属层；明确为原单金额，不叫实收排行，A |
+| 菜品交付量TopN | DISH_DELIVERED_QTY；实际交付发生日菜品 | 需完整交付事件与SKU归属；不能直接从原单日销量替代，A来源补齐后 |
+| 套餐份数TopN | BUNDLE_ORDERED_QTY；套餐容器 | 不把组成叶子计为套餐份数，A |
+| 小料选配TopN | ADDON_SELECTED_QTY或ADDON_CHARGE_AMOUNT | 数量按单位；加价按币种；包含小料零价仍可参与选择量榜，A |
+| 餐牌/渠道TopN | 餐牌行分配金额/数量；或原订单渠道数 | 指定对应set，不把多餐牌原订单重复记成多单；A |
+| 工位产出TopN | KITCHEN_READY_QTY | 同单位、可比任务角色；动作量不是菜品销售量，A |
+| 工位耗时/超时榜 | 秒数SUM/样本数或超时/可判任务数 | B；设置最低有效样本门槛，防一条样本排名失真；不平均每日均值 |
+| 物料消耗TopN | MATERIAL_NET_ISSUE_QTY | 同物理单位/用途；KG与L不排在同一数量榜，A |
+| 物料损耗TopN | MATERIAL_WASTE_QTY或核实历史损耗成本 | 数量榜A；成本榜需原估值且同币种B；不能按当前采购价补成本 |
+| 员工操作TopN | STAFF_ACTION_COUNT | 同动作类型/角色；展示操作量，不自动宣称销售绩效，A |
+| 门店业务TopN | 同口径原订单数、原应收等 | 获准门店、完整日范围、同币种；不同业态可按门店类型固定筛选，A |
+| 净销售/毛利/顾客复购榜 | 最终商品净额、销售成本、期间去重模型 | B/C专项接通后，不在首批凭估值/日去重求和上线 |
+
+建议默认N=10、上限100，均为待实现参数约束。排序方向由榜单目录固定；时效榜明确“最快”或“最慢”，不能让同一榜单名称有相反含义。
+
+**统一TopN查询规则：**
+
+1. 固定授权主体/门店、期间、metricVersion、aggregationSet、指标和币种/单位，再在同一只读一致事务中选定各日build/attempt。
+2. 从完整日分组数据按目标对象聚合，再按指标排序，最后LIMIT N；不能先每天LIMIT N再合并，也不能先全局取TopN再过滤用户门店。
+3. 数值并列时按稳定业务标识排序，默认返回固定N条的展示序号；切点并列可附说明，不以不稳定数据库默认顺序翻动榜单。
+4. 占比的分母是该获准范围、同计量及同角色的完整候选总值，不是TopN这几行之和。非可加去重指标须使用其专属分母，不能套SUM。分母为0或不能核实时占比为null；已证明的负数流量按指标原定义保留，不钳成0。
+5. 任一必需分区/候选关键指标缺失，默认返回排行不可确认及missingPartitions/unknownMetrics；若提供已知候选预览，明确INCOMPLETE且不宣称全局TopN，不能静默剔除未知对象后排名。
+6. 历史分类/菜名使用原快照。不同菜单/渠道筛选只有存储粒度包含该维度且指标允许时才支持；不能在粗粒度日总量上事后猜分配。
+7. 默认候选是期间有可核实事实的对象。“零销量/滞销商品榜”需期间可售商品及营业时段历史清单，属于额外B合同；缺席日事实不等于可售但零销量。
+8. 第一版不开放无法准确合并的期间顾客去重、P90、跨单位消耗总榜；不将实现缺口补成默认值。
+
+查询响应候选字段：range/dateBasis/attributionBasis、scope、metricVersion、aggregationSet、metricCode、currency/unit、rows、rowCount/totalCandidates、denominator（适用时）、buildRefs、sourceWatermarks、coverage、missingPartitions、unknownMetrics、isFinal。均为合同规划，不是已新增API字段。
+
+### §2 下一步清单与依赖
+
+| 顺序 | 清单项 | 输出/前置 |
+|---|---|---|
+| 1 | 冻结首批指标及aggregationSet | 逐项列owner、去重、归日、单位/币种、可搭配维度；对应S1B-01 |
+| 2 | 六表与完整日投影设计 | 把aggregationSet/attempt及查询索引补入原机器真源；实际隔离先于DDL，S1B-02～04 |
+| 3 | 日报主流程任务 | J01/J02/J05/J12及统一构建发布；不新增每报表一个cron，S2 |
+| 4 | 变更补偿和质量闭环 | J03/J04/J06/J07/J08；首批真实日报生产开放前必须完成，S3 |
+| 5 | 日报/趋势/首批TopN查询 | 复用已发布日事实与同一授权/覆盖规则；优先菜品、套餐、小料、物料及门店榜，S4 |
+| 6 | 导出和保留 | J09/J10/J11＋第七表；导出同查询固定build集合，S4 |
+| 7 | 条件型指标扩展 | 时效/资源/成本/资金/去重事实逐项接通，B/C依原计划后置 |
+
+本轮仅清单和存储方案，未生成DDL、创建数据库/表、注册新任务或API、运行统计/测试/部署。原S1-A部署状态保持不变。
+
+
+## §14 经营核心报表 Review 与补充（2026-10-25，待实施）
+
+### L1 最新业务主线
+
+用户明确经营报表以“每日订单量、交易金额、毛利、纯利”为核心，拆分支付渠道、优惠与退款；在同一日报底座上形成周/月报、菜品日/周/月销售榜，补齐库存及今日实时组合查询。“余额宝”按上下文暂理解为“月报”，若原意不同须另补需求，当前不扩展任何理财产品。
+
+**Review结论：保留独立统计库、完整日事实、统一构建发布及期间聚合；调整指标优先级并补齐资金只读、利润费用、库存结存和实时金额合同。** §12/§13原A/B/C是当时的实施分层，资金/成本“只读统计事实”按本节提升为核心前置；支付发起、扣券/储值积分、退款执行等写操作仍摘除，不因报表需求自动开放。
+
+### L2.1 现有方式是否满足
+
+| 诉求 | 当前方案 | 必须补充 |
+|---|---|---|
+| 每日订单量/交易金额 | 有原单/批次和应收，但核心顺序偏运营，成交确认口径尚未闭合 | 首屏分别给下单量、成交量、成交额、优惠、销售退回及净额；原应收不自动叫成交额 |
+| 支付渠道及退款优惠 | 目录已有但原列后置，通用FINANCE_DAY太粗 | PAY真实成功只读来源、混合支付分配、退款原支付关联、优惠承担方及统计去重 |
+| 毛利 | 已列公式，缺逐单销售成本完整证据 | 优先核验库存历史COGS与菜品/套餐/原料销售履约的关联；理论配方成本不能冒充实际毛利 |
+| 纯利 | 原目录没有完整经营费用/期间分摊模型 | 明确经营净利口径，补房租/工资/水电/佣金/配送/支付手续费等成本来源与分摊；不能将毛利直接改名纯利 |
+| 日/周/月报与菜品榜 | 主方案成立 | 固定核心字段；周/月按日事实聚合，金额/数量与均值/余额分别处理；跨期去重不能简单SUM |
+| 库存 | 现有方案主要覆盖耗用/损耗，原库存模块已有月报/动销，但旧MonthlyVO数量为int | 复用库存owner，补精确数量的日结存与收发平衡；不直接照搬整数月报到餐饮小数库存 |
+| 当天实时订单/金额/退款/优惠组合 | 实时/历史分层已有，但LIVE指标偏待办状态 | 使用与日报相同定义的实时事实投影，资金/优惠/成本分族给水位；不能把缺源当0，也不能用原未付应收当实收 |
+
+本轮检索已有InventoryReportService.monthly/ranking与库存历史销货成本输出；这只能证明存在可复用底座，不证明已覆盖餐饮配方叶子COGS。经营费用/房租工资等Java/迁移关键词检索未发现完整费用owner，须专门核验外部或现有财务来源，不能承诺已经存在。
+
+### L2.2 经营日报核心卡片和公式
+
+以下为经营展示合同建议，不替代正式财务核算。所有金额分币种，并沿原订单最终税额/金额分配区分含税与税前。
+
+| 卡片 | 建议口径 | 来源/门禁 |
+|---|---|---|
+| 下单量 | 本期真实创建的餐饮核心子单去重；另列取消量 | CORE/FOOD，按原事实归日 |
+| 成交量 | 本期原CORE明确成交确认的子单去重；不能以接单、付款次数或加菜次数替代 | CORE真实成交状态及时间 |
+| 成交额（退款前） | 成交确认时冻结的订单含税应收，商品/费用/税可拆；后续价款更正独立显示 | CORE成交快照，当前未付原应收另列 |
+| 商品优惠额 | 原最终商品优惠分配，活动/券/人工、平台/商家承担分别列 | CORE/权益owner最终事实，不从付款差额猜优惠 |
+| 成功退款额 | 本期PAY确认成功的退款/退回分配金额，关联原订单及原支付腿 | PAY，退款申请/退餐不等于退款成功 |
+| 商品净销售额（税前） | 商品原税前价款−已生效商品优惠−已生效销售退回±其他商品价款更正 | CORE原商品/税分配；同一更正只作用一次 |
+| 成功结算/外部净流入 | 按原PAY结算工具分列；外部净流入=确认外部收款−外部退款 | 储值消费、积分抵用不是新外部现金；充值/押金与销售款分开 |
+| 商品毛利 | 同销售队列商品税前净额−可核实历史销售成本 | 缺任一相关成本则完整毛利null，另给已知部分及覆盖 |
+| 门店经营净利（纯利建议口径） | 商品毛利＋其他已确认税前经营收益−未计入销售成本的直接费用−期间经营费用−其他未计入的损失 | 每项均需来源、成本分类、期间分摊及完整性；不默认等于财务税后净利润 |
+
+**避免重复扣减：** 若直接读取CORE当前净商品额，不得再次减已包含的优惠/退餐更正；成功资金退款也不全部等于销售退回，例如押金退回。退货能否冲回成本取决于原库存真实回入/冲销，已经食用报损的退餐不能自动恢复成本。税额、代收款、充值、押金、小费按原owner明确属性列示，不随意计入商品销售或利润。
+
+新增固定指标候选：ORDER_TRANSACTED_AMOUNT、GOODS_SALES_RETURN_AMOUNT、OPERATING_OTHER_INCOME_AMOUNT、PAYMENT_FEE_AMOUNT、DELIVERY_FEE_COST_AMOUNT、PLATFORM_COMMISSION_AMOUNT、OPERATING_EXPENSE_AMOUNT、OPERATING_UNALLOCATED_LOSS_AMOUNT、OPERATING_NET_PROFIT_AMOUNT/RATE；已有指标继续复用。净利率分母使用已确认的同队列税前经营净收入，分母0或未知为null。全部尚未编码或新增DDL。
+
+### L3.1 支付、优惠与退款拆分
+
+- 支付工具与通道分开：现金/银行卡/电子钱包/储值等工具，以及真实支付网关/收单渠道；仅展示实际已开通工具。储值核销进一步按本金/赠金分列，不能当银行到账。
+- 单笔100元，现金60＋银行卡40：全店订单1笔，现金支付60、银行卡支付40；两个渠道各涉及1单，但渠道涉及订单数相加为2，不能替代全店订单数。支付笔数、涉及订单数、成交订单数分别命名。
+- 退款保留原订单、原支付腿和实际退款工具/渠道；按退款成功发生日记流量，原单日另做累计分析。部分/多次退款去重到真实退款分配，不重复扣整单。
+- 优惠按活动、折扣券、现金券、人工调价/折扣/抹零、赠送等原事实分类；储值/积分若原owner定义为结算工具，不能再列作一次商品折扣。平台承担、商家承担、补贴应收/到账分开，不默认相等。
+- 优惠金额按支付渠道拆分，必须有原owner确认分摊规则和冻结分配；没有就仅按订单/优惠类型展示，不在报表临时按支付比例猜分配。多券×混合支付×多次退款不能直接多表JOIN后SUM。
+
+### L3.2 毛利/纯利来源与费用归属
+
+| 项目 | 必须补齐的事实 | 处理原则 |
+|---|---|---|
+| 销售成本 | SKU/套餐/配料实际销售履约→历史库存成本的映射及冲销 | 原料领耗、在制品、报损和实际COGS分开；出库估值未知不作0 |
+| 支付/平台/配送费用 | 原手续费、佣金、配送成本及原归属订单/账期、成功状态 | 营收已净扣的费用不能再扣；费用实际扣款日与成本归属期分开 |
+| 房租/人工/水电等 | 已确认费用凭证、门店/期间、税前金额、币种及分类 | 来自原财务/费用owner或受控外部导入，report不是费用录入和审批真源 |
+| 周期费用分摊 | 原期间、分摊方式/版本、日分配明细及余数规则 | 按固定规则分配，分配合计=原凭证；迟到/更正生成日报新版本，不覆盖旧签核 |
+| 其他经营收益 | 商家服务收入、已确认补贴等原权威归属 | 和商品收入互斥；补贴确认与资金到账独立，不凭促销面额推算收益 |
+| 损失 | 未在COGS/经营费用中计入的损耗等原来源 | 分类互斥，不能把已含报损的成本再减一次 |
+
+今日工资/房租等尚未确认时，若需要预估净利，应独立给ESTIMATED及估计来源/版本；实际净利仍UNKNOWN，不能把预估值标ACTUAL。目前默认只承诺核实后实际口径，预估属于后续明确启用的功能。
+
+### L3.3 库存补齐：流量和余额分开
+
+复用独立库存系统与原库存报表能力，追加餐饮精确数量只读合同，而非复制一套库存账。
+
+| 库存视图 | 日报字段/公式 | 周/月处理 |
+|---|---|---|
+| 收发存 | 期初、采购入库、调入、销售/生产出库、调出、报损、盘点调整、冲销、期末 | 各流量SUM，期初取首日边界、期末取末日边界；不能SUM每日余额 |
+| 平衡校验 | 期末=期初＋全部确认入库−全部确认出库＋有符号调整 | 库存owner定义互斥类型，未知reason导致校验缺口，不用倒推期初自证平衡 |
+| 当前库存 | 当前账面量、可用量、预占量，按原owner/location/SKU/单位 | 实时查询原库存；不把今日余额称为昨日结存 |
+| 历史库存成本 | 期初/期末估值、出库/损耗历史成本及未知覆盖 | 估值来自历史时点，不能用当前成本乘历史量 |
+
+日结存需库存owner提供营业日UTC边界时点快照或可验证历史台账重建，不能在日切后30分钟读取当前余额当日末余额。新增加INVENTORY_MOVEMENT_DAY和INVENTORY_BALANCE_DAY两个受控日数据集，事实仍存独立report库；数量沿DECIMAL(24,6)，禁止套用旧int报表转换截断。
+
+### L3.4 今日实时与历史日报使用同一指标定义
+
+实时经营页补齐：下单/成交/取消、成交额/应收、优惠、更正、成功收退款、按工具/渠道分布、商品数量排行、库存及可核实利润。首批实时查询按单门店/当前营业日和允许组合有界执行，复杂全历史多店查询仍读统计库。
+
+- LIVE与DAILY共用固定指标定义、去重和金额归属；分别用原事实适配与已发布日事实适配，不能各写一套业务公式。
+- CORE、FOOD、PAY、INVENTORY、费用owner分别提供asOf/sourceVersion/coverage；单个asOf参数不证明跨库全局一致。分别展示差异/未决，不能强行对齐成假平账。
+- 同页并列显示订单/优惠/退款/渠道允许；“按支付渠道×优惠类型×菜品”的交叉汇总须有原行分配及合法统计粒度，否则拒绝该组合而非多表JOIN重复累计。
+- 实时值isFinal=false；历史日报仅在营业日结束＋缓冲后发布。近7天含今日时标MIXED，使用同一范围/币种/口径；不可加指标单独处理，不为今日再造每分钟持久日报。
+- 实时成本/费用不完整时仅显示可核实的订单及资金，利润明确UNKNOWN/覆盖不足。今日实时与晚些生成日报的正常差异须能由源版本、迟到事实、更正记录解释。
+
+### L3.5 任务与存储的增补清单
+
+六表控制结构与后续导出表继续沿用，暂不因业务主线调整就增加每报表一张表。新增/细化aggregationSet：OPERATING_ORDER_DAY、PAYMENT_CHANNEL_DAY、DISCOUNT_TYPE_DAY、REFUND_CHANNEL_DAY、PROFIT_COST_DAY、INVENTORY_MOVEMENT_DAY、INVENTORY_BALANCE_DAY。它们细化原STORE_ORDER/FINANCE等粒度，S1B-01应统一成唯一目录并明确替代/复用关系，禁止同时查询新旧重复set。
+
+- J02需增加CORE/PAY只读、库存精确历史成本/结存、费用归属的来源提取/校验；不是调用支付/退款写API。
+- J03需处理原订单更正、真实收退款、费用补录/更正、成本回执与库存冲销。分别标记原单日/发生日/费用归属日，不能全部丢到事件消费当天。
+- J06新增渠道分配守恒、优惠/退款不重扣、税前/含税勾稽、COGS关联、费用分摊及库存收发平衡。没有可靠依据的等式标不可核验，不伪造差额为0。
+- 周/月报继续从完整日数据求和与重算比率；菜品日/周/月榜仍先聚合再TopN。利润未知不能参与“完整毛利榜”，库存余额不SUM。
+- 费用凭证来源、成本映射与必要历史库存边界若现有owner无法提供，必须单独补业务事实合同；统计表不能替代其业务账。是否需要扩展来源域表须在该合同review后决定，不能承诺六张报表表就能补出纯利。
+
+发布完整性分层：订单/资金核心来源为正式经营日报的前置条件；成本/费用未接通时利润字段显式UNKNOWN，页面/导出标经营日报不完整，不能只展示订单数就宣称经营报表全部完成。已纳入必需来源的族临时失败仍不切换active整日版本，读取旧版并标水位；未接通来源不会默认补0。
+
+### §2 调整后的优先清单（方案，未启动）
+
+| 优先级 | 任务 | 完成标志 |
+|---|---|---|
+| P0-1 | 核心指标合同 | 订单/成交、税前含税、优惠/销售退回/资金退款、毛利与经营净利定义不混用 |
+| P0-2 | 来源review及只读合同 | CORE成交/优惠、PAY渠道/退款、库存COGS/边界、费用凭证/分摊能力逐一核实，缺口显式登记 |
+| P0-3 | S1-B独立库与发布底座 | 原隔离、权限、六表、attempt/fence、coverage及原子发布条件不变 |
+| P1-1 | 经营日报主流程＋今日实时 | 原J01/J02/J05/J12；核心订单金额、优惠退款与渠道优先，利润按真实源展示完整性 |
+| P1-2 | 补偿/质量＋周月报＋菜品榜 | J03/J04/J06/J07/J08；正式开放前补偿/质量必做；期间TopN及比率正确 |
+| P1-3 | 库存收发存与成本费用接线 | 精确数量、历史边界、COGS与费用分摊到原日，毛利/纯利按源逐项转为可核实 |
+| P2 | 其余运营指标、导出及深度分析 | 桌台/员工/厨房深度排名、顾客模型等沿旧目录保留 |
+
+本轮仅review现有方式并更新优先级与方案；未新增业务代码、DDL、公开API、统计任务、财务来源或支付能力，未执行测试或云端变更。
+
+
+## §15 数据库、定时任务执行Service与查询API细化入口（2026-10-25）
+
+完整字段/索引/约束、J01～J13的Handler→Service方法、构建执行链、B端日报/实时/周月/渠道/退款/利润/榜单/库存API输入输出及部署边界，见[餐饮经营报表数据库任务与API](../TDD-餐饮经营报表-数据库任务与API.md)。该文件为本方案的实施合同细化，所有新表/类/端点仍为候选；不新增平行业务真源，也不代表已创建数据库或接通资金来源。
+
+
+## §16 日报按天执行（2026-10-25，用户确认）
+
+正常日报每门店每营业日执行一次，门店日切后配置时间触发，建议缓冲30分钟。FoodReportDailyJob调用ReportDailyService.runDaily完成计划与构建；J02只作为统一内部执行单元，不设置分钟领取cron。旧“十分钟计划/分钟执行”建议取消，失败、漏跑、dirty更正及人工补算仍可独立恢复，不能重复累加。今日经营数据请求时实时读取，不因日报每日运行而失去实时性。具体Service和频率已同步[执行设计§7.1](../TDD-餐饮经营报表-数据库任务与API.md#71-日报执行频率最新约定)，本次无代码/任务配置变更。
+
+
+## §17 精简执行任务（2026-10-25，用户确认）
+
+只新增FoodReportDailyJob一个每日常规任务，调用ReportDailyService.runDaily，内部完成计划/漏跑恢复/必要dirty补算/取数/计算校验/发布。原J01～J12是能力编号，不各建Handler或cron；日报重算统一由runDaily/rebuild执行，人工补算与导出按需调用原任务平台。业务事件只标脏，初始化与监控复用原设施；过期/无引用派生数据维护并入每日末尾或通用清理，维护失败不得回滚已发布数据。
+
+执行Service由十余个步骤类收敛为Daily/SourceCollection/Storage/Query/Realtime，以及后续Export。scope、幂等、attempt/fence、来源完整性、发布原子性及财务未知规则不变。以[精简执行设计§7](../TDD-餐饮经营报表-数据库任务与API.md#7-精简后的实际任务与service最新约定)为最新清单；旧表格是能力拆分，不再是新增任务数量。此次只改方案，未新增或停用线上任务。
+
+
+## §18 精简报表开发计划入口（2026-10-25，待执行）
+
+后续依[经营报表TDD§2](../TDD-餐饮经营报表-数据库任务与API.md#2-开发计划2026-10-25已启动)的DEV-01～08执行：先核来源与合同，完成独立存储/只读事实、一个每日任务、历史/实时查询及按需导出代码，再统一编译和集中专项验证。只有一个新增常规定时任务；工作包数量不等于调度任务数量。费用和COGS真实依赖保持可见，不把UNKNOWN当纯利已验收。当前已执行本地编码、隔离库迁移及专项验证，实际对账见经营报表TDD§3；未生产迁移或部署。
