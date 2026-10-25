@@ -11712,6 +11712,20 @@ components:
           type: "string"
           description: "不传即整店分享素材；传了就是单品的"
       additionalProperties: false
+    ResolveMemberCodeReq:
+      type: "object"
+      properties:
+        memberCode:
+          type: "string"
+          description: "扫描获得的统一会员码凭证。"
+        storeNo:
+          type: "string"
+          description: "当前选定的门店编号。"
+      required:
+        - "memberCode"
+        - "storeNo"
+      additionalProperties: false
+      description: "仅提交扫描凭证与选定门店；租户、主体及操作人身份由后端会话确定。"
     GoodsListQuery:
       type: "object"
       properties:
@@ -19454,6 +19468,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ResolveMemberCodeReq"
   "/biz/members/{memberNo}":
     get:
       operationId: "mMemberDetail"

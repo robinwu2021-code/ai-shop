@@ -506,6 +506,7 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mResolveMemberCode: "ResolveMemberCodeReq",
   mStorePointStatement: "StorePointStatementQuery",
   mStorePointStatementLines: "StorePointStatementLinesQuery",
   mStorePointStatements: "StorePointsEntriesQuery",

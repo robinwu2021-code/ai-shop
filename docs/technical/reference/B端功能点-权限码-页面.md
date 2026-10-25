@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**28 个权限码 × 6 个角色 × 285 个受控功能点**
+统计：**28 个权限码 × 6 个角色 × 289 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -22,11 +22,11 @@
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 49 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 39 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 32 | ✅ | ✅ | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 30 | ✅ | — | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 27 | ✅ | — | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 8 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
@@ -162,6 +162,7 @@
 | 在平台维度下加一个自有规格值 | POST | `/biz/spec-values` | `mAddSpecValue` | goods-edit、my-specs |
 | 标准品搜索（建品用） | GET | `/biz/spu-std` | `mSpuStdSearch` | goods-edit |
 | 本店货架类目各自能用的规格 | GET | `/biz/store-spec-dims` | `mStoreSpecDims` | my-specs |
+| —（b-app 未接） | — | `/biz/store-sales-catalog/versions` | — | — |
 | —（b-app 未接） | — | `/biz/card-product-bindings` | — | — |
 | —（b-app 未接） | — | `/biz/card-product-presets` | — | — |
 
@@ -319,6 +320,9 @@
 | 确认期初对齐（以商城为准 / 已实地盘点） | POST | `/biz/store/:storeNo/stock-alignment/confirm` | `mConfirmAlignment` | — |
 | 预览期初对齐批次 | POST | `/biz/store/:storeNo/stock-alignment/preview` | `mPreviewStockAlignment` | stock-align |
 | 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
+| —（b-app 未接） | — | `/biz/personnel/{}/assignments` | — | — |
+| —（b-app 未接） | — | `/biz/personnel/{}/account-links` | — | — |
+| —（b-app 未接） | — | `/biz/personnel/{}/status-changes` | — | — |
 | —（b-app 未接） | — | `/biz/store/{}/stock-reconcile` | — | — |
 
 ### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
@@ -671,8 +675,12 @@
 | `/biz/entitlements/{}` | `pay:ent:read` | 老板 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
+| `/biz/personnel/{}/account-links` | `biz:store:admin` | 老板 |
+| `/biz/personnel/{}/assignments` | `biz:store:admin` | 老板 |
+| `/biz/personnel/{}/status-changes` | `biz:store:admin` | 老板 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
+| `/biz/store-sales-catalog/versions` | `biz:goods` | 老板、店长 |
 | `/biz/store/{}/stock-reconcile` | `biz:store:admin` | 老板 |
 | `/biz/store/{}/stock-reconcile/{}` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/stored-value/accounts` | `pay:sv:account:read` | 老板 |

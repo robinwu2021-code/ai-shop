@@ -3524,7 +3524,14 @@ _无字段_
 
 识别统一会员码　🔒
 
-**入参**：无
+**入参**
+
+请求体：[`ResolveMemberCodeReq`](#resolvemembercodereq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberCode` | `string` | 是 | 扫描获得的统一会员码凭证。 |
+| `storeNo` | `string` | 是 | 当前选定的门店编号。 |
 
 **出参**（`data`）
 
@@ -10991,6 +10998,15 @@ _无字段_
 | `kind` | [`ArrivalIssueKind`](#arrivalissuekind) | 是 | 问题类型：少件 / 破损。两者的售后责任判定不同 |
 | `qty` | `number` | 是 | 缺/坏了几件。此前端上不收集这个数，后端落库恒为 1，分拣汇总的短缺数字从设计上就是错的 |
 | `note` | `string` | 是 | 情况说明。承接方填，供货方与平台据此定责 |
+
+### ResolveMemberCodeReq
+
+仅提交扫描凭证与选定门店；租户、主体及操作人身份由后端会话确定。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `memberCode` | `string` | 是 | 扫描获得的统一会员码凭证。 |
+| `storeNo` | `string` | 是 | 当前选定的门店编号。 |
 
 ### Review
 

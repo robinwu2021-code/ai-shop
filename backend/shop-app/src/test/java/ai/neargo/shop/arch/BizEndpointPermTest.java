@@ -1,10 +1,14 @@
 package ai.neargo.shop.arch;
 
 import ai.neargo.shop.auth.BizPerms;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.util.JavacTask;
+import com.sun.source.util.TreeScanner;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -17,7 +21,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import javax.tools.Diagnostic;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.ToolProvider;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 每个 {@code /biz} 端点都必须**明确**它要什么权限。
@@ -116,6 +125,10 @@ class BizEndpointPermTest {
      * {@code docs/requirements/三端角色权限功能对齐清单.md} §4。
      */
     private static final Map<String, String> REQUIRED = new LinkedHashMap<>() {{
+        put("/biz/personnel/{personnelNo}/assignments", BizPerms.STORE_ADMIN);
+        put("/biz/personnel/{personnelNo}/account-links", BizPerms.STORE_ADMIN);
+        put("/biz/personnel/{personnelNo}/status-changes", BizPerms.STORE_ADMIN);
+        put("/biz/store-sales-catalog/versions", BizPerms.GOODS);
         put("/biz/checkout/{operationNo}/offline-receipts", BizPerms.CASH_RECEIVE);
         put("/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}", BizPerms.ORDER_VIEW);
         put("/biz/checkout/{operationNo}/offline-receipts/lookup", BizPerms.ORDER_VIEW);
@@ -636,49 +649,150 @@ class BizEndpointPermTest {
                 if (!src.contains("canBiz") && !src.contains("canAnyBiz")) {
                     continue;
                 }
-                Matcher base = CLASS_BASE.matcher(src);
-                String prefix = base.find() ? base.group(1) : "";
-                String[] lines = src.split("\n");
-                for (int i = 0; i < lines.length; i++) {
-                    Matcher m = MAPPING.matcher(lines[i]);
-                    if (!m.find()) {
-                        continue;
-                    }
-                    /*
-                     * 往上走过整个「注解 + 注释」块找 canBiz，**不是往上数固定几行**。
-                     *
-                     * 此前写死 3 行，于是在 @PreAuthorize 与 @PostMapping 之间夹一段
-                     * 五行的注释，就会被报成「表里定了权限但代码里没有 @PreAuthorize」——
-                     * 而那个端点在运行时明明是受保护的。假警报和漏报一样伤：
-                     * 这条用例的价值全在于它红的时候人会当真。
-                     *
-                     * 停在**空行或上一个方法的结尾**：注解块不会跨过这两者。
-                     */
-                    boolean has = false;
-                    for (int k = i - 1; k >= 0; k--) {
-                        String up = lines[k].trim();
-                        if (up.isEmpty() || up.equals("}") || up.startsWith("public ")
-                                || up.startsWith("private ") || up.startsWith("return ")) {
-                            break;
-                        }
-                        if (up.contains("canBiz") || up.contains("canAnyBiz")) {
-                            has = true;
-                            break;
-                        }
-                    }
-                    if (!has) {
-                        continue;
-                    }
-                    String path = m.group(1);
-                    String full = path.startsWith("/biz/") ? path
-                            : (prefix.startsWith("/biz") ? prefix + path : null);
-                    if (full != null) {
-                        out.add(full);
-                    }
-                }
+                out.addAll(scanGuardedEndpoints(src));
             }
         }
         return out;
+    }
+
+
+    /** Parse actual method annotation lists: order and line count cannot cross a method boundary. */
+    private static Set<String> scanGuardedEndpoints(String src) throws IOException {
+        Set<String> out = new TreeSet<>();
+        Matcher base = CLASS_BASE.matcher(src);
+        String prefix = base.find() ? base.group(1) : "";
+        var compiler = ToolProvider.getSystemJavaCompiler();
+        assertThat(compiler).as("Permission source scanning requires a JDK compiler").isNotNull();
+        var diagnostics = new javax.tools.DiagnosticCollector<javax.tools.JavaFileObject>();
+        var source = new SimpleJavaFileObject(URI.create("string:///PermissionScan.java"),
+                javax.tools.JavaFileObject.Kind.SOURCE) {
+            @Override
+            public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+                return src;
+            }
+        };
+        try (var files = compiler.getStandardFileManager(diagnostics, null, null)) {
+            var task = (JavacTask) compiler.getTask(null, files, diagnostics,
+                    List.of("-proc:none"), null, List.of(source));
+            var units = task.parse();
+            assertThat(diagnostics.getDiagnostics())
+                    .filteredOn(d -> d.getKind() == Diagnostic.Kind.ERROR)
+                    .as("Permission source must parse successfully").isEmpty();
+            for (var unit : units) {
+                new TreeScanner<Void, Void>() {
+                    @Override
+                    public Void visitMethod(MethodTree method, Void unused) {
+                        var annotations = method.getModifiers().getAnnotations();
+                        boolean guarded = annotations.stream().anyMatch(a ->
+                                (a.getAnnotationType().toString().equals("PreAuthorize")
+                                        || a.getAnnotationType().toString().endsWith(".PreAuthorize"))
+                                && (a.toString().contains("canBiz(") || a.toString().contains("canAnyBiz(")));
+                        if (guarded) {
+                            for (var annotation : annotations) {
+                                Matcher mapping = MAPPING.matcher(annotation.toString());
+                                if (mapping.find()) {
+                                    String path = mapping.group(1);
+                                    String full = path.startsWith("/biz/") ? path
+                                            : (prefix.startsWith("/biz") ? prefix + path : null);
+                                    if (full != null) {
+                                        out.add(full);
+                                    }
+                                }
+                            }
+                        }
+                        return super.visitMethod(method, unused);
+                    }
+                }.scan(unit, null);
+            }
+        }
+        return out;
+    }
+
+    @Test
+    void guardScannerFindsAuthorizationBeforeMapping() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    @org.springframework.security.access.prepost.PreAuthorize("@perm.canBiz('biz:goods')")
+                    @PostMapping("/before")
+                    public void before() { }
+                }
+                """)).containsExactly("/biz/example/before");
+    }
+
+    @Test
+    void guardScannerFindsAuthorizationAfterMapping() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    @PostMapping("/after")
+                    @PreAuthorize("@perm.canBiz('biz:goods')")
+                    public void after() { }
+                }
+                """)).containsExactly("/biz/example/after");
+    }
+
+    @Test
+    void guardScannerFindsMultilineAnnotationsBothOrders() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    @PreAuthorize(
+                        "@perm.canAnyBiz('biz:goods', 'biz:stock')")
+                    @PostMapping(
+                        value = "/before")
+                    public void before() { }
+                    @PostMapping(
+                        "/after")
+                    @PreAuthorize(
+                        "@perm.canBiz('biz:goods')")
+                    public void after() { }
+                }
+                """)).containsExactly("/biz/example/after", "/biz/example/before");
+    }
+
+    @Test
+    void guardScannerDoesNotBorrowNeighborAuthorization() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    @PostMapping("/unguarded-before")
+                    public void unguardedBefore() { }
+                    @PreAuthorize("@perm.canBiz('biz:goods')")
+                    @PostMapping("/guarded-before")
+                    public void guardedBefore() { }
+                    @PostMapping("/unguarded-between")
+                    public void unguardedBetween() { }
+                    @PostMapping("/guarded-after")
+                    @PreAuthorize("@perm.canBiz('biz:goods')")
+                    public void guardedAfter() { }
+                    @PostMapping("/unguarded-after")
+                    public void unguardedAfter() { }
+                }
+                """)).containsExactly("/biz/example/guarded-after", "/biz/example/guarded-before");
+    }
+
+    @Test
+    void guardScannerIgnoresCommentedAuthorization() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    // @PreAuthorize("@perm.canBiz('biz:goods')")
+                    @PostMapping("/unguarded")
+                    public void unguarded() { }
+                }
+                """)).isEmpty();
+    }
+
+    @Test
+    void guardScannerRejectsMalformedSource() {
+        assertThatThrownBy(() -> scanGuardedEndpoints("""
+                class Example {
+                    @PostMapping("/biz/broken")
+                    public void broken( }
+                """))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("Permission source must parse successfully");
     }
 
     /** 从 BizPerms 源码里抽常量值 —— 与运营端那条守卫同一手法 */

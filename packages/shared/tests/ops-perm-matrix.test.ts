@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error 生成器是 .mjs，没有类型声明；这里只用它的三个纯函数
-import { buildMatrix, scanEndpoints, PUBLIC } from "../../../scripts/gen-perm-endpoint-matrix.mjs";
+import { buildMatrix, scanEndpoints, parsePerms, PUBLIC } from "../../../scripts/gen-perm-endpoint-matrix.mjs";
 // @ts-expect-error 同上
 import { codeOf, RULES, NEAREST_CODE } from "../../../scripts/perm-endpoint-map.mjs";
 
@@ -106,5 +106,55 @@ describe("运营端角色×端点矩阵", () => {
     );
     const stale = [...PUBLIC.keys()].filter((k) => !all.has(k as string));
     expect(stale, "这几条端点没了，从 PUBLIC 删掉 —— 留着会让人以为某处仍然是敞开的").toEqual([]);
+  });
+});
+
+
+describe("现有积分检查与权益运营接口的精确归属", () => {
+  const endpoints = scanEndpoints(ROOT);
+  const { codes } = parsePerms(ROOT);
+
+  it.each([
+    ["GET", "/ops/points/accounts", "FINANCE_SETTLE_READ", "finance:settle:read"],
+    ["GET", "/ops/points/stats-period", "FINANCE_SETTLE_READ", "finance:settle:read"],
+    ["GET", "/ops/points/transactions", "FINANCE_SETTLE_READ", "finance:settle:read"],
+    ["GET", "/ops/points/transactions/{voucherNo}", "FINANCE_SETTLE_READ", "finance:settle:read"],
+    ["GET", "/ops/pay/entitlement-dead-letters", "ENT_EXCEPTION_READ", "ops:pay:ent:read"],
+    ["GET", "/ops/pay/entitlement-exceptions", "ENT_EXCEPTION_READ", "ops:pay:ent:read"],
+    ["GET", "/ops/pay/entitlement-exceptions/{exceptionNo}", "ENT_EXCEPTION_READ", "ops:pay:ent:read"],
+    ["GET", "/ops/pay/entitlement-exceptions/{exceptionNo}/actions", "ENT_EXCEPTION_READ", "ops:pay:ent:read"],
+    ["POST", "/ops/pay/entitlement-exceptions/{exceptionNo}/query-source", "ENT_EXCEPTION_VERIFY", "ops:pay:ent:verify"],
+    ["POST", "/ops/pay/entitlement-exceptions/{exceptionNo}/retry-event", "ENT_EXCEPTION_RECOVER", "ops:pay:ent:recover"],
+    ["POST", "/ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant", "ENT_EXCEPTION_RECOVER", "ops:pay:ent:recover"],
+    ["GET", "/ops/pay/entitlement-reconciliations", "ENT_EXCEPTION_READ", "ops:pay:ent:read"],
+    ["POST", "/ops/pay/entitlement-reconciliations", "ENT_EXCEPTION_VERIFY", "ops:pay:ent:verify"],
+    ["GET", "/ops/pay/entitlement-reconciliations/{reconNo}", "ENT_EXCEPTION_READ", "ops:pay:ent:read"],
+    ["GET", "/ops/pay/entitlement-reconciliations/{reconNo}/differences", "ENT_EXCEPTION_READ", "ops:pay:ent:read"],
+    ["POST", "/ops/pay/entitlements/{instanceNo}/freeze", "ENT_FREEZE", "ops:pay:ent:freeze"],
+    ["GET", "/ops/pay/entitlements/{instanceNo}/lifecycle", "ENT_EXCEPTION_READ", "ops:pay:ent:read"],
+  ])("%s %s 与真实控制器权限一致", (method, path, constant, code) => {
+    expect(endpoints.find((endpoint: { method: string; path: string }) =>
+      endpoint.method === method && endpoint.path === path)?.perm).toBe(constant);
+    expect(codes.get(constant)).toBe(code);
+    expect(codeOf(method, path)).toBe(code);
+  });
+
+  it.each([
+    ["POST", "/ops/points/accounts"],
+    ["POST", "/ops/points/stats-period"],
+    ["POST", "/ops/points/transactions/{voucherNo}"],
+    ["GET", "/ops/points/transactions/{voucherNo}/extra"],
+    ["GET", "/ops/points/transactions-extra"],
+    ["POST", "/ops/pay/entitlement-dead-letters"],
+    ["GET", "/ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant"],
+    ["POST", "/ops/pay/entitlement-exceptions/{exceptionNo}/retry-event/extra"],
+    ["GET", "/ops/pay/entitlement-exceptions-extra"],
+    ["DELETE", "/ops/pay/entitlement-reconciliations"],
+    ["GET", "/ops/pay/entitlement-reconciliations/{reconNo}/differences/extra"],
+    ["GET", "/ops/pay/entitlements/{instanceNo}/freeze"],
+    ["POST", "/ops/pay/entitlements/{instanceNo}/lifecycle"],
+    ["GET", "/ops/pay/entitlements/{instanceNo}/lifecycle/extra"],
+  ])("不把错方法、相似路径或多余后缀当作已归属：%s %s", (method, path) => {
+    expect(codeOf(method, path)).toBeNull();
   });
 });

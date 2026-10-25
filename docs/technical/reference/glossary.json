@@ -8170,8 +8170,8 @@
         {
           "key": "common.delete",
           "zh-CN": "删除",
-          "en": null,
-          "ar": null
+          "en": "Delete",
+          "ar": "حذف"
         },
         {
           "key": "common.done",
@@ -14528,6 +14528,12 @@
           "ar": "إغلاق"
         },
         {
+          "key": "mySpecs.delete",
+          "zh-CN": "删除",
+          "en": "Delete",
+          "ar": "حذف"
+        },
+        {
           "key": "mySpecs.empty",
           "zh-CN": "暂无自建规格。建品时如无合适选项，可在此新建。",
           "en": "Nothing built yet. You can create one while adding a product.",
@@ -16488,6 +16494,18 @@
           "zh-CN": "处理售后",
           "en": "Handle after-sales",
           "ar": "معالجة ما بعد البيع"
+        },
+        {
+          "key": "perm.biz:booking:manage",
+          "zh-CN": "创建、调整及取消预约",
+          "en": "Create, change and cancel appointments",
+          "ar": "إنشاء المواعيد وتعديلها وإلغاؤها"
+        },
+        {
+          "key": "perm.biz:booking:view",
+          "zh-CN": "查看预约",
+          "en": "View appointments",
+          "ar": "عرض المواعيد"
         },
         {
           "key": "perm.biz:campaign",
@@ -26127,10 +26145,22 @@
           "ar": "انتهى موعد الخدمة. أعد جدولته صراحة قبل تسجيل الوصول."
         },
         {
+          "key": "err.beauty.dependency_unavailable",
+          "zh-CN": "美业服务暂时不可用，请按原操作号查询或重试。",
+          "en": "Beauty service is temporarily unavailable. Check or retry the original operation.",
+          "ar": "خدمة التجميل غير متاحة مؤقتًا. تحقّق من العملية الأصلية أو أعد المحاولة."
+        },
+        {
           "key": "err.beauty.search_incomplete",
           "zh-CN": "预约搜索未完成，请缩小条件后重试",
           "en": "Appointment search is incomplete. Narrow the search and try again.",
           "ar": "لم يكتمل البحث عن موعد. ضيّق نطاق البحث وحاول مجددًا."
+        },
+        {
+          "key": "err.beauty.source_customer_required",
+          "zh-CN": "请先完成顾客认领后再提交服务来源",
+          "en": "Complete the customer claim before submitting a service source",
+          "ar": "أكمل ربط العميل قبل إرسال مصدر الخدمة"
         },
         {
           "key": "err.biz.role_forbidden",
@@ -26554,9 +26584,9 @@
         },
         {
           "key": "err.inventory.shared_source",
-          "zh-CN": "该门店与门店 {1} 共用发货库存，暂不支持分别同步全部库存，请先配置独立发货库位",
-          "en": "This store shares its stock source with store {1}. Configure independent stock locations before enabling stock sync.",
-          "ar": "يشترك هذا المتجر في مصدر المخزون مع المتجر {1}. يرجى إعداد مواقع مخزون مستقلة قبل تفعيل المزامنة."
+          "zh-CN": "门店 {0} 与门店 {1} 共用发货库存，暂不支持分别同步全部库存，请先配置独立发货库位",
+          "en": "Store {0} shares its stock source with store {1}. Configure independent stock locations before enabling stock sync.",
+          "ar": "يشترك المتجر {0} في مصدر المخزون مع المتجر {1}. يرجى إعداد مواقع مخزون مستقلة قبل تفعيل المزامنة."
         },
         {
           "key": "err.inventory.sync_not_aligned",
@@ -37839,7 +37869,9 @@
           "NOTIFY_NO_DEVICE",
           "TRACK_NOT_RECIPIENT",
           "BEAUTY_SEARCH_INCOMPLETE",
-          "BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE"
+          "BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE",
+          "BEAUTY_SOURCE_CUSTOMER_REQUIRED",
+          "BEAUTY_DEPENDENCY_UNAVAILABLE"
         ],
         "zh": "错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。",
         "module": "shop-base"
@@ -38110,6 +38142,15 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "Mode",
+        "values": [
+          "MERCHANT",
+          "CONSUMER"
+        ],
+        "zh": "Route-owned realm selection does not grant business permissions.",
+        "module": "shop-base-auth"
       },
       {
         "name": "Mode",

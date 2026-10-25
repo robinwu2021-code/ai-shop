@@ -23,6 +23,24 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  // Existing controller permissions, registered as exact method/path targets (Task60A-A9).
+  ["GET", /^\/ops\/points\/accounts$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/stats-period$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/transactions$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/transactions\/\{voucherNo\}$/, "finance:settle:read"],
+  ["GET", /^\/ops\/pay\/entitlement-dead-letters$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlement-exceptions$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}\/actions$/, "ops:pay:ent:read"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}\/query-source$/, "ops:pay:ent:verify"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}\/retry-event$/, "ops:pay:ent:recover"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}\/retry-grant$/, "ops:pay:ent:recover"],
+  ["GET", /^\/ops\/pay\/entitlement-reconciliations$/, "ops:pay:ent:read"],
+  ["POST", /^\/ops\/pay\/entitlement-reconciliations$/, "ops:pay:ent:verify"],
+  ["GET", /^\/ops\/pay\/entitlement-reconciliations\/\{reconNo\}$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlement-reconciliations\/\{reconNo\}\/differences$/, "ops:pay:ent:read"],
+  ["POST", /^\/ops\/pay\/entitlements\/\{instanceNo\}\/freeze$/, "ops:pay:ent:freeze"],
+  ["GET", /^\/ops\/pay\/entitlements\/\{instanceNo\}\/lifecycle$/, "ops:pay:ent:read"],
   ["GET", /^\/ops\/points\/adjustments$/, "finance:settle:read"],
   ["POST", /^\/ops\/points\/adjustments$/, "finance:settle:execute"],
   ["POST", /^\/ops\/points\/adjustment-review$/, "finance:payout:execute"],

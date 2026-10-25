@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 28 个权限点 × 285 个受控端点**。
+统计：**6 个角色 × 28 个权限点 × 289 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -17,11 +17,11 @@
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
 | `STOCK` | 改库存（含门店库存） | 49 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
+| `GOODS` | 建/改商品、上下架、规格模板、识图 | 39 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 32 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 30 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 27 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 8 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
@@ -141,6 +141,7 @@
 - `/biz/spec-templates`
 - `/biz/spec-values`
 - `/biz/spu-std`
+- `/biz/store-sales-catalog/versions`
 - `/biz/store-spec-dims`
 
 ### `CAMPAIGN`　（OWNER、MANAGER）
@@ -248,6 +249,9 @@
 - `/biz/entity/{entityNo}`
 - `/biz/inventory/locations/{id}/source`
 - `/biz/member-settings`
+- `/biz/personnel/{personnelNo}/account-links`
+- `/biz/personnel/{personnelNo}/assignments`
+- `/biz/personnel/{personnelNo}/status-changes`
 - `/biz/plan`
 - `/biz/plan/trial`
 - `/biz/role-perms`
