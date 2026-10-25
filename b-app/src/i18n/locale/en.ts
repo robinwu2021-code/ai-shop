@@ -2517,6 +2517,11 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     statusNONE: "Not registered", statusAPPLYING: "Under review", statusREJECTED: "Rejected", statusACTIVE: "Active", statusSUSPENDED: "Suspended",
   },
   perm: {
+    "biz:service:task:self": "Operate own service tasks",
+    "biz:service:task:view": "View store service tasks",
+    "biz:service:task:coordinate": "Coordinate service tasks",
+    "biz:service:task:approve": "Approve service changes",
+    "biz:service:task:close": "Close settled service work orders",
     "biz:booking:view": "View appointments",
     "biz:booking:manage": "Create, change and cancel appointments",
     "biz:receive": "Goods-in and picking",

@@ -18,6 +18,7 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 
 /** Omitted primitive or nullable facts cannot become a fabricated successful projection. */
 public final class InternalReplyDeserializer extends StdDeserializer<InternalReply<?>> {
@@ -119,6 +120,15 @@ public final class InternalReplyDeserializer extends StdDeserializer<InternalRep
                     || raw == Long.class
                     || raw == BigInteger.class) {
                 valid = value.isIntegralNumber();
+            } else if (raw.isEnum()) {
+                valid =
+                        value.isString()
+                                && Arrays.stream(raw.getEnumConstants())
+                                        .anyMatch(
+                                                item ->
+                                                        ((Enum<?>) item)
+                                                                .name()
+                                                                .equals(value.asString()));
             } else {
                 valid =
                         (raw == String.class

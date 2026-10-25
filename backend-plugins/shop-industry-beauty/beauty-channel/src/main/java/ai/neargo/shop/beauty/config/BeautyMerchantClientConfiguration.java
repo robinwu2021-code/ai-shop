@@ -17,6 +17,11 @@ import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import ai.neargo.shop.spi.resource.ResourceCommandFactsPort;
 import ai.neargo.shop.spi.resource.ResourceRecoveryInternalApi;
 import ai.neargo.shop.beauty.port.RemotePersonnelFactsPort;
+import ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPort;
+import ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort;
+import ai.neargo.shop.spi.personnel.PersonnelOperatorInternalApi;
+import ai.neargo.shop.svc.InternalBindings;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.shop.beauty.port.RemoteResourceFactsPort;
 import ai.neargo.shop.beauty.port.RemoteScheduleWindowsPort;
 import ai.neargo.shop.spi.personnel.PersonnelFactsPort;
@@ -33,6 +38,18 @@ import org.springframework.context.annotation.Configuration;
 /** Only the independent beauty server imports these adapters; embedded keeps its platform-owned local facts. */
 @Configuration(proxyBeanMethods = false)
 public class BeautyMerchantClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(PersonnelOperatorFactsPort.class)
+    PersonnelOperatorFactsPort remotePersonnelOperatorFactsPort(
+            InternalHttp http, @Value("${shop.services.internal-token:}") String token) {
+        return new RemotePersonnelOperatorFactsPort(
+                http.client(
+                        ServiceName.PLATFORM,
+                        PersonnelOperatorInternalApi.class,
+                        Duration.ofSeconds(5)),
+                new InternalBindings(token));
+    }
+
     @Bean
     @ConditionalOnMissingBean(PersonnelFactsPort.class)
     PersonnelFactsPort remotePersonnelFactsPort(InternalHttp http) {

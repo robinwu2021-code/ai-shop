@@ -104,6 +104,21 @@ public final class BizPerms {
     /** Explicit appointment management, independently assignable from fulfillment permissions. */
     public static final String BOOKING_MANAGE = "biz:booking:manage";
 
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_SELF = "biz:service:task:self";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_VIEW = "biz:service:task:view";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_COORDINATE = "biz:service:task:coordinate";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_APPROVE = "biz:service:task:approve";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_CLOSE = "biz:service:task:close";
+
     // ---------------------------------------------------------------- 角色
 
     public static final String OWNER = "OWNER";
@@ -149,6 +164,11 @@ public final class BizPerms {
      * {@code BizRoleSeedTest} 断言这里覆盖了全部权限码 —— 加码忘了加说明就红。
      */
     public static final Map<String, String> LABELS = Map.ofEntries(
+            Map.entry(SERVICE_TASK_SELF, "操作本人服务任务"),
+            Map.entry(SERVICE_TASK_VIEW, "查看门店服务任务"),
+            Map.entry(SERVICE_TASK_COORDINATE, "协调服务任务"),
+            Map.entry(SERVICE_TASK_APPROVE, "审核服务调整"),
+            Map.entry(SERVICE_TASK_CLOSE, "关闭已结清服务工单"),
             Map.entry(BOOKING_VIEW, "查看预约"),
             Map.entry(BOOKING_MANAGE, "创建、调整及取消预约"),
             Map.entry(RECEIVE, "到货登记与分拣"),

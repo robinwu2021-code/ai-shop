@@ -2515,6 +2515,11 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     statusNONE: "غير مسجّل", statusAPPLYING: "قيد المراجعة", statusREJECTED: "مرفوض", statusACTIVE: "نشط", statusSUSPENDED: "موقوف",
   },
   perm: {
+    "biz:service:task:self": "تنفيذ مهام الخدمة الخاصة بي",
+    "biz:service:task:view": "عرض مهام الخدمة في المتجر",
+    "biz:service:task:coordinate": "تنسيق مهام الخدمة",
+    "biz:service:task:approve": "اعتماد تغييرات الخدمة",
+    "biz:service:task:close": "إغلاق أوامر الخدمة المسوّاة",
     "biz:booking:view": "عرض المواعيد",
     "biz:booking:manage": "إنشاء المواعيد وتعديلها وإلغاؤها",
     "biz:receive": "استلام البضائع والفرز",

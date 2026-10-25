@@ -2825,6 +2825,11 @@ entryHint: "谁在买 · 谁不来了",
   // 后端也带了一份中文（BizPerms.LABELS），这里这份多了英文/阿语；
   // 两份对不上时以后端为准（它是判权那份），但界面优先用这里的本地化。
   perm: {
+    "biz:service:task:self": "操作本人服务任务",
+    "biz:service:task:view": "查看门店服务任务",
+    "biz:service:task:coordinate": "协调服务任务",
+    "biz:service:task:approve": "审核服务调整",
+    "biz:service:task:close": "关闭已结清服务工单",
     "biz:booking:view": "查看预约",
     "biz:booking:manage": "创建、调整及取消预约",
     "biz:receive": "到货登记与分拣",

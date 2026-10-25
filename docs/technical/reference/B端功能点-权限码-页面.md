@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**28 个权限码 × 6 个角色 × 289 个受控功能点**
+统计：**33 个权限码 × 6 个角色 × 289 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -49,6 +49,11 @@
 | `pay:ent:template:read` | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 | `biz:booking:view` | `BOOKING_VIEW` | Cross-industry appointment reading | 0 | ✅ | — | — | — | — | — |
 | `biz:booking:manage` | `BOOKING_MANAGE` | Explicit appointment management, i | 0 | ✅ | — | — | — | — | — |
+| `biz:service:task:self` | `SERVICE_TASK_SELF` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
+| `biz:service:task:view` | `SERVICE_TASK_VIEW` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
+| `biz:service:task:coordinate` | `SERVICE_TASK_COORDINATE` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
+| `biz:service:task:approve` | `SERVICE_TASK_APPROVE` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
+| `biz:service:task:close` | `SERVICE_TASK_CLOSE` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
 
 > `OWNER` 是 `*`：**不走这张表**。新增权限码时老板自动有，其余角色要显式加。
 

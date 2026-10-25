@@ -1,6 +1,7 @@
 package ai.neargo.shop.svc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -59,6 +60,53 @@ class BoundInternalProtocolTest {
     private static InternalCall<Request> call(
             Map<String, String> values, List<BigDecimal> quantities) {
         return new InternalCall<>(binding(), new Request("private-key", 1, values, quantities));
+    }
+
+    enum State {
+        LINKED
+    }
+
+    enum RenamedState {
+        LINKED;
+
+        @Override
+        public String toString() {
+            return "not-the-wire-name";
+        }
+    }
+
+    record RenamedEnumResult(RenamedState state) {}
+
+    record EnumResult(State state) {}
+
+    @Test
+    void boundEnumsUseExactNamesAndRejectUnknownOrNumericValues() {
+        assertThat(
+                        json.writeValueAsString(
+                                new InternalReply<>(
+                                        binding(),
+                                        "a".repeat(64),
+                                        new RenamedEnumResult(RenamedState.LINKED))))
+                .contains("\"state\":\"LINKED\"")
+                .doesNotContain("not-the-wire-name");
+        var result = new EnumResult(State.LINKED);
+        var reply = new InternalReply<>(binding(), "a".repeat(64), result);
+        var type = new TypeReference<InternalReply<EnumResult>>() {};
+        String encoded = assertDoesNotThrow(() -> json.writeValueAsString(reply));
+        assertThat(encoded).contains("\"state\":\"LINKED\"").doesNotContain("not-the-wire-name");
+        assertThat(json.readValue(encoded, type)).isEqualTo(reply);
+        for (String invalid : new String[] {"\"UNKNOWN\"", "0", "\"0\"", "\"linked\""}) {
+            assertThatThrownBy(() -> json.readValue(encoded.replace("\"LINKED\"", invalid), type))
+                    .isInstanceOf(RuntimeException.class);
+        }
+        var request = new InternalCall<>(binding(), result);
+        String digest = new InternalBindings(TOKEN).digest(request);
+        assertThat(digest).hasSize(64);
+        assertThat(
+                        json.readValue(
+                                json.writeValueAsString(request),
+                                new TypeReference<InternalCall<EnumResult>>() {}))
+                .isEqualTo(request);
     }
 
     @Test

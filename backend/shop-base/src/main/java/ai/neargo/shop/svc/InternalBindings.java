@@ -135,6 +135,9 @@ public final class InternalBindings {
         if (value instanceof OffsetDateTime time) {
             return NODES.stringNode(time.toInstant().toString());
         }
+        if (value instanceof Enum<?> constant) {
+            return NODES.stringNode(constant.name());
+        }
         if (value instanceof LocalDate date) {
             return NODES.stringNode(date.toString());
         }
