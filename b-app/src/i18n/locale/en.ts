@@ -2759,6 +2759,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
     statusNONE: "Not registered", statusAPPLYING: "Under review", statusREJECTED: "Rejected", statusACTIVE: "Active", statusSUSPENDED: "Suspended",
   },
   perm: {
+    "biz:report:export": "Export business reports",
     "biz:pricing:config:publish": "Publish store checkout rules",
     "biz:pricing:config:read": "View store checkout rules",
     "biz:pricing:config:update": "Edit draft store checkout rules",

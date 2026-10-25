@@ -17966,6 +17966,12 @@
           "ar": "استلام البضائع والفرز"
         },
         {
+          "key": "perm.biz:report:export",
+          "zh-CN": "导出经营报表",
+          "en": "Export business reports",
+          "ar": "تصدير تقارير الأعمال"
+        },
+        {
           "key": "perm.biz:review",
           "zh-CN": "回评价、差评申诉",
           "en": "Reply to reviews, appeal",

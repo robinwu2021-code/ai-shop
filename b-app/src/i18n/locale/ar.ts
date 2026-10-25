@@ -2758,6 +2758,7 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
     statusNONE: "غير مسجّل", statusAPPLYING: "قيد المراجعة", statusREJECTED: "مرفوض", statusACTIVE: "نشط", statusSUSPENDED: "موقوف",
   },
   perm: {
+    "biz:report:export": "تصدير تقارير الأعمال",
     "biz:pricing:config:publish": "نشر قواعد الدفع للمتجر",
     "biz:pricing:config:read": "عرض قواعد الدفع للمتجر",
     "biz:pricing:config:update": "تعديل مسودة قواعد الدفع للمتجر",

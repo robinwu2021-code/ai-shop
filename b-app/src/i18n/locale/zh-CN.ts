@@ -3068,6 +3068,7 @@ entryHint: "谁在买 · 谁不来了",
   // 后端也带了一份中文（BizPerms.LABELS），这里这份多了英文/阿语；
   // 两份对不上时以后端为准（它是判权那份），但界面优先用这里的本地化。
   perm: {
+    "biz:report:export": "导出经营报表",
     "biz:pricing:config:publish": "发布门店结账规则",
     "biz:pricing:config:read": "查看门店结账规则",
     "biz:pricing:config:update": "编辑门店结账规则草稿",
