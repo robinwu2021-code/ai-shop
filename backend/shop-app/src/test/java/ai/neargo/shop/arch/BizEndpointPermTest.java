@@ -586,6 +586,12 @@ class BizEndpointPermTest {
         put("/biz/pricing-manual-adjustments/{no}:approve", BizPerms.FINANCE);
         put("/biz/pricing-manual-adjustments/{no}:quote", BizPerms.CAMPAIGN);
         put("/biz/goods/{goodsNo}/skus/{skuNo}/pricing-policy", BizPerms.STOCK);
+        // Fee rules/scopes: GET carries pricing-config read, writes carry publish; same path records the stricter one.
+        put("/biz/pricing/fee-rules/{ruleNo}", BizPerms.PRICING_CONFIG_PUBLISH);
+        put("/biz/pricing/fee-scopes/{scopeNo}/adjustments", BizPerms.PRICING_CONFIG_READ);
+        put("/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply", BizPerms.PRICING_CONFIG_PUBLISH);
+        // Valuation policy is inventory configuration: GET and POST both enforce biz:stock.
+        put("/biz/inventory/items/{item}/valuation", BizPerms.STOCK);
         put("/biz/stored-value/plan-recharges/confirm-offline", BizPerms.SV_RECHARGE_CREATE);
         put("/biz/stores/{storeNo}/stored-value/customer-candidates", "biz:customer");
         put("/biz/stores/{storeNo}/stored-value/customer-selections", "biz:customer");

@@ -107,8 +107,18 @@ class MpEndpointAuthTest {
             "GET /mp/order/{orderNo}/pay-result",
             // 收银台的支付方式列表（C-1）：要登录 —— 它按下单的商家算，是这个人的单
             "GET /mp/order/{orderNo}/pay-method",
-            "GET /mp/points/account",
-            "GET /mp/points/records",
+            // 积分 3.0 改名：account→accounts、records→entries（MpBuyerPointsController，取 requireUser）
+            "GET /mp/points/accounts",
+            "GET /mp/points/entries",
+            // 订单积分：发放视图与下单试算/状态都按本人订单取（requireUser / currentUserNo / requireOwnOrder）
+            "GET /mp/order/{orderNo}/points-earning",
+            "GET /mp/order/{orderNo}/points-state",
+            "POST /mp/order/points-quote",
+            // 储值消费者读面：都经 MpStoredValueController.context() → requireUser
+            "GET /mp/stored-value/issuers",
+            "GET /mp/stored-value/issuer-records",
+            "GET /mp/stored-value/records/locate",
+            "GET /mp/stored-value/notification-capability",
             "GET /mp/store/{no}/frequent",
             "GET /mp/ticket",
             "GET /mp/ticket/{ticketNo}",
@@ -517,6 +527,9 @@ class MpEndpointAuthTest {
         }
         try {
             if (endpoint.equals("GET /mp/points/entries")) req.param("typeCode", "TYPE");
+            // 必填查询参数缺了会先回 400，探不到鉴权那一层
+            if (endpoint.equals("GET /mp/stored-value/issuer-records")) req.param("issuerRef", "PROBE1");
+            if (endpoint.equals("GET /mp/stored-value/records/locate")) req.param("focusDocumentNo", "PROBE1");
             return mvc().perform(req.header("Idempotency-Key", "AUTH-PROBE").contentType(MediaType.APPLICATION_JSON)
                             .content(PROBE_BODY.getOrDefault(endpoint, "{}")))
                     .andReturn().getResponse().getStatus();
