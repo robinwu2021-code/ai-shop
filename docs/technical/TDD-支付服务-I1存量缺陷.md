@@ -87,6 +87,11 @@
 - 守卫 `InternalTokenComparisonTest`（pay-svc）：源码里出现 `xxxToken.equals(…)` / `.equals(xxxToken)` 即红。
 - R11 是**线上运维动作，不在代码里做**：已写进 `deploy/tencent/README.md` §8 第 9 条（`systemctl disable --now ai-shop-pay`，需人工执行）。
 
+### F14 · 改通道市场原子化
+- `PayChannelMasterServiceImpl#updateSettings` 加 `@Transactional("payTxManager")`：先删后插中途失败整体回滚。
+- **偏差：不拒空集。** 空的市场集合在本系统是有意的「不限市场」语义（`MarketChannelAndWithdrawTest#unrestrictedChannelVisibleEverywhere` 守着，测试渠道 TEST 即如此配置）。
+  R22 的真实风险是「中途失败留下空集 = 意外全市场开放」，原子化即消除；显式传空仍表示「不限」。若要改成显式标记（如 `["*"]`），属运营端契约变更，另议。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -100,6 +105,7 @@
 | F08 | `RefundSubMerchantTest#refundCarriesTheOriginalSubMerchant` · `#legacyRowFallsBackToRequestSnapshot` · `PaymentOpenConcurrencyTest`（加列断言） | ✅ 2/2 · 20/20；退款相关 6 类全绿 | 先红：两条均 `expected "SUB-…" but was null` ✅ |
 | F09 | `PayoutBankReconFlowTest#payoutAmountMismatchIsNotMatched` | ✅ 9/9（另 2 个对账类全绿） | 先红：银行只划 290 元，300 元的放款被标 MATCHED ✅ |
 | F11 | `InternalTokenComparisonTest#noStringEqualsOnTokens` · `#detectorFires` | ✅ pay-svc 71/71 | 先红：抓到 `InternalPayEndpoint.java` ✅。R11 未执行（线上操作，待人工） |
+| F14 | `PayChannelMarketAtomicityTest#failedReplaceLeavesOldMarketsIntact`（spy 让第二个市场插入时抛错） | ✅ 1/1；`MarketChannelAndWithdrawTest` 8/8 | 先红：中途失败后市场集合变成 `[HK]`（CN 已删）✅ |
 | F05 | `MerchantPaymentFlowTest#stubDoesNotImpersonateUnlistedChannel` · `#inFlightCannotResubmit` · `#resubmitClearsRejectReason` | ✅ 10/10 | 先红：PAYBY 进件 code=0、在途重提 code=0、旧原因仍在。消融恢复回落 / 去在途拦截 / 去显式清空 → 三条红 ✅。注：`resubmitClearsRejectReason` 初版在旧代码上是绿的（stub 同步出结果，走了已修好的回查路径），加 `keepApplyingFor` 后才量到 submit 本身 |
 
 ## §6 对账二 · 设计 → 实现
