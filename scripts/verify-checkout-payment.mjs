@@ -60,6 +60,11 @@ const methods = {
     "simultaneousOriginalKeyAndNewAliasKeepOnePaymentAndOneLockFreeSend",
     "currentConsumerHttpRejectsForeignBuyerMerchantForgedAmountAndRevokedRead"
   ],
+  "CheckoutPlaceAuthorityFlowTest": [
+    "revokedDuringPlacePreflightCannotClaimOrCreateOrder",
+    "disabledDuringPlacePreflightCannotClaimOrCreateOrder",
+    "revokedAfterPlaceClaimCannotReachWriterAndOriginalKeyRecovers"
+  ],
   "CheckoutCashPermissionFlowTest": [
     "ownerWildcardResolvesActualAccountButDelegationIsNotCurrentCashAuthorization",
     "receiveAndViewDoNotGrantCashAndGrantRevocationIsImmediateWithinOneSession",

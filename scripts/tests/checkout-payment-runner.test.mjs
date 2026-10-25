@@ -71,6 +71,11 @@ const known = {
     "simultaneousOriginalKeyAndNewAliasKeepOnePaymentAndOneLockFreeSend",
     "currentConsumerHttpRejectsForeignBuyerMerchantForgedAmountAndRevokedRead"
   ],
+  "CheckoutPlaceAuthorityFlowTest": [
+    "revokedDuringPlacePreflightCannotClaimOrCreateOrder",
+    "disabledDuringPlacePreflightCannotClaimOrCreateOrder",
+    "revokedAfterPlaceClaimCannotReachWriterAndOriginalKeyRecovers"
+  ],
   "CheckoutCashPermissionFlowTest": [
     "ownerWildcardResolvesActualAccountButDelegationIsNotCurrentCashAuthorization",
     "receiveAndViewDoNotGrantCashAndGrantRevocationIsImmediateWithinOneSession",
@@ -312,6 +317,42 @@ test('acceptsOnlyReviewedClaimedGuestResourceSelectors', async () => {
   assert.throws(() => validateSelection('beauty-source', name + ',' + beauty));
   assert.deepEqual(validateSelection('beauty-source', name + '#' + methods.join('+')).requestedMethods[name], methods);
   assert.equal(inspectReport(xml(name, methods), {className: name, methods}).tests, 3);
+});
+
+test('acceptsOnlyExactPlaceAuthoritySelectorsBeforeProvisioning', async () => {
+  const name = 'CheckoutPlaceAuthorityFlowTest', methods = known[name];
+  assert.deepEqual(validateSelection('payment', name).classes, [name]);
+  assert.deepEqual(validateSelection('payment', name + '#' + methods.join('+')).requestedMethods[name], methods);
+  const all = fake({report: xml(name, methods)});
+  await main([], {CHECKOUT_PAYMENT_TESTS: name}, all.effects);
+  assert(all.logs.includes('Native execution verified: ' + name + '; tests=3; skips=0.'));
+  for (const method of methods) {
+    const f = fake({report: xml(name, [method])});
+    await main([], {CHECKOUT_PAYMENT_TESTS: name + '#' + method}, f.effects);
+    assert(f.children.find(child => child.command === 'mvn').args.includes('-Dtest=' + name + '#' + method));
+  }
+  const invalid = [name + 'Typo', 'Prefix' + name, name + '#setup', name + '#*', name + '#',
+    name + ',' + name, name + '#' + methods[0] + '+' + methods[0],
+    ...methods.flatMap(method => [name + '#prefix' + method, name + '#' + method + 'Suffix']),
+    name + ',BeautySourceCheckoutIT'];
+  const effects = new Proxy({}, {ownKeys() { assert.fail('effect boundary was reached'); }});
+  for (const selected of invalid) {
+    await assert.rejects(main([], {CHECKOUT_PAYMENT_TESTS: selected}, effects), /invalid checkout selection/);
+    const child = spawnSync(process.execPath, ['scripts/verify-checkout-payment.mjs'], {
+      encoding: 'utf8', env: {PATH: '', CHECKOUT_PAYMENT_TESTS: selected}
+    });
+    assert.notEqual(child.status, 0);
+    assert.match(child.stderr, /invalid checkout selection/);
+    assert.doesNotMatch(child.stderr, /ENOENT|limactl|docker/);
+  }
+  for (const selected of [name, ...methods.map(method => name + '#' + method)]) {
+    await assert.rejects(main(['--beauty-source'], {CHECKOUT_PAYMENT_TESTS: selected}, effects),
+      /invalid checkout selection/);
+  }
+  for (const content of [xml(name, methods.slice(1)), xml(name, methods).replace('tests="3"', 'tests="0"'),
+    xml(name, methods).replace('skipped="0"', 'skipped="1"')]) {
+    assert.throws(() => inspectReport(content, {className: name, methods}));
+  }
 });
 
 test('acceptsEachKnownClassAndExplicitMethod', () => {

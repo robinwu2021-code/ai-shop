@@ -478,6 +478,12 @@ public class CheckoutServiceImpl implements CheckoutService {
         }
     }
 
+    private void requireSameBuyer(String buyer) {
+        if (!buyer.equals(access.requireCurrentBuyer())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+    }
+
     @Override
     public CheckoutResult place(PlaceCheckoutReq request) {
         String buyer = access.requireCurrentBuyer();
@@ -513,6 +519,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                                 observed.getEntityNo(),
                                 pricing.goodsMinor() - pricing.activity().total(),
                                 observed.getStoreNo())));
+        requireSameBuyer(buyer);
         try {
             unscoped(
                     () ->
@@ -571,6 +578,7 @@ public class CheckoutServiceImpl implements CheckoutService {
             }
             throw failure;
         }
+        requireSameBuyer(buyer);
         try {
             return unscoped(
                     () ->
