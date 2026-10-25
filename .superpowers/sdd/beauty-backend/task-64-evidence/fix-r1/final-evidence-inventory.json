@@ -1,0 +1,252 @@
+{
+  "scope": "R1 only; original evidence index remains historical",
+  "report": {
+    "path": ".superpowers/sdd/beauty-backend/task-64-report.md",
+    "bytes": 25502,
+    "sha256": "2d043765e01af4c39b56ba8baa931281eef5061560488829c1ab5838888f4ffe"
+  },
+  "reviewPackage": {
+    "path": "/tmp/task64-r1-review-package-6f3639c9-b27e-45bc-8692-598129161d81.diff",
+    "files": 11,
+    "bytes": 89375,
+    "sha256": "b411dbfec1c715b34fb45e1107320f2a6dd1de3c8a7be6c1364f6e71802b0281",
+    "origin": "Root immutable pre-fix75-file snapshot; no duplicate package generated"
+  },
+  "artifacts": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/final-summary.json",
+      "bytes": 1582,
+      "sha256": "0ace294400514e3e8c5c582152632936404412cb2f5730097079073eb04d043f"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-green/TEST-ai.neargo.shop.beauty.port.RemoteManualServiceAdmissionPortTest.xml",
+      "bytes": 36209,
+      "sha256": "07e1f567fbf0f30941bb834154ebf78316a797ea046c8fbc144a742d88cf411d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-green/inventory.json",
+      "bytes": 81017,
+      "sha256": "fc5caa6de70dedb29705fb41cfcdd5bdd0cba92f39993c04499866ce31e3f48c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-green/self-review.md",
+      "bytes": 3452,
+      "sha256": "b63d33ce7fdeca2df52ec4ccd8273eb057e2ecfab2a4894fa3a024f5aa4c00a1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-green/task64-r1-final-candidate-compile.log",
+      "bytes": 42068,
+      "sha256": "8c0651c95d3a0a3ce1799cba56ecbbe23d28ca2f4dd96525ad8a7344b727457d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-green/task64-r1-final-frozen-compile.log",
+      "bytes": 42068,
+      "sha256": "c2e3c828a9acb434a941a2e1b9da1ea4b87d3f027a04292b017606e1435e77e5"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-green/task64-r1-format-check.json",
+      "bytes": 6513,
+      "sha256": "7a925ea97489749a59f5321c6e77f9545e60a531fc6f85d434864787c5c7baa3"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-green/task64-r1-product-compile.log",
+      "bytes": 43841,
+      "sha256": "81c8cc72ed14e3be80659bda0c71293cbffd7e475799a00a99d8b0af65f2d234"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-green/task64-r1-remote-green.log",
+      "bytes": 14168,
+      "sha256": "db50d01b8b2d0e611a11a79b887865ae9a4c7660f4c68806fd665ad7de32becf"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/TEST-ai.neargo.shop.beauty.port.RemoteManualServiceAdmissionPortTest.xml",
+      "bytes": 36564,
+      "sha256": "1c2a0e24652f4bb1853c475722adbaf66fa340d3051401bfb5c3a6f0ab359579"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/gate-notes-before-resume.md",
+      "bytes": 1711,
+      "sha256": "df8db85c0deb7ac2b9b33627d9e8f799e1a3d2b21bb73899040a0c0cf2003c12"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/gate-notes.md",
+      "bytes": 1288,
+      "sha256": "2b6e1cb5a3a07f60876dba1df0744182e61f73a1a61ee3e8157d757584cfc390"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/inventory-before-lock-probe.json",
+      "bytes": 78037,
+      "sha256": "850ef1dbc54cca99a52e776fa006df3dc429b5e3defba02422c7a32704398f24"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/inventory.json",
+      "bytes": 78324,
+      "sha256": "e273465340fb7c654fda7a4c76e4109f615af8b13a2ebb1638122e0821607189"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/report-before-r1.md",
+      "bytes": 12512,
+      "sha256": "37cba95d5e79a961214a50becf72776a1ad5dcfc281dfeed8903895c162fc606"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/task64-r1-lock-probe-compile.log",
+      "bytes": 38589,
+      "sha256": "d7415af19c024b6fb41a1162b3627b0fec6bb769ffadf0cd66f2685f3bd4ca6d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/task64-r1-remote-red.log",
+      "bytes": 15674,
+      "sha256": "ce442a708b04c9f8806fa84ed5bb6d953998ac6b8b360588a8f121160bc13244"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/task64-r1-runner-tests.log",
+      "bytes": 635,
+      "sha256": "c210831535c254b522f6c6ac7e3b6341a4b88bddbca91f1e018c707b58ae46be"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/task64-r1-tests-compile.log",
+      "bytes": 65298,
+      "sha256": "fc55dfe2fe9107e8801a31093f4176e2c6fb2ab61efacd0c572093e55bbd7106"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/pre-red/task64-r1-tests-compile2.log",
+      "bytes": 41470,
+      "sha256": "a32d623a7410f20be958690a536bfcdf61a2514ab930e41b4ed925c995932d50"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/admission-phase.java",
+      "bytes": 18137,
+      "sha256": "7ef3a26c6241417e9e5838f431571ecf402942e1af67dc89229cf70dd8a805ac"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/aggregate-pom.xml",
+      "bytes": 459,
+      "sha256": "36376e01c514912620f3438d3284c0060300a66d9fbe9dc0f1f48f3067d1fec8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/ai.neargo.shop.beauty.port.RemoteManualServiceAdmissionPortTest.xml",
+      "bytes": 37141,
+      "sha256": "221c46c80190dcdc0af93daa44c503c199e804f55f42c22ff9dbbf293c6e4be5"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/ai.neargo.shop.scenario.ManualServiceFinancialIsolationIT.xml",
+      "bytes": 60526,
+      "sha256": "2b7eab819768fea3794798769b00cf2775f8216b0e23505abb7c8cac91d9e6bc"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/cleanup.json",
+      "bytes": 223,
+      "sha256": "1ad20d0f3729f2cdacee572b1339b4689307320712961c6e65119662caf8bc71"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/commands.json",
+      "bytes": 1012,
+      "sha256": "b921627d85be5a6caffab06fd6747159e1c6151d35f193d968abc5ca01fab28a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/phase-provenance.json",
+      "bytes": 28289,
+      "sha256": "e5728c5b19449afd049e8f334c22752236fe8361ac56acc48a4233364f68de53"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/phase-source-class-manifest.json",
+      "bytes": 28289,
+      "sha256": "e5728c5b19449afd049e8f334c22752236fe8361ac56acc48a4233364f68de53"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/post-red-pin-comparison.json",
+      "bytes": 98,
+      "sha256": "b088b77dd01d2c3e6793bbb40f1e41459ff7cf1b272cdaceaad40b8b64bfa6ea"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/r1-red.log",
+      "bytes": 54865,
+      "sha256": "c8e09194dc39c9b3336f0748c1c9881d053b285374af75b8c525544b572b5a5c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/resource.json",
+      "bytes": 242,
+      "sha256": "bcf1f9fd141469d369858562f95200f18c543f6f7d82d064e56244bf1bf59878"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/root-gate.json",
+      "bytes": 69007,
+      "sha256": "129ddf67b820af70301b5b0449fa657ce431daf899b6f3d9b09d03e24c193394"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/runner-result.log",
+      "bytes": 565,
+      "sha256": "075798e8e8257a0f1af0f51ea22abcc607714a499b3579c05f170a0d3a1229fe"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f/summary.json",
+      "bytes": 1045,
+      "sha256": "53b2049c93706dad28be8a5ed63e6512ec93dbaca82f41928aa627187eece4b9"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/admission-phase.java",
+      "bytes": 18137,
+      "sha256": "7ef3a26c6241417e9e5838f431571ecf402942e1af67dc89229cf70dd8a805ac"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/aggregate-pom.xml",
+      "bytes": 459,
+      "sha256": "36376e01c514912620f3438d3284c0060300a66d9fbe9dc0f1f48f3067d1fec8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/ai.neargo.shop.beauty.port.RemoteManualServiceAdmissionPortTest.xml",
+      "bytes": 36819,
+      "sha256": "129b8d26f7465d812d005746703886995ba1e85e5c3ee8afd89e06d1a6adc97d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/ai.neargo.shop.scenario.ManualServiceFinancialIsolationIT.xml",
+      "bytes": 57387,
+      "sha256": "5b31c87618fec1bde2306b5abb1c5c522333020e8eea598ad248f435e1f9a97e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/cleanup.json",
+      "bytes": 223,
+      "sha256": "d01d1f5ce88f802d99a2cbf922523be0e969963a7295ef457ba474dede74faa1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/commands.json",
+      "bytes": 1046,
+      "sha256": "ec8283847acc894bedb329f158e93232aad4de17a478074df7491963de137870"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/phase-provenance.json",
+      "bytes": 28290,
+      "sha256": "39c632342e2bbe53b945e72df6b38b368e4a183ff806568027eaf8b899c64e58"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/phase-source-class-manifest.json",
+      "bytes": 28290,
+      "sha256": "39c632342e2bbe53b945e72df6b38b368e4a183ff806568027eaf8b899c64e58"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/r1-green.log",
+      "bytes": 49225,
+      "sha256": "05c5d3b7f0b5b4b26bfe057f6ee7119076499691248c71485d3354d751fd56b8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/resource.json",
+      "bytes": 242,
+      "sha256": "6642a021a954d8ac22beb3dc0c32f88d8ef36ea7d465e342765a704a3b00a372"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/root-gate.json",
+      "bytes": 68906,
+      "sha256": "50f4283042f142d79645aafb33f4046c3ddf73fa5ea706455984d386c3cb8c2d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/runner-result.log",
+      "bytes": 569,
+      "sha256": "4c0bc322a3d98081bf0dbd417af1a642a6052ada7089033c4ba4171452d2b728"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02/summary.json",
+      "bytes": 1047,
+      "sha256": "d05fe1571aacf619e04849dcab88e737ee0a5bad6f6dbde47c9be5ff6f7a44d0"
+    }
+  ]
+}

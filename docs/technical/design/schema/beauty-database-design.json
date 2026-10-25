@@ -3410,25 +3410,33 @@
     }
   ],
   "manualServiceFoundation": {
-    "status": "PLANNED_TASK64_M1_DESIGN_REVIEWED_NOT_IMPLEMENTED",
+    "status": "IMPLEMENTED_TASK64_M1_CODE_TESTED_REVIEWED_NOT_DEPLOYED",
     "owner": "共用trade/Core订单准入；product/inventory权威库存结果；美业仅编排和投影",
     "design": ".superpowers/sdd/beauty-backend/bm05-offline-core-design.md",
     "candidates": [
       {
         "path": "backend/shop-app/src/main/resources/db/migration/V541__manual_service_admission.sql",
-        "purpose": "共用操作/父子订单不可变admission_kind；人工声明与追加action；独立manual观察/库存原权威清单；同时扩展prd_stock_lock原manifest/源门店/生命周期/确认原号；精确字段以Task64首个实际文件门禁冻结"
+        "purpose": "共用操作/父子订单不可变admission_kind；人工声明与追加action；独立manual观察/库存原权威清单；同时扩展prd_stock_lock原manifest/源门店/生命周期/确认原号；实际7022字节已在首次隔离执行前审查并冻结；不表示营业库升级",
+        "status": "CODE_COMMITTED_ISOLATED_FIXTURE_EXECUTED_NOT_DEPLOYED",
+        "bytes": 7022,
+        "sha256": "9d01ae07c112cfdb350f4950c88fe7bfba8297be2053b26f97961f31175f9400"
       },
       {
         "path": "backend/shop-inventory/src/main/resources/db/inventory/V14__original_stock_disposition.sql",
-        "purpose": "既有库存预留头/行冻结原SKU/源门店/完整manifest及确认原号；真实所有者结果，旧数据不回填为成功"
+        "purpose": "既有库存预留头/行冻结原SKU/源门店/完整manifest及确认原号；真实所有者结果，旧数据不回填为成功；专用disposition_revision：旧NULL、新清单起1、跟踪变更在原预留根锁递增，不给库存基类新增通用version",
+        "status": "CODE_COMMITTED_ISOLATED_FIXTURE_EXECUTED_NOT_DEPLOYED",
+        "bytes": 935,
+        "sha256": "0a84cc624f3dbd7a58eb38067eefa74778a79cc47d34d4127ba751fd3f4c8095"
       },
       {
         "path": "M2：平台V542与美业V9候选（尚未创建）",
-        "purpose": "真实USER/GUEST条件约束及人工来源观察/绑定，不伪造user_no"
+        "purpose": "真实USER/GUEST条件约束及人工来源观察/绑定，不伪造user_no",
+        "status": "CANDIDATE_NOT_CREATED_RECHECK_NUMBER_BEFORE_USE"
       },
       {
         "path": "M3–M4：平台V543/V544与美业V10候选（尚未创建）",
-        "purpose": "来源单位执行许可/真实占用及任务fence，按对应片开工重新核号"
+        "purpose": "来源单位执行许可/真实占用及任务fence，按对应片开工重新核号",
+        "status": "CANDIDATE_NOT_CREATED_RECHECK_NUMBER_BEFORE_USE"
       }
     ],
     "contracts": [
@@ -3436,9 +3444,10 @@
       "MANUAL_OFFLINE只由专用服务器操作持久；旧在线/资产/正式资金来源不能改标签降级。商品/价格/门店/业务资格仍复用，支付渠道配置/资金查询/点数协调不作为人工模式前置。",
       "受权现金经办人+CASH_RECEIVE+trade:manual-service:confirm；原额/CNY/时间/作用域及原键幂等校验，真实声明可推进人工PAID；不调用旧markPaid或发布普通金融已付事件。",
       "原库存命令已接受或void调用成功不等于成功结果；必须读取冻结原权威、生命周期及完整行数量的一致终态；未知保留原号和实收声明，不能ADMITTED。",
-      "人工准入/来源观察与金融回执分开；旧source保持UNKNOWN且不得先查Pay；金额及经办审计按权限裁剪。M1不开放canStart/任务实际占用/履约。",
-      "PAID/paid_at自动结算选择器在LIMIT前排除人工；普通支付/正式线下receipt/售后退款/修复/通用履约入口拒绝人工；原资金路径及SERVICE_EXECUTION旧完成门禁保持。",
-      "部署未执行；状态为计划，不能根据文档中的候选路由/方法或迁移认定已实现。M2临客及绑定→M3数量许可→M4真实占用→M5作业→M6履约关闭→M7具体任务日历。"
-    ]
+      "人工准入/来源观察与金融回执分开；旧source保持UNKNOWN且不得先查Pay；金额及经办审计按权限裁剪。M1不开放canStart/任务实际占用/履约。原订单详情仅业务状态，专用B查询/source提供人工声明；M2前台账单/展示整合必须显式区分人工登记与Pay核验，开放完整现金闭环前完成，M1不声称页面/全部资金看板已实现。",
+      "PAID/paid_at自动结算选择器在LIMIT前排除人工；普通支付/正式线下receipt/售后退款/修复/通用履约入口拒绝人工；原资金路径及SERVICE_EXECUTION旧完成门禁保持。退款编排的实际派发/查询/成功回调核验和现金、点数两类独立资源恢复都须在外部效果前，以短事务按子单优先锁序核对当前来源及原执行/任务身份；导入矛盾原记录持久保留冲突，不得访问Pay、释放/恢复库存或记成功。扫描排除冲突不能替代直接入口门禁；跨所有者IO不持Core根/执行/任务锁，保留普通资金所有者本地事务。",
+      "Task64 M1已完成代码、分版本定向验证和独立审查；正式部署未执行，M2～M7完整核心尚未完成。M2临客及绑定→M3数量许可→M4真实占用→M5作业→M6履约关闭→M7具体任务日历。"
+    ],
+    "codeCommit": "fb8fc86d50a394422be408b94278d50989d8ef8a"
   }
 }

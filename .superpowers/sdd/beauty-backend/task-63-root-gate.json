@@ -310,8 +310,10 @@
   "artifacts": [
     {
       "path": ".superpowers/sdd/beauty-backend/bm05-offline-core-design.md",
-      "bytes": 64282,
-      "sha256": "600d184a23aee2ee313cfcf67eba60a189065f98c113389759bf1247c1c9a093"
+      "bytes": 74495,
+      "sha256": "2f0d7105019fddd9f8c4a7383342e79d50613b44a16e0ee3a11d6c0bb922351b",
+      "reviewedSha256": "600d184a23aee2ee313cfcf67eba60a189065f98c113389759bf1247c1c9a093",
+      "postReviewRootExecutionRuling": true
     },
     {
       "path": ".superpowers/sdd/beauty-backend/task-63-design-report.md",
@@ -331,5 +333,43 @@
   ],
   "testsExecuted": false,
   "nativeExecuted": false,
-  "productImplemented": false
+  "productImplemented": false,
+  "postReviewRootExecutionRuling": {
+    "reason": "Keep independent database stock admission defense; change sole meaningful ablation rather than weaken production constraint",
+    "reviewedDesignSha256": "600d184a23aee2ee313cfcf67eba60a189065f98c113389759bf1247c1c9a093",
+    "currentDesignSha256": "f9460ffa96ef6a885f81c0d60a358fb62a8deb2e68fddaeb671ca0fd810a2c71",
+    "ablation": "SettleSourcePortImpl.paidSubOrdersSince manual exclusion beforeLIMIT / ManualServiceFinancialIsolationIT#manualPaidIsExcludedBeforeSettlementPageLimit",
+    "sixI1RealProviderCasesStillRequired": true,
+    "testsExecutedByRoot": false
+  },
+  "preFirstNativeInventoryRevisionRuling": {
+    "actualFinding": "InvEntity/InvMutableEntity has no numeric version; timestamp/id not a revision",
+    "resolution": "V14 disposition_revision on existing inv_reservation; inventory OwnerLine revision is aggregate version; no generic inventory base change",
+    "appliedBeforeChange": false
+  },
+  "task64AdditionalOpposingWriters": [
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/RefundResultServiceImpl.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/RefundExecutionServiceImpl.java"
+  ],
+  "finitePhaseScope": {
+    "redAndGreen": "seven exact named suites",
+    "ablationAndRestored": "ManualServiceFinancialIsolationIT#manualPaidIsExcludedBeforeSettlementPageLimit"
+  },
+  "manualBoundConfirmRuling": {
+    "legacyHostCashGuardUnchanged": true,
+    "proof": "verified purpose+fullrequestdigest context, installed only after actual machine token+route validation",
+    "authorization": "current canonical scoped CASH_RECEIVE+MANUAL_CONFIRM sameaccount, no HOSTtoken forwarding",
+    "newPath": "backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BoundActionContext.java",
+    "additionalGreenRegression": "BoundDelegatedCallsTest,CheckoutCashPermissionFlowTest#ownerWildcardResolvesActualAccountButDelegationIsNotCurrentCashAuthorization"
+  },
+  "task64FinalSourceRulings": {
+    "responseCorrespondence": "exact original operation/scope/ref/receipt correspondence",
+    "sourceRevisionHash": "actual child/mapping/item revisions; exclude own observation-operation version",
+    "contamination": "direct CHECKOUT_PAYMENT_CONFLICT; recovery existing ADMISSION_CHANGED action with SOURCE_MODE_CONFLICT reason; no stock IO",
+    "validation": "original39/arch17/i18n6/food at originalpins; R1scoped5GREEN; R2scoped2GREEN/current23modulecompile24.918s; allhistoricalboundsretained",
+    "independentTask64Review": "ACCEPTED_R2_WITH_TRACKED_MINORS",
+    "architecture": "independent service interfaces; existing dedicated Port adapters; architecture17PASS",
+    "boundedRecovery": "unchanged pending reschedules original under roots/CAS; final two-original limit1 case passed",
+    "codeCommit": "fb8fc86d50a394422be408b94278d50989d8ef8a"
+  }
 }

@@ -645,7 +645,7 @@ No ServiceTask start/fulfillment enablement or canStart change. Final current fi
 
 ## 现金线下核心：共用人工订单准入（Task64 M1）
 
-PLANNED_TASK64_M1_DESIGN_REVIEWED_NOT_IMPLEMENTED
+IMPLEMENTED_TASK64_M1_CODE_TESTED_REVIEWED_NOT_DEPLOYED
 
 主TDD§0.3/2.41/2.42；ADR050；Task63现金线下核心设计§1–4/8–10；不改变原160目标API编号
 
@@ -666,8 +666,14 @@ MANUAL_OFFLINE只由专用服务器操作持久；旧在线/资产/正式资金�
 
 原库存命令已接受或void调用成功不等于成功结果；必须读取冻结原权威、生命周期及完整行数量的一致终态；未知保留原号和实收声明，不能ADMITTED。
 
-人工准入/来源观察与金融回执分开；旧source保持UNKNOWN且不得先查Pay；金额及经办审计按权限裁剪。M1不开放canStart/任务实际占用/履约。
+人工准入/来源观察与金融回执分开；旧source保持UNKNOWN且不得先查Pay；金额及经办审计按权限裁剪。M1不开放canStart/任务实际占用/履约。原订单详情仅业务状态，专用B查询/source提供人工声明；M2前台账单/展示整合必须显式区分人工登记与Pay核验，开放完整现金闭环前完成，M1不声称页面/全部资金看板已实现。
 
-PAID/paid_at自动结算选择器在LIMIT前排除人工；普通支付/正式线下receipt/售后退款/修复/通用履约入口拒绝人工；原资金路径及SERVICE_EXECUTION旧完成门禁保持。
+PAID/paid_at自动结算选择器在LIMIT前排除人工；普通支付/正式线下receipt/售后退款/修复/通用履约入口拒绝人工；原资金路径及SERVICE_EXECUTION旧完成门禁保持。退款编排的实际派发/查询/成功回调核验和现金、点数两类独立资源恢复都须在外部效果前，以短事务按子单优先锁序核对当前来源及原执行/任务身份；导入矛盾原记录持久保留冲突，不得访问Pay、释放/恢复库存或记成功。扫描排除冲突不能替代直接入口门禁；跨所有者IO不持Core根/执行/任务锁，保留普通资金所有者本地事务。
 
-部署未执行；状态为计划，不能根据文档中的候选路由/方法或迁移认定已实现。M2临客及绑定→M3数量许可→M4真实占用→M5作业→M6履约关闭→M7具体任务日历。
+Task64 M1已完成代码、分版本定向验证和独立审查；正式部署未执行，M2～M7完整核心尚未完成。M2临客及绑定→M3数量许可→M4真实占用→M5作业→M6履约关闭→M7具体任务日历。
+
+远程人工CONFIRM仅在机器凭证和精确路由通过后安装的BoundActionContext中接受：绑定完整原请求digest/作用域/操作，随后查当前CASH_RECEIVE+MANUAL_CONFIRM同一真实账号；上下文finally恢复，不转发HOST或C令牌。HOST入口及原正式现金接口仍要求真实当前会话；通用delegation不能替代现金授权。
+
+绑定返回还须对应完整原操作：所有operation相等，quote/source门店和实体相等，指定subOrder/declaration相等，CONFIRM返回的原method/amount/currency/receivedAt必须相等（不豁免AWAITING_RECEIPT）；结构合法但对应错误仍为依赖不可用。
+
+本地Service接口独立声明方法并引用SPI DTO，由.port适配器实现跨域Port；Service不继承Port。相同待处理观察只延后重试，不改变准入修订、来源摘要或业务事件，避免队首长期未知记录阻塞后续恢复。

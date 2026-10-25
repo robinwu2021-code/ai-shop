@@ -138,11 +138,11 @@ def generate():
               'Current UNKNOWN/BLOCKED does not erase that history. No automatic allocation release; canStart=false.', '']
     manual = schema.get('manualServiceFoundation')
     if manual:
-        lines += ['', '## 现金线下核心：共用订单存储增量（候选，非41项目标扩表）', '', manual['status'], '',
-                  '| Candidate migration | Shared owner purpose |', '|---|---|']
+        lines += ['', '## 现金线下核心：共用订单存储增量（逐项状态，非41项目标扩表）', '', manual['status'], '',
+                  '| Migration / plan | State | Shared owner purpose |', '|---|---|---|']
         for row in manual['candidates']:
-            lines.append(f"| `{row['path']}` | {row['purpose']} |")
-        lines += ['', '原41项表设计及历史迁移不变；不以此表宣称已创建/应用迁移。Task64首次原生测试前root逐文件审查实际SQL/实体/字段/索引及原操作结果合同。', '']
+            lines.append(f"| `{row['path']}` | {row.get('status', 'PLANNED')} | {row['purpose']} |")
+        lines += ['', '原41项表设计不变；M1实际迁移已首文件审查并在隔离结构夹具执行后冻结，不能等同营业库升级或完整历史Flyway验证；后续候选号未创建，开工前重新核号。', '']
         lines += [rule + '\n' for rule in manual['contracts']]
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables

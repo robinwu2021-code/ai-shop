@@ -1098,16 +1098,42 @@ Ruling R1：采纳Pay所有者的订单行/单位受保护预算与永久managed
 
 ### 2.42 Task64：M1共用人工线下服务准入（2026-10-25）
 
-档位2；依据§0.3、功能矩阵BTY-I01/I03/I04/I05、ADR050及[Task63冻结设计](../../.superpowers/sdd/beauty-backend/bm05-offline-core-design.md)§1–4/8–10。本片只交付真实已识别顾客的人工报价→真实C购买确认→共用订单→人工实收声明/库存原操作结果→人工来源及恢复；不提前打开开工。临客M2、真实许可M3、实际占用M4、任务作业M5、履约关闭M6、任务资源日历M7仍须后续完成，不能以本片替代完整美业核心。
+档位2；依据§0.3、功能矩阵BTY-I01/I03/I04/I05、ADR050及[Task63冻结设计](../../.superpowers/sdd/beauty-backend/bm05-offline-core-design.md)§1–4/8–10。Task64 M1已完成代码验收；R1原三项缺口及R2普通退款兼容性问题均经独立复审关闭，仍有四项非阻断跟进，正式部署未执行。本片覆盖已识别顾客的人工报价→真实C购买确认→共用订单→授权实收声明→原库存结果→人工来源查询与恢复，保持canStart=false。后续必须继续M2散客与美业来源绑定、M3数量授权、M4实际资源占用、M5任务作业、M6履约关闭、M7任务资源日历；支付链条后置。
 
-精确类/方法、4条B路由、4条绑定内部协议、DTO、迁移候选、所有相反金融读写者与测试方法按冻结设计§9及[Task64 brief](../../.superpowers/sdd/beauty-backend/task-64-brief.md)实施。接口/方法真源的manualServiceFoundation标记PLANNED；共用订单/库存候选增量另列，不修改原41项或既有迁移。库存命令接受/void返回不作完成证据：冻结原库存权威/生命周期/完整清单，读取实际原操作终态后才ADMITTED；缺失/已释放/迟到/未知均保持关闭，不伪造库存凭证。
+精确类/方法、4条B路由、4条绑定内部协议、DTO及文件范围由[Task64 brief](../../.superpowers/sdd/beauty-backend/task-64-brief.md)和冻结设计§9定义，修复扩展见下节。API/Java/schema的manualServiceFoundation现标记代码/定向验证/独立审查完成、未部署，原49任务/160API/118功能/41美业表基线不变，不把本片新增共用接口冒充全部功能已实现。
 
-- [ ] 实际普通商品/报价/门店/业务资格与真实C购买保持；不可变MANUAL_OFFLINE只由专用服务器路径创建，老来源不能降级。
-- [ ] CASH_RECEIVE及新人工确认权限、原额/币种/时刻/幂等/版本/作用域校验；专用原子人工PAID及MANUAL来源，无Pay/普通金融已付副作用。
-- [ ] 实收声明与库存结果分离，原号持久恢复；旧source无Pay IO且保持金融UNKNOWN，新人工观察及原来源行可查询；服务canStart=false。
-- [ ] PAID自动结算LIMIT前过滤；支付/正式receipt/售后资金退款/修复/通用履约关闭人工入口，保留老资金及managed完工门禁。
-- [ ] 按§9/10 AC真实测试、一次有意义消融及逐字恢复、当前源组合编译、标签/架构/i18n/生成物对账；首次native前root核实际SQL/实体/fixture/runner文件与SHA。
-- [ ] 独立规格/质量审查、§5真实结果与§6真实提交统计；部署统一后置，原P2～P4全目标保留。
+| 能力 | 绑定实施规则 |
+|---|---|
+| 共用商品与订单 | 复用真实商品、报价、门店资格、订单与来源行；仅专用服务器路径创建不可变MANUAL_OFFLINE，不能将老资金来源降级，也不伪造C身份。 |
+| 授权收款 | 当前真实收银员须同时具备CASH_RECEIVE及MANUAL_CONFIRM，复核相同规范账号、金额/币种/时间/幂等/版本/作用域。专用原子人工PAID保留MANUAL来源，Pay字段为空，不发布普通金融已付事件。 |
+| 远端确认 | 保留老HOST收银会话门禁；机器令牌与精确路由验证后才安装短暂BoundActionContext，校验完整原请求digest并在finally恢复。绑定不能替代当前权限，账号切换、错误动作/目的/载荷不得回退HOST。 |
+| 库存原操作 | 实收声明与库存结果分离，冻结原权威/生命周期/完整清单；void返回、排队、SENT或经过时间均非成功。只有实际APPLIED且完整未释放的ALLOCATED/CONSUMED证明才准入；缺失/释放/过期/矛盾暂停，未知继续原号恢复。 |
+| 真实版本与迁移 | V541/V14已首次执行并冻结。库存基类无通用版本，V14的disposition_revision仅跟踪原预留聚合，在头锁下递增；不冒用ID/时间戳。人工hash含实际父/子/稳定排序mapping及item版本，不含自身operation版本；旧金融hash/revision不变。 |
+| 读取与展示范围 | M1新B查询/source返回人工声明及来源；原payResult/detail仅沿现有受限查询返回Core业务状态，不访问Pay/结算，不作为银行回执证明。M2前台/账单必须明确人工登记与金融核验不适用，消费这些专用事实；完整报表展示区分在开放现金闭环前完成，M1不声称已交付页面/全部资金看板。 |
+| 来源与污染 | 旧source不访问Pay且保持金融UNKNOWN；独立人工观察不冒充金融READY。确认/查询/source在外部IO前及根锁/RR内拒绝本地资金请求/决议污染；恢复仅暂停对应原操作，使用ADMISSION_CHANGED动作与SOURCE_MODE_CONFLICT原因，保留真实库存证明。 |
+| 恢复与并发 | Core按父→有序子→操作→声明加锁，跨所有者IO不持Core根锁；原子CAS后才发布。未变化STOCK_PENDING将next_retry_at后移30秒，保持业务revision/hash/action不变，防止首批饥饿；恢复不能用保存的actor重造人工授权。 |
+| 金融隔离 | 自动结算在LIMIT前排除人工父单；支付、正式receipt、普通售后资金退款、修复与通用履约关闭入口保持关闭，包含独立恢复及导入矛盾记录。保留普通资金行为及managed完成门禁。 |
+| 代码规范 | Service接口独立声明方法，不继承SPI Port；现有.port适配器实现端口。新Java按GJF AOSP，旧文件仅改目标区域。无POM/依赖/默认角色/known-*修改。 |
+| 验证与边界 | 实际AC→测试，保留一次真实结算分页过滤消融及逐字恢复；不为RED削弱数据库约束、不重播未改消融。原39项通过证明原候选，R1另补覆盖修复入口的有限验证。当前源组合编译、独立审查与真实提交统计通过后再验收，正式部署统一后置。 |
+
+审查Minor另记：库存观察和按履约发出/释放的锁序须在M4执行开放前统一并用双连接验证；逐片操作/原因/版本、pending年龄及stuck指标须在核心运营验收前补齐；新增全限定工具类型与警告归因在集成前整理。详细历史裁决、失败诊断与哈希保留于本计划ledger，不在本节重复时间线。
+
+#### Task64 R1：关闭实际退款恢复入口（审查未通过）
+
+独立审查确认 I1 退款编排在结果门禁前访问支付、I2 两条独立退款资源恢复可改动人工来源库存、I3 远端确认错误接受无收款字段的 AWAITING_RECEIPT。先修复这三个入口，再验收 M1；保留39项原始通过证据，新增修复验证不能冒充原始结果。精确增加的生产路径：
+
+- backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/BasicRefundExecutionServiceImpl.java
+- backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/RefundExecutionStore.java
+- backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/PointsRefundResourceServiceImpl.java
+- backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/RefundResourceServiceImpl.java
+- backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundExecutionMapper.java
+- backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java
+
+按既有子单根锁核对当前来源及原执行/任务身份，所有跨所有者调用在释放 Core 锁后进行。直接恢复、派发、成功回调核验和独立资源恢复都必须在外部效果前拒绝人工来源。沿用现有错误与原任务，不新增支付能力、表、权限或依赖。CONFIRM 不豁免 AWAITING_RECEIPT；声明字段必须与原请求对应。覆盖真实导入记录、零支付/库存调用、原库存与任务成功字段不变和普通资金来源对照。修复清单见 .superpowers/sdd/beauty-backend/task-64-fix-r1-brief.md。
+
+#### Task64 R2：保留正常全额退款的终态后库存恢复
+
+R1独立复审已确认原I1/I2/I3修复，但新增PointsRefundResourceServiceImpl.guard将原unshipped与当前WAIT_FULFILL等同，误拒绝正常全额退款在REFUNDED终态后的库存收尾。原流程必须保留：真实资源任务准备→真实终态迁移→资源恢复，不能为了美业隔离修改已有收尾顺序。R2只修改该现有Service及现有FinancialIsolationIT/有限runner与测试；其他退款所有者只读。以稳定原任务和实际发出数量等事实核验，不取消manual/身份/租户/hash门禁，不重写原命令。先补一项真实准备与终态顺序正例复现，再与现有人工来源负例做两项GREEN；具体方法、当前类来源及SQL指纹在native前另核。详细要求见本计划task-64-fix-r2-brief.md。 精确正例fullPointsRefundTerminalStillRecoversPreparedOriginalStock通过现有Spring测试辅助调用真实解代理的settleRefundTerminal，由实际状态机落终态；已付/退款计数及COMMITTED/COUPON资金证明为显式夹具，只证明真实终态与库存收尾顺序，不能声称完整资金编排或外部退款通过。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -1161,11 +1187,114 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 不在开始前承诺日历工期。先完成ENG-01/02和DATA-01～04测得真实构建/环境/合同成本，再估后续小切片；P2/P3/P4外部条件单列，不用任务数乘固定人日虚构排期。
 
+### 5.4 Task64 M1代码验收：分版本证据，尚未部署
+
+| 验证项 | 实际结果与边界 |
+|---|---|
+| 原候选 | green-fdcc25ca：39测试/0失败/0错误/0跳过；原69路径候选的人工报价、真实C购买、实收声明、库存结果、来源与恢复。原39项不是当前全部代码重跑。 |
+| R1缺陷复现/修复 | r1-red-d4ba7d41：4测试/3目标断言失败/0错误/0跳过；r1-green-b2a7265e：5/0/0/0。覆盖真实导入矛盾退款编排、独立现金/点数库存恢复、严格CONFIRM返回及普通资金对照。初审I1/I2/I3经复审关闭。 |
+| R2兼容性复现/修复 | r2-red-8295386e：真实终态后资源恢复的1项自身断言失败、0错误/跳过；r2-green-4a0691b6：2/0/0/0。真实准备→实际业务/状态机落REFUNDED→实际库存恢复及幂等成功，人工来源仍拒绝。资金确认/计数为显式夹具，不声称完整外部退款。 |
+| 当前源编译与指纹 | Java21离线当前23模块test-compile BUILD SUCCESS，24.918秒；94源码/夹具与211类指纹在R2后305项全相符。472夹具输入核实。 |
+| 原架构/i18n/餐饮组合 | 原候选Architecture17通过、i18n6通过、food-embedded当前源组合编译41.629秒通过；这些保留原源版本，不冒充R1/R2后重复验证。后续完整集成仍有当前组合关口。 |
+| 有意义消融 | 实际删除结算LIMIT前人工过滤，混合分页自身断言失败；逐字恢复源码/class来源后同项通过。后续未改该过滤的修复没有重复消融。 |
+| 独立审查 | 初审0Critical/3Important/4Minor；R1三项关闭但新增兼容性1Important；R2该项关闭，无新问题。最终规格符合本片范围、质量Approved with nits，0未关闭Critical/Important，四项Minor按期限跟进。 |
+| 迁移和清理 | V5417022字节/V14935字节按原SHA冻结，实际隔离夹具执行不等于营业库发布；所有本任务UUID容器、临时目录与共享锁均已核清理。 |
+
+[实现报告](../../.superpowers/sdd/beauty-backend/task-64-report.md)记录完整命令/XML/来源与历史诊断；[最终复审](../../.superpowers/sdd/beauty-backend/review-task-64-r2.md)及[root门禁](../../.superpowers/sdd/beauty-backend/task-64-root-evidence-gate.json)记录范围。原223、R1的47、R2的32份证据分别保留实际版本，不把重叠测试相加为一套全绿。
+
+验证使用简化结构夹具及真实V539/V540/V541、库存V14，不构成完整历史Flyway或生产拓扑验证。实际平台/库存所有者有MySQL数据源断言，不表示每个测试上下文无H2。原native捕获的backfill空分类缓存键失败与继承的Mapper、开发配置、DNS、动态agent/编译警告保持可见，后续日志的dry-run0不抹去原诊断。实际部署配置、完整迁移及DUAL重启投递在最终集成验证。
+
+下一片仍必须完成M2真实散客开单、人工来源绑定及明确人工登记与Pay核验区别的账单/展示；开工授权、占用、作业、履约及任务资源日历未完成，canStart=false。本片验收不表示完整美业核心可营业。
+
 ## §6 下一次领取任务与本轮交付
 
-**当前交付：BM01～BM03后端模块及历史隔离部署验收完成，分别见§22/25/31。BM04 Task54～59及60A-A1～A11与模块I1修复已完成代码验收，模块代码关口见§32.24；Task61设计与Task62-S0代码关口已通过（§33.2），Task63现金/线下设计已审查，下一片Task64人工准入编码（§0.3/2.42），原Pay S1暂缓；完整BM05开工/作业/履约未交付。BM05作业及BM06完整任务日历尚未交付；全部P1～P4代码完成后统一正式部署。** 后续按§21的BM-05、BM-06等业务模块继续推进。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
+**当前交付：BM01～BM03后端模块及历史隔离部署验收完成，分别见§22/25/31。BM04 Task54～59及60A-A1～A11与模块I1修复已完成代码验收，模块代码关口见§32.24；Task61设计与Task62-S0代码关口已通过（§33.2），Task63现金/线下设计已审查，Task64人工准入代码验收完成（原候选39项、R1定向5项、R2定向2项各按实际源版本记录，§0.3/2.42/5.4/33.5），原Pay S1暂缓；完整BM05开工/作业/履约未交付。BM05作业及BM06完整任务日历尚未交付；全部P1～P4代码完成后统一正式部署。** 后续按§21的BM-05、BM-06等业务模块继续推进。SHR02b来源冻结/容量/替换是BM-03内部开发步骤，实际占用/超时是BM-05内部步骤，不再各自作为对外“大模块交付”。ENG-01/02及已完成数据层不重复实施。
 
 初始计划阶段产物（2026-10-20，非当前工程状态）：本TDD、开发任务JSON、生成任务对照索引和校验器；当时尚未编码。之后实际实现及验收按§7–20逐批记录，当前总览与后续领取以§21为准。
+
+### Task64设计→实现对账（2026-10-25）
+
+代码提交fb8fc86d50a394422be408b94278d50989d8ef8a，精确75路径，8318行新增/241行删除；对应§2.42及R1/R2批准的相反写者扩展，无产品新依赖/角色默认授权。CheckoutMappers实际复用原方法未改，已在设计中纠正。当前接入只识别USER，GUEST与完整美业来源仍属M2，不将接口/目标数量当作实现数量。实际提交统计：
+
+```text
+fb8fc86d50a394422be408b94278d50989d8ef8a feat(trade): add cash and offline manual service admission
+ b-app/src/i18n/locale/ar.ts                                                                                                            |    1 +
+ b-app/src/i18n/locale/en.ts                                                                                                            |    1 +
+ b-app/src/i18n/locale/zh-CN.ts                                                                                                         |    1 +
+ backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckoutClientConfiguration.java  |   16 +++
+ backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPort.java     |  137 ++++++++++++++++++
+ backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPortTest.java |  394 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/shop-app/src/main/java/ai/neargo/shop/invbridge/InventoryMirrorConsumer.java                                                   |   23 ++-
+ backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/DualWriteStockPort.java                                                   |   23 +--
+ backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/InventoryStockPort.java                                                   |   25 +++-
+ backend/shop-app/src/main/java/ai/neargo/shop/invbridge/port/OriginalStockDispositionPort.java                                         |  102 ++++++++++++++
+ backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalManualServiceAdmissionController.java                            |  137 ++++++++++++++++++
+ backend/shop-app/src/main/resources/db/migration/V541__manual_service_admission.sql                                                    |  128 +++++++++++++++++
+ backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualServiceAdmissionIT.java                                                   |  784 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualServiceAdmissionProtocolTest.java                                         |   74 ++++++++++
+ backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualServiceFinancialIsolationIT.java                                          | 1126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualStockDispositionIT.java                                                   |  535 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BizPerms.java                                                                 |    4 +
+ backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BoundActionContext.java                                                       |   58 ++++++++
+ backend/shop-base-auth/src/main/java/ai/neargo/shop/auth/BoundDelegatedCalls.java                                                      |    9 +-
+ backend/shop-base-auth/src/test/java/ai/neargo/shop/auth/BoundDelegatedCallsTest.java                                                  |   68 +++++++++
+ backend/shop-base/src/main/java/ai/neargo/shop/spi/product/StockDispositionContract.java                                               |  128 +++++++++++++++++
+ backend/shop-base/src/main/java/ai/neargo/shop/spi/product/StockDispositionPort.java                                                   |  117 +++++++++++++++
+ backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionEvents.java                                             |   47 +++++++
+ backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionInternalApi.java                                        |   60 ++++++++
+ backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionPort.java                                               |  279 ++++++++++++++++++++++++++++++++++++
+ backend/shop-core/src/main/java/ai/neargo/shop/product/entity/PrdStockLock.java                                                        |    9 ++
+ backend/shop-core/src/main/java/ai/neargo/shop/product/mapper/ProductMappers.java                                                      |   15 +-
+ backend/shop-core/src/main/java/ai/neargo/shop/product/port/StockPortImpl.java                                                         |  175 ++++++++++++++++-------
+ backend/shop-core/src/main/java/ai/neargo/shop/product/service/StockDispositionService.java                                            |   12 ++
+ backend/shop-core/src/main/java/ai/neargo/shop/product/service/impl/StockDispositionServiceImpl.java                                   |  268 +++++++++++++++++++++++++++++++++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/api/biz/BizManualServiceAdmissionController.java                                  |  104 ++++++++++++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdCheckoutOperation.java                                                  |    6 +
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdManualServiceAdmission.java                                             |   53 +++++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdManualServiceAdmissionAction.java                                       |   25 ++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdOrder.java                                                              |    7 +
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdSubOrder.java                                                           |    5 +
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/job/ManualServiceAdmissionRecoveryJob.java                                        |   63 +++++++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ManualAdmissionMapper.java                                                 |  150 ++++++++++++++++++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/AfterSaleSlotMapper.java                                             |    6 +-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundExecutionMapper.java                                           |   24 +++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java                                          |   15 +-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/StatusCasMapper.java                                                 |   60 +++++---
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/RefundExecutionStore.java                                    |   81 ++++++++++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/BasicRefundExecutionServiceImpl.java                    |   22 ++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/PointsRefundResourceServiceImpl.java                    |  302 +++++++++++++++++++++++++++++++++------
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/RefundExecutionServiceImpl.java                         |   19 ++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/RefundPreparationServiceImpl.java                       |   11 +-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/RefundResourceServiceImpl.java                          |   33 +++--
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/RefundResultServiceImpl.java                            |   22 ++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutPricingScope.java                                    |   31 +++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java                                      |   21 ++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/ExpectedCheckoutQuote.java                                   |   26 +++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/OrderStockAllocator.java                                     |   13 +-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/OrderCreationRecoveryServiceImpl.java                   |   17 ++-
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ManualServicePurchasePolicy.java                                           |   39 +++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/port/ManualServiceAdmissionPortImpl.java                                          |   42 ++++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/port/SettleSourcePortImpl.java                                                    |   80 ++++++++---
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/service/CheckoutService.java                                                      |    5 +
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/service/ManualServiceAdmissionService.java                                        |   34 +++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutPaymentServiceImpl.java                                      |    4 +
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java                                             |   89 ++++++++++--
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java                               | 1213 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OfflineReceiptServiceImpl.java                                       |    4 +
+ backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java                                                |   65 ++++++++-
+ backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/entity/InvReservation.java                                               |    9 ++
+ backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/entity/InvReservationLine.java                                           |    6 +
+ backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryMappers.java                                             |   19 ++-
+ backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/ReservationDispositionService.java                               |   14 ++
+ backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/ReservationService.java                                          |   16 ++-
+ backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/ReservationDispositionServiceImpl.java                      |  441 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/ReservationServiceImpl.java                                 |  149 ++++++++++++++++++--
+ backend/shop-inventory/src/main/resources/db/inventory/V14__original_stock_disposition.sql                                             |   16 +++
+ packages/shared/tests/checkout-cash-permission.test.ts                                                                                 |   17 +++
+ scripts/tests/manual-service-admission-runner.test.mjs                                                                                 |   76 ++++++++++
+ scripts/verify-manual-service-admission.mjs                                                                                            |  349 +++++++++++++++++++++++++++++++++++++++++++++
+ 75 files changed, 8318 insertions(+), 241 deletions(-)
+```
 
 ### Task62设计→实现对账（2026-10-25）
 
@@ -1854,7 +1983,7 @@ BM-06当前属于后端计划，部署验证必须提供真实任务/占用数�
 未配置来源拒绝；未知结果不凭TTL解冻；相反写者共用根锁；改约失败保旧，三行业不拥有不同的容量权威。
 BM-03所需投影/恢复提前纳入，不能因为原编号为02b-6而拖到全部实际作业实现后。
 
-**当前BM-04收尾与BM-05前置：** Task54～59代码阶段验收见§32，60A-A1～A11和模块I1修复已验收，代码关口见§32.24，Task61设计与Task62-S0代码关口已通过（§33.2），Task63现金/线下设计已审查，下一片Task64人工准入编码（§0.3/2.42），原Pay S1暂缓；实际部署统一后置（§0.2）。60A代码审查和编译通过后进入下述BM-05内部顺序，开工前仍须冻结真实许可、占用、数量及履约合同，不重做已验收的接待/来源内核。
+**当前BM-04收尾与BM-05前置：** Task54～59代码阶段验收见§32，60A-A1～A11和模块I1修复已验收，代码关口见§32.24，Task61设计与Task62-S0代码关口已通过（§33.2），Task63现金/线下设计已审查，Task64人工准入代码验收完成（原候选39项、R1定向5项、R2定向2项各按实际源版本记录，§0.3/2.42/5.4/33.5），原Pay S1暂缓；实际部署统一后置（§0.2）。60A代码审查和编译通过后进入下述BM-05内部顺序，开工前仍须冻结真实许可、占用、数量及履约合同，不重做已验收的接待/来源内核。
 
 **BM-05内部技术顺序（§0.3最新）：** 人工线下业务准入/真实开工许可（暂不接Pay）→预约单位交接实际占用→开放占用/结束清洁释放→超时阻断/活动调整→任务工作流/参与/数量→履约与关闭联验。
 实际占用与超时不再作为BM-03基础预约完成前的统一阻塞；缺这些能力时，实际开工入口继续门控。
@@ -2517,3 +2646,12 @@ root核对148证据hash、24产品、95当前测试源码/class、七批XML和�
 ### 33.4 Task63现金线下设计关口
 
 已完成实际共用订单/客户/资金读写者审计和M1～M7切片。独立设计审查I1指出StockPort.confirm返回不能证明库存完成；同一设计任务修复为实际原库存结果合同后接受。设计关口只核设计及源代码指纹，未执行产品测试、构建、迁移或部署。Task62人员事实保持已验收；旧Pay S1仍暂缓。下一编码片为§2.42 Task64，不是原支付保护片。
+
+
+### 33.5 Task64人工线下准入代码关口
+
+Task64 complete：代码fb8fc86d50a394422be408b94278d50989d8ef8a，最终独立复审通过，0Critical/Important未关闭。新增4B+4绑定内部方法、共用实收声明/真实原库存准入及恢复、旧资金链隔离；R1关闭导入退款入口及CONFIRM错配，R2恢复普通全额退款终态后的库存收尾兼容性。分版本真实验证见§5.4，未正式部署、未打开服务开工。
+
+四项跟进保留：M4开放执行前统一库存头/行锁序并双连接验证；核心运营完成前补齐逐片pending年龄/stuck及原因/版本观测；集成前修正新增工具类全限定引用；最终环境验证保留并处理启动/配置警告。M2账单与显示必须区分人工登记和金融核验，完整历史Flyway/实际组合启动/DUAL投递在最终集成验证，不以本片结果代替。
+
+下一任务：基于本片真实已提交模型冻结M2实施方案，先共用真实USER/GUEST柜台购买/订单与归属隐私，再美业人工来源观察/绑定/账单，恢复受支持商户优惠；依然不接Pay链条。
