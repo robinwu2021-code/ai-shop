@@ -1,5 +1,7 @@
 package ai.neargo.shop.report.config;
 
+import java.util.Objects;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** 报表库的配置。照 {@code JobStoreProperties} 的形状，前缀换成 {@code shop.report}。 */
@@ -12,6 +14,14 @@ public class ReportStoreProperties {
     private String flywayLocations = "classpath:db/report";
 
     private boolean flywayEnabled = true;
+
+    public enum InitializationMode { STRICT, ISOLATED }
+
+    public enum InitializationRole { VALIDATOR, MIGRATOR }
+
+    private InitializationMode initializationMode = InitializationMode.STRICT;
+
+    private InitializationRole initializationRole = InitializationRole.VALIDATOR;
 
     private final Datasource datasource = new Datasource();
 
@@ -62,6 +72,18 @@ public class ReportStoreProperties {
     public int getRollbackDays() { return rollbackDays; }
 
     public void setRollbackDays(int rollbackDays) { this.rollbackDays = rollbackDays; }
+
+    public InitializationMode getInitializationMode() { return initializationMode; }
+
+    public void setInitializationMode(InitializationMode mode) {
+        this.initializationMode = Objects.requireNonNull(mode);
+    }
+
+    public InitializationRole getInitializationRole() { return initializationRole; }
+
+    public void setInitializationRole(InitializationRole role) {
+        this.initializationRole = Objects.requireNonNull(role);
+    }
 
     public Datasource getDatasource() { return datasource; }
 }

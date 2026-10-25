@@ -3,7 +3,9 @@ package ai.neargo.shop.report.config;
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
-import org.flywaydb.core.Flyway;
+import ai.neargo.shop.report.dao.ReportDailyGoodsDao;
+import ai.neargo.shop.report.dao.ReportDailyStoreDao;
+import ai.neargo.shop.report.dao.ReportWatermarkDao;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -71,14 +73,14 @@ public class ReportDataSourceConfig {
     }
 
     /**
-     * 报表库迁移跑完了的**凭证**。
+     * 报表库初始化句柄。READY须读取initializer状态，不能仅以此bean存在为依据。
      *
      * <p><b>刻意不是 {@code Flyway} 类型</b>：Boot 的 {@code FlywayAutoConfiguration}
      * 挂着 {@code @ConditionalOnMissingBean(Flyway.class)}，容器里只要出现任何一个
      * {@code Flyway} bean，它就整体退让 —— <b>平台自己的迁移会悄悄一次都不跑</b>，
      * 库停在打开这个模块那一天的版本，且零报错。
      */
-    public record ReportMigrated(String historyTable) {}
+    public record ReportMigrated(String historyTable, ReportStorageInitializer initializer) {}
 
     /**
      * 迁移在数据源之后、JdbcClient 之前跑 ——
@@ -88,44 +90,43 @@ public class ReportDataSourceConfig {
     ReportMigrated reportFlyway(@Qualifier("reportDataSource") DataSource reportDataSource,
                                 ReportStoreProperties props) {
         mustBeOwnDataSource(reportDataSource);
-        Flyway flyway = Flyway.configure()
-                .dataSource(reportDataSource)
-                .locations(props.getFlywayLocations())
-                .table(HISTORY_TABLE)
-                .baselineOnMigrate(true)
-                .baselineVersion("0")
-                .load();
-        if (props.isFlywayEnabled()) {
-            flyway.migrate();
+        ReportStorageInitializer initializer = new ReportStorageInitializer(reportDataSource, props);
+        if (props.getInitializationMode() == ReportStoreProperties.InitializationMode.STRICT) {
+            initializer.initialize();
         }
-        return new ReportMigrated(HISTORY_TABLE);
+        return new ReportMigrated(HISTORY_TABLE, initializer);
+    }
+
+    @Bean
+    ReportStorageInitializer reportStorageInitializer(ReportMigrated reportFlyway) {
+        return reportFlyway.initializer();
     }
 
     @Bean
     JdbcClient reportJdbcClient(@Qualifier("reportDataSource") DataSource reportDataSource,
                                 ReportMigrated reportFlyway) {
-        return JdbcClient.create(reportDataSource);
+        return JdbcClient.create(reportFlyway.initializer().guardedDataSource());
     }
 
     @Bean
-    ai.neargo.shop.report.dao.ReportDailyStoreDao reportDailyStoreDao(JdbcClient reportJdbcClient) {
-        return new ai.neargo.shop.report.dao.ReportDailyStoreDao(reportJdbcClient);
+    ReportDailyStoreDao reportDailyStoreDao(@Qualifier("reportJdbcClient") JdbcClient reportJdbcClient) {
+        return new ReportDailyStoreDao(reportJdbcClient);
     }
 
     @Bean
-    ai.neargo.shop.report.dao.ReportDailyGoodsDao reportDailyGoodsDao(JdbcClient reportJdbcClient) {
-        return new ai.neargo.shop.report.dao.ReportDailyGoodsDao(reportJdbcClient);
+    ReportDailyGoodsDao reportDailyGoodsDao(@Qualifier("reportJdbcClient") JdbcClient reportJdbcClient) {
+        return new ReportDailyGoodsDao(reportJdbcClient);
     }
 
     @Bean
-    ai.neargo.shop.report.dao.ReportWatermarkDao reportWatermarkDao(JdbcClient reportJdbcClient) {
-        return new ai.neargo.shop.report.dao.ReportWatermarkDao(reportJdbcClient);
+    ReportWatermarkDao reportWatermarkDao(@Qualifier("reportJdbcClient") JdbcClient reportJdbcClient) {
+        return new ReportWatermarkDao(reportJdbcClient);
     }
 
     @Bean
     PlatformTransactionManager reportTransactionManager(
-            @Qualifier("reportDataSource") DataSource reportDataSource) {
-        return new DataSourceTransactionManager(reportDataSource);
+            ReportStorageInitializer initializer) {
+        return new DataSourceTransactionManager(initializer.guardedDataSource());
     }
 
     /**
