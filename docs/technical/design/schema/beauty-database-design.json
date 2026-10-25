@@ -3430,7 +3430,7 @@
       },
       {
         "path": "backend/shop-app/src/main/resources/db/migration/V542__shared_manual_order_customer_party.sql",
-        "status": "DESIGN_REVIEWED_CANDIDATE_NOT_CREATED_RECHECK_NUMBER_BEFORE_USE",
+        "status": "TASK66_CODE_ACCEPTED_ISOLATED_SQL_EXECUTED_FORMAL_DEPLOY_PENDING",
         "purpose": "六项共用交易聚合USER/GUEST条件约束（包含V541 admission.buyer_no）、confirmation authority/namespace与counter intent原号；会员仅增加当前认领索引，无购买见证表"
       },
       {

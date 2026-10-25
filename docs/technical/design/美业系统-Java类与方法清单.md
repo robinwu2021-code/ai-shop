@@ -1518,7 +1518,7 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 
 ## 柜台购买与人工来源增量（Task65 M2：设计已审查，尚未实现）
 
-DESIGN_REVIEWED_TASK65_NOT_IMPLEMENTED_NOT_DEPLOYED
+M2A_CODE_ACCEPTED_M2B_M2C_PLANNED_NOT_DEPLOYED
 
 共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认；USER/GUEST无需C会话，会员只提供权威身份与当前认领读取权。仍未实现，未打开服务开工。
 
@@ -1568,6 +1568,9 @@ DESIGN_REVIEWED_TASK65_NOT_IMPLEMENTED_NOT_DEPLOYED
 | `ai.neargo.shop.spi.marketing.CampaignPort` | `void commitCounter(CustomerParty party, String orderNo, Discount discount)` |
 | `ai.neargo.shop.promotion.service.ActivityPricingService` | `void rejectUnsupportedCounterChoices(List<MerchantAmount> amounts, Map<String,String> choices)` |
 | `ai.neargo.shop.promotion.service.ActivityPricingService` | `void rejectUnsupportedCounterPriceEffects(Collection<String> skus)` |
+| `ai.neargo.shop.spi.member.GuestRegistrationPort` | `ClaimedCustomer resolveClaimedCustomer(Scope scope, String guestNo, String claimToken)` |
+| `ai.neargo.shop.spi.product.StockDispositionPort` | `ReleaseView releaseOriginal(ReservationLookup request)` |
+| `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCustomerResolver` | `CounterCustomerResolution resolveBound(CheckoutScope scope, PrepareCounterReq request)` |
 
 实施顺序：M2a柜台购买/类型化顾客/原库存/认领隐私→M2b人工观察/绑定/账单→M2c既有商家FULL_CUT；原49任务/160API/118功能/41表目标计数保持，以下是另列共用增量计划，不是已注册接口。
 
@@ -1584,3 +1587,17 @@ MANUAL_EXISTING使用ManualSourceFacts身份重载，支持M1 USER/C及counter U
 初期优惠仅既有mkt_campaign FULL_CUT，复用原分摊及最终经济封印；账户/积分/卡券/pmt/FLASH/GIFT不支持时明确拒绝，不静默丢弃，不允许零价。
 
 所有具体DTO/Controller/Service/Mapper、候选字段、旧写兼容、AC→方法和有限验证见[冻结实施设计](../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md)。服务接口独立声明，不能extends SPI Port。M3许可/M4占用/M5作业/M6履约/M7日历后续，Pay链条暂缓。
+
+Task66源码修正（待代码审查，非Task65追认）：Guest.claim不创建门店会员，显式CLAIMED_GUEST selector经现有会员核验原token/CLAIMED/当前active user后解析为USER，无C会话、不自动建membership/person、不把guest号放member号；既有GUEST报价不改。完整约束与真实无会员用例见[Task66 brief](../../../.superpowers/sdd/beauty-backend/task-66-brief.md)末尾。
+
+Task66源码补充（待代码审查，非Task65追认）：原号补偿新增StockDispositionPort.releaseOriginal(ReservationLookup):ReleaseView，按冻结authority调用原所有者；仅完整真实RELEASED/EXPIRED证明可终结。既有intent status/版本化JSON保存COMPENSATING/RELEASED及原证据，无新DDL；DUAL原预留/释放须复用既有shadow outbox生产。完整合同见Task66 brief末尾。
+
+Task66实际嵌套调用修正（待代码审查）：HOST CounterCustomerOwnerBridge先验证完整COUNTER_PREPARE，再经实际会员Controller的既有token-first绑定生命周期调用不同会员目的，逐字核对原请求/返回并恢复外层证明。Core仅在真实bound USER/CLAIMED_GUEST场景消费该resolver，缺桥关闭；不修改generic auth、造会话或放宽目的，不新增HTTP/secret/角色。
+
+Task66收银交接修正（待代码审查）：已确认原订单的place幂等键使用经核对的原operation/confirmation authority namespace；当前收银员仍独立通过全部现时权限/账号/门店及IO后复核。允许A待恢复→授权B继续原订单及双方重试，不改原接受人、顾客或凭据，不允许更换requestKey/payload；真实回归先取得业务断言RED。
+
+Task66实际映射修正（待代码审查）：真实同事务诊断确认SQL空identity_revision被实体初值1覆盖；六个可空映射字段移除误导初值，旧普通创建入口显式保留revision1，counter USER保持真实空值、GUEST保持所有者revision。精确补充PaymentDraftFactory/OrderDraftFactory两个兼容修改点，不改已执行迁移、全局MyBatis配置或报价一致性门禁。
+
+Task66实际库存诊断修正（待代码审查）：DUAL原所有者预留在空category缓存键异常后回滚，CategoryServiceImpl缓存仅排除null/blank，保留其既有null返回与库存默认策略；ReservationServiceImpl的HELD取消/过期必须在原inv事务内真实写回每行releasedQty=qty并核验balance/line/head各1行，失败全回滚、终态重试无重复释放，tracked revision沿原规则只增一次。保留严格ReleaseView，不修造旧终态数量、不改已执行DDL、库存路由或Outbox。
+
+Task66独立审查I1修复：readCounterQuote在共用所有者边界必须验证完整COUNTER_READ/InternalCall<Scoped<OperationRef>>（当前身份、endpoint/action/target、完整scope/body），无bound时必须真实MERCHANT token/session校验；继续仅要求CHECKOUT_PREPARE和ORDER_VIEW及当前账号/门店，不追加CASH_RECEIVE/MANUAL_CONFIRM，不改变授权新收银员读取原订单的能力。读取前拒绝原始delegation、错误purpose/body/operation/scope。复用既有策略的完整绑定/真实token逻辑，保持其他购买/收款权限与既有哈希。

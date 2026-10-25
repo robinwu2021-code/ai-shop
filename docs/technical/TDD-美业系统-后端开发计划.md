@@ -1156,11 +1156,31 @@ R1独立复审已确认原I1/I2/I3修复，但新增PointsRefundResourceServiceI
 
 ### 2.44 Task66：M2a共用柜台购买与顾客归属编码（2026-10-26）
 
-档位2；依据§2.43已审查设计与§0.3现金优先。按[Task66 brief](../../.superpowers/sdd/beauty-backend/task-66-brief.md)及[精确文件清单](../../.superpowers/sdd/beauty-backend/task-66-release-inventory.json)编码：7个候选产品新文件（含V542）、65个既有修改路径，另列有限测试/runner；M2c相关所有者本片仅补齐零优惠fail-closed依赖，不提前开放满减。真实USER通过现有member→person→active-user所有者解析，不查跨域表或要求C凭证；guest使用现有权威事实。
+档位2；依据§2.43已审查设计与§0.3现金优先。按[Task66 brief](../../.superpowers/sdd/beauty-backend/task-66-brief.md)及[精确文件清单](../../.superpowers/sdd/beauty-backend/task-66-release-inventory.json)编码：8个实际产品新文件（含V542与HOST会员调用桥）、70个既有修改路径，另列有限测试/runner；M2c相关所有者本片仅补齐零优惠fail-closed依赖，不提前开放满减。真实USER通过现有member→person→active-user所有者解析，不查跨域表或要求C凭证；guest使用现有权威事实。
 
-本片完成柜台报价/当面确认/原订单与库存恢复、当前认领及Core订单读取隐私。A6的美业MP155由本片提供会员证明生产方，实际消费与B3在M2b；A1实际任务canStart=false也由M2b绑定用例证明，本片不虚构Core开工字段。统一编译所有受影响消费者，因共用writer重构额外复验原M1真实C购买单项；不重复全M1/BM04。M2b来源/账单、M2c优惠与M3–M7仍后续。
+本片范围为柜台报价/当面确认/原订单与库存恢复、当前认领及Core订单读取隐私；Task66代码阶段已验收，正式部署后置。A6的美业MP155由本片提供会员证明生产方，实际消费与B3在M2b；A1实际任务canStart=false也由M2b绑定用例证明，本片不虚构Core开工字段。统一编译所有受影响消费者，因共用writer重构额外复验原M1真实C购买单项；不重复全M1/BM04。M2b来源/账单、M2c优惠与M3–M7仍后续。
 
-V542开工重核号，首实际SQL、fixture/runner/当前类与源指纹由root审查后才有限批准隔离native；当前gate=false，不授权部署或支付。具体接口/并发/普通资金兼容/行为消融均沿冻结设计和brief；发现新增依赖先补精确清单，不默改旧迁移。
+原订单收银交接：已确认的place幂等键须沿原operation/confirmation authority namespace，授权新收银员可以继续待恢复订单及重试；当前权限/账号仍逐次及IO后复核，原接受人证据不变。已真实复现当前actor进入place key的冲突并修复；定向MySQL单项已通过A待恢复→授权B建单→双方重试、原确认不变及一次库存效果，其余AC分片已取得通过证据，独立代码审查及I1复审已通过。
+
+实际诊断确认：counter USER的SQL空identity_revision在MyBatis重载时被实体初始化值1覆盖，导致报价一致性冲突。Task66移除六个可空映射字段的误导默认值，并在真实旧创建所有者显式保留revision1；为普通草稿兼容精确增加PaymentDraftFactory/OrderDraftFactory两个现有修改路径。未修改已执行迁移、全局映射配置或报价门禁；六个实际Mapper的NULL/真实版本与旧普通入口对照已通过。
+
+认领顾客补充：实际Guest.claim不创建门店会员/人档，故新增明确CLAIMED_GUEST身份选择，使用原guest/token由共用会员核验CLAIMED及当前active user后产生USER购买party；不伪造memberNo，不强迫C会话，不自动建档。原GUEST报价仍保留，已认领的新GUEST选择仍拒绝；完整DTO、私有绑定目的和真实无membership用例见Task66 brief末尾。此为源码事实修正，随Task66代码审查，不能冒充Task65已审范围。
+
+补充实际部署接线：BeautyMerchantClientConfiguration两处会员适配器构造补用既有internal-token创建InternalBindings；不依赖受ConditionalOnMissingClass排除的Channel配置所提供的bean，不新增配置/secret。新增真实配置构造的定向协议测试，未做实际打包启动。
+
+V542已重核版本并创建；root逐字核对实际SQL、修正可空条件约束并核验fixture/runner/当前类与源指纹后，已在本任务隔离MySQL9.7.2结构性夹具上完成首次执行。原生验证逐次经独立单次gate执行，现均已消费为false，不自动授权其他native、部署或支付；这不是完整历史Flyway升级验证。
+
+当前分片证据按实际快照记录：会员当前认领所有者单项、柜台实际会员及无会员档案已认领顾客身份桥接单项分别通过。真实柜台购买A1单项已验证会员与散客的报价→当面确认→共用订单→原库存→现金收款声明→人工来源，六个实际Mapper读回版本分别为USER空、GUEST真实1，并保留原C确认人工购买六版本1对照（1项、0失败/错误/跳过）。当前远程协议/配置8项通过，31模块联合编译包括美业5模块与餐饮5模块；各批证据按快照分别记录。换班续单、库存并发恢复及本片其余AC已按以下独立快照取得通过证据；行为消融已完成，独立代码审查及I1复审已通过，不代表整个M2a验收或美业核心完成；来源账单/MP155、M2c与M3–M7仍未完成。
+
+实际库存诊断（2项业务断言失败、0error/skip）确认DUAL预留在空类目缓存键异常后回滚，库存取消则head已释放/余额归零但行released_qty仍0。精确补充CategoryServiceImpl/ReservationServiceImpl两个现有修改点（总允许70），按原缓存空值语义与HELD原事务修复，balance/line/head真实写入各1行、失败回滚、取消/过期/重复调用兼容；不放宽ReleaseView或修造旧终态证明。首次其余29项实际17通过/6失败/6错误；精确修复后只复验失败12项并增加两个库存所有者控制，实际11通过/1失败/2错误；再修正测试的真实Mapper代理调用、清理及OFFLINE输入，仅剩余3项复验通过。通过证据按各自真实快照保留，不将分片相加伪称一次全套运行。完整USER/GUEST人工收款后退款/积分/恢复/结算/修复隔离、原库存取消/过期/重放和3种写入失败回滚均有实际通过证据。
+
+A2行为消融只移除会员查询后的当前收银员复核3行，实际单项出现自身断言失败（0error/skip）；finally逐字恢复源码并真实完成31模块编译，目标及4个内部类均与原备份一致。独立冷启动同一用例恢复后1项通过、0失败/错误/跳过；各次资源清理均经root独立核对。当前仅待代码阶段最终关口，正式构件启动、完整历史迁移、实际支付及正式部署未主张完成。
+
+架构首轮17项中1项将HOST桥使用的JSON ObjectMapper误判为持久化Mapper；餐饮/美业架构类因reactor停止尚未执行。精确追加既有ArchitectureTest测试文件（现有测试修改1→2），只纠正该JSON编解码类型分类，并加入同一规则对真实持久化Mapper的拒绝及JSON允许控制；不修改产品摘要/包路径、架构基线或SQL所有者边界。修正规则后实际三组架构检查通过：零售宿主18项、美业13项、餐饮13项，均0失败/错误/跳过；Maven26.602s BUILD SUCCESS。产品字节、摘要和路径未改。
+
+独立初审规格FAIL/质量CHANGES_REQUIRED，0Critical/1Important/0Minor：柜台报价读取所有者缺少完整COUNTER_READ证明或真实本机token校验。按原CHECKOUT_PREPARE/ORDER_VIEW读取权限补齐，不引入收款/人工确认权限。实际原生单项先在合法读取正例后取得自身断言RED，再以相同测试取得GREEN：真实仅两权限的不同账号可本机/绑定读取，无凭证委托、错purpose/operation/scope及撤权均拒绝，原报价不变。31模块41.072s编译通过；当前宿主架构18项0失败/错误/跳过，Maven46.875s通过，未改动的美业/餐饮架构证据分别保留13项通过。原prepareCounter6237字节保持不变，不重复历史消融。原审查者限定复审I1 ADDRESSED，规格PASS/质量APPROVED，0新增Critical/Important/Minor；Task66代码阶段验收，M2b按新基线另行发布。
+
+Task66产品提交c4b8eb3640213b250c852135b21484f8c5f4fa95，精确85文件，提交blob逐项匹配已审候选。最终[复审](../../.superpowers/sdd/beauty-backend/review-task-66-r1.md)与[root验收记录](../../.superpowers/sdd/beauty-backend/task-66-code-acceptance-root-gate.json)闭合I1；未关闭问题0。完整原生证据按18个实际分片保留，正式部署/历史升级/DUAL完整投递及后续美业执行仍按关口推进。
 
 ## §3 数据层之后的业务任务与启动深化
 
@@ -2682,3 +2702,9 @@ Task64 complete：代码fb8fc86d50a394422be408b94278d50989d8ef8a，最终独立�
 四项跟进保留：M4开放执行前统一库存头/行锁序并双连接验证；核心运营完成前补齐逐片pending年龄/stuck及原因/版本观测；集成前修正新增工具类全限定引用；最终环境验证保留并处理启动/配置警告。M2账单与显示必须区分人工登记和金融核验，完整历史Flyway/实际组合启动/DUAL投递在最终集成验证，不以本片结果代替。
 
 下一任务：Task65 M2实施设计已独立复审通过（§2.43），进入Task66 M2a共用真实USER/GUEST柜台购买/订单与归属隐私编码，再美业人工来源观察/绑定/账单、受支持商户优惠；依然不接Pay链条。
+
+### 33.6 Task66共用柜台购买与归属隐私代码关口
+
+产品c4b8eb3640213b250c852135b21484f8c5f4fa95，85文件已与审查快照逐项核对。支持真实USER/GUEST和已认领散客识别、当面购买确认、原订单与原库存恢复、现金收款声明、当前认领读取隐私及资金链隔离；复用零售核心商品/订单，未创建美业资金账。独立初审1Important已通过真实RED/GREEN修复，限定复审规格PASS/质量APPROVED，0未关闭问题。当前31模块编译、宿主18项架构及独立分片验证通过，未变的美业/餐饮13+13项证据保留。
+
+下一步Task67：美业人工来源观察、原单绑定、账单区分人工与资金核验、MP155当前认领读权限，以及真实V8→V9原行兼容控制。M2c与M3–M7随后；保持现金/线下优先，正式部署统一后置。

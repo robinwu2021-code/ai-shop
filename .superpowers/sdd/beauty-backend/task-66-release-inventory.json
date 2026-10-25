@@ -6,9 +6,11 @@
     "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterPurchaseAuthorization.java",
     "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/CounterOrderPlacementServiceImpl.java",
     "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/CustomerReadScope.java",
-    "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/OrderCustomerAccess.java"
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/OrderCustomerAccess.java",
+    "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/CounterCustomerOwnerBridge.java"
   ],
   "modify": [
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyMerchantClientConfiguration.java",
     "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteCustomerIdentityPort.java",
     "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteGuestRegistrationPort.java",
     "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPort.java",
@@ -73,7 +75,11 @@
     "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
     "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
     "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/ReservationDispositionService.java",
-    "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/ReservationDispositionServiceImpl.java"
+    "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/ReservationDispositionServiceImpl.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/PaymentDraftFactory.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/OrderDraftFactory.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/product/service/impl/CategoryServiceImpl.java",
+    "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/service/impl/ReservationServiceImpl.java"
   ],
   "createTestAndRunner": [
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterPurchaseIT.java",
@@ -86,14 +92,28 @@
     "scripts/tests/manual-counter-source-runner.test.mjs"
   ],
   "modifyTest": [
-    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualServiceFinancialIsolationIT.java"
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualServiceFinancialIsolationIT.java",
+    "backend/shop-app/src/test/java/ai/neargo/shop/arch/ArchitectureTest.java"
   ],
   "conditionalConstructorOnlyTest": [
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/MemberCodeResolveFlowTest.java",
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/BeautyReceptionIdentityIT.java",
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/MemberGuestRegistrationIT.java"
   ],
-  "status": "RELEASED_TASK66_M2A_CODE_ONLY_NATIVE_NOT_AUTHORIZED",
+  "status": "CODE_ACCEPTED_TASK66_M2A_FORMAL_DEPLOYMENT_PENDING",
   "acceptedDesignSha256": "f9eda33c67b92530bfe5754211a611f4fb47152291589e77d44bd7a4e4a47563",
-  "baseline": "e6655701a47db56df71fd32842564d3f1621cb9b"
+  "baseline": "e6655701a47db56df71fd32842564d3f1621cb9b",
+  "additionalDependency": {
+    "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyMerchantClientConfiguration.java",
+    "beforeBytes": 5418,
+    "beforeSha256": "fc65f974540812d6503f09c3d57f4ab68d629413e56db4bedf7cf49ff8e73cd6",
+    "scope": "Only two existing member adapter bean constructors: existing internal-token property → new InternalBindings(token), no shared-bean dependency/new key/secret/condition",
+    "reason": "Actual standalone core disables BeautyChannelAutoConfiguration via ConditionalOnMissingClass, so its InternalBindings bean cannot be assumed"
+  },
+  "rootContractAddenda": [
+    "Frozen original releaseOriginal(ReservationLookup):ReleaseView in six already-owned stock disposition paths; existing intent status/versioned JSON only; existing HOST platform transactionManager allowed for DUAL reserve/release producer, no new source path/config/DDL. See task-66-brief final addendum.",
+    "Before edit, exact new CounterCustomerOwnerBridge.java path absent; authorized HOST composition bridge only, no generic auth edits. Product create count7→8. CounterCustomerResolver/Resolution nested in already-owned ManualServiceAdmissionPort, Core Checkout consumes optional resolver only for verified bound USER/CLAIMED_GUEST. See final brief addendum.",
+    "Task66实际库存诊断修正（待代码审查）：DUAL原所有者预留在空category缓存键异常后回滚，CategoryServiceImpl缓存仅排除null/blank，保留其既有null返回与库存默认策略；ReservationServiceImpl的HELD取消/过期必须在原inv事务内真实写回每行releasedQty=qty并核验balance/line/head各1行，失败全回滚、终态重试无重复释放，tracked revision沿原规则只增一次。保留严格ReleaseView，不修造旧终态数量、不改已执行DDL、库存路由或Outbox。",
+    "Root architecture ruling: actual controllersMustNotTouchMappers classified tools.jackson.databind.ObjectMapper (JSON codec only) as persistence solely by suffix. Permit exact JSON codec type in target predicate with same-predicate safeJSON/unsafe actual persistenceMapper structural regression. All SQL mapper rejection, portal scope and existing baseline stay; no product bytecode/hash/path change, no helper to hide dependency. ArchitectureTest existing modifyTest dependency1→2, product inventory unchanged70modify/8create."
+  ]
 }
