@@ -42,6 +42,64 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     private DataSource checkoutSource;
 
     @Override
+    public void rejectUnsupportedCounterChoices(
+            List<CampaignPort.MerchantAmount> groups, Map<String, String> choices) {
+        if (groups == null || choices == null || !choices.isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        long now = System.currentTimeMillis();
+        for (var group : groups) {
+            // M2a grants no promotion capability, including audience-restricted published offers.
+            // Read actual owner heads rather than treating a guest as NON_MEMBER.
+            boolean scoped =
+                    DataScopeContext.executeWithoutScope(
+                                    () ->
+                                            activityMapper.selectCount(
+                                                    Wrappers.<PmtActivity>lambdaQuery()
+                                                            .eq(PmtActivity::getTenantNo, "MAIN")
+                                                            .eq(
+                                                                    PmtActivity::getEntityNo,
+                                                                    group.merchantNo())
+                                                            .eq(
+                                                                    PmtActivity::getStatus,
+                                                                    PmtActivity.RUNNING)
+                                                            .isNotNull(
+                                                                    PmtActivity
+                                                                            ::getCurrentVersionNo)
+                                                            .isNull(PmtActivity::getArchivedAt)
+                                                            .and(
+                                                                    q ->
+                                                                            q.isNull(
+                                                                                            PmtActivity
+                                                                                                    ::getStoreNo)
+                                                                                    .or()
+                                                                                    .eq(
+                                                                                            PmtActivity
+                                                                                                    ::getStoreNo,
+                                                                                            group
+                                                                                                    .storeNo()))))
+                            > 0;
+            if (scoped
+                    || !live(group.merchantNo(), group.storeNo(), now).isEmpty()
+                    || !platformHits(group, now).isEmpty()) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+        }
+    }
+
+    @Override
+    public void rejectUnsupportedCounterPriceEffects(Collection<String> goodsNos) {
+        if (goodsNos == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!goodsNos.isEmpty()
+                && (!liveByGoods(goodsNos, PmtActivity.BENEFIT_PRICE).isEmpty()
+                        || !liveByGoods(goodsNos, PmtActivity.BENEFIT_GIFT).isEmpty())) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+    }
+
+    @Override
     public void requireOrdinarySelection(String buyerNo, CampaignPort.Discount selected) {
         boolean locked = TransactionSynchronizationManager.isActualTransactionActive();
         if (locked && !TransactionSynchronizationManager.hasResource(checkoutSource)) {

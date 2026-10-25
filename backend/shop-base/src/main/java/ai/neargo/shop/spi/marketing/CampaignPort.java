@@ -2,6 +2,7 @@ package ai.neargo.shop.spi.marketing;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 
 import java.util.Collection;
 import java.util.List;
@@ -21,6 +22,29 @@ import java.util.Map;
  * 四层测试全绿，因为测的是「活动能不能建」，没有一条测「建了之后金额有没有变」。
  */
 public interface CampaignPort {
+    /** Explicit party capability; adapters must never infer a guest audience from a null user. */
+    default List<AppliedActivity> counterCandidates(
+            CustomerParty party, List<MerchantAmount> groups) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    default void requireCounterSelection(CustomerParty party, Discount selected) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    default Map<String, Long> counterFlashPrices(CustomerParty party, Collection<String> goodsNos) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    default Map<String, GiftRule> counterGiftRules(
+            CustomerParty party, Collection<String> goodsNos) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    default void commitCounter(CustomerParty party, String orderNo, Discount discount) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
     /** Recheck the actual selected owner rules and lock local activity roots in a checkout transaction. */
     default void requireOrdinarySelection(String buyerNo, Discount selected) {
         throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);

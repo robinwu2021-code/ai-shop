@@ -17,6 +17,10 @@ import ai.neargo.shop.spi.product.StockDispositionPort.Lookup;
 import ai.neargo.shop.spi.product.StockDispositionPort.Original;
 import ai.neargo.shop.spi.product.StockDispositionPort.Outcome;
 import ai.neargo.shop.spi.product.StockDispositionPort.OwnerLine;
+import ai.neargo.shop.spi.product.StockDispositionPort.Reservation;
+import ai.neargo.shop.spi.product.StockDispositionPort.ReservationLookup;
+import ai.neargo.shop.spi.product.StockDispositionPort.ReservationView;
+import ai.neargo.shop.spi.product.StockDispositionPort.ReleaseView;
 import ai.neargo.shop.spi.product.StockPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -48,6 +52,162 @@ public class StockDispositionServiceImpl implements StockDispositionService {
         this.skus = skus;
         this.stock = stock;
         this.json = json;
+    }
+
+    @Override
+    @Transactional
+    public ReleaseView releaseOriginal(ReservationLookup request) {
+        return DataScopeContext.executeWithoutScope(
+                () -> {
+                    var original = request.original();
+                    var rows = locks.lockOriginal(original.orderNo());
+                    String invalid = invalid(original, rows);
+                    boolean held =
+                            invalid == null
+                                    && rows.stream()
+                                            .allMatch(
+                                                    row ->
+                                                            PrdStockLock.LOCKED.equals(
+                                                                            row.getStatus())
+                                                                    && row
+                                                                                    .getConfirmationOperationNo()
+                                                                            == null);
+                    if (held) {
+                        stock.release(original.orderNo());
+                        rows = locks.lockOriginal(original.orderNo());
+                    }
+                    boolean released =
+                            invalid(original, rows) == null
+                                    && rows.stream()
+                                            .allMatch(
+                                                    row ->
+                                                            PrdStockLock.RELEASED.equals(
+                                                                            row.getStatus())
+                                                                    && row
+                                                                                    .getConfirmationOperationNo()
+                                                                            == null);
+                    String outcome =
+                            released ? "RELEASED" : rows.isEmpty() ? "UNKNOWN" : "REJECTED";
+                    String reason =
+                            released ? null : invalid == null ? "STOCK_NOT_RELEASABLE" : invalid;
+                    var evidence =
+                            disposition(
+                                    original,
+                                    request.reservationOperationNo(),
+                                    rows,
+                                    Outcome.REJECTED,
+                                    released ? CurrentState.RELEASED : CurrentState.INCONSISTENT,
+                                    reason);
+                    String hash =
+                            StockDispositionContract.hash(
+                                    json.writeValueAsString(
+                                            Arrays.asList(
+                                                    "STOCK_RESERVATION_RELEASE_V1",
+                                                    original,
+                                                    request.reservationOperationNo(),
+                                                    outcome,
+                                                    evidence.lines(),
+                                                    reason)));
+                    return new ReleaseView(
+                            original,
+                            request.reservationOperationNo(),
+                            outcome,
+                            evidence.lines(),
+                            hash,
+                            Instant.now(),
+                            reason);
+                });
+    }
+
+    @Override
+    @Transactional
+    public ReservationView reserveOriginal(Reservation request) {
+        var original = request.original();
+        if (!List.of("PLATFORM", "DUAL").contains(original.authority())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    for (var need : original.needs()) {
+                        var sku =
+                                skus.selectOne(
+                                        Wrappers.<PrdSku>lambdaQuery()
+                                                .eq(PrdSku::getTenantNo, original.tenantNo())
+                                                .eq(PrdSku::getSkuNo, need.skuNo()));
+                        if (sku == null || !original.entityNo().equals(sku.getEntityNo())) {
+                            throw BizException.of(ErrorCode.NOT_FOUND);
+                        }
+                    }
+                });
+        stock.lock(
+                original.orderNo(),
+                original.needs().stream()
+                        .map(
+                                need ->
+                                        new StockPort.SkuQty(
+                                                need.skuNo(),
+                                                need.quantity(),
+                                                need.sourceStoreNo(),
+                                                need.fulfillmentRef(),
+                                                original.lifecycleVersion()))
+                        .toList());
+        return observeReservation(
+                new ReservationLookup(original, request.reservationOperationNo()));
+    }
+
+    @Override
+    @Transactional
+    public ReservationView observeReservation(ReservationLookup request) {
+        return DataScopeContext.executeWithoutScope(
+                () -> {
+                    var original = request.original();
+                    var rows = locks.lockOriginal(original.orderNo());
+                    String invalid = invalid(original, rows);
+                    boolean held =
+                            invalid == null
+                                    && rows.stream()
+                                            .allMatch(
+                                                    row ->
+                                                            PrdStockLock.LOCKED.equals(
+                                                                            row.getStatus())
+                                                                    && row
+                                                                                    .getConfirmationOperationNo()
+                                                                            == null);
+                    String outcome = held ? "RESERVED" : rows.isEmpty() ? "UNKNOWN" : "REJECTED";
+                    String reason = held ? null : invalid == null ? "STOCK_NOT_HELD" : invalid;
+                    var evidence =
+                            disposition(
+                                    original,
+                                    request.reservationOperationNo(),
+                                    rows,
+                                    held
+                                            ? Outcome.PENDING
+                                            : rows.isEmpty() ? Outcome.UNKNOWN : Outcome.REJECTED,
+                                    held
+                                            ? CurrentState.RESERVED
+                                            : rows.isEmpty()
+                                                    ? CurrentState.MISSING
+                                                    : CurrentState.INCONSISTENT,
+                                    reason);
+                    String hash =
+                            StockDispositionContract.hash(
+                                    json.writeValueAsString(
+                                            Arrays.asList(
+                                                    "STOCK_RESERVATION_V1",
+                                                    original,
+                                                    request.reservationOperationNo(),
+                                                    outcome,
+                                                    evidence.lines(),
+                                                    reason)));
+                    return new ReservationView(
+                            original,
+                            request.reservationOperationNo(),
+                            outcome,
+                            evidence.lines(),
+                            hash,
+                            Instant.now(),
+                            reason);
+                });
     }
 
     @Override

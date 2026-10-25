@@ -17,6 +17,14 @@ import java.util.Map;
  * 所以路由那边按<b>同类取最优</b>合并（既有口径），而不是相加。
  */
 public interface ActivityPricingService {
+    /**
+     * Reject unsupported scoped offers without evaluating cashier or fabricated guest audiences.
+     */
+    void rejectUnsupportedCounterChoices(
+            List<CampaignPort.MerchantAmount> groups, Map<String, String> choices);
+
+    void rejectUnsupportedCounterPriceEffects(Collection<String> goodsNos);
+
     /** The same minimum-price algorithm checks only winning ordinary checkout price sources. */
     Map<String, Long> ordinaryFlashPrices(
             String buyerNo, Collection<String> goodsNos, Map<String, Long> competingPrices);

@@ -91,17 +91,29 @@ public class BeautyMerchantClientConfiguration {
     ResourceCandidatesPort beautyRemoteResourceCandidatesPort(InternalHttp http) {
         return new RemoteResourceCandidatesPort(bookingApi(http));
     }
+
     @Bean
     @ConditionalOnMissingBean(CustomerIdentityPort.class)
-    CustomerIdentityPort beautyRemoteCustomerIdentityPort(InternalHttp http) {
-        return new RemoteCustomerIdentityPort(http.client(ServiceName.PLATFORM, CustomerIdentityInternalApi.class,
-                Duration.ofSeconds(5)));
+    CustomerIdentityPort beautyRemoteCustomerIdentityPort(
+            InternalHttp http, @Value("${shop.services.internal-token:}") String token) {
+        return new RemoteCustomerIdentityPort(
+                http.client(
+                        ServiceName.PLATFORM,
+                        CustomerIdentityInternalApi.class,
+                        Duration.ofSeconds(5)),
+                new InternalBindings(token));
     }
+
     @Bean
     @ConditionalOnMissingBean(GuestRegistrationPort.class)
-    GuestRegistrationPort beautyRemoteGuestRegistrationPort(InternalHttp http) {
-        return new RemoteGuestRegistrationPort(http.client(ServiceName.PLATFORM, GuestRegistrationInternalApi.class,
-                Duration.ofSeconds(5)));
+    GuestRegistrationPort beautyRemoteGuestRegistrationPort(
+            InternalHttp http, @Value("${shop.services.internal-token:}") String token) {
+        return new RemoteGuestRegistrationPort(
+                http.client(
+                        ServiceName.PLATFORM,
+                        GuestRegistrationInternalApi.class,
+                        Duration.ofSeconds(5)),
+                new InternalBindings(token));
     }
     private ResourceBookingInternalApi bookingApi(InternalHttp http) {
         return http.client(ServiceName.PLATFORM, ResourceBookingInternalApi.class, Duration.ofSeconds(5));

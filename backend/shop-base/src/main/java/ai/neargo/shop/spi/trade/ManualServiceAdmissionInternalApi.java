@@ -1,5 +1,12 @@
 package ai.neargo.shop.spi.trade;
 
+import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
 import ai.neargo.shop.spi.security.InternalCall;
 import ai.neargo.shop.spi.security.InternalReply;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
@@ -22,6 +29,22 @@ import org.springframework.web.service.annotation.PostExchange;
 public interface ManualServiceAdmissionInternalApi {
     String BASE = "/internal/trade/manual-service-admission/";
     String ENDPOINT = "MANUAL_SERVICE_ADMISSION";
+
+    @PostExchange(BASE + "counter-prepare")
+    InternalReply<CounterCheckoutQuote> prepareCounter(
+            @RequestBody InternalCall<Scoped<PrepareCounterReq>> request);
+
+    @PostExchange(BASE + "counter-read")
+    InternalReply<CounterCheckoutQuote> readCounterQuote(
+            @RequestBody InternalCall<Scoped<OperationRef>> request);
+
+    @PostExchange(BASE + "counter-accept")
+    InternalReply<CounterConfirmation> acceptCounter(
+            @RequestBody InternalCall<Scoped<AcceptCounterReq>> request);
+
+    @PostExchange(BASE + "counter-place")
+    InternalReply<CheckoutResult> placeCounter(
+            @RequestBody InternalCall<Scoped<PlaceCounterReq>> request);
 
     @PostExchange(BASE + "prepare")
     InternalReply<CheckoutQuote> prepare(

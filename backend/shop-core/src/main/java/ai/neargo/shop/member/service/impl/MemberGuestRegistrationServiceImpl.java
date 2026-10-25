@@ -2,6 +2,20 @@ package ai.neargo.shop.member.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.auth.BoundActionContext;
+import ai.neargo.shop.auth.DelegatedIdentityContext;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.TokenStores;
+import ai.neargo.shop.spi.member.GuestRegistrationInternalApi;
+import ai.neargo.shop.spi.member.GuestRegistrationPort.ConsumerScope;
+import ai.neargo.shop.spi.member.GuestRegistrationPort.CurrentClaim;
+import ai.neargo.shop.spi.member.GuestRegistrationPort.ClaimedCustomer;
+import ai.neargo.shop.spi.member.CustomerIdentityPort.ResolvedCustomer;
+import ai.neargo.shop.spi.member.GuestRegistrationPort.GuestRef;
+import ai.neargo.shop.spi.security.InternalCall;
+import ai.neargo.shop.spi.security.InternalRequestBinding;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -46,6 +60,8 @@ public class MemberGuestRegistrationServiceImpl implements MemberGuestRegistrati
     private final MemberGuestCrypto crypto;
     private final UserScopeFactsPort users;
     private final TransactionTemplate writes;
+    private TokenStores tokens;
+
     public MemberGuestRegistrationServiceImpl(MemberGuestRegistrationMapper rows, MerchantOperatorAccessPort access,
             MerchantScopeFactsPort stores, MemberCodeResolveService codes, MemberGuestCrypto crypto,
             UserScopeFactsPort users,
@@ -55,6 +71,191 @@ public class MemberGuestRegistrationServiceImpl implements MemberGuestRegistrati
         writes = new TransactionTemplate(manager);
         writes.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
+
+    /**
+     * Production current-consumer proof uses the actual realm token pool; legacy constructors
+     * remain compatible.
+     */
+    @Autowired
+    public MemberGuestRegistrationServiceImpl(
+            MemberGuestRegistrationMapper rows,
+            MerchantOperatorAccessPort access,
+            MerchantScopeFactsPort stores,
+            MemberCodeResolveService codes,
+            MemberGuestCrypto crypto,
+            UserScopeFactsPort users,
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            TokenStores tokens) {
+        this(rows, access, stores, codes, crypto, users, manager);
+        this.tokens = tokens;
+    }
+
+    @Override
+    public ClaimedCustomer resolveClaimedCustomer(Scope scope, String guestNo, String claimToken) {
+        var payload = new GuestRegistrationInternalApi.Verify(scope, guestNo, claimToken);
+        requireClaimedSelector(scope, payload);
+        var observed =
+                transaction(
+                        () -> {
+                            var row = guest(scope, guestNo, false);
+                            verifyToken(row, claimToken);
+                            if (!"CLAIMED".equals(row.getState())) {
+                                throw BizException.of(ErrorCode.CONFLICT);
+                            }
+                            return fact(row);
+                        });
+        var user =
+                users.findActive(scope.identity().tenantNo(), observed.userNo())
+                        .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        requireClaimedSelector(scope, payload);
+        var current =
+                transaction(
+                        () -> {
+                            var row = guest(scope, guestNo, false);
+                            verifyToken(row, claimToken);
+                            return fact(row);
+                        });
+        if (!observed.equals(current)) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return new ClaimedCustomer(current, new ResolvedCustomer(user.userNo()));
+    }
+
+    private void requireClaimedSelector(Scope scope, GuestRegistrationInternalApi.Verify payload) {
+        requireScope(scope);
+        if (BoundActionContext.present()) {
+            BoundActionContext.require(
+                    new InternalCall<>(
+                            new InternalRequestBinding(
+                                    1,
+                                    GuestRegistrationInternalApi.COUNTER_CUSTOMER_ENDPOINT,
+                                    "RESOLVE",
+                                    scope.identity(),
+                                    scope.entityNo(),
+                                    scope.storeNo(),
+                                    payload.guestNo()),
+                            payload));
+        } else {
+            if (tokens == null) {
+                throw BizException.of(ErrorCode.FORBIDDEN);
+            }
+            String token =
+                    SecurityUtils.currentToken()
+                            .filter(value -> !value.isBlank())
+                            .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED));
+            var session =
+                    tokens.of(Realm.MERCHANT)
+                            .get(token)
+                            .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED))
+                            .user();
+            if (session == null
+                    || !scope.identity().tenantNo().equals(session.tenantNo())
+                    || !scope.identity().actorNo().equals(session.userNo())
+                    || !scope.identity().realm().equals(session.realm().name())
+                    || !scope.identity().subjectKind().equals(session.subjectKind().name())) {
+                throw BizException.of(ErrorCode.UNAUTHORIZED);
+            }
+        }
+    }
+
+    @Override
+    public CurrentClaim currentClaim(ConsumerScope scope, GuestRef guest) {
+        if (guest == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var payload = new GuestRegistrationInternalApi.CurrentClaimRequest(scope, guest);
+        requireConsumer(scope, payload, "CURRENT_CLAIM", guest.guestNo());
+        var row =
+                transaction(
+                        () ->
+                                rows.findCurrentClaim(
+                                        scope.tenantNo(),
+                                        scope.identity().actorNo(),
+                                        guest.entityNo(),
+                                        guest.storeNo(),
+                                        guest.guestNo()));
+        if (row == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        var result = currentClaim(row);
+        requireConsumer(scope, payload, "CURRENT_CLAIM", guest.guestNo());
+        return result;
+    }
+
+    @Override
+    public List<CurrentClaim> currentClaims(ConsumerScope scope) {
+        var payload = new GuestRegistrationInternalApi.CurrentClaimsRequest(scope);
+        String actor = scope == null ? null : scope.identity().actorNo();
+        requireConsumer(scope, payload, "CURRENT_CLAIMS", actor);
+        var result =
+                transaction(
+                        () ->
+                                rows.findCurrentClaims(scope.tenantNo(), actor).stream()
+                                        .map(MemberGuestRegistrationServiceImpl::currentClaim)
+                                        .toList());
+        requireConsumer(scope, payload, "CURRENT_CLAIMS", actor);
+        return List.copyOf(result);
+    }
+
+    private void requireConsumer(
+            ConsumerScope scope, Object payload, String action, String target) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("current claim proof requires no caller transaction");
+        }
+        if (scope == null
+                || !"MAIN".equals(scope.tenantNo())
+                || !scope.identity().equals(DelegatedIdentityContext.current())
+                || !"CONSUMER".equals(scope.identity().realm())
+                || !"USR".equals(scope.identity().subjectKind())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        if (BoundActionContext.present()) {
+            BoundActionContext.require(
+                    new InternalCall<>(
+                            new InternalRequestBinding(
+                                    1,
+                                    GuestRegistrationInternalApi.CURRENT_ENDPOINT,
+                                    action,
+                                    scope.identity(),
+                                    null,
+                                    null,
+                                    target),
+                            payload));
+        } else {
+            if (tokens == null) {
+                throw BizException.of(ErrorCode.FORBIDDEN);
+            }
+            String token =
+                    SecurityUtils.currentToken()
+                            .filter(value -> !value.isBlank())
+                            .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED));
+            var session =
+                    tokens.of(Realm.CONSUMER)
+                            .get(token)
+                            .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED))
+                            .user();
+            if (session == null
+                    || !scope.tenantNo().equals(session.tenantNo())
+                    || !scope.identity().actorNo().equals(session.userNo())
+                    || !scope.identity().realm().equals(session.realm().name())
+                    || !scope.identity().subjectKind().equals(session.subjectKind().name())) {
+                throw BizException.of(ErrorCode.UNAUTHORIZED);
+            }
+        }
+        if (users.findActive(scope.tenantNo(), scope.identity().actorNo()).isEmpty()) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+    }
+
+    private static CurrentClaim currentClaim(MbrGuestRegistration row) {
+        return new CurrentClaim(
+                row.getEntityNo(),
+                row.getStoreNo(),
+                row.getGuestNo(),
+                row.getClaimedUserNo(),
+                row.getVersion());
+    }
+
     @Override public Registration register(Scope scope, RegisterCommand command) {
         requireScope(scope);
         if (command == null || !command.consent() || command.contact() != null && command.contact().length() > 128

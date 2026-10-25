@@ -9,5 +9,8 @@ public interface StoreSalesCatalogService {
     Snapshot read(String entityNo, String storeNo, Instant at);
 
     Snapshot lockForCheckout(String buyerNo, String entityNo, String storeNo, Instant at);
+
+    Snapshot lockForCounterCheckout(String tenant, String entity, String store, Instant at);
+
     Snapshot publish(String entityNo, String storeNo, String actorNo, PublishReq request, String idempotencyKey);
 }

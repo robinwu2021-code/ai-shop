@@ -10,6 +10,9 @@ public interface MemberCodeResolveService {
     /** Only the original MEMBER_CODE ticket can prove the currently authenticated consumer. */
     ResolvedCustomer requireConsumerProof(String tenantNo, String userNo, String memberCode);
 
+    /** Resolve active scoped membership without minting a proof or purchase acceptance. */
+    ResolvedCustomer requireCounterReference(MemberCodeScope scope, String memberNo);
+
     MemberCodeView issue(String tenantNo, String userNo);
 
     CustomerReference resolve(MemberCodeScope scope, String memberCode);

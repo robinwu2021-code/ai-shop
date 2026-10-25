@@ -421,15 +421,29 @@ public class ReservationServiceImpl implements ReservationService {
 
     private void unholdAll(InvReservation head, String toStatus) {
         if (!InvEnums.ReservationStatus.HELD.equals(head.getStatus())) return;
-        for (InvReservationLine r : linesOf(head.getReservationId())) {
-            trackedChanged(
-                    head,
-                    balanceMapper.unhold(
-                            head.getOwnerId(), r.getItemId(), r.getLocationId(), r.getQty()));
+        var originalLines = linesOf(head.getReservationId());
+        if (originalLines.isEmpty()) throw BizException.of(ErrorCode.CONFLICT);
+        for (InvReservationLine line : originalLines) {
+            if (line.getQty() == null
+                    || line.getQty() <= 0
+                    || nz(line.getIssuedQty()) != 0
+                    || nz(line.getReleasedQty()) != 0) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            if (balanceMapper.unhold(
+                            head.getOwnerId(),
+                            line.getItemId(),
+                            line.getLocationId(),
+                            line.getQty())
+                    != 1) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            line.setReleasedQty(line.getQty());
+            if (lineMapper.updateById(line) != 1) throw BizException.of(ErrorCode.CONFLICT);
         }
         head.setStatus(toStatus);
         head.setReleasedAt(LocalDateTime.now());
-        saveHead(head);
+        if (saveHead(head) != 1) throw BizException.of(ErrorCode.CONFLICT);
     }
 
     private List<InvReservationLine> linesOf(String reservationId) {
@@ -507,14 +521,16 @@ public class ReservationServiceImpl implements ReservationService {
         }
     }
 
-    private void saveHead(InvReservation head) {
+    private int saveHead(InvReservation head) {
         if (head.getSourceManifestHash() != null) {
             if (head.getDispositionRevision() == null || head.getDispositionRevision() < 1) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
             head.setDispositionRevision(Math.addExact(head.getDispositionRevision(), 1));
         }
-        trackedChanged(head, resMapper.updateById(head));
+        int affected = resMapper.updateById(head);
+        trackedChanged(head, affected);
+        return affected;
     }
 
     private static void trackedChanged(InvReservation head, int affected) {

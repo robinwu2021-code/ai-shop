@@ -1,5 +1,11 @@
 package ai.neargo.shop.trade.api.biz;
 
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -41,6 +47,75 @@ public class BizManualServiceAdmissionController {
 
     public BizManualServiceAdmissionController(ManualServiceAdmissionService manual) {
         this.manual = manual;
+    }
+
+    @PostMapping("/biz/service-orders/counter-quotes")
+    @PreAuthorize(
+            "@perm.canBiz('"
+                    + BizPerms.CHECKOUT_PREPARE
+                    + "') and @perm.canBiz('"
+                    + BizPerms.ORDER_VIEW
+                    + "')")
+    public CounterCheckoutQuote prepareCounter(
+            @RequestBody @Valid PrepareCounterReq request,
+            @RequestHeader("Idempotency-Key") @NotBlank String key) {
+        sameKey(key, request.requestKey());
+        return manual.prepareCounter(scope(), request);
+    }
+
+    @GetMapping("/biz/service-orders/counter-quotes/{operationNo}")
+    @PreAuthorize(
+            "@perm.canBiz('"
+                    + BizPerms.CHECKOUT_PREPARE
+                    + "') and @perm.canBiz('"
+                    + BizPerms.ORDER_VIEW
+                    + "')")
+    public CounterCheckoutQuote readCounterQuote(@PathVariable String operationNo) {
+        return manual.readCounterQuote(scope(), new OperationRef("BEAUTY", operationNo));
+    }
+
+    @PostMapping("/biz/service-orders/counter-quotes/{operationNo}/acceptances")
+    @PreAuthorize(
+            "@perm.canBiz('"
+                    + BizPerms.CHECKOUT_PREPARE
+                    + "') and @perm.canBiz('"
+                    + BizPerms.ORDER_VIEW
+                    + "') and @perm.canBiz('"
+                    + BizPerms.CASH_RECEIVE
+                    + "') and @perm.canBiz('"
+                    + BizPerms.MANUAL_CONFIRM
+                    + "')")
+    public CounterConfirmation acceptCounter(
+            @PathVariable String operationNo,
+            @RequestBody @Valid AcceptCounterReq request,
+            @RequestHeader("Idempotency-Key") @NotBlank String key) {
+        sameKey(key, request.requestKey());
+        if (!operationNo.equals(request.operation().operationNo())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return manual.acceptCounter(scope(), request);
+    }
+
+    @PostMapping("/biz/service-orders/counter-quotes/{operationNo}/orders")
+    @PreAuthorize(
+            "@perm.canBiz('"
+                    + BizPerms.CHECKOUT_PREPARE
+                    + "') and @perm.canBiz('"
+                    + BizPerms.ORDER_VIEW
+                    + "') and @perm.canBiz('"
+                    + BizPerms.CASH_RECEIVE
+                    + "') and @perm.canBiz('"
+                    + BizPerms.MANUAL_CONFIRM
+                    + "')")
+    public CheckoutResult placeCounter(
+            @PathVariable String operationNo,
+            @RequestBody @Valid PlaceCounterReq request,
+            @RequestHeader("Idempotency-Key") @NotBlank String key) {
+        sameKey(key, request.requestKey());
+        if (!operationNo.equals(request.operation().operationNo())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return manual.placeCounter(scope(), request);
     }
 
     @PostMapping("/biz/service-orders/manual-quotes")

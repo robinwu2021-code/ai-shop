@@ -9,6 +9,8 @@ import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
 import ai.neargo.shop.spi.trade.CheckoutPort.QuoteLine;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+import ai.neargo.shop.trade.order.service.create.CounterOrderPlan.PreparedCommand;
 import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
 import ai.neargo.shop.trade.entity.OrdCheckoutLine;
 import ai.neargo.shop.trade.entity.OrdCheckoutOperation;
@@ -106,12 +108,148 @@ public class CheckoutQuoteGuard {
         var op = operations.lock("BEAUTY", scope.operationNo());
         if (op == null
                 || !"MANUAL_OFFLINE".equals(op.getAdmissionKind())
+                || !"CONSUMER_SESSION".equals(op.getPurchaseAuthority())
+                || !"USER".equals(op.getCustomerKind())
                 || !buyer.equals(op.getBuyerNo())
                 || !scope.entityNo().equals(op.getEntityNo())
                 || !scope.storeNo().equals(op.getStoreNo())
                 || !scope.scopeHash().equals(op.getScopeHash())) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
+    }
+
+    /** An initial counter quote is priced only after its immutable typed operation is inserted. */
+    public void requireCounterPricing(CheckoutPricingScope scope) {
+        transaction();
+        var op = operations.lock("BEAUTY", scope.operationNo());
+        if (op == null
+                || !scope.counter()
+                || !"MANUAL_OFFLINE".equals(op.getAdmissionKind())
+                || !scope.purchaseAuthority().equals(op.getPurchaseAuthority())
+                || !scope.party().equals(party(op))
+                || !scope.entityNo().equals(op.getEntityNo())
+                || !scope.storeNo().equals(op.getStoreNo())
+                || !scope.scopeHash().equals(op.getScopeHash())
+                || scope.scopeRevision() != op.getScopeRevision()) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    public CheckoutPricingScope counterContext(CounterPurchaseAuthorization authorization) {
+        var locked = counterLocked(authorization);
+        var op = locked.operation();
+        var frozen = json.readValue(op.getCommandJson(), PreparedCommand.class);
+        var original =
+                json.readValue(locked.quote().getPricingJson(), CheckoutEconomicSnapshot.class);
+        campaigns.requireCounterSelection(authorization.party(), original.activity());
+        var catalog =
+                catalogs.lockForCounterCheckout(
+                        "MAIN", op.getEntityNo(), op.getStoreNo(), clock.now());
+        requireFresh(authorization.expected(), locked);
+        return new CheckoutPricingScope(
+                "MAIN",
+                op.getEntityNo(),
+                op.getStoreNo(),
+                op.getScopeRevision(),
+                op.getScopeHash(),
+                frozen.lines(),
+                catalog,
+                "MANUAL_OFFLINE",
+                op.getOperationNo(),
+                authorization.party(),
+                "MERCHANT_RECORDED_IN_PERSON");
+    }
+
+    public void requireCounterMatches(
+            CounterPurchaseAuthorization authorization, CheckoutEconomicSnapshot actual) {
+        var locked = counterLocked(authorization);
+        requireFresh(authorization.expected(), locked);
+        var op = locked.operation();
+        if (actual == null
+                || !authorization.expected().quoteHash().equals(actual.quoteHash())
+                || !Objects.equals(authorization.party().userNo(), actual.buyerNo())
+                || !op.getEntityNo().equals(actual.entityNo())
+                || !op.getStoreNo().equals(actual.storeNo())
+                || !"CNY".equals(actual.currency())
+                || !"OFFLINE".equals(actual.payMode())
+                || !Long.valueOf(actual.dueMinor()).equals(locked.confirmation().getAmountMinor())
+                || !"STORE_VERIFY".equals(actual.fulfillment())
+                || !OrdSubOrder.SERVICE_EXECUTION.equals(actual.fulfillmentAuthority())) {
+            throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+        }
+    }
+
+    public void completeCounter(
+            CounterPurchaseAuthorization authorization, String orderNo, String subOrderNo) {
+        completeLocked(counterLocked(authorization), orderNo, subOrderNo);
+    }
+
+    private Locked counterLocked(CounterPurchaseAuthorization authorization) {
+        transaction();
+        var user = SecurityUtils.requireUser();
+        if (authorization == null
+                || user.realm() != Realm.MERCHANT
+                || !"MAIN".equals(user.tenantNo())
+                || !(user.subjectKind() == SubjectKind.MCH
+                        || user.subjectKind() == SubjectKind.USR)) {
+            throw BizException.of(ErrorCode.CHECKOUT_CONFIRMATION_REQUIRED);
+        }
+        var expected = authorization.expected();
+        var op = operations.lock("BEAUTY", expected.operationNo());
+        var quote = op == null ? null : quotes.lock(op.getCurrentQuoteNo());
+        var confirmation =
+                op == null || op.getConfirmationNo() == null
+                        ? null
+                        : confirmations.lock(op.getConfirmationNo());
+        if (op == null
+                || quote == null
+                || confirmation == null
+                || !"MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())
+                || !op.getPurchaseAuthority().equals(confirmation.getPurchaseAuthority())
+                || !"MANUAL_OFFLINE".equals(op.getAdmissionKind())
+                || !op.getAdmissionKind().equals(confirmation.getAdmissionKind())
+                || !op.getEntityNo().equals(confirmation.getEntityNo())
+                || !op.getStoreNo().equals(confirmation.getStoreNo())
+                || !authorization.party().equals(party(op))
+                || !op.getCustomerKind().equals(confirmation.getCustomerKind())
+                || !Objects.equals(op.getBuyerNo(), confirmation.getBuyerNo())
+                || !Objects.equals(op.getGuestNo(), confirmation.getGuestNo())
+                || !Objects.equals(op.getIdentityRevision(), confirmation.getIdentityRevision())
+                || !authorization.authorityNamespaceHash().equals(op.getAuthorityNamespaceHash())
+                || !authorization
+                        .authorityNamespaceHash()
+                        .equals(confirmation.getAuthorityNamespaceHash())
+                || !authorization.actorNo().equals(confirmation.getActorNo())
+                || !authorization.actorRealm().equals(confirmation.getActorRealm())
+                || !authorization.actorKind().equals(confirmation.getActorKind())
+                || !authorization.accountNo().equals(confirmation.getAccountNo())
+                || confirmation.getAcceptedAt() == null
+                || op.getPlaceKeyHash() == null
+                || !"CONFIRMED".equals(op.getPhase())
+                || !"CONFIRMED".equals(quote.getStatus())
+                || !"AUTHORIZED".equals(confirmation.getStatus())
+                || !expected.quoteNo().equals(op.getCurrentQuoteNo())
+                || !expected.confirmationNo().equals(op.getConfirmationNo())
+                || !expected.quoteNo().equals(confirmation.getQuoteNo())
+                || !expected.operationNo().equals(quote.getOperationNo())
+                || !expected.operationNo().equals(confirmation.getOperationNo())
+                || !"BEAUTY".equals(quote.getCaller())
+                || !"BEAUTY".equals(confirmation.getCaller())
+                || !expected.quoteHash().equals(quote.getQuoteHash())
+                || !expected.quoteHash().equals(confirmation.getQuoteHash())
+                || expected.quoteRevision() != quote.getRevision()
+                || expected.quoteRevision() != confirmation.getQuoteRevision()
+                || !expected.scopeHash().equals(op.getScopeHash())
+                || !"MANUAL_OFFLINE".equals(expected.admissionKind())
+                || !"ORDINARY_SERVICE_PURCHASE".equals(confirmation.getPurpose())) {
+            throw BizException.of(ErrorCode.CHECKOUT_CONFIRMATION_REQUIRED);
+        }
+        return new Locked(op, quote, confirmation);
+    }
+
+    private static CustomerParty party(OrdCheckoutOperation op) {
+        return new CustomerParty(
+                op.getCustomerKind(), op.getBuyerNo(), op.getGuestNo(), op.getIdentityRevision());
     }
 
     /**
@@ -175,7 +313,10 @@ public class CheckoutQuoteGuard {
      * Commit confirmation consumption and operation success in the same transaction as the order.
      */
     public void complete(ExpectedCheckoutQuote expected, String orderNo, String subOrderNo) {
-        var locked = locked(expected);
+        completeLocked(locked(expected), orderNo, subOrderNo);
+    }
+
+    private void completeLocked(Locked locked, String orderNo, String subOrderNo) {
         var confirmation = locked.confirmation();
         confirmation.setStatus("CONSUMED");
         confirmation.setOrderNo(orderNo);
@@ -212,6 +353,10 @@ public class CheckoutQuoteGuard {
         if (op == null
                 || quote == null
                 || confirmation == null
+                || !"CONSUMER_SESSION".equals(op.getPurchaseAuthority())
+                || !"CONSUMER_SESSION".equals(confirmation.getPurchaseAuthority())
+                || !"USER".equals(op.getCustomerKind())
+                || !"USER".equals(confirmation.getCustomerKind())
                 || !Objects.equals(expected.admissionKind(), op.getAdmissionKind())
                 || !"CONFIRMED".equals(op.getPhase())
                 || !"CONFIRMED".equals(quote.getStatus())

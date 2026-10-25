@@ -1,5 +1,10 @@
 package ai.neargo.shop.trade.service;
 
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.BuyerConfirmation;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
@@ -16,6 +21,18 @@ import ai.neargo.shop.spi.trade.CheckoutPort.SourceLookup;
 
 /** Local owner API; consumer reads never accept merchant scope. */
 public interface CheckoutService {
+    /** Shared counter quote keeps actual party identity separate from purchase acceptance. */
+    CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request);
+
+    /** Read the immutable original displayed quote under current merchant scope. */
+    CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation);
+
+    /** Explicit current cashier acceptance is required independently from member identity. */
+    CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request);
+
+    /** Finalize only the accepted original through common stock and persistence owners. */
+    CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request);
+
     /** Initiate or recover the permanent original payment request for the real current buyer. */
     PaymentAttemptView initiatePayment(InitiatePaymentReq request);
 

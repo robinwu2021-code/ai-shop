@@ -3,6 +3,8 @@ package ai.neargo.shop.trade.entity;
 import ai.neargo.shop.common.BaseEntity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -20,6 +22,17 @@ import lombok.Setter;
 @Setter
 @TableName("ord_sub_order")
 public class OrdSubOrder extends BaseEntity {
+    /** Historical customer identity never changes when the guest later claims an account. */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String customerKind = "USER";
+
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String guestNo;
+
+    @TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.NEVER)
+    private Long identityRevision;
+
+    private String caller;
 
     public static final String WAIT_PAY = "WAIT_PAY";
     public static final String WAIT_FULFILL = "WAIT_FULFILL";

@@ -8,6 +8,30 @@ import ai.neargo.shop.event.DomainEvent;
 public final class ManualServiceAdmissionEvents {
     private ManualServiceAdmissionEvents() {}
 
+    public record CounterOrderCreated(
+            String orderNo,
+            String subOrderNo,
+            String operationNo,
+            String entityNo,
+            String storeNo,
+            ManualServiceAdmissionPort.CustomerParty party)
+            implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return "ORDER";
+        }
+
+        @Override
+        public String aggregateId() {
+            return orderNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "COUNTER_ORDER_CREATED";
+        }
+    }
+
     public record ManualServiceReceiptRecorded(
             String orderNo, String declarationNo, long admissionRevision) implements DomainEvent {
         @Override

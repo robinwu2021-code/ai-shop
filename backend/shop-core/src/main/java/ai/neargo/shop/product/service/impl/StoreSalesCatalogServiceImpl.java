@@ -102,6 +102,23 @@ public class StoreSalesCatalogServiceImpl implements StoreSalesCatalogService {
                 || SecurityUtils.currentToken().filter(t -> !t.isBlank()).isEmpty()) {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
+        return lockCurrentCatalog(entityNo, storeNo, at);
+    }
+
+    @Override
+    public Snapshot lockForCounterCheckout(String tenant, String entity, String store, Instant at) {
+        var current = SecurityUtils.requireUser();
+        if (current.realm() != Realm.MERCHANT
+                || !"MAIN".equals(tenant)
+                || !tenant.equals(current.tenantNo())
+                || !(current.subjectKind() == SubjectKind.MCH
+                        || current.subjectKind() == SubjectKind.USR)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        return lockCurrentCatalog(entity, store, at);
+    }
+
+    private Snapshot lockCurrentCatalog(String entityNo, String storeNo, Instant at) {
         if (!TransactionSynchronizationManager.isActualTransactionActive()
                 || !TransactionSynchronizationManager.hasResource(source)) {
             throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);

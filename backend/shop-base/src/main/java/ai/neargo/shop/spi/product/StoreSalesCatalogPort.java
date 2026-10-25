@@ -22,6 +22,11 @@ public interface StoreSalesCatalogPort {
         throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
     }
 
+    default Snapshot lockForCounterCheckout(
+            String tenant, String entity, String store, Instant at) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
     enum SalesMode { UNRESTRICTED, WINDOWED }
 
     record Group(String key, String title, int position, Boolean visible) {

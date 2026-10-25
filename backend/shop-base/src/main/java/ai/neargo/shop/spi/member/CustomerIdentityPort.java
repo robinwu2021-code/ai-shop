@@ -6,6 +6,22 @@ import ai.neargo.shop.spi.entitlement.EntitlementContext;
 public interface CustomerIdentityPort {
     ResolvedCustomer resolveReference(EntitlementContext context, ReferenceQuery query);
 
+    /**
+     * Canonical scoped membership identifies a current user without creating C-session evidence.
+     */
+    default ResolvedCustomer resolveCounterReference(
+            EntitlementContext context, CounterReferenceQuery query) {
+        throw new UnsupportedOperationException("counter reference unavailable");
+    }
+
+    /** Member number is a selector; the member owner resolves its linked active account. */
+    record CounterReferenceQuery(String entityNo, String storeNo, String memberNo) {
+        @Override
+        public String toString() {
+            return "CounterReferenceQuery[REDACTED]";
+        }
+    }
+
     /** Current full-namespace claim proof; legacy reference providers deliberately do not authorize this. */
     default ResolvedCustomer resolveClaimReference(EntitlementContext context, ReferenceQuery query) {
         throw new UnsupportedOperationException("strict claim reference unavailable");

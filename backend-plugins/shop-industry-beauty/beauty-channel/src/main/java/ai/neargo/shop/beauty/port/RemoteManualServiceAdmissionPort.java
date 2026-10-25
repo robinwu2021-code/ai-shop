@@ -8,6 +8,8 @@ import ai.neargo.shop.spi.security.InternalCall;
 import ai.neargo.shop.spi.security.InternalReply;
 import ai.neargo.shop.spi.security.InternalRequestBinding;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
+import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.SourceLookup;
@@ -19,6 +21,8 @@ import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCalls;
 
 import java.util.Objects;
+import java.util.List;
+import java.util.stream.IntStream;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -33,6 +37,98 @@ public final class RemoteManualServiceAdmissionPort implements ManualServiceAdmi
             ManualServiceAdmissionInternalApi api, InternalBindings bindings) {
         this.api = Objects.requireNonNull(api);
         this.bindings = Objects.requireNonNull(bindings);
+    }
+
+    @Override
+    public CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request) {
+        return call(
+                scope,
+                request,
+                request.operation().operationNo(),
+                "COUNTER_PREPARE",
+                api::prepareCounter,
+                result ->
+                        counterQuote(scope, request.operation(), result)
+                                && ("GUEST".equals(request.customer().kind())
+                                        ? "GUEST".equals(result.party().kind())
+                                                && request.customer()
+                                                        .guestNo()
+                                                        .equals(result.party().guestNo())
+                                        : "USER".equals(result.party().kind())
+                                                && result.party().identityRevision() == null)
+                                && request.lines().size() == result.quote().lines().size()
+                                && IntStream.range(0, request.lines().size())
+                                        .allMatch(
+                                                i -> {
+                                                    var line = request.lines().get(i);
+                                                    var actual = result.quote().lines().get(i);
+                                                    return line.clientLineRef()
+                                                                    .equals(actual.clientLineRef())
+                                                            && line.skuNo().equals(actual.skuNo())
+                                                            && line.quantity() == actual.quantity();
+                                                }));
+    }
+
+    @Override
+    public CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation) {
+        return call(
+                scope,
+                operation,
+                operation.operationNo(),
+                "COUNTER_READ",
+                api::readCounterQuote,
+                result -> counterQuote(scope, operation, result));
+    }
+
+    @Override
+    public CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
+        return call(
+                scope,
+                request,
+                request.operation().operationNo(),
+                "COUNTER_ACCEPT",
+                api::acceptCounter,
+                result ->
+                        request.operation().equals(result.operation())
+                                && request.quoteNo().equals(result.quoteNo())
+                                && request.quoteRevision() == result.quoteRevision()
+                                && request.quoteHash().equals(result.quoteHash())
+                                && Objects.equals(
+                                        request.identityRevision(),
+                                        result.party().identityRevision())
+                                && request.acceptedAt().equals(result.acceptedAt())
+                                && request.evidenceKind().equals(result.purchaseAuthority()));
+    }
+
+    @Override
+    public CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request) {
+        return call(
+                scope,
+                request,
+                request.operation().operationNo(),
+                "COUNTER_PLACE",
+                api::placeCounter,
+                result ->
+                        request.operation().equals(result.operation())
+                                && ("CREATED".equals(result.phase())
+                                        ? result.orderNo() != null
+                                                && !result.orderNo().isBlank()
+                                                && result.subOrderNo() != null
+                                                && !result.subOrderNo().isBlank()
+                                        : result.orderNo() == null
+                                                && result.subOrderNo() == null
+                                                && List.of(
+                                                                "PLACING",
+                                                                "REQUOTE_REQUIRED",
+                                                                "REJECTED")
+                                                        .contains(result.phase())));
+    }
+
+    private static boolean counterQuote(
+            CheckoutScope scope, OperationRef operation, CounterCheckoutQuote result) {
+        return operation.equals(result.quote().operation())
+                && scope.entityNo().equals(result.quote().entityNo())
+                && scope.storeNo().equals(result.quote().storeNo());
     }
 
     @Override
@@ -126,7 +222,8 @@ public final class RemoteManualServiceAdmissionPort implements ManualServiceAdmi
         try {
             var reply = ServiceCalls.call(ServiceName.PLATFORM, () -> send.apply(request));
             bindings.require(request, reply);
-            if (!expected.test(reply.result())) {
+            if (!identity.equals(DelegatedIdentityContext.current())
+                    || !expected.test(reply.result())) {
                 throw new IllegalArgumentException("manual result differs from original request");
             }
             return reply.result();

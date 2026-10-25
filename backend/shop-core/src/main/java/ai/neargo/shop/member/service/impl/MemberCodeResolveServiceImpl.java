@@ -11,6 +11,10 @@ import ai.neargo.shop.member.dto.MemberCodeScope;
 import ai.neargo.shop.member.dto.MemberCodeViews.CustomerReference;
 import ai.neargo.shop.member.dto.MemberCodeViews.MemberCodeView;
 import ai.neargo.shop.member.entity.MbrIdentityTicket;
+import ai.neargo.shop.member.entity.MbrMember;
+import ai.neargo.shop.member.mapper.MemberMappers.MemberMapper;
+import ai.neargo.shop.spi.user.PersonPort;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.member.mapper.MemberIdentityTicketMapper;
 import ai.neargo.shop.spi.member.CustomerIdentityPort.ResolvedCustomer;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
@@ -40,6 +44,8 @@ public class MemberCodeResolveServiceImpl implements MemberCodeResolveService {
     private final UserScopeFactsPort users;
     private final MerchantScopeFactsPort merchants;
     private final MemberCodeProperties properties;
+    private MemberMapper members;
+    private PersonPort people;
 
     public MemberCodeResolveServiceImpl(MemberIdentityTicketMapper tickets, UserScopeFactsPort users,
             MerchantScopeFactsPort merchants, MemberCodeProperties properties) {
@@ -47,6 +53,57 @@ public class MemberCodeResolveServiceImpl implements MemberCodeResolveService {
         this.users = users;
         this.merchants = merchants;
         this.properties = properties;
+    }
+
+    /**
+     * Counter identity comes from existing membership/person owners, not from a fabricated ticket.
+     */
+    @Autowired
+    public MemberCodeResolveServiceImpl(
+            MemberIdentityTicketMapper tickets,
+            UserScopeFactsPort users,
+            MerchantScopeFactsPort merchants,
+            MemberCodeProperties properties,
+            MemberMapper members,
+            PersonPort people) {
+        this(tickets, users, merchants, properties);
+        this.members = members;
+        this.people = people;
+    }
+
+    @Override
+    public ResolvedCustomer requireCounterReference(MemberCodeScope scope, String memberNo) {
+        requireId(memberNo, 64);
+        requireMerchant(scope);
+        var current = SecurityUtils.requireUser();
+        if (!"MERCHANT".equals(current.realm().name())
+                || !scope.tenantNo().equals(current.tenantNo())
+                || !scope.actorNo().equals(current.userNo())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        if (members == null || people == null) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var member =
+                DataScopeContext.executeWithoutScope(
+                        () ->
+                                members.selectOne(
+                                        Wrappers.<MbrMember>lambdaQuery()
+                                                .eq(MbrMember::getTenantNo, scope.tenantNo())
+                                                .eq(MbrMember::getEntityNo, scope.entityNo())
+                                                .eq(MbrMember::getMemberNo, memberNo)
+                                                .eq(MbrMember::getStatus, MbrMember.ACTIVE)));
+        if (member == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        var person =
+                DataScopeContext.executeWithoutScope(() -> people.find(member.getPersonNo()))
+                        .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        if (person.userNo() == null || person.userNo().isBlank()) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        var active = activeUser(scope.tenantNo(), person.userNo());
+        return new ResolvedCustomer(active.userNo());
     }
 
     @Override

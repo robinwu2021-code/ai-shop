@@ -5,6 +5,11 @@ import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
 
 /** Both parent and child ownership are checked in persistence; page dependencies are loaded in batches. */
 public interface StoreOrderReadStore {
+    StoreOrderMaterial findReadable(String subOrderNo, CustomerReadScope scope);
+
+    PageData<StoreOrderMaterial> pageReadable(
+            CustomerReadScope scope, StoreOrderQuery query, long page, long size);
+
     StoreOrderMaterial findOwned(String subOrderNo, String buyerNo);
     PageData<StoreOrderMaterial> pageOwned(String buyerNo, StoreOrderQuery query, long page, long size);
 }

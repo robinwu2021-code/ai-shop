@@ -7,6 +7,7 @@ import ai.neargo.shop.marketing.campaign.CampaignJson;
 import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
 import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -50,6 +51,58 @@ public class CampaignPortImpl implements CampaignPort {
     @Autowired
     @Qualifier("dataSource")
     private DataSource checkoutSource;
+
+    @Override
+    public List<AppliedActivity> counterCandidates(
+            CustomerParty party, List<MerchantAmount> groups) {
+        if (party == null || groups == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!candidates(groups).isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        return List.of();
+    }
+
+    @Override
+    public void requireCounterSelection(CustomerParty party, Discount selected) {
+        if (party == null
+                || selected == null
+                || selected.total() != 0
+                || !selected.shares().isEmpty()
+                || !selected.applied().isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+    }
+
+    @Override
+    public Map<String, Long> counterFlashPrices(CustomerParty party, Collection<String> goodsNos) {
+        if (party == null || goodsNos == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!flashPrices(goodsNos).isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        return Map.of();
+    }
+
+    @Override
+    public Map<String, GiftRule> counterGiftRules(
+            CustomerParty party, Collection<String> goodsNos) {
+        if (party == null || goodsNos == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!giftRules(goodsNos).isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        return Map.of();
+    }
+
+    @Override
+    public void commitCounter(CustomerParty party, String orderNo, Discount discount) {
+        requireCounterSelection(party, discount);
+        // The zero-discount subset has no activity usage or quota to record.
+    }
 
     @Override
     public List<AppliedActivity> candidatesFor(String buyerNo, List<MerchantAmount> groups) {

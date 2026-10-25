@@ -10,6 +10,7 @@ import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.service.impl.GoodsServiceImpl;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
@@ -235,8 +236,25 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         return snapshots(buyerNo, skuNos, storeByEntity);
     }
 
+    @Override
+    public Map<String, SkuSnapshot> snapshotForCounter(
+            CustomerParty party, List<String> skuNos, Map<String, String> storeByEntity) {
+        if (party == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return snapshots(party.userNo(), skuNos, storeByEntity, party);
+    }
+
     private Map<String, SkuSnapshot> snapshots(
             String buyerNo, List<String> skuNos, Map<String, String> storeByEntity) {
+        return snapshots(buyerNo, skuNos, storeByEntity, null);
+    }
+
+    private Map<String, SkuSnapshot> snapshots(
+            String buyerNo,
+            List<String> skuNos,
+            Map<String, String> storeByEntity,
+            CustomerParty party) {
         if (skuNos == null || skuNos.isEmpty()) {
             return Map.of();
         }
@@ -276,10 +294,13 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 宁可「特价不生效」也不能「按错的价卖」：前者商家会来问，后者没人会发现。
          */
         Map<String, Integer> counts = skuCounts(goodsNos);
-        Map<String, Long> flash = new HashMap<>(
-                        buyerNo == null
-                                ? campaignPort.flashPrices(goodsNos)
-                                : campaignPort.flashPricesFor(buyerNo, goodsNos));
+        Map<String, Long> flash =
+                new HashMap<>(
+                        party != null
+                                ? campaignPort.counterFlashPrices(party, goodsNos)
+                                : buyerNo == null
+                                        ? campaignPort.flashPrices(goodsNos)
+                                        : campaignPort.flashPricesFor(buyerNo, goodsNos));
         flash.keySet().removeIf(no -> counts.getOrDefault(no, 1) > 1);
 
         /*

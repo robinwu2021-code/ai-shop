@@ -1,6 +1,13 @@
 package ai.neargo.shop.portal.internal;
 
 import ai.neargo.shop.auth.DelegatedIdentityContext;
+import ai.neargo.shop.auth.BoundDelegatedCalls;
+import ai.neargo.shop.auth.BoundDelegatedCalls.Mode;
+import ai.neargo.shop.spi.security.InternalCall;
+import ai.neargo.shop.spi.member.GuestRegistrationInternalApi.CurrentClaimRequest;
+import ai.neargo.shop.spi.member.GuestRegistrationInternalApi.CurrentClaimResponse;
+import ai.neargo.shop.spi.member.GuestRegistrationInternalApi.CurrentClaimsRequest;
+import ai.neargo.shop.spi.member.GuestRegistrationInternalApi.CurrentClaimsResponse;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.member.GuestRegistrationInternalApi;
@@ -23,8 +30,101 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalGuestRegistrationController {
     private final GuestRegistrationPort guests;
     private final String token;
-    public InternalGuestRegistrationController(GuestRegistrationPort guests,
-            @Value("${shop.services.internal-token:}") String token) { this.guests = guests; this.token = token; }
+    private final BoundDelegatedCalls bound;
+
+    public InternalGuestRegistrationController(
+            GuestRegistrationPort guests, @Value("${shop.services.internal-token:}") String token) {
+        this.guests = guests;
+        this.token = token;
+        this.bound = new BoundDelegatedCalls(token);
+    }
+
+    /**
+     * Claimed guest selection remains merchant identity evidence and never grants C read authority.
+     */
+    @PostMapping(GuestRegistrationInternalApi.BASE + "resolve-claimed-customer")
+    public ResponseEntity<?> resolveClaimedCustomer(
+            @RequestBody InternalCall<GuestRegistrationInternalApi.Verify> call,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        String target = call == null ? null : call.request().guestNo();
+        return bound.invoke(
+                given,
+                call,
+                GuestRegistrationInternalApi.COUNTER_CUSTOMER_ENDPOINT,
+                "RESOLVE",
+                Mode.MERCHANT,
+                target,
+                () -> {
+                    var request = call.request();
+                    var scope = request.scope();
+                    require(
+                            scope != null
+                                    && scope.identity().equals(call.binding().identity())
+                                    && scope.entityNo().equals(call.binding().entityNo())
+                                    && scope.storeNo().equals(call.binding().storeNo()));
+                    return new GuestRegistrationInternalApi.ClaimedCustomerResolution(
+                            request,
+                            guests.resolveClaimedCustomer(
+                                    scope, request.guestNo(), request.claimToken()));
+                });
+    }
+
+    /**
+     * Consumer current ownership has its own exact purpose and never enters merchant get/verify.
+     */
+    @PostMapping(GuestRegistrationInternalApi.BASE + "current-claim")
+    public ResponseEntity<?> currentClaim(
+            @RequestBody InternalCall<CurrentClaimRequest> call,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        String target =
+                call == null || call.request() == null || call.request().guest() == null
+                        ? null
+                        : call.request().guest().guestNo();
+        return bound.invoke(
+                given,
+                call,
+                GuestRegistrationInternalApi.CURRENT_ENDPOINT,
+                "CURRENT_CLAIM",
+                Mode.CONSUMER,
+                target,
+                () -> {
+                    var request = call.request();
+                    require(
+                            request.scope() != null
+                                    && request.guest() != null
+                                    && request.scope().identity().equals(call.binding().identity())
+                                    && call.binding().entityNo() == null
+                                    && call.binding().storeNo() == null);
+                    return new CurrentClaimResponse(
+                            request, guests.currentClaim(request.scope(), request.guest()));
+                });
+    }
+
+    /** A complete member-owned claim set is required for safe historical order pagination. */
+    @PostMapping(GuestRegistrationInternalApi.BASE + "current-claims")
+    public ResponseEntity<?> currentClaims(
+            @RequestBody InternalCall<CurrentClaimsRequest> call,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        String target = call == null ? null : call.binding().identity().actorNo();
+        return bound.invoke(
+                given,
+                call,
+                GuestRegistrationInternalApi.CURRENT_ENDPOINT,
+                "CURRENT_CLAIMS",
+                Mode.CONSUMER,
+                target,
+                () -> {
+                    var request = call.request();
+                    require(
+                            request.scope() != null
+                                    && request.scope().identity().equals(call.binding().identity())
+                                    && call.binding().entityNo() == null
+                                    && call.binding().storeNo() == null);
+                    return new CurrentClaimsResponse(
+                            request, guests.currentClaims(request.scope()));
+                });
+    }
+
     @PostMapping(GuestRegistrationInternalApi.BASE + "register")
     public ResponseEntity<?> register(@RequestBody GuestRegistrationInternalApi.Register request,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {

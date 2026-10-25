@@ -1,5 +1,12 @@
 package ai.neargo.shop.portal.internal;
 
+import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
 import ai.neargo.shop.auth.BoundDelegatedCalls;
 import ai.neargo.shop.spi.security.InternalCall;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
@@ -36,6 +43,98 @@ public class InternalManualServiceAdmissionController {
         this.manual = manual;
         calls = new BoundDelegatedCalls(token);
         bindings = new InternalBindings(token);
+    }
+
+    @PostMapping(ManualServiceAdmissionInternalApi.BASE + "counter-prepare")
+    public ResponseEntity<?> prepareCounter(
+            @RequestBody InternalCall<Scoped<PrepareCounterReq>> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return calls.invoke(
+                given,
+                request,
+                ManualServiceAdmissionInternalApi.ENDPOINT,
+                "COUNTER_PREPARE",
+                BoundDelegatedCalls.Mode.MERCHANT,
+                request == null ? null : request.request().request().operation().operationNo(),
+                () -> {
+                    var scope = request.request().scope();
+                    bindings.requireCoordinates(
+                            request,
+                            scope.tenantNo(),
+                            scope.entityNo(),
+                            scope.storeNo(),
+                            scope.actorNo());
+                    return manual.prepareCounter(scope, request.request().request());
+                });
+    }
+
+    @PostMapping(ManualServiceAdmissionInternalApi.BASE + "counter-read")
+    public ResponseEntity<?> readCounterQuote(
+            @RequestBody InternalCall<Scoped<OperationRef>> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return calls.invoke(
+                given,
+                request,
+                ManualServiceAdmissionInternalApi.ENDPOINT,
+                "COUNTER_READ",
+                BoundDelegatedCalls.Mode.MERCHANT,
+                request == null ? null : request.request().request().operationNo(),
+                () -> {
+                    var scope = request.request().scope();
+                    bindings.requireCoordinates(
+                            request,
+                            scope.tenantNo(),
+                            scope.entityNo(),
+                            scope.storeNo(),
+                            scope.actorNo());
+                    return manual.readCounterQuote(scope, request.request().request());
+                });
+    }
+
+    @PostMapping(ManualServiceAdmissionInternalApi.BASE + "counter-accept")
+    public ResponseEntity<?> acceptCounter(
+            @RequestBody InternalCall<Scoped<AcceptCounterReq>> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return calls.invoke(
+                given,
+                request,
+                ManualServiceAdmissionInternalApi.ENDPOINT,
+                "COUNTER_ACCEPT",
+                BoundDelegatedCalls.Mode.MERCHANT,
+                request == null ? null : request.request().request().operation().operationNo(),
+                () -> {
+                    var scope = request.request().scope();
+                    bindings.requireCoordinates(
+                            request,
+                            scope.tenantNo(),
+                            scope.entityNo(),
+                            scope.storeNo(),
+                            scope.actorNo());
+                    return manual.acceptCounter(scope, request.request().request());
+                });
+    }
+
+    @PostMapping(ManualServiceAdmissionInternalApi.BASE + "counter-place")
+    public ResponseEntity<?> placeCounter(
+            @RequestBody InternalCall<Scoped<PlaceCounterReq>> request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return calls.invoke(
+                given,
+                request,
+                ManualServiceAdmissionInternalApi.ENDPOINT,
+                "COUNTER_PLACE",
+                BoundDelegatedCalls.Mode.MERCHANT,
+                request == null ? null : request.request().request().operation().operationNo(),
+                () -> {
+                    var scope = request.request().scope();
+                    bindings.requireCoordinates(
+                            request,
+                            scope.tenantNo(),
+                            scope.entityNo(),
+                            scope.storeNo(),
+                            scope.actorNo());
+                    return manual.placeCounter(scope, request.request().request());
+                });
     }
 
     @PostMapping(ManualServiceAdmissionInternalApi.BASE + "prepare")

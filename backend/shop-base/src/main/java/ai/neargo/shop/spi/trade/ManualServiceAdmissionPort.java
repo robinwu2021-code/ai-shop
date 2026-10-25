@@ -1,6 +1,8 @@
 package ai.neargo.shop.spi.trade;
 
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutLineReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
 import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
@@ -11,6 +13,8 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /** Merchant declarations remain separate from Pay receipts and never authorize service start. */
 public interface ManualServiceAdmissionPort {
@@ -25,6 +29,281 @@ public interface ManualServiceAdmissionPort {
 
     /** Observe the same checkout line identities without creating financial evidence. */
     ManualSourceFacts source(CheckoutScope scope, SourceLookup request);
+
+    /** Identify a real counter customer and freeze shared ordinary economics without C login. */
+    default CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request) {
+        throw new UnsupportedOperationException("counter purchase unavailable");
+    }
+
+    /** Read the original merchant quote without reinterpreting a claimed historical guest. */
+    default CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation) {
+        throw new UnsupportedOperationException("counter purchase unavailable");
+    }
+
+    /** Explicit in-person purchase acceptance is separate from registration and receipt. */
+    default CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
+        throw new UnsupportedOperationException("counter purchase unavailable");
+    }
+
+    /** Place the accepted original under current cashier authority. */
+    default CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request) {
+        throw new UnsupportedOperationException("counter purchase unavailable");
+    }
+
+    /**
+     * Trusted HOST composition derives member purposes only from an authenticated full counter
+     * request.
+     */
+    interface CounterCustomerResolver {
+        /** Resolve an authenticated complete request through the actual member-owner purposes. */
+        CounterCustomerResolution resolveBound(CheckoutScope scope, PrepareCounterReq request);
+    }
+
+    /**
+     * Selector revision belongs to claimed identity evidence, never to the resulting USER party.
+     */
+    record CounterCustomerResolution(CustomerParty party, Long selectorRevision) {
+        public CounterCustomerResolution {
+            if (party == null
+                    || !"USER".equals(party.kind())
+                    || party.identityRevision() != null
+                    || selectorRevision != null && selectorRevision <= 0) {
+                throw new IllegalArgumentException("invalid bound counter customer");
+            }
+        }
+    }
+
+    /** A selector carries no permission and its reusable token is always redacted. */
+    record CounterCustomerRef(String kind, String memberNo, String guestNo, String claimToken) {
+        public CounterCustomerRef {
+            if (!("USER".equals(kind)
+                            && bounded(memberNo, 64)
+                            && guestNo == null
+                            && claimToken == null
+                    || ("GUEST".equals(kind) || "CLAIMED_GUEST".equals(kind))
+                            && memberNo == null
+                            && bounded(guestNo, 32)
+                            && claimToken != null
+                            && claimToken.matches("[A-Za-z0-9_-]{43}"))) {
+                throw new IllegalArgumentException("invalid counter customer selector");
+            }
+        }
+
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalidResponse();
+        }
+
+        @Override
+        public String toString() {
+            return "CounterCustomerRef[REDACTED]";
+        }
+    }
+
+    /** No caller supplied mode, amount or account can change the shared counter economics. */
+    record PrepareCounterReq(
+            OperationRef operation,
+            String requestKey,
+            CounterCustomerRef customer,
+            long scopeRevision,
+            String scopeHash,
+            List<CheckoutLineReq> lines,
+            String couponNo,
+            Map<String, String> activityChoices,
+            String remark) {
+        public PrepareCounterReq {
+            if (operation == null || customer == null) {
+                throw invalidResponse();
+            }
+            // Reuse the exact legacy selection limits; this transient sentinel is never a proof or
+            // persisted.
+            var shape =
+                    new PrepareCheckoutReq(
+                            operation,
+                            requestKey,
+                            "COUNTER_SHAPE",
+                            scopeRevision,
+                            scopeHash,
+                            lines,
+                            "OFFLINE",
+                            couponNo,
+                            activityChoices,
+                            remark);
+            lines = shape.lines();
+            activityChoices = shape.activityChoices();
+        }
+
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalidResponse();
+        }
+
+        @Override
+        public String toString() {
+            return "PrepareCounterReq[REDACTED]";
+        }
+    }
+
+    /** Typed party and shared quote must agree exactly before they may be displayed together. */
+    record CounterCheckoutQuote(
+            CheckoutQuote quote, CustomerParty party, String purchaseAuthority) {
+        public CounterCheckoutQuote {
+            if (quote == null
+                    || party == null
+                    || !"MERCHANT_RECORDED_IN_PERSON".equals(purchaseAuthority)
+                    || !Objects.equals(quote.buyerNo(), party.userNo())
+                    || !"OFFLINE".equals(quote.payMode())
+                    || !"STORE_VERIFY".equals(quote.fulfillment())
+                    || !"SERVICE_EXECUTION".equals(quote.fulfillmentAuthority())
+                    || !"CNY".equals(quote.currency())
+                    || quote.dueMinor() <= 0
+                    || quote.goodsMinor() <= 0
+                    || quote.discountMinor() < 0
+                    || !reference(quote.entityNo())
+                    || !reference(quote.storeNo())
+                    || quote.lines().isEmpty()
+                    || quote.lines().size() > 20
+                    || quote.expiresAt() == null) {
+                throw invalidResponse();
+            }
+            long goods = 0, discounts = 0, due = 0;
+            var refs = new HashSet<String>();
+            var skus = new HashSet<String>();
+            try {
+                for (var line : quote.lines()) {
+                    if (line.quantity() <= 0
+                            || !"COUNT".equals(line.uom())
+                            || line.unitPriceMinor() <= 0
+                            || Math.multiplyExact(line.unitPriceMinor(), line.quantity())
+                                    != line.grossMinor()
+                            || line.discountMinor() < 0
+                            || line.dueMinor() < 0
+                            || Math.subtractExact(line.grossMinor(), line.discountMinor())
+                                    != line.dueMinor()
+                            || !refs.add(line.clientLineRef())
+                            || !skus.add(line.skuNo())) {
+                        throw invalidResponse();
+                    }
+                    goods = Math.addExact(goods, line.grossMinor());
+                    discounts = Math.addExact(discounts, line.discountMinor());
+                    due = Math.addExact(due, line.dueMinor());
+                }
+            } catch (ArithmeticException overflow) {
+                throw invalidResponse();
+            }
+            if (goods != quote.goodsMinor()
+                    || discounts != quote.discountMinor()
+                    || due != quote.dueMinor()) {
+                throw invalidResponse();
+            }
+        }
+
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalidResponse();
+        }
+
+        @Override
+        public String toString() {
+            return "CounterCheckoutQuote[REDACTED]";
+        }
+    }
+
+    /** In-person acceptance references exactly the quote displayed, never an override amount. */
+    record AcceptCounterReq(
+            OperationRef operation,
+            String requestKey,
+            String quoteNo,
+            long quoteRevision,
+            String quoteHash,
+            Long identityRevision,
+            Instant acceptedAt,
+            String evidenceKind) {
+        public AcceptCounterReq {
+            if (operation == null
+                    || !bounded(requestKey, 128)
+                    || !reference(quoteNo)
+                    || quoteRevision != 1
+                    || quoteHash == null
+                    || !quoteHash.matches("[a-f0-9]{64}")
+                    || identityRevision != null && identityRevision <= 0
+                    || acceptedAt == null
+                    || acceptedAt.getNano() % 1_000_000 != 0
+                    || !"MERCHANT_RECORDED_IN_PERSON".equals(evidenceKind)) {
+                throw invalidResponse();
+            }
+        }
+
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalidResponse();
+        }
+
+        @Override
+        public String toString() {
+            return "AcceptCounterReq[REDACTED]";
+        }
+    }
+
+    /** Immutable owner acceptance; current identity linkage never rewrites its historical party. */
+    record CounterConfirmation(
+            OperationRef operation,
+            String confirmationNo,
+            String quoteNo,
+            long quoteRevision,
+            String quoteHash,
+            CustomerParty party,
+            String purchaseAuthority,
+            Instant acceptedAt,
+            Instant expiresAt,
+            String status) {
+        public CounterConfirmation {
+            if (operation == null
+                    || !reference(confirmationNo)
+                    || !reference(quoteNo)
+                    || quoteRevision != 1
+                    || quoteHash == null
+                    || !quoteHash.matches("[a-f0-9]{64}")
+                    || party == null
+                    || !"MERCHANT_RECORDED_IN_PERSON".equals(purchaseAuthority)
+                    || acceptedAt == null
+                    || acceptedAt.getNano() % 1_000_000 != 0
+                    || expiresAt == null
+                    || !acceptedAt.isBefore(expiresAt)
+                    || !List.of("AUTHORIZED", "CONSUMED", "REVOKED", "EXPIRED").contains(status)) {
+                throw invalidResponse();
+            }
+        }
+
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalidResponse();
+        }
+
+        @Override
+        public String toString() {
+            return "CounterConfirmation[REDACTED]";
+        }
+    }
+
+    /** Exact original acceptance and key are required for every live placement retry. */
+    record PlaceCounterReq(OperationRef operation, String confirmationNo, String requestKey) {
+        public PlaceCounterReq {
+            if (operation == null || !reference(confirmationNo) || !bounded(requestKey, 128)) {
+                throw invalidResponse();
+            }
+        }
+
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalidResponse();
+        }
+
+        @Override
+        public String toString() {
+            return "PlaceCounterReq[REDACTED]";
+        }
+    }
 
     enum ManualMethod {
         CASH,
@@ -154,18 +433,35 @@ public interface ManualServiceAdmissionPort {
         }
     }
 
-    /** M1 accepts only the actual identified account; the genuine guest lane follows in M2. */
-    record CustomerParty(String kind, String userNo, String guestNo, long identityRevision) {
+    /** Exactly one actual customer; nullable USER revision does not fabricate an owner version. */
+    record CustomerParty(String kind, String userNo, String guestNo, Long identityRevision) {
         public CustomerParty {
-            if (!"USER".equals(kind)
-                    || userNo == null
-                    || userNo.isBlank()
-                    || guestNo != null
-                    || userNo.length() > 64
-                    || !userNo.equals(userNo.strip())
-                    || identityRevision <= 0) {
+            if (!("USER".equals(kind)
+                            && bounded(userNo, 64)
+                            && guestNo == null
+                            && (identityRevision == null || identityRevision > 0)
+                    || "GUEST".equals(kind)
+                            && userNo == null
+                            && bounded(guestNo, 32)
+                            && identityRevision != null
+                            && identityRevision > 0)) {
                 throw new IllegalArgumentException("unsupported manual customer party");
             }
+        }
+
+        /** Preserve the original M1 primitive constructor and serialized numeric revision. */
+        public CustomerParty(String kind, String userNo, String guestNo, long identityRevision) {
+            this(kind, userNo, guestNo, Long.valueOf(identityRevision));
+        }
+
+        @JsonAnySetter
+        public void unknown(String field, Object value) {
+            throw invalidResponse();
+        }
+
+        @Override
+        public String toString() {
+            return "CustomerParty[REDACTED]";
         }
     }
 
@@ -256,6 +552,13 @@ public interface ManualServiceAdmissionPort {
         return value != null
                 && List.of("AWAITING_RECEIPT", "ADMITTED", "SUSPENDED", "CANCELLED", "UNKNOWN")
                         .contains(value);
+    }
+
+    private static boolean bounded(String value, int max) {
+        return value != null
+                && !value.isBlank()
+                && value.length() <= max
+                && value.equals(value.strip());
     }
 
     private static boolean reference(String value) {

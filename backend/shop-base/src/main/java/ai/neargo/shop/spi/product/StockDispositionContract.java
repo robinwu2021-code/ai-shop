@@ -91,6 +91,24 @@ public final class StockDispositionContract {
                         + field(original.manifestHash()));
     }
 
+    public static String reservationOperationNo(Original original) {
+        validate(original);
+        return hash(
+                "STOCK_RESERVE_V1"
+                        + field(original.tenantNo())
+                        + field(original.entityNo())
+                        + field(original.orderNo())
+                        + field(original.authority())
+                        + field(Integer.toString(original.lifecycleVersion()))
+                        + field(original.manifestHash()));
+    }
+
+    public static void requireReservationOperation(Original original, String operation) {
+        if (original == null || !reservationOperationNo(original).equals(operation)) {
+            throw new IllegalArgumentException("reservation operation does not match original");
+        }
+    }
+
     /** Validate complete frozen owner coordinates before any IO. */
     public static void validate(Original original) {
         if (!"MAIN".equals(original.tenantNo())

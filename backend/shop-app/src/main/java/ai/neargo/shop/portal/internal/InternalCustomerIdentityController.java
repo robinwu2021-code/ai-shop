@@ -1,6 +1,9 @@
 package ai.neargo.shop.portal.internal;
 
 import ai.neargo.shop.auth.DelegatedIdentityContext;
+import ai.neargo.shop.auth.BoundDelegatedCalls;
+import ai.neargo.shop.auth.BoundDelegatedCalls.Mode;
+import ai.neargo.shop.spi.security.InternalCall;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.member.CustomerIdentityInternalApi;
@@ -21,8 +24,52 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalCustomerIdentityController {
     private final CustomerIdentityPort customers;
     private final String token;
-    public InternalCustomerIdentityController(CustomerIdentityPort customers,
-            @Value("${shop.services.internal-token:}") String token) { this.customers = customers; this.token = token; }
+    private final BoundDelegatedCalls bound;
+
+    public InternalCustomerIdentityController(
+            CustomerIdentityPort customers,
+            @Value("${shop.services.internal-token:}") String token) {
+        this.customers = customers;
+        this.token = token;
+        this.bound = new BoundDelegatedCalls(token);
+    }
+
+    /** Canonical member selection is a separately bound purpose, not a ticket or consumer proof. */
+    @PostMapping(CustomerIdentityInternalApi.COUNTER_REFERENCE_PATH)
+    public ResponseEntity<?> resolveCounterReference(
+            @RequestBody InternalCall<CustomerIdentityInternalApi.CounterReferenceRequest> call,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        String target =
+                call == null || call.request().query() == null
+                        ? null
+                        : call.request().query().memberNo();
+        return bound.invoke(
+                given,
+                call,
+                CustomerIdentityInternalApi.COUNTER_ENDPOINT,
+                "RESOLVE",
+                Mode.MERCHANT,
+                target,
+                () -> {
+                    var request = call.request();
+                    var identity = request.identity();
+                    var context = request.context();
+                    var query = request.query();
+                    if (identity == null
+                            || context == null
+                            || query == null
+                            || !identity.equals(call.binding().identity())
+                            || !context.tenantNo().equals(identity.tenantNo())
+                            || !context.actorNo().equals(identity.actorNo())
+                            || !query.entityNo().equals(call.binding().entityNo())
+                            || !query.storeNo().equals(call.binding().storeNo())) {
+                        throw BizException.of(ErrorCode.FORBIDDEN);
+                    }
+                    return new CustomerIdentityInternalApi.CounterReferenceResolution(
+                            request, customers.resolveCounterReference(context, query));
+                });
+    }
+
     @PostMapping(CustomerIdentityInternalApi.PATH)
     public ResponseEntity<?> resolve(@RequestBody CustomerIdentityInternalApi.Request request,
             @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {

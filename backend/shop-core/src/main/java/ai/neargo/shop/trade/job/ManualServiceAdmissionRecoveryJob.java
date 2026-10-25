@@ -6,6 +6,8 @@ import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.trade.service.ManualServiceAdmissionService;
+import ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Component;
 public class ManualServiceAdmissionRecoveryJob implements JobHandler {
     private final ManualServiceAdmissionService manual;
     private final JobSupport jobs;
+    @Autowired private CounterOrderPlacementService counter;
 
     public ManualServiceAdmissionRecoveryJob(
             ManualServiceAdmissionService manual, JobSupport jobs) {
@@ -43,7 +46,11 @@ public class ManualServiceAdmissionRecoveryJob implements JobHandler {
 
     @Override
     public JobResult run(JobInvocation invocation) {
-        return JobResult.ok("advanced=" + manual.recoverPending(100));
+        return JobResult.ok(
+                "advanced="
+                        + manual.recoverPending(100)
+                        + ",counter="
+                        + counter.recoverPending(100));
     }
 
     @Bean

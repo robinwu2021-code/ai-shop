@@ -25,6 +25,10 @@ import ai.neargo.shop.spi.product.StockDispositionPort.Lookup;
 import ai.neargo.shop.spi.product.StockDispositionPort.Original;
 import ai.neargo.shop.spi.product.StockDispositionPort.Outcome;
 import ai.neargo.shop.spi.product.StockDispositionPort.OwnerLine;
+import ai.neargo.shop.spi.product.StockDispositionPort.Reservation;
+import ai.neargo.shop.spi.product.StockDispositionPort.ReservationLookup;
+import ai.neargo.shop.spi.product.StockDispositionPort.ReservationView;
+import ai.neargo.shop.spi.product.StockDispositionPort.ReleaseView;
 import ai.neargo.shop.spi.product.StockPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -35,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -76,6 +81,147 @@ public class ReservationDispositionServiceImpl implements ReservationDisposition
         this.outboundLines = outboundLines;
         this.reservations = reservations;
         this.json = json;
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public ReleaseView releaseOriginal(ReservationLookup request) {
+        var original = request.original();
+        var snapshot = load(original);
+        String invalid = invalid(original, snapshot);
+        var before = snapshot;
+        boolean held =
+                invalid == null
+                        && before.heads().stream()
+                                .allMatch(
+                                        head ->
+                                                "HELD".equals(head.getStatus())
+                                                        && head.getConfirmationOperationNo() == null
+                                                        && protectedOriginal(
+                                                                head,
+                                                                before.lines()
+                                                                        .get(
+                                                                                head
+                                                                                        .getReservationId())))
+                        && before.lines().values().stream()
+                                .flatMap(List::stream)
+                                .allMatch(
+                                        row ->
+                                                nz(row.getIssuedQty()) == 0
+                                                        && nz(row.getReleasedQty()) == 0);
+        if (held) {
+            for (var head : snapshot.heads()) {
+                reservations.cancelByRef(head.getOwnerId(), head.getExternalRef());
+            }
+            snapshot = load(original);
+        }
+        var terminal = snapshot;
+        boolean released =
+                invalid(original, terminal) == null
+                        && terminal.heads().stream()
+                                .allMatch(
+                                        head ->
+                                                ("RELEASED".equals(head.getStatus())
+                                                                || "EXPIRED"
+                                                                        .equals(head.getStatus()))
+                                                        && head.getConfirmationOperationNo()
+                                                                == null)
+                        && terminal.lines().values().stream()
+                                .flatMap(List::stream)
+                                .allMatch(
+                                        row ->
+                                                nz(row.getIssuedQty()) == 0
+                                                        && nz(row.getReleasedQty())
+                                                                == row.getQty());
+        String outcome =
+                released ? "RELEASED" : snapshot.heads().isEmpty() ? "UNKNOWN" : "REJECTED";
+        String reason = released ? null : invalid == null ? "STOCK_NOT_RELEASABLE" : invalid;
+        var evidence =
+                result(
+                        original,
+                        request.reservationOperationNo(),
+                        snapshot,
+                        Outcome.REJECTED,
+                        released ? CurrentState.RELEASED : CurrentState.INCONSISTENT,
+                        reason);
+        String hash =
+                StockDispositionContract.hash(
+                        json.writeValueAsString(
+                                Arrays.asList(
+                                        "STOCK_RESERVATION_RELEASE_V1",
+                                        original,
+                                        request.reservationOperationNo(),
+                                        outcome,
+                                        evidence.lines(),
+                                        reason)));
+        return new ReleaseView(
+                original,
+                request.reservationOperationNo(),
+                outcome,
+                evidence.lines(),
+                hash,
+                Instant.now(),
+                reason);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public ReservationView observeReservation(ReservationLookup request) {
+        var original = request.original();
+        var snapshot = load(original);
+        String invalid = invalid(original, snapshot);
+        boolean held =
+                invalid == null
+                        && snapshot.heads().stream()
+                                .allMatch(
+                                        head ->
+                                                "HELD".equals(head.getStatus())
+                                                        && head.getConfirmationOperationNo() == null
+                                                        && head.getExpiresAt() != null
+                                                        && head.getExpiresAt()
+                                                                .isAfter(LocalDateTime.now())
+                                                        && protectedOriginal(
+                                                                head,
+                                                                snapshot.lines()
+                                                                        .get(
+                                                                                head
+                                                                                        .getReservationId())))
+                        && snapshot.lines().values().stream()
+                                .flatMap(List::stream)
+                                .allMatch(
+                                        row ->
+                                                nz(row.getIssuedQty()) == 0
+                                                        && nz(row.getReleasedQty()) == 0);
+        String outcome = held ? "RESERVED" : snapshot.heads().isEmpty() ? "UNKNOWN" : "REJECTED";
+        String reason = held ? null : invalid == null ? "STOCK_NOT_HELD" : invalid;
+        var evidence =
+                result(
+                        original,
+                        request.reservationOperationNo(),
+                        snapshot,
+                        held
+                                ? Outcome.PENDING
+                                : snapshot.heads().isEmpty() ? Outcome.UNKNOWN : Outcome.REJECTED,
+                        held ? CurrentState.RESERVED : CurrentState.INCONSISTENT,
+                        reason);
+        String hash =
+                StockDispositionContract.hash(
+                        json.writeValueAsString(
+                                Arrays.asList(
+                                        "STOCK_RESERVATION_V1",
+                                        original,
+                                        request.reservationOperationNo(),
+                                        outcome,
+                                        evidence.lines(),
+                                        reason)));
+        return new ReservationView(
+                original,
+                request.reservationOperationNo(),
+                outcome,
+                evidence.lines(),
+                hash,
+                Instant.now(),
+                reason);
     }
 
     @Override

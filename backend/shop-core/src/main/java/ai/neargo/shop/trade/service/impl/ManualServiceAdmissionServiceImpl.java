@@ -1,5 +1,11 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.BoundActionContext;
@@ -154,6 +160,26 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
     }
 
     @Override
+    public CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request) {
+        return checkout.prepareCounter(scope, request);
+    }
+
+    @Override
+    public CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation) {
+        return checkout.readCounterQuote(scope, operation);
+    }
+
+    @Override
+    public CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
+        return checkout.acceptCounter(scope, request);
+    }
+
+    @Override
+    public CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request) {
+        return checkout.placeCounter(scope, request);
+    }
+
+    @Override
     public CheckoutQuote prepare(CheckoutScope scope, PrepareCheckoutReq request) {
         outside();
         return checkout.prepareManual(scope, request);
@@ -256,6 +282,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                                 previous.getPayloadHash())) {
                                                     throw conflict();
                                                 }
+                                                requireDeclarationParty(op, previous);
                                                 return previous;
                                             }
                                             var facts = facts(op, parent, subs.getFirst());
@@ -281,6 +308,9 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                             row.setEntityNo(scope.entityNo());
                                             row.setStoreNo(scope.storeNo());
                                             row.setBuyerNo(op.getBuyerNo());
+                                            row.setCustomerKind(op.getCustomerKind());
+                                            row.setGuestNo(op.getGuestNo());
+                                            row.setIdentityRevision(op.getIdentityRevision());
                                             row.setAdmissionKind("MANUAL_OFFLINE");
                                             row.setActorNo(actor.actorNo());
                                             row.setActorRealm(actor.realm());
@@ -497,6 +527,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                 null);
                                     }
                                     try {
+                                        requireDeclarationParty(current, declaration);
                                         var facts = facts(current, parent, child);
                                         String state = admissionState(declaration);
                                         if (!Objects.equals(
@@ -572,6 +603,12 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                 && suspendModeConflict(current);
                                     }));
         }
+        var operation =
+                unscoped(() -> operations.find(observed.getCaller(), observed.getOperationNo()));
+        if (operation == null) {
+            return false;
+        }
+        requireDeclarationParty(operation, observed);
         Original original = json.readValue(observed.getStockManifestJson(), Original.class);
         Disposition disposition =
                 stock.observeOriginal(
@@ -740,6 +777,30 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                 StockDispositionContract.needs(needs)));
     }
 
+    private static CustomerParty party(OrdCheckoutOperation op) {
+        return new CustomerParty(
+                op.getCustomerKind(), op.getBuyerNo(), op.getGuestNo(), op.getIdentityRevision());
+    }
+
+    private void requireDeclarationParty(
+            OrdCheckoutOperation op, OrdManualServiceAdmission declaration) {
+        if (!party(op)
+                        .equals(
+                                new CustomerParty(
+                                        declaration.getCustomerKind(),
+                                        declaration.getBuyerNo(),
+                                        declaration.getGuestNo(),
+                                        declaration.getIdentityRevision()))
+                || !op.getCaller().equals(declaration.getCaller())
+                || !op.getOperationNo().equals(declaration.getOperationNo())
+                || !Objects.equals(op.getOrderNo(), declaration.getOrderNo())
+                || !Objects.equals(op.getSubOrderNo(), declaration.getSubOrderNo())
+                || !op.getEntityNo().equals(declaration.getEntityNo())
+                || !op.getStoreNo().equals(declaration.getStoreNo())) {
+            throw conflict();
+        }
+    }
+
     private Facts facts(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child) {
         if (parent == null
                 || child == null
@@ -748,8 +809,26 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 || !"MANUAL_OFFLINE".equals(parent.getAdmissionKind())
                 || !"MANUAL_OFFLINE".equals(child.getAdmissionKind())
                 || !Objects.equals(parent.getOrderNo(), child.getOrderNo())
-                || !op.getBuyerNo().equals(parent.getUserNo())
-                || !op.getBuyerNo().equals(child.getUserNo())
+                || !party(op)
+                        .equals(
+                                new CustomerParty(
+                                        parent.getCustomerKind(),
+                                        parent.getUserNo(),
+                                        parent.getGuestNo(),
+                                        parent.getIdentityRevision()))
+                || !party(op)
+                        .equals(
+                                new CustomerParty(
+                                        child.getCustomerKind(),
+                                        child.getUserNo(),
+                                        child.getGuestNo(),
+                                        child.getIdentityRevision()))
+                || "MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())
+                        && (!op.getEntityNo().equals(parent.getEntityNo())
+                                || !op.getStoreNo().equals(parent.getStoreNo())
+                                || !op.getCaller().equals(parent.getCaller())
+                                || !op.getOperationNo().equals(parent.getOperationNo())
+                                || !op.getCaller().equals(child.getCaller()))
                 || !op.getEntityNo().equals(child.getEntityNo())
                 || !op.getStoreNo().equals(child.getStoreNo())
                 || !op.getOperationNo().equals(child.getSourceOperationNo())
@@ -773,6 +852,11 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             throw conflict();
         }
         var economics = json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class);
+        if (!Objects.equals(op.getBuyerNo(), economics.buyerNo())
+                || !op.getEntityNo().equals(economics.entityNo())
+                || !op.getStoreNo().equals(economics.storeNo())) {
+            throw conflict();
+        }
         var sourceLines =
                 mappings.selectList(
                         Wrappers.<OrdCheckoutLine>lambdaQuery()
@@ -861,7 +945,21 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                                 .getInventoryLifecycleVersion()))
                                 .toList());
         var actual = StockDispositionContract.needs(stored);
-        if (!allocated.equals(actual)) {
+        if (!allocated.equals(actual)
+                || !party(facts.op())
+                        .equals(
+                                new CustomerParty(
+                                        intent.getCustomerKind(),
+                                        intent.getUserNo(),
+                                        intent.getGuestNo(),
+                                        intent.getIdentityRevision()))
+                || "MERCHANT_RECORDED_IN_PERSON".equals(facts.op().getPurchaseAuthority())
+                        && (!"COUNTER".equals(intent.getCreationKind())
+                                || !facts.op().getOperationNo().equals(intent.getOperationNo())
+                                || !facts.op()
+                                        .getConfirmationNo()
+                                        .equals(intent.getConfirmationNo())
+                                || !facts.child().getSubOrderNo().equals(intent.getSubOrderNo()))) {
             throw conflict();
         }
         return new Original(
@@ -937,6 +1035,17 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                     itemVersions,
                                     state,
                                     lines));
+            if ("MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())) {
+                observed =
+                        CheckoutDigests.hash(
+                                json,
+                                Arrays.asList(
+                                        "MANUAL_COUNTER_SOURCE_V1",
+                                        party(op),
+                                        op.getConfirmationNo(),
+                                        op.getAuthorityNamespaceHash(),
+                                        observed));
+            }
             if (!Objects.equals(hash, observed)) {
                 op.setManualObservationHash(observed);
                 op.setManualObservationRevision(Math.addExact(revision, 1));
@@ -949,7 +1058,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 new OperationRef(op.getCaller(), op.getOperationNo()),
                 op.getOrderNo(),
                 op.getSubOrderNo(),
-                new CustomerParty("USER", op.getBuyerNo(), null, 1),
+                party(op),
                 op.getEntityNo(),
                 op.getStoreNo(),
                 "MANUAL_OFFLINE",
@@ -964,6 +1073,9 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
 
     private ManualAdmissionView view(
             OrdCheckoutOperation op, OrdManualServiceAdmission declaration) {
+        if (declaration != null) {
+            requireDeclarationParty(op, declaration);
+        }
         var parent = parent(op.getOrderNo());
         if (declaration == null) {
             return new ManualAdmissionView(

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
@@ -12,12 +13,31 @@ import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.trade.order.refund.service.impl.RefundPreparationServiceImpl;
+import ai.neargo.shop.trade.order.refund.service.impl.RefundResultServiceImpl;
+import ai.neargo.shop.trade.order.refund.service.impl.RefundExecutionServiceImpl;
+import ai.neargo.shop.trade.order.refund.service.impl.BasicRefundExecutionServiceImpl;
+import ai.neargo.shop.trade.order.refund.service.impl.RefundResourceServiceImpl;
+import ai.neargo.shop.trade.order.refund.service.impl.PointsRefundResourceServiceImpl;
+import ai.neargo.shop.trade.port.SettleSourcePortImpl;
+import ai.neargo.shop.pay.points.port.PointsRefundPortImpl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.member.GuestRegistrationPort.RegisterCommand;
+import ai.neargo.shop.spi.member.GuestRegistrationPort.Scope;
+import ai.neargo.shop.spi.security.DelegatedIdentity;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCustomerRef;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
+import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.product.service.StockDispositionService;
 import ai.neargo.shop.spi.product.StockDispositionPort;
+import ai.neargo.shop.spi.points.PointsRefundPort;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.PaymentOperationPort;
 import ai.neargo.shop.spi.settle.RefundDispatchResult;
@@ -90,6 +110,7 @@ import java.util.function.Supplier;
 @TestPropertySource(properties = "shop.inventory.lifecycle.version=2")
 class ManualServiceFinancialIsolationIT extends CheckoutFlowFixture {
     @Autowired ManualServiceAdmissionPort manual;
+    @Autowired GuestRegistrationPort counterGuests;
     @Autowired SettleSourcePort settlement;
     @Autowired OrderService orders;
     @Autowired OfflineReceiptService receipts;
@@ -114,6 +135,7 @@ class ManualServiceFinancialIsolationIT extends CheckoutFlowFixture {
     @MockitoSpyBean StockDispositionPort stockBoundary;
     @MockitoSpyBean SettlePort payBoundary;
     @MockitoSpyBean PaymentOperationPort paymentBoundary;
+    @MockitoSpyBean PointsRefundPort pointsBoundary;
 
     @Override
     protected <T> T asMerchant(Supplier<T> work) {
@@ -181,6 +203,416 @@ class ManualServiceFinancialIsolationIT extends CheckoutFlowFixture {
         var q = assertDoesNotThrow(() -> asMerchant(() -> manual.prepare(scope, request(null))));
         var c = asBuyer(() -> confirm(q));
         return asBuyer(() -> checkout.place(place(q, c)));
+    }
+
+    @Test
+    void counterUserAndGuestRemainFinanciallyIneligible() throws Exception {
+        jdbc.update(
+                "INSERT INTO mch_qualification(qual_no,entity_no,qual_type,qual_name,qual_number,status,"
+                        + "created_at,updated_at) VALUES (?,?,'BUSINESS_LICENSE','counter license','FIXTURE',"
+                        + "'VALID',NOW(),NOW())",
+                "counter-license-" + sku,
+                entity);
+        String member = "counter-member-" + sku;
+        String person = "counter-person-" + sku;
+        jdbc.update(
+                "INSERT INTO usr_person(person_no,phone_hash,user_no,status,created_at,updated_at)"
+                        + " VALUES (?,?,?,'ACTIVE',NOW(),NOW())",
+                person,
+                CheckoutDigests.hash(person),
+                buyer);
+        jdbc.update(
+                "INSERT INTO mbr_member(member_no,entity_no,person_no,status,source,joined_at,"
+                        + "created_at,updated_at)"
+                        + " VALUES (?,?,?,'ACTIVE','MANUAL',?,NOW(),NOW())",
+                member,
+                entity,
+                person,
+                System.currentTimeMillis());
+        var guestScope =
+                new Scope(entity, store, new DelegatedIdentity("MAIN", "MERCHANT", "MCH", actor));
+        var registered =
+                asMerchant(
+                        () ->
+                                counterGuests.register(
+                                        guestScope,
+                                        new RegisterCommand(
+                                                null, null, true, "financial-guest-" + sku)));
+        forbidPay();
+        for (var selected :
+                List.of(
+                        new CounterCustomerRef("USER", member, null, null),
+                        new CounterCustomerRef(
+                                "GUEST", null, registered.guestNo(), registered.claimToken()))) {
+            var quote =
+                    asMerchant(
+                            () ->
+                                    manual.prepareCounter(
+                                            scope,
+                                            new PrepareCounterReq(
+                                                    new CheckoutPort.OperationRef(
+                                                            "BEAUTY",
+                                                            "financial-counter-"
+                                                                    + selected.kind()
+                                                                    + '-'
+                                                                    + sku),
+                                                    "counter-key-" + selected.kind() + '-' + sku,
+                                                    selected,
+                                                    1,
+                                                    "a".repeat(64),
+                                                    List.of(
+                                                            new CheckoutPort.CheckoutLineReq(
+                                                                    "line", sku, 1)),
+                                                    null,
+                                                    Map.of(),
+                                                    null)));
+            var accepted =
+                    asMerchant(
+                            () ->
+                                    manual.acceptCounter(
+                                            scope,
+                                            new AcceptCounterReq(
+                                                    quote.quote().operation(),
+                                                    "counter-accept-" + selected.kind() + '-' + sku,
+                                                    quote.quote().quoteNo(),
+                                                    1,
+                                                    quote.quote().quoteHash(),
+                                                    quote.party().identityRevision(),
+                                                    testClock.at.truncatedTo(ChronoUnit.MILLIS),
+                                                    "MERCHANT_RECORDED_IN_PERSON")));
+            var created =
+                    asMerchant(
+                            () ->
+                                    manual.placeCounter(
+                                            scope,
+                                            new PlaceCounterReq(
+                                                    accepted.operation(),
+                                                    accepted.confirmationNo(),
+                                                    "counter-place-"
+                                                            + selected.kind()
+                                                            + '-'
+                                                            + sku)));
+            assertThat(created.phase()).isEqualTo("CREATED");
+            assertCounterFinancialIsolation(created, selected.kind());
+        }
+    }
+
+    private void assertCounterFinancialIsolation(CheckoutPort.CheckoutResult order, String kind)
+            throws Exception {
+        long revision =
+                jdbc.queryForObject(
+                        "SELECT version FROM ord_order WHERE order_no=?",
+                        Long.class,
+                        order.orderNo());
+        var admitted =
+                asMerchant(
+                        () ->
+                                manual.confirm(
+                                        scope,
+                                        new ConfirmManualReceipt(
+                                                order.operation(),
+                                                "counter-cash-" + kind + '-' + sku,
+                                                revision,
+                                                ManualMethod.CASH,
+                                                101,
+                                                "CNY",
+                                                testClock
+                                                        .at
+                                                        .minusMillis(1)
+                                                        .truncatedTo(ChronoUnit.MILLIS),
+                                                null)));
+        assertThat(admitted.admissionState()).isEqualTo("ADMITTED");
+        assertThat(admitted.method()).isEqualTo(ManualMethod.CASH);
+        assertThat(
+                        jdbc.queryForMap(
+                                "SELECT status,pay_channel,pay_trade_no,paid_at,receipt_provenance"
+                                        + " FROM ord_order WHERE order_no=?",
+                                order.orderNo()))
+                .containsEntry("status", "PAID")
+                .containsEntry("pay_channel", null)
+                .containsEntry("pay_trade_no", null)
+                .containsEntry("paid_at", testClock.at.minusMillis(1).toEpochMilli())
+                .containsEntry("receipt_provenance", "MANUAL_DECLARATION");
+        var source =
+                asMerchant(
+                        () ->
+                                manual.source(
+                                        scope,
+                                        new CheckoutPort.SourceLookup(
+                                                order.operation(), order.subOrderNo())));
+        assertThat(source.admissionState()).isEqualTo("ADMITTED");
+        assertThat(source.party().kind()).isEqualTo(kind);
+        assertThat(source.lines()).hasSize(1);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT status FROM prd_stock_lock WHERE lock_no=?",
+                                String.class,
+                                order.orderNo()))
+                .isEqualTo("ALLOCATED");
+
+        // The old after-sale schema requires a user. This deliberately foreign-user import
+        // cannot assign that user to the actual GUEST original, whose buyer remains NULL.
+        String afterSale = importAfterSale(order, "counter-as-" + kind + '-' + sku);
+        String execution = importCashExecution(order, afterSale, "counter-ex-" + kind + '-' + sku);
+        jdbc.update(
+                "UPDATE ord_refund_execution SET closure_version=2 WHERE execution_no=?",
+                execution);
+        importStockObligation(order, afterSale);
+        actualTerminalOrigin(refunds, RefundPreparationServiceImpl.class);
+        actualTerminalOrigin(refundResults, RefundResultServiceImpl.class);
+        actualTerminalOrigin(executions, RefundExecutionServiceImpl.class);
+        actualTerminalOrigin(cashRecovery, BasicRefundExecutionServiceImpl.class);
+        actualTerminalOrigin(cashResources, RefundResourceServiceImpl.class);
+        actualTerminalOrigin(pointsResources, PointsRefundResourceServiceImpl.class);
+        actualTerminalOrigin(settlement, SettleSourcePortImpl.class);
+        actualTerminalOrigin(pointsBoundary, PointsRefundPortImpl.class);
+        var orderBefore = counterFinancialOriginal(order);
+        var stockBefore = originalStock(order);
+        var observationsBefore = observations(order);
+        var cashBefore = cashCommand(execution);
+        var obligationBefore = taskCommand(afterSale);
+        var pointsBefore =
+                jdbc.queryForMap(
+                        "SELECT * FROM ord_points_refund_execution WHERE after_sale_no=?",
+                        afterSale);
+        var itemsBefore =
+                jdbc.queryForList(
+                        "SELECT * FROM ord_item WHERE sub_order_no=? ORDER BY id",
+                        order.subOrderNo());
+        assertCounterParty(order, kind);
+        forbidRefundEffects();
+        clearInvocations(pointsBoundary, stockBoundary);
+        var forbidden = new AssertionError("counter financial guard crossed points or stock owner");
+        doThrow(forbidden).when(pointsBoundary).prepare(any());
+        doThrow(forbidden).when(pointsBoundary).confirm(any());
+        doThrow(forbidden).when(pointsBoundary).abort(any());
+        doThrow(forbidden).when(pointsBoundary).authorizeCash(anyString(), anyString(), anyLong());
+        doThrow(forbidden).when(pointsBoundary).requestCompensation(any(), anyLong());
+        doThrow(forbidden).when(pointsBoundary).recoveryStatus(anyString(), anyString());
+        doThrow(forbidden).when(stockBoundary).reserveOriginal(any());
+        doThrow(forbidden).when(stockBoundary).observeReservation(any());
+        doThrow(forbidden).when(stockBoundary).releaseOriginal(any());
+        doThrow(forbidden).when(stockBoundary).observeOriginal(any());
+        doThrow(forbidden).when(stockBoundary).confirmOriginal(any());
+
+        sourceConflict(
+                () ->
+                        asBuyer(
+                                () ->
+                                        checkout.initiatePayment(
+                                                new CheckoutPort.InitiatePaymentReq(
+                                                        order.operation(),
+                                                        "counter-pay-" + kind + '-' + sku,
+                                                        "WECHAT"))));
+        sourceConflict(() -> asBuyer(() -> orders.pay(order.orderNo(), "WECHAT")));
+        sourceConflict(() -> orders.markPaid(order.orderNo(), "WECHAT", "forged-counter-success"));
+        sourceConflict(
+                () ->
+                        asMerchant(
+                                () ->
+                                        receipts.confirm(
+                                                scope,
+                                                new OfflineReceiptReq(
+                                                        order.operation(),
+                                                        "counter-legacy-receipt-" + kind,
+                                                        "CASH",
+                                                        101,
+                                                        "CNY",
+                                                        null,
+                                                        testClock
+                                                                .at
+                                                                .minusMillis(1)
+                                                                .truncatedTo(ChronoUnit.MILLIS),
+                                                        "hostile legacy repair"))));
+        assertThat(slots.occupy(order.subOrderNo(), "counter-slot-" + kind)).isZero();
+        sourceConflict(() -> refunds.prepare(afterSale, new OrderActor(entity, store, actor)));
+        sourceConflict(
+                () ->
+                        refundResults.apply(
+                                new RefundDispatchResult(
+                                        execution,
+                                        "unverified",
+                                        DispatchStatus.SUCCEEDED,
+                                        null,
+                                        false,
+                                        testClock.at.toEpochMilli())));
+        sourceConflict(() -> refundResults.closePending(execution));
+        cashSourceConflict(execution, () -> cashRecovery.recover(execution));
+        cashSourceConflict(execution, () -> cashRecovery.dispatch(execution));
+        cashSourceConflict(
+                execution,
+                () ->
+                        cashRecovery.applyResult(
+                                new RefundDispatchResult(
+                                        execution,
+                                        "unverified",
+                                        DispatchStatus.SUCCEEDED,
+                                        null,
+                                        false,
+                                        testClock.at.toEpochMilli())));
+        // A contradictory successful imported execution still cannot authorize stock recovery.
+        jdbc.update(
+                "UPDATE ord_refund_execution SET status='SUCCEEDED',phase='CASH',resource_status='PENDING'"
+                        + ",error_code=NULL,resource_error_code=NULL WHERE execution_no=?",
+                execution);
+        cashSourceConflict(execution, () -> cashRecovery.recover(execution));
+        cashSourceConflict(execution, () -> cashResources.recover(execution));
+        for (Runnable attack :
+                List.<Runnable>of(
+                        () ->
+                                executions.prepare(
+                                        afterSale,
+                                        new RefundPlan(order.subOrderNo(), List.of(), 0)),
+                        () -> executions.beginCash(afterSale),
+                        () -> executions.commit(afterSale))) {
+            assertThatThrownBy(attack::run)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("MANUAL_SERVICE_FINANCIAL_CONFLICT");
+        }
+        sourceConflict(
+                () ->
+                        new TransactionTemplate(coreTransactions)
+                                .executeWithoutResult(
+                                        status ->
+                                                DataScopeContext.executeWithoutScope(
+                                                        () -> {
+                                                            var imported =
+                                                                    refundSources.lockAfterSale(
+                                                                            afterSale);
+                                                            assertThat(imported).isNotNull();
+                                                            pointsResources.prepare(
+                                                                    imported,
+                                                                    new RefundPlan(
+                                                                            order.subOrderNo(),
+                                                                            List.of(),
+                                                                            0));
+                                                            return null;
+                                                        })));
+        sourceConflict(() -> pointsResources.recover(afterSale));
+        sourceConflict(() -> pointsResources.recover(afterSale));
+        assertThat(settlement.settleSourcesOf(order.orderNo())).isEmpty();
+        assertThat(settlement.settleReadiness(List.of(order.subOrderNo()))).isEmpty();
+        assertThat(settlement.paidSubOrdersSince(0, 1000))
+                .noneMatch(row -> row.orderNo().equals(order.orderNo()));
+        assertThat(settlement.notPaidOrders(List.of(order.orderNo())))
+                .containsExactly(order.orderNo());
+        assertThat(settlement.notPaidAmong(List.of(order.subOrderNo())))
+                .containsExactly(order.subOrderNo());
+        var fundedSource =
+                asMerchant(
+                        () ->
+                                checkout.source(
+                                        scope,
+                                        new CheckoutPort.SourceLookup(
+                                                order.operation(), order.subOrderNo())));
+        assertThat(fundedSource.lines()).isEmpty();
+        assertThat(fundedSource.financialState()).isEqualTo("UNKNOWN");
+
+        assertThat(counterFinancialOriginal(order)).isEqualTo(orderBefore);
+        assertThat(originalStock(order)).isEqualTo(stockBefore);
+        assertThat(observations(order)).isEqualTo(observationsBefore);
+        assertThat(cashCommand(execution)).isEqualTo(cashBefore);
+        assertThat(taskCommand(afterSale)).isEqualTo(obligationBefore);
+        assertThat(
+                        jdbc.queryForMap(
+                                "SELECT * FROM ord_points_refund_execution WHERE after_sale_no=?",
+                                afterSale))
+                .isEqualTo(pointsBefore);
+        assertThat(
+                        jdbc.queryForList(
+                                "SELECT * FROM ord_item WHERE sub_order_no=? ORDER BY id",
+                                order.subOrderNo()))
+                .isEqualTo(itemsBefore);
+        assertThat(
+                        jdbc.queryForMap(
+                                "SELECT state,authority_proof,error_code FROM ord_refund_obligation"
+                                        + " WHERE execution_no=?",
+                                "PRF-" + afterSale))
+                .containsEntry("state", "UNKNOWN")
+                .containsEntry("authority_proof", null)
+                .containsEntry("error_code", "REFUND_EXECUTION_CONFLICT");
+        assertThat(
+                        jdbc.queryForMap(
+                                "SELECT resource_status,error_code FROM ord_refund_execution"
+                                        + " WHERE execution_no=?",
+                                execution))
+                .containsEntry("resource_status", "PENDING")
+                .containsEntry("error_code", "REFUND_EXECUTION_CONFLICT");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM ord_points_refund_binding WHERE after_sale_no=?",
+                                Long.class,
+                                afterSale))
+                .isZero();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM ord_checkout_payment_request WHERE operation_no=?",
+                                Long.class,
+                                order.operation().operationNo()))
+                .isZero();
+        assertCounterParty(order, kind);
+        verifyNoInteractions(
+                pointsBoundary, stockBoundary, resourceStock, payBoundary, paymentBoundary);
+        verify(resourceStock, never()).releaseAllocated(anyString(), anyString());
+        verify(resourceStock, never()).restoreOriginal(anyString(), anyString(), any());
+        verify(payBoundary, never()).queryRefundExecution(any(RefundRequest.class));
+        verify(payBoundary, never()).prepareRefundReversal(any(), anyBoolean());
+        verify(payBoundary, never()).requestRefund(any());
+        System.out.println(
+                "TASK66_COUNTER_FINANCIAL_GUARDS "
+                        + kind
+                        + " CASH_ADMITTED refund/points/resource/settlement/repair PASS");
+        // The next original must use the real stock owner for its own admission.
+        doCallRealMethod().when(stockBoundary).reserveOriginal(any());
+        doCallRealMethod().when(stockBoundary).observeReservation(any());
+        doCallRealMethod().when(stockBoundary).releaseOriginal(any());
+        doCallRealMethod().when(stockBoundary).observeOriginal(any());
+        doCallRealMethod().when(stockBoundary).confirmOriginal(any());
+    }
+
+    private Map<String, Object> counterFinancialOriginal(CheckoutPort.CheckoutResult order) {
+        return Map.of(
+                "parent",
+                        jdbc.queryForMap(
+                                "SELECT * FROM ord_order WHERE order_no=?", order.orderNo()),
+                "child",
+                        jdbc.queryForMap(
+                                "SELECT * FROM ord_sub_order WHERE sub_order_no=?",
+                                order.subOrderNo()),
+                "admission",
+                        jdbc.queryForMap(
+                                "SELECT * FROM ord_manual_service_admission WHERE order_no=?",
+                                order.orderNo()),
+                "intent",
+                        jdbc.queryForMap(
+                                "SELECT * FROM ord_create_intent WHERE pay_no=?", order.orderNo()));
+    }
+
+    private void assertCounterParty(CheckoutPort.CheckoutResult order, String kind) {
+        for (String table : List.of("ord_order", "ord_sub_order", "ord_manual_service_admission")) {
+            String buyerColumn =
+                    "ord_manual_service_admission".equals(table) ? "buyer_no" : "user_no";
+            var row =
+                    jdbc.queryForMap(
+                            "SELECT customer_kind,"
+                                    + buyerColumn
+                                    + " AS original_buyer,guest_no,identity_revision FROM "
+                                    + table
+                                    + " WHERE order_no=?",
+                            order.orderNo());
+            assertThat(row).containsEntry("customer_kind", kind);
+            if ("GUEST".equals(kind)) {
+                assertThat(row)
+                        .containsEntry("original_buyer", null)
+                        .containsEntry("identity_revision", 1L);
+                assertThat(row.get("guest_no")).isNotNull();
+            } else {
+                assertThat(row)
+                        .containsEntry("original_buyer", buyer)
+                        .containsEntry("guest_no", null)
+                        .containsEntry("identity_revision", null);
+            }
+        }
     }
 
     @Test
@@ -980,7 +1412,10 @@ class ManualServiceFinancialIsolationIT extends CheckoutFlowFixture {
     }
 
     private String importAfterSale(CheckoutPort.CheckoutResult order) {
-        String no = "r1-as-" + sku;
+        return importAfterSale(order, "r1-as-" + sku);
+    }
+
+    private String importAfterSale(CheckoutPort.CheckoutResult order, String no) {
         jdbc.update(
                 "INSERT INTO ord_after_sale(after_sale_no,sub_order_no,order_no,user_no,entity_no,type,status,"
                         + "reason,refund_minor,created_at,updated_at)"
@@ -999,7 +1434,11 @@ class ManualServiceFinancialIsolationIT extends CheckoutFlowFixture {
     }
 
     private String importCashExecution(CheckoutPort.CheckoutResult order, String afterSale) {
-        String no = "r1-ex-" + sku;
+        return importCashExecution(order, afterSale, "r1-ex-" + sku);
+    }
+
+    private String importCashExecution(
+            CheckoutPort.CheckoutResult order, String afterSale, String no) {
         long item =
                 jdbc.queryForObject(
                         "SELECT id FROM ord_item WHERE sub_order_no=?",

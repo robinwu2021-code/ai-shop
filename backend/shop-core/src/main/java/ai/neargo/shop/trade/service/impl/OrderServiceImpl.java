@@ -24,6 +24,11 @@ import ai.neargo.shop.spi.marketing.GroupJoinPort.GroupQuote;
 import ai.neargo.shop.spi.points.PointsPaymentSnapshotPort;
 import ai.neargo.shop.spi.product.CardProductSalePort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.CounterOrderCreated;
+import ai.neargo.shop.spi.product.StockDispositionContract;
+import ai.neargo.shop.trade.order.service.create.CounterOrderPlan;
+import ai.neargo.shop.trade.order.service.create.CounterPurchaseAuthorization;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.trade.CheckoutPort.QuoteLine;
@@ -64,6 +69,8 @@ import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import ai.neargo.shop.trade.order.refund.policy.LineShares;
 import ai.neargo.shop.trade.order.service.OrderReceiptService;
 import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
+import ai.neargo.shop.trade.order.service.query.CustomerReadScope;
+import ai.neargo.shop.trade.order.service.query.OrderCustomerAccess;
 import ai.neargo.shop.trade.order.service.create.CheckoutClock;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
@@ -225,6 +232,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     @Autowired private OrderStockAllocator stockAllocator;
     @Autowired private ManualAdmissionMapper manualAdmissions;
     @Autowired private StoreOrderQueryService storeQueries;
+    @Autowired private OrderCustomerAccess customerAccess;
     @Autowired private PaymentLifecycleService paymentLifecycle;
     @Autowired private PaymentResolutionService paymentResolutions;
 
@@ -934,6 +942,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     public OrderVO.Returned returnedOf(OrdSubOrder sub) {
         if (sub == null || !(OrdSubOrder.CANCELLED.equals(sub.getStatus())
                 || OrdSubOrder.REFUNDED.equals(sub.getStatus()))) {
+            return null;
+        }
+        if ("MANUAL_OFFLINE".equals(sub.getAdmissionKind())) {
             return null;
         }
         String title = couponPort.returnedTitleOf(sub.getOrderNo());
@@ -1647,10 +1658,22 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             LegacyCouponBoundOrderService.Binding binding,
             CheckoutPricingScope scope) {
         boolean manual = scope != null && scope.manual();
-        if (manual) {
+        boolean counter = scope != null && scope.counter();
+        if (counter) {
+            checkoutGuard.requireCounterPricing(scope);
+            if (cmd.items() == null
+                    || cmd.items().isEmpty()
+                    || cmd.couponNo() != null
+                    || !cmd.activityChoices().isEmpty()) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+        } else if (manual) {
             checkoutGuard.requireManualPricing(scope, userNo);
         }
-        Split raw = scope == null ? split(cmd) : split(cmd, userNo);
+        Split raw =
+                counter
+                        ? split(cmd, userNo, scope.party())
+                        : scope == null ? split(cmd) : split(cmd, userNo);
         if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -1720,7 +1743,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (pointsStaged && (pointsPlacement == null || pointsTargets == null)) {
             throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
         }
-        if (purchaseLimit != null) {
+        if (!counter && purchaseLimit != null) {
             // 每人限购：只读、在锁库存之前（与上面几道校验同一个姿势）
             purchaseLimit.require(userNo, split.qtyByGoods(), split.limitsByGoods());
         }
@@ -1751,13 +1774,31 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 为了一件免费的赠品把一笔真实成交挡掉，代价与收益完全不成比例。
          * 少送几件在订单里看得见（赠品行的 qty），商家侧也能对上。
          */
-        Map<String, Integer> gifts = scope == null ? giftQtyOf(split) : giftQtyOf(split, userNo);
+        Map<String, Integer> gifts;
+        if (counter) {
+            var goods =
+                    split.items().stream()
+                            .map(line -> line.snapshot().goodsNo())
+                            .distinct()
+                            .toList();
+            if (!campaignPort.counterGiftRules(scope.party(), goods).isEmpty()) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+            gifts = Map.of();
+        } else {
+            gifts = scope == null ? giftQtyOf(split) : giftQtyOf(split, userNo);
+        }
 
         // 优惠与预览同规则；迁移券使用预先锁定并核对的分摊。
         Discounts discounts =
-                scope == null
-                        ? (binding == null ? discountsOf(cmd, split, userNo) : discountsOf(cmd, split, userNo, binding))
-                        : discountsOf(cmd, split, userNo, null, true);
+                counter
+                        ? counterDiscounts(
+                                scope.party(), merchantAmounts(cmd, split, storeOfMerchant))
+                        : scope == null
+                                ? (binding == null
+                                        ? discountsOf(cmd, split, userNo)
+                                        : discountsOf(cmd, split, userNo, binding))
+                                : discountsOf(cmd, split, userNo, null, true);
 
         /*
          * 子单号**提前生成**：积分抵扣要落到各个子单上（三家里退了一家时才退得准），
@@ -1827,6 +1868,15 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 gifts,
                 discounts,
                 economic);
+    }
+
+    private Discounts counterDiscounts(
+            CustomerParty party, List<CampaignPort.MerchantAmount> amounts) {
+        if (!campaignPort.counterCandidates(party, amounts).isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        campaignPort.requireCounterSelection(party, CampaignPort.Discount.none());
+        return Discounts.none();
     }
 
     private CheckoutEconomicSnapshot checkoutEconomics(
@@ -1992,7 +2042,25 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                                 command.couponNo(),
                                 command.activityChoices(),
                                 money));
-        if (scope.manual()) {
+        if (scope.counter()) {
+            hash =
+                    CheckoutDigests.hash(
+                            legacyCheckoutJson,
+                            Arrays.asList(
+                                    "COUNTER_MANUAL_QUOTE_V1",
+                                    scope.party(),
+                                    Arrays.asList(
+                                            scope.tenantNo(),
+                                            scope.entityNo(),
+                                            scope.storeNo(),
+                                            scope.scopeRevision(),
+                                            scope.scopeHash(),
+                                            scope.lines(),
+                                            catalog.versionNo(),
+                                            catalog.effectiveRevision(),
+                                            catalog.snapshotHash()),
+                                    money));
+        } else if (scope.manual()) {
             hash = CheckoutDigests.hash(legacyCheckoutJson, List.of("MANUAL_OFFLINE", hash));
         }
         return new CheckoutEconomicSnapshot(
@@ -2014,6 +2082,105 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 money.merchantMinor(),
                 discounts.auto(),
                 discounts.coupon());
+    }
+
+    @Override
+    public CounterOrderPlan stageCounterConfirmedFor(
+            CustomerParty party,
+            CreateOrderCommand command,
+            String intentKey,
+            CounterPurchaseAuthorization authorization) {
+        if (party == null || authorization == null || !party.equals(authorization.party())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        var scope = checkoutGuard.counterContext(authorization);
+        var pricing = checkoutPricing(party.userNo(), command, null, scope);
+        checkoutGuard.requireCounterMatches(authorization, pricing.economic());
+        long now = System.currentTimeMillis();
+        String orderNo =
+                orderNoGenerator.mainOrderNo(
+                        now,
+                        no ->
+                                orderMapper.selectCount(
+                                                Wrappers.<OrdOrder>lambdaQuery()
+                                                        .eq(OrdOrder::getOrderNo, no))
+                                        > 0);
+        String subOrderNo = orderNoGenerator.subOrderNo(orderNo, 1);
+        int lifecycle = inventoryLifecycleVersion == 2 ? 2 : 1;
+        var needs =
+                pricing.split().items().stream()
+                        .map(
+                                line ->
+                                        new StockPort.SkuQty(
+                                                line.skuNo(),
+                                                line.qty(),
+                                                scope.storeNo(),
+                                                subOrderNo,
+                                                lifecycle))
+                        .toList();
+        String hash =
+                CheckoutDigests.hash(
+                        legacyCheckoutJson,
+                        Arrays.asList(
+                                "COUNTER_ORDER_REQUEST_V1",
+                                authorization.expected().operationNo(),
+                                party,
+                                command,
+                                pricing.economic().quoteHash(),
+                                authorization.authorityNamespaceHash(),
+                                authorization.expected().confirmationNo()));
+        var plan =
+                new CounterOrderPlan(
+                        orderNo,
+                        subOrderNo,
+                        authorization.expected().operationNo(),
+                        intentKey,
+                        hash,
+                        party,
+                        command,
+                        pricing.economic(),
+                        needs,
+                        stockAllocator.selectedAuthority(),
+                        lifecycle,
+                        StockDispositionContract.manifestHash(
+                                StockDispositionContract.needs(needs)),
+                        1L);
+        return creationRecovery.registerCounter(plan, authorization);
+    }
+
+    @Override
+    public OrderVO createCounterConfirmedFor(
+            CustomerParty party,
+            CounterOrderPlan plan,
+            CounterPurchaseAuthorization authorization) {
+        if (party == null
+                || plan == null
+                || authorization == null
+                || !party.equals(plan.party())
+                || !party.equals(authorization.party())
+                || !plan.operationNo().equals(authorization.expected().operationNo())
+                || !plan.economic().quoteHash().equals(authorization.expected().quoteHash())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return doCreate(
+                plan.command(),
+                party.userNo(),
+                null,
+                plan.intentKey(),
+                plan.requestHash(),
+                null,
+                authorization.expected(),
+                plan,
+                authorization);
+    }
+
+    @Override
+    public CheckoutEconomicSnapshot quoteManualFor(
+            CustomerParty party, CreateOrderCommand command, CheckoutPricingScope scope) {
+        if (party == null || scope == null || !scope.counter() || !party.equals(scope.party())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return checkoutPricing(party.userNo(), command, null, scope).economic();
     }
 
     @Override
@@ -2063,10 +2230,28 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             String inputHash,
             LegacyCouponBoundOrderService.Binding binding,
             ExpectedCheckoutQuote expected) {
+        return doCreate(
+                cmd, userNo, payMinutes, idempotencyKey, inputHash, binding, expected, null, null);
+    }
+
+    private OrderVO doCreate(
+            CreateOrderCommand cmd,
+            String userNo,
+            Integer payMinutes,
+            String idempotencyKey,
+            String inputHash,
+            LegacyCouponBoundOrderService.Binding binding,
+            ExpectedCheckoutQuote expected,
+            CounterOrderPlan counterPlan,
+            CounterPurchaseAuthorization counterAuth) {
+        boolean counter = counterPlan != null;
         if (expected != null && binding != null) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        var checkoutScope = expected == null ? null : checkoutGuard.context(expected);
+        var checkoutScope =
+                counter
+                        ? checkoutGuard.counterContext(counterAuth)
+                        : expected == null ? null : checkoutGuard.context(expected);
         CreatePricing pricing = checkoutPricing(userNo, cmd, binding, checkoutScope);
         Split split = pricing.split();
         var group = pricing.group();
@@ -2081,26 +2266,42 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         long now = System.currentTimeMillis();
         // 订单号序列化（ADR-035）：O + yyMMddHH + 4位序列（号段），撞 uk 兜底续号
         String orderNo =
-                orderNoGenerator.mainOrderNo(
-                        now,
-                        no ->
-                                orderMapper.selectCount(
-                                                Wrappers.<OrdOrder>lambdaQuery()
-                                                        .eq(OrdOrder::getOrderNo, no))
-                                        > 0);
+                counter
+                        ? counterPlan.orderNo()
+                        : orderNoGenerator.mainOrderNo(
+                                now,
+                                no ->
+                                        orderMapper.selectCount(
+                                                        Wrappers.<OrdOrder>lambdaQuery()
+                                                                .eq(OrdOrder::getOrderNo, no))
+                                                > 0);
         Map<String, String> subOrderNoOf = new LinkedHashMap<>();
         int subIdx = 0;
         for (Group g : split.groups) {
             // 子单号 = 主单号 + 后缀（ADR-035），一眼看出属于哪一单；不消耗序列
-            subOrderNoOf.put(g.key(), orderNoGenerator.subOrderNo(orderNo, ++subIdx));
+            subOrderNoOf.put(
+                    g.key(),
+                    counter
+                            ? counterPlan.subOrderNo()
+                            : orderNoGenerator.subOrderNo(orderNo, ++subIdx));
         }
 
         // ⑥ 落库：主单 + 子单 + 行，同一事务
         OrdOrder order = new OrdOrder();
+        order.setIdentityRevision(1L);
         order.setOrderNo(orderNo);
         order.setAdmissionKind(
                 checkoutScope == null ? "LEGACY_FUNDED" : checkoutScope.admissionKind());
         order.setUserNo(userNo);
+        if (counter) {
+            order.setCustomerKind(counterPlan.party().kind());
+            order.setGuestNo(counterPlan.party().guestNo());
+            order.setIdentityRevision(counterPlan.party().identityRevision());
+            order.setEntityNo(checkoutScope.entityNo());
+            order.setStoreNo(checkoutScope.storeNo());
+            order.setCaller("BEAUTY");
+            order.setOperationNo(counterPlan.operationNo());
+        }
         // 积分抵扣计入实付，但**不计入 discountAmount** —— 那一列是营销优惠，
         // 混进去会让「这单让了多少利」算错，而分账要按它拆出资方
         order.setPayAmount(split.payAmount() - discounts.total());
@@ -2129,7 +2330,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 固化而不是每次现查用户当前绑定：用户搬家换社区后，历史订单仍属于当时那个社区，
          * 否则昨天的单会跳到新社区的报表里。
          */
-        userPort.communityOf(userNo).ifPresent(order::setCommunityNo);
+        if (!counter || userNo != null) {
+            userPort.communityOf(userNo).ifPresent(order::setCommunityNo);
+        }
         // 时限：默认按平台关单策略；代客单由调用方给（电话下单的人要挂了电话才去付）
         int minutes = payMinutes == null ? closeRuleService.unpaidMinutes() : payMinutes;
         order.setPayDeadlineAt(now + minutes * 60_000L);
@@ -2202,7 +2405,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             String storeNo = storeOfMerchant.get(g.key());
             for (Line line : g.lines) {
                 String fulfillmentRef = subOrderNoOf.get(g.key());
-                int lifecycleVersion = inventoryLifecycleVersion == 2 ? 2 : 1;
+                int lifecycleVersion =
+                        counter
+                                ? counterPlan.lifecycleVersion()
+                                : inventoryLifecycleVersion == 2 ? 2 : 1;
                 paidOnly.add(new StockPort.SkuQty(line.skuNo(), line.qty(), storeNo, fulfillmentRef, lifecycleVersion));
                 withGifts.add(new StockPort.SkuQty(line.skuNo(),
                         line.qty() + gifts.getOrDefault(line.skuNo(), 0), storeNo, fulfillmentRef, lifecycleVersion));
@@ -2212,9 +2418,21 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             if (!ticketOf.isEmpty()) {
                 throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
             }
-            checkoutGuard.requireMatches(expected, pricing.economic());
+            if (counter) {
+                checkoutGuard.requireCounterMatches(counterAuth, pricing.economic());
+                if (!counterPlan.stockNeeds().equals(withGifts)
+                        || !counterPlan.economic().equals(pricing.economic())) {
+                    throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+                }
+            } else {
+                checkoutGuard.requireMatches(expected, pricing.economic());
+            }
         }
-        String registered = creationRecovery.register(orderNo, userNo, idempotencyKey, inputHash, withGifts);
+        String registered =
+                counter
+                        ? orderNo
+                        : creationRecovery.register(
+                                orderNo, userNo, idempotencyKey, inputHash, withGifts);
         if (!orderNo.equals(registered)) {
             if (orderMapper.selectCount(Wrappers.<OrdOrder>lambdaQuery()
                     .eq(OrdOrder::getOrderNo, registered).eq(OrdOrder::getUserNo, userNo)) == 0) {
@@ -2224,10 +2442,12 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                     ? detailOf(registered, userNo, "MP")
                     : checkoutCreatedView(registered, userNo);
         }
-        creationRecovery.enlist(orderNo);
-        // Only a new durable intent can book a slot; replay must never reserve another resource.
-        var slot = bookAppointmentSlot(cmd, split, storeOfMerchant);
-        if (!stockAllocator.reserve(orderNo, withGifts, paidOnly)) {
+        if (!counter) {
+            creationRecovery.enlist(orderNo);
+        }
+        // Counter stock is already proved on the stable original outside Core roots.
+        var slot = counter ? null : bookAppointmentSlot(cmd, split, storeOfMerchant);
+        if (!counter && !stockAllocator.reserve(orderNo, withGifts, paidOnly)) {
             gifts.clear();
         }
 
@@ -2243,10 +2463,17 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             subOrderNos.add(subOrderNo);
 
             OrdSubOrder sub = new OrdSubOrder();
+            sub.setIdentityRevision(1L);
             sub.setSubOrderNo(subOrderNo);
             sub.setAdmissionKind(order.getAdmissionKind());
             sub.setOrderNo(orderNo);
             sub.setUserNo(userNo);
+            if (counter) {
+                sub.setCustomerKind(counterPlan.party().kind());
+                sub.setGuestNo(counterPlan.party().guestNo());
+                sub.setIdentityRevision(counterPlan.party().identityRevision());
+                sub.setCaller("BEAUTY");
+            }
             sub.setEntityNo(g.merchantNo);
             /*
              * 社区冗余进子单（V137）：数据域的锚点只能是**本表上的一列**，
@@ -2266,7 +2493,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             sub.setStoreNo(storeOfMerchant.get(g.key()));
             sub.setEntityName(g.merchantName);
             sub.setFulfillment(cmd.fulfillment());
-            sub.setInventoryLifecycleVersion(inventoryLifecycleVersion == 2 ? 2 : 1);
+            sub.setInventoryLifecycleVersion(
+                    counter
+                            ? counterPlan.lifecycleVersion()
+                            : inventoryLifecycleVersion == 2 ? 2 : 1);
             // 预约时段落到子单：商家的待服务列表按它排，买家的订单卡按它显示「几点」。
             // 只在预约类履约上写，其余留空 —— 一个不需要预约的单带着时间是噪音
             if (Fulfillments.NEEDS_APPOINTMENT.contains(cmd.fulfillment())) {
@@ -2305,14 +2535,17 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
              * 快递/自送单万一取不到，宁可让商家看到「地址：—」去问一句，
              * 也不该把已经付过钱的单挡在这里。
              */
-            userPort.receiverOf(userNo, subAddr).ifPresent(r -> {
-                sub.setReceiverName(r.name());
-                sub.setReceiverSalutation(r.salutation());
-                sub.setReceiverPhone(r.phone());
-                sub.setReceiverAddress(r.address());
-            });
-            // ★ 归因在下单这一刻固化，不是结算时回查（TDD-backend §7.4）
-            sub.setTrafficSource(attributionPort.resolveTrafficSource(userNo, g.merchantNo));
+            if (!counter) {
+                userPort.receiverOf(userNo, subAddr)
+                        .ifPresent(
+                                r -> {
+                                    sub.setReceiverName(r.name());
+                                    sub.setReceiverSalutation(r.salutation());
+                                    sub.setReceiverPhone(r.phone());
+                                    sub.setReceiverAddress(r.address());
+                                });
+                sub.setTrafficSource(attributionPort.resolveTrafficSource(userNo, g.merchantNo));
+            }
             sub.setGoodsAmount(g.goodsAmount());
             sub.setFreightAmount(g.freight);
             long discount = discounts.of(g.merchantNo, g.storeNo());
@@ -2349,8 +2582,12 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 }
             }
             subOrderMapper.insert(sub);
-            appendStatusLog(subOrderNo, OrdSubOrder.WAIT_PAY, "已下单，待付款",
-                    OrdStatusLog.BY_USER, userNo);
+            appendStatusLog(
+                    subOrderNo,
+                    OrdSubOrder.WAIT_PAY,
+                    "已下单，待付款",
+                    counter ? OrdStatusLog.BY_MERCHANT : OrdStatusLog.BY_USER,
+                    counter ? SecurityUtils.currentUserNo() : userNo);
 
             // 行实付快照（TDD-订单状态机 AC19）：子单商品实付按行金额比例分摊，最大余数法，Σ 恰等于商品实付
             long[] shares =
@@ -2434,9 +2671,14 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }
 
         // 清掉已下单的购物车行
-        cartMapper.delete(Wrappers.<TrdCartItem>lambdaQuery()
-                .eq(TrdCartItem::getUserNo, userNo)
-                .in(TrdCartItem::getSkuNo, split.items.stream().map(Line::skuNo).toList()));
+        if (!counter) {
+            cartMapper.delete(
+                    Wrappers.<TrdCartItem>lambdaQuery()
+                            .eq(TrdCartItem::getUserNo, userNo)
+                            .in(
+                                    TrdCartItem::getSkuNo,
+                                    split.items.stream().map(Line::skuNo).toList()));
+        }
 
         /*
          * 核销券。放在落库之后：券核销失败要能连订单一起回滚。
@@ -2445,20 +2687,36 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 而那个数只有这里知道 —— 它是这一单算价的结果，事后重算会因为
          * 券的门槛/封顶被改过而对不上。
          */
-        if(binding==null) {
+        if (!counter && binding == null) {
             couponPort.markUsed(userNo, cmd.couponNo(), orderNo, discounts.coupon());
             refundCouponScopes.freeze(orderNo,cmd.couponNo(),discounts.coupon());
-        } else legacyCheckoutJournal.commit(binding.context(),binding.checkoutNo(),orderNo,binding.held());
+        } else if (!counter) {
+            legacyCheckoutJournal.commit(
+                    binding.context(), binding.checkoutNo(), orderNo, binding.held());
+        }
 
         /*
          * 活动扣限量。**放在这里而不是算价那一步**：算价会被反复调用
          * （预览、改地址、改数量），在那儿扣的话，一个只是看看的用户能把限量耗光。
          * 与订单同事务：扣量失败要能连订单一起回滚，否则会「量扣了、单没成」。
          */
-        campaignPort.commit(userNo, orderNo, discounts.auto());
+        if (counter) {
+            campaignPort.commitCounter(counterPlan.party(), orderNo, discounts.auto());
+        } else {
+            campaignPort.commit(userNo, orderNo, discounts.auto());
+        }
 
         // ⑦ 发事件（只写 outbox，与业务同事务）
-        if (pointsStaged) {
+        if (counter && "GUEST".equals(counterPlan.party().kind())) {
+            eventBus.publish(
+                    new CounterOrderCreated(
+                            orderNo,
+                            counterPlan.subOrderNo(),
+                            counterPlan.operationNo(),
+                            checkoutScope.entityNo(),
+                            checkoutScope.storeNo(),
+                            counterPlan.party()));
+        } else if (pointsStaged) {
             var draft = pointsPlacementDraft(orderNo, userNo, cmd, payMode, split, discounts,
                     pointDecisions, pointLines, pointRules, subOrderNoOf, subOrderNos,
                     nz(order.getPayAmount()));
@@ -2471,6 +2729,18 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         // 下单返回支付视角：端上下一步就是去收银台。**按下单归属的那个人查**，
         // 代客下单时下单的是客服、属主是顾客。此刻还没有运单，traceOf 必然为 null，
         // 展示渠道传什么都不影响 —— 给 MP 占位
+        if (counter) {
+            var children =
+                    subOrderMapper.selectList(
+                            Wrappers.<OrdSubOrder>lambdaQuery()
+                                    .eq(OrdSubOrder::getTenantNo, "MAIN")
+                                    .eq(OrdSubOrder::getOrderNo, orderNo));
+            if (children.size() != 1
+                    || !counterPlan.subOrderNo().equals(children.getFirst().getSubOrderNo())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return payView(order, children);
+        }
         return expected == null
                 ? detailOf(orderNo, userNo, "MP")
                 : checkoutCreatedView(orderNo, userNo);
@@ -2590,7 +2860,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 「数据不存在」，而从结算页进来的（主单号）一切正常 —— 2026-09-07 真机抓到。
          * 下游一律用解析出来的主单号，别再用入参。
          */
-        OrdOrder order = resolveOrder(orderNo);
+        OrdOrder order = resolveReadableOrder(orderNo, customerAccess.currentReadScope());
         if ("MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
             return new OrderPayMethodVO(
                     order.getCurrency(),
@@ -2873,6 +3143,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     @Override
     public PayResult pay(String orderNo, String payChannel) {
+        requireFundedReference(orderNo);
         // 同 payMethods：子单号也要能进收银台；下游（记账、商户单号）只认主单号
         OrdOrder order = resolveOrder(orderNo);
         requireFunded(order);
@@ -3239,7 +3510,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     @Override
     public OrderVO detail(String orderNo, String client) {
-        return detailOf(orderNo, SecurityUtils.currentUserNo(), surfaceOf(client));
+        var readScope = customerAccess.currentReadScope();
+        return DataScopeContext.executeWithoutScope(
+                () -> detailOf(orderNo, readScope.userNo(), surfaceOf(client), readScope));
     }
 
     /**
@@ -3251,8 +3524,16 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
      * <b>查出来的必然是空</b>，于是一张已经建好的单以 404 收场。
      */
     private OrderVO detailOf(String orderNo, String userNo, String surface) {
+        return detailOf(orderNo, userNo, surface, null);
+    }
+
+    private OrderVO detailOf(
+            String orderNo, String userNo, String surface, CustomerReadScope readScope) {
         // Q6：先按子单号查（C 端绝大多数请求是订单视角），查不到再按主单号
-        StoreOrderMaterial material = storeQueries.material(orderNo, userNo);
+        StoreOrderMaterial material =
+                readScope == null
+                        ? storeQueries.material(orderNo, userNo)
+                        : storeQueries.materialReadable(orderNo, readScope);
         OrdSubOrder sub = material == null ? null : material.order();
         if (sub != null) {
             OrdOrder order = material.payment();
@@ -3294,11 +3575,25 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         ? null : periodPort.openUntil(sub.getPeriodNo(), System.currentTimeMillis());
                 vo = vo.withBatch(sub.getArriveDate(), until);
             }
-            return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo))
-                    .withLogisticsSync(logisticsSyncOf(sub.getSubOrderNo()));
+            if (!"MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+                vo = vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo));
+            }
+            return vo.withLogisticsSync(logisticsSyncOf(sub.getSubOrderNo()));
         }
-        OrdOrder order = requireOwnOrder(orderNo, userNo);
-        List<OrdSubOrder> subs = subOrders(orderNo);
+        OrdOrder order =
+                readScope == null
+                        ? requireOwnOrder(orderNo, userNo)
+                        : resolveReadableOrder(orderNo, readScope);
+        List<OrdSubOrder> subs = subOrders(order.getOrderNo());
+        if (readScope != null) {
+            for (var child : subs) {
+                var readable = storeQueries.materialReadable(child.getSubOrderNo(), readScope);
+                if (readable == null
+                        || !order.getOrderNo().equals(readable.payment().getOrderNo())) {
+                    throw BizException.of(ErrorCode.NOT_FOUND);
+                }
+            }
+        }
         OrderVO vo = payView(order, subs);
         /*
          * 单商家单用主单号打开（付款成功页正是如此）走支付视角，而支付视角原本**不挂物流轨迹**
@@ -3310,8 +3605,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (subs.size() == 1) {
             vo = vo.withTrace(traceOf(subs.get(0), surface));
         }
-        return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo))
-                .withLogisticsSync(subs.size() == 1 ? logisticsSyncOf(subs.get(0).getSubOrderNo()) : null);
+        if (!"MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+            vo = vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo));
+        }
+        return vo.withLogisticsSync(
+                subs.size() == 1 ? logisticsSyncOf(subs.get(0).getSubOrderNo()) : null);
     }
 
     /**
@@ -3435,9 +3733,17 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     @Override
     public PageData<OrderVO> list(String status, List<String> fulfillments, long page, long size) {
-        String buyerNo = SecurityUtils.currentUserNo();
-        var result = storeQueries.materials(buyerNo, new StoreOrderQuery(status, fulfillments), page, size);
-        List<String> payNos = result.records().stream().map(m -> m.payment().getOrderNo()).distinct().toList();
+        var readScope = customerAccess.currentReadScope();
+        String buyerNo = readScope.userNo();
+        var result =
+                storeQueries.materialsReadable(
+                        readScope, new StoreOrderQuery(status, fulfillments), page, size);
+        List<String> payNos =
+                result.records().stream()
+                        .filter(m -> !"MANUAL_OFFLINE".equals(m.payment().getAdmissionKind()))
+                        .map(m -> m.payment().getOrderNo())
+                        .distinct()
+                        .toList();
         var conflicts = paymentResolutions.views(payNos, buyerNo);
         var summaries = logisticsPort == null ? java.util.Map.<String, ai.neargo.shop.spi.logistics.LogisticsPort.SyncResult>of()
                 : logisticsPort.summariesOf(result.records().stream()
@@ -3809,6 +4115,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     private Split split(CreateOrderCommand cmd, String buyerNo) {
+        return split(cmd, buyerNo, null);
+    }
+
+    private Split split(CreateOrderCommand cmd, String buyerNo, CustomerParty party) {
         List<CreateOrderCommand.Item> requested = cmd.items() == null || cmd.items().isEmpty()
                 ? selectedCartItems() : cmd.items();
         if (requested.isEmpty()) {
@@ -3817,9 +4127,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
         List<String> skuNos = requested.stream().map(CreateOrderCommand.Item::skuNo).toList();
         Map<String, GoodsQueryPort.SkuSnapshot> snapshots =
-                buyerNo == null
-                        ? goodsPort.snapshot(skuNos)
-                        : goodsPort.snapshotFor(buyerNo, skuNos, cmd.storeChoices());
+                party != null
+                        ? goodsPort.snapshotForCounter(party, skuNos, cmd.storeChoices())
+                        : buyerNo == null
+                                ? goodsPort.snapshot(skuNos)
+                                : goodsPort.snapshotFor(buyerNo, skuNos, cmd.storeChoices());
 
         /*
          * **门店价：预览与下单在这里一起拿到，不在别处各算一次**（批 C）。
@@ -3860,9 +4172,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 分享链接照样下单成功。省下的那次查询，代价是卖出店主已经下掉的货。
          */
         snapshots =
-                buyerNo == null
-                        ? goodsPort.snapshot(skuNos, storeByEntity)
-                        : goodsPort.snapshotFor(buyerNo, skuNos, cmd.storeChoices());
+                party != null
+                        ? goodsPort.snapshotForCounter(party, skuNos, cmd.storeChoices())
+                        : buyerNo == null
+                                ? goodsPort.snapshot(skuNos, storeByEntity)
+                                : goodsPort.snapshotFor(buyerNo, skuNos, cmd.storeChoices());
 
         List<Line> lines = new ArrayList<>();
         for (CreateOrderCommand.Item item : requested) {
@@ -3877,7 +4191,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             if (s == null) {
                 throw BizException.of(ErrorCode.NOT_FOUND);
             }
-            if (buyerNo != null
+            if ((buyerNo != null || party != null)
                     && (!"SERVICE".equals(s.categoryType())
                             || s.fulfillments() == null
                             || !s.fulfillments().contains(Fulfillments.STORE_VERIFY)
@@ -3886,12 +4200,17 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                                     cmd.storeChoices().get(s.merchantNo()), s.storeNo()))) {
                 throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
             }
+            if (party != null
+                    && (s.limitPerUser() != null && s.limitPerUser() > 0
+                            || s.saleMode() != null && !"NORMAL".equals(s.saleMode()))) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
             if (!s.onSale()) {
                 throw BizException.of(ErrorCode.GOODS_OFF_SALE);
             }
             lines.add(new Line(s, item.qty()));
         }
-        if (buyerNo != null) {
+        if (buyerNo != null || party != null) {
             try {
                 long total = 0;
                 for (Line line : lines) {
@@ -4292,6 +4611,56 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     /** 接受主单号或子单号，统一解析成主单（属主校验同样在查询条件里）。 */
+    private void requireFundedReference(String reference) {
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    var child =
+                            subOrderMapper.selectOne(
+                                    Wrappers.<OrdSubOrder>lambdaQuery()
+                                            .eq(OrdSubOrder::getTenantNo, "MAIN")
+                                            .eq(OrdSubOrder::getSubOrderNo, reference));
+                    var parent =
+                            orderMapper.selectOne(
+                                    Wrappers.<OrdOrder>lambdaQuery()
+                                            .eq(OrdOrder::getTenantNo, "MAIN")
+                                            .eq(
+                                                    OrdOrder::getOrderNo,
+                                                    child == null
+                                                            ? reference
+                                                            : child.getOrderNo()));
+                    if (parent != null) {
+                        requireFunded(parent);
+                    }
+                });
+    }
+
+    private OrdOrder resolveReadableOrder(String orderNo, CustomerReadScope scope) {
+        return DataScopeContext.executeWithoutScope(
+                () -> {
+                    var material = storeQueries.materialReadable(orderNo, scope);
+                    if (material != null) {
+                        return material.payment();
+                    }
+                    var parent =
+                            orderMapper.selectOne(
+                                    Wrappers.<OrdOrder>lambdaQuery()
+                                            .eq(OrdOrder::getTenantNo, "MAIN")
+                                            .eq(OrdOrder::getOrderNo, orderNo));
+                    customerAccess.requireReadable(parent, scope);
+                    var children = subOrders(parent.getOrderNo());
+                    if (children.isEmpty()
+                            || "GUEST".equals(parent.getCustomerKind()) && children.size() != 1) {
+                        throw BizException.of(ErrorCode.NOT_FOUND);
+                    }
+                    for (var child : children) {
+                        if (storeQueries.materialReadable(child.getSubOrderNo(), scope) == null) {
+                            throw BizException.of(ErrorCode.NOT_FOUND);
+                        }
+                    }
+                    return parent;
+                });
+    }
+
     private OrdOrder resolveOrder(String orderNo) {
         OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getSubOrderNo, orderNo)

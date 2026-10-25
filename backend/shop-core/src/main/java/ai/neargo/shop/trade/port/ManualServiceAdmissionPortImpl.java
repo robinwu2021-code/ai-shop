@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.port;
 
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
+import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
@@ -18,6 +20,26 @@ public class ManualServiceAdmissionPortImpl implements ManualServiceAdmissionPor
 
     public ManualServiceAdmissionPortImpl(ManualServiceAdmissionService service) {
         this.service = service;
+    }
+
+    @Override
+    public CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request) {
+        return service.prepareCounter(scope, request);
+    }
+
+    @Override
+    public CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation) {
+        return service.readCounterQuote(scope, operation);
+    }
+
+    @Override
+    public CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
+        return service.acceptCounter(scope, request);
+    }
+
+    @Override
+    public CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request) {
+        return service.placeCounter(scope, request);
     }
 
     @Override

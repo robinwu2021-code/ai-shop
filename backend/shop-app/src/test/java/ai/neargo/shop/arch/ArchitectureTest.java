@@ -1,5 +1,8 @@
 package ai.neargo.shop.arch;
 
+import ai.neargo.shop.trade.mapper.CheckoutMappers.OperationMapper;
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +17,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import tools.jackson.databind.ObjectMapper;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
@@ -348,11 +353,67 @@ class ArchitectureTest {
     @Test
     @DisplayName("Controller 不得直接依赖 Mapper（必须经 Service）")
     void controllersMustNotTouchMappers() {
-        noClasses().that().resideInAPackage("ai.neargo.shop.portal..")
-                .should().dependOnClassesThat().haveSimpleNameEndingWith("Mapper")
-                .allowEmptyShould(true)
-                .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过")
+        noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.resideInAPackage("ai.neargo.shop.portal.."))
                 .check(classes);
+    }
+
+    @Test
+    void controllerMapperRuleAllowsJsonCodecButRejectsPersistenceMapper() {
+        JavaClasses fixtures =
+                new ClassFileImporter()
+                        .importClasses(
+                                JsonCodecController.class,
+                                PersistenceMapperController.class,
+                                ObjectMapper.class,
+                                OperationMapper.class);
+        ArchRule jsonRule =
+                noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.type(JsonCodecController.class));
+        ArchRule persistenceRule =
+                noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.type(PersistenceMapperController.class));
+
+        assertThat(jsonRule.evaluate(fixtures).hasViolation()).isFalse();
+        var persistenceResult = persistenceRule.evaluate(fixtures);
+        assertThat(persistenceResult.hasViolation()).isTrue();
+        assertThat(persistenceResult.getFailureReport().getDetails())
+                .anySatisfy(
+                        detail ->
+                                assertThat(detail)
+                                        .contains(
+                                                PersistenceMapperController.class.getName(),
+                                                OperationMapper.class.getName()));
+    }
+
+    private static ArchRule noControllerPersistenceMapperDependencies(
+            DescribedPredicate<JavaClass> controllers) {
+        // Jackson is a JSON codec; every other *Mapper remains a forbidden persistence dependency.
+        DescribedPredicate<JavaClass> persistenceMappers =
+                JavaClass.Predicates.simpleNameEndingWith("Mapper")
+                        .and(not(JavaClass.Predicates.type(ObjectMapper.class)));
+        return noClasses()
+                .that(controllers)
+                .should()
+                .dependOnClassesThat(persistenceMappers)
+                .allowEmptyShould(true)
+                .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过");
+    }
+
+    private static final class JsonCodecController {
+        private final ObjectMapper json;
+
+        private JsonCodecController(ObjectMapper json) {
+            this.json = json;
+        }
+    }
+
+    private static final class PersistenceMapperController {
+        private final OperationMapper operations;
+
+        private PersistenceMapperController(OperationMapper operations) {
+            this.operations = operations;
+        }
     }
 
     // ───────────────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ package ai.neargo.shop.spi.product;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,11 @@ import java.util.Map;
  * 将来商品域改一列，交易域跟着炸。
  */
 public interface GoodsQueryPort {
+    default Map<String, SkuSnapshot> snapshotForCounter(
+            CustomerParty party, List<String> skuNos, Map<String, String> storeByEntity) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
     /** Explicit buyer pricing; adapters without the local owner capability fail closed. */
     default Map<String, SkuSnapshot> snapshotFor(
             String buyerNo, List<String> skuNos, Map<String, String> storeByEntity) {

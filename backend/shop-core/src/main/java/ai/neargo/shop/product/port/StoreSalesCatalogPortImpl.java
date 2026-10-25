@@ -17,5 +17,10 @@ public class StoreSalesCatalogPortImpl implements StoreSalesCatalogPort {
     }
 
     @Override
+    public Snapshot lockForCounterCheckout(String tenant, String entity, String store, Instant at) {
+        return service.lockForCounterCheckout(tenant, entity, store, at);
+    }
+
+    @Override
     public Snapshot read(String entityNo, String storeNo, Instant at) { return service.read(entityNo, storeNo, at); }
 }

@@ -4,6 +4,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.marketing.port.CampaignPortImpl;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -37,10 +38,37 @@ public class CampaignPortRouter implements CampaignPort {
         this.promo = promo;
     }
 
-    /**
-     * 「这一单当时减了什么」只有新模型记着（`pmt_apply`）——
-     * 老模型那边没有这张账，所以不必合并，直接转发。
-     */
+    /** 「这一单当时减了什么」只有新模型记着（`pmt_apply`）—— 老模型那边没有这张账，所以不必合并，直接转发。 */
+    @Override
+    public List<AppliedActivity> counterCandidates(
+            CustomerParty party, List<MerchantAmount> groups) {
+        promo.rejectUnsupportedCounterChoices(groups, Map.of());
+        return legacy.counterCandidates(party, groups);
+    }
+
+    @Override
+    public void requireCounterSelection(CustomerParty party, Discount selected) {
+        legacy.requireCounterSelection(party, selected);
+    }
+
+    @Override
+    public Map<String, Long> counterFlashPrices(CustomerParty party, Collection<String> goodsNos) {
+        promo.rejectUnsupportedCounterPriceEffects(goodsNos);
+        return legacy.counterFlashPrices(party, goodsNos);
+    }
+
+    @Override
+    public Map<String, GiftRule> counterGiftRules(
+            CustomerParty party, Collection<String> goodsNos) {
+        promo.rejectUnsupportedCounterPriceEffects(goodsNos);
+        return legacy.counterGiftRules(party, goodsNos);
+    }
+
+    @Override
+    public void commitCounter(CustomerParty party, String orderNo, Discount discount) {
+        legacy.commitCounter(party, orderNo, discount);
+    }
+
     @Override
     public List<AppliedDiscount> appliedOf(String orderNo) {
         return promo.appliedOf(orderNo);
