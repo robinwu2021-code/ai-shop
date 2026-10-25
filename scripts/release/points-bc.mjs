@@ -9,7 +9,7 @@ const [,sha,ref,base]=rows[0].split(/\s+/);
 if(sha!==head||ref!=='refs/heads/codex/ai-shop-codex'||!base||/^0+$/.test(base))throw new Error('Only existing unified branch supported');
 git('merge-base','--is-ancestor',base,head);
 const allowed=new Set(JSON.parse(readFileSync('scripts/release/points-bc.json','utf8')));
-const files=git('diff','--name-only',base,head).split('\n').filter(Boolean);
+const files=git('diff','--name-only','-z','--no-renames',base,head).split('\0').filter(Boolean);
 for(const file of files)if(!allowed.has(file))throw new Error(`Out of points B/C scope: ${file}`);
 git('diff','--check',base,head);
 const run=(cmd,args,cwd)=>execFileSync(cmd,args,{cwd,stdio:'inherit'});
@@ -32,4 +32,10 @@ if(files.some(file => file.includes('/points/type/') || file.includes('PointsAdm
   run('mvn',['-o','-pl','shop-app','-am','-Dtest=PointsOpsConfigurationTest,PointsConfigurationAuditTest,PointsOpsPermissionTest,PointsOpsErrorsTest,PointTypeActivationTest,PointsOrderTermsPortTest,AcceptedEarnBudgetTest,PointsDefaultLockOrderTest','-Dsurefire.failIfNoSpecifiedTests=false','test','-q'],'backend');
 }
 if(files.includes('ops-web/app/points/types-tab.tsx')) run('npm',['test','--','lib/points-types-page.test.ts','lib/api/points-configuration.test.ts'],'ops-web');
+if(files.includes('packages/shared/src/utils/points-status.ts')) {
+  run('npm',['test','--','tests/points-status.test.ts'],'packages/shared');
+  run('npm',['test','--','tests/points-account.test.ts','tests/points-status-locales.test.ts'],'b-app');
+  run('npm',['test','--','tests/points-account.test.ts'],'c-app');
+}
+if(files.includes('c-app/scripts/pack-biz-locales.mjs') || files.includes('c-app/scripts/with-biz.mjs')) run('node',['--test','scripts/pack-biz-locales.test.mjs'],'c-app');
 console.log(`points-bc scoped checks passed: ${head} (${files.length} files)`);

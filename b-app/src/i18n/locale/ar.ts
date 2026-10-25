@@ -1100,6 +1100,14 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
 
 
   points: {
+    typeStatus: "حالة النقاط",
+    typeStateActive: "نشط",
+    typeStateDraft: "مسودة",
+    typeStateDraining: "قيد التسوية",
+    typeStateRetired: "تم إنهاؤه",
+    typeStateEarningPaused: "منح نقاط جديدة متوقف",
+    typeStateUnknown: "الحالة بحاجة للتحقق",
+    earningPausedHint: "توقف منح نقاط جديدة؛ يخضع استخدام الرصيد الحالي لعرض السعر عند الدفع.",
     directionFINALIZE: "قيد الإكمال",
     redemptionPROCESSING: "الاستخدام قيد المعالجة",
     redemptionHELD: "نقاط محجوزة",

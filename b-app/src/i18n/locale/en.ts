@@ -1099,6 +1099,14 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
 
 
   points: {
+    typeStatus: "Points status",
+    typeStateActive: "Active",
+    typeStateDraft: "Draft",
+    typeStateDraining: "Settling outstanding points",
+    typeStateRetired: "Retired",
+    typeStateEarningPaused: "New earning paused",
+    typeStateUnknown: "Status to be verified",
+    earningPausedHint: "New earning is paused. Use of existing balances depends on the checkout quote.",
     directionFINALIZE: "Completion credit",
     redemptionPROCESSING: "Redemption processing",
     redemptionHELD: "Points held",
