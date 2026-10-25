@@ -24,3 +24,11 @@
 后续场景回归复现并修复既有快照读写问题：ExecutionScope的零值coreFinanceProtocol因NON_DEFAULT省略，Jackson3默认拒绝读取缺失primitive。采用该字段专用反序列化约定，缺失读为0，输出JSON及既有hash不变；显式null、负数、非整数和溢出仍拒绝，其余primitive保持严格，保留原非负版本及readiness合同。
 
 最终10类54项按每类最新结果全部通过，覆盖原始故障场景、缺失/零值/未来非负版本、快照hash和篡改校验、架构、权限目录、锁并发及品牌/定价行为。详情见`remote-push-backend-results.json`。买家633项、商家341项、两端类型检查及运营842项通过；共享585通过、4项既有登记基线失败。正常全量推送结果以最终Git推送日志和远端分支为准，不以定向结果替代全仓验证。
+
+## 后续全量复核
+
+35ee1c00f正常推送检查完成干净编译，24模块全量2777项发现5项失败：CommonPackageIsolation内部接口包检查，以及CheckoutOffers、ComboActivity和CouponBestConsistency的4条优惠断言。
+
+两个内部Controller按既有包约束移动至portal.internal，仍保留原模块；URL、类名、Bean名、DTO、条件装配和认证方法体均不变，不修改wrapper或断言。Architecture、CommonPackageIsolation和InternalMaterialCatalogApi三类26项通过，见`remote-push-internal-package-results.json`。
+
+优惠失败已精确定位到CampaignDiscountFlowTest最后用例留下的满减800分活动。三个受害测试类独立10项通过，连同来源类执行28项则完整复现原4个失败；仅为原有限前缀清理方法补上AfterEach后，同命令28项全部通过。所有金额断言与生产算法保持不变，见`remote-push-campaign-isolation-results.json`。随后重新执行正常全量推送闸门。

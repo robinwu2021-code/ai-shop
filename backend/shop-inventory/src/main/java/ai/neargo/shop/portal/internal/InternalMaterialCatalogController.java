@@ -1,4 +1,4 @@
-package ai.neargo.shop.inventory.api.internal;
+package ai.neargo.shop.portal.internal;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;

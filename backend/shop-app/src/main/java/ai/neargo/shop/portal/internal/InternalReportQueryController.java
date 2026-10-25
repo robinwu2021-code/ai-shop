@@ -1,4 +1,4 @@
-package ai.neargo.shop.reportbridge.api;
+package ai.neargo.shop.portal.internal;
 
 import ai.neargo.shop.svc.ReportServiceResponses;
 import org.springframework.web.bind.annotation.ExceptionHandler;

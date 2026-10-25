@@ -1,0 +1,14 @@
+{
+  "log": "/tmp/print-internal-packages-focused.log",
+  "classes": {
+    "ArchitectureTest": 19,
+    "CommonPackageIsolationTest": 3,
+    "InternalMaterialCatalogApiTest": 4
+  },
+  "tests": 26,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "build": "SUCCESS",
+  "changes": "Two controller package declarations moved to portal.internal in existing modules, single test import updated; all controller bodies unchanged"
+}
