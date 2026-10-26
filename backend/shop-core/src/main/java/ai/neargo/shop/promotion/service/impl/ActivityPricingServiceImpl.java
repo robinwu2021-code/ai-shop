@@ -222,10 +222,33 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getOrderNo, orderNo)
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getPromoType,
                                 CampaignPort.AppliedDiscount.ACTIVITY)));
+        // 平台活动按出资方记两行，份数只跟平台那一行退（见 releasePlatform）：先记下哪些活动有平台那一行
+        java.util.Set<String> withPlatformRow = new java.util.HashSet<>();
+        for (var r : rows) {
+            if (ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM.equals(r.getFunder())) {
+                withPlatformRow.add(r.getPromoNo() + "|" + r.getEntityNo());
+            }
+        }
         for (var r : rows.stream().sorted(java.util.Comparator.comparing(PmtApply::getPromoNo)
                 .thenComparing(r -> r.getStoreNo() == null ? "" : r.getStoreNo())).toList()) {
             if (unifiedOrders != null && unifiedOrders.release(r)) continue;
+            /*
+             * 作废这一行。**幂等就在这里**：逻辑删之后下次查不到，也就不会再退一次；
+             * 并且**先删、删中了才退** —— 两次关单并发撞在一起时，只有删中那一行的那次退量，
+             * 不会两边都退。不物理删：这张表是对账与活动效果的账本，删了就查不出「当时发生过什么」。
+             */
+            int claimed = DataScopeContext.executeWithoutScope(() -> applyMapper.deleteById(r.getId()));
+            if (claimed != 1) {
+                continue;
+            }
             long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
+            PmtActivity a = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                    Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, r.getPromoNo())
+                            .last("limit 1")));
+            if (a != null && a.isPlatform()) {
+                releasePlatform(r, amount, withPlatformRow.contains(r.getPromoNo() + "|" + r.getEntityNo()));
+                continue;
+            }
             /*
              * 配额按「份」退，一单占一份（与 commit 那边的 qty 同一口径）。
              * **用 SQL 直接减并且不许减成负数** —— 并发下两次关单撞在一起时，
@@ -238,11 +261,41 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                             .setSql("quota_used = quota_used - 1")
                             .setSql("budget_used_minor = GREATEST(budget_used_minor - "
                                     + amount + ", 0)")));
-            /*
-             * 作废这一行。**幂等就在这里**：逻辑删之后下次查不到，也就不会再退一次。
-             * 不物理删：这张表是对账与活动效果的账本，删了就查不出「当时发生过什么」。
-             */
-            DataScopeContext.executeWithoutScope(() -> applyMapper.deleteById(r.getId()));
+        }
+    }
+
+    /**
+     * 平台活动这一单的退回：**与 {@link #commitPlatform} 扣的逐项对上**。
+     *
+     * <p>那边扣了两样：报名单上的一份（quota_used）、活动上平台出的那部分钱（budget_used_minor += platformMinor），
+     * 并按出资方记了两行 pmt_apply。此前这里按商家活动的口径去减<b>活动</b>的 quota_used —— 平台活动那一列恒为 0，
+     * 带条件的 UPDATE 一行不中，连同预算一起没退：每取消一单，报名永久少一份、平台预算永久少一笔。
+     *
+     * <ul>
+     *   <li>平台那一行：退预算（金额就是当时的 platformMinor），并退报名的那一份 —— 份数只跟这一行退，
+     *       一单只占一份，不能两行各退一次；</li>
+     *   <li>商家那一行：commitPlatform 没有为它扣过任何东西，作废即可。</li>
+     * </ul>
+     * 平台出资为 0 的单（全由商家出）只有商家那一行，份数跟它退。
+     */
+    private void releasePlatform(PmtApply r, long amount, boolean orderHasPlatformRow) {
+        boolean platformRow = ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM.equals(r.getFunder());
+        if (!platformRow && orderHasPlatformRow) {
+            return;
+        }
+        if (platformRow && amount > 0) {
+            DataScopeContext.executeWithoutScope(() -> activityMapper.update(null,
+                    Wrappers.<PmtActivity>lambdaUpdate()
+                            .eq(PmtActivity::getActivityNo, r.getPromoNo())
+                            .setSql("budget_used_minor = GREATEST(budget_used_minor - " + amount + ", 0)")));
+        }
+        if (enrollmentMapper != null) {
+            DataScopeContext.executeWithoutScope(() -> enrollmentMapper.update(null,
+                    Wrappers.<ai.neargo.shop.promotion.entity.PmtEnrollment>lambdaUpdate()
+                            .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getActivityNo, r.getPromoNo())
+                            .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getEntityNo, r.getEntityNo())
+                            .apply("quota_used > 0")
+                            .setSql("quota_used = quota_used - 1")));
         }
     }
 
