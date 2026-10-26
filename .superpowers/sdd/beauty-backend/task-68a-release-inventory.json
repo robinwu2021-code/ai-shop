@@ -1,6 +1,6 @@
 {
   "task": "Task68A",
-  "status": "DESIGN_STATIC_REVIEWED_CODE_PHASE_RELEASED",
+  "status": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
   "codingBaseCommit": null,
   "designSha256": "8a74b6e40a0cf792a0326eb42a720071fd8b59513a5c8a00589238ef08aff763",
   "modify": [
@@ -46,5 +46,10 @@
   "runtimeTestsAllowed": false,
   "migrationExecutionAllowed": false,
   "paymentIntegration": false,
-  "codingBaseReference": "Root supplies exact HEAD at dispatch after this publication commit"
+  "codingBaseReference": "Root supplies exact HEAD at dispatch after this publication commit",
+  "task68ACodeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6",
+  "identityEquivalenceOverlay": {
+    "path": ".superpowers/sdd/beauty-backend/task-68a-fix1-brief.md",
+    "sha256": "4849fae9c4ace5cfed7d7ada4117aac016d3ed192069a9532722cbbdb4de7e5f"
+  }
 }

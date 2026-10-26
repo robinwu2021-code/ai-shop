@@ -1692,33 +1692,33 @@
   ],
   "implementationStatus": "Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED; candidate inventory below is not completion evidence.",
   "plannedSharedClasses": {
-    "status": "TASK68_C02_DESIGN_REVIEWED_CODE_NOT_IMPLEMENTED",
-    "authority": "主TDD§2.47及Task68设计补充；仅共享所有者增量，不增加美业构件/依赖或目标25私有表计数。",
+    "status": "TASK68A_CODE_COMPILED_STATIC_REVIEWED_B_C_PENDING_UNIFIED_TEST_PENDING",
+    "authority": "主TDD§2.47：fence/mapper两类已编码编译和静态复审，待统一测试；其余类仍待编码。均为共用所有者增量，不增加美业构件/依赖或25私有表计数。",
     "classes": [
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java",
         "class": "ai.neargo.shop.marketing.campaign.CounterCampaignRules",
-        "role": "counter choices/goods/seal canonicalization"
+        "role": "[待编码] counter choices/goods/seal canonicalization"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java",
         "class": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
-        "role": "shared marketing owner fence and capability"
+        "role": "[编码编译/静态复审完成；统一测试未执行] shared marketing owner fence and capability"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java",
         "class": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
-        "role": "exact-PK shared fence SQL"
+        "role": "[编码编译/静态复审完成；统一测试未执行] exact-PK shared fence SQL"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java",
         "class": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
-        "role": "old/new economic quote/plan compatibility and consumed integrity"
+        "role": "[待编码] old/new economic quote/plan compatibility and consumed integrity"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java",
         "class": "ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot",
-        "role": "internal immutable economic/display quote envelope"
+        "role": "[待编码] internal immutable economic/display quote envelope"
       }
     ]
   }

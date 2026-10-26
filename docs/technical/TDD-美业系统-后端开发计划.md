@@ -1294,6 +1294,10 @@ Task67最新代码阶段收口：来源主体及R1修复已复审通过，C01远
 
 AC→源码：C1真实USER/GUEST10000−1000=9000、C2不支持优惠/账户/产品效果拒绝、C3规则同金额变化失效、A2原到店确认，以及旧计划/并发/逐行分摊与消费确认负例详见补充§6。类/方法、API、库表候选、源文件基线以[精确清单](../../.superpowers/sdd/beauty-backend/task-68-release-inventory.json)和paired JSON为准；原49任务/API编号不变。canStart=false，Pay链条后置。
 
+Task68A静态审查R0发现1Important：旧owner身份列使用不区分大小写的比较，新fence二进制键会让同一逻辑主体的不同拼写进入不同锁。按[限定修订](../../.superpowers/sdd/beauty-backend/task-68a-fix1-brief.md)以真实十个owner身份列的有效collation统一新fence tenant/scope比较；scope_kind及身份不可变校验仍为字节精确，旧迁移不改。有效列collation不一致即关闭新能力，不能只相信数据库默认、手工转大小写或跳过既有变体。原补充§4.1二进制tenant/scope要求由本裁决覆盖；修复和限定复审完成前不发布68B。
+
+Task68A执行结果：精确11份源码已本地提交 `5aa1769f2c1719cd86f0cdf4528699527827d7e6`，I1修复[限定复审](../../.superpowers/sdd/beauty-backend/review-task-68a-r1.md)为PASS/APPROVED。实际24模块40.347s编译成功（Core1067主/86测试源码，宿主413主/750测试源码）；18个native、4个Node及2个lineage用例仅编写/编译、未执行。485份既有迁移未改变，V543未执行；[代码阶段关口](../../.superpowers/sdd/beauty-backend/task-68a-code-phase-root-gate.json)明确报价尚未接入、canStart=false。后续B开工前补齐纯SPI规范化/封存摘要共享，遵守既有禁止新增私有跨域依赖的架构规则；并保持已售后只核对冻结事实。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。

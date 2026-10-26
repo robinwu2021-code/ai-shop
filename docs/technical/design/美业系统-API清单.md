@@ -681,9 +681,9 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 
 ## 柜台购买与人工来源增量（M2分阶段实施状态）
 
-M2B_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING_M2C_DESIGN_REVIEWED_CODING_READY
+M2B_CODE_COMPILED_REVIEWED_M2C_FENCE_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING
 
-主TDD§0.4/§2.45–§2.47；Task67编码编译及独立静态复审完成，新增7项测试未执行。Task68采用独立复审补充方案，仅发布编码/测试源码及编译；全范围非Pay功能完成后统一测试与部署。canStart=false。
+主TDD§0.4/§2.45–§2.47。Task67及Task68A共用营销仲裁层已编码编译和独立静态复审；Task68B优惠报价/封存兼容/现金准入集成与68C仍待编码。所有新增运行用例未执行，统一测试部署后置，canStart=false，Pay后置。
 
 | Method / route | Operation / input | Result |
 |---|---|---|
@@ -754,3 +754,7 @@ CounterActivitySeal(schema=1,policy=LEGACY_FULL_CUT_V1,party,groups,requestedCho
 收款准入仅schema1已CONSUMED柜台报价/确认允许merchantMinor=discountMinor=真实子单商家分摊，platform/coupon/points/gift均无且due>0；核对父子金额及逐行paidShare。已售后不重新判断当前优惠有效性；M1/schema0保持零优惠，不改来源hash/库存协议，不调用Pay或普通金融已付事件。
 
 迁移规划：共用marketing V543 owner fence；未创建M3由V543顺延V544、M4由V544顺延V545，美业V10不变。仅新增候选SQL，阶段A不执行迁移；实际开工再核号。
+
+Task68A-I1修订：新fence tenant_no/scope_no的比较须与七项owner tenant_no及三项head/enrollment entity_no的有效列collation一致，结构校验逐列证明；scope_kind及不可变键仍字节精确。数据库默认不等于有效历史列，任一不一致关闭新能力。原binary tenant/scope设计由主TDD§2.47限定裁决覆盖，旧迁移不改、既有大小写/重音变体不静默忽略。
+
+Task68A代码阶段完成：精确11文件共享marketing fence/Mapper/21触发器/descriptor/严格guard已提交5aa1769f2c1719cd86f0cdf4528699527827d7e6，I1锁身份等价修复限定复审PASS。实际24模块编译40.347s，core1067主/86测试源码、host413主/750测试源码；18个native、4个Node及lineage用例均未执行。V543仅新增源码/未执行，不代表Task68B报价或完整现金链条已完成。

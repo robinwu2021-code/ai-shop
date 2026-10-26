@@ -76,7 +76,7 @@ def generate():
         lines += ['', 'HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant/web；双JVM夹具已编码，运行待统一部署关口。', '']
     planned = data.get('plannedSharedClasses')
     if planned:
-        lines += ['## 十、待编码的共用增量类型', '', planned['status'], '', planned['authority'], '',
+        lines += ['## 十、共用增量类型与实施状态', '', planned['status'], '', planned['authority'], '',
                   '| Source | Planned class / responsibility |', '|---|---|']
         for row in planned['classes']:
             lines.append(f"| `{row['path']}` | `{row['class']}`<br>{row['role']} |")

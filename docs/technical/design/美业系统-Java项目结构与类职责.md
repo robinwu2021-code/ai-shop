@@ -369,16 +369,16 @@ Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED
 
 HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant/web；双JVM夹具已编码，运行待统一部署关口。
 
-## 十、待编码的共用增量类型
+## 十、共用增量类型与实施状态
 
-TASK68_C02_DESIGN_REVIEWED_CODE_NOT_IMPLEMENTED
+TASK68A_CODE_COMPILED_STATIC_REVIEWED_B_C_PENDING_UNIFIED_TEST_PENDING
 
-主TDD§2.47及Task68设计补充；仅共享所有者增量，不增加美业构件/依赖或目标25私有表计数。
+主TDD§2.47：fence/mapper两类已编码编译和静态复审，待统一测试；其余类仍待编码。均为共用所有者增量，不增加美业构件/依赖或25私有表计数。
 
 | Source | Planned class / responsibility |
 |---|---|
-| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignRules`<br>counter choices/goods/seal canonicalization |
-| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignFence`<br>shared marketing owner fence and capability |
-| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java` | `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper`<br>exact-PK shared fence SQL |
-| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java` | `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec`<br>old/new economic quote/plan compatibility and consumed integrity |
-| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java` | `ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot`<br>internal immutable economic/display quote envelope |
+| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignRules`<br>[待编码] counter choices/goods/seal canonicalization |
+| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignFence`<br>[编码编译/静态复审完成；统一测试未执行] shared marketing owner fence and capability |
+| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java` | `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper`<br>[编码编译/静态复审完成；统一测试未执行] exact-PK shared fence SQL |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java` | `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec`<br>[待编码] old/new economic quote/plan compatibility and consumed integrity |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java` | `ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot`<br>[待编码] internal immutable economic/display quote envelope |

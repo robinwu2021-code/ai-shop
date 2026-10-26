@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="680" height="1144" viewBox="0 0 680 1144" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>交易 表关系</title><desc>37 张表，箭头由引用方指向被引用方。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="1376" viewBox="0 0 680 1376" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>交易 表关系</title><desc>39 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
@@ -14,72 +14,74 @@
 <path class="ar" d="M580 726 L580 440 L100 440 L100 425" marker-end="url(#a)"/>
 <path class="ar" d="M580 726 L580 116 L100 116 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M100 842 L100 440 L100 440 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M100 1074 L100 788 L100 788 L100 773" marker-end="url(#a)"/>
-<path class="ar" d="M100 1074 L100 440 L100 440 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M420 378 L420 116 L260 116 L260 77" marker-end="url(#a)"/>
-<path class="ar" d="M260 1074 L260 800 L100 800 L100 773" marker-end="url(#a)"/>
-<path class="ar" d="M260 1074 L260 452 L100 452 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M260 1074 L260 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M420 1074 L420 812 L100 812 L100 773" marker-end="url(#a)"/>
-<path class="ar" d="M420 1074 L420 464 L100 464 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M260 842 L260 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M148 1190 L148 788 L100 788 L100 773" marker-end="url(#a)"/>
+<path class="ar" d="M148 1190 L148 440 L100 440 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M260 842 L260 672 L244 672 L244 657" marker-end="url(#a)"/>
 <path class="ar" d="M260 842 L260 452 L100 452 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M340 1190 L340 904 L260 904 L260 889" marker-end="url(#a)"/>
+<path class="ar" d="M532 1190 L532 800 L100 800 L100 773" marker-end="url(#a)"/>
+<path class="ar" d="M532 1190 L532 452 L100 452 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M532 1190 L532 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M244 1306 L244 788 L100 788 L100 773" marker-end="url(#a)"/>
+<path class="ar" d="M244 1306 L244 440 L100 440 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M420 842 L420 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M420 842 L420 464 L100 464 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M580 378 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 1074 L580 788 L100 788 L100 773" marker-end="url(#a)"/>
-<path class="ar" d="M580 1074 L580 440 L100 440 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M100 494 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M260 494 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M580 842 L580 104 L100 104 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 842 L580 440 L100 440 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M420 378 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M436 1306 L436 800 L100 800 L100 773" marker-end="url(#a)"/>
+<path class="ar" d="M436 1306 L436 452 L100 452 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M580 378 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 494 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 958 L100 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M100 958 L100 440 L100 440 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M260 494 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M420 494 L420 116 L100 116 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M580 494 L580 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 958 L260 324 L532 324 L532 309" marker-end="url(#a)"/>
+<path class="ar" d="M260 958 L260 672 L244 672 L244 657" marker-end="url(#a)"/>
+<path class="ar" d="M260 958 L260 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M260 958 L260 452 L100 452 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M244 610 L244 324 L532 324 L532 309" marker-end="url(#a)"/>
 <path class="ar" d="M244 610 L244 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M148 958 L148 324 L580 324 L580 309" marker-end="url(#a)"/>
-<path class="ar" d="M148 958 L148 672 L436 672 L436 657" marker-end="url(#a)"/>
-<path class="ar" d="M148 958 L148 92 L100 92 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M148 958 L148 440 L100 440 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M436 610 L436 324 L580 324 L580 309" marker-end="url(#a)"/>
+<path class="ar" d="M420 958 L420 464 L100 464 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M580 958 L580 116 L100 116 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M580 958 L580 440 L100 440 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M340 1074 L340 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M340 1074 L340 440 L100 440 L100 425" marker-end="url(#a)"/>
 <path class="ar" d="M436 610 L436 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M340 958 L340 452 L100 452 L100 425" marker-end="url(#a)"/>
-<path class="ar" d="M532 958 L532 104 L100 104 L100 77" marker-end="url(#a)"/>
-<path class="ar" d="M532 958 L532 464 L100 464 L100 425" marker-end="url(#a)"/>
 <rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="50" text-anchor="middle" font-size="13">ord_order</text>
 <text class="s" x="100" y="65" text-anchor="middle">主订单：用户视角，一次…</text>
 <rect x="191" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="56" text-anchor="middle" font-size="13">ord_create_intent</text>
+<text class="n" x="260" y="56" text-anchor="middle" font-size="9.5">ord_points_integration_policy</text>
 
 <rect x="351" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="56" text-anchor="middle" font-size="9.5">ord_points_integration_policy</text>
+<text class="n" x="420" y="56" text-anchor="middle" font-size="11">ord_points_command</text>
 
 <rect x="511" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="56" text-anchor="middle" font-size="11">ord_points_command</text>
+<text class="n" x="580" y="56" text-anchor="middle" font-size="9.5">ord_points_source_counter</text>
 
 <rect x="31" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="172" text-anchor="middle" font-size="9.5">ord_points_source_counter</text>
+<text class="n" x="100" y="172" text-anchor="middle" font-size="9.5">ord_points_recovery_cursor</text>
 
 <rect x="191" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="172" text-anchor="middle" font-size="9.5">ord_points_recovery_cursor</text>
+<text class="n" x="260" y="172" text-anchor="middle" font-size="9.5">ord_points_refund_retry</text>
 
 <rect x="351" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="172" text-anchor="middle" font-size="9.5">ord_points_refund_retry</text>
+<text class="n" x="420" y="172" text-anchor="middle" font-size="9.5">ord_points_work_cursor</text>
 
 <rect x="511" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="172" text-anchor="middle" font-size="9.5">ord_points_work_cursor</text>
+<text class="n" x="580" y="172" text-anchor="middle" font-size="9.5">ord_refund_obligation</text>
 
-<rect x="31" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="288" text-anchor="middle" font-size="9.5">ord_refund_obligation</text>
-
-<rect x="191" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="282" text-anchor="middle" font-size="9.5">ord_ent_source_decision</text>
-<text class="s" x="260" y="297" text-anchor="middle">core成功/取消唯一决策…</text>
-<rect x="351" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="282" text-anchor="middle" font-size="9.5">ord_ent_service_order</text>
-<text class="s" x="420" y="297" text-anchor="middle">核心服务核销业务源，不…</text>
-<rect x="511" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="282" text-anchor="middle" font-size="11">ord_checkout_quote</text>
-<text class="s" x="580" y="297" text-anchor="middle">Immutable observed…</text>
+<rect x="63" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="282" text-anchor="middle" font-size="11">ord_ent_source_decision</text>
+<text class="s" x="148" y="297" text-anchor="middle">core成功/取消唯一决策；同成…</text>
+<rect x="255" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="282" text-anchor="middle" font-size="13">ord_ent_service_order</text>
+<text class="s" x="340" y="297" text-anchor="middle">核心服务核销业务源，不代表现…</text>
+<rect x="447" y="262" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="282" text-anchor="middle" font-size="13">ord_checkout_quote</text>
+<text class="s" x="532" y="297" text-anchor="middle">Immutable observed ordina…</text>
 <rect x="31" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="398" text-anchor="middle" font-size="13">ord_sub_order</text>
 <text class="s" x="100" y="413" text-anchor="middle">子订单：商家视角，一次…</text>
@@ -87,29 +89,29 @@
 <text class="n" x="260" y="398" text-anchor="middle" font-size="11">ord_invoice_request</text>
 <text class="s" x="260" y="413" text-anchor="middle">开票申请（平台开给消费…</text>
 <rect x="351" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="404" text-anchor="middle" font-size="9.5">ord_payment_resolution</text>
+<text class="n" x="420" y="404" text-anchor="middle" font-size="11">ord_points_placement</text>
 
 <rect x="511" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="404" text-anchor="middle" font-size="11">ord_points_placement</text>
+<text class="n" x="580" y="404" text-anchor="middle" font-size="9.5">ord_refund_coupon_scope</text>
 
 <rect x="31" y="494" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="520" text-anchor="middle" font-size="9.5">ord_refund_coupon_scope</text>
-
+<text class="n" x="100" y="514" text-anchor="middle" font-size="9.5">ord_ent_authorization</text>
+<text class="s" x="100" y="529" text-anchor="middle">core本人消费授权及其…</text>
 <rect x="191" y="494" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="514" text-anchor="middle" font-size="9.5">ord_ent_authorization</text>
-<text class="s" x="260" y="529" text-anchor="middle">core本人消费授权及其…</text>
+<text class="n" x="260" y="514" text-anchor="middle" font-size="13">ord_ent_order_use</text>
+<text class="s" x="260" y="529" text-anchor="middle">核心订单权益协调，不持…</text>
 <rect x="351" y="494" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="514" text-anchor="middle" font-size="13">ord_ent_order_use</text>
-<text class="s" x="420" y="529" text-anchor="middle">核心订单权益协调，不持…</text>
+<text class="n" x="420" y="514" text-anchor="middle" font-size="11">ord_ent_payment_seal</text>
+<text class="s" x="420" y="529" text-anchor="middle">发起支付后禁止改价</text>
 <rect x="511" y="494" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="514" text-anchor="middle" font-size="11">ord_ent_payment_seal</text>
-<text class="s" x="580" y="529" text-anchor="middle">发起支付后禁止改价</text>
-<rect x="159" y="610" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="244" y="636" text-anchor="middle" font-size="11">ord_legacy_coupon_checkout</text>
+<text class="n" x="580" y="520" text-anchor="middle" font-size="9.5">ord_legacy_coupon_checkout</text>
 
+<rect x="159" y="610" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="244" y="630" text-anchor="middle" font-size="11">ord_checkout_confirmation</text>
+<text class="s" x="244" y="645" text-anchor="middle">Current consumer consent…</text>
 <rect x="351" y="610" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="436" y="630" text-anchor="middle" font-size="11">ord_checkout_confirmation</text>
-<text class="s" x="436" y="645" text-anchor="middle">Current consumer consent…</text>
+<text class="n" x="436" y="630" text-anchor="middle" font-size="9.5">ord_manual_service_admission_action</text>
+<text class="s" x="436" y="645" text-anchor="middle">Append-only original manu…</text>
 <rect x="31" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="746" text-anchor="middle" font-size="13">ord_after_sale</text>
 <text class="s" x="100" y="761" text-anchor="middle">售后单（子单粒度）</text>
@@ -126,34 +128,43 @@
 <text class="n" x="100" y="862" text-anchor="middle" font-size="13">ord_shipment</text>
 <text class="s" x="100" y="877" text-anchor="middle">发货单（交易域）：一个订…</text>
 <rect x="191" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="868" text-anchor="middle" font-size="11">ord_points_binding</text>
+<text class="n" x="260" y="868" text-anchor="middle" font-size="13">ord_create_intent</text>
 
 <rect x="351" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="868" text-anchor="middle" font-size="9.5">ord_points_source_fact</text>
+<text class="n" x="420" y="868" text-anchor="middle" font-size="11">ord_points_binding</text>
 
 <rect x="511" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="862" text-anchor="middle" font-size="9.5">ord_card_sale_snapshot</text>
-<text class="s" x="580" y="877" text-anchor="middle">Frozen paid-card or…</text>
-<rect x="63" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="148" y="978" text-anchor="middle" font-size="11">ord_checkout_operation</text>
-<text class="s" x="148" y="993" text-anchor="middle">Durable ordinary checkout…</text>
-<rect x="255" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="340" y="978" text-anchor="middle" font-size="13">ord_checkout_line</text>
-<text class="s" x="340" y="993" text-anchor="middle">Stable public source iden…</text>
-<rect x="447" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="532" y="978" text-anchor="middle" font-size="9.5">ord_checkout_payment_request</text>
-<text class="s" x="532" y="993" text-anchor="middle">Permanent checkout paymen…</text>
-<rect x="31" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="1094" text-anchor="middle" font-size="11">ord_after_sale_item</text>
-<text class="s" x="100" y="1109" text-anchor="middle">售后行：一张售后单退哪…</text>
-<rect x="191" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="1100" text-anchor="middle" font-size="11">ord_refund_execution</text>
+<text class="n" x="580" y="868" text-anchor="middle" font-size="9.5">ord_points_source_fact</text>
 
-<rect x="351" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="1094" text-anchor="middle" font-size="9.5">ord_points_refund_execution</text>
-<text class="s" x="420" y="1109" text-anchor="middle">Immutable source re…</text>
-<rect x="511" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="1100" text-anchor="middle" font-size="9.5">ord_points_refund_binding</text>
+<rect x="31" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="978" text-anchor="middle" font-size="9.5">ord_card_sale_snapshot</text>
+<text class="s" x="100" y="993" text-anchor="middle">Frozen paid-card or…</text>
+<rect x="191" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="978" text-anchor="middle" font-size="9.5">ord_checkout_operation</text>
+<text class="s" x="260" y="993" text-anchor="middle">Durable ordinary ch…</text>
+<rect x="351" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="978" text-anchor="middle" font-size="13">ord_checkout_line</text>
+<text class="s" x="420" y="993" text-anchor="middle">Stable public sourc…</text>
+<rect x="511" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="978" text-anchor="middle" font-size="9.5">ord_checkout_payment_request</text>
+<text class="s" x="580" y="993" text-anchor="middle">Permanent checkout…</text>
+<rect x="255" y="1074" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="1094" text-anchor="middle" font-size="9.5">ord_manual_service_admission</text>
+<text class="s" x="340" y="1109" text-anchor="middle">One merchant receipt decl…</text>
+<rect x="63" y="1190" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="1210" text-anchor="middle" font-size="13">ord_after_sale_item</text>
+<text class="s" x="148" y="1225" text-anchor="middle">售后行：一张售后单退哪几行、…</text>
+<rect x="255" y="1190" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="1216" text-anchor="middle" font-size="11">ord_payment_resolution</text>
+
+<rect x="447" y="1190" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="1216" text-anchor="middle" font-size="13">ord_refund_execution</text>
+
+<rect x="159" y="1306" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="244" y="1326" text-anchor="middle" font-size="9.5">ord_points_refund_execution</text>
+<text class="s" x="244" y="1341" text-anchor="middle">Immutable source refund p…</text>
+<rect x="351" y="1306" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="436" y="1332" text-anchor="middle" font-size="11">ord_points_refund_binding</text>
 
 <text class="l" x="100" y="436" text-anchor="middle">sub_order_no</text>
 <text class="l" x="100" y="88" text-anchor="middle">order_no</text>
@@ -165,33 +176,38 @@
 <text class="l" x="340" y="436" text-anchor="middle">sub_order_no</text>
 <text class="l" x="340" y="112" text-anchor="middle">order_no</text>
 <text class="l" x="100" y="436" text-anchor="middle">sub_order_no</text>
-<text class="l" x="100" y="784" text-anchor="middle">after_sale_no</text>
-<text class="l" x="100" y="436" text-anchor="middle">sub_order_no</text>
-<text class="l" x="340" y="112" text-anchor="middle">pay_no</text>
-<text class="l" x="180" y="796" text-anchor="middle">after_sale_no</text>
+<text class="l" x="124" y="784" text-anchor="middle">after_sale_no</text>
+<text class="l" x="124" y="436" text-anchor="middle">sub_order_no</text>
+<text class="l" x="252" y="668" text-anchor="middle">confirmation_no</text>
 <text class="l" x="180" y="448" text-anchor="middle">sub_order_no</text>
-<text class="l" x="180" y="88" text-anchor="middle">order_no</text>
-<text class="l" x="260" y="808" text-anchor="middle">after_sale_no</text>
+<text class="l" x="300" y="900" text-anchor="middle">pay_no</text>
+<text class="l" x="316" y="796" text-anchor="middle">after_sale_no</text>
+<text class="l" x="316" y="448" text-anchor="middle">sub_order_no</text>
+<text class="l" x="316" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="172" y="784" text-anchor="middle">after_sale_no</text>
+<text class="l" x="172" y="436" text-anchor="middle">sub_order_no</text>
+<text class="l" x="260" y="88" text-anchor="middle">order_no</text>
 <text class="l" x="260" y="460" text-anchor="middle">sub_order_no</text>
-<text class="l" x="180" y="88" text-anchor="middle">order_no</text>
-<text class="l" x="180" y="448" text-anchor="middle">sub_order_no</text>
-<text class="l" x="260" y="460" text-anchor="middle">sub_order_no</text>
-<text class="l" x="340" y="88" text-anchor="middle">order_no</text>
-<text class="l" x="340" y="784" text-anchor="middle">after_sale_no</text>
-<text class="l" x="340" y="436" text-anchor="middle">sub_order_no</text>
-<text class="l" x="100" y="88" text-anchor="middle">order_no</text>
-<text class="l" x="180" y="100" text-anchor="middle">order_no</text>
-<text class="l" x="340" y="100" text-anchor="middle">order_no</text>
 <text class="l" x="340" y="436" text-anchor="middle">sub_order_no</text>
 <text class="l" x="260" y="112" text-anchor="middle">order_no</text>
+<text class="l" x="268" y="796" text-anchor="middle">after_sale_no</text>
+<text class="l" x="268" y="448" text-anchor="middle">sub_order_no</text>
 <text class="l" x="340" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="100" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="100" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="100" y="436" text-anchor="middle">sub_order_no</text>
+<text class="l" x="180" y="100" text-anchor="middle">order_no</text>
+<text class="l" x="260" y="112" text-anchor="middle">order_no</text>
+<text class="l" x="340" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="396" y="320" text-anchor="middle">current_quote_no</text>
+<text class="l" x="252" y="668" text-anchor="middle">confirmation_no</text>
+<text class="l" x="180" y="100" text-anchor="middle">order_no</text>
+<text class="l" x="180" y="448" text-anchor="middle">sub_order_no</text>
+<text class="l" x="388" y="320" text-anchor="middle">quote_no</text>
 <text class="l" x="172" y="88" text-anchor="middle">order_no</text>
-<text class="l" x="364" y="320" text-anchor="middle">current_quote_no</text>
-<text class="l" x="292" y="668" text-anchor="middle">confirmation_no</text>
-<text class="l" x="124" y="88" text-anchor="middle">order_no</text>
-<text class="l" x="124" y="436" text-anchor="middle">sub_order_no</text>
-<text class="l" x="508" y="320" text-anchor="middle">quote_no</text>
-<text class="l" x="268" y="100" text-anchor="middle">order_no</text>
-<text class="l" x="220" y="448" text-anchor="middle">sub_order_no</text>
-<text class="l" x="316" y="100" text-anchor="middle">order_no</text>
-<text class="l" x="316" y="460" text-anchor="middle">sub_order_no</text></svg>
+<text class="l" x="260" y="460" text-anchor="middle">sub_order_no</text>
+<text class="l" x="340" y="112" text-anchor="middle">order_no</text>
+<text class="l" x="340" y="436" text-anchor="middle">sub_order_no</text>
+<text class="l" x="220" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="220" y="436" text-anchor="middle">sub_order_no</text>
+<text class="l" x="268" y="100" text-anchor="middle">order_no</text></svg>

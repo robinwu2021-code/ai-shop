@@ -12319,11 +12319,11 @@
     "review": ".superpowers/sdd/beauty-backend/review-task-64-r2.md"
   },
   "counterServicePlan": {
-    "status": "M2B_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING_M2C_DESIGN_REVIEWED_CODING_READY",
+    "status": "M2B_CODE_COMPILED_REVIEWED_M2C_FENCE_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING",
     "design": "../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md",
     "designSha256": "f9eda33c67b92530bfe5754211a611f4fb47152291589e77d44bd7a4e4a47563",
     "reviewSha256": "a98c07ce1a8b1a3a52ac528ae3420516f2842e7e43869522a09862389f463ea4",
-    "authority": "主TDD§0.4/§2.45–§2.47；Task67编码编译及独立静态复审完成，新增7项测试未执行。Task68采用独立复审补充方案，仅发布编码/测试源码及编译；全范围非Pay功能完成后统一测试与部署。canStart=false。",
+    "authority": "主TDD§0.4/§2.45–§2.47。Task67及Task68A共用营销仲裁层已编码编译和独立静态复审；Task68B优惠报价/封存兼容/现金准入集成与68C仍待编码。所有新增运行用例未执行，统一测试部署后置，canStart=false，Pay后置。",
     "routes": [
       {
         "method": "POST",
@@ -12689,6 +12689,42 @@
       {
         "owner": "ai.neargo.shop.trade.service.impl.ManualServiceAdmissionServiceImpl",
         "signature": "private void requireDeclarationEconomics(OrdManualServiceAdmission declaration, Facts facts)"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "List<Map<String,Object>> columns()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "List<Map<String,Object>> table()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "List<Map<String,Object>> ownerIdentityBindings()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "List<String> primaryKey()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "List<Map<String,Object>> checks()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "long hasCheckEnforcementColumn()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "List<String> checkEnforcement()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "List<Map<String,Object>> triggers()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
+        "signature": "void afterSingletonsInstantiated()"
       }
     ],
     "contracts": [
@@ -12720,13 +12756,17 @@
       "最终共用marketing平台S→排序entity S fence，READ_COMMITTED同主库；相关旧SQL/新增/版本/明细/平台报名由数据库触发器X协调。新V543及descriptor缺失或漂移则本能力不可用，普通零售/M1不随之失效；不使用选中行FOR UPDATE代替空集合防护。",
       "旧schema0报价/待恢复计划只从原持久化操作与确认导出FROZEN_M2A_ZERO，保留旧零优惠/基价/hash/原库存；新促销不能重定价旧意图，当前基价/权限变化仍拒绝。golden必须来自真实旧序列化器，现仅固定旧源码/类，生成与对比后置统一B。",
       "收款准入仅schema1已CONSUMED柜台报价/确认允许merchantMinor=discountMinor=真实子单商家分摊，platform/coupon/points/gift均无且due>0；核对父子金额及逐行paidShare。已售后不重新判断当前优惠有效性；M1/schema0保持零优惠，不改来源hash/库存协议，不调用Pay或普通金融已付事件。",
-      "迁移规划：共用marketing V543 owner fence；未创建M3由V543顺延V544、M4由V544顺延V545，美业V10不变。仅新增候选SQL，阶段A不执行迁移；实际开工再核号。"
+      "迁移规划：共用marketing V543 owner fence；未创建M3由V543顺延V544、M4由V544顺延V545，美业V10不变。仅新增候选SQL，阶段A不执行迁移；实际开工再核号。",
+      "Task68A-I1修订：新fence tenant_no/scope_no的比较须与七项owner tenant_no及三项head/enrollment entity_no的有效列collation一致，结构校验逐列证明；scope_kind及不可变键仍字节精确。数据库默认不等于有效历史列，任一不一致关闭新能力。原binary tenant/scope设计由主TDD§2.47限定裁决覆盖，旧迁移不改、既有大小写/重音变体不静默忽略。",
+      "Task68A代码阶段完成：精确11文件共享marketing fence/Mapper/21触发器/descriptor/严格guard已提交5aa1769f2c1719cd86f0cdf4528699527827d7e6，I1锁身份等价修复限定复审PASS。实际24模块编译40.347s，core1067主/86测试源码、host413主/750测试源码；18个native、4个Node及lineage用例均未执行。V543仅新增源码/未执行，不代表Task68B报价或完整现金链条已完成。"
     ],
     "task66AddendumStatus": "CODE_ACCEPTED_R0_PLUS_SCOPED_R1_I1_CLOSED",
     "task67AddendumStatus": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
     "task67CodeCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9",
     "task68AddendumStatus": "DESIGN_STATIC_REVIEWED_CODE_PHASE_RELEASED",
     "task68DesignSha256": "8a74b6e40a0cf792a0326eb42a720071fd8b59513a5c8a00589238ef08aff763",
-    "task68ReviewSha256": "2d12b1d9ac8fd335df7aee9de00a5eb00ca799298f540269ac11ab37e169e203"
+    "task68ReviewSha256": "2d12b1d9ac8fd335df7aee9de00a5eb00ca799298f540269ac11ab37e169e203",
+    "task68AStatus": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+    "task68ACodeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6"
   }
 }

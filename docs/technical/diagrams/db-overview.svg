@@ -14,7 +14,7 @@
 <text class="s" x="185.5" y="85" text-anchor="middle">mch_* · 44 表</text>
 <rect x="242" y="50" width="93" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="288.5" y="70" text-anchor="middle" font-size="13">交易</text>
-<text class="s" x="288.5" y="85" text-anchor="middle">ord_* · 37 表</text>
+<text class="s" x="288.5" y="85" text-anchor="middle">ord_* · 39 表</text>
 <rect x="345" y="50" width="93" height="46" rx="6" fill="#EDEFF2" stroke="#B3B9C2"/>
 <text class="n" x="391.5" y="70" text-anchor="middle" font-size="13">商品与类目</text>
 <text class="s" x="391.5" y="85" text-anchor="middle">prd_* · 35 表</text>
@@ -30,7 +30,7 @@
 <text class="b" x="36" y="138">主数据与交易</text>
 <rect x="105" y="148" width="150" height="46" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="180" y="168" text-anchor="middle" font-size="13">营销与团购</text>
-<text class="s" x="180" y="183" text-anchor="middle">mkt_* · 17 表</text>
+<text class="s" x="180" y="183" text-anchor="middle">mkt_* · 18 表</text>
 <rect x="265" y="148" width="150" height="46" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="340" y="168" text-anchor="middle" font-size="13">系统</text>
 <text class="s" x="340" y="183" text-anchor="middle">sys_* · 30 表</text>

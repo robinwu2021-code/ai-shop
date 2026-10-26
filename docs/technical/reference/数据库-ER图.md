@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **363** 张表、**603** 条引用关系，分 **16** 个域。
+全库 **366** 张表、**619** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -18,9 +18,9 @@
 | 社区与自提点 | `cmt_*` | 3 | 7 |
 | 商品与类目 | `prd_*` | 35 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
-| 交易 | `ord_*` | 37 | 9 |
+| 交易 | `ord_*` | 39 | 9 |
 | 履约 | `ful_*` | 5 | 0 |
-| 营销与团购 | `mkt_*` | 17 | 4 |
+| 营销与团购 | `mkt_*` | 18 | 4 |
 | 积分 | `pts_*` | 41 | 0 |
 | 结算 | `stl_*` | 20 | 2 |
 | 评价 | `rvw_*` | 3 | 0 |
@@ -174,7 +174,7 @@
 
 **跨域引用**：`trd_cart_item.user_no → usr_account.user_no`、`trd_cart_item.goods_no → prd_goods.goods_no`、`trd_cart_item.sku_no → prd_sku.sku_no`、`trd_shipping_upload.order_no → ord_order.order_no`、`trd_shipping_upload.out_trade_no → stl_payment.out_trade_no`
 
-### 交易 `ord_*`（37 张）
+### 交易 `ord_*`（39 张）
 
 ![交易表关系](../diagrams/db-ord.svg)
 
@@ -217,8 +217,10 @@
 | `ord_checkout_confirmation` | Current consumer consent bound to one quote and purchase |
 | `ord_checkout_line` | Stable public source identity written with the actual order item |
 | `ord_checkout_payment_request` | Permanent checkout payment request identity, no cash balance |
+| `ord_manual_service_admission` | One merchant receipt declaration on the common service order; no Pay or money ledger |
+| `ord_manual_service_admission_action` | Append-only original manual receipt and admission action evidence |
 
-**跨域引用**：`ord_after_sale.user_no → usr_account.user_no`、`ord_after_sale.entity_no → mch_entity.entity_no`、`ord_item.goods_no → prd_goods.goods_no`、`ord_item.sku_no → prd_sku.sku_no`、`ord_item.category_no → prd_category.category_no`、`ord_item.shipment_no → lgs_waybill.shipment_no`、`ord_order.user_no → usr_account.user_no`、`ord_order.community_no → cmt_community.community_no`、`ord_sub_order.user_no → usr_account.user_no`、`ord_sub_order.entity_no → mch_entity.entity_no`、`ord_sub_order.pickup_no → cmt_pickup_point.pickup_no`、`ord_sub_order.group_no → mkt_group_buy.group_no`、`ord_sub_order.store_no → mch_store.store_no`、`ord_sub_order.community_no → cmt_community.community_no`、`ord_sub_order.period_no → pmt_period.period_no`、`ord_invoice_request.user_no → usr_account.user_no`、`ord_express_pickup.pickup_no → cmt_pickup_point.pickup_no`、`ord_express_pickup.entity_no → mch_entity.entity_no`、`ord_express_pickup.store_no → mch_store.store_no`、`ord_shipment.shipment_no → lgs_waybill.shipment_no`、`ord_create_intent.user_no → usr_account.user_no`、`ord_payment_resolution.payment_no → stl_payment.payment_no`、`ord_payment_resolution.user_no → usr_account.user_no`、`ord_refund_execution.origin_payment_no → stl_payment.payment_no`、`ord_refund_execution.payment_no → stl_payment.payment_no`、`ord_points_refund_execution.cash_payment_no → stl_payment.payment_no`、`ord_points_integration_policy.store_no → mch_store.store_no`、`ord_points_binding.store_no → mch_store.store_no`、`ord_points_source_fact.event_no → sys_outbox.event_no`、`ord_points_source_fact.store_no → mch_store.store_no`、`ord_points_refund_binding.cash_payment_no → stl_payment.payment_no`、`ord_refund_coupon_scope.coupon_no → mkt_coupon.coupon_no`、`ord_ent_authorization.user_no → usr_account.user_no`、`ord_ent_authorization.entity_no → mch_entity.entity_no`、`ord_ent_authorization.store_no → mch_store.store_no`、`ord_ent_source_decision.user_no → usr_account.user_no`、`ord_ent_source_decision.entity_no → mch_entity.entity_no`、`ord_ent_source_decision.store_no → mch_store.store_no`、`ord_card_sale_snapshot.user_no → usr_account.user_no`、`ord_card_sale_snapshot.entity_no → mch_entity.entity_no`、`ord_card_sale_snapshot.store_no → mch_store.store_no`、`ord_card_sale_snapshot.goods_no → prd_goods.goods_no`、`ord_card_sale_snapshot.sku_no → prd_sku.sku_no`、`ord_card_sale_snapshot.template_version_no → ent_template_version.version_no（同时匹配 ord_card_sale_snapshot.tenant_no = ent_template_version.tenant_no）`、`ord_ent_order_use.entity_no → mch_entity.entity_no`、`ord_ent_order_use.user_no → usr_account.user_no`、`ord_ent_service_order.entity_no → mch_entity.entity_no`、`ord_ent_service_order.store_no → mch_store.store_no`、`ord_ent_service_order.user_no → usr_account.user_no`、`ord_legacy_coupon_checkout.user_no → usr_account.user_no`、`ord_legacy_coupon_checkout.entity_no → mch_entity.entity_no`、`ord_checkout_operation.entity_no → mch_entity.entity_no`、`ord_checkout_operation.store_no → mch_store.store_no`、`ord_checkout_operation.buyer_no → usr_account.user_no（同时匹配 ord_checkout_operation.tenant_no = usr_account.tenant_no）`、`ord_checkout_confirmation.buyer_no → usr_account.user_no（同时匹配 ord_checkout_confirmation.tenant_no = usr_account.tenant_no）`、`ord_checkout_line.goods_no → prd_goods.goods_no`、`ord_checkout_line.sku_no → prd_sku.sku_no`、`ord_checkout_payment_request.buyer_no → usr_account.user_no（同时匹配 ord_checkout_payment_request.tenant_no = usr_account.tenant_no）`、`ord_checkout_payment_request.entity_no → mch_entity.entity_no`、`ord_checkout_payment_request.store_no → mch_store.store_no`、`ord_checkout_payment_request.actor_account_no → mch_account.mch_account_no（同时匹配 ord_checkout_payment_request.tenant_no = mch_account.tenant_no）`
+**跨域引用**：`ord_after_sale.user_no → usr_account.user_no`、`ord_after_sale.entity_no → mch_entity.entity_no`、`ord_item.goods_no → prd_goods.goods_no`、`ord_item.sku_no → prd_sku.sku_no`、`ord_item.category_no → prd_category.category_no`、`ord_item.shipment_no → lgs_waybill.shipment_no`、`ord_order.user_no → usr_account.user_no`、`ord_order.community_no → cmt_community.community_no`、`ord_order.entity_no → mch_entity.entity_no`、`ord_order.store_no → mch_store.store_no`、`ord_sub_order.user_no → usr_account.user_no`、`ord_sub_order.entity_no → mch_entity.entity_no`、`ord_sub_order.pickup_no → cmt_pickup_point.pickup_no`、`ord_sub_order.group_no → mkt_group_buy.group_no`、`ord_sub_order.store_no → mch_store.store_no`、`ord_sub_order.community_no → cmt_community.community_no`、`ord_sub_order.period_no → pmt_period.period_no`、`ord_invoice_request.user_no → usr_account.user_no`、`ord_express_pickup.pickup_no → cmt_pickup_point.pickup_no`、`ord_express_pickup.entity_no → mch_entity.entity_no`、`ord_express_pickup.store_no → mch_store.store_no`、`ord_shipment.shipment_no → lgs_waybill.shipment_no`、`ord_create_intent.user_no → usr_account.user_no`、`ord_create_intent.entity_no → mch_entity.entity_no`、`ord_create_intent.store_no → mch_store.store_no`、`ord_payment_resolution.payment_no → stl_payment.payment_no`、`ord_payment_resolution.user_no → usr_account.user_no`、`ord_refund_execution.origin_payment_no → stl_payment.payment_no`、`ord_refund_execution.payment_no → stl_payment.payment_no`、`ord_points_refund_execution.cash_payment_no → stl_payment.payment_no`、`ord_points_integration_policy.store_no → mch_store.store_no`、`ord_points_binding.store_no → mch_store.store_no`、`ord_points_source_fact.event_no → sys_outbox.event_no`、`ord_points_source_fact.store_no → mch_store.store_no`、`ord_points_refund_binding.cash_payment_no → stl_payment.payment_no`、`ord_refund_coupon_scope.coupon_no → mkt_coupon.coupon_no`、`ord_ent_authorization.user_no → usr_account.user_no`、`ord_ent_authorization.entity_no → mch_entity.entity_no`、`ord_ent_authorization.store_no → mch_store.store_no`、`ord_ent_source_decision.user_no → usr_account.user_no`、`ord_ent_source_decision.entity_no → mch_entity.entity_no`、`ord_ent_source_decision.store_no → mch_store.store_no`、`ord_card_sale_snapshot.user_no → usr_account.user_no`、`ord_card_sale_snapshot.entity_no → mch_entity.entity_no`、`ord_card_sale_snapshot.store_no → mch_store.store_no`、`ord_card_sale_snapshot.goods_no → prd_goods.goods_no`、`ord_card_sale_snapshot.sku_no → prd_sku.sku_no`、`ord_card_sale_snapshot.template_version_no → ent_template_version.version_no（同时匹配 ord_card_sale_snapshot.tenant_no = ent_template_version.tenant_no）`、`ord_ent_order_use.entity_no → mch_entity.entity_no`、`ord_ent_order_use.user_no → usr_account.user_no`、`ord_ent_service_order.entity_no → mch_entity.entity_no`、`ord_ent_service_order.store_no → mch_store.store_no`、`ord_ent_service_order.user_no → usr_account.user_no`、`ord_legacy_coupon_checkout.user_no → usr_account.user_no`、`ord_legacy_coupon_checkout.entity_no → mch_entity.entity_no`、`ord_checkout_operation.entity_no → mch_entity.entity_no`、`ord_checkout_operation.store_no → mch_store.store_no`、`ord_checkout_operation.buyer_no → usr_account.user_no（同时匹配 ord_checkout_operation.tenant_no = usr_account.tenant_no）`、`ord_checkout_confirmation.buyer_no → usr_account.user_no（同时匹配 ord_checkout_confirmation.tenant_no = usr_account.tenant_no）`、`ord_checkout_confirmation.entity_no → mch_entity.entity_no`、`ord_checkout_confirmation.store_no → mch_store.store_no`、`ord_checkout_line.goods_no → prd_goods.goods_no`、`ord_checkout_line.sku_no → prd_sku.sku_no`、`ord_checkout_payment_request.buyer_no → usr_account.user_no（同时匹配 ord_checkout_payment_request.tenant_no = usr_account.tenant_no）`、`ord_checkout_payment_request.entity_no → mch_entity.entity_no`、`ord_checkout_payment_request.store_no → mch_store.store_no`、`ord_checkout_payment_request.actor_account_no → mch_account.mch_account_no（同时匹配 ord_checkout_payment_request.tenant_no = mch_account.tenant_no）`、`ord_manual_service_admission.entity_no → mch_entity.entity_no`、`ord_manual_service_admission.store_no → mch_store.store_no`、`ord_manual_service_admission.buyer_no → usr_account.user_no（同时匹配 ord_manual_service_admission.tenant_no = usr_account.tenant_no）`、`ord_manual_service_admission_action.entity_no → mch_entity.entity_no`、`ord_manual_service_admission_action.store_no → mch_store.store_no`
 
 ### 履约 `ful_*`（5 张）
 
@@ -234,7 +236,7 @@
 
 **跨域引用**：`ful_batch.pickup_no → cmt_pickup_point.pickup_no`、`ful_batch.community_no → cmt_community.community_no`、`ful_group_pickup.pickup_no → cmt_pickup_point.pickup_no`、`ful_group_pickup.group_no → mkt_group_buy.group_no`、`ful_group_pickup.user_no → usr_account.user_no`、`ful_verify_log.sub_order_no → ord_sub_order.sub_order_no`、`ful_verify_log.pickup_no → cmt_pickup_point.pickup_no`、`ful_shortage_report.sub_order_no → ord_sub_order.sub_order_no`、`ful_shortage_report.pickup_no → cmt_pickup_point.pickup_no`、`ful_shortage_report.sku_no → prd_sku.sku_no`
 
-### 营销与团购 `mkt_*`（17 张）
+### 营销与团购 `mkt_*`（18 张）
 
 ![营销与团购表关系](../diagrams/db-mkt.svg)
 
@@ -257,6 +259,7 @@
 | `mkt_fission_invite` | 裂变邀请台账（新客判定 + 发奖幂等 + 真计数） |
 | `mkt_store_visit` | 门店访问埋点（append-only）：扫码落地即记，匿名也记 |
 | `mkt_content_slot` | 内容位：运营配的首页楼层/轮播/频道；这一版只有 HOME_FLOOR 被 C 端读 |
+| `mkt_counter_campaign_fence` | — |
 
 **跨域引用**：`mkt_attribution.user_no → usr_account.user_no`、`mkt_attribution.entity_no → mch_entity.entity_no`、`mkt_attribution.inviter_no → usr_account.user_no`、`mkt_attribution_log.user_no → usr_account.user_no`、`mkt_attribution_log.entity_no → mch_entity.entity_no`、`mkt_attribution_log.inviter_no → usr_account.user_no`、`mkt_attribution_log.order_no → ord_order.order_no`、`mkt_attribution_log.store_no → mch_store.store_no`、`mkt_campaign.entity_no → mch_entity.entity_no`、`mkt_campaign.store_no → mch_store.store_no`、`mkt_coupon.entity_no → mch_entity.entity_no`、`mkt_group_buy.goods_no → prd_goods.goods_no`、`mkt_group_buy.sku_no → prd_sku.sku_no`、`mkt_group_buy.entity_no → mch_entity.entity_no`、`mkt_group_buy.pickup_no → cmt_pickup_point.pickup_no`、`mkt_group_buy.activity_no → pmt_activity.activity_no`、`mkt_group_member.user_no → usr_account.user_no`、`mkt_group_member.sub_order_no → ord_sub_order.sub_order_no`、`mkt_quote.entity_no → mch_entity.entity_no`、`mkt_quote_revision.entity_no → mch_entity.entity_no`、`mkt_request.pickup_no → cmt_pickup_point.pickup_no`、`mkt_request_interest.user_no → usr_account.user_no`、`mkt_user_coupon.user_no → usr_account.user_no`、`mkt_user_coupon.order_no → ord_order.order_no`、`mkt_coupon_issue.user_no → usr_account.user_no`、`mkt_fission_invite.inviter_no → usr_account.user_no`、`mkt_fission_invite.order_no → ord_order.order_no`、`mkt_store_visit.entity_no → mch_entity.entity_no`、`mkt_store_visit.store_no → mch_store.store_no`、`mkt_store_visit.user_no → usr_account.user_no`
 
@@ -483,7 +486,7 @@ Markdown 里铺开会有近两千行，那不是给人读的。
 | `trade_no` | stl_payment 与 ord_payment_resolution 保存渠道交易号快照；该号仅在 pay_channel 范围内唯一，不能脱离渠道直接关联。 |
 | `source_shipment_no` | lgs_waybill 与 lgs_channel_subscription 保存同一个上游发货身份的快照；更新订阅必须同时匹配 source_shipment_version，不能把历史订阅行当作当前运单主记录。 |
 | `provider_no` | 通道回执需结合通道、资金方向与原请求。 |
-| `scope_no` | 角色授权范围与积分开关统计范围，须按各自范围类型解释。 |
+| `scope_no` | 角色授权范围与积分开关统计范围，须按各自范围类型解释；mkt_counter_campaign_fence 按 tenant_no+scope_kind 判别：ENTITY 对应经营主体 mch_entity.entity_no，PLATFORM 为固定 PLATFORM 哨兵，无无条件 FK。 |
 | `revision_no` | 商品版本与积分账单版本，各自独立。 |
 | `holder_no` | 积分持有人多态编号，必须结合 holder_type。 |
 | `position_no` | 积分持仓与业务岗位分配的编号分别属于各自表，必须结合所属业务。 |
@@ -547,6 +550,7 @@ Markdown 里铺开会有近两千行，那不是给人读的。
 以下逻辑引用必须同时匹配列出的作用域，不能只按编号 join。条件型路径见上一节。现有域图未覆盖 sv/ent/pay 等前缀，本列表保留其限定语义。
 
 - `mkt_quote_revision.quote_no → mkt_quote.quote_no（同时匹配 mkt_quote_revision.tenant_no = mkt_quote.tenant_no）`
+- `ord_create_intent.confirmation_no → ord_checkout_confirmation.confirmation_no（同时匹配 ord_create_intent.tenant_no = ord_checkout_confirmation.tenant_no）`
 - `ord_card_sale_snapshot.template_version_no → ent_template_version.version_no（同时匹配 ord_card_sale_snapshot.tenant_no = ent_template_version.tenant_no）`
 - `pmt_activity_reservation.tier_no → pmt_recharge_tier.tier_no（同时匹配 pmt_activity_reservation.tenant_no = pmt_recharge_tier.tenant_no；pmt_activity_reservation.version_no = pmt_recharge_tier.version_no）`
 - `ent_grant.template_version_no → ent_template_version.version_no（同时匹配 ent_grant.tenant_no = ent_template_version.tenant_no）`
@@ -603,3 +607,4 @@ Markdown 里铺开会有近两千行，那不是给人读的。
 - `ord_checkout_payment_request.actor_account_no → mch_account.mch_account_no（同时匹配 ord_checkout_payment_request.tenant_no = mch_account.tenant_no）`
 - `stl_payment_operation.buyer_no → usr_account.user_no（同时匹配 stl_payment_operation.tenant_no = usr_account.tenant_no）`
 - `stl_payment_operation.actor_account_no → mch_account.mch_account_no（同时匹配 stl_payment_operation.tenant_no = mch_account.tenant_no）`
+- `ord_manual_service_admission.buyer_no → usr_account.user_no（同时匹配 ord_manual_service_admission.tenant_no = usr_account.tenant_no）`

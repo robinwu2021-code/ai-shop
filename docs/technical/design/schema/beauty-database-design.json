@@ -3444,9 +3444,12 @@
       },
       {
         "path": "backend/shop-app/src/main/resources/db/migration/V543__counter_campaign_owner_fence.sql",
-        "status": "TASK68_DESIGN_STATIC_REVIEWED_CANDIDATE_NOT_CREATED",
+        "status": "TASK68A_CODE_COMPILED_STATIC_REVIEWED_SQL_NOT_EXECUTED",
         "purpose": "共用marketing并发协调表/触发器；非美业私表、非优惠资金账，descriptor和包内能力校验按Task68补充；阶段A仅生成不执行",
-        "schemaSource": "docs/technical/design/schema/counter-campaign-owner-fence-schema.json"
+        "schemaSource": "docs/technical/design/schema/counter-campaign-owner-fence-schema.json",
+        "bytes": 31971,
+        "sha256": "7151507414413188096b2bed9cebbea21bfb46e5ab5eab9636b5458b432f39bf",
+        "codeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6"
       },
       {
         "path": "M3–M4：平台V544/V545与美业V10候选（尚未创建）",

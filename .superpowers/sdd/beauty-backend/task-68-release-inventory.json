@@ -1,6 +1,6 @@
 {
   "task": "Task68/C02",
-  "status": "DESIGN_STATIC_REVIEWED_CODE_PHASE_RELEASED",
+  "status": "C02_PARTIAL_FENCE_CODE_COMPILED_REVIEWED_B_C_PENDING",
   "baselineProductCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9",
   "baselineDocsCommit": "28ebe9f111ede8363194cd0e42d50005de465a39",
   "codingBaseCommit": null,
@@ -191,5 +191,10 @@
     "M4": "platform V545 (was uncreated V544)",
     "beauty": "V10 unchanged; all future numbers rechecked before creation"
   },
-  "codingBaseReference": "Root supplies exact HEAD at dispatch after this publication commit"
+  "codingBaseReference": "Root supplies exact HEAD at dispatch after this publication commit",
+  "task68ACodeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6",
+  "identityEquivalenceOverlay": {
+    "path": ".superpowers/sdd/beauty-backend/task-68a-fix1-brief.md",
+    "sha256": "4849fae9c4ace5cfed7d7ada4117aac016d3ed192069a9532722cbbdb4de7e5f"
+  }
 }
