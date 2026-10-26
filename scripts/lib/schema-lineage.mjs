@@ -133,7 +133,7 @@ export const NAME_COLLISIONS = {
   source_shipment_no:
     "lgs_waybill 与 lgs_channel_subscription 保存同一个上游发货身份的快照；更新订阅必须同时匹配 source_shipment_version，不能把历史订阅行当作当前运单主记录。",
   provider_no: "通道回执需结合通道、资金方向与原请求。",
-  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
+  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释；mkt_counter_campaign_fence 按 tenant_no+scope_kind 判别：ENTITY 对应经营主体 mch_entity.entity_no，PLATFORM 为固定 PLATFORM 哨兵，无无条件 FK。",
   revision_no: "商品版本与积分账单版本，各自独立。",
   holder_no: "积分持有人多态编号，必须结合 holder_type。",
   position_no: "积分持仓与业务岗位分配的编号分别属于各自表，必须结合所属业务。",
@@ -265,6 +265,14 @@ export const NAME_COLLISIONS = {
 
 // Exact source-audited memberships; new tables require explicit review.
 export const COLLISION_MEMBERS = {
+  "scope_no": [
+    "sys_role_member",
+    "pts_switch",
+    "pts_switch_log",
+    "pts_pause_interval",
+    "pts_stat_daily",
+    "mkt_counter_campaign_fence"
+  ],
   "quote_no": [
     "mkt_quote",
     "mkt_quote_revision",

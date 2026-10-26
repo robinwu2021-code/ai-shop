@@ -405,3 +405,25 @@ describe("对账血缘", () => {
   });
 
 });
+
+// The actual parsed coordination table has a discriminator, never a bare scope_no FK.
+describe("shared marketing counter fence lineage", () => {
+  const tables = readDdlSchema(ROOT);
+  it("keeps ENTITY and PLATFORM scope_no conditional on tenant and scope_kind", () => {
+    const columns = tables.get("mkt_counter_campaign_fence")?.cols.map((c: any) => c.name);
+    expect(columns).toEqual(["tenant_no", "scope_kind", "scope_no", "revision"]);
+    expect(KEY_OWNERS.scope_no).toBeUndefined();
+    expect(resolveReference(tables, "mkt_counter_campaign_fence", "scope_no")).toBeNull();
+    expect(relations(tables).filter((r: any) => r.from === "mkt_counter_campaign_fence")).toEqual([]);
+    expect(NAME_COLLISIONS.scope_no).toContain("tenant_no+scope_kind");
+    expect(NAME_COLLISIONS.scope_no).toContain("ENTITY");
+    expect(NAME_COLLISIONS.scope_no).toContain("PLATFORM");
+  });
+  it("rejects an unknown scope_no source instead of granting a global collision exemption", () => {
+    const unknown = new Map(tables);
+    unknown.set("unreviewed_scope_owner", { cols: [{ name: "scope_no" }], uniques: new Set() });
+    expect(unclassifiedBusinessKeys(unknown).some((key: string) =>
+      key.startsWith("scope_no（") && key.includes("unreviewed_scope_owner"))).toBe(true);
+    expect(resolveReference(unknown, "unreviewed_scope_owner", "scope_no")).toBeNull();
+  });
+});

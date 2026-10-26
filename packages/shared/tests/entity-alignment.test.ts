@@ -38,6 +38,7 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
+  mkt_counter_campaign_fence: "共享 marketing owner 协调行由 CounterCampaignFenceMapper 显式 exact-PK SQL 维护，SELECT revision 返回 Long；不映射 ORM 实体，不是 beauty 表或业务账。",
   sys_outbox_stream: "平台事件流序号由 JdbcOutboxStore 固定 Source.PLATFORM 的 JdbcTemplate 加锁分配，按 stream_key 查询 next_sequence；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
   sys_outbox_delivery: "平台投递状态由 JdbcOutboxStore 固定 Source.PLATFORM 的 JdbcTemplate 追加、认领和回写，按投递 id 或 event_no/handler_id 查询；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
   sys_outbox_operation: "平台重放/跳过审计由 JdbcOutboxStore 固定 Source.PLATFORM 的 JdbcTemplate 追加，按 request_id 查询幂等操作；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
