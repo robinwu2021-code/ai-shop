@@ -96,6 +96,7 @@ import javax.sql.DataSource;
         properties = {
             "shop.seed.enabled=true",
             "shop.food.menu-publication-enabled=true",
+            "shop.food.bundle-publication-enabled=true",
             "shop.food.recipe-publication-enabled=true",
             "shop.food.station-publication-enabled=true",
             "shop.inventory.stock-authority=INVENTORY",
@@ -2223,7 +2224,7 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
                         json.readTree(
                                 inv.queryForObject(
                                         "SELECT receipt_snapshot FROM inv_production_operation"
-                                            + " WHERE owner_id=? AND store_no=? AND event_no=?",
+                                                + " WHERE owner_id=? AND store_no=? AND event_no=?",
                                         String.class,
                                         inventoryOwner,
                                         STORE,
@@ -2267,13 +2268,13 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
             var consumedLedger =
                     inv.queryForList(
                             "SELECT * FROM inv_ledger WHERE owner_id=? AND location_id=? ORDER BY"
-                                + " id",
+                                    + " id",
                             inventoryOwner,
                             inventoryLocation);
             var consumedOnHand =
                     inv.queryForList(
                             "SELECT item_id,on_hand FROM inv_stock_balance WHERE owner_id=? AND"
-                                + " location_id=? ORDER BY item_id",
+                                    + " location_id=? ORDER BY item_id",
                             inventoryOwner,
                             inventoryLocation);
             var lines =
@@ -2371,14 +2372,14 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
             assertThat(
                             inv.queryForList(
                                     "SELECT * FROM inv_ledger WHERE owner_id=? AND location_id=?"
-                                        + " ORDER BY id",
+                                            + " ORDER BY id",
                                     inventoryOwner,
                                     inventoryLocation))
                     .isEqualTo(consumedLedger);
             assertThat(
                             inv.queryForList(
                                     "SELECT item_id,on_hand FROM inv_stock_balance WHERE owner_id=?"
-                                        + " AND location_id=? ORDER BY item_id",
+                                            + " AND location_id=? ORDER BY item_id",
                                     inventoryOwner,
                                     inventoryLocation))
                     .isEqualTo(consumedOnHand);
@@ -2395,5 +2396,17 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
                                     order))
                     .isNull();
         }
+    }
+
+    @Order(4)
+    @Test
+    void realBundleAndComboModifierPreserveComponentPricesInventoryAndReturns() throws Exception {
+        new FoodComplexDishNativeScenario(this).bundleAndCombo();
+    }
+
+    @Order(5)
+    @Test
+    void realMeasuredRecipePreservesFractionalStockAndBusinessDayReceivables() throws Exception {
+        new FoodComplexDishNativeScenario(this).measuredRecipe();
     }
 }

@@ -2,6 +2,7 @@ package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.port.LazyGoodsCatalogQueryPortImpl;
+import ai.neargo.shop.food.port.LazyMaterialCatalogQueryPortImpl;
 import ai.neargo.shop.food.port.LazyGoodsMetadataQueryPortImpl;
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
@@ -185,7 +186,7 @@ public class FoodAutoConfiguration {
                         () -> bundlePublicationEnabled),
                 new RecipePublicationSource(recipeHeads, recipeLines, recipeAdjustments, items, groups,
                         recipeBindings, () -> recipePublicationEnabled, json),
-                (entity, numbers) -> materialCatalog.getObject().getMaterials(entity, numbers),
+                new LazyMaterialCatalogQueryPortImpl(materialCatalog),
                 menuPublicationEnabled ? new MenuPublicationSource(new MenuWorkingDefinitionAccess() {
                     @Override
                     public MenuConfigResultVO capture(String entity, String store, String menu, boolean lock) {
@@ -280,7 +281,7 @@ public class FoodAutoConfiguration {
             ObjectProvider<GoodsCatalogQueryPort> catalogs, ObjectProvider<MaterialCatalogQueryPort> materials) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
         return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,
-                (entity, ids) -> materials.getObject().getMaterials(entity, ids),
+                new LazyMaterialCatalogQueryPortImpl(materials),
                 adjustments, optionItems, optionGroups);
     }
 

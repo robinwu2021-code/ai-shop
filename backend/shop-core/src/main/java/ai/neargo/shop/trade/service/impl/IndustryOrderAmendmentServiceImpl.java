@@ -46,6 +46,7 @@ import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.trade.order.transition.TradeStatusWriter;
+import ai.neargo.shop.trade.policy.IndustryOrderAllocationPolicy;
 import ai.neargo.shop.trade.service.IndustryOrderAmendmentService;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -59,7 +60,6 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -751,7 +751,14 @@ public class IndustryOrderAmendmentServiceImpl implements IndustryOrderAmendment
             net = Math.addExact(net, amounts.get("netMinor").longValue());
             matched++;
         }
-        if (matched == 0 || gross != allocation.amountMinor()) throw conflict();
+        if (matched == 0) {
+            IndustryOrderAllocationPolicy.requireIncludedZero(
+                    json,
+                    facts.source().getAllocationsJson(),
+                    facts.order().getOrderNo(),
+                    allocation);
+        }
+        if (gross != allocation.amountMinor()) throw conflict();
         var basis =
                 new MoneyBasis(
                         Math.subtractExact(gross, fee.gross()), Math.subtractExact(net, fee.net()));

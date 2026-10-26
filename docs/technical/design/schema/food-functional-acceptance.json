@@ -7457,5 +7457,33 @@
       "NO_REAL_KDS_PRINTER",
       "NO_PAY_MONEY_WRITES"
     ]
+  },
+  "complexDishSupplement": {
+    "date": "2026-10-26",
+    "status": "PASS_SCOPED_NOT_RELEASED",
+    "report": "docs/technical/餐饮复杂菜品与营业日整批验收记录.md",
+    "reportPathBase": "REPOSITORY_ROOT",
+    "baseCommit": "2883cd303a618a729b657a2d7beb05e10b6589d7",
+    "newBusinessScenarios": 2,
+    "productionCodeChanged": true,
+    "additiveToHistoricalCounts": false,
+    "boundaries": [
+      "CNY_ONLY_CURRENT_PRODUCT_OFFER_OWNER",
+      "AED_QUERY_ISOLATION_NOT_AED_SALE",
+      "NO_NONZERO_HISTORICAL_FINANCIAL_CLOSE",
+      "GOODS_AND_WEIGHED_ITEM_FIXTURE_NOT_PRODUCT_CRUD",
+      "NO_REAL_TERMINAL_KDS_PRINTER",
+      "NO_PAY_MONEY_WRITES",
+      "NO_FULL_MULTISERVICE_E2E"
+    ],
+    "scopedInstances": 167,
+    "passed": 163,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 4,
+    "uniqueBy": "class and test name; latest focused result replaces prior failure",
+    "finalFreshInstances": 13,
+    "finalFreshPassed": 13,
+    "finalFreshLog": "/private/tmp/food-complex-final-fresh.log"
   }
 }

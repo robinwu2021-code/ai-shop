@@ -90192,17 +90192,17 @@
           {
             "name": "capture",
             "declaration": "public MenuConfigResultVO capture(String entity, String store, String menu, boolean lock)",
-            "sourceLine": 191
+            "sourceLine": 192
           },
           {
             "name": "currentVersion",
             "declaration": "public long currentVersion(String entity, String store, String menu, boolean lock)",
-            "sourceLine": 194
+            "sourceLine": 195
           },
           {
             "name": "advance",
             "declaration": "public void advance(String entity, String store, String menu, long version, FnbConfigRevision revision)",
-            "sourceLine": 197
+            "sourceLine": 198
           }
         ]
       },
@@ -92869,6 +92869,30 @@
             "name": "getGoodsBatch",
             "declaration": "public List<GoodsSummary> getGoodsBatch(String entity, String store, List<String> numbers)",
             "sourceLine": 21
+          }
+        ]
+      },
+      {
+        "qualifiedName": "ai.neargo.shop.food.port.LazyMaterialCatalogQueryPortImpl",
+        "name": "LazyMaterialCatalogQueryPortImpl",
+        "package": "ai.neargo.shop.food.port",
+        "sourceFile": "backend-plugins/shop-industry-food/food-core/src/main/java/ai/neargo/shop/food/port/LazyMaterialCatalogQueryPortImpl.java",
+        "records": [],
+        "methods": [
+          {
+            "name": "LazyMaterialCatalogQueryPortImpl",
+            "declaration": "public LazyMaterialCatalogQueryPortImpl(ObjectProvider<MaterialCatalogQueryPort> provider)",
+            "sourceLine": 13
+          },
+          {
+            "name": "getMaterials",
+            "declaration": "public List<MaterialFact> getMaterials(String entityNo, List<String> itemIds)",
+            "sourceLine": 18
+          },
+          {
+            "name": "getSkuMaterials",
+            "declaration": "public List<SkuMaterialFact> getSkuMaterials( String entityNo, String storeNo, List<String> skuNos)",
+            "sourceLine": 23
           }
         ]
       },
@@ -108709,7 +108733,12 @@
           {
             "name": "read",
             "declaration": "public static List<Allocation> read(ObjectMapper json, String snapshot)",
-            "sourceLine": 18
+            "sourceLine": 21
+          },
+          {
+            "name": "requireIncludedZero",
+            "declaration": "public static void requireIncludedZero( ObjectMapper json, String snapshot, String orderNo, Allocation allocation)",
+            "sourceLine": 30
           }
         ]
       },
@@ -109514,7 +109543,7 @@
           {
             "name": "effectiveAllocations",
             "declaration": "public EffectiveProjection effectiveAllocations( Reference ref, List<IndustryOrderPort.Allocation> original)",
-            "sourceLine": 830
+            "sourceLine": 837
           }
         ]
       },
@@ -115618,6 +115647,10 @@
     },
     "businessAcceptance": "PENDING_TERMINAL_AND_REAL_OWNER_E2E",
     "evidence": [
+      {
+        "label": "复杂菜品与营业日整批验收",
+        "path": "../餐饮复杂菜品与营业日整批验收记录.md"
+      },
       {
         "label": "非支付修复集成发布",
         "path": "../餐饮非支付修复发布记录.md"
