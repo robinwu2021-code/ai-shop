@@ -26,7 +26,6 @@ import ai.neargo.shop.food.service.impl.FoodFeeSourceServiceImpl;
 import ai.neargo.shop.food.service.impl.QueueNotificationServiceImpl;
 import ai.neargo.shop.food.service.support.ReservationPreorderLifecycle;
 import ai.neargo.shop.food.service.impl.ReservationPreorderServiceImpl;
-import ai.neargo.shop.food.job.ScheduledDiningDispatchJob;
 import ai.neargo.shop.food.service.impl.ScheduledDiningDispatchServiceImpl;
 import ai.neargo.shop.food.service.impl.ServiceFormServiceImpl;
 import ai.neargo.shop.food.service.impl.ServiceSlotServiceImpl;
@@ -39,7 +38,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -123,14 +121,6 @@ public class FoodBusinessOperationsConfiguration {
             FoodPrintService documents) {
         return new ScheduledDiningDispatchServiceImpl(
                 mapper, manager, kitchen, printing::getIfAvailable, documents, Clock.systemUTC());
-    }
-
-    @ConditionalOnProperty(prefix = "shop.job", name = "enabled", havingValue = "true")
-    @Bean
-    @ConditionalOnMissingBean(ScheduledDiningDispatchJob.class)
-    ScheduledDiningDispatchJob scheduledDiningDispatchJob(
-            ScheduledDiningDispatchService dispatch, QueueNotificationServiceImpl notices) {
-        return new ScheduledDiningDispatchJob(dispatch, notices);
     }
 
     @Bean
