@@ -580,8 +580,14 @@ describe("对账血缘", () => {
     const inH2 = new Set(
       [...h2.matchAll(/CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)/gi)].map((m) => m[1]!),
     );
-    const onlyJs = [...schema.keys()].filter((t) => !inH2.has(t));
-    const onlyPy = [...inH2].filter((t) => !schema.has(t));
+    // The application H2 fixture replays core first, then the pay Flyway history.
+    // Compare the same two inputs here; the lineage ownership checks above remain
+    // scoped to their original core history, as before this combined fixture existed.
+    const payHistory = "backend/pay/pay-domain/src/main/resources/db/pay";
+    expect(existsSync(join(ROOT, payHistory)), "pay Flyway history must exist for the combined fixture").toBe(true);
+    const fixtureSchema = readColumnNames(ROOT, ["backend/shop-app/src/main/resources/db/migration", payHistory]) as Map<string, { cols: string[] }>;
+    const onlyJs = [...fixtureSchema.keys()].filter((t) => !inH2.has(t));
+    const onlyPy = [...inH2].filter((t) => !fixtureSchema.has(t));
     expect(
       { onlyJs, onlyPy },
       "JS 与 python 解析出的表集合不一致 —— 重跑 npm run gen:erd 与 gen-test-schema.py",
