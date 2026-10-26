@@ -681,9 +681,9 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 
 ## 柜台购买与人工来源增量（M2分阶段实施状态）
 
-M2B_CODE_COMPILED_REVIEWED_M2C_FENCE_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING
+M2B_M2C_FENCE_PROTOCOL_CODE_COMPILED_REVIEWED_INTEGRATION_PENDING_UNIFIED_TEST_PENDING
 
-主TDD§0.4/§2.45–§2.47。Task67及Task68A共用营销仲裁层已编码编译和独立静态复审；Task68B优惠报价/封存兼容/现金准入集成与68C仍待编码。所有新增运行用例未执行，统一测试部署后置，canStart=false，Pay后置。
+主TDD§0.4/§2.45–§2.47。Task67、Task68A共用营销仲裁及68B1纯SPI/codec兼容基础已编码编译和独立静态复审；68B2真实优惠报价/现金准入集成与68C仍待编码。18项B1用例未执行，统一测试部署后置，canStart=false，Pay后置。
 
 | Method / route | Operation / input | Result |
 |---|---|---|
@@ -760,3 +760,5 @@ Task68A-I1修订：新fence tenant_no/scope_no的比较须与七项owner tenant_
 Task68A代码阶段完成：精确11文件共享marketing fence/Mapper/21触发器/descriptor/严格guard已提交5aa1769f2c1719cd86f0cdf4528699527827d7e6，I1锁身份等价修复限定复审PASS。实际24模块编译40.347s，core1067主/86测试源码、host413主/750测试源码；18个native、4个Node及lineage用例均未执行。V543仅新增源码/未执行，不代表Task68B报价或完整现金链条已完成。
 
 Task68B限定设计复审PASS/APPROVED：共享纯SPI CounterCampaignContract统一groups/choices/seal形状与摘要，promotion/trade只依赖SPI，marketing不引用trade哈希，禁止新增私有跨域依赖或known-*豁免。真实SQL范围查询建立旧表身份变体→唯一规范group的归属；冻结原始rule事实及规范applied/share，消费后核验冻结映射，不再查询当前营销。B1精确9源码先实现协议/codec兼容基础，B2精确14源码完成owner报价与现金准入，C补有限runner；均只编码编译，运行统一B。
+
+Task68B1精确9源码已编码编译和静态复审，18项测试仅编写/编译。R0 I1兼容夹具丢失原选择已限定修复；schema1计划保留原typed party/choices，旧baseline构造不变。真实writer/reader/owner/cash在B2接入，6份golden仍待B真实生成；本片不开放优惠业务或执行许可。

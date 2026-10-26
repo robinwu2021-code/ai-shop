@@ -371,15 +371,15 @@ HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant
 
 ## 十、共用增量类型与实施状态
 
-TASK68A_CODE_COMPILED_STATIC_REVIEWED_B_C_PENDING_UNIFIED_TEST_PENDING
+TASK68A_B1_CODE_COMPILED_STATIC_REVIEWED_B2_C_PENDING_UNIFIED_TEST_PENDING
 
-主TDD§2.47：fence/mapper两类已编码编译和静态复审，待统一测试；其余类仍待编码。均为共用所有者增量，不增加美业构件/依赖或25私有表计数。
+主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope已编码编译和静态复审，待统一测试；真实报价/订单/现金准入消费者在B2接入。均为共用所有者增量，不增加美业构件/依赖或25私有表计数。
 
 | Source | Planned class / responsibility |
 |---|---|
-| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignRules`<br>[待编码/B1] marketing本域严格goods解析及owner规则；规范分组/选择/摘要统一调用纯SPI契约 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignRules`<br>[编码编译/静态复审完成；统一测试未执行] marketing本域严格goods解析及owner规则；规范分组/选择/摘要统一调用纯SPI契约 |
 | `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignFence`<br>[编码编译/静态复审完成；统一测试未执行] shared marketing owner fence and capability |
 | `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java` | `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper`<br>[编码编译/静态复审完成；统一测试未执行] exact-PK shared fence SQL |
-| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java` | `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec`<br>[待编码] old/new economic quote/plan compatibility and consumed integrity |
-| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java` | `ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot`<br>[待编码] internal immutable economic/display quote envelope |
-| `backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java` | `ai.neargo.shop.spi.marketing.CounterCampaignContract`<br>[待编码/B1] 共用纯协议：规范选择/分组、冻结seal形状和摘要；各业务域只依赖SPI，无查询或价格引擎 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java` | `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec`<br>[编码编译/静态复审完成；统一测试未执行] old/new economic quote/plan compatibility and consumed integrity |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java` | `ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot`<br>[编码编译/静态复审完成；统一测试未执行] internal immutable economic/display quote envelope |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java` | `ai.neargo.shop.spi.marketing.CounterCampaignContract`<br>[编码编译/静态复审完成；统一测试未执行] 共用纯协议：规范选择/分组、冻结seal形状和摘要；各业务域只依赖SPI，无查询或价格引擎 |

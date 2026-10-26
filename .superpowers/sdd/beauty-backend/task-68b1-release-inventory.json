@@ -1,6 +1,6 @@
 {
   "task": "Task68B1",
-  "status": "DESIGN_REVIEWED_CODE_PHASE_RELEASED",
+  "status": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
   "modify": [
     {
       "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CampaignPort.java",
@@ -77,5 +77,7 @@
     "review": ".superpowers/sdd/beauty-backend/review-task-68b-shared-contract.md",
     "reviewSha256": "882263d7c8f882bfcc5ff4dced414214fc827252dd678a2bc3b944dd911bd388"
   },
-  "codingBaseReference": "Root supplies exact HEAD of this publication commit at dispatch"
+  "codingBaseReference": "Root supplies exact HEAD of this publication commit at dispatch",
+  "codingBase": "63f4866e62709ac8b3c1df3fe66a64e53504f9c8",
+  "codeCommit": "419e9d94fa5618d8783abcdb847201c05fa1d525"
 }

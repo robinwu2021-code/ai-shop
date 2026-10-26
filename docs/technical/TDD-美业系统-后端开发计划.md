@@ -1300,6 +1300,9 @@ Task68A执行结果：精确11份源码已本地提交 `5aa1769f2c1719cd86f0cdf4
 
 Task68B前置[共享契约补充](../../.superpowers/sdd/beauty-backend/task-68b-shared-contract-addendum.md)已独立审查PASS/APPROVED。新增纯SPI `CounterCampaignContract` 统一规范化与seal摘要，私有营销helper保留owner规则，促销/订单不直接引用私有营销类；不改架构棘轮。旧业务表身份变体由真实SQL范围查询归属到唯一规范group，seal保留原rule事实与规范applied/share，收款使用冻结映射。现按B1（3修改+6新增=9源码，协议/codec基础）→B2（12修改+2新增=14源码，真实报价/现金准入）顺序推进；全C02清单增加1个纯SPI类，共20修改+16新增。B1保持原writer/读取流程到B2再接入，代码分片不计作完整业务模块交付。
 
+
+Task68B1执行结果：精确9份Java源码已本地提交 `419e9d94fa5618d8783abcdb847201c05fa1d525`。纯SPI七个方法、owner规则、版本化经济封存/严格codec、原18参数构造及内部policy已实现；既有writer/reader尚未接入，真实优惠与现金准入仍属B2。[R0](../../.superpowers/sdd/beauty-backend/review-task-68b1-r0.md)唯一Important为测试夹具丢失显式选择，已在单测试文件限定修复，[R1](../../.superpowers/sdd/beauty-backend/review-task-68b1-r1.md)Spec PASS/Quality APPROVED。实际24模块编译48.115s（Base313主/21测试、Core1070主/88测试、宿主413主/750测试源码）；修复后6.193s重编译88项Core测试源码。18项用例均未执行，8份旧序列化源/class归档指纹未变，6份golden未生成。[代码阶段关口](../../.superpowers/sdd/beauty-backend/task-68b1-code-phase-root-gate.json)保留统一测试未完成、Pay后置和canStart=false；随后按B2精确14源码清单接入。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。
