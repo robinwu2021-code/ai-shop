@@ -167,7 +167,7 @@ TEST → `AE,CN,HK,SA,SG,TW`；WECHAT / ALIPAY → `CN` 不变；NEWEBPAY / LINE
 | `verify`（2 改 + `WechatPlatformKeys`）· `shop-app` `application.yml` | S6 | ✅ |
 | `invoke/interceptor`（2）· `invoke/StandardPipeline` · `pay-channel/pom.xml`（micrometer-core，版本归 BOM） | S7 | ✅（`StandardPipeline` 是 §2 之外新加的一个类，理由见偏差 10） |
 | `db/pay/V12` · `schema-test.sql`（生成）· `entity/SysPayChannelMarket`（`status`）· `master`（2）· `shop-app` `OpsPayChannelAppServiceImpl` | S8 | ✅（`OpsPayChannelAppServiceImpl` 未列在 §2：语义翻转后运营端派生值要跟着改，见偏差 11） |
-| 测试：pay-channel 新 9 类（`capability` · `context` · `http` · `wechat`×3 · `alipay` · `platform` · `verify/CallbackFreshnessAndRotationTest` · `invoke/PipelineRingsTest`）、改 7 类、删 4 类；pay-domain 改 4 类；shop-app 新守卫 3 类、改场景 3 类（`OrderPayMethodTest` 2 行 · `PayChannelDefaultResolveTest` · `PayChannelMarketRelationTest`） | §5 | ✅ |
+| 测试：pay-channel 新 9 类（`capability` · `context` · `http` · `wechat`×3 · `alipay` · `platform` · `verify/CallbackFreshnessAndRotationTest` · `invoke/PipelineRingsTest`）、改 7 类、删 4 类；pay-domain 改 4 类；shop-app 新守卫 3 类、改场景 4 类（`OrderPayMethodTest` 2 行 · `PayChannelDefaultResolveTest` · `PayChannelMarketRelationTest` · `MarketChannelAndWithdrawTest` 2 处） | §5 | ✅ |
 
 §2 列了而没动的：无。
 
@@ -184,7 +184,7 @@ TEST → `AE,CN,HK,SA,SG,TW`；WECHAT / ALIPAY → `CN` 不变；NEWEBPAY / LINE
 8. **退款间隔排队在进程内**：多实例各排各的；等不起（前面已排一笔）→ `CHANNEL_THROTTLED`，桥按 I2 偏差 5 译为明确拒绝（没发出去，售后重新发起）。
 9. **独立 pay-svc 没有 actuator**：指标落进程内 `SimpleMeterRegistry`，不挡启动。
 10. **加了 `invoke/StandardPipeline`**（§2 未列）：I2 时生产管线在装配类里手写一串、测试另写一串，生产顺序没有任何测试看着；收成一处后 `PipelineRingsTest#standardOrder` 钉的是生产那一串。
-11. **V12 的连带改动**：① `OpsPayChannelAppServiceImpl` 无行派生 `[]` 不再是 `null`（`null` 在运营页显示成「全部市场」，语义翻转后会说反）；② `updateSettings` 收到空市场直接拒（`BAD_REQUEST`）—— 运营页（`ops-web/app/finance/pay-channel-tab.tsx` 与 `copy.ts` 的 `pcMarketsPrompt` / `pcAllMarkets`）仍写着「留空 = 所有市场」，前端改文案与提示是后续（不在本线）；③ `SysPayChannelMarket` 补映射 V4 的 `status` 列，显式 `DISABLED` 的行不算可用。两个专测市场语义的场景类（`PayChannelDefaultResolveTest` / `PayChannelMarketRelationTest`）按新语义改了断言与还原方式（快照还原，不再「一律启用」—— 那会把三条默认停用的新渠道在测试库里开出来）；`OrderPayMethodTest` 只把 `PayGatewayRouter` 换成 `ChannelCapabilityRegistry`（2 行）。CN 支付与退款场景测试未改。
+11. **V12 的连带改动**：① `OpsPayChannelAppServiceImpl` 无行派生 `[]` 不再是 `null`（`null` 在运营页显示成「全部市场」，语义翻转后会说反）；② `updateSettings` 收到空市场直接拒（`BAD_REQUEST`）—— 运营页（`ops-web/app/finance/pay-channel-tab.tsx` 与 `copy.ts` 的 `pcMarketsPrompt` / `pcAllMarkets`）仍写着「留空 = 所有市场」，前端改文案与提示是后续（不在本线）；③ `SysPayChannelMarket` 补映射 V4 的 `status` 列，显式 `DISABLED` 的行不算可用。三个专测市场语义的场景类（`PayChannelDefaultResolveTest` / `PayChannelMarketRelationTest` / `MarketChannelAndWithdrawTest` —— 后者靠「传空市场 = 不限」开 TEST，现改为市场传 null 不动、靠 V12 的显式行）按新语义改了断言与还原方式（快照还原，不再「一律启用」—— 那会把三条默认停用的新渠道在测试库里开出来）；`OrderPayMethodTest` 只把 `PayGatewayRouter` 换成 `ChannelCapabilityRegistry`（2 行）。CN 支付与退款场景测试未改。
 12. **连接超时统一到传输层**：`shop.pay.channel.connect-timeout`（默认 5s）对所有渠道生效；`shop.pay.wechat.connect-timeout-seconds` 不再读（默认值相同）。读超时仍按渠道（`shop.pay.wechat.read-timeout-seconds`）。
 13. **`ChannelResult` 比设计 §2.3 多两个可选字段**：`Failed` 可带渠道单号与金额（退款被渠道关闭是终态，凭据要给额度释放核对）、`Pending` 可带渠道原始状态（五态回执的 `rawStatus` 与微信 paySign 自验结果；处理器不打日志，由管线日志带出）。旧参数个数的构造保留。
 14. **命名与类清单的差异**：类清单 §5 的 `ChannelRouter` 即本篇 `ChannelCapabilityRegistry`（`<T> find(payChannel, Class<T>)` 同义）；`ChannelContextFactory.from(PaymentRoute)` 落成 `from(ChannelRoute)` —— `PaymentRoute` 是商户侧 SPI 记录，接入模式与密钥版本不在里面。
