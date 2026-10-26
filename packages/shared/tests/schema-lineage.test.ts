@@ -13,7 +13,7 @@
 //   旧 pts_user_ledger / stl_points_pool 属于未上线旧方案，保留空表，不参与当前链路
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
+import { MIGRATION_DIR as DDL_MIGRATION_DIR, PAY_MIGRATION_DIR, readColumnNames } from "../../../scripts/lib/ddl.mjs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -23,7 +23,9 @@ const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migrati
 /** 表 → 列集合。解析器只有一份（scripts/lib/ddl.mjs），这里只做视图转换。 */
 function readSchema(): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>();
-  for (const [name, def] of readColumnNames(ROOT) as Map<string, { cols: string[] }>) {
+  // 与 gen-test-schema.py 同一组来源：平台迁移 + 支付服务迁移（schema-test.sql 两者都有）
+  const dirs = [DDL_MIGRATION_DIR, PAY_MIGRATION_DIR];
+  for (const [name, def] of readColumnNames(ROOT, dirs) as Map<string, { cols: string[] }>) {
     out.set(name, new Set(def.cols));
   }
   return out;
@@ -267,6 +269,10 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   settle_no: { table: "stl_bill" },
   // 放款单（V391）：stl_payout 的业务键，stl_bill.payout_no 引用它（一笔网银转账一条）
   payout_no: { table: "stl_payout" },
+  // 支付服务（db/pay）：接入方应用 pay_app 建了 app_no 唯一键，请求日志引用它；
+  // 一次通道调用号由调用日志生成，跟进任务按它回指原调用（V6 列注释）
+  app_no: { table: "pay_app" },
+  invocation_no: { table: "pay_channel_call_log" },
   after_sale_no: { table: "ord_after_sale" },
   payment_no: { table: "stl_payment" },
   // 用户的 USE 流水。商家进账挂它 —— 一次使用一条进账，见 LINEAGE 里那一跳
@@ -297,6 +303,8 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  channel_trade_no: "通道侧返回的交易单号，我方没有哪张表拥有它（无唯一键）：调用日志与回调日志各自原样记下，只能在同一 pay_channel 内对照，不能当外键跨通道连接。",
+  channel_apply_no: "通道侧的进件申请单号，由通道签发：新进件按版本记在 pay_onboarding_version（pay_onboarding 存当前版本那一份），旧收款商户表 mch_payment_merchant 是迁移前的遗留副本；三处都不建唯一键，只能在同一渠道内对照。",
   print_fact_no: "订单支付事实由ord_print_fact持有，退款和充值事实由biz_print_fact持有；完整打印引用按sourceType、租户、主体、门店、场景和版本选择来源，不能仅按同名编号跨表join。",
   trace_no: "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
   receipt_no: "权益迁移返回凭证与打印设备回执是独立证据族，必须按来源表选择所属域。",

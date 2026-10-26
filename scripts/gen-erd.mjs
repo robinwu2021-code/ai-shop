@@ -123,6 +123,8 @@ export const KEY_OWNERS = {
 
   build_no: "pts_statement_build",
   payout_no: "stl_payout",
+  app_no: "pay_app",
+  invocation_no: "pay_channel_call_log",
   voucher_no: "pts_voucher",
   evidence_no: "pts_fund_evidence",
   receivable_no: "pts_receivable",
@@ -307,6 +309,8 @@ const TOPICS = [
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
 const NAME_COLLISIONS_WHY = {
+  channel_trade_no: "通道侧返回的交易单号，我方没有哪张表拥有它（无唯一键）：调用日志与回调日志各自原样记下，只能在同一 pay_channel 内对照，不能当外键跨通道连接。",
+  channel_apply_no: "通道侧的进件申请单号，由通道签发：新进件按版本记在 pay_onboarding_version（pay_onboarding 存当前版本那一份），旧收款商户表 mch_payment_merchant 是迁移前的遗留副本；三处都不建唯一键，只能在同一渠道内对照。",
   trace_no: "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
   receipt_no: "权益迁移返回凭证与打印设备回执是独立证据族，必须按来源表选择所属域。",
   route_no: "打印管理路由目录与统一投递目标路由是不同层级；管理版本引用catalog，投递路由仍由统一服务持有。",
