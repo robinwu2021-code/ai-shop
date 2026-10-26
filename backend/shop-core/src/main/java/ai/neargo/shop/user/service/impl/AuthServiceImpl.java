@@ -410,7 +410,8 @@ public class AuthServiceImpl implements AuthService {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
         }
         registerNewCredentials(user, List.of(phoneCredential));
-        if (req.merchantNo() != null && !req.merchantNo().isBlank()) {
+        // 同 findOrCreate：端上自报的 merchantNo 只补空归属，不改写已有归属
+        if (user.getEntityNo() == null && req.merchantNo() != null && !req.merchantNo().isBlank()) {
             user.setEntityNo(req.merchantNo());
             userMapper.updateById(user);
         }
@@ -642,8 +643,15 @@ public class AuthServiceImpl implements AuthService {
                 log.error("凭证 {} 指向不存在的用户 {}，登录中止", credentials.getFirst().type(), userNo);
                 throw BizException.of(ErrorCode.INTERNAL_ERROR);
             }
-            // 从店铺码进来的老用户：刷新常去店，归因由 marketing 域按优先级裁决（S5）
-            if (cmd.merchantNo() != null && !cmd.merchantNo().isBlank()) {
+            /*
+             * 从店铺码进来的老用户：**只在归属尚为空时补上**，不改写已有归属。
+             *
+             * <p>merchantNo 是端上自报的（店铺码 / 分享链接参数），此前每次登录都拿它覆盖
+             * entity_no —— 换个店铺码再登一次，用户就被「转」给了另一家商户，归因被任意改写。
+             * 归属在建户时定下（{@link #createAccount}），之后的改动由 marketing 域按优先级裁决（S5），
+             * 不在登录这条路上顺手做。
+             */
+            if (user.getEntityNo() == null && cmd.merchantNo() != null && !cmd.merchantNo().isBlank()) {
                 user.setEntityNo(cmd.merchantNo());
                 userMapper.updateById(user);
             }

@@ -312,6 +312,35 @@ class M1UserFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 归属只在建户（或尚为空）时写：老用户换个店铺码再登录，不得改写 entity_no")
+    void loginDoesNotRewriteExistingAttribution() throws Exception {
+        String phone = "13600136014";
+        // 首次登录不带店铺码：建户，归属为空
+        login(phone);
+        // 第二次带 M0001：归属原本为空 → 补上
+        String token = loginWithMerchant(phone, "M0001");
+        mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.merchantNo").value("M0001"));
+        // 第三次带另一家：已有归属 → 不得被调用方自报的 merchantNo 覆盖
+        token = loginWithMerchant(phone, "M0002");
+        mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.data.merchantNo").value("M0001"));
+    }
+
+    private String loginWithMerchant(String phone, String merchantNo) throws Exception {
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"phone\":\"" + phone + "\"}"));
+        String code = otpStore.peek(phone).orElseThrow();
+        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone + "\",\"credential\":\""
+                                + code + "\",\"merchantNo\":\"" + merchantNo + "\",\"agreed\":true}"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
+    @Test
     @DisplayName("OTP 一次性：用过的验证码不能重放")
     void otpCannotBeReplayed() throws Exception {
         mvc().perform(post("/mp/user/otp/send")
