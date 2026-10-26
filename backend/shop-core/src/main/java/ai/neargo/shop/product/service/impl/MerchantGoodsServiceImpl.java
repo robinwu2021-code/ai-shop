@@ -1607,7 +1607,21 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // Set 而不是 List：下面每删一行都要 contains 一次，
         // 而规格矩阵 3×4×3 = 36 个 SKU × 3 市场 = 108 行，List 是 O(n²)
         Set<String> kept = new java.util.HashSet<>();
+        Set<String> ownSkuNos = existing.stream().map(PrdSku::getSkuNo)
+                .collect(java.util.stream.Collectors.toSet());
         for (Sku sku : skus) {
+            /*
+             * ★ **端上带来的 skuNo 必须已经属于这件商品**，新 SKU 的编号只能由这里生成。
+             *
+             * 唯一键是 (entity_no, sku_no, market)，不含 goods_no —— 照单全收的话，
+             * 商家 A 在自己的商品里填一个 B 家的 skuNo，就会在 A 名下插出一行同号 SKU；
+             * 而下单快照（GoodsQueryPortImpl.snapshot）是**按 sku_no 全局查**的，
+             * 两行同号时取到哪一行由返回序决定 —— B 的买家可能按 A 定的价、A 的商品下单。
+             * 不报错，B 也看不到任何异常。
+             */
+            if (sku.skuNo() != null && !sku.skuNo().isBlank() && !ownSkuNos.contains(sku.skuNo())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             String skuNo = sku.skuNo() == null || sku.skuNo().isBlank()
                     ? BizKey.next(BizKey.SKU) : sku.skuNo();
             // 按市场逐行写：(entity_no, sku_no, market) 是价格的唯一权威，
