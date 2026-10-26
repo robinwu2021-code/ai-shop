@@ -305,14 +305,17 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
     + "按商家裁一刀正好毁掉这一页要说的事。同类的还有 revealPhone —— 它先要求填理由再放行。"
     + "⚠️ 同一个类里的 members / reachStats 已于 2026-08-29 接上数据域，别把这条当成类级豁免",
 
-  // 人群规则判断，不是列表查询
-  "MemberQueryPortImpl#judge":
-    "判「这个人符不符合这条人群规则」。它是**判定**不是列举 —— 输入的 userNo 已经由调用方"
-    + "圈定，这里再按数据域裁一次的效果是「符合的人被判成不符合」，把一次规则命中变成静默漏发",
-  "MemberQueryPortImpl#matchesRule":
-    "与 judge 同一件事的另一半：判这个买家是否满足活动发布时抄下来的人群条件快照（AC-9）。"
-    + "同样是**判定**不是列举，userNo 由调用方（算价）给定、按 entity_no + person_no 定位到一行会员；"
-    + "按数据域再裁一次，会把快照受众里的人判成不符合 —— 活动对他静默不减钱",
+  /*
+   * 人群规则判断（MemberQueryPortImpl#judge / #matchesRule）原先登记在这里：它们是判定不是列举。
+   * 2026-10-26 活动算价多了一层（flashWinners/giftWinners）之后，从 ops 端点到它们超过了
+   * bypassSites 的 6 层深度，G2 判成死条目而删掉。若以后放宽深度又被 G1 点名，按同一理由登记回来。
+   */
+
+  // 归属判定，不是列表查询
+  "ProductScopeFactsPortImpl#goodsOwned":
+    "判「这些货是不是这个主体的」：按显式的 tenant_no + entity_no + goods_no 计数，只回一个布尔。"
+    + "不回任何行，所以不放大可见范围；按运营的数据域再裁一次的效果是「自家的货被判成别家的」，"
+    + "活动/特价对自己的货静默失效（活动算价与保存时的归属校验都走它）",
 
   // ── 批① ord_sub_order 之后留下的 ──
   "MerchantOrderServiceImpl#toOpsVO":
@@ -1004,13 +1007,19 @@ function tablesIn(cls: string, region: string, depth = 0, seen = new Set<string>
 
 /** 从 (类, 方法) 出发，能走到的「绕过了数据域、且摸的是已注册表」的点 → 表名[] */
 function bypassSites(cls: string, mname: string, registered: Set<string>,
-                     seen = new Set<string>(), depth = 0): Map<string, string[]> {
+                     seen = new Map<string, number>(), depth = 0): Map<string, string[]> {
   const sites = new Map<string, string[]>();
   const c = classes.get(cls);
   if (!c || depth > 6) return sites;
   const key = `${cls}#${mname}`;
-  if (seen.has(key)) return sites;
-  seen.add(key);
+  /*
+   * 记「到过的最浅深度」，不是「到过没有」：深度优先先从一条深路径摸到某个方法时，
+   * 它的下游会被深度上限截掉；若此时就标成已访问，之后那条浅路径会被跳过 ——
+   * 绕过点于是随遍历顺序时有时无（加一个无关的调用就能让 G2 报死条目）。
+   */
+  const prev = seen.get(key);
+  if (prev !== undefined && prev <= depth) return sites;
+  seen.set(key, depth);
   for (const body of c.methods.get(mname) ?? []) {
     let idx = 0;
     while ((idx = body.indexOf("executeWithoutScope", idx)) >= 0) {
