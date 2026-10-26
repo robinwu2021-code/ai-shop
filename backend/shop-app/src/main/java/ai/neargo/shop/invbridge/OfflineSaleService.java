@@ -185,8 +185,14 @@ public class OfflineSaleService {
      * 撤销一笔：按原单的行开一张 {@code OFFLINE_RETURN} 入库单把货加回去。
      *
      * <p><b>不改原单</b>，也<b>不允许撤两次</b>（同一原单已有退回单就拒）—— 撤两次等于凭空多出一批货。
+     *
+     * <p><b>先锁原单再查退回单</b>，且整段跑在<b>进销存</b>的事务管理器上。此前是平台的
+     * {@code @Transactional}：进销存的读写各自自动提交，「查有没有退回单 → 开一张」之间没有任何串行点，
+     * 店员连点两下（或两台收银机各点一下）两个请求都查到「还没撤过」，3 件卖出被加回 6 件。
+     * 锁在原单行上而不是加唯一键：原单就是「这一笔」的天然串行点，不需要动表结构；
+     * 后到的那个等前一个提交后再查，看到退回单已在，照常拒绝。
      */
-    @Transactional
+    @Transactional(transactionManager = "invTransactionManager")
     public String revoke(String entityNo, String storeNo, String docNo, String operator) {
         String ownerId = acl.ownerIdOf(entityNo);
         String locationId = acl.stockLocationOf(entityNo, storeNo);
@@ -195,7 +201,7 @@ public class OfflineSaleService {
                 .eq(InvOutboundOrder::getOutboundNo, docNo)
                 .eq(InvOutboundOrder::getPurpose, InvEnums.OutboundPurpose.OFFLINE_SALE)
                 .eq(InvOutboundOrder::getStatus, InvEnums.DocStatus.POSTED)
-                .last("limit 1"));
+                .last("FOR UPDATE"));
         if (o == null || locationId == null || !locationId.equals(o.getLocationId())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
