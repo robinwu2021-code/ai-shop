@@ -1,4 +1,5 @@
 import {storedValueFinanceHttp} from "./stored-value-finance-http";
+import { payHttp } from "./pay-http";
 import {storedValueGovernanceHttp} from "./stored-value-governance-http";
 import {issuerHttpApi} from "./stored-value-issuer-http";
 import {managementHttpApi} from "./management-http";
@@ -209,6 +210,7 @@ export const httpApi: MerchantApi = {
   ...managementHttpApi,
   ...issuerHttpApi,
   ...storedValueFinanceHttp,
+  ...payHttp,
   ...storedValueGovernanceHttp,
   mScopeCandidates:(store,q)=>http.get(buildPath(E.mScopeCandidates.path,{store}),q),
   mScopeSelectCustomer:(store,body)=>http.post(buildPath(E.mScopeSelectCustomer.path,{store}),body),

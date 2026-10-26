@@ -1592,7 +1592,13 @@ components:
           description: "角色。**权限判定以后端为准**，前端只做菜单裁剪"
         token:
           type: "string"
-          description: "访问令牌。STAFF 池，与 C 端、B 端账号不通用"
+          description: "访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ）"
+        challenge:
+          type: "string"
+          description: "第二因子挑战号（支付服务-安全规范 §2.7）。有值 = 密码对了、验证码已发到邮箱，**还没登录** —— 拿它和邮件里的 6 位码调 `verifyLogin` 换会话。"
+        challengeTo:
+          type: "string"
+          description: "验证码发到了哪个邮箱（后端已掩码），给用户确认「去哪收」"
         perms:
           type: "array"
           items:
@@ -15680,6 +15686,38 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/auth/login/verify":
+    post:
+      operationId: "verifyLogin"
+      summary: "第二因子：用登录时发到邮箱的验证码换会话（`login` 返回 `challenge` 时才需要） */"
+      tags:
+        - "dashboard"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/LoginResp"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/auth/me":
     get:
       operationId: "me"
@@ -26355,6 +26393,344 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/pay-ops/v1/orders":
+    get:
+      operationId: "payOpsOrders"
+      summary: "payOpsOrders"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/pay-ops/v1/orders/{no}":
+    get:
+      operationId: "payOpsOrder"
+      summary: "payOpsOrder"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/pay-ops/v1/refunds":
+    get:
+      operationId: "payOpsRefunds"
+      summary: "payOpsRefunds"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/pay-ops/v1/refunds/{no}/review":
+    post:
+      operationId: "payOpsReviewRefund"
+      summary: "两人复核：同一人不能通过两次"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/pay-ops/v1/notifies":
+    get:
+      operationId: "payOpsNotifies"
+      summary: "payOpsNotifies"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/pay-ops/v1/notifies/{id}/resend":
+    post:
+      operationId: "payOpsResendNotify"
+      summary: "payOpsResendNotify"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/pay-ops/v1/exceptions":
+    get:
+      operationId: "payOpsExceptions"
+      summary: "payOpsExceptions"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/pay-ops/v1/exceptions/{id}/refund":
+    post:
+      operationId: "payOpsRefundException"
+      summary: "原路退回那一笔多收的钱（不碰已关支付单的余额） */"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/pay-ops/v1/exceptions/{id}/ignore":
+    post:
+      operationId: "payOpsIgnoreException"
+      summary: "payOpsIgnoreException"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/pay-ops/v1/qr-codes/{qrCode}/disabled":
+    put:
+      operationId: "payOpsDisableQrCode"
+      summary: "payOpsDisableQrCode"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "qrCode"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
       requestBody:
         required: true
         content:

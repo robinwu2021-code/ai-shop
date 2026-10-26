@@ -165,3 +165,7 @@
 14. **回填的退款单不建**：B6 只建支付单并把退款行挂上（`refunded_minor` 按成功退款行算）；存量退款不补 `pay_refund` —— 它们已经走完，补建的退款单没有复核与占用可言，只会让「退款单 = 商户侧发起的一次申请」这句话变假。
 15. **I1–I3 的场景类共用一个 H2 库**：仓库惯例是每个场景类一个 H2 内存库（`DB_CLOSE_DELAY=-1`，活到 JVM 结束，每个都是一整套 400 多张表加种子）。I1–I3 一共加了 8 个这样的库，第一次全量回归 shop-app 的 fork 在末尾 `OutOfMemoryError`（6g 堆）退出，带倒其后的用例、末尾 13 个类没跑。12 个类改为共用 `jdbc:h2:mem:pay-i3`：替身不同的类仍各自一个上下文（缓存照常淘汰），但库只有一个；`schema-test.sql` 本来就是可重放的（`IF NOT EXISTS` + `INSERT IGNORE`），各类数据用随机或各自的单号。其中 I3 的 6 个普通类同时共用上下文。
 0. **I2 收尾的启动校验在切片测试里装不起来**：`PayDataSourceConfig#channelProductCoverageCheck` 硬依赖渠道注册表，只装了部分支付配置的切片测试（`RefundBackingTest` 等 6 个类）上下文起不来 —— I2 收尾时只复跑了被点名的那 65 条，没再跑全量。S3 的受影响回归抓到，改为 `ObjectProvider`，没有注册表就跳过。
+16. **（2026-10-26 复核追加）交易尝试行的冻结路由列从不写**：`stl_payment` 加了 `pay_merchant_id` / `funds_path` / `sec_key_version`，但 `PaymentServiceImpl#attachAttempt` 只写 `pay_order_id` 与 `market` —— 冻结值要等 `startPayment` 才有来源。随 I5 S4（[完成度复核与剩余开发计划](./支付服务-完成度复核与剩余开发计划.md) D-10）。
+17. **（复核追加）关单只关本地**：`PaymentServiceImpl#close` 关前查单未付后只做 `ledger.close`，没有发渠道关单；`LATE_PAYMENT` 只记录、无处置。随 I5 S4 / W3。
+18. **（复核追加）掉单巡检全量取**：`ReconServiceImpl#checkStalePayments` 一次 `selectList`，无分页、上限与按渠道限速（E05 未做）。随 W3。
+19. **（复核追加）平台费 / 渠道费分录与两条新恒等式没写**：`FundsPathStrategy` 只有成功与退款两类分录，`FundInvariantService` 没有新增恒等式（E09 剩余）。随 W3。

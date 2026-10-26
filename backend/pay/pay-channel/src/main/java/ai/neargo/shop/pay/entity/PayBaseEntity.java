@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /**
  * 支付新表（v4 模型，{@code pay_*}）的实体基类：与 {@link ai.neargo.shop.common.BaseEntity} 逐字段一致，**只少一个 {@code tenantNo}**。
  *
- * <p>新表不带 {@code tenant_no}，关联一律用 BIGINT 自增 id、按门店 id 挂核心系统（ADR-041 §2-4）。
+ * <p>新表不带 {@code tenant_no}，关联一律用 BIGINT 自增 id、按门店 id 挂核心系统（ADR-043 §2-4）。
  * 继承旧基类的话，{@code AuditMetaObjectHandler} 会往 {@code tenantNo} 里填 {@code MAIN}，
  * MyBatis-Plus 随之在 INSERT 里写一个表上不存在的列 —— 报错要到第一次插入才出现。
  * 这里干脆没有这个字段：填充器用的是 {@code strictInsertFill}，字段不存在就跳过，**写不出来**。

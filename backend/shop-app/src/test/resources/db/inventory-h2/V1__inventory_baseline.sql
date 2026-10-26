@@ -1,4 +1,4 @@
--- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql 得到。
+-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/inventory/V*.sql 得到。
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --

@@ -434,10 +434,10 @@ class ArchitectureTest {
                         "org.springframework.web.servlet..")
                 .allowEmptyShould(true)
                 .because("领域 service/policy/entity 不得依赖 Web；独立 food-web 的 presentation、typed transport 与装配不属于领域逻辑；"
-                        + "支付接入层 pay-portal（pay.api..）是支付的 controller 与鉴权过滤器，同理（ADR-042）");
+                        + "支付接入层 pay-portal（pay.api..）是支付的 controller 与鉴权过滤器，同理（ADR-044）");
     }
 
-    /** 支付接入层（pay-portal 模块，ADR-042 §2-2）：只豁免 {@code ai.neargo.shop.pay.api} 这一棵子树 */
+    /** 支付接入层（pay-portal 模块，ADR-044 §2-2）：只豁免 {@code ai.neargo.shop.pay.api} 这一棵子树 */
     private static boolean isPayPortal(JavaClass type) {
         return inPackageTree(type, "ai.neargo.shop.pay.api");
     }
@@ -528,7 +528,7 @@ class ArchitectureTest {
     }
 
     @Test
-    @DisplayName("★★ 支付只豁免 pay.api 这一棵子树碰 Web —— 领域服务、实现、相邻包名照样拦（ADR-042）")
+    @DisplayName("★★ 支付只豁免 pay.api 这一棵子树碰 Web —— 领域服务、实现、相邻包名照样拦（ADR-044）")
     void payPortalIsTheOnlyPayWebException(@TempDir Path temporary) throws IOException {
         String webField = "public jakarta.servlet.http.HttpServletRequest request;";
         var imported = compileArchitectureExamples(temporary, Map.ofEntries(

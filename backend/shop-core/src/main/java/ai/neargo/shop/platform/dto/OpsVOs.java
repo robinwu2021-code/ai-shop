@@ -25,7 +25,19 @@ public final class OpsVOs {
                           Long lastLoginAt, boolean mustChangePassword) {
     }
 
-    public record LoginResultVO(String token, StaffVO staff) {
+    /**
+     * 登录结果。开着第二因子时，密码那一步只回 {@code challenge}（挑战号）与 {@code challengeTo}（码发到哪个邮箱，已掩码），
+     * {@code token} / {@code staff} 为空；第二步 {@code /ops/auth/login/verify} 才回会话。
+     */
+    public record LoginResultVO(String token, StaffVO staff, String challenge, String challengeTo) {
+
+        public LoginResultVO(String token, StaffVO staff) {
+            this(token, staff, null, null);
+        }
+
+        public static LoginResultVO challenge(String challenge, String challengeTo) {
+            return new LoginResultVO(null, null, challenge, challengeTo);
+        }
     }
 
     /**

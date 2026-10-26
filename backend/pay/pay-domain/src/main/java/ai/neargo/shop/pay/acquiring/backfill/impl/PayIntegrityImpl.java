@@ -3,16 +3,12 @@ package ai.neargo.shop.pay.acquiring.backfill.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.acquiring.backfill.PayIntegrity;
 import ai.neargo.shop.pay.entity.StlPayment;
-import ai.neargo.shop.pay.ledger.entity.PayLedgerEntry;
-import ai.neargo.shop.pay.ledger.entity.PayLedgerVoucher;
 import ai.neargo.shop.pay.mapper.SettleMappers.PaymentMapper;
 import ai.neargo.shop.pay.mapper.ledger.LedgerMappers.LedgerEntryMapper;
 import ai.neargo.shop.pay.mapper.ledger.LedgerMappers.LedgerVoucherMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /** {@link PayIntegrity} 的实现 */
@@ -38,14 +34,12 @@ public class PayIntegrityImpl implements PayIntegrity {
 
     @Override
     public long unbalancedVouchers() {
-        List<PayLedgerVoucher> all = DataScopeContext.executeWithoutScope(() -> vouchers.selectList(null));
-        Map<Long, List<PayLedgerEntry>> lines = DataScopeContext.executeWithoutScope(() -> entries.selectList(null))
-                .stream().collect(Collectors.groupingBy(PayLedgerEntry::getPayLedgerVoucherId));
-        return all.stream().filter(v -> {
-            List<PayLedgerEntry> ls = lines.getOrDefault(v.getId(), List.of());
-            long dr = ls.stream().filter(e -> "DR".equals(e.getDirection())).mapToLong(PayLedgerEntry::getAmountMinor).sum();
-            long cr = ls.stream().filter(e -> "CR".equals(e.getDirection())).mapToLong(PayLedgerEntry::getAmountMinor).sum();
-            return dr != cr || v.getTotalMinor() == null || v.getTotalMinor() != dr;
-        }).count();
+        // 在库里聚合（W3）：此前把全部凭证与流水 selectList 进内存再分组，账一多就是一次 OOM
+        return DataScopeContext.executeWithoutScope(vouchers::countUnbalanced);
+    }
+
+    @Override
+    public List<String> ledgerMismatchedOrders(int limit) {
+        return DataScopeContext.executeWithoutScope(() -> entries.ledgerMismatchedOrders(Math.max(1, Math.min(limit, 10_000))));
     }
 }

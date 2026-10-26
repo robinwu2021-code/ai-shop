@@ -14,6 +14,9 @@ public interface OpsService {
 
     LoginResultVO login(String username, String password);
 
+    /** 第二因子：用登录时发到邮箱的码换会话（安全规范 §2.7）。挑战不存在、过期、码错满 5 次 → 未授权 */
+    LoginResultVO verifySecondFactor(String challenge, String code);
+
     /**
      * 给一个运营员工签发会话，<b>不验密码</b> —— 只给密钥票据登录用（ADR-027），
      * 调用方必须已经验过票据与白名单。员工须存在且 ACTIVE；角色与权限现算，与密码登录同一段代码。

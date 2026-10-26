@@ -1413,7 +1413,33 @@ _无字段_
 |---|---|:---:|---|
 | `username` | `string` | 是 | 登录名 |
 | `role` | [`Role`](#role) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
-| `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用 |
+| `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ） |
+| `challenge` | `string` | 否 | 第二因子挑战号（支付服务-安全规范 §2.7）。有值 = 密码对了、验证码已发到邮箱，**还没登录** —— 拿它和邮件里的 6 位码调 `verifyLogin` 换会话。 |
+| `challengeTo` | `string` | 否 | 验证码发到了哪个邮箱（后端已掩码），给用户确认「去哪收」 |
+| `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
+| `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
+| `communityNo` | `string` | 否 | 受限角色的社区数据域 |
+
+
+#### POST `/ops/auth/login/verify`
+
+第二因子：用登录时发到邮箱的验证码换会话（`login` 返回 `challenge` 时才需要） */
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`LoginResp`](#loginresp)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `username` | `string` | 是 | 登录名 |
+| `role` | [`Role`](#role) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
+| `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ） |
+| `challenge` | `string` | 否 | 第二因子挑战号（支付服务-安全规范 §2.7）。有值 = 密码对了、验证码已发到邮箱，**还没登录** —— 拿它和邮件里的 6 位码调 `verifyLogin` 换会话。 |
+| `challengeTo` | `string` | 否 | 验证码发到了哪个邮箱（后端已掩码），给用户确认「去哪收」 |
 | `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
@@ -1435,7 +1461,9 @@ _无字段_
 |---|---|:---:|---|
 | `username` | `string` | 是 | 登录名 |
 | `role` | [`Role`](#role) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
-| `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用 |
+| `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ） |
+| `challenge` | `string` | 否 | 第二因子挑战号（支付服务-安全规范 §2.7）。有值 = 密码对了、验证码已发到邮箱，**还没登录** —— 拿它和邮件里的 6 位码调 `verifyLogin` 换会话。 |
+| `challengeTo` | `string` | 否 | 验证码发到了哪个邮箱（后端已掩码），给用户确认「去哪收」 |
 | `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |
@@ -8688,6 +8716,162 @@ _无字段_
 | `resolvedBy` | `string,null` | 否 | 处置人（STAFF 账号）。未处置为 null |
 
 
+### payops
+
+#### GET `/pay-ops/v1/exceptions`
+
+payOpsExceptions
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/pay-ops/v1/exceptions/{id}/ignore`
+
+payOpsIgnoreException
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/pay-ops/v1/exceptions/{id}/refund`
+
+原路退回那一笔多收的钱（不碰已关支付单的余额） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/pay-ops/v1/notifies`
+
+payOpsNotifies
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/pay-ops/v1/notifies/{id}/resend`
+
+payOpsResendNotify
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/pay-ops/v1/orders`
+
+payOpsOrders
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/pay-ops/v1/orders/{no}`
+
+payOpsOrder
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### PUT `/pay-ops/v1/qr-codes/{qrCode}/disabled`
+
+payOpsDisableQrCode
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `qrCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/pay-ops/v1/refunds`
+
+payOpsRefunds
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/pay-ops/v1/refunds/{no}/review`
+
+两人复核：同一人不能通过两次
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 ### print
 
 #### GET `/ops/print/health`
@@ -13120,7 +13304,9 @@ Delivery state of an inventory/order synchronization event.
 |---|---|:---:|---|
 | `username` | `string` | 是 | 登录名 |
 | `role` | [`Role`](#role) | 是 | 角色。**权限判定以后端为准**，前端只做菜单裁剪 |
-| `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用 |
+| `token` | `string` | 是 | 访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ） |
+| `challenge` | `string` | 否 | 第二因子挑战号（支付服务-安全规范 §2.7）。有值 = 密码对了、验证码已发到邮箱，**还没登录** —— 拿它和邮件里的 6 位码调 `verifyLogin` 换会话。 |
+| `challengeTo` | `string` | 否 | 验证码发到了哪个邮箱（后端已掩码），给用户确认「去哪收」 |
 | `perms` | `string`\[\] | 是 | **后端下发的权限码**（`staff.perms`）。判权以它为准。 `["*"]` = 超管通配。前端的 UI 码要先经 `UI_PERM_MAP` 翻译成后端码 再来这里查 —— 两边的粒度不同（前端 45 个、后端 14 个）， 直接比会全判 false。 |
 | `merchantNo` | `string` | 否 | 商家运营（BD）等受限角色的数据域；平台全量角色为空 |
 | `communityNo` | `string` | 否 | 受限角色的社区数据域 |

@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ai.neargo.shop.pay.funds.FundsPaths;
 import ai.neargo.shop.pay.ledger.service.LedgerService;
+import ai.neargo.shop.pay.notify.service.BizNotifyService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -35,10 +36,13 @@ public class PaymentOutcomeServiceImpl implements PaymentOutcomeService {
     private final FundsPaths funds;
     private final LedgerService ledger;
     private final boolean ledgerEnabled;
+    private final BizNotifyService notifier;
 
     public PaymentOutcomeServiceImpl(PayOrderMapper orders, PayExceptionMapper exceptions, FundsPaths funds,
                                      LedgerService ledger,
-                                     @Value("${shop.pay.ledger.enabled:true}") boolean ledgerEnabled) {
+                                     @Value("${shop.pay.ledger.enabled:true}") boolean ledgerEnabled,
+                                     BizNotifyService notifier) {
+        this.notifier = notifier;
         this.orders = orders;
         this.exceptions = exceptions;
         this.funds = funds;
@@ -80,6 +84,8 @@ public class PaymentOutcomeServiceImpl implements PaymentOutcomeService {
             funds.of(o.getFundsPath()).ifPresent(strategy -> ledger.post(
                     strategy.onPaymentSucceeded(o, outcome.channelAmountMinor(), outcome.payChannel())));
         }
+        // 答复与成功同事务落行（S6）：成功在、答复就在；投递在事务外
+        notifier.paymentSucceeded(DataScopeContext.executeWithoutScope(() -> orders.selectById(o.getId())));
         return true;
     }
 

@@ -69,7 +69,7 @@ class PayHasNoControllerTest {
      * <ul>
      *   <li>{@code pay-domain} / {@code pay-channel}：零映射（本条）；</li>
      *   <li>{@code pay-svc}：只许 {@code /internal/**}，按<b>运行时解析后的路径</b>判（{@code PayApplicationBootTest#onlyInternalRoutes}）；</li>
-     *   <li>{@code pay-portal}：唯一面向人与第三方的支付模块，前缀由 {@code PortalFace} 定（{@code PortalRouteRulesTest}，ADR-042）。</li>
+     *   <li>{@code pay-portal}：唯一面向人与第三方的支付模块，前缀由 {@code PortalFace} 定（{@code PortalRouteRulesTest}，ADR-044）。</li>
      * </ul>
      */
     private static final List<String> NO_WEB_MODULES = List.of(PAY_MODULE, "pay/pay-channel");
@@ -106,10 +106,10 @@ class PayHasNoControllerTest {
 
         assertThat(offenders)
                 .as("支付领域 / 通道里出现了 Web 映射：\n  %s\n"
-                        + "  面向人与第三方的支付接口放 pay-portal（ai.neargo.shop.pay.api.<入口>，ADR-042）；\n"
+                        + "  面向人与第三方的支付接口放 pay-portal（ai.neargo.shop.pay.api.<入口>，ADR-044）；\n"
                         + "  域间内部口放 pay-svc 的 /internal/**；\n"
                         + "  仍属主应用跨域组合的，放 shop-app/portal/{ops,biz,mp}/pay/。\n"
-                        + "  → 见 TDD-支付域-双形态部署与装配 §L1、ADR-042。", offenders)
+                        + "  → 见 TDD-支付域-双形态部署与装配 §L1、ADR-044。", offenders)
                 .isEmpty();
     }
 

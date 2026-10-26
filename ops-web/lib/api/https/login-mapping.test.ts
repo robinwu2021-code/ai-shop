@@ -72,4 +72,27 @@ describe("运营登录：后端响应 → ops-web 的 LoginResp", () => {
     expect(r.username).toBe("someone");
     expect(r.role).not.toBe("SUPER_ADMIN");
   });
+
+  /*
+   * 运营登录第二因子（支付服务-安全规范 §2.7）：开着时 /ops/auth/login 只回 {challenge, challengeTo}，
+   * 没有 token 也没有 staff。端上必须把它当成「还差一步」，而不是一个 token 为空的已登录态 ——
+   * 后者会让登录页直接跳进工作台，然后每个请求都 401。
+   */
+  it("★★★ 开着第二因子：后端只回挑战 → 返回 challenge，token 为空，不当成已登录", async () => {
+    post.mockResolvedValue({ token: null, staff: null, challenge: "ch_123", challengeTo: "a***@neargo.ai" });
+    const r = await dashboardHttp.login("a@neargo.ai", "pw");
+    expect(r.challenge).toBe("ch_123");
+    expect(r.challengeTo).toBe("a***@neargo.ai");
+    expect(r.token).toBe("");
+  });
+
+  it("★★★ 第二步：验证码换会话，响应与登录同样摊平", async () => {
+    post.mockResolvedValue(backendResponse(["BD"]));
+    const r = await dashboardHttp.verifyLogin("ch_123", "123456");
+    expect(post).toHaveBeenCalledWith("/ops/auth/login/verify", { challenge: "ch_123", code: "123456" });
+    expect(r.token).toBe("otk_test");
+    expect(r.role).toBe("MERCHANT_BD");
+    expect(r.challenge).toBeUndefined();
+  });
 });
+

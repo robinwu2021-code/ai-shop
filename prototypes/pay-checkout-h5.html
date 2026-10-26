@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>收银台 H5 · 顾客付款</title>
+<!-- 真源在仓库 prototypes/pay-checkout-h5.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">收银台 H5（checkout-h5）· 界面原型 · 2026-10-26</div>
+  <h1>收银台：顾客扫码 / 跳转付款</h1>
+  <p class="sub">顾客完全不受信：金额、收款方、可用方式全部来自服务端，顾客只能看、选、付、看结果；静态码只有金额由顾客输入。六屏；接口见 TDD-支付服务-I5接入层 S7、安全规范 §2.5。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 03</span><h2>动态码 / 托管收银台：看单 → 选方式 → 结果</h2></div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">付款</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">收款方</span><span class="v">邻里鲜果 · 中山店</span></div>
+          </div>
+          <div class="big">¥ 19.90</div>
+          <div class="group">
+            <div class="pickrow">◉ 微信支付</div>
+            <div class="pickrow">○ 支付宝</div>
+          </div>
+          <p class="note">链接 14:52 前有效</p>
+        </div>
+        <div class="foot"><div class="btn main">确认付款 ¥19.90</div></div>
+      </div>
+      <figcaption class="cap"><b>01 付款</b>动态码 <code>/c/{令牌}</code> 与托管收银台 <code>/checkout/{支付单号}?t=</code> 是同一屏。</figcaption>
+      <p class="why">「收款方：商户名 · 门店名」放在金额上方（防换贴码，F34）；按钮上再写一次金额 —— 顾客按下去之前最后一眼看到的是要付多少。没有任何个人信息、订单号只在结果页小字出现。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">付款</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">收款方</span><span class="v">邻里鲜果 · 中山店</span></div>
+          </div>
+          <div class="big">¥ 19.90</div>
+          <p class="note">正在打开微信支付…</p>
+        </div>
+        <div class="foot"><div class="btn sec">我已付款，查看结果</div></div>
+      </div>
+      <figcaption class="cap"><b>02 跳转渠道</b>拿到渠道参数后唤起（微信内 JSAPI、外部浏览器跳 H5 链接）。</figcaption>
+      <p class="why">渠道页回不来是常态（关了微信弹层、切了 App），所以留一个「我已付款，查看结果」—— 它只是去查结果，不入账。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">付款结果</span><span></span></div>
+        <div class="scr">
+          <div class="big">✓ 付款成功</div>
+          <div class="group">
+            <div class="frow"><span class="k">收款方</span><span class="v">邻里鲜果 · 中山店</span></div>
+            <div class="frow"><span class="k">金额</span><span class="v">¥ 19.90</span></div>
+          </div>
+          <p class="note">处理中：「正在确认付款结果」，每 2 秒自动刷新，1 分钟后停；失败：「付款未完成」+ 重新付款</p>
+        </div>
+        <div class="foot"><div class="btn main">完成</div></div>
+      </div>
+      <figcaption class="cap"><b>03 结果</b><code>/result/{支付单号}</code>：只有成功 / 处理中 / 失败三种。</figcaption>
+      <p class="why">结果页不入账（F33）：入账只认渠道回调与主动查单。「完成」只在接入方登记了 return_url 白名单时才跳回去，否则停在本页。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04 — 06</span><h2>静态码、失效、阿拉伯语</h2></div>
+  <div class="grid">
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">付款给商家</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">收款方</span><span class="v">邻里鲜果 · 中山店</span></div>
+          </div>
+          <div class="inp">¥ 0.00</div>
+          <p class="note">单笔最多 ¥ 50.00</p>
+        </div>
+        <div class="foot"><div class="btn main">下一步</div></div>
+      </div>
+      <figcaption class="cap"><b>04 静态码输金额</b><code>/q/{码}</code>：顾客输金额，服务端以码的门店建单、签令牌后进 01。</figcaption>
+      <p class="why">只提示单笔上限；单码日累计上限不展示（它是风控额度，不是给顾客看的规则），超了只说「金额超过收款码的限额」。</p>
+    </figure>
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">付款</span><span></span></div>
+        <div class="scr">
+          <div class="big">链接已失效</div>
+          <p class="note">收款链接已失效，请向商家重新获取。</p>
+        </div>
+      </div>
+      <figcaption class="cap"><b>05 失效</b>令牌不存在、过期、已作废、单已关，都是这一屏。</figcaption>
+      <p class="why">不区分原因（安全规范 §2.5）：区分了就等于告诉试探的人哪些令牌存在过。</p>
+    </figure>
+
+    <figure id="s06">
+      <div class="ph">
+        <div class="nav"><span></span><span class="t">الدفع</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">المستفيد</span><span class="v">متجر الحي · فرع دبي</span></div>
+          </div>
+          <div class="big">د.إ 19.90</div>
+          <div class="group">
+            <div class="pickrow">◉ PayBy</div>
+          </div>
+        </div>
+        <div class="foot"><div class="btn main">ادفع الآن</div></div>
+      </div>
+      <figcaption class="cap"><b>06 阿拉伯语</b>01 在 <code>ar</code> 下：整页 <code>dir="rtl"</code>。</figcaption>
+      <p class="why">样式只用逻辑方向（inline-start / end），不写 left / right；数字与金额保持从左到右。语言按浏览器选，市场为 AE 时默认 ar。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>真源：prototypes/pay-checkout-h5.html · 登记：prototypes/registry.json · 需求：docs/technical/TDD-支付服务-I5接入层.md S7（F30–F35）</footer>
+</div>
+</html>

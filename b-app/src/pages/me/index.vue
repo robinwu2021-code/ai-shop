@@ -234,6 +234,26 @@ onShow(() => {
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
+        收款（TDD-支付服务-I5接入层 S8）。**每格按自己的码显示**，不跟 biz:finance 绑 ——
+        老板给收银员只勾了「代客收款」，他就只看到那一格；看结算是另一件事。
+      -->
+      <view v-if="merchant.can('mch:pay:collect')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payCollect)">
+        <text class="txt-body cell__label">{{ $t("bizPay.collect.title") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <view v-if="merchant.can('mch:pay:statement')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payFlow)">
+        <text class="txt-body cell__label">{{ $t("bizPay.flow.title") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <view v-if="merchant.can('mch:pay:qr')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payQrcodes)">
+        <text class="txt-body cell__label">{{ $t("bizPay.qr.title") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <view v-if="merchant.can('mch:pay:app-grant')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payGrants)">
+        <text class="txt-body cell__label">{{ $t("bizPay.grant.title") }}</text>
+        <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+      </view>
+      <!--
         员工与授权。**唯一入口原先在工作台第二屏**，用户实际反馈是「没看到添加员工的功能」。
         放这里而不是往工作台上提：工作台按「今天要干的活」排，加员工不是每天干的事。
       -->

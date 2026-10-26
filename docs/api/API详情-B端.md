@@ -7421,6 +7421,167 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
+### pay
+
+#### GET `/biz/pay/app-grant`
+
+已授权的第三方　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayAppGrant`](#payappgrant)\[\]
+
+
+#### POST `/biz/pay/app-grant`
+
+授权第三方　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayAppGrant`](#payappgrant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 授权记录 id（撤销时用） |
+| `appNo` | `string` | 是 | 第三方接入方 AppId |
+| `appName` | `string,null` | 是 | 第三方名称 |
+| `actions` | [`PayGrantAction`](#paygrantaction)\[\] | 是 | 授权的动作 |
+| `status` | [`PayGrantStatus`](#paygrantstatus) | 是 | 已授权 / 已撤销 |
+| `grantedAt` | `number,null` | 是 | 授权时间（UTC 毫秒） |
+
+
+#### DELETE `/biz/pay/app-grant/{id}`
+
+撤销第三方授权　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### POST `/biz/pay/collection`
+
+代客收款（动态码）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayCollectResult`](#paycollectresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payOrderNo` | `string` | 是 | 这笔代客收款建出的支付单号（PYO…）；到账后在收款流水里按它对得上 |
+| `token` | `string` | 是 | 一次性收银令牌：只在这一次响应里出现，不落任何本地存储 |
+| `expireAt` | `number` | 是 | 链接到期（UTC 毫秒） |
+| `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
+
+
+#### GET `/biz/pay/qr-code`
+
+本店收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayQrCode`](#payqrcode)\[\]
+
+
+#### POST `/biz/pay/qr-code`
+
+生成收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayQrCode`](#payqrcode)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qrCode` | `string` | 是 | 码值（随机、不可枚举），也是停用时的标识 |
+| `kind` | [`PayQrKind`](#payqrkind) | 是 | 门店码或桌台码 |
+| `tableRef` | `string,null` | 是 | 桌号（桌台码才有） |
+| `currency` | `string` | 是 | 币种（按门店市场） |
+| `singleLimitMinor` | `number` | 是 | 单笔上限（最小单位） |
+| `dailyLimitMinor` | `number` | 是 | 单码每日累计上限（最小单位） |
+| `status` | [`PayQrStatus`](#payqrstatus) | 是 | 使用中 / 已停用（停用不可恢复） |
+| `url` | `string` | 是 | 顾客扫的链接 |
+
+
+#### PUT `/biz/pay/qr-code/{qrCode}/disabled`
+
+停用收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/biz/pay/refund`
+
+本店最近退款　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayRefundItem`](#payrefunditem)\[\]
+
+
+#### POST `/biz/pay/refund`
+
+发起原路退款　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayRefundItem`](#payrefunditem)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payRefundNo` | `string` | 是 | 退款单号（PYR…） |
+| `payOrderId` | `number` | 是 | 原支付单的内部 id（只用于同一页内去重，不展示） |
+| `amountMinor` | `number` | 是 | 退款金额（最小单位） |
+| `currency` | `string` | 是 | 币种，与原支付单一致 |
+| `status` | `string` | 是 | PENDING_REVIEW 待平台复核 / DISPATCHED 退款中 / SUCCEEDED / FAILED / REJECTED … |
+| `reason` | `string,null` | 是 | 商家填的退款原因；平台复核时唯一能看到的「为什么」 |
+| `requestedBy` | `string,null` | 是 | 发起的商家账号 |
+| `createdAt` | `number,null` | 是 | 发起时间（UTC 毫秒） |
+| `succeededAt` | `number,null` | 是 | 退成时间（UTC 毫秒）；未退成为空 |
+
+
+#### GET `/biz/pay/statement`
+
+本店收款日流水　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayDailyStatement`](#paydailystatement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bizDate` | `string` | 是 | 业务日（门店市场时区）YYYY-MM-DD |
+| `currency` | `string` | 是 | 本店市场的收款币种 |
+| `paidCount` | `number` | 是 | 当日成功收款笔数 |
+| `paidMinor` | `number` | 是 | 当日成功收款合计（最小单位） |
+| `refundCount` | `number` | 是 | 当日退成笔数 |
+| `refundMinor` | `number` | 是 | 当日退成合计（最小单位） |
+| `items` | [`PayStatementItem`](#paystatementitem)\[\] | 是 | 明细，时间倒序；一天最多 1000 行（合计照算） |
+
+
 ### payout-account
 
 #### GET `/biz/payout-account`
@@ -14583,6 +14744,120 @@ Processing state of the order points refund projection.
 | `CN` | `number` | 否 | — |
 | `AE` | `number` | 否 | — |
 | `US` | `number` | 否 | — |
+
+### PayAppGrant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 授权记录 id（撤销时用） |
+| `appNo` | `string` | 是 | 第三方接入方 AppId |
+| `appName` | `string,null` | 是 | 第三方名称 |
+| `actions` | [`PayGrantAction`](#paygrantaction)\[\] | 是 | 授权的动作 |
+| `status` | [`PayGrantStatus`](#paygrantstatus) | 是 | 已授权 / 已撤销 |
+| `grantedAt` | `number,null` | 是 | 授权时间（UTC 毫秒） |
+
+### PayCollectResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payOrderNo` | `string` | 是 | 这笔代客收款建出的支付单号（PYO…）；到账后在收款流水里按它对得上 |
+| `token` | `string` | 是 | 一次性收银令牌：只在这一次响应里出现，不落任何本地存储 |
+| `expireAt` | `number` | 是 | 链接到期（UTC 毫秒） |
+| `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
+
+### PayDailyStatement
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bizDate` | `string` | 是 | 业务日（门店市场时区）YYYY-MM-DD |
+| `currency` | `string` | 是 | 本店市场的收款币种 |
+| `paidCount` | `number` | 是 | 当日成功收款笔数 |
+| `paidMinor` | `number` | 是 | 当日成功收款合计（最小单位） |
+| `refundCount` | `number` | 是 | 当日退成笔数 |
+| `refundMinor` | `number` | 是 | 当日退成合计（最小单位） |
+| `items` | [`PayStatementItem`](#paystatementitem)\[\] | 是 | 明细，时间倒序；一天最多 1000 行（合计照算） |
+
+### PayGrantAction
+
+授权第三方的动作：代收款 / 代退款 / 查单
+
+枚举取值：
+
+- `COLLECT`
+- `REFUND`
+- `READ`
+
+### PayGrantStatus
+
+枚举取值：
+
+- `ACTIVE`
+- `REVOKED`
+
+### PayQrCode
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qrCode` | `string` | 是 | 码值（随机、不可枚举），也是停用时的标识 |
+| `kind` | [`PayQrKind`](#payqrkind) | 是 | 门店码或桌台码 |
+| `tableRef` | `string,null` | 是 | 桌号（桌台码才有） |
+| `currency` | `string` | 是 | 币种（按门店市场） |
+| `singleLimitMinor` | `number` | 是 | 单笔上限（最小单位） |
+| `dailyLimitMinor` | `number` | 是 | 单码每日累计上限（最小单位） |
+| `status` | [`PayQrStatus`](#payqrstatus) | 是 | 使用中 / 已停用（停用不可恢复） |
+| `url` | `string` | 是 | 顾客扫的链接 |
+
+### PayQrKind
+
+收款码：门店码 / 桌台码
+
+枚举取值：
+
+- `STORE`
+- `TABLE`
+
+### PayQrStatus
+
+枚举取值：
+
+- `ACTIVE`
+- `DISABLED`
+
+### PayRefundItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payRefundNo` | `string` | 是 | 退款单号（PYR…） |
+| `payOrderId` | `number` | 是 | 原支付单的内部 id（只用于同一页内去重，不展示） |
+| `amountMinor` | `number` | 是 | 退款金额（最小单位） |
+| `currency` | `string` | 是 | 币种，与原支付单一致 |
+| `status` | `string` | 是 | PENDING_REVIEW 待平台复核 / DISPATCHED 退款中 / SUCCEEDED / FAILED / REJECTED … |
+| `reason` | `string,null` | 是 | 商家填的退款原因；平台复核时唯一能看到的「为什么」 |
+| `requestedBy` | `string,null` | 是 | 发起的商家账号 |
+| `createdAt` | `number,null` | 是 | 发起时间（UTC 毫秒） |
+| `succeededAt` | `number,null` | 是 | 退成时间（UTC 毫秒）；未退成为空 |
+
+### PayStatementItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `kind` | [`PayStatementKind`](#paystatementkind) | 是 | 收款或退款 |
+| `no` | `string` | 是 | 单号：收款行是支付单号，退款行是退款单号 |
+| `payOrderNo` | `string,null` | 是 | 关联的支付单号（退款行据此找回原收款） |
+| `amountMinor` | `number` | 是 | 金额（最小单位，恒为正；退款行由页面加负号） |
+| `payChannel` | `string,null` | 是 | 渠道码（WECHAT / ALIPAY / TEST …） |
+| `payMethod` | `string,null` | 是 | 支付方式码（WECHAT_PAY / ALIPAY / TEST_PAY …），页面译成名字 |
+| `status` | `string` | 是 | 支付单或退款单状态 |
+| `at` | `number,null` | 是 | 成功时间（UTC 毫秒） |
+
+### PayStatementKind
+
+流水行：收款 / 退款
+
+枚举取值：
+
+- `PAYMENT`
+- `REFUND`
 
 ### PaymentApplyStatus
 

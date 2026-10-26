@@ -29,6 +29,8 @@ const PERMS_JAVA = join(ROOT, "backend/shop-base-auth/src/main/java/ai/neargo/sh
  */
 export const PUBLIC = new Map([
   ["POST /ops/auth/login", "登录本身，此刻还没有身份"],
+  ["POST /ops/auth/login/verify", "登录第二步（邮箱验证码，TDD-安全基线P0 G9）：此刻同样还没有身份。"
+    + "安全性在一次性挑战号（只存哈希、5 分钟、最多试 5 次）与账号 / IP 锁定上"],
   ["GET /ops/auth/me", "自查身份，返回的就是调用者自己"],
   ["GET /ops/menu", "菜单本来就按人切片 —— 再加一个码等于「要有权限才能知道自己有什么权限」"],
   ["POST /ops/staffs/me/password", "改**自己**的密码。要 iam:staff:update 的话，"

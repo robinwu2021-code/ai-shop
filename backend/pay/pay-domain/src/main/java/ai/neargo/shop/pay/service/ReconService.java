@@ -50,6 +50,16 @@ public interface ReconService {
     List<Finding> checkStalePayments(long now);
 
     /**
+     * 同上，按给定份额（W3 E05）：按 id 游标分页，一轮最多 {@code maxPerRun} 条、每个渠道最多 {@code perChannelPerRun} 条；
+     * 游标留在进程里，下一轮从上次停下的地方往后，扫到底再从头。无参版本用配置的份额。
+     */
+    List<Finding> checkStalePayments(long now, ScanLimits limits);
+
+    /** 掉单巡检一轮的份额 */
+    record ScanLimits(int maxPerRun, int perChannelPerRun) {
+    }
+
+    /**
      * 把一条核对结果记成差异行。
      *
      * <p>与 {@link #checkStalePayments} 分开，是因为<b>差异的描述取决于处置结果</b>：

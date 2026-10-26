@@ -144,4 +144,9 @@ export const POINT_CODES: Record<string, string> = {
   "/system?tab=authCode": "OPS_SYSTEM__TAB_AUTHCODE",
   "/system?tab=scope": "OPS_SYSTEM__TAB_SCOPE",
   "/system?tab=testPhone": "OPS_SYSTEM__TAB_TESTPHONE",
+  // 支付运营端（S9）：独立路径而不是 ?tab=，生成器按 href 派生会让四条撞成同一个 OPS_FINANCE —— 手工冻结成各自的码
+  "/pay-ops/orders": "OPS_FINANCE__PAY_ORDERS",
+  "/pay-ops/exceptions": "OPS_FINANCE__PAY_EXCEPTIONS",
+  "/pay-ops/refunds": "OPS_FINANCE__PAY_REFUNDS",
+  "/pay-ops/notifies": "OPS_FINANCE__PAY_NOTIFIES",
 };

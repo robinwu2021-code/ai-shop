@@ -30,6 +30,8 @@ public class InternalCallers {
     /** 内部 app 码（{@code pay_app.app_no}，V7 种子） */
     public static final String MALL = "MALL";
     public static final String FOOD = "FOOD";
+    /** 收银台接入方（V11 种子）：静态码与商家代客收款建的单记在它名下 */
+    public static final String CHECKOUT = "CHECKOUT";
 
     private final PayAppMapper apps;
     private final Map<String, Long> ids = new ConcurrentHashMap<>();
@@ -47,6 +49,14 @@ public class InternalCallers {
             throw BizException.of(ErrorCode.PAY_REFUND_OPERATOR_REQUIRED);
         }
         return new PayCaller(CallerType.BIZ, appId(appCode), Set.of(storeId), operatorNo, null, null);
+    }
+
+    /**
+     * 支付运营端的调用方（TDD-支付服务-I5接入层 S9）：平台身份、不按门店圈（{@code MatrixCallerPolicy}）；
+     * 操作员是运营账号 —— 复核、重推、处置都记在他名下。{@code callerId} 记 0（平台），不对应任何接入方
+     */
+    public PayCaller opsOperator(String operatorNo) {
+        return new PayCaller(CallerType.OPS, 0L, Set.of(), operatorNo, null, null);
     }
 
     public Long appId(String appCode) {

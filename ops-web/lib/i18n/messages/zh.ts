@@ -69,6 +69,10 @@ export const zh = {
     resetNewHint: "至少 8 位",
     resetSubmit: "设置新密码",
     resetDone: "密码已重置，其它设备已退出登录",
+    codeTitle: "邮箱验证码",
+    codeSent: "验证码已发到 {to}，5 分钟内有效。",
+    codeSubmit: "验证并登录",
+    codeBack: "换个账号",
   },
   role: {
     SUPER_ADMIN: "超级管理员",

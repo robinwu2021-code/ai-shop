@@ -1,7 +1,7 @@
 # TDD-支付服务-I0地基
 
 状态：已实现（2026-10-25 · `e1caec533` + `c57a25d90`）
-档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I0 · [完整设计方案](./TDD-支付服务-完整设计方案.md) D1–D3 · ADR-041 · ADR-042
+档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I0 · [完整设计方案](./TDD-支付服务-完整设计方案.md) D1–D3 · ADR-043 · ADR-044
 关联需求：[PRD-支付域](../requirements/PRD-支付域.md)（新市场与开放接口部分见完整设计方案 §1 AC 表）
 创建：2026-10-25 · 最后更新：2026-10-25
 
@@ -35,7 +35,7 @@ P3 取消主体级默认号；P4 Resilience4j；P5 请求记录全记；P6 本�
   进销存的独立 Flyway 写法（`InventoryDataSourceConfig#invFlyway`，返回非 `Flyway` 类型的 bean）。
 - **会被改到的**：
   - 积分 5 个主代码文件 + 11 个测试改引用 `FundsPath`（只换类型来源，行为不变）；
-  - `ArchitectureTest` 的「领域不得碰 Web 运行时」规则加 `pay.api..` 豁免（ADR-042 §2）；
+  - `ArchitectureTest` 的「领域不得碰 Web 运行时」规则加 `pay.api..` 豁免（ADR-044 §2）；
   - `PayHasNoControllerTest`、`PayReverseDependencyBudgetTest`、`known-pay-reverse-deps.txt` 重写或扩充；
   - `shop-app/pom.xml`、`backend/pay/pom.xml` 增加模块与依赖。
 - **明确不受影响**：现有 496 条平台迁移、`flyway_schema_history`、全部端点、权限码、i18n 词条、对外 JSON。
@@ -96,7 +96,7 @@ public abstract class PayBaseEntity {    // id / createdAt / createdBy / updated
 | 支付迁移继续放 `db/migration`（平台历史） | 零新机制 | 与 10+ 个并行会话抢迁移号；独立部署时要拆历史 | ❌ |
 | **`db/pay` + 独立历史表（同库）** | 号段独立；独立部署时整目录跟走；照抄进销存已验证的写法 | 多一个 Flyway 实例；H2 测试建表要另行覆盖（I1 起） | ✅ P2 |
 | `PayBaseEntity` 放 `shop-store-mybatis` | 与 `BaseEntity` 并排 | 那是全仓公共层，放一个只属于支付的约定进去 | ❌ 放 `pay-domain` |
-| 包名 `pay.portal..` | 与模块名一致 | 被 `controllersInDomainApiOrPortal` 拒 | ❌ 用 `pay.api..`（ADR-042） |
+| 包名 `pay.portal..` | 与模块名一致 | 被 `controllersInDomainApiOrPortal` 拒 | ❌ 用 `pay.api..`（ADR-044） |
 
 ## §4 风险
 
@@ -170,7 +170,7 @@ c57a25d90 feat(pay): I0 地基
  shop-app/src/test/resources/application-h2db.yml      |   4 +
  shop-app/src/test/resources/db/pay-fixture/V1__pay_fixture.sql | 5 +
  shop-base/.../numbering/DocumentType.java             |   3 +
- docs/technical/ADR/ADR-041 · ADR-042 · TDD-支付服务-I0地基.md
+ docs/technical/ADR/ADR-043 · ADR-044 · TDD-支付服务-I0地基.md
  docs/technical/reference/{glossary.json, 中英文对照, 依赖清单, 静态常量清单}.md
  29 files changed, 1159 insertions(+), 48 deletions(-)
 ```
@@ -183,7 +183,7 @@ c57a25d90 feat(pay): I0 地基
 ### 偏差说明
 
 1. **支付 Flyway 挂在 shop-app 的 `PayDataSourceConfig`，不在 pay-domain 自带配置类**：pay-svc 没有 Flyway 依赖、迁移关着（与 shop-app 共库，迁移一直由 shop-app 执行）。迁移文件仍在 pay-domain 的 `db/pay`，随模块走（§3 已记）。
-2. **包名 `pay.api..` 而非设计稿的 `pay.portal..`**：`ArchitectureTest#controllersInDomainApiOrPortal` 只认 `..api..` 与 `shop.portal..`（ADR-042 §2-2）。
+2. **包名 `pay.api..` 而非设计稿的 `pay.portal..`**：`ArchitectureTest#controllersInDomainApiOrPortal` 只认 `..api..` 与 `shop.portal..`（ADR-044 §2-2）。
 3. **独立形态启动类推迟到 I5**：今天模块里零 controller、零 Remote 实现，放一个 `@SpringBootApplication` 进被 shop-app 扫描的 jar 反而会触发二次组件扫描。
 4. **`ControllerNamingTest` 登记 `Open` / `Terminal` / `Checkout` 前缀**：仓库里没有这条守卫（命名规则只在 java.md §七）；入口归属已由 `PortalRouteRules` 按包 + 前缀判，命名守卫随 I5 第一个 controller 一起立。
 5. **消融时发现 AC4 的判据漏认全限定注解**（`@org.springframework...RestController`），当场补上并加反例 —— 这正是消融这一列存在的理由。

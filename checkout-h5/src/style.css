@@ -1,0 +1,43 @@
+/* 收银台样式。<b>只用逻辑方向</b>（inline-start / end、padding-inline…），不写 left / right —— 阿拉伯语整页 dir=rtl */
+:root {
+  --bg: #f6f5f2;
+  --card: #fff;
+  --ink: #1d1c1a;
+  --muted: #6b6862;
+  --line: #e6e3dd;
+  --brand: #1f6f4a;
+  --brand-ink: #fff;
+  --danger: #b3261e;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #151514; --card: #1f1e1c; --ink: #f1efe9; --muted: #a8a49b; --line: #33312d; --brand: #4fb184; --brand-ink: #0d1a13; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 16px/1.5 system-ui, -apple-system, "PingFang TC", "PingFang SC", "Noto Sans Arabic", sans-serif; }
+main { max-inline-size: 480px; margin-inline: auto; padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.center { text-align: center; padding-block: 48px; }
+.payee { display: flex; flex-direction: column; gap: 2px; padding-block-end: 12px; border-block-end: 1px solid var(--line); }
+.amount { font-size: 36px; font-weight: 700; padding-block: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+.big { font-size: 22px; margin: 0 0 8px; }
+.muted { color: var(--muted); margin: 8px 0 0; }
+.small { font-size: 13px; }
+.methods { border: 0; margin: 0; padding: 0; }
+.methods legend { color: var(--muted); padding: 0; margin-block-end: 8px; }
+.method { display: flex; align-items: center; gap: 12px; padding: 14px 4px; border-block-start: 1px solid var(--line); }
+.method input { inline-size: 20px; block-size: 20px; accent-color: var(--brand); }
+.field { display: flex; flex-direction: column; gap: 8px; padding-block: 16px 4px; }
+.amount-input { font-size: 32px; font-weight: 700; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; inline-size: 100%; }
+.dock { position: fixed; inset-inline: 0; inset-block-end: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--card); border-block-start: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; max-inline-size: 480px; margin-inline: auto; }
+button { font: inherit; border-radius: 10px; padding: 14px; border: 1px solid var(--line); cursor: pointer; }
+button.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); font-weight: 600; }
+button.secondary { background: transparent; color: var(--ink); }
+button:disabled { opacity: .55; cursor: default; }
+[data-state="failed"] .big { color: var(--danger); }
+[data-state="succeeded"] .big { color: var(--brand); }
+.error { color: var(--danger); }
+.amount-input[aria-invalid="true"] { border-color: var(--danger); }
+.center .payee { margin-block-start: 24px; text-align: start; }
+.small-amount { font-size: 24px; padding-block: 12px 0; }

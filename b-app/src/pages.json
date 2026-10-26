@@ -596,6 +596,30 @@
       }
     },
     {
+      "path": "pages/pay-collect/index",
+      "style": {
+        "navigationBarTitleText": "代客收款"
+      }
+    },
+    {
+      "path": "pages/pay-flow/index",
+      "style": {
+        "navigationBarTitleText": "收款流水"
+      }
+    },
+    {
+      "path": "pages/pay-qrcodes/index",
+      "style": {
+        "navigationBarTitleText": "收款码"
+      }
+    },
+    {
+      "path": "pages/pay-grants/index",
+      "style": {
+        "navigationBarTitleText": "授权第三方"
+      }
+    },
+    {
       "path": "pages/stats/index",
       "style": {
         "navigationBarTitleText": "经营数据",

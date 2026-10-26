@@ -10,6 +10,7 @@ import type { DashboardApi } from "./contracts/dashboard";
 import type { MerchantApi } from "./contracts/merchant";
 import type { OrderApi } from "./contracts/order";
 import type { PaymentApi } from "./contracts/payment";
+import type { PayOpsApi } from "./contracts/payops";
 import type { CommunityApi } from "./contracts/community";
 import type { FulfillmentApi } from "./contracts/fulfillment";
 import type { StoreApi } from "./contracts/store";
@@ -39,6 +40,6 @@ export type {
 };
 
 export interface Api
-  extends PrintApi, DashboardApi, MerchantApi, OrderApi, PaymentApi, CommunityApi, FulfillmentApi, StoreApi,
+  extends PrintApi, DashboardApi, MerchantApi, OrderApi, PaymentApi, PayOpsApi, CommunityApi, FulfillmentApi, StoreApi,
     MarketingApi, ReviewApi, AfterSaleApi, GroupApi, ProductApi, FinanceApi, IamApi, GrowthApi, RiskApi,
     MessageApi, ContentApi, SystemApi, MemberApi, InventoryApi, JobApi {}

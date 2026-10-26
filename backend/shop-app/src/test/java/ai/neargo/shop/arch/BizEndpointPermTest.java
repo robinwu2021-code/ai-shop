@@ -574,6 +574,14 @@ class BizEndpointPermTest {
 
         // ---- 钱 ----
         // 提现（V288 新增）：与结算同一把权限 —— 能看账的才能提钱
+        // 商家端支付（TDD-支付服务-I5接入层 S8）：默认只有主体属主；店长也不碰钱
+        put("/biz/pay/collection", BizPerms.PAY_COLLECT);
+        put("/biz/pay/refund", BizPerms.PAY_REFUND);
+        put("/biz/pay/statement", BizPerms.PAY_STATEMENT);
+        put("/biz/pay/qr-code", BizPerms.PAY_QR);
+        put("/biz/pay/qr-code/{qrCode}/disabled", BizPerms.PAY_QR);
+        put("/biz/pay/app-grant", BizPerms.PAY_APP_GRANT);
+        put("/biz/pay/app-grant/{id}", BizPerms.PAY_APP_GRANT);
         put("/biz/settle/bills", BizPerms.FINANCE);
         put("/biz/settle/income", BizPerms.FINANCE);
         put("/biz/settle/daily-flow", BizPerms.FINANCE);
@@ -749,7 +757,8 @@ class BizEndpointPermTest {
             if (f.getType() == String.class && java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
                 try {
                     Object v = f.get(null);
-                    if (v instanceof String s && (s.startsWith("biz:") || s.startsWith("pay:ent:") || s.startsWith("pay:sv:"))) {
+                    if (v instanceof String s && (s.startsWith("biz:") || s.startsWith("pay:ent:") || s.startsWith("pay:sv:")
+                            || s.startsWith("mch:pay:"))) {
                         out.add(s);
                     }
                 } catch (IllegalAccessException ignored) {

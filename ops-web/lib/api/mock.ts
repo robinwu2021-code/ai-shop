@@ -6,6 +6,7 @@ import { dashboardMock } from "./mocks/dashboard";
 import { merchantMock } from "./mocks/merchant";
 import { orderMock } from "./mocks/order";
 import { paymentMock } from "./mocks/payment";
+import { payOpsMock } from "./mocks/payops";
 import { communityMock } from "./mocks/community";
 import { fulfillmentMock } from "./mocks/fulfillment";
 import { storeMock } from "./mocks/store";
@@ -32,6 +33,7 @@ export const MOCK_SLICES = {
   merchant: merchantMock,
   order: orderMock,
   payment: paymentMock,
+  payops: payOpsMock,
   community: communityMock,
   fulfillment: fulfillmentMock,
   store: storeMock,
@@ -53,7 +55,7 @@ export const MOCK_SLICES = {
 } as const;
 
 export const mockApi: Api = {
-  ...printMock, ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock,
+  ...printMock, ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock, ...payOpsMock,
   ...communityMock, ...fulfillmentMock, ...storeMock,
   ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock,
 };

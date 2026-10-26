@@ -30,7 +30,7 @@ MIGRATION_DIR = ROOT / "backend/shop-app/src/main/resources/db/migration"
 PAY_MIGRATION_DIR = ROOT / "backend/pay/pay-domain/src/main/resources/db/pay"
 OUT = ROOT / "backend/shop-app/src/test/resources/schema-test.sql"
 
-HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql 得到。
+HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 {source} 得到。
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
@@ -166,7 +166,8 @@ def main():
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
         replay(f.read_text(), tables, order, seeds, renames, altered)
     # 只在默认源目录时接上 db/pay：传了第二个参数（拿别的目录做对照）就只重放那一个目录
-    if len(sys.argv) <= 2 and PAY_MIGRATION_DIR.is_dir():
+    with_pay = len(sys.argv) <= 2 and PAY_MIGRATION_DIR.is_dir()
+    if with_pay:
         for f in sorted(PAY_MIGRATION_DIR.glob("V*.sql"),
                         key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
             replay(f.read_text(), tables, order, seeds, renames, altered)
@@ -180,7 +181,9 @@ def main():
             if match:
                 key = match.group(1).lower()
                 constraint_names[key] = constraint_names.get(key, 0) + 1
-    out = [HEADER]
+    # 头部说清这份是从哪几个目录重放的：进销存那份只有它自己的 db/inventory，不能写成「再接 db/pay」
+    out = [HEADER.replace("{source}", "db/migration/V*.sql、再接 db/pay/V*.sql" if with_pay
+                          else src_dir.relative_to(ROOT).as_posix().split("resources/")[-1] + "/V*.sql")]
     for name in order:
         cols = []
         for col in tables[name]:
