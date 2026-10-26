@@ -30,37 +30,37 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 class InternalReservationApiTest {
     @Test void originalServiceTokenAndNestedValidationGuardQuery() {
         new WebApplicationContextRunner().withUserConfiguration(Host.class).withPropertyValues("shop.food.enabled=true",
-                "shop.services.internal-token=wire").run(c -> {
+                "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY).run(c -> {
                     var mvc=MockMvcBuilders.webAppContextSetup(c).addFilters(c.getBean(FilterChainProxy.class)).build();
                     String body="{\"entityNo\":\"E\",\"storeNo\":\"A\",\"query\":{\"from\":\"2026-10-21T12:00:00Z\",\"to\":\"2026-10-21T14:00:00Z\"}}";
-                    mvc.perform(post(ReservationInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+                    mvc.perform(post(ReservationInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
                             .andExpect(jsonPath("$.records[0].reservationNo").value("R1")).andExpect(jsonPath("$.code").doesNotExist());
                     mvc.perform(post(ReservationInternalApi.LIST_PATH).contentType(MediaType.APPLICATION_JSON).content(body))
                             .andExpect(status().isUnauthorized());
-                    mvc.perform(post(ReservationInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+                    mvc.perform(post(ReservationInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content("{\"entityNo\":\"E\",\"storeNo\":\"A\",\"query\":{}}"))
                             .andExpect(status().isBadRequest());
                 });
     }
     @Test void createIsTypedAuthenticatedAndRejectsForgedPaymentAndNestedInvalidTables() {
         new WebApplicationContextRunner().withUserConfiguration(Host.class).withPropertyValues("shop.food.enabled=true",
-                "shop.services.internal-token=wire").run(c -> {
+                "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY).run(c -> {
             var mvc=MockMvcBuilders.webAppContextSetup(c).addFilters(c.getBean(FilterChainProxy.class)).build();
             String body="""
                     {"entityNo":"E","storeNo":"A","actorNo":"staff","key":"create-key","request":{
                     "partySize":2,"startAt":"2026-10-25T12:00:00Z","endAt":"2026-10-25T13:00:00Z",
                     "contactRef":"encrypted-ref","tables":[{"tableNo":"T","version":3}]}}
                     """;
-            mvc.perform(post(ReservationInternalApi.CREATE_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(ReservationInternalApi.CREATE_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
                     .andExpect(jsonPath("$.reservation.reservationNo").value("R1"));
             mvc.perform(post(ReservationInternalApi.CREATE_PATH).contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isUnauthorized());
-            mvc.perform(post(ReservationInternalApi.CREATE_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(ReservationInternalApi.CREATE_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content(body.replace("\"version\":3","\"version\":-1")))
                     .andExpect(status().isBadRequest());
-            mvc.perform(post(ReservationInternalApi.CREATE_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(ReservationInternalApi.CREATE_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content(body.replace("\"partySize\":2",
                             "\"depositRef\":\"paid\",\"partySize\":2")))
                     .andExpect(status().isBadRequest());

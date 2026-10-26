@@ -44,13 +44,13 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 class InternalTableAreaApiTest {
     private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
             .withUserConfiguration(Host.class).withPropertyValues("shop.food.enabled=true",
-                    "shop.services.internal-token=area-token");
+                    "shop.services.internal-token=area-token", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     private static final String SCOPE = "\"entityNo\":\"E\",\"storeNo\":\"A\"";
     private static final String WRITE = SCOPE+",\"actorNo\":\"staff\",\"idempotencyKey\":\"original\"";
     @Test void fourInternalRoutesReturnPlainTypedData() {
         runner.run(c -> {
             var mvc = mvc(c);
-            mvc.perform(post(TableInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"area-token")
+            mvc.perform(post(TableInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"area-token").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content("{"+SCOPE+"}"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
                     .andExpect(jsonPath("$.data").doesNotExist());
@@ -60,7 +60,7 @@ class InternalTableAreaApiTest {
                             "{\"name\":\"大厅\",\"sortNo\":0,\"version\":0}"},
                     new String[]{TableInternalApi.STATUS_PATH,",\"areaNo\":\"A1\"",
                             "{\"status\":\"DISABLED\",\"version\":0,\"reason\":\"停用\"}"})) {
-                mvc.perform(post(spec[0]).header(InternalHttp.TOKEN_HEADER,"area-token")
+                mvc.perform(post(spec[0]).header(InternalHttp.TOKEN_HEADER,"area-token").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{"+WRITE+spec[1]+",\"area\":"+spec[2]+"}"))
                         .andExpect(status().isOk()).andExpect(jsonPath("$.area.areaNo").value("A1"));
@@ -73,11 +73,11 @@ class InternalTableAreaApiTest {
             mvc.perform(post(TableInternalApi.LIST_PATH).contentType(MediaType.APPLICATION_JSON)
                             .content("{"+SCOPE+"}"))
                     .andExpect(status().isUnauthorized());
-            mvc.perform(post(TableInternalApi.STATUS_PATH).header(InternalHttp.TOKEN_HEADER,"area-token")
+            mvc.perform(post(TableInternalApi.STATUS_PATH).header(InternalHttp.TOKEN_HEADER,"area-token").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content("{"+WRITE+",\"areaNo\":\"A1\","
                                     + "\"area\":{\"status\":\"IDLE\",\"version\":0,\"reason\":\"停用\"}}"))
                     .andExpect(status().isBadRequest());
-            mvc.perform(post(TableInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"area-token")
+            mvc.perform(post(TableInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"area-token").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                             .contentType(MediaType.APPLICATION_JSON).content("{"+SCOPE.replace("\"E\"","\"OTHER\"")+"}"))
                     .andExpect(status().isNotFound());
         });

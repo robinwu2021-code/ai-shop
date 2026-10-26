@@ -166,7 +166,7 @@ class FoodRecipePrimaryDatabaseTest {
                     .withPropertyValues("shop.outbox.sources.platform.mode=unified",
                             "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
                             "spring.datasource.url=" + url, "spring.datasource.username=root",
-                            "spring.datasource.password=", "shop.services.internal-token=wire",
+                            "spring.datasource.password=", "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY,
                             "shop.food.recipe-publication-enabled=true",
                             "shop.food.menu-publication-enabled=true",
                             "shop.food.station-publication-enabled=true",
@@ -189,7 +189,7 @@ class FoodRecipePrimaryDatabaseTest {
                                 ConfigRevisionInternalApi.MENU_PATH, ConfigRevisionInternalApi.STATION_PATH)) {
                             mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isUnauthorized());
-                            mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire")
+                            mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                     .contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isBadRequest());
                         }
@@ -197,7 +197,7 @@ class FoodRecipePrimaryDatabaseTest {
                             try {
                                 var result = mvc.perform(post(ex.getRequestURI().getPath())
                                         .header(InternalHttp.TOKEN_HEADER,
-                                                ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER))
+                                                ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON)
                                                 .content(ex.getRequestBody().readAllBytes()))
                                         .andReturn().getResponse();
@@ -322,7 +322,7 @@ class FoodRecipePrimaryDatabaseTest {
                     .withPropertyValues("shop.outbox.sources.platform.mode=unified",
                             "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
                             "spring.datasource.url=" + url, "spring.datasource.username=root",
-                            "spring.datasource.password=", "shop.services.internal-token=wire",
+                            "spring.datasource.password=", "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY,
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisRepositoriesAutoConfiguration")

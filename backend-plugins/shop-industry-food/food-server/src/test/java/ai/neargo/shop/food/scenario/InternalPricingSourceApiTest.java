@@ -29,7 +29,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 class InternalPricingSourceApiTest {
     private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
             .withUserConfiguration(Host.class).withPropertyValues("shop.food.enabled=true",
-                    "shop.services.internal-token=wire");
+                    "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     @Test void authenticationBeforeParsingAndStrictNoPriceCommandBoundary() {
         runner.run(c -> {
             var mvc = MockMvcBuilders.webAppContextSetup(c).addFilters(c.getBean(FilterChainProxy.class)).build();
@@ -42,17 +42,17 @@ class InternalPricingSourceApiTest {
                     body.replace("\"expectedVersion\":4", "\"expectedVersion\":null"),
                     body.replace("\"C\"", "12"),
                     body.replace("\"expectedVersion\":4", "\"expectedVersion\":4,\"price\":1"))) {
-                mvc.perform(post(PricingSourceInternalApi.STAFF_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
+                mvc.perform(post(PricingSourceInternalApi.STAFF_PATH).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                         .contentType(MediaType.APPLICATION_JSON).content(invalid)).andExpect(status().isBadRequest());
             }
-            mvc.perform(post(PricingSourceInternalApi.STAFF_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
+            mvc.perform(post(PricingSourceInternalApi.STAFF_PATH).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
                     .andExpect(jsonPath("$.schemaVersion").value(1)).andExpect(jsonPath("$.code").doesNotExist());
-            mvc.perform(post(PricingSourceInternalApi.CUSTOMER_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
+            mvc.perform(post(PricingSourceInternalApi.CUSTOMER_PATH).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content("{\"cartNo\":\"C\",\"expectedVersion\":4,"
                             + "\"access\":{\"sessionNo\":\"S\",\"accessToken\":\"secret\",\"buyerNo\":\"B\"}}"))
                     .andExpect(status().isForbidden());
-            mvc.perform(post(PricingSourceInternalApi.STAFF_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
+            mvc.perform(post(PricingSourceInternalApi.STAFF_PATH).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content(body.replace("\"C\"", "\"UNSUPPORTED\"")))
                     .andExpect(status().isServiceUnavailable());
             assertThat(c.getBean(AtomicInteger.class)).hasValue(3);

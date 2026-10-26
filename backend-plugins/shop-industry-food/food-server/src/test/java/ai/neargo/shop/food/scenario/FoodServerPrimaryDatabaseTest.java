@@ -82,7 +82,7 @@ class FoodServerPrimaryDatabaseTest {
                     .withPropertyValues("shop.outbox.sources.platform.mode=unified",
                             "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
                             "spring.datasource.url=" + url, "spring.datasource.username=root", "spring.datasource.password=",
-                            "shop.services.internal-token=food-disposable-server-test",
+                            "shop.services.internal-token=food-disposable-server-test", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY,
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration")
                     .run(context -> {
                         FoodServerProducerAssertions.verify(context);
@@ -103,17 +103,17 @@ class FoodServerPrimaryDatabaseTest {
                         mvc.perform(post(StoreOperationInternalApi.POLICY_PATH).contentType(MediaType.APPLICATION_JSON)
                                         .content(body)).andExpect(status().isUnauthorized());
                         mvc.perform(post(StoreOperationInternalApi.POLICY_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(body))
                                 .andExpect(status().isOk()).andExpect(jsonPath("$.policyNo").value("P1"))
                                 .andExpect(jsonPath("$.payPolicy").value("POSTPAY"))
                                 .andExpect(jsonPath("$.data").doesNotExist());
                         mvc.perform(post(StoreOperationInternalApi.POLICY_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(body.replace("\"E\"","\"FOREIGN\"")))
                                 .andExpect(status().isNotFound());
                         mvc.perform(post(StoreOperationInternalApi.POLICY_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content("{\"storeNo\":\"A\"}"))
                                 .andExpect(status().isBadRequest());
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_store_policy",Integer.class)).isEqualTo(1);
@@ -128,18 +128,18 @@ class FoodServerPrimaryDatabaseTest {
                                 + "\"cutoverMinute\":240,\"effectiveFrom\":\"" + futurePolicy + "\","
                                 + "\"payPolicy\":\"POSTPAY\",\"capabilities\":[],\"version\":0}}";
                         String receipt = mvc.perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(command))
                                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUCCEEDED"))
                                 .andExpect(jsonPath("$.version").value(1))
                                 .andReturn().getResponse().getContentAsString();
                         mvc.perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(command))
                                 .andExpect(status().isOk()).andExpect(result -> assertThat(
                                         result.getResponse().getContentAsString()).isEqualTo(receipt));
                         mvc.perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(command.replace(futurePolicy,
                                                 Instant.parse(futurePolicy).plus(1, ChronoUnit.DAYS).toString())))
@@ -156,7 +156,7 @@ class FoodServerPrimaryDatabaseTest {
                                 + "\"calendar\":{\"mode\":\"CLOSED\",\"intervals\":[],\"version\":0}}";
                         for (int retry=0; retry<2; retry++) {
                             mvc.perform(post(ServiceCalendarInternalApi.SAVE_PATH)
-                                            .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                            .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                             .contentType(MediaType.APPLICATION_JSON).content(calendar))
                                     .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
                         }
@@ -164,11 +164,11 @@ class FoodServerPrimaryDatabaseTest {
                                 .replace("\"CLOSED\",\"intervals\":[]", "\"OPEN\",\"intervals\":[\"22:00-02:00\"]")
                                 .replace("\"version\":0", "\"version\":1");
                         mvc.perform(post(ServiceCalendarInternalApi.SAVE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(update))
                                 .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
                         mvc.perform(post(ServiceCalendarInternalApi.SAVE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(calendar.replace("calendar-create", "calendar-stale")))
                                 .andExpect(status().isConflict());
@@ -185,19 +185,19 @@ class FoodServerPrimaryDatabaseTest {
                                 + "\"idempotencyKey\":\"create-area\","
                                 + "\"area\":{\"code\":\"HALL\",\"name\":\"大厅\",\"sortNo\":0}}";
                         String areaReceipt = mvc.perform(post(TableInternalApi.CREATE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(createArea))
                                 .andExpect(status().isOk()).andExpect(jsonPath("$.area.version").value(0))
                                 .andReturn().getResponse().getContentAsString();
                         mvc.perform(post(TableInternalApi.CREATE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(createArea))
                                 .andExpect(status().isOk()).andExpect(r -> assertThat(
                                         r.getResponse().getContentAsString()).isEqualTo(areaReceipt));
                         String areaNo = context.getBean(ObjectMapper.class).readTree(areaReceipt)
                                 .get("area").get("areaNo").asString();
                         mvc.perform(post(TableInternalApi.LIST_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content("{\"entityNo\":\"E\",\"storeNo\":\"A\"}"))
                                 .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
@@ -205,28 +205,28 @@ class FoodServerPrimaryDatabaseTest {
                                 + "\"actorNo\":\"trusted-actor\",\"idempotencyKey\":\"edit-area\","
                                 + "\"area\":{\"name\":\"包间\",\"sortNo\":1,\"version\":0}}";
                         mvc.perform(post(TableInternalApi.SAVE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(editArea))
                                 .andExpect(status().isOk()).andExpect(jsonPath("$.area.version").value(1));
                         mvc.perform(post(TableInternalApi.SAVE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(editArea.replace("edit-area","foreign-area").replace("\"E\"","\"OTHER\"")))
                                 .andExpect(status().isNotFound());
                         mvc.perform(post(TableInternalApi.SAVE_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(editArea.replace("edit-area","stale-area")))
                                 .andExpect(status().isConflict());
                         String disableArea = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"areaNo\":\""+areaNo+"\","
                                 + "\"actorNo\":\"trusted-actor\",\"idempotencyKey\":\"disable-area\","
                                 + "\"area\":{\"status\":\"DISABLED\",\"reason\":\"停用\",\"version\":1}}";
                         mvc.perform(post(TableInternalApi.STATUS_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON).content(disableArea))
                                 .andExpect(status().isOk()).andExpect(jsonPath("$.area.version").value(2))
                                 .andExpect(jsonPath("$.area.status").value("DISABLED"));
                         mvc.perform(post(TableInternalApi.STATUS_PATH)
-                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(disableArea.replace("disable-area","no-change-area").replace("\"version\":1","\"version\":2")))
                                 .andExpect(status().isOk()).andExpect(jsonPath("$.area.version").value(2));
@@ -370,7 +370,7 @@ class FoodServerPrimaryDatabaseTest {
         } finally { admin.execute("DROP DATABASE " + database); }
     }
     private static ResultActions tableCall(MockMvc mvc,String path,Object command,ObjectMapper json) throws Exception {
-        return mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+        return mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                 .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(command)));
     }
 

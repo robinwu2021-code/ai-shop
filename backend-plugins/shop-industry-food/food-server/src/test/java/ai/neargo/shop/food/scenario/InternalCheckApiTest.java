@@ -36,7 +36,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 class InternalCheckApiTest {
     final WebApplicationContextRunner runner=new WebApplicationContextRunner().withUserConfiguration(Host.class)
-            .withPropertyValues("shop.food.enabled=true","shop.services.internal-token=wire");
+            .withPropertyValues("shop.food.enabled=true","shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     @Test void allTenRoutesRequireServiceTokenAndReturnUnwrappedData() {
         runner.run(c -> {
             var mvc=mvc(c);String scope="\"entityNo\":\"E\",\"storeNo\":\"A\"";
@@ -53,7 +53,7 @@ class InternalCheckApiTest {
                     new String[]{CheckInternalApi.TRANSFER_PATH,"{"+scope+id+actor+",\"request\":{\"version\":0,\"reason\":\"换台\",\"targetTableNos\":[\"T1\"],\"tableVersions\":[{\"tableNo\":\"T1\",\"version\":0}]}}","$.operation.status"},
                     new String[]{CheckInternalApi.COMBINE_PATH,"{"+scope+id+actor+",\"request\":{\"version\":0,\"reason\":\"并桌\",\"tableVersions\":[{\"tableNo\":\"T1\",\"version\":0}]}}","$.operation.status"},
                     new String[]{CheckInternalApi.SHARE_PATH,"{"+scope+actor+",\"tableNo\":\"T1\",\"request\":{\"version\":0,\"partySize\":1,\"payMode\":\"PREPAY\"}}","$.check.checkNo"})) {
-                mvc.perform(post(spec[0]).header(InternalHttp.TOKEN_HEADER,"wire").contentType(MediaType.APPLICATION_JSON).content(spec[1]))
+                mvc.perform(post(spec[0]).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()).contentType(MediaType.APPLICATION_JSON).content(spec[1]))
                         .andExpect(status().isOk()).andExpect(jsonPath(spec[2]).exists()).andExpect(jsonPath("$.code").doesNotExist());
                 mvc.perform(post(spec[0]).contentType(MediaType.APPLICATION_JSON).content(spec[1])).andExpect(status().isUnauthorized());
             }
@@ -62,10 +62,10 @@ class InternalCheckApiTest {
     @Test void invalidCommandsAndBusinessConflictRetainHttpStatus() {
         runner.run(c -> {
             var mvc=mvc(c);
-            mvc.perform(post(CheckInternalApi.GET_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(CheckInternalApi.GET_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content("{\"entityNo\":\"E\",\"storeNo\":\"A\",\"checkNo\":\"conflict\"}"))
                     .andExpect(status().isConflict());
-            mvc.perform(post(CheckInternalApi.OPEN_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(CheckInternalApi.OPEN_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content("{}")) .andExpect(status().isBadRequest());
         });
     }

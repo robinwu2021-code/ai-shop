@@ -122,7 +122,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "ai.neargo.shop.food.config.DiningDeliveryAutoConfiguration",
         "ai.neargo.shop.food.config.FoodOrderAuthorityConfiguration",
         "ai.neargo.shop.food.config.FoodMaintenanceConfiguration"})
-@Import({FoodClientConfiguration.class, DiningTransactionRecoveryJob.class, FoodMaintenanceJobs.class,
+@Import({FoodClientConfiguration.class, ai.neargo.shop.food.foodclient.FoodScopeSigningConfiguration.class, DiningTransactionRecoveryJob.class, FoodMaintenanceJobs.class,
         FoodBusinessOperationsWebConfiguration.class})
 @ConditionalOnFoodWebEnabled
 @Profile({"api", "ops"})
