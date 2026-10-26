@@ -568,6 +568,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [运营打印页面独立只读审查](./acceptance/print-center/operations-and-sources-evidence/operations-review.md) | — |
 | [新增退款/充值打印来源独立审查](./acceptance/print-center/operations-and-sources-evidence/source-review.md) | — |
 | [打印发布收尾验收 · 2026-10-26](./acceptance/print-center/release-2026-10-26.md) | — |
+| [Independent release review](./acceptance/print-center/release-2026-10-26/final-review.md) | — |
 | [统一打印分支正常推送记录 · 2026-10-25](./acceptance/print-center/remote-push-2026-10-25.md) | 本轮正常全量闸门及远端推送完成，最终提交ba44c7f0c；未绕过检查、未强制推送。 |
 | [订单支付打印软件闭环 · 2026-10-25](./acceptance/print-center/software-closure-2026-10-25.md) | — |
 | [打印模块合入统一分支核对 · 2026-10-25](./acceptance/print-center/unified-merge-2026-10-25.md) | 统一域适配及集中专项验收完成，形成包含最新统一基线的合并候选。本记录不包含远端推送，未执行生产迁移。 |
