@@ -318,6 +318,13 @@ def generate():
         for row in counter['methods']:
             increment.append(f"| `{row['owner']}` | `{row['signature']}` |")
         increment += [''] + [rule + '\n' for rule in counter['contracts']]
+    execution = d.get('executionServicePlan')
+    if execution:
+        increment += ['', '## 服务执行数量授权（M3，计划方法非已实现）', '', execution['status'], '', execution['authority'], '',
+                      '| Owner / class | Planned signature | Slice / state |', '|---|---|---|']
+        for row in execution['methods']:
+            increment.append(f"| `{row['owner']}` | `{row['signature']}` | {row['stage']} / {row['status']} |")
+        increment += [''] + [rule + '\n' for rule in execution['contracts']]
     classes += increment
     methods += increment
     stats={'controllers':len(controllers),'services':len(services),'serviceMethods':method_count,'dtos':len(dtos),'mappers':len(mappers),'customMapperMethods':sum(len(m['customMethods']) for m in mappers),'ownedHttp':len(eps),'sharedHttp':len(d['sharedHttpMethods'])}

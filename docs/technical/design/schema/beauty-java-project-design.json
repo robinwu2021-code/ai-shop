@@ -1693,7 +1693,7 @@
   "implementationStatus": "Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED; candidate inventory below is not completion evidence.",
   "plannedSharedClasses": {
     "status": "TASK68_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
-    "authority": "主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope、B2真实报价/订单/现金准入、C验证脚本均已编码/编译或语法检查及静态复审。三行业31+21模块编译通过，C的45Node/53Java用例、材料生产和运行均未执行；不增加美业构件/依赖或25私有表计数。",
+    "authority": "主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope、B2真实报价/订单/现金准入、C验证脚本均已编码/编译或语法检查及静态复审。三行业31+21模块编译通过，C的45Node/53Java用例、材料生产和运行均未执行；不增加美业构件/依赖；当前既有28私有业务表，M3候选新增另列。",
     "classes": [
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java",
@@ -1724,6 +1724,72 @@
         "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java",
         "class": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
         "role": "[编码编译/静态复审完成；统一测试未执行] 共用纯协议：规范选择/分组、冻结seal形状和摘要；各业务域只依赖SPI，无查询或价格引擎"
+      }
+    ]
+  },
+  "plannedExecutionClasses": {
+    "status": "M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED",
+    "authority": "主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。",
+    "classes": [
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionPort.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionPort",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourcePort.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionSourcePort",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionContract.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionContract",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionInternalApi.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionInternalApi",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourceInternalApi.java",
+        "class": "ai.neargo.shop.spi.trade.ServiceExecutionSourceInternalApi",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionOriginalProtocol.java",
+        "class": "ai.neargo.shop.spi.trade.ExecutionOriginalProtocol",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/ExecutionOriginalCodec.java",
+        "class": "ai.neargo.shop.svc.ExecutionOriginalCodec",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionUnit.java",
+        "class": "ai.neargo.shop.trade.entity.OrdServiceExecutionUnit",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecution.java",
+        "class": "ai.neargo.shop.trade.entity.OrdServiceExecution",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionAction.java",
+        "class": "ai.neargo.shop.trade.entity.OrdServiceExecutionAction",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ServiceExecutionMapper.java",
+        "class": "ai.neargo.shop.trade.mapper.ServiceExecutionMapper",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ServiceExecutionSchemaVerifier.java",
+        "class": "ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier",
+        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       }
     ]
   }

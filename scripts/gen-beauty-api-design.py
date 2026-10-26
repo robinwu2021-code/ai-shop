@@ -120,6 +120,13 @@ def render():
         for row in counter['routes']:
             lines.append(f"| `{row['method']} {row['path']}` | `{row['name']}`<br>{row['request']} | {row['response']} |")
         lines += [''] + [rule + '\n' for rule in counter['contracts']]
+    execution = data.get('executionServicePlan')
+    if execution:
+        lines += ['', '## 服务执行数量授权（M3，分片实施状态）', '', execution['status'], '', execution['authority'], '',
+                  '| Method / route | Planned operation / input | Result |', '|---|---|---|']
+        for row in execution['routes']:
+            lines.append(f"| {row['stage']} · `{row['method']} {row['path']}` | `{row['name']}`<br>{row['request']} | {row['response']} |")
+        lines += [''] + [rule + '\n' for rule in execution['contracts']]
     return '\n'.join(lines)
 
 

@@ -12323,7 +12323,7 @@
     "design": "../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md",
     "designSha256": "f9eda33c67b92530bfe5754211a611f4fb47152291589e77d44bd7a4e4a47563",
     "reviewSha256": "a98c07ce1a8b1a3a52ac528ae3420516f2842e7e43869522a09862389f463ea4",
-    "authority": "主TDD§0.4/§2.45–§2.47。Task67、Task68A及68B1/B2已编码编译和独立静态复审，真实柜台优惠报价/冻结展示/旧策略恢复/优惠后现金准入消费者已接入源码；68C验证材料仍待完成。B1的18项与B2的17项用例均未执行，统一测试部署后置，canStart=false，Pay后置。",
+    "authority": "主TDD§0.4/§2.45–§2.47。Task67及Task68A/B1/B2/C均已编码、编译或语法检查并独立静态复审；C的45Node/53Java用例、golden及旧意图材料生产均未运行。三行业编译通过，统一测试部署后置，canStart=false，Pay后置。",
     "routes": [
       {
         "method": "POST",
@@ -12850,5 +12850,168 @@
     "task68CStatus": "CODE_PARSE_TEMPLATE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
     "task68CCodeCommit": "1b222220605d87c2400da144668add9cbb1fc08e",
     "task68CodePhaseGate": ".superpowers/sdd/beauty-backend/task-68-code-phase-root-gate.json"
+  },
+  "executionServicePlan": {
+    "status": "M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED",
+    "design": "../../../.superpowers/sdd/beauty-backend/task-69-m3-design.md",
+    "designSha256": "2e33ad2ff0072f322064062e1592b8cbf2e7e11623c9d21fd636c6704fe387e5",
+    "reviewSha256": "a4b0084130e32a5fef7d2cb21c72e2f1d2e2f42ebe1b84a970778436f97b059a",
+    "authority": "主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。",
+    "routes": [
+      {
+        "method": "POST",
+        "path": "/internal/trade/service-execution/prepare",
+        "name": "prepare",
+        "request": "InternalCall<PrepareExecution>",
+        "response": "InternalReply<Grant>",
+        "owner": "Core",
+        "stage": "A4_PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "method": "POST",
+        "path": "/internal/trade/service-execution/query",
+        "name": "query",
+        "request": "InternalCall<ExecutionLookup>",
+        "response": "InternalReply<Grant>",
+        "owner": "Core",
+        "stage": "A4_PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "method": "POST",
+        "path": "/internal/trade/service-execution/query-original",
+        "name": "queryOriginal",
+        "request": "ExecutionOriginalProtocol.Call<ExecutionLookup>",
+        "response": "ExecutionOriginalProtocol.Reply<Grant>",
+        "owner": "Core",
+        "stage": "A4_PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "method": "POST",
+        "path": "/internal/beauty/service-execution-source/inspect",
+        "name": "inspect",
+        "request": "InternalCall<StartIntentLookup>",
+        "response": "InternalReply<StartIntent>",
+        "owner": "Beauty",
+        "stage": "A4_PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "method": "POST",
+        "path": "/internal/beauty/service-execution-source/inspect-original",
+        "name": "inspectOriginal",
+        "request": "ExecutionOriginalProtocol.Call<StartIntentLookup>",
+        "response": "ExecutionOriginalProtocol.Reply<StartIntent>",
+        "owner": "Beauty",
+        "stage": "A4_PLANNED_NOT_IMPLEMENTED"
+      }
+    ],
+    "methods": [
+      {
+        "owner": "ServiceExecutionPort",
+        "signature": "Grant prepare(PrepareExecution command)",
+        "stage": "A3",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionPort",
+        "signature": "Grant query(ExecutionLookup lookup)",
+        "stage": "A3",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionPort",
+        "signature": "Grant queryOriginal(ExecutionLookup lookup)",
+        "stage": "A3",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionSourcePort",
+        "signature": "StartIntent freeze(FreezeStart command)",
+        "stage": "A2",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionSourcePort",
+        "signature": "StartIntent inspect(StartIntentLookup lookup)",
+        "stage": "A2",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionSourcePort",
+        "signature": "StartIntent inspectOriginal(StartIntentLookup lookup)",
+        "stage": "A2",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "String bindingHash(ExecutionBinding binding)",
+        "stage": "A1",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceTaskExecutionService",
+        "signature": "ExecutionPreparation prepareTask(FreezeStart command)",
+        "stage": "A2",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceTaskExecutionService",
+        "signature": "ExecutionPreparation queryTask(StartIntentLookup lookup)",
+        "stage": "A2",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionService",
+        "signature": "int requestSuspendLocked(ExecutionCoordinates coordinates, String reason)",
+        "stage": "A3",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionService",
+        "signature": "int recoverPending(int limit)",
+        "stage": "A5",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceTaskExecutionService",
+        "signature": "int recoverPending(int limit)",
+        "stage": "A5",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "Beauty.ServiceExecutionFenceCoordinator",
+        "signature": "void onManualCompletionLocked(BtySourceObservation row, long appliedEpoch, String actor)",
+        "stage": "A2",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "Core.ServiceExecutionServiceImpl",
+        "signature": "boolean applySourceSuspensionLocked(ExecutionBinding binding, SourceSuspension proof)",
+        "stage": "A3",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "Core.ServiceExecutionSchemaVerifier",
+        "signature": "void requireAvailable()",
+        "stage": "A1",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "Beauty.ServiceExecutionSchemaVerifier",
+        "signature": "Installation installation()",
+        "stage": "A2",
+        "status": "PLANNED_NOT_IMPLEMENTED"
+      }
+    ],
+    "contracts": [
+      "共用Core拥有订单行Q及永久(sourceLineNo,unitOrdinal)→task关联，美业不复制订单或数量账；任务仅支持精确COUNT1，1.000000合法，聚合及小数历史不猜测拆分。",
+      "永久单位与尝试分离，换键/取消重建/新绑定不得复用他人单位；reserved+performed+voided<=ordered，UNKNOWN保留单位与原号，M3仅attempt1/PREPARED/query/suspend。",
+      "START意图在美业本地提交后才调用Core；当前SELF/真实人员任职必须重验，原号机器查询不保存或重放人工身份。",
+      "实际completeManual证据异常在同一事务持久挂起；三处pre-owner刷新只产生PENDING，未变化有效结果恢复连续性，不能抹除真正的既有挂起。",
+      "Core锁父单→排序子单→来源行/单位/授权→操作/声明明细，真正失效写入同根协调；旧sourceHash/schema0/seal与柜台经济结果字节不改。",
+      "V1–V9基础28私表严格校验；V10候选新增1表共29，base readiness9与执行能力分开；仅已知扩展损坏隔离到受影响操作，基础或未知结构损坏仍拒绝启动。",
+      "Core/Beauty恢复Bean分别coreServiceExecutionRecoveryJob/beautyServiceExecutionRecoveryJob，声明和逻辑任务名亦不同，禁止开启bean覆盖。",
+      "M4真实占用/双向单位证明、生命周期2库存保留及头→行锁序是实际开工硬前置；M5人工参与和M6履约独立，M3不开放canStart、doneQty或支付链。",
+      "5条内部HTTP为A4待实现，未新增公开开工空壳；权限复用Task62，未新增权限码、默认授权、配置键或i18n词条；所有计划方法均非运行验收。"
+    ]
   }
 }

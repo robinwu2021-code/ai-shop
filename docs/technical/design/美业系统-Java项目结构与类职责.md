@@ -294,7 +294,7 @@
 
 ## 七、美业持久化候选类
 
-只映射25项bty表，全部在beauty-core；实体继承现有BaseEntity。Mapper集合完整名为`ai.neargo.shop.beauty.mapper.BeautyMappers`，以下Mapper为其内嵌接口，不生成等义Repository。16项共用表结构全部排除。逻辑聚合/状态机与数据库Entity按职责组合，不再为每张表强制复制一个Domain对象。
+本节只映射原25项目标bty表，实际迁移增量另列，全部在beauty-core；实体继承现有BaseEntity。Mapper集合完整名为`ai.neargo.shop.beauty.mapper.BeautyMappers`，以下Mapper为其内嵌接口，不生成等义Repository。16项共用表结构全部排除。逻辑聚合/状态机与数据库Entity按职责组合，不再为每张表强制复制一个Domain对象。
 
 | 表 | Entity完整类名 | 内嵌Mapper |
 |---|---|---|
@@ -373,7 +373,7 @@ HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant
 
 TASK68_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING
 
-主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope、B2真实报价/订单/现金准入、C验证脚本均已编码/编译或语法检查及静态复审。三行业31+21模块编译通过，C的45Node/53Java用例、材料生产和运行均未执行；不增加美业构件/依赖或25私有表计数。
+主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope、B2真实报价/订单/现金准入、C验证脚本均已编码/编译或语法检查及静态复审。三行业31+21模块编译通过，C的45Node/53Java用例、材料生产和运行均未执行；不增加美业构件/依赖；当前既有28私有业务表，M3候选新增另列。
 
 | Source | Planned class / responsibility |
 |---|---|
@@ -383,3 +383,24 @@ TASK68_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING
 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java` | `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec`<br>[编码编译/静态复审完成；统一测试未执行] old/new economic quote/plan compatibility and consumed integrity |
 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java` | `ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot`<br>[编码编译/静态复审完成；统一测试未执行] internal immutable economic/display quote envelope |
 | `backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java` | `ai.neargo.shop.spi.marketing.CounterCampaignContract`<br>[编码编译/静态复审完成；统一测试未执行] 共用纯协议：规范选择/分组、冻结seal形状和摘要；各业务域只依赖SPI，无查询或价格引擎 |
+
+## 十一、服务执行数量授权类型（M3计划）
+
+M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED
+
+主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。
+
+| Source | Planned class / responsibility |
+|---|---|
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionPort.java` | `ai.neargo.shop.spi.trade.ServiceExecutionPort`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourcePort.java` | `ai.neargo.shop.spi.trade.ServiceExecutionSourcePort`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionContract.java` | `ai.neargo.shop.spi.trade.ServiceExecutionContract`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionInternalApi.java` | `ai.neargo.shop.spi.trade.ServiceExecutionInternalApi`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourceInternalApi.java` | `ai.neargo.shop.spi.trade.ServiceExecutionSourceInternalApi`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionOriginalProtocol.java` | `ai.neargo.shop.spi.trade.ExecutionOriginalProtocol`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-base/src/main/java/ai/neargo/shop/svc/ExecutionOriginalCodec.java` | `ai.neargo.shop.svc.ExecutionOriginalCodec`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionUnit.java` | `ai.neargo.shop.trade.entity.OrdServiceExecutionUnit`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecution.java` | `ai.neargo.shop.trade.entity.OrdServiceExecution`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionAction.java` | `ai.neargo.shop.trade.entity.OrdServiceExecutionAction`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ServiceExecutionMapper.java` | `ai.neargo.shop.trade.mapper.ServiceExecutionMapper`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ServiceExecutionSchemaVerifier.java` | `ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier`<br>[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8 |

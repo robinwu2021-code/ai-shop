@@ -62,7 +62,7 @@ def generate():
     for b in sorted(data['apiBindings'],key=lambda b:b['apiId']):
         a=apis[b['apiId']];lines.append(f'| {b["apiId"]} | `{a["method"]} {a["path"]}` | {b["module"]} | {b["owner"]} |')
     lines += ['', '## 七、美业持久化候选类', '',
-              f'只映射25项bty表，全部在beauty-core；实体继承现有BaseEntity。Mapper集合完整名为`ai.neargo.shop.beauty.mapper.BeautyMappers`，以下Mapper为其内嵌接口，不生成等义Repository。{sum(t["name"].startswith("mch_") for t in schema["tables"])}项共用表结构全部排除。逻辑聚合/状态机与数据库Entity按职责组合，不再为每张表强制复制一个Domain对象。', '',
+              f'本节只映射原25项目标bty表，实际迁移增量另列，全部在beauty-core；实体继承现有BaseEntity。Mapper集合完整名为`ai.neargo.shop.beauty.mapper.BeautyMappers`，以下Mapper为其内嵌接口，不生成等义Repository。{sum(t["name"].startswith("mch_") for t in schema["tables"])}项共用表结构全部排除。逻辑聚合/状态机与数据库Entity按职责组合，不再为每张表强制复制一个Domain对象。', '',
               '| 表 | Entity完整类名 | 内嵌Mapper |', '|---|---|---|']
     for t in data['tables']:lines.append(f'| {t["table"]} | `{t["entity"]}` | `{t["mapper"]}` |')
     lines += ['', '## 八、生成物边界', '',
@@ -79,6 +79,13 @@ def generate():
         lines += ['## 十、共用增量类型与实施状态', '', planned['status'], '', planned['authority'], '',
                   '| Source | Planned class / responsibility |', '|---|---|']
         for row in planned['classes']:
+            lines.append(f"| `{row['path']}` | `{row['class']}`<br>{row['role']} |")
+        lines += ['']
+    execution = data.get('plannedExecutionClasses')
+    if execution:
+        lines += ['## 十一、服务执行数量授权类型（M3计划）', '', execution['status'], '', execution['authority'], '',
+                  '| Source | Planned class / responsibility |', '|---|---|']
+        for row in execution['classes']:
             lines.append(f"| `{row['path']}` | `{row['class']}`<br>{row['role']} |")
         lines += ['']
     svg=['<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="510" viewBox="0 0 1080 510" role="img" aria-labelledby="title desc">', '<title id="title">美业五模块Java依赖设计</title>', '<desc id="desc">web和core使用api，channel使用api，server装配core和channel，web按需使用channel。图由模块设计JSON生成。</desc>', '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#56769b"/></marker></defs>', '<rect width="1080" height="510" fill="#f5f8fc"/>','<style>text{font-family:"PingFang SC","Noto Sans CJK SC",sans-serif;fill:#24364d;font-size:16px}.sub{font-size:13px;fill:#566b84}.head{font-size:23px;font-weight:700}</style>', '<text x="30" y="36" class="head">美业独立项目：五模块、无环依赖</text>']
@@ -102,7 +109,7 @@ def main():
     for target,key in ((DOC,'doc'),(SVG,'svg')):
         if args.check:assert target.exists() and target.read_text()==out[key],f'生成物过期：{target}'
         else:target.write_text(out[key])
-    print(f'PASS: 五模块无环、20模块归属、160项API/合同归属、25私有表；{out["count"]}个候选Controller；生成物一致')
+    print(f'PASS: 五模块无环、20模块归属、160项API/合同归属、原25项目标私表（实际增量另列）；{out["count"]}个候选Controller；生成物一致')
 
 
 if __name__=='__main__':main()

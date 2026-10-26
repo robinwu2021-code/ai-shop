@@ -144,6 +144,16 @@ def generate():
             lines.append(f"| `{row['path']}` | {row.get('status', 'PLANNED')} | {row['purpose']} |")
         lines += ['', '原41项表设计不变；M1实际迁移已首文件审查并在隔离结构夹具执行后冻结，不能等同营业库升级或完整历史Flyway验证；后续候选号未创建，开工前重新核号。', '']
         lines += [rule + '\n' for rule in manual['contracts']]
+    execution = schema.get('executionServicePlan')
+    if execution:
+        lines += ['', '## 服务执行数量授权增量（M3候选，未创建/未执行）', '', execution['status'], '', execution['authority'], '',
+                  '| Candidate migration | State | Purpose |', '|---|---|---|']
+        for row in execution['candidates']:
+            lines.append(f"| `{row['path']}` | {row['status']} | {row['purpose']} |")
+        lines += ['', '| Candidate table | Owner | State |', '|---|---|---|']
+        for row in execution['tables']:
+            lines.append(f"| `{row['name']}` | {row['owner']} | {row['status']} |")
+        lines += [''] + [rule + '\n' for rule in execution['contracts']]
     outputs[OUTPUT] = '\n'.join(lines)
     return outputs, tables
 

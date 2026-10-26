@@ -683,7 +683,7 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 
 M2B_M2C_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING
 
-主TDD§0.4/§2.45–§2.47。Task67、Task68A及68B1/B2已编码编译和独立静态复审，真实柜台优惠报价/冻结展示/旧策略恢复/优惠后现金准入消费者已接入源码；68C验证材料仍待完成。B1的18项与B2的17项用例均未执行，统一测试部署后置，canStart=false，Pay后置。
+主TDD§0.4/§2.45–§2.47。Task67及Task68A/B1/B2/C均已编码、编译或语法检查并独立静态复审；C的45Node/53Java用例、golden及旧意图材料生产均未运行。三行业编译通过，统一测试部署后置，canStart=false，Pay后置。
 
 | Method / route | Operation / input | Result |
 |---|---|---|
@@ -766,3 +766,36 @@ Task68B1精确9源码已编码编译和静态复审，18项测试仅编写/编�
 源码方法对账补充：共用方法增量登记100项，补齐实际owner组合的lockCounter/requireCounterEvidence/requireSameCounter及本域CounterCampaignRules八个纯静态方法。evaluateCounter先由既有HOST Router或legacy入口取得owner fence，单次时间贯穿组合；这些是现有拥有方内部方法，不新增HTTP或跨域私有依赖。规范groups/choices/seal摘要仍唯一由SPI提供，guard从codec+原/实际经济比较取得组/数量/总价证明，不再造重复counterGroups。
 
 Task68B2精确14源码已编码编译与静态复审：候选/封存/原计划/现金准入串联真实共用拥有方；普通零售/M1读取及来源hash保持。R0三项测试问题经R3关闭，17项场景仅编写编译，非运行成功。别名实际SQL等价、双行总额不变分摊负例已补齐；prd_sku库存断言只对应PLATFORM，不能推导INVENTORY/DUAL已验证。真正旧Task66生产器四份产物与六份旧序列化golden仍由C整理/B执行，不能用假记录替代。
+
+
+## 服务执行数量授权（M3，分片实施状态）
+
+M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED
+
+主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。
+
+| Method / route | Planned operation / input | Result |
+|---|---|---|
+| A4_PLANNED_NOT_IMPLEMENTED · `POST /internal/trade/service-execution/prepare` | `prepare`<br>InternalCall<PrepareExecution> | InternalReply<Grant> |
+| A4_PLANNED_NOT_IMPLEMENTED · `POST /internal/trade/service-execution/query` | `query`<br>InternalCall<ExecutionLookup> | InternalReply<Grant> |
+| A4_PLANNED_NOT_IMPLEMENTED · `POST /internal/trade/service-execution/query-original` | `queryOriginal`<br>ExecutionOriginalProtocol.Call<ExecutionLookup> | ExecutionOriginalProtocol.Reply<Grant> |
+| A4_PLANNED_NOT_IMPLEMENTED · `POST /internal/beauty/service-execution-source/inspect` | `inspect`<br>InternalCall<StartIntentLookup> | InternalReply<StartIntent> |
+| A4_PLANNED_NOT_IMPLEMENTED · `POST /internal/beauty/service-execution-source/inspect-original` | `inspectOriginal`<br>ExecutionOriginalProtocol.Call<StartIntentLookup> | ExecutionOriginalProtocol.Reply<StartIntent> |
+
+共用Core拥有订单行Q及永久(sourceLineNo,unitOrdinal)→task关联，美业不复制订单或数量账；任务仅支持精确COUNT1，1.000000合法，聚合及小数历史不猜测拆分。
+
+永久单位与尝试分离，换键/取消重建/新绑定不得复用他人单位；reserved+performed+voided<=ordered，UNKNOWN保留单位与原号，M3仅attempt1/PREPARED/query/suspend。
+
+START意图在美业本地提交后才调用Core；当前SELF/真实人员任职必须重验，原号机器查询不保存或重放人工身份。
+
+实际completeManual证据异常在同一事务持久挂起；三处pre-owner刷新只产生PENDING，未变化有效结果恢复连续性，不能抹除真正的既有挂起。
+
+Core锁父单→排序子单→来源行/单位/授权→操作/声明明细，真正失效写入同根协调；旧sourceHash/schema0/seal与柜台经济结果字节不改。
+
+V1–V9基础28私表严格校验；V10候选新增1表共29，base readiness9与执行能力分开；仅已知扩展损坏隔离到受影响操作，基础或未知结构损坏仍拒绝启动。
+
+Core/Beauty恢复Bean分别coreServiceExecutionRecoveryJob/beautyServiceExecutionRecoveryJob，声明和逻辑任务名亦不同，禁止开启bean覆盖。
+
+M4真实占用/双向单位证明、生命周期2库存保留及头→行锁序是实际开工硬前置；M5人工参与和M6履约独立，M3不开放canStart、doneQty或支付链。
+
+5条内部HTTP为A4待实现，未新增公开开工空壳；权限复用Task62，未新增权限码、默认授权、配置键或i18n词条；所有计划方法均非运行验收。
