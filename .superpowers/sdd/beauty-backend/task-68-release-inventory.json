@@ -1,6 +1,6 @@
 {
   "task": "Task68/C02",
-  "status": "C02_PARTIAL_FENCE_CODE_COMPILED_REVIEWED_B_C_PENDING",
+  "status": "A_CODE_COMPILED_REVIEWED_B1_CODE_PHASE_RELEASED_B2_C_PENDING",
   "baselineProductCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9",
   "baselineDocsCommit": "28ebe9f111ede8363194cd0e42d50005de465a39",
   "codingBaseCommit": null,
@@ -138,6 +138,9 @@
     },
     {
       "path": "scripts/tests/counter-campaign-owner-fence-schema.test.mjs"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java"
     }
   ],
   "deferredBaselineBytes": [
@@ -196,5 +199,11 @@
   "identityEquivalenceOverlay": {
     "path": ".superpowers/sdd/beauty-backend/task-68a-fix1-brief.md",
     "sha256": "4849fae9c4ace5cfed7d7ada4117aac016d3ed192069a9532722cbbdb4de7e5f"
+  },
+  "sharedContractOverlay": {
+    "design": ".superpowers/sdd/beauty-backend/task-68b-shared-contract-addendum.md",
+    "designSha256": "7005f0483528a88476892cbaa40e097a16f33fbcdbe2082aaf113a3ed59c12e5",
+    "review": ".superpowers/sdd/beauty-backend/review-task-68b-shared-contract.md",
+    "reviewSha256": "882263d7c8f882bfcc5ff4dced414214fc827252dd678a2bc3b944dd911bd388"
   }
 }

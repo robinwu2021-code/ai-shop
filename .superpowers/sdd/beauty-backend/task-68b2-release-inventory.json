@@ -1,0 +1,65 @@
+{
+  "task": "Task68B2",
+  "status": "DRAFT_DEPENDS_B1",
+  "modify": [
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "baselineSha256": "0eef6dbdaf21e3b0cdb088a10668a6bfa5f9549aff741fc340bc9be2e7909a04"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/port/CampaignPortImpl.java",
+      "baselineSha256": "9f6b09eea179d6e27ca0faf42159136a5cf5dce35530ce9ef8c450a5f6bd6adc"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/ActivityPricingService.java",
+      "baselineSha256": "741dd7f641a59829f0d3413a8eafe7bf3280bad17aca3f2b558d3da75655d185"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/ActivityPricingServiceImpl.java",
+      "baselineSha256": "9c4b0d95a4b59dd9d2bbec9c0aec6dd5a6618ff2c4d9df74a44cb87647592a92"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/port/GoodsQueryPortImpl.java",
+      "baselineSha256": "0124ba379cd909cea9865cca311b9e2aeaea64d259afeb50921f74bd2a60cfa1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java",
+      "baselineSha256": "50e7f668b1972c0475c1c3df21d2a052f4f5c22fad1985b88f7bdadfa27ba307"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/CheckoutOrderWriter.java",
+      "baselineSha256": "c6304561ad76d903c7872008857318b58d64b68304a8fee70f3be7a0c61d98b8"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
+      "baselineSha256": "c2dff79753f935c1137af4925825a3ddc455d8f43bff7e14e122feffe5df956b"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+      "baselineSha256": "ab1f780e1b7e0763b741ac4a1c72919b4c113f6bccd96f24e640043485def23f"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java",
+      "baselineSha256": "768d4233b8ee3ce1d0e6827a9fa626c8b44b8acbb4cf0996be9c7fc00acec7d3"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/CounterOrderPlacementServiceImpl.java",
+      "baselineSha256": "18dba60e54748f5cb7e3b2b640e6b779d9aa2bb2506b8cac18f6b3949eed6125"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/OrderCreationRecoveryServiceImpl.java",
+      "baselineSha256": "ab81f7f00668ae40f5136f08ab91854bb6fbb438c4a29e33a1a94909c2a47664"
+    }
+  ],
+  "create": [
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterDiscountIT.java"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterDiscountFixture.java"
+    }
+  ],
+  "runtimeTestsAllowed": false,
+  "migrationExecutionAllowed": false,
+  "paymentIntegration": false
+}

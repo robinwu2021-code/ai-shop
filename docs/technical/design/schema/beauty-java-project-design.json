@@ -1698,7 +1698,7 @@
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java",
         "class": "ai.neargo.shop.marketing.campaign.CounterCampaignRules",
-        "role": "[待编码] counter choices/goods/seal canonicalization"
+        "role": "[待编码/B1] marketing本域严格goods解析及owner规则；规范分组/选择/摘要统一调用纯SPI契约"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java",
@@ -1719,6 +1719,11 @@
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java",
         "class": "ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot",
         "role": "[待编码] internal immutable economic/display quote envelope"
+      },
+      {
+        "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java",
+        "class": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "role": "[待编码/B1] 共用纯协议：规范选择/分组、冻结seal形状和摘要；各业务域只依赖SPI，无查询或价格引擎"
       }
     ]
   }

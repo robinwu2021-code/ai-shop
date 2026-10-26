@@ -377,8 +377,9 @@ TASK68A_CODE_COMPILED_STATIC_REVIEWED_B_C_PENDING_UNIFIED_TEST_PENDING
 
 | Source | Planned class / responsibility |
 |---|---|
-| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignRules`<br>[待编码] counter choices/goods/seal canonicalization |
+| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignRules`<br>[待编码/B1] marketing本域严格goods解析及owner规则；规范分组/选择/摘要统一调用纯SPI契约 |
 | `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignFence`<br>[编码编译/静态复审完成；统一测试未执行] shared marketing owner fence and capability |
 | `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java` | `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper`<br>[编码编译/静态复审完成；统一测试未执行] exact-PK shared fence SQL |
 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java` | `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec`<br>[待编码] old/new economic quote/plan compatibility and consumed integrity |
 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java` | `ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot`<br>[待编码] internal immutable economic/display quote envelope |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java` | `ai.neargo.shop.spi.marketing.CounterCampaignContract`<br>[待编码/B1] 共用纯协议：规范选择/分组、冻结seal形状和摘要；各业务域只依赖SPI，无查询或价格引擎 |

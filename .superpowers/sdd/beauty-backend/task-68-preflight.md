@@ -1,6 +1,6 @@
 # Task68 preparation — M2c shared ordinary FULL_CUT for cash counter
 
-Status: DRAFT_NEEDS_DESIGN_FIXES_NOT_RELEASED. Task67 implementing. No Task68 product edit/build/native/source baseline authorized. Root finalizes BASE/exactinventory only after independent Task67 acceptance; re-read current OrderServiceImpl because Task67 owns its safe receipt projections.
+Status: TASK68A_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING; TASK68B1_DESIGN_REVIEWED_CODE_PHASE_RELEASED_B2_C_PENDING. Aproduct5aa1769f2/docs978866b97 committed; latestauthority task-68a-code-phase-root-gate.json and mainTDD§2.47. Historicaldraftchecks below remain context, notactivecoding/runtimeauthorization. B1/B2andC awaittheir exactpublication; tests/native/DDL/appstart/deploy remainforunifiedB/C.
 
 ## Accepted scope
 

@@ -4092,14 +4092,6 @@
         "signature": "void rejectUnsupportedCounterPriceEffects(List<MerchantAmount> groups, long ownerNowMillis)"
       },
       {
-        "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignRules",
-        "signature": "Map<String,String> normalizeChoices(List<MerchantAmount> groups, Map<String,String> choices)"
-      },
-      {
-        "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignRules",
-        "signature": "List<CounterChoice> resolveChoices(List<MerchantAmount> groups, Map<String,String> choices)"
-      },
-      {
         "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
         "signature": "void lock(String tenant, List<String> entityNos)"
       },
@@ -4190,6 +4182,34 @@
       {
         "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
         "signature": "void afterSingletonsInstantiated()"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "signature": "static List<MerchantAmount> canonicalGroups(List<MerchantAmount> groups)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "signature": "static Map<String,String> normalizeChoices(List<MerchantAmount> groups, Map<String,String> choices)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "signature": "static List<CounterChoice> resolveChoices(List<MerchantAmount> groups, Map<String,String> choices)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "signature": "static CounterActivitySeal seal(ObjectMapper json, CustomerParty party, List<MerchantAmount> groups, Map<String,String> choices, List<CounterRule> selectedRules)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "signature": "static String sealDigest(ObjectMapper json, CounterActivitySeal seal)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "signature": "static void requireSeal(ObjectMapper json, CounterActivitySeal seal)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CounterCampaignContract",
+        "signature": "static void requireSelection(ObjectMapper json, CounterActivitySeal seal, CustomerParty originalParty, List<MerchantAmount> originalGroups, Map<String,String> originalChoices, Discount originalSelected)"
       }
     ],
     "contracts": [
@@ -4223,7 +4243,8 @@
       "收款准入仅schema1已CONSUMED柜台报价/确认允许merchantMinor=discountMinor=真实子单商家分摊，platform/coupon/points/gift均无且due>0；核对父子金额及逐行paidShare。已售后不重新判断当前优惠有效性；M1/schema0保持零优惠，不改来源hash/库存协议，不调用Pay或普通金融已付事件。",
       "迁移规划：共用marketing V543 owner fence；未创建M3由V543顺延V544、M4由V544顺延V545，美业V10不变。仅新增候选SQL，阶段A不执行迁移；实际开工再核号。",
       "Task68A-I1修订：新fence tenant_no/scope_no的比较须与七项owner tenant_no及三项head/enrollment entity_no的有效列collation一致，结构校验逐列证明；scope_kind及不可变键仍字节精确。数据库默认不等于有效历史列，任一不一致关闭新能力。原binary tenant/scope设计由主TDD§2.47限定裁决覆盖，旧迁移不改、既有大小写/重音变体不静默忽略。",
-      "Task68A代码阶段完成：精确11文件共享marketing fence/Mapper/21触发器/descriptor/严格guard已提交5aa1769f2c1719cd86f0cdf4528699527827d7e6，I1锁身份等价修复限定复审PASS。实际24模块编译40.347s，core1067主/86测试源码、host413主/750测试源码；18个native、4个Node及lineage用例均未执行。V543仅新增源码/未执行，不代表Task68B报价或完整现金链条已完成。"
+      "Task68A代码阶段完成：精确11文件共享marketing fence/Mapper/21触发器/descriptor/严格guard已提交5aa1769f2c1719cd86f0cdf4528699527827d7e6，I1锁身份等价修复限定复审PASS。实际24模块编译40.347s，core1067主/86测试源码、host413主/750测试源码；18个native、4个Node及lineage用例均未执行。V543仅新增源码/未执行，不代表Task68B报价或完整现金链条已完成。",
+      "Task68B限定设计复审PASS/APPROVED：共享纯SPI CounterCampaignContract统一groups/choices/seal形状与摘要，promotion/trade只依赖SPI，marketing不引用trade哈希，禁止新增私有跨域依赖或known-*豁免。真实SQL范围查询建立旧表身份变体→唯一规范group的归属；冻结原始rule事实及规范applied/share，消费后核验冻结映射，不再查询当前营销。B1精确9源码先实现协议/codec兼容基础，B2精确14源码完成owner报价与现金准入，C补有限runner；均只编码编译，运行统一B。"
     ],
     "task66AddendumStatus": "CODE_ACCEPTED_R0_PLUS_SCOPED_R1_I1_CLOSED",
     "task67AddendumStatus": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
@@ -4232,6 +4253,13 @@
     "task68DesignSha256": "8a74b6e40a0cf792a0326eb42a720071fd8b59513a5c8a00589238ef08aff763",
     "task68ReviewSha256": "2d12b1d9ac8fd335df7aee9de00a5eb00ca799298f540269ac11ab37e169e203",
     "task68AStatus": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
-    "task68ACodeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6"
+    "task68ACodeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6",
+    "task68BSharedContract": {
+      "design": ".superpowers/sdd/beauty-backend/task-68b-shared-contract-addendum.md",
+      "designSha256": "7005f0483528a88476892cbaa40e097a16f33fbcdbe2082aaf113a3ed59c12e5",
+      "review": ".superpowers/sdd/beauty-backend/review-task-68b-shared-contract.md",
+      "reviewSha256": "882263d7c8f882bfcc5ff4dced414214fc827252dd678a2bc3b944dd911bd388"
+    },
+    "task68BStatus": "B1_CODE_PHASE_RELEASED_B2_C_PENDING"
   }
 }

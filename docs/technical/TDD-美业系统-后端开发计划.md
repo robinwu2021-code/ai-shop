@@ -1296,7 +1296,9 @@ AC→源码：C1真实USER/GUEST10000−1000=9000、C2不支持优惠/账户/产
 
 Task68A静态审查R0发现1Important：旧owner身份列使用不区分大小写的比较，新fence二进制键会让同一逻辑主体的不同拼写进入不同锁。按[限定修订](../../.superpowers/sdd/beauty-backend/task-68a-fix1-brief.md)以真实十个owner身份列的有效collation统一新fence tenant/scope比较；scope_kind及身份不可变校验仍为字节精确，旧迁移不改。有效列collation不一致即关闭新能力，不能只相信数据库默认、手工转大小写或跳过既有变体。原补充§4.1二进制tenant/scope要求由本裁决覆盖；修复和限定复审完成前不发布68B。
 
-Task68A执行结果：精确11份源码已本地提交 `5aa1769f2c1719cd86f0cdf4528699527827d7e6`，I1修复[限定复审](../../.superpowers/sdd/beauty-backend/review-task-68a-r1.md)为PASS/APPROVED。实际24模块40.347s编译成功（Core1067主/86测试源码，宿主413主/750测试源码）；18个native、4个Node及2个lineage用例仅编写/编译、未执行。485份既有迁移未改变，V543未执行；[代码阶段关口](../../.superpowers/sdd/beauty-backend/task-68a-code-phase-root-gate.json)明确报价尚未接入、canStart=false。后续B开工前补齐纯SPI规范化/封存摘要共享，遵守既有禁止新增私有跨域依赖的架构规则；并保持已售后只核对冻结事实。
+Task68A执行结果：精确11份源码已本地提交 `5aa1769f2c1719cd86f0cdf4528699527827d7e6`，I1修复[限定复审](../../.superpowers/sdd/beauty-backend/review-task-68a-r1.md)为PASS/APPROVED。实际24模块40.347s编译成功（Core1067主/86测试源码，宿主413主/750测试源码）；18个native、4个Node及2个lineage用例仅编写/编译、未执行。485份既有迁移未改变，V543未执行；[代码阶段关口](../../.superpowers/sdd/beauty-backend/task-68a-code-phase-root-gate.json)明确报价尚未接入、canStart=false。后续B开工前补齐纯SPI规范化/封存摘要共享，遵守既有禁止新增私有跨域依赖的架构规则；并保持已消费订单只核对冻结促销事实，保留售后/退款冲突拒绝条件。
+
+Task68B前置[共享契约补充](../../.superpowers/sdd/beauty-backend/task-68b-shared-contract-addendum.md)已独立审查PASS/APPROVED。新增纯SPI `CounterCampaignContract` 统一规范化与seal摘要，私有营销helper保留owner规则，促销/订单不直接引用私有营销类；不改架构棘轮。旧业务表身份变体由真实SQL范围查询归属到唯一规范group，seal保留原rule事实与规范applied/share，收款使用冻结映射。现按B1（3修改+6新增=9源码，协议/codec基础）→B2（12修改+2新增=14源码，真实报价/现金准入）顺序推进；全C02清单增加1个纯SPI类，共20修改+16新增。B1保持原writer/读取流程到B2再接入，代码分片不计作完整业务模块交付。
 
 ## §3 数据层之后的业务任务与启动深化
 

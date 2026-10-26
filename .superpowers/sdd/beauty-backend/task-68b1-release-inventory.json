@@ -1,0 +1,81 @@
+{
+  "task": "Task68B1",
+  "status": "DESIGN_REVIEWED_CODE_PHASE_RELEASED",
+  "modify": [
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CampaignPort.java",
+      "baselineSha256": "92d0cce6d20c04faa38220a8a7659d26a95fc3f386575aa3774bc9266f602476"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutEconomicSnapshot.java",
+      "baselineSha256": "f7efd1585e981c91393a09e2007319c9619d7a847facfb0dfcd856705eb48cae"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutPricingScope.java",
+      "baselineSha256": "c913c40c672a3ad3c205171f7955fe9ece685378975ed7207180da88e6efb32b"
+    }
+  ],
+  "create": [
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCompatibilityTest.java"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/marketing/campaign/CounterCampaignRulesTest.java"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java"
+    }
+  ],
+  "deferredBaselineBytes": [
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/ordinary-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/m1-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/m2a-user-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/m2a-guest-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/m2a-pending-plan-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/hashes.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    }
+  ],
+  "runtimeTestsAllowed": false,
+  "migrationExecutionAllowed": false,
+  "paymentIntegration": false,
+  "businessFeatureActivated": false,
+  "sharedContractOverlay": {
+    "design": ".superpowers/sdd/beauty-backend/task-68b-shared-contract-addendum.md",
+    "designSha256": "7005f0483528a88476892cbaa40e097a16f33fbcdbe2082aaf113a3ed59c12e5",
+    "review": ".superpowers/sdd/beauty-backend/review-task-68b-shared-contract.md",
+    "reviewSha256": "882263d7c8f882bfcc5ff4dced414214fc827252dd678a2bc3b944dd911bd388"
+  },
+  "codingBaseReference": "Root supplies exact HEAD of this publication commit at dispatch"
+}

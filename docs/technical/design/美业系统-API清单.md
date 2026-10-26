@@ -758,3 +758,5 @@ CounterActivitySeal(schema=1,policy=LEGACY_FULL_CUT_V1,party,groups,requestedCho
 Task68A-I1修订：新fence tenant_no/scope_no的比较须与七项owner tenant_no及三项head/enrollment entity_no的有效列collation一致，结构校验逐列证明；scope_kind及不可变键仍字节精确。数据库默认不等于有效历史列，任一不一致关闭新能力。原binary tenant/scope设计由主TDD§2.47限定裁决覆盖，旧迁移不改、既有大小写/重音变体不静默忽略。
 
 Task68A代码阶段完成：精确11文件共享marketing fence/Mapper/21触发器/descriptor/严格guard已提交5aa1769f2c1719cd86f0cdf4528699527827d7e6，I1锁身份等价修复限定复审PASS。实际24模块编译40.347s，core1067主/86测试源码、host413主/750测试源码；18个native、4个Node及lineage用例均未执行。V543仅新增源码/未执行，不代表Task68B报价或完整现金链条已完成。
+
+Task68B限定设计复审PASS/APPROVED：共享纯SPI CounterCampaignContract统一groups/choices/seal形状与摘要，promotion/trade只依赖SPI，marketing不引用trade哈希，禁止新增私有跨域依赖或known-*豁免。真实SQL范围查询建立旧表身份变体→唯一规范group的归属；冻结原始rule事实及规范applied/share，消费后核验冻结映射，不再查询当前营销。B1精确9源码先实现协议/codec兼容基础，B2精确14源码完成owner报价与现金准入，C补有限runner；均只编码编译，运行统一B。
