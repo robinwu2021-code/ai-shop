@@ -3264,7 +3264,7 @@
         "c-app": 0,
         "lib": 0
       },
-      "note": "—",
+      "note": "收款二维码：把收银台链接编成点阵，用 view 铺格子（三端同一条路，见 @shared/utils/qrcode 的说",
       "why": "—",
       "uses": {
         "tiers": [],

@@ -14853,6 +14853,7 @@ components:
       properties:
         payOrderNo:
           type: "string"
+          description: "这笔代客收款建出的支付单号（PYO…）；到账后在收款流水里按它对得上"
         token:
           type: "string"
           description: "一次性收银令牌：只在这一次响应里出现，不落任何本地存储"
@@ -14873,12 +14874,16 @@ components:
       properties:
         payRefundNo:
           type: "string"
+          description: "退款单号（PYR…）"
         payOrderId:
           type: "number"
+          description: "原支付单的内部 id（只用于同一页内去重，不展示）"
         amountMinor:
           type: "number"
+          description: "退款金额（最小单位）"
         currency:
           type: "string"
+          description: "币种，与原支付单一致"
         status:
           type: "string"
           description: "PENDING_REVIEW 待平台复核 / DISPATCHED 退款中 / SUCCEEDED / FAILED / REJECTED …"
@@ -14886,18 +14891,22 @@ components:
           type:
             - "string"
             - "null"
+          description: "商家填的退款原因；平台复核时唯一能看到的「为什么」"
         requestedBy:
           type:
             - "string"
             - "null"
+          description: "发起的商家账号"
         createdAt:
           type:
             - "number"
             - "null"
+          description: "发起时间（UTC 毫秒）"
         succeededAt:
           type:
             - "number"
             - "null"
+          description: "退成时间（UTC 毫秒）；未退成为空"
       required:
         - "payRefundNo"
         - "payOrderId"
@@ -14917,18 +14926,24 @@ components:
           description: "业务日（门店市场时区）YYYY-MM-DD"
         currency:
           type: "string"
+          description: "本店市场的收款币种"
         paidCount:
           type: "number"
+          description: "当日成功收款笔数"
         paidMinor:
           type: "number"
+          description: "当日成功收款合计（最小单位）"
         refundCount:
           type: "number"
+          description: "当日退成笔数"
         refundMinor:
           type: "number"
+          description: "当日退成合计（最小单位）"
         items:
           type: "array"
           items:
             "$ref": "#/components/schemas/PayStatementItem"
+          description: "明细，时间倒序；一天最多 1000 行（合计照算）"
       required:
         - "bizDate"
         - "currency"
@@ -14943,28 +14958,36 @@ components:
       properties:
         kind:
           "$ref": "#/components/schemas/PayStatementKind"
+          description: "收款或退款"
         no:
           type: "string"
+          description: "单号：收款行是支付单号，退款行是退款单号"
         payOrderNo:
           type:
             - "string"
             - "null"
+          description: "关联的支付单号（退款行据此找回原收款）"
         amountMinor:
           type: "number"
+          description: "金额（最小单位，恒为正；退款行由页面加负号）"
         payChannel:
           type:
             - "string"
             - "null"
+          description: "渠道码（WECHAT / ALIPAY / TEST …）"
         payMethod:
           type:
             - "string"
             - "null"
+          description: "支付方式码（WECHAT_PAY / ALIPAY / TEST_PAY …），页面译成名字"
         status:
           type: "string"
+          description: "支付单或退款单状态"
         at:
           type:
             - "number"
             - "null"
+          description: "成功时间（UTC 毫秒）"
       required:
         - "kind"
         - "no"
@@ -14986,20 +15009,27 @@ components:
       properties:
         qrCode:
           type: "string"
+          description: "码值（随机、不可枚举），也是停用时的标识"
         kind:
           "$ref": "#/components/schemas/PayQrKind"
+          description: "门店码或桌台码"
         tableRef:
           type:
             - "string"
             - "null"
+          description: "桌号（桌台码才有）"
         currency:
           type: "string"
+          description: "币种（按门店市场）"
         singleLimitMinor:
           type: "number"
+          description: "单笔上限（最小单位）"
         dailyLimitMinor:
           type: "number"
+          description: "单码每日累计上限（最小单位）"
         status:
           "$ref": "#/components/schemas/PayQrStatus"
+          description: "使用中 / 已停用（停用不可恢复）"
         url:
           type: "string"
           description: "顾客扫的链接"
@@ -15029,22 +15059,28 @@ components:
       properties:
         id:
           type: "number"
+          description: "授权记录 id（撤销时用）"
         appNo:
           type: "string"
+          description: "第三方接入方 AppId"
         appName:
           type:
             - "string"
             - "null"
+          description: "第三方名称"
         actions:
           type: "array"
           items:
             "$ref": "#/components/schemas/PayGrantAction"
+          description: "授权的动作"
         status:
           "$ref": "#/components/schemas/PayGrantStatus"
+          description: "已授权 / 已撤销"
         grantedAt:
           type:
             - "number"
             - "null"
+          description: "授权时间（UTC 毫秒）"
       required:
         - "id"
         - "appNo"
