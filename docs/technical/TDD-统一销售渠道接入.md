@@ -1,6 +1,6 @@
 # TDD 统一销售渠道接入
 
-> 状态：开发中，2026-10-26；C0草稿管理切片已编码且专项验证通过；完整C0–C5未完成，未生产建表或发布。需求：[PRD](../requirements/PRD-统一销售渠道接入.md)；决策：[ADR042](./ADR/ADR-042-统一销售渠道接入与行业来源隔离.md)。
+> 状态：开发中，2026-10-26；C0草稿与通用授权引擎切片已编码且专项验证通过；完整C0–C5未完成，未生产建表或发布。需求：[PRD](../requirements/PRD-统一销售渠道接入.md)；决策：[ADR042](./ADR/ADR-042-统一销售渠道接入与行业来源隔离.md)。
 
 ## L1 入口与结论
 
@@ -9,7 +9,7 @@
 | 阅读入口 | 内容 |
 |---|---|
 | [数据库设计](./design/统一销售渠道接入-数据库设计.md) | 31张候选表、公共字段、唯一键、历史及归属 |
-| [API清单](./design/统一销售渠道接入-API清单.md) | 70个公开/回调路由、输入输出、权限及10组SPI |
+| [API清单](./design/统一销售渠道接入-API清单.md) | 70个公开/回调路由、输入输出、权限及11组SPI |
 | [代码清单](./design/统一销售渠道接入-代码清单.md) | 模块、完整包名、Controller/Service/Mapper、DTO及计划测试 |
 | [结构化真源](./design/schema/commerce-integration-design.json) | 同一份表/API/Service/AC引用，不与实现清单混用 |
 
@@ -107,6 +107,17 @@ ChannelSourceValidationPort.validate显式核验typed资源类型、主体/门�
 
 Review Focus：重放异payload与异actor；重复连接跨主体；无网关时不能激活；未决远端结果不能被worker超时解锁；默认关闭不执行迁移。
 
+### C0授权闭环执行计划（续批）
+
+- [x] A1 先写授权/回调单次消费/撤权/范围及未知结果测试源码；沿用用户要求，全部编码后统一编译再集中测试。
+- [x] A2 增加V2迁移：cim_authorization_revision、cim_operation、cim_operation_attempt；V1冻结。账号增加active_operation_no串行化授权和撤权；operation增加回调消费时点、公开授权URL及固定回跳目标码。授权凭据只保留安全存储引用。
+- [x] A3 ChannelAuthorizationGateway独立typed SPI，无真实提供方。authorize/revoke先持久化原意图及journal、再在事务外发送，返回固定初始响应，前端GET operation查询进度和授权URL；同键不再次调用。UNKNOWN不盲重发。
+- [x] A4 回调按state摘要查原动作，校验平台/原账号/期限，锁账号后锁动作一次消费；先落attempt再交换临时代码。原网关必须验证实际外部账号、原凭据存储和回执，成功后锁定同一fence及账号操作版本追加授权修订。早到回调不会被晚到发送结果覆盖。回调不接受主体或任意URL，也不回传凭据。
+- [x] A5 公开路由COM-006/007/008/035/070；B沿原属主与STORE_ADMIN；callback以原String响应绕过现有wrapper，OAuth state证明与协议交换由网关共同验证，不新增通配免鉴权。当前无真实gateway仍拒绝授权，独立远程形态继续关闭。
+- [x] A6 扩展迁移结构校验、原生MySQL验收与设计真源；统一编译集成和server，再集中专项、一次独立复核、修复后本地提交。目录来源、同步worker和UNKNOWN主动恢复留到后续同一任务，不伪称完成。
+
+Review Focus：同键异账号；回调伪造/过期/重放；授权实际账号不匹配；URL包含密钥或任意回跳；发送超时不重发；早到回调不被晚HTTP结果回退；撤权未确认不恢复ACTIVE。
+
 ## §3 选型与取舍
 
 1. 统一commerce域替代零售/餐饮各自平台系统；外部交易接入与内部资金/库存归属保持独立。
@@ -152,7 +163,7 @@ Review Focus：重放异payload与异actor；重复连接跨主体；无网关�
 
 ## §6 对账二 设计到实现
 
-全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、八个B端草稿/目录查询路由、六张迁移表、三个业务Service与本域journal、身份和远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。未生产迁移或发布。授权、目录完整同步、外部订单导入、履约、售后、资金证据和真实适配器仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
+全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计13个基础/授权/查询/回调路由、9张迁移表、5个业务Service与本域journal、身份和远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。未生产迁移或发布。通用授权引擎已交付；真实授权适配器、目录完整同步、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
 
 ## L4 官方资料及待核验
 
@@ -169,7 +180,7 @@ Review Focus：重放异payload与异actor；重复连接跨主体；无网关�
 执行日志：/private/tmp/commerce-design-contract-final.log、/private/tmp/commerce-design-doc-standard-final.log。该历史阶段全部业务API、库表及Java类仍PLANNED，未提交推送、未执行建表、未部署；当前状态以§6及下面交付记录为准。
 
 
-## 当前C0切片交付记录（2026-10-26）
+## 首批C0草稿切片交付记录（历史，2026-10-26）
 
 ### L1 实际行为
 
@@ -207,3 +218,44 @@ Review Focus：重放异payload与异actor；重复连接跨主体；无网关�
 验收边界：原生SQL CLI不等于生产驱动JDBC/Flyway全链路；standaloneSetup HTTP不等于真实宿主完整认证链；纯发布阻断策略不等于已完成并发worker。上述在对应后续闭环补充，当前没有宣称已通过。
 
 日志：/private/tmp/commerce-review-fix-compile.log、/private/tmp/commerce-review-fix-tests.log、/private/tmp/commerce-native-mysql-final.log、/private/tmp/commerce-design-final.log、/private/tmp/commerce-doc-final.log、/private/tmp/commerce-sql-final.log。
+
+
+## C0授权续批交付记录（当前，2026-10-26）
+
+### L1 当前能力
+
+新增COM-006/007/008/035/070：授权发起、撤权、授权历史、动作详情和OAuth回调。累计13个路由、9张业务迁移表。新增ChannelAuthorizationService/Impl、ChannelOperationService/Impl、typed ChannelAuthorizationGateway与三组Entity/Mapper；没有真实平台网关注册，也没有前端页面。
+
+### L2 状态与边界
+
+| 动作 | 执行与结果 |
+|---|---|
+| 授权发起 | 版本校验和账号串行锁→journal/operation/attempt同事务提交SENDING→事务外网关begin→SUBMITTED或UNKNOWN；接口固定返回初始响应，当前结果通过动作GET查询 |
+| 授权URL | 来源必须登记、参数只接受既定公开OAuth白名单、state精确匹配、redirect_uri绑定服务器登记地址；未登记return_url/api_key等不持久化也不公开 |
+| 回调 | nonce摘要找原动作，核对平台、账号、期限，在账号锁→动作锁内单次消费；code/error仅保存摘要，同state异payload冲突；事务外交换临时代码，按fence确认原账号授权及凭据安全引用 |
+| 授权历史 | 追加不可变授权修订和原回执；current结合当前账号、活动修订及有效期计算，不返回credentialRef |
+| 撤权 | 只针对保留的已确认授权，允许ACTIVE或重新授权被拒的AUTH_REJECTED；仍核对版本及未决动作。确认才REVOKED并清活动引用；未知保持REVOKE_UNKNOWN，不能自动恢复ACTIVE |
+| 幂等与乱序 | 同键返回冻结初始响应，不重复调用；早到回调的SUCCEEDED不被晚到begin结果回退；UNKNOWN按原动作保留，不盲重发 |
+| 回调响应 | 固定协议JSON的String响应沿原wrapper例外透传；B端保持原ApiResult包装。回调不接受主体、凭据或任意URL |
+
+V1逐字保持冻结。V2新增授权修订、动作、调用证据三表，并给账号增加active_operation_no；私有Flyway校验升级v2，原平台Flyway归属不变。当前业务库未执行迁移。
+
+### L3 验收与复核
+
+- 集成宿主、五模块、独立server及测试源码统一编译通过；只运行本批及受影响专项，未跑全仓业务回归。
+- Java专项44通过、0失败、0跳过：ChannelAuthorizationTest 13，ChannelFoundationPersistenceTest 12，CommerceArchitectureTest 2，ChannelIdentityTest 3，CatalogPublicationBarrierTest 3，CommerceWebContractTest 7，CommerceGatewayRegistryTest 2，CommerceMapperScanIsolationTest 2。
+- 验证nonce伪造/过期/单次消费、外部账号不匹配、同键异账号、敏感与未登记URL、原grant撤权、撤权未知、早回调晚响应、UNKNOWN原动作晚到确认；网络调用均断言无本地事务。
+- ChannelAuthorizationTest#unsafeAuthorizationUrlIsNeverReturned消融：临时移除敏感参数拦截后从UNKNOWN误变SUBMITTED，测试RED；立即恢复并最终GREEN。扩展过期夹具统一UTC LocalDateTime，避免本地Timestamp偏移。
+- 独立只读复核提出2项Important，均有真实失败用例后一次修复：URL黑名单改公开参数白名单；重新授权被拒后允许撤销保留的旧授权。4个回归RED→GREEN，没有遗留Minor。
+- 临时无网络MySQL验证V1+V2九表、稳定店铺键、journal原操作者、动作scope/state唯一键及授权修订唯一键通过，容器清理。它不是生产JDBC并发验证。
+- 设计生成合同10、文档规范8、原SQL方言及空白检查通过。
+
+核心证据：/private/tmp/commerce-auth-final-package.log（最终打包通过）、/private/tmp/commerce-auth-compile.log、/private/tmp/commerce-auth-review-red.log、/private/tmp/commerce-auth-review-green.log、/private/tmp/commerce-auth-url-ablation.log、/private/tmp/commerce-auth-mysql.log。
+
+### L4 取舍与下一步
+
+本批采用固定初始响应加动作查询，以保证幂等重放不会重调外部服务；代价是前端需查询动作获得当前状态。公开OAuth参数采用保守白名单；新增平台字段须通过适配器合同扩展。授权效期必须明确且未来有效，回调目前固定state/code/error；永久授权或其他回调形态不能直接注册。重新授权被拒不推断旧grant仍可本地使用，但允许申请外部撤销，未知撤权继续隔离。
+
+真实平台真实性、凭据安全存储、外部账号证明及撤权确认由获准typed适配器提供，没有默认成功实现。真实认证链启动、生产驱动并发、独立远程客户端、UNKNOWN/崩溃/过期恢复worker和凭据轮换清理仍是后续门禁。
+
+下一批继续Task2的餐饮/零售目录来源核验、catalog scope/source/snapshot/run持久化、手动/自动共用同步任务和有界恢复；其后才是原owner订单及履约。Keeta等真实平台继续只规划，不启用资金或券，不推送部署。

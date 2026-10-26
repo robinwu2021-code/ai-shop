@@ -6,11 +6,11 @@
 
 | 项 | 实际范围 |
 | --- | --- |
-| 状态 | C0_DRAFT_SLICE_VERIFIED |
-| 已编码迁移表 | cim_provider, cim_product_profile, cim_account, cim_store_connection, cim_connection_revision, cim_request_journal |
-| 已编码API子集 | COM-001, COM-002, COM-003, COM-004, COM-005, COM-009, COM-010, COM-011 |
-| 限制 | 八个路由已编码，仅属主草稿管理及分页；连接创建另需可信远端归属SPI证明，无生产提供方时拒绝认领身份；筛选参数尚未实现并明确拒绝；授权/核验/启用、目录发送、订单导入及真实平台未开放。独立服务可构建，尚无远程Service客户端或内部业务端点，不能宣称已独立业务闭环。未执行生产建表或部署。 |
-| 验证 | 集成宿主与独立server编译通过；29项Java专项通过（包括真实宿主Mapper扫描）；设计10、文档8通过；隔离原生MySQL迁移及约束通过；完整认证链、原生JDBC/Flyway并发与独立业务闭环尚未联验。 |
+| 状态 | C0_AUTHORIZATION_ENGINE_VERIFIED |
+| 已编码迁移表 | cim_provider, cim_product_profile, cim_account, cim_store_connection, cim_connection_revision, cim_request_journal, cim_authorization_revision, cim_operation, cim_operation_attempt |
+| 已编码API子集 | COM-001, COM-002, COM-003, COM-004, COM-005, COM-009, COM-010, COM-011, COM-006, COM-007, COM-008, COM-035, COM-070 |
+| 限制 | B端仍仅主体属主；基础列表仅分页，候选高级筛选仍明确拒绝。累计13个基础/授权/查询/回调路由，9张迁移业务表。真实授权和门店归属提供方均未注册；通用OAuth回调目前只接受state/code/error，授权须有明确有效期，其他协议须扩展合同后启用。授权URL只允许既定公开参数，回跳绑定登记地址。UNKNOWN/过期/崩溃主动恢复worker、目录同步、订单导入、履约售后及真实平台仍未开放；独立业务远程客户端和内部端点未完成。未生产建表、推送或部署。 |
+| 验证 | 44项受影响Java专项通过；集成宿主与server编译通过，最终打包通过（TDD留证）；原生隔离MySQL V1+V2及约束通过；设计10、文档8通过。两项复核问题4个回归RED→GREEN；真实平台/生产驱动并发和完整认证链未联验。 |
 
 ## L1 定位
 
@@ -18,7 +18,7 @@
 
 ## L2 分类与公共合同
 
-公开/回调API共70项；内部业务Port共10组，内部方法不算公开API。
+公开/回调API共70项；内部业务Port共11组，内部方法不算公开API。
 
 | 分类 | 数量 |
 | --- | --- |
@@ -157,6 +157,7 @@ B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户�
 | ai.neargo.shop.spi.commerce.ChannelCredentialPort；原安全凭据能力 | resolve(ChannelCredentialReference)->ScopedCredentialHandle | 业务只传引用；签名/刷新组件受控使用，不出日志/公共响应 |
 | ai.neargo.shop.spi.commerce.ChannelSourceValidationPort；各资源原owner或仅调用原Port的宿主只读组合 | validate(SourceValidationCommand)->SourceValidationReceipt | 校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。 |
 | ai.neargo.shop.spi.commerce.ChannelConnectionIdentityPort；可信平台授权/查询适配器 | verify(Identity)->Proof(VERIFIED/UNKNOWN/UNSUPPORTED, identity, receiptRef, verifiedAt, validUntil) | 事务外核验远端门店真实归属，本地事务锁账号/协议并复核冻结身份及有效期；无实现拒绝认领，不提供默认成功 |
+| ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway；commerce-channel获准协议适配器 | begin(AuthorizationContext)->Start；exchange(context,code)->Grant；revoke(RevocationContext)->Revocation | 原意图先提交，事务外OAuth/撤权；网关必须绑定原外部账号、凭据安全引用及可信回执；无真实提供方不授权 |
 
 内部合同在commerce-api中保持唯一spi包，宿主提供本地或typed远程实现；内部路由按现有/Internal*Controller协议在提供方登记，不额外复制同义Service。拆分前为每组方法补齐实际内部path/请求schema/服务身份/签名及wrapper排除，不能据此宣称已存在内部端点。
 

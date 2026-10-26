@@ -2,8 +2,11 @@ package ai.neargo.shop.commerce.config;
 
 import ai.neargo.shop.commerce.api.CommerceRequestScope;
 import ai.neargo.shop.commerce.api.biz.BizChannelAccountController;
+import ai.neargo.shop.commerce.api.biz.BizChannelAuthorizationController;
 import ai.neargo.shop.commerce.api.biz.BizChannelConnectionController;
+import ai.neargo.shop.commerce.api.biz.BizChannelOperationController;
 import ai.neargo.shop.commerce.api.biz.BizChannelProviderController;
+import ai.neargo.shop.commerce.api.callback.ChannelAuthorizationCallbackController;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -18,7 +21,10 @@ import org.springframework.context.annotation.Profile;
 @Import({
     BizChannelAccountController.class,
     BizChannelConnectionController.class,
-    BizChannelProviderController.class
+    BizChannelProviderController.class,
+    BizChannelAuthorizationController.class,
+    BizChannelOperationController.class,
+    ChannelAuthorizationCallbackController.class
 })
 public class CommerceWebAutoConfiguration {
     @Bean
