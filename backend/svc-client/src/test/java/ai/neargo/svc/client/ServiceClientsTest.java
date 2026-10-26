@@ -98,6 +98,28 @@ class ServiceClientsTest {
     }
 
     @Test
+    @DisplayName("★★ 调用方的额外拦截器：在加令牌之后执行，看得到最终路径与请求体，加的头能到对方")
+    void extraInterceptorRunsAfterTokenWithFinalRequest() throws IOException {
+        AtomicReference<String> base = new AtomicReference<>(startServer(200, "{\"code\":\"B\",\"rateBp\":5}"));
+        List<String> observed = new CopyOnWriteArrayList<>();
+        DemoApi api = ServiceClients.create(DemoApi.class, spec(base, "s3cret", true).withInterceptors(List.of(
+                (request, body, execution) -> {
+                    observed.add(request.getMethod() + " " + request.getURI().getRawPath()
+                            + " token=" + request.getHeaders().getFirst("X-Test-Token")
+                            + " body=" + new String(body, StandardCharsets.UTF_8));
+                    request.getHeaders().set("X-Test-Token", "s3cret+extra");
+                    return execution.execute(request, body);
+                })));
+
+        Rule touched = ServiceCalls.call("DEMO", () -> api.touch("B", new Rule("B", 5)));
+
+        assertThat(touched).isEqualTo(new Rule("B", 5));
+        assertThat(observed).containsExactly(
+                "POST /internal/demo/rules/B/touch token=s3cret body={\"code\":\"B\",\"rateBp\":5}");
+        assertThat(seen).containsExactly("POST /internal/demo/rules/B/touch HTTP/1.1 token=s3cret+extra");
+    }
+
+    @Test
     @DisplayName("★★★ 没配地址：NOT_CONFIGURED，而且请求根本没发出去")
     void notConfigured() {
         AtomicReference<String> base = new AtomicReference<>(null);
