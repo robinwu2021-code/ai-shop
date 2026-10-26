@@ -207,6 +207,16 @@ public class PmtCouponServiceImpl implements CouponService {
                 || (nz(c.getStartAt()) <= now && nz(c.getEndAt()) >= now);
     }
 
+    /** 他手上这张券有几张 —— 加锁读（当前读），只在已锁券行的写路径上用 */
+    private int heldCountLocked(String userNo, String couponNo) {
+        return DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectList(
+                Wrappers.<PmtUserCoupon>lambdaQuery()
+                        .select(PmtUserCoupon::getId)
+                        .eq(PmtUserCoupon::getUserNo, userNo)
+                        .eq(PmtUserCoupon::getCouponNo, couponNo)
+                        .last("FOR UPDATE"))).size();
+    }
+
     private int heldCount(String userNo, String couponNo) {
         Long n = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectCount(
                 Wrappers.<PmtUserCoupon>lambdaQuery()
@@ -262,12 +272,18 @@ public class PmtCouponServiceImpl implements CouponService {
         if (!PmtCoupon.ACTIVE.equals(c.getStatus()) || !inWindow(c, now)) {
             throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
         }
-        if (heldCount(userNo, couponNo) >= Math.max(nz(c.getPerUserLimit()), 1)) {
+        /*
+         * **限领按 (人, 券) 串行判**：先锁券行，再用当前读数他手上几张。
+         * 先数后插、两边都数到 0 就都插了 —— 限领 1 张的券到手 2 张。不另加唯一键：限领可以是 N 张。
+         * 数要用加锁读：可重复读下普通读拿的是事务第一次读（上面读模板那次）时的快照，锁等到了数的还是旧数。
+         */
+        PmtCoupon locked = lockedRow(couponNo);
+        if (heldCountLocked(userNo, couponNo) >= Math.max(nz(c.getPerUserLimit()), 1)) {
             throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         }
         // 预算是硬闸门：再发这一张会超就不发（与定向发放同一口径，不部分发放）
         long per = maxPerCoupon(c);
-        if (nz(c.getBudgetMinor()) > 0 && (long) (nz(c.getReceivedCount()) + 1) * per > nz(c.getBudgetMinor())) {
+        if (nz(c.getBudgetMinor()) > 0 && (long) (nz(locked.getReceivedCount()) + 1) * per > nz(c.getBudgetMinor())) {
             throw BizException.of(ErrorCode.COUPON_BUDGET_EXCEEDED);
         }
         /*
@@ -611,10 +627,9 @@ public class PmtCouponServiceImpl implements CouponService {
         List<String> targets = new ArrayList<>();
         int alreadyHas = 0;
         for (MemberQueryPort.Audience a : audience.reachable()) {
-            Long held = userCouponMapper.selectCount(Wrappers.<PmtUserCoupon>lambdaQuery()
-                    .eq(PmtUserCoupon::getCouponNo, couponNo)
-                    .eq(PmtUserCoupon::getUserNo, a.userNo()));
-            if (held != null && held >= nz(c.getPerUserLimit())) {
+            // 当前读（券行已在上面锁住）：与领券同一口径，限领不能被并发的领券 / 另一批发放绕开
+            int held = heldCountLocked(a.userNo(), couponNo);
+            if (held >= nz(c.getPerUserLimit())) {
                 alreadyHas++;
                 continue;
             }
