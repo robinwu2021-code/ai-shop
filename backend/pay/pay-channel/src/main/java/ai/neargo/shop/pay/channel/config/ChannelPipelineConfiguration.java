@@ -5,6 +5,9 @@ import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.channel.PayGatewayRouter;
 import ai.neargo.shop.pay.channel.api.ChannelGateway;
 import ai.neargo.shop.pay.channel.callback.CallbackLogRecorder;
+import ai.neargo.shop.pay.channel.capability.ChannelCapability;
+import ai.neargo.shop.pay.channel.capability.ChannelCapabilityRegistry;
+import ai.neargo.shop.pay.channel.context.ChannelContextFactory;
 import ai.neargo.shop.pay.channel.catalog.DbChannelProductCatalog;
 import ai.neargo.shop.pay.channel.fault.ChannelErrorMapper;
 import ai.neargo.shop.pay.channel.followup.FollowUpScheduler;
@@ -55,6 +58,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -168,7 +172,20 @@ public class ChannelPipelineConfiguration {
     }
 
     @Bean
-    LegacyChannelBridge legacyChannelBridge(ChannelGateway channelGateway, PayGatewayRouter router) {
-        return new LegacyChannelBridge(channelGateway, router);
+    LegacyChannelBridge legacyChannelBridge(ChannelGateway channelGateway, PayGatewayRouter router,
+                                            ChannelContextFactory contexts) {
+        return new LegacyChannelBridge(channelGateway, router, contexts);
+    }
+
+    /** 本部署装了哪些渠道能力（替代按渠道名一张表的路由，W2 S1） */
+    @Bean
+    ChannelCapabilityRegistry channelCapabilities(ObjectProvider<ChannelCapability> capabilities) {
+        return new ChannelCapabilityRegistry(capabilities.orderedStream().toList());
+    }
+
+    /** ChannelAccountContext 的唯一构造者（W2 S4） */
+    @Bean
+    ChannelContextFactory channelContextFactory(ChannelCapabilityRegistry capabilities, ChannelProductCatalog catalog) {
+        return new ChannelContextFactory(capabilities, catalog);
     }
 }

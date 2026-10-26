@@ -13,7 +13,8 @@ import ai.neargo.shop.pay.channel.api.SourceInfo;
 import ai.neargo.shop.pay.channel.api.command.PayCommand;
 import ai.neargo.shop.pay.channel.api.command.QueryCommand;
 import ai.neargo.shop.pay.channel.api.command.RefundCommand;
-import java.util.Currency;
+import ai.neargo.shop.pay.channel.context.ChannelContextFactory;
+import ai.neargo.shop.pay.channel.context.ChannelRoute;
 
 /**
  * 旧调用面 → 新管线（TDD-支付服务-I2渠道统一封装 S4）。下单、退款、查单三个调用点签名不变，
@@ -26,10 +27,12 @@ public final class LegacyChannelBridge {
 
     private final ChannelGateway channels;
     private final PayGatewayRouter router;
+    private final ChannelContextFactory contexts;
 
-    public LegacyChannelBridge(ChannelGateway channels, PayGatewayRouter router) {
+    public LegacyChannelBridge(ChannelGateway channels, PayGatewayRouter router, ChannelContextFactory contexts) {
         this.channels = channels;
         this.router = router;
+        this.contexts = contexts;
     }
 
     public PayGateway.PrepayResult prepay(String payChannel, PayGateway.PrepayCommand c) {
@@ -86,18 +89,10 @@ public final class LegacyChannelBridge {
         };
     }
 
-    private static ChannelAccountContext context(PayGateway gateway, String currency, String subMchId) {
-        int scale = 2;
-        if (currency != null) {
-            try {
-                scale = Math.max(0, Currency.getInstance(currency).getDefaultFractionDigits());
-            } catch (IllegalArgumentException unknownCurrency) {
-                scale = 2;
-            }
-        }
+    private ChannelAccountContext context(PayGateway gateway, String currency, String subMchId) {
         // 地区与支付商户在 I4（pay_merchant）之前还没有：null = 不限地区，凭据仍由原网关按子商户号取
-        return new ChannelAccountContext(null, gateway.payChannel(), LegacyAccessModes.of(gateway), null, null,
-                subMchId, currency, scale);
+        return contexts.from(ChannelRoute.of(gateway.payChannel(), currency, subMchId)
+                .withAccessMode(LegacyAccessModes.of(gateway)));
     }
 
     private static InvocationMeta meta(String bizType, String bizNo) {

@@ -7,10 +7,11 @@ import ai.neargo.shop.pay.channel.api.InvocationMeta;
 import ai.neargo.shop.pay.channel.api.PayErrorCode;
 import ai.neargo.shop.pay.channel.api.SourceInfo;
 import ai.neargo.shop.pay.channel.api.command.QueryCommand;
+import ai.neargo.shop.pay.channel.context.ChannelContextFactory;
+import ai.neargo.shop.pay.channel.context.ChannelRoute;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Currency;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,12 +28,15 @@ public final class ChannelFollowUpRunner {
 
     private final FollowUpStore store;
     private final ChannelGateway channels;
+    private final ChannelContextFactory contexts;
     private final FollowUpResolver resolver;
     private final Clock clock;
 
-    public ChannelFollowUpRunner(FollowUpStore store, ChannelGateway channels, FollowUpResolver resolver, Clock clock) {
+    public ChannelFollowUpRunner(FollowUpStore store, ChannelGateway channels, ChannelContextFactory contexts,
+                                 FollowUpResolver resolver, Clock clock) {
         this.store = store;
         this.channels = channels;
+        this.contexts = contexts;
         this.resolver = resolver;
         this.clock = clock;
     }
@@ -97,16 +101,9 @@ public final class ChannelFollowUpRunner {
         return d.compareTo(MAX_BACKOFF) > 0 ? MAX_BACKOFF : d;
     }
 
-    private static ChannelAccountContext context(FollowUpTask task) {
-        int scale = 2;
-        if (task.currency() != null) {
-            try {
-                scale = Math.max(0, Currency.getInstance(task.currency()).getDefaultFractionDigits());
-            } catch (IllegalArgumentException unknownCurrency) {
-                scale = 2;
-            }
-        }
-        return new ChannelAccountContext(task.market(), task.payChannel(), task.accessMode(), null, null, null,
-                task.currency(), scale);
+    /** 原调用的坐标（地区、接入模式、币种）从任务行来，经工厂与原调用同一口径（W2 S4） */
+    private ChannelAccountContext context(FollowUpTask task) {
+        return contexts.from(new ChannelRoute(task.payChannel(), task.accessMode(), task.market(), task.currency(),
+                null, null, null, null));
     }
 }
