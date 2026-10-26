@@ -143,4 +143,3 @@ CREATE TABLE cim_request_journal (
     endpoint_key,
     key_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
