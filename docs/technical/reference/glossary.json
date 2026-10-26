@@ -37474,7 +37474,7 @@
         "host": "VerifyResultVO",
         "name": "NOT_THIS_PICKUP",
         "value": "NOT_THIS_PICKUP",
-        "zh": "",
+        "zh": "核销接口已不再返回这个原因：别的点的码与不存在的码一律回 NOT_FOUND、不带子单号， 否则核销台就是一个「哪些码是活的」的探测器（见 PickupServiceImpl#doVerify）。",
         "module": "shop-core"
       },
       {
@@ -39799,6 +39799,13 @@
         "name": "POINTS",
         "value": "POINTS",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "PmtApply",
+        "name": "QUOTA_OVERRUN",
+        "value": "QUOTA_OVERRUN",
+        "zh": "redeem_mode 的一个取值：活动限量 / 预算已满仍命中的那一单（并发下必然有的一点重叠）。",
         "module": "shop-core"
       },
       {
@@ -51159,7 +51166,7 @@
       "name": "FULFILLMENT_RULE_UPDATE",
       "type": "String",
       "value": "\"fulfillment:rule:update\"",
-      "zh": "履约与物流的**规则写**：逾期处置、运费模板与超区、运力启停、换运单号。",
+      "zh": "履约与物流的**规则写**：逾期处置、运费模板与超区、运力启停、换运单号， 以及批次推进（发车/到货/签收）。",
       "module": "shop-base-auth"
     },
     {
@@ -52262,7 +52269,7 @@
       "host": "OrderMachine",
       "name": "MACHINE",
       "type": "StateMachine<OrderStatus, OrderEvent, OrderContext>",
-      "value": "StateMachine.<OrderStatus, OrderEvent, OrderContext>builder(\"order\") // O1 付款（级联自支付单）：服务类付款即出码 .from(WAIT_PAY).on(PAY_CONFIRMED).by(SYSTEM) .toOneOf(Set.of(WAIT_FULFILL, FULFILLING), (f, c) -> c.serviceClass() ? FULFILLING : WAIT_FULFILL) .emit(\"OrderPaid\").add() // O2 取消 / 关单（级联自支付单） .from(WAIT_PAY).on(CANCEL).by(SYSTEM).to(CANCELLED).add() // O3 开始备货：一次、不改状态；有进行中售后时不许点 .from(WAIT_FULFILL).on(PREPARE).by(MERCHANT).when(AUTHORIZED, NOT_PREPARED, NO_OPEN_AFTER_SALE) .stay().emit(\"OrderPrepared\").add() // O4 首张发货单揽收（级联自发货单） .from(WAIT_FULFILL).on(SHIPPED).by(SYSTEM).to(FULFILLING).emit(\"OrderShipped\").add() .from(WAIT_FULFILL).on(SHIP_BY_MERCHANT).by(MERCHANT) .when(AUTHORIZED, NO_OPEN_AFTER_SALE).to(FULFILLING).emit(\"OrderShipped\").add() // O5 自提到店 .from(WAIT_FULFILL).on(ARRIVED_AT_PICKUP).by(MERCHANT).when(AUTHORIZED).to(FULFILLING) .emit(\"OrderArrived\").add() // O6 核销：降级单只推进到履约中，由买家确认收口 .from(WAIT_FULFILL, FULFILLING).on(VERIFIED).by(MERCHANT).when(AUTHORIZED) .toOneOf(Set.of(FULFILLING, COMPLETED), (f, c) -> c.requireBuyerConfirm() ? FULFILLING : COMPLETED) .emit(\"OrderVerified\").add() // O7 商家标记送达：自送单可能已在「配送中」（FULFILLING），也可能直接从待发货送达 .from(WAIT_FULFILL, FULFILLING).on(DELIVERED_BY_MERCHANT).by(MERCHANT).when(AUTHORIZED).to(COMPLETED) .emit(\"OrderCompleted\").add() // O8 买家确认收货：也可从待履约出发 —— 微信购物订单的「确认收货」组件不等我们标发货 .from(WAIT_FULFILL, FULFILLING).on(RECEIPT_CONFIRMED).by(BUYER).when(AUTHORIZED, ALL_SHIPPED).to(COMPLETED) .emit(\"OrderCompleted\").add() // O9 自动确认收货（不是退款，保留自动）；有进行中售后不收口 .from(FULFILLING).on(RECEIPT_AUTO_CONFIRMED).by(SYSTEM).when(AUTO_RECEIPT_DUE, NO_OPEN_AFTER_SALE) .to(COMPLETED).emit(\"OrderCompleted\").add() // O10 全部行退完（级联自退款账本） .from(WAIT_FULFILL, FULFILLING, COMPLETED).on(FULLY_REFUNDED).by(SYSTEM).when(REFUND_COMPLETE) .to(REFUNDED).emit(\"OrderRefunded\").add() // O11 人工干预：只能往前推，且不碰钱 .from(WAIT_FULFILL, FULFILLING).on(INTERVENE).by(PLATFORM).when(AUTHORIZED, REMARK) .toOneOf(Set.of(FULFILLING, COMPLETED), OrderMachine::interveneTarget) .emit(\"OrderIntervened\").add() .build()",
+      "value": "StateMachine.<OrderStatus, OrderEvent, OrderContext>builder(\"order\") // O1 付款（级联自支付单）：服务类付款即出码 .from(WAIT_PAY).on(PAY_CONFIRMED).by(SYSTEM) .toOneOf(Set.of(WAIT_FULFILL, FULFILLING), (f, c) -> c.serviceClass() ? FULFILLING : WAIT_FULFILL) .emit(\"OrderPaid\").add() // O2 取消 / 关单（级联自支付单） .from(WAIT_PAY).on(CANCEL).by(SYSTEM).to(CANCELLED).add() // O3 开始备货：一次、不改状态；有进行中售后时不许点 .from(WAIT_FULFILL).on(PREPARE).by(MERCHANT).when(AUTHORIZED, NOT_PREPARED, NO_OPEN_AFTER_SALE) .stay().emit(\"OrderPrepared\").add() // O4 首张发货单揽收（级联自发货单） .from(WAIT_FULFILL).on(SHIPPED).by(SYSTEM).to(FULFILLING).emit(\"OrderShipped\").add() .from(WAIT_FULFILL).on(SHIP_BY_MERCHANT).by(MERCHANT) .when(AUTHORIZED, NO_OPEN_AFTER_SALE).to(FULFILLING).emit(\"OrderShipped\").add() // O5 自提到店 .from(WAIT_FULFILL).on(ARRIVED_AT_PICKUP).by(MERCHANT).when(AUTHORIZED).to(FULFILLING) .emit(\"OrderArrived\").add() // O6 核销：降级单只推进到履约中，由买家确认收口；有进行中售后不收口 // （与发货 / 备货 / 自动确认收货同一条：退款还挂着就把单推到完成，售后期与结算计时都从这一刻起算） .from(WAIT_FULFILL, FULFILLING).on(VERIFIED).by(MERCHANT).when(AUTHORIZED, NO_OPEN_AFTER_SALE) .toOneOf(Set.of(FULFILLING, COMPLETED), (f, c) -> c.requireBuyerConfirm() ? FULFILLING : COMPLETED) .emit(\"OrderVerified\").add() // O7 商家标记送达：自送单可能已在「配送中」（FULFILLING），也可能直接从待发货送达；有进行中售后不收口 .from(WAIT_FULFILL, FULFILLING).on(DELIVERED_BY_MERCHANT).by(MERCHANT) .when(AUTHORIZED, NO_OPEN_AFTER_SALE).to(COMPLETED) .emit(\"OrderCompleted\").add() // O8 买家确认收货：也可从待履约出发 —— 微信购物订单的「确认收货」组件不等我们标发货 .from(WAIT_FULFILL, FULFILLING).on(RECEIPT_CONFIRMED).by(BUYER).when(AUTHORIZED, ALL_SHIPPED).to(COMPLETED) .emit(\"OrderCompleted\").add() // O9 自动确认收货（不是退款，保留自动）；有进行中售后不收口 .from(FULFILLING).on(RECEIPT_AUTO_CONFIRMED).by(SYSTEM).when(AUTO_RECEIPT_DUE, NO_OPEN_AFTER_SALE) .to(COMPLETED).emit(\"OrderCompleted\").add() // O10 全部行退完（级联自退款账本） .from(WAIT_FULFILL, FULFILLING, COMPLETED).on(FULLY_REFUNDED).by(SYSTEM).when(REFUND_COMPLETE) .to(REFUNDED).emit(\"OrderRefunded\").add() // O11 人工干预：只能往前推，且不碰钱 .from(WAIT_FULFILL, FULFILLING).on(INTERVENE).by(PLATFORM).when(AUTHORIZED, REMARK) .toOneOf(Set.of(FULFILLING, COMPLETED), OrderMachine::interveneTarget) .emit(\"OrderIntervened\").add() .build()",
       "zh": "",
       "module": "shop-core"
     },
