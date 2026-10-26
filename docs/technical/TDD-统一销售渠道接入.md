@@ -1,6 +1,6 @@
 # TDD 统一销售渠道接入
 
-> 状态：开发中，2026-10-26；C0草稿与通用授权引擎切片已编码且专项验证通过；完整C0–C5未完成，未生产建表或发布。需求：[PRD](../requirements/PRD-统一销售渠道接入.md)；决策：[ADR042](./ADR/ADR-042-统一销售渠道接入与行业来源隔离.md)。
+> 状态：开发中，2026-10-26；C0授权、C1目录引擎与资源映射已集成部署，运行提交b076524b6，实际17张业务表/29条公开路由。行业真实来源桥接与C2–C5尚未完成。历史批次记录保留当时状态，以本文末尾当前交付记录为准。需求：[PRD](../requirements/PRD-统一销售渠道接入.md)；决策：[ADR042](./ADR/ADR-042-统一销售渠道接入与行业来源隔离.md)。
 
 ## L1 入口与结论
 
@@ -361,3 +361,43 @@ V1逐字保持冻结。V2新增授权修订、动作、调用证据三表，并�
 
 
 最终核验：`shop-app`与`commerce-server -DskipTests package`通过（/private/tmp/commerce-mapping-final-package.log）；修复范围35项通过（/private/tmp/commerce-mapping-review-green.log）；MySQL十七表及约束通过（/private/tmp/commerce-mapping-mysql.log）；设计10项、文档8项、SQL方言守卫与`git diff --check`通过。累计79个唯一Java专项按原75项集中加4项新增边界计数，重复复测不重复计入。完成一次独立复核，无未修复Important；保留实际行业/供应商及生产并发门禁。本批白名单35文件，仅本地提交。
+
+
+## 2026-10-26 集成发布及后续任务（当前）
+
+### L2 已发布边界
+
+统一分支与线上构建均为`b076524b6607b2e93663adce57ad2d35af74578f`。发布前已合并远端现有支付/打印等变更，没有强推。完成79项受影响Java专项；修复合并后血缘对照与错误码文档的两项守卫，相关27项通过；正常pre-push通过既有基线并从干净提交编译测试源码，按用户要求没有重跑全后端测试。
+
+使用正式CommerceSchemaValidator/Flyway执行V1–V4，再以VALIDATE校验；17张业务表与私有历史表均位于原订单/商品业务库。主应用CORE589、FOOD25，health=200/UP，actuator完整gitSha匹配。独立支付服务PID及启动时间未变化。生产正常模式为VALIDATE，真实渠道网关与自动同步任务保持关闭。
+
+证据与备份/回退依据见[发布记录](./acceptance/commerce-integration/release-2026-10-26.json)。完整库备份已完成压缩完整性检查，尚未进行恢复演练。这里的部署健康不代表获准账号的外卖端到端验收，也不代表独立部署已经具备内部业务客户端。
+
+### L2 下一步：行业原始来源与发布事件桥接
+
+本轮已开始代码现状review与依赖对齐；以下为下一批开发计划，未标完成项不代表已有提供方可用。先完成来源/事件，再执行原设计C2回调和订单导入，不以人工导入映射替代原来源核验。
+
+| 现有对象/实现 | 可以复用 | 仍需补齐 |
+|---|---|---|
+| FOOD ConfigRevisionService.getRevision/resolveRevision；ConfigRevisionInternalApi与RemoteConfigRevisionService | 原主体/门店范围、不可变内容/hash、按生效时间选取；集成与独立读合同已有 | 渠道语境的来源证明及menu item→销售条目→SKU/选项关系投影；不能仅返回文档就宣称可发布 |
+| MenuPublicationSnapshot schema4 / MenuPublicationDocuments | 原分类、餐牌、时段、选项/套餐依赖、SKU归属与原始结构 | 原价/税/可售承诺依据；结构快照不提供这些授权 |
+| DishOfferQueryPort / DishOfferQueryPortImpl | 原商品、门店价格和库存读取 | 当前LOCAL CN/CNY限制；渠道目录需原owner输出币种、价格修订、税依据与回执，不在渠道层改写为AED/TWD |
+| MenuChannelAuthorityPort | 原账号归属及渠道价策略核验契约 | 真实连接/授权证明适配，无默认成功实现 |
+| ConfigPublished / FoodOutboxRouting | 已持久化原发布事实与原事件身份 | 当前FOOD_CONFIG_PUBLISHED为archive-only；有条件地接消费路由，关闭commerce不得阻断原餐饮发布 |
+| CommerceRecoveryService.onPublished / 原请求journal | 已有来源更新、按scope合并意图及幂等入口 | 可信事件消费接线、过期/未来/重复/乱序事件策略、跨服务失败后的原键恢复 |
+
+#### L3 顺序与验收
+
+- [x] S0 核对现有原owner读接口、价格边界、事件路由及模块依赖；明确已部署能力与未接线能力。
+- [ ] S1 原来源证明：在原FOOD能力上补充类型化资源投影，复用getRevision/resolveRevision，不另建餐牌主数据。输入entityNo、storeNo、menuNo、publicationRevisionNo及明确资源kind/ref/salesOfferRef；输出原revisionNo、contentHash、canonical resource/sales-offer关系、证明期限和原回执。当前核验须匹配当前生效修订；历史查询只证明原不可变资源，不授予当下销售资格。旧提供方不支持新合同应关闭处理。
+- [ ] S2 原价格与税：先在商品/价格owner扩充市场、币种与可信价格依据；FOOD组合已发布餐牌的合法覆盖价及选项/套餐加价，再交付ChannelCatalogSourcePort.Document。复用PricingTaxSettingPort的商家税配置，包含加税/含税口径和版本；原配置缺失保持不可发布。原库存未知保持UNKNOWN，不回填0，也不在目录捕获时预占库存。
+- [ ] S3 事件桥接：复用原OutboxEnvelope、事件号及CommerceRecoveryService.onPublished；消费前核对源系统、schemaVersion、aggregate和原门店/餐牌/修订。事件只是重读提示，不直接信任事件中的价格或把旧修订写成最新。重复沿原eventNo查回；乱序重新解析当前生效修订；未来生效应在到期核验，不能消费后丢失后续唤醒。新增路由须按模块是否装配条件化，禁用commerce时原发布继续成功。
+- [ ] S4 集成验证：批量完成代码与测试源码，再编译food+commerce集成宿主及独立server；只运行受影响专项。覆盖跨主体/门店、菜单内同SKU不同销售条目、REPLACE空配料、套餐依赖修订、hash篡改、未来/取消/过期发布、缺币种/税/价格回执、事件重复/乱序/重试、模块关闭。最后一次独立review并处理问题，随后白名单提交。
+
+#### L3 文件与接口责任清单
+
+原owner改动落在food-api的dto/service/spi、food-core的service.impl及policy，远程适配沿food-web/foodclient和food-server/api原结构；商品报价扩展落在shop-base/spi/product与shop-core/product/port，税仍走原trade端口。对外平台适配继续位于commerce-channel，不导入原food-core实现。编码前在对应TDD小节登记最终类和方法，不为未实现合同预注册成功Bean。
+
+来源证明与目录Document复用现有cim_catalog_source、cim_catalog_snapshot、cim_request_journal及原fnb_config_revision；本批不新增第二套商品/订单表，也不为来源事实再建可编辑副本。需要新增持久化字段时另增Flyway版本，不修改已发布V1–V4。S1–S3内部合同不计入29条现有公开路由；如新增HTTP内部合同，需同步服务令牌鉴权和服务端/客户端合同测试。
+
+S4完成后才进入C2：先原始回调验签和持久化ACK，再进行原owner.prepareImport、平台接单确认及厨房/零售履约，后续仍按PRD/ADR042处理资金、售后和统计边界。Keeta等真实账号与SDK继续为后续获准协议适配，不是本批启动前置。
