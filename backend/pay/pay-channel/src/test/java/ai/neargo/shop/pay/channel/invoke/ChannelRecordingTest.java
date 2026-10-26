@@ -55,7 +55,7 @@ class ChannelRecordingTest {
     }
 
     @Test
-    @DisplayName("★★★ 管线 11 环顺序：记录(40) 在发送前、日志(50)、幂等(70) 在熔断之外")
+    @DisplayName("★★★ I2 的 11 环顺序：记录(40) 在发送前、日志(50)、幂等(70) 在熔断之外（生产 13 环见 PipelineRingsTest)")
     void fullOrder() {
         assertThat(invoker(n -> null, null, Set.of(payKey())).interceptors()).extracting(i -> i.order())
                 .containsExactly(10, 20, 30, 40, 50, 70, 90, 100, 110, 120, 130);

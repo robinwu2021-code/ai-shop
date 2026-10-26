@@ -19,23 +19,13 @@ import ai.neargo.shop.pay.channel.http.RecordingChannelClient;
 import ai.neargo.shop.pay.channel.followup.FollowUpStore;
 import ai.neargo.shop.pay.channel.followup.MybatisFollowUpStore;
 import ai.neargo.shop.pay.channel.fault.FaultPolicyRegistry;
-import ai.neargo.shop.pay.channel.fault.OutcomeClassifier;
 import ai.neargo.shop.pay.channel.handler.ChannelHandler;
 import ai.neargo.shop.pay.channel.handler.ChannelHandlerRegistry;
 import ai.neargo.shop.pay.channel.handler.ChannelProductCatalog;
 import ai.neargo.shop.pay.channel.invoke.ChannelInterceptor;
 import ai.neargo.shop.pay.channel.invoke.ChannelInvoker;
-import ai.neargo.shop.pay.channel.invoke.interceptor.AvailabilityInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.BulkheadInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.CircuitBreakerInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.ClassifyInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.IdempotencyInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.LoggingInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.RecordingInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.RetryInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.TimeoutInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.TraceInterceptor;
-import ai.neargo.shop.pay.channel.invoke.interceptor.ValidationInterceptor;
+import ai.neargo.shop.pay.channel.invoke.StandardPipeline;
+import ai.neargo.shop.pay.channel.invoke.interceptor.RefundIntervalInterceptor;
 import ai.neargo.shop.pay.channel.invoke.record.CallLogStore;
 import ai.neargo.shop.pay.channel.invoke.record.ChannelCallRecorder;
 import ai.neargo.shop.pay.channel.invoke.record.MybatisCallLogStore;
@@ -52,6 +42,8 @@ import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelLifecycleLogMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelProductMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelProductMarketMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayRawPayloadMapper;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -159,12 +151,12 @@ public class ChannelPipelineConfiguration {
     ChannelGateway channelGateway(ChannelHandlerRegistry registry, ChannelProductCatalog catalog,
                                   FaultPolicyRegistry policies, ChannelCallRecorder recorder, CallLogStore store,
                                   PayLogger logger, List<ChannelErrorMapper> errorMappers, FollowUpScheduler followUps,
-                                  ChannelLifecycleManager lifecycle) {
-        List<ChannelInterceptor> chain = List.of(new TraceInterceptor(), new ValidationInterceptor(),
-                new AvailabilityInterceptor(catalog), new RecordingInterceptor(recorder), new LoggingInterceptor(logger),
-                new IdempotencyInterceptor(store), new CircuitBreakerInterceptor(policies),
-                new BulkheadInterceptor(policies), new RetryInterceptor(policies), new TimeoutInterceptor(policies),
-                new ClassifyInterceptor(new OutcomeClassifier(errorMappers)));
+                                  ChannelLifecycleManager lifecycle, ObjectProvider<MeterRegistry> meters,
+                                  @Value("${shop.pay.channel.refund-queue-max-wait:65s}") Duration refundQueueMaxWait) {
+        // 没有 actuator 的进程（独立 pay-svc 的装配冒烟）没有 MeterRegistry：指标记在进程内，不挡启动
+        List<ChannelInterceptor> chain = StandardPipeline.interceptors(catalog, policies, recorder, logger, store,
+                errorMappers, meters.getIfAvailable(SimpleMeterRegistry::new),
+                new RefundIntervalInterceptor(catalog, refundQueueMaxWait));
         return new ChannelInvoker(registry, chain, List.of(followUps, lifecycle), lifecycle);
     }
 
