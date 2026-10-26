@@ -352,7 +352,11 @@ public class PmtCouponServiceImpl implements CouponService {
         PmtCoupon c = cmd.couponNo() == null || cmd.couponNo().isBlank()
                 ? null : require(entityNo, cmd.couponNo());
         boolean create = c == null;
-        if (!create) sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
+        if (!create) {
+            sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
+            // 「发行量不能改到低于已领」要按加锁之后的已领数判：读行与加锁之间可能有人领走了几张
+            c.setReceivedCount(lockedRow(c.getCouponNo()).getReceivedCount());
+        }
         if (create) {
             c = new PmtCoupon();
             c.setCouponNo(BizKey.next(BizKey.PROMO_COUPON));
@@ -368,7 +372,15 @@ public class PmtCouponServiceImpl implements CouponService {
         if (create) {
             documentNumbers.bind(DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", c, c.getCouponNo(), couponMapper::insert, PmtCoupon::setDocumentNo);
         } else {
+            /*
+             * **改券不写 received_count。** 它只归领取 / 发放那两条带条件的 SQL 累加管：
+             * updateById 整行写回会把读行之后被领走的那几张抹掉 —— 余量凭空多出来，
+             * 超发的券查不回来。updateById 跳过 null 字段，置空就是「这一列不写」。
+             */
+            Integer received = c.getReceivedCount();
+            c.setReceivedCount(null);
             couponMapper.updateById(c);
+            c.setReceivedCount(received);
         }
         saveScopes(c.getCouponNo(), cmd);
         log.info("[券] {} 券 {} by {}", create ? "建" : "改", c.getCouponNo(), operatorNo);
@@ -525,7 +537,10 @@ public class PmtCouponServiceImpl implements CouponService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         c.setStatus(status);
-        couponMapper.updateById(c);
+        // 只写状态这一列：整行写回会带上读到的旧 received_count，把并发领走的那一张抹掉（理由同 saveNumbered）
+        couponMapper.update(null, Wrappers.<PmtCoupon>lambdaUpdate()
+                .eq(PmtCoupon::getCouponNo, couponNo)
+                .set(PmtCoupon::getStatus, status));
         return vo(c);
     }
 
@@ -568,6 +583,13 @@ public class PmtCouponServiceImpl implements CouponService {
 
         PmtCoupon c = require(entityNo, couponNo);
         sourceFence.requireWritable(c.getTenantNo(), SourceSystem.PMT, c.getCouponNo(), false);
+        /*
+         * 余量与预算按**加锁之后**的已领数算。上面那次读在锁之前：另一批在这中间发完、提交，
+         * 这里按旧的已领数算余量，两批合计就会超过发行量（余量 5 张发出去 8 张）。
+         */
+        PmtCoupon locked = lockedRow(couponNo);
+        c.setReceivedCount(locked.getReceivedCount());
+        c.setStatus(locked.getStatus());
         if (!PmtCoupon.ACTIVE.equals(c.getStatus())) {
             throw BizException.of(ErrorCode.COUPON_NOT_ACTIVE);
         }
@@ -645,8 +667,22 @@ public class PmtCouponServiceImpl implements CouponService {
             documentNumbers.bind(DocumentType.MARKETING_USER_COUPON, "PMT", "pmt_user_coupon", uc, uc.getUserCouponNo(), userCouponMapper::insert, PmtUserCoupon::setDocumentNo);
         }
 
+        /*
+         * 已领数用**带条件的 SQL 累加**，与领券同一手法：不再整行写回（那会把并发领走的抹掉），
+         * 且「加上这一批仍不超发行量」与累加在同一条语句里判。装不下就整批拒、随事务回滚 ——
+         * 与预算同一口径，不部分发放。
+         */
+        if (!targets.isEmpty()) {
+            int n = targets.size();
+            int affected = couponMapper.update(null, Wrappers.<PmtCoupon>lambdaUpdate()
+                    .eq(PmtCoupon::getCouponNo, couponNo)
+                    .apply("(total_count IS NULL OR received_count + {0} <= total_count)", n)
+                    .setSql("received_count = received_count + " + n));
+            if (affected != 1) {
+                throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+            }
+        }
         c.setReceivedCount(nz(c.getReceivedCount()) + targets.size());
-        couponMapper.updateById(c);
 
         int skipped = unreachable + alreadyHas + soldOut;
         PmtCouponIssue batch = new PmtCouponIssue();
@@ -837,6 +873,19 @@ public class PmtCouponServiceImpl implements CouponService {
                 exposure, c.getStatus(),
                 (int) usage.getOrDefault(c.getCouponNo(), new long[] {0, 0})[0],
                 usage.getOrDefault(c.getCouponNo(), new long[] {0, 0})[1]).withDocumentNo(c.getDocumentNo());
+    }
+
+    /**
+     * 加锁读券行（{@code FOR UPDATE} 是当前读）。计数类的判断都要用它读到的值：
+     * 可重复读下，普通读拿的是事务里第一次读时的快照，看不到锁之前别人已提交的领取。
+     */
+    private PmtCoupon lockedRow(String couponNo) {
+        PmtCoupon row = DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(
+                Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, couponNo).last("limit 1 FOR UPDATE")));
+        if (row == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return row;
     }
 
     private PmtCoupon require(String entityNo, String couponNo) {
