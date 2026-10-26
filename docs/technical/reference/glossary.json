@@ -47018,6 +47018,19 @@
         "zh": "支付方式。"
       },
       {
+        "name": "PayOrderStatus",
+        "client": "ops-web",
+        "values": [
+          "CREATED",
+          "AWAITING_PAYMENT",
+          "SUCCEEDED",
+          "PARTIALLY_REFUNDED",
+          "REFUNDED",
+          "CLOSED"
+        ],
+        "zh": ""
+      },
+      {
         "name": "PayQrKind",
         "client": "b-app",
         "values": [
@@ -51939,6 +51952,62 @@
       "type": "String",
       "value": "\"finance:payout:execute\"",
       "zh": "登记付款。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ORDER_VIEW",
+      "type": "String",
+      "value": "\"pay:order:view\"",
+      "zh": "支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ORDER_MANAGE",
+      "type": "String",
+      "value": "\"pay:order:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_REFUND_VIEW",
+      "type": "String",
+      "value": "\"pay:refund:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_REFUND_REVIEW",
+      "type": "String",
+      "value": "\"pay:refund:review\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_LOG_VIEW",
+      "type": "String",
+      "value": "\"pay:log:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_NOTIFY_RESEND",
+      "type": "String",
+      "value": "\"pay:notify:resend\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_QR_MANAGE",
+      "type": "String",
+      "value": "\"pay:qr:manage\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {

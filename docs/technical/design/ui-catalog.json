@@ -1892,7 +1892,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 148,
+      "count": 152,
       "domains": [
         {
           "name": "经营看板",
@@ -3142,6 +3142,58 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:3000/finance?tab=channel-messages"
+            },
+            {
+              "app": "ops-web",
+              "route": "/pay-ops/orders",
+              "title": "支付单",
+              "domain": "结算与资金",
+              "group": "支付运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/pay-ops/orders"
+            },
+            {
+              "app": "ops-web",
+              "route": "/pay-ops/exceptions",
+              "title": "支付异常",
+              "domain": "结算与资金",
+              "group": "支付运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/pay-ops/exceptions"
+            },
+            {
+              "app": "ops-web",
+              "route": "/pay-ops/refunds",
+              "title": "退款复核",
+              "domain": "结算与资金",
+              "group": "支付运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/pay-ops/refunds"
+            },
+            {
+              "app": "ops-web",
+              "route": "/pay-ops/notifies",
+              "title": "业务通知",
+              "domain": "结算与资金",
+              "group": "支付运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/pay-ops/notifies"
             }
           ]
         },
@@ -3916,5 +3968,5 @@
       ]
     }
   ],
-  "total": 313
+  "total": 317
 }

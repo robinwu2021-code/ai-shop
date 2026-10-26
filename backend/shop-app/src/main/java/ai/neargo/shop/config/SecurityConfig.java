@@ -329,6 +329,31 @@ public class SecurityConfig {
                 .build();
     }
 
+    /**
+     * 支付运营端（ADR-044 OPS 面；安全规范 §2.7）：与 {@code /ops/**} 同一套运营会话与 RBAC（权限码 {@code pay:*}），
+     * 仅 ops 部署装配；接入层过滤器在令牌过滤器之后写请求记录。nginx 侧与运营前端同一份白名单（G1）。
+     */
+    @Bean
+    @Profile("ops")
+    @Order(8)
+    SecurityFilterChain payOpsChain(HttpSecurity http, TokenStore tokenStore,
+                                    ObjectProvider<ai.neargo.shop.auth.LiveIdentityResolver> identityResolver,
+                                    PortalAuthFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher(PortalFace.OPS.prefix() + "/**")
+                .cors(c -> c.configurationSource(corsSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(reg -> reg
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(new OperatorTokenAuthFilter(tokenStore, identityResolver),
+                        UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(portalFilters.forFace(PortalFace.OPS), OperatorTokenAuthFilter.class)
+                .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
+                .build();
+    }
+
     /** 公共与回调：{@code /callback/**} 各自验签，不走 Bearer（[API 清单 §5.2]）。 */
     @Bean
     @Profile({"api", "ops"})

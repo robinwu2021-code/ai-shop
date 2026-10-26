@@ -22,6 +22,7 @@ import { growthHttp } from "./https/growth";
 import { riskHttp } from "./https/risk";
 import { messageHttp } from "./https/message";
 import { paymentHttp } from "./https/payment";
+import { payOpsHttp } from "./https/payops";
 import { contentHttp } from "./https/content";
 import { systemHttp } from "./https/system";
 
@@ -32,6 +33,7 @@ export const HTTP_SLICES = {
   merchant: merchantHttp,
   order: orderHttp,
   payment: paymentHttp,
+  payops: payOpsHttp,
   community: communityHttp,
   fulfillment: fulfillmentHttp,
   store: storeHttp,
@@ -53,7 +55,7 @@ export const HTTP_SLICES = {
 } as const;
 
 export const httpApi: Api = {
-  ...printHttp, ...dashboardHttp, ...merchantHttp, ...orderHttp, ...paymentHttp,
+  ...printHttp, ...dashboardHttp, ...merchantHttp, ...orderHttp, ...paymentHttp, ...payOpsHttp,
   ...communityHttp, ...fulfillmentHttp, ...storeHttp,
   ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp, ...inventoryHttp, ...jobHttp,
 };

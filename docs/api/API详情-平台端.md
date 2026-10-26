@@ -8716,6 +8716,162 @@ _无字段_
 | `resolvedBy` | `string,null` | 否 | 处置人（STAFF 账号）。未处置为 null |
 
 
+### payops
+
+#### GET `/pay-ops/v1/exceptions`
+
+payOpsExceptions
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/pay-ops/v1/exceptions/{id}/ignore`
+
+payOpsIgnoreException
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/pay-ops/v1/exceptions/{id}/refund`
+
+原路退回那一笔多收的钱（不碰已关支付单的余额） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/pay-ops/v1/notifies`
+
+payOpsNotifies
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/pay-ops/v1/notifies/{id}/resend`
+
+payOpsResendNotify
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/pay-ops/v1/orders`
+
+payOpsOrders
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/pay-ops/v1/orders/{no}`
+
+payOpsOrder
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### PUT `/pay-ops/v1/qr-codes/{qrCode}/disabled`
+
+payOpsDisableQrCode
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `qrCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/pay-ops/v1/refunds`
+
+payOpsRefunds
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/pay-ops/v1/refunds/{no}/review`
+
+两人复核：同一人不能通过两次
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 ### print
 
 #### GET `/ops/print/health`

@@ -51,6 +51,14 @@ public class InternalCallers {
         return new PayCaller(CallerType.BIZ, appId(appCode), Set.of(storeId), operatorNo, null, null);
     }
 
+    /**
+     * 支付运营端的调用方（TDD-支付服务-I5接入层 S9）：平台身份、不按门店圈（{@code MatrixCallerPolicy}）；
+     * 操作员是运营账号 —— 复核、重推、处置都记在他名下。{@code callerId} 记 0（平台），不对应任何接入方
+     */
+    public PayCaller opsOperator(String operatorNo) {
+        return new PayCaller(CallerType.OPS, 0L, Set.of(), operatorNo, null, null);
+    }
+
     public Long appId(String appCode) {
         return ids.computeIfAbsent(appCode, code -> {
             PayApp app = DataScopeContext.executeWithoutScope(() -> apps.selectOne(Wrappers.<PayApp>lambdaQuery()

@@ -83,6 +83,8 @@ const ROLE_PERMS: Record<Role, string[]> = {
     "order:order:read", "order:order:export",
     "aftersale:ticket:read",
     "merchant:merchant:read",
+    // 支付运营端（S9）：看支付单、复核退款、看业务通知；处置异常与重推不给
+    "pay:order:view", "pay:refund:view", "pay:refund:review", "pay:log:view",
   ],
 
   // 风控：刷单、异常裂变、恶意退款、黑名单（可拦截、封禁）
@@ -207,7 +209,7 @@ export const BACKEND_ROLE_PERMS: Record<string, string[]> = {
   CAMPAIGN_OPS: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "content:material:audit", "content:material:read", "content:material:update", "dashboard:overview:read", "group:campaign:audit", "group:campaign:read", "growth:attribution:read", "growth:attribution:update", "growth:fission:read", "growth:fission:update", "marketing:campaign:read", "marketing:campaign:update", "marketing:coupon:issue", "marketing:coupon:read", "marketing:coupon:update", "marketing:slot:read", "marketing:slot:update", "order:order:read"],
   COMMUNITY_OPS: ["aftersale:refund:read", "aftersale:ticket:read", "community:community:read", "community:community:update", "community:pickup:read", "community:pickup:update", "community:region:read", "community:region:update", "dashboard:overview:read", "fulfillment:batch:read", "fulfillment:logistics:read", "fulfillment:logistics:replay", "fulfillment:redeem:read", "fulfillment:rule:update", "order:order:read", "system:industry:read", "system:industry:update"],
   AUDITOR: ["community:community:read", "content:material:audit", "content:material:read", "content:material:update", "dashboard:overview:read", "inventory:credential:read", "inventory:stock:read", "product:sku:audit", "product:sku:read", "review:review:audit", "review:review:read", "review:score:read", "review:score:update"],
-  FINANCE: ["aftersale:refund:approve", "aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "finance:invoice:read", "finance:invoice:verify", "finance:payout:execute", "finance:rate:read", "finance:rate:update", "finance:recon:read", "finance:recon:resolve", "finance:settle:execute", "finance:settle:read", "merchant:admission:read", "merchant:admission:update", "order:order:read"],
+  FINANCE: ["aftersale:refund:approve", "aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "finance:invoice:read", "finance:invoice:verify", "finance:payout:execute", "finance:rate:read", "finance:rate:update", "finance:recon:read", "finance:recon:resolve", "finance:settle:execute", "finance:settle:read", "merchant:admission:read", "merchant:admission:update", "order:order:read", "pay:log:view", "pay:order:view", "pay:refund:review", "pay:refund:view"],
   RISK: ["aftersale:refund:read", "aftersale:ticket:read", "dashboard:overview:read", "order:order:read", "risk:blacklist:read", "risk:blacklist:update", "risk:event:handle", "risk:event:read", "risk:rule:read", "risk:rule:update"],
   ANALYST: ["community:community:read"],
   TECH_OPS: ["iam:audit:read", "system:param:read", "system:param:update", "system:theme:read", "system:theme:update",

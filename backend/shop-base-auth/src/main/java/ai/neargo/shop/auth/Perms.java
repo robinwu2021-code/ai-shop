@@ -163,6 +163,18 @@ public final class Perms {
      */
     public static final String FINANCE_PAYOUT_EXECUTE = "finance:payout:execute";
 
+    /*
+     * 支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。码一开始就是细的：看与动分开，复核单列 ——
+     * 复核要两个不同的人先后通过（RefundService#review），所以授给一个人也执行不了。
+     */
+    public static final String PAY_ORDER_VIEW = "pay:order:view";
+    public static final String PAY_ORDER_MANAGE = "pay:order:manage";
+    public static final String PAY_REFUND_VIEW = "pay:refund:view";
+    public static final String PAY_REFUND_REVIEW = "pay:refund:review";
+    public static final String PAY_LOG_VIEW = "pay:log:view";
+    public static final String PAY_NOTIFY_RESEND = "pay:notify:resend";
+    public static final String PAY_QR_MANAGE = "pay:qr:manage";
+
     public static final String FINANCE_INVOICE_READ = "finance:invoice:read";
 
     /** 进项发票核验与标记无票。标记无票 = 接受这笔支出不能税前列支，是税务判断。 */
@@ -741,7 +753,9 @@ public final class Perms {
                     FINANCE_RATE_READ, FINANCE_RATE_UPDATE, FINANCE_RECON_READ,
                     FINANCE_RECON_RESOLVE, FINANCE_SETTLE_EXECUTE, FINANCE_SETTLE_READ,
                     // 提现审批码 2026-10-09 从角色表撤掉（提现端点与菜单点一起退役，见 V392）
-                    MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, ORDER_READ)),
+                    MERCHANT_ADMISSION_READ, MERCHANT_ADMISSION_UPDATE, ORDER_READ,
+                    // 支付运营端：看支付单、复核退款、看业务通知。处置异常与重推不给 —— 那是动钱 / 动外部系统
+                    PAY_ORDER_VIEW, PAY_REFUND_VIEW, PAY_REFUND_REVIEW, PAY_LOG_VIEW)),
 
             /*
              * 风控：矩阵给的是「刷单、异常裂变、恶意退款、黑名单」+ 拦截封禁。

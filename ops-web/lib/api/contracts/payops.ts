@@ -1,0 +1,118 @@
+// 覆盖范围：支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9 · F50 F51 F53 F57）。
+// 金额一律最小单位；时间一律 UTC 毫秒。运营**只复核不发起**退款。
+
+export type PayOrderStatus = "CREATED" | "AWAITING_PAYMENT" | "SUCCEEDED" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CLOSED";
+
+export interface PayOpsOrderRow {
+  payOrderNo: string;
+  outOrderNo: string;
+  bizType: string;
+  storeId: number | null;
+  storeName: string | null;
+  market: string | null;
+  currency: string;
+  amountMinor: number;
+  paidMinor: number;
+  refundedMinor: number;
+  status: PayOrderStatus;
+  payChannel: string | null;
+  payMethod: string | null;
+  fundsPath: string | null;
+  sourceType: string | null;
+  createdAt: number | null;
+  succeededAt: number | null;
+}
+
+export interface PayOpsAttemptRow {
+  paymentNo: string;
+  /** PAY / REFUND */
+  direction: string;
+  outTradeNo: string | null;
+  tradeNo: string | null;
+  payChannel: string | null;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  payMerchantId: number | null;
+  fundsPath: string | null;
+  at: number | null;
+}
+
+export interface PayOpsRefundRow {
+  payRefundNo: string;
+  payOrderNo: string | null;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  reason: string | null;
+  requestedBy: string | null;
+  sourceType: string | null;
+  /** 命中的复核规则（NO_ACTIVE_RULE、AMOUNT_OVER…） */
+  hitReasons: string | null;
+  createdAt: number | null;
+}
+
+export interface PayOpsVoucherRow {
+  voucherNo: string;
+  voucherType: string;
+  totalMinor: number;
+  currency: string;
+  fundsPath: string | null;
+  bizDate: string | null;
+  memo: string | null;
+}
+
+export interface PayOpsNotifyRow {
+  id: number;
+  eventType: string;
+  eventKey: string;
+  targetType: string;
+  targetUrl: string | null;
+  status: string;
+  attempts: number;
+  nextAt: number | null;
+  deliveredAt: number | null;
+  createdAt: number | null;
+}
+
+export interface PayOpsExceptionRow {
+  id: number;
+  /** LATE_PAYMENT / DUPLICATE_PAYMENT / AMOUNT_MISMATCH / CURRENCY_MISMATCH */
+  kind: string;
+  payOrderNo: string | null;
+  amountMinor: number;
+  currency: string;
+  /** OPEN / AUTO_REFUNDING / RESOLVED / IGNORED */
+  status: string;
+  resolution: string | null;
+  note: string | null;
+  handledBy: string | null;
+  createdAt: number | null;
+}
+
+export interface PayOpsOrderDetail {
+  order: PayOpsOrderRow;
+  attempts: PayOpsAttemptRow[];
+  refunds: PayOpsRefundRow[];
+  vouchers: PayOpsVoucherRow[];
+  notifies: PayOpsNotifyRow[];
+  exceptions: PayOpsExceptionRow[];
+}
+
+export type PayOpsOrderQ = { status?: string; payOrderNo?: string; outOrderNo?: string; storeId?: number; bizType?: string;
+  page?: number; size?: number };
+
+export interface PayOpsApi {
+  payOpsOrders(q?: PayOpsOrderQ): Promise<PayOpsOrderRow[]>;
+  payOpsOrder(payOrderNo: string): Promise<PayOpsOrderDetail>;
+  payOpsRefunds(q?: { status?: string; limit?: number }): Promise<PayOpsRefundRow[]>;
+  /** 两人复核：同一人不能通过两次；申请人不能复核自己 */
+  payOpsReviewRefund(payRefundNo: string, v: { approve: boolean; reason?: string }): Promise<PayOpsRefundRow>;
+  payOpsNotifies(q?: { status?: string; limit?: number }): Promise<PayOpsNotifyRow[]>;
+  payOpsResendNotify(id: number): Promise<void>;
+  payOpsExceptions(q?: { status?: string; limit?: number }): Promise<PayOpsExceptionRow[]>;
+  /** 原路退回那一笔多收的钱（不碰已关支付单的余额） */
+  payOpsRefundException(id: number): Promise<void>;
+  payOpsIgnoreException(id: number, note: string): Promise<void>;
+  payOpsDisableQrCode(qrCode: string): Promise<void>;
+}
