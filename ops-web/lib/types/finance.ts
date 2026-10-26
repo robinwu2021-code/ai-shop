@@ -868,7 +868,7 @@ export interface PayChannelSetting {
   name: string;
   /** 停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响 */
   enabled: boolean;
-  /** JSON 数组文本，如 `["CN"]`。空 = 全市场可用 */
+  /** JSON 数组文本，如 `["CN"]`。空 / `[]` = 哪个市场都不可用（W2 起「无行 = 不可用」） */
   markets: string | null;
   /** 结算币种，如 CNY */
   currency: string | null;
