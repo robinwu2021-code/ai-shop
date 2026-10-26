@@ -77,7 +77,25 @@ public class BizAfterSaleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @GetMapping("/biz/after-sale")
     public List<AfterSaleVO> list(@RequestParam(required = false) String status) {
-        return afterSaleService.merchantList(BizContext.requireMerchantNo(), status);
+        // 按人裁到他能动的店：属主 null = 全部（含没有门店号的历史单），店员只有被授权的那几家
+        return afterSaleService.merchantList(BizContext.requireMerchantNo(), status,
+                BizContext.current().allowedStoresOrAll());
+    }
+
+    /**
+     * 写动作的属主 + 门店级判权：售后单挂在哪家店，就要这个人被授权到那家店。
+     *
+     * <p>服务里的 {@code ofMerchant} 只判主体 —— 只管 A 店的店员拿到 B 店的售后单号，
+     * 同意 / 驳回 / 收货 / 确认退款照样能做，而读接口（详情、待办）早就按门店裁了，
+     * 于是出现了「看不到、却改得了」。没有门店号的历史单只有属主能动（与 {@code allowedStoresOrAll} 同一口径）。
+     */
+    private String merchantFor(String afterSaleNo) {
+        String merchantNo = BizContext.requireMerchantNo();
+        String storeNo = afterSaleService.merchantStoreOf(merchantNo, afterSaleNo);
+        if (storeNo != null || !BizContext.current().owner()) {
+            BizContext.requireStoreAccess(storeNo);
+        }
+        return merchantNo;
     }
 
     /**
@@ -93,7 +111,7 @@ public class BizAfterSaleController {
     @PostMapping("/biz/after-sale/{afterSaleNo}/approve")
     public AfterSaleVO approve(@PathVariable String afterSaleNo,
                                @RequestBody(required = false) ApproveReq req) {
-        return afterSaleService.approve(BizContext.requireMerchantNo(), afterSaleNo,
+        return afterSaleService.approve(merchantFor(afterSaleNo), afterSaleNo,
                 req == null ? null : req.remark(),
                 req == null ? null : req.refundMinor(),
                 req == null ? null : req.refundMode());
@@ -102,19 +120,20 @@ public class BizAfterSaleController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/reject")
     public AfterSaleVO reject(@PathVariable String afterSaleNo, @RequestBody @Valid RejectReq req) {
-        return afterSaleService.reject(BizContext.requireMerchantNo(), afterSaleNo, req.remark());
+        return afterSaleService.reject(merchantFor(afterSaleNo), afterSaleNo, req.remark());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/receive")
     public AfterSaleVO confirmReturn(@PathVariable String afterSaleNo,
                                       @RequestBody(required = false) ReceiveReq request) {
+        String merchantNo = merchantFor(afterSaleNo);
         if (request != null && request.lines() != null) {
-            return afterSaleService.confirmReturn(BizContext.requireMerchantNo(), afterSaleNo,
+            return afterSaleService.confirmReturn(merchantNo, afterSaleNo,
                     request.receiptNo(), request.lines().stream().map(line ->
                             new AfterSaleService.ReturnReceiveLine(line.itemId(), line.receivedQty(), line.quality())).toList());
         }
-        return afterSaleService.confirmReturn(BizContext.requireMerchantNo(), afterSaleNo,
+        return afterSaleService.confirmReturn(merchantNo, afterSaleNo,
                 request != null && Boolean.TRUE.equals(request.restockApproved()));
     }
 
@@ -123,7 +142,7 @@ public class BizAfterSaleController {
     @PostMapping("/biz/after-sale/{afterSaleNo}/confirm-refund")
     public AfterSaleVO confirmRefund(@PathVariable String afterSaleNo,
                                      @RequestBody(required = false) ConfirmRefundReq req) {
-        return afterSaleService.confirmRefund(BizContext.requireMerchantNo(), afterSaleNo,
+        return afterSaleService.confirmRefund(merchantFor(afterSaleNo), afterSaleNo,
                 req == null ? null : req.reason());
     }
 

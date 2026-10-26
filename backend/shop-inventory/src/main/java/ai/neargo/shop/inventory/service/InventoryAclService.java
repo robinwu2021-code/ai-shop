@@ -41,6 +41,21 @@ public interface InventoryAclService {
      */
     String locationIdOf(String entityNo, String storeNo);
 
+    /**
+     * 这几家平台门店<b>动得到</b>的库位：门店自己的库位，加上它的发货源（新门店默认指向主体默认仓）；
+     * 还没有库位行的门店按「落到默认库位」算 —— 与 {@link #locationIdOf} 首次建出来的形状一致。
+     *
+     * <p>给 B 端门店级判权用：单据只认库位不认门店，「只管 A 店的店员能不能动这张单」
+     * 要换算成「这张单的库位在不在 A 店动得到的库位里」。<b>只读</b>，不建业主、不建库位。
+     */
+    java.util.Set<String> locationsOfStores(String entityNo, java.util.Collection<String> storeNos);
+
+    /**
+     * 一张单据涉及的库位：进货 / 出库 / 盘点是它那一个库位，调拨是 {@code [from, to]}。
+     * 按业主查，别家的单与不存在的单一样返回空列表（交给业务服务报 NOT_FOUND）。
+     */
+    java.util.List<String> locationsOfDoc(String ownerId, String docNo);
+
     /** 平台 SKU → 物料。不存在时按需投影一条（保存即投影，已定）。 */
     String itemIdOf(String entityNo, String skuNo);
 

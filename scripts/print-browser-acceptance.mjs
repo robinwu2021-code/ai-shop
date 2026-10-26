@@ -4,10 +4,15 @@
  * Contract fixture: node scripts/print-browser-acceptance.mjs
  * Controlled command failures (fixture ONLY): FIXTURE_FAIL_COMMANDS=1 PORT=5285 node scripts/print-browser-acceptance.mjs
  * Real isolated backend: BACKEND_URL=http://127.0.0.1:PORT node scripts/print-browser-acceptance.mjs
- * Start at /acceptance/start?token=...&store=...&order=... (defaults are fixture-only).
+ * Real fault acceptance: ACCEPTANCE_FAULTS=1 ACCEPTANCE_MANIFEST=<private ready.json> plus BACKEND_URL.
+ * Arm one fault: POST /acceptance/fault, X-Acceptance-Control: 1, JSON {path,mode}.
+ * Modes DROP_REQUEST / DROP_RESPONSE; only simulations, exports and ops dry-run reconciliation are used.
+ * Start real mode at /acceptance/start?identity=wallet (tokens stay in the private manifest).
+ * Manual /acceptance/start?token=...&store=...&order=... remains available for fixture-only defaults.
  * Fixture responses prove UI/API-contract interaction ONLY, never backend correctness or output.
  */
-import { createServer, request as httpRequest } from 'node:http';
+import { createServer } from 'node:http';
+import {createPrintAcceptanceProxy} from './lib/print-acceptance.mjs';
 import { readFile, appendFile, mkdir, stat } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -21,6 +26,8 @@ const backend=process.env.BACKEND_URL?new URL(process.env.BACKEND_URL):null;
 if(backend && !['127.0.0.1','localhost','[::1]'].includes(backend.hostname))throw Error('Only an isolated loopback backend is allowed');
 const manifest=process.env.ACCEPTANCE_MANIFEST?JSON.parse(await readFile(process.env.ACCEPTANCE_MANIFEST,'utf8')):null;
 if(manifest&&(!backend||manifest.backendUrl!==backend.origin))throw Error('Manifest/backend mismatch');
+const faultEnabled=process.env.ACCEPTANCE_FAULTS==='1';
+if(faultEnabled&&(!backend||manifest?.mode!=='REAL_ISOLATED_H2_HTTP'))throw Error('Faults require the private isolated test manifest');
 const frozen=value=>{const canonicalJson=JSON.stringify(value);return {canonicalJson,sha256:createHash('sha256').update(canonicalJson).digest('hex')};};
 const page=records=>({records,total:records.length,page:1,size:100});
 const scene={scene:'ORDER_PAID',title:'支付小票',sourceAvailable:true,variants:['STANDARD_58','STANDARD_80'],sourceTypes:['SUB_ORDER'],triggers:['ORDER_PAYMENT_CONFIRMED']};
@@ -30,6 +37,7 @@ const printers=[],templates=[],routes=[],simulations=[],exports=[],policies=[];
 const jobs=[{jobNo:'FIXTURE-UNKNOWN-JOB',requestNo:'FIXTURE-REQUEST',batchNo:'FIXTURE-BATCH',scene:'ORDER_PAID',printerNo:'LEGACY-DEVICE',status:'UNKNOWN',jobKind:'INITIAL',rootJobNo:'FIXTURE-UNKNOWN-JOB',revision:3,resolutionStatus:'OPEN',allowedActions:['QUERY','REPRINT','CONFIRM']}];
 const incidents=[{incidentNo:'FIXTURE-INCIDENT',incidentType:'OUTPUT_UNKNOWN',targetNo:'FIXTURE-UNKNOWN-JOB',status:'OPEN',severity:'WARNING',revision:0}];
 const log=[],intents=new Map(),versions=new Map();let seq=0;
+const realProxy=backend?createPrintAcceptanceProxy({backend,enabled:faultEnabled,onRecord:async record=>{log.push(record);await appendFile(resolve(output,'real-network-requests.jsonl'),JSON.stringify(record)+'\n');}}):null;
 const json=(res,data,code=0,status=200)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({code,msg:code?'contract-fixture rejected request':'OK',data}));};
 function operation(type,result,targetNo='FIXTURE-TARGET'){return {operationNo:'FIXTURE-OP-'+(++seq),type,status:'SUCCEEDED',targetType:'FIXTURE',targetNo,result:frozen(result)};}
 function requireValue(value,message){if(!value)throw Error(message);}
@@ -78,6 +86,12 @@ await mkdir(output,{recursive:true});
 createServer(async(req,res)=>{
  try{
   const url=new URL(req.url,'http://127.0.0.1:'+port),path=url.pathname;
+  if(path==='/acceptance/fault'){
+   requireValue(faultEnabled&&req.method==='POST'&&req.headers['x-acceptance-control']==='1','Fault control disabled or missing control header');
+   requireValue(!req.headers.origin||req.headers.origin===url.origin,'Cross-origin fault control rejected');
+   const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;requireValue(size<=1024,'Fault control too large');chunks.push(chunk);}
+   realProxy.arm(JSON.parse(Buffer.concat(chunks).toString()));json(res,{armed:true});return;
+  }
   if(path==='/acceptance/start'){
    const identity=url.searchParams.get('identity');
    const profile=identity==='refund'?{token:manifest?.refundToken,store:manifest?.refundStoreNo,order:manifest?.refundOrderNo}:identity==='wallet'?{token:manifest?.walletToken,store:manifest?.storeNo,order:manifest?.rechargeNo}:identity==='recharge'?{token:manifest?.token,store:manifest?.storeNo,order:manifest?.rechargeNo}:null;
@@ -89,7 +103,7 @@ createServer(async(req,res)=>{
   if(path==='/acceptance/evidence'){json(res,{mode:backend?'REAL_ISOLATED_BACKEND':'BROWSER_CONTRACT_FIXTURE',requests:log});return;}
   if(path==='/acceptance/fixture.pdf'&&!backend){res.writeHead(200,{'Content-Type':'application/pdf','Cache-Control':'no-store'});res.end(fixturePdf());return;}
   if(path.startsWith('/biz/')||path.startsWith('/mp/')||path.startsWith('/ops/')||(backend&&path==='/private/print-artifacts')){
-   if(backend){const proxy=httpRequest(new URL(req.url,backend),{method:req.method,headers:{...req.headers}},upstream=>{res.writeHead(upstream.statusCode,upstream.headers);upstream.pipe(res);});proxy.on('error',e=>json(res,{error:e.message},1,502));req.pipe(proxy);return;}
+   if(backend){await realProxy.forward(req,res);return;}
    const chunks=[];for await(const chunk of req)chunks.push(chunk);const body=chunks.length?JSON.parse(Buffer.concat(chunks).toString()):{};
    // Never record cloud secrets or tokens. This fixture records only the fields asserted by acceptance.
    const record={method:req.method,path,store:req.headers['x-store-no'],hasIdempotencyKey:!!req.headers['idempotency-key'],canonicalDeviceNo:body.connection?.config?.canonicalDeviceNo,source:body.sourceRef||body.source,expectedRevision:body.expectedRevision};log.push(record);await appendFile(resolve(output,'merchant-contract-requests.jsonl'),JSON.stringify(record)+'\n');
@@ -102,5 +116,5 @@ createServer(async(req,res)=>{
   let file=resolve(staticRoot,'.'+decodeURIComponent(relative==='/'?'/index.html':relative));requireValue(file.startsWith(staticRoot+sep),'invalid static path');
   try{if((await stat(file)).isDirectory())file=resolve(file,'index.html');}catch(error){if(!extname(file))file+='.html';else throw error;}
   const bytes=await readFile(file);const type={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'}[extname(file)]||'application/octet-stream';res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store'});res.end(bytes);
- }catch(e){json(res,{error:e.message},1,e.code==='ENOENT'?404:422);}
+ }catch(e){if(res.destroyed||res.headersSent){res.destroy();return;}json(res,{error:e.message},1,e.code==='ENOENT'?404:422);}
 }).listen(port,'127.0.0.1',()=>console.log(`Merchant ${backend?'REAL isolated backend proxy':'CONTRACT FIXTURE ONLY'} at http://127.0.0.1:${port}/acceptance/start`));

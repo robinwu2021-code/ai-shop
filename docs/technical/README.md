@@ -567,6 +567,8 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [餐饮非支付验收收口实施计划](./TDD-餐饮非支付验收收口.md) | — |
 | [小票紧凑排版 V2 验收记录](./acceptance/print-center/compact-v2.md) | — |
 | [打印模块合入集成线核对](./acceptance/print-center/integration-2026-10-23.md) | 按用户最新要求先保存独立分支 `codex/order-printing`；暂不合入集成线。全量验收尚未完成。 |
+| [打印网络恢复软件补验（2026-10-26）](./acceptance/print-center/network-2026-10-26.md) | — |
+| [Independent whole-branch review](./acceptance/print-center/network-2026-10-26/final-review.md) | — |
 | [打印运营与退款、充值来源验收](./acceptance/print-center/operations-and-sources-2026-10-25.md) | 本批软件范围验证完成；代码保存于独立开发分支，未推送、合并、部署或启用生产。实机及私有COS另行验收。 |
 | [商家打印浏览器验收结果](./acceptance/print-center/operations-and-sources-evidence/browser-results.md) | — |
 | [商家打印入口最终小差异审查](./acceptance/print-center/operations-and-sources-evidence/merchant-review.md) | — |
@@ -787,6 +789,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [餐饮系统 UI 组件与主题方案](./design/餐饮系统-UI组件与主题方案.md) | 原型方案 · 待评审 · 2026-10-20。对应需求矩阵、平板原型。本轮没有新增或替换线上Vue组件、公共设计令牌或业务API。 |
 | [餐饮系统 V2 需求比较与对齐](./design/餐饮系统-V2需求比较与对齐.md) | 待评审 · 创建：2026-10-19 · 本轮为文档对齐，未实施业务代码或迁移。 |
 | [餐饮系统代码结构与对象清单](./design/餐饮系统-代码结构与对象清单.md) | 待评审 · 2026-10-25 · 本轮修订为core零售同款组织方式；原Repository及8模块方案作废，不作为并行选项。 |
+| [餐饮系统 · 功能清单与代码对齐](./design/餐饮系统-功能清单与代码对齐.md) | 评审结论（2026-10-26，分支 `codex/ai-shop-codex` @ `176766c60`）。本文是餐饮**功能清单的唯一入口**： |
 | [餐饮系统多端功能矩阵与部署边界](./design/餐饮系统-多端功能矩阵与部署边界.md) | 待评审 · 创建：2026-10-19 · 范围：功能与权限设计，不代表已实现。 |
 | [餐饮系统实际公开API对照](./design/餐饮系统-实际公开API对照.md) | 源码静态合同快照已核对；不代替运行注册、权限及门店验收。 |
 | [餐饮系统按业务模块代码清单](./design/餐饮系统-按业务模块代码清单.md) | 静态源码投影，编译、专项测试和部署证据见本批交付验证。 |
@@ -827,6 +830,7 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [开发计划 · 营销域：活动统一模型、社区集单与拼团](./开发计划-营销域.md) | **待确认**（2026-09-18 起草；确认后随任务勾选滚动更新） |
 | [待办：任务服务多系统改造（`backend/job/`）](./待办-任务服务多系统改造.md) | — |
 | [待办：整仓迁移到 pnpm](./待办-迁移-pnpm.md) | — |
+| [待办：零售核心评审遗留](./待办-零售核心评审遗留.md) | 待决定 / 待排期。做掉一条就从这里删一条；全部清空后删掉本文。 |
 | [微信物流能力清单](./微信物流能力清单.md) | — |
 | [支付服务 · 代码 Review（2026-10-24）](./支付服务-代码Review-2026-10-24.md) | — |
 | [支付服务 · 代码清单（开放 API · 刷卡 POS · 内部调用）](./支付服务-代码清单-开放API刷卡POS内部调用.md) | **草稿**（2026-10-25） |

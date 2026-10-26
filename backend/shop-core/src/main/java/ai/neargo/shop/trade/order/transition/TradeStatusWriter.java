@@ -87,6 +87,16 @@ public class TradeStatusWriter {
         if (event == OrderEvent.PREPARE) {
             return prepareOrder(sub, actor, operatorNo, reason, ctx);
         }
+        if (event == OrderEvent.VERIFIED || event == OrderEvent.DELIVERED_BY_MERCHANT) {
+            /*
+             * 收口边的「有没有进行中售后」由写入口自己查，不信调用方传进来的上下文。
+             *
+             * 状态机上的 NO_OPEN_AFTER_SALE 守卫读的是 ctx —— 而核销的调用点（自提核销、团长核销、
+             * 行业核销）传的一律是 authorizedOnly()，openAfterSale 恒为 false。只在机器上加守卫、
+             * 不在这里补事实，守卫就永远不会触发。只补不清：调用方已经判出「有售后」的照样算。
+             */
+            ctx = ctx.withOpenAfterSale(ctx.openAfterSale() || hasOpenAfterSale(sub.getSubOrderNo()));
+        }
         Fired<OrderStatus, OrderEvent> f = gate.apply(OrderMachine.MACHINE, OrderStatus.class,
                 new Command<>(Aggregate.ORDER, sub.getSubOrderNo(), sub.getSubOrderNo(), event, actor,
                         operatorNo, reason, ctx));
@@ -110,6 +120,12 @@ public class TradeStatusWriter {
             }
         }
         return f;
+    }
+
+    /** 售后占位或存量未收口售后行，任一即算「有进行中售后」（与发货侧 {@code MybatisShipmentReadStore} 同口径）。 */
+    private boolean hasOpenAfterSale(String subOrderNo) {
+        return DataScopeContext.executeWithoutScope(() -> casMapper.openAfterSaleNo(subOrderNo) != null
+                || casMapper.countOpenAfterSales(subOrderNo) > 0);
     }
 
     /** 调用方持事务；当前读与条件写先完成，门只为实际首次备货记一次流水。 */

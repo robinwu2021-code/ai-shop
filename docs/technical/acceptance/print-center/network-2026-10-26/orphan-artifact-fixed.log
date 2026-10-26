@@ -1,0 +1,766 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] shop-parent                                                        [pom]
+[INFO] shop-auth-store                                                    [jar]
+[INFO] job-api                                                            [jar]
+[INFO] job-store                                                          [jar]
+[INFO] job-core                                                           [jar]
+[INFO] svc-client                                                         [jar]
+[INFO] shop-base                                                          [jar]
+[INFO] shop-base-auth                                                     [jar]
+[INFO] shop-store-mybatis                                                 [jar]
+[INFO] print-api                                                          [jar]
+[INFO] shop-core                                                          [jar]
+[INFO] print-domain                                                       [jar]
+[INFO] print-channel                                                      [jar]
+[INFO] shop-merchant                                                      [jar]
+[INFO] pay-channel                                                        [jar]
+[INFO] pay-domain                                                         [jar]
+[INFO] pay-portal                                                         [jar]
+[INFO] shop-inventory                                                     [jar]
+[INFO] shop-report                                                        [jar]
+[INFO] elec-api                                                           [jar]
+[INFO] shop-channel                                                       [jar]
+[INFO] logistics-domain                                                   [jar]
+[INFO] logistics-channel                                                  [jar]
+[INFO] shop-notify                                                        [jar]
+[INFO] shop-app                                                           [jar]
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:shop-parent >---------------------
+[INFO] Building shop-parent 0.1.0-SNAPSHOT                               [1/25]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-parent ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireJavaVersion passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-parent ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] -------------------< ai.neargo.shop:shop-auth-store >-------------------
+[INFO] Building shop-auth-store 0.1.0-SNAPSHOT                           [2/25]
+[INFO]   from shop-auth-store/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-auth-store ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-auth-store ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-auth-store ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-auth-store/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-auth-store/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-auth-store ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-auth-store ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-auth-store/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-auth-store ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-auth-store ---
+[INFO] 
+[INFO] -----------------------< ai.neargo.shop:job-api >-----------------------
+[INFO] Building job-api 0.1.0-SNAPSHOT                                   [3/25]
+[INFO]   from job/job-api/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ job-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ job-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ job-api ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/job/job-api/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/job/job-api/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ job-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ job-api ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/job/job-api/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ job-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ job-api ---
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:job-store >----------------------
+[INFO] Building job-store 0.1.0-SNAPSHOT                                 [4/25]
+[INFO]   from job/job-store/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ job-store ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ job-store ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ job-store ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ job-store ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ job-store ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ job-store ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ job-store ---
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:job-core >-----------------------
+[INFO] Building job-core 0.1.0-SNAPSHOT                                  [5/25]
+[INFO]   from job/job-core/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ job-core ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ job-core ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ job-core ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/job/job-core/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/job/job-core/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ job-core ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ job-core ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/job/job-core/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ job-core ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ job-core ---
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:svc-client >----------------------
+[INFO] Building svc-client 0.1.0-SNAPSHOT                                [6/25]
+[INFO]   from svc-client/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ svc-client ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ svc-client ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ svc-client ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/svc-client/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/svc-client/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ svc-client ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ svc-client ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/svc-client/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ svc-client ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ svc-client ---
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:shop-base >----------------------
+[INFO] Building shop-base 0.1.0-SNAPSHOT                                 [7/25]
+[INFO]   from shop-base/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-base ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-base ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-base ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-base/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-base/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-base ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-base ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-base/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-base ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-base ---
+[INFO] 
+[INFO] -------------------< ai.neargo.shop:shop-base-auth >--------------------
+[INFO] Building shop-base-auth 0.1.0-SNAPSHOT                            [8/25]
+[INFO]   from shop-base-auth/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-base-auth ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-base-auth ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-base-auth ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-base-auth/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-base-auth/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-base-auth ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-base-auth ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-base-auth/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-base-auth ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-base-auth ---
+[INFO] 
+[INFO] -----------------< ai.neargo.shop:shop-store-mybatis >------------------
+[INFO] Building shop-store-mybatis 0.1.0-SNAPSHOT                        [9/25]
+[INFO]   from shop-store-mybatis/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-store-mybatis ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-store-mybatis ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-store-mybatis ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-store-mybatis/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-store-mybatis/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-store-mybatis ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-store-mybatis ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-store-mybatis/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-store-mybatis ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-store-mybatis ---
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:print-api >----------------------
+[INFO] Building print-api 0.1.0-SNAPSHOT                                [10/25]
+[INFO]   from print/print-api/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ print-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ print-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ print-api ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/print/print-api/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/print/print-api/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ print-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ print-api ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/print/print-api/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ print-api ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ print-api ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:shop-core >----------------------
+[INFO] Building shop-core 0.1.0-SNAPSHOT                                [11/25]
+[INFO]   from shop-core/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-core ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-core ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-core ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 5 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-core ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-core ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-core/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-core ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-core ---
+[INFO] 
+[INFO] --------------------< ai.neargo.shop:print-domain >---------------------
+[INFO] Building print-domain 0.1.0-SNAPSHOT                             [12/25]
+[INFO]   from print/print-domain/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ print-domain ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ print-domain ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ print-domain ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ print-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ print-domain ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/print/print-domain/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ print-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ print-domain ---
+[INFO] 
+[INFO] --------------------< ai.neargo.shop:print-channel >--------------------
+[INFO] Building print-channel 0.1.0-SNAPSHOT                            [13/25]
+[INFO]   from print/print-channel/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ print-channel ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ print-channel ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ print-channel ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ print-channel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ print-channel ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ print-channel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ print-channel ---
+[INFO] 
+[INFO] --------------------< ai.neargo.shop:shop-merchant >--------------------
+[INFO] Building shop-merchant 0.1.0-SNAPSHOT                            [14/25]
+[INFO]   from shop-merchant/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-merchant ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-merchant ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-merchant ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-merchant/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-merchant/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-merchant ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-merchant ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-merchant/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-merchant ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-merchant ---
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:pay-channel >---------------------
+[INFO] Building pay-channel 0.1.0-SNAPSHOT                              [15/25]
+[INFO]   from pay/pay-channel/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ pay-channel ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ pay-channel ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ pay-channel ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/pay/pay-channel/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/pay/pay-channel/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ pay-channel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ pay-channel ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/pay/pay-channel/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ pay-channel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ pay-channel ---
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:pay-domain >----------------------
+[INFO] Building pay-domain 0.1.0-SNAPSHOT                               [16/25]
+[INFO]   from pay/pay-domain/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ pay-domain ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ pay-domain ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ pay-domain ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 11 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ pay-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ pay-domain ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/pay/pay-domain/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ pay-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ pay-domain ---
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:pay-portal >----------------------
+[INFO] Building pay-portal 0.1.0-SNAPSHOT                               [17/25]
+[INFO]   from pay/pay-portal/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ pay-portal ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ pay-portal ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ pay-portal ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/pay/pay-portal/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/pay/pay-portal/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ pay-portal ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ pay-portal ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/pay/pay-portal/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ pay-portal ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ pay-portal ---
+[INFO] 
+[INFO] -------------------< ai.neargo.shop:shop-inventory >--------------------
+[INFO] Building shop-inventory 0.1.0-SNAPSHOT                           [18/25]
+[INFO]   from shop-inventory/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-inventory ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-inventory ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-inventory ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 15 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-inventory ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-inventory ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-inventory/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-inventory ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-inventory ---
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:shop-report >---------------------
+[INFO] Building shop-report 0.1.0-SNAPSHOT                              [19/25]
+[INFO]   from shop-report/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-report ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-report ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-report ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 4 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-report ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-report ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-report ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-report ---
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:elec-api >-----------------------
+[INFO] Building elec-api 0.1.0-SNAPSHOT                                 [20/25]
+[INFO]   from elec/elec-api/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ elec-api ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ elec-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ elec-api ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/elec/elec-api/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/elec/elec-api/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ elec-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ elec-api ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/elec/elec-api/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ elec-api ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ elec-api ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --------------------< ai.neargo.shop:shop-channel >---------------------
+[INFO] Building shop-channel 0.1.0-SNAPSHOT                             [21/25]
+[INFO]   from shop-channel/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-channel ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-channel ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-channel ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-channel/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-channel/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-channel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-channel ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-channel/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-channel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-channel ---
+[INFO] 
+[INFO] ------------------< ai.neargo.shop:logistics-domain >-------------------
+[INFO] Building logistics-domain 0.1.0-SNAPSHOT                         [22/25]
+[INFO]   from logistics/logistics-domain/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ logistics-domain ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ logistics-domain ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ logistics-domain ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/logistics/logistics-domain/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/logistics/logistics-domain/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ logistics-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ logistics-domain ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/logistics/logistics-domain/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ logistics-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ logistics-domain ---
+[INFO] 
+[INFO] ------------------< ai.neargo.shop:logistics-channel >------------------
+[INFO] Building logistics-channel 0.1.0-SNAPSHOT                        [23/25]
+[INFO]   from logistics/logistics-channel/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ logistics-channel ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ logistics-channel ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ logistics-channel ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/logistics/logistics-channel/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/logistics/logistics-channel/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ logistics-channel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ logistics-channel ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/logistics/logistics-channel/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ logistics-channel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ logistics-channel ---
+[INFO] 
+[INFO] ---------------------< ai.neargo.shop:shop-notify >---------------------
+[INFO] Building shop-notify 0.1.0-SNAPSHOT                              [24/25]
+[INFO]   from shop-notify/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-notify ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-notify ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-notify ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-notify/src/main/resources
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-notify/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-notify ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-notify ---
+[INFO] skip non existing resourceDirectory /tmp/ai-shop-print-compact-integration/backend/shop-notify/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-notify ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-notify ---
+[INFO] 
+[INFO] ----------------------< ai.neargo.shop:shop-app >-----------------------
+[INFO] Building shop-app 0.1.0-SNAPSHOT                                 [25/25]
+[INFO]   from shop-app/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-build-env) @ shop-app ---
+[INFO] Rule 2: org.apache.maven.enforcer.rules.BanDuplicatePomDependencyVersions passed
+[INFO] 
+[INFO] --- enforcer:3.5.0:enforce (enforce-dependency-convergence) @ shop-app ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.DependencyConvergence passed
+[INFO] Rule 1: org.apache.maven.enforcer.rules.property.RequireProperty passed
+[INFO] Rule 2: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- spring-boot:4.0.7:build-info (build-info) @ shop-app ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shop-app ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 512 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ shop-app ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ shop-app ---
+[INFO] Copying 17 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ shop-app ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.5.6:test (default-test) @ shop-app ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running 孤儿模块
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.416 s -- in 孤儿模块
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for shop-parent 0.1.0-SNAPSHOT:
+[INFO] 
+[INFO] shop-parent ........................................ SUCCESS [  0.251 s]
+[INFO] shop-auth-store .................................... SUCCESS [  0.265 s]
+[INFO] job-api ............................................ SUCCESS [  0.026 s]
+[INFO] job-store .......................................... SUCCESS [  0.048 s]
+[INFO] job-core ........................................... SUCCESS [  0.052 s]
+[INFO] svc-client ......................................... SUCCESS [  0.029 s]
+[INFO] shop-base .......................................... SUCCESS [  0.130 s]
+[INFO] shop-base-auth ..................................... SUCCESS [  0.167 s]
+[INFO] shop-store-mybatis ................................. SUCCESS [  0.073 s]
+[INFO] print-api .......................................... SUCCESS [  0.044 s]
+[INFO] shop-core .......................................... SUCCESS [  0.234 s]
+[INFO] print-domain ....................................... SUCCESS [  0.129 s]
+[INFO] print-channel ...................................... SUCCESS [  0.144 s]
+[INFO] shop-merchant ...................................... SUCCESS [  0.088 s]
+[INFO] pay-channel ........................................ SUCCESS [  0.084 s]
+[INFO] pay-domain ......................................... SUCCESS [  0.160 s]
+[INFO] pay-portal ......................................... SUCCESS [  0.048 s]
+[INFO] shop-inventory ..................................... SUCCESS [  0.073 s]
+[INFO] shop-report ........................................ SUCCESS [  0.053 s]
+[INFO] elec-api ........................................... SUCCESS [  0.011 s]
+[INFO] shop-channel ....................................... SUCCESS [  0.064 s]
+[INFO] logistics-domain ................................... SUCCESS [  0.072 s]
+[INFO] logistics-channel .................................. SUCCESS [  0.067 s]
+[INFO] shop-notify ........................................ SUCCESS [  0.064 s]
+[INFO] shop-app ........................................... SUCCESS [  1.379 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.069 s
+[INFO] Finished at: 2026-10-26T15:57:07+08:00
+[INFO] ------------------------------------------------------------------------

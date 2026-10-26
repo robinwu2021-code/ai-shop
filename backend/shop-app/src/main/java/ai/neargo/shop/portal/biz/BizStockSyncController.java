@@ -44,9 +44,11 @@ public class BizStockSyncController {
         this.alignment = alignment;
     }
 
+    /** 门店属于本主体（不是就 404），且这个人被授权到了这家店（不是就 403）—— 与线下卖出同一道闸 */
     private String entity(String storeNo) {
         String entityNo = BizContext.requireMerchantNo();
         service.requireStore(entityNo, storeNo);
+        BizContext.requireStoreAccess(storeNo);
         return entityNo;
     }
 

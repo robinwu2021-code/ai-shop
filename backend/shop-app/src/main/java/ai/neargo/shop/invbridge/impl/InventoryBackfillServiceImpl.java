@@ -1,6 +1,7 @@
 package ai.neargo.shop.invbridge.impl;
 
 import ai.neargo.shop.invbridge.InventoryBackfillService;
+import ai.neargo.shop.invbridge.ReservationHoldTtl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.inventory.dto.InventoryVOs.ItemDetailVO;
@@ -23,6 +24,7 @@ import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -82,10 +84,15 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
     private static final int DIFF_PAGES_MAX = 200;
 
     /**
-     * 搬过来的在途预留活多久。与平台的「未支付自动关单」同一个量级 ——
-     * 比它短会把还能付款的单先释放掉，比它长会让已关的单继续占着货。
+     * 搬过来的在途预留活多久：与下单锁货同一个口径（{@link ReservationHoldTtl}，由未支付关单窗口推出）。
+     * 写死 30 分钟时，关单窗口配成 2 小时的单在搬过去 30 分钟后就被回收 —— 还能付款，货已可卖。
      */
-    private static final long HELD_TTL_SECONDS = 30 * 60L;
+    private ReservationHoldTtl holdTtl;
+
+    @Autowired(required = false)
+    void setHoldTtl(ReservationHoldTtl holdTtl) {
+        this.holdTtl = holdTtl;
+    }
 
     /**
      * {@inheritDoc}
@@ -95,13 +102,38 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
      */
     @Override
     public int migrateHeldLocks(int limit) {
-        List<PrdStockLock> held = DataScopeContext.executeWithoutScope(() ->
-                lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
-                        .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED)
-                        .orderByAsc(PrdStockLock::getId)
-                        .last("LIMIT " + limit)));
+        /*
+         * **按 id 翻到底**，limit 只是每页大小。此前只取前 limit 行：在途锁多于一页时，
+         * 后面那些每一轮都摸不到 —— 而前面那页搬过之后平台侧状态不变，下一轮还是同一页。
+         * 先收齐再成组：同一单的几行可能跨页，分页内成组会把一单拆成两次 reserve。
+         */
+        int page = Math.max(limit, 1);
+        List<PrdStockLock> held = new ArrayList<>();
+        Long after = null;
+        while (true) {
+            Long from = after;
+            List<PrdStockLock> rows = DataScopeContext.executeWithoutScope(() ->
+                    lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
+                            .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED)
+                            .gt(from != null, PrdStockLock::getId, from)
+                            .orderByAsc(PrdStockLock::getId)
+                            .last("LIMIT " + page)));
+            held.addAll(rows);
+            if (rows.size() < page) {
+                break;
+            }
+            after = rows.get(rows.size() - 1).getId();
+        }
+        long ttl = ReservationHoldTtl.secondsOf(holdTtl);
 
-        int moved = 0;
+        /*
+         * **按「锁号 + 货主」成组搬，不是逐行。**锁号就是订单号：一单买两个规格是两行 LOCKED、同一个锁号。
+         * 逐行 reserve 时第一行用这个 ref 建了预留，第二行同 ref、行不同 → CONFLICT 被吞掉，
+         * 那件货在进销存里没占住（平台 held=1、进销存 reserved=0），切真相源那天就会被卖掉。
+         * 成组后同一单的行一次交给 reserve；重跑时行集合不变，reserve 按同 ref 同内容幂等返回。
+         */
+        Map<String, List<ReservationService.Line>> groups = new LinkedHashMap<>();
+        Map<String, String[]> refOf = new LinkedHashMap<>();
         for (PrdStockLock lock : held) {
             /*
              * **吃预售额度的那些不搬**：它们占的不是现货，而是「明天要采的量」。
@@ -118,15 +150,21 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
             }
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, lock.getStoreNo()));
+            String key = lock.getLockNo() + "|" + owner;
+            refOf.putIfAbsent(key, new String[] {owner, lock.getLockNo()});
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(new ReservationService.Line(
+                    acl.itemIdOfSku(lock.getSkuNo()), locationId, nz(lock.getQty())));
+        }
+
+        int moved = 0;
+        for (var e : groups.entrySet()) {
+            String[] ref = refOf.get(e.getKey());
             try {
-                reservations.reserve(owner, lock.getLockNo(),
-                        List.of(new ReservationService.Line(
-                                acl.itemIdOfSku(lock.getSkuNo()), locationId, nz(lock.getQty()))),
-                        HELD_TTL_SECONDS);
-                moved++;
-            } catch (RuntimeException e) {
+                reservations.reserve(ref[0], ref[1], e.getValue(), ttl);
+                moved += e.getValue().size();
+            } catch (RuntimeException ex) {
                 // 已经搬过（同 ref）或此刻可用不足，都不该中断整批
-                log.debug("在途预留 {} 未搬：{}", lock.getLockNo(), e.getMessage());
+                log.debug("在途预留 {} 未搬：{}", ref[1], ex.getMessage());
             }
         }
         if (moved > 0) {

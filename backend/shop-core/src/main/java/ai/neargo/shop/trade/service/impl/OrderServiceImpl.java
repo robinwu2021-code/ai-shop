@@ -105,7 +105,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 交易主干实现。下单链路严格按 TDD-backend §7.1 的八步走。
@@ -1663,8 +1665,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
         }
         if (purchaseLimit != null) {
-            // 每人限购：只读、在锁库存之前（与上面几道校验同一个姿势）
-            purchaseLimit.require(userNo, split.qtyByGoods(), split.limitsByGoods());
+            // 每人限购：在锁库存之前；同一买家的并发单在这里排队（锁账户行），否则各读到「已买 0」一起越线
+            purchaseLimit.requireForCreate(userNo, split.qtyByGoods(), split.limitsByGoods());
         }
         requireReceiverWhenShipped(cmd, userNo);
         requireWithinDeliveryRadius(cmd, split, userNo);
@@ -2063,6 +2065,14 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 与订单同事务：扣量失败要能连订单一起回滚，否则会「量扣了、单没成」。
          */
         campaignPort.commit(userNo, orderNo, discounts.auto());
+        // 特价 / 买赠的份数同理在这里扣：每个真的胜出了的活动一单扣一份（见 CampaignPort#commitItemBenefits）
+        campaignPort.commitItemBenefits(userNo, orderNo, Stream.concat(
+                split.items.stream().map(l -> new CampaignPort.ItemBenefitUse(
+                        l.snapshot.goodsNo(), l.snapshot.merchantNo(), false)),
+                split.items.stream().filter(l -> gifts.getOrDefault(l.snapshot.skuNo(), 0) > 0)
+                        .map(l -> new CampaignPort.ItemBenefitUse(
+                                l.snapshot.goodsNo(), l.snapshot.merchantNo(), true)))
+                .toList());
 
         // ⑦ 发事件（只写 outbox，与业务同事务）
         if (pointsStaged) {
@@ -3147,6 +3157,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (requested.isEmpty()) {
             return new Split(List.of(), List.of());
         }
+        requested = mergedBySku(requested);
 
         List<String> skuNos = requested.stream().map(CreateOrderCommand.Item::skuNo).toList();
         Map<String, GoodsQueryPort.SkuSnapshot> snapshots = goodsPort.snapshot(skuNos);
@@ -3255,6 +3266,40 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         return new Split(lines, groups);
     }
 
+    /**
+     * 每一行至少 1 件，同一规格的多行并成一行；否则整单 {@code BAD_REQUEST}。
+     *
+     * <p><b>放在 split() 而不是 Controller</b>：预览、下单、积分报价、代客下单都经过这里，
+     * 只有这里挡得住全部入口；购物车那条路（{@code CartServiceImpl#update} 把 ≤0 当删除）
+     * 与代客下单（{@code PlatformOrderServiceImpl} 逐行 {@code qty <= 0} 拒）早就各自拦了，
+     * 唯独端上直传的 {@code items[]} 没人管。
+     *
+     * <p><b>件数 ≥ 1</b> 防的是「一行负数抵掉另一行」：{A×2, B×-2} 的 B 行金额为负，整单应付被拉低，
+     * 而锁库存、限购按件数之和算，负数行同样在抵扣。上限不另设 ——
+     * 件数的天花板是库存与每人限购，两道都在下单链路里，再加一个数字只会多一处对不上。
+     *
+     * <p><b>按规格合并</b>防的是赠品被放大：买赠按规格把各行赠品数<b>汇总</b>，
+     * 而锁库存、写赠品行是<b>逐行</b>读那个汇总数 —— 五行 {X×2} 在「买 2 送 1」下锁了、写了 25 件赠品。
+     * 在入口并成一行，下游「每个规格只有一行」的假设就重新成立，不必逐处去改。
+     * 合并按 skuNo：货号由快照从规格解出，端上传的 goodsNo 本来就不作数。
+     */
+    private static List<CreateOrderCommand.Item> mergedBySku(List<CreateOrderCommand.Item> items) {
+        Map<String, CreateOrderCommand.Item> bySku = new LinkedHashMap<>();
+        for (CreateOrderCommand.Item it : items) {
+            if (it == null || it.qty() < 1) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            bySku.merge(it.skuNo(), it, (a, b) -> {
+                try {
+                    return new CreateOrderCommand.Item(a.goodsNo(), a.skuNo(), Math.addExact(a.qty(), b.qty()));
+                } catch (ArithmeticException overflow) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            });
+        }
+        return bySku.size() == items.size() ? items : List.copyOf(bySku.values());
+    }
+
     /** 一行落在哪一组：归属门店；没有归属按主体落店的结果；都没有用主体号 */
     private static String storeKeyOf(Line l, Map<String, String> landedByEntity) {
         String own = l.snapshot.storeNo();
@@ -3286,10 +3331,16 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }
         var q = groupJoinPort.quote(userNo, cmd.groupNo(), cmd.openGroup(), goods.iterator().next());
         for (Line l : split.items) {
-            if (!q.merchantNo().equals(l.snapshot.merchantNo())
-                    || (q.skuNo() != null && !q.skuNo().equals(l.skuNo()))) {
+            if (!q.merchantNo().equals(l.snapshot.merchantNo())) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
+        }
+        /*
+         * 团价只给团的那个规格（见 GroupJoinPort.GroupQuote#skuNo）；同单别的规格照原价，由 repriced 只换那一行。
+         * 整单一行团规格都没有就不是团单：带着团号全按原价买，却占一个成员名额、到期还跟着整单退款。
+         */
+        if (q.skuNo() == null || split.items.stream().noneMatch(l -> q.skuNo().equals(l.skuNo()))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         return q;
     }
@@ -3377,18 +3428,40 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
              */
             String storeTemplate = merchantPort.expressTemplateNo(g.merchantNo(), stores.get(g.key())).orElse(null);
             List<FreightPort.FreightLine> lines = new ArrayList<>();
+            long groupGram = 0L;
             for (Line l : g.lines()) {
                 String own = goodsTemplates.get(l.snapshot().goodsNo());
                 String template = own != null && activeTemplate.computeIfAbsent(own, freightPort::active)
                         ? own : storeTemplate;
-                Integer w = l.snapshot().nominalGram();
-                boolean weighed = w != null && w > 0;
-                lines.add(new FreightPort.FreightLine(template, weighed ? w * l.qty() : 0,
-                        weighed ? 0 : l.qty(), l.amount()));
+                int gram = weighedGram(l.snapshot().nominalGram(), l.qty());
+                groupGram += gram;
+                lines.add(new FreightPort.FreightLine(template, gram, gram > 0 ? 0 : l.qty(), l.amount()));
+            }
+            if (groupGram > Integer.MAX_VALUE) {
+                // 每行没溢出、加起来溢出：FreightPort 按 int 累加，同样会绕成负数 —— 与单行同一个处理
+                throw BizException.of(ErrorCode.BAD_REQUEST);
             }
             freightPort.quoteMerged(lines, address).ifPresent(q -> out.put(g.key(), q));
         }
         return out;
+    }
+
+    /**
+     * 一行的计费重（克）= 标称克重 × 件数；没填克重返回 0（这一行按件数走首重）。
+     *
+     * <p>用 {@link Math#multiplyExact} 而不是 {@code Integer * int}：溢出会绕成负数，
+     * 再被运费模板的 {@code max(0, 重量)} 抹成 0 —— 越重越包邮。溢出的单一律 {@code BAD_REQUEST}，
+     * 两千多吨的一行不是真实的快递单。
+     */
+    static int weighedGram(Integer nominalGram, int qty) {
+        if (nominalGram == null || nominalGram <= 0) {
+            return 0;
+        }
+        try {
+            return Math.multiplyExact(nominalGram, qty);
+        } catch (ArithmeticException overflow) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
     }
 
     private static Split applyFreight(Split split, Map<String, FreightPort.Quote> quotes) {
@@ -3404,9 +3477,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     /**
-     * 团单按团价重算每一行。**替换快照上的单价**而不是事后打折：
+     * 团单按团价重算<b>团的那个规格</b>的行。**替换快照上的单价**而不是事后打折：
      * 订单行的 price / amount、子单的商品金额、满减门槛全都读它，
      * 只在一处改，预览与下单、主单与子单就不会各算出一个数。
+     *
+     * <p>别的规格的行原样保留：团价只有一个数，此前整单每行都换成它，20 斤装就按 10 斤装的团价成交。
      */
     private static Split repriced(Split split,
                                   ai.neargo.shop.spi.marketing.GroupJoinPort.GroupQuote q) {
@@ -3414,6 +3489,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             return split;
         }
         List<Line> lines = split.items.stream().map(l -> {
+            if (!l.skuNo().equals(q.skuNo())) {
+                return l;
+            }
             var s = l.snapshot;
             return new Line(new GoodsQueryPort.SkuSnapshot(s.skuNo(), s.goodsNo(), s.merchantNo(),
                     s.title(), s.cover(), s.spec(), s.categoryType(), s.categoryNo(),
@@ -3959,8 +4037,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
      * <p>缺了它<b>不会在下单时报错</b>，而是让后面每一步都失败、且原因都指错：
      * <ul>
      *   <li>到货登记 {@code /biz/pickup/arrived} → 返回空列表，看着像「没有这单」</li>
-     *   <li>核销 {@code /biz/pickup/verify} → {@code NOT_THIS_PICKUP}，
-     *       看着像「顾客走错店了」—— 店员会让他去别的自提点，
+     *   <li>核销 {@code /biz/pickup/verify} → {@code CODE_NOT_FOUND}（非本点与不存在同一回答，防枚举），
+     *       看着像「码念错了」—— 店员会让顾客反复核对，
      *       <b>而那单根本不属于任何自提点</b></li>
      * </ul>
      * 2026-08-17 B 端第二轮实测抓到（用例 TB-B-6-2）。
@@ -4291,13 +4369,45 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     private String newUnusedVerifyCode() { return originalOwnerUnusedVerifyCode(subOrderMapper); }
 
+    /**
+     * 已结束的单让出号段前要冷却多久。核销码只对<b>活码</b>有意义：终态的单不能再核销，
+     * 但刚核销完的码立刻发给下一个顾客，店员会在同一个核销台上看到「这个码昨天用过」。
+     */
+    static final java.time.Duration VERIFY_CODE_RECYCLE_AFTER = java.time.Duration.ofDays(30);
+
+    private static final Set<String> VERIFY_CODE_FINAL =
+            Set.of(OrdSubOrder.COMPLETED, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED);
+
     /** Same original namespace for paid pickup and authorized lifecycle-3 unpaid acceptance. */
     static String originalOwnerUnusedVerifyCode(StoreOrderMapper mapper) {
+        return originalOwnerUnusedVerifyCode(mapper, OrderServiceImpl::newVerifyCode);
+    }
+
+    /**
+     * 先查后写、撞了换一个；撞上的是<b>终态且已过冷却期</b>的旧单，就把码从它身上摘下来复用。
+     *
+     * <p>{@code uk_verify_code} 是全表永久唯一，历史单的码一直占着号段 ——
+     * 100 万个号用满之后支付确认会恒抛，用户付了钱、子单停在待发码。只对活码唯一需要迁移改索引；
+     * 在那之前回收旧码是不动库表的最小修法。摘码用条件更新（仍是这个码才摘），并发由唯一键兜底。
+     * 被回收的单丢掉 {@code verify_code}，核销记录仍在 {@code ful_verify_log}（码 + 子单号）。
+     */
+    static String originalOwnerUnusedVerifyCode(StoreOrderMapper mapper, java.util.function.Supplier<String> codes) {
+        java.time.LocalDateTime recycleBefore = java.time.LocalDateTime.now().minus(VERIFY_CODE_RECYCLE_AFTER);
         for (int i = 0; i < VERIFY_CODE_TRIES; i++) {
-            String code = newVerifyCode();
-            Long used = mapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
+            String code = codes.get();
+            List<OrdSubOrder> holders = mapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
                     .eq(OrdSubOrder::getVerifyCode, code));
-            if (used == null || used == 0L) {
+            if (holders.isEmpty()) {
+                return code;
+            }
+            OrdSubOrder holder = holders.get(0);
+            if (holders.size() == 1
+                    && VERIFY_CODE_FINAL.contains(holder.getStatus())
+                    && holder.getUpdatedAt() != null && holder.getUpdatedAt().isBefore(recycleBefore)
+                    && mapper.update(null, Wrappers.<OrdSubOrder>lambdaUpdate()
+                            .set(OrdSubOrder::getVerifyCode, null)
+                            .eq(OrdSubOrder::getId, holder.getId())
+                            .eq(OrdSubOrder::getVerifyCode, code)) == 1) {
                 return code;
             }
         }

@@ -589,10 +589,21 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     // ---------------------------------------------------------------- B 端
 
     @Override
-    public List<AfterSaleVO> merchantList(String merchantNo, String status) {
+    public List<AfterSaleVO> merchantList(String merchantNo, String status, java.util.Set<String> storeNos) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return List.of();
+        }
         var w = Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getEntityNo, merchantNo);
         if (status != null && !status.isBlank()) {
             w.eq(OrdAfterSale::getStatus, status);
+        }
+        if (storeNos != null) {
+            // 与 merchantPage 同一个口径（EXISTS 子单门店）：店员看不到他没被授权那几家店的售后
+            List<String> stores = List.copyOf(storeNos);
+            String placeholders = java.util.stream.IntStream.range(0, stores.size())
+                    .mapToObj(i -> "{" + i + "}").collect(java.util.stream.Collectors.joining(","));
+            w.apply("EXISTS (SELECT 1 FROM ord_sub_order so WHERE so.sub_order_no = ord_after_sale.sub_order_no "
+                    + "AND so.store_no IN (" + placeholders + ") AND so.deleted = 0)", stores.toArray());
         }
         w.orderByDesc(OrdAfterSale::getId);
         return DataScopeContext.executeWithoutScope(() -> documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectList(w), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo))
@@ -626,6 +637,18 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             AfterSaleVO vo = detailOf(as);
             return pending ? vo.withImpact(impactOf(as)) : vo;
         }).toList(), rows.getTotal(), page, size);
+    }
+
+    @Override
+    public String merchantStoreOf(String merchantNo, String afterSaleNo) {
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+                Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
+                        .eq(OrdAfterSale::getEntityNo, merchantNo).last("limit 1")));
+        if (as == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        return sub == null ? null : sub.getStoreNo();
     }
 
     @Override

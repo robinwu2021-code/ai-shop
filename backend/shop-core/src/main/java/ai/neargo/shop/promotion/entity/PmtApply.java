@@ -23,6 +23,12 @@ public class PmtApply extends BaseEntity {
     public static final String COUPON = "COUPON";
     public static final String ACTIVITY = "ACTIVITY";
     public static final String POINTS = "POINTS";
+    /**
+     * {@code redeem_mode} 的一个取值：活动限量 / 预算已满仍命中的那一单（并发下必然有的一点重叠）。
+     * 订单已按算价时的金额落库、不翻脸，但这一行要记 —— 否则减了的钱在活动效果与对账里都查不到。
+     * 它<b>没占份数、没占预算</b>，取消时也不退。
+     */
+    public static final String QUOTA_OVERRUN = "QUOTA_OVERRUN";
 
     private String applyNo;
     private String promoType;

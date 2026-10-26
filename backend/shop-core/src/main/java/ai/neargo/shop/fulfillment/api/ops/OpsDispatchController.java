@@ -59,9 +59,13 @@ public class OpsDispatchController {
     /**
      * 推进批次（发车/到货/签收）。<b>有序推进不许跳步</b>——
      * 跳过「到货」直接签收，等于没人确认过货真的到了那个点。
+     *
+     * <p><b>判写码 {@code fulfillment:rule:update}，不判读码</b>：推进与签收会改订单的履约状态，
+     * 持读码的人（只看批次的客服、财务、自建只读角色）不该能点。此前共用读码，
+     * 等于「能看就能签收」。种子里持读码的角色（超管、社区运营）同时持写码，不受影响。
      */
     @PostMapping("/ops/fulfillment/batches/{batchNo}/status")
-    @PreAuthorize("@perm.can('" + Perms.FULFILLMENT_BATCH_READ + "')")
+    @PreAuthorize("@perm.can('" + Perms.FULFILLMENT_RULE_UPDATE + "')")
     public ArrivalBatchVO setBatchStatus(@PathVariable String batchNo,
                                          @RequestBody StatusReq req) {
         var vo = dispatchService.setBatchStatus(batchNo, req.status(), SecurityUtils.currentUserNo());

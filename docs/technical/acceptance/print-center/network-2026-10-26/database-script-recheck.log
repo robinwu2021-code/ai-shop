@@ -1,0 +1,15 @@
+✔ native alias recognition preserves exact member uniqueness and cannot become a transfer decision (6086.312917ms)
+✔ V462/V463 evidence stage preserves legacy rows and enforces exact origin/request identity and cannot become import-ready (6591.421ms)
+✔ native fixed target plan cannot masquerade as source commitment or imported assets (5668.968125ms)
+✔ native core source decision and binding remain immutable permanent evidence (5880.061125ms)
+✔ native pay import keeps one receipt and archival mappings cannot create phantom assets (5681.394ms)
+✔ native history upgrade namespaces real operation IDs and preserves known-zero/unknown facts (5785.581875ms)
+✔ target schema enforces daily quota, tenant uniqueness, conditional holds and valid JSON (9557.687583ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45548.8805

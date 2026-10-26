@@ -302,7 +302,83 @@ class GroupOrderFlowTest {
                 .as("散了的团不该还挂在商品页上").doesNotContain(groupNo);
     }
 
+    /*
+     * 团价只有一个数，而 G0001 有 10 斤装（SK0001，¥49.80）与 20 斤装（SK0002）两个规格。
+     * 此前买家开团不记规格（sku_no 恒空），下单侧又只在规格非空时才核对，重算时整单每一行都换成团价 ——
+     * 20 斤装按 10 斤装的团价成交。团价只对它校验过的那个规格（商品的首个规格）生效。
+     */
+
+    @Test
+    @DisplayName("★★★ 买家开团钉住规格：只有那个规格按团价，同单的另一个规格照原价")
+    void buyerOpenedGroupPricesOnlyItsSku() throws Exception {
+        String a = login(phone());
+        long otherPrice = listPriceOf(a, OTHER_SKU);
+
+        JsonNode r = placeOrder(a, itemsBody(null, true, SKU, OTHER_SKU));
+        assertThat(r.get("code").asInt()).as("下单失败：" + r).isZero();
+        String orderNo = r.get("data").get("payOrderNo").asString();
+        String groupNo = (String) subOf(orderNo).get("group_no");
+        closeOut(groupNo);
+
+        assertThat(jdbc.queryForObject("select sku_no from mkt_group_buy where group_no=?", String.class, groupNo))
+                .as("★ 开团没记规格 —— 之后参团的人买哪个规格都按团价").isEqualTo(SKU);
+        assertThat(itemPrice(orderNo, SKU)).isEqualTo(GROUP_PRICE);
+        assertThat(itemPrice(orderNo, OTHER_SKU)).as("★ 20 斤装被拉到了团价").isEqualTo(otherPrice);
+    }
+
+    @Test
+    @DisplayName("★★★ 参团：另一个规格照原价；整单没有团的那个规格就不是团单，拒")
+    void joiningPricesOnlyGroupSku() throws Exception {
+        String groupNo = merchantGroup();
+        String a = login(phone());
+        long otherPrice = listPriceOf(a, OTHER_SKU);
+
+        JsonNode mixed = preview(a, itemsBody(groupNo, false, SKU, OTHER_SKU));
+        assertThat(mixed.get("code").asInt()).as(mixed.toString()).isZero();
+        assertThat(mixed.get("data").get("amount").get("goodsMinor").asLong())
+                .as("★ 20 斤装也按团价算了").isEqualTo(GROUP_PRICE + otherPrice);
+
+        JsonNode onlyOther = placeOrder(a, itemsBody(groupNo, false, OTHER_SKU));
+        assertThat(onlyOther.get("code").asInt()).as("只买 20 斤装却带着团号：" + onlyOther).isEqualTo(10400);
+    }
+
     // ---------------------------------------------------------------- 夹具
+
+    private static final String OTHER_SKU = "SK0002";
+
+    private String itemsBody(String groupNo, boolean openGroup, String... skus) {
+        StringBuilder items = new StringBuilder();
+        for (String sku : skus) {
+            if (items.length() > 0) {
+                items.append(',');
+            }
+            items.append("{\"goodsNo\":\"").append(GOODS).append("\",\"skuNo\":\"").append(sku)
+                    .append("\",\"qty\":1}");
+        }
+        return "{\"items\":[" + items + "],\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\""
+                + (groupNo == null ? "" : ",\"groupNo\":\"" + groupNo + "\"")
+                + (openGroup ? ",\"openGroup\":true" : "") + "}";
+    }
+
+    private JsonNode preview(String token, String body) throws Exception {
+        return json.readTree(mvc().perform(post("/mp/order/preview").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andReturn().getResponse().getContentAsString());
+    }
+
+    /** 这个规格不参团时的成交价 —— 走同一个预览，门店价、特价的覆盖层都算在里面 */
+    private long listPriceOf(String token, String sku) throws Exception {
+        JsonNode r = preview(token, itemsBody(null, false, sku));
+        assertThat(r.get("code").asInt()).as(r.toString()).isZero();
+        long price = r.get("data").get("amount").get("goodsMinor").asLong();
+        assertThat(price).as("夹具前提：另一个规格的原价要高于团价，否则测不出被拉低").isGreaterThan(GROUP_PRICE);
+        return price;
+    }
+
+    private long itemPrice(String orderNo, String sku) {
+        return jdbc.queryForObject("select price from ord_item where order_no=? and sku_no=? and is_gift=false",
+                Long.class, orderNo, sku);
+    }
 
     /** 商家开团（s34），团价与人数从活动带出来 */
     @Test

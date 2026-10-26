@@ -55,6 +55,17 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         this.campaignPort = campaignPort;
     }
 
+    /**
+     * 商品草稿：只给待审看板用 —— 在售商品提交的草稿待审时 live 行保持 APPROVED，
+     * 积压只能从草稿表数出来。setter 注入：构造函数被切片测试直接 new，缺了就只数商品行。
+     */
+    private ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setDraftMapper(ai.neargo.shop.product.mapper.ProductMappers.GoodsDraftMapper draftMapper) {
+        this.draftMapper = draftMapper;
+    }
+
     @Override
     public java.util.Optional<String> firstStoreThatCanFulfil(
             String merchantNo, List<String> storeNosInPreference, Map<String, Integer> skuQty) {
@@ -395,6 +406,18 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
                 .stream().findFirst().orElse(Map.of());
 
         long cnt = row.get("cnt") instanceof Number n ? n.longValue() : 0L;
+        /*
+         * 在售商品提交的草稿：待审记在草稿行上（SUBMITTED），live 行保持 APPROVED 照卖旧版。
+         * 与待审队列同一个口径（MerchantGoodsServiceImpl#auditQueue），同样不绕数据域
+         * （prd_goods_draft 也按 MERCHANT 登记了）—— 卡片与队列对任何人都得是同一个数。
+         */
+        Map<String, Object> drafts = draftMapper == null ? Map.of()
+                : draftMapper.selectMaps(Wrappers.<ai.neargo.shop.product.entity.PrdGoodsDraft>query()
+                                .select("COUNT(*) AS cnt", "MIN(updated_at) AS oldest")
+                                .eq("status", ai.neargo.shop.product.entity.PrdGoodsDraft.SUBMITTED)
+                                .eq("deleted", 0))
+                        .stream().findFirst().orElse(Map.of());
+        cnt += drafts.get("cnt") instanceof Number n ? n.longValue() : 0L;
         if (cnt == 0L) {
             return new AuditBacklog(0L, 0L);
         }
@@ -403,12 +426,19 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 等待是从**这一次提交**开始算的。用创建时间会把「刚改完又交上来」
          * 的那件也算成等了两周，而催的人会去催一件其实刚到的单子。
          */
-        Object oldest = row.get("oldest");
-        LocalDateTime at = oldest instanceof LocalDateTime t ? t
-                : oldest instanceof java.sql.Timestamp ts ? ts.toLocalDateTime() : null;
+        LocalDateTime at = earlier(toTime(row.get("oldest")), toTime(drafts.get("oldest")));
         long days = at == null ? 0L
                 : Math.max(0L, java.time.Duration.between(at, LocalDateTime.now()).toDays());
         return new AuditBacklog(cnt, days);
+    }
+
+    private static LocalDateTime toTime(Object v) {
+        return v instanceof LocalDateTime t ? t
+                : v instanceof java.sql.Timestamp ts ? ts.toLocalDateTime() : null;
+    }
+
+    private static LocalDateTime earlier(LocalDateTime a, LocalDateTime b) {
+        return a == null ? b : b == null ? a : a.isBefore(b) ? a : b;
     }
 
     @Override

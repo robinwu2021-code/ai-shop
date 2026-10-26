@@ -110,8 +110,12 @@ public class CouponServiceImpl implements CouponService {
             throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         }
 
-        long mine = myCoupons(userNo).stream()
-                .filter(uc -> uc.getCouponNo().equals(couponNo)).count();
+        /*
+         * **限领按 (人, 券) 串行判**：先锁券行，再用当前读数他手上几张 —— 先数后插、两边都数到 0 就都插了。
+         * 可重复读下普通读是事务第一次读时的快照，锁等到了数的还是旧数，所以数也要加锁读。
+         */
+        lockTemplate(couponNo);
+        long mine = heldLocked(userNo, couponNo);
         if (mine >= Math.max(nzi(coupon.getPerUserLimit()), 1)) {
             throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         }
@@ -244,6 +248,22 @@ public class CouponServiceImpl implements CouponService {
                         documentNumbers.load(DocumentType.MARKETING_COUPON_TEMPLATE, "MKT_LEGACY", "mkt_coupon", couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
                                 .in(MktCoupon::getCouponNo, nos)), MktCoupon::getCouponNo, MktCoupon::setDocumentNo)).stream()
                 .collect(java.util.stream.Collectors.toMap(MktCoupon::getCouponNo, c -> c, (a, b) -> a));
+    }
+
+    /** 锁券模板这一行（当前读）。同一张券的领取 / 发放在它上面排队 */
+    private void lockTemplate(String couponNo) {
+        DataScopeContext.executeWithoutScope(() -> couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                .eq(MktCoupon::getCouponNo, couponNo).last("limit 1 FOR UPDATE")));
+    }
+
+    /** 他手上这张券有几张 —— 加锁读，只在已锁券行的写路径上用 */
+    private long heldLocked(String userNo, String couponNo) {
+        return DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectList(
+                Wrappers.<MktUserCoupon>lambdaQuery()
+                        .select(MktUserCoupon::getId)
+                        .eq(MktUserCoupon::getUserNo, userNo)
+                        .eq(MktUserCoupon::getCouponNo, couponNo)
+                        .last("FOR UPDATE"))).size();
     }
 
     private MktCoupon template(String couponNo) {
@@ -482,8 +502,9 @@ public class CouponServiceImpl implements CouponService {
          * **限领规则不能被主动发放绕开**：客服连发五张「限领一张」的券，
          * 与用户自己领五张是同一件事，只是路径不同。
          */
-        long mine = myCoupons(userKey).stream()
-                .filter(uc -> uc.getCouponNo().equals(couponNo)).count();
+        // 与 grantTo 同一口径：锁券行后当前读，限领不能被并发的领取绕开
+        lockTemplate(couponNo);
+        long mine = heldLocked(userKey, couponNo);
         if (mine + count > Math.max(nzi(c.getPerUserLimit()), 1)) {
             throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
         }

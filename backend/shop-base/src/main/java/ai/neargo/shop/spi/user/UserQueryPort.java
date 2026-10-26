@@ -123,6 +123,19 @@ public interface UserQueryPort {
      */
     java.util.Optional<Point> buyerPoint(String userNo, String addressId);
 
+    /**
+     * 在<b>调用方的事务里</b>给这个买家的账户行上写锁（{@code usr_account ... FOR UPDATE}），事务结束才放。
+     *
+     * <p>给「先读这个人的历史、再按历史放行写入」那类检查用 —— 每人限购是第一个：
+     * 两张单并发时各读到「已买 0」，一起越过限购。锁在账户行上而不是另建一张锁表：
+     * 每个买家天然只有这一行，且注册换绑（{@code AuthServiceImpl}）锁的也是它。
+     *
+     * <p>不在事务里调用等于没锁（语句一结束锁就放了）。
+     *
+     * @return 账户行不存在时 false —— 没有可锁的行，调用方自己决定放不放行
+     */
+    boolean lockBuyer(String userNo);
+
     record Point(int latE6, int lngE6) {
     }
 

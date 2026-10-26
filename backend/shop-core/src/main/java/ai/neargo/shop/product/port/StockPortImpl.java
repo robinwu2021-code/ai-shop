@@ -4,12 +4,15 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.product.service.OriginalStockRestoreService;
 import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.entity.PrdStoreStock;
 import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -32,6 +35,8 @@ import java.util.List;
  */
 @Component
 public class StockPortImpl implements StockPort {
+
+    private static final Logger LOG = LoggerFactory.getLogger(StockPortImpl.class);
 
     private final SkuMapper skuMapper;
     private final StockLockMapper lockMapper;
@@ -173,12 +178,7 @@ public class StockPortImpl implements StockPort {
                 return;
             }
             // 锁定转实扣：总库存减、锁定量同步减，此后不再释放
-            if (lock.getStoreNo() != null) {
-                storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
-            } else {
-                DataScopeContext.executeWithoutScope(
-                        () -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty()));
-            }
+            deductLocked(lock);
             lock.setStatus(PrdStockLock.CONFIRMED);
             lock.setSettledAt(LocalDateTime.now());
             lockMapper.updateById(lock);
@@ -228,11 +228,31 @@ public class StockPortImpl implements StockPort {
             lockMapper.updateById(lock);
             return;
         }
-        if (lock.getStoreNo() != null) storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
-        else DataScopeContext.executeWithoutScope(() -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty()));
+        deductLocked(lock);
         lock.setStatus(PrdStockLock.CONFIRMED);
         lock.setSettledAt(LocalDateTime.now());
         lockMapper.updateById(lock);
+    }
+
+    /**
+     * 现货锁定转实扣，<b>必须恰好扣到 1 行</b>。
+     *
+     * <p>SQL 带 {@code locked_stock >= qty AND stock >= qty}，0 行说明锁定量或实存已经对不上
+     * （被改到锁定量以下、或历史漏账）。此前不看影响行数，照样把锁标成 CONFIRMED：
+     * 账上「已扣」、库里没扣，locked_stock 还永远漏在那里 —— 那批货从此卖不出去，
+     * 而对账之前没有任何人知道。这里抛出让整笔确认回滚，锁保持 LOCKED，
+     * 由上游的重试 / 告警把它暴露出来，而不是把一笔错账静默落地。
+     */
+    private void deductLocked(PrdStockLock lock) {
+        int affected = lock.getStoreNo() != null
+                ? storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty())
+                : DataScopeContext.executeWithoutScope(
+                        () -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty()));
+        if (affected != 1) {
+            LOG.error("[stock] 锁定转实扣未命中：lockNo={} sku={} store={} qty={} —— 锁定量或实存已对不上，拒绝标记 CONFIRMED",
+                    lock.getLockNo(), lock.getSkuNo(), lock.getStoreNo(), lock.getQty());
+            throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
+        }
     }
 
     private void releaseBalance(PrdStockLock lock) {
@@ -372,7 +392,18 @@ public class StockPortImpl implements StockPort {
                 ? storeStockMapper.setStock(storeNo, skuNo, onHand)
                 : DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(skuNo, onHand));
         if (affected == 0) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
+            /*
+             * 0 行有两种原因，要分开说：行不存在（404），或要改的数低于已锁定量（409）。
+             * 后者拒绝而不是夹到锁定量：店主盘出来「只剩 3 件」而系统偷偷记成 5 件，
+             * 比明确告诉他「有 5 件已被下单锁定，先处理这些单」更糟。
+             */
+            boolean exists = perStore
+                    ? DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectCount(
+                            Wrappers.<PrdStoreStock>lambdaQuery().eq(PrdStoreStock::getStoreNo, storeNo)
+                                    .eq(PrdStoreStock::getSkuNo, skuNo))) > 0
+                    : DataScopeContext.executeWithoutScope(() -> skuMapper.selectCount(
+                            Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo))) > 0;
+            throw BizException.of(exists ? ErrorCode.CONFLICT : ErrorCode.NOT_FOUND);
         }
     }
 }

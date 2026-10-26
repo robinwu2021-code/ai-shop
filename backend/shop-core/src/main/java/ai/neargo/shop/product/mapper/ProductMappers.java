@@ -194,9 +194,13 @@ public final class ProductMappers {
          * <p>`locked_stock` 不动 —— 已经被下单占住的量不属于「我数出来有多少」，
          * 把它一起清掉的话，那些单在支付时会扣到负数。
          */
+        /*
+         * {@code locked_stock <= #{stock}}：改到锁定量以下 = 已经锁给买家的货在账上没了，
+         * 那几单付款确认时 confirmStock 扣不动。0 行由调用方区分「不存在」与「低于锁定量」。
+         */
         @Update("""
                 UPDATE prd_sku SET stock = #{stock}, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0
+                WHERE sku_no = #{skuNo} AND deleted = 0 AND locked_stock <= #{stock}
                 """)
         int setStock(@Param("skuNo") String skuNo, @Param("stock") int stock);
 
@@ -295,9 +299,11 @@ public final class ProductMappers {
                          @Param("qty") int qty);
 
         /** 手改门店库存：设成这个数，`locked_stock` 不动（同主体级那条） */
+        /** 与主体级 {@link SkuMapper#setStock} 同一条：不许改到锁定量以下。 */
         @Update("""
                 UPDATE prd_store_stock SET stock = #{stock}
                 WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                  AND locked_stock <= #{stock}
                 """)
         int setStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                      @Param("stock") int stock);

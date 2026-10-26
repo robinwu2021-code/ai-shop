@@ -829,6 +829,67 @@ public class InventoryAclServiceImpl implements InventoryAclService {
                 : locations.resolveStockLocation(owner.getOwnerId(), store.getLocationId());
     }
 
+    @Override
+    public Set<String> locationsOfStores(String entityNo, Collection<String> storeNos) {
+        InvOwner owner = findOwner(entityNo);
+        if (owner == null || storeNos == null || storeNos.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> wanted = new HashSet<>(storeNos);
+        List<InvLocation> rows = locationMapper.selectList(Wrappers.<InvLocation>lambdaQuery()
+                .eq(InvLocation::getOwnerId, owner.getOwnerId())
+                .in(InvLocation::getExternalRef, wanted));
+        Set<String> out = new HashSet<>();
+        Set<String> seen = new HashSet<>();
+        for (InvLocation row : rows) {
+            seen.add(row.getExternalRef());
+            out.add(row.getLocationId());
+            String source = row.getSourceLocationId();
+            if (source != null && !source.isBlank()) {
+                out.add(source);
+            }
+        }
+        if (seen.size() < wanted.size()) {
+            // 还没建库位的门店：首次进销存动作会建一个指向默认库位的门店库位，出货落在默认库位上
+            locationMapper.selectList(Wrappers.<InvLocation>lambdaQuery()
+                            .eq(InvLocation::getOwnerId, owner.getOwnerId())
+                            .eq(InvLocation::getIsDefault, 1)
+                            .last("LIMIT 1"))
+                    .forEach(d -> out.add(d.getLocationId()));
+        }
+        return out;
+    }
+
+    @Override
+    public List<String> locationsOfDoc(String ownerId, String docNo) {
+        if (ownerId == null || docNo == null || docNo.isBlank()) {
+            return List.of();
+        }
+        InvInboundOrder in = inboundMapper.selectOne(Wrappers.<InvInboundOrder>lambdaQuery()
+                .eq(InvInboundOrder::getOwnerId, ownerId).eq(InvInboundOrder::getInboundNo, docNo).last("LIMIT 1"));
+        if (in != null) {
+            return List.of(in.getLocationId());
+        }
+        InvOutboundOrder outbound = outboundMapper.selectOne(Wrappers.<InvOutboundOrder>lambdaQuery()
+                .eq(InvOutboundOrder::getOwnerId, ownerId).eq(InvOutboundOrder::getOutboundNo, docNo)
+                .last("LIMIT 1"));
+        if (outbound != null) {
+            return List.of(outbound.getLocationId());
+        }
+        InvStockCount count = countMapper.selectOne(Wrappers.<InvStockCount>lambdaQuery()
+                .eq(InvStockCount::getOwnerId, ownerId).eq(InvStockCount::getCountNo, docNo).last("LIMIT 1"));
+        if (count != null) {
+            return List.of(count.getLocationId());
+        }
+        InvTransferOrder transfer = transferMapper.selectOne(Wrappers.<InvTransferOrder>lambdaQuery()
+                .eq(InvTransferOrder::getOwnerId, ownerId).eq(InvTransferOrder::getTransferNo, docNo)
+                .last("LIMIT 1"));
+        if (transfer != null) {
+            return List.of(transfer.getFromLocationId(), transfer.getToLocationId());
+        }
+        return List.of();
+    }
+
     /** 只读地找业主。{@link #ownerIdOf} 找不到会建一个 —— 查询路径上不能有这种副作用 */
     private InvOwner findOwner(String entityNo) {
         return entityNo == null

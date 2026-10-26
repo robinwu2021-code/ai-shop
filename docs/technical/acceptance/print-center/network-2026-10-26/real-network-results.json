@@ -1,0 +1,61 @@
+{
+  "mode": "REAL_ISOLATED_H2_HTTP",
+  "status": "PASS",
+  "injection": "Loopback proxy socket loss, exercised by real Chrome UI clicks",
+  "checks": [
+    {
+      "path": "/biz/print/simulations",
+      "mode": "DROP_REQUEST",
+      "status": "PASS",
+      "operationNo": "PO98a65e72bcd4405c8169e3fbbe1e",
+      "targetNo": "SMbbf47a4d2a8b4559a1da3703674d",
+      "keyHash": "47261aa4e45caf9452b985ae40cf02e000f7e477d338b726c895129f58254fa2",
+      "bodyHash": "1b769f8aa29c75e4c4f291918c2e8e5f10da9a57476b9aa6dd0a3ca312217181",
+      "finalStatus": "PASSED"
+    },
+    {
+      "path": "/biz/print/simulations",
+      "mode": "DROP_RESPONSE",
+      "status": "PASS",
+      "operationNo": "PObf77aebaa11c47d7a869417b266e",
+      "targetNo": "SM9fec4285705a4a30b8001379aa93",
+      "keyHash": "0481956dc02a99cbced6be846b34785a54f1d91c4b46227e3617ac9a55c48e74",
+      "bodyHash": "1b769f8aa29c75e4c4f291918c2e8e5f10da9a57476b9aa6dd0a3ca312217181",
+      "finalStatus": "PASSED"
+    },
+    {
+      "path": "/ops/print/reconciliations",
+      "mode": "DROP_REQUEST",
+      "status": "PASS",
+      "operationNo": "PObbb2241195254685938c1ce88b96",
+      "targetNo": "ST-M0001",
+      "keyHash": "c82e3f624ed9584711c77e089863c2c12d0a60b2ac751a2a0b6784a44fb20847",
+      "bodyHash": "55e94f6067ff07aa8d16764f7b78769b01374c6bee51fdc7ee5357ebeb3866b0",
+      "finalStatus": "SUCCEEDED"
+    },
+    {
+      "path": "/ops/print/reconciliations",
+      "mode": "DROP_RESPONSE",
+      "status": "PASS",
+      "operationNo": "POc0176d3d047e4aa0bc468ab3db7f",
+      "targetNo": "ST-M0001",
+      "keyHash": "43001aa17c1727735a93373ff344b1282de8d5f879e1ab6d10473ce8a264187c",
+      "bodyHash": "60024ff961aa04b4b67ecca2f1939c4a64fb1b7a92361e1da4687e2247585663",
+      "finalStatus": "SUCCEEDED"
+    },
+    {
+      "path": "/biz/print/exports",
+      "mode": "DROP_RESPONSE",
+      "status": "PASS",
+      "operationNo": "PO9f3ebfbe712147b596050404037b",
+      "targetNo": "EXe5dad7185709426aa8e0dae98539",
+      "keyHash": "ac338db650139a085cf3f08f80bd3e3f40f5d9f7fa565923979f78ac406a4c3e",
+      "bodyHash": "08dcdf66191c8422026b060080dee3fe20433c09ba6f307628d1837cfbb94813",
+      "finalStatus": "READY"
+    }
+  ],
+  "limitations": [
+    "No OS-level Wi-Fi change or browser process restart.",
+    "No physical device, vendor or production database."
+  ]
+}

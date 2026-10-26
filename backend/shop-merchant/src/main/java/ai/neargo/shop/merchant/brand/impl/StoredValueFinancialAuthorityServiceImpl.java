@@ -42,9 +42,9 @@ public class StoredValueFinancialAuthorityServiceImpl implements StoredValueFina
  public StoredValueReports.Scope report(Actor actor,String management,View issuer,String permission,String activity,String store){
   var ref=new ScopeRef(issuer.scopeType(),issuer.scopeNo());reportLookup(actor,management,ref,permission);return new StoredValueReports.Scope(actor.tenantNo(),actor.actorKey(),management,issuer.issuerNo(),issuer.scopeType(),issuer.scopeNo(),issuer.currency(),activity,store);
  }
- public AuthorizedScope financialLookup(Actor actor,String management,ScopeRef ref){scopes.resolve(actor,management);String entity=resource(actor,management,ref);if(financialEntities(actor,management).isEmpty())throw BizException.of(ErrorCode.FORBIDDEN);return lookup(actor,management,ref,entity);}
+ public AuthorizedScope financialLookup(Actor actor,String management,ScopeRef ref){scopes.resolve(actor,management);String entity=resource(actor,management,ref);var entities=financialEntities(actor,management);if(entities.isEmpty())throw BizException.of(ErrorCode.FORBIDDEN);requireFinanceStore(ref,entity,entities);return lookup(actor,management,ref,entity);}
  public StoredValueSettlements.Authority financial(Actor actor,String management,List<StoredValueSettlements.IssuerGrant> issuers,Set<String> verifiedEvidenceRefs){
-  scopes.resolve(actor,management);for(var grant:issuers)resource(actor,management,new ScopeRef(grant.scopeType(),grant.scopeNo()));var permissions=financialEntities(actor,management);if(permissions.isEmpty())throw BizException.of(ErrorCode.FORBIDDEN);return new StoredValueSettlements.Authority(actor.tenantNo(),actor.actorKey(),principal(actor),management,issuers,permissions,verifiedEvidenceRefs);
+  scopes.resolve(actor,management);var permissions=financialEntities(actor,management);if(permissions.isEmpty())throw BizException.of(ErrorCode.FORBIDDEN);for(var grant:issuers){var ref=new ScopeRef(grant.scopeType(),grant.scopeNo());requireFinanceStore(ref,resource(actor,management,ref),permissions);}return new StoredValueSettlements.Authority(actor.tenantNo(),actor.actorKey(),principal(actor),management,issuers,permissions,verifiedEvidenceRefs);
  }
  public Map<String,Set<String>> financialEntities(Actor actor,String management){
   var rows=db.rows("SELECT DISTINCT resource_no FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type='ENTITY' AND status='ACTIVE' AND deleted=0 ORDER BY resource_no LIMIT 1001",actor.tenantNo(),management,actor.actorKey());if(rows.size()>1000)throw BizException.of(ErrorCode.CONFLICT);var result=new TreeMap<String,Set<String>>();
@@ -73,6 +73,12 @@ public class StoredValueFinancialAuthorityServiceImpl implements StoredValueFina
   for(String permission:FINANCIAL){if(scopes.can(actor,management,"ENTITY",entity,permission))continue;var prior=db.one("SELECT status,version FROM mch_management_grant WHERE tenant_no=? AND management_no=? AND actor_no=? AND resource_type='ENTITY' AND resource_no=? AND permission_code=? AND deleted=0",actor.tenantNo(),management,actor.actorKey(),entity,permission);scopes.grant(actor,management,new GrantCommand(actor.actorKey(),"ENTITY",entity,permission,null,null,false,prior==null?null:num(prior,"version"),prior!=null));}
   return Map.of("prepared",true,"entityNo",entity,"permissions",FINANCIAL.stream().sorted().toList());
  }
+ /**
+  * 门店口径的财务范围 = 我在这个经营空间里持有财务权的主体名下的店 —— 与 {@link #financeResources} 列给他看的那份同一个集合。
+  * 品牌由 management_no 圈住了；门店此前只判「租户里有这家店」，于是 A 空间的财务能把任意一家店（别的空间、别的商家）
+  * 塞进 financialLookup / financial，按那家店的主体去查结算。
+  */
+ private void requireFinanceStore(ScopeRef ref,String entity,Map<String,Set<String>> entities){if("STORE".equals(ref.scopeType())&&(entity==null||!entities.containsKey(entity)))throw BizException.of(ErrorCode.FORBIDDEN);}
  private AuthorizedScope lookup(Actor actor,String management,ScopeRef ref,String entity){return new AuthorizedScope(actor.tenantNo(),actor.actorKey(),management,ref.scopeType(),ref.scopeNo(),num(scopes.space(actor,management),"auth_revision"),entity,Set.of(),List.of());}
  private String resource(Actor actor,String management,ScopeRef ref){
   if("BRAND".equals(ref.scopeType())){if(db.one("SELECT brand_no FROM mch_brand WHERE tenant_no=? AND management_no=? AND brand_no=? AND deleted=0",actor.tenantNo(),management,ref.scopeNo())==null)throw BizException.of(ErrorCode.NOT_FOUND);return null;}
