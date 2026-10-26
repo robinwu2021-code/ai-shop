@@ -3110,6 +3110,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (requested.isEmpty()) {
             return new Split(List.of(), List.of());
         }
+        requireValidQty(requested);
 
         List<String> skuNos = requested.stream().map(CreateOrderCommand.Item::skuNo).toList();
         Map<String, GoodsQueryPort.SkuSnapshot> snapshots = goodsPort.snapshot(skuNos);
@@ -3216,6 +3217,26 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }).toList();
 
         return new Split(lines, groups);
+    }
+
+    /**
+     * 每一行至少 1 件，否则整单 {@code BAD_REQUEST}。
+     *
+     * <p><b>放在 split() 而不是 Controller</b>：预览、下单、积分报价、代客下单都经过这里，
+     * 只有这里挡得住全部入口；购物车那条路（{@code CartServiceImpl#update} 把 ≤0 当删除）
+     * 与代客下单（{@code PlatformOrderServiceImpl} 逐行 {@code qty <= 0} 拒）早就各自拦了，
+     * 唯独端上直传的 {@code items[]} 没人管。
+     *
+     * <p>防住的是「一行负数抵掉另一行」：{A×2, B×-2} 的 B 行金额为负，整单应付被拉低，
+     * 而锁库存、限购按件数之和算，负数行同样在抵扣。上限不另设 ——
+     * 件数的天花板是库存与每人限购，两道都在下单链路里，再加一个数字只会多一处对不上。
+     */
+    private static void requireValidQty(List<CreateOrderCommand.Item> items) {
+        for (CreateOrderCommand.Item it : items) {
+            if (it == null || it.qty() < 1) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+        }
     }
 
     /** 一行落在哪一组：归属门店；没有归属按主体落店的结果；都没有用主体号 */
