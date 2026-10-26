@@ -3110,7 +3110,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (requested.isEmpty()) {
             return new Split(List.of(), List.of());
         }
-        requireValidQty(requested);
+        requested = mergedBySku(requested);
 
         List<String> skuNos = requested.stream().map(CreateOrderCommand.Item::skuNo).toList();
         Map<String, GoodsQueryPort.SkuSnapshot> snapshots = goodsPort.snapshot(skuNos);
@@ -3220,23 +3220,37 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     /**
-     * 每一行至少 1 件，否则整单 {@code BAD_REQUEST}。
+     * 每一行至少 1 件，同一规格的多行并成一行；否则整单 {@code BAD_REQUEST}。
      *
      * <p><b>放在 split() 而不是 Controller</b>：预览、下单、积分报价、代客下单都经过这里，
      * 只有这里挡得住全部入口；购物车那条路（{@code CartServiceImpl#update} 把 ≤0 当删除）
      * 与代客下单（{@code PlatformOrderServiceImpl} 逐行 {@code qty <= 0} 拒）早就各自拦了，
      * 唯独端上直传的 {@code items[]} 没人管。
      *
-     * <p>防住的是「一行负数抵掉另一行」：{A×2, B×-2} 的 B 行金额为负，整单应付被拉低，
+     * <p><b>件数 ≥ 1</b> 防的是「一行负数抵掉另一行」：{A×2, B×-2} 的 B 行金额为负，整单应付被拉低，
      * 而锁库存、限购按件数之和算，负数行同样在抵扣。上限不另设 ——
      * 件数的天花板是库存与每人限购，两道都在下单链路里，再加一个数字只会多一处对不上。
+     *
+     * <p><b>按规格合并</b>防的是赠品被放大：买赠按规格把各行赠品数<b>汇总</b>，
+     * 而锁库存、写赠品行是<b>逐行</b>读那个汇总数 —— 五行 {X×2} 在「买 2 送 1」下锁了、写了 25 件赠品。
+     * 在入口并成一行，下游「每个规格只有一行」的假设就重新成立，不必逐处去改。
+     * 合并按 skuNo：货号由快照从规格解出，端上传的 goodsNo 本来就不作数。
      */
-    private static void requireValidQty(List<CreateOrderCommand.Item> items) {
+    private static List<CreateOrderCommand.Item> mergedBySku(List<CreateOrderCommand.Item> items) {
+        Map<String, CreateOrderCommand.Item> bySku = new LinkedHashMap<>();
         for (CreateOrderCommand.Item it : items) {
             if (it == null || it.qty() < 1) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
+            bySku.merge(it.skuNo(), it, (a, b) -> {
+                try {
+                    return new CreateOrderCommand.Item(a.goodsNo(), a.skuNo(), Math.addExact(a.qty(), b.qty()));
+                } catch (ArithmeticException overflow) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            });
         }
+        return bySku.size() == items.size() ? items : List.copyOf(bySku.values());
     }
 
     /** 一行落在哪一组：归属门店；没有归属按主体落店的结果；都没有用主体号 */

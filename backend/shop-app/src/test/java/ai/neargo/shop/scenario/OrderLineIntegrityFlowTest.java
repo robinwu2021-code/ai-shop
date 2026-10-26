@@ -91,7 +91,50 @@ class OrderLineIntegrityFlowTest {
                 .get("code").asInt()).isEqualTo(BAD_REQUEST);
     }
 
+    @Test
+    @DisplayName("★★★ 买 2 送 1：五行 {X×2} 一共送 5 件，不是 25 件；预览与下单同一个数")
+    void duplicateSkuLinesDoNotMultiplyGifts() throws Exception {
+        buyGift(2, 1);
+        String token = login(phone());
+        String fiveLines = body(line(SKU_A, 2), line(SKU_A, 2), line(SKU_A, 2), line(SKU_A, 2), line(SKU_A, 2));
+
+        JsonNode preview = call("/mp/order/preview", token, fiveLines, null);
+        assertThat(preview.get("code").asInt()).as(preview.toString()).isZero();
+        JsonNode pItems = preview.get("data").get("subOrders").get(0).get("items");
+        assertThat(pItems).as("同一规格的五行要并成一行：" + pItems).hasSize(1);
+        assertThat(pItems.get(0).get("qty").asInt()).isEqualTo(10);
+
+        int stockBefore = stockOf(SKU_A);
+        JsonNode r = call("/mp/order", token, fiveLines, "dup-1");
+        assertThat(r.get("code").asInt()).as(r.toString()).isZero();
+        String orderNo = r.get("data").get("orderNo").asString();
+
+        Integer gifts = jdbc.queryForObject("select coalesce(sum(qty),0) from ord_item where order_no=? and is_gift=true",
+                Integer.class, orderNo);
+        Integer paid = jdbc.queryForObject("select coalesce(sum(qty),0) from ord_item where order_no=? and is_gift=false",
+                Integer.class, orderNo);
+        assertThat(paid).isEqualTo(10);
+        assertThat(gifts).as("★ 赠品按「每行读一次汇总数」被放大成了 25 件").isEqualTo(5);
+        assertThat(stockBefore - stockOf(SKU_A)).as("锁的库存 = 10 件付费 + 5 件赠品").isEqualTo(15);
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    private void buyGift(int buyN, int giftM) {
+        long now = System.currentTimeMillis();
+        MktCampaign c = new MktCampaign();
+        c.setCampaignNo(CAMPAIGN_PREFIX + System.nanoTime());
+        c.setEntityNo("M0001");
+        c.setType(MktCampaign.BUY_GIFT);
+        c.setName("行完整性·买赠");
+        c.setStatus(MktCampaign.RUNNING);
+        c.setBuyN(buyN);
+        c.setGiftM(giftM);
+        c.setGoodsNos("[\"" + GOODS + "\"]");
+        c.setStartAt(now - 1000L);
+        c.setEndAt(now + Duration.ofDays(1).toMillis());
+        campaignMapper.insert(c);
+    }
 
     private static String line(String sku, int qty) {
         return "{\"goodsNo\":\"" + GOODS + "\",\"skuNo\":\"" + sku + "\",\"qty\":" + qty + "}";
