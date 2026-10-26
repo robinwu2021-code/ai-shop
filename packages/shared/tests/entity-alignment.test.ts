@@ -323,3 +323,22 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
     expect(stale, `这些表已经有实体了，请从 NO_ENTITY_YET 删除：${stale.join("、")}`).toEqual([]);
   });
 });
+
+
+describe("manual execution permanent authority entity alignment", () => {
+  const schema = readSchema(ROOT);
+  const entities = scanEntities(BACKEND);
+  for (const table of ["ord_service_execution_unit", "ord_service_execution", "ord_service_execution_action"]) {
+    it(`${table} declares every business column and inherits actual BaseEntity`, () => {
+      const entity = entities.get(table);
+      expect(entity).toBeDefined();
+      const columns = schema.get(table)?.cols.filter((c: { name: string }) => !AUDIT.has(c.name))
+        .map((c: { name: string }) => camel(c.name));
+      expect(columns).toBeDefined();
+      expect([...entity!.fields].filter(field => !BASE_FIELDS.has(field)).sort()).toEqual(columns!.sort());
+      const source = readFileSync(join(ROOT, entity!.file), "utf8");
+      expect(source).toMatch(/extends BaseEntity/);
+      expect(NO_ENTITY_YET[table]).toBeUndefined();
+    });
+  }
+});

@@ -5,12 +5,14 @@ import ai.neargo.shop.spi.security.InternalReply;
 import ai.neargo.shop.spi.security.InternalRequestBinding;
 
 import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
 import tools.jackson.databind.BeanProperty;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.deser.std.StdDeserializer;
+import tools.jackson.databind.node.JsonNodeFactory;
 
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
@@ -19,6 +21,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Omitted primitive or nullable facts cannot become a fabricated successful projection. */
 public final class InternalReplyDeserializer extends StdDeserializer<InternalReply<?>> {
@@ -51,7 +55,7 @@ public final class InternalReplyDeserializer extends StdDeserializer<InternalRep
 
     @Override
     public InternalReply<?> deserialize(JsonParser parser, DeserializationContext context) {
-        JsonNode tree = context.readTree(parser);
+        JsonNode tree = readStrictTree(parser, context, 0, -1);
         if (resultType == null
                 || !tree.isObject()
                 || tree.size() != 3
@@ -71,7 +75,37 @@ public final class InternalReplyDeserializer extends StdDeserializer<InternalRep
         return new InternalReply<>(binding, tree.get("requestDigest").asString(), result);
     }
 
-    private static void requireShape(
+    /** Shared bound readers reject duplicate keys before a tree can discard their original occurrence. */
+    static JsonNode readStrictTree(JsonParser parser, DeserializationContext context, int depth, int maxDepth) {
+        if (maxDepth >= 0 && depth > maxDepth) {
+            return context.reportInputMismatch(InternalCall.class, "bound message nesting exceeded");
+        }
+        if (parser.currentToken() == JsonToken.START_OBJECT) {
+            var result = JsonNodeFactory.instance.objectNode();
+            Set<String> fields = new HashSet<>();
+            while (parser.nextToken() != JsonToken.END_OBJECT) {
+                String field = parser.currentName();
+                if (field == null || !fields.add(field) || parser.nextToken() == null) {
+                    return context.reportInputMismatch(InternalCall.class, "duplicate or incomplete bound field");
+                }
+                result.set(field, readStrictTree(parser, context, depth + 1, maxDepth));
+            }
+            return result;
+        }
+        if (parser.currentToken() == JsonToken.START_ARRAY) {
+            var result = JsonNodeFactory.instance.arrayNode();
+            while (parser.nextToken() != JsonToken.END_ARRAY) {
+                if (parser.currentToken() == null) {
+                    return context.reportInputMismatch(InternalCall.class, "incomplete bound array");
+                }
+                result.add(readStrictTree(parser, context, depth + 1, maxDepth));
+            }
+            return result;
+        }
+        return context.readTree(parser);
+    }
+
+    static void requireShape(
             JsonNode value, JavaType type, DeserializationContext context) {
         if (value == null || value.isNull() && type.isPrimitive()) {
             context.reportInputMismatch(type, "required bound field absent");
@@ -177,7 +211,7 @@ public final class InternalReplyDeserializer extends StdDeserializer<InternalRep
 
         @Override
         public InternalCall<?> deserialize(JsonParser parser, DeserializationContext context) {
-            JsonNode tree = context.readTree(parser);
+            JsonNode tree = readStrictTree(parser, context, 0, -1);
             if (requestType == null
                     || !tree.isObject()
                     || tree.size() != 2

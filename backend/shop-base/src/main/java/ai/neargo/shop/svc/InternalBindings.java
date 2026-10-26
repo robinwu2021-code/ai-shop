@@ -2,6 +2,8 @@ package ai.neargo.shop.svc;
 
 import ai.neargo.shop.spi.security.InternalCall;
 import ai.neargo.shop.spi.security.InternalReply;
+import ai.neargo.shop.spi.trade.ExecutionOriginalProtocol.Call;
+import ai.neargo.shop.spi.trade.ExecutionOriginalProtocol.Reply;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -97,6 +99,52 @@ public final class InternalBindings {
     /** Recompute from the server's own decoded request; never copy an unverified client digest. */
     public <T> InternalReply<T> reply(InternalCall<?> call, T result) {
         return new InternalReply<>(call.binding(), digest(call), result);
+    }
+
+    /** Distinct HMAC purpose prevents original machine proofs from replaying human envelopes. */
+    public String digest(Call<?> call) {
+        if (token == null || token.isBlank() || call == null) {
+            throw invalid();
+        }
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(token.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            String canonical = "SHOP_EXECUTION_ORIGINAL_V1\n" + canonical(tree(call), CANONICAL_JSON);
+            return HexFormat.of().formatHex(mac.doFinal(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (GeneralSecurityException failure) {
+            throw new IllegalStateException("internal binding unavailable");
+        }
+    }
+
+    /** Exact original binding and recomputed request digest precede any result consumption. */
+    public void require(Call<?> call, Reply<?> reply) {
+        if (call == null || reply == null || reply.result() == null
+                || !call.binding().equals(reply.binding()) || !equal(digest(call), reply.requestDigest())) {
+            throw invalid();
+        }
+    }
+
+    /** Fixed original-purpose routes never accept a human action alias or a target swap. */
+    public void requireRoute(Call<?> call, String endpoint, String action, String executionNo) {
+        if (call == null || !Objects.equals(endpoint, call.binding().endpoint())
+                || !Objects.equals(action, call.binding().action())
+                || !Objects.equals(executionNo, call.binding().executionNo())) {
+            throw invalid();
+        }
+    }
+
+    /** Scope is compared as persisted owner identity; no merchant employee is fabricated. */
+    public void requireCoordinates(Call<?> call, String tenant, String entity, String store) {
+        if (call == null || !Objects.equals(tenant, call.binding().scope().tenantNo())
+                || !Objects.equals(entity, call.binding().scope().entityNo())
+                || !Objects.equals(store, call.binding().scope().storeNo())) {
+            throw invalid();
+        }
+    }
+
+    /** Original replies echo only the verified route binding and server-computed HMAC. */
+    public <T> Reply<T> reply(Call<?> call, T result) {
+        return new Reply<>(call.binding(), digest(call), result);
     }
 
     private static boolean equal(String expected, String actual) {

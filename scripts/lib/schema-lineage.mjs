@@ -128,6 +128,11 @@ export const KEY_OWNERS = {
 
 
 export const NAME_COLLISIONS = {
+  unit_no: "资源持有单元与手工服务永久数量单元独立发号，仅 ord_service_execution 以 tenant/entity/store 引用本族数量单元。",
+  action_no: "手工收款声明动作与服务执行动作是两个不可变命名空间，不按同名号跨族关联。",
+  source_line_no: "结算原始行由 ord_checkout_line 持有，服务数量单元须同时核对 tenant/caller/operation/order/subOrder。",
+  source_operation_no: "原始结算操作别名须核对完整作用域；仅服务数量单元登记带 caller/entity/store 的精确引用。",
+  declaration_no: "收款声明与声明动作属于原收款族；执行尝试仅以 tenant/entity/store 绑定原声明，不建立跨族全局别名。",
   rule_no: "分账费率规则与资源班表规则属于不同域，不可按同名编号关联。",
   trade_no: "stl_payment 与 ord_payment_resolution 保存渠道交易号快照；该号仅在 pay_channel 范围内唯一，不能脱离渠道直接关联。",
   source_shipment_no:
@@ -265,6 +270,11 @@ export const NAME_COLLISIONS = {
 
 // Exact source-audited memberships; new tables require explicit review.
 export const COLLISION_MEMBERS = {
+  unit_no: ["mch_booking_hold_unit", "ord_service_execution_unit", "ord_service_execution"],
+  action_no: ["ord_manual_service_admission_action", "ord_service_execution_action"],
+  source_line_no: ["ord_checkout_line", "ord_service_execution_unit"],
+  source_operation_no: ["ord_sub_order", "ord_service_execution_unit"],
+  declaration_no: ["ord_manual_service_admission", "ord_manual_service_admission_action", "ord_service_execution"],
   "scope_no": [
     "sys_role_member",
     "pts_switch",
@@ -294,7 +304,9 @@ export const COLLISION_MEMBERS = {
   ],
   "execution_no": [
     "ord_refund_execution",
-    "ord_refund_obligation"
+    "ord_refund_obligation",
+    "ord_service_execution",
+    "ord_service_execution_action"
   ],
   "entry_no": [
     "pts_ledger_entry",
@@ -334,7 +346,8 @@ export const COLLISION_MEMBERS = {
     "ent_grant",
     "ent_instance",
     "ent_sale_reservation",
-    "pmt_pay_coupon_projection"
+    "pmt_pay_coupon_projection",
+    "ord_service_execution"
   ]
 };
 
@@ -411,6 +424,44 @@ export const TABLE_KEY_OWNERS = {
       "table": "ent_grant",
       "scope": tenant
     }
+  },
+  "ord_service_execution_unit": {
+    "unit_no": { "table": "ord_service_execution_unit", "scope": tenant },
+    "source_operation_no": { "table": "ord_checkout_operation", "col": "operation_no",
+      "scope": [...tenant, { from: "caller", to: "caller" },
+        { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" }] },
+    "source_line_no": { "table": "ord_checkout_line", "scope": [...tenant,
+      { from: "caller", to: "caller" }, { from: "source_operation_no", to: "operation_no" },
+      { from: "order_no", to: "order_no" }, { from: "sub_order_no", to: "sub_order_no" }] },
+    "order_no": { "table": "ord_order", "scope": tenant },
+    "sub_order_no": { "table": "ord_sub_order", "scope": [...tenant,
+      { from: "order_no", to: "order_no" }, { from: "entity_no", to: "entity_no" },
+      { from: "store_no", to: "store_no" }] },
+    // This is the permanent local task association key, not notify_push_task or a private beauty table FK.
+    "task_no": { "table": "ord_service_execution_unit", "scope": [...tenant,
+      { from: "entity_no", to: "entity_no" }] },
+    "current_execution_no": { "table": "ord_service_execution", "col": "execution_no", "scope": [...tenant,
+      { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" },
+      { from: "unit_no", to: "unit_no" }] }
+  },
+  "ord_service_execution": {
+    "execution_no": { "table": "ord_service_execution", "scope": tenant },
+    "grant_no": { "table": "ord_service_execution", "scope": tenant },
+    "unit_no": { "table": "ord_service_execution_unit", "scope": [...tenant,
+      { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" }] },
+    "prepare_action_no": { "table": "ord_service_execution_action", "col": "action_no", "scope": [...tenant,
+      { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" },
+      { from: "execution_no", to: "execution_no" }] },
+    "declaration_no": { "table": "ord_manual_service_admission", "scope": [...tenant,
+      { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" }] },
+    "confirmation_no": { "table": "ord_checkout_confirmation", "scope": tenant },
+    "resource_command_no": { "table": "mch_resource_command", "col": "command_no", "scope": [...tenant,
+      { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" }] }
+  },
+  "ord_service_execution_action": {
+    "action_no": { "table": "ord_service_execution_action", "scope": tenant },
+    "execution_no": { "table": "ord_service_execution", "scope": [...tenant,
+      { from: "entity_no", to: "entity_no" }, { from: "store_no", to: "store_no" }] }
   },
   "ord_checkout_payment_request": {
     "actor_account_no": {

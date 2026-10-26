@@ -125,6 +125,26 @@ describe("对账血缘", () => {
   const schema = readSchema();
   const tables = readDdlSchema(ROOT);
 
+  it("manual execution uses scoped original owner relations without changing existing task/grant owners", () => {
+    const unit = resolveReference(tables, "ord_service_execution", "unit_no");
+    expect(unit?.to).toBe("ord_service_execution_unit");
+    expect(unit?.scope).toEqual([
+      { from: "tenant_no", to: "tenant_no" }, { from: "entity_no", to: "entity_no" },
+      { from: "store_no", to: "store_no" },
+    ]);
+    expect(resolveReference(tables, "ord_service_execution_unit", "source_line_no")?.to)
+      .toBe("ord_checkout_line");
+    expect(resolveReference(tables, "ord_service_execution_action", "execution_no")?.to)
+      .toBe("ord_service_execution");
+    expect(resolveReference(tables, "ord_service_execution_unit", "task_no")).toBeNull();
+    expect(KEY_OWNERS.task_no.table).toBe("notify_push_task");
+    expect(resolveReference(tables, "mbr_reach_log", "task_no")?.to).toBe("notify_push_task");
+    expect(relations(tables).some((r: any) => r.from === "ord_service_execution_unit"
+      && r.to === "notify_push_task")).toBe(false);
+    expect(resolveReference(tables, "ent_sale_reservation", "grant_no")?.to).toBe("ent_grant");
+    expect(resolveReference(tables, "ord_service_execution", "grant_no")).toBeNull();
+  });
+
   it("共用人员键归属明确且不把账号关联或岗位编号误连到其他业务", () => {
     expect(KEY_OWNERS.personnel_no).toEqual({ table: "mch_personnel" });
     expect(KEY_OWNERS.assignment_no).toEqual({ table: "mch_personnel_store" });
@@ -310,7 +330,10 @@ describe("对账血缘", () => {
       ref("ord_checkout_payment_request", "buyer_no", "usr_account", "user_no"),
       ref("stl_payment_operation", "buyer_no", "usr_account", "user_no"),
     ]);
-    expect(byColumn("confirmation_no")).toEqual([ref("ord_checkout_operation", "confirmation_no", "ord_checkout_confirmation")]);
+    expect(byColumn("confirmation_no")).toEqual([
+      ref("ord_checkout_operation", "confirmation_no", "ord_checkout_confirmation"),
+      ref("ord_service_execution", "confirmation_no", "ord_checkout_confirmation"),
+    ]);
     expect(byColumn("return_no")).toEqual([ref("ent_migration_return", "return_no", "pmt_migration_return")]);
   });
 
@@ -371,7 +394,8 @@ describe("对账血缘", () => {
     expect(columnBadge(fixture(undefined, ["tenant_no"], ["buyer_no"]), "fixture_source", "buyer_no")).toBe('<i class="k uk">UK</i>');
   });
 
-  it.each(["receipt_no", "source_event_no", "actor_account_no", "execution_no", "entry_no", "line_no", "catalog_no", "voucher_no", "tier_no", "plan_no", "source_order_no", "grant_no"])("审计冲突 %s 未知新成员必须拒绝分类及 edge", col => {
+  it.each(["unit_no", "action_no", "source_line_no", "source_operation_no", "declaration_no",
+    "receipt_no", "source_event_no", "actor_account_no", "execution_no", "entry_no", "line_no", "catalog_no", "voucher_no", "tier_no", "plan_no", "source_order_no", "grant_no"])("审计冲突 %s 未知新成员必须拒绝分类及 edge", col => {
     const extended = new Map(tables);
     extended.set("unreviewed_table", { cols: [{ name: col }, { name: "tenant_no" }], uniques: new Set() });
     expect(resolveReference(extended, "unreviewed_table", col)).toBeNull();
