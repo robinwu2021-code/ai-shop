@@ -85,7 +85,74 @@ class GoodsIntegrityFlowTest {
         assertThat(detail(a, goodsNo).get("skus").get(0).get("price").asLong()).isEqualTo(1200L);
     }
 
+    // ------------------------------------------------------------------ ② 保存/发布不覆盖库存
+
+    @Test
+    @DisplayName("★★★ 草稿与发布之间卖掉 40 件 → 发布后库存仍是 60，不被草稿里的 100 盖回去")
+    void publishDoesNotOverwriteSoldStock() throws Exception {
+        String biz = merchant("13700777201", "库存·发布店");
+        String goodsNo = onSaleGoods(biz, "库存商品", 100);
+        String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
+        // 在售商品的编辑只落草稿；草稿里抄的是打开编辑页那一刻的 100
+        assertThat(postJson(biz, "/biz/goods/save", goodsBody(goodsNo, skuNo, "库存商品·改", 1000, 100))
+                .get("code").asInt()).isZero();
+        // 这期间卖掉 40 件
+        jdbc.update("update prd_sku set stock = stock - 40 where sku_no=?", skuNo);
+
+        withAuditOff(() -> assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/publish", "{}")
+                .get("code").asInt()).isZero());
+
+        assertThat(jdbc.queryForObject("select stock from prd_sku where sku_no=? and market='CN'",
+                Integer.class, skuNo)).as("发布把卖掉的 40 件加回去了 —— 超卖").isEqualTo(60);
+        assertThat(jdbc.queryForObject("select title from prd_goods where goods_no=?", String.class, goodsNo))
+                .as("内容照常换版").isEqualTo("库存商品·改");
+    }
+
+    @Test
+    @DisplayName("★★ 保存不改已有 SKU 的库存（改库存走库存入口）；新 SKU 的初始库存不能是负数")
+    void saveLeavesExistingStockAlone() throws Exception {
+        String biz = merchant("13700777202", "库存·保存店");
+        String goodsNo = createGoods(biz, "保存商品", 1000, 30);
+        String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
+        assertThat(postJson(biz, "/biz/goods/save", goodsBody(goodsNo, skuNo, "保存商品", 1000, -5))
+                .get("code").asInt()).isZero();
+        assertThat(jdbc.queryForObject("select stock from prd_sku where sku_no=? and market='CN'",
+                Integer.class, skuNo)).isEqualTo(30);
+
+        JsonNode neg = postJson(biz, "/biz/goods/save", goodsBody(null, null, "负库存新品", 1000, -1));
+        assertThat(neg.get("code").asInt()).as("新 SKU 的初始库存为负应被拒").isNotZero();
+    }
+
     // ------------------------------------------------------------------ 工具
+
+    /** 建一件过审且在售的商品（单 SKU，CAT210） */
+    private String onSaleGoods(String biz, String title, int stock) throws Exception {
+        String goodsNo = createGoods(biz, title, 1000, stock);
+        approve(goodsNo);
+        assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/toggle", "{\"onSale\":true}")
+                .get("code").asInt()).isZero();
+        return goodsNo;
+    }
+
+    private JsonNode approve(String goodsNo) throws Exception {
+        return postJson(opsLogin(), "/ops/goods/" + goodsNo + "/audit", "{\"approved\":true}");
+    }
+
+    private interface Body {
+        void run() throws Exception;
+    }
+
+    /** 关掉 goods.audit 跑一段。**必须还原** —— 开关在共享库里，不还原会把后面所有审核用例改成免审 */
+    private void withAuditOff(Body body) throws Exception {
+        String admin = TestLogin.admin(mvc(), json);
+        assertThat(postJson(admin, "/ops/feature-flags/goods.audit", "{\"enabled\":false,\"rolloutPercent\":0}")
+                .get("code").asInt()).isZero();
+        try {
+            body.run();
+        } finally {
+            postJson(admin, "/ops/feature-flags/goods.audit", "{\"enabled\":true,\"rolloutPercent\":0}");
+        }
+    }
 
     private String goodsBody(String goodsNo, String skuNo, String title, long price, int stock) {
         return "{" + (goodsNo == null ? "" : "\"goodsNo\":\"" + goodsNo + "\",")

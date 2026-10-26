@@ -1622,8 +1622,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             if (sku.skuNo() != null && !sku.skuNo().isBlank() && !ownSkuNos.contains(sku.skuNo())) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
-            String skuNo = sku.skuNo() == null || sku.skuNo().isBlank()
-                    ? BizKey.next(BizKey.SKU) : sku.skuNo();
+            boolean newSku = sku.skuNo() == null || sku.skuNo().isBlank();
+            String skuNo = newSku ? BizKey.next(BizKey.SKU) : sku.skuNo();
+            // 初始库存只对新 SKU 有意义（见下面 setStock 的注释）；负数会让它一上架就欠着货
+            if (newSku && sku.stock() < 0) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            Integer stockOfExisting = newSku ? null : existing.stream()
+                    .filter(s -> skuNo.equals(s.getSkuNo()) && s.getStock() != null)
+                    .map(PrdSku::getStock).findFirst().orElse(null);
             // 按市场逐行写：(entity_no, sku_no, market) 是价格的唯一权威，
             // 一个 SKU 在三个市场就是三行，而不是一行里塞一个 JSON 价格表
             Map<String, Long> prices = new LinkedHashMap<>();
@@ -1669,7 +1676,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 row.setOptionValueNos(writeJson(valueNos(sku.optionValues(), valueNoByDim)));
                 row.setSpec(String.join(" · ", sku.optionValues() == null ? List.of() : sku.optionValues()));
                 row.setPrice(e.getValue());
-                row.setStock(sku.stock());
+                /*
+                 * ★ **库存只在建行时写，已有 SKU 的库存保存一律不动**。
+                 *
+                 * 这里原先每次保存都 setStock(sku.stock()) —— 而发布/过审换版是把草稿
+                 * 原样回放一遍 save()。草稿里的库存是商家打开编辑页那一刻抄下的数：
+                 * 草稿存 100，其间卖掉 40，发布一按库存回到 100，40 件凭空多出来 ——
+                 * 超卖，且绕过了 StockPort（条件 UPDATE、进销存那本账都不知道）。
+                 * 改库存的唯一入口是 saveStock / saveStoreStock（走 StockPort）。
+                 *
+                 * 同一个 SKU 新开一个市场：库存不分市场，跟上已有那一行的数。
+                 */
+                if (fresh) {
+                    row.setStock(stockOfExisting != null ? stockOfExisting : Math.max(sku.stock(), 0));
+                }
                 /*
                  * 划线价与标称重量：**不传 = 不改**，与商品级那几段同一条规矩。
                  * 两列此前都是「有列、有契约、没有写入路径」——
