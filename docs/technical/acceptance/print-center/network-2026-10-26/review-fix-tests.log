@@ -1,0 +1,13 @@
+✔ network evidence cannot pass with a new retry key, new operation or missing case (2.166834ms)
+✔ negative acceptance rejects server errors, missing codes and wrong conflict keys (0.349916ms)
+✔ a client disconnect before backend completion cannot be recorded as delivered (16.215042ms)
+✔ explicit proxy distinguishes lost request and committed lost response, and redacts secrets (18.684792ms)
+✔ constant JSON permission appends remain idempotent in the generated H2 schema (38.362083ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 170.65425

@@ -8,6 +8,10 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Mode;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Proof;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Query;
+import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.dto.StationPublicationSnapshot;
 import ai.neargo.shop.food.policy.MenuConflictPolicy;
 import ai.neargo.shop.food.policy.MenuPublicationSource;
@@ -722,6 +726,59 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             var results = rows.stream().skip(offset).limit(size).map(r -> view(r, at)).toList();
             return PageData.of(results, rows.size(), page, size);
         });
+    }
+
+    @Override
+    public Proof verifyMenuResource(Query query) {
+        MenuSourcePolicy.validateQuery(query);
+        scope(query.entityNo(), query.storeNo());
+        return read.execute(
+                tx -> {
+                    var at = now();
+                    var row = revisions.findRevision(query.entityNo(), query.revisionNo());
+                    if (row == null
+                            || !"MENU".equals(row.getConfigKind())
+                            || !query.menuNo().equals(row.getConfigNo())
+                            || !inStore(row, query.storeNo()))
+                        throw BizException.of(ErrorCode.NOT_FOUND);
+                    if (!("EFFECTIVE".equals(row.getStatus())
+                                    || "SCHEDULED".equals(row.getStatus()))
+                            || row.getEffectiveAt().isAfter(at.toLocalDateTime()))
+                        throw BizException.of(ErrorCode.CONFLICT);
+                    var until = at.plusSeconds(30);
+                    if (query.mode() == Mode.CURRENT) {
+                        var current =
+                                selected(
+                                        query.entityNo(),
+                                        query.storeNo(),
+                                        "MENU",
+                                        query.menuNo(),
+                                        at);
+                        if (current == null || !row.getRevisionNo().equals(current.getRevisionNo()))
+                            throw BizException.of(ErrorCode.CONFLICT);
+                        for (var candidate :
+                                revisions.findObject(query.entityNo(), "MENU", query.menuNo())) {
+                            var effective = candidate.getEffectiveAt().atOffset(ZoneOffset.UTC);
+                            if (!"CANCELLED".equals(candidate.getStatus())
+                                    && inStore(candidate, query.storeNo())
+                                    && effective.isAfter(at)
+                                    && effective.isBefore(until)) until = effective;
+                        }
+                    }
+                    validateFrozen(row);
+                    var content =
+                            new ConfigRevisionContentVO(view(row, at), row.getDefinitionSnapshot());
+                    var resource = MenuSourcePolicy.project(json, query, content);
+                    var proof = new Proof(1, query, content, resource, at, until, null);
+                    return new Proof(
+                            1,
+                            query,
+                            content,
+                            resource,
+                            at,
+                            until,
+                            MenuSourcePolicy.receipt(json, proof));
+                });
     }
 
     @Override

@@ -6,6 +6,9 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
 import ai.neargo.shop.food.dto.StationPublicationSnapshot;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Proof;
+import ai.neargo.shop.food.dto.MenuSourceContracts.Query;
+import ai.neargo.shop.food.policy.MenuSourcePolicy;
 import ai.neargo.shop.food.dto.ConfigRevisionVO;
 import ai.neargo.shop.food.dto.ListConfigRevisionsQuery;
 import ai.neargo.shop.food.dto.RepublishConfigReq;
@@ -18,6 +21,7 @@ import ai.neargo.shop.food.spi.ConfigRevisionInternalApi;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
 import ai.neargo.svc.client.ServiceCalls;
+import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -29,7 +33,24 @@ import tools.jackson.databind.json.JsonMapper;
 public class RemoteConfigRevisionService implements ConfigRevisionService {
     private final ConfigRevisionInternalApi api;
     private final JsonMapper json = JsonMapper.builder().findAndAddModules().build();
-    public RemoteConfigRevisionService(ConfigRevisionInternalApi api) { this.api = api; }
+    private final Clock sourceClock;
+
+    public RemoteConfigRevisionService(ConfigRevisionInternalApi api) {
+        this(api, Clock.systemUTC());
+    }
+
+    public RemoteConfigRevisionService(ConfigRevisionInternalApi api, Clock clock) {
+        this.api = api;
+        this.sourceClock = clock;
+    }
+
+    @Override
+    public Proof verifyMenuResource(Query query) {
+        MenuSourcePolicy.validateQuery(query);
+        var result = invoke(() -> api.verifyMenuResource(query));
+        MenuSourcePolicy.validateProof(json, query, result, OffsetDateTime.now(sourceClock));
+        return result;
+    }
 
     @Override
     public PublishConfigResultVO republishRevision(String entity, String store, String revision, String actor,
