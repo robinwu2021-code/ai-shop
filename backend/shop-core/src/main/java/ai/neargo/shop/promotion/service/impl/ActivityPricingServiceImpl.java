@@ -172,8 +172,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                     ComboHit h = comboHit(a, g);
                     if (h != null && (g.pointsRewardsEnabled() || h.points() == 0)
                             && (h.off() > 0 || h.points() > 0)) {
+                        // 预算只剩一部分时按剩余封顶（理由见下面减钱那一支）
                         out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
-                                h.off(), 1, 0L, null, a.getName()).atStore(g.storeNo()));
+                                Math.min(h.off(), a.budgetLeft()), 1, 0L, null, a.getName()).atStore(g.storeNo()));
                     }
                     continue;
                 }
@@ -183,6 +184,12 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 }
                 // 减不能超过商品额：券那边同一条规矩，否则会减出负数
                 long off = Math.min(nz(a.getBenefitAmountMinor()), g.goodsAmount());
+                /*
+                 * 也不能超过剩余预算：预算剩 4 元时照减 6 元，扣预算那条带条件的 UPDATE 会拒掉这一单，
+                 * 而活动看起来还「有预算」—— 之后每一单都减、每一单都扣不进去，预算形同虚设。
+                 * 按剩余封顶，最后一单正好把预算用完，活动随之结束。
+                 */
+                off = Math.min(off, a.budgetLeft());
                 if (off > 0) {
                     out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
                             off, 1, 0L, null, a.getName()).atStore(g.storeNo()));
@@ -580,12 +587,19 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                             // 限量为空 = 不限；有限量时必须还装得下这一单
                             .and(w -> w.isNull(PmtActivity::getQuota)
                                     .or().apply("quota_used + {0} <= quota", it.qty()))
+                            /*
+                             * 预算同理：没设（空或 0）= 不限；设了就必须还装得下这一单的钱。
+                             * 此前这里无条件累加 —— 预算只是一个会一直涨的计数，从不拦任何一单。
+                             */
+                            .and(w -> w.isNull(PmtActivity::getBudgetMinor)
+                                    .or().le(PmtActivity::getBudgetMinor, 0)
+                                    .or().apply("budget_used_minor + {0} <= budget_minor", it.amountMinor()))
                             .setSql("quota_used = quota_used + " + it.qty())
                             .setSql("budget_used_minor = budget_used_minor + "
                                     + it.amountMinor())));
             if (affected == 0) {
                 /*
-                 * 没抢到最后一份。**不抛异常**：订单已经按算价时的金额落库了，
+                 * 没抢到最后一份（或预算装不下这一单）。**不抛异常**：订单已经按算价时的金额落库了，
                  * 这时候翻脸会让用户付了钱却下不成单 —— 那比多发一份的损失大得多。
                  * 记 WARN，让运营看到「超发了几份」：那是限量与并发之间必然存在的
                  * 一点点重叠，不是错误。
@@ -625,6 +639,15 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                                 .set(PmtActivity::getStatus, PmtActivity.ENDED)
                                 .set(PmtActivity::getEndedReason, PmtActivity.ENDED_QUOTA)));
                 log.info("[活动] {} 到量自动结束", it.activityNo());
+            } else if (a != null && !a.hasBudgetLeft()) {
+                // 预算用完同样收尾，并说清是预算停的（ENDED_BUDGET 此前定义了却从没人写）
+                DataScopeContext.executeWithoutScope(() ->
+                        activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                                .eq(PmtActivity::getActivityNo, it.activityNo())
+                                .eq(PmtActivity::getStatus, PmtActivity.RUNNING)
+                                .set(PmtActivity::getStatus, PmtActivity.ENDED)
+                                .set(PmtActivity::getEndedReason, PmtActivity.ENDED_BUDGET)));
+                log.info("[活动] {} 预算用完自动结束", it.activityNo());
             }
         }
     }
@@ -696,7 +719,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a.getStoreNo() != null && !a.getStoreNo().equals(storeNo)) {
                 continue;
             }
-            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            // 预算与限量同等对待：用完的活动不再参与算价（只设预算的长期活动靠这一条才停得下来）
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()
+                    || !a.hasBudgetLeft()) {
                 continue;
             }
             out.add(a);
@@ -720,7 +745,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a == null || !benefitType.equals(a.getBenefitType())) {
                 continue;
             }
-            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()
+                    || !a.hasBudgetLeft()) {
                 continue;
             }
             out.add(a);
