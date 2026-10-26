@@ -13,6 +13,8 @@ import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelProductMarketMapper;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -66,6 +68,32 @@ public final class DbChannelProductCatalog implements ChannelProductCatalog {
         }
         return allMarkets().stream().anyMatch(m -> enabled.contains(m.getPayChannelProductId())
                 && ENABLED.equals(m.getStatus()) && (key.market() == null || key.market().equals(m.getMarket())));
+    }
+
+    @Override
+    public OptionalInt amountScale(String payChannel, AccessMode accessMode, String market, String currency) {
+        Set<Long> ids = allProducts().stream()
+                .filter(p -> p.getPayChannel().equals(payChannel) && p.getAccessMode().equals(accessMode.name()))
+                .map(PayChannelProduct::getId).collect(Collectors.toSet());
+        Set<Integer> scales = allMarkets().stream()
+                .filter(m -> ids.contains(m.getPayChannelProductId()))
+                .filter(m -> market != null ? market.equals(m.getMarket()) : currency != null && currency.equals(m.getCurrency()))
+                .filter(m -> currency == null || currency.equals(m.getCurrency()))
+                .map(PayChannelProductMarket::getAmountScale)
+                .filter(Objects::nonNull)
+                .map(Number::intValue)
+                .collect(Collectors.toSet());
+        return scales.size() == 1 ? OptionalInt.of(scales.iterator().next()) : OptionalInt.empty();
+    }
+
+    @Override
+    public int refundIntervalSeconds(String payChannel, AccessMode accessMode) {
+        return allProducts().stream()
+                .filter(p -> p.getPayChannel().equals(payChannel) && p.getAccessMode().equals(accessMode.name()))
+                .map(PayChannelProduct::getRefundIntervalSeconds)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .max().orElse(0);
     }
 
     /** 产品 → 场景。渠道侧方式码决定端上怎么付；认不出时按支付类型兜一个最接近的 */

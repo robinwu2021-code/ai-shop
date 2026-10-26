@@ -1,7 +1,16 @@
 package ai.neargo.shop.pay.channel;
 
+import ai.neargo.shop.pay.channel.http.RecordingChannelClient;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
-import org.springframework.beans.factory.annotation.Qualifier;
+import ai.neargo.shop.pay.channel.wechat.WechatErrorMapper;
+import ai.neargo.shop.pay.channel.wechat.WechatV3Client;
+import ai.neargo.shop.pay.channel.wechat.WechatV3Protocol;
+import ai.neargo.shop.pay.channel.wechat.direct.WechatDirectChannel;
+import ai.neargo.shop.pay.channel.wechat.ecommerce.WechatEcommerceChannel;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -11,8 +20,7 @@ import org.springframework.context.annotation.Configuration;
  * 微信支付凭据的装配点。
  *
  * <h2>为什么签名器要单独成一个 bean</h2>
- * 它同时被两个人要：{@link WechatChannelClient}（签请求）与
- * {@link WechatDirectPayGateway}（算小程序 paySign）。
+ * 它同时被两个人要：{@link WechatV3Protocol}（签请求、验应答）与小程序 paySign。
  * 让网关去 {@code instanceof} 客户端再把它掏出来的话，
  * 密钥的持有关系就从「一处声明」变成「谁能拿到谁拿」——
  * 而那种关系没有任何地方能一眼看全。
@@ -69,59 +77,66 @@ public class WechatPayChannelConfig {
                 publicKey);
     }
 
+    /** 协议：签名、验应答、paySign（W2 S5 · 渠道接入统一封装设计 §6.3） */
+    @Bean
+    public WechatV3Protocol wechatV3Protocol(WechatApiV3Signer signer) {
+        return new WechatV3Protocol(signer);
+    }
+
+    /** 发送口：协议 + 记录型客户端 + 主备域名切换。所有微信出站 HTTP 都经这里（RecordingClientOnlyTest） */
+    @Bean
+    public WechatV3Client wechatV3Client(WechatV3Protocol protocol, RecordingChannelClient http,
+                                         @Value("${shop.pay.wechat.read-timeout-seconds:15}") int readTimeoutSeconds) {
+        return new WechatV3Client(protocol, http, Duration.ofSeconds(readTimeoutSeconds));
+    }
+
+    /** 进件（{@code WechatApplymentGateway}）仍用旧的 {@link ChannelClient} 外形；底下同一个发送口，进件请求也落原文 */
+    @Bean("wechatChannelClient")
+    public ChannelClient wechatChannelClient(WechatV3Client client) {
+        return new WechatChannelClient(client);
+    }
+
+    @Bean
+    public WechatErrorMapper wechatErrorMapper() {
+        return new WechatErrorMapper();
+    }
+
     /**
-     * 内容优先，其次路径。
-     *
-     * <p><b>两个都配了不去猜</b>：直接用内容，但那不是「随便选一个」——
-     * 内容是显式注入（密钥管理系统给的），路径是挂载文件，
-     * 两者不一致时用哪个都可能是错的，而选错的表现是签名失败，
-     * 排查的人会去核那个<b>没被用到</b>的那份。所以只有一条规则，写在这里。
-     *
-     * <p>路径读不出来时<b>装配期就炸</b>：容忍它的话，服务会带着空密钥起来，
-     * 到第一次真实下单才失败。
-     */
-    /**
-     * 直连商户号网关。<b>两个条件都要满足</b>：本 @Configuration 挂着
-     * {@code enabled=true}，方法上再挂 {@code mode=direct}。
-     *
-     * <p><b>为什么不是类上叠两个 {@code @ConditionalOnProperty}</b>：
-     * 那个注解<b>不可重复</b>，叠两个只有一个生效。
-     * 于是 {@code enabled=false} 而 {@code mode=direct}（yml 里的默认值）时，
-     * bean 照样被创建，然后去要一个不存在的 {@code wechatChannelClient} ——
-     * <b>整个应用起不来，而且报错指向注入，不指向那个开关</b>。
-     * 嵌在带条件的 @Configuration 里则是真正的「与」。
+     * 直连商户号处理器（{@code MERCHANT_OWN}）。<b>两个条件都要满足</b>：本 @Configuration 挂着 {@code enabled=true}，
+     * 方法上再挂 {@code mode=direct}。{@code @ConditionalOnProperty} 不可重复 —— 类上叠两个只有一个生效，
+     * {@code enabled=false} 时 bean 照样被创建、再去要一个不存在的客户端，整个应用起不来。嵌在带条件的 @Configuration 里才是真正的「与」。
      */
     @Bean
     @ConditionalOnProperty(name = "shop.pay.wechat.mode", havingValue = "direct")
-    public WechatDirectPayGateway wechatDirectPayGateway(
-            @Qualifier("wechatChannelClient") ChannelClient client,
-            PayChannelMasterService channelMaster,
-            ChannelMessageRecorder recorder,
-            WechatApiV3Signer signer,
+    public WechatDirectChannel wechatDirectChannel(
+            WechatV3Client client,
+            WechatV3Protocol protocol,
             @Value("${shop.pay.wechat.mchid:}") String mchId,
             @Value("${shop.pay.wechat.appid:}") String appId,
             @Value("${shop.pay.wechat.notify-url:}") String notifyUrl,
             @Value("${shop.pay.wechat.refund-notify-url:}") String refundNotifyUrl) {
-        return new WechatDirectPayGateway(client, channelMaster, recorder, signer,
-                mchId, appId, notifyUrl, refundNotifyUrl);
+        return new WechatDirectChannel(client, protocol, mchId, appId, notifyUrl, refundNotifyUrl);
     }
 
     /**
-     * 电商收付通（服务商）网关。与上面**互斥** —— 两者的 {@code payChannel()}
-     * 都是 {@code WECHAT}，同时装上会被 {@link PayGatewayRouter} 在启动时拦下。
+     * 电商收付通处理器（{@code SERVICE_PROVIDER}）。与直连按 {@code mode} 二选一 —— 凭据是一套（mchid 即 sp_mchid）；
+     * 两个处理器的键接入模式不同，同时装上也不会互相顶替，但按渠道名问「用哪一种」就答不出来（{@code ChannelContextFactory} 拒绝）。
      */
     @Bean
     @ConditionalOnProperty(name = "shop.pay.wechat.mode", havingValue = "ecommerce")
-    public WechatPayGateway wechatPayGateway(
-            @Qualifier("wechatChannelClient") ChannelClient client,
-            PayChannelMasterService channelMaster,
-            ChannelMessageRecorder recorder,
+    public WechatEcommerceChannel wechatEcommerceChannel(
+            WechatV3Client client,
             @Value("${shop.pay.wechat.mchid:}") String spMchId,
-            PaymentAccountLookup accounts) {
-        // 服务商模式：mchid 即 sp_mchid；查单 / 查退款要的 sub_mchid 由支付域按交易查（F12 · R14）
-        return new WechatPayGateway(client, channelMaster, recorder, spMchId, accounts);
+            PaymentAccountLookup accounts,
+            PayChannelMasterService channelMaster) {
+        // 查单 / 查退款要的 sub_mchid 由支付域按交易查（F12 · R14）
+        return new WechatEcommerceChannel(client, spMchId, accounts, channelMaster::supportsSubsidy);
     }
 
+    /**
+     * 内容优先，其次路径。两个都配了不去猜：内容是显式注入（密钥管理系统给的），路径是挂载文件，只有这一条规则。
+     * 路径读不出来时装配期就炸：容忍它的话，服务会带着空密钥起来，到第一次真实下单才失败。
+     */
     private static String pemOf(String inline, String path, String key) {
         if (inline != null && !inline.isBlank()) {
             return inline;
@@ -130,8 +145,8 @@ public class WechatPayChannelConfig {
             return null;
         }
         try {
-            return java.nio.file.Files.readString(java.nio.file.Path.of(path));
-        } catch (java.io.IOException e) {
+            return Files.readString(Path.of(path));
+        } catch (IOException e) {
             // 不带出路径内容，只带路径本身 —— 它不是秘密，而内容是
             throw new IllegalStateException(key + "-path 指向的文件读不出来：" + path, e);
         }

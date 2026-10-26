@@ -654,15 +654,26 @@ shop:
       # 验回调签名与验应答签名都用它。**不配 = 不验签**，启动时会打一条 WARN
       platform-public-key: ${WX_PLATFORM_PUBLIC_KEY:}
       platform-public-key-path: ${WX_PLATFORM_PUBLIC_KEY_PATH:}
+      # 回调按 Wechatpay-Serial 选公钥（安全规范 G4 · TDD-支付服务-W2渠道层补完 S6）。不配 serial = 只有一把、任何 serial 都用它（存量）。
+      # 证书 / 公钥轮换：先配上新一把（-next，必须带 -next-serial），新旧并存验回调；微信切到新证书、稳定后再把新的挪到上面、去掉 -next
+      platform-public-key-serial: ${WX_PLATFORM_PUBLIC_KEY_SERIAL:}
+      platform-public-key-next: ${WX_PLATFORM_PUBLIC_KEY_NEXT:}
+      platform-public-key-next-path: ${WX_PLATFORM_PUBLIC_KEY_NEXT_PATH:}
+      platform-public-key-next-serial: ${WX_PLATFORM_PUBLIC_KEY_NEXT_SERIAL:}
       # 支付结果回调。必须 HTTPS 且公网可达；不配则拒绝下单
       # （发出去也收不到通知，那笔单会停在 PENDING 只能等对账日）
       notify-url: ${WX_NOTIFY_URL:}
       # 退款结果回调地址。空 = 由 notify-url 推导（路径末段后加 refund，查询参数保留）；地址不按这个规律时显式配
       refund-notify-url: ${WX_REFUND_NOTIFY_URL:}
+    callback:
+      # 渠道回调时间戳允许的偏差（G4）：超出即按重放拒收；验签之后才看，伪造请求刷不了这条
+      timestamp-window: ${SHOP_PAY_CALLBACK_TIMESTAMP_WINDOW:PT5M}
     alipay:
       enabled: ${ALIPAY_PAY_ENABLED:false}
       app-id: ${ALIPAY_APP_ID:}
       private-key-path: ${ALIPAY_PRIVATE_KEY_PATH:}
+      # 支付宝公钥（验应答与回调）：内容或路径二选一，内容优先（G5：此前代码只读 public-key、这里只配了 -path，启用即验签恒失败）
+      public-key: ${ALIPAY_PUBLIC_KEY:}
       public-key-path: ${ALIPAY_PUBLIC_KEY_PATH:}
       # 平台自己的收款账号：补差时作为出资方（trans_out）。
       # 不配的话补差会明确失败，而不是静默补 0

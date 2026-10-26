@@ -12,10 +12,10 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.Signature;
-import java.security.spec.X509EncodedKeySpec;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
 
@@ -71,28 +71,58 @@ public class WechatCallbackVerifier implements ChannelCallbackVerifier {
         return consecFail.get();
     }
 
+    /** 时间窗失败单独计数（安全规范 §监控：「时间窗失败单独计数」）—— 与验签失败是两种处置：前者多半是重放或时钟漂移 */
+    private static final java.util.concurrent.atomic.AtomicInteger consecStale =
+            new java.util.concurrent.atomic.AtomicInteger(0);
+
     private final String apiV3Key;
-    private final String platformPublicKey;
+    private final WechatPlatformKeys platformKeys;
+    private final Duration window;
+    private final Clock clock;
     private final ObjectMapper json;
 
+    /**
+     * @param platformPublicKey / -path      当前平台公钥（或微信支付公钥），内容优先、其次路径
+     * @param platformPublicKeySerial       它的序列号；空 = 不按 serial 认（存量配置，见 {@link WechatPlatformKeys}）
+     * @param nextKey / nextKeyPath / nextSerial 证书轮换期的新一把，带序列号（G4：新旧并存）
+     * @param window                        回调时间戳允许偏差（G4，默认 ±5 分钟）
+     */
     @org.springframework.beans.factory.annotation.Autowired
     public WechatCallbackVerifier(@Value("${shop.pay.wechat.apiv3-key:}") String apiV3Key,
                                   @Value("${shop.pay.wechat.platform-public-key:}") String platformPublicKey,
                                   @Value("${shop.pay.wechat.platform-public-key-path:}") String platformPublicKeyPath,
+                                  @Value("${shop.pay.wechat.platform-public-key-serial:}") String platformPublicKeySerial,
+                                  @Value("${shop.pay.wechat.platform-public-key-next:}") String nextKey,
+                                  @Value("${shop.pay.wechat.platform-public-key-next-path:}") String nextKeyPath,
+                                  @Value("${shop.pay.wechat.platform-public-key-next-serial:}") String nextSerial,
+                                  @Value("${shop.pay.callback.timestamp-window:PT5M}") Duration window,
                                   ObjectMapper json) {
-        this.apiV3Key = apiV3Key;
         /*
          * **内容优先，其次路径**（与 {@code WechatPayChannelConfig.pemOf} 同一口径）。
          * 之前只读 content，而生产用的是 `WX_PLATFORM_PUBLIC_KEY_PATH`——
-         * 结果 content 恒空，每一条回调都在 {@link #rsaVerify} 里因 Base64 解出空
-         * 抛异常、被 catch 打「验签失败」。症状与 apiv3-key 配错完全一样，
+         * 结果 content 恒空，每一条回调都验签失败。症状与 apiv3-key 配错完全一样，
          * 排查的人会去核那个**没被用到**的字段。
          *
-         * 现在两种给法二选一：{@code -path} 读不出来当作没配（让通道自愈失败一次，
-         * 不像装配期 fail 那么重 —— verifier 只做验证不签发，退化为 fail-closed 已可接受）。
+         * 现在两种给法二选一：{@code -path} 读不出来当作没配（fail-closed，不像装配期 fail 那么重 ——
+         * verifier 只做验证不签发）。
          */
-        this.platformPublicKey = pemOf(platformPublicKey, platformPublicKeyPath);
+        this(apiV3Key, WechatPlatformKeys.of(pemOf(platformPublicKey, platformPublicKeyPath), platformPublicKeySerial,
+                pemOf(nextKey, nextKeyPath), nextSerial), window, Clock.systemUTC(), json);
+    }
+
+    WechatCallbackVerifier(String apiV3Key, WechatPlatformKeys platformKeys, Duration window, Clock clock,
+                           ObjectMapper json) {
+        this.apiV3Key = apiV3Key;
+        this.platformKeys = platformKeys;
+        this.window = window;
+        this.clock = clock;
         this.json = json;
+    }
+
+    /** 测试用：一把没名字的公钥 + 路径，默认时间窗 */
+    WechatCallbackVerifier(String apiV3Key, String platformPublicKey, String platformPublicKeyPath, ObjectMapper json) {
+        this(apiV3Key, WechatPlatformKeys.of(pemOf(platformPublicKey, platformPublicKeyPath), null, null, null),
+                Duration.ofMinutes(5), Clock.systemUTC(), json);
     }
 
     /** 测试用：老的二参构造，直接传 PEM 内容（等价于 path 空） */
@@ -136,10 +166,20 @@ public class WechatCallbackVerifier implements ChannelCallbackVerifier {
             String sign = header(headers, "wechatpay-signature");
             String timestamp = header(headers, "wechatpay-timestamp");
             String nonce = header(headers, "wechatpay-nonce");
+            String serial = header(headers, "wechatpay-serial");
             if (sign == null || timestamp == null || nonce == null || rawBody == null) {
                 return null;
             }
-            if (!rsaVerify(signContent(timestamp, nonce, rawBody), sign)) {
+            PublicKey key = platformKeys.select(serial).orElseThrow(() ->
+                    new IllegalStateException("没有可用的平台公钥（Wechatpay-Serial=" + serial + "）"));
+            if (!rsaVerify(key, signContent(timestamp, nonce, rawBody), sign)) {
+                return null;
+            }
+            /*
+             * 先验签、再看新鲜度（G4）：验签证明是微信发的，时间窗证明不是重放。顺序反过来，
+             * 任何人随手 POST 一条带旧时间戳的就能刷「过期」告警。
+             */
+            if (!fresh(timestamp)) {
                 return null;
             }
             Map<String, Object> envelope = json.readValue(rawBody, Map.class);
@@ -184,9 +224,25 @@ public class WechatCallbackVerifier implements ChannelCallbackVerifier {
         return null;
     }
 
-    private boolean rsaVerify(String content, String signBase64) throws Exception {
-        byte[] der = Base64.getDecoder().decode(platformPublicKey.replaceAll("\\s|-----[A-Z ]+-----", ""));
-        PublicKey key = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(der));
+    /** 时间戳与本机时钟的偏差在时间窗内。不是数字 = 不新鲜（拒）；偏差秒数进日志，便于分辨重放与时钟漂移 */
+    private boolean fresh(String timestamp) {
+        long skew;
+        try {
+            skew = clock.instant().getEpochSecond() - Long.parseLong(timestamp.trim());
+        } catch (NumberFormatException e) {
+            skew = Long.MAX_VALUE;
+        }
+        if (Math.abs(skew) <= window.getSeconds()) {
+            consecStale.set(0);
+            return true;
+        }
+        int n = consecStale.incrementAndGet();
+        log.warn("[callback] 微信回调时间戳超出 ±{}s 时间窗（偏差 {}s，连续第 {} 次）—— 重放或时钟漂移，拒收",
+                window.getSeconds(), skew == Long.MAX_VALUE ? "?" : skew, n);
+        return false;
+    }
+
+    private static boolean rsaVerify(PublicKey key, String content, String signBase64) throws Exception {
         Signature verifier = Signature.getInstance("SHA256withRSA");
         verifier.initVerify(key);
         verifier.update(content.getBytes(StandardCharsets.UTF_8));

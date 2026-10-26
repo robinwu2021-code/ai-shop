@@ -7,8 +7,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -42,8 +45,35 @@ public class AlipayCallbackVerifier implements ChannelCallbackVerifier {
 
     private final String publicKey;
 
-    public AlipayCallbackVerifier(@Value("${shop.pay.alipay.public-key:}") String publicKey) {
-        this.publicKey = publicKey;
+    /**
+     * G5（安全规范）：此前只读 {@code shop.pay.alipay.public-key}，而 yml 只配了 {@code public-key-path} —— 启用支付宝即验签恒失败。
+     * 现在内容优先、其次路径（与微信同一口径）；路径读不出来按没配处理（每条回调 fail-closed，应用照常起来）。
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public AlipayCallbackVerifier(@Value("${shop.pay.alipay.public-key:}") String publicKey,
+                                  @Value("${shop.pay.alipay.public-key-path:}") String publicKeyPath) {
+        this.publicKey = pemOf(publicKey, publicKeyPath);
+    }
+
+    /** 测试用：直接传公钥内容 */
+    AlipayCallbackVerifier(String publicKey) {
+        this(publicKey, "");
+    }
+
+    private static String pemOf(String inline, String path) {
+        if (inline != null && !inline.isBlank()) {
+            return inline;
+        }
+        if (path == null || path.isBlank()) {
+            return "";
+        }
+        try {
+            return Files.readString(Path.of(path));
+        } catch (IOException e) {
+            // 不带出路径内容，只带出路径本身
+            log.warn("[callback] shop.pay.alipay.public-key-path 读不出来：{}（{}）—— 支付宝回调全部会验签失败", path, e.toString());
+            return "";
+        }
     }
 
     @Override

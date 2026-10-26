@@ -109,7 +109,7 @@ public class SettleServiceImpl implements SettleService {
      * （微信直连 {@code /v3/refund/domestic/refunds}）。
      * 两者都叫「网关」，但一个动的是商家账户里的钱，一个动的是退给买家的钱。
      */
-    private final ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter;
+    private final ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge channels;
 
     /** 分账指令的发送与留痕（幂等在它那一层） */
     private final ai.neargo.shop.pay.settle.SplitInstructionSender splitSender;
@@ -132,7 +132,7 @@ public class SettleServiceImpl implements SettleService {
                              PayChannelRateService channelRates,
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
                              ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger,
-                             ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
+                             ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge channels,
                              ai.neargo.shop.pay.settle.SplitInstructionSender splitSender,
                              RefundBasisStore refundBases, SplitPreparationService splitPreparation,
                              SplitResultService splitResults, PointsPayoutExecutionService pointsExecution,
@@ -146,7 +146,7 @@ public class SettleServiceImpl implements SettleService {
         this.pointsExecution = pointsExecution;
         this.splitGateway = splitGateway;
         this.splitSender = splitSender;
-        this.gatewayRouter = gatewayRouter;
+        this.channels = channels;
         this.paymentLedger = paymentLedger;
         this.batchMapper = batchMapper;
         this.channelMaster = channelMaster;
@@ -668,7 +668,7 @@ public class SettleServiceImpl implements SettleService {
         var ticket = coordinates.get();
         ai.neargo.shop.spi.pay.RefundQueryResult result;
         try {
-            result = gatewayRouter.of(ticket.payChannel()).queryRefundOutcome(ticket.outRefundNo());
+            result = channels.queryRefundOutcome(ticket.payChannel(), ticket.outRefundNo());
         } catch (RuntimeException uncertain) {
             log.warn("[settle] 退款回查未知 paymentNo={} exception={}", paymentNo,
                     uncertain.getClass().getSimpleName());
@@ -717,10 +717,7 @@ public class SettleServiceImpl implements SettleService {
             return;
         }
         var t = ticket.get();
-        ai.neargo.shop.pay.channel.PayGateway channel;
-        try {
-            channel = gatewayRouter.of(t.payChannel());
-        } catch (RuntimeException e) {
+        if (!channels.supports(t.payChannel())) {
             // 通道未接入**不可重试** —— 重试一万次它也不会自己接上
             paymentLedger.markRefundRejected(refundNo,
                     "支付通道未接入：" + t.payChannel());
@@ -733,7 +730,7 @@ public class SettleServiceImpl implements SettleService {
         var ctx = new ai.neargo.shop.pay.channel.PayGateway.TxContext(
                 null, t.originTradeNo(), t.originOutTradeNo(), t.originTotalMinor());
         try {
-            var r = channel.refund(ctx, t.amountMinor(), t.outRefundNo(), t.reason());
+            var r = channels.refund(t.payChannel(), ctx, t.amountMinor(), t.outRefundNo(), t.reason());
             if (!r.success() && r.definitiveRejection())
                 paymentLedger.markRefundRejected(refundNo, r.message());
             else paymentLedger.markRefundSent(refundNo, r.success(), !r.success(), r.providerNo(), r.message());

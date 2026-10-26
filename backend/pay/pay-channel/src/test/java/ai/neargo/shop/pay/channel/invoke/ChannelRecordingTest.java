@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.channel.invoke;
 
+import ai.neargo.shop.spi.pay.PayInstruction;
+
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.all;
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.pay;
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.payKey;
@@ -53,7 +55,7 @@ class ChannelRecordingTest {
     }
 
     @Test
-    @DisplayName("★★★ 管线 11 环顺序：记录(40) 在发送前、日志(50)、幂等(70) 在熔断之外")
+    @DisplayName("★★★ I2 的 11 环顺序：记录(40) 在发送前、日志(50)、幂等(70) 在熔断之外（生产 13 环见 PipelineRingsTest)")
     void fullOrder() {
         assertThat(invoker(n -> null, null, Set.of(payKey())).interceptors()).extracting(i -> i.order())
                 .containsExactly(10, 20, 30, 40, 50, 70, 90, 100, 110, 120, 130);
@@ -77,7 +79,7 @@ class ChannelRecordingTest {
 
         var tw = new ChannelAccountContext("TW", "WECHAT", AccessMode.MERCHANT_OWN, 1L, "PM-1", null, "TWD", 0);
         var twKey = new ChannelKey("TW", "WECHAT", AccessMode.MERCHANT_OWN, PayScene.ONLINE_SDK, ChannelOperation.PAY);
-        invoker(n -> new ChannelResult.Pending(Map.of(), null), null, Set.of(twKey)).execute(tw, pay(120_000, "TWD"));
+        invoker(n -> new ChannelResult.Pending(PayInstruction.none(), null), null, Set.of(twKey)).execute(tw, pay(120_000, "TWD"));
         assertThat(store.rows.getLast().getChannelAmountText()).as("TWD 精度 0：发给渠道的是整数元").isEqualTo("1200");
     }
 
@@ -85,7 +87,7 @@ class ChannelRecordingTest {
     @DisplayName("★★★ SourceTraceTest：追踪号、来源两维、关联 id、我方单号逐字落库")
     void sourceTrace() {
         var cmd = pay(100, "CNY");
-        invoker(n -> new ChannelResult.Pending(Map.of(), "T1"), null, Set.of(payKey())).execute(wechat(9), cmd);
+        invoker(n -> new ChannelResult.Pending(PayInstruction.none(), "T1"), null, Set.of(payKey())).execute(wechat(9), cmd);
         PayChannelCallLog r = store.rows.getFirst();
         assertThat(r.getTraceId()).isEqualTo(cmd.meta().traceId()).isNotBlank();
         assertThat(r.getSourceType()).isEqualTo("INTERNAL");
@@ -104,7 +106,7 @@ class ChannelRecordingTest {
     @Test
     @DisplayName("★★★ 重试每次一行：同一调用号，attempt 递增，retry_of_id 指向上一行，各自的结果分类")
     void retryRowPerAttempt() {
-        invoker(n -> n < 3 ? new ChannelResult.Unknown("HTTP_502") : new ChannelResult.Pending(Map.of(), "T1"), null,
+        invoker(n -> n < 3 ? new ChannelResult.Unknown("HTTP_502") : new ChannelResult.Pending(PayInstruction.none(), "T1"), null,
                 Set.of(payKey())).execute(wechat(9), query());
         assertThat(store.rows).hasSize(3);
         assertThat(store.rows).extracting(PayChannelCallLog::getAttempt).containsExactly(1, 2, 3);
@@ -119,7 +121,7 @@ class ChannelRecordingTest {
     void recordingFailureDoesNotBlock() {
         store.broken = true;
         var out = new ScriptedHandler[1];
-        var r = invoker(n -> new ChannelResult.Pending(Map.of(), "T1"), out, Set.of(payKey())).execute(wechat(9), pay(100, "CNY"));
+        var r = invoker(n -> new ChannelResult.Pending(PayInstruction.none(), "T1"), out, Set.of(payKey())).execute(wechat(9), pay(100, "CNY"));
         assertThat(r).isInstanceOf(ChannelResult.Pending.class);
         assertThat(out[0].calls).hasValue(1);
         assertThat(recorder.failures()).isPositive();

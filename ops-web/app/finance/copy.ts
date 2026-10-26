@@ -245,7 +245,8 @@ const zh = {
   pcColState: "状态",
   pcColMarkets: "可用市场",
   pcMarketsEditHint: "点击修改可用市场",
-  pcMarketsPrompt: "可用市场（逗号分隔的市场码，如 CN,TW,HK）。\n\n留空 = 所有市场都可用，不是「谁都不能用」。",
+  pcMarketsPrompt: "可用市场（逗号分隔的市场码，如 CN,TW,HK）。\n\n只有填了的市场能用这个通道，至少填一个；要让它谁都用不了，请用启停开关。",
+  pcMarketsEmpty: "至少填一个市场。要停用这个通道，请用「停用」开关，不要清空市场。",
   pcTestChannelTag: "联调用 · 勿用于真实交易",
   pcColCurrency: "币种",
   pcColSettleCycle: "结算周期",
@@ -257,7 +258,7 @@ const zh = {
   /* 动作词与状态词分开：按钮上写「要做的事」，状态列写「现在是什么」 */
   pcActionEnable: "启用",
   pcActionDisable: "停用",
-  pcAllMarkets: "全部市场",
+  pcNoMarkets: "未开通任何市场",
   pcEmpty: "还没有配置支付通道。没有通道，商家进不了件，也收不了钱。",
 
   // ── 账期批次
@@ -773,7 +774,8 @@ const en: typeof zh = {
   pcColState: "State",
   pcColMarkets: "Markets",
   pcMarketsEditHint: "Click to edit available markets",
-  pcMarketsPrompt: "Available markets (comma-separated codes, e.g. CN,TW,HK).\n\nLeave empty = available in ALL markets, not «none».",
+  pcMarketsPrompt: "Available markets (comma-separated codes, e.g. CN,TW,HK).\n\nOnly the markets listed can use this channel, so enter at least one. To make it unavailable everywhere, use the enable/disable switch.",
+  pcMarketsEmpty: "Enter at least one market. To turn this channel off, use Disable instead of clearing its markets.",
   pcTestChannelTag: "TEST ONLY · not for real transactions",
   pcColCurrency: "Currency",
   pcColSettleCycle: "Settlement cycle",
@@ -784,7 +786,7 @@ const en: typeof zh = {
   pcDisabled: "Disabled",
   pcActionEnable: "Enable",
   pcActionDisable: "Disable",
-  pcAllMarkets: "All markets",
+  pcNoMarkets: "Not open in any market",
   pcEmpty: "No payment channel is configured. Without one, merchants cannot onboard or take money.",
 
   sbNotice: "A batch decides whether money can be released; a bill decides whether the release succeeds. This page answers which batch the money is stuck in.",

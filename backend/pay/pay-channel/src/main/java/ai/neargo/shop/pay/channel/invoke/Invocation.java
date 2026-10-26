@@ -113,6 +113,14 @@ public final class Invocation {
         this.state = InvocationState.SENT;
     }
 
+    /**
+     * 连接没建成（拒绝、DNS、连接超时）：请求没离开本机，撤回 {@link #markSent()}。
+     * 只有传输层能分清这一点（{@code RecordingChannelClient}），重试据此判断能否安全重发。
+     */
+    public void connectFailed() {
+        this.requestSent = false;
+    }
+
     public Long callLogId() {
         return callLogId;
     }

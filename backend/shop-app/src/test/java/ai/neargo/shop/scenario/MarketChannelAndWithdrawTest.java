@@ -67,8 +67,10 @@ class MarketChannelAndWithdrawTest {
          * <b>而报错与支付通道看不出任何关系</b>。
          *
          * 还原的目标是<b>「我进来时的样子」，不是「产品的默认值」</b>。
+         *
+         * 市场传 null（不动）：V12 起 TEST 的「不限」是每个市场一行显式行，空市场会被拒（W2 S8）。
          */
-        channels.updateSettings("TEST", true, "", "CNY", "T1");
+        channels.updateSettings("TEST", true, null, "CNY", "T1");
     }
 
     // ─────────────────────────── ① 渠道按区域筛
@@ -87,10 +89,10 @@ class MarketChannelAndWithdrawTest {
     }
 
     @Test
-    @DisplayName("★★ 不限区域的渠道，哪个市场都看得到 —— 空 markets 是「不限」不是「都不给」")
+    @DisplayName("★★ 每个市场都开了的渠道，哪个市场都看得到 —— V12 起「不限」是显式的每市场一行")
     void unrestrictedChannelVisibleEverywhere() {
-        // 测试渠道（V288 种的）markets 为空 = 不限市场，但默认 enabled=0，先开它
-        channels.updateSettings("TEST", true, "", "CNY", "T1");
+        // 测试渠道 V288 种的是 enabled=0、V12 给了每个市场一行；先开它，市场不动
+        channels.updateSettings("TEST", true, null, "CNY", "T1");
 
         assertThat(channels.enabled("CN")).extracting(SysPayChannel::getPayChannel).contains("TEST");
         assertThat(channels.enabled("TW")).extracting(SysPayChannel::getPayChannel).contains("TEST");

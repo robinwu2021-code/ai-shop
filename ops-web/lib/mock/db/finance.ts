@@ -168,6 +168,10 @@ export const feeRules: FeeRuleVersion[] = [
  * <b>ALIPAY 故意一条费率都不配</b>：「没配过费率」是真实存在的初始状态，
  * 而页面在那一支要显示「未配置」而不是 0 —— mock 里两个通道都给上费率的话，
  * 那一支永远走不到，而它正是运营第一次打开这一页看到的画面。
+ *
+ * <b>LINEPAY 一个市场都没开</b>：W2 起 `sys_pay_channel_market` 是显式表，「无行 = 不可用」
+ * （db/pay V12）。新加的 NEWEBPAY / LINEPAY / PAYBY 就是停用 + 无市场行，后端回 `"[]"`；
+ * 页面要显示「未开通任何市场」而不是「全部市场」，mock 里得有这一行才看得见。
  */
 export const payChannels: {
   payChannel: string; name: string; enabled: boolean; markets: string | null;
@@ -189,6 +193,11 @@ export const payChannels: {
   {
     payChannel: "ALIPAY", name: "支付宝", enabled: true, markets: '["CN"]',
     currency: "CNY", settleCycle: "T+1", supportsSubsidy: true,
+    rates: [],
+  },
+  {
+    payChannel: "LINEPAY", name: "LINE Pay", enabled: false, markets: "[]",
+    currency: null, settleCycle: null, supportsSubsidy: false,
     rates: [],
   },
 ];

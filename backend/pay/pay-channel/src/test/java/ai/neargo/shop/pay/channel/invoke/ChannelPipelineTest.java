@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.channel.invoke;
 
+import ai.neargo.shop.spi.pay.PayInstruction;
+
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.all;
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.invoker;
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.pay;
@@ -45,7 +47,7 @@ import org.junit.jupiter.api.Test;
 /** 渠道管线（TDD-支付服务-I2渠道统一封装 S2 · AC2–AC6；设计 §17） */
 class ChannelPipelineTest {
 
-    private static final Map<String, Object> SDK = Map.of("prepay_id", "wx1");
+    private static final PayInstruction SDK = new PayInstruction.JsapiParams(Map.of("prepay_id", "wx1"));
 
     private static ScriptedHandler handler(java.util.function.Function<Integer, ChannelResult> script) {
         return new ScriptedHandler(all("WECHAT", AccessMode.MERCHANT_OWN), script);
@@ -107,9 +109,9 @@ class ChannelPipelineTest {
         @Test
         @DisplayName("★★ 最具体者优先：精确地区 + 精确场景的处理器压过任意地区 / ANY 场景的")
         void mostSpecificWins() {
-            var generic = handler(n -> new ChannelResult.Pending(Map.of("who", "generic"), null));
+            var generic = handler(n -> new ChannelResult.Pending(new PayInstruction.QrContent("generic"), null));
             var exact = new ScriptedHandler(Set.of(new ChannelKey.Pattern("CN", "WECHAT", AccessMode.MERCHANT_OWN,
-                    PayScene.ONLINE_SDK, ChannelOperation.PAY)), n -> new ChannelResult.Pending(Map.of("who", "exact"), null));
+                    PayScene.ONLINE_SDK, ChannelOperation.PAY)), n -> new ChannelResult.Pending(new PayInstruction.QrContent("exact"), null));
             var registry = new ChannelHandlerRegistry(List.of(generic, exact), enabled());
             assertThat(registry.resolve(payKey())).isSameAs(exact);
         }

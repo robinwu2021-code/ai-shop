@@ -17137,3 +17137,28 @@ INSERT IGNORE INTO pay_refund_review_rule (rule_code, version_index, status, mar
 INSERT IGNORE INTO pay_app (app_no, name, owner_type, status, scopes, rate_limit_qps, daily_refund_limit_minor, sandbox,
     created_at, updated_at) VALUES
 ('CHECKOUT', '收银台静态码', 'INTERNAL', 'ACTIVE', 'pay:create,pay:read', 200, 0, 0, NOW(3), NOW(3));
+INSERT IGNORE INTO sys_pay_channel_market
+    (pay_channel, market, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('TEST', 'CN', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'HK', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'SG', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'SA', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+INSERT IGNORE INTO sys_pay_channel
+    (pay_channel, name, enabled, supports_subsidy, supports_split, supports_payout, pay_methods, currency,
+     tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('NEWEBPAY', '蓝新金流', 0, 0, 0, 0, '["CARD_ONLINE","ATM","CVS"]', 'TWD',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('LINEPAY', 'LINE Pay', 0, 0, 0, 0, '["LINE_PAY"]', 'TWD',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('PAYBY', 'PayBy', 0, 0, 0, 1, '["WALLET","CARD_ONLINE"]', 'AED',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+INSERT IGNORE INTO sys_pay_channel_market
+    (pay_channel, market, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);

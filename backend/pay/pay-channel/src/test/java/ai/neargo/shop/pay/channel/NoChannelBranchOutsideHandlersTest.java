@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 class NoChannelBranchOutsideHandlersTest {
 
     private static final Path ROOT = Path.of("src", "main", "java", "ai", "neargo", "shop", "pay", "channel");
-    private static final List<String> COMMON_LAYERS = List.of("api", "invoke", "fault", "handler");
+    private static final List<String> COMMON_LAYERS = List.of("api", "invoke", "fault", "handler", "capability");
     private static final Pattern CHANNEL_LITERAL = Pattern.compile("\"(WECHAT|ALIPAY|NEWEBPAY|LINEPAY|PAYBY|STUB|TEST)\"");
 
     @Test

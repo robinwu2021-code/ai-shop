@@ -46,6 +46,10 @@ class CallbackVerifierTest {
         return Base64.getEncoder().encodeToString(s.sign());
     }
 
+    private static String now() {
+        return String.valueOf(java.time.Instant.now().getEpochSecond());
+    }
+
     private static String pub(KeyPair kp) {
         return Base64.getEncoder().encodeToString(kp.getPublic().getEncoded());
     }
@@ -77,7 +81,7 @@ class CallbackVerifierTest {
 
         String body = "{\"resource\":{\"algorithm\":\"AEAD_AES_256_GCM\",\"associated_data\":\"" + aad
                 + "\",\"nonce\":\"" + nonce + "\",\"ciphertext\":\"" + cipherText + "\"}}";
-        String ts = "1554208460";
+        String ts = now();  // W2 S6：回调要过 ±5 分钟时间窗，固定的 2019 年时间戳会被当成重放
         String nc = "hdgs";
         Map<String, String> headers = new LinkedHashMap<>();
         // 大小写故意写成不常见的形态：请求头大小写不敏感，实现要能认
@@ -120,7 +124,7 @@ class CallbackVerifierTest {
                 .encodeToString(c.doFinal(plain.getBytes(StandardCharsets.UTF_8)));
         String body = "{\"resource\":{\"algorithm\":\"AEAD_AES_256_GCM\",\"associated_data\":\"" + aad
                 + "\",\"nonce\":\"" + nonce + "\",\"ciphertext\":\"" + cipherText + "\"}}";
-        String ts = "1554208460";
+        String ts = now();  // W2 S6：回调要过 ±5 分钟时间窗，固定的 2019 年时间戳会被当成重放
         String nc = "hdgs";
         Map<String, String> headers = new LinkedHashMap<>();
         headers.put("wechatpay-signature", sign(kp, WechatCallbackVerifier.signContent(ts, nc, body)));
@@ -178,7 +182,7 @@ class CallbackVerifierTest {
         String ct = Base64.getEncoder().encodeToString(c.doFinal(plain.getBytes(StandardCharsets.UTF_8)));
         String body = "{\"resource\":{\"algorithm\":\"AEAD\",\"associated_data\":\"" + aad
                 + "\",\"nonce\":\"" + nonce + "\",\"ciphertext\":\"" + ct + "\"}}";
-        String ts = "1554208460"; String nc = "hdgs";
+        String ts = now(); String nc = "hdgs";  // W2 S6：要过时间窗
         Map<String, String> good = new LinkedHashMap<>();
         good.put("wechatpay-signature", sign(kp, WechatCallbackVerifier.signContent(ts, nc, body)));
         good.put("wechatpay-timestamp", ts);

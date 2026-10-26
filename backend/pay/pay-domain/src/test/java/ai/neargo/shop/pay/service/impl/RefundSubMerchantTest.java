@@ -4,12 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.pay.channel.PayGateway;
-import ai.neargo.shop.pay.channel.PayGatewayRouter;
+import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.RefundRequest;
@@ -31,8 +32,8 @@ import org.mockito.ArgumentCaptor;
 class RefundSubMerchantTest {
 
     private final RefundPaymentStore store = mock(RefundPaymentStore.class);
-    private final PayGatewayRouter router = mock(PayGatewayRouter.class);
-    private final PayGateway gateway = mock(PayGateway.class);
+    /** 渠道层（W2：路由表退役，调用方只认桥） */
+    private final LegacyChannelBridge channels = mock(LegacyChannelBridge.class);
     private final PaymentLedgerService ledger = mock(PaymentLedgerService.class);
 
     private RefundExecutionServiceImpl service(StlPayment origin) {
@@ -46,10 +47,9 @@ class RefundSubMerchantTest {
         when(store.prepare(any())).thenReturn(refund);
         when(store.claim("RF-1")).thenReturn(true);
         when(store.original("PY-1")).thenReturn(origin);
-        when(router.of("WECHAT")).thenReturn(gateway);
-        when(gateway.supportsRefundCurrency("CNY")).thenReturn(true);
-        when(gateway.refund(any(), anyLong(), anyString(), any())).thenReturn(PayGateway.Result.ok("WX-REFUND-1"));
-        var service = new RefundExecutionServiceImpl(store, router, mock(UnsplitRefundAdjustment.class),
+        when(channels.supportsRefundCurrency("WECHAT", "CNY")).thenReturn(true);
+        when(channels.refund(eq("WECHAT"), any(), anyLong(), anyString(), any())).thenReturn(PayGateway.Result.ok("WX-REFUND-1"));
+        var service = new RefundExecutionServiceImpl(store, channels, mock(UnsplitRefundAdjustment.class),
                 mock(RefundCapacityLedger.class));
         service.setLedger(ledger);
         return service;
@@ -67,7 +67,7 @@ class RefundSubMerchantTest {
 
     private String sentSubMchId() {
         var ctx = ArgumentCaptor.forClass(PayGateway.TxContext.class);
-        verify(gateway).refund(ctx.capture(), anyLong(), anyString(), any());
+        verify(channels).refund(eq("WECHAT"), ctx.capture(), anyLong(), anyString(), any());
         return ctx.getValue().subMchId();
     }
 

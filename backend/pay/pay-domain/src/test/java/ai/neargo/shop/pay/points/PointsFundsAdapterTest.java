@@ -6,7 +6,7 @@ import ai.neargo.shop.pay.channel.PayFundsOperations.Operation;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Receipt;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Request;
 import ai.neargo.shop.pay.channel.PayFundsOperations.Status;
-import ai.neargo.shop.pay.channel.PayGatewayRouter;
+import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway;
@@ -37,7 +37,7 @@ import static org.mockito.Mockito.when;
 class PointsFundsAdapterTest {
     @Test
     void capability_gates_before_acceptance() {
-        var router=mock(PayGatewayRouter.class);
+        var router=mock(LegacyChannelBridge.class);
         var master=mock(PayChannelMasterService.class);
         var legacy=mock(PayGateway.class);
         SysPayChannel channel=new SysPayChannel();
@@ -45,7 +45,8 @@ class PointsFundsAdapterTest {
         when(master.find("TEST")).thenReturn(Optional.of(channel));
         when(master.supportsSubsidy("TEST")).thenReturn(true);
         when(router.supports("TEST")).thenReturn(true);
-        when(router.of("TEST")).thenReturn(legacy);
+        // 能力实现装了，但没顺带实现资金动作接口（旧：路由到一个不是 PayFundsOperations 的网关）
+        when(router.capability("TEST",PayFundsOperations.class)).thenReturn(Optional.empty());
         var capabilities=adapter(router,master).capabilities(context());
         assertThat(capabilities.subsidy()).isFalse();
         assertThat(capabilities.transfer()).isFalse();
@@ -56,7 +57,7 @@ class PointsFundsAdapterTest {
 
     @Test
     void unregistered_channel_rejects_execution_without_default_gateway() {
-        var router=mock(PayGatewayRouter.class);
+        var router=mock(LegacyChannelBridge.class);
         var master=mock(PayChannelMasterService.class);
         when(master.find("TEST")).thenReturn(Optional.empty());
         var result=adapter(router,master).submit(command());
@@ -67,11 +68,12 @@ class PointsFundsAdapterTest {
 
     @Test
     void missing_query_adapter_is_unknown_and_never_queries_payment() {
-        var router=mock(PayGatewayRouter.class);
+        var router=mock(LegacyChannelBridge.class);
         var master=mock(PayChannelMasterService.class);
         var legacy=mock(PayGateway.class);
         when(router.supports("TEST")).thenReturn(true);
-        when(router.of("TEST")).thenReturn(legacy);
+        // 能力实现装了，但没顺带实现资金动作接口（旧：路由到一个不是 PayFundsOperations 的网关）
+        when(router.capability("TEST",PayFundsOperations.class)).thenReturn(Optional.empty());
         var result=adapter(router,master).query(command());
         assertThat(result.status()).isEqualTo(FundsStatus.UNKNOWN);
         assertThat(result.evidenceNo()).isNull();
@@ -218,7 +220,7 @@ class PointsFundsAdapterTest {
     }
 
     private NativeFixture nativeFixture() {
-        var router=mock(PayGatewayRouter.class);
+        var router=mock(LegacyChannelBridge.class);
         var master=mock(PayChannelMasterService.class);
         PayGateway gateway=mock(PayGateway.class,withSettings().extraInterfaces(PayFundsOperations.class));
         var operations=(PayFundsOperations)gateway;
@@ -226,7 +228,7 @@ class PointsFundsAdapterTest {
         channel.setEnabled(true); channel.setCurrency("CNY");
         when(master.find("TEST")).thenReturn(Optional.of(channel));
         when(router.supports("TEST")).thenReturn(true);
-        when(router.of("TEST")).thenReturn(gateway);
+        when(router.capability("TEST",PayFundsOperations.class)).thenReturn(Optional.of(operations));
         when(operations.fundsCapabilities(any())).thenReturn(new PayFundsOperations.Capabilities(
                 EnumSet.allOf(Operation.class),EnumSet.allOf(Operation.class)));
         return new NativeFixture(router,master,operations);
@@ -238,13 +240,13 @@ class PointsFundsAdapterTest {
     private Receipt receipt(Status status,String evidence) {
         return new Receipt("IDEM",status,"CNY",30,evidence,"TEST_REASON");
     }
-    private record NativeFixture(PayGatewayRouter router,PayChannelMasterService master,
+    private record NativeFixture(LegacyChannelBridge router,PayChannelMasterService master,
                                  PayFundsOperations operations) { }
 
-    private PointsFundsGateway adapter(PayGatewayRouter router,PayChannelMasterService master) {
+    private PointsFundsGateway adapter(LegacyChannelBridge router,PayChannelMasterService master) {
         try {
             return (PointsFundsGateway)Class.forName("ai.neargo.shop.pay.points.port.PayPointsFundsAdapter")
-                    .getConstructor(PayGatewayRouter.class,PayChannelMasterService.class).newInstance(router,master);
+                    .getConstructor(LegacyChannelBridge.class,PayChannelMasterService.class).newInstance(router,master);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("Explicit points funds adapter missing",e);
         }

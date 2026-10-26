@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.channel.invoke;
 
+import ai.neargo.shop.spi.pay.PayInstruction;
+
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.all;
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.pay;
 import static ai.neargo.shop.pay.channel.invoke.Pipelines.s2Interceptors;
@@ -21,7 +23,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -68,7 +69,7 @@ class LifecycleDrainTest {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            return new ChannelResult.Pending(Map.of(), "TX-1");
+            return new ChannelResult.Pending(PayInstruction.none(), "TX-1");
         });
         var catalog = new Catalog(Set.of(Pipelines.payKey()));
         var policies = new FaultPolicyRegistry();

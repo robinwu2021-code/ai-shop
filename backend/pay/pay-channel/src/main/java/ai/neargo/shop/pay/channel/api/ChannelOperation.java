@@ -5,7 +5,9 @@ import java.util.Set;
 /** 对渠道的操作（渠道接入统一封装设计 §2.1、§8.1） */
 public enum ChannelOperation {
     PAY, CONFIRM, QUERY, CLOSE, VOID, REFUND, REFUND_QUERY,
-    ONBOARDING_SUBMIT, ONBOARDING_QUERY, MEDIA_UPLOAD, STATEMENT_FETCH, PAYOUT, KEY_VERIFY;
+    ONBOARDING_SUBMIT, ONBOARDING_QUERY, MEDIA_UPLOAD, STATEMENT_FETCH, PAYOUT, KEY_VERIFY,
+    /** 补差 / 补差回退 / 分账 / 分账回退（{@code SplitCommand.Kind}）：资金动作，与退款同样永不重发 */
+    SPLIT;
 
     private static final Set<ChannelOperation> READ_ONLY = Set.of(QUERY, REFUND_QUERY, ONBOARDING_QUERY, STATEMENT_FETCH);
 
