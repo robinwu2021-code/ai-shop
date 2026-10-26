@@ -19,8 +19,6 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 export const MIGRATION_DIR = "backend/shop-app/src/main/resources/db/migration";
-/** 支付服务自己的 Flyway 历史（pay-domain）。gen-test-schema.py 把它接在平台迁移之后重放进 schema-test.sql。 */
-export const PAY_MIGRATION_DIR = "backend/pay/pay-domain/src/main/resources/db/pay";
 
 /**
  * 进销存的迁移目录。**另一个库、另一条 Flyway 历史**，迁移号从 V1 重新开始。

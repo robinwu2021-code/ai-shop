@@ -5,6 +5,7 @@ import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.commerce.service.CommerceRecoveryService;
+import ai.neargo.shop.commerce.service.ResourceMappingVerificationService;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -14,7 +15,11 @@ import org.springframework.context.annotation.Bean;
 public class CommerceRecoveryJob implements JobHandler {
     private final CommerceRecoveryService service;
 
-    public CommerceRecoveryJob(CommerceRecoveryService service) {
+    private final ResourceMappingVerificationService mappings;
+
+    public CommerceRecoveryJob(
+            CommerceRecoveryService service, ResourceMappingVerificationService mappings) {
+        this.mappings = mappings;
         this.service = service;
     }
 
@@ -39,6 +44,7 @@ public class CommerceRecoveryJob implements JobHandler {
 
     public JobResult run(JobInvocation invocation) {
         var result = service.recoverDue(50);
+        var mappingResult = mappings.verifyDue(50);
         String detail =
                 "发送 "
                         + result.dispatched()
@@ -51,7 +57,15 @@ public class CommerceRecoveryJob implements JobHandler {
                         + " 项，异常 "
                         + result.failed()
                         + " 项";
-        return result.failed() > 0
+        detail +=
+                "；映射核验通过 "
+                        + mappingResult.verified()
+                        + " 项，待核验 "
+                        + mappingResult.pending()
+                        + " 项，异常 "
+                        + mappingResult.failed()
+                        + " 项";
+        return result.failed() + mappingResult.failed() > 0
                 ? JobResult.failed(detail, "部分任务未完成，查看同步任务状态")
                 : JobResult.ok(detail);
     }

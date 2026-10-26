@@ -8,6 +8,7 @@ import ai.neargo.shop.commerce.api.biz.BizChannelAuthorizationController;
 import ai.neargo.shop.commerce.api.biz.BizChannelConnectionController;
 import ai.neargo.shop.commerce.api.biz.BizChannelOperationController;
 import ai.neargo.shop.commerce.api.biz.BizChannelProviderController;
+import ai.neargo.shop.commerce.api.biz.BizResourceMappingController;
 import ai.neargo.shop.commerce.api.biz.BizSyncPolicyController;
 import ai.neargo.shop.commerce.api.biz.BizSyncRunController;
 import ai.neargo.shop.commerce.api.callback.ChannelAuthorizationCallbackController;
@@ -33,6 +34,7 @@ import org.springframework.context.annotation.Profile;
     BizCatalogPreviewController.class,
     BizSyncPolicyController.class,
     BizSyncRunController.class,
+    BizResourceMappingController.class,
     CommerceRecoveryJob.class,
     ChannelAuthorizationCallbackController.class
 })

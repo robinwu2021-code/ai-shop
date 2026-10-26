@@ -62,8 +62,8 @@ test('historical mapping verification and source owner contracts remain explicit
 
 test('coded subset references real migration, routes and source files without claiming full completion',()=>{
  const actual=design.implementation;
- assert.equal(actual.tables.length,15);
- assert.equal(actual.apiIds.length,25);
+ assert.equal(actual.tables.length,17);
+ assert.equal(actual.apiIds.length,29);
  const modules=path.join(root,actual.moduleRoot);
  assert.ok(actual.migrations.every(migration=>fs.existsSync(path.join(modules,migration))));
  for(const id of actual.apiIds){

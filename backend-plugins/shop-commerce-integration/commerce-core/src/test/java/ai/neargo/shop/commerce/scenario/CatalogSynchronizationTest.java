@@ -20,12 +20,14 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.spi.commerce.ChannelCatalogGateway;
 import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort;
+import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -46,6 +48,7 @@ class CatalogSynchronizationTest {
         boolean outage;
         boolean negativePrice;
         boolean hashChanged;
+        boolean legacyOfferProof;
         Owner sourceOwner = Owner.FOOD;
         int captures;
         Runnable captureHook;
@@ -63,7 +66,8 @@ class CatalogSynchronizationTest {
                     request.sourceRevision(),
                     (hashChanged ? "b" : "a").repeat(64),
                     Instant.now().plusSeconds(600),
-                    "OWNER_RECEIPT");
+                    "OWNER_RECEIPT",
+                    legacyOfferProof ? null : request.salesOfferRef());
         }
 
         public Document capture(CaptureCommand request) {
@@ -181,82 +185,94 @@ class CatalogSynchronizationTest {
             SyncPolicyService policies,
             CommerceRecoveryService recovery,
             Source source,
-            Gateway gateway) {}
+            Gateway gateway,
+            ApplicationContext context) {}
 
-    private void run(Consumer<State> test) {
+    void run(Consumer<State> test) {
         run(Owner.FOOD, test);
     }
 
     private void run(Owner owner, Consumer<State> test) {
+        run(owner, true, test);
+    }
+
+    void runWithoutPublishing(Consumer<State> test) {
+        run(Owner.FOOD, false, test);
+    }
+
+    private void run(Owner owner, boolean publishing, Consumer<State> test) {
         var source = new Source();
         source.sourceOwner = owner;
         var gateway = new Gateway();
-        new ApplicationContextRunner()
-                .withUserConfiguration(PrimaryPersistenceConfiguration.class)
-                .withConfiguration(AutoConfigurations.of(CommerceCoreAutoConfiguration.class))
-                .withBean(Source.class, () -> source)
-                .withBean(ChannelCatalogGateway.class, () -> gateway)
-                .withPropertyValues(
-                        "shop.commerce.enabled=true",
-                        "shop.commerce.migration=MIGRATE",
-                        "spring.datasource.url=jdbc:h2:mem:"
-                                + UUID.randomUUID()
-                                + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
-                        "spring.datasource.username=sa",
-                        "spring.datasource.password=")
-                .run(
-                        c -> {
-                            assertThat(c).hasNotFailed();
-                            var sql = new JdbcTemplate(c.getBean(DataSource.class));
-                            sql.update(
-                                    "INSERT INTO"
-                                            + " cim_provider(provider_no,provider_code,name,status)"
-                                            + " VALUES ('P','TEST','Test','ACTIVE')");
-                            sql.update(
-                                    "INSERT INTO"
-                                        + " cim_product_profile(profile_no,provider_no,product_code,market,protocol_code,capability_definition,identity_schema_version,identity_namespace,store_identity_scope,status)"
-                                        + " VALUES"
-                                        + " ('PP','P','DELIVERY','TW','TEST','{}',1,'test:TW','GLOBAL','VERIFIED')");
-                            sql.update(
-                                    "INSERT INTO"
-                                        + " cim_account(account_no,entity_no,profile_no,external_account_ref,active_authorization_no,status)"
-                                        + " VALUES"
-                                        + " ('ACC','E','PP','REMOTE_ACCOUNT','AUTH','ACTIVE')");
-                            sql.update(
-                                    "INSERT INTO"
-                                        + " cim_authorization_revision(authorization_no,entity_no,account_no,revision_no,credential_ref,granted_scopes,capability_hash,authorized_at,expires_at,status,evidence_ref)"
-                                        + " VALUES"
-                                        + " ('AUTH','E','ACC',1,'vault:ref','[\"CATALOG\"]',?, ?,"
-                                        + " ?, 'GRANTED','GRANT_RECEIPT')",
-                                    "a".repeat(64),
-                                    LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1),
-                                    LocalDateTime.now(ZoneOffset.UTC).plusHours(1));
-                            sql.update(
-                                    "INSERT INTO"
-                                        + " cim_store_connection(connection_no,entity_no,store_no,profile_no,account_no,external_store_ref,channel_store_key,active_revision_no,status,identity_receipt_ref,identity_verified_at,identity_valid_until)"
-                                        + " VALUES"
-                                        + " ('CON','E','S','PP','ACC','REMOTE_STORE',?,'CR','ACTIVE','IDENTITY',?,?)",
-                                    "c".repeat(64),
-                                    LocalDateTime.now(ZoneOffset.UTC),
-                                    LocalDateTime.now(ZoneOffset.UTC).plusHours(1));
-                            sql.update(
-                                    "INSERT INTO"
-                                        + " cim_connection_revision(revision_no,entity_no,connection_no,revision,source_owner,accept_mode,fulfillment_profile,catalog_authority,config_json,config_hash)"
-                                        + " VALUES"
-                                        + " ('CR','E','CON',1,?,'MANUAL','INSTANT','LOCAL','{}',?)",
-                                    owner.name(),
-                                    "d".repeat(64));
-                            test.accept(
-                                    new State(
-                                            sql,
-                                            c.getBean(CatalogScopeService.class),
-                                            c.getBean(CatalogPublicationService.class),
-                                            c.getBean(SyncRunService.class),
-                                            c.getBean(SyncPolicyService.class),
-                                            c.getBean(CommerceRecoveryService.class),
-                                            source,
-                                            gateway));
-                        });
+        var runner =
+                new ApplicationContextRunner()
+                        .withUserConfiguration(PrimaryPersistenceConfiguration.class)
+                        .withConfiguration(
+                                AutoConfigurations.of(CommerceCoreAutoConfiguration.class))
+                        .withBean(Source.class, () -> source)
+                        .withBean(
+                                ChannelResourceIdentityGateway.class,
+                                () -> new ResourceMappingTest.Gateway())
+                        .withPropertyValues(
+                                "shop.commerce.enabled=true",
+                                "shop.commerce.migration=MIGRATE",
+                                "spring.datasource.url=jdbc:h2:mem:"
+                                        + UUID.randomUUID()
+                                        + ";MODE=MySQL;DB_CLOSE_DELAY=-1",
+                                "spring.datasource.username=sa",
+                                "spring.datasource.password=");
+        if (publishing) runner = runner.withBean(ChannelCatalogGateway.class, () -> gateway);
+        runner.run(
+                c -> {
+                    assertThat(c).hasNotFailed();
+                    var sql = new JdbcTemplate(c.getBean(DataSource.class));
+                    sql.update(
+                            "INSERT INTO"
+                                    + " cim_provider(provider_no,provider_code,name,status)"
+                                    + " VALUES ('P','TEST','Test','ACTIVE')");
+                    sql.update(
+                            "INSERT INTO"
+                                + " cim_product_profile(profile_no,provider_no,product_code,market,protocol_code,capability_definition,identity_schema_version,identity_namespace,store_identity_scope,status)"
+                                + " VALUES"
+                                + " ('PP','P','DELIVERY','TW','TEST','{}',1,'test:TW','GLOBAL','VERIFIED')");
+                    sql.update(
+                            "INSERT INTO"
+                                + " cim_account(account_no,entity_no,profile_no,external_account_ref,active_authorization_no,status)"
+                                + " VALUES ('ACC','E','PP','REMOTE_ACCOUNT','AUTH','ACTIVE')");
+                    sql.update(
+                            "INSERT INTO"
+                                + " cim_authorization_revision(authorization_no,entity_no,account_no,revision_no,credential_ref,granted_scopes,capability_hash,authorized_at,expires_at,status,evidence_ref)"
+                                + " VALUES ('AUTH','E','ACC',1,'vault:ref','[\"CATALOG\"]',?, ?, ?,"
+                                + " 'GRANTED','GRANT_RECEIPT')",
+                            "a".repeat(64),
+                            LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1),
+                            LocalDateTime.now(ZoneOffset.UTC).plusHours(1));
+                    sql.update(
+                            "INSERT INTO"
+                                + " cim_store_connection(connection_no,entity_no,store_no,profile_no,account_no,external_store_ref,channel_store_key,active_revision_no,status,identity_receipt_ref,identity_verified_at,identity_valid_until)"
+                                + " VALUES"
+                                + " ('CON','E','S','PP','ACC','REMOTE_STORE',?,'CR','ACTIVE','IDENTITY',?,?)",
+                            "c".repeat(64),
+                            LocalDateTime.now(ZoneOffset.UTC),
+                            LocalDateTime.now(ZoneOffset.UTC).plusHours(1));
+                    sql.update(
+                            "INSERT INTO"
+                                + " cim_connection_revision(revision_no,entity_no,connection_no,revision,source_owner,accept_mode,fulfillment_profile,catalog_authority,config_json,config_hash)"
+                                + " VALUES ('CR','E','CON',1,?,'MANUAL','INSTANT','LOCAL','{}',?)",
+                            owner.name(),
+                            "d".repeat(64));
+                    test.accept(
+                            new State(
+                                    sql,
+                                    c.getBean(CatalogScopeService.class),
+                                    c.getBean(CatalogPublicationService.class),
+                                    c.getBean(SyncRunService.class),
+                                    c.getBean(SyncPolicyService.class),
+                                    c.getBean(CommerceRecoveryService.class),
+                                    source,
+                                    gateway,
+                                    c.getSourceApplicationContext()));
+                });
     }
 
     private CreateCatalogScopeReq create(String remote, Owner owner) {
