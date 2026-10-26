@@ -1,5 +1,6 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.pay.merchant.MerchantDefaults;
 import ai.neargo.shop.pay.merchant.backfill.PayMerchantBackfill;
 import ai.neargo.shop.pay.merchant.backfill.PayMerchantBackfill.LegacyMerchant;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
@@ -94,7 +95,7 @@ public class PayMerchantBackfillRunner {
             return new int[] {0, 0};
         }
         String market = Objects.requireNonNullElse((String) e.get("market"), "CN");
-        String currency = currencyOf(market);
+        String currency = MerchantDefaults.currencyOf(market);
         if (currency == null) {
             conflicts.add("CURRENCY " + entityNo + "：市场 " + market + " 没有对应币种");
             return new int[] {0, 0};
@@ -132,11 +133,11 @@ public class PayMerchantBackfillRunner {
                         + " 找不到默认门店" : "STORE " + entityNo + "/" + storeNo + "：行上的门店不存在") + "，未迁");
                 continue;
             }
-            String accessMode = accessModeOf(channel);
+            String accessMode = MerchantDefaults.accessModeOf(channel, wechatMode);
             Long parentId = null;
             String parentMchid = null;
             if (!"MERCHANT_OWN".equals(accessMode)) {
-                parentMchid = "WECHAT".equals(channel) && !wechatMchid.isBlank() ? wechatMchid : "PLATFORM-" + channel;
+                parentMchid = MerchantDefaults.platformChannelMerchantId(channel, wechatMchid);
                 parentId = backfill.platformMerchant(channel, parentMchid, market, currency, accessMode);
             }
             var row = new LegacyMerchant(((Number) r.get("id")).longValue(), (String) e.get("name"),
@@ -210,24 +211,6 @@ public class PayMerchantBackfillRunner {
             }
         }
         return new int[] {merchants, bound};
-    }
-
-    /** 微信收付通 / 支付宝走服务商；微信直连是商户自己的号；测试与桩渠道挂平台 */
-    private String accessModeOf(String channel) {
-        return switch (channel) {
-            case "WECHAT" -> "ecommerce".equals(wechatMode) ? "SERVICE_PROVIDER" : "MERCHANT_OWN";
-            case "ALIPAY" -> "SERVICE_PROVIDER";
-            default -> "PLATFORM_SUB";
-        };
-    }
-
-    private static String currencyOf(String market) {
-        return switch (market) {
-            case "CN" -> "CNY";
-            case "AE" -> "AED";
-            case "SA" -> "SAR";
-            default -> null;
-        };
     }
 
     private List<String> methods(String raw) {

@@ -972,6 +972,10 @@ public enum ErrorCode {
     PAY_APPROVAL_SAME_PERSON(70088, "err.pay.approval_same_person"),
     /** 收款商户绑定被拒：别的主体的门店、别的市场、商户不是 ACTIVE、渠道不符。回显原因 */
     PAY_BINDING_INVALID(70089, "err.pay.binding_invalid"),
+    /** 同门店同渠道已有在途进件（R06）：等它出结果，或先撤回 */
+    PAY_ONBOARDING_INFLIGHT(70090, "err.pay.onboarding_inflight"),
+    /** 进件单当前状态不允许这个动作（如审核中再提交、回填来的旧进件单由旧流程推进）。回显原因 */
+    PAY_ONBOARDING_STATE(70091, "err.pay.onboarding_state"),
 
     /*
      * 快递代下单（TDD-快递100商家寄件）。

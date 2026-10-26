@@ -157,6 +157,8 @@ public final class BizKey {
 
     /** 收款商户号业务键。**不是二级商户号本身** —— 那个由通道给，存在 sub_mchid */
     public static final String PAY_MERCHANT = "PM";
+    /** 进件单号（pay_onboarding.onboarding_no，TDD-支付服务-I4进件与收款商户 S7） */
+    public static final String PAY_ONBOARDING = "PON";
     /** 支付单号（pay_order.pay_order_no，TDD-支付服务-I3支付单退款流水） */
     public static final String PAY_ORDER = "PYO";
     /** 退款单号（pay_refund.pay_refund_no） */
