@@ -28,6 +28,8 @@ MIGRATION_DIR = ROOT / "backend/shop-app/src/main/resources/db/migration"
 # 支付服务 v4 的独立迁移目录（开发计划 P2）。生产上由 PayDataSourceConfig#payFlyway 在平台迁移**之后**执行，
 # 这里也接在平台迁移后面重放：它会 ALTER 平台已有的 stl_* 表，顺序反了就是 ALTER 一张还不存在的表。
 PAY_MIGRATION_DIR = ROOT / "backend/pay/pay-domain/src/main/resources/db/pay"
+# 平台级密钥模块的独立迁移目录（W5，历史表 sec_flyway_history）。sec_* 不碰别人的表，接在 db/pay 后面重放即可
+SECRET_MIGRATION_DIR = ROOT / "backend/secret/secret-store/src/main/resources/db/secret"
 OUT = ROOT / "backend/shop-app/src/test/resources/schema-test.sql"
 
 HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 {source} 得到。
@@ -165,10 +167,10 @@ def main():
     for f in sorted(src_dir.glob("V*.sql"),
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
         replay(f.read_text(), tables, order, seeds, renames, altered)
-    # 只在默认源目录时接上 db/pay：传了第二个参数（拿别的目录做对照）就只重放那一个目录
-    with_pay = len(sys.argv) <= 2 and PAY_MIGRATION_DIR.is_dir()
-    if with_pay:
-        for f in sorted(PAY_MIGRATION_DIR.glob("V*.sql"),
+    # 只在默认源目录时接上 db/pay 与 db/secret：传了第二个参数（拿别的目录做对照）就只重放那一个目录
+    extras = [d for d in (PAY_MIGRATION_DIR, SECRET_MIGRATION_DIR) if len(sys.argv) <= 2 and d.is_dir()]
+    for extra in extras:
+        for f in sorted(extra.glob("V*.sql"),
                         key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
             replay(f.read_text(), tables, order, seeds, renames, altered)
 
@@ -182,7 +184,8 @@ def main():
                 key = match.group(1).lower()
                 constraint_names[key] = constraint_names.get(key, 0) + 1
     # 头部说清这份是从哪几个目录重放的：进销存那份只有它自己的 db/inventory，不能写成「再接 db/pay」
-    out = [HEADER.replace("{source}", "db/migration/V*.sql、再接 db/pay/V*.sql" if with_pay
+    out = [HEADER.replace("{source}", "db/migration/V*.sql、再接 " + "、".join(
+        d.relative_to(ROOT).as_posix().split("resources/")[-1] + "/V*.sql" for d in extras) if extras
                           else src_dir.relative_to(ROOT).as_posix().split("resources/")[-1] + "/V*.sql")]
     for name in order:
         cols = []

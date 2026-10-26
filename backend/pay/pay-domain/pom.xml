@@ -34,6 +34,12 @@
             <artifactId>pay-channel</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 平台密钥模块的契约（零依赖）：支付只存引用（pay_merchant.sec_key_id 等），材料经 KeyRegistry / SecretVault 取 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>secret-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

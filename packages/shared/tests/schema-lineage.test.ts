@@ -585,7 +585,10 @@ describe("对账血缘", () => {
     // scoped to their original core history, as before this combined fixture existed.
     const payHistory = "backend/pay/pay-domain/src/main/resources/db/pay";
     expect(existsSync(join(ROOT, payHistory)), "pay Flyway history must exist for the combined fixture").toBe(true);
-    const fixtureSchema = readColumnNames(ROOT, ["backend/shop-app/src/main/resources/db/migration", payHistory]) as Map<string, { cols: string[] }>;
+    // W5 密钥模块（db/secret）同样接在后面重放
+    const secretHistory = "backend/secret/secret-store/src/main/resources/db/secret";
+    const fixtureSchema = readColumnNames(ROOT, ["backend/shop-app/src/main/resources/db/migration", payHistory,
+      ...(existsSync(join(ROOT, secretHistory)) ? [secretHistory] : [])]) as Map<string, { cols: string[] }>;
     const onlyJs = [...fixtureSchema.keys()].filter((t) => !inH2.has(t));
     const onlyPy = [...inH2].filter((t) => !fixtureSchema.has(t));
     expect(

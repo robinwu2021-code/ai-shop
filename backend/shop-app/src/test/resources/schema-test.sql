@@ -1,4 +1,4 @@
--- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql 得到。
+-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql、db/secret/V*.sql 得到。
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
@@ -11533,6 +11533,187 @@ CREATE TABLE IF NOT EXISTS pay_qr_code
     deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_qr_code_1 UNIQUE (qr_code)
+);
+
+CREATE TABLE IF NOT EXISTS sec_master_key
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    kms_key_id VARCHAR(128) NOT NULL,
+    provider VARCHAR(24) NOT NULL,
+    namespace VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(48) NULL,
+    activated_at DATETIME(3) NULL,
+    rotated_at DATETIME(3) NULL,
+    retired_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_master_key_1 UNIQUE (kms_key_id),
+    CONSTRAINT uk_sec_master_key_2 UNIQUE (active_key)
+);
+
+CREATE TABLE IF NOT EXISTS sec_secret_blob
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    purpose VARCHAR(24) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    owner_id BIGINT NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    cipher_text TEXT NOT NULL,
+    data_key_cipher VARCHAR(512) NOT NULL,
+    sec_master_key_id BIGINT NOT NULL,
+    algorithm VARCHAR(32) NOT NULL,
+    aad_sha256 CHAR(64) NOT NULL,
+    rewrapped_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    max_age_days INT NOT NULL DEFAULT 0,
+    warn_before_days INT NOT NULL DEFAULT 30,
+    overlap_days INT NOT NULL DEFAULT 7,
+    dual_control TINYINT(1) NOT NULL DEFAULT 1,
+    verify_before_enable TINYINT(1) NOT NULL DEFAULT 1,
+    reveal_on_issue_only TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_policy_1 UNIQUE (namespace,owner_type,env)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    owner_id BIGINT NOT NULL,
+    counterparty VARCHAR(32) NULL,
+    direction VARCHAR(24) NOT NULL,
+    key_usage VARCHAR(24) NOT NULL,
+    algorithm VARCHAR(32) NOT NULL,
+    material_type VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    current_version INT NOT NULL DEFAULT 0,
+    sec_key_policy_id BIGINT NULL,
+    expires_at DATETIME(3) NULL,
+    last_used_at DATETIME(3) NULL,
+    use_count BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_1 UNIQUE (namespace,owner_type,owner_id,direction,key_usage,env)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    sec_key_id BIGINT NOT NULL,
+    version_index INT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(32) NULL,
+    sec_secret_blob_id BIGINT NULL,
+    public_material TEXT NULL,
+    fingerprint VARCHAR(64) NOT NULL,
+    external_key_id VARCHAR(64) NULL,
+    source VARCHAR(24) NOT NULL,
+    valid_from DATETIME(3) NULL,
+    valid_to DATETIME(3) NULL,
+    entered_by VARCHAR(64) NOT NULL,
+    verified_at DATETIME(3) NULL,
+    verify_evidence VARCHAR(128) NULL,
+    enabled_by VARCHAR(64) NULL,
+    enabled_at DATETIME(3) NULL,
+    overlap_until DATETIME(3) NULL,
+    retired_at DATETIME(3) NULL,
+    revoked_by VARCHAR(64) NULL,
+    revoked_at DATETIME(3) NULL,
+    revoke_reason VARCHAR(255) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_version_1 UNIQUE (sec_key_id,version_index),
+    CONSTRAINT uk_sec_key_version_2 UNIQUE (active_key),
+    CONSTRAINT ck_sec_key_version_1 CHECK (sec_secret_blob_id IS NOT NULL OR public_material IS NOT NULL),
+    CONSTRAINT ck_sec_key_version_2 CHECK (enabled_by IS NULL OR enabled_by <> entered_by)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    sec_key_id BIGINT NOT NULL,
+    sec_key_version_id BIGINT NULL,
+    event_type VARCHAR(24) NOT NULL,
+    operator_type VARCHAR(24) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    approval_ref VARCHAR(128) NULL,
+    reason VARCHAR(255) NULL,
+    client_ip VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS sec_access_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    access_type VARCHAR(24) NOT NULL,
+    namespace VARCHAR(24) NOT NULL,
+    sec_key_id BIGINT NULL,
+    sec_secret_blob_id BIGINT NULL,
+    target_type VARCHAR(24) NULL,
+    target_id BIGINT NULL,
+    accessor_no VARCHAR(64) NOT NULL,
+    accessor_role VARCHAR(64) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    approval_ref VARCHAR(128) NULL,
+    client_ip VARCHAR(64) NULL,
+    accessed_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT ck_sec_access_log_1 CHECK (sec_key_id IS NOT NULL OR sec_secret_blob_id IS NOT NULL OR target_id IS NOT NULL),
+    CONSTRAINT ck_sec_access_log_2 CHECK (access_type <> 'BREAK_GLASS' OR approval_ref IS NOT NULL)
 );
 
 -- 种子数据
