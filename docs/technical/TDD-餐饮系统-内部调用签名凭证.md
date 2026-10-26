@@ -1,6 +1,6 @@
 # TDD-餐饮系统-内部调用签名凭证
 
-状态：草稿
+状态：已实现
 关联需求：`docs/technical/design/餐饮系统-功能清单与代码对齐.md` §4 C8（内部调用信任边界）；`TDD-餐饮系统-三端API与独立服务对齐.md` §2.4（独立部署合同）
 创建：2026-10-26 · 最后更新：2026-10-26
 
@@ -88,11 +88,13 @@ food-server 现在只校验共享令牌 `X-Internal-Token`，entity / store / ac
 |---|---|---|
 | 修改 | `backend/svc-client/.../ServiceClientSpec.java` | 新增 `List<ClientHttpRequestInterceptor> interceptors`（默认空）与 `withInterceptors(...)` |
 | 修改 | `backend/svc-client/.../ServiceClients.java` | 在「定地址、加令牌」之后依次挂上额外拦截器 |
-| 修改 | `backend/shop-base/.../svc/InternalHttp.java` | 新增 `client(service, api, readTimeout, ClientHttpRequestInterceptor...)` |
+| 修改 | `backend/shop-base/.../svc/InternalHttp.java` | 新增 `client(service, api, readTimeout, ClientHttpRequestInterceptor...)`；按服务名挂上 `InternalServiceInterceptor` bean |
+| 新增 | `backend/shop-base/.../svc/InternalServiceInterceptor.java` | 「给某个服务的所有内部调用加一道拦截器」的 bean 声明 |
 | 新增 | `food-api/.../food/scope/FoodScopeCredentials.java` | 编解码、签名、验签、摘要；纯 JDK + Jackson |
 | 新增 | `food-api/.../food/scope/FoodScopeBodyScanner.java` | 请求体范围键扫描 |
 | 新增 | `food-web/.../foodclient/FoodScopeSigningInterceptor.java` | 判定 realm、对照上下文、签发；STAFF 越权时拒签 |
-| 修改 | `food-web/.../foodclient/FoodClientConfiguration.java` | 所有 FOOD 客户端统一经一个工厂方法创建并挂拦截器；standalone 才装 |
+| 新增 | `food-web/.../foodclient/FoodScopeSigningConfiguration.java` | standalone 时声明 FOOD 的 `InternalServiceInterceptor`（见 §6 偏差） |
+| 修改 | `food-web/.../config/FoodWebAutoConfiguration.java` | 引入上面这个配置 |
 | 新增 | `food-server/.../config/FoodScopeVerificationFilter.java` | 缓存请求体、验签、对照请求体 |
 | 修改 | `food-server/.../config/FoodInternalSecurityConfiguration.java` | 令牌校验通过后挂过滤器 |
 | 新增/修改 | 三处测试与 food-server 测试夹具 | 见 §5 |
@@ -118,26 +120,64 @@ public final class FoodScopeBodyScanner {
 
 ## §5 对账三 · 实现 → 需求（测试）
 
-（实现后填写：测试方法、真实输出、消融结果。）
-
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| AC1 | | | |
-| AC2 | | | |
-| AC3 | | | |
-| AC4 | | | |
-| AC5 | | | |
-| AC6 | | | |
-| AC7 | | | |
-| AC8 | | | |
-| AC9 | | | |
+| AC1 | `FoodScopeVerificationApiTest#ac1TokenAloneIsNotEnoughAndForeignKeyIsRejected`；`FoodScopeCredentialsTest#ac1MissingMalformedOrForeignSignatureIs401` | ✅ | 去掉 `addFilterAfter(FoodScopeVerificationFilter)` → `expected:<401> but was:<200>` ✅ |
+| AC2 | `FoodScopeCredentialsTest#ac2ExpiredOrTooLongLivedIs401` | ✅ | （编解码单测，按过期 / 超前边界逐一断言） |
+| AC3 | `FoodScopeVerificationApiTest#ac3SignedRequestWhoseBodyChangesAfterSigningIsRejected`；`FoodScopeCredentialsTest#ac3TamperedBodyOrPathIs401` | ✅ | 去掉过滤器 → `expected:<401> but was:<200>` ✅ |
+| AC4 | `FoodScopeVerificationApiTest#ac4StaffClaimsMustCoverEveryEntityAndStoreInTheBody`；`FoodScopeCredentialsTest#ac4StaffBodyMustMatchEntityStoresAndActor` | ✅ | 去掉过滤器 → `expected:<403> but was:<200>` ✅ |
+| AC5 | `FoodScopeSigningInterceptorTest#ac5HostRefusesToSignAStoreEntityOrActorOutsideTheContext` | ✅ | 去掉拦截器里的门店检查与 `requireBodyMatches` → 测试失败 ✅ |
+| AC6 | `FoodScopeVerificationApiTest#ac6PreviousKeyIsAcceptedDuringRotation`；`FoodScopeCredentialsTest#ac6PreviousKeyStillVerifies` | ✅ | 单测里只给新钥 → 旧钥签的凭证 401 ✅ |
+| AC7 | `FoodScopeVerificationApiTest#ac7NoKeyOrShortKeyRejectsEverything`；`FoodScopeSigningInterceptorTest#ac7MissingKeyFailsClosedOnTheHost`；`FoodScopeCredentialsTest#ac7MissingOrShortKeyFailsClosed` | ✅ | 去掉过滤器 → `expected:<401> but was:<200>` ✅ |
+| AC8 | `FoodScopeVerificationApiTest#ac8ConsumerMustBeTheBuyerInTheBody`；`FoodScopeSigningInterceptorTest#consumerBuyerMustBeTheLoggedInConsumer` | ✅ | 去掉过滤器 → 进入 Controller（400，不再是 403）；去掉宿主检查 → 测试失败 ✅ |
+| AC9 | 餐饮全量 `-Pfood-embedded,food-verify`（插件五模块 + 宿主 food-embedded） | ✅ 970 跑 / 0 失败（9+8 / 232 / 622 / 9 / 32 / 58） | — |
+
+另：`FoodScopeSigningInterceptorTest#staffRequestInsideTheContextIsSignedAndVerifies` 证明宿主签的凭证按 food-server 的方式（同钥、同摘要算法）验得过；
+`ServiceClientsTest#extraInterceptorRunsAfterTokenWithFinalRequest` 证明额外拦截器在加令牌之后执行、看得到最终路径与请求体。
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填写。）
+`git show --stat 669bd00d2 a9cadd5f2`（平台扩展点 + 餐饮实现）：
+
+```
+backend/shop-base/.../svc/InternalHttp.java                     | 33 ++-
+backend/shop-base/.../svc/InternalServiceInterceptor.java       | 15 +
+backend/svc-client/.../ServiceClientSpec.java                   | 29 ++-
+backend/svc-client/.../ServiceClients.java                      |  8 +-
+backend/svc-client/.../ServiceClientsTest.java                  | 22 +
+food-api/.../scope/FoodScopeBodyScanner.java                    | 60 +
+food-api/.../scope/FoodScopeCredentials.java                    | 198 +
+food-api/.../scope/FoodScopeCredentialsTest.java                | 123 +
+food-server/.../config/FoodInternalSecurityConfiguration.java   | 16 +-
+food-server/.../config/FoodScopeVerificationFilter.java         | 104 +
+food-server/src/main/resources/application.yml                  |  4 +
+food-server/src/test/...（19 个既有测试改为签 SYSTEM 凭证）       |
+food-server/.../scenario/FoodScopeVerificationApiTest.java      | 127 +
+food-server/.../scope/FoodScopeTestSigning.java                 | 41 +
+food-web/.../config/FoodWebAutoConfiguration.java               |  2 +-
+food-web/.../foodclient/FoodScopeSigningConfiguration.java      | 29 +
+food-web/.../foodclient/FoodScopeSigningInterceptor.java        | 89 +
+food-web/.../scenario/FoodScopeSigningInterceptorTest.java      | 127 +
+```
+
+| 差异 | 说明 |
+|---|---|
+| TDD 里没有、实际改了：`InternalServiceInterceptor`、`FoodScopeSigningConfiguration`、`FoodWebAutoConfiguration` | 见偏差说明 |
+| TDD 列了、实际没动：`FoodClientConfiguration` | 同上 |
+| 19 个 food-server 既有测试 | 它们直接打内部端点，现在要带凭证；统一用 `FoodScopeTestSigning.system()`，不改断言 |
+| `deploy/` 环境说明 | 仓库里 food-server 只在 `application.yml` 里声明环境变量，已加 `SHOP_FOOD_SCOPE_KEY(_PREVIOUS)`；宿主无 food 配置文件，部署时设 `SHOP_FOOD_SCOPE_KEY`（Spring 环境变量映射到 `shop.food.scope-key`） |
+
+### 偏差说明
+
+原设计是在 `FoodClientConfiguration` 里把所有 FOOD 客户端改成经一个工厂方法创建。实际 FOOD 客户端分散在 8 个配置类
+（`FoodClientConfiguration`、`FoodBusinessOperationsClientConfiguration`、`DiningDeliveryWebAutoConfiguration`、
+`DiningIdentityWebAutoConfiguration`、`FoodKdsWebAutoConfiguration`、`FoodSupportWebAutoConfiguration`、`FoodReportFactsAutoConfiguration` 等），
+逐个改调用点会漏，后加的客户端也会漏。改为平台侧提供 `InternalServiceInterceptor` bean：`InternalHttp` 每造一个指向该服务的客户端都自动挂上。
+签名配置单独成类，只看 `shop.food.enabled` 与 `deployment=standalone`，不受各客户端配置类自己的条件影响。
 
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-10-26 | 方案选定（宿主签发短期签名凭证、food-server 本地验签），起草本文 |
+| 2026-10-26 | 已实现（`669bd00d2`、`a9cadd5f2`）；餐饮全量 970 跑 0 失败，svc-client 11 跑 0 失败；四组消融均变红。全量闸门见推送记录 |
