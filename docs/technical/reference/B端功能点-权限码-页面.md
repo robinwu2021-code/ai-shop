@@ -79,8 +79,8 @@
 | 承运方可选列表（只列启用的） | GET | `/biz/fulfillment/carriers` | `mCarriers` | transfer |
 | 商品列表 | GET | `/biz/goods` | `mGoodsList` | activity-edit、goods-list、group-open、platform-activity-apply、stored-value |
 | 商品详情 | GET | `/biz/goods/:goodsNo` | `mGoodsDetail` | goods-edit、goods-publish |
-| 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-list |
-| 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-list |
+| 改库存 | POST | `/biz/goods/:goodsNo/stock` | `mSaveStock` | goods-edit、goods-list |
+| 改当前门店库存 | POST | `/biz/goods/:goodsNo/store-stock` | `mSaveStoreStock` | goods-edit、goods-list |
 | 几件商品记不记库存（列表标签、编辑页那一行） | GET | `/biz/goods/inv-mode` | `mGoodsInvModes` | goods-edit、goods-list |
 | 直接改数（走盘点，落单落流水） | POST | `/biz/inventory/adjust` | `mStockAdjust` | stock-detail |
 | 库存列表（默认只给要处理的） | GET | `/biz/inventory/balances` | `mStockBalances` | offline-sale、stock、stock-out、transfer |
