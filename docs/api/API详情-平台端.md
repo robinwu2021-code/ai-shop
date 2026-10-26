@@ -3871,7 +3871,7 @@ _无字段_
 | `payChannel` | `string` | 是 | 通道码，如 WECHAT / ALIPAY |
 | `name` | `string` | 是 | 展示名 |
 | `enabled` | `boolean` | 是 | 停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响 |
-| `markets` | `string,null` | 是 | JSON 数组文本，如 `["CN"]`。空 = 全市场可用 |
+| `markets` | `string,null` | 是 | JSON 数组文本，如 `["CN"]`。空 / `[]` = 哪个市场都不可用（W2 起「无行 = 不可用」） |
 | `currency` | `string,null` | 是 | 结算币种，如 CNY |
 | `settleCycle` | `string,null` | 是 | 通道结算周期，如 T+1。展示与对账预期用 |
 | `supportsSubsidy` | `boolean` | 是 | 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 |
@@ -14463,7 +14463,7 @@ OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
 | `payChannel` | `string` | 是 | 通道码，如 WECHAT / ALIPAY |
 | `name` | `string` | 是 | 展示名 |
 | `enabled` | `boolean` | 是 | 停用只影响**新进件与新下单**，已开通的商户与在途的单不受影响 |
-| `markets` | `string,null` | 是 | JSON 数组文本，如 `["CN"]`。空 = 全市场可用 |
+| `markets` | `string,null` | 是 | JSON 数组文本，如 `["CN"]`。空 / `[]` = 哪个市场都不可用（W2 起「无行 = 不可用」） |
 | `currency` | `string,null` | 是 | 结算币种，如 CNY |
 | `settleCycle` | `string,null` | 是 | 通道结算周期，如 T+1。展示与对账预期用 |
 | `supportsSubsidy` | `boolean` | 是 | 能否补差。**为 false 时该通道不开积分抵扣** —— 这是通道的事实，运营改不了 |

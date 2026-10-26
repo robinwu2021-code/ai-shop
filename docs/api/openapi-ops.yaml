@@ -7936,7 +7936,7 @@ components:
           type:
             - "string"
             - "null"
-          description: "JSON 数组文本，如 `[\"CN\"]`。空 = 全市场可用"
+          description: "JSON 数组文本，如 `[\"CN\"]`。空 / `[]` = 哪个市场都不可用（W2 起「无行 = 不可用」）"
         currency:
           type:
             - "string"
