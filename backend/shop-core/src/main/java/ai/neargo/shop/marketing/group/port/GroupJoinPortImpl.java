@@ -72,7 +72,13 @@ public class GroupJoinPortImpl implements GroupJoinPort {
                 // 一人一团只能参一次 —— 否则「还差 N 人」会被同一个人刷满
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            return new GroupQuote(g.getGroupNo(), g.getActivityNo(), g.getGoodsNo(), g.getSkuNo(),
+            /*
+             * 存量团（商家开的、以及本次修复之前买家开的）sku_no 是空的：按商品的首个规格认 ——
+             * 团价与原价当初就是拿首个规格校验、记下的，空着就等于「哪个规格都按团价」。
+             */
+            String sku = g.getSkuNo() != null && !g.getSkuNo().isBlank() ? g.getSkuNo()
+                    : requireOnSale(g.getGoodsNo()).skuNo();
+            return new GroupQuote(g.getGroupNo(), g.getActivityNo(), g.getGoodsNo(), sku,
                     g.getEntityNo(), nz(g.getGroupPriceMinor()), g.getPickupNo());
         }
         if (!openGroup) {
@@ -80,8 +86,12 @@ public class GroupJoinPortImpl implements GroupJoinPort {
         }
         GoodsQueryPort.SkuSnapshot snap = requireOnSale(goodsNo);
         GroupRulePort.GroupRule rule = requireRule(snap);
-        // 开团报价不钉规格：团按商品开，规格随下单那一行
-        return new GroupQuote(null, rule.activityNo(), snap.goodsNo(), null,
+        /*
+         * 开团报价**钉住规格**：团价只有一个数，它是对着首个规格（snap）校验过「低于原价」的。
+         * 此前不钉，规格随下单那一行 —— 多规格的货，20 斤装就按 10 斤装的团价成交。
+         * 与限时特价「多规格不套商品级价」同一个出发点：宁可别的规格不享团价，也不能按错的价卖。
+         */
+        return new GroupQuote(null, rule.activityNo(), snap.goodsNo(), snap.skuNo(),
                 snap.merchantNo(), rule.groupPriceMinor(), null);
     }
 
@@ -111,7 +121,8 @@ public class GroupJoinPortImpl implements GroupJoinPort {
         g.setInitiatorUserNo(userNo);
         g.setActivityNo(rule.activityNo());
         g.setGoodsNo(snap.goodsNo());
-        g.setSkuNo(null);
+        // 记下团价对应的规格（见 quote 的注释）：参团时只有这个规格按团价
+        g.setSkuNo(snap.skuNo());
         g.setEntityNo(snap.merchantNo());
         g.setTitle(snap.title());
         g.setCover(snap.cover());

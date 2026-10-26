@@ -3284,10 +3284,16 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }
         var q = groupJoinPort.quote(userNo, cmd.groupNo(), cmd.openGroup(), goods.iterator().next());
         for (Line l : split.items) {
-            if (!q.merchantNo().equals(l.snapshot.merchantNo())
-                    || (q.skuNo() != null && !q.skuNo().equals(l.skuNo()))) {
+            if (!q.merchantNo().equals(l.snapshot.merchantNo())) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
+        }
+        /*
+         * 团价只给团的那个规格（见 GroupJoinPort.GroupQuote#skuNo）；同单别的规格照原价，由 repriced 只换那一行。
+         * 整单一行团规格都没有就不是团单：带着团号全按原价买，却占一个成员名额、到期还跟着整单退款。
+         */
+        if (q.skuNo() == null || split.items.stream().noneMatch(l -> q.skuNo().equals(l.skuNo()))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         return q;
     }
@@ -3402,9 +3408,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     /**
-     * 团单按团价重算每一行。**替换快照上的单价**而不是事后打折：
+     * 团单按团价重算<b>团的那个规格</b>的行。**替换快照上的单价**而不是事后打折：
      * 订单行的 price / amount、子单的商品金额、满减门槛全都读它，
      * 只在一处改，预览与下单、主单与子单就不会各算出一个数。
+     *
+     * <p>别的规格的行原样保留：团价只有一个数，此前整单每行都换成它，20 斤装就按 10 斤装的团价成交。
      */
     private static Split repriced(Split split,
                                   ai.neargo.shop.spi.marketing.GroupJoinPort.GroupQuote q) {
@@ -3412,6 +3420,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             return split;
         }
         List<Line> lines = split.items.stream().map(l -> {
+            if (!l.skuNo().equals(q.skuNo())) {
+                return l;
+            }
             var s = l.snapshot;
             return new Line(new GoodsQueryPort.SkuSnapshot(s.skuNo(), s.goodsNo(), s.merchantNo(),
                     s.title(), s.cover(), s.spec(), s.categoryType(), s.categoryNo(),
