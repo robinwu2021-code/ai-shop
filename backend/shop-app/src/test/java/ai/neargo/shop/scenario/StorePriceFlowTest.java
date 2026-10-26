@@ -51,8 +51,9 @@ class StorePriceFlowTest {
     void storePriceReachesCheckout() throws Exception {
         String biz = merchant("12609151001", "门店定价·总店");
         String goodsNo = saveGoods(biz, 1000);
-        String skuNo = firstSku(goodsNo);
+        // 先过审再取 SKU：买家详情只给过审的货（草稿 404）
         approveGoods(goodsNo);
+        String skuNo = firstSku(goodsNo);
         publish(biz, goodsNo);
 
         // 本店价 ¥7.00（主体价 ¥10.00）
@@ -67,8 +68,9 @@ class StorePriceFlowTest {
     void withoutStorePriceFallsBackToEntityPrice() throws Exception {
         String biz = merchant("12609151003", "门店定价·未定价");
         String goodsNo = saveGoods(biz, 1000);
-        String skuNo = firstSku(goodsNo);
+        // 先过审再取 SKU：买家详情只给过审的货（草稿 404）
         approveGoods(goodsNo);
+        String skuNo = firstSku(goodsNo);
         publish(biz, goodsNo);
 
         long amount = buyOnce("12609151004", goodsNo, skuNo, "sp-2");
@@ -80,8 +82,9 @@ class StorePriceFlowTest {
     void clearingStorePriceGoesBack() throws Exception {
         String biz = merchant("12609151005", "门店定价·撤回");
         String goodsNo = saveGoods(biz, 1000);
-        String skuNo = firstSku(goodsNo);
+        // 先过审再取 SKU：买家详情只给过审的货（草稿 404）
         approveGoods(goodsNo);
+        String skuNo = firstSku(goodsNo);
         publish(biz, goodsNo);
 
         setStorePrice(biz, goodsNo, skuNo, "700");
