@@ -62,13 +62,13 @@ test('historical mapping verification and source owner contracts remain explicit
 
 test('coded subset references real migration, routes and source files without claiming full completion',()=>{
  const actual=design.implementation;
- assert.equal(actual.tables.length,6);
- assert.equal(actual.apiIds.length,8);
+ assert.equal(actual.tables.length,9);
+ assert.equal(actual.apiIds.length,13);
  const modules=path.join(root,actual.moduleRoot);
- assert.ok(fs.existsSync(path.join(modules,actual.migration)));
+ assert.ok(actual.migrations.every(migration=>fs.existsSync(path.join(modules,migration))));
  for(const id of actual.apiIds){
   const api=design.apis.find(a=>a.id===id);
-  const controller=path.join(modules,'commerce-web/src/main/java/ai/neargo/shop/commerce/api/biz',api.controller+'.java');
+  const controller=path.join(modules,'commerce-web/src/main/java/ai/neargo/shop/commerce/api',api.role==='CALLBACK'?'callback':'biz',api.controller+'.java');
   assert.ok(fs.readFileSync(controller,'utf8').includes(api.path),id);
  }
  assert.match(actual.limitations,/未开放/);

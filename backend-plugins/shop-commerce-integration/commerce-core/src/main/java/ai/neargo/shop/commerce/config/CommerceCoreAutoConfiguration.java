@@ -1,18 +1,26 @@
 package ai.neargo.shop.commerce.config;
 
 import ai.neargo.shop.commerce.mapper.CommerceMappers.AccountMapper;
+import ai.neargo.shop.commerce.mapper.CommerceMappers.AuthorizationRevisionMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.ConnectionRevisionMapper;
+import ai.neargo.shop.commerce.mapper.CommerceMappers.OperationAttemptMapper;
+import ai.neargo.shop.commerce.mapper.CommerceMappers.OperationMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.ProductProfileMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.ProviderMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.RequestJournalMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.StoreConnectionMapper;
 import ai.neargo.shop.commerce.service.ChannelAccountService;
+import ai.neargo.shop.commerce.service.ChannelAuthorizationService;
 import ai.neargo.shop.commerce.service.ChannelConnectionService;
+import ai.neargo.shop.commerce.service.ChannelOperationService;
 import ai.neargo.shop.commerce.service.ProviderService;
 import ai.neargo.shop.commerce.service.impl.ChannelAccountServiceImpl;
+import ai.neargo.shop.commerce.service.impl.ChannelAuthorizationServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelConnectionServiceImpl;
+import ai.neargo.shop.commerce.service.impl.ChannelOperationServiceImpl;
 import ai.neargo.shop.commerce.service.impl.CommerceCommands;
 import ai.neargo.shop.commerce.service.impl.ProviderServiceImpl;
+import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway;
 import ai.neargo.shop.spi.commerce.ChannelConnectionIdentityPort;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -75,5 +83,34 @@ public class CommerceCoreAutoConfiguration {
     ProviderService providerService(
             ProviderMapper providers, ProductProfileMapper profiles, CommerceCommands commands) {
         return new ProviderServiceImpl(providers, profiles, commands);
+    }
+
+    @Bean
+    ChannelAuthorizationService channelAuthorizationService(
+            AccountMapper accounts,
+            ProductProfileMapper profiles,
+            ProviderMapper providers,
+            AuthorizationRevisionMapper revisions,
+            OperationMapper operations,
+            OperationAttemptMapper attempts,
+            CommerceCommands commands,
+            ObjectProvider<ChannelAuthorizationGateway> gateways) {
+        return new ChannelAuthorizationServiceImpl(
+                accounts,
+                profiles,
+                providers,
+                revisions,
+                operations,
+                attempts,
+                commands,
+                gateways.orderedStream().toList());
+    }
+
+    @Bean
+    ChannelOperationService channelOperationService(
+            OperationMapper operations,
+            OperationAttemptMapper attempts,
+            CommerceCommands commands) {
+        return new ChannelOperationServiceImpl(operations, attempts, commands);
     }
 }

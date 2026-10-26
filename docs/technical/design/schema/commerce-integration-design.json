@@ -183,6 +183,10 @@
         {
           "name": "status",
           "definition": "VARCHAR(24)状态"
+        },
+        {
+          "name": "active_operation_no",
+          "definition": "VARCHAR(32)NULL；串行化授权/撤权，UNKNOWN保持原动作"
         }
       ],
       "keys": "U(account_no)；U(entity_no,profile_no,external_account_ref)",
@@ -217,7 +221,7 @@
         },
         {
           "name": "granted_scopes",
-          "definition": "JSON实际获准范围"
+          "definition": "LONGTEXT服务端编码的原授权范围JSON"
         },
         {
           "name": "capability_hash",
@@ -234,6 +238,10 @@
         {
           "name": "status",
           "definition": "VARCHAR(24)授权状态"
+        },
+        {
+          "name": "evidence_ref",
+          "definition": "VARCHAR(256)原平台授权回执；无明文凭据"
         }
       ],
       "keys": "U(authorization_no)；U(account_no,revision_no)",
@@ -1076,6 +1084,30 @@
         {
           "name": "expires_at",
           "definition": "DATETIME(3)NULL授权状态及一次性预览操作期限"
+        },
+        {
+          "name": "callback_consumed_at",
+          "definition": "DATETIME(3)NULL；state单次消费时点"
+        },
+        {
+          "name": "callback_request_hash",
+          "definition": "CHAR(64)NULL；原code/error摘要，异payload重放冲突"
+        },
+        {
+          "name": "authorization_url",
+          "definition": "LONGTEXT NULL；仅适配器登记来源/回调的公开授权URL，消费或到期不再公开"
+        },
+        {
+          "name": "return_target_code",
+          "definition": "VARCHAR(32)NULL；服务器预登记回跳目标码"
+        },
+        {
+          "name": "reason_code",
+          "definition": "VARCHAR(64)NULL；撤权原因分类"
+        },
+        {
+          "name": "reason",
+          "definition": "VARCHAR(256)NULL；原人工撤权依据"
         }
       ],
       "keys": "U(operation_no)；U(target_scope_key,destination,semantic_key)；U(callback_state_hash)；I(status,next_recovery_at,id)",
@@ -3362,6 +3394,14 @@
       "methods": "verify(Identity)->Proof(VERIFIED/UNKNOWN/UNSUPPORTED, identity, receiptRef, verifiedAt, validUntil)",
       "purpose": "事务外核验远端门店真实归属，本地事务锁账号/协议并复核冻结身份及有效期；无实现拒绝认领，不提供默认成功",
       "ac": "AC02"
+    },
+    {
+      "name": "ChannelAuthorizationGateway",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "commerce-channel获准协议适配器",
+      "methods": "begin(AuthorizationContext)->Start；exchange(context,code)->Grant；revoke(RevocationContext)->Revocation",
+      "purpose": "原意图先提交，事务外OAuth/撤权；网关必须绑定原外部账号、凭据安全引用及可信回执；无真实提供方不授权",
+      "ac": "AC01"
     }
   ],
   "acceptance": [
@@ -3599,7 +3639,7 @@
     ]
   },
   "implementation": {
-    "status": "C0_DRAFT_SLICE_VERIFIED",
+    "status": "C0_AUTHORIZATION_ENGINE_VERIFIED",
     "moduleRoot": "backend-plugins/shop-commerce-integration",
     "migration": "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
     "tables": [
@@ -3608,7 +3648,10 @@
       "cim_account",
       "cim_store_connection",
       "cim_connection_revision",
-      "cim_request_journal"
+      "cim_request_journal",
+      "cim_authorization_revision",
+      "cim_operation",
+      "cim_operation_attempt"
     ],
     "apiIds": [
       "COM-001",
@@ -3618,9 +3661,18 @@
       "COM-005",
       "COM-009",
       "COM-010",
-      "COM-011"
+      "COM-011",
+      "COM-006",
+      "COM-007",
+      "COM-008",
+      "COM-035",
+      "COM-070"
     ],
-    "limitations": "八个路由已编码，仅属主草稿管理及分页；连接创建另需可信远端归属SPI证明，无生产提供方时拒绝认领身份；筛选参数尚未实现并明确拒绝；授权/核验/启用、目录发送、订单导入及真实平台未开放。独立服务可构建，尚无远程Service客户端或内部业务端点，不能宣称已独立业务闭环。未执行生产建表或部署。",
-    "tests": "集成宿主与独立server编译通过；29项Java专项通过（包括真实宿主Mapper扫描）；设计10、文档8通过；隔离原生MySQL迁移及约束通过；完整认证链、原生JDBC/Flyway并发与独立业务闭环尚未联验。"
+    "limitations": "B端仍仅主体属主；基础列表仅分页，候选高级筛选仍明确拒绝。累计13个基础/授权/查询/回调路由，9张迁移业务表。真实授权和门店归属提供方均未注册；通用OAuth回调目前只接受state/code/error，授权须有明确有效期，其他协议须扩展合同后启用。授权URL只允许既定公开参数，回跳绑定登记地址。UNKNOWN/过期/崩溃主动恢复worker、目录同步、订单导入、履约售后及真实平台仍未开放；独立业务远程客户端和内部端点未完成。未生产建表、推送或部署。",
+    "tests": "44项受影响Java专项通过；集成宿主与server编译通过，最终打包通过（TDD留证）；原生隔离MySQL V1+V2及约束通过；设计10、文档8通过。两项复核问题4个回归RED→GREEN；真实平台/生产驱动并发和完整认证链未联验。",
+    "migrations": [
+      "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
+      "commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql"
+    ]
   }
 }

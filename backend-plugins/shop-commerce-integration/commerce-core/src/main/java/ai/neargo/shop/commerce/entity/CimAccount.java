@@ -17,5 +17,6 @@ public class CimAccount extends BaseEntity {
     private String profileNo;
     private String externalAccountRef;
     private String activeAuthorizationNo;
+    private String activeOperationNo;
     private String status;
 }

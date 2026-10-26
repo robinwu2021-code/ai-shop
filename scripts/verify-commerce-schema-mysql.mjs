@@ -22,7 +22,8 @@ try {
  }
  assert.ok(ready, 'Disposable MySQL failed to start');
  sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql', import.meta.url), 'utf8'));
- assert.equal(sql('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()'), '6');
+ sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql', import.meta.url), 'utf8'));
+ assert.equal(sql('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()'), '9');
  const connection = (no, entity, store, identity) => `INSERT INTO cim_store_connection(connection_no,entity_no,
  store_no,profile_no,account_no,external_store_ref,channel_store_key,active_revision_no,status,identity_receipt_ref,identity_verified_at,identity_valid_until)
  VALUES ('${no}','${entity}','${store}','PP','ACCOUNT','REMOTE','${identity}','REV','DRAFT','TRUSTED_TEST','2026-10-26 00:00:00','2026-10-26 01:00:00')`;
@@ -37,5 +38,19 @@ try {
  assert.equal(sql("SELECT CONCAT(request_no,':',actor_no) FROM cim_request_journal"), 'R1:ACTOR1');
  sql(`UPDATE cim_request_journal SET status='SUCCEEDED',result_snapshot='{"accountNo":"ACC"}' WHERE request_no='R1'`);
  assert.equal(sql('SELECT result_snapshot FROM cim_request_journal'), '{"accountNo":"ACC"}');
- console.log('PASS: six-table native migration, global connection identity, immutable journal actor and JSON snapshot');
+ const operation = (no, scope, semantic, state) => `INSERT INTO cim_operation(operation_no,entity_no,
+ destination,operation_type,business_ref,business_revision,semantic_key,request_hash,request_ref,status,
+ current_attempt_no,fence,account_no,profile_no,target_scope_kind,target_scope_key,callback_state_hash)
+ VALUES ('${no}','E','PROVIDER','AUTHORIZE','ACCOUNT','1','${semantic}','HASH','REF','SENDING',1,1,
+ 'ACCOUNT','PP','ACCOUNT','${scope}',${state === null ? 'NULL' : "'" + state + "'"})`;
+ sql(operation('O1','SCOPE1','SAME','STATE1'));
+ sql(operation('O2','SCOPE1','SAME','STATE2'), 1);
+ sql(operation('O3','SCOPE2','SAME','STATE1'), 1);
+ sql(operation('O4','SCOPE2','SAME','STATE2'));
+ sql(operation('O5','SCOPE1','REVOKE1',null)); sql(operation('O6','SCOPE1','REVOKE2',null));
+ const revision = (no, account) => `INSERT INTO cim_authorization_revision(authorization_no,entity_no,
+ account_no,revision_no,credential_ref,granted_scopes,capability_hash,authorized_at,status,evidence_ref)
+ VALUES ('${no}','E','${account}',1,'vault:test-reference','["ORDER"]','HASH','2026-10-26 00:00:00','GRANTED','RECEIPT')`;
+ sql(revision('AR1','A1')); sql(revision('AR2','A1'), 1); sql(revision('AR3','A2'));
+ console.log('PASS: nine-table V1+V2 migration, stable store identity, journal replay, operation scope/state uniqueness and grant revisions');
 } finally { docker(['rm', '--force', name]); }

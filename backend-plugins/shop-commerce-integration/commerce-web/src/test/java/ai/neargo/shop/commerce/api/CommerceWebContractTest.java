@@ -12,11 +12,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.commerce.api.biz.BizChannelAccountController;
+import ai.neargo.shop.commerce.api.callback.ChannelAuthorizationCallbackController;
 import ai.neargo.shop.commerce.config.CommerceWebAutoConfiguration;
+import ai.neargo.shop.commerce.dto.AuthorizationCallbackResult;
+import ai.neargo.shop.commerce.dto.AuthorizeChannelAccountReq;
 import ai.neargo.shop.commerce.dto.ChannelAccountVO;
 import ai.neargo.shop.commerce.dto.CreateChannelAccountReq;
 import ai.neargo.shop.commerce.dto.CreateChannelConnectionReq;
 import ai.neargo.shop.commerce.service.ChannelAccountService;
+import ai.neargo.shop.commerce.service.ChannelAuthorizationService;
+import ai.neargo.shop.common.ApiResponseWrapper;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
@@ -159,5 +164,47 @@ class CommerceWebContractTest {
                                         "{\"profileNo\":\"P\","
                                             + "\"externalAccountRef\":\"A\",\"entityNo\":\"OTHER\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void authorizationCallbackKeepsProtocolJsonWithoutGlobalEnvelope() throws Exception {
+        var service = mock(ChannelAuthorizationService.class);
+        when(service.completeAuthorization("TEST", "nonce", "CODE", null))
+                .thenReturn(new AuthorizationCallbackResult("OP", "SUCCEEDED"));
+        var mvc =
+                MockMvcBuilders.standaloneSetup(new ChannelAuthorizationCallbackController(service))
+                        .setControllerAdvice(new ApiResponseWrapper())
+                        .build();
+        mvc.perform(
+                        get("/callback/commerce/TEST/authorization")
+                                .param("state", "nonce")
+                                .param("code", "CODE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.operationNo").value("OP"))
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    void authorizationVersionAndReturnTargetAreStrict() {
+        var json = new ObjectMapper();
+        assertThatThrownBy(
+                        () ->
+                                json.readValue(
+                                        "{\"version\":1.5,\"returnTargetCode\":\"B_APP\"}",
+                                        AuthorizeChannelAccountReq.class))
+                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(
+                        () ->
+                                json.readValue(
+                                        "{\"version\":\"1\",\"returnTargetCode\":\"B_APP\"}",
+                                        AuthorizeChannelAccountReq.class))
+                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(
+                        () ->
+                                json.readValue(
+                                        "{\"version\":1,\"returnTargetCode\":\"B_APP\",\"returnUrl\":\"https://evil.test\"}",
+                                        AuthorizeChannelAccountReq.class))
+                .isInstanceOf(RuntimeException.class);
     }
 }

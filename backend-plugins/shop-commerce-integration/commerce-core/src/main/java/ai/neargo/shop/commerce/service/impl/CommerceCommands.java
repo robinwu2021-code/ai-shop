@@ -45,6 +45,11 @@ public final class CommerceCommands {
         return DataScopeContext.executeWithoutScope(() -> read.execute(tx -> action.get()));
     }
 
+    /** 内部回执落库使用短写事务，不持有事务跨网络。 */
+    public <T> T atomic(Supplier<T> action) {
+        return DataScopeContext.executeWithoutScope(() -> write.execute(tx -> action.get()));
+    }
+
     public <T> Optional<T> replay(
             String entity,
             String store,

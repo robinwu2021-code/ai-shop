@@ -1,7 +1,10 @@
 package ai.neargo.shop.commerce.mapper;
 
 import ai.neargo.shop.commerce.entity.CimAccount;
+import ai.neargo.shop.commerce.entity.CimAuthorizationRevision;
 import ai.neargo.shop.commerce.entity.CimConnectionRevision;
+import ai.neargo.shop.commerce.entity.CimOperation;
+import ai.neargo.shop.commerce.entity.CimOperationAttempt;
 import ai.neargo.shop.commerce.entity.CimProductProfile;
 import ai.neargo.shop.commerce.entity.CimProvider;
 import ai.neargo.shop.commerce.entity.CimRequestJournal;
@@ -26,6 +29,12 @@ public final class CommerceMappers {
     public interface StoreConnectionMapper extends BaseMapper<CimStoreConnection> {}
 
     public interface ConnectionRevisionMapper extends BaseMapper<CimConnectionRevision> {}
+
+    public interface AuthorizationRevisionMapper extends BaseMapper<CimAuthorizationRevision> {}
+
+    public interface OperationMapper extends BaseMapper<CimOperation> {}
+
+    public interface OperationAttemptMapper extends BaseMapper<CimOperationAttempt> {}
 
     public interface RequestJournalMapper extends BaseMapper<CimRequestJournal> {
         @Insert(
