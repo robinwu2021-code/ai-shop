@@ -245,7 +245,6 @@ export default {
     whyActivityOnly: "该商品仅在活动期间销售",
     store: "服务门店",
     duration: "服务时长 {n} 分钟",
-    fulfillment: "配送方式",
     addCart: "加入购物车",
     buyNow: "立即购买",
     soldOut: "已售罄",
@@ -976,12 +975,7 @@ export default {
     paid: "实付",
     providedBy: "本单商品由「{m}」提供并收款",
     splitHint: "同一次下单如果买了多家的东西，会按商家拆成多笔订单，但只付一次钱。",
-    pickup: "自提点",
     appointment: "预约时段",
-    express: "运单号",
-    trace: "物流轨迹",
-    traceView: "查看",
-    progress: "订单进度",
     orderNo: "订单号",
     /** 状态下面那一句「接下来会发生什么」（原型 k07）。没写的状态不显示，不编话 */
     next: {
