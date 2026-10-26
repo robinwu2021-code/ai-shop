@@ -70,7 +70,7 @@ async function rename(s: Supplier) {
     uni.showToast({ title: String(t("suppliers.platformReadonly")), icon: "none" });
     return;
   }
-  const name = await prompt({ title: String(t("suppliers.renameTitle")), value: s.name });
+  const name = await prompt({ title: String(t("common.rename")), value: s.name });
   if (name == null || !name.trim() || name.trim() === s.name) return;
   try {
     await api.mSupplierUpdate(s.supplierNo, { name: name.trim() });
@@ -87,7 +87,7 @@ async function toggle(s: Supplier) {
     const okd = await confirm({
       title: String(t("suppliers.archiveTitle", { name: s.name })),
       hint: String(t("suppliers.archiveHint")),
-      confirmText: String(t("suppliers.archive")),
+      confirmText: String(t("common.disable")),
     });
     if (!okd) return;
   }
@@ -121,14 +121,14 @@ onShow(load);
       </text>
 
       <view class="sup__acts sh-row">
-        <text class="sh-link" @tap="rename(s)">{{ $t("suppliers.rename") }}</text>
+        <text class="sh-link" @tap="rename(s)">{{ $t("common.rename") }}</text>
         <text class="sh-link" @tap="toggle(s)">
-          {{ s.status === "ACTIVE" ? $t("suppliers.archive") : $t("suppliers.restore") }}
+          {{ s.status === "ACTIVE" ? $t("common.disable") : $t("common.enable") }}
         </text>
       </view>
     </view>
 
-    <sh-add :text="String($t('suppliers.add'))" @tap="add"></sh-add>
+    <sh-add :text="String($t('suppliers.addTitle'))" @tap="add"></sh-add>
   </sh-scaffold>
 </template>
 

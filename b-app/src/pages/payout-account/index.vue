@@ -65,14 +65,14 @@
         :class="{ 'is-disabled': !canSubmit || submitting }"
         @tap="submit"
       >
-        {{ submitting ? t("payoutAccount.submitting") : t("payoutAccount.submit") }}
+        {{ submitting ? t("payoutAccount.submitting") : t("common.submit") }}
       </view>
       <text v-if="blockReason" class="sh-hint is-warning">{{ blockReason }}</text>
     </view>
 
     <!-- 记录 -->
     <view class="sh-card">
-      <text class="txt-strong">{{ t("payoutAccount.records") }}</text>
+      <view class="sh-card__head"><text class="txt-strong">{{ t("payoutAccount.records") }}</text></view>
       <sh-empty
         v-if="!list.length"
         :pending="!loaded"

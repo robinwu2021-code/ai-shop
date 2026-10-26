@@ -89,7 +89,7 @@ onShow(() => {
 
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted">{{ $t("coupon.status") }}</text>
+          <text class="txt-body sh-muted">{{ $t("common.status") }}</text>
           <text class="txt-body">{{ $t(`coupons.status.${c.status}`) }}</text>
         </view>
         <view class="sh-cell sh-row sh-row--between">
@@ -112,7 +112,7 @@ onShow(() => {
 
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between" @tap="go(`${ROUTES.couponIssues}?couponNo=${c.couponNo}`)">
-          <text class="txt-body">{{ $t("coupon.issues") }}</text>
+          <text class="txt-body">{{ $t("couponIssues.title") }}</text>
           <view class="sh-row">
             <text class="txt-body sh-muted sh-num">{{ $t("coupon.issuesN", { n: issues.length }) }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>

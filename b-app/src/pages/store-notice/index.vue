@@ -279,7 +279,7 @@ onShow(load);
 
     <!-- 发布是这一页唯一的主动作：贴底，与其他二级页同位 -->
     <sh-actionbar>
-      <view class="sh-btn" :class="{ 'is-off': !dirty || saving }" @tap="publish">
+      <view class="sh-btn publish-action" :class="{ 'is-off': !dirty || saving }" @tap="publish">
         {{ saving ? "…" : $t("store.noticePublish") }}
       </view>
     </sh-actionbar>
@@ -336,7 +336,7 @@ onShow(load);
   margin-inline-start: auto;
 }
 /* 发布：没有改动时灰着 —— 按下去什么都不会发生的按钮不该长得能按 */
-.sh-btn.is-off {
+.publish-action.is-off {
   background: var(--sh-faint);
   color: var(--sh-sub);
 }

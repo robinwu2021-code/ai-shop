@@ -79,7 +79,7 @@ function statusText(o: Order): string {
  */
 const ALL_TABS: (OrderTabSpec & { labelKey: string; perm?: string })[] = [
   { key: "todo", labelKey: "order.tabTodo" },
-  { key: "all", labelKey: "order.tabAll" },
+  { key: "all", labelKey: "common.all" },
   /*
    * 待收款单独一个页签，**排在待发货前面**。
    *

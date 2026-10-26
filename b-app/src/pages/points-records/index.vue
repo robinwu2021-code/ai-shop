@@ -46,7 +46,7 @@ onLoad(async (params) => {
 
 <template>
   <sh-scaffold title-key="points.recordsTitle" :denied="!canView" :failed="failed" @retry="load">
-    <view class="sh-card"><text class="txt-title">{{ typeCode }}</text>
+    <view class="sh-card"><view class="sh-card__head"><text class="txt-title">{{ typeCode }}</text></view>
       <text class="sh-muted"> · {{ merchant.currentStore?.name ?? merchant.storeNo }}</text></view>
     <sh-empty v-if="!page.rows.length" :pending="!loaded" :failed="failed" @retry="load"
       :text="$t('points.recordsEmpty')" />
@@ -58,7 +58,7 @@ onLoad(async (params) => {
       <text class="txt-caption sh-muted">{{ $t("points.balanceAfter") }}: {{ entry.afterPoints }}</text>
     </view>
     <view v-if="page.hasMore" class="sh-btn sh-btn--muted sh-mt-sm" @tap="load(true)">
-      {{ $t("points.loadMore") }}
+      {{ $t("common.loadMore") }}
     </view>
   </sh-scaffold>
 </template>

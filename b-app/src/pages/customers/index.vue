@@ -384,7 +384,7 @@ onShow(() => {
       class="sh-link settings"
       @tap="go('/pages/member-settings/index')"
     >
-      {{ $t("memberSettings.entry") }}
+      {{ $t("memberSettings.title") }}
     </text>
 
     <biz-batch-tag-sheet

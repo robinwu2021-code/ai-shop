@@ -167,7 +167,7 @@ onShow(() => {
     ></sh-empty>
 
     <sh-actionbar>
-      <view class="sh-btn" @tap="go('/pages/activity-edit/index')">{{ $t("activities.new") }}</view>
+      <view class="sh-btn" @tap="go('/pages/activity-edit/index')">{{ $t("activityCreate.title") }}</view>
     </sh-actionbar>
   </sh-scaffold>
 </template>

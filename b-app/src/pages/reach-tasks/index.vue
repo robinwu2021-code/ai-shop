@@ -22,7 +22,7 @@ const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 const merchant = useMerchantStore();
 
 const TABS = [
-  { key: "ALL", label: tt("reachTasks.tab.ALL") },
+  { key: "ALL", label: tt("common.all") },
   { key: "MSG", label: tt("reachTasks.tab.MSG") },
   { key: "COUPON", label: tt("reachTasks.tab.COUPON") },
 ] as const;

@@ -145,8 +145,8 @@ onShow(() => {
     @retry="load"
   >
     <view class="sh-card">
-      <text class="txt-title">{{ $t("stockSettings.section") }}</text>
-      <sh-empty v-if="!rows.length" :pending="!loaded" :text="String($t('stockSettings.empty'))"></sh-empty>
+      <view class="sh-card__head"><text class="txt-title">{{ $t("stockSettings.section") }}</text></view>
+      <sh-empty v-if="!rows.length" :pending="!loaded" :text="String($t('storeCategories.empty'))"></sh-empty>
       <view
         v-for="row in rows"
         :key="row.categoryNo"
@@ -171,11 +171,11 @@ onShow(() => {
         <text v-if="merchant.multiStore" class="txt-caption sh-muted">{{ merchant.currentStore?.name }}</text>
       </sh-section>
       <view class="sh-row sh-row--between line">
-        <text class="txt-body">{{ $t("stockSync.status") }}</text>
+        <text class="txt-body">{{ $t("common.status") }}</text>
         <text class="txt-body" :class="{ 'sh-muted': sync.state !== 'SYNCING' }">{{ $t(`stockSync.state.${sync.state}`) }}</text>
       </view>
       <view class="sh-row sh-row--between line" @tap="goAlign">
-        <text class="txt-body">{{ $t("stockSync.align") }}</text>
+        <text class="txt-body">{{ $t("stockAlign.title") }}</text>
         <sh-go :text="sync.alignedAt ? String($t('stockAlign.done')) : ''"></sh-go>
       </view>
       <view class="sh-row sh-row--between line" @tap="toggleSync">
@@ -183,7 +183,7 @@ onShow(() => {
         <sh-switch :model-value="sync.enabled" :disabled="syncBusy || !canAdmin || !sync.alignedAt"></sh-switch>
       </view>
       <view class="sh-row sh-row--between line" @tap="goSyncRecords">
-        <text class="txt-body">同步操作记录</text>
+        <text class="txt-body">{{ $t("stockSync.recordsTitle") }}</text>
         <sh-go></sh-go>
       </view>
       <text class="txt-caption sh-muted">{{ $t("stockSync.hint") }}</text>

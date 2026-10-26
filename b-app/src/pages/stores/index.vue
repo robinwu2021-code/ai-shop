@@ -234,7 +234,7 @@ async function onQuotaBlocked() {
  */
 async function rename(s: Store) {
   const name = ((await prompt({
-    title: String(t("stores.rename")),
+    title: String(t("common.rename")),
     placeholder: String(t("stores.namePh")),
     value: s.name,
   })) ?? "").trim();
@@ -389,7 +389,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         -->
         <view class="st__name sh-row sh-fill">
           <text class="txt-title">{{ s.name }}</text>
-          <text class="sh-link st__rename" @tap.stop="rename(s)">{{ $t("stores.rename") }}</text>
+          <text class="sh-link st__rename" @tap.stop="rename(s)">{{ $t("common.rename") }}</text>
         </view>
         <view class="tags">
           <text v-if="s.storeNo === merchant.storeNo" class="sh-chip sh-chip--primary">{{ $t("stores.currentTag") }}</text>
@@ -458,7 +458,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
       -->
       <view class="facts">
         <view class="fact sh-row">
-          <text class="txt-caption fact__k">{{ $t("stores.payment") }}</text>
+          <text class="txt-caption fact__k">{{ $t("payoutAccount.title") }}</text>
           <!-- 收款号：空 = 用主体默认号，这是常态不是缺配置 -->
           <view class="sh-fill sh-wrap">
             <text
@@ -521,7 +521,7 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         -->
         <text v-if="s.planSuspended" class="sh-link" @tap.stop="goPlan">{{ $t("stores.planSuspendedAct") }}</text>
         <text v-else-if="!s.isDefault" class="sh-link" @tap.stop="toggleStatus(s)">
-          {{ s.status === "ACTIVE" ? $t("stores.disable") : $t("stores.enable") }}
+          {{ s.status === "ACTIVE" ? $t("common.disable") : $t("common.enable") }}
         </text>
         <text v-if="canSwitchTo(s)" class="txt-caption acts__hint">{{ $t("stores.switchTo") }} ›</text>
       </view>
@@ -584,8 +584,8 @@ function pickPayment(s: Store, payMerchantNo?: string) {
         <input maxlength="64" v-model="form.name" class="field__input" :placeholder="$t('stores.namePh')" />
       </view>
       <view class="field">
-        <text class="field__label">{{ $t("stores.address") }}</text>
-        <input maxlength="255" v-model="form.address" class="field__input" :placeholder="$t('stores.addressPh')" />
+        <text class="field__label">{{ $t("store.address") }}</text>
+        <input maxlength="255" v-model="form.address" class="field__input" :placeholder="$t('store.addressDetailPh')" />
       </view>
 
       <view class="sh-btn submit" @tap="create">{{ $t("common.save") }}</view>
@@ -677,9 +677,6 @@ function pickPayment(s: Store, payMerchantNo?: string) {
 /* 「切换至此店 ›」推到最右：它说的是整张卡的行为，不是与左边并列的第四个动作 */
 .acts__hint {
   margin-inline-start: auto;
-}
-.field {
-  margin-top: 20rpx;
 }
 
 .submit {

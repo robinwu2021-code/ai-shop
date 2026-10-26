@@ -137,7 +137,7 @@ async function rename(c: StoreCategory) {
           </text>
           <!-- 记不记库存。店主找这个设置时找的是这一页；改它要商品的码，没有的人只看状态 -->
           <view v-if="inv[c.categoryNo]" class="inv sh-row" @tap.stop="toggleInv(c)">
-            <text class="txt-caption sh-muted">{{ $t("storeCategories.invLabel") }}</text>
+            <text class="txt-caption sh-muted">{{ $t("stockSettings.section") }}</text>
             <sh-switch
               :model-value="inv[c.categoryNo]?.managed"
               :disabled="invBusy || !merchant.can('biz:goods')"

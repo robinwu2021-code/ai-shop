@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "description": "ai-shop B 端（商家端 · 商家经营与自提点履约）",
   "scripts": {
-    "test": "vitest run --config vitest.config.mts",
+    "test": "npm run check:ui && vitest run --config vitest.config.mts",
+    "check:ui": "node --test ../scripts/tests/b-app-*.test.mjs && node ../scripts/audit-b-app-ui.mjs --check",
     "dev:h5": "uni",
     "dev:mp-weixin": "uni -p mp-weixin",
     "dev:app": "uni -p app",

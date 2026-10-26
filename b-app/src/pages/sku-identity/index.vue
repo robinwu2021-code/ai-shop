@@ -31,7 +31,7 @@ async function doExport() {
   try {
     const res = await api.mSkuIdentityExport();
     const stamp = new Date().toISOString().slice(0, 10);
-    saveCsv(res.csv, `商品编码-${stamp}.csv`, t);
+    saveCsv(res.csv, `${String(t("skuIdentity.title"))}-${stamp}.csv`, t);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {

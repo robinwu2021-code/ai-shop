@@ -39,7 +39,7 @@ const merchant = useMerchantStore();
 
 const TABS = [
   { key: "shortage", label: () => t("stockCross.tabShortage") },
-  { key: "all", label: () => t("stockCross.tabAll") },
+  { key: "all", label: () => t("common.all") },
 ] as const;
 
 const tab = ref<(typeof TABS)[number]["key"]>("shortage");

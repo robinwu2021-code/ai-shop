@@ -528,6 +528,6 @@ function at(iso?: string): string {
   padding: 0 4rpx;
 }
 .overdue {
-  color: var(--sh-danger, #b42318);
+  color: var(--sh-danger);
 }
 </style>

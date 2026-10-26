@@ -748,7 +748,7 @@ onShow(() => {
         <view v-if="c.enabled && c.channel === 'MERCHANT_DELIVERY'" class="sum sh-row sh-row--between">
           <template v-if="!ruleOpen">
             <text class="txt-caption sum__t sh-fill">{{ deliverySummary || $t("store.sumDeliveryUnset") }}</text>
-            <sh-go class="sum__go" @tap.stop="openRule">{{ $t("store.edit") }}</sh-go>
+            <sh-go class="sum__go" @tap.stop="openRule">{{ $t("common.edit") }}</sh-go>
           </template>
           <view v-else class="rate" @tap.stop>
             <view class="rate__grid">
@@ -766,7 +766,7 @@ onShow(() => {
               </view>
             </view>
             <view class="rate__btns">
-              <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="ruleOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="ruleOpen = false">{{ $t("common.collapse") }}</text>
               <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="saveRule">{{ $t("store.saveRate") }}</text>
             </view>
           </view>
@@ -793,7 +793,7 @@ onShow(() => {
               <text v-if="!activeAreas.length" class="sh-hint">{{ $t("store.subset.noAreas") }}</text>
             </view>
             <view class="rate__btns">
-              <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="subsetOpen = false">{{ $t("store.collapse") }}</text>
+              <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="subsetOpen = false">{{ $t("common.collapse") }}</text>
               <text class="sh-btn sh-btn--sm sh-btn--soft" @tap="saveSubset(c)">{{ $t("common.save") }}</text>
             </view>
           </view>
@@ -854,7 +854,7 @@ onShow(() => {
     <!-- 吸底保存条：范围有未保存改动时才浮现 -->
     <sh-savebar
       :visible="dirty"
-      :text="String($t('store.unsaved'))"
+      :text="String($t('common.unsaved'))"
       :discard-text="String($t('store.discard'))"
       :save-text="String($t('common.save'))"
       @discard="discard"
@@ -880,7 +880,7 @@ onShow(() => {
 
 .item__path {
   display: block;
-  margin-top: 2rpx;
+  margin-top: 4rpx;
 }
 .pv {
   margin-top: 16rpx;

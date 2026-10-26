@@ -167,7 +167,7 @@ async function discard() {
         商家要的是「现在发布,会把库存从 60 改回 200」这一句。
       -->
       <view v-if="preview.overwrites?.length" class="sh-card sh-mb-sm">
-        <text class="txt-strong">{{ $t("goods.publishOverwrites") }}</text>
+        <view class="sh-card__head"><text class="txt-strong">{{ $t("goods.publishOverwrites") }}</text></view>
         <text class="txt-caption sh-muted intro">{{ $t("goods.publishOverwritesHint") }}</text>
         <view v-for="c in preview.overwrites" :key="`ow-${c.field}`" class="diff">
           <text class="txt-caption txt-quiet">{{ c.label }}</text>
@@ -207,7 +207,7 @@ async function discard() {
 
       <view class="sh-row btns">
         <view class="sh-btn sh-btn--soft sh-fill" @tap="toEdit">
-          {{ $t("goods.edit") }}
+          {{ $t("common.edit") }}
         </view>
         <!-- stale 时按钮就是确认动作本身：文案说清「你在对着此刻的线上版发布」 -->
         <view

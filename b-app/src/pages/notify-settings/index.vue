@@ -79,7 +79,7 @@ async function editWecom() {
   busy.value = true;
   try {
     setting.value = await api.mSaveNotifyWecom(url.trim());
-    uni.showToast({ title: String(t("notifySetting.saved")), icon: "none" });
+    uni.showToast({ title: String(t("common.saved")), icon: "none" });
   } catch {
     uni.showToast({ title: String(t("notifySetting.wecomBad")), icon: "none" });
   } finally {

@@ -107,7 +107,7 @@ async function save() {
       weightG: w,
     });
     fill(setting.value);
-    uni.showToast({ title: t("shipSetting.saved"), icon: "none" });
+    uni.showToast({ title: t("common.saved"), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -197,7 +197,7 @@ onShow(load);
 
     <sh-savebar
       :visible="dirty && editable"
-      :text="String($t('shipSetting.unsaved'))"
+      :text="String($t('common.unsaved'))"
       :discard-text="String($t('store.discard'))"
       :save-text="String($t('common.save'))"
       @discard="setting && fill(setting)"

@@ -69,7 +69,7 @@ describe("库存页面只读接入", () => {
     let resolveInput!: (v: string) => void;
     m.prompt.mockImplementationOnce(() => new Promise(r => { resolveInput = r; }));
     const w = mount(Detail, options); m.show?.(); await flushPromises();
-    await w.findAll(".sh-btn").find(n => n.text() === "stockDetail.adjust")!.trigger("tap");
+    await w.findAll(".sh-btn").find(n => n.text() === "stockDetail.adjustTitle")!.trigger("tap");
     m.store.storeNo = "B"; await flushPromises();
     resolveInput("20"); await flushPromises();
     expect(m.adjust).not.toHaveBeenCalled(); w.unmount();

@@ -108,7 +108,7 @@ async function apply() {
     <template #foot>
       <text v-if="hint" class="txt-caption sh-muted foot__hint">{{ hint }}</text>
       <view class="sh-row bar">
-        <view class="sh-btn sh-btn--muted sh-fill" @tap="emit('close')">{{ $t("batchTag.cancel") }}</view>
+        <view class="sh-btn sh-btn--muted sh-fill" @tap="emit('close')">{{ $t("common.cancel") }}</view>
         <view class="sh-btn bar__main" :class="{ 'is-disabled': busy || !preview?.willChange }" @tap="apply">
           {{ $t(action === "ADD" ? "batchTag.add" : "batchTag.remove") }}
         </view>
