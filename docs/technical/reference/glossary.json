@@ -36446,6 +36446,13 @@
       },
       {
         "host": "BizKey",
+        "name": "BUSINESS_PRINT_FACT",
+        "value": "BF",
+        "zh": "Immutable business printing fact (refund / stored-value receipt).",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "EXPRESS_PICKUP",
         "value": "EP",
         "zh": "快递代下单的取件单（TDD-快递100商家寄件）。",

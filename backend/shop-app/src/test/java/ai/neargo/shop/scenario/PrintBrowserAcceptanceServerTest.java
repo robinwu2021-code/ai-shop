@@ -46,8 +46,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnabledIfEnvironmentVariable(named = "PRINT_BROWSER_ACCEPTANCE", matches = "1")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "shop.print.enabled=true", "server.address=127.0.0.1", "shop.job.enabled=false",
-        "shop.outbox.pump.enabled=false"})
+        "shop.outbox.pump.enabled=false", "shop.pay.stored-value.enabled=true", "shop.refund.closure.enabled=true"})
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(StrictRefundCallbackFlowTest.ExternalChannel.class)
 class PrintBrowserAcceptanceServerTest {
     private static final Path ROOT = Path.of(System.getProperty("java.io.tmpdir"), "print-browser-real");
     private static final String ORDER = "PRINT-BROWSER-ORDER";
@@ -123,6 +124,7 @@ class PrintBrowserAcceptanceServerTest {
         manifest.put("otherEntityNo", other.get("entityNo"));
         manifest.put("otherStoreNo", other.get("storeNo"));
         manifest.put("deniedToken", restrictedStaff(mvc, token, store));
+        prepareBusinessSources(mvc, entity, store, manifest);
         Files.writeString(ready, json.writeValueAsString(manifest));
         Files.setPosixFilePermissions(ready, PosixFilePermissions.fromString("rw-------"));
         Instant deadline = Instant.now().plus(Duration.ofMinutes(20));
@@ -137,6 +139,73 @@ class PrintBrowserAcceptanceServerTest {
             Files.deleteIfExists(ready);
         }
     }
+    /** Financial rows are created by their real owners; only test authentication/channel setup is controlled. */
+    private void prepareBusinessSources(MockMvc mvc, String entity, String store,
+                                        Map<String, String> manifest) throws Exception {
+        var plans = context.getBean(ai.neargo.shop.pay.storedvalue.service.StoredValuePlanService.class);
+        var recharges = context.getBean(ai.neargo.shop.pay.storedvalue.service.StoredValuePlanRechargeService.class);
+        var plan = plans.create(new ai.neargo.shop.pay.entitlement.dto.CatalogScope("MAIN", entity, "OWNER", false),
+                new ai.neargo.shop.spi.storedvalue.StoredValuePlans.Create(store, "浏览器真实充值", "CNY", 10000, 3000), id());
+        var command = new ai.neargo.shop.spi.storedvalue.StoredValuePlanRecharges.Create("PRINT-BROWSER-WALLET-USER",
+                store, "打印浏览器隔离验收店", plan.planNo(), plan.versionNo(), "a".repeat(64));
+        var first = recharges.confirmOffline(entitlementContext(), entity, command);
+        recharges.confirmOffline(entitlementContext(), entity, command); // current balance differs from receipt
+        var event = jdbc.queryForObject("SELECT event_no,payload FROM pay_ent_outbox WHERE aggregate_no=?"
+                        + " AND event_type='STORED_VALUE_RECEIPT_CONFIRMED'", (rs, row) -> {
+            var outbox = new SysOutbox(); outbox.setEventNo(rs.getString(1)); outbox.setPayload(rs.getString(2));
+            outbox.setAggregateType("STORED_VALUE_RECHARGE"); outbox.setAggregateId(first.rechargeNo());
+            outbox.setEventType("STORED_VALUE_RECEIPT_CONFIRMED"); return outbox;
+        }, first.rechargeNo());
+        context.getBean(ai.neargo.shop.printbridge.BusinessPrintReceiptConsumer.class).consume(event);
+        manifest.put("rechargeNo", first.rechargeNo());
+        assertEquals(1L, jdbc.queryForObject("SELECT COUNT(*) FROM biz_print_fact WHERE source_no=?", Long.class, first.rechargeNo()));
+        // A same-store wallet-only employee exercises real API authorization, not an owner bypass.
+        manifest.put("walletToken", sourceStaff(mvc, entity, store, "PRINT-BROWSER-WALLET", "12600825904", false,
+                "[\"pay:sv:recharge:read\",\"pay:sv:account:read\",\"biz:print:read\",\"biz:print:simulate\",\"biz:print:export\"]"));
+        try (var f = new ai.neargo.shop.support.BasicRefundFixture(context)) {
+            String customer = f.login("12600825905");
+            var created = f.request(customer, "/mp/order", "{\"items\":[{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":3}],"
+                    + "\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"usePoints\":0}");
+            assertEquals(0, created.path("code").asInt(), created.toString());
+            String payNo = created.path("data").path("payOrderNo").asString(); f.pay(customer, payNo);
+            String sub = jdbc.queryForObject("SELECT sub_order_no FROM ord_sub_order WHERE order_no=?", String.class, payNo);
+            var purchase = new ai.neargo.shop.support.BasicRefundFixture.Purchase(customer, payNo, sub);
+            f.prepare(purchase);
+            long item = jdbc.queryForObject("SELECT id FROM ord_item WHERE sub_order_no=?", Long.class, sub);
+            var partial = f.request(customer, "/mp/order/" + sub + "/after-sale", "{\"type\":\"REFUND_ONLY\","
+                    + "\"reason\":\"不想要了\",\"reasonCode\":\"NOT_WANTED\",\"items\":[{\"itemId\":" + item + ",\"qty\":1}]}");
+            assertEquals(20011, partial.path("code").asInt(), partial.toString());
+            assertEquals(0L, jdbc.queryForObject("SELECT COUNT(*) FROM ord_after_sale WHERE sub_order_no=?", Long.class, sub));
+            assertEquals(0L, jdbc.queryForObject("SELECT COUNT(*) FROM biz_print_fact WHERE order_no=?", Long.class, payNo));
+            manifest.put("partialRefundResult", "REJECTED_20011_NO_AFTERSALE_NO_RECEIPT");
+            String no = f.apply(purchase, "REFUND_ONLY"); f.approve(purchase, no);
+            assertEquals(0L, jdbc.queryForObject("SELECT COUNT(*) FROM biz_print_fact WHERE source_no=?", Long.class, no));
+            f.confirmCash(no);
+            context.getBean(ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService.class).recover("RF-" + no);
+            assertEquals(1L, jdbc.queryForObject("SELECT COUNT(*) FROM biz_print_fact WHERE source_no=?", Long.class, no));
+            String refundStore = jdbc.queryForObject("SELECT store_no FROM ord_sub_order WHERE sub_order_no=?", String.class, sub);
+            manifest.put("refundNo", no); manifest.put("refundOrderNo", payNo); manifest.put("refundSubOrderNo", sub);
+            manifest.put("refundEntityNo", "M0001"); manifest.put("refundStoreNo", refundStore);
+            manifest.put("refundToken", sourceStaff(mvc, "M0001", refundStore, "PRINT-BROWSER-REFUND", "12600825906", true, "[]"));
+        }
+    }
+
+    private String sourceStaff(MockMvc mvc, String entity, String store, String account,
+                               String phone, boolean owner, String permissions) throws Exception {
+        jdbc.update("INSERT INTO mch_account(mch_account_no,entity_no,login_phone,is_owner,status,created_at,updated_at)"
+                + " VALUES(?,?,?,?,'ACTIVE',now(),now())", account, entity, phone, owner ? 1 : 0);
+        String role = owner ? "OWNER" : "PRINT_WALLET_ACCEPTANCE";
+        if (!owner) jdbc.update("INSERT INTO mch_role(entity_no,role_code,name,builtin,perms,created_at,updated_at)"
+                + " VALUES(?,?,?,0,?,now(),now())", entity, role, "打印钱包专岗验收", permissions);
+        jdbc.update("INSERT INTO mch_store_role(mch_account_no,store_no,role,created_at,updated_at)"
+                + " VALUES(?,?,?,now(),now())", account, store, role);
+        return TestLogin.merchantStaff(mvc, json, otp, phone);
+    }
+    private static String id() { return java.util.UUID.randomUUID().toString().replace("-", ""); }
+    private static ai.neargo.shop.spi.entitlement.EntitlementContext entitlementContext() {
+        return new ai.neargo.shop.spi.entitlement.EntitlementContext("MAIN", "OWNER", id(), "f".repeat(64));
+    }
+
     private Map<String, String> otherMerchant(MockMvc mvc, String operator) throws Exception {
         String phone = "12600825902", name = "打印浏览器另一商家";
         String consumer = TestLogin.consumer(mvc, json, otp, phone);

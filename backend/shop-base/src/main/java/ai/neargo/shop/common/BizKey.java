@@ -208,6 +208,8 @@ public final class BizKey {
     public static final String STORE_VISIT = "VS";
     /** 店铺码印刷量登记。线下事实，运营录入 */
     public static final String QRCODE_PRINT = "QP";
+    /** Immutable business printing fact (refund / stored-value receipt). */
+    public static final String BUSINESS_PRINT_FACT = "BF";
     /** 快递代下单的取件单（TDD-快递100商家寄件）。作为 thirdOrderId 传给通道，长度要 ≤32 */
     public static final String EXPRESS_PICKUP = "EP";
     /**

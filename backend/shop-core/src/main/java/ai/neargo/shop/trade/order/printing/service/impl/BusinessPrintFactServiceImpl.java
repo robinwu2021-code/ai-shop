@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.order.printing.service.impl;
 
 import ai.neargo.shop.trade.order.printing.*;
 
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.print.api.*;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.StoredValueReceiptConfirmed;
@@ -144,7 +145,7 @@ public class BusinessPrintFactServiceImpl implements BusinessPrintFactService {
         var f=new BusinessPrintFact();
         f.setTenantNo(tenant); f.setEntityNo(entity); f.setStoreNo(store); f.setSourceType(type); f.setSourceNo(no);
         f.setOrderNo(order); f.setSubOrderNo(sub); f.setOwnerEventHash(ownerHash);
-        f.setPrintFactNo("BF"+UUID.randomUUID().toString().replace("-", "").substring(0,28));
+        f.setPrintFactNo(BizKey.next(BizKey.BUSINESS_PRINT_FACT));
         f.setBizRevision("1"); f.setScene(scene); f.setTriggerType(trigger); f.setSourceFactKey(key);
         f.setReceiptIntentKey(key); f.setPayloadSchemaVersion(1); f.setSourceOccurredAt(LocalDateTime.ofInstant(at,ZoneOffset.UTC));
         var payload=new LinkedHashMap<String,Object>();
