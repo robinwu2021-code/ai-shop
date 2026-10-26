@@ -135,6 +135,20 @@ class StoreLevelAccessFlowTest {
         assertThat(code(get("/biz/store/" + s.storeA() + "/offline-sale"), s.staff())).isZero();
     }
 
+    // ---------------------------------------------------------------- 库存同步
+
+    @Test
+    @DisplayName("★★ 库存同步：B 店的同步状态、可售规则、库存总览看不了；A 店照常")
+    void stockSyncIsStoreScoped() throws Exception {
+        Shop s = shop();
+        for (String path : List.of("/stock-sync", "/sell-rules", "/stock-alignment")) {
+            assertThat(code(get("/biz/store/" + s.storeB() + path), s.staff()))
+                    .as("B 店 " + path).isEqualTo(FORBIDDEN);
+            assertThat(code(get("/biz/store/" + s.storeA() + path), s.staff()))
+                    .as("A 店 " + path).isZero();
+        }
+    }
+
     // ---------------------------------------------------------------- 售后
 
     @Test
