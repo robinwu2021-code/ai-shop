@@ -238,7 +238,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
              * 不会两边都退。不物理删：这张表是对账与活动效果的账本，删了就查不出「当时发生过什么」。
              */
             int claimed = DataScopeContext.executeWithoutScope(() -> applyMapper.deleteById(r.getId()));
-            if (claimed != 1) {
+            // 超发那一行没占份数也没占预算（见 commit）：作废即可，退了就是退走别人的那一份
+            if (claimed != 1 || PmtApply.QUOTA_OVERRUN.equals(r.getRedeemMode())) {
                 continue;
             }
             long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
@@ -659,6 +660,13 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                  */
                 log.warn("[活动] 限量已满仍命中：活动 {} 订单 {} 多发 {} 份",
                         it.activityNo(), orderNo, it.qty());
+                /*
+                 * 只记 WARN 不够：这一单确实减了钱，活动效果、对账、订单详情的「优惠依据」却都查不到它，
+                 * 超发了几份只能翻日志。照样记一行，标明是超发（redeem_mode = QUOTA_OVERRUN）——
+                 * 份数与预算都没占，取消时 release 也不退。
+                 */
+                insertApply(userNo, orderNo, it, it.amountMinor(),
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT, PmtApply.QUOTA_OVERRUN);
                 continue;
             }
             /*
@@ -721,6 +729,16 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .setSql("quota_used = quota_used + " + it.qty())));
         if (affected == 0) {
             log.warn("[平台活动] 报名份数已满仍命中：报名 {} 订单 {}", it.enrollmentNo(), orderNo);
+            // 与商家活动同一处理：按出资方照样记账、标超发，份数与预算不占、取消不退
+            long merchantPart = it.amountMinor() - it.platformMinor();
+            if (it.platformMinor() > 0) {
+                insertApply(userNo, orderNo, it, it.platformMinor(),
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM, PmtApply.QUOTA_OVERRUN);
+            }
+            if (merchantPart > 0) {
+                insertApply(userNo, orderNo, it, merchantPart,
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT, PmtApply.QUOTA_OVERRUN);
+            }
             return;
         }
         DataScopeContext.executeWithoutScope(() -> activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
@@ -736,6 +754,11 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     }
 
     private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder) {
+        insertApply(userNo, orderNo, it, amount, funder, ai.neargo.shop.promotion.entity.PmtCoupon.REDEEM_ORDER);
+    }
+
+    private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder,
+                             String redeemMode) {
         PmtApply row = new PmtApply();
         row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY));
         row.setPromoType(PmtApply.ACTIVITY);
@@ -743,7 +766,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         row.setUserNo(userNo);
         row.setEntityNo(it.merchantNo());
         row.setOrderNo(orderNo);
-        row.setRedeemMode(ai.neargo.shop.promotion.entity.PmtCoupon.REDEEM_ORDER);
+        row.setRedeemMode(redeemMode);
         row.setAmountMinor(amount);
         row.setFunder(funder);
         row.setAppliedAt(System.currentTimeMillis());
