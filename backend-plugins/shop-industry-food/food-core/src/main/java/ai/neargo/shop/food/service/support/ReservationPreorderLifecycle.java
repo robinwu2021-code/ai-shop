@@ -1,9 +1,9 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.service.support;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
-import ai.neargo.shop.food.service.ServiceSlotLifecycle;
+import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

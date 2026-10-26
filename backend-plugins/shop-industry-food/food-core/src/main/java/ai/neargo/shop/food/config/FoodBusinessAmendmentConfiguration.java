@@ -8,7 +8,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.ReturnMapper;
 import ai.neargo.shop.food.mapper.FoodReturnAmendmentMapper;
 import ai.neargo.shop.food.service.BusinessReturnApprovalService;
 import ai.neargo.shop.food.service.impl.BusinessReturnApprovalServiceImpl;
-import ai.neargo.shop.food.service.impl.FoodAmendmentSourcePortImpl;
+import ai.neargo.shop.food.port.FoodAmendmentSourcePortImpl;
 import ai.neargo.shop.spi.trade.IndustryAmendmentSourcePort;
 import ai.neargo.shop.spi.trade.IndustryOrderAmendmentPort;
 

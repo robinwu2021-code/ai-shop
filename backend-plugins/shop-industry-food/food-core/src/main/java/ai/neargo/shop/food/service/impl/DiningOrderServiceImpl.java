@@ -46,7 +46,7 @@ import ai.neargo.shop.food.service.DiningOrderService;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
 import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.service.SalesQuotaClaimService;
-import ai.neargo.shop.food.service.ServiceSlotLifecycle;
+import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.spi.food.DiningOrderAccepted;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan;

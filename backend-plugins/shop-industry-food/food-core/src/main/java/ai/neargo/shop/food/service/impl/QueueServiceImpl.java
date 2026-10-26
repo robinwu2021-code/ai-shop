@@ -25,7 +25,7 @@ import ai.neargo.shop.food.policy.FoodCommandFingerprint;
 import ai.neargo.shop.food.policy.QueueSeatingPolicy;
 import ai.neargo.shop.food.policy.ServiceCalendarPolicy;
 import ai.neargo.shop.food.service.CheckService;
-import ai.neargo.shop.food.service.QueueNotificationLifecycle;
+import ai.neargo.shop.food.lifecycle.QueueNotificationLifecycle;
 import ai.neargo.shop.food.service.QueueService;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.idem.IdempotencyService;

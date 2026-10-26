@@ -1,6 +1,7 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.job;
 
 import ai.neargo.shop.food.service.ScheduledDiningDispatchService;
+import ai.neargo.shop.food.service.impl.QueueNotificationServiceImpl;
 
 import org.springframework.scheduling.annotation.Scheduled;
 

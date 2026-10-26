@@ -1,4 +1,4 @@
-package ai.neargo.shop.food.service;
+package ai.neargo.shop.food.lifecycle;
 
 import ai.neargo.shop.food.dto.CartVO;
 import ai.neargo.shop.food.dto.DiningPriceFacts;

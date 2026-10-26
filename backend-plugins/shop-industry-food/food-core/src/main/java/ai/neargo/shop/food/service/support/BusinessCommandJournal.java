@@ -1,4 +1,4 @@
-package ai.neargo.shop.food.service.impl;
+package ai.neargo.shop.food.service.support;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -16,16 +16,16 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 /** Permanent business command receipts, independent of the shared short-lived retry cache. */
-final class BusinessCommandJournal {
+public final class BusinessCommandJournal {
     private final FoodBusinessOperationsMapper mapper;
     private final ObjectMapper json;
 
-    BusinessCommandJournal(FoodBusinessOperationsMapper mapper, ObjectMapper json) {
+    public BusinessCommandJournal(FoodBusinessOperationsMapper mapper, ObjectMapper json) {
         this.mapper = mapper;
         this.json = json;
     }
 
-    <T> T execute(
+    public <T> T execute(
             String key,
             String scope,
             String actor,
