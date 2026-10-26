@@ -31,10 +31,48 @@
     "status": "PASS",
     "total": 27
   },
-  "normalFullGate": "ATTEMPT3_STOPPED_AFTER_ORPHAN_DOCUMENT_ARTIFACT_FAILURE",
+  "normalFullGate": {
+    "status": "PASS",
+    "mode": "NORMAL_PRE_PUSH_DRY_RUN",
+    "validatedSha": "f012e043103f99be062d6258e956b49ab343240c",
+    "testSourceCompilation": "PASS",
+    "backendTests": 6499,
+    "backendFailures": 0,
+    "backendFailureBaseline": 0,
+    "reactorSummaryCount": 32,
+    "elapsedSeconds": 1548,
+    "frontend": {
+      "sharedAssertions": 589,
+      "sharedFailures": 4,
+      "sharedBaseline": 4,
+      "opsPassed": 876,
+      "cAppPassed": 635,
+      "bAppPassed": 358
+    },
+    "generatorsCurrent": 25,
+    "bypassFlagsUsed": false,
+    "remoteUpdatedByDryRun": false,
+    "pushTarget": "origin/codex/ai-shop-codex"
+  },
   "orphanArtifactFix": {
     "status": "PASS",
     "tests": 2,
     "historicalDiagnosticCode": "moved to explicitly labeled Markdown code example; no whitelist change"
+  },
+  "finalIntegratedSourceSha": "1a778d5651c3577b082401d54296fd6c52251c86",
+  "optionalFoodSource": {
+    "status": "PASS",
+    "classes": {
+      "MenuSourceVerificationTest": 8,
+      "RemoteMenuSourceVerificationTest": 3,
+      "InternalMenuSourceApiTest": 2
+    },
+    "total": 13,
+    "printingConsumerRegression": {
+      "BusinessPrintSourceFlowTest": 2,
+      "PrintOrderSoftwareFlowTest": 4
+    },
+    "explicitSourceReactorCompilation": "PASS",
+    "defaultBackendAndBuildInputsUnchangedSinceValidatedSha": true
   }
 }
