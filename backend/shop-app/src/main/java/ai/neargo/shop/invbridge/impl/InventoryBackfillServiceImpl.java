@@ -101,7 +101,14 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
                         .orderByAsc(PrdStockLock::getId)
                         .last("LIMIT " + limit)));
 
-        int moved = 0;
+        /*
+         * **按「锁号 + 货主」成组搬，不是逐行。**锁号就是订单号：一单买两个规格是两行 LOCKED、同一个锁号。
+         * 逐行 reserve 时第一行用这个 ref 建了预留，第二行同 ref、行不同 → CONFLICT 被吞掉，
+         * 那件货在进销存里没占住（平台 held=1、进销存 reserved=0），切真相源那天就会被卖掉。
+         * 成组后同一单的行一次交给 reserve；重跑时行集合不变，reserve 按同 ref 同内容幂等返回。
+         */
+        Map<String, List<ReservationService.Line>> groups = new LinkedHashMap<>();
+        Map<String, String[]> refOf = new LinkedHashMap<>();
         for (PrdStockLock lock : held) {
             /*
              * **吃预售额度的那些不搬**：它们占的不是现货，而是「明天要采的量」。
@@ -118,15 +125,21 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
             }
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, lock.getStoreNo()));
+            String key = lock.getLockNo() + "|" + owner;
+            refOf.putIfAbsent(key, new String[] {owner, lock.getLockNo()});
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(new ReservationService.Line(
+                    acl.itemIdOfSku(lock.getSkuNo()), locationId, nz(lock.getQty())));
+        }
+
+        int moved = 0;
+        for (var e : groups.entrySet()) {
+            String[] ref = refOf.get(e.getKey());
             try {
-                reservations.reserve(owner, lock.getLockNo(),
-                        List.of(new ReservationService.Line(
-                                acl.itemIdOfSku(lock.getSkuNo()), locationId, nz(lock.getQty()))),
-                        HELD_TTL_SECONDS);
-                moved++;
-            } catch (RuntimeException e) {
+                reservations.reserve(ref[0], ref[1], e.getValue(), HELD_TTL_SECONDS);
+                moved += e.getValue().size();
+            } catch (RuntimeException ex) {
                 // 已经搬过（同 ref）或此刻可用不足，都不该中断整批
-                log.debug("在途预留 {} 未搬：{}", lock.getLockNo(), e.getMessage());
+                log.debug("在途预留 {} 未搬：{}", ref[1], ex.getMessage());
             }
         }
         if (moved > 0) {
