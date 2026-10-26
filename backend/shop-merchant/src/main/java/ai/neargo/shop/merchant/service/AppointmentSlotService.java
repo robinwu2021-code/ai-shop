@@ -27,6 +27,13 @@ public interface AppointmentSlotService {
     SlotVO close(String merchantNo, String slotNo);
 
     /**
+     * 这个时段挂在哪家店。不是本主体的时段一律 NOT_FOUND —— 与 {@link #close} 同一个回答。
+     *
+     * <p>给门店级判权用：按 slotNo 操作的端点路径里没有门店号，得先反查出来再判这个人能不能动那家店。
+     */
+    String storeOf(String merchantNo, String slotNo);
+
+    /**
      * 列时段。
      *
      * @param onlyBookable true = 只列**买家还约得上的**（可约且没满）。

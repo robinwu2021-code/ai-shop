@@ -38,9 +38,11 @@ public class BizOfflineSaleController {
         this.stores = stores;
     }
 
+    /** 门店属于本主体（不是就 404），且这个人被授权到了这家店（不是就 403）—— 只管 A 店的店员记不了 B 店的账 */
     private String entity(String storeNo) {
         String entityNo = BizContext.requireMerchantNo();
         stores.requireStore(entityNo, storeNo);
+        BizContext.requireStoreAccess(storeNo);
         return entityNo;
     }
 

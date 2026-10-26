@@ -49,12 +49,14 @@ public final class OrderMachine {
                     // O5 自提到店
                     .from(WAIT_FULFILL).on(ARRIVED_AT_PICKUP).by(MERCHANT).when(AUTHORIZED).to(FULFILLING)
                     .emit("OrderArrived").add()
-                    // O6 核销：降级单只推进到履约中，由买家确认收口
-                    .from(WAIT_FULFILL, FULFILLING).on(VERIFIED).by(MERCHANT).when(AUTHORIZED)
+                    // O6 核销：降级单只推进到履约中，由买家确认收口；有进行中售后不收口
+                    // （与发货 / 备货 / 自动确认收货同一条：退款还挂着就把单推到完成，售后期与结算计时都从这一刻起算）
+                    .from(WAIT_FULFILL, FULFILLING).on(VERIFIED).by(MERCHANT).when(AUTHORIZED, NO_OPEN_AFTER_SALE)
                     .toOneOf(Set.of(FULFILLING, COMPLETED), (f, c) -> c.requireBuyerConfirm() ? FULFILLING : COMPLETED)
                     .emit("OrderVerified").add()
-                    // O7 商家标记送达：自送单可能已在「配送中」（FULFILLING），也可能直接从待发货送达
-                    .from(WAIT_FULFILL, FULFILLING).on(DELIVERED_BY_MERCHANT).by(MERCHANT).when(AUTHORIZED).to(COMPLETED)
+                    // O7 商家标记送达：自送单可能已在「配送中」（FULFILLING），也可能直接从待发货送达；有进行中售后不收口
+                    .from(WAIT_FULFILL, FULFILLING).on(DELIVERED_BY_MERCHANT).by(MERCHANT)
+                    .when(AUTHORIZED, NO_OPEN_AFTER_SALE).to(COMPLETED)
                     .emit("OrderCompleted").add()
                     // O8 买家确认收货：也可从待履约出发 —— 微信购物订单的「确认收货」组件不等我们标发货
                     .from(WAIT_FULFILL, FULFILLING).on(RECEIPT_CONFIRMED).by(BUYER).when(AUTHORIZED, ALL_SHIPPED).to(COMPLETED)

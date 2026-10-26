@@ -3,6 +3,8 @@ package ai.neargo.shop.inventory.api.biz;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.dto.InventoryVOs;
 import ai.neargo.shop.inventory.service.InboundService;
@@ -23,7 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 商家端 · 单据（s03 盘点 · s04 进货 · s05 单据 · s06 报损 · s07 调拨）。
@@ -31,6 +35,10 @@ import java.util.List;
  * <p>按**资源**拆而不按屏拆：一屏可能用到两个资源，一个资源也可能出现在两屏 —— 按屏拆的话，改一次交互就要动控制器的边界。
  *
  * <p><b>没有创建销售出库的入口</b>：它只能由预留 {@code commit} 产生。 这里放行的话，商家能凭空造一笔销量，而动销榜、毛利、月报全按它算。
+ *
+ * <p><b>按单号操作的端点都要过门店级判权</b>（{@link #docOwner}）：单号只按业主（主体）查，
+ * 只管 A 店的店员拿到 B 店自有库位上的单号，就能改草稿、过账、作废、看盘点快照。
+ * 新建单据走 {@link #location()}（当前门店，已由 Filter 校验过授权），不在此列；调拨的两头另判。
  */
 @Profile("api")
 @ConditionalOnInventory
@@ -69,20 +77,20 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/inbounds/{no}")
     public void updateInbound(@PathVariable String no, @RequestBody InboundReq req) {
-        inbound.updateDraft(owner(), no, draftOf(req));
+        inbound.updateDraft(docOwner(no), no, draftOf(req));
     }
 
     /** 过账。**请求体里不带数量** —— 数量在草稿里已经存好了，再带一次就有了「以哪份为准」的问题。 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds/{no}/post")
     public void postInbound(@PathVariable String no) {
-        inbound.post(owner(), no, SecurityUtils.currentUserNo());
+        inbound.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds/{no}/void")
     public void voidInbound(@PathVariable String no) {
-        inbound.voidOrder(owner(), no, SecurityUtils.currentUserNo());
+        inbound.voidOrder(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     // ── 出库（报损 / 领用；SALE 被 Service 挡住） ──────────────────────
@@ -112,13 +120,13 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds/{no}/post")
     public void postOutbound(@PathVariable String no) {
-        outbound.post(owner(), no, SecurityUtils.currentUserNo());
+        outbound.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds/{no}/void")
     public void voidOutbound(@PathVariable String no) {
-        outbound.voidOrder(owner(), no, SecurityUtils.currentUserNo());
+        outbound.voidOrder(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     // ── 盘点 ──────────────────────────────────────────────────────────
@@ -133,20 +141,20 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/counts/{no}")
     public InventoryVOs.CountVO count(@PathVariable String no) {
-        return counts.detail(owner(), no);
+        return counts.detail(docOwner(no), no);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/counts/{no}/lines")
     public void fillCount(
             @PathVariable String no, @RequestBody List<StockCountService.Filled> lines) {
-        counts.fill(owner(), no, lines);
+        counts.fill(docOwner(no), no, lines);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/post")
     public void postCount(@PathVariable String no) {
-        counts.post(owner(), no, SecurityUtils.currentUserNo());
+        counts.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     // ── 调拨 ──────────────────────────────────────────────────────────
@@ -157,9 +165,17 @@ public class BizStockDocController {
                 req.lines().stream()
                         .map(l -> new TransferService.Line(l.itemId(), l.qty()))
                         .toList();
+        String ownerId = owner();
+        // 两头都要是他动得到的库位：只管 A 店的人不能把货从 B 店调走，也不能往 B 店塞货
+        // 空的库位号交给服务报 BAD_REQUEST，这里只判给了的
+        for (String loc : java.util.Arrays.asList(req.fromLocationId(), req.toLocationId())) {
+            if (loc != null) {
+                requireLocationAccess(List.of(loc));
+            }
+        }
         return new InventoryVOs.DocNoVO(
                 transfers.create(
-                        owner(),
+                        ownerId,
                         req.fromLocationId(),
                         req.toLocationId(),
                         lines,
@@ -170,7 +186,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/transfers/{no}")
     public InventoryVOs.TransferVO transfer(@PathVariable String no) {
-        return transfers.detail(owner(), no);
+        return transfers.detail(docOwner(no), no);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -179,7 +195,7 @@ public class BizStockDocController {
         // 请求体可空：自己送、没记承运方也要发得出去 —— 强制填的话商家就学会乱填一个
         ShipReq r = req == null ? new ShipReq(null, null, null) : req;
         transfers.ship(
-                owner(),
+                docOwner(no),
                 no,
                 r.carrierNo(),
                 r.carrierName(),
@@ -190,7 +206,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/receive")
     public void receive(@PathVariable String no) {
-        transfers.receive(owner(), no, SecurityUtils.currentUserNo());
+        transfers.receive(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     /**
@@ -208,13 +224,13 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/void")
     public void voidCount(@PathVariable String no) {
-        counts.cancel(owner(), no, SecurityUtils.currentUserNo());
+        counts.cancel(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/void")
     public void voidTransfer(@PathVariable String no) {
-        transfers.cancel(owner(), no, SecurityUtils.currentUserNo());
+        transfers.cancel(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     // ── 请求体 ────────────────────────────────────────────────────────
@@ -288,6 +304,30 @@ public class BizStockDocController {
 
     private String owner() {
         return acl.ownerIdOf(BizContext.requireMerchantNo());
+    }
+
+    /**
+     * 按单号操作的业主 + 门店级判权：单据涉及的库位里至少有一个是这个人动得到的。
+     *
+     * <p>「至少一个」而不是「全部」：调拨单一头在 A 店、一头在 B 店，两边的人都要能看、能发、能收。
+     * 共用发货源（主体默认仓）的门店之间，单据落在同一个库位上，本来就分不出是哪家店的 —— 那一类照常放行。
+     */
+    private String docOwner(String no) {
+        String ownerId = owner();
+        requireLocationAccess(acl.locationsOfDoc(ownerId, no));
+        return ownerId;
+    }
+
+    /** 属主不判；单据不存在（空集合）交给业务服务报 NOT_FOUND，这里不抢着回答 */
+    private void requireLocationAccess(Collection<String> docLocations) {
+        BizContext ctx = BizContext.current();
+        if (ctx.owner() || docLocations.isEmpty()) {
+            return;
+        }
+        Set<String> mine = acl.locationsOfStores(ctx.merchantNo(), ctx.storeNos());
+        if (docLocations.stream().noneMatch(mine::contains)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
     }
 
     private String location() {

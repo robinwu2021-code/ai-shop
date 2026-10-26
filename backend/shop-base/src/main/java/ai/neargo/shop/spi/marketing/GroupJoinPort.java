@@ -46,7 +46,8 @@ public interface GroupJoinPort {
 
     /**
      * @param groupNo         参团时是团号；开团报价时为空（团还没建）
-     * @param skuNo           团限定的规格；为空表示不限（按商品开的团）
+     * @param skuNo           团价对应的规格：<b>只有这个规格的行按团价</b>，同单其他规格照原价。
+     *                        报价恒带值 —— 存量团没记规格的，按商品的首个规格（团价当初就是对着它校验的）
      * @param groupPriceMinor 成团价（分），这张单按它收
      * @param pickupNo        团的成团范围（自提点）；为空表示不限，按下单配到的点
      */

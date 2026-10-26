@@ -223,6 +223,15 @@ public class DualWriteStockPort implements StockPort {
         return platform.sellable(skuNo);
     }
 
+    /**
+     * 按门店的那一版同样要显式转发：接口默认实现退回不带门店那一版（「取最能卖的那家」），
+     * 于是这家店没货、却拿别家的库存放行加购，到结算落店时才拒 —— 与上面同一类静默失效。
+     */
+    @Override
+    public int sellable(String skuNo, String storeNo) {
+        return platform.sellable(skuNo, storeNo);
+    }
+
     @Override
     public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
         platform.setOnHand(skuNo, storeNo, onHand, reason);

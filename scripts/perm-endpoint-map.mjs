@@ -333,9 +333,9 @@ export const RULES = [
   ["GET", /^\/ops\/dashboard\//, "dashboard:overview:read"],
 
   // ── 履约调度与物流（P-5.1 / P-5.2，V130–V135）───────────────────────────
-  // 批次推进与「看批次」共用 batch:read，是全表第二处不拆读写的地方 ——
-  // 理由写在 Perms.FULFILLMENT_BATCH_READ 上：ops-web 的发车按钮就是用它门控的，
-  // 后端另判一个写码等于造一个「看得见、点下去 403」的按钮
+  // 批次推进（发车/到货/签收）是写动作，判 rule:update；此前与「看批次」共用 batch:read，
+  // 等于能看就能签收。ops-web 的发车按钮同步改判 rule:update（见 Perms.FULFILLMENT_BATCH_READ）
+  ["POST", /^\/ops\/fulfillment\/batches\/[^/]+\/status$/, "fulfillment:rule:update"],
   ["*", /^\/ops\/fulfillment\/batches/, "fulfillment:batch:read"],
   ["GET", /^\/ops\/fulfillment\/sorting/, "fulfillment:batch:read"],
   ["GET", /^\/ops\/fulfillment\/redeem/, "fulfillment:redeem:read"],

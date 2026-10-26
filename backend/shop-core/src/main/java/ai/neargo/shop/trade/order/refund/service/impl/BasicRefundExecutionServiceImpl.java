@@ -1,19 +1,24 @@
 package ai.neargo.shop.trade.order.refund.service.impl;
 
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.spi.settle.RefundDispatchResult;
 import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
 import ai.neargo.shop.spi.settle.RefundRequest;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
+import ai.neargo.shop.trade.order.refund.policy.LineShares;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
 import ai.neargo.shop.trade.order.refund.service.RefundFinancialOwnerService;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundPreparationService;
 import ai.neargo.shop.trade.order.refund.service.RefundResourceService;
 import ai.neargo.shop.trade.order.refund.service.RefundResultService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,12 +36,15 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
     private final RefundFinancialOwnerService financialOwner;
     private final ObjectMapper json;
     private final ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
+    private final StoreOrderMapper children;
 
     public BasicRefundExecutionServiceImpl(RefundPreparationService preparation, RefundExecutionStore store,
             RefundResultService results, RefundResourceService resources, SettlePort settle, ObjectMapper json,
             RefundFinancialOwnerService financialOwner,
-            ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations) {
+            ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations,
+            StoreOrderMapper children) {
         this.obligations=obligations;
+        this.children = children;
         this.preparation = preparation;
         this.store = store;
         this.results = results;
@@ -63,7 +71,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
             if (!OrdRefundExecution.CASH.equals(row.getPhase())) {
                 RefundPlan plan = json.readValue(row.getPlanJson(), RefundPlan.class);
                 boolean confirmed = settle.prepareRefundReversal(new SettlePort.SplitReversal(row.getSubOrderNo(),
-                        row.getAfterSaleNo(), plan.goodsMinor(), plan.freightMinor(), plan.goodsMinor()),
+                        row.getAfterSaleNo(), plan.goodsMinor(), plan.freightMinor(), goodsPaid(row.getSubOrderNo())),
                         Boolean.TRUE.equals(row.getZeroLiability()));
                 if (!confirmed) {
                     results.apply(new RefundDispatchResult(no, null, DispatchStatus.ACCEPTED,
@@ -112,6 +120,22 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
         } else {
             dispatch(no);
         }
+    }
+
+    /**
+     * 回退比例的分母：子单商品实付（与积分路径同一口径 {@link LineShares#goodsPaid}）。
+     *
+     * <p>不能用本次方案的货款 —— 那样每笔部分退的比例都是 100%：退 1/3 件就冲回商家整单所得、
+     * 结算单提前转 REVERSED，同单下一笔部分退再也回退不成。
+     * 子单读不到时不猜分母：抛出去由 dispatch 记成 UNKNOWN，留给原执行单续跑。
+     */
+    private long goodsPaid(String subOrderNo) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> children.selectOne(
+                Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1")));
+        if (sub == null) {
+            throw new IllegalStateException("REFUND_EXECUTION_SOURCE_UNKNOWN");
+        }
+        return LineShares.goodsPaid(sub);
     }
 
     private void recoverSuccessful(String no) {

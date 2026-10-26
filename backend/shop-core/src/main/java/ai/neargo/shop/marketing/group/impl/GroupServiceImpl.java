@@ -1179,8 +1179,11 @@ public class GroupServiceImpl implements GroupService {
         // 成团范围（s34 第三行）：一车送到一个点。不选 = 不限点，按各人下单配到的点
         g.setPickupNo(pickupNo == null || pickupNo.isBlank() ? null : pickupNo);
         g.setGoodsNo(snap.goodsNo());
-        // 不钉规格：团按商品开，参团的人买哪个规格都按团价（与买家开团一致）
-        g.setSkuNo(null);
+        /*
+         * 钉住规格：团价只对上面校验过的那个规格（商品的首个规格）成立。
+         * 此前不钉，参团的人买哪个规格都按团价 —— 多规格的货，贵的那个规格被拉到团价（与买家开团一致）。
+         */
+        g.setSkuNo(snap.skuNo());
         g.setEntityNo(merchantNo);
         g.setTitle(snap.title());
         g.setCover(snap.cover());

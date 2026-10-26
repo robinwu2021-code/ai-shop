@@ -5,12 +5,16 @@ import ai.neargo.shop.marketing.campaign.CampaignJson;
 import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
 import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.product.ProductScopeFactsPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * trade → marketing：店铺活动的自动优惠（{@link CampaignPort}）。
@@ -32,9 +36,17 @@ public class CampaignPortImpl implements CampaignPort {
     private final CampaignMapper campaignMapper;
     private final ObjectMapper json;
 
+    /** 货的归属（见 {@link #ownedBy}）。setter 注入：切片测试里没有它时不过滤，运行时恒在 */
+    private ProductScopeFactsPort productFacts;
+
     public CampaignPortImpl(CampaignMapper campaignMapper, ObjectMapper json) {
         this.campaignMapper = campaignMapper;
         this.json = json;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProductFacts(ProductScopeFactsPort productFacts) {
+        this.productFacts = productFacts;
     }
 
     @Override
@@ -85,13 +97,14 @@ public class CampaignPortImpl implements CampaignPort {
                         .le(MktCampaign::getStartAt, now)
                         .ge(MktCampaign::getEndAt, now)));
         java.util.Map<String, Long> out = new java.util.HashMap<>();
+        Map<String, Boolean> owned = new HashMap<>();
         for (MktCampaign c : running) {
             Long price = c.getFlashPriceMinor();
             if (price == null || price <= 0) {
                 continue;
             }
             for (String goodsNo : CampaignJson.readStringList(json, c.getGoodsNos())) {
-                if (!goodsNos.contains(goodsNo)) {
+                if (!goodsNos.contains(goodsNo) || !ownedBy(c, goodsNo, owned)) {
                     continue;
                 }
                 // 同一商品命中多个特价活动时取**最低价**：对用户有利的一侧，
@@ -115,6 +128,7 @@ public class CampaignPortImpl implements CampaignPort {
                         .le(MktCampaign::getStartAt, now)
                         .ge(MktCampaign::getEndAt, now)));
         java.util.Map<String, GiftRule> out = new java.util.HashMap<>();
+        Map<String, Boolean> owned = new HashMap<>();
         for (MktCampaign c : running) {
             Integer buyN = c.getBuyN();
             Integer giftM = c.getGiftM();
@@ -123,7 +137,7 @@ public class CampaignPortImpl implements CampaignPort {
             }
             GiftRule rule = new GiftRule(buyN, giftM);
             for (String goodsNo : CampaignJson.readStringList(json, c.getGoodsNos())) {
-                if (!goodsNos.contains(goodsNo)) {
+                if (!goodsNos.contains(goodsNo) || !ownedBy(c, goodsNo, owned)) {
                     continue;
                 }
                 // 命中多个时取「买同样多送得更多」的：按买 1 件能送几件比较
@@ -132,6 +146,22 @@ public class CampaignPortImpl implements CampaignPort {
             }
         }
         return out;
+    }
+
+    /**
+     * 这件货是不是建活动那家商家自己的。
+     *
+     * <p>保存时已经拦住了别家的货（CampaignServiceImpl#assertGoodsOwned），这里是<b>纵深防御</b>：
+     * 库里可能已有拦截之前存下的行。按货号反查活动、不看活动归属的话，A 店一个 ¥0.01 特价
+     * 会让 B 店的货在全平台按 A 定的价卖 —— 而 B 不会收到任何提示。一次调用内按「商家|货号」缓存。
+     */
+    private boolean ownedBy(MktCampaign c, String goodsNo, Map<String, Boolean> cache) {
+        if (productFacts == null) {
+            return true;
+        }
+        String tenant = c.getTenantNo() == null || c.getTenantNo().isBlank() ? "MAIN" : c.getTenantNo();
+        return cache.computeIfAbsent(tenant + "|" + c.getEntityNo() + "|" + goodsNo, k -> c.getEntityNo() != null
+                && productFacts.goodsOwned(tenant, c.getEntityNo(), Set.of(goodsNo)));
     }
 
     /**

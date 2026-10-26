@@ -708,6 +708,13 @@ const isDraft = ref(true);
  * 线上已经变了），也决定要不要给「查看差异并发布」入口。
  */
 const wasOnSale = ref(false);
+/**
+ * 打开页面时各已有规格的库存（skuNo → 输入框里的字符串）。
+ *
+ * <p>保存商品**不改已有规格的库存**（后端忽略那一格 —— 整份覆盖会把这段时间卖掉的件数加回去）。
+ * 库存是实时数，要走单独的改库存接口；这里只用来挑出「他在本页确实改了的那几行」。
+ */
+const loadedStock = ref<Record<string, string>>({});
 /** 表单当前盖着一层草稿（进来时就有未发布修改）—— 顶部横幅的开关 */
 const editingDraft = ref(false);
 /*
@@ -1718,6 +1725,9 @@ onLoad(async (q) => {
   });
   wasOnSale.value = !!g.onSale;
   if (draft) applyDraft(draft, g);
+  loadedStock.value = Object.fromEntries(
+    rows.value.filter((r) => r.skuNo).map((r) => [r.skuNo as string, r.stock]),
+  );
 });
 
 /**
@@ -1802,7 +1812,8 @@ function applyDraft(d: NonNullable<Awaited<ReturnType<typeof api.mGoodsDraft>>>,
       skuNo: k.skuNo,
       optionValues: [...k.optionValues],
       priceMajor,
-      stock: String(k.stock),
+      // 已有规格的库存不走草稿（保存时后端会忽略它），显示线上实时那份；草稿里的是上次的旧数
+      stock: String(base ? base.stock : k.stock),
       originMajor: origin0 ? toMajor(origin0) : "",
       nominalGram: gram0 ? String(gram0) : "",
       costMajor: cost0 ? toMajor(cost0) : "",
@@ -1826,6 +1837,25 @@ function toPublishPage() {
 /** 贴底条的「取消」：不存、回上一页。改了一半的内容不拦 —— 与建活动的取消同一行为 */
 function back() {
   uni.navigateBack();
+}
+
+/**
+ * 已有规格改了库存的，逐行走改库存接口（与列表页同一分法：多店改当前门店，单店改主体）。
+ * 新规格的初始库存随商品保存一起落，不在这里。
+ */
+async function saveChangedStock(no: string | undefined) {
+  if (!no) return;
+  for (const r of rows.value) {
+    if (!r.skuNo || !(r.skuNo in loadedStock.value)) continue;
+    if (r.stock === loadedStock.value[r.skuNo]) continue;
+    const n = Math.max(0, Math.floor(Number(r.stock) || 0));
+    if (merchant.multiStore) {
+      await api.mSaveStoreStock(no, r.skuNo, n);
+    } else {
+      await api.mSaveStock(no, r.skuNo, n);
+    }
+    loadedStock.value[r.skuNo] = r.stock;
+  }
 }
 
 async function save(thenSubmit = false) {
@@ -1944,6 +1974,7 @@ async function save(thenSubmit = false) {
         };
       }),
     });
+    await saveChangedStock(goodsNo.value || saved.goodsNo);
     /*
      * 「保存并提交」是两次调用，不是一个开关：
      * 保存要能单独成立（填一半先存着），而提交是他另一个决定。

@@ -510,7 +510,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 会话不带任何维度（超管 / ALL）时 DataScopeHandler 直接放行，与今天一致。
          */
         var w = Wrappers.<PrdGoods>lambdaQuery();
-        applyStatus(w, "PENDING");
+        /*
+         * 待审 = 商品行在审（新品 / 免审关时的直接编辑）**或** 在售商品有一份已提交的草稿。
+         * 后者的 live 行保持 APPROVED（线上照卖旧版，见 publishDraft），只能从草稿表认出来。
+         * 草稿表同样按 MERCHANT 登记了数据域，这里**不豁免**：配了商家域的审核员只捞到自己那几家。
+         */
+        List<String> submitted = draftMapper.selectList(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                        .select(PrdGoodsDraft::getGoodsNo)
+                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED))
+                .stream().map(PrdGoodsDraft::getGoodsNo).toList();
+        if (submitted.isEmpty()) {
+            applyStatus(w, "PENDING");
+        } else {
+            w.and(x -> x.eq(PrdGoods::getAuditStatus, AUDITING).or().in(PrdGoods::getGoodsNo, submitted));
+        }
         w.orderByDesc(PrdGoods::getId);
         Page<PrdGoods> p = goodsMapper.selectPage(Page.of(page, size), w);
         return PageData.of(toVOs(p.getRecords()), p.getTotal(), page, size);
@@ -958,7 +971,11 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (isNew) {
             DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(g));
         } else {
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
+            // 直接改了主行 = 送审的是这一版；之前提交的草稿基于旧内容，留着会被过审原样换上来
+            if (PUBLISHING.get() == null) {
+                withdrawSubmittedDraft(g.getGoodsNo());
+            }
         }
         publishSkuUpserted(merchantNo, g,
                 saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups()));
@@ -989,14 +1006,21 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 处置的牙齿就是下架本身。要回架得他显式再点上架，那一步有自己的校验。
              * 失败（80017/乐观锁）整个发布事务回滚，线上停在完整旧版。
              */
+            // 换版后仍在架 = 新版本此刻要对买家可见，草稿可能换了类目 —— 照上架闸门判一次
+            if (Boolean.TRUE.equals(g.getOnSale())) {
+                requireListable(g.getEntityNo(), listingStoreOf(g), g.getCategoryNo());
+            }
             bakeForPublish(g);
             g.setAuditStatus(APPROVED);
             g.setPendingOnSale(false);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
             onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
             return toVO(g);
         }
         if (!stayDraft && !auditRequired()) {
+            if (Boolean.TRUE.equals(g.getPendingOnSale())) {
+                requireListable(merchantNo, listingStoreOf(g), g.getCategoryNo());
+            }
             bakeForPublish(g);
             g.setAuditStatus(APPROVED);
             if (Boolean.TRUE.equals(g.getPendingOnSale())) {
@@ -1004,7 +1028,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
             g.setPendingOnSale(false);
             log.info("[免审] goods.audit=off，保存即过审：goods={} merchant={}", g.getGoodsNo(), merchantNo);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
             onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
             return toVO(g);
         }
@@ -1162,13 +1186,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (auditRequired()) {
             /*
              * 审核开：**线上继续卖旧版** —— 这正是双版本对 V247 的全部改进。
-             * live 行只把 audit_status 置 AUDITING（进现有审核队列，队列代码零改动），
-             * on_sale 一个字节不动。过审回调里换版（见 audit 方法的草稿分支）。
+             * 过审回调里换版（见 audit 方法的草稿分支）。
+             *
+             * ★ **待审状态记在草稿行上（SUBMITTED），live 行一个字节不动。**
+             * 第一版把 live 的 audit_status 置成 AUDITING 好让它「零改动」进审核队列 ——
+             * 而买家列表、详情、下单快照全都要求 APPROVED：审核期间旧版不是「继续卖」，
+             * 是从买家那边整件消失。待审队列与看板改成同时认 SUBMITTED 草稿。
              */
             draft.setStatus(PrdGoodsDraft.SUBMITTED);
             DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(draft));
-            live.setAuditStatus(AUDITING);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(live));
             return toVO(live);
         }
         return swapFromDraft(live, draft, merchantNo);
@@ -1370,6 +1396,52 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * 过审换版的 dry-run：这份草稿此刻换上去会不会失败。<b>不写任何一行</b>。
+     *
+     * <p>只判两种已知会在换版中途失败的情况 —— 准入闸（换版后仍在架时，按草稿的类目判）
+     * 与规格停档（与发布预览同一个 bakeSpecs）。
+     *
+     * @return 拦下的原因；能换回 null
+     */
+    private String swapBlocker(PrdGoods live, PrdGoodsDraft draft) {
+        SaveCommand cmd = snapshotCmd(draft.getPayload());
+        if (cmd == null) {
+            return "草稿解析失败";
+        }
+        String categoryNo = cmd.stdNo() == null || cmd.stdNo().isBlank()
+                ? cmd.categoryNo() : applyStd(cmd).categoryNo();
+        if (Boolean.TRUE.equals(live.getOnSale())) {
+            try {
+                requireListable(live.getEntityNo(), listingStoreOf(live), categoryNo);
+            } catch (BizException e) {
+                return e.getMessage();
+            }
+        }
+        String groups = writeSpecGroups(cmd.specGroups());
+        BakedSpecs baked = groups == null || groups.isBlank() ? null
+                : bakeSpecs(live.getEntityNo(), categoryNo, groups);
+        if (baked != null && !baked.unresolved().isEmpty()) {
+            return String.join("、", baked.unresolved());
+        }
+        return null;
+    }
+
+    /**
+     * 把待审（SUBMITTED）草稿撤回编辑态。<b>撤回，不删</b> —— 那是商家写的内容，
+     * 他可能还想基于它改；但它不能再被过审原样换上线。
+     *
+     * <p>调用点：强制下架（处置推翻了草稿提交时的前提）、商品行被直接改写（送审的已是另一版）。
+     * 不撤的话：草稿待审 → 强制下架 → 商家整改 → 运营过审，生效的是强制下架之前那份草稿。
+     */
+    private void withdrawSubmittedDraft(String goodsNo) {
+        DataScopeContext.executeWithoutScope(() -> draftMapper.update(null,
+                Wrappers.<PrdGoodsDraft>lambdaUpdate()
+                        .set(PrdGoodsDraft::getStatus, PrdGoodsDraft.EDITING)
+                        .eq(PrdGoodsDraft::getGoodsNo, goodsNo)
+                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED)));
     }
 
     private GoodsVO swapFromDraft(PrdGoods live, PrdGoodsDraft draft, String publishedBy) {
@@ -1607,9 +1679,30 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         // Set 而不是 List：下面每删一行都要 contains 一次，
         // 而规格矩阵 3×4×3 = 36 个 SKU × 3 市场 = 108 行，List 是 O(n²)
         Set<String> kept = new java.util.HashSet<>();
+        Set<String> ownSkuNos = existing.stream().map(PrdSku::getSkuNo)
+                .collect(java.util.stream.Collectors.toSet());
         for (Sku sku : skus) {
-            String skuNo = sku.skuNo() == null || sku.skuNo().isBlank()
-                    ? BizKey.next(BizKey.SKU) : sku.skuNo();
+            /*
+             * ★ **端上带来的 skuNo 必须已经属于这件商品**，新 SKU 的编号只能由这里生成。
+             *
+             * 唯一键是 (entity_no, sku_no, market)，不含 goods_no —— 照单全收的话，
+             * 商家 A 在自己的商品里填一个 B 家的 skuNo，就会在 A 名下插出一行同号 SKU；
+             * 而下单快照（GoodsQueryPortImpl.snapshot）是**按 sku_no 全局查**的，
+             * 两行同号时取到哪一行由返回序决定 —— B 的买家可能按 A 定的价、A 的商品下单。
+             * 不报错，B 也看不到任何异常。
+             */
+            if (sku.skuNo() != null && !sku.skuNo().isBlank() && !ownSkuNos.contains(sku.skuNo())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            boolean newSku = sku.skuNo() == null || sku.skuNo().isBlank();
+            String skuNo = newSku ? BizKey.next(BizKey.SKU) : sku.skuNo();
+            // 初始库存只对新 SKU 有意义（见下面 setStock 的注释）；负数会让它一上架就欠着货
+            if (newSku && sku.stock() < 0) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            Integer stockOfExisting = newSku ? null : existing.stream()
+                    .filter(s -> skuNo.equals(s.getSkuNo()) && s.getStock() != null)
+                    .map(PrdSku::getStock).findFirst().orElse(null);
             // 按市场逐行写：(entity_no, sku_no, market) 是价格的唯一权威，
             // 一个 SKU 在三个市场就是三行，而不是一行里塞一个 JSON 价格表
             Map<String, Long> prices = new LinkedHashMap<>();
@@ -1639,6 +1732,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 }
                 prices.putAll(sku.priceByMarket());
             }
+            /*
+             * **每个市场的价都必须有、且 ≥ 0**。priceByMarket 是 Map<String, Long>，
+             * 端上发 {"AE": null} 时这里原先照单全收：带划线价的那一支在比较时拆箱 NPE（500），
+             * 不带的那一支把 price=null 落进库 —— 列表按 0 元展示、下单按 0 元扣钱。
+             * 负价同理：一件「倒贴钱」的商品没有任何一道闸会拦。
+             */
+            for (Long p : prices.values()) {
+                if (p == null || p < 0) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            }
             for (var e : prices.entrySet()) {
                 String key = skuNo + "@" + e.getKey();
                 PrdSku row = byNo.get(key);
@@ -1655,7 +1759,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 row.setOptionValueNos(writeJson(valueNos(sku.optionValues(), valueNoByDim)));
                 row.setSpec(String.join(" · ", sku.optionValues() == null ? List.of() : sku.optionValues()));
                 row.setPrice(e.getValue());
-                row.setStock(sku.stock());
+                /*
+                 * ★ **库存只在建行时写，已有 SKU 的库存保存一律不动**。
+                 *
+                 * 这里原先每次保存都 setStock(sku.stock()) —— 而发布/过审换版是把草稿
+                 * 原样回放一遍 save()。草稿里的库存是商家打开编辑页那一刻抄下的数：
+                 * 草稿存 100，其间卖掉 40，发布一按库存回到 100，40 件凭空多出来 ——
+                 * 超卖，且绕过了 StockPort（条件 UPDATE、进销存那本账都不知道）。
+                 * 改库存的唯一入口是 saveStock / saveStoreStock（走 StockPort）。
+                 *
+                 * 同一个 SKU 新开一个市场：库存不分市场，跟上已有那一行的数。
+                 */
+                if (fresh) {
+                    row.setStock(stockOfExisting != null ? stockOfExisting : Math.max(sku.stock(), 0));
+                }
                 /*
                  * 划线价与标称重量：**不传 = 不改**，与商品级那几段同一条规矩。
                  * 两列此前都是「有列、有契约、没有写入路径」——
@@ -2030,9 +2147,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // 而他手上一张订单都没有
             throw BizException.of(ErrorCode.GOODS_NOT_APPROVED);
         }
-        if (onSale) {
-            requireCategoryAuthorized(merchantNo, g.getCategoryNo());
-        }
         String storeNo = BizContext.current().currentStoreNo();
         /*
          * 闸二：**上架的商品，它的类目必须在这家店的经营类目里**（TDD-门店经营类目 §4.1）。
@@ -2043,7 +2157,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 反向的口子（类目被撤而商品还在）仍由 StoreCategoryService.replace 堵：底下有商品删不掉。
          */
         if (onSale) {
-            requireInStore(merchantNo, storeNo, g.getCategoryNo());
+            requireListable(merchantNo, storeNo, g.getCategoryNo());
         }
         /*
          * 多门店商家的上下架落在**门店行**上，不动主体的 on_sale。
@@ -2077,13 +2191,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                             .filter(r -> activeStores.contains(r.getStoreNo()))
                             .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
             g.setOnSale(anyOn);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
             onSaleSideEffects(g, anyOn);
             return toVO(g);
         }
 
         g.setOnSale(onSale);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         onSaleSideEffects(g, onSale);
         return toVO(g);
     }
@@ -2114,7 +2228,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         g.setAuditStatus(REJECTED);
         g.setAuditReason("平台强制下架：" + reason.trim());
         g.setOnSale(false);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
+        withdrawSubmittedDraft(g.getGoodsNo());
         // 店级行全下且**不打 platform_suspended**：商品要重新过审才能回来，
         // 恢复走审核链路，不走门店解除处置那条标记
         for (var row : storeGoodsRows(goodsNo)) {
@@ -2146,7 +2261,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         g.setAuditReason("平台下架：" + reason.trim());
         g.setOnSale(false);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         for (var row : storeGoodsRows(goodsNo)) {
             if (Boolean.TRUE.equals(row.getOnSale())) {
                 row.setOnSale(false);
@@ -2186,7 +2301,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     .filter(r -> activeStores.contains(r.getStoreNo()))
                     .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
             g.setOnSale(anyOn);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
             onSaleSideEffects(g, anyOn);
         }
     }
@@ -2218,7 +2333,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
             if (!Boolean.TRUE.equals(g.getOnSale())) {
                 g.setOnSale(true);
-                DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+                updateGoods(g);
             }
             onSaleSideEffects(g, true);
         }
@@ -2515,6 +2630,27 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 报一个专用错误码，让端上能把「缺哪张资质、去哪申请」说出来 ——
      * 通用的「请求参数有误」会让商家反复改商品信息，而问题根本不在商品上。
      */
+    /**
+     * <b>上架闸门的唯一入口</b>：经营准入（保证金 / 禁售类目 / 资质）+ 本店经营类目。
+     *
+     * <p>此前这两道只挂在「上下架按钮」一条路上，而让商品变成 on_sale=true 的路有五条：
+     * 免审提交、过审兑现上架意向、免审编辑、发布换版（含草稿换了类目）、手动上架。
+     * 其余四条一道都不过 —— 禁售类目的主体只要不点按钮、改走提交或发布，货照样上架。
+     * 收成一个方法，新加第六条路的人只需要记住调它。
+     *
+     * @param storeNo 判经营类目用的门店；空时用商品的归属门店（运营过审没有「当前门店」）
+     */
+    private void requireListable(String merchantNo, String storeNo, String categoryNo) {
+        requireCategoryAuthorized(merchantNo, categoryNo);
+        requireInStore(merchantNo, storeNo, categoryNo);
+    }
+
+    /** 不在 B 端当前门店上下文里时（运营过审），按商品自己的归属门店判经营类目 */
+    private String listingStoreOf(PrdGoods g) {
+        String current = BizContext.current().currentStoreNo();
+        return current != null && !current.isBlank() ? current : g.getStoreNo();
+    }
+
     private void requireCategoryAuthorized(String merchantNo, String categoryNo) {
         boolean categorized = categoryNo != null && !categoryNo.isBlank();
         String required = categorized ? categoryService.requiredCodeOf(categoryNo) : null;
@@ -2624,7 +2760,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         long now = System.currentTimeMillis();
         g.setNewNotifiedAt(now);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         events.publish(new ai.neargo.shop.spi.product.ProductEvents.NewGoodsOnSale(
                 g.getGoodsNo(), g.getEntityNo(), g.getTitle(), g.getSubtitle(), now));
     }
@@ -2800,14 +2936,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             });
             if (!auditRequired()) {
                 // 免审：提交即编译上架。编译失败（80017）直接抛给商家 ——
-                // 他就在屏幕前，逐条点名比留一个「审核中」的假状态有用
+                // 他就在屏幕前，逐条点名比留一个「审核中」的假状态有用。准入同理：当场拒
+                requireListable(merchantNo, listingStoreOf(g), g.getCategoryNo());
                 bakeForPublish(g);
                 g.setAuditStatus(APPROVED);
                 g.setOnSale(true);
                 g.setPendingOnSale(false);
                 log.info("[免审] goods.audit=off，提交即过审上架：goods={} merchant={}",
                         g.getGoodsNo(), merchantNo);
-                DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+                updateGoods(g);
                 onSaleSideEffects(g, true);
                 return toVO(g);
             }
@@ -2818,7 +2955,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 过审后仍是 false，于是他提交完以为在卖了，其实一件也卖不出去。
              */
             g.setPendingOnSale(true);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
         }
         return toVO(g);
     }
@@ -2848,7 +2985,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 而重审期间商品是下架的：改一次截单等于停一天生意。
          * 改的是「今天几点前下单」，不是商品本身 —— 审核结论不该因此失效。
          */
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         return toVO(g);
     }
 
@@ -2994,6 +3131,45 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        /*
+         * ★ **只有待审的东西能被审**：商品行在审（AUDITING），或者有一份已提交的草稿。
+         *
+         * 此前不判任何状态：强制下架（= 撤销过审，REJECTED）之后运营再点一次「通过」，
+         * 商品不经整改就回到过审态；更糟的是那份强制下架前提交的草稿还挂着 SUBMITTED，
+         * 过审会把它原样换上线 —— 商家之后的整改被一份过期内容覆盖。
+         *
+         * DRAFT 仍放行：运营代审未提交的新品是存量用法（大量测试夹具也这么建品），
+         * 它没有「绕过整改」的问题 —— 草稿从没过过审。
+         */
+        boolean hasSubmittedDraft = DataScopeContext.executeWithoutScope(() ->
+                draftMapper.selectCount(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                        .eq(PrdGoodsDraft::getGoodsNo, g.getGoodsNo())
+                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED))) > 0;
+        if (!hasSubmittedDraft && !AUDITING.equals(g.getAuditStatus()) && !DRAFT.equals(g.getAuditStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (!approved) {
+            PrdGoodsDraft pending = DataScopeContext.executeWithoutScope(() ->
+                    draftMapper.selectOne(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                            .eq(PrdGoodsDraft::getGoodsNo, g.getGoodsNo())
+                            .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED).last("limit 1")));
+            if (pending != null) {
+                /*
+                 * **驳回的是草稿，不是线上那一版。** 双版本下待审的是 SUBMITTED 草稿，
+                 * live 行一直是过审在卖的旧版 —— 走下面的通用驳回会把它一起下架，
+                 * 等于「改个错别字被驳回 = 商品停卖」，正是双版本要消灭的那件事。
+                 * 草稿退回编辑态让商家改了再发；原因落在商品行上，商家侧照常看得到。
+                 * （发布曾把 live 置 AUDITING 的存量行，这里一并拨回 APPROVED。）
+                 */
+                pending.setStatus(PrdGoodsDraft.EDITING);
+                DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(pending));
+                g.setAuditStatus(APPROVED);
+                g.setAuditReason(reason.trim());
+                updateGoods(g);
+                revisions.recordRejected(goodsNo, reason.trim());
+                return toVO(g);
+            }
+        }
         g.setAuditStatus(approved ? APPROVED : REJECTED);
         // 原因落在商品行上（V96）：它是商家能看到的那半边。过审清空 ——
         // 旧原因留着会被当成「还有问题没改完」
@@ -3031,26 +3207,38 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 换版失败（草稿引用了这期间停用的档）不打回审核结论 —— 保持旧版在售，
                  * 草稿退回 EDITING，商家重新发布时得到 80017 的逐条点名。
                  */
-                try {
-                    // 过审换版:发布人是平台审核,不是商家 —— 历史里要分得开
-                    return swapFromDraft(g, submitted, "PLATFORM_AUDIT");
-                } catch (BizException e) {
-                    log.warn("[换版] 过审换版失败，旧版继续卖、草稿退回编辑态：goods={} msg={}",
-                            g.getGoodsNo(), e.getMessage());
+                /*
+                 * ★ **先判、后换**。换版是把草稿回放进 save()，失败时前半截的写入
+                 * （商品行、SKU、删草稿）已经发生 —— 在同一个事务里 catch 住再「保持旧版」，
+                 * 留下的是半新半旧的商品（乐观锁收紧之后还会变成 CONFLICT）。所以已知会失败的
+                 * 两种情况（准入闸、规格停档）在动任何一行之前 dry-run 判掉；
+                 * 判过之后仍失败就直接抛出，整个过审回滚，草稿保持待审。
+                 */
+                String blocker = swapBlocker(g, submitted);
+                if (blocker != null) {
+                    log.warn("[换版] 过审换版被拦，旧版继续卖、草稿退回编辑态：goods={} reason={}",
+                            g.getGoodsNo(), blocker);
                     submitted.setStatus(PrdGoodsDraft.EDITING);
                     DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(submitted));
                     g.setAuditStatus(APPROVED);
-                    DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+                    updateGoods(g);
                     return toVO(g);
                 }
+                // 先落下上面已置好的 APPROVED + 清空原因：上一轮驳回草稿时落在商品行上的原因过审即清。
+                // 换版内部按 goodsNo 重读商品行，读到的就是这一版
+                updateGoods(g);
+                // 过审换版:发布人是平台审核,不是商家 —— 历史里要分得开
+                return swapFromDraft(g, submitted, "PLATFORM_AUDIT");
             }
             if (Boolean.TRUE.equals(g.getPendingOnSale())) {
                 /*
                  * 编译点的第二入口。这里烘焙失败**不打回审核**（审核员改不了商家的规格，
                  * 拒他等于把商家的问题算在审核头上）—— 改成不恢复上架 + 记 warn：
                  * 商家看到「过审但没上架」，手动上架时会撞到 80017 的逐条点名。
+                 * 准入闸同理：过审判的是内容，此刻能不能卖这一类是主体的事，不打回审核结论。
                  */
                 try {
+                    requireListable(g.getEntityNo(), listingStoreOf(g), g.getCategoryNo());
                     bakeForPublish(g);
                     g.setOnSale(true);
                 } catch (BizException e) {
@@ -3061,7 +3249,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         // 用完清零：留着的话下一次审核会把一个过期的意向再兑现一遍
         g.setPendingOnSale(false);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
         return toVO(g);
     }
@@ -3303,6 +3491,21 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             out.add(PayModes.OFFLINE);
         }
         return out;
+    }
+
+    /**
+     * 写回商品行，<b>0 行就是冲突</b>。
+     *
+     * <p>{@code prd_goods} 带 {@code @Version}：读完之后别人先改了一笔，MyBatis-Plus 的
+     * {@code updateById} 不抛异常，只返回 0 —— 不看返回值的话接口照样回成功，
+     * 而这次以为写进去的上架、改标题、过审一个字节都没落库（SKU 那几行却已经写了）。
+     * 抛 CONFLICT 让整个事务回滚，调用方拿到的是「请刷新重试」而不是一句假的成功。
+     */
+    private void updateGoods(PrdGoods g) {
+        Integer n = DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        if (n == null || n == 0) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     private PrdGoods mine(String merchantNo, String goodsNo) {

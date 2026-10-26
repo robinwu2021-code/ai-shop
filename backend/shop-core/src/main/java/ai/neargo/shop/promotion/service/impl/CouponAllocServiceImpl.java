@@ -77,7 +77,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
                     Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
             if (c != null && PmtCoupon.ACTIVE.equals(c.getStatus())
                     && PmtCoupon.REDEEM_ORDER.equals(c.getRedeemMode())
-                    && uc.usableAt(now, c.timesTotalOrOne())) {
+                    && uc.usableAt(now, c.timesTotalOrOne()) && c.startedAt(now)) {
                 out.add(uc.getUserCouponNo());
             }
         }
@@ -103,10 +103,16 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         assertUsable(uc, coupon);
 
         // 商家券只对本店商品计门槛、也只减本店的钱
+        java.util.Set<String> stores = storesOf(coupon);
         List<CouponPort.MerchantAmount> applicable = groups.stream()
                 .filter(g -> coupon.getEntityNo() == null || coupon.getEntityNo().isBlank()
                         || coupon.getEntityNo().equals(g.merchantNo()))
+                // 指定门店的券只认那几家店出货的组：门槛只按它们计、钱也只减它们
+                .filter(g -> stores == null || (g.storeNo() != null && stores.contains(g.storeNo())))
                 .toList();
+        if (stores != null && applicable.isEmpty()) {
+            throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
+        }
         long base = applicable.stream().mapToLong(CouponPort.MerchantAmount::goodsAmount).sum();
         if (base < nz(coupon.getMinAmountMinor())) {
             throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
@@ -185,40 +191,58 @@ public class CouponAllocServiceImpl implements CouponAllocService {
     @Transactional
     public void release(String orderNo) {
         // 取消订单退回券。不退的话用户会觉得券被平台吞了 —— 券功能第二大客诉
-        List<PmtUserCoupon> used = DataScopeContext.executeWithoutScope(() ->
-                userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
-                        .eq(PmtUserCoupon::getOrderNo, orderNo)));
-        var roots = new TreeMap<String, PmtUserCoupon>();
-        used.forEach(row -> roots.put(row.getCouponNo(), row));
+        /*
+         * **按这一单的使用记录（pmt_apply）找券，不按券上的 order_no 找。**
+         *
+         * 次卡每用一次，券上的 order_no 就被改成最近那一单：A 单用一次、B 单再用一次，
+         * 取消 A 时按 order_no 一张都找不到 —— A 那一次永久消失，用户的次卡凭空少一次。
+         * pmt_apply 每一次使用一行、带着订单号，是「这一单用了哪张券几次」唯一不会被覆盖的答案。
+         */
         var originalApplications = DataScopeContext.executeWithoutScope(() -> applyMapper.selectList(
                 Wrappers.<PmtApply>lambdaQuery().eq(PmtApply::getOrderNo, orderNo)
                         .eq(PmtApply::getPromoType, PmtApply.COUPON).isNull(PmtApply::getRevertedAt)));
+        var roots = new TreeMap<String, PmtUserCoupon>();
+        var applied = new TreeMap<String, PmtUserCoupon>();
         for (var application : originalApplications) {
             var instance = DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectOne(
                     Wrappers.<PmtUserCoupon>lambdaQuery().eq(PmtUserCoupon::getTenantNo, application.getTenantNo())
                             .eq(PmtUserCoupon::getUserCouponNo, application.getPromoNo())));
-            if (instance != null) roots.put(instance.getCouponNo(), instance);
+            if (instance != null) {
+                roots.put(instance.getCouponNo(), instance);
+                applied.put(instance.getUserCouponNo(), instance);
+            }
         }
+        // 没有使用记录的存量（新模型之前盖了 order_no 的那批）：照旧按券上的订单号退，一单算一次
+        List<PmtUserCoupon> legacy = DataScopeContext.executeWithoutScope(() ->
+                userCouponMapper.selectList(Wrappers.<PmtUserCoupon>lambdaQuery()
+                        .eq(PmtUserCoupon::getOrderNo, orderNo))).stream()
+                .filter(uc -> !applied.containsKey(uc.getUserCouponNo())).toList();
+        legacy.forEach(row -> roots.put(row.getCouponNo(), row));
         for (var root : roots.values()) {
             sourceFence.requireWritable(root.getTenantNo(), SourceSystem.PMT, root.getCouponNo(), true);
         }
-        used = used.stream().sorted(Comparator.comparing(PmtUserCoupon::getCouponNo)).toList();
-        for (PmtUserCoupon uc : used) {
-            uc.setTimesUsed(Math.max(0, nz(uc.getTimesUsed()) - 1));
-            uc.setStatus(PmtUserCoupon.UNUSED);
-            DataScopeContext.executeWithoutScope(() -> userCouponMapper.update(null,
-                    Wrappers.<PmtUserCoupon>lambdaUpdate()
-                            .eq(PmtUserCoupon::getId, uc.getId())
-                            .eq(PmtUserCoupon::getOrderNo, orderNo)
-                            .set(PmtUserCoupon::getStatus, PmtUserCoupon.UNUSED)
-                            .set(PmtUserCoupon::getTimesUsed, uc.getTimesUsed())
-                            // 必须显式 set null：updateById 默认跳过 null 字段，
-                            // 那样订单号会留在券上，第二次取消时把别人的单也退了
-                            .set(PmtUserCoupon::getOrderNo, null)
-                            .set(PmtUserCoupon::getUsedAt, null)));
-        }
-        // 发生记录不删行，标一个撤销时刻 —— 「发生过又撤销了」与「没发生过」不是一回事
         long now = System.currentTimeMillis();
+        for (PmtUserCoupon uc : applied.values().stream()
+                .sorted(Comparator.comparing(PmtUserCoupon::getCouponNo)).toList()) {
+            /*
+             * 先把这一单这张券的使用记录标撤销，**标中几行就退几次** —— 重复取消、并发取消都只有一次标得中，
+             * 不会多退。发生记录不删行：「发生过又撤销了」与「没发生过」不是一回事。
+             */
+            int uses = DataScopeContext.executeWithoutScope(() -> applyMapper.update(null,
+                    Wrappers.<PmtApply>lambdaUpdate()
+                            .eq(PmtApply::getOrderNo, orderNo)
+                            .eq(PmtApply::getPromoType, PmtApply.COUPON)
+                            .eq(PmtApply::getPromoNo, uc.getUserCouponNo())
+                            .isNull(PmtApply::getRevertedAt)
+                            .set(PmtApply::getRevertedAt, now)));
+            if (uses > 0) {
+                restore(uc, orderNo, uses);
+            }
+        }
+        for (PmtUserCoupon uc : legacy.stream().sorted(Comparator.comparing(PmtUserCoupon::getCouponNo)).toList()) {
+            restore(uc, orderNo, 1);
+        }
+        // 兜底：这一单剩下的券使用记录（找不到那张券的）一并标撤销
         DataScopeContext.executeWithoutScope(() -> applyMapper.update(null,
                 Wrappers.<PmtApply>lambdaUpdate()
                         .eq(PmtApply::getOrderNo, orderNo)
@@ -226,6 +250,26 @@ public class CouponAllocServiceImpl implements CouponAllocService {
                         .eq(PmtApply::getPromoType, PmtApply.COUPON)
                         .isNull(PmtApply::getRevertedAt)
                         .set(PmtApply::getRevertedAt, now)));
+    }
+
+    /**
+     * 把 {@code uses} 次使用退回这张券：已用次数用 SQL 直接减（不许减成负数），并回到 UNUSED。
+     * 券上的订单号<b>只在它正指着这一单时</b>清掉 —— 指着别的单说明那一单还在用着它。
+     */
+    private void restore(PmtUserCoupon uc, String orderNo, int uses) {
+        DataScopeContext.executeWithoutScope(() -> userCouponMapper.update(null,
+                Wrappers.<PmtUserCoupon>lambdaUpdate()
+                        .eq(PmtUserCoupon::getId, uc.getId())
+                        .setSql("times_used = GREATEST(times_used - " + uses + ", 0)")
+                        .set(PmtUserCoupon::getStatus, PmtUserCoupon.UNUSED)));
+        DataScopeContext.executeWithoutScope(() -> userCouponMapper.update(null,
+                Wrappers.<PmtUserCoupon>lambdaUpdate()
+                        .eq(PmtUserCoupon::getId, uc.getId())
+                        .eq(PmtUserCoupon::getOrderNo, orderNo)
+                        // 必须显式 set null：updateById 默认跳过 null 字段，
+                        // 那样订单号会留在券上，第二次取消时把别人的单也退了
+                        .set(PmtUserCoupon::getOrderNo, null)
+                        .set(PmtUserCoupon::getUsedAt, null)));
     }
 
     /**
@@ -275,9 +319,41 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         return c == null ? null : c.getTitle();
     }
 
+    /** 门店范围（{@code pmt_coupon_scope}）。setter 注入：直接 new 本类的切片测试没有它 */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.CouponScopeMapper scopeMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setScopeMapper(ai.neargo.shop.promotion.mapper.PromotionMappers.CouponScopeMapper scopeMapper) {
+        this.scopeMapper = scopeMapper;
+    }
+
+    /**
+     * 「指定门店」券能用的门店号；不是门店券给 null（= 不按门店限）。
+     *
+     * <p>建券时下单抵扣只放行全店与指定门店，门店列表落在 {@code pmt_coupon_scope}；此前算价只按主体筛，
+     * 写着「仅限河坊街店」的券在总店的单上照样减 —— 商家为一家店做的让利被全主体吃掉，到对账才发现。
+     * <b>读不到范围就当一家店都不认</b>（空集合）：宁可这张券用不了，也不能退回成全店券。
+     */
+    private java.util.Set<String> storesOf(PmtCoupon coupon) {
+        if (!PmtCoupon.SCOPE_STORE.equals(coupon.getScopeType())) {
+            return null;
+        }
+        if (scopeMapper == null) {
+            return java.util.Set.of();
+        }
+        return DataScopeContext.executeWithoutScope(() -> scopeMapper.selectList(
+                        Wrappers.<ai.neargo.shop.promotion.entity.PmtCouponScope>lambdaQuery()
+                                .eq(ai.neargo.shop.promotion.entity.PmtCouponScope::getCouponNo, coupon.getCouponNo())
+                                .eq(ai.neargo.shop.promotion.entity.PmtCouponScope::getScopeType, PmtCoupon.SCOPE_STORE)))
+                .stream().map(ai.neargo.shop.promotion.entity.PmtCouponScope::getRefNo)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
     private void assertUsable(PmtUserCoupon uc, PmtCoupon coupon) {
         long now = System.currentTimeMillis();
         boolean ok = uc.usableAt(now, coupon.timesTotalOrOne())
+                // 绝对有效期没到开始时刻不能用（定向发放不判开始时刻，持有的那张只记了到期）
+                && coupon.startedAt(now)
                 && PmtCoupon.ACTIVE.equals(coupon.getStatus())
                 // 到店核销的券**不参与下单算价**：一张券两条路一定会被用两次，
                 // 而对账时谁也说不清是重复核销还是重复抵扣
