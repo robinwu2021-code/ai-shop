@@ -139,6 +139,17 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 - 独立客户端位于commerce-channel，单次typed调用COMMERCE服务（新增ServiceName常量），重验全部事实/派生身份hash/channelStoreKey/期限/回执，无默认目标和回退。`shop.commerce.authority-client.enabled`默认关闭，已有本地Service优先；该开关仅远程读，不启用发布/任务/业务写入。原部署命令不变。
 - 执行：先观察无能力失败专项→完成全部代码/测试→集成与独立服务统一编译→集中原连接/授权/新只读/真实HTTP/令牌及关闭装配专项→消融与一次独立复核→仅相关修复复测→设计、代码、验收对账/生成清单/本地白名单提交。预期覆盖跨主体/门店/旧修订、DRAFT/停用、撤权/过期/缺CATALOG、网络外事务、版本/凭据/身份变化、伪回执/超期、输出无密钥、旧服务缺能力、401/400/404/409和独立关闭状态。不宣称完整FOOD适配或真实平台已可发布。
 
+### L3 S2B2B2a 原营业日历来源实施计划（2026-10-26）
+
+完整FOOD目录前补原营业日历只读合同，不在外部适配器复制fnb表或解析一份新营业时间。此批只交付可信日历来源；媒体和完整目录映射仍属后续S2B2B2。
+
+- food-api新增StoreCalendarSourceContracts.Query(entityNo/storeNo/fromDate/toDate)，显式营业日期范围最多31天。Facts包含原门店status/openHours、原策略时间线policyNo/timezone/cutoverMinute/effectiveFrom/version、范围内日期例外calendarNo/date/mode/intervals/policyNo/version及30秒回执；无默认时区、全天营业或默认策略。无生效策略/未知营业时间的判定关闭，READONLY保留并判为不接单。
+- 保留覆盖该日期范围的UTC保护区间（fromDate减2天至toDate加3天），读区间前最后一个策略和区间内全部后续策略；最多256次策略变化，超界拒绝。跨时区/切点可能使同一营业日跨自然日，不将例外擅自改为自然日；原保存时policyNo仅溯源，不要求等于现在生效策略。
+- StoreCalendarSourceServiceImpl使用原StoreCardQueryPort、StorePolicyMapper、ServiceCalendarMapper。原门店查询均在事务外；主体/门店/MAIN限定的本域两次只读RR读取围绕第二次门店查询，比较原事实检测变化；已有事务拒绝，缺失原门店/能力/策略关闭；无任何业务写入。
+- 原ServiceCalendarPolicy同FQN迁到food-api，原签名/行为保留并追加仅需时区/切点的重载，客户端复用acceptsAt/businessDate/normalize，提供范围内给定Instant的精确判定。StoreCalendarSourcePolicy校验严格输入/字段/顺序/唯一性/原scope/期限和完整摘要；摘要不是签名，不替代服务令牌。
+- 沿现有food-web.foodclient/FoodClientConfiguration注册单次FOOD typed远程服务，food-server.api.InternalStoreCalendarSourceController沿原安全链；内部POST /internal/food/store-calendar-sources/capture，不新增公开API、表、权限或任务。
+- 执行：先观察capture未实现RED；全部代码及测试完成后统一编译；集中校验原小时/跨午夜/04点切日/OPEN与CLOSED/未来策略切换/跨主体店/未知时段/缺能力/并发变化/原始输出篡改与令牌；一次守卫消融、一次独立只读复核，修复仅验证相关部分。集成及独立服务干净打包，更新三处对账，仅本地白名单提交。
+
 ### 明确的事务和并发
 
 - 原请求journal区分PLATFORM/ENTITY/STORE，平台配置不伪造经营主体。账号授权operation允许尚无connection，按ACCOUNT/CONNECTION非空规范键去重。原请求journal与本域配置写入在本地事务；同键异payload或不兼容操作者冲突。
@@ -671,3 +682,52 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 最终验证：集成宿主shop-app及food-server/commerce-server在相同两Profile下`clean package -DskipTests`成功（60秒，含测试源码编译）；随后集中运行本批及相关原连接/授权/目录/映射专项65项、相关架构/装配5项，共70项全部通过，0失败0跳过。10项设计专项、25个生成器及git diff --check通过。临时移除前后事实比较使并发变更专项真实失败，自动恢复后本次70项绿灯。一次独立只读复核无Critical/Important/Minor发现，无二次复核。测试为H2、真实本地HTTP及MockMvc令牌链，未冒充生产MySQL并发、真实外卖平台或跨进程上线验收。原厨房SSE架构问题未修改、未放宽规则、未重跑无关失败项。
 
 本阶段只做本地提交，不推送/部署。后续S2B2B2将本次事实与原餐牌绑定/价格/营业日历/媒体组合，再进入S3可信发布通知；完整原FOOD目录捕获和真实平台适配仍未完成。
+
+
+### S2B2B2a 原营业日历来源交付（2026-10-26）
+
+为完整目录适配提供原接单日历事实，不复制或改写现有营业时间/日历表。未新增公开路由、数据表/迁移、权限、前端、定时任务、外卖平台或支付开关；媒体来源和完整FOOD目录仍待后续。
+
+#### 内部合同和输入输出
+
+`POST /internal/food/store-calendar-sources/capture`，沿原FOOD服务令牌链和无业务包装响应。请求不接受营业时间、切点或例外配置覆盖。
+
+| 对象 | 字段及校验 |
+| --- | --- |
+| Query | entityNo/storeNo严格原编号；fromDate/toDate严格YYYY-MM-DD字符串，含首尾最多31个营业日，支持年份1900～9998；未知字段拒绝 |
+| Facts | schemaVersion=1、purpose=STORE_CALENDAR、query、store、policies、exceptions、verifiedAt/validUntil/receiptNo |
+| Store | 原entityNo/storeNo/status/openHours；保留READONLY和未知原文，不猜全天营业 |
+| Policy | policyNo/timezone/cutoverMinute/effectiveFrom/version；原UTC生效时间，按时序保留范围前基线及保护区间内全部策略；版本为JSON安全整数 |
+| ExceptionDay | calendarNo/businessDate/mode/intervals/savedPolicyNo/version；日期为营业日，OPEN规范区间最多32个、CLOSED空区间；范围内日期唯一升序 |
+
+有效期最多从读取开始起30秒；receiptNo为完整内容摘要（自身字段清空），不是签名或权限。400非法输入、401未授权服务、403原业务禁止、404原门店/能力/策略缺失、409原数据冲突/期间变化；501/503等远程故障不返回空成功，也不自动回退。未知营业时间可以作为原事实返回，但日历判定为关闭，目录发布方不能把未知解析为全天。
+
+#### 原日历如何判定
+
+调用`StoreCalendarSourcePolicy.acceptsAt(facts, targetInstant, observedAt)`：先验证本次事实未过期且范围/摘要完整，再按目标瞬间选最后一条已生效原策略，以该策略的时区和切点求营业日，查对应例外；原门店须ACTIVE、原营业时间须允许，且该日OPEN例外若存在也须允许。CLOSED例外、缺已生效策略、未知原小时或营业日超出捕获范围均返回false。无例外时沿原门店营业时间。savedPolicyNo只作保存时溯源，策略变更后仍按原行为使用该营业日例外。
+
+为覆盖时差、切点和跨午夜，策略读取使用UTC保护区间：fromDate前2天至toDate后3天，另取下界前最后一条基线；最多256次区间内变更，超量拒绝且不截断。此策略保留原始时间线，不将营业日例外直接误投影为自然日例外，也不把目标将来的Instant当成证据校验时刻。最终真实下单仍须由原订单流程再次确认接单资格，此来源不授予支付、库存或菜单资格。
+
+#### 实际代码和方法
+
+| 模块 | 类及方法 |
+| --- | --- |
+| food-api | dto.StoreCalendarSourceContracts及严格整数/日期解析器；service.StoreCalendarSourceService.capture；spi.StoreCalendarSourceInternalApi.capture；policy.StoreCalendarSourcePolicy.validateQuery/lower/upper/seal/validate/acceptsAt |
+| food-api / 原food-core | ServiceCalendarPolicy同FQN迁移，原businessDate/normalize/acceptsAt保持行为；追加只接收时区/切点的重载，避免构造虚假付款策略 |
+| food-core | service.impl.StoreCalendarSourceServiceImpl.capture/store/load；原StorePolicyMapper和ServiceCalendarMapper按MAIN/主体/门店限定，两次RR读取及门店事务外重读比对，拒绝调用方已有事务；FoodAutoConfiguration沿原持久化开关装配 |
+| food-web | foodclient.RemoteStoreCalendarSourceService.capture及FoodClientConfiguration；沿原独立形态/开关和本地Service优先约定，5秒单次typed调用，无默认远端目标 |
+| food-server | api.InternalStoreCalendarSourceController.capture/businessFailure；沿原FOOD安全链与异常状态约定，无新增全局安全例外 |
+
+#### 验收对账
+
+| 原需求 | 本次已编码子集 | 对应测试 |
+| --- | --- | --- |
+| AC03 原来源及时段 | 原营业小时、04点切日、OPEN/CLOSED例外、未来策略生效点、未知/READONLY、范围外关闭 | StoreCalendarSourceServiceTest、原ServiceCalendarPolicyTest |
+| AC15 scope/边界/独立部署 | 跨主体/门店、缺原能力/策略、拒绝事务外层、原事实变更检测、超量不截断、时间线/日期唯一性 | StoreCalendarSourceServiceTest及原日历保存专项 |
+| AC15 内部合同 | 严格日期/整数/文本与未知字段、完整摘要/期限、真实HTTP令牌、错误保留、默认关闭及本地owner优先 | RemoteStoreCalendarSourceServiceTest、InternalStoreCalendarSourceApiTest及原RemoteStoreOperationServiceTest |
+
+初始RED为capture尚未实现时NOT_FOUND；首次原数据库专项及原策略回归10项通过。默认关闭装配测试最初错误加载启用态门店探针，导致测试夹具启动失败；将该探针限定到启用态后远程及内部接口专项通过，未为此修改生产行为。完整集中测试、守卫消融、独立复核与干净打包证据在最终附记对账。
+
+最终验证：相同food-embedded/commerce-embedded Profile下，shop-app、food-server、commerce-server干净`clean package -DskipTests`成功（57.592秒，包含测试源码编译）；随后集中相关Java共34项全部通过（13新增、16原日历/远程回归、5相关架构/装配），0失败0跳过，16.387秒。10项设计专项、25个生成器及git diff --check通过。临时移除日历前后比较后，并发变更专项真实失败；自动恢复后本次集中测试通过。一次独立只读复核无Critical/Important/Minor发现，无二次复核。H2、真实本地HTTP和MockMvc服务令牌链不代表生产MySQL并发或真实外部平台验收；未重跑或放宽原厨房SSE无关失败规则。
+
+本批只作本地白名单提交，不推送、部署或启用真实渠道。接续S2B2B2：原可信媒体展示来源、餐牌渠道语境与完整FOOD目录组装；然后S3可靠发布通知。本次31天/256变更的边界不用于猜测更长的营业日历，扩展范围需另补有边界的组合合同。

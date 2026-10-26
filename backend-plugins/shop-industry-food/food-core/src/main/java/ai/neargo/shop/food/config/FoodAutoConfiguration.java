@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.food.service.StoreCalendarSourceService;
+import ai.neargo.shop.food.service.impl.StoreCalendarSourceServiceImpl;
 import ai.neargo.shop.food.service.MenuCatalogPriceService;
 import ai.neargo.shop.food.service.impl.MenuCatalogPriceServiceImpl;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
@@ -159,6 +161,17 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(StoreCalendarSourceService.class)
+    StoreCalendarSourceService storeCalendarSourceService(
+            StorePolicyMapper policies, ServiceCalendarMapper calendars,
+            ObjectProvider<StoreCardQueryPort> stores, ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new StoreCalendarSourceServiceImpl(
+                policies, calendars, stores::getIfAvailable, json, manager, Clock.systemUTC());
+    }
+
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(MenuCatalogPriceService.class)
