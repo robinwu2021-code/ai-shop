@@ -108,6 +108,14 @@ public class RefundServiceImpl implements RefundService {
         return r;
     }
 
+    @Override
+    public List<PayRefund> recentOfStore(PayCaller caller, Long storeId, int limit) {
+        policy.check(caller, PayAction.QUERY, storeId);
+        return DataScopeContext.executeWithoutScope(() -> refunds.selectList(Wrappers.<PayRefund>lambdaQuery()
+                .eq(PayRefund::getStoreId, storeId).orderByDesc(PayRefund::getId)
+                .last("LIMIT " + Math.max(1, Math.min(limit, 200)))));
+    }
+
     /** 第三方只能动自己建的单（与 {@code PaymentServiceImpl#requireOwner} 同一条规则）：不归它的一律当作不存在 */
     private static boolean ownedBy(PayCaller caller, Long payAppId) {
         return caller.type() != CallerType.PARTNER || Objects.equals(caller.callerId(), payAppId);

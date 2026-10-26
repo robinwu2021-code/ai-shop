@@ -46,6 +46,8 @@ public class CheckoutServiceImpl implements CheckoutService {
     /** 静态码建的单归这个内部接入方（db/pay V11 种子） */
     static final String CHECKOUT_APP = "CHECKOUT";
     static final String QR_BIZ_TYPE = "CHECKOUT_QR";
+    /** 商家代客收款建的单 */
+    static final String COLLECT_BIZ_TYPE = "BIZ_COLLECT";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final PayCheckoutSessionMapper sessions;
@@ -178,6 +180,22 @@ public class CheckoutServiceImpl implements CheckoutService {
     /** 币种小数位按市场表；市场没配给 null，不兜底成 2 位（与 {@code MarketService#currencyOf} 同一条理由） */
     private Integer scaleOf(String market) {
         return markets.find(market).map(MarketService.MarketRow::currencyScale).orElse(null);
+    }
+
+    @Override
+    public Issued collect(PayCaller caller, Long storeId, long amountMinor, String subject, Integer expireMinutes) {
+        int minutes = expireMinutes == null ? 15 : expireMinutes;
+        if (amountMinor <= 0 || minutes < 1 || minutes > 1440) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        StoreRef store = stores.storeById(storeId).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+        String currency = MerchantDefaults.currencyOf(store.market());
+        String outOrderNo = BizKey.next("BZC");
+        PayOrder o = payments.create(caller, new CreatePaymentCmd(COLLECT_BIZ_TYPE, outOrderNo, outOrderNo, store.storeId(),
+                store.storeName(), store.entityName(), store.market(), amountMinor, currency,
+                subject == null || subject.isBlank() ? store.storeName() : subject, "ONLINE",
+                Instant.now().plus(Duration.ofMinutes(minutes)), store.fundsPath()));
+        return issue(o);
     }
 
     private PayQrCode activeCode(String qrCode) {

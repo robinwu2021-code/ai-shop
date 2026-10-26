@@ -25,6 +25,9 @@ public interface RefundService {
     /** 按退款单号查，只能查自己范围内的（第三方只认自己发起的退款）；不存在或不归它 → {@code NOT_FOUND} */
     PayRefund query(PayCaller caller, String payRefundNo);
 
+    /** 本店最近的退款单（商家端列表，F40）：调用方门店范围之外的门店一律拒绝 */
+    java.util.List<PayRefund> recentOfStore(PayCaller caller, Long storeId, int limit);
+
     /** 能不能发渠道：待复核 / 已驳回不发 */
     boolean dispatchAllowed(String executionNo);
 

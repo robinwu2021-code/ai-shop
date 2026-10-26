@@ -1,6 +1,6 @@
 # TDD-支付服务-I5接入层
 
-状态：实现中（S1–S4、S6a webhook、S7 收银台（后端 + `checkout-h5`）已实现；S6b 内部事件、S5、S8 起未动）
+状态：实现中（S1–S4、S6a webhook、S7 收银台（后端 + `checkout-h5`）、S8 商家端后端已实现；S8 b-app 页面、S6b 内部事件、S5、S9 起未动）
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §3.3–§3.6、§5 I5 · [完整设计方案](./TDD-支付服务-完整设计方案.md) §9 · [台湾阿联酋通道与开放 API](./TDD-支付服务-台湾阿联酋通道与开放API.md) §2.8 · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §3 · [ADR-044](./ADR/ADR-044-支付接入层模块pay-portal.md) · 配套：[接口清单](./支付服务-接口清单.md) · [安全规范](./支付服务-安全规范.md)
 创建：2026-10-26 · 最后更新：2026-10-26
 
@@ -156,6 +156,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | F30（令牌生命周期） | `#tokenLifecycle`（不存在 404；关单当场 `REVOKED`、再访问 410；过期 410） | ✅ | ⑨ 关单不作废 → 红（第一版只断言 410，因「单已关」另有判断而消融不红，补断言行状态后才红）⑩ 不判过期 → 红 ✅ |
 | F31（静态码） | `#staticCode`（看门店；超单笔 422；建两单后超单码日累计 422；单记 `CHECKOUT` 来源、`biz_no` = 码；停用后 404） | ✅ | ⑪ 不查日累计 → 红 ✅ |
 | F35（`checkout-h5`） | `checkout-h5` vitest 19 条：`app.test.ts`（收款方在金额上方且服务端字符串只当文本；410 / 404 同一失效屏；小数位缺失不显示金额不给付款；AE 市场 + 非中文浏览器 → `ar` 从右到左；`?lang=` 压过浏览器语言；选方式 → 测试通道 → 结果页；回跳页无令牌只说回原页面；静态码超单笔前端先拦、合法金额按最小单位提交）· `channel.test.ts`（跳转只认 https、JSAPI 交 WeixinJSBridge）· `money.test.ts` · `i18n.test.ts`（四语键集与占位符一致）· `routes.test.ts`；`npm run check`：`tsc` 无错、构建、**首屏 7.5 KB gzip（预算 100 KB）**；浏览器实看 6 屏（mock） | ✅ | ⑫ 字符串走 innerHTML → 注入用例红 ⑬ 跳转不限协议 → 红 ⑭ 小数位兜底成 2 → 2 条红 ⑮ 前端不拦单笔上限 → 红；RTL 闸门：往 CSS 写一条 `padding-left` → 报出 ✅ |
+| F40 F42 F43 F44 F45（S8 后端） | `BizPayFlowTest`：`#unauthenticatedIsRejectedAndLogged`（无商家令牌 401 + `BIZ_API` 鉴权失败留痕）· `#collectPayStatementRefund`（代客收款出动态码 → 顾客经收银台付 → 本店日流水 → 发起退款，退款单记 `BIZ` 来源与操作员）· `#cannotTouchAnotherShop`（别家已付的单退不了、流水里没有）· `#staticCodes`（码值 ≥ 22 字符、能扫、停用后 404、别家停不了）· `#appGrants`（授权 / 列表 / 撤销即 REVOKED；内部接入方不可授权）· `BizEndpointPermTest`（7 个端点登记权限码） | ✅ 5/5 | ⑯ 商家链去掉 BIZ 接入层过滤器 → 留痕断言红 ⑰ 停码不查门店 → 红 ⑱ 可授权内部接入方 → 红 ⑲ 流水不按门店 → 红（**第一版 A 的单没付，消融不红；先让 A 付成后才红**）✅ |
 | 守卫 | `PortalRouteRulesTest`（类级前缀）· `PayReverseDependencyBudgetTest` · `TableHasProducerTest` · `ArchitectureTest` · `CallbackTemplateTest` · `OpsEndpointPermTest` 等 88 条 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -168,6 +169,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | S6a | `pay-domain` `notify.{WebhookSender, HttpWebhookSender, WebhookTargets}` · `notify.entity.{PayBizNotify, PayBizNotifyAttempt}` · `mapper.notify.NotifyMappers`（`claim` 租约）· `notify.service.BizNotifyService(+Impl)` · `job.BizNotifyDeliveryJob` · 挂点 `PaymentOutcomeServiceImpl#apply` / `PaymentServiceImpl#close` / `RefundOutcomeServiceImpl#succeeded·failed` · `SignatureCanonicalizer#parseQuery`（自鉴权器移入，入站出站共用；`+` 按字面）· `application-testcfg.yml` `shop.pay.notify.webhook.allow-insecure-targets` |
 | S7 | `pay-domain` `checkout.entity.PayCheckoutSession` · `checkout.service.CheckoutService(+Impl)` · `CheckoutMappers`（`PayCheckoutSessionMapper#revokeAll`、`PayQrCodeMapper#dailyTotal`）· `PaymentService#findById` · `PaymentServiceImpl#close` 作废令牌 · `PayMerchantBindingService#storeById` · `V11` 追加 `CHECKOUT` 接入方种子 · `ErrorCode.PAY_CHECKOUT_EXPIRED / _LIMIT` + 三语 · `pay-portal` `api.checkout.CheckoutController` · `api.auth.CheckoutVisitorAuthenticator` · `PortalAuthFilter#maskPath` · `PortalExceptionHandler`（410）· `OpenPaymentController` 建单签令牌 · `shop-app` `SecurityConfig#checkoutChain` · `schema-test.sql` 重新生成 |
 | F35 | 新工作区 `checkout-h5/`（Vite + TypeScript，无框架：`routes.ts` 路由真源 · `app.ts` · `views/{pay,code,result}.ts` · `api.ts` · `channel.ts` · `i18n.ts` 四语 · `money.ts` · `mock.ts` 本机假接口 · `scripts/check-size.mjs` 首屏预算）· 根 `package.json` / `package-lock.json`（只加工作区三处条目）· `.gitignore` · `.claude/launch.json`（`checkout-h5-mock`）· `scripts/gen-ui-catalog.py`（`read_checkout`）· `scripts/check-rtl-physical.mjs`（扫 `.css`）· `prototypes/pay-checkout-h5.html` + 登记 · `ui-catalog.json` 重新生成 · 后端 `CheckoutService` 视图加 `currencyScale` / `market` |
+| S8 后端 | `pay-portal` `api.biz.{BizPayContext, BizPayCollectionController, BizPayRefundController, BizPayQrCodeController, BizPayStatementController, BizPayAppGrantController}` · `api.auth.BizSessionAuthenticator` · `pay-domain` `CheckoutService#collect` · `checkout.service.QrCodeService(+Impl)` · `RefundService#recentOfStore` · `acquiring.service.PayStatementService(+Impl)` · `openapp.service.AppGrantService(+Impl)` · `InternalCallers.CHECKOUT` · `funds.BizDates#startUtc` · `shop-base-auth` `BizPerms`（`mch:pay:collect/refund/statement/app-grant/qr` + 说明）· `SecurityConfig#merchantChain`（挂 BIZ 接入层过滤器）· `BizEndpointPermTest` · `TableHasProducerTest`（删两条陈行）· 接口清单 §5 |
 | S4 | `acquiring.route.RouteSelectionPolicy` · `PaymentService#start`（+ `requireOwner`、`attachAttempt` 先按支付单号挂并复制冻结列）· `RefundService#query` + 第三方只退自己的单 · `PayMerchantBindingService#storeByNo` · `api.open.{OpenPaymentController, OpenRefundController, OpenStoreController, OpenViews}` · `shop-base` `spi.pay.PayOrderNumbers` · `OrderServiceImpl#markPaid` 跳过支付单号 · `OpenApiFlowTest` · `application-testcfg.yml` |
 
 ### 偏差说明
@@ -193,3 +195,4 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | Q3 | 密钥模块（`sec_*`）是否在 I5 内落地 | 不阻塞 I5：接入方密钥先走 `ConfigAppKeyResolver`（部署注入、只读）；见安全规范 §3 的过渡规则 |
 | Q4 | `checkout-h5` 的生产域名 | 独立子域 `pay.{品牌域名}`（Apple Pay 验证文件、渠道回跳地址都登记在它上面） |
 | Q5 | 旧运营路径转发周期 | 一个版本周期（约 2 周），期间旧路径打弃用日志，归零后删除 |
+12. **S8 取舍**：代客收款单记在内部接入方 `CHECKOUT` 名下（`pay_order.pay_app_id` 必填），商家账号在 `operator_no` / 退款单 `requested_by`；代客收款单列了独立权限码 `mch:pay:collect`（计划写「与退款同组」——收钱与退钱分开授权更合理）；路径按 `/biz` 单数约定；线下退款凭证（F41）与进件迁入（F46）未做。

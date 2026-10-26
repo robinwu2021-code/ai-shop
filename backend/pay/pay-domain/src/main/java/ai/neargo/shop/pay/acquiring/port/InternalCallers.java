@@ -30,6 +30,8 @@ public class InternalCallers {
     /** 内部 app 码（{@code pay_app.app_no}，V7 种子） */
     public static final String MALL = "MALL";
     public static final String FOOD = "FOOD";
+    /** 收银台接入方（V11 种子）：静态码与商家代客收款建的单记在它名下 */
+    public static final String CHECKOUT = "CHECKOUT";
 
     private final PayAppMapper apps;
     private final Map<String, Long> ids = new ConcurrentHashMap<>();

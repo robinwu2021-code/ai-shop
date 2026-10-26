@@ -27,6 +27,14 @@ public interface CheckoutService {
     /** 静态码：顾客输金额，服务端以码的门店建单并签发令牌 */
     Issued orderByCode(String qrCode, long amountMinor);
 
+    /**
+     * 商家代客收款（F42）：商家定金额，以本店建单并签发令牌（动态码）。单记在收银台接入方名下，操作员是商家账号。
+     *
+     * @param caller 商家侧调用方（{@code InternalCallers#merchantOperator}），门店范围只有本店
+     */
+    Issued collect(ai.neargo.shop.pay.access.PayCaller caller, Long storeId, long amountMinor, String subject,
+                   Integer expireMinutes);
+
     record Issued(String payOrderNo, String token, long expireAt) {
     }
 
