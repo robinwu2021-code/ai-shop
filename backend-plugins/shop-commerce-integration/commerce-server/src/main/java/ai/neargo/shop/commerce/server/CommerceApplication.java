@@ -1,9 +1,10 @@
 package ai.neargo.shop.commerce.server;
 
+import java.util.Map;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-/** 独立服务装配入口；未实现可信内部合同前不暴露匿名业务接口。 */
+/** 独立服务仅开放可信内部合同；公共BFF仍由平台承载。 */
 @SpringBootApplication(
         excludeName = {
             "ai.neargo.common.data.DataAutoConfiguration",
@@ -14,6 +15,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
         })
 public class CommerceApplication {
     public static void main(String[] args) {
-        SpringApplication.run(CommerceApplication.class, args);
+        var app = new SpringApplication(CommerceApplication.class);
+        app.setDefaultProperties(Map.of("shop.commerce.deployment", "standalone"));
+        app.run(args);
     }
 }

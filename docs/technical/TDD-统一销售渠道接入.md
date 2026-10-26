@@ -127,6 +127,18 @@
 - ChannelCatalogGateway新增默认仅支持v1的supportsDocumentSchema；SyncRunServiceImpl提交及事务内复核，CommerceRecoveryServiceImpl首次派发/原UNKNOWN查询前重新校验，v2不降级交旧gateway。提交不支持则无run；排队后能力收回则无远端操作并记录SCHEMA_UNSUPPORTED；原已提交/未知动作保留阻断，恢复查询不支持时不重发。
 - 验收：先写v2内容变更hash/坏数量拒绝的失败专项→全量本批源码与测试→集成宿主和独立server编译→相关目录/映射/调度专项→一次版本门禁消融和独立复核→仅相关修复复测→文档/生成清单对账与白名单本地提交。覆盖v1旧JSON/旧hash、v2精确数量/按规格选项/依赖规则、跨午夜/全天/日期例外、真0与未知库存、市场及税凭据、数量/时段篡改、旧网关拒绝和支持收回。当前没有真实渠道或新来源提供方启用；完整S2B2仍待B阶段。
 
+### L3 S2B2B1原连接与目录授权事实实施计划（2026-10-26）
+
+S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配原FOOD目录、营业日历和媒体；现有CIM原数据和身份核验Port复用，不将调用方自报连接当成授权依据。
+
+- Query只有entityNo/storeNo/connectionNo/revisionNo四个原编号，严格类型且拒绝未知字段。ChannelCatalogAuthorityService.capture输出purpose=CATALOG_AUTHORITY/schemaVersion=1及原Provider/Profile/Account/Connection/Grant版本事实、当前身份Proof投影、verifiedAt/validUntil/receiptNo，不输出credentialRef、token、原授权配置或私有查询行。
+- 以原账号/连接/修订精确scope读取，要求ACTIVE连接/账号/平台、VERIFIED档案、LOCAL目录权威、原CATALOG授权且未过期、原连接指针一致。输出真实渠道profile市场，不调用网络获取商品/税、不替代最终目录捕获。保留原账户标识及外部引用，不截断或伪造餐牌绑定编号。
+- 调用原ChannelConnectionIdentityPort.verify重新核验当前远端身份；不拿建连接时旧Proof冒充新回执，不依赖发布Gateway已装配。原Proof必须VERIFIED、精确绑定原Identity/行版本/期限；缺能力/UNKNOWN/原范围不符一律关闭。只读RR快照→事务外身份查询→RR重读比对，拒绝调用方已有事务，30秒期限并取原授权/身份最短期限。私有state另比对凭据引用和原scope/config原文，不把这些私有值序列化。
+- 原ChannelIdentity算法原样迁到commerce-api.policy，保持FQN与算法不变供核心/客户端共享，避免再造store key算法；不改历史迁移。新增commerce-api dto.ChannelCatalogAuthorityContracts、policy.ChannelCatalogAuthorityPolicy、service.ChannelCatalogAuthorityService、spi.ChannelCatalogAuthorityInternalApi；core.service.impl.ChannelCatalogAuthorityServiceImpl及原CoreAutoConfiguration Bean。
+- 内部POST `/internal/commerce/catalog-authorities/capture`位于commerce-web.api.internal，沿InternalServiceResponses令牌/status约定，输入错误不回显内容；新独立内部自动装配不启用B端Controller。commerce-server依赖原web接入模块，并限定自身安全链仅令牌内部口/健康检查；未授权的其他路径拒绝。集成宿主继续原安全链和内部wrapper约定，不放宽全局规则。
+- 独立客户端位于commerce-channel，单次typed调用COMMERCE服务（新增ServiceName常量），重验全部事实/派生身份hash/channelStoreKey/期限/回执，无默认目标和回退。`shop.commerce.authority-client.enabled`默认关闭，已有本地Service优先；该开关仅远程读，不启用发布/任务/业务写入。原部署命令不变。
+- 执行：先观察无能力失败专项→完成全部代码/测试→集成与独立服务统一编译→集中原连接/授权/新只读/真实HTTP/令牌及关闭装配专项→消融与一次独立复核→仅相关修复复测→设计、代码、验收对账/生成清单/本地白名单提交。预期覆盖跨主体/门店/旧修订、DRAFT/停用、撤权/过期/缺CATALOG、网络外事务、版本/凭据/身份变化、伪回执/超期、输出无密钥、旧服务缺能力、401/400/404/409和独立关闭状态。不宣称完整FOOD适配或真实平台已可发布。
+
 ### 明确的事务和并发
 
 - 原请求journal区分PLATFORM/ENTITY/STORE，平台配置不伪造经营主体。账号授权operation允许尚无connection，按ACCOUNT/CONNECTION非空规范键去重。原请求journal与本域配置写入在本地事务；同键异payload或不兼容操作者冲突。
@@ -256,7 +268,7 @@ S1子集验收：AC03/AC05对应MenuSourceVerificationTest的8项（原scope/EXP
 
 ## §6 对账二 设计到实现
 
-全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、12个业务Service与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。该内核已集成发布；新增S1原FOOD内部核验、S2A共享基准价/税来源与S2B1餐牌价格投影尚未推送或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
+全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、13个业务Service（含内部只读授权事实）与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。该内核已集成发布；新增S1原FOOD内部核验、S2A共享基准价/税来源与S2B1餐牌价格投影尚未推送或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
 
 ## L4 官方资料及待核验
 
@@ -612,3 +624,50 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 版本门禁消融记录：临时摘除SyncRunServiceImpl两处兼容校验，previewPersistsRealVersionAndOfferCountWhileLegacyAdapterCannotSubmit真实失败（原应拒绝的提交未抛异常）；原样恢复后仅复测该项，1项通过。一次独立复核完成，无确认阻断问题；最终干净打包以下一条核验记录为准。
 
 最终核验：同源码临时reactor以food-embedded、commerce-embedded完成shop-app、food-server、commerce-server的clean package，BUILD SUCCESS，59.068秒；已编译全部相关测试源码，打包跳过重复执行测试。48项相关业务专项、5项相关架构/装配、设计25项、V2文档70份、生成物25项及diff检查通过。仅本地验证标记，不作为生产发布SHA；当前无推送、迁移或部署。
+
+
+### S2B2B1 原连接/CATALOG授权事实交付（2026-10-26）
+
+仅交付来源读取的前置能力；S2B2B2完整FOOD目录/原营业日历/媒体适配仍待后续，不将本次短期事实当成可发布或可接单证明。当前没有真实ChannelConnectionIdentityPort提供方，生产连接保持关闭。无新表、Mapper、迁移、公开权限、前端或支付改动。
+
+#### 内部输入输出与错误
+
+`POST /internal/commerce/catalog-authorities/capture`；`X-Internal-Token`沿InternalHttp原协议。请求四个必填严格字符串entityNo/storeNo/connectionNo/revisionNo（每项最多32），拒绝数字代串、空白、未知字段。scope来自已认证服务，并由原CIM关联逐项验证，不能用此接口代替商户用户权限。
+
+| 输出对象 | 实际字段及来源 |
+| --- | --- |
+| Facts | schemaVersion=1/purpose=CATALOG_AUTHORITY/query；verifiedAt、validUntil、receiptNo |
+| Provider | providerNo/providerCode/version；原ACTIVE平台行 |
+| Profile | profileNo/productCode/market/protocolCode/identityNamespace/accountScoped/version；原VERIFIED档案，支持的原身份schema为1 |
+| Account | accountNo/externalAccountRef/version；原主体账号 |
+| Connection | connectionNo/revisionNo/externalStoreRef/channelStoreKey/sourceOwner/catalogAuthority/fulfillmentProfile/configHash/version/revisionVersion/revision；精确当前修订 |
+| Grant | authorizationNo/version/revision/capability=CATALOG/capabilityHash/expiresAt；原有效授权，不含凭据和原scope配置 |
+| IdentityEvidence | status=VERIFIED/identityHash/receiptRef/verifiedAt/validUntil；本次事务外原Port核验结果投影 |
+
+期限不超过调用开始后30秒，并取授权、身份回执的最短有效期；慢调用超过预算拒绝。receiptNo是全内容（自身字段清空）的确定性完整性摘要，不是签名或调用者授权令牌；可信服务认证仍由原令牌链承担。客户端重验原身份hash、原channelStoreKey、完整输出/期限及版本范围（不超过JSON安全整数）；没有自动PLATFORM回退。400输入错误、401缺失/错误令牌、403原业务禁止、404原资源或旧能力不存在、409原授权/修订/身份冲突，响应错误不携带内部对象；501/503等传输故障原样失败，不返回空成功。
+
+#### 实际类与方法对账
+
+| 模块 | 类及实际职责 |
+| --- | --- |
+| commerce-api | dto.ChannelCatalogAuthorityContracts（8组嵌套record）；service.ChannelCatalogAuthorityService.capture；policy.ChannelCatalogAuthorityPolicy.validateQuery/validateBase/identity/seal/validate；policy.ChannelIdentity同FQN原算法迁移；spi.commerce.ChannelCatalogAuthorityInternalApi.capture |
+| commerce-core | service.impl.ChannelCatalogAuthorityServiceImpl.capture/load/read；CoreAutoConfiguration注入原CatalogPersistence/ProviderMapper/事务管理器/可选IdentityPort，无发布Gateway依赖 |
+| commerce-web | api.internal.InternalChannelCatalogAuthorityController.capture/malformed/unavailable；config.CommerceInternalAutoConfiguration按enabled与本地Service装配，公共BFF装配边界不变 |
+| commerce-channel | RemoteChannelCatalogAuthorityService.capture；CommerceAuthorityClientAutoConfiguration。shop.commerce.authority-client.enabled默认false，本地Service优先，远端COMMERCE目标必须显式配置，5秒单次typed读取 |
+| commerce-server / shop-base | 独立服务复用web内部合同；CommerceInternalSecurityConfiguration仅内部令牌路径/健康检查；CommerceApplication默认standalone；ServiceName.COMMERCE新增原定位常量 |
+
+集成宿主继续原服务认证和包装排除，不新增全局安全例外；独立服务公共BFF关闭。服务器无新增定时任务或外部平台激活。相同读取合同可供FOOD/RETAIL适配器使用，后续仍须核对原门店、餐牌绑定、价格/税、媒体和营业日历。
+
+#### 验收与限制
+
+| 原需求 | 本次可验证子集 | 专项 |
+| --- | --- | --- |
+| AC01/AC02 | 原平台/档案/账号/连接/授权精确关联、真实身份及当前版本；无凭据输出 | ChannelCatalogAuthorityServiceTest |
+| AC03 | 原CATALOG授权及LOCAL目录来源门禁，不冒充完整FOOD目录 | 同上；CatalogSynchronizationTest回归 |
+| AC15 | 无网络跨事务；双RR读取检测期间变更；本地优先/远端显式开启；令牌优先与独立BFF关闭 | RemoteChannelCatalogAuthorityServiceTest、InternalChannelCatalogAuthorityApiTest、CommerceArchitectureTest |
+
+初始功能缺失RED：默认capture抛NOT_FOUND。H2原配置JSON对象使用FORMAT JSON测试数据，不将H2文本嵌套行为放宽到生产校验。集中相关回归首次65项全部通过（11新增、54原回归），无失败或跳过；不执行全仓业务测试。最终消融、独立复核和干净打包结果随后附记。
+
+最终验证：集成宿主shop-app及food-server/commerce-server在相同两Profile下`clean package -DskipTests`成功（60秒，含测试源码编译）；随后集中运行本批及相关原连接/授权/目录/映射专项65项、相关架构/装配5项，共70项全部通过，0失败0跳过。10项设计专项、25个生成器及git diff --check通过。临时移除前后事实比较使并发变更专项真实失败，自动恢复后本次70项绿灯。一次独立只读复核无Critical/Important/Minor发现，无二次复核。测试为H2、真实本地HTTP及MockMvc令牌链，未冒充生产MySQL并发、真实外卖平台或跨进程上线验收。原厨房SSE架构问题未修改、未放宽规则、未重跑无关失败项。
+
+本阶段只做本地提交，不推送/部署。后续S2B2B2将本次事实与原餐牌绑定/价格/营业日历/媒体组合，再进入S3可信发布通知；完整原FOOD目录捕获和真实平台适配仍未完成。

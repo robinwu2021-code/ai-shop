@@ -17,6 +17,7 @@ import ai.neargo.shop.commerce.mapper.CommerceMappers.StoreConnectionMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.SyncPolicyMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.SyncRunItemMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.SyncRunMapper;
+import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
 import ai.neargo.shop.commerce.service.CatalogScopeService;
 import ai.neargo.shop.commerce.service.ChannelAccountService;
 import ai.neargo.shop.commerce.service.ChannelAuthorizationService;
@@ -32,6 +33,7 @@ import ai.neargo.shop.commerce.service.impl.CatalogPublicationServiceImpl;
 import ai.neargo.shop.commerce.service.impl.CatalogScopeServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelAccountServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelAuthorizationServiceImpl;
+import ai.neargo.shop.commerce.service.impl.ChannelCatalogAuthorityServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelConnectionServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelOperationServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelResourceMappingPortImpl;
@@ -65,6 +67,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
+
+import java.time.Clock;
 
 /** 默认无装配、无迁移；核心仅依赖本域契约与原平台持久化能力。 */
 @AutoConfiguration(afterName = "ai.neargo.shop.common.config.PrimaryPersistenceConfiguration")
@@ -179,6 +183,16 @@ public class CommerceCoreAutoConfiguration {
                 authority::getIfAvailable,
                 owners.orderedStream().toList(),
                 gateways.orderedStream().toList());
+    }
+
+    @Bean
+    ChannelCatalogAuthorityService channelCatalogAuthorityService(
+            CatalogPersistence data,
+            ProviderMapper providers,
+            ObjectProvider<ChannelConnectionIdentityPort> identity,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new ChannelCatalogAuthorityServiceImpl(
+                data, providers, identity::getIfAvailable, manager, Clock.systemUTC());
     }
 
     @Bean

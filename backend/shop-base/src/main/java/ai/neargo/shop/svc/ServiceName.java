@@ -21,6 +21,9 @@ public final class ServiceName {
     /** 餐饮独立进程；三端用户入口仍在PLATFORM。 */
     public static final String FOOD = "FOOD";
 
+    /** 统一渠道独立进程；集成形态可显式将其定位到PLATFORM。 */
+    public static final String COMMERCE = "COMMERCE";
+
     private ServiceName() {
     }
 }
