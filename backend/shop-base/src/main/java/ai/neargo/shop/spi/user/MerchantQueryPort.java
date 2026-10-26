@@ -337,6 +337,14 @@ public interface MerchantQueryPort {
     java.util.Optional<String> payMerchantNoOf(String merchantNo, String storeNo, String channel);
 
     /**
+     * 同 {@link #payMerchantNoOf}，但<b>永远是旧解析</b>、不看收款商户读切（TDD-支付服务-I4进件与收款商户 S6）。
+     * 只给新旧比对 C07 用：读切后 {@code payMerchantNoOf} 已由新模型回答，拿它比等于自己比自己，门禁恒开。
+     */
+    default java.util.Optional<String> legacyPayMerchantNoOf(String merchantNo, String storeNo, String channel) {
+        return payMerchantNoOf(merchantNo, storeNo, channel);
+    }
+
+    /**
      * 不按渠道过滤的收款方式，结算单上的收款号取「主体默认号」；其余渠道（WECHAT、ALIPAY …）一律只取同渠道的号（F01 · Review R01）。
      * <ul>
      *   <li>{@code OFFLINE} / {@code FREE}：钱不经过任何通道；</li>

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 比对 C07（执行方案 §4.5 S5；表结构说明 §8.2；TDD-支付服务-I4进件与收款商户 S5）：每个门店 × 真实渠道，
- * 旧解析 {@link MerchantQueryPort#payMerchantNoOf}（结算取号用的那条）与新 {@link PayMerchantQueryPort#routeOf} 逐条比 ——
+ * 旧解析 {@link MerchantQueryPort#legacyPayMerchantNoOf}（结算取号那条、不看读切）与新 {@link PayMerchantQueryPort#routeOf} 逐条比 ——
  * 号；号一致时再比渠道子商户号与资金路径。
  * <p>
  * 差异要么修数据，要么人工确认；确认按 {@link Diff#key()}（门店、渠道、类别、新旧两个值）认，数据再变就作废。
@@ -116,7 +116,7 @@ public class PayMerchantComparator {
     }
 
     private List<Diff> compareOne(String entityNo, String storeNo, Long storeId, String channel, String funds) {
-        String legacy = merchants.payMerchantNoOf(entityNo, storeNo, channel).orElse(null);
+        String legacy = merchants.legacyPayMerchantNoOf(entityNo, storeNo, channel).orElse(null);
         Optional<PayRoute> route = routes.routeOf(storeId, channel);
         String pay = route.map(PayRoute::payMerchantNo).orElse(null);
         List<Diff> out = new ArrayList<>();

@@ -605,6 +605,9 @@ shop:
       # 提交后把进件单、收款商户、门店绑定跟到支付域新表。先开它、再跑 pay-merchant-backfill，比对为 0 后才读切。
       # 新表写失败只记日志 [pay-merchant-dual-write]，不挡旧路径
       dual-write: ${SHOP_PAY_MERCHANT_DUAL_WRITE:false}
+      # 读切（S6）：legacy = 旧表解析（默认）；pay = 门店绑定解析（没绑定就是没有，不兜底主体级号）。
+      # 配 pay 也要启动时全量比对 C07 无未确认差异才生效，否则仍走旧解析并打 ERROR [pay-merchant-read]。切回 legacy 即回退
+      read-from: ${SHOP_PAY_MERCHANT_READ_FROM:legacy}
       compare:
         # 比对 C07（pay-merchant-compare）里人工确认过的差异，逗号分隔，每项是日志里那条差异的 key
         # （门店|渠道|类别|旧值|新值）。任一侧的值再变，旧确认自然不再匹配

@@ -4,6 +4,8 @@ import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.spi.pay.PayMerchantQueryPort;
+import ai.neargo.shop.spi.pay.PayMerchantReadSwitch;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.merchant.entity.MchEntity;
@@ -60,6 +62,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     private final MchEntityMapper merchantMapper;
     private final PayMerchantMirror payMirror;
+    private final org.springframework.beans.factory.ObjectProvider<PayMerchantReadSwitch> readSwitch;
+    private final org.springframework.beans.factory.ObjectProvider<PayMerchantQueryPort> payRoutes;
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     /** 转存入驻资质时用来查重 —— 写侧仍走 governService，这里只读 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
@@ -123,8 +127,12 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                                     ai.neargo.shop.merchant.service.AdmissionService> admissionServiceProvider,
                             org.springframework.beans.factory.ObjectProvider<
                                     ai.neargo.shop.merchant.service.DebtService> debtServiceProvider,
-                                    PayMerchantMirror payMirror) {
+                                    PayMerchantMirror payMirror,
+                                    org.springframework.beans.factory.ObjectProvider<PayMerchantReadSwitch> readSwitch,
+                                    org.springframework.beans.factory.ObjectProvider<PayMerchantQueryPort> payRoutes) {
         this.payMirror = payMirror;
+        this.readSwitch = readSwitch;
+        this.payRoutes = payRoutes;
         this.admissionServiceProvider = admissionServiceProvider;
         this.debtServiceProvider = debtServiceProvider;
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
@@ -905,6 +913,22 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 || channel == null || channel.isBlank()) {
             return Optional.empty();
         }
+        if (readFromPay(channel)) {
+            // 读切（I4 S6）：门店绑定本身就是「显式绑定」；门店与主体须仍在营业，与旧口径一致
+            boolean entityActive = DataScopeContext.executeWithoutScope(() -> merchantMapper.exists(
+                    Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).eq(MchEntity::getStatus, ACTIVE)));
+            if (!entityActive) {
+                return Optional.empty();
+            }
+            return payRouteOf(merchantNo, storeNo, channel, true).map(r -> {
+                MchPaymentMerchant row = legacyRowOf(merchantNo, r.payMerchantNo()).orElse(null);
+                String sub = "MERCHANT_OWN".equals(r.accessMode()) ? r.channelMerchantId() : r.subMerchantId();
+                String version = row != null && row.getVersion() != null ? String.valueOf(row.getVersion())
+                        : "P" + r.keyVersion();
+                return new PaymentRoute(merchantNo, storeNo, r.payMerchantNo(), channel, sub,
+                        r.payMerchantNo() + ":" + version, r.fundsPath());
+            });
+        }
         // 同一数据库快照内读取归属、显式门店绑定和实际收款档案，不借用其他门店或默认账户。
         return DataScopeContext.executeWithoutScope(() -> {
             MchStore store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
@@ -960,6 +984,23 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();
         }
+        if (readFromPay(channel)) {
+            // 读切（I4 S6）：门店绑定说了算，没绑定就是没有（R01）；activeOnly 在新模型里恒成立（只绑 ACTIVE）
+            return payRouteOf(merchantNo, storeNo, channel, false)
+                    .flatMap(r -> legacyRowOf(merchantNo, r.payMerchantNo()));
+        }
+        return legacyAccountOf(merchantNo, storeNo, channel, activeOnly);
+    }
+
+    @Override
+    public Optional<String> legacyPayMerchantNoOf(String merchantNo, String storeNo, String channel) {
+        return merchantNo == null || merchantNo.isBlank() ? Optional.empty()
+                : legacyAccountOf(merchantNo, storeNo, channel, true).map(MchPaymentMerchant::getPayMerchantNo);
+    }
+
+    /** 旧解析本体，不看读切 */
+    private Optional<MchPaymentMerchant> legacyAccountOf(String merchantNo, String storeNo, String channel,
+                                                         boolean activeOnly) {
         boolean anyChannel = channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel);
         String store = storeNo == null ? "" : storeNo;
         List<MchPaymentMerchant> candidates = DataScopeContext.executeWithoutScope(() ->
@@ -1138,6 +1179,10 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      * 不带通道条件会随机拿到其中一行 —— 而两个通道的费率承担方与账期本来就可以不同。
      */
     private MchPaymentMerchant paymentOf(String merchantNo, String storeNo, String payChannel) {
+        if (readFromPay(payChannel)) {
+            return payRouteOf(merchantNo, storeNo, payChannel, false)
+                    .flatMap(r -> legacyRowOf(merchantNo, r.payMerchantNo())).orElse(null);
+        }
         return DataScopeContext.executeWithoutScope(() -> {
             if (storeNo != null && !storeNo.isBlank()) {
                 MchPaymentMerchant own = merchantPaymentMapper.selectOne(
@@ -1677,6 +1722,19 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
         @Override
     public java.util.Set<String> activeChannelsOf(String merchantNo, String storeNo) {
+        if (readFromPay("*")) {
+            Optional<MchStore> st = storeOf(merchantNo, storeNo, false);
+            if (st.isEmpty()) {
+                return java.util.Set.of();
+            }
+            MchEntity entity = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                    Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, merchantNo).last("LIMIT 1")));
+            String market = entity == null || entity.getMarket() == null || entity.getMarket().isBlank()
+                    ? "CN" : entity.getMarket();
+            return payRoutes.getObject().collectableRoutes(st.get().getId(), market).stream()
+                    .map(PayMerchantQueryPort.PayRoute::payChannel)
+                    .collect(java.util.stream.Collectors.toSet());
+        }
         return DataScopeContext.executeWithoutScope(() ->
                 merchantPaymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
                         .eq(MchPaymentMerchant::getEntityNo, merchantNo)
@@ -1846,6 +1904,41 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      */
     private String currentQuotaPeriod() {
         return String.valueOf(java.time.LocalDate.now().getYear());
+    }
+
+    /**
+     * 读切（TDD-支付服务-I4进件与收款商户 S6）此刻是否由支付新模型回答。只管真实渠道：线下 / 免单 / 桩 / 测试与空渠道
+     * 旧解析本就不按渠道过滤、也不对应任何收款号，照旧口径（{@code "*"} = 不问具体渠道的整体开关）。
+     */
+    private boolean readFromPay(String channel) {
+        if (channel == null || channel.isBlank() || CHANNEL_FREE_PAY_CHANNELS.contains(channel)) {
+            return false;
+        }
+        PayMerchantReadSwitch s = readSwitch.getIfAvailable();
+        return s != null && s.readFromPay() && payRoutes.getIfAvailable() != null;
+    }
+
+    /** 本主体的门店；门店号为空取默认门店（存量子单没有门店）。别家主体的门店不答 */
+    private Optional<MchStore> storeOf(String merchantNo, String storeNo, boolean activeOnly) {
+        String sNo = storeNo == null || storeNo.isBlank() ? defaultStoreNo(merchantNo).orElse(null) : storeNo;
+        if (sNo == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                Wrappers.<MchStore>lambdaQuery().eq(MchStore::getEntityNo, merchantNo).eq(MchStore::getStoreNo, sNo)
+                        .eq(activeOnly, MchStore::getStatus, ACTIVE).last("LIMIT 1"))));
+    }
+
+    private Optional<PayMerchantQueryPort.PayRoute> payRouteOf(String merchantNo, String storeNo, String channel,
+                                                               boolean activeStore) {
+        return storeOf(merchantNo, storeNo, activeStore).flatMap(st -> payRoutes.getObject().routeOf(st.getId(), channel));
+    }
+
+    /** 新模型解析出的号 → 旧行（资料、额度仍在旧行上，双写期两边一致） */
+    private Optional<MchPaymentMerchant> legacyRowOf(String merchantNo, String payMerchantNo) {
+        return Optional.ofNullable(DataScopeContext.executeWithoutScope(() -> merchantPaymentMapper.selectOne(
+                Wrappers.<MchPaymentMerchant>lambdaQuery().eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                        .eq(MchPaymentMerchant::getPayMerchantNo, payMerchantNo).last("LIMIT 1"))));
     }
 
     /** 能力 / 额度用的收款记录：与结算取号同一条解析（{@link #accountOf}），不限状态（F02 · R02） */
