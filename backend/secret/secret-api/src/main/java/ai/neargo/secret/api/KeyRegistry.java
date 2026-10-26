@@ -1,0 +1,95 @@
+package ai.neargo.secret.api;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * 密钥登记与版本生命周期（表结构说明 §3.3）：
+ * {@code DRAFT → VERIFIED → ACTIVE → ROTATING → RETIRED}，任意状态可 {@code REVOKED}。
+ *
+ * <p>三条不变量由实现保证、不靠调用方自律：
+ * <ol>
+ *   <li>一把密钥同一时刻至多一个 ACTIVE 版本（{@code sec_key_version.active_key} 唯一）；</li>
+ *   <li>启用人 ≠ 录入人（策略 {@code dual_control}）；</li>
+ *   <li>已入库的私密材料没有回显入口 —— 只有发放那一刻（{@link #generate}）给一次，并记 {@code sec_access_log}。</li>
+ * </ol>
+ */
+public interface KeyRegistry {
+
+    /** 登记一把密钥（DRAFT，尚无版本）。同一归属 × 用途 × 环境已存在时返回已有的 id */
+    long register(NewKey key);
+
+    Optional<KeyInfo> find(KeyOwner owner, KeyPurpose purpose);
+
+    /** 录入一个版本（UPLOADED / FETCHED）：私密材料走信封加密，公开材料明文存放。新版本是 DRAFT */
+    KeyVersionRef addVersion(long keyId, NewVersion version);
+
+    /**
+     * 平台生成一个对称密钥版本（GENERATED）。<b>明文只在返回值里出现这一次</b>，
+     * 同时写一条 {@code sec_access_log(REVEAL_ON_ISSUE)}。
+     */
+    IssuedSecret generate(long keyId, int lengthBytes, String issuedBy, String reason);
+
+    /** 测试调用通过：DRAFT → VERIFIED，证据是调用方模块的记录引用（如 {@code PAY:pay_channel_call_log:123}） */
+    void markVerified(KeyVersionRef ref, String evidence, String operator);
+
+    /**
+     * 启用：VERIFIED（或策略不要求验证时 DRAFT）→ ACTIVE；原 ACTIVE → ROTATING，{@code overlap_until = now + overlap_days}。
+     *
+     * @param operator    启用人，必须 ≠ 录入人
+     * @param approvalRef 调用方模块的复核单引用（如 {@code PAY:pay_approval:88}），可空
+     */
+    void enable(KeyVersionRef ref, String operator, String approvalRef);
+
+    /** 吊销：立即失效，冻结了它的在途操作随之失败（不自动换新版本） */
+    void revoke(KeyVersionRef ref, String operator, String reason);
+
+    /** 新调用用的版本：密钥 ACTIVE 且有 ACTIVE 版本 */
+    KeyVersionRef current(long keyId);
+
+    /**
+     * 冻结版本的私密材料：ACTIVE / ROTATING / RETIRED 可用（退款、查单、验旧回调），
+     * DRAFT / VERIFIED / REVOKED 不可用。
+     */
+    byte[] materialOf(KeyVersionRef ref);
+
+    /** 验入站签名可接受的材料：ACTIVE 加上仍在重叠期内的 ROTATING（表结构说明 §3.3 轮换表） */
+    List<byte[]> verificationMaterials(long keyId);
+
+    /** 指纹：唯一可回显的密钥信息 */
+    String fingerprintOf(KeyVersionRef ref);
+
+    /**
+     * 登记一把密钥所需。
+     *
+     * @param counterparty 对端系统码（NEWEBPAY / WECHAT / KUAIDI100 …），可空
+     * @param operator     登记人，写进 {@code sec_key_event(CREATED)}
+     */
+    record NewKey(KeyOwner owner, KeyPurpose purpose, String name, String counterparty,
+                  String algorithm, String materialType, String operator) {
+    }
+
+    /**
+     * 一个版本的材料：{@code secretMaterial}（对称密钥、私钥）与 {@code publicMaterial}（PEM）至少一个。
+     *
+     * @param source GENERATED / UPLOADED / FETCHED
+     */
+    record NewVersion(byte[] secretMaterial, String publicMaterial, String source, String externalKeyId,
+                      LocalDateTime validFrom, LocalDateTime validTo, String enteredBy) {
+    }
+
+    /** 密钥元数据：不含任何材料 */
+    record KeyInfo(long keyId, KeyOwner owner, KeyPurpose purpose, String status, int currentVersion,
+                   LocalDateTime expiresAt) {
+    }
+
+    /** 发放结果：明文只此一次，调用方展示后即丢弃，不得落库、不得进日志 */
+    record IssuedSecret(KeyVersionRef ref, byte[] plaintext, String fingerprint) {
+
+        @Override
+        public String toString() {
+            return "IssuedSecret[ref=" + ref + ", fingerprint=" + fingerprint + "]";
+        }
+    }
+}
