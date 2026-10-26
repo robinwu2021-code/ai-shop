@@ -35,4 +35,20 @@ class DualWriteStockPortSellableTest {
                 .as("落到默认实现的话是 Integer.MAX_VALUE —— 生产上加购永远不拦")
                 .isEqualTo(4);
     }
+
+    @Test
+    @DisplayName("★★ 按门店的那一版也照平台转发 —— 不落到「取最能卖的那家」")
+    void storeScopedDelegatesToPlatform() {
+        StockPortImpl platform = mock(StockPortImpl.class);
+        when(platform.sellable("SKU-X")).thenReturn(9);
+        when(platform.sellable("SKU-X", "ST-1")).thenReturn(0);
+
+        DualWriteStockPort dual = new DualWriteStockPort(platform,
+                mock(ai.neargo.shop.event.OutboxEventBus.class),
+                mock(ai.neargo.shop.spi.product.InvManagedPort.class));
+
+        assertThat(dual.sellable("SKU-X", "ST-1"))
+                .as("落到接口默认实现就退回不带门店那一版：这家店没货，却拿别家的 9 件放行加购")
+                .isZero();
+    }
 }

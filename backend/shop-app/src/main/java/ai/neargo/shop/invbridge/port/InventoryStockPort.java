@@ -43,6 +43,13 @@ import org.springframework.transaction.annotation.Transactional;
  * <h2>翻译只有两处</h2>
  * {@code skuNo → itemId}、{@code storeNo → locationId}，都走防腐层。
  * 交易域**一行不改** —— 它给的仍然是 {@code SkuQty}。
+ *
+ * <h2>{@code sellable} 有意不实现</h2>
+ * 落到接口默认值（{@code Integer.MAX_VALUE}，「算不出来、加购不拦」）。按 SKU 算可用量要先知道
+ * 主体号（{@code InventoryAclService#stockAt} 按 entityNo 取），而 {@code StockPort} 上只有 skuNo；
+ * 为加购这一步再接一条商品域查询，不如让下单锁货（{@link #lock}）做唯一的拦截点 ——
+ * 那一步按业主、按库位精确判，不足就整单拒。代价是这一档下加购不会提前提示没货，
+ * 顾客在结算时才知道。切到 INVENTORY 之前若要加购即拦，在这里补一条按 SKU 反查主体的实现。
  */
 @Component
 @Primary
