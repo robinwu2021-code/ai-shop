@@ -139,9 +139,21 @@ public class CheckoutQuoteGuard {
         var locked = counterLocked(authorization);
         var op = locked.operation();
         var frozen = json.readValue(op.getCommandJson(), PreparedCommand.class);
-        var original =
-                json.readValue(locked.quote().getPricingJson(), CheckoutEconomicSnapshot.class);
-        campaigns.requireCounterSelection(authorization.party(), original.activity());
+        var codec = new CounterEconomicCodec(json);
+        var snapshot = codec.readQuoteSnapshot(locked.quote().getPricingJson());
+        var original = snapshot.economic();
+        codec.requireQuoteHash(authorization.party(), frozen.lines(), original, locked.quote().getQuoteHash());
+        var policy = snapshot.schema() == 0 ? CounterEconomicCodec.CounterPolicy.FROZEN_M2A_ZERO
+                : CounterEconomicCodec.CounterPolicy.CURRENT_FULL_CUT;
+        if (snapshot.schema() == 0) {
+            if (!codec.legacyZero(original, frozen.command())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+        } else {
+            var seal = original.counterActivitySeal();
+            campaigns.requireCounterSelection(authorization.party(), seal.groups(), frozen.command().activityChoices(),
+                    seal, original.activity());
+        }
         var catalog =
                 catalogs.lockForCounterCheckout(
                         "MAIN", op.getEntityNo(), op.getStoreNo(), clock.now());
@@ -157,7 +169,9 @@ public class CheckoutQuoteGuard {
                 "MANUAL_OFFLINE",
                 op.getOperationNo(),
                 authorization.party(),
-                "MERCHANT_RECORDED_IN_PERSON");
+                "MERCHANT_RECORDED_IN_PERSON",
+                policy,
+                original);
     }
 
     public void requireCounterMatches(
@@ -165,6 +179,22 @@ public class CheckoutQuoteGuard {
         var locked = counterLocked(authorization);
         requireFresh(authorization.expected(), locked);
         var op = locked.operation();
+        var codec = new CounterEconomicCodec(json);
+        var original = codec.readQuote(locked.quote().getPricingJson());
+        var frozen = json.readValue(op.getCommandJson(), PreparedCommand.class);
+        codec.requireQuoteHash(authorization.party(), frozen.lines(), original, locked.quote().getQuoteHash());
+        if (original.counterActivitySeal() != null) {
+            var seal = original.counterActivitySeal();
+            // Re-evaluate only after the actual base/catalog/pricing waits have all completed.
+            campaigns.requireCounterSelection(authorization.party(), seal.groups(), frozen.command().activityChoices(),
+                    seal, original.activity());
+        } else if (!codec.legacyZero(original, frozen.command())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (!Objects.equals(original, actual)) {
+            throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+        }
+
         if (actual == null
                 || !authorization.expected().quoteHash().equals(actual.quoteHash())
                 || !Objects.equals(authorization.party().userNo(), actual.buyerNo())

@@ -26,6 +26,7 @@ import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
 import ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService;
 import ai.neargo.shop.trade.order.service.create.CounterOrderPlan;
+import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec;
 import ai.neargo.shop.trade.order.service.create.CounterOrderPlan.CompensationEvidence;
 import ai.neargo.shop.trade.order.service.create.CounterOrderPlan.PreparedCommand;
 import ai.neargo.shop.trade.order.service.create.CounterPurchaseAuthorization;
@@ -390,8 +391,8 @@ public class CounterOrderPlacementServiceImpl implements CounterOrderPlacementSe
             }
             // Machine recovery observes only; it never recreates human authorization or dispatches
             // a new order.
-            var plan = json.readValue(selected.getCounterPlanJson(), CounterOrderPlan.class);
-            if (!selected.getPlanHash().equals(CheckoutDigests.hash(json, plan))) {
+            var plan = new CounterEconomicCodec(json).readPlan(selected.getCounterPlanJson());
+            if (!selected.getPlanHash().equals(new CounterEconomicCodec(json).planHash(plan))) {
                 continue;
             }
             var observation =
@@ -499,11 +500,9 @@ public class CounterOrderPlacementServiceImpl implements CounterOrderPlacementSe
                                                         intent.getReservationObservationJson(),
                                                         ReservationView.class);
                                         var plan =
-                                                json.readValue(
-                                                        intent.getCounterPlanJson(),
-                                                        CounterOrderPlan.class);
+                                                new CounterEconomicCodec(json).readPlan(intent.getCounterPlanJson());
                                         if (!intent.getPlanHash()
-                                                        .equals(CheckoutDigests.hash(json, plan))
+                                                        .equals(new CounterEconomicCodec(json).planHash(plan))
                                                 || !original(plan).equals(reservation.original())
                                                 || !intent.getReservationOperationNo()
                                                         .equals(
@@ -544,8 +543,8 @@ public class CounterOrderPlacementServiceImpl implements CounterOrderPlacementSe
         var evidence =
                 json.readValue(
                         selected.getReservationObservationJson(), CompensationEvidence.class);
-        var plan = json.readValue(selected.getCounterPlanJson(), CounterOrderPlan.class);
-        if (!selected.getPlanHash().equals(CheckoutDigests.hash(json, plan))
+        var plan = new CounterEconomicCodec(json).readPlan(selected.getCounterPlanJson());
+        if (!selected.getPlanHash().equals(new CounterEconomicCodec(json).planHash(plan))
                 || !selected.getReservationObservationHash()
                         .equals(CheckoutDigests.hash(json, evidence))
                 || !original(plan).equals(evidence.reservation().original())
@@ -669,8 +668,8 @@ public class CounterOrderPlacementServiceImpl implements CounterOrderPlacementSe
                         .equals(intent.getAuthorityNamespaceHash())) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        var plan = json.readValue(intent.getCounterPlanJson(), CounterOrderPlan.class);
-        if (!intent.getPlanHash().equals(CheckoutDigests.hash(json, plan))
+        var plan = new CounterEconomicCodec(json).readPlan(intent.getCounterPlanJson());
+        if (!intent.getPlanHash().equals(new CounterEconomicCodec(json).planHash(plan))
                 || !plan.party().equals(party(op))
                 || !plan.orderNo().equals(intent.getPayNo())
                 || !plan.subOrderNo().equals(intent.getSubOrderNo())

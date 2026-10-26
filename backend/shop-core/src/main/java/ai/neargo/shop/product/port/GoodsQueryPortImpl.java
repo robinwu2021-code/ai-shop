@@ -297,7 +297,7 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
         Map<String, Long> flash =
                 new HashMap<>(
                         party != null
-                                ? campaignPort.counterFlashPrices(party, goodsNos)
+                                ? Map.<String, Long>of()
                                 : buyerNo == null
                                         ? campaignPort.flashPrices(goodsNos)
                                         : campaignPort.flashPricesFor(buyerNo, goodsNos));

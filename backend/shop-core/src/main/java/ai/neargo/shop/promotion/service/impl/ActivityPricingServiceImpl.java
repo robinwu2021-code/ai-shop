@@ -5,6 +5,20 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.entity.PmtActivity;
+import ai.neargo.shop.promotion.entity.PmtActivityVersion;
+import ai.neargo.shop.promotion.entity.PmtActivityRule;
+import ai.neargo.shop.promotion.entity.PmtEnrollment;
+import ai.neargo.shop.promotion.entity.PmtEnrollmentGoods;
+import ai.neargo.shop.promotion.mapper.PmtActivityVersionMapper;
+import ai.neargo.shop.promotion.dto.UnifiedActivityDefinition;
+import ai.neargo.shop.promotion.policy.ActivityRuleValidator;
+import ai.neargo.shop.spi.marketing.CounterCampaignContract;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.core.StreamReadFeature;
+import java.time.Instant;
+import java.time.LocalTime;
 import ai.neargo.shop.promotion.entity.PmtActivityAudience;
 import ai.neargo.shop.promotion.entity.PmtActivityGoods;
 import ai.neargo.shop.promotion.entity.PmtApply;
@@ -18,6 +32,8 @@ import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.member.MemberQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.spring.SqlSessionUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,52 +54,317 @@ import javax.sql.DataSource;
 public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Autowired
+    @Qualifier("sqlSessionFactory")
+    private SqlSessionFactory counterSessions;
+
+    private void currentCounterReads() {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var session = SqlSessionUtils.getSqlSession(counterSessions);
+        try {
+            session.clearCache();
+        } finally {
+            SqlSessionUtils.closeSqlSession(session, counterSessions);
+        }
+    }
+
+    @Autowired
     @Qualifier("dataSource")
     private DataSource checkoutSource;
 
+    @Autowired
+    private PmtActivityVersionMapper counterVersions;
+    @Autowired
+    private ObjectMapper counterJson;
+
     @Override
-    public void rejectUnsupportedCounterChoices(
-            List<CampaignPort.MerchantAmount> groups, Map<String, String> choices) {
-        if (groups == null || choices == null || !choices.isEmpty()) {
-            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+    public void rejectUnsupportedCounterChoices(List<CampaignPort.MerchantAmount> groups,
+            Map<String, String> choices) {
+        rejectUnsupportedCounterChoices(groups, choices, System.currentTimeMillis());
+    }
+
+    @Override
+    public void rejectUnsupportedCounterChoices(List<CampaignPort.MerchantAmount> groups,
+            Map<String, String> choices, long ownerNowMillis) {
+        var canonical = CounterCampaignContract.canonicalGroups(groups);
+        var choice = CounterCampaignContract.resolveChoices(canonical, choices).getFirst();
+        probeCounter(canonical.getFirst(), choice.mode(), choice.activityNo(), ownerNowMillis, false);
+    }
+
+    @Override
+    public void rejectUnsupportedCounterPriceEffects(List<CampaignPort.MerchantAmount> groups, long ownerNowMillis) {
+        probeCounter(CounterCampaignContract.canonicalGroups(groups).getFirst(), "NONE", null,
+                ownerNowMillis, true);
+    }
+
+    private void probeCounter(CampaignPort.MerchantAmount group, String mode, String explicit,
+            long now, boolean mandatoryOnly) {
+        currentCounterReads();
+        try {
+            DataScopeContext.executeWithoutScope(() -> {
+                var heads = activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                        .eq(PmtActivity::getTenantNo, "MAIN").eq(PmtActivity::getDeleted, 0)
+                        .eq(PmtActivity::getEntityNo, group.merchantNo()));
+                var storeIds = new HashSet<>(activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                        .eq(PmtActivity::getTenantNo, "MAIN").eq(PmtActivity::getDeleted, 0)
+                        .eq(PmtActivity::getEntityNo, group.merchantNo())
+                        .eq(PmtActivity::getStoreNo, group.storeNo())).stream().map(PmtActivity::getId).toList());
+                for (var head : heads) {
+                    if (head.getStoreNo() != null && !head.getStoreNo().isBlank()
+                            && !storeIds.contains(head.getId())) {
+                        continue;
+                    }
+                    if (!mandatoryOnly && explicit != null && explicit.equals(head.getActivityNo())) {
+                        throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                    }
+                    requireCounterEffect(head, group, now, mandatoryOnly || !"AUTO".equals(mode));
+                }
+                if (enrollmentMapper == null || enrollmentGoodsMapper == null) {
+                    throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                }
+                // Capacity and audience are not evidence of objective irrelevance.
+                var enrollments = enrollmentMapper.selectList(Wrappers.<PmtEnrollment>lambdaQuery()
+                        .eq(PmtEnrollment::getTenantNo, "MAIN").eq(PmtEnrollment::getDeleted, 0)
+                        .eq(PmtEnrollment::getEntityNo, group.merchantNo())
+                        .eq(PmtEnrollment::getStatus, PmtEnrollment.APPROVED));
+                for (var enrollment : enrollments) {
+                    var enrolled = enrollmentGoodsMapper.selectList(Wrappers.<PmtEnrollmentGoods>lambdaQuery()
+                            .eq(PmtEnrollmentGoods::getTenantNo, "MAIN").eq(PmtEnrollmentGoods::getDeleted, 0)
+                            .eq(PmtEnrollmentGoods::getEnrollmentNo, enrollment.getEnrollmentNo()))
+                            .stream().map(PmtEnrollmentGoods::getGoodsNo).toList();
+                    var lines = group.lines().stream().filter(l -> enrolled.contains(l.goodsNo())).toList();
+                    if (lines.isEmpty()) {
+                        continue;
+                    }
+                    long amount = 0;
+                    int qty = 0;
+                    for (var line : lines) {
+                        amount = Math.addExact(amount, line.amount());
+                        qty = Math.addExact(qty, line.qty());
+                    }
+                    var head = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                            .eq(PmtActivity::getTenantNo, "MAIN").eq(PmtActivity::getDeleted, 0)
+                            .eq(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
+                            .eq(PmtActivity::getActivityNo, enrollment.getActivityNo()));
+                    if (head == null) {
+                        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                    }
+                    if (!mandatoryOnly && explicit != null && explicit.equals(head.getActivityNo())) {
+                        throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                    }
+                    requireCounterEffect(head, new CampaignPort.MerchantAmount(group.merchantNo(), amount, qty,
+                            group.storeNo(), lines, false), now, mandatoryOnly || !"AUTO".equals(mode));
+                }
+                return null;
+            });
+        } catch (BizException failure) {
+            throw failure;
+        } catch (RuntimeException invalid) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
         }
-        long now = System.currentTimeMillis();
-        for (var group : groups) {
-            // M2a grants no promotion capability, including audience-restricted published offers.
-            // Read actual owner heads rather than treating a guest as NON_MEMBER.
-            boolean scoped =
-                    DataScopeContext.executeWithoutScope(
-                                    () ->
-                                            activityMapper.selectCount(
-                                                    Wrappers.<PmtActivity>lambdaQuery()
-                                                            .eq(PmtActivity::getTenantNo, "MAIN")
-                                                            .eq(
-                                                                    PmtActivity::getEntityNo,
-                                                                    group.merchantNo())
-                                                            .eq(
-                                                                    PmtActivity::getStatus,
-                                                                    PmtActivity.RUNNING)
-                                                            .isNotNull(
-                                                                    PmtActivity
-                                                                            ::getCurrentVersionNo)
-                                                            .isNull(PmtActivity::getArchivedAt)
-                                                            .and(
-                                                                    q ->
-                                                                            q.isNull(
-                                                                                            PmtActivity
-                                                                                                    ::getStoreNo)
-                                                                                    .or()
-                                                                                    .eq(
-                                                                                            PmtActivity
-                                                                                                    ::getStoreNo,
-                                                                                            group
-                                                                                                    .storeNo()))))
-                            > 0;
-            if (scoped
-                    || !live(group.merchantNo(), group.storeNo(), now).isEmpty()
-                    || !platformHits(group, now).isEmpty()) {
+    }
+
+    private void requireCounterEffect(PmtActivity head, CampaignPort.MerchantAmount group,
+            long now, boolean mandatoryOnly) {
+        if (!PmtActivity.RUNNING.equals(head.getStatus()) || head.getArchivedAt() != null) {
+            return;
+        }
+        if (head.getCurrentVersionNo() != null && head.getDraftSnapshot() != null) {
+            var version = counterVersions.selectOne(Wrappers.<PmtActivityVersion>lambdaQuery()
+                    .eq(PmtActivityVersion::getTenantNo, "MAIN").eq(PmtActivityVersion::getDeleted, 0)
+                    .eq(PmtActivityVersion::getActivityNo, head.getActivityNo())
+                    .eq(PmtActivityVersion::getVersionNo, head.getCurrentVersionNo()));
+            if (version == null) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            ActivityVersionServiceImpl.PublishedSnapshot snapshot =
+                    counterJson.readerFor(ActivityVersionServiceImpl.PublishedSnapshot.class)
+                    .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+                    .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readValue(version.getRuleSnapshot());
+            publishedCounterEffect(snapshot.definition(), group, now, mandatoryOnly);
+            return;
+        }
+        if (!head.isActiveAt(now, MARKET_ZONE)) {
+            return;
+        }
+        var scopeRows = goodsMapper.selectList(Wrappers.<PmtActivityGoods>lambdaQuery()
+                .eq(PmtActivityGoods::getTenantNo, "MAIN").eq(PmtActivityGoods::getDeleted, 0)
+                .eq(PmtActivityGoods::getActivityNo, head.getActivityNo()));
+        boolean scopeHit = scopeRows.isEmpty() || scopeRows.stream().anyMatch(row ->
+                PmtActivityGoods.ALL.equals(row.getScopeType())
+                        || PmtActivityGoods.CATEGORY.equals(row.getScopeType())
+                        || PmtActivityGoods.GOODS.equals(row.getScopeType())
+                        && group.lines().stream().anyMatch(line -> row.getRefNo().equals(line.goodsNo())));
+        if (!scopeHit) {
+            return;
+        }
+        if (scopeRows.stream().anyMatch(row -> !List.of("ALL", "CATEGORY", "GOODS")
+                .contains(row.getScopeType()))) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        if (PmtActivity.BENEFIT_COMBO.equals(head.getBenefitType())) {
+            if (ruleMapper == null) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            if (counterComboEffect(head, group, mandatoryOnly)) {
                 throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
             }
+            return;
+        }
+        boolean mandatory = PmtActivity.BENEFIT_PRICE.equals(head.getBenefitType())
+                || PmtActivity.BENEFIT_GIFT.equals(head.getBenefitType());
+        if (mandatory && scopeRows.isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        if (mandatory || !mandatoryOnly && (cutTriggerHits(head, group)
+                && (!PmtActivity.BENEFIT_CUT.equals(head.getBenefitType())
+                        || nz(head.getBenefitAmountMinor()) > 0)
+                || !List.of("NONE", "AMOUNT", "QTY").contains(head.getTriggerType() == null
+                        ? "NONE" : head.getTriggerType()))) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+    }
+
+    private boolean counterComboEffect(PmtActivity head, CampaignPort.MerchantAmount group, boolean mandatoryOnly) {
+        var rows = ruleMapper.selectList(Wrappers.<PmtActivityRule>lambdaQuery()
+                .eq(PmtActivityRule::getTenantNo, "MAIN").eq(PmtActivityRule::getDeleted, 0)
+                .eq(PmtActivityRule::getActivityNo, head.getActivityNo()).orderByAsc(PmtActivityRule::getSeq));
+        if (rows.isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var parameters = rows.stream().map(row -> counterJson.reader()
+                .with(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+                .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readTree(row.getParams())).toList();
+        var lines = group.lines();
+        for (int index = 0; index < rows.size(); index++) {
+            var row = rows.get(index);
+            var params = parameters.get(index);
+            if (!params.isObject()) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            if ("CONDITION".equals(row.getKind()) && "GOODS".equals(row.getRuleType())) {
+                var goods = params.get("goodsNos");
+                if (goods == null || !goods.isArray() || goods.isEmpty()) {
+                    throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                }
+                var refs = new HashSet<String>();
+                for (var value : goods) {
+                    if (!value.isString() || value.asString().isBlank()
+                            || !value.asString().equals(value.asString().strip())) {
+                        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                    }
+                    refs.add(value.asString());
+                }
+                lines = lines.stream().filter(line -> refs.contains(line.goodsNo())).toList();
+            }
+        }
+        if (lines.isEmpty()) {
+            return false;
+        }
+        long amount = 0;
+        int quantity = 0;
+        for (var line : lines) {
+            amount = Math.addExact(amount, line.amount());
+            quantity = Math.addExact(quantity, line.qty());
+        }
+        for (int index = 0; index < rows.size(); index++) {
+            var row = rows.get(index);
+            var params = parameters.get(index);
+            if ("CONDITION".equals(row.getKind())) {
+                switch (row.getRuleType()) {
+                    case "GOODS" -> { }
+                    case "AMOUNT" -> {
+                        if (amount < counterPositive(params, "amountMinor")) {
+                            return false;
+                        }
+                    }
+                    case "QTY" -> {
+                        if (quantity < counterPositive(params, "n")) {
+                            return false;
+                        }
+                    }
+                    default -> throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                }
+            } else if (!"BENEFIT".equals(row.getKind())) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+        }
+        long off = 0;
+        boolean effect = false;
+        for (int index = 0; index < rows.size(); index++) {
+            var row = rows.get(index);
+            var params = parameters.get(index);
+            if (!"BENEFIT".equals(row.getKind())) {
+                continue;
+            }
+            switch (row.getRuleType()) {
+                case "CUT" -> off = Math.addExact(off, Math.min(counterPositive(params, "amountMinor"), amount - off));
+                case "PERCENT" -> {
+                    var bp = params.get("bp");
+                    if (bp == null || !bp.isIntegralNumber() || bp.longValue() < 0 || bp.longValue() > 10000) {
+                        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+                    }
+                    long cut = Math.multiplyExact(amount - off, 10000 - bp.longValue()) / 10000;
+                    off = Math.addExact(off, Math.min(cut, counterPositive(params, "capMinor")));
+                }
+                case "POINTS" -> effect |= counterPositive(params, "n") > 0 && !mandatoryOnly;
+                case "PRICE", "GIFT" -> effect = true;
+                case "COUPON", "ENTITLEMENT" -> effect |= !mandatoryOnly;
+                default -> throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+        }
+        return effect || !mandatoryOnly && off > 0;
+    }
+
+    private static long counterPositive(JsonNode params, String field) {
+        var value = params.get(field);
+        if (value == null || !value.isIntegralNumber() || !value.canConvertToLong() || value.longValue() <= 0) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        return value.longValue();
+    }
+
+    private void publishedCounterEffect(UnifiedActivityDefinition definition, CampaignPort.MerchantAmount group,
+            long nowMillis, boolean mandatoryOnly) {
+        try {
+            new ActivityRuleValidator().validate(definition);
+        } catch (RuntimeException malformed) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var scope = definition.storeParticipationScope();
+        if (!"ALL".equals(scope.mode()) && !scope.refs().contains(group.storeNo())) {
+            return;
+        }
+        var now = Instant.ofEpochMilli(nowMillis);
+        var schedule = definition.schedule();
+        if (now.isBefore(schedule.startAt()) || schedule.endAt() != null && !now.isBefore(schedule.endAt())) {
+            return;
+        }
+        if ("RECURRING".equals(schedule.type())) {
+            var local = now.atZone(ZoneId.of(schedule.zone()));
+            if (!schedule.weekdays().contains(local.getDayOfWeek().getValue())
+                    || local.toLocalTime().isBefore(LocalTime.parse(schedule.from()))
+                    || !local.toLocalTime().isBefore(LocalTime.parse(schedule.to()))) {
+                return;
+            }
+        }
+        var trigger = definition.rule().trigger();
+        if ("AMOUNT".equals(trigger.type()) && group.goodsAmount() < trigger.amountMinor()
+                || "QTY".equals(trigger.type()) && group.goodsQty() < trigger.quantity()) {
+            return;
+        }
+        boolean effect = false;
+        for (var benefit : definition.rule().benefits()) {
+            boolean mandatory = List.of("PRICE", "GIFT").contains(benefit.kind());
+            if ((mandatory || !mandatoryOnly) && (!"CUT".equals(benefit.kind())
+                    || benefit.amountMinor() == null || benefit.amountMinor() > 0)) {
+                effect = true;
+            }
+        }
+        if (effect || !mandatoryOnly && !definition.rule().tiers().isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
         }
     }
 
@@ -92,11 +373,26 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         if (goodsNos == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        if (!goodsNos.isEmpty()
-                && (!liveByGoods(goodsNos, PmtActivity.BENEFIT_PRICE).isEmpty()
-                        || !liveByGoods(goodsNos, PmtActivity.BENEFIT_GIFT).isEmpty())) {
-            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        if (goodsNos.isEmpty()) {
+            return;
         }
+        DataScopeContext.executeWithoutScope(() -> {
+            long now = System.currentTimeMillis();
+            var references = goodsMapper.selectList(Wrappers.<PmtActivityGoods>lambdaQuery()
+                    .eq(PmtActivityGoods::getTenantNo, "MAIN").eq(PmtActivityGoods::getDeleted, 0)
+                    .in(PmtActivityGoods::getRefNo, goodsNos));
+            for (var reference : references) {
+                var head = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                        .eq(PmtActivity::getTenantNo, "MAIN").eq(PmtActivity::getDeleted, 0)
+                        .eq(PmtActivity::getActivityNo, reference.getActivityNo()));
+                if (head != null && head.getArchivedAt() == null && head.isActiveAt(now, MARKET_ZONE)
+                        && (head.getCurrentVersionNo() != null
+                                || List.of("PRICE", "GIFT", "COMBO").contains(head.getBenefitType()))) {
+                    throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                }
+            }
+            return null;
+        });
     }
 
     @Override
@@ -429,8 +725,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         }
         List<ai.neargo.shop.promotion.entity.PmtActivityRule> rules = DataScopeContext.executeWithoutScope(() ->
                 ruleMapper.selectList(Wrappers.<ai.neargo.shop.promotion.entity.PmtActivityRule>lambdaQuery()
-                        .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getActivityNo, a.getActivityNo())
-                        .orderByAsc(ai.neargo.shop.promotion.entity.PmtActivityRule::getSeq)));
+                        .eq(PmtActivityRule::getActivityNo, a.getActivityNo())
+                        .orderByAsc(PmtActivityRule::getSeq)));
         var items = rules.stream().map(ActivityServiceImpl::readParams).toList();
         long amount = g.goodsAmount();
         int qty = g.goodsQty();
@@ -499,9 +795,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         for (String activityNo : promos) {
             total += DataScopeContext.executeWithoutScope(() -> ruleMapper.selectList(
                             Wrappers.<ai.neargo.shop.promotion.entity.PmtActivityRule>lambdaQuery()
-                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getActivityNo, activityNo)
-                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getKind, "BENEFIT")
-                                    .eq(ai.neargo.shop.promotion.entity.PmtActivityRule::getRuleType, "POINTS")))
+                                    .eq(PmtActivityRule::getActivityNo, activityNo)
+                                    .eq(PmtActivityRule::getKind, "BENEFIT")
+                                    .eq(PmtActivityRule::getRuleType, "POINTS")))
                     .stream().map(ActivityServiceImpl::readParams)
                     .mapToLong(r -> r.n() == null ? 0 : r.n()).sum();
         }

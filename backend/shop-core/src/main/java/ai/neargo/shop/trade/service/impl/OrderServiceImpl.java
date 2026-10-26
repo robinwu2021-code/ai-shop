@@ -74,6 +74,9 @@ import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
 import ai.neargo.shop.trade.order.service.create.CheckoutPricingScope;
 import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
 import ai.neargo.shop.trade.order.service.create.CounterOrderPlan;
+import ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot;
+import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec.CounterPolicy;
+import ai.neargo.shop.spi.trade.CheckoutPort.PromotionOption;
 import ai.neargo.shop.trade.order.service.create.CounterPurchaseAuthorization;
 import ai.neargo.shop.trade.order.service.create.ExpectedCheckoutQuote;
 import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
@@ -1652,7 +1655,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             Map<String, String> pickups,
             Map<String, Integer> gifts,
             Discounts discounts,
-            CheckoutEconomicSnapshot economic) {}
+            CheckoutEconomicSnapshot economic,
+            List<PromotionOption> counterPromotions) {}
 
     private CreatePricing checkoutPricing(
             String userNo,
@@ -1665,8 +1669,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             checkoutGuard.requireCounterPricing(scope);
             if (cmd.items() == null
                     || cmd.items().isEmpty()
-                    || cmd.couponNo() != null
-                    || !cmd.activityChoices().isEmpty()) {
+                    || cmd.couponNo() != null) {
                 throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
             }
         } else if (manual) {
@@ -1776,31 +1779,26 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 为了一件免费的赠品把一笔真实成交挡掉，代价与收益完全不成比例。
          * 少送几件在订单里看得见（赠品行的 qty），商家侧也能对上。
          */
-        Map<String, Integer> gifts;
-        if (counter) {
-            var goods =
-                    split.items().stream()
-                            .map(line -> line.snapshot().goodsNo())
-                            .distinct()
-                            .toList();
-            if (!campaignPort.counterGiftRules(scope.party(), goods).isEmpty()) {
-                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
-            }
-            gifts = Map.of();
-        } else {
-            gifts = scope == null ? giftQtyOf(split) : giftQtyOf(split, userNo);
+        Map<String, Integer> gifts = counter ? Map.of()
+                : scope == null ? giftQtyOf(split) : giftQtyOf(split, userNo);
+        var counterCandidates = counter && scope.counterPolicy() != CounterPolicy.FROZEN_M2A_ZERO
+                ? counterDiscounts(scope.party(), merchantAmounts(cmd, split, storeOfMerchant), cmd.activityChoices())
+                : null;
+        Discounts discounts = counter
+                ? counterCandidates == null ? Discounts.none()
+                        : new Discounts(counterCandidates.selected(), CouponPort.Allocation.none())
+                : scope == null
+                        ? binding == null ? discountsOf(cmd, split, userNo)
+                                : discountsOf(cmd, split, userNo, binding)
+                        : discountsOf(cmd, split, userNo, null, true);
+        var counterPromotions = new ArrayList<PromotionOption>();
+        if (counterCandidates != null) {
+            long gross = split.goodsAmount();
+            counterCandidates.candidates().stream().filter(a -> a.amountMinor() < gross)
+                    .forEach(a -> counterPromotions.add(new PromotionOption(
+                            a.activityNo(), "ACTIVITY", a.name(), true, null)));
+            counterPromotions.add(new PromotionOption(CampaignPort.CHOICE_NONE, "ACTIVITY", null, true, null));
         }
-
-        // 优惠与预览同规则；迁移券使用预先锁定并核对的分摊。
-        Discounts discounts =
-                counter
-                        ? counterDiscounts(
-                                scope.party(), merchantAmounts(cmd, split, storeOfMerchant))
-                        : scope == null
-                                ? (binding == null
-                                        ? discountsOf(cmd, split, userNo)
-                                        : discountsOf(cmd, split, userNo, binding))
-                                : discountsOf(cmd, split, userNo, null, true);
 
         /*
          * 子单号**提前生成**：积分抵扣要落到各个子单上（三家里退了一家时才退得准），
@@ -1857,7 +1855,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 scope == null
                         ? null
                         : checkoutEconomics(
-                                userNo, cmd, scope, split, payMode, pointsStaged, gifts, discounts);
+                                userNo, cmd, scope, split, payMode, pointsStaged, gifts, discounts,
+                                counterCandidates == null ? null : counterCandidates.seal());
         return new CreatePricing(
                 split,
                 group,
@@ -1869,16 +1868,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 pickupByMerchant,
                 gifts,
                 discounts,
-                economic);
+                economic,
+                List.copyOf(counterPromotions));
     }
 
-    private Discounts counterDiscounts(
-            CustomerParty party, List<CampaignPort.MerchantAmount> amounts) {
-        if (!campaignPort.counterCandidates(party, amounts).isEmpty()) {
-            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
-        }
-        campaignPort.requireCounterSelection(party, CampaignPort.Discount.none());
-        return Discounts.none();
+    private CampaignPort.CounterCandidates counterDiscounts(CustomerParty party,
+            List<CampaignPort.MerchantAmount> amounts, Map<String, String> choices) {
+        return campaignPort.counterCandidates(party, amounts, choices);
     }
 
     private CheckoutEconomicSnapshot checkoutEconomics(
@@ -1889,11 +1885,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             String payMode,
             boolean points,
             Map<String, Integer> gifts,
-            Discounts discounts) {
+            Discounts discounts,
+            CampaignPort.CounterActivitySeal counterSeal) {
         var catalog = scope.catalog();
         var at = checkoutClock.now();
         if (scope.manual()
-                && (discounts.total() != 0 || !gifts.isEmpty() || split.payAmount() <= 0)) {
+                && ((!scope.counter() && discounts.total() != 0) || !gifts.isEmpty()
+                        || split.payAmount() - discounts.total() <= 0)) {
             throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
         }
         if (!"MAIN".equals(scope.tenantNo())
@@ -2028,7 +2026,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         discounts.platformFunded(group.merchantNo(), group.storeNo()),
                         discounts.merchantFunded(group.merchantNo(), group.storeNo()),
                         activity,
-                        coupon);
+                        coupon,
+                        counterSeal);
         String hash =
                 CheckoutDigests.hash(
                         legacyCheckoutJson,
@@ -2082,8 +2081,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 money.dueMinor(),
                 money.platformMinor(),
                 money.merchantMinor(),
-                discounts.auto(),
-                discounts.coupon());
+                scope.counter() && counterSeal != null ? activity : discounts.auto(),
+                discounts.coupon(),
+                counterSeal);
     }
 
     @Override
@@ -2177,12 +2177,13 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     @Override
-    public CheckoutEconomicSnapshot quoteManualFor(
+    public CounterQuoteSnapshot quoteManualFor(
             CustomerParty party, CreateOrderCommand command, CheckoutPricingScope scope) {
         if (party == null || scope == null || !scope.counter() || !party.equals(scope.party())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return checkoutPricing(party.userNo(), command, null, scope).economic();
+        var pricing = checkoutPricing(party.userNo(), command, null, scope);
+        return new CounterQuoteSnapshot(1, pricing.economic(), pricing.counterPromotions());
     }
 
     @Override

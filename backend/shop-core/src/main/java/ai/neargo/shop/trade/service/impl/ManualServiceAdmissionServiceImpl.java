@@ -59,6 +59,12 @@ import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.service.create.CheckoutClock;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
+import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec;
+import ai.neargo.shop.trade.order.service.create.CounterOrderPlan.PreparedCommand;
+import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.marketing.CouponPort;
+import ai.neargo.shop.spi.marketing.CounterCampaignContract;
+import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
 import ai.neargo.shop.trade.policy.CheckoutAccessPolicy;
 import ai.neargo.shop.trade.policy.CheckoutAccessPolicy.CashierActor;
 import ai.neargo.shop.trade.service.CheckoutService;
@@ -101,6 +107,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
     private final MerchantOperatorAccessPort merchants;
     private final CheckoutMappers.OperationMapper operations;
     private final CheckoutMappers.QuoteMapper quotes;
+    private final CheckoutMappers.ConfirmationMapper confirmations;
     private final CheckoutMappers.LineMapper mappings;
     private final OrderMapper orders;
     private final SubOrderMapper children;
@@ -122,6 +129,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             MerchantOperatorAccessPort merchants,
             CheckoutMappers.OperationMapper operations,
             CheckoutMappers.QuoteMapper quotes,
+            CheckoutMappers.ConfirmationMapper confirmations,
             CheckoutMappers.LineMapper mappings,
             OrderMapper orders,
             SubOrderMapper children,
@@ -140,6 +148,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         this.merchants = merchants;
         this.operations = operations;
         this.quotes = quotes;
+        this.confirmations = confirmations;
         this.mappings = mappings;
         this.orders = orders;
         this.children = children;
@@ -283,6 +292,18 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                                     throw conflict();
                                                 }
                                                 requireDeclarationParty(op, previous);
+                                                if ("MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())) {
+                                                    var replayQuote = quotes.find(op.getCurrentQuoteNo());
+                                                    if (replayQuote == null) {
+                                                        throw conflict();
+                                                    }
+                                                    if (new CounterEconomicCodec(json).readQuote(
+                                                            replayQuote.getPricingJson())
+                                                            .counterActivitySeal() != null) {
+                                                        var replayFacts = facts(op, parent, subs.getFirst());
+                                                        requireDeclarationEconomics(previous, replayFacts);
+                                                    }
+                                                }
                                                 return previous;
                                             }
                                             var facts = facts(op, parent, subs.getFirst());
@@ -529,6 +550,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                     try {
                                         requireDeclarationParty(current, declaration);
                                         var facts = facts(current, parent, child);
+                                        requireDeclarationEconomics(declaration, facts);
                                         String state = admissionState(declaration);
                                         if (!Objects.equals(
                                                         parent.getVersion(),
@@ -841,7 +863,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 || child.getPeriodNo() != null
                 || nz(child.getPointsDeductMinor()) != 0
                 || nz(child.getDiscountPlatform()) != 0
-                || nz(child.getDiscountMerchant()) != 0
                 || declarations.afterSaleConflicts(child.getSubOrderNo()) != 0
                 || declarations.financialConflicts(parent.getOrderNo()) != 0
                 || !mappings.refundWork(child.getSubOrderNo()).isEmpty()) {
@@ -851,7 +872,21 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         if (quote == null || !"CONSUMED".equals(quote.getStatus())) {
             throw conflict();
         }
-        var economics = json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class);
+        CheckoutEconomicSnapshot economics;
+        try {
+            if ("MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())) {
+                economics = new CounterEconomicCodec(json).readQuote(quote.getPricingJson());
+            } else {
+                var raw = json.readTree(quote.getPricingJson());
+                if (raw.has("schema") || raw.has("economic") || raw.has("promotions")
+                        || raw.has("counterActivitySeal")) {
+                    throw conflict();
+                }
+                economics = json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class);
+            }
+        } catch (RuntimeException invalid) {
+            throw conflict();
+        }
         if (!Objects.equals(op.getBuyerNo(), economics.buyerNo())
                 || !op.getEntityNo().equals(economics.entityNo())
                 || !op.getStoreNo().equals(economics.storeNo())) {
@@ -870,6 +905,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                 .eq(OrdItem::getTenantNo, "MAIN")
                                 .eq(OrdItem::getSubOrderNo, child.getSubOrderNo())
                                 .orderByAsc(OrdItem::getId));
+        requireAdmissionEconomics(op, parent, child, quote, economics, sourceLines, originalItems);
         if (sourceLines.isEmpty()
                 || sourceLines.size() != originalItems.size()
                 || economics.lines().size() != sourceLines.size()
@@ -906,6 +942,183 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             }
         }
         return new Facts(op, parent, child, quote, sourceLines, originalItems);
+    }
+
+    /** Only original consumed counter authority admits its frozen merchant-funded allocation. */
+    private void requireAdmissionEconomics(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child,
+            OrdCheckoutQuote quote, CheckoutEconomicSnapshot economics, List<OrdCheckoutLine> sourceLines,
+            List<OrdItem> originalItems) {
+        boolean counter = "MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority());
+        if (!counter && !"CONSUMER_SESSION".equals(op.getPurchaseAuthority())) {
+            throw conflict();
+        }
+        if (!counter || economics.counterActivitySeal() == null) {
+            if (economics.counterActivitySeal() != null || economics.discountMinor() != 0
+                    || economics.platformMinor() != 0 || economics.merchantMinor() != 0
+                    || economics.freightMinor() != 0 || economics.dueMinor() != economics.goodsMinor()
+                    || !CampaignPort.Discount.none().equals(economics.activity())
+                    || !CouponPort.Allocation.none().equals(economics.coupon())
+                    || nz(child.getDiscountMerchant()) != 0) {
+                throw conflict();
+            }
+            if (counter) {
+                var prepared = json.readValue(op.getCommandJson(), PreparedCommand.class);
+                var codec = new CounterEconomicCodec(json);
+                if (!codec.legacyZero(economics, prepared.command())) {
+                    throw conflict();
+                }
+                codec.requireQuoteHash(party(op), prepared.lines(), economics, quote.getQuoteHash());
+            }
+            return;
+        }
+        try {
+            for (var row : List.of(op, parent, child, quote)) {
+                alive(row);
+            }
+            sourceLines.forEach(this::alive);
+            originalItems.forEach(this::alive);
+            var prepared = json.readValue(op.getCommandJson(), PreparedCommand.class);
+            var command = prepared.command();
+            if (command.couponNo() != null || command.usePoints() != null && command.usePoints() != 0
+                    || command.grouped() || command.appointmentAt() != null || command.appointmentSlotNo() != null
+                    || !"STORE_VERIFY".equals(command.fulfillment()) || !"OFFLINE".equals(command.payMode())
+                    || command.pickupNo() != null || command.addressId() != null
+                    || command.items() == null || command.items().size() != economics.lines().size()) {
+                throw conflict();
+            }
+            for (int index = 0; index < command.items().size(); index++) {
+                var requested = command.items().get(index);
+                var priced = economics.lines().get(index);
+                if (!requested.skuNo().equals(priced.skuNo()) || requested.qty() != priced.quantity()
+                        || requested.goodsNo() != null && !requested.goodsNo().equals(priced.goodsNo())) {
+                    throw conflict();
+                }
+            }
+            var codec = new CounterEconomicCodec(json);
+            codec.requireQuoteHash(party(op), prepared.lines(), economics, quote.getQuoteHash());
+            var seal = economics.counterActivitySeal();
+            CounterCampaignContract.requireSelection(json, seal, party(op), seal.groups(),
+                    prepared.command().activityChoices(), economics.activity());
+            var evidence = economics.evidence();
+            if (!op.getOrderNo().equals(parent.getOrderNo()) || !op.getSubOrderNo().equals(child.getSubOrderNo())
+                    || !op.getCurrentQuoteNo().equals(quote.getQuoteNo())
+                    || !op.getCaller().equals(quote.getCaller())
+                    || !op.getOperationNo().equals(quote.getOperationNo())
+                    || !"MAIN".equals(evidence.tenantNo()) || evidence.scopeRevision() != op.getScopeRevision()
+                    || !op.getScopeHash().equals(evidence.scopeHash())
+                    || !"CNY".equals(economics.currency()) || !"CNY".equals(parent.getCurrency())
+                    || !"OFFLINE".equals(economics.payMode())
+                    || !"STORE_VERIFY".equals(economics.fulfillment())
+                    || !OrdSubOrder.SERVICE_EXECUTION.equals(economics.fulfillmentAuthority())) {
+                throw conflict();
+            }
+            OrdCheckoutConfirmation consent = confirmations.selectOne(
+                    Wrappers.<OrdCheckoutConfirmation>lambdaQuery()
+                            .eq(OrdCheckoutConfirmation::getTenantNo, "MAIN")
+                            .eq(OrdCheckoutConfirmation::getConfirmationNo, op.getConfirmationNo())
+                            .eq(OrdCheckoutConfirmation::getDeleted, 0));
+            if (consent == null) {
+                throw conflict();
+            }
+            alive(consent);
+            if (!"CONSUMED".equals(consent.getStatus())
+                    || !"ORDINARY_SERVICE_PURCHASE".equals(consent.getPurpose())
+                    || !"MANUAL_OFFLINE".equals(consent.getAdmissionKind())
+                    || !op.getPurchaseAuthority().equals(consent.getPurchaseAuthority())
+                    || !op.getCaller().equals(consent.getCaller())
+                    || !op.getOperationNo().equals(consent.getOperationNo())
+                    || !op.getEntityNo().equals(consent.getEntityNo())
+                    || !op.getStoreNo().equals(consent.getStoreNo())
+                    || !party(op).equals(new CustomerParty(consent.getCustomerKind(), consent.getBuyerNo(),
+                            consent.getGuestNo(), consent.getIdentityRevision()))
+                    || op.getAuthorityNamespaceHash() == null
+                    || !op.getAuthorityNamespaceHash().equals(consent.getAuthorityNamespaceHash())
+                    || !quote.getQuoteNo().equals(consent.getQuoteNo())
+                    || !quote.getRevision().equals(consent.getQuoteRevision())
+                    || !quote.getQuoteHash().equals(consent.getQuoteHash())
+                    || !parent.getOrderNo().equals(consent.getOrderNo())
+                    || !Long.valueOf(economics.dueMinor()).equals(consent.getAmountMinor())
+                    || !"CNY".equals(consent.getCurrency()) || consent.getAcceptedAt() == null
+                    || consent.getConfirmedAt() == null || consent.getConsumedAt() == null
+                    || !"MERCHANT".equals(consent.getActorRealm())
+                    || !List.of("MCH", "USR").contains(consent.getActorKind())
+                    || consent.getActorNo() == null || consent.getActorNo().isBlank()
+                    || consent.getAccountNo() == null || consent.getAccountNo().isBlank()) {
+                throw conflict();
+            }
+            long gross = economics.goodsMinor();
+            long discount = economics.discountMinor();
+            if (discount < 0 || discount >= gross || economics.dueMinor() <= 0
+                    || Math.subtractExact(gross, discount) != economics.dueMinor()
+                    || economics.freightMinor() != 0 || economics.platformMinor() != 0
+                    || economics.merchantMinor() != discount
+                    || !CouponPort.Allocation.none().equals(economics.coupon())
+                    || !Long.valueOf(gross).equals(parent.getGoodsAmount())
+                    || !Long.valueOf(gross).equals(child.getGoodsAmount())
+                    || !Long.valueOf(0).equals(parent.getFreightAmount())
+                    || !Long.valueOf(0).equals(child.getFreightAmount())
+                    || !Long.valueOf(discount).equals(parent.getDiscountAmount())
+                    || !Long.valueOf(discount).equals(child.getDiscountAmount())
+                    || !Long.valueOf(discount).equals(child.getDiscountMerchant())
+                    || !Long.valueOf(0).equals(child.getDiscountPlatform())) {
+                throw conflict();
+            }
+            var ids = new HashSet<Long>();
+            var refs = new HashSet<String>();
+            long lineGross = 0;
+            long lineDue = 0;
+            long itemGross = 0;
+            long itemDue = 0;
+            for (var source : sourceLines) {
+                if (!ids.add(source.getOrderItemId()) || !refs.add(source.getClientLineRef())
+                        || !op.getCaller().equals(source.getCaller())
+                        || !op.getOperationNo().equals(source.getOperationNo())) {
+                    throw conflict();
+                }
+                var priced = economics.lines().stream()
+                        .filter(l -> l.clientLineRef().equals(source.getClientLineRef()))
+                        .findFirst().orElseThrow(this::conflict);
+                if (!priced.goodsNo().equals(source.getGoodsNo())) {
+                    throw conflict();
+                }
+                lineGross = Math.addExact(lineGross, priced.grossMinor());
+                lineDue = Math.addExact(lineDue, priced.dueMinor());
+            }
+            var itemIds = new HashSet<Long>();
+            for (var item : originalItems) {
+                if (!itemIds.add(item.getId())) {
+                    throw conflict();
+                }
+                itemGross = Math.addExact(itemGross, item.getAmount());
+                itemDue = Math.addExact(itemDue, item.getPaidShareMinor());
+            }
+            if (lineGross != gross || itemGross != gross || lineDue != economics.dueMinor()
+                    || itemDue != economics.dueMinor() || Math.subtractExact(lineGross, lineDue) != discount
+                    || Math.subtractExact(itemGross, itemDue) != discount) {
+                throw conflict();
+            }
+        } catch (RuntimeException invalid) {
+            throw conflict();
+        }
+    }
+
+    /** Same-key declarations and source observations must still agree with the consumed original sale. */
+    private void requireDeclarationEconomics(OrdManualServiceAdmission declaration, Facts facts) {
+        requireDeclarationParty(facts.op(), declaration);
+        if ("MERCHANT_RECORDED_IN_PERSON".equals(facts.op().getPurchaseAuthority())
+                && new CounterEconomicCodec(json).readQuote(facts.quote().getPricingJson())
+                        .counterActivitySeal() != null
+                && (!Objects.equals(declaration.getQuoteHash(), facts.quote().getQuoteHash())
+                        || !Objects.equals(declaration.getDeclaredMinor(), facts.parent().getPayAmount())
+                        || !Objects.equals(declaration.getCurrency(), facts.parent().getCurrency()))) {
+            throw conflict();
+        }
+    }
+
+    private void alive(BaseEntity row) {
+        if (!"MAIN".equals(row.getTenantNo()) || !Integer.valueOf(0).equals(row.getDeleted())) {
+            throw conflict();
+        }
     }
 
     private Original original(Facts facts) {

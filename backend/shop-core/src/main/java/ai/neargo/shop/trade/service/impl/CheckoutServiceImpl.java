@@ -67,6 +67,8 @@ import ai.neargo.shop.trade.order.service.create.CheckoutClock;
 import ai.neargo.shop.trade.order.service.create.CheckoutCommand;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
+import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec;
+import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec.CounterPolicy;
 import ai.neargo.shop.trade.order.service.create.CheckoutPricingScope;
 import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
 import ai.neargo.shop.trade.order.service.create.ExpectedCheckoutQuote;
@@ -199,7 +201,7 @@ public class CheckoutServiceImpl implements CheckoutService {
 
     @Override
     public CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request) {
-        if (request == null || request.couponNo() != null || !request.activityChoices().isEmpty()) {
+        if (request == null || request.couponNo() != null) {
             throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
         }
         var actor = counterActor(scope, "COUNTER_PREPARE", request.operation(), request);
@@ -255,7 +257,9 @@ public class CheckoutServiceImpl implements CheckoutService {
                         "MANUAL_OFFLINE",
                         request.operation().operationNo(),
                         customer,
-                        "MERCHANT_RECORDED_IN_PERSON");
+                        "MERCHANT_RECORDED_IN_PERSON",
+                        CounterPolicy.CURRENT_FULL_CUT,
+                        null);
         if (!actor.equals(counterActor(scope, "COUNTER_PREPARE", request.operation(), request))) {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
@@ -306,8 +310,8 @@ public class CheckoutServiceImpl implements CheckoutService {
                                         var economic =
                                                 writer.quoteManualFor(
                                                         customer, command, pricingScope);
-                                        quote.setQuoteHash(economic.quoteHash());
-                                        quote.setPricingJson(json.writeValueAsString(economic));
+                                        quote.setQuoteHash(economic.economic().quoteHash());
+                                        quote.setPricingJson(new CounterEconomicCodec(json).writeQuote(economic));
                                         quotes.insert(quote);
                                         return counterView(operation, quote);
                                     }));
@@ -442,9 +446,7 @@ public class CheckoutServiceImpl implements CheckoutService {
                                             throw BizException.of(ErrorCode.BAD_REQUEST);
                                         }
                                         var economic =
-                                                json.readValue(
-                                                        quote.getPricingJson(),
-                                                        CheckoutEconomicSnapshot.class);
+                                                new CounterEconomicCodec(json).readQuote(quote.getPricingJson());
                                         var confirmation = new OrdCheckoutConfirmation();
                                         confirmation.setConfirmationNo(number("CC"));
                                         confirmation.setCaller(op.getCaller());
@@ -1879,14 +1881,14 @@ public class CheckoutServiceImpl implements CheckoutService {
     }
 
     private CheckoutQuote view(OrdCheckoutOperation operation, OrdCheckoutQuote quote) {
-        var money = json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class);
-        var promotions =
-                money.activity().applied().stream()
-                        .map(
-                                a ->
-                                        new PromotionOption(
-                                                a.activityNo(), "ACTIVITY", a.name(), true, null))
-                        .toList();
+        var counter = "MERCHANT_RECORDED_IN_PERSON".equals(operation.getPurchaseAuthority())
+                ? new CounterEconomicCodec(json).readQuoteSnapshot(quote.getPricingJson()) : null;
+        var money = counter == null ? json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class)
+                : counter.economic();
+        var promotions = counter == null
+                ? money.activity().applied().stream().map(a -> new PromotionOption(
+                        a.activityNo(), "ACTIVITY", a.name(), true, null)).toList()
+                : counter.promotions();
         var discounts = new ArrayList<DiscountFact>();
         money.activity()
                 .applied()

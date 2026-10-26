@@ -6,13 +6,14 @@ import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
 import ai.neargo.shop.trade.order.service.create.CheckoutPricingScope;
 import ai.neargo.shop.trade.order.service.create.ExpectedCheckoutQuote;
 import ai.neargo.shop.trade.order.service.create.CounterOrderPlan;
+import ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot;
 import ai.neargo.shop.trade.order.service.create.CounterPurchaseAuthorization;
 
 /**
  * The ordinary writer owns both preview and final pricing; checkout adds no second price engine.
  */
 public interface CheckoutOrderWriter {
-    CheckoutEconomicSnapshot quoteManualFor(
+    CounterQuoteSnapshot quoteManualFor(
             CustomerParty party,
             OrderService.CreateOrderCommand command,
             CheckoutPricingScope scope);

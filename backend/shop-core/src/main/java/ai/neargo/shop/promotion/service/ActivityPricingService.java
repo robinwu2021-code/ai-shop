@@ -25,6 +25,13 @@ public interface ActivityPricingService {
 
     void rejectUnsupportedCounterPriceEffects(Collection<String> goodsNos);
 
+    /** A combined-owner evaluation supplies one captured wall clock after acquiring its durable fence. */
+    void rejectUnsupportedCounterChoices(List<CampaignPort.MerchantAmount> groups,
+            Map<String, String> choices, long ownerNowMillis);
+
+    /** Mandatory purchased-goods effects remain forbidden for AUTO, NONE and explicit selections. */
+    void rejectUnsupportedCounterPriceEffects(List<CampaignPort.MerchantAmount> groups, long ownerNowMillis);
+
     /** The same minimum-price algorithm checks only winning ordinary checkout price sources. */
     Map<String, Long> ordinaryFlashPrices(
             String buyerNo, Collection<String> goodsNos, Map<String, Long> competingPrices);

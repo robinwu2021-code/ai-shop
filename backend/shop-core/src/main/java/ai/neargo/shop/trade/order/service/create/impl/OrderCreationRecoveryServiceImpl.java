@@ -11,6 +11,7 @@ import ai.neargo.shop.spi.product.StockDispositionPort.ReservationView;
 import ai.neargo.shop.trade.mapper.CheckoutMappers;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.order.service.create.CounterOrderPlan;
+import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec;
 import ai.neargo.shop.trade.order.service.create.CounterPurchaseAuthorization;
 import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.trade.entity.OrdOrder;
@@ -80,8 +81,8 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
                 || plan.intentRevision() != 1) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        String encoded = json.writeValueAsString(plan);
-        String hash = CheckoutDigests.hash(json, plan);
+        String encoded = new CounterEconomicCodec(json).writePlan(plan);
+        String hash = new CounterEconomicCodec(json).planHash(plan);
         return DataScopeContext.executeWithoutScope(
                 () ->
                         independent.execute(
@@ -165,11 +166,9 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
                                             throw BizException.of(ErrorCode.CONFLICT);
                                         }
                                         var frozen =
-                                                json.readValue(
-                                                        prior.getCounterPlanJson(),
-                                                        CounterOrderPlan.class);
+                                                new CounterEconomicCodec(json).readPlan(prior.getCounterPlanJson());
                                         if (!prior.getPlanHash()
-                                                        .equals(CheckoutDigests.hash(json, frozen))
+                                                        .equals(new CounterEconomicCodec(json).planHash(frozen))
                                                 || !plan.party().equals(frozen.party())) {
                                             throw BizException.of(ErrorCode.CONFLICT);
                                         }
@@ -216,9 +215,7 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
                                         throw BizException.of(ErrorCode.CONFLICT);
                                     }
                                     var plan =
-                                            json.readValue(
-                                                    row.getCounterPlanJson(),
-                                                    CounterOrderPlan.class);
+                                            new CounterEconomicCodec(json).readPlan(row.getCounterPlanJson());
                                     var original =
                                             new Original(
                                                     "MAIN",
@@ -229,7 +226,7 @@ public class OrderCreationRecoveryServiceImpl implements OrderCreationRecoverySe
                                                     plan.manifestHash(),
                                                     StockDispositionContract.needs(
                                                             plan.stockNeeds()));
-                                    if (!row.getPlanHash().equals(CheckoutDigests.hash(json, plan))
+                                    if (!row.getPlanHash().equals(new CounterEconomicCodec(json).planHash(plan))
                                             || !original.equals(observation.original())
                                             || !row.getReservationOperationNo()
                                                     .equals(observation.reservationOperationNo())) {

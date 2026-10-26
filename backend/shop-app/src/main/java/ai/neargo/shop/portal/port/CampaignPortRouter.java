@@ -1,6 +1,8 @@
 package ai.neargo.shop.portal.port;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.marketing.port.CampaignPortImpl;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
 import ai.neargo.shop.spi.marketing.CampaignPort;
@@ -40,10 +42,32 @@ public class CampaignPortRouter implements CampaignPort {
 
     /** 「这一单当时减了什么」只有新模型记着（`pmt_apply`）—— 老模型那边没有这张账，所以不必合并，直接转发。 */
     @Override
-    public List<AppliedActivity> counterCandidates(
-            CustomerParty party, List<MerchantAmount> groups) {
-        promo.rejectUnsupportedCounterChoices(groups, Map.of());
-        return legacy.counterCandidates(party, groups);
+    public List<AppliedActivity> counterCandidates(CustomerParty party, List<MerchantAmount> groups) {
+        return counterCandidates(party, groups, Map.of()).candidates();
+    }
+
+    @Override
+    public CounterCandidates counterCandidates(CustomerParty party, List<MerchantAmount> groups,
+            Map<String, String> choices) {
+        legacy.lockCounter(groups);
+        long now = System.currentTimeMillis();
+        promo.rejectUnsupportedCounterChoices(groups, choices, now);
+        return legacy.evaluateCounter(party, groups, choices, now);
+    }
+
+    @Override
+    public void requireCounterSelection(CustomerParty party, List<MerchantAmount> groups,
+            Map<String, String> choices, CounterActivitySeal seal, Discount selected) {
+        legacy.requireCounterEvidence(party, groups, choices, seal, selected);
+        try {
+            legacy.requireSameCounter(seal, counterCandidates(party, groups, choices));
+        } catch (BizException failure) {
+            if (failure.errorCode() == ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION
+                    || failure.errorCode() == ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE) {
+                throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+            }
+            throw failure;
+        }
     }
 
     @Override
