@@ -3803,7 +3803,74 @@
           ]
         }
       ]
+    },
+    {
+      "key": "checkout-h5",
+      "label": "收银台 H5",
+      "count": 5,
+      "domains": [
+        {
+          "name": "收银",
+          "pages": [
+            {
+              "app": "checkout-h5",
+              "route": "/c/:token",
+              "title": "付款（动态码）",
+              "domain": "收银",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/c/:token"
+            },
+            {
+              "app": "checkout-h5",
+              "route": "/checkout/:payOrderNo",
+              "title": "付款（托管收银台）",
+              "domain": "收银",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/checkout/:payOrderNo"
+            },
+            {
+              "app": "checkout-h5",
+              "route": "/q/:code",
+              "title": "静态码输金额",
+              "domain": "收银",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/q/:code"
+            },
+            {
+              "app": "checkout-h5",
+              "route": "/result/:payOrderNo",
+              "title": "付款结果",
+              "domain": "收银",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/result/:payOrderNo"
+            },
+            {
+              "app": "checkout-h5",
+              "route": "/return/:payOrderNo",
+              "title": "渠道回跳",
+              "domain": "收银",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5177/return/:payOrderNo"
+            }
+          ]
+        }
+      ]
     }
   ],
-  "total": 304
+  "total": 309
 }

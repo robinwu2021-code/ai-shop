@@ -132,6 +132,18 @@
         "prototypes"
       ],
       "port": 8790
+    },
+    {
+      "_comment": "收银台 H5（checkout-h5）挂本机假接口看界面；接真后端用 npm run dev -w ai-shop-checkout-h5（代理到 8081）",
+      "name": "checkout-h5-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:mock",
+        "-w",
+        "ai-shop-checkout-h5"
+      ],
+      "port": 5177
     }
   ]
 }

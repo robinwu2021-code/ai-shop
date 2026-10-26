@@ -1,0 +1,23 @@
+{
+  "name": "ai-shop-checkout-h5",
+  "version": "0.1.0",
+  "private": true,
+  "description": "收银台 H5：顾客扫码 / 跳转付款（pay.{品牌域名}，接 /checkout/v1）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5177",
+    "build": "vite build",
+    "preview": "vite preview --port 5177",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "size": "node scripts/check-size.mjs",
+    "check": "npm run typecheck && npm run test && npm run build && npm run size",
+    "dev:mock": "CHECKOUT_MOCK=1 vite --port 5177"
+  },
+  "devDependencies": {
+    "jsdom": "30.0.1",
+    "typescript": "~5.9.3",
+    "vite": "5.2.8",
+    "vitest": "^4.1.11"
+  }
+}

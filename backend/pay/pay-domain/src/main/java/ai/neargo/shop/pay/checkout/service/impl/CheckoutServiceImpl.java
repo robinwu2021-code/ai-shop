@@ -19,6 +19,7 @@ import ai.neargo.shop.pay.checkout.service.CheckoutService;
 import ai.neargo.shop.pay.mapper.checkout.CheckoutMappers.PayCheckoutSessionMapper;
 import ai.neargo.shop.pay.mapper.checkout.CheckoutMappers.PayQrCodeMapper;
 import ai.neargo.shop.pay.mapper.openapp.OpenAppMappers.PayAppMapper;
+import ai.neargo.shop.pay.market.MarketService;
 import ai.neargo.shop.pay.merchant.MerchantDefaults;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService.StoreRef;
@@ -54,10 +55,12 @@ public class CheckoutServiceImpl implements CheckoutService {
     private final RouteSelectionPolicy routes;
     private final PayMerchantBindingService stores;
     private final Duration ttl;
+    private final MarketService markets;
 
     public CheckoutServiceImpl(PayCheckoutSessionMapper sessions, PayQrCodeMapper codes, PayAppMapper apps,
                                PaymentService payments, RouteSelectionPolicy routes, PayMerchantBindingService stores,
-                               @Value("${shop.pay.checkout.token-ttl:PT15M}") Duration ttl) {
+                               @Value("${shop.pay.checkout.token-ttl:PT15M}") Duration ttl, MarketService markets) {
+        this.markets = markets;
         this.sessions = sessions;
         this.codes = codes;
         this.apps = apps;
@@ -94,7 +97,8 @@ public class CheckoutServiceImpl implements CheckoutService {
         List<String> methods = done ? List.of() : routes.available(o.getStoreId(), o.getMarket()).stream()
                 .map(x -> x.product().getPayMethod()).distinct().toList();
         return new SessionView(o.getPayOrderNo(), o.getEntityNameSnapshot(), o.getStoreNameSnapshot(),
-                o.getAmountMinor(), o.getCurrency(), done ? "DONE" : s.getStatus(), methods, epoch(s.getExpireAt()));
+                o.getAmountMinor(), o.getCurrency(), scaleOf(o.getMarket()), o.getMarket(), done ? "DONE" : s.getStatus(),
+                methods, epoch(s.getExpireAt()));
     }
 
     @Override
@@ -141,7 +145,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         PayQrCode c = activeCode(qrCode);
         StoreRef store = stores.storeById(c.getStoreId()).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
         return new CodeView(store.entityName(), store.storeName(), c.getKind(), c.getTableRef(), c.getCurrency(),
-                c.getSingleLimitMinor());
+                scaleOf(store.market()), store.market(), c.getSingleLimitMinor());
     }
 
     @Override
@@ -169,6 +173,11 @@ public class CheckoutServiceImpl implements CheckoutService {
                 store.storeId(), store.storeName(), store.entityName(), store.market(), amountMinor, c.getCurrency(),
                 store.storeName(), "ONLINE", Instant.now().plus(ttl), store.fundsPath()));
         return issue(o);
+    }
+
+    /** 币种小数位按市场表；市场没配给 null，不兜底成 2 位（与 {@code MarketService#currencyOf} 同一条理由） */
+    private Integer scaleOf(String market) {
+        return markets.find(market).map(MarketService.MarketRow::currencyScale).orElse(null);
     }
 
     private PayQrCode activeCode(String qrCode) {

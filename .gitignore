@@ -6,6 +6,7 @@ node_modules
 /dist
 /c-app/dist
 /b-app/dist
+/checkout-h5/dist
 .DS_Store
 *.local
 .env.local

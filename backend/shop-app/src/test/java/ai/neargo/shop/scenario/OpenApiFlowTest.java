@@ -451,6 +451,8 @@ class OpenApiFlowTest {
         assertThat(viewed.getHeader("Referrer-Policy")).isEqualTo("no-referrer");
         JsonNode v = ok(viewed);
         assertThat(v.get("amountMinor").asLong()).isEqualTo(1500);
+        assertThat(v.get("currencyScale").asInt()).as("小数位由市场表给，前端按它排版").isEqualTo(2);
+        assertThat(v.get("market").asString()).isEqualTo("CN");
         assertThat(v.get("payeeName").asString()).startsWith("开放 E-OA-");
         assertThat(v.get("payMethods").toString()).contains("TEST_PAY");
         assertThat(v.has("outOrderNo") || v.has("storeId") || v.has("payMerchantId")).as("字段白名单").isFalse();

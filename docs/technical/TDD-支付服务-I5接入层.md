@@ -1,6 +1,6 @@
 # TDD-支付服务-I5接入层
 
-状态：实现中（S1–S4、S6a webhook、S7 收银台后端已实现；S6b 内部事件、S5、S8 起与 `checkout-h5` 前端未动）
+状态：实现中（S1–S4、S6a webhook、S7 收银台（后端 + `checkout-h5`）已实现；S6b 内部事件、S5、S8 起未动）
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §3.3–§3.6、§5 I5 · [完整设计方案](./TDD-支付服务-完整设计方案.md) §9 · [台湾阿联酋通道与开放 API](./TDD-支付服务-台湾阿联酋通道与开放API.md) §2.8 · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §3 · [ADR-044](./ADR/ADR-044-支付接入层模块pay-portal.md) · 配套：[接口清单](./支付服务-接口清单.md) · [安全规范](./支付服务-安全规范.md)
 创建：2026-10-26 · 最后更新：2026-10-26
 
@@ -155,6 +155,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | F30 F32 F33 F34（S7） | `#hostedCheckout`（建单返回带令牌的 `checkoutUrl`；顾客不签名凭令牌看单——字段白名单、`X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`；选方式；结果 PROCESSING → 渠道到账后 SUCCEEDED；库里与请求记录里都没有令牌明文） | ✅ | ⑧ 请求记录不遮令牌 → 红 ✅ |
 | F30（令牌生命周期） | `#tokenLifecycle`（不存在 404；关单当场 `REVOKED`、再访问 410；过期 410） | ✅ | ⑨ 关单不作废 → 红（第一版只断言 410，因「单已关」另有判断而消融不红，补断言行状态后才红）⑩ 不判过期 → 红 ✅ |
 | F31（静态码） | `#staticCode`（看门店；超单笔 422；建两单后超单码日累计 422；单记 `CHECKOUT` 来源、`biz_no` = 码；停用后 404） | ✅ | ⑪ 不查日累计 → 红 ✅ |
+| F35（`checkout-h5`） | `checkout-h5` vitest 19 条：`app.test.ts`（收款方在金额上方且服务端字符串只当文本；410 / 404 同一失效屏；小数位缺失不显示金额不给付款；AE 市场 + 非中文浏览器 → `ar` 从右到左；`?lang=` 压过浏览器语言；选方式 → 测试通道 → 结果页；回跳页无令牌只说回原页面；静态码超单笔前端先拦、合法金额按最小单位提交）· `channel.test.ts`（跳转只认 https、JSAPI 交 WeixinJSBridge）· `money.test.ts` · `i18n.test.ts`（四语键集与占位符一致）· `routes.test.ts`；`npm run check`：`tsc` 无错、构建、**首屏 7.5 KB gzip（预算 100 KB）**；浏览器实看 6 屏（mock） | ✅ | ⑫ 字符串走 innerHTML → 注入用例红 ⑬ 跳转不限协议 → 红 ⑭ 小数位兜底成 2 → 2 条红 ⑮ 前端不拦单笔上限 → 红；RTL 闸门：往 CSS 写一条 `padding-left` → 报出 ✅ |
 | 守卫 | `PortalRouteRulesTest`（类级前缀）· `PayReverseDependencyBudgetTest` · `TableHasProducerTest` · `ArchitectureTest` · `CallbackTemplateTest` · `OpsEndpointPermTest` 等 88 条 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -166,6 +167,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | S3 | `openapp.{SignatureCanonicalizer, NonceStore, DbNonceStore, AppKeyResolver, ConfigAppKeyResolver}` · `openapp.service.AppAuthService(+Impl)` · `api.auth.OpenSignatureAuthenticator` · `ErrorCode.PAY_APP_REFUND_LIMIT` + 三语 · `SignatureCanonicalizerTest` |
 | S6a | `pay-domain` `notify.{WebhookSender, HttpWebhookSender, WebhookTargets}` · `notify.entity.{PayBizNotify, PayBizNotifyAttempt}` · `mapper.notify.NotifyMappers`（`claim` 租约）· `notify.service.BizNotifyService(+Impl)` · `job.BizNotifyDeliveryJob` · 挂点 `PaymentOutcomeServiceImpl#apply` / `PaymentServiceImpl#close` / `RefundOutcomeServiceImpl#succeeded·failed` · `SignatureCanonicalizer#parseQuery`（自鉴权器移入，入站出站共用；`+` 按字面）· `application-testcfg.yml` `shop.pay.notify.webhook.allow-insecure-targets` |
 | S7 | `pay-domain` `checkout.entity.PayCheckoutSession` · `checkout.service.CheckoutService(+Impl)` · `CheckoutMappers`（`PayCheckoutSessionMapper#revokeAll`、`PayQrCodeMapper#dailyTotal`）· `PaymentService#findById` · `PaymentServiceImpl#close` 作废令牌 · `PayMerchantBindingService#storeById` · `V11` 追加 `CHECKOUT` 接入方种子 · `ErrorCode.PAY_CHECKOUT_EXPIRED / _LIMIT` + 三语 · `pay-portal` `api.checkout.CheckoutController` · `api.auth.CheckoutVisitorAuthenticator` · `PortalAuthFilter#maskPath` · `PortalExceptionHandler`（410）· `OpenPaymentController` 建单签令牌 · `shop-app` `SecurityConfig#checkoutChain` · `schema-test.sql` 重新生成 |
+| F35 | 新工作区 `checkout-h5/`（Vite + TypeScript，无框架：`routes.ts` 路由真源 · `app.ts` · `views/{pay,code,result}.ts` · `api.ts` · `channel.ts` · `i18n.ts` 四语 · `money.ts` · `mock.ts` 本机假接口 · `scripts/check-size.mjs` 首屏预算）· 根 `package.json` / `package-lock.json`（只加工作区三处条目）· `.gitignore` · `.claude/launch.json`（`checkout-h5-mock`）· `scripts/gen-ui-catalog.py`（`read_checkout`）· `scripts/check-rtl-physical.mjs`（扫 `.css`）· `prototypes/pay-checkout-h5.html` + 登记 · `ui-catalog.json` 重新生成 · 后端 `CheckoutService` 视图加 `currencyScale` / `market` |
 | S4 | `acquiring.route.RouteSelectionPolicy` · `PaymentService#start`（+ `requireOwner`、`attachAttempt` 先按支付单号挂并复制冻结列）· `RefundService#query` + 第三方只退自己的单 · `PayMerchantBindingService#storeByNo` · `api.open.{OpenPaymentController, OpenRefundController, OpenStoreController, OpenViews}` · `shop-base` `spi.pay.PayOrderNumbers` · `OrderServiceImpl#markPaid` 跳过支付单号 · `OpenApiFlowTest` · `application-testcfg.yml` |
 
 ### 偏差说明
@@ -179,7 +181,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 7. **审计时间列的时区**：平台 `AuditMetaObjectHandler` 按 JVM 时区填 `created_at`，而支付表列注释写 UTC —— 答复的放弃时限依赖它，`pay_biz_notify` / `_attempt` 改为显式写 UTC（红测试在 +04:00 的机器上暴露：晚放弃 4 小时）。其它支付表的同一问题记作 W3 待查。
 8. **webhook 只签 HMAC**；RSA 接入方的平台签名私钥随 W5 密钥模块。
 9. **静态码建的单归内部接入方 `CHECKOUT`**：`pay_order.pay_app_id` 必填，静态码没有业务方；种子**追加进本分支未推送的 V11**，没占 V12（§3.8 已确认 V12 给 W2）。`source_id` 记的是该接入方 id，码号在 `biz_no`（表结构注释写的是码 id，偏差）。
-10. **`checkout-h5` 前端（F35）未做**：新工程要下载依赖（`npm ci` 未获准），界面清单与 RTL 闸门随它一起；后端接口已可由任何前端调用。收银台的 IP 频率限流随 F07。
+10. **`checkout-h5` 取舍**：不用框架（首屏 7.5 KB）；语言另加 `zh-CN`（大陆市场的顾客同样扫码），`?lang=` 可指定；微信 JSAPI 需要的付款人 openid 由前一跳网页授权带在查询串里（网页授权本身未做，随渠道 W2）；`return_url` 白名单跳回未做（结果页只在本页结束）；收银台的 IP 频率限流随 F07；原型稿未发布到 claude.ai（登记表 `artifact` 为空，清单里暂无「原型」链接）。
 11. **查单 / 关单不再返回 `checkoutUrl`**：令牌明文不落库，只在建单响应里给一次；幂等重放建单会再签一张新令牌（旧的到期失效）。
 
 ## §7 待确认

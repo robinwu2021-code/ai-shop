@@ -46,7 +46,7 @@
 | AC4 | `OpsLoginProtectionFlowTest#accountLocksAfterFiveFailures` · `#successClearsFailures` · `#ipThrottledAcrossAccounts` | ✅ | ① 锁定期内照样验密码 → 2 条红 ② 不记 IP 失败 → `ipThrottled…` 红 ✅ |
 | AC5 | `#secondFactorByEmail` · `#challengeDiesAfterFiveWrongCodes` | ✅ | ③ 第二因子开着也直接发会话 → 2 条红 ④ 猜码不限次数 → `challengeDies…` 红 ✅ |
 | AC6 | `#prodRefusesSecondFactorOff` | ✅ | ⑤ 生产也能关 → 红 ✅ |
-| AC7 | ops-web `lib/api/https/login-mapping.test.ts` 新增 2 条（挑战不当成已登录、第二步同样摊平） | ⏸ **未跑**：本工作区无 ops-web `node_modules`（`vitest` / `tsc` 不在），见偏差 4 | — |
+| AC7 | ops-web `lib/api/https/login-mapping.test.ts` 新增 2 条（挑战不当成已登录、第二步同样摊平） | ✅ 2026-10-26 `npm ci` 后补跑：`npm run check`（`tsc` 无错 + 84 个文件 878 条全过）、`npm run lint` 无错 | ⑥ 挑战字段不摊平 → 「不当成已登录」那条红 ✅ |
 | AC8 | `NginxEdgeRulesTest`（3 条） | ✅ 3/3 | 修之前三条全红（含 80 端口 `/internal/` 那条意外发现）✅ |
 | 回归 | 全量 `mvn -o -pl shop-app -am test`（共享分支已把 shop-app 拆成 8 批 surefire 执行，堆不再溢出） | 第一轮 4171 条只红 2 条，**都是本片引起、已修**：`ArchitectureTest#domainsMustNotTouchWebRuntime`（回调控制器第一版用了 `RequestContextHolder` → 改为回调链 + `RequestMetaFilter`）、`OpsEndpointPermTest#everyOpsEndpointHasADecision`（新端点 `/ops/auth/login/verify` 进免权白名单并写明理由）；**第二轮：6409 条（含上游各模块）0 失败 0 错误、无 OOM** | — |
 
@@ -67,6 +67,6 @@
 1. **计数器是单实例内存**（`OpsLoginGuard` / `OpsLoginChallenges`），与现有 `PasswordResetTokens` 同一前提；多实例部署时要换共享存储（Redis），否则锁定按实例分摊。
 2. **锁定可被拿来锁别人的账号**（输错 5 次让真运营 15 分钟进不来）：撞库防护的固有代价；锁定只 15 分钟、且同 IP 20 次后连这个也做不了。
 3. **登录验证码邮件没有库内模板**（`notify_template` 无 `TPL_MAIL_OPS_LOGIN_CODE` 行），走调用方内置的中英双语文案；要多语言模板时补一条平台迁移。
-4. **ops-web 的类型检查与单测本地未跑**：本工作区与主工作区都没有可用的 `node_modules`；需要 `npm ci`（下载依赖）后跑 `npm run check`，pre-push 的同一道闸门在有 `node_modules` 的机器上会跑。
+4. ~~ops-web 的类型检查与单测本地未跑~~ —— 已补跑（见 §5 AC7）。
 5. **`api` 与 `ops` 仍同进程**（G1 的另一半）：nginx 层已隔离入口，进程拆分属部署形态，另排。
 6. **`useSSL=false`**（G6 的另一半）：数据库与应用同机，暂不处理；跨主机前改。

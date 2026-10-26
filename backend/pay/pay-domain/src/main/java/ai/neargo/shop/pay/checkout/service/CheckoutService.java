@@ -31,11 +31,15 @@ public interface CheckoutService {
     }
 
     /** 字段白名单（F34）：收款方与门店名、金额、方式；没有任何个人信息与内部 id */
+    /**
+     * @param currencyScale 币种小数位（金额是最小单位，前端按它排版）；市场没配为 {@code null} —— 前端此时不显示金额、不让付
+     * @param market        市场（前端按它选默认语言）
+     */
     record SessionView(String payOrderNo, String payeeName, String storeName, long amountMinor, String currency,
-                       String status, List<String> payMethods, long expireAt) {
+                       Integer currencyScale, String market, String status, List<String> payMethods, long expireAt) {
     }
 
     record CodeView(String payeeName, String storeName, String kind, String tableRef, String currency,
-                    long singleLimitMinor) {
+                    Integer currencyScale, String market, long singleLimitMinor) {
     }
 }
