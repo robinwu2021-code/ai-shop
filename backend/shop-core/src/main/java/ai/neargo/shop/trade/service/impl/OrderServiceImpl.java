@@ -106,6 +106,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 交易主干实现。下单链路严格按 TDD-backend §7.1 的八步走。
@@ -2063,6 +2064,14 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 与订单同事务：扣量失败要能连订单一起回滚，否则会「量扣了、单没成」。
          */
         campaignPort.commit(userNo, orderNo, discounts.auto());
+        // 特价 / 买赠的份数同理在这里扣：每个真的胜出了的活动一单扣一份（见 CampaignPort#commitItemBenefits）
+        campaignPort.commitItemBenefits(userNo, orderNo, Stream.concat(
+                split.items.stream().map(l -> new CampaignPort.ItemBenefitUse(
+                        l.snapshot.goodsNo(), l.snapshot.merchantNo(), false)),
+                split.items.stream().filter(l -> gifts.getOrDefault(l.snapshot.skuNo(), 0) > 0)
+                        .map(l -> new CampaignPort.ItemBenefitUse(
+                                l.snapshot.goodsNo(), l.snapshot.merchantNo(), true)))
+                .toList());
 
         // ⑦ 发事件（只写 outbox，与业务同事务）
         if (pointsStaged) {
