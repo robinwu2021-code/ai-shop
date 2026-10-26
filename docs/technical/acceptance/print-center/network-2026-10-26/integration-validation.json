@@ -1,0 +1,40 @@
+{
+  "candidate": "65d5c360ed0998fc0d19ed6b23f786f1cceb505b",
+  "businessSourceIntegration": {
+    "status": "PASS",
+    "classes": {
+      "BusinessPrintSourceFlowTest": 2,
+      "PrintOrderSoftwareFlowTest": 4,
+      "StoredValueCreditFlowTest": 4
+    },
+    "total": 10
+  },
+  "optionalCommerce": {
+    "status": "PASS",
+    "classes": {
+      "ResourceMappingTest": 9,
+      "CatalogSynchronizationTest": 15,
+      "MappingWebContractTest": 3,
+      "CatalogWebContractTest": 4,
+      "CatalogDocumentPolicyTest": 4,
+      "ChannelAuthorizationTest": 13,
+      "CommerceWebContractTest": 7
+    },
+    "total": 55,
+    "note": "core and web explicitly selected; outside default reactor tests"
+  },
+  "printScripts": {
+    "status": "PASS",
+    "total": 5
+  },
+  "sharedContractGuards": {
+    "status": "PASS",
+    "total": 27
+  },
+  "normalFullGate": "ATTEMPT3_STOPPED_AFTER_ORPHAN_DOCUMENT_ARTIFACT_FAILURE",
+  "orphanArtifactFix": {
+    "status": "PASS",
+    "tests": 2,
+    "historicalDiagnosticCode": "moved to explicitly labeled Markdown code example; no whitelist change"
+  }
+}

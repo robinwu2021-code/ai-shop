@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /private/tmp/ai-shop-print-compact-integration/packages/shared
+
+
+ Test Files  2 passed (2)
+      Tests  27 passed (27)
+   Start at  15:34:18
+   Duration  451ms (transform 77ms, setup 28ms, import 107ms, tests 426ms, environment 0ms)
+
