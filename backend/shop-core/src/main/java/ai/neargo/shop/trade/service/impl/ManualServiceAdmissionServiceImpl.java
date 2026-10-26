@@ -1,11 +1,5 @@
 package ai.neargo.shop.trade.service.impl;
 
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
-import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.BoundActionContext;
@@ -24,6 +18,7 @@ import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.security.InternalCall;
 import ai.neargo.shop.spi.security.InternalRequestBinding;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
 import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
@@ -32,13 +27,18 @@ import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.ManualServiceAdmiss
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.ManualServiceReceiptRecorded;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionInternalApi;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionInternalApi.Scoped;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ConfirmManualReceipt;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualAdmissionView;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualLookup;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualMethod;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualSourceFacts;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualSourceLine;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 import ai.neargo.shop.trade.entity.OrdCheckoutLine;
 import ai.neargo.shop.trade.entity.OrdCheckoutOperation;
@@ -1068,15 +1068,23 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 declaration == null ? 0 : declaration.getAdmissionRevision(),
                 state,
                 lines,
-                clock.now());
+                clock.now(),
+                parent == null ? null : parent.getPayAmount(),
+                "CNY",
+                view(op, parent, declaration),
+                op.getPurchaseAuthority());
     }
 
     private ManualAdmissionView view(
             OrdCheckoutOperation op, OrdManualServiceAdmission declaration) {
+        return view(op, parent(op.getOrderNo()), declaration);
+    }
+
+    private ManualAdmissionView view(
+            OrdCheckoutOperation op, OrdOrder parent, OrdManualServiceAdmission declaration) {
         if (declaration != null) {
             requireDeclarationParty(op, declaration);
         }
-        var parent = parent(op.getOrderNo());
         if (declaration == null) {
             return new ManualAdmissionView(
                     new OperationRef(op.getCaller(), op.getOperationNo()),

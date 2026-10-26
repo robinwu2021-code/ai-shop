@@ -2,6 +2,7 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.beauty.dto.BusinessTraceVO;
 import ai.neargo.shop.beauty.dto.CurrencyBillVO;
+import ai.neargo.shop.beauty.dto.ManualReceiptSummaryVO;
 import ai.neargo.shop.beauty.dto.ServiceSubmissionVO;
 import ai.neargo.shop.beauty.dto.SourceBillVO;
 import ai.neargo.shop.beauty.dto.SourceObservationVO;
@@ -18,6 +19,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
@@ -50,6 +52,7 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
     private final ObjectProvider<CheckoutPort> checkout;
     private final ServiceSourceObservation observations;
     private final TransactionTemplate reads;
+    private ObjectProvider<ManualServiceAdmissionPort> manual;
     private final Clock clock;
 
     public WorkOrderBillServiceImpl(
@@ -80,6 +83,34 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
         reads.setReadOnly(true);
     }
 
+    public WorkOrderBillServiceImpl(
+            AppointmentPersistence db,
+            ServiceSubmissionAccess access,
+            ServiceSubmissionQuery query,
+            BeautyMappers.WorkOrderMapper orders,
+            BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.TradeBindingMapper bindings,
+            ObjectProvider<CheckoutPort> checkout,
+            ServiceSourceObservation observations,
+            PlatformTransactionManager manager,
+            Clock clock,
+            ObjectProvider<ManualServiceAdmissionPort> manual) {
+        this(
+                db,
+                access,
+                query,
+                orders,
+                tasks,
+                submissions,
+                bindings,
+                checkout,
+                observations,
+                manager,
+                clock);
+        this.manual = manual;
+    }
+
     private record Manifest(
             ServiceSubmissionQuery.Root root,
             List<BtyServiceSubmission> submissions,
@@ -93,14 +124,19 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
         access.authorize(entity, store, actor, false, false);
         for (int attempt = 0; ; attempt++) {
             var manifest = snapshot(entity, store, workOrder);
-            var buyer = access.buyer(manifest.root().context(), null);
+
             var groups = new TreeMap<String, List<BtyServiceSubmission>>();
             for (var submission : manifest.submissions()) {
                 var command = command(submission);
-                AppointmentPersistence.require(
-                        command.buyerNo().equals(buyer.userNo())
-                                && Objects.equals(command.claimReceiptHash(), buyer.receiptHash())
-                                && Objects.equals(command.claimRevision(), buyer.claimRevision()));
+                if (command.schemaVersion() == 2) {
+                    var buyer = access.buyer(manifest.root().context(), null);
+                    AppointmentPersistence.require(
+                            command.buyerNo().equals(buyer.userNo())
+                                    && Objects.equals(
+                                            command.claimReceiptHash(), buyer.receiptHash())
+                                    && Objects.equals(
+                                            command.claimRevision(), buyer.claimRevision()));
+                }
                 groups.computeIfAbsent(command.operationNo(), ignored -> new ArrayList<>())
                         .add(submission);
             }
@@ -232,7 +268,12 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
             String actor,
             Manifest manifest,
             List<BtyServiceSubmission> rows) {
-        var command = command(rows.getFirst());
+        // A failed historical V2 intent remains history after the same original gains a valid V3
+        // intent.
+        // Revalidate only the V3 owner party in the manual domain; never reinterpret old financial
+        // hashes.
+        var manualRows = rows.stream().filter(row -> command(row).schemaVersion() == 3).toList();
+        var command = command(manualRows.isEmpty() ? rows.getFirst() : manualRows.getFirst());
         var linkedTasks =
                 rows.stream()
                         .flatMap(row -> command(row).tasks().stream())
@@ -244,6 +285,8 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
                         .filter(task -> linkedTasks.contains(task.getTaskNo()))
                         .map(task -> taskView(task, manifest.bindings()))
                         .toList();
+        if (command.schemaVersion() == 3)
+            return manualSource(entity, store, actor, manifest, manualRows, projected);
         var owner = checkout.getIfAvailable();
         String currency = null;
         var history = observations.history(entity, store, command.buyerNo(), command.operationNo());
@@ -451,6 +494,179 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
         }
     }
 
+    /** Cash declarations are a separate display subtotal; no Pay or funded quote is read here. */
+    private ReadSource manualSource(
+            String entity,
+            String store,
+            String actor,
+            Manifest manifest,
+            List<BtyServiceSubmission> rows,
+            List<SubmissionTaskVO> projected) {
+        var c = command(rows.getFirst());
+        String order = null, sub = c.expectedSourceNo(), currency = null;
+        SourceObservationVO projection = null;
+        var known = observations.manualKnown(entity, store, c.party(), c.operationNo());
+        if (known != null
+                && "MANUAL_OFFLINE".equals(observations.manualHistory(known).getAdmissionKind()))
+            observations.invalidateManual(known, actor);
+        try {
+            var owner = manual == null ? null : manual.getIfAvailable();
+            if (owner == null) throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            var facts =
+                    owner.source(
+                            new CheckoutPort.CheckoutScope("MAIN", entity, store, actor),
+                            new CheckoutPort.SourceLookup(
+                                    new CheckoutPort.OperationRef("BEAUTY", c.operationNo()), sub));
+            if (facts == null || facts.orderNo() == null)
+                return manualPending(c.operationNo(), order, sub, currency, projected, projection);
+            for (var row : rows) {
+                var selected = command(row);
+                var party = access.manualParty(manifest.root().context(), facts);
+                var relation = access.manualBuyer(manifest.root().context(), party);
+                AppointmentPersistence.require(
+                        selected.party().equals(party)
+                                && selected.counterQuoteAuthority()
+                                        .equals(facts.purchaseAuthority())
+                                && Objects.equals(
+                                        selected.claimReceiptHash(), relation.receiptHash())
+                                && Objects.equals(
+                                        selected.claimRevision(), relation.claimRevision())
+                                && new CheckoutPort.OperationRef("BEAUTY", selected.operationNo())
+                                        .equals(facts.operation())
+                                && (!"MANUAL_EXISTING".equals(selected.sourceMode())
+                                        || selected.expectedSourceNo().equals(facts.subOrderNo())));
+            }
+            order = facts.orderNo();
+            sub = facts.subOrderNo();
+            currency = facts.currency();
+            var observed =
+                    observations.observeManual(
+                            new ServiceSourceObservation.ManualCanonical(
+                                    entity, store, c.party(), c.operationNo(), order, sub),
+                            actor);
+            projection = observations.manualProjection(observed.row(), observed.manualReady());
+            access.authorize(entity, store, actor, false, false);
+            if (!observed.manualReady() || observed.facts() == null)
+                return manualPending(c.operationNo(), order, sub, currency, projected, projection);
+            facts = observed.facts();
+            // The second owner read is independently identity checked, including current claim
+            // linkage.
+            AppointmentPersistence.require(
+                    c.party().equals(access.manualParty(manifest.root().context(), facts))
+                            && c.counterQuoteAuthority().equals(facts.purchaseAuthority()));
+            var relation = access.manualBuyer(manifest.root().context(), facts.party());
+            AppointmentPersistence.require(
+                    Objects.equals(c.claimReceiptHash(), relation.receiptHash())
+                            && Objects.equals(c.claimRevision(), relation.claimRevision()));
+            var allocated = new TreeMap<String, BigDecimal>();
+            for (var binding : manifest.bindings())
+                if (facts.subOrderNo().equals(binding.getSourceNo())
+                        && "MANUAL_OFFLINE".equals(binding.getAdmissionKind())
+                        && Objects.equals(c.party().kind(), binding.getCustomerKind())
+                        && Objects.equals(c.party().userNo(), binding.getBuyerNo())
+                        && Objects.equals(c.party().guestNo(), binding.getGuestNo())
+                        && Objects.equals(
+                                c.party().identityRevision(), binding.getIdentityRevision()))
+                    allocated.merge(binding.getSourceLineRef(), binding.getQty(), BigDecimal::add);
+            boolean attributable =
+                    allocated.size() == facts.lines().size()
+                            && facts.lines().stream()
+                                    .allMatch(
+                                            l ->
+                                                    BigDecimal.valueOf(l.orderedQuantity())
+                                                                    .compareTo(
+                                                                            allocated.getOrDefault(
+                                                                                    l
+                                                                                            .sourceLineNo(),
+                                                                                    BigDecimal
+                                                                                            .ZERO))
+                                                            == 0);
+            var declaration = facts.declaration();
+            boolean complete =
+                    attributable
+                            && declaration != null
+                            && declaration.declaredMinor() != null
+                            && facts.dueMinor() != null
+                            && facts.currency() != null
+                            && "ADMITTED".equals(declaration.admissionState())
+                            && "MANUAL_DECLARATION".equals(declaration.receiptProvenance())
+                            && facts.dueMinor().equals(declaration.declaredMinor());
+            ManualReceiptSummaryVO receipt =
+                    !complete
+                            ? null
+                            : new ManualReceiptSummaryVO(
+                                    declaration.manualDeclarationNo(),
+                                    declaration.method().name(),
+                                    declaration.declaredMinor(),
+                                    declaration.currency(),
+                                    declaration.receivedAt(),
+                                    declaration.recordedAt(),
+                                    declaration.receiptProvenance(),
+                                    "NOT_APPLICABLE_MANUAL");
+            return new ReadSource(
+                    new SourceBillVO(
+                            c.operationNo(),
+                            order,
+                            sub,
+                            facts.currency(),
+                            facts.dueMinor(),
+                            null,
+                            null,
+                            null,
+                            null,
+                            "WHOLE_SOURCE",
+                            List.of(),
+                            projected,
+                            projection,
+                            complete,
+                            complete ? List.of() : List.of("MANUAL_SOURCE_INCOMPLETE"),
+                            "MANUAL_OFFLINE",
+                            "NOT_APPLICABLE_MANUAL",
+                            receipt,
+                            complete ? declaration.declaredMinor() : null),
+                    List.of());
+        } catch (UncheckedIOException unavailable) {
+            return manualPending(c.operationNo(), order, sub, currency, projected, projection);
+        } catch (BizException unavailable) {
+            if (unavailable.errorCode() != ErrorCode.NOT_FOUND
+                    && unavailable.errorCode() != ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE
+                    && unavailable.errorCode() != ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE)
+                throw unavailable;
+            return manualPending(c.operationNo(), order, sub, currency, projected, projection);
+        }
+    }
+
+    private ReadSource manualPending(
+            String operation,
+            String order,
+            String sub,
+            String currency,
+            List<SubmissionTaskVO> tasks,
+            SourceObservationVO projection) {
+        return new ReadSource(
+                new SourceBillVO(
+                        operation,
+                        order,
+                        sub,
+                        currency,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        "WHOLE_SOURCE",
+                        List.of(),
+                        tasks,
+                        projection,
+                        false,
+                        List.of("SOURCE_UNKNOWN"),
+                        "MANUAL_OFFLINE",
+                        "NOT_APPLICABLE_MANUAL",
+                        null,
+                        null),
+                List.of());
+    }
+
     private ReadSource pending(
             String operation,
             String order,
@@ -507,42 +723,64 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
 
     private List<CurrencyBillVO> currencies(List<SourceBillVO> sources, boolean localComplete) {
         var groups = new TreeMap<String, List<SourceBillVO>>();
-        for (var source : sources) {
-            if (source.currency() != null) {
+        for (var source : sources)
+            if (source.currency() != null)
                 groups.computeIfAbsent(source.currency(), ignored -> new ArrayList<>()).add(source);
-            }
-        }
         return groups.entrySet().stream()
                 .map(
                         entry -> {
-                            long due = 0, received = 0, refunded = 0, net = 0, outstanding = 0;
+                            long due = 0,
+                                    received = 0,
+                                    refunded = 0,
+                                    net = 0,
+                                    outstanding = 0,
+                                    declared = 0;
                             boolean complete =
                                     localComplete
                                             && entry.getValue().stream()
                                                     .allMatch(SourceBillVO::complete);
-                            if (complete) {
+                            boolean hasManual =
+                                    entry.getValue().stream()
+                                            .anyMatch(
+                                                    x ->
+                                                            "MANUAL_OFFLINE"
+                                                                    .equals(x.admissionKind()));
+                            boolean hasFunded =
+                                    entry.getValue().stream()
+                                            .anyMatch(
+                                                    x -> "LEGACY_FUNDED".equals(x.admissionKind()));
+                            if (complete)
                                 try {
                                     for (var source : entry.getValue()) {
-                                        due = Math.addExact(due, source.dueMinor());
-                                        received = Math.addExact(received, source.receivedMinor());
-                                        refunded = Math.addExact(refunded, source.refundedMinor());
-                                        net = Math.addExact(net, source.netReceivedMinor());
-                                        outstanding =
-                                                Math.addExact(
-                                                        outstanding, source.outstandingMinor());
+                                        if ("MANUAL_OFFLINE".equals(source.admissionKind()))
+                                            declared =
+                                                    Math.addExact(
+                                                            declared, source.manualDeclaredMinor());
+                                        else {
+                                            due = Math.addExact(due, source.dueMinor());
+                                            received =
+                                                    Math.addExact(received, source.receivedMinor());
+                                            refunded =
+                                                    Math.addExact(refunded, source.refundedMinor());
+                                            net = Math.addExact(net, source.netReceivedMinor());
+                                            outstanding =
+                                                    Math.addExact(
+                                                            outstanding, source.outstandingMinor());
+                                        }
                                     }
                                 } catch (ArithmeticException overflow) {
                                     complete = false;
                                 }
-                            }
                             return new CurrencyBillVO(
                                     entry.getKey(),
-                                    complete ? due : null,
-                                    complete ? received : null,
-                                    complete ? refunded : null,
-                                    complete ? net : null,
-                                    complete ? outstanding : null,
-                                    complete);
+                                    complete && hasFunded ? due : null,
+                                    complete && hasFunded ? received : null,
+                                    complete && hasFunded ? refunded : null,
+                                    complete && hasFunded ? net : null,
+                                    complete && hasFunded ? outstanding : null,
+                                    complete,
+                                    complete && hasManual ? declared : null,
+                                    hasManual ? "NOT_APPLICABLE_MANUAL" : "VERIFIED_PAYMENT");
                         })
                 .toList();
     }
@@ -569,9 +807,7 @@ public final class WorkOrderBillServiceImpl implements WorkOrderBillService {
         var command =
                 db.json.readValue(
                         row.getFrozenCommand(), ServiceSubmissionServiceImpl.Command.class);
-        AppointmentPersistence.require(
-                command.schemaVersion() == 2
-                        && command.namespaceHash().equals(row.getRequestKeyHash()));
+        AppointmentPersistence.require(ServiceSubmissionServiceImpl.validCommand(command, row));
         return command;
     }
 

@@ -31,7 +31,7 @@ public class BeautyPersistenceConfiguration {
     BeautySchemaReady beautySchemaReady(@Qualifier("dataSource") DataSource source,
             @Value("${shop.beauty.migration.mode:validate}") String mode) {
         new BeautySchemaValidator().initialize(source, mode);
-        return new BeautySchemaReady("8");
+        return new BeautySchemaReady("9");
     }
 
     @Bean
@@ -40,7 +40,7 @@ public class BeautyPersistenceConfiguration {
             @Qualifier("dataSource") DataSource source,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             BeautySchemaReady schema) {
-        if (!"8".equals(schema.version())
+        if (!"9".equals(schema.version())
                 || factory.getConfiguration().getEnvironment().getDataSource() != source
                 || !(manager instanceof DataSourceTransactionManager primary)
                 || primary.getDataSource() != source) {

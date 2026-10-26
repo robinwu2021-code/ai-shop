@@ -43,7 +43,7 @@ class BeautyWriteGuardHostWiringTest {
                         DataSourceTransactionManager.class,
                         () -> new DataSourceTransactionManager(source))
                 .withBean(ObjectMapper.class, ObjectMapper::new)
-                .withBean(BeautySchemaReady.class, () -> new BeautySchemaReady("8"))
+                .withBean(BeautySchemaReady.class, () -> new BeautySchemaReady("9"))
                 .withPropertyValues("shop.beauty.enabled=true");
     }
     @Test

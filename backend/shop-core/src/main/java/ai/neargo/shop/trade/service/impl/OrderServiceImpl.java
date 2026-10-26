@@ -24,14 +24,12 @@ import ai.neargo.shop.spi.marketing.GroupJoinPort.GroupQuote;
 import ai.neargo.shop.spi.points.PointsPaymentSnapshotPort;
 import ai.neargo.shop.spi.product.CardProductSalePort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
-import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.CounterOrderCreated;
 import ai.neargo.shop.spi.product.StockDispositionContract;
-import ai.neargo.shop.trade.order.service.create.CounterOrderPlan;
-import ai.neargo.shop.trade.order.service.create.CounterPurchaseAuthorization;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.trade.CheckoutPort.QuoteLine;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionEvents.CounterOrderCreated;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -43,6 +41,7 @@ import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
 import ai.neargo.shop.trade.entity.OrdCheckoutOperation;
 import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdManualServiceAdmission;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -69,19 +68,21 @@ import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import ai.neargo.shop.trade.order.refund.policy.LineShares;
 import ai.neargo.shop.trade.order.service.OrderReceiptService;
 import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
-import ai.neargo.shop.trade.order.service.query.CustomerReadScope;
-import ai.neargo.shop.trade.order.service.query.OrderCustomerAccess;
 import ai.neargo.shop.trade.order.service.create.CheckoutClock;
 import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
 import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
 import ai.neargo.shop.trade.order.service.create.CheckoutPricingScope;
 import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
+import ai.neargo.shop.trade.order.service.create.CounterOrderPlan;
+import ai.neargo.shop.trade.order.service.create.CounterPurchaseAuthorization;
 import ai.neargo.shop.trade.order.service.create.ExpectedCheckoutQuote;
 import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
 import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
 import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
 import ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService;
 import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
+import ai.neargo.shop.trade.order.service.query.CustomerReadScope;
+import ai.neargo.shop.trade.order.service.query.OrderCustomerAccess;
 import ai.neargo.shop.trade.order.service.query.StoreOrderMaterial;
 import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
 import ai.neargo.shop.trade.order.statemachine.Actor;
@@ -112,6 +113,7 @@ import tools.jackson.databind.SerializationFeature;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -4702,53 +4704,106 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                                   List<OrderVO.TimelineNode> timeline, OrderVO.StoreBrief store) {
 
         return new OrderVO(
-                /*
-                 * 下发**抽象状态**：`WAIT_FULFILL` 归一成契约的 `PAID`，`FULFILLING` 原样。
-                 *
-                 * 此前这里下发的是「状态 × 履约」的组合（`ARRIVED` / `SHIPPED`）——
-                 * 那不是状态，是组合冒充状态，代价是**每加一种履约就要加一批状态**
-                 * （服务类差点又加了 TO_USE / TO_SERVE）。
-                 * 现在履约方式单独下发（`fulfillment` 字段本来就在），
-                 * 由端上的 `orderView(status, fulfillment, info)` 决定显示什么。
-                 */
-                s.getSubOrderNo(), s.getOrderNo(),
-                OrderStatusView.toContract(s.getStatus(), order == null ? null : order.getStatus()),
-                s.getFulfillment(),
-                s.getEntityNo(), s.getEntityName(),
-                lines.stream().map(this::toItemVO).toList(),
-                OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
-                        nz(s.getDiscountAmount()),
-                        order != null && order.getPaidAt() != null ? nz(s.getPayAmount()) : 0L,
-                        // 积分快照从子单读 —— 此前这里传的是老工厂，
-                        // 三个积分字段被写死成 0，端上永远看不到抵扣
-                        nz(s.getPointsDeductMinor()),
-                        s.getPointsDeduct() == null ? 0 : s.getPointsDeduct(),
-                        order == null ? CURRENCY_CNY : order.getCurrency()),
-                s.getVerifyCode(), s.getPickupNo(), s.getPickupName(),
-                order == null ? null : order.getPayDeadlineAt(),
-                millis(s.getCreatedAt()),
-                order == null ? null : order.getPaidAt(),
-                // 买家要靠它查物流；此前库里有这一列而 VO 里没有，发货对买家不可见
-                s.getExpressNo(),
-                s.getTrafficSource(),
-                s.getAppointmentAt(),
-                // 买家看自己的单：完整地址与完整手机号，那本来就是他填的
-                receiverOf(s),
-                timeline,
-                null,
-                // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
-                null,
-                /*
-                 * 评价、售后、支付分组三样**在这里一律留空**，由 `detailOf` 用
-                 * `withDetail` 补上 —— 这个方法被列表与详情共用，
-                 * 在这里查就是每条订单三次额外查询（N+1）。
-                 */
-                false, null, 1,
-                // 集单四样这里不填；末位 expressCompany 要下发 ——
-                // 买家查物流认的是「哪家快递 + 单号」，只给单号等于让他自己猜快递公司
-                null, null, null, null, s.getExpressCompany())
+                        /*
+                         * 下发**抽象状态**：`WAIT_FULFILL` 归一成契约的 `PAID`，`FULFILLING` 原样。
+                         *
+                         * 此前这里下发的是「状态 × 履约」的组合（`ARRIVED` / `SHIPPED`）——
+                         * 那不是状态，是组合冒充状态，代价是**每加一种履约就要加一批状态**
+                         * （服务类差点又加了 TO_USE / TO_SERVE）。
+                         * 现在履约方式单独下发（`fulfillment` 字段本来就在），
+                         * 由端上的 `orderView(status, fulfillment, info)` 决定显示什么。
+                         */
+                        s.getSubOrderNo(),
+                        s.getOrderNo(),
+                        OrderStatusView.toContract(
+                                s.getStatus(), order == null ? null : order.getStatus()),
+                        s.getFulfillment(),
+                        s.getEntityNo(),
+                        s.getEntityName(),
+                        lines.stream().map(this::toItemVO).toList(),
+                        OrderVO.Amount.of(
+                                nz(s.getGoodsAmount()),
+                                nz(s.getFreightAmount()),
+                                nz(s.getDiscountAmount()),
+                                order != null && order.getPaidAt() != null
+                                        ? nz(s.getPayAmount())
+                                        : 0L,
+                                // 积分快照从子单读 —— 此前这里传的是老工厂，
+                                // 三个积分字段被写死成 0，端上永远看不到抵扣
+                                nz(s.getPointsDeductMinor()),
+                                s.getPointsDeduct() == null ? 0 : s.getPointsDeduct(),
+                                order == null ? CURRENCY_CNY : order.getCurrency()),
+                        s.getVerifyCode(),
+                        s.getPickupNo(),
+                        s.getPickupName(),
+                        order == null ? null : order.getPayDeadlineAt(),
+                        millis(s.getCreatedAt()),
+                        order == null ? null : order.getPaidAt(),
+                        // 买家要靠它查物流；此前库里有这一列而 VO 里没有，发货对买家不可见
+                        s.getExpressNo(),
+                        s.getTrafficSource(),
+                        s.getAppointmentAt(),
+                        // 买家看自己的单：完整地址与完整手机号，那本来就是他填的
+                        receiverOf(s),
+                        timeline,
+                        null,
+                        // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
+                        null,
+                        /*
+                         * 评价、售后、支付分组三样**在这里一律留空**，由 `detailOf` 用
+                         * `withDetail` 补上 —— 这个方法被列表与详情共用，
+                         * 在这里查就是每条订单三次额外查询（N+1）。
+                         */
+                        false,
+                        null,
+                        1,
+                        // 集单四样这里不填；末位 expressCompany 要下发 ——
+                        // 买家查物流认的是「哪家快递 + 单号」，只给单号等于让他自己猜快递公司
+                        null,
+                        null,
+                        null,
+                        null,
+                        s.getExpressCompany())
                 .withStore(store)
-                .withPrepared(s.getPreparedAt());
+                .withPrepared(s.getPreparedAt())
+                .withManualReceipt(manualSummary(s, order));
+    }
+
+    private OrderVO.ManualReceiptSummary manualSummary(OrdSubOrder child, OrdOrder parent) {
+        if (parent == null
+                || !"MANUAL_OFFLINE".equals(parent.getAdmissionKind())
+                || !"MANUAL_OFFLINE".equals(child.getAdmissionKind())
+                || manualAdmissions == null) return null;
+        var row =
+                manualAdmissions.selectOne(
+                        Wrappers.<OrdManualServiceAdmission>lambdaQuery()
+                                .eq(OrdManualServiceAdmission::getTenantNo, "MAIN")
+                                .eq(OrdManualServiceAdmission::getEntityNo, child.getEntityNo())
+                                .eq(OrdManualServiceAdmission::getStoreNo, child.getStoreNo())
+                                .eq(OrdManualServiceAdmission::getOrderNo, parent.getOrderNo())
+                                .eq(
+                                        OrdManualServiceAdmission::getSubOrderNo,
+                                        child.getSubOrderNo()));
+        if (row == null
+                || !"MANUAL_OFFLINE".equals(row.getAdmissionKind())
+                || !"MANUAL_DECLARATION".equals(row.getReceiptProvenance())
+                || row.getDeclarationNo() == null
+                || row.getDeclaredMinor() == null
+                || !Objects.equals(row.getDeclaredMinor(), parent.getPayAmount())
+                || !Objects.equals(row.getCurrency(), parent.getCurrency())
+                || row.getMethod() == null
+                || row.getReceivedAt() == null
+                || row.getRecordedAt() == null) return null;
+        return new OrderVO.ManualReceiptSummary(
+                row.getDeclarationNo(),
+                row.getMethod(),
+                row.getDeclaredMinor(),
+                row.getCurrency(),
+                row.getReceivedAt().toInstant(ZoneOffset.UTC),
+                row.getRecordedAt().toInstant(ZoneOffset.UTC),
+                row.getReceiptProvenance(),
+                row.getAdmissionKind(),
+                "NOT_APPLICABLE_MANUAL");
     }
 
     /** 子单的门店（ADR-031）：端上按它分段、显示段头。门店名要解域，理由见 {@link #storeNamesOf} */

@@ -23,6 +23,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /** Reads authorized stored facts; templates never become execution facts during projection. */
 public final class WorkOrderQuery {
@@ -210,7 +211,48 @@ public final class WorkOrderQuery {
             var observation =
                     observations.selectCanonical(
                             root.getEntityNo(), root.getStoreNo(), binding.getSourceNo());
-            if (observation == null || "UNKNOWN".equals(observation.getState())) {
+            if ("MANUAL_OFFLINE".equals(binding.getAdmissionKind())) {
+                if (observation == null
+                        || !"MANUAL_OFFLINE".equals(observation.getAdmissionKind())
+                        || !"READY".equals(observation.getManualState())) return "UNKNOWN";
+                if (!Objects.equals(binding.getCustomerKind(), observation.getCustomerKind())
+                        || !Objects.equals(binding.getBuyerNo(), observation.getBuyerNo())
+                        || !Objects.equals(binding.getGuestNo(), observation.getGuestNo())
+                        || !Objects.equals(
+                                binding.getIdentityRevision(), observation.getIdentityRevision()))
+                    return "BLOCKED";
+                var guard =
+                        guards.selectOne(
+                                Wrappers.<BtySourceAllocationGuard>lambdaQuery()
+                                        .eq(BtySourceAllocationGuard::getTenantNo, "MAIN")
+                                        .eq(
+                                                BtySourceAllocationGuard::getEntityNo,
+                                                root.getEntityNo())
+                                        .eq(
+                                                BtySourceAllocationGuard::getGuardNo,
+                                                binding.getGuardNo()));
+                var line =
+                        Arrays.stream(
+                                        db.json.readValue(
+                                                observation.getManualVerifiedLines(),
+                                                ServiceSourceObservation.ManualQuantityLine[]
+                                                        .class))
+                                .filter(l -> binding.getSourceLineRef().equals(l.sourceLineNo()))
+                                .findFirst()
+                                .orElse(null);
+                if (guard == null
+                        || line == null
+                        || !"MANUAL_OFFLINE".equals(guard.getAdmissionKind())
+                        || !binding.getSourceNo().equals(guard.getSourceNo())
+                        || !binding.getSourceLineRef().equals(guard.getSourceLineRef())
+                        || guard.getAllocatedQty()
+                                        .compareTo(BigDecimal.valueOf(line.availableQuantity()))
+                                > 0) return "BLOCKED";
+                continue;
+            }
+            if (observation == null
+                    || !"LEGACY_FUNDED".equals(observation.getAdmissionKind())
+                    || "UNKNOWN".equals(observation.getState())) {
                 return "UNKNOWN";
             }
             if (!"READY".equals(observation.getState())) {

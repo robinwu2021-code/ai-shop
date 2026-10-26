@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {phaseSelection, inspectReport, requiredPinPaths, assertionRedPhase} from '../verify-manual-counter-source.mjs';
+import {phaseSelection, inspectReport, requiredPinPaths, assertionRedPhase, historicalClasspath, stageSchemaVersion} from '../verify-manual-counter-source.mjs';
 
 test('early member-owner RED and GREEN are one exact method; future slices stay unavailable', () => {
   for (const phase of ['red', 'green']) {
@@ -58,7 +58,7 @@ test('XML must prove the exact method reached its own assertion RED or clean GRE
 
 test('invalid CLI rejects before any native tools or lock mutation', () => {
   for (const args of [[], ['--slice=m2a'], ['--slice=m2a', '--phase=green', '--all'],
-    ['--slice=m2b', '--phase=green'], ['--slice=m2a', '--phase=UNKNOWN']]) {
+    ['--slice=m2c', '--phase=green'], ['--slice=m2a', '--phase=UNKNOWN']]) {
     const result = spawnSync(process.execPath, ['scripts/verify-manual-counter-source.mjs', ...args],
       {encoding: 'utf8', env: {PATH: ''}});
     assert.notEqual(result.status, 0);
@@ -176,4 +176,143 @@ test('counter read authorization regression is one exact owner method with froze
   for (const phase of ['ablation', 'restored']) {
     assert.throws(() => phaseSelection('m2a', phase, 'counter-read-authorization'));
   }
+});
+
+
+test('manual member reception stage is one exact V8 owner assertion with canonical source and class pins', () => {
+  for (const phase of ['red', 'green']) {
+    const selected = phaseSelection('m2b', phase, 'reception-member');
+    assert.deepEqual(selected, [['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBindingIT',
+      ['noConsumerReceptionUsesCanonicalMemberSelector']]]);
+    const pins = requiredPinPaths(selected, [], 'reception-member');
+    assert(pins.includes('backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceHostFixture.java'));
+    assert(pins.includes('backend/shop-app/target/test-classes/ai/neargo/shop/scenario/ManualSourceHostFixture.class'));
+    assert(pins.some(path => path.endsWith('/V8__beauty_source_observation.sql')));
+    assert(pins.some(path => path.endsWith('/V542__shared_manual_order_customer_party.sql')));
+    assert(pins.some(path => path.endsWith('/ReceptionIdentity.java')));
+    assert(pins.some(path => path.endsWith('/ReceptionIdentity.class')));
+    assert(!pins.some(path => path.includes('V9__')));
+  }
+  for (const phase of ['ablation', 'restored']) {
+    assert.throws(() => phaseSelection('m2b', phase, 'reception-member'));
+  }
+  for (const stage of ['m2b', 'upgrade', '*']) {
+    assert.throws(() => phaseSelection('m2b', 'green', stage));
+  }
+});
+
+
+test('manual existing source RED stays one exact real-owner V8 case and forbids broad phases', () => {
+  const selected = phaseSelection('m2b', 'red', 'source-binding-existing');
+  assert.deepEqual(selected, [['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBindingIT',
+    ['manualUserAndGuestBindExistingOrdinaryLines']]]);
+  const pins = requiredPinPaths(selected, [], 'source-binding-existing');
+  for (const owner of ['ManualServiceAdmissionServiceImpl', 'CounterOrderPlacementServiceImpl',
+    'StockDispositionServiceImpl', 'OriginalStockDispositionPort']) {
+    assert(pins.some(path => path.endsWith('/' + owner + '.java')));
+    assert(pins.some(path => path.endsWith('/' + owner + '.class')));
+  }
+  assert(pins.some(path => path.endsWith('/V8__beauty_source_observation.sql')));
+  assert(!pins.some(path => path.includes('V9__')));
+  for (const phase of ['ablation', 'restored']) {
+    assert.throws(() => phaseSelection('m2b', phase, 'source-binding-existing'));
+  }
+});
+
+test('released manual existing GREEN pins candidate V9 tools while retaining finite same-method scope', () => {
+  const selected = phaseSelection('m2b', 'green', 'source-binding-existing');
+  assert.deepEqual(selected, phaseSelection('m2b', 'red', 'source-binding-existing'));
+  const pins = requiredPinPaths(selected, [], 'source-binding-existing', 9);
+  assert(pins.some(path => path.endsWith('/V9__beauty_manual_source_observation.sql')));
+  assert(pins.includes('docs/technical/design/schema/beauty-manual-source-observation-schema.json'));
+  assert(pins.includes('scripts/gen-beauty-manual-source-observation-schema.mjs'));
+  for (const phase of ['ablation', 'restored']) {
+    assert.throws(() => phaseSelection('m2b', phase, 'source-binding-existing'));
+  }
+});
+
+test('manual matrix is exact new sixteen same-runtime methods and excludes accepted first-binding replay', () => {
+  const selected = phaseSelection('m2b', 'green', 'source-matrix');
+  assert.equal(selected.length, 2);
+  const methods = selected.flatMap(([, , methods]) => methods);
+  assert.equal(methods.length, 16);
+  assert(!methods.includes('manualUserAndGuestBindExistingOrdinaryLines'));
+  assert(!methods.includes('noConsumerReceptionUsesCanonicalMemberSelector'));
+  assert(methods.includes('twoWorkOrdersCannotAllocateLastUnit'));
+  assert(methods.includes('lateObservationCannotReviveSuspendedSource'));
+  assert(methods.includes('claimedMp155RequiresCurrentMemberOwner'));
+  for (const phase of ['red', 'ablation', 'restored']) assert.throws(() => phaseSelection('m2b', phase, 'source-matrix'));
+});
+
+test('matrix fixture fixes select only the three failed cases and retain thirteen passed results', () => {
+  const selected = phaseSelection('m2b', 'green', 'source-matrix-fixture-fixes');
+  assert.deepEqual(selected, [
+    ['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBindingIT', [
+      'manualPrepareContinuesOriginalWithoutRawGuestCredential', 'claimedGuestContextM1UserKeepsVerifiedRelation']],
+    ['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBillIT', ['mixedSourceCurrencyTotalsRemainSeparate']]
+  ]);
+  for (const phase of ['red', 'ablation', 'restored']) assert.throws(() => phaseSelection('m2b', phase, 'source-matrix-fixture-fixes'));
+});
+
+test('historical upgrade has one exact method and replaces only the three actual beauty runtime roots', () => {
+  assert.deepEqual(phaseSelection('m2b', 'green', 'source-upgrade'), [
+    ['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBindingIT',
+      ['preM2UnknownManualPlaceholderAdoptsSameIdentityAfterV9']]
+  ]);
+  for (const phase of ['red', 'ablation', 'restored'])
+    assert.throws(() => phaseSelection('m2b', phase, 'source-upgrade'));
+  const root = new URL('../../', import.meta.url).pathname.replace(/\/$/, '');
+  const prefix = root + '/backend-plugins/shop-industry-beauty/';
+  const current = ['api', 'core', 'web'].map(name => prefix + 'beauty-' + name + '/target/classes');
+  const snapshot = root + '/.superpowers/sdd/beauty-backend/task-67-evidence/pre-v9-runtime';
+  assert.deepEqual(historicalClasspath([...current, root + '/backend/shop-base/target/classes', '/private/tmp/common.jar']), [
+    ...current.map(path => snapshot + path.slice(root.length)), root + '/backend/shop-base/target/classes', '/private/tmp/common.jar'
+  ]);
+  assert.throws(() => historicalClasspath(current.slice(0, 2)));
+  assert.throws(() => historicalClasspath([...current, prefix + 'beauty-core/target/test-classes']));
+  assert.throws(() => historicalClasspath([...current, '/private/tmp/beauty-core-1.jar']));
+  assert.throws(() => historicalClasspath([...current, current[0]]));
+  assert.throws(() => historicalClasspath([...current, '']));
+  assert.throws(() => historicalClasspath([...current, root]));
+});
+
+test('final baseline selects only unallocated funded evidence and same-pair stale ticket cases', () => {
+  assert.deepEqual(phaseSelection('m2b', 'green', 'source-final-baseline'), [
+    ['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBindingIT', [
+      'fundedEvidenceRejectsManualAdoptionBeforeAndAfterAllocation',
+      'lateAdmittedReplyCannotCompleteNewerUnavailableTicket']]
+  ]);
+  for (const phase of ['red', 'ablation', 'restored'])
+    assert.throws(() => phaseSelection('m2b', phase, 'source-final-baseline'));
+});
+
+test('ticket ablation and restored run only the same-pair case with strict V9 pins', () => {
+  const expected = [['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBindingIT',
+    ['lateAdmittedReplyCannotCompleteNewerUnavailableTicket']]];
+  for (const phase of ['ablation', 'restored']) {
+    assert.deepEqual(phaseSelection('m2b', phase, 'source-ticket-ablation'), expected);
+    const pins = requiredPinPaths(expected, [], 'source-ticket-ablation', 9);
+    assert(pins.some(path => path.endsWith('/ServiceSourceObservation.java')));
+    assert(pins.some(path => path.endsWith('/V9__beauty_manual_source_observation.sql')));
+  }
+  for (const phase of ['red', 'green'])
+    assert.throws(() => phaseSelection('m2b', phase, 'source-ticket-ablation'));
+});
+
+test('review recovery RED uses current V9 and GREEN adds only literal drift startup coverage', () => {
+  assert.equal(stageSchemaVersion('source-review-recovery', 'red'), 9);
+  assert.equal(stageSchemaVersion('source-review-recovery', 'green'), 9);
+  assert.equal(stageSchemaVersion('source-binding-existing', 'red'), 8);
+  const red = [['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBindingIT',
+    ['createdManualPrepareRecoveryRequiresCurrentSourceFacts']]];
+  assert.deepEqual(phaseSelection('m2b', 'red', 'source-review-recovery'), red);
+  assert.deepEqual(phaseSelection('m2b', 'green', 'source-review-recovery'), [
+    ['backend/shop-app', 'ai.neargo.shop.scenario.ManualSourceBindingIT', [
+      ...red[0][2], 'startupRejectsLiveTriggerLiteralDrift']]
+  ]);
+  const pins = requiredPinPaths(red, [], 'source-review-recovery', 9);
+  assert(pins.some(path => path.endsWith('/V9__beauty_manual_source_observation.sql')));
+  assert(pins.some(path => path.endsWith('/BeautySchemaValidatorTest.java')));
+  for (const phase of ['ablation', 'restored'])
+    assert.throws(() => phaseSelection('m2b', phase, 'source-review-recovery'));
 });

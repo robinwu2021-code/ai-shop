@@ -67,4 +67,23 @@ public class BtySourceObservation extends BaseEntity {
 
     /** Safe current blocking reason. */
     private String failureCode;
+
+    /** Immutable manual domain; historical financial inserts keep the legacy default. */
+    private String admissionKind = "LEGACY_FUNDED";
+
+    private String customerKind;
+    private String guestNo;
+    private Long identityRevision;
+    private Long manualEpoch;
+    private String manualState;
+    private LocalDateTime manualObservedAt;
+    private String manualFailureCode;
+    private Long manualRevision;
+    private String manualHash;
+    private Long manualVerifiedRevision;
+    private String manualVerifiedHash;
+    private String manualVerifiedLines;
+    private LocalDateTime manualVerifiedAt;
+    private Long manualAdmissionRevision;
+    private String manualAdmissionState;
 }

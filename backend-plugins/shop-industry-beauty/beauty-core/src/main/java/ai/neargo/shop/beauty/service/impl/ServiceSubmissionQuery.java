@@ -199,9 +199,7 @@ public final class ServiceSubmissionQuery {
         var command =
                 db.json.readValue(
                         row.getFrozenCommand(), ServiceSubmissionServiceImpl.Command.class);
-        AppointmentPersistence.require(
-                command.schemaVersion() == 2
-                        && command.namespaceHash().equals(row.getRequestKeyHash()));
+        AppointmentPersistence.require(ServiceSubmissionServiceImpl.validCommand(command, row));
         root(entity, store, row.getWorkOrderNo());
         return row;
     }

@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
@@ -256,8 +257,7 @@ class BeautySchemaMigrationIT {
                                 "INSERT INTO bty_reception_operation"
                                     + " (entity_no,store_no,operation_no,created_at,updated_at,"
                                     + "actor_no,actor_realm,actor_kind,endpoint,action,key_hash,request_hash,"
-                                    + "phase,frozen_payload,identity_kind,identity_ref)"
-                                    + " VALUES"
+                                    + "phase,frozen_payload,identity_kind,identity_ref) VALUES"
                                     + " ('E','S',?,NOW(),NOW(),'A','MERCHANT','MCH','BAPI-032',"
                                     + "'CLAIM_GUEST',?,?,'RECEIVED','{}',?,?)")) {
             String id = UUID.randomUUID().toString().replace("-", "");
@@ -336,8 +336,8 @@ class BeautySchemaMigrationIT {
                                     + " bty_appointment_assignment(entity_no,created_at,updated_at,"
                                     + "planned_assignment_no,"
                                     + "appointment_item_no,appointment_revision,requirement_no,resource_no,"
-                                    + "hold_no,start_at,end_at,skill_snapshot)"
-                                    + " VALUES ('E','2026-10-20 10:00:00','2026-10-20"
+                                    + "hold_no,start_at,end_at,skill_snapshot) VALUES"
+                                    + " ('E','2026-10-20 10:00:00','2026-10-20"
                                     + " 10:00:00',?,'ITEM',1,'REQ','ROOM1','HOLD','2026-10-20"
                                     + " 10:00:00','2026-10-20 11:00:00','{}')")) {
             statement.setString(1, number);
@@ -452,7 +452,7 @@ class BeautySchemaMigrationIT {
     }
 
     @Test
-    void v7HistoryUpgradesToV8WithoutRewritingIntentsOrHeldQuantity() throws SQLException {
+    void v7HistoryUpgradesToV9WithoutRewritingIntentsOrHeldQuantity() throws SQLException {
         Flyway.configure()
                 .dataSource(source)
                 .locations("classpath:db/industry/beauty")
@@ -468,8 +468,8 @@ class BeautySchemaMigrationIT {
             execute(
                     "INSERT INTO"
                         + " bty_service_submission(entity_no,store_no,submission_no,action,request_key_hash,"
-                        + "payload_hash,status,frozen_command,created_at,updated_at)"
-                        + " VALUES ('E','S','"
+                        + "payload_hash,status,frozen_command,created_at,updated_at) VALUES"
+                        + " ('E','S','"
                             + state
                             + "','OPEN',REPEAT('"
                             + (state.equals("BOUND") ? "b" : "a")
@@ -495,16 +495,36 @@ class BeautySchemaMigrationIT {
         initialize("migrate");
         assertEquals(
                 intents, jdbc.queryForList("SELECT * FROM bty_service_submission ORDER BY id"));
-        assertEquals(held, jdbc.queryForList("SELECT * FROM bty_source_allocation_guard"));
+        String oldGuardColumns =
+                held.getFirst().keySet().stream()
+                        .map(name -> "`" + name + "`")
+                        .collect(Collectors.joining(","));
+        assertEquals(
+                held,
+                jdbc.queryForList(
+                        "SELECT " + oldGuardColumns + " FROM bty_source_allocation_guard"));
+        assertEquals(
+                "LEGACY_FUNDED",
+                jdbc.queryForObject(
+                        "SELECT admission_kind FROM bty_source_allocation_guard", String.class));
+        assertEquals(
+                0,
+                count(
+                        "SELECT COUNT(*) FROM bty_source_allocation_guard WHERE"
+                            + " manual_source_revision IS NOT NULL OR manual_source_hash IS NOT"
+                            + " NULL"));
         assertEquals(
                 history,
                 jdbc.queryForList(
                         "SELECT version,checksum FROM bty_flyway_history "
-                                + "WHERE version<>'8' ORDER BY installed_rank"));
+                                + "WHERE CAST(version AS UNSIGNED)<=7 ORDER BY installed_rank"));
         assertEquals(0, count("SELECT COUNT(*) FROM bty_source_observation"));
         assertEquals(
                 1,
                 count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='8' AND success=1"));
+        assertEquals(
+                1,
+                count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='9' AND success=1"));
     }
 
     @Test

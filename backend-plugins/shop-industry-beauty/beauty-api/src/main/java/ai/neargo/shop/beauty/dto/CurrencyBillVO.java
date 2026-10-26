@@ -8,4 +8,27 @@ public record CurrencyBillVO(
         Long refundedMinor,
         Long netReceivedMinor,
         Long outstandingMinor,
-        boolean complete) {}
+        boolean complete,
+        Long manualDeclaredMinor,
+        String financialVerification) {
+    /** Retains the previous public constructor and funded projection defaults. */
+    public CurrencyBillVO(
+            String currency,
+            Long dueMinor,
+            Long receivedMinor,
+            Long refundedMinor,
+            Long netReceivedMinor,
+            Long outstandingMinor,
+            boolean complete) {
+        this(
+                currency,
+                dueMinor,
+                receivedMinor,
+                refundedMinor,
+                netReceivedMinor,
+                outstandingMinor,
+                complete,
+                null,
+                "VERIFIED_PAYMENT");
+    }
+}

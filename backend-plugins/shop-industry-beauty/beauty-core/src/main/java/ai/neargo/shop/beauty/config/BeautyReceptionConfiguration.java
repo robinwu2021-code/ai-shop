@@ -146,8 +146,11 @@ public class BeautyReceptionConfiguration {
             AppointmentAccess access,
             BeautyMappers.WorkOrderMapper orders,
             ServiceSubmissionService submissions,
-            WorkOrderBillService bills) {
-        return new WorkOrderServiceImpl(coordinator, query, db, access, orders, submissions, bills);
+            WorkOrderBillService bills,
+            BeautyMappers.WorkOrderContextMapper contexts,
+            ObjectProvider<GuestRegistrationPort> guests) {
+        return new WorkOrderServiceImpl(
+                coordinator, query, db, access, orders, submissions, bills, contexts, guests);
     }
     @Bean ReceptionCoordinator receptionCoordinator(AppointmentPersistence db, AppointmentAccess access,
             ReceptionAccess receptionAccess, ReceptionIdentity identities, CustomerOwnership ownership,

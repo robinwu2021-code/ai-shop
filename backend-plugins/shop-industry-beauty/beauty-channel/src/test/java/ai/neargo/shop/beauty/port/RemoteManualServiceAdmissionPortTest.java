@@ -52,6 +52,7 @@ class RemoteManualServiceAdmissionPortTest {
     final AtomicInteger reads = new AtomicInteger();
     final AtomicInteger responses = new AtomicInteger();
     UnaryOperator<String> change = value -> value;
+    ManualSourceFacts sourceResult;
     HttpServer server;
     RemoteManualServiceAdmissionPort port;
     boolean disconnect;
@@ -138,7 +139,29 @@ class RemoteManualServiceAdmissionPortTest {
                                                 new ManualSourceLine(
                                                         "LINE", "CLIENT", "GOODS", "SKU", 1, 1,
                                                         "COUNT")),
-                                        at);
+                                        at,
+                                        101L,
+                                        "CNY",
+                                        new ManualAdmissionView(
+                                                operation,
+                                                "O",
+                                                "SO",
+                                                2,
+                                                1,
+                                                "ADMITTED",
+                                                "MANUAL_DECLARATION",
+                                                "DECL",
+                                                ManualMethod.CASH,
+                                                101L,
+                                                "CNY",
+                                                at,
+                                                at,
+                                                "ADMITTED",
+                                                null),
+                                        "CONSUMER_SESSION");
+                        if (sourceResult != null) {
+                            source = sourceResult;
+                        }
                         byte[] body =
                                 change.apply(
                                                 json.writeValueAsString(
@@ -231,6 +254,323 @@ class RemoteManualServiceAdmissionPortTest {
     }
 
     private boolean awaitingConfirm;
+
+    @Test
+    void appendedSourceDisplayFactsStayBoundToExactOriginalWithoutChangingM1PartyRevision() {
+        var source =
+                DelegatedIdentityContext.call(
+                        identity, () -> port.source(scope, new SourceLookup(operation, "SO")));
+        assertThat(source.party().identityRevision()).isEqualTo(1L);
+        assertThat(source.dueMinor()).isEqualTo(101L);
+        assertThat(source.purchaseAuthority()).isEqualTo("CONSUMER_SESSION");
+        assertThat(source.declaration().manualDeclarationNo()).isEqualTo("DECL");
+        for (var mutation :
+                List.<UnaryOperator<String>>of(
+                        value -> resultOnly(value, "\"dueMinor\":101", "\"dueMinor\":102"),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"purchaseAuthority\":\"CONSUMER_SESSION\"",
+                                        "\"purchaseAuthority\":\"INVENTED\""))) {
+            change = mutation;
+            assertThatThrownBy(
+                            () ->
+                                    DelegatedIdentityContext.call(
+                                            identity,
+                                            () ->
+                                                    port.source(
+                                                            scope,
+                                                            new SourceLookup(operation, "SO"))))
+                    .isInstanceOfSatisfying(
+                            BizException.class,
+                            failure ->
+                                    assertThat(failure.errorCode())
+                                            .isEqualTo(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE));
+        }
+    }
+
+    @Test
+    void actualOwnerPreOrderSourcePreservesAbsentOrderAndReceiptFacts() {
+        sourceResult = awaitingSource(false);
+
+        var source = source();
+
+        assertThat(source.operation()).isEqualTo(operation);
+        assertThat(source.entityNo()).isEqualTo("E");
+        assertThat(source.storeNo()).isEqualTo("S");
+        assertThat(source.orderNo()).isNull();
+        assertThat(source.subOrderNo()).isNull();
+        assertThat(source.orderRevision()).isZero();
+        assertThat(source.admissionRevision()).isZero();
+        assertThat(source.manualObservationRevision()).isZero();
+        assertThat(source.manualObservationHash()).isNull();
+        assertThat(source.admissionState()).isEqualTo("AWAITING_RECEIPT");
+        assertThat(source.lines()).isEmpty();
+        assertThat(source.dueMinor()).isNull();
+        assertThat(source.currency()).isEqualTo("CNY");
+        assertThat(source.party().identityRevision()).isNull();
+        assertThat(source.purchaseAuthority()).isEqualTo("CONSUMER_SESSION");
+        assertThat(source.declaration().operation()).isEqualTo(operation);
+        assertThat(source.declaration().orderNo()).isNull();
+        assertThat(source.declaration().subOrderNo()).isNull();
+        assertThat(source.declaration().orderRevision()).isZero();
+        assertThat(source.declaration().admissionRevision()).isZero();
+        assertThat(source.declaration().admissionState()).isEqualTo("AWAITING_RECEIPT");
+        assertThat(source.declaration().receiptProvenance()).isNull();
+        assertThat(source.declaration().manualDeclarationNo()).isNull();
+        assertThat(source.declaration().method()).isNull();
+        assertThat(source.declaration().declaredMinor()).isNull();
+        assertThat(source.declaration().currency()).isEqualTo("CNY");
+        assertThat(source.declaration().receivedAt()).isNull();
+        assertThat(source.declaration().recordedAt()).isNull();
+        assertThat(source.declaration().operationState()).isEqualTo("AWAITING_RECEIPT");
+        assertThat(source.declaration().reasonCode()).isNull();
+        assertThat(responses).hasValue(1);
+    }
+
+    @Test
+    void createdOrderAwaitingReceiptRetainsKnownDue() {
+        sourceResult = awaitingSource(true);
+
+        var source = source();
+
+        assertThat(source.orderNo()).isEqualTo("O");
+        assertThat(source.subOrderNo()).isEqualTo("SO");
+        assertThat(source.orderRevision()).isEqualTo(2);
+        assertThat(source.admissionRevision()).isZero();
+        assertThat(source.dueMinor()).isEqualTo(101L);
+        assertThat(source.declaration().orderNo()).isEqualTo("O");
+        assertThat(source.declaration().subOrderNo()).isEqualTo("SO");
+        assertThat(source.declaration().orderRevision()).isEqualTo(2);
+        assertThat(source.declaration().admissionState()).isEqualTo("AWAITING_RECEIPT");
+        assertThat(source.declaration().declaredMinor()).isNull();
+        assertThat(source.declaration().manualDeclarationNo()).isNull();
+        assertThat(responses).hasValue(1);
+    }
+
+    @Test
+    void createdOrderAwaitingReceiptRejectsMissingDue() {
+        sourceResult = awaitingSource(true);
+        change = value -> resultOnly(value, "\"dueMinor\":101", "\"dueMinor\":null");
+
+        assertSourceUnavailable();
+
+        assertThat(responses).hasValue(1);
+    }
+
+    @Test
+    void createdDeclaredSourceRejectsMissingOrContradictoryDue() {
+        for (String amount : List.of("null", "102")) {
+            change = value -> resultOnly(value, "\"dueMinor\":101", "\"dueMinor\":" + amount);
+            assertSourceUnavailable();
+        }
+        assertThat(responses).hasValue(2);
+    }
+
+    @Test
+    void preOrderSourceRejectsInventedRevisionsDeclarationsAndKnownDue() {
+        sourceResult = awaitingSource(false);
+        for (var mutation :
+                List.<UnaryOperator<String>>of(
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"admissionState\":\"AWAITING_RECEIPT\"",
+                                        "\"admissionState\":\"ADMITTED\""),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"admissionState\":\"AWAITING_RECEIPT\",\"lines\":",
+                                        "\"admissionState\":\"UNKNOWN\",\"lines\":"),
+                        value -> resultOnly(value, "\"orderRevision\":0", "\"orderRevision\":1"),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"admissionRevision\":0",
+                                        "\"admissionRevision\":1"),
+                        value ->
+                                resultOnly(
+                                        resultOnly(
+                                                value,
+                                                "\"manualObservationRevision\":0",
+                                                "\"manualObservationRevision\":1"),
+                                        "\"manualObservationHash\":null",
+                                        "\"manualObservationHash\":\"" + "a".repeat(64) + "\""),
+                        value -> resultOnly(value, "\"dueMinor\":null", "\"dueMinor\":0"),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"receiptProvenance\":null",
+                                        "\"receiptProvenance\":\"MANUAL_DECLARATION\""),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"manualDeclarationNo\":null",
+                                        "\"manualDeclarationNo\":\"DECL\""),
+                        value -> resultOnly(value, "\"method\":null", "\"method\":\"CASH\""),
+                        value ->
+                                resultOnly(
+                                        value, "\"declaredMinor\":null", "\"declaredMinor\":101"),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"receivedAt\":null",
+                                        "\"receivedAt\":\"2026-10-25T00:00:00.123Z\""),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"recordedAt\":null",
+                                        "\"recordedAt\":\"2026-10-25T00:00:00.123Z\""),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"operationState\":\"AWAITING_RECEIPT\"",
+                                        "\"operationState\":\"ADMITTED\""),
+                        value ->
+                                resultOnly(
+                                        value,
+                                        "\"reasonCode\":null",
+                                        "\"reasonCode\":\"INVENTED\""))) {
+            change = mutation;
+            assertSourceUnavailable();
+        }
+        assertThat(responses).hasValue(14);
+    }
+
+    @Test
+    void preOrderSourceRejectsHybridOrderAndMismatchedOriginalReferences() {
+        sourceResult = awaitingSource(false);
+        for (var mutation :
+                List.<UnaryOperator<String>>of(
+                        value ->
+                                resultOnly(
+                                        resultOnly(value, "\"orderNo\":null", "\"orderNo\":\"O\""),
+                                        "\"subOrderNo\":null",
+                                        "\"subOrderNo\":\"SO\""),
+                        value ->
+                                declarationOnly(
+                                        declarationOnly(
+                                                value, "\"orderNo\":null", "\"orderNo\":\"O\""),
+                                        "\"subOrderNo\":null",
+                                        "\"subOrderNo\":\"SO\""),
+                        value ->
+                                declarationOnly(
+                                        value,
+                                        "\"operationNo\":\"OP\"",
+                                        "\"operationNo\":\"WRONG\""),
+                        value ->
+                                resultOnly(
+                                        value, "\"currency\":\"CNY\"", "\"currency\":\"USD\""))) {
+            change = mutation;
+            assertSourceUnavailable();
+        }
+        change = value -> value;
+        assertThatThrownBy(
+                        () ->
+                                DelegatedIdentityContext.call(
+                                        identity,
+                                        () ->
+                                                port.source(
+                                                        scope, new SourceLookup(operation, "SO"))))
+                .isInstanceOfSatisfying(
+                        BizException.class,
+                        failure ->
+                                assertThat(failure.errorCode())
+                                        .isEqualTo(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE));
+        assertThat(responses).hasValue(5);
+    }
+
+    @Test
+    void oldProviderSourceRemainsExplicitlyIncomplete() {
+        sourceResult =
+                new ManualSourceFacts(
+                        operation,
+                        "O",
+                        "SO",
+                        new CustomerParty("USER", "BUYER", null, 1),
+                        "E",
+                        "S",
+                        "MANUAL_OFFLINE",
+                        1,
+                        "a".repeat(64),
+                        2,
+                        1,
+                        "ADMITTED",
+                        List.of(
+                                new ManualSourceLine(
+                                        "LINE", "CLIENT", "GOODS", "SKU", 1, 1, "COUNT")),
+                        Instant.parse("2026-10-25T00:00:00.123Z"));
+
+        var source = source();
+
+        assertThat(source.party().identityRevision()).isEqualTo(1L);
+        assertThat(source.dueMinor()).isNull();
+        assertThat(source.currency()).isNull();
+        assertThat(source.declaration()).isNull();
+        assertThat(source.purchaseAuthority()).isNull();
+        assertThat(responses).hasValue(1);
+    }
+
+    private ManualSourceFacts awaitingSource(boolean created) {
+        // Mirrors owner sourceView/view with no declaration; parent presence supplies due/revision.
+        String orderNo = created ? "O" : null;
+        String subOrderNo = created ? "SO" : null;
+        long orderRevision = created ? 2 : 0;
+        return new ManualSourceFacts(
+                operation,
+                orderNo,
+                subOrderNo,
+                new CustomerParty("USER", "BUYER", null, (Long) null),
+                "E",
+                "S",
+                "MANUAL_OFFLINE",
+                created ? 1 : 0,
+                created ? "a".repeat(64) : null,
+                orderRevision,
+                0,
+                "AWAITING_RECEIPT",
+                List.of(),
+                Instant.parse("2026-10-25T00:00:00.123Z"),
+                created ? 101L : null,
+                "CNY",
+                new ManualAdmissionView(
+                        operation,
+                        orderNo,
+                        subOrderNo,
+                        orderRevision,
+                        0,
+                        "AWAITING_RECEIPT",
+                        null,
+                        null,
+                        null,
+                        null,
+                        "CNY",
+                        null,
+                        null,
+                        "AWAITING_RECEIPT",
+                        null),
+                "CONSUMER_SESSION");
+    }
+
+    private ManualSourceFacts source() {
+        return DelegatedIdentityContext.call(
+                identity, () -> port.source(scope, new SourceLookup(operation, null)));
+    }
+
+    private void assertSourceUnavailable() {
+        assertThatThrownBy(this::source)
+                .isInstanceOfSatisfying(
+                        BizException.class,
+                        failure ->
+                                assertThat(failure.errorCode())
+                                        .isEqualTo(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE));
+    }
+
+    private static String declarationOnly(String value, String from, String to) {
+        int start = value.indexOf("\"declaration\":");
+        assertThat(start).isGreaterThanOrEqualTo(value.indexOf("\"result\":"));
+        return value.substring(0, start) + value.substring(start).replace(from, to);
+    }
 
     @Test
     void boundManualFactsRoundTrip() {

@@ -1,185 +1,305 @@
 package ai.neargo.shop.trade.dto;
 
-import java.util.List;
 import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
+
+import java.time.Instant;
+import java.util.List;
 
 /**
  * 订单（对齐 c-app {@code Order} 的平铺模型 + Q6 双视角）。
  *
  * <p><b>同一个结构承担两种视角</b>：
+ *
  * <ul>
- *   <li><b>订单视角</b>（{@code orderNo} = 子单号）：单商家，有 {@code fulfillment} /
- *       {@code verifyCode} / {@code timeline}。订单列表、详情、售后、评价、核销都用它。</li>
- *   <li><b>支付视角</b>（{@code orderNo} = 主单号）：合计金额 + {@code subOrders}，
- *       **不给 {@code fulfillment}** —— 跨商家可能各不相同，给一个单值就是错的。只有收银台用。</li>
+ *   <li><b>订单视角</b>（{@code orderNo} = 子单号）：单商家，有 {@code fulfillment} / {@code verifyCode} / {@code
+ *       timeline}。订单列表、详情、售后、评价、核销都用它。
+ *   <li><b>支付视角</b>（{@code orderNo} = 主单号）：合计金额 + {@code subOrders}， **不给 {@code fulfillment}** ——
+ *       跨商家可能各不相同，给一个单值就是错的。只有收银台用。
  * </ul>
  *
- * <p>为什么不拆成两个类：c-app 的 `Order` 类型只有一个，拆两个会逼前端在每个页面判断「这是哪种」。
- * 用可空字段表达差异，端上按字段有无渲染即可。
+ * <p>为什么不拆成两个类：c-app 的 `Order` 类型只有一个，拆两个会逼前端在每个页面判断「这是哪种」。 用可空字段表达差异，端上按字段有无渲染即可。
  */
-public record OrderVO(String orderNo,
-                      /** 支付单号（主单）。两种视角都带，收银台靠它跳转 */
-                      String payOrderNo,
-                      String status,
-                      /** 支付视角为 null */
-                      String fulfillment,
-                      String merchantNo,
-                      String merchantName,
-                      List<ItemVO> items,
-                      Amount amount,
-                      /** 自提码/核销码/兑换码三态共用；支付成功后才有 */
-                      String verifyCode,
-                      String pickupNo,
-                      String pickupName,
-                      /** 支付截止时间（原 expireAt，随前端命名） */
-                      Long payDeadlineAt,
-                      long createdAt,
-                      Long paidAt,
-                      /**
-                       * 快递单号（EXPRESS 履约）。
-                       *
-                       * <p><b>买家和商家都要看得到</b>：没有单号的「已发货」对买家没有任何用处 ——
-                       * 他既查不到物流，也无法判断该不该继续等；商家这边则无法核对自己填了什么。
-                       * 此前这一列在库里有、在 VO 里没有，于是发货这件事对两边都不可见。
-                       */
-                      String expressNo,
-                      String trafficSource,
-                      /**
-                       * 预约开始时间（{@code APPOINTMENT} 履约）。其余履约为 null。
-                       *
-                       * <p><b>没有时间的「待服务」等于没说</b> —— 买家要知道的正是几点，
-                       * 商家的待服务列表也按它排。端上 {@code orderView()} 见到它才会
-                       * 用带时间的文案。
-                       */
-                      Long appointmentAt,
-                      /**
-                       * 收件人（V69 快照）。<b>自提单为 null</b>。
-                       *
-                       * <p>此前这一列在库里有 {@code address_id}、在 VO 里连字段都没有 ——
-                       * 于是「商家自送」这条链路上，<b>所有角色（含店主）都不知道送到哪里</b>，
-                       * 而页面上只有一个「已送达」按钮。
-                       */
-                      Receiver receiver,
-                      List<TimelineNode> timeline,
-                      /** **仅支付视角**：一次支付覆盖的各商家订单 */
-                      List<OrderVO> subOrders,
-                      /**
-                       * 下单人昵称。**商家侧才有**（B12：认得出是谁，不给联系方式）。
-                       *
-                       * <p>端上的契约一直有这个字段，后端此前不下发 —— 于是
-                       * B 端售后页每一行的买家都是「—」：店主要处理一张退货单，
-                       * 却看不到是谁申请的，只能回订单列表里对号入座。
-                       */
-                      String buyerNickname,
-                      /**
-                       * 这一单评价过没有。<b>只有详情视角填</b>，列表恒为 false。
-                       *
-                       * <p>此前端上的契约声明了它、后端从来不发 —— 于是「去评价」的判据
-                       * {@code status === COMPLETED && !reviewed} 后半截恒为真，
-                       * <b>已经评过的订单照样显示那个按钮</b>。而 mock 会在评价成功后置真，
-                       * 所以本机点一遍是对的，只有真机不对。
-                       */
-                      boolean reviewed,
-                      /**
-                       * 挂在这一单上的售后单。<b>只有详情视角填</b>，没有则为 null。
-                       *
-                       * <p>与 {@link #reviewed} 同一个来历：端上声明了、后端不发，于是订单详情页的
-                       * 「售后进行中」整张卡（连同「填写退货单号」与「提出申诉」两个动作）
-                       * <b>永远不显示</b>。
-                       *
-                       * <p><b>不在列表视角填</b>：列表一次几十条，逐条去查售后就是 N+1；
-                       * 而列表页本来就单独取了一次售后清单。
-                       */
-                      AfterSaleVO afterSale,
-                      /**
-                       * 这次支付一共覆盖几笔子订单。<b>只有详情视角填</b>，缺省 1。
-                       *
-                       * <p>端上原本读的是 {@code payGroupNo} —— <b>那个字段库里、VO 里都不存在，
-                       * 是 mock 里造出来的概念</b>，于是详情页那句「本次支付覆盖多笔订单」永远不出现。
-                       * 真实模型里这件事由「主单下有几张子单」表达，所以这里发的是个数而不是编号：
-                       * 端上要判的本来就是「是不是多于一笔」。
-                       */
-                      int payGroupSize,
-                      // ↓ 社区集单（s37）。非集单单两者皆空
-                      String arriveDate,
-                      Long cancellableUntil,
-                      /** 这一单参加的团（ord_sub_order.group_no）。非团单为空。
-                          支付页付完团单落团页、订单详情画拼团进度卡都靠它（TDD-C端拼团买家流程）。
-                          端上 Order 类型早就声明了它，后端此前从没下发过 */
-                      String groupNo,
-                      /**
-                       * 配到的自提点离买家多远（米）。**只有确认页那一次预览填**，
-                       * 历史订单为 null —— 那时买家在哪儿已经无从谈起。
-                       *
-                       * <p>{@code -1} = 这个点没标坐标（存量点是手填地址建的），
-                       * <b>不是 0</b>：0 会被端上显示成「0 米」，那是一句假话。
-                       */
-                      Integer pickupDistanceM,
-                      /**
-                       * 快递公司（微信 {@code delivery_id}，如 SF / ZTO）。
-                       *
-                       * <p><b>加在最后而不是紧挨着 {@code expressNo}</b>：这个 record 有十处
-                       * 位置参数构造，插在中间会让每一处都要改，而改错了编译器**未必**报错
-                       * —— 相邻两个都是 String。加在末尾，只有真有值的那几处需要动。
-                       *
-                       * <p>V344 之前发的存量单为空：当时根本没收集过这一项。
-                       */
-                      String expressCompany,
-                      /**
-                       * 这笔优惠**是怎么来的**（TDD-C端优惠依据）。空 = 没有优惠。
-                       *
-                       * <p>合计仍在 {@code amount.discountMinor}，这里只是把它拆开：
-                       * 买家看到的「优惠 −¥10」此前来历不明（活动？券？两者叠加？），
-                       * 而后端一直知道 —— `pmt_apply` 每一笔都记着是哪个活动减的。
-                       *
-                       * <p>明细是**解释不是账**：与合计对不上时以合计为准。
-                       * 老订单（走老模型 mkt_campaign 的那些）没有明细，为空。
-                       */
-                      List<DiscountLine> discountLines,
-                      /**
-                       * 已取消 / 已退款时券与积分的去向（待办设计 P3）。
-                       * <b>只在详情视角、只在这两个状态填</b>，其余为 null；每一项从数据查，不从状态推。
-                       */
-                      Returned returned,
-                      /**
-                       * 自送超出配送范围的商家名（待办设计 P6）。<b>只有预览填</b>，送得到时为 null。
-                       * 预览不拦、建单才拦 —— 与自提点同一口径：确认页当场给「换地址 / 换配送方式」，
-                       * 而不是等他点了付款才说送不到。
-                       */
-                      List<String> outOfRange,
-                      /**
-                       * 下单页的优惠选项（优惠券全链路梳理 批 2）：每家店命中哪些活动、现在选的是哪个，
-                       * 以及系统算好的<b>最省组合</b>（活动选择 × 券一起枚举）。<b>只有预览填</b>。
-                       */
-                      Offers offers,
-                      /**
-                       * 这一单现在申请「仅退款」会不会<b>立即退</b>（极速退）。<b>只有订单详情填</b>。
-                       *
-                       * <p>由后端答而不是端上算：端上此前拿 {@code TRADE_RULES.instantRefundMaxMinor}
-                       * 这个常量比金额，那份常量是 ¥50、后端阈值是 ¥100，<b>差了一倍</b>；
-                       * 而且常量表达不了规则里的另两半 —— 总开关与「下单 N 小时内」。
-                       * 于是「会不会秒退」这句话在页面上说的和在后端做的，从来不是同一个判断。
-                       */
-                      Boolean instantRefundEligible,
-                      /** 物流轨迹（TDD-圆通物流直连 Y4）。只有订单详情、快递履约、缓存有记录时非空；否则 null */
-                      Trace trace,
-                      /**
-                       * 这张（子）单由哪家门店卖、哪家门店发（ADR-031：子单按门店拆）。
-                       * 同一主体两家店在一单里是两张子单，{@code merchantNo} 相同 —— 端上分段、
-                       * 段头显示、选活动都要按它分。主单与老数据为空。
-                       */
-                      StoreBrief store,
-                      /**
-                       * 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。
-                       *
-                       * <p>售后判进度的分水岭之一（TDD-售后规则 §2.1 FulfillStage）：生鲜备货后，
-                       * 非质量退款从「自由退」变成「商家确认」。<b>加在末尾</b>（同 expressCompany 的理由：
-                       * 这个 record 有多处位置参数构造，插中间每处都要改且未必报错）。
-                       * B 端据它决定订单上显示「开始备货」还是「已备货」。
-                       */
-                      Long preparedAt,
-                      PaymentResolutionView paymentResolution,
-                      LogisticsSync logisticsSync) {
+public record OrderVO(
+        String orderNo,
+        /** 支付单号（主单）。两种视角都带，收银台靠它跳转 */
+        String payOrderNo,
+        String status,
+        /** 支付视角为 null */
+        String fulfillment,
+        String merchantNo,
+        String merchantName,
+        List<ItemVO> items,
+        Amount amount,
+        /** 自提码/核销码/兑换码三态共用；支付成功后才有 */
+        String verifyCode,
+        String pickupNo,
+        String pickupName,
+        /** 支付截止时间（原 expireAt，随前端命名） */
+        Long payDeadlineAt,
+        long createdAt,
+        Long paidAt,
+        /**
+         * 快递单号（EXPRESS 履约）。
+         *
+         * <p><b>买家和商家都要看得到</b>：没有单号的「已发货」对买家没有任何用处 —— 他既查不到物流，也无法判断该不该继续等；商家这边则无法核对自己填了什么。
+         * 此前这一列在库里有、在 VO 里没有，于是发货这件事对两边都不可见。
+         */
+        String expressNo,
+        String trafficSource,
+        /**
+         * 预约开始时间（{@code APPOINTMENT} 履约）。其余履约为 null。
+         *
+         * <p><b>没有时间的「待服务」等于没说</b> —— 买家要知道的正是几点， 商家的待服务列表也按它排。端上 {@code orderView()} 见到它才会
+         * 用带时间的文案。
+         */
+        Long appointmentAt,
+        /**
+         * 收件人（V69 快照）。<b>自提单为 null</b>。
+         *
+         * <p>此前这一列在库里有 {@code address_id}、在 VO 里连字段都没有 —— 于是「商家自送」这条链路上，<b>所有角色（含店主）都不知道送到哪里</b>，
+         * 而页面上只有一个「已送达」按钮。
+         */
+        Receiver receiver,
+        List<TimelineNode> timeline,
+        /** **仅支付视角**：一次支付覆盖的各商家订单 */
+        List<OrderVO> subOrders,
+        /**
+         * 下单人昵称。**商家侧才有**（B12：认得出是谁，不给联系方式）。
+         *
+         * <p>端上的契约一直有这个字段，后端此前不下发 —— 于是 B 端售后页每一行的买家都是「—」：店主要处理一张退货单， 却看不到是谁申请的，只能回订单列表里对号入座。
+         */
+        String buyerNickname,
+        /**
+         * 这一单评价过没有。<b>只有详情视角填</b>，列表恒为 false。
+         *
+         * <p>此前端上的契约声明了它、后端从来不发 —— 于是「去评价」的判据 {@code status === COMPLETED && !reviewed} 后半截恒为真，
+         * <b>已经评过的订单照样显示那个按钮</b>。而 mock 会在评价成功后置真， 所以本机点一遍是对的，只有真机不对。
+         */
+        boolean reviewed,
+        /**
+         * 挂在这一单上的售后单。<b>只有详情视角填</b>，没有则为 null。
+         *
+         * <p>与 {@link #reviewed} 同一个来历：端上声明了、后端不发，于是订单详情页的 「售后进行中」整张卡（连同「填写退货单号」与「提出申诉」两个动作）
+         * <b>永远不显示</b>。
+         *
+         * <p><b>不在列表视角填</b>：列表一次几十条，逐条去查售后就是 N+1； 而列表页本来就单独取了一次售后清单。
+         */
+        AfterSaleVO afterSale,
+        /**
+         * 这次支付一共覆盖几笔子订单。<b>只有详情视角填</b>，缺省 1。
+         *
+         * <p>端上原本读的是 {@code payGroupNo} —— <b>那个字段库里、VO 里都不存在， 是 mock
+         * 里造出来的概念</b>，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以这里发的是个数而不是编号：
+         * 端上要判的本来就是「是不是多于一笔」。
+         */
+        int payGroupSize,
+        // ↓ 社区集单（s37）。非集单单两者皆空
+        String arriveDate,
+        Long cancellableUntil,
+        /**
+         * 这一单参加的团（ord_sub_order.group_no）。非团单为空。 支付页付完团单落团页、订单详情画拼团进度卡都靠它（TDD-C端拼团买家流程）。 端上 Order
+         * 类型早就声明了它，后端此前从没下发过
+         */
+        String groupNo,
+        /**
+         * 配到的自提点离买家多远（米）。**只有确认页那一次预览填**， 历史订单为 null —— 那时买家在哪儿已经无从谈起。
+         *
+         * <p>{@code -1} = 这个点没标坐标（存量点是手填地址建的）， <b>不是 0</b>：0 会被端上显示成「0 米」，那是一句假话。
+         */
+        Integer pickupDistanceM,
+        /**
+         * 快递公司（微信 {@code delivery_id}，如 SF / ZTO）。
+         *
+         * <p><b>加在最后而不是紧挨着 {@code expressNo}</b>：这个 record 有十处 位置参数构造，插在中间会让每一处都要改，而改错了编译器**未必**报错
+         * —— 相邻两个都是 String。加在末尾，只有真有值的那几处需要动。
+         *
+         * <p>V344 之前发的存量单为空：当时根本没收集过这一项。
+         */
+        String expressCompany,
+        /**
+         * 这笔优惠**是怎么来的**（TDD-C端优惠依据）。空 = 没有优惠。
+         *
+         * <p>合计仍在 {@code amount.discountMinor}，这里只是把它拆开： 买家看到的「优惠 −¥10」此前来历不明（活动？券？两者叠加？）， 而后端一直知道
+         * —— `pmt_apply` 每一笔都记着是哪个活动减的。
+         *
+         * <p>明细是**解释不是账**：与合计对不上时以合计为准。 老订单（走老模型 mkt_campaign 的那些）没有明细，为空。
+         */
+        List<DiscountLine> discountLines,
+        /** 已取消 / 已退款时券与积分的去向（待办设计 P3）。 <b>只在详情视角、只在这两个状态填</b>，其余为 null；每一项从数据查，不从状态推。 */
+        Returned returned,
+        /**
+         * 自送超出配送范围的商家名（待办设计 P6）。<b>只有预览填</b>，送得到时为 null。 预览不拦、建单才拦 —— 与自提点同一口径：确认页当场给「换地址 / 换配送方式」，
+         * 而不是等他点了付款才说送不到。
+         */
+        List<String> outOfRange,
+        /**
+         * 下单页的优惠选项（优惠券全链路梳理 批 2）：每家店命中哪些活动、现在选的是哪个， 以及系统算好的<b>最省组合</b>（活动选择 × 券一起枚举）。<b>只有预览填</b>。
+         */
+        Offers offers,
+        /**
+         * 这一单现在申请「仅退款」会不会<b>立即退</b>（极速退）。<b>只有订单详情填</b>。
+         *
+         * <p>由后端答而不是端上算：端上此前拿 {@code TRADE_RULES.instantRefundMaxMinor} 这个常量比金额，那份常量是 ¥50、后端阈值是
+         * ¥100，<b>差了一倍</b>； 而且常量表达不了规则里的另两半 —— 总开关与「下单 N 小时内」。 于是「会不会秒退」这句话在页面上说的和在后端做的，从来不是同一个判断。
+         */
+        Boolean instantRefundEligible,
+        /** 物流轨迹（TDD-圆通物流直连 Y4）。只有订单详情、快递履约、缓存有记录时非空；否则 null */
+        Trace trace,
+        /**
+         * 这张（子）单由哪家门店卖、哪家门店发（ADR-031：子单按门店拆）。 同一主体两家店在一单里是两张子单，{@code merchantNo} 相同 —— 端上分段、
+         * 段头显示、选活动都要按它分。主单与老数据为空。
+         */
+        StoreBrief store,
+        /**
+         * 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。
+         *
+         * <p>售后判进度的分水岭之一（TDD-售后规则 §2.1 FulfillStage）：生鲜备货后， 非质量退款从「自由退」变成「商家确认」。<b>加在末尾</b>（同
+         * expressCompany 的理由： 这个 record 有多处位置参数构造，插中间每处都要改且未必报错）。 B 端据它决定订单上显示「开始备货」还是「已备货」。
+         */
+        Long preparedAt,
+        PaymentResolutionView paymentResolution,
+        LogisticsSync logisticsSync,
+        ManualReceiptSummary manualReceipt) {
+
+    /** Safe merchant declaration display; never exposes the cashier or reusable evidence. */
+    public record ManualReceiptSummary(
+            String declarationNo,
+            String method,
+            long declaredMinor,
+            String currency,
+            Instant receivedAt,
+            Instant recordedAt,
+            String provenance,
+            String admissionKind,
+            String financialVerification) {}
+
+    /** Retains the full pre-manual positional constructor. */
+    public OrderVO(
+            String orderNo,
+            String payOrderNo,
+            String status,
+            String fulfillment,
+            String merchantNo,
+            String merchantName,
+            List<ItemVO> items,
+            Amount amount,
+            String verifyCode,
+            String pickupNo,
+            String pickupName,
+            Long payDeadlineAt,
+            long createdAt,
+            Long paidAt,
+            String expressNo,
+            String trafficSource,
+            Long appointmentAt,
+            Receiver receiver,
+            List<TimelineNode> timeline,
+            List<OrderVO> subOrders,
+            String buyerNickname,
+            boolean reviewed,
+            AfterSaleVO afterSale,
+            int payGroupSize,
+            String arriveDate,
+            Long cancellableUntil,
+            String groupNo,
+            Integer pickupDistanceM,
+            String expressCompany,
+            List<DiscountLine> discountLines,
+            Returned returned,
+            List<String> outOfRange,
+            Offers offers,
+            Boolean instantRefundEligible,
+            Trace trace,
+            StoreBrief store,
+            Long preparedAt,
+            PaymentResolutionView paymentResolution,
+            LogisticsSync logisticsSync) {
+        this(
+                orderNo,
+                payOrderNo,
+                status,
+                fulfillment,
+                merchantNo,
+                merchantName,
+                items,
+                amount,
+                verifyCode,
+                pickupNo,
+                pickupName,
+                payDeadlineAt,
+                createdAt,
+                paidAt,
+                expressNo,
+                trafficSource,
+                appointmentAt,
+                receiver,
+                timeline,
+                subOrders,
+                buyerNickname,
+                reviewed,
+                afterSale,
+                payGroupSize,
+                arriveDate,
+                cancellableUntil,
+                groupNo,
+                pickupDistanceM,
+                expressCompany,
+                discountLines,
+                returned,
+                outOfRange,
+                offers,
+                instantRefundEligible,
+                trace,
+                store,
+                preparedAt,
+                paymentResolution,
+                logisticsSync,
+                null);
+    }
+
+    public OrderVO withManualReceipt(ManualReceiptSummary receipt) {
+        return new OrderVO(
+                orderNo,
+                payOrderNo,
+                status,
+                fulfillment,
+                merchantNo,
+                merchantName,
+                items,
+                amount,
+                verifyCode,
+                pickupNo,
+                pickupName,
+                payDeadlineAt,
+                createdAt,
+                paidAt,
+                expressNo,
+                trafficSource,
+                appointmentAt,
+                receiver,
+                timeline,
+                subOrders,
+                buyerNickname,
+                reviewed,
+                afterSale,
+                payGroupSize,
+                arriveDate,
+                cancellableUntil,
+                groupNo,
+                pickupDistanceM,
+                expressCompany,
+                discountLines,
+                returned,
+                outOfRange,
+                offers,
+                instantRefundEligible,
+                trace,
+                store,
+                preparedAt,
+                paymentResolution,
+                logisticsSync,
+                receipt);
+    }
 
     public record LogisticsSync(String status, String source, Long lastEventAt,
                                 boolean pending, String reason) { }
@@ -205,12 +325,47 @@ public record OrderVO(String orderNo,
     }
 
     public OrderVO withLogisticsSync(LogisticsSync sync) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,
-                amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
-                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
-                afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
-                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible,
-                trace, store, preparedAt, paymentResolution, sync);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution,
+                        sync)
+                .withManualReceipt(manualReceipt);
     }
 
     /** Compatibility constructor for the complete pre-resolution JSON contract. */
@@ -234,12 +389,46 @@ public record OrderVO(String orderNo,
     }
 
     public OrderVO withPaymentResolution(PaymentResolutionView resolution) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,
-                amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
-                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
-                afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
-                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible,
-                trace, store, preparedAt, resolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        resolution)
+                .withManualReceipt(manualReceipt);
     }
 
     public record StoreBrief(String storeNo, String storeName) {
@@ -265,12 +454,46 @@ public record OrderVO(String orderNo,
     }
 
     public OrderVO withStore(StoreBrief s) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,
-                amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
-                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
-                afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
-                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, s,
-                preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        s,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /**
@@ -284,22 +507,90 @@ public record OrderVO(String orderNo,
      * <p><b>只在 {@code subs.size()==1} 时调用</b>；跨商家单不调，支付视角契约不变。
      */
     public OrderVO withFulfillmentFacing(OrderVO sole) {
-        return new OrderVO(orderNo, payOrderNo, status, sole.fulfillment(), merchantNo, merchantName, items,
-                amount, sole.verifyCode(), sole.pickupNo(), sole.pickupName(), payDeadlineAt, createdAt, paidAt,
-                sole.expressNo(), sole.trafficSource(), sole.appointmentAt(), sole.receiver(), timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
-                sole.pickupDistanceM(), sole.expressCompany(), discountLines, returned, outOfRange, offers,
-                instantRefundEligible, trace, store, preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        sole.fulfillment(),
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        sole.verifyCode(),
+                        sole.pickupNo(),
+                        sole.pickupName(),
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        sole.expressNo(),
+                        sole.trafficSource(),
+                        sole.appointmentAt(),
+                        sole.receiver(),
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        sole.pickupDistanceM(),
+                        sole.expressCompany(),
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt == null ? sole.manualReceipt() : manualReceipt);
     }
 
     /** 挂上备货时刻（只在 C/B 端订单视角填）。null = 还没备货 */
     public OrderVO withPrepared(Long preparedAt) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,
-                amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
-                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
-                afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
-                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store,
-                preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /** 物流轨迹（Y4）。status 同 ful_shipment；nodes 按时间倒序（最新在前） */
@@ -346,12 +637,46 @@ public record OrderVO(String orderNo,
 
     /** 复制一份挂上物流轨迹（Y4）。只有订单详情组装处调用；其余视角 trace 恒 null */
     public OrderVO withTrace(Trace t) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,
-                amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
-                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
-                afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
-                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, t, store,
-                preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        t,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /**
@@ -524,12 +849,46 @@ public record OrderVO(String orderNo,
      * 已截单时给空 —— 端上只看「有没有」，不必自己再比一次时钟。
      */
     public OrderVO withBatch(String arriveDate, Long cancellableUntil) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
-                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
-                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers,
-                instantRefundEligible, trace, store, preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /**
@@ -540,12 +899,46 @@ public record OrderVO(String orderNo,
      */
     /** 挂上团号（只在 C 端订单视角上填） */
     public OrderVO withGroup(String groupNo) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
-                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
-                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers,
-                instantRefundEligible, trace, store, preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /**
@@ -553,54 +946,222 @@ public record OrderVO(String orderNo,
      * 距离是按买家此刻的坐标算的，存进订单没有意义，下次看又该变了。
      */
     public OrderVO withPickupDistance(Integer pickupDistanceM) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
-                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
-                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers,
-                instantRefundEligible, trace, store, preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /** 挂上超出配送范围的商家（P6，只在预览）。空表给 null —— 端上看 null 就不提示 */
     public OrderVO withOutOfRange(List<String> merchants) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
-                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
-                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned,
-                merchants == null || merchants.isEmpty() ? null : merchants, offers,
-                instantRefundEligible, trace, store, preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        merchants == null || merchants.isEmpty() ? null : merchants,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /** 挂上优惠选项（批 2，只在预览）。没有活动也没有券可选时给 null */
     public OrderVO withOffers(Offers o) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
-                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
-                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, o,
-                instantRefundEligible, trace, store, preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        o,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /** 挂上去向（P3）。空的一律给 null —— 端上看 null 就整块不显示 */
     public OrderVO withReturned(Returned r) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
-                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
-                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines,
-                r == null || r.isEmpty() ? null : r, outOfRange, offers, instantRefundEligible, trace, store,
-                preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        r == null || r.isEmpty() ? null : r,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /** 挂上优惠明细。预览与订单详情各自取各自的来源，见 TDD-C端优惠依据 */
     public OrderVO withDiscountLines(List<DiscountLine> lines) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
-                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
-                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned, outOfRange,
-                offers, instantRefundEligible, trace, store, preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        lines == null ? List.of() : lines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /**
@@ -610,12 +1171,46 @@ public record OrderVO(String orderNo,
      */
     public OrderVO withDetail(boolean reviewed, AfterSaleVO afterSale, int payGroupSize,
                               Boolean instantRefundEligible) {
-        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName,
-                items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
-                paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
-                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers,
-                instantRefundEligible, trace, store, preparedAt, paymentResolution);
+        return new OrderVO(
+                        orderNo,
+                        payOrderNo,
+                        status,
+                        fulfillment,
+                        merchantNo,
+                        merchantName,
+                        items,
+                        amount,
+                        verifyCode,
+                        pickupNo,
+                        pickupName,
+                        payDeadlineAt,
+                        createdAt,
+                        paidAt,
+                        expressNo,
+                        trafficSource,
+                        appointmentAt,
+                        receiver,
+                        timeline,
+                        subOrders,
+                        buyerNickname,
+                        reviewed,
+                        afterSale,
+                        payGroupSize,
+                        arriveDate,
+                        cancellableUntil,
+                        groupNo,
+                        pickupDistanceM,
+                        expressCompany,
+                        discountLines,
+                        returned,
+                        outOfRange,
+                        offers,
+                        instantRefundEligible,
+                        trace,
+                        store,
+                        preparedAt,
+                        paymentResolution)
+                .withManualReceipt(manualReceipt);
     }
 
     /**

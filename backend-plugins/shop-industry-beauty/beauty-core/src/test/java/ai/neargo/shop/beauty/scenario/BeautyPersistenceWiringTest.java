@@ -35,7 +35,7 @@ class BeautyPersistenceWiringTest {
                 assertDoesNotThrow(
                         () -> Class.forName("ai.neargo.shop.beauty.config.BeautySchemaReady"));
         Object token =
-                assertDoesNotThrow(() -> ready.getConstructor(String.class).newInstance("8"));
+                assertDoesNotThrow(() -> ready.getConstructor(String.class).newInstance("9"));
         return new ApplicationContextRunner().withUserConfiguration(configuration())
                 .withBean("dataSource", DataSource.class, () -> primary)
                 .withBean("sqlSessionFactory", SqlSessionFactory.class, () -> factory)

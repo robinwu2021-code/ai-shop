@@ -27,7 +27,8 @@ final class BeautyCheckExpression {
             String token = matcher.group(1);
             // Decode only a complete charset-prefixed ASCII enum token, never text inside another literal.
             int escapedLiteral = token.indexOf("\\'");
-            if (escapedLiteral > 0 && (token.startsWith("_utf8mb4") || token.startsWith("_latin1"))) {
+            if (escapedLiteral > 0
+                    && (token.startsWith("_utf8mb4") || token.startsWith("_latin1"))) {
                 token = "'" + token.substring(escapedLiteral + 2, token.length() - 2) + "'";
             }
             if (token.startsWith("`")) {
@@ -39,62 +40,62 @@ final class BeautyCheckExpression {
         }
         require(end == input.length() && !tokens.isEmpty());
         var parser = new BeautyCheckExpression(tokens);
-        String result = parser.or();
+        Node result = parser.or();
         require(parser.position == tokens.size());
-        return result;
+        return result.text();
     }
 
-    private String or() {
-        String result = and();
+    private Node or() {
+        Node result = and();
         while (take("or")) {
-            result = "or(" + result + "," + and() + ")";
+            result = booleanNode("or", result, and());
         }
         return result;
     }
 
-    private String and() {
-        String result = comparison();
+    private Node and() {
+        Node result = comparison();
         while (take("and")) {
-            result = "and(" + result + "," + comparison() + ")";
+            result = booleanNode("and", result, comparison());
         }
         return result;
     }
 
-    private String comparison() {
-        String left = addition();
+    private Node comparison() {
+        Node left = addition();
         if (take("is")) {
             boolean not = take("not");
             expect("null");
-            return (not ? "is-not-null(" : "is-null(") + left + ")";
+            return value((not ? "is-not-null(" : "is-null(") + left.text() + ")");
         }
         if (take("in")) {
             expect("(");
             List<String> values = new ArrayList<>();
             do {
-                values.add(addition());
+                values.add(addition().text());
             } while (take(","));
             expect(")");
-            return "in(" + left + "," + String.join(",", values) + ")";
+            return value("in(" + left.text() + "," + String.join(",", values) + ")");
         }
         if (position < tokens.size() && Set.of("=", "!=", "<>", "<", ">", "<=", ">=")
                 .contains(tokens.get(position))) {
             String operator = tokens.get(position++);
-            return operator + "(" + left + "," + addition() + ")";
+            return value(operator + "(" + left.text() + "," + addition().text() + ")");
         }
         return left;
     }
 
-    private String addition() {
-        String result = primary();
+    private Node addition() {
+        Node result = primary();
         while (take("+")) {
-            result = "+(" + result + "," + primary() + ")";
+            result = value("+(" + result.text() + "," + primary().text() + ")");
         }
         return result;
     }
 
-    private String primary() {
+    private Node primary() {
         if (take("(")) {
-            String result = or();
+            Node result = or();
             expect(")");
             return result;
         }
@@ -104,18 +105,40 @@ final class BeautyCheckExpression {
             require(position < tokens.size() && tokens.get(position).startsWith("'"));
             token = tokens.get(position++);
         }
-        if (token.startsWith("'")) { return "literal(" + token + ")"; }
+        if (token.startsWith("'")) {
+            return value("literal(" + token + ")");
+        }
         require(token.matches("[a-z_][a-z0-9_]*|[0-9]+"));
         if (take("(")) {
             require(Set.of("json_valid", "octet_length", "length", "char_length",
                     "json_type", "json_length").contains(token));
-            String argument = primary();
+            Node argument = primary();
             expect(")");
             // MySQL stores OCTET_LENGTH as its byte-length synonym LENGTH in CHECK_CLAUSE.
             String function = "octet_length".equals(token) ? "length" : token;
-            return function + "(" + argument + ")";
+            return value(function + "(" + argument.text() + ")");
         }
-        return token;
+        return value(token);
+    }
+
+    /**
+     * Same boolean operators are associative even for SQL NULL; mixed groups and order stay exact.
+     */
+    private record Node(String text, String booleanOperator, List<Node> terms) {}
+
+    private static Node value(String text) {
+        return new Node(text, null, List.of());
+    }
+
+    private static Node booleanNode(String operator, Node left, Node right) {
+        var terms = new ArrayList<Node>();
+        terms.addAll(operator.equals(left.booleanOperator()) ? left.terms() : List.of(left));
+        terms.addAll(operator.equals(right.booleanOperator()) ? right.terms() : List.of(right));
+        String text = terms.getFirst().text();
+        for (int index = 1; index < terms.size(); index++) {
+            text = operator + "(" + text + "," + terms.get(index).text() + ")";
+        }
+        return new Node(text, operator, List.copyOf(terms));
     }
 
     private boolean take(String token) {

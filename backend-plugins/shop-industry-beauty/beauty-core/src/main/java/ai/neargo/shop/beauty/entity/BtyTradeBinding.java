@@ -1,10 +1,13 @@
 package ai.neargo.shop.beauty.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+
 import com.baomidou.mybatisplus.annotation.TableName;
-import java.math.BigDecimal;
+
 import lombok.Getter;
 import lombok.Setter;
+
+import java.math.BigDecimal;
 
 /** 服务来源行数量分配；保存本域意图与引用，不复制外部资产权威。 */
 @Getter
@@ -37,4 +40,14 @@ public class BtyTradeBinding extends BaseEntity {
     private String sourceSnapshotHash;
     /** 来源行数量仲裁。 */
     private String guardNo;
+
+    /** Immutable manual domain; historical financial inserts keep the legacy default. */
+    private String admissionKind = "LEGACY_FUNDED";
+
+    private String customerKind;
+    private String guestNo;
+    private Long identityRevision;
+    private String buyerNo;
+    private Long manualSourceRevision;
+    private String manualSourceHash;
 }

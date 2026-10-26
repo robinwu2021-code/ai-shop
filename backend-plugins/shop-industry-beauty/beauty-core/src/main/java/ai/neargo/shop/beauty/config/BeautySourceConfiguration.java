@@ -12,6 +12,7 @@ import ai.neargo.shop.beauty.service.impl.ServiceSubmissionServiceImpl;
 import ai.neargo.shop.beauty.service.impl.WorkOrderBillServiceImpl;
 import ai.neargo.shop.beauty.service.impl.WorkOrderPreparation;
 import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -35,10 +36,11 @@ public class BeautySourceConfiguration {
     ServiceSourceObservation serviceSourceObservation(
             BeautyMappers.SourceObservationMapper rows,
             ObjectProvider<CheckoutPort> checkout,
+            ObjectProvider<ManualServiceAdmissionPort> manual,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectMapper json,
             @Qualifier("beautyReceptionClock") Clock clock) {
-        return new ServiceSourceObservation(rows, checkout, manager, json, clock);
+        return new ServiceSourceObservation(rows, checkout, manual, manager, json, clock);
     }
 
     @Bean
@@ -88,6 +90,7 @@ public class BeautySourceConfiguration {
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ServiceSubmissionMapper submissions,
             ObjectProvider<CheckoutPort> checkout,
+            ObjectProvider<ManualServiceAdmissionPort> manual,
             @Qualifier("beautyReceptionClock") Clock clock,
             ServiceSourceObservation observations,
             ServiceSourceBinding binding,
@@ -105,7 +108,8 @@ public class BeautySourceConfiguration {
                 clock,
                 observations,
                 binding,
-                preparation);
+                preparation,
+                manual);
     }
 
     @Bean
@@ -118,6 +122,7 @@ public class BeautySourceConfiguration {
             BeautyMappers.ServiceSubmissionMapper submissions,
             BeautyMappers.TradeBindingMapper bindings,
             ObjectProvider<CheckoutPort> checkout,
+            ObjectProvider<ManualServiceAdmissionPort> manual,
             ServiceSourceObservation observations,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             @Qualifier("beautyReceptionClock") Clock clock) {
@@ -132,6 +137,7 @@ public class BeautySourceConfiguration {
                 checkout,
                 observations,
                 manager,
-                clock);
+                clock,
+                manual);
     }
 }

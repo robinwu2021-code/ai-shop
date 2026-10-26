@@ -99,6 +99,8 @@ public final class WorkOrderCoordinator {
     }
     private WorkOrderVO openUnassignedAuthorized(String entity, String store, String actor, OpenWorkOrderReq req,
             String key) {
+        var originalMemberScope =
+                req.memberNo() == null ? null : receptionAccess.customer(entity, store, actor);
         String hash = fingerprint("BAPI-054", entity, store, null, req);
         var prior = operations.find(entity, store, actor, "BAPI-054", key, hash);
         if (succeeded(prior)) { return result(prior); }
@@ -107,6 +109,14 @@ public final class WorkOrderCoordinator {
         var op = prior;
         try {
             var prepared = preparation.unassigned(entity, store, identity, req.items());
+            if (originalMemberScope != null) {
+                authorize(entity, store, actor);
+                // Preparation performs later owner IO; do not persist a new namespace under the
+                // original hash.
+                if (!originalMemberScope.equals(receptionAccess.customer(entity, store, actor))) {
+                    throw BizException.of(ErrorCode.FORBIDDEN);
+                }
+            }
             String scopeHash = scopeHash(prepared);
             op =
                     prior == null
@@ -670,6 +680,10 @@ public final class WorkOrderCoordinator {
         }
     }
     private VerifiedIdentity identity(String entity, String store, OpenWorkOrderReq req) {
+        if (req.memberNo() != null) {
+            return new VerifiedIdentity(
+                    "USER", identities.customerMember(entity, store, req.memberNo()));
+        }
         return req.customerRef() != null
                 ? new VerifiedIdentity(
                         "USER", identities.customer(entity, store, req.customerRef()))

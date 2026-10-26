@@ -8,9 +8,9 @@ import ai.neargo.shop.spi.security.InternalCall;
 import ai.neargo.shop.spi.security.InternalReply;
 import ai.neargo.shop.spi.security.InternalRequestBinding;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
-import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
+import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
 import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
 import ai.neargo.shop.spi.trade.CheckoutPort.SourceLookup;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionInternalApi;
@@ -20,11 +20,11 @@ import ai.neargo.shop.svc.InternalBindings;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCalls;
 
-import java.util.Objects;
 import java.util.List;
-import java.util.stream.IntStream;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 /**
  * Bound original manual facts never fall back to financial success or empty permissive evidence.
@@ -191,7 +191,37 @@ public final class RemoteManualServiceAdmissionPort implements ManualServiceAdmi
                                 && scope.entityNo().equals(result.entityNo())
                                 && scope.storeNo().equals(result.storeNo())
                                 && (request.subOrderNo() == null
-                                        || request.subOrderNo().equals(result.subOrderNo())));
+                                        || request.subOrderNo().equals(result.subOrderNo()))
+                                && sourceDisplay(result));
+    }
+
+    private static boolean sourceDisplay(ManualSourceFacts facts) {
+        var receipt = facts.declaration();
+        if (receipt == null) return true; // Old provider shape is explicitly incomplete downstream.
+        if (!facts.operation().equals(receipt.operation())
+                || !Objects.equals(facts.orderNo(), receipt.orderNo())
+                || !Objects.equals(facts.subOrderNo(), receipt.subOrderNo())
+                || facts.orderRevision() != receipt.orderRevision()
+                || facts.admissionRevision() != receipt.admissionRevision()
+                || !Objects.equals(facts.currency(), receipt.currency())) {
+            return false;
+        }
+        if (facts.orderNo() == null) {
+            // The owner has no payable amount before order creation, nor a receipt declaration.
+            // Record constructors already require paired order refs and empty awaiting
+            // fields/lines.
+            return facts.dueMinor() == null
+                    && facts.manualObservationRevision() == 0
+                    && facts.manualObservationHash() == null
+                    && facts.orderRevision() == 0
+                    && facts.admissionRevision() == 0
+                    && "AWAITING_RECEIPT".equals(facts.admissionState())
+                    && "AWAITING_RECEIPT".equals(receipt.admissionState())
+                    && receipt.reasonCode() == null;
+        }
+        return facts.dueMinor() != null
+                && (receipt.declaredMinor() == null
+                        || facts.dueMinor().equals(receipt.declaredMinor()));
     }
 
     private <T, R> R call(

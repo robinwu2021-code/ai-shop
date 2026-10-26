@@ -3,8 +3,10 @@ package ai.neargo.shop.beauty.dto;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCustomerRef;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
@@ -103,17 +105,25 @@ public record SubmitServicesReq(
             String subOrderNo,
             Long sourceRevision,
             String sourceHash,
-            List<ExistingLineSelection> lines) {
+            List<ExistingLineSelection> lines,
+            @JsonInclude(JsonInclude.Include.NON_NULL) CounterCustomerRef counterCustomer) {
         public SourceSelection {
             require(activityChoices != null && lines != null);
             activityChoices = Map.copyOf(activityChoices);
             lines = List.copyOf(lines);
             require(activityChoices.size() <= 64);
-            if ("PREPARE".equals(mode)) {
+            if ("PREPARE".equals(mode) || "MANUAL_PREPARE".equals(mode)) {
+                boolean manual = "MANUAL_PREPARE".equals(mode);
                 require(
-                        customerRef != null
-                                && customerRef.matches("cr1_[A-Za-z0-9_-]{43}")
-                                && ("ONLINE".equals(payMode) || "OFFLINE".equals(payMode))
+                        (manual
+                                        ? customerRef == null
+                                                && counterCustomer != null
+                                                && "OFFLINE".equals(payMode)
+                                        : counterCustomer == null
+                                                && customerRef != null
+                                                && customerRef.matches("cr1_[A-Za-z0-9_-]{43}")
+                                                && ("ONLINE".equals(payMode)
+                                                        || "OFFLINE".equals(payMode)))
                                 && checkoutOperationNo == null
                                 && subOrderNo == null
                                 && sourceRevision == null
@@ -130,7 +140,8 @@ public record SubmitServicesReq(
                         });
             } else {
                 require(
-                        "EXISTING".equals(mode)
+                        ("EXISTING".equals(mode) || "MANUAL_EXISTING".equals(mode))
+                                && counterCustomer == null
                                 && customerRef == null
                                 && payMode == null
                                 && couponNo == null
@@ -149,6 +160,34 @@ public record SubmitServicesReq(
                         lines.stream().map(ExistingLineSelection::selectionRef).distinct().count()
                                 == lines.size());
             }
+        }
+
+        /** Retains the old request shape and permanent payload digest. */
+        public SourceSelection(
+                String mode,
+                String customerRef,
+                String payMode,
+                String couponNo,
+                Map<String, String> activityChoices,
+                String remark,
+                String checkoutOperationNo,
+                String subOrderNo,
+                Long sourceRevision,
+                String sourceHash,
+                List<ExistingLineSelection> lines) {
+            this(
+                    mode,
+                    customerRef,
+                    payMode,
+                    couponNo,
+                    activityChoices,
+                    remark,
+                    checkoutOperationNo,
+                    subOrderNo,
+                    sourceRevision,
+                    sourceHash,
+                    lines,
+                    null);
         }
 
         @JsonAnySetter

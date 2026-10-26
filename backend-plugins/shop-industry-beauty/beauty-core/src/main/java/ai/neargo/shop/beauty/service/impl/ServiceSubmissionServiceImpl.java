@@ -20,8 +20,14 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.ManualSourceFacts;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DuplicateKeyException;
@@ -53,6 +59,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
     private final BeautyMappers.TradeBindingMapper bindings;
     private final BeautyMappers.ServiceSubmissionMapper submissions;
     private final ObjectProvider<CheckoutPort> checkout;
+    private final ObjectProvider<ManualServiceAdmissionPort> manual;
     private final Clock clock;
     private final ServiceSourceObservation observations;
     private final ServiceSourceBinding bindingService;
@@ -71,6 +78,36 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
             ServiceSourceObservation observations,
             ServiceSourceBinding bindingService,
             WorkOrderPreparation preparation) {
+        this.manual = null;
+        this.db = db;
+        this.access = access;
+        this.query = query;
+        this.orders = orders;
+        this.tasks = tasks;
+        this.bindings = bindings;
+        this.submissions = submissions;
+        this.checkout = checkout;
+        this.clock = clock;
+        this.observations = observations;
+        this.bindingService = bindingService;
+        this.preparation = preparation;
+    }
+
+    public ServiceSubmissionServiceImpl(
+            AppointmentPersistence db,
+            ServiceSubmissionAccess access,
+            ServiceSubmissionQuery query,
+            BeautyMappers.WorkOrderMapper orders,
+            BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.TradeBindingMapper bindings,
+            ObjectProvider<CheckoutPort> checkout,
+            Clock clock,
+            ServiceSourceObservation observations,
+            ServiceSourceBinding bindingService,
+            WorkOrderPreparation preparation,
+            ObjectProvider<ManualServiceAdmissionPort> manual) {
+        this.manual = manual;
         this.db = db;
         this.access = access;
         this.query = query;
@@ -134,7 +171,81 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
             Long expectedSourceRevision,
             String expectedSourceHash,
             List<FrozenTask> tasks,
-            List<CheckoutPort.CheckoutLineReq> lines) {
+            List<CheckoutPort.CheckoutLineReq> lines,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String admissionKind,
+            @JsonInclude(JsonInclude.Include.NON_NULL) CustomerParty party,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String counterQuoteAuthority) {
+        /**
+         * V2 fields and serialization order remain byte-for-byte unchanged when new fields are
+         * null.
+         */
+        public Command(
+                int schemaVersion,
+                String realm,
+                String subjectKind,
+                String actorNo,
+                String endpoint,
+                String namespaceHash,
+                String keyHash,
+                String originalDraftNo,
+                long originalScopeRevision,
+                String originalScopeHash,
+                String identityKind,
+                String identityRef,
+                String buyerNo,
+                String claimReceiptHash,
+                Long claimRevision,
+                long targetScopeRevision,
+                long acceptedRootRevision,
+                String operationNo,
+                String prepareKey,
+                String sourceMode,
+                String customerRefHash,
+                String payMode,
+                String couponNo,
+                Map<String, String> activityChoices,
+                String remark,
+                String expectedSourceNo,
+                Long expectedSourceRevision,
+                String expectedSourceHash,
+                List<FrozenTask> tasks,
+                List<CheckoutPort.CheckoutLineReq> lines) {
+            this(
+                    schemaVersion,
+                    realm,
+                    subjectKind,
+                    actorNo,
+                    endpoint,
+                    namespaceHash,
+                    keyHash,
+                    originalDraftNo,
+                    originalScopeRevision,
+                    originalScopeHash,
+                    identityKind,
+                    identityRef,
+                    buyerNo,
+                    claimReceiptHash,
+                    claimRevision,
+                    targetScopeRevision,
+                    acceptedRootRevision,
+                    operationNo,
+                    prepareKey,
+                    sourceMode,
+                    customerRefHash,
+                    payMode,
+                    couponNo,
+                    activityChoices,
+                    remark,
+                    expectedSourceNo,
+                    expectedSourceRevision,
+                    expectedSourceHash,
+                    tasks,
+                    lines,
+                    null,
+                    null,
+                    null);
+        }
+
         public Command {
             tasks = List.copyOf(tasks);
             lines = List.copyOf(lines);
@@ -153,14 +264,15 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
         if (req == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        var user =
-                access.authorize(entity, store, actor, true, "PREPARE".equals(req.source().mode()));
+        var user = access.authorize(entity, store, actor, true, preparing(req.source().mode()));
         var root = query.root(entity, store, workOrder);
         String action = req.additions().isEmpty() ? "SUBMIT_SOURCE" : "ADD_SOURCE";
         String keyHash = IdempotencyScope.requestHash(IdempotencyScope.requireKey(key));
         String namespace =
                 IdempotencyScope.requestHash(
-                        "BEAUTY_SUBMISSION_V1",
+                        manual(req.source().mode())
+                                ? "BEAUTY_MANUAL_SUBMISSION_V1"
+                                : "BEAUTY_SUBMISSION_V1",
                         "MAIN",
                         entity,
                         store,
@@ -176,7 +288,42 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
             AppointmentPersistence.require(payloadHash.equals(previous.getPayloadHash()));
             return resume(previous, command(previous), actor, req);
         }
-        var buyer = access.buyer(root.context(), req.source().customerRef());
+        ManualSourceFacts sourceFacts = null;
+        if ("MANUAL_EXISTING".equals(req.source().mode())) {
+            sourceFacts =
+                    manualOwner()
+                            .source(
+                                    scope(entity, store, actor),
+                                    new CheckoutPort.SourceLookup(
+                                            new CheckoutPort.OperationRef(
+                                                    "BEAUTY", req.source().checkoutOperationNo()),
+                                            req.source().subOrderNo()));
+            AppointmentPersistence.require(
+                    sourceFacts != null
+                            && req.source()
+                                    .checkoutOperationNo()
+                                    .equals(sourceFacts.operation().operationNo())
+                            && req.source().subOrderNo().equals(sourceFacts.subOrderNo())
+                            && req.source().sourceRevision()
+                                    == sourceFacts.manualObservationRevision()
+                            && req.source()
+                                    .sourceHash()
+                                    .equals(sourceFacts.manualObservationHash()));
+        }
+        final CustomerParty selectedParty =
+                !manual(req.source().mode())
+                        ? null
+                        : sourceFacts == null
+                                ? access.manualParty(root.context())
+                                : access.manualParty(root.context(), sourceFacts);
+        final String purchaseAuthority =
+                sourceFacts == null
+                        ? "MERCHANT_RECORDED_IN_PERSON"
+                        : sourceFacts.purchaseAuthority();
+        var buyer =
+                selectedParty == null
+                        ? access.buyer(root.context(), req.source().customerRef())
+                        : access.manualBuyer(root.context(), selectedParty);
         var preparedScope =
                 req.additions().isEmpty()
                         ? null
@@ -192,6 +339,15 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                                         new AppointmentItemReq(
                                                                 item.skuNo(), item.quantity()))
                                         .toList());
+        if (selectedParty != null) {
+            var currentActor =
+                    access.authorize(entity, store, actor, true, preparing(req.source().mode()));
+            AppointmentPersistence.require(
+                    user.tenantNo().equals(currentActor.tenantNo())
+                            && user.realm().equals(currentActor.realm())
+                            && user.subjectKind().equals(currentActor.subjectKind())
+                            && user.userNo().equals(currentActor.userNo()));
+        }
         BtyServiceSubmission accepted;
         try {
             accepted =
@@ -223,7 +379,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                     boolean overlap = overlaps(old, req);
                                     AppointmentPersistence.require(
                                             !overlap
-                                                    || "EXISTING".equals(req.source().mode())
+                                                    || existing(req.source().mode())
                                                             && old.operationNo()
                                                                     .equals(
                                                                             req.source()
@@ -270,7 +426,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                         selected,
                                         selectionRefs);
                                 locked = orders.selectScopedForUpdate(entity, store, workOrder);
-                                if ("EXISTING".equals(req.source().mode())) {
+                                if (existing(req.source().mode())) {
                                     AppointmentPersistence.require(
                                             new HashSet<>(selectionRefs.values())
                                                     .equals(
@@ -345,7 +501,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                 var source = req.source();
                                 var command =
                                         new Command(
-                                                2,
+                                                selectedParty == null ? 2 : 3,
                                                 user.realm().name(),
                                                 user.subjectKind().name(),
                                                 actor,
@@ -362,16 +518,20 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                                 buyer.claimRevision(),
                                                 locked.getScopeRevision(),
                                                 locked.getVersion(),
-                                                "PREPARE".equals(source.mode())
+                                                preparing(source.mode())
                                                         ? number
                                                         : source.checkoutOperationNo(),
                                                 IdempotencyScope.requestHash(
                                                         namespace, "PREPARE", number),
                                                 source.mode(),
-                                                source.customerRef() == null
-                                                        ? null
-                                                        : IdempotencyScope.requestHash(
-                                                                source.customerRef()),
+                                                source.counterCustomer() != null
+                                                        ? IdempotencyScope.requestHash(
+                                                                db.json.writeValueAsString(
+                                                                        source.counterCustomer()))
+                                                        : source.customerRef() == null
+                                                                ? null
+                                                                : IdempotencyScope.requestHash(
+                                                                        source.customerRef()),
                                                 source.payMode(),
                                                 source.couponNo(),
                                                 source.activityChoices(),
@@ -380,7 +540,10 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                                                 source.sourceRevision(),
                                                 source.sourceHash(),
                                                 frozen,
-                                                lines);
+                                                lines,
+                                                selectedParty == null ? null : "MANUAL_OFFLINE",
+                                                selectedParty,
+                                                selectedParty == null ? null : purchaseAuthority);
                                 var row = new BtyServiceSubmission();
                                 row.setEntityNo(entity);
                                 row.setStoreNo(store);
@@ -463,7 +626,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
     }
 
     private String selectedLine(SubmitServicesReq request, String selectionRef) {
-        if (!"EXISTING".equals(request.source().mode())) {
+        if (!existing(request.source().mode())) {
             return null;
         }
         return request.source().lines().stream()
@@ -535,6 +698,9 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
         access.authorize(entity, store, actor, false, false);
         var row = query.submission(entity, store, number);
         var command = command(row);
+        if (command.schemaVersion() == 3) {
+            return readManual(row, command, actor);
+        }
         verifyBuyer(row, command, null);
         if ("REJECTED".equals(row.getStatus())) {
             return view(row, command, null, null);
@@ -584,7 +750,8 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
         }
         var submission = query.submission(entity, store, number);
         var command = command(submission);
-        verifyBuyer(submission, command, null);
+        if (command.schemaVersion() == 3) verifyManualCurrent(submission, command, actor);
+        else verifyBuyer(submission, command, null);
         String namespace =
                 IdempotencyScope.requestHash(
                         "BEAUTY_RECOVERY_V1",
@@ -688,6 +855,8 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
             Command command,
             String actor,
             SubmitServicesReq originalRequest) {
+        if (command.schemaVersion() == 3)
+            return resumeManual(intent, command, actor, originalRequest);
         verifyBuyer(
                 intent,
                 command,
@@ -935,10 +1104,370 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
 
     Command command(BtyServiceSubmission row) {
         var command = db.json.readValue(row.getFrozenCommand(), Command.class);
-        AppointmentPersistence.require(
-                command.schemaVersion() == 2
-                        && command.namespaceHash().equals(row.getRequestKeyHash()));
+        AppointmentPersistence.require(validCommand(command, row));
         return command;
+    }
+
+    static boolean existing(String mode) {
+        return "EXISTING".equals(mode) || "MANUAL_EXISTING".equals(mode);
+    }
+
+    static boolean preparing(String mode) {
+        return "PREPARE".equals(mode) || "MANUAL_PREPARE".equals(mode);
+    }
+
+    static boolean manual(String mode) {
+        return "MANUAL_EXISTING".equals(mode) || "MANUAL_PREPARE".equals(mode);
+    }
+
+    /**
+     * V3 has an independent namespace and exact typed owner party. Existing V2 validation is
+     * preserved.
+     */
+    public static boolean validCommand(Command c, BtyServiceSubmission row) {
+        if (c == null || !Objects.equals(c.namespaceHash(), row.getRequestKeyHash())) return false;
+        if (c.schemaVersion() == 2)
+            return c.admissionKind() == null
+                    && c.party() == null
+                    && c.counterQuoteAuthority() == null;
+        return c.schemaVersion() == 3
+                && manual(c.sourceMode())
+                && "MANUAL_OFFLINE".equals(c.admissionKind())
+                && c.party() != null
+                && Objects.equals(c.buyerNo(), c.party().userNo())
+                && ("MERCHANT_RECORDED_IN_PERSON".equals(c.counterQuoteAuthority())
+                        || "CONSUMER_SESSION".equals(c.counterQuoteAuthority())
+                                && "MANUAL_EXISTING".equals(c.sourceMode())
+                                && "USER".equals(c.party().kind()))
+                && Objects.equals(
+                        c.namespaceHash(),
+                        IdempotencyScope.requestHash(
+                                "BEAUTY_MANUAL_SUBMISSION_V1",
+                                "MAIN",
+                                row.getEntityNo(),
+                                row.getStoreNo(),
+                                c.realm(),
+                                c.subjectKind(),
+                                c.actorNo(),
+                                "BAPI-056",
+                                c.keyHash()));
+    }
+
+    private ManualServiceAdmissionPort manualOwner() {
+        var owner = manual == null ? null : manual.getIfAvailable();
+        if (owner == null) throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        return owner;
+    }
+
+    private ServiceSourceObservation.ManualCanonical manualCanonical(
+            BtyServiceSubmission row, Command c, ManualSourceFacts facts) {
+        AppointmentPersistence.require(
+                facts != null
+                        && operation(c).equals(facts.operation())
+                        && (!"MANUAL_EXISTING".equals(c.sourceMode())
+                                || c.expectedSourceNo().equals(facts.subOrderNo())));
+        return new ServiceSourceObservation.ManualCanonical(
+                row.getEntityNo(),
+                row.getStoreNo(),
+                c.party(),
+                c.operationNo(),
+                facts.orderNo(),
+                facts.subOrderNo());
+    }
+
+    private void verifyManualParty(BtyServiceSubmission row, Command c, ManualSourceFacts facts) {
+        var context =
+                query.root(row.getEntityNo(), row.getStoreNo(), row.getWorkOrderNo()).context();
+        AppointmentPersistence.require(
+                c.party().equals(access.manualParty(context, facts))
+                        && c.counterQuoteAuthority().equals(facts.purchaseAuthority()));
+        var relation = access.manualBuyer(context, facts.party());
+        AppointmentPersistence.require(
+                Objects.equals(c.claimReceiptHash(), relation.receiptHash())
+                        && Objects.equals(c.claimRevision(), relation.claimRevision()));
+    }
+
+    private void verifyManualQuote(
+            BtyServiceSubmission row, Command c, CounterCheckoutQuote quote) {
+        var context =
+                query.root(row.getEntityNo(), row.getStoreNo(), row.getWorkOrderNo()).context();
+        AppointmentPersistence.require(
+                c.party().equals(access.manualParty(context, quote))
+                        && operation(c).equals(quote.quote().operation())
+                        && c.counterQuoteAuthority().equals(quote.purchaseAuthority()));
+        var relation = access.manualBuyer(context, quote.party());
+        AppointmentPersistence.require(
+                Objects.equals(c.claimReceiptHash(), relation.receiptHash())
+                        && Objects.equals(c.claimRevision(), relation.claimRevision()));
+        if (!"MANUAL_PREPARE".equals(c.sourceMode())) throw BizException.of(ErrorCode.CONFLICT);
+        var actual = quote.quote().lines();
+        AppointmentPersistence.require(actual.size() == c.lines().size());
+        for (var line : c.lines()) {
+            long matches =
+                    actual.stream()
+                            .filter(
+                                    q -> {
+                                        return line.clientLineRef().equals(q.clientLineRef())
+                                                && line.skuNo().equals(q.skuNo())
+                                                && line.quantity() == q.quantity()
+                                                && "COUNT".equals(q.uom())
+                                                && c.tasks().stream()
+                                                        .filter(t -> t.skuNo().equals(q.skuNo()))
+                                                        .allMatch(
+                                                                t ->
+                                                                        t.goodsNo()
+                                                                                .equals(
+                                                                                        q
+                                                                                                .goodsNo()));
+                                    })
+                            .count();
+            AppointmentPersistence.require(matches == 1);
+        }
+    }
+
+    private ManualSourceFacts manualFacts(BtyServiceSubmission row, Command c, String actor) {
+        return manualOwner()
+                .source(
+                        scope(row.getEntityNo(), row.getStoreNo(), actor),
+                        new CheckoutPort.SourceLookup(operation(c), c.expectedSourceNo()));
+    }
+
+    private void verifyManualCurrent(BtyServiceSubmission row, Command c, String actor) {
+        if ("MANUAL_EXISTING".equals(c.sourceMode())) {
+            verifyManualParty(row, c, manualFacts(row, c, actor));
+        } else {
+            var quote =
+                    manualOwner()
+                            .readCounterQuote(
+                                    scope(row.getEntityNo(), row.getStoreNo(), actor),
+                                    operation(c));
+            verifyManualQuote(row, c, quote);
+            if ("CREATED".equals(quote.quote().phase())) {
+                verifyManualParty(row, c, manualFacts(row, c, actor));
+            }
+        }
+        access.authorize(row.getEntityNo(), row.getStoreNo(), actor, false, false);
+    }
+
+    private ServiceSubmissionVO readManual(BtyServiceSubmission row, Command c, String actor) {
+        CounterCheckoutQuote quote = null;
+        ServiceSourceObservation.ManualObserved observed = null;
+        var knownBeforeOwner =
+                observations.manualKnown(
+                        row.getEntityNo(), row.getStoreNo(), c.party(), c.operationNo());
+        if (knownBeforeOwner != null
+                && "MANUAL_OFFLINE"
+                        .equals(observations.manualHistory(knownBeforeOwner).getAdmissionKind()))
+            observations.invalidateManual(knownBeforeOwner, actor);
+        try {
+            if ("MANUAL_PREPARE".equals(c.sourceMode())) {
+                quote =
+                        manualOwner()
+                                .readCounterQuote(
+                                        scope(row.getEntityNo(), row.getStoreNo(), actor),
+                                        operation(c));
+                verifyManualQuote(row, c, quote);
+            }
+            var known =
+                    observations.manualKnown(
+                            row.getEntityNo(), row.getStoreNo(), c.party(), c.operationNo());
+            if (known != null) {
+                observed = observations.observeManual(known, actor);
+                if (observed.facts() != null) verifyManualParty(row, c, observed.facts());
+                access.authorize(row.getEntityNo(), row.getStoreNo(), actor, false, false);
+                return manualView(row, c, quote, observed);
+            }
+            var facts = manualFacts(row, c, actor);
+            if (facts.orderNo() != null) {
+                verifyManualParty(row, c, facts);
+                observed = observations.observeManual(manualCanonical(row, c, facts), actor);
+                if (observed.facts() != null) verifyManualParty(row, c, observed.facts());
+            }
+        } catch (UncheckedIOException unavailable) {
+            // No financial fallback and no stale readiness on a failed owner read.
+        } catch (BizException unavailable) {
+            if (unavailable.errorCode() != ErrorCode.NOT_FOUND
+                    && unavailable.errorCode() != ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE
+                    && unavailable.errorCode() != ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE)
+                throw unavailable;
+        }
+        access.authorize(row.getEntityNo(), row.getStoreNo(), actor, false, false);
+        return manualView(row, c, quote, observed);
+    }
+
+    private ServiceSubmissionVO resumeManual(
+            BtyServiceSubmission intent, Command c, String actor, SubmitServicesReq original) {
+        if (List.of("BOUND", "REJECTED").contains(intent.getStatus()))
+            return readManual(intent, c, actor);
+        access.authorize(
+                intent.getEntityNo(),
+                intent.getStoreNo(),
+                actor,
+                true,
+                "MANUAL_PREPARE".equals(c.sourceMode()));
+        var leased =
+                db.tx(
+                        () -> {
+                            var row =
+                                    submissions.selectScopedForUpdate(
+                                            intent.getEntityNo(),
+                                            intent.getStoreNo(),
+                                            intent.getSubmissionNo());
+                            if (submissions.claimSourceRecovery(
+                                            row.getEntityNo(),
+                                            row.getStoreNo(),
+                                            row.getSubmissionNo(),
+                                            row.getVersion(),
+                                            now(),
+                                            now().plusSeconds(30),
+                                            actor)
+                                    != 1) return null;
+                            return submissions.selectScopedForUpdate(
+                                    row.getEntityNo(), row.getStoreNo(), row.getSubmissionNo());
+                        });
+        if (leased == null) return readManual(intent, c, actor);
+        CounterCheckoutQuote quote = null;
+        var knownBeforeOwner =
+                observations.manualKnown(
+                        intent.getEntityNo(), intent.getStoreNo(), c.party(), c.operationNo());
+        if (knownBeforeOwner != null
+                && "MANUAL_OFFLINE"
+                        .equals(observations.manualHistory(knownBeforeOwner).getAdmissionKind()))
+            observations.invalidateManual(knownBeforeOwner, actor);
+        try {
+            if ("MANUAL_PREPARE".equals(c.sourceMode())) {
+                try {
+                    quote =
+                            manualOwner()
+                                    .readCounterQuote(
+                                            scope(intent.getEntityNo(), intent.getStoreNo(), actor),
+                                            operation(c));
+                } catch (BizException absent) {
+                    if (absent.errorCode() != ErrorCode.NOT_FOUND) throw absent;
+                    if (original == null || !originalActor(c, actor))
+                        return manualView(
+                                pending(leased, actor, "REQUIRE_ORIGINAL_PREPARE_REQUEST"),
+                                c,
+                                null,
+                                null);
+                    AppointmentPersistence.require(
+                            Objects.equals(
+                                    c.customerRefHash(),
+                                    IdempotencyScope.requestHash(
+                                            db.json.writeValueAsString(
+                                                    original.source().counterCustomer()))));
+                    quote =
+                            manualOwner()
+                                    .prepareCounter(
+                                            scope(intent.getEntityNo(), intent.getStoreNo(), actor),
+                                            new PrepareCounterReq(
+                                                    operation(c),
+                                                    c.prepareKey(),
+                                                    original.source().counterCustomer(),
+                                                    c.targetScopeRevision(),
+                                                    c.originalScopeHash(),
+                                                    c.lines(),
+                                                    c.couponNo(),
+                                                    c.activityChoices(),
+                                                    c.remark()));
+                }
+                verifyManualQuote(intent, c, quote);
+            }
+            var facts = manualFacts(intent, c, actor);
+            if (facts.orderNo() == null)
+                return manualView(pending(leased, actor, "AWAITING_CUSTOMER"), c, quote, null);
+            verifyManualParty(intent, c, facts);
+            var observed = observations.observeManual(manualCanonical(intent, c, facts), actor);
+            access.authorize(intent.getEntityNo(), intent.getStoreNo(), actor, true, false);
+            if (observed.facts() != null) verifyManualParty(intent, c, observed.facts());
+            var result = bindingService.bindManual(leased, c, observed, actor);
+            return manualView(
+                    result.submission() == null
+                            ? pending(leased, actor, result.reason())
+                            : result.submission(),
+                    c,
+                    quote,
+                    observed);
+        } catch (UncheckedIOException unavailable) {
+            return manualView(pending(leased, actor, "SOURCE_UNAVAILABLE"), c, quote, null);
+        } catch (BizException unavailable) {
+            if (unavailable.errorCode() != ErrorCode.NOT_FOUND
+                    && unavailable.errorCode() != ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE
+                    && unavailable.errorCode() != ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE)
+                throw unavailable;
+            return manualView(pending(leased, actor, "SOURCE_UNKNOWN"), c, quote, null);
+        }
+    }
+
+    private ServiceSubmissionVO manualView(
+            BtyServiceSubmission row,
+            Command c,
+            CounterCheckoutQuote quote,
+            ServiceSourceObservation.ManualObserved observed) {
+        var tasksNow =
+                query.root(row.getEntityNo(), row.getStoreNo(), row.getWorkOrderNo()).tasks();
+        var local =
+                db.read(
+                        () ->
+                                bindings.selectCurrentForWorkOrder(
+                                        row.getEntityNo(), row.getStoreNo(), row.getWorkOrderNo()));
+        var taskViews =
+                c.tasks().stream()
+                        .map(
+                                t -> {
+                                    var current =
+                                            tasksNow.stream()
+                                                    .filter(x -> x.getTaskNo().equals(t.taskNo()))
+                                                    .findFirst()
+                                                    .orElseThrow();
+                                    var b =
+                                            local.stream()
+                                                    .filter(x -> x.getTaskNo().equals(t.taskNo()))
+                                                    .findFirst()
+                                                    .orElse(null);
+                                    return new SubmissionTaskVO(
+                                            t.taskNo(),
+                                            t.skuNo(),
+                                            t.definitionVersionNo(),
+                                            t.qty(),
+                                            t.uom(),
+                                            current.getVersion(),
+                                            current.getBindingRevision(),
+                                            b == null ? t.sourceLineNo() : b.getSourceLineRef(),
+                                            b == null
+                                                    ? "UNBOUND"
+                                                    : observed != null && observed.manualReady()
+                                                            ? "BOUND_OBSERVED"
+                                                            : "UNKNOWN");
+                                })
+                        .toList();
+        var source = observed == null ? null : observed.row();
+        String phase =
+                "BOUND".equals(row.getStatus())
+                        ? "BOUND"
+                        : row.getFailureCode() == null ? "SOURCE_UNKNOWN" : row.getFailureCode();
+        return new ServiceSubmissionVO(
+                row.getSubmissionNo(),
+                row.getWorkOrderNo(),
+                row.getAction(),
+                row.getVersion(),
+                c.originalScopeRevision(),
+                c.targetScopeRevision(),
+                row.getStatus(),
+                phase,
+                c.operationNo(),
+                null,
+                source == null ? null : source.getOrderNo(),
+                source == null ? null : source.getSourceNo(),
+                source == null
+                        ? null
+                        : observations.manualProjection(source, observed.manualReady()),
+                taskViews,
+                "READ_ORIGINAL",
+                observed != null && observed.manualReady() && "BOUND".equals(phase)
+                        ? List.of()
+                        : List.of(phase),
+                quote);
     }
 
     private void verifyQuote(

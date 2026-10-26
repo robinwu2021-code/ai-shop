@@ -1,7 +1,7 @@
 package ai.neargo.shop.spi.trade;
 
-import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutLineReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
 import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
 import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
@@ -480,8 +480,72 @@ public interface ManualServiceAdmissionPort {
             long admissionRevision,
             String admissionState,
             List<ManualSourceLine> lines,
-            Instant observedAt) {
+            Instant observedAt,
+            Long dueMinor,
+            String currency,
+            ManualAdmissionView declaration,
+            String purchaseAuthority) {
+        /**
+         * Old providers retain the exact M1 source tuple; missing display facts stay explicitly
+         * incomplete.
+         */
+        public ManualSourceFacts(
+                OperationRef operation,
+                String orderNo,
+                String subOrderNo,
+                CustomerParty party,
+                String entityNo,
+                String storeNo,
+                String admissionKind,
+                long manualObservationRevision,
+                String manualObservationHash,
+                long orderRevision,
+                long admissionRevision,
+                String admissionState,
+                List<ManualSourceLine> lines,
+                Instant observedAt) {
+            this(
+                    operation,
+                    orderNo,
+                    subOrderNo,
+                    party,
+                    entityNo,
+                    storeNo,
+                    admissionKind,
+                    manualObservationRevision,
+                    manualObservationHash,
+                    orderRevision,
+                    admissionRevision,
+                    admissionState,
+                    lines,
+                    observedAt,
+                    null,
+                    null,
+                    null,
+                    null);
+        }
+
         public ManualSourceFacts {
+            if (dueMinor != null && dueMinor < 0
+                    || currency != null && !currency.matches("[A-Z]{3}")
+                    || purchaseAuthority != null
+                            && !List.of("CONSUMER_SESSION", "MERCHANT_RECORDED_IN_PERSON")
+                                    .contains(purchaseAuthority)) {
+                throw invalidResponse();
+            }
+            if (declaration != null
+                    && (operation == null
+                            || !operation.equals(declaration.operation())
+                            || !Objects.equals(orderNo, declaration.orderNo())
+                            || !Objects.equals(subOrderNo, declaration.subOrderNo())
+                            || orderRevision != declaration.orderRevision()
+                            || admissionRevision != declaration.admissionRevision()
+                            || currency != null && !currency.equals(declaration.currency())
+                            || declaration.declaredMinor() != null
+                                    && dueMinor != null
+                                    && !dueMinor.equals(declaration.declaredMinor()))) {
+                throw invalidResponse();
+            }
             if (operation == null
                     || party == null
                     || !reference(entityNo)

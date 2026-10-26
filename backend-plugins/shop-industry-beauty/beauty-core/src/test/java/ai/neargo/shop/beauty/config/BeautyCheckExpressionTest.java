@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
 
 class BeautyCheckExpressionTest {
     private String canonical(String expression) {
@@ -99,7 +100,7 @@ class BeautyCheckExpressionTest {
                         () ->
                                 canonical(
                                         "JSON_TYPE(verified_lines) = 'ARRAY' AND"
-                                            + " JSON_LENGTH(verified_lines) <= 20")));
+                                                + " JSON_LENGTH(verified_lines) <= 20")));
         assertNotEquals(
                 canonical("JSON_TYPE(verified_lines) = 'ARRAY'"),
                 canonical("JSON_TYPE(verified_lines) = 'OBJECT'"));
@@ -111,5 +112,71 @@ class BeautyCheckExpressionTest {
                 canonical("LENGTH(verified_lines) <= 20"));
         assertThrows(IllegalStateException.class, () -> canonical("JSON_LENGTH(a,b) > 0"));
         assertThrows(IllegalStateException.class, () -> canonical("JSON_EXTRACT(a) = 1"));
+    }
+
+    /**
+     * The raw V9 clause corresponds to the exact canonical pair captured in a955 diagnostic XML.
+     */
+    @Test
+    void mysqlStoredManualDomainFlattensOnlyAdjacentBooleanOperators() throws Exception {
+        String sql;
+        try (var input =
+                getClass()
+                        .getClassLoader()
+                        .getResourceAsStream(
+                                "db/industry/beauty/V9__beauty_manual_source_observation.sql")) {
+            sql = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        String line =
+                sql.lines()
+                        .filter(text -> text.contains("`ck_bty_trade_binding_manual_domain`"))
+                        .findFirst()
+                        .orElseThrow();
+        String declared = line.substring(line.indexOf("CHECK (") + 7, line.length() - 2);
+        // MySQL retained all operands and mixed OR grouping but reassociated this nested AND.
+        String stored =
+                declared.replace(
+                                "AND (`customer_kind` IS NOT NULL AND ((",
+                                "AND `customer_kind` IS NOT NULL AND ((")
+                        .replace(
+                                "`identity_revision` > 0))) AND `source_revision`",
+                                "`identity_revision` > 0)) AND `source_revision`");
+        assertNotEquals(declared, stored);
+        assertEquals(canonical(declared), canonical(stored));
+        assertNotEquals(
+                canonical(stored),
+                canonical(
+                        stored.replace(
+                                "CHAR_LENGTH(`manual_source_hash`) = 64",
+                                "CHAR_LENGTH(`manual_source_hash`) = 63")));
+        assertNotEquals(
+                canonical(stored),
+                canonical(stored.replace("'MANUAL_OFFLINE'", "'manual_offline'")));
+        assertNotEquals(
+                canonical(stored),
+                canonical(stored.replace("`manual_source_revision` > 0", "`source_revision` > 0")));
+    }
+
+    @Test
+    void adjacentAndOrReassociateWithoutSortingOperands() {
+        assertEquals(
+                canonical("a > 0 AND (b > 0 AND c > 0)"), canonical("(a > 0 AND b > 0) AND c > 0"));
+        assertEquals(
+                canonical("a > 0 OR (b > 0 OR c > 0)"), canonical("(a > 0 OR b > 0) OR c > 0"));
+        assertNotEquals(canonical("a > 0 AND b > 0"), canonical("b > 0 AND a > 0"));
+        assertNotEquals(canonical("a > 0 OR b > 0"), canonical("b > 0 OR a > 0"));
+    }
+
+    @Test
+    void associativityDoesNotEraseMixedGroupsArithmeticLiteralsOrValues() {
+        assertNotEquals(
+                canonical("a > 0 AND (b > 0 OR c > 0)"), canonical("(a > 0 AND b > 0) OR c > 0"));
+        assertNotEquals(
+                canonical("a > 0 OR (b > 0 AND c > 0)"), canonical("(a > 0 OR b > 0) AND c > 0"));
+        assertNotEquals(canonical("a + (b > 0)"), canonical("(a + b) > 0"));
+        assertNotEquals(canonical("phase='AND' AND qty>0"), canonical("phase='OR' AND qty>0"));
+        assertNotEquals(
+                canonical("JSON_LENGTH(lines)<=20 AND qty>0"),
+                canonical("LENGTH(lines)<=20 AND qty>0"));
     }
 }

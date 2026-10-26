@@ -8,17 +8,17 @@ import ai.neargo.shop.beauty.entity.BtyTradeBinding;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.idem.IdempotencyScope;
-import ai.neargo.shop.spi.trade.CheckoutPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 
 /**
@@ -68,11 +68,104 @@ public final class ServiceSourceBinding {
             ServiceSubmissionServiceImpl.Command command,
             ServiceSourceObservation.Observed observed,
             String actor) {
+        if (observed.row() != null && "MANUAL_OFFLINE".equals(observed.row().getAdmissionKind())) {
+            return new Result(null, "SOURCE_IDENTITY_MISMATCH");
+        }
         if (!observed.ready() || observed.facts() == null) {
             return new Result(null, "SOURCE_UNKNOWN");
         }
+        var facts = observed.facts();
+        var input =
+                new Allocation(
+                        false,
+                        null,
+                        facts.orderNo(),
+                        facts.subOrderNo(),
+                        facts.sourceRevision(),
+                        facts.sourceHash(),
+                        facts.lines().stream()
+                                .map(
+                                        l ->
+                                                new AllocationLine(
+                                                        l.sourceLineNo(),
+                                                        l.clientLineRef(),
+                                                        l.goodsNo(),
+                                                        l.skuNo(),
+                                                        l.orderedQuantity(),
+                                                        l.refundableQuantity(),
+                                                        l.uom()))
+                                .toList(),
+                        observed.ticket(),
+                        db.json.writeValueAsString(ServiceSourceObservation.quantityLines(facts)));
+        return allocate(intent, command, input, actor);
+    }
+
+    public Result bindManual(
+            BtyServiceSubmission intent,
+            ServiceSubmissionServiceImpl.Command command,
+            ServiceSourceObservation.ManualObserved observed,
+            String actor) {
+        if (observed == null || !observed.manualReady()) return new Result(null, "SOURCE_UNKNOWN");
+        var facts = observed.facts();
+        if (!Objects.equals(command.party(), facts.party()))
+            return new Result(null, "SOURCE_IDENTITY_MISMATCH");
+        var input =
+                new Allocation(
+                        true,
+                        facts.party(),
+                        facts.orderNo(),
+                        facts.subOrderNo(),
+                        facts.manualObservationRevision(),
+                        facts.manualObservationHash(),
+                        facts.lines().stream()
+                                .map(
+                                        l ->
+                                                new AllocationLine(
+                                                        l.sourceLineNo(),
+                                                        l.clientLineRef(),
+                                                        l.goodsNo(),
+                                                        l.skuNo(),
+                                                        l.orderedQuantity(),
+                                                        l.availableQuantity(),
+                                                        l.uom()))
+                                .toList(),
+                        observed.ticket(),
+                        db.json.writeValueAsString(
+                                ServiceSourceObservation.manualQuantityLines(facts)));
+        return allocate(intent, command, input, actor);
+    }
+
+    /**
+     * Internal quantity view preserves the actual owner domain; no funded owner facts are
+     * synthesized.
+     */
+    private record AllocationLine(
+            String sourceLineNo,
+            String clientLineRef,
+            String goodsNo,
+            String skuNo,
+            int orderedQuantity,
+            int availableQuantity,
+            String uom) {}
+
+    private record Allocation(
+            boolean manual,
+            CustomerParty party,
+            String orderNo,
+            String subOrderNo,
+            long sourceRevision,
+            String sourceHash,
+            List<AllocationLine> lines,
+            long ticket,
+            String verifiedLines) {}
+
+    private Result allocate(
+            BtyServiceSubmission intent,
+            ServiceSubmissionServiceImpl.Command command,
+            Allocation input,
+            String actor) {
         try {
-            return new Result(db.tx(() -> locked(intent, command, observed, actor)), null);
+            return new Result(db.tx(() -> locked(intent, command, input, actor)), null);
         } catch (Blocked blocked) {
             return new Result(null, blocked.reason);
         }
@@ -81,48 +174,64 @@ public final class ServiceSourceBinding {
     private BtyServiceSubmission locked(
             BtyServiceSubmission intent,
             ServiceSubmissionServiceImpl.Command command,
-            ServiceSourceObservation.Observed observed,
+            Allocation input,
             String actor) {
-        String entity = intent.getEntityNo();
-        String store = intent.getStoreNo();
-        var facts = observed.facts();
+        String entity = intent.getEntityNo(), store = intent.getStoreNo();
+        var facts = input;
         var fence = observations.selectCanonicalForUpdate(entity, facts.subOrderNo());
         require(
                 fence != null
                         && store.equals(fence.getStoreNo())
-                        && "READY".equals(fence.getState())
-                        && fence.getObservationEpoch() == observed.ticket()
-                        && fence.getSourceRevision() == facts.sourceRevision()
-                        && fence.getVerifiedRevision().equals(fence.getSourceRevision())
-                        && fence.getSourceHash().equals(facts.sourceHash())
-                        && fence.getVerifiedHash().equals(facts.sourceHash())
                         && command.operationNo().equals(fence.getCheckoutOperationNo())
-                        && command.buyerNo().equals(fence.getBuyerNo())
                         && facts.orderNo().equals(fence.getOrderNo()),
                 "SOURCE_OBSERVATION_CHANGED");
-        require(
-                Arrays.asList(
-                                db.json.readValue(
-                                        fence.getVerifiedLines(),
-                                        ServiceSourceObservation.QuantityLine[].class))
-                        .equals(ServiceSourceObservation.quantityLines(facts)),
-                "SOURCE_OBSERVATION_CHANGED");
-        if ("EXISTING".equals(command.sourceMode())) {
+        if (input.manual()) {
+            require(
+                    "MANUAL_OFFLINE".equals(fence.getAdmissionKind())
+                            && input.party().equals(ServiceSourceObservation.party(fence))
+                            && "READY".equals(fence.getManualState())
+                            && Objects.equals(fence.getManualEpoch(), input.ticket())
+                            && Objects.equals(fence.getManualRevision(), facts.sourceRevision())
+                            && Objects.equals(
+                                    fence.getManualVerifiedRevision(), facts.sourceRevision())
+                            && Objects.equals(fence.getManualHash(), facts.sourceHash())
+                            && Objects.equals(fence.getManualVerifiedHash(), facts.sourceHash())
+                            && db.json
+                                    .readTree(input.verifiedLines())
+                                    .equals(db.json.readTree(fence.getManualVerifiedLines())),
+                    "SOURCE_OBSERVATION_CHANGED");
+        } else {
+            require(
+                    "LEGACY_FUNDED".equals(fence.getAdmissionKind())
+                            && command.buyerNo().equals(fence.getBuyerNo())
+                            && "READY".equals(fence.getState())
+                            && Objects.equals(fence.getObservationEpoch(), input.ticket())
+                            && Objects.equals(fence.getSourceRevision(), facts.sourceRevision())
+                            && Objects.equals(fence.getVerifiedRevision(), facts.sourceRevision())
+                            && Objects.equals(fence.getSourceHash(), facts.sourceHash())
+                            && Objects.equals(fence.getVerifiedHash(), facts.sourceHash())
+                            && db.json
+                                    .readTree(input.verifiedLines())
+                                    .equals(db.json.readTree(fence.getVerifiedLines())),
+                    "SOURCE_OBSERVATION_CHANGED");
+        }
+        if (ServiceSubmissionServiceImpl.existing(command.sourceMode())) {
             require(
                     command.expectedSourceNo().equals(facts.subOrderNo())
                             && command.expectedSourceRevision() == facts.sourceRevision()
                             && command.expectedSourceHash().equals(facts.sourceHash()),
                     "SOURCE_REVISION_CONFLICT");
         }
-        var selectedLines = new TreeMap<String, CheckoutPort.SourceLine>();
-        var taskLines = new TreeMap<String, CheckoutPort.SourceLine>();
+        var selectedLines = new TreeMap<String, AllocationLine>();
+        var taskLines = new TreeMap<String, AllocationLine>();
         var amounts = new TreeMap<String, BigDecimal>();
         for (var task : command.tasks()) {
             var matches =
                     facts.lines().stream()
                             .filter(
                                     line ->
-                                            "EXISTING".equals(command.sourceMode())
+                                            ServiceSubmissionServiceImpl.existing(
+                                                            command.sourceMode())
                                                     ? line.sourceLineNo()
                                                             .equals(task.sourceLineNo())
                                                     : line.clientLineRef()
@@ -152,8 +261,18 @@ public final class ServiceSourceBinding {
                 guard.setSourceKind("STORE_ORDER");
                 guard.setSourceNo(facts.subOrderNo());
                 guard.setSourceLineRef(entry.getKey());
-                guard.setSourceRevision(facts.sourceRevision());
-                guard.setSourceHash(facts.sourceHash());
+                guard.setAdmissionKind(input.manual() ? "MANUAL_OFFLINE" : "LEGACY_FUNDED");
+                if (input.manual()) {
+                    guard.setCustomerKind(input.party().kind());
+                    guard.setBuyerNo(input.party().userNo());
+                    guard.setGuestNo(input.party().guestNo());
+                    guard.setIdentityRevision(input.party().identityRevision());
+                    guard.setManualSourceRevision(facts.sourceRevision());
+                    guard.setManualSourceHash(facts.sourceHash());
+                } else {
+                    guard.setSourceRevision(facts.sourceRevision());
+                    guard.setSourceHash(facts.sourceHash());
+                }
                 guard.setSourceQty(BigDecimal.valueOf(line.orderedQuantity()));
                 guard.setAllocatedQty(BigDecimal.ZERO);
                 guard.setUom("COUNT");
@@ -163,22 +282,27 @@ public final class ServiceSourceBinding {
                                 entity, "STORE_ORDER", facts.subOrderNo(), entry.getKey());
             }
             require(
-                    "COUNT".equals(guard.getUom())
-                            && guard.getSourceRevision() <= facts.sourceRevision()
-                            && (guard.getSourceRevision() != facts.sourceRevision()
-                                    || guard.getSourceHash().equals(facts.sourceHash())),
+                    (input.manual()
+                                    ? "MANUAL_OFFLINE".equals(guard.getAdmissionKind())
+                                            && input.party().equals(party(guard))
+                                    : "LEGACY_FUNDED".equals(guard.getAdmissionKind()))
+                            && "COUNT".equals(guard.getUom())
+                            && revision(guard) <= facts.sourceRevision()
+                            && (revision(guard) != facts.sourceRevision()
+                                    || hash(guard).equals(facts.sourceHash())),
                     "SOURCE_REVISION_CONFLICT");
             require(
                     guard.getSourceQty().compareTo(BigDecimal.valueOf(line.orderedQuantity())) == 0
-                            || guard.getSourceRevision() < facts.sourceRevision(),
+                            || revision(guard) < facts.sourceRevision(),
                     "SOURCE_QUANTITY_CHANGED");
-            if (guard.getSourceRevision() < facts.sourceRevision()) {
+            if (revision(guard) < facts.sourceRevision()) {
                 require(
-                        guards.refreshSourceSnapshot(
+                        refresh(
+                                        input.manual(),
                                         entity,
                                         guard.getGuardNo(),
                                         guard.getVersion(),
-                                        guard.getSourceRevision(),
+                                        revision(guard),
                                         facts.sourceRevision(),
                                         BigDecimal.valueOf(line.orderedQuantity()),
                                         facts.sourceHash(),
@@ -193,7 +317,7 @@ public final class ServiceSourceBinding {
             require(
                     guard.getAllocatedQty()
                                     .add(amounts.get(entry.getKey()))
-                                    .compareTo(BigDecimal.valueOf(line.refundableQuantity()))
+                                    .compareTo(BigDecimal.valueOf(line.availableQuantity()))
                             <= 0,
                     "SOURCE_QUANTITY_EXCEEDED");
             lockedGuards.put(entry.getKey(), guard);
@@ -259,16 +383,17 @@ public final class ServiceSourceBinding {
             var guard = entry.getValue();
             var line = selectedLines.get(entry.getKey());
             require(
-                    guards.allocateObservedQuantity(
+                    allocateQuantity(
+                                    input.manual(),
                                     entity,
                                     store,
                                     guard.getGuardNo(),
                                     guard.getVersion(),
                                     facts.sourceRevision(),
                                     facts.sourceHash(),
-                                    observed.ticket(),
+                                    input.ticket(),
                                     amounts.get(entry.getKey()),
-                                    BigDecimal.valueOf(line.refundableQuantity()),
+                                    BigDecimal.valueOf(line.availableQuantity()),
                                     actor,
                                     now())
                             == 1,
@@ -285,8 +410,18 @@ public final class ServiceSourceBinding {
             binding.setSourceKind("STORE_ORDER");
             binding.setSourceNo(facts.subOrderNo());
             binding.setSourceLineRef(line.sourceLineNo());
-            binding.setSourceRevision(facts.sourceRevision());
-            binding.setSourceSnapshotHash(facts.sourceHash());
+            binding.setAdmissionKind(input.manual() ? "MANUAL_OFFLINE" : "LEGACY_FUNDED");
+            if (input.manual()) {
+                binding.setCustomerKind(input.party().kind());
+                binding.setBuyerNo(input.party().userNo());
+                binding.setGuestNo(input.party().guestNo());
+                binding.setIdentityRevision(input.party().identityRevision());
+                binding.setManualSourceRevision(facts.sourceRevision());
+                binding.setManualSourceHash(facts.sourceHash());
+            } else {
+                binding.setSourceRevision(facts.sourceRevision());
+                binding.setSourceSnapshotHash(facts.sourceHash());
+            }
             binding.setQty(task.getQty());
             binding.setUom(task.getUom());
             binding.setGuardNo(lockedGuards.get(line.sourceLineNo()).getGuardNo());
@@ -346,14 +481,74 @@ public final class ServiceSourceBinding {
                                 facts.subOrderNo(),
                                 "operationNo",
                                 command.operationNo(),
-                                "sourceRevision",
+                                input.manual() ? "manualSourceRevision" : "sourceRevision",
                                 facts.sourceRevision(),
-                                "sourceHash",
+                                input.manual() ? "manualSourceHash" : "sourceHash",
                                 facts.sourceHash(),
                                 "taskNos",
                                 lockedTasks.stream().map(BtyServiceTask::getTaskNo).toList())));
         db.actions.insert(action);
         return submissions.selectScopedForUpdate(entity, store, submission.getSubmissionNo());
+    }
+
+    private long revision(BtySourceAllocationGuard row) {
+        return "MANUAL_OFFLINE".equals(row.getAdmissionKind())
+                ? row.getManualSourceRevision()
+                : row.getSourceRevision();
+    }
+
+    private String hash(BtySourceAllocationGuard row) {
+        return "MANUAL_OFFLINE".equals(row.getAdmissionKind())
+                ? row.getManualSourceHash()
+                : row.getSourceHash();
+    }
+
+    private CustomerParty party(BtySourceAllocationGuard row) {
+        return new CustomerParty(
+                row.getCustomerKind(),
+                row.getBuyerNo(),
+                row.getGuestNo(),
+                row.getIdentityRevision());
+    }
+
+    private int refresh(
+            boolean manual,
+            String entity,
+            String guard,
+            long version,
+            long previous,
+            long next,
+            BigDecimal quantity,
+            String hash,
+            String actor,
+            LocalDateTime time) {
+        return manual
+                ? guards.refreshManualSnapshot(
+                        entity, guard, version, previous, next, quantity, hash, actor, time)
+                : guards.refreshSourceSnapshot(
+                        entity, guard, version, previous, next, quantity, hash, actor, time);
+    }
+
+    private int allocateQuantity(
+            boolean manual,
+            String entity,
+            String store,
+            String guard,
+            long version,
+            long revision,
+            String hash,
+            long epoch,
+            BigDecimal quantity,
+            BigDecimal available,
+            String actor,
+            LocalDateTime time) {
+        return manual
+                ? guards.allocateManualObservedQuantity(
+                        entity, store, guard, version, revision, hash, epoch, quantity, available,
+                        actor, time)
+                : guards.allocateObservedQuantity(
+                        entity, store, guard, version, revision, hash, epoch, quantity, available,
+                        actor, time);
     }
 
     private LocalDateTime now() {
