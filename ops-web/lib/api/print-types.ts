@@ -14,7 +14,12 @@ export interface PrintHealth {
  /** Server snapshot Instant. */ asOf:string;
 }
 /** PrintMonitorDtos.FleetHealthVO; store order is backend-owned. */
-export interface PrintFleetHealth { /** Scoped health snapshots. */ stores:PrintHealth[]; /** Fleet snapshot Instant. */ asOf:string }
+export interface PrintFleetHealth {
+ /** Scoped health snapshots. */
+ stores:PrintHealth[];
+ /** Fleet snapshot Instant. */
+ asOf:string;
+}
 /** PrintMonitorDtos.IncidentVO. */
 export interface PrintIncident {
  /** Incident business reference. */ incidentNo:string;

@@ -8704,8 +8704,8 @@ Scoped fleet health from PrintMonitorDtos. */
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `stores` | [`PrintHealth`](#printhealth)\[\] | 是 | — |
-| `asOf` | `string` | 是 | — |
+| `stores` | [`PrintHealth`](#printhealth)\[\] | 是 | Scoped health snapshots. |
+| `asOf` | `string` | 是 | Fleet snapshot Instant. |
 
 
 #### GET `/ops/print/incidents`
@@ -8718,9 +8718,14 @@ Scoped incident page; backend status codes pass through unchanged. */
 
 **出参**（`data`）
 
-类型：[`PrintIncidentPage`](#printincidentpage)
+类型：`object`（见下）
 
-_无字段_
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`PrintIncident`](#printincident)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 #### GET `/ops/print/operations/{operationNo}`
@@ -14210,15 +14215,6 @@ OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
 | `updatedAt` | `string` | 是 | 最后修改时间 |
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
-### Page<PrintIncident>
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `records` | [`PrintIncident`](#printincident)\[\] | 是 | 当前页数据 |
-| `total` | `number` | 是 | 满足条件的总条数（不是总页数） |
-| `page` | `number` | 是 | 当前页码，从 1 起 |
-| `size` | `number` | 是 | 每页条数 |
-
 ### Partial<Record<("zh"|"en"|"ar"),string>>
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -15057,8 +15053,8 @@ PrintMonitorDtos.FleetHealthVO; store order is backend-owned.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `stores` | [`PrintHealth`](#printhealth)\[\] | 是 | — |
-| `asOf` | `string` | 是 | — |
+| `stores` | [`PrintHealth`](#printhealth)\[\] | 是 | Scoped health snapshots. |
+| `asOf` | `string` | 是 | Fleet snapshot Instant. |
 
 ### PrintHealth
 
@@ -15089,10 +15085,6 @@ PrintMonitorDtos.IncidentVO.
 | `firstSeenAt` | `string` | 是 | First observed Instant. |
 | `lastSeenAt` | `string` | 是 | Last observed Instant. |
 | `revision` | `number` | 是 | Optimistic revision, no UI write endpoint. |
-
-### PrintIncidentPage
-
-类型：`Page<PrintIncident>`
 
 ### PrintOperation
 

@@ -1581,7 +1581,7 @@
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/print/health` | Scoped fleet health from PrintMonitorDtos. */ | — | `PrintFleetHealth` | — | ✅ | ⬜ |
-| GET | `/ops/print/incidents` | Scoped incident page; backend status codes pass through unchanged. */ | — | `PrintIncidentPage` | — | ✅ | ⬜ |
+| GET | `/ops/print/incidents` | Scoped incident page; backend status codes pass through unchanged. */ | — | `object` | — | ✅ | ⬜ |
 | GET | `/ops/print/operations/{operationNo}` | Read an operation only within the explicit target. */ | — | `PrintOperation` | — | ✅ | ⬜ |
 | POST | `/ops/print/reconciliations` | Audited maintenance; same key is retained for exact-intent error recovery. */ | — | `PrintOperation` | — | ✅ | ⬜ |
 

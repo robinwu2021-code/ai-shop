@@ -104,8 +104,8 @@ function Operations({target,c,resolve,session}:{target:PrintTarget;c:Copy;resolv
      <div className="grid gap-3 md:grid-cols-2"><label>{c.from}<Input type="datetime-local" name="from" required/></label><label>{c.to}<Input type="datetime-local" name="to" required/></label></div>
      <p className="txt-caption text-muted-foreground">{c.rangeHint}</p>
      <label>{c.reason}<Input name="reason" required/></label>
-     <label className="flex gap-2"><input name="dryRun" type="checkbox" checked={dryRun} onChange={e=>setDryRun(e.target.checked)}/>{c.dryRun}</label>
-     {!dryRun&&<label className="flex gap-2"><input key="execute" name="confirm" type="checkbox" required/>{c.execute} ({target.tenantNo} / {target.entityNo} / {target.storeNo})</label>}
+     <label className="flex gap-2"><input className="focus-ring" name="dryRun" type="checkbox" checked={dryRun} onChange={e=>setDryRun(e.target.checked)}/>{c.dryRun}</label>
+     {!dryRun&&<label className="flex gap-2"><input className="focus-ring" key="execute" name="confirm" type="checkbox" required/>{c.execute} ({target.tenantNo} / {target.entityNo} / {target.storeNo})</label>}
      <Button type="submit" disabled={pending}>{pending?"…":c.submit}</Button>
     </fieldset>
    </form>}

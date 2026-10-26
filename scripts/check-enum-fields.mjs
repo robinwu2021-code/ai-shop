@@ -67,6 +67,8 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  // Business owner attachments expose the same closed printability domain as paid-order facts.
+  { concept: "biz_print_fact.printability（打印取值域）", field: "biz_print_fact.printability", backend: { ddl: ["biz_print_fact", "printability"] }, clients: [] },
   // Print API status fields are open strings except PrintOperation.status; keep each DDL domain explicit.
   { concept: "ord_print_fact.printability（打印取值域）", field: "ord_print_fact.printability", backend: { ddl: ["ord_print_fact", "printability"] }, clients: [] },
   { concept: "prn_agent.platform（打印取值域）", field: "prn_agent.platform", backend: { ddl: ["prn_agent", "platform"] }, clients: [] },
