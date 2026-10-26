@@ -1,6 +1,6 @@
 {
   "task": "Task68B2",
-  "status": "DESIGN_AND_B1_REVIEWED_CODE_PHASE_RELEASED",
+  "status": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
   "modify": [
     {
       "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
@@ -63,5 +63,7 @@
   "migrationExecutionAllowed": false,
   "paymentIntegration": false,
   "prerequisiteCodeCommit": "419e9d94fa5618d8783abcdb847201c05fa1d525",
-  "codingBaseReference": "Root supplies exact HEAD of publication commit at dispatch"
+  "codingBaseReference": "Root supplies exact HEAD of publication commit at dispatch",
+  "codingBase": "c13e83533477c80218ec94ec549c823697ead8c5",
+  "codeCommit": "5477210b96ef3339f340ac5d715263d8abf27a19"
 }

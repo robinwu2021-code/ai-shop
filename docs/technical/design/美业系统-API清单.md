@@ -681,9 +681,9 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 
 ## 柜台购买与人工来源增量（M2分阶段实施状态）
 
-M2B_M2C_FENCE_PROTOCOL_CODE_COMPILED_REVIEWED_INTEGRATION_PENDING_UNIFIED_TEST_PENDING
+M2B_M2C_A_B_CODE_COMPILED_REVIEWED_C_MATERIALS_PENDING_UNIFIED_TEST_PENDING
 
-主TDD§0.4/§2.45–§2.47。Task67、Task68A共用营销仲裁及68B1纯SPI/codec兼容基础已编码编译和独立静态复审；68B2真实优惠报价/现金准入集成与68C仍待编码。18项B1用例未执行，统一测试部署后置，canStart=false，Pay后置。
+主TDD§0.4/§2.45–§2.47。Task67、Task68A及68B1/B2已编码编译和独立静态复审，真实柜台优惠报价/冻结展示/旧策略恢复/优惠后现金准入消费者已接入源码；68C验证材料仍待完成。B1的18项与B2的17项用例均未执行，统一测试部署后置，canStart=false，Pay后置。
 
 | Method / route | Operation / input | Result |
 |---|---|---|
@@ -762,3 +762,7 @@ Task68A代码阶段完成：精确11文件共享marketing fence/Mapper/21触发�
 Task68B限定设计复审PASS/APPROVED：共享纯SPI CounterCampaignContract统一groups/choices/seal形状与摘要，promotion/trade只依赖SPI，marketing不引用trade哈希，禁止新增私有跨域依赖或known-*豁免。真实SQL范围查询建立旧表身份变体→唯一规范group的归属；冻结原始rule事实及规范applied/share，消费后核验冻结映射，不再查询当前营销。B1精确9源码先实现协议/codec兼容基础，B2精确14源码完成owner报价与现金准入，C补有限runner；均只编码编译，运行统一B。
 
 Task68B1精确9源码已编码编译和静态复审，18项测试仅编写/编译。R0 I1兼容夹具丢失原选择已限定修复；schema1计划保留原typed party/choices，旧baseline构造不变。真实writer/reader/owner/cash在B2接入，6份golden仍待B真实生成；本片不开放优惠业务或执行许可。
+
+源码方法对账补充：共用方法增量登记100项，补齐实际owner组合的lockCounter/requireCounterEvidence/requireSameCounter及本域CounterCampaignRules八个纯静态方法。evaluateCounter先由既有HOST Router或legacy入口取得owner fence，单次时间贯穿组合；这些是现有拥有方内部方法，不新增HTTP或跨域私有依赖。规范groups/choices/seal摘要仍唯一由SPI提供，guard从codec+原/实际经济比较取得组/数量/总价证明，不再造重复counterGroups。
+
+Task68B2精确14源码已编码编译与静态复审：候选/封存/原计划/现金准入串联真实共用拥有方；普通零售/M1读取及来源hash保持。R0三项测试问题经R3关闭，17项场景仅编写编译，非运行成功。别名实际SQL等价、双行总额不变分摊负例已补齐；prd_sku库存断言只对应PLATFORM，不能推导INVENTORY/DUAL已验证。真正旧Task66生产器四份产物与六份旧序列化golden仍由C整理/B执行，不能用假记录替代。

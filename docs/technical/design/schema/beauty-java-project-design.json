@@ -1692,8 +1692,8 @@
   ],
   "implementationStatus": "Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED; candidate inventory below is not completion evidence.",
   "plannedSharedClasses": {
-    "status": "TASK68A_B1_CODE_COMPILED_STATIC_REVIEWED_B2_C_PENDING_UNIFIED_TEST_PENDING",
-    "authority": "主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope已编码编译和静态复审，待统一测试；真实报价/订单/现金准入消费者在B2接入。均为共用所有者增量，不增加美业构件/依赖或25私有表计数。",
+    "status": "TASK68A_B_CODE_COMPILED_STATIC_REVIEWED_C_PENDING_UNIFIED_TEST_PENDING",
+    "authority": "主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope均已编码编译和静态复审，B2真实报价/订单/现金准入消费者已接入源码。68C验证材料待完成，所有运行统一后置；均为共用所有者增量，不增加美业构件/依赖或25私有表计数。",
     "classes": [
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java",
