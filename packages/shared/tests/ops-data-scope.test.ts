@@ -305,11 +305,25 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
     + "按商家裁一刀正好毁掉这一页要说的事。同类的还有 revealPhone —— 它先要求填理由再放行。"
     + "⚠️ 同一个类里的 members / reachStats 已于 2026-08-29 接上数据域，别把这条当成类级豁免",
 
-  /*
-   * 人群规则判断（MemberQueryPortImpl#judge / #matchesRule）原先登记在这里：它们是判定不是列举。
-   * 2026-10-26 活动算价多了一层（flashWinners/giftWinners）之后，从 ops 端点到它们超过了
-   * bypassSites 的 6 层深度，G2 判成死条目而删掉。若以后放宽深度又被 G1 点名，按同一理由登记回来。
-   */
+  // 人群规则判断，不是列表查询
+  "MemberQueryPortImpl#judge":
+    "判「这个人符不符合这条人群规则」。它是**判定**不是列举 —— 输入的 userNo 已经由调用方"
+    + "圈定，这里再按数据域裁一次的效果是「符合的人被判成不符合」，把一次规则命中变成静默漏发",
+  "MemberQueryPortImpl#matchesRule":
+    "与 judge 同一件事的另一半：判这个买家是否满足活动发布时抄下来的人群条件快照（AC-9）。"
+    + "同样是**判定**不是列举，userNo 由调用方（算价）给定、按 entity_no + person_no 定位到一行会员；"
+    + "按数据域再裁一次，会把快照受众里的人判成不符合 —— 活动对他静默不减钱",
+
+  // 平台级聚合 / 按已授权主键回捞的统计
+  "ReachMatcher#areasOf":
+    "覆盖分布（/ops/coverage/distribution）是平台级供需聚合：按聚落、区县数「有几家商家覆盖」，"
+    + "返回只有计数、不含任何商家身份或范围明细（与 /ops/coverage/health 同一类）。"
+    + "按运营的商家数据域裁掉一部分门店，会把有供给的聚落误报成「有人无货」",
+  "ReachMatcher#cellsOf":
+    "与 areasOf 同一件事：同一次覆盖计算里按门店号取格子，只用于计数，不回明细",
+  "PeriodOrderPortImpl#lines":
+    "集单期已下单件数。期号来自已过数据域的商品所挂的集单活动（按 entity_no 圈定），"
+    + "这里按 period_no 等值回捞、只汇总成一个件数；裁掉的话期内已下单数被低估，名额判断跟着错",
 
   // 归属判定，不是列表查询
   "ProductScopeFactsPortImpl#goodsOwned":
@@ -1010,7 +1024,9 @@ function bypassSites(cls: string, mname: string, registered: Set<string>,
                      seen = new Map<string, number>(), depth = 0): Map<string, string[]> {
   const sites = new Map<string, string[]>();
   const c = classes.get(cls);
-  if (!c || depth > 6) return sites;
+  // 深度 9：6 层时活动算价多一层（flashWinners）就把人群判定挤出视野，G2 误报死条目；
+  // 放到 9 之后又照出了覆盖分布与集单期统计两处，都已逐条核对登记
+  if (!c || depth > 9) return sites;
   const key = `${cls}#${mname}`;
   /*
    * 记「到过的最浅深度」，不是「到过没有」：深度优先先从一条深路径摸到某个方法时，
