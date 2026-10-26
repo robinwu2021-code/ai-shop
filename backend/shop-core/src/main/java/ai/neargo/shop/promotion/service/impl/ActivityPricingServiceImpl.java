@@ -552,10 +552,24 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Override
     public Map<String, Long> flashPrices(String userNo, Collection<String> goodsNos) {
+        Map<String, Long> out = new HashMap<>();
+        flashWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, nz(a.getBenefitAmountMinor())));
+        return out;
+    }
+
+    @Override
+    public Map<String, String> flashActivityOf(String userNo, Collection<String> goodsNos) {
+        Map<String, String> out = new HashMap<>();
+        flashWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, a.getActivityNo()));
+        return out;
+    }
+
+    /** 每件货此刻胜出的限时特价活动（取最低价）。价与「扣哪个活动的量」出自同一次挑选，不会对不上 */
+    private Map<String, PmtActivity> flashWinners(String userNo, Collection<String> goodsNos) {
         if (goodsNos == null || goodsNos.isEmpty()) {
             return Map.of();
         }
-        Map<String, Long> out = new HashMap<>();
+        Map<String, PmtActivity> out = new HashMap<>();
         Map<String, Boolean> owned = new HashMap<>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_PRICE)) {
             /*
@@ -582,9 +596,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 if (!goodsNos.contains(goodsNo) || !ownedBy(a, goodsNo, owned)) {
                     continue;
                 }
-                long price = nz(a.getBenefitAmountMinor());
                 // **取最低价**：与满减「取最优」同一侧 —— 都往对用户有利的方向走
-                out.merge(goodsNo, price, Math::min);
+                out.merge(goodsNo, a, (x, y) -> nz(y.getBenefitAmountMinor()) < nz(x.getBenefitAmountMinor()) ? y : x);
             }
         }
         return out;
@@ -592,10 +605,25 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Override
     public Map<String, CampaignPort.GiftRule> giftRules(String userNo, Collection<String> goodsNos) {
+        Map<String, CampaignPort.GiftRule> out = new HashMap<>();
+        giftWinners(userNo, goodsNos).forEach((goodsNo, a) ->
+                out.put(goodsNo, new CampaignPort.GiftRule(nz(a.getTriggerQty()), nz(a.getBenefitQty()))));
+        return out;
+    }
+
+    @Override
+    public Map<String, String> giftActivityOf(String userNo, Collection<String> goodsNos) {
+        Map<String, String> out = new HashMap<>();
+        giftWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, a.getActivityNo()));
+        return out;
+    }
+
+    /** 每件货此刻胜出的买赠活动（送得最多那个） */
+    private Map<String, PmtActivity> giftWinners(String userNo, Collection<String> goodsNos) {
         if (goodsNos == null || goodsNos.isEmpty()) {
             return Map.of();
         }
-        Map<String, CampaignPort.GiftRule> out = new HashMap<>();
+        Map<String, PmtActivity> out = new HashMap<>();
         Map<String, Boolean> owned = new HashMap<>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_GIFT)) {
             if (!audienceHits(a, a.getEntityNo(), userNo)) {
@@ -610,14 +638,61 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 if (!goodsNos.contains(goodsNo) || !ownedBy(a, goodsNo, owned)) {
                     continue;
                 }
-                CampaignPort.GiftRule cur = out.get(goodsNo);
+                PmtActivity cur = out.get(goodsNo);
                 // 送得最多的那个赢 —— 同样往对用户有利的一侧走
-                if (cur == null || giftM > cur.giftM()) {
-                    out.put(goodsNo, new CampaignPort.GiftRule(buyN, giftM));
+                if (cur == null || giftM > nz(cur.getBenefitQty())) {
+                    out.put(goodsNo, a);
                 }
             }
         }
         return out;
+    }
+
+    @Override
+    @Transactional
+    public boolean commitItemUsage(String userNo, String orderNo, String activityNo, String merchantNo, int qty) {
+        if (orderNo == null || activityNo == null || qty <= 0) {
+            return true;
+        }
+        // 同一单同一活动只扣一次：下单链路重试、补偿重放都不能把份数多扣一遍
+        Long done = DataScopeContext.executeWithoutScope(() -> applyMapper.selectCount(Wrappers.<PmtApply>lambdaQuery()
+                .eq(PmtApply::getOrderNo, orderNo)
+                .eq(PmtApply::getPromoType, PmtApply.ACTIVITY)
+                .eq(PmtApply::getPromoNo, activityNo)));
+        if (done != null && done > 0) {
+            return true;
+        }
+        CampaignPort.AppliedActivity it = new CampaignPort.AppliedActivity(activityNo, merchantNo, 0L, qty);
+        int affected = DataScopeContext.executeWithoutScope(() ->
+                activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                        .eq(PmtActivity::getActivityNo, activityNo)
+                        .in(PmtActivity::getBenefitType, PmtActivity.BENEFIT_PRICE, PmtActivity.BENEFIT_GIFT)
+                        .and(w -> w.isNull(PmtActivity::getQuota)
+                                .or().apply("quota_used + {0} <= quota", qty))
+                        .setSql("quota_used = quota_used + " + qty)));
+        if (affected == 0) {
+            // 与 commit 同一口径：不翻脸、记一行超发的账（金额 0：优惠在价里）
+            log.warn("[活动] 特价/买赠限量已满仍命中：活动 {} 订单 {} 多发 {} 份", activityNo, orderNo, qty);
+            insertApply(userNo, orderNo, it, 0L, ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT,
+                    PmtApply.QUOTA_OVERRUN);
+            return false;
+        }
+        // 一份一行：release 按行退，一行退一份（与 commit 那边「一单一份」同一口径）
+        for (int i = 0; i < qty; i++) {
+            insertApply(userNo, orderNo, it, 0L, ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT);
+        }
+        PmtActivity a = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, activityNo).last("limit 1")));
+        if (a != null && a.getQuota() != null && nz(a.getQuotaUsed()) >= a.getQuota()) {
+            DataScopeContext.executeWithoutScope(() ->
+                    activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                            .eq(PmtActivity::getActivityNo, activityNo)
+                            .eq(PmtActivity::getStatus, PmtActivity.RUNNING)
+                            .set(PmtActivity::getStatus, PmtActivity.ENDED)
+                            .set(PmtActivity::getEndedReason, PmtActivity.ENDED_QUOTA)));
+            log.info("[活动] {} 到量自动结束", activityNo);
+        }
+        return true;
     }
 
     @Override

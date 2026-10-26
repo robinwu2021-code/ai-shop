@@ -94,6 +94,42 @@ public class CampaignPortRouter implements CampaignPort {
         promo.commit(userNo, orderNo, new Discount(discount.total(), discount.shares(), mine));
     }
 
+    /**
+     * 特价 / 买赠的份数只有新模型有。<b>只扣真的胜出了的那个</b>：老模型的特价更低（或送得更多）时，
+     * 这件货成交用的是老模型的活动，新模型那个活动的份数不该被扣。一单一个活动扣一份，按活动号排序加锁。
+     */
+    @Override
+    public void commitItemBenefits(String userNo, String orderNo, List<ItemBenefitUse> uses) {
+        if (uses == null || uses.isEmpty()) {
+            return;
+        }
+        List<String> flashGoods = uses.stream().filter(u -> !u.gift()).map(ItemBenefitUse::goodsNo).distinct().toList();
+        List<String> giftGoods = uses.stream().filter(ItemBenefitUse::gift).map(ItemBenefitUse::goodsNo).distinct().toList();
+        Map<String, Long> legacyPrice = legacy.flashPrices(flashGoods);
+        Map<String, Long> promoPrice = promo.flashPrices(userNo, flashGoods);
+        Map<String, String> flashActs = promo.flashActivityOf(userNo, flashGoods);
+        Map<String, GiftRule> legacyGift = legacy.giftRules(giftGoods);
+        Map<String, GiftRule> promoGift = promo.giftRules(userNo, giftGoods);
+        Map<String, String> giftActs = promo.giftActivityOf(userNo, giftGoods);
+        java.util.TreeMap<String, String> merchantOf = new java.util.TreeMap<>();
+        for (ItemBenefitUse u : uses) {
+            String act;
+            if (u.gift()) {
+                GiftRule old = legacyGift.get(u.goodsNo());
+                GiftRule mine = promoGift.get(u.goodsNo());
+                act = mine != null && (old == null || mine.giftM() > old.giftM()) ? giftActs.get(u.goodsNo()) : null;
+            } else {
+                Long old = legacyPrice.get(u.goodsNo());
+                Long mine = promoPrice.get(u.goodsNo());
+                act = mine != null && (old == null || mine <= old) ? flashActs.get(u.goodsNo()) : null;
+            }
+            if (act != null) {
+                merchantOf.putIfAbsent(act, u.merchantNo());
+            }
+        }
+        merchantOf.forEach((act, merchant) -> promo.commitItemUsage(userNo, orderNo, act, merchant, 1));
+    }
+
     @Override
     public long bonusPoints(String orderNo, String merchantNo) {
         return promo.bonusPoints(orderNo, merchantNo);
