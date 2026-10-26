@@ -144,6 +144,44 @@ class PurchaseLimitFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 限购 5：同一个人并发下 4 单各 5 件，只能成一单 —— 读已买量不能各读各的")
+    void concurrentCreatesRespectLimit() throws Exception {
+        setLimit(5);
+        String token = login("13000290006");
+        int threads = 4;
+        java.util.concurrent.atomic.AtomicInteger ok = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.List<Integer> codes = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(threads);
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        for (int i = 0; i < threads; i++) {
+            String idem = "pl-race-" + i + "-";
+            pool.submit(() -> {
+                try {
+                    start.await();
+                    int code = createDirect(token, 5, idem).get("code").asInt();
+                    codes.add(code);
+                    if (code == 0) {
+                        ok.incrementAndGet();
+                    }
+                } catch (Exception ignored) {
+                    // 失败即视为未下单，由 ok 计数体现
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+        start.countDown();
+        assertThat(done.await(60, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        pool.shutdown();
+
+        assertThat(ok.get()).as("★ 并发的几单都读到「已买 0」，一起越过了限购：" + codes).isEqualTo(1);
+        assertThat(codes).as("没成的几单要是限购拒的，不是锁超时之类的偶然失败：" + codes)
+                .containsOnly(0, LIMIT_EXCEEDED).hasSize(threads);
+        assertThat(createDirect(token, 1, "pl-race-after").get("code").asInt()).isEqualTo(LIMIT_EXCEEDED);
+    }
+
+    @Test
     @DisplayName("运营端开关列表里看得到新开关 —— 库里早存过一份时，默认登记表不会自己出现")
     void flagListedForOps() {
         platformConfig.saveFeatureFlag("category.gate.enforce", false, 0, "TEST");

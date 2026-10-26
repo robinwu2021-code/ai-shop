@@ -1659,8 +1659,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
         }
         if (purchaseLimit != null) {
-            // 每人限购：只读、在锁库存之前（与上面几道校验同一个姿势）
-            purchaseLimit.require(userNo, split.qtyByGoods(), split.limitsByGoods());
+            // 每人限购：在锁库存之前；同一买家的并发单在这里排队（锁账户行），否则各读到「已买 0」一起越线
+            purchaseLimit.requireForCreate(userNo, split.qtyByGoods(), split.limitsByGoods());
         }
         requireReceiverWhenShipped(cmd, userNo);
         requireWithinDeliveryRadius(cmd, split, userNo);
