@@ -60,7 +60,3 @@
 # 记进来是为了让订单号方案推得上去，不是认下这些债。order/track 那条线要把它们修掉
 # （有任务留着）。每条后面的数字只准往下走。
 #
-i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 ar：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
-i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 en：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
-i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 zh-CN：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
-ops-reason-required.test.ts::运营端写操作的 reason ★★★ 后端要 reason 的端点，ops-web 必须真的发 reason @<=13

@@ -3061,6 +3061,7 @@ entryHint: "من يشتري · من توقف", total: "عدد العملاء", r
       OFFLINE_RETURN: "إرجاع في المتجر",
       TRANSFER_OUT: "تحويل صادر",
       SCRAP: "تالف",
+      RETURN_SUPPLIER: "إرجاع للمورد",
       COUNT_LOSS: "عجز جرد",
       INTERNAL: "استخدام داخلي",
       BROKEN: "تلف",

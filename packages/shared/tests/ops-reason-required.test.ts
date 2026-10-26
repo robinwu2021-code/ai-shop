@@ -60,7 +60,10 @@ function opsEndpointsExpectingReason(): Set<string> {
       // 往下找 4 行内的方法签名
       const sig = lines.slice(i, i + 5).join(" ");
       for (const req of reqWithReason) {
-        if (new RegExp(`\\b${req}\\b`).test(sig)) out.add(map[1]!);
+        // 只认**参数**（`XxxReq req,` / `XxxReq req)`），不认返回类型：
+        // `List<WordVO> remove(@PathVariable Long id)` 里 WordVO 带 reason 字段，
+        // 按名字出现就算会把「删禁售词」误判成要 reason 的端点（而它根本不收请求体）
+        if (new RegExp(`\\b${req}\\s+\\w+\\s*[,)]`).test(sig)) out.add(map[1]!);
       }
     }
   }

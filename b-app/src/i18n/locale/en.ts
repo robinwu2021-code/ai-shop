@@ -3062,6 +3062,7 @@ entryHint: "Who buys · who lapsed", total: "Customers", repeatRate: "Repeat rat
       OFFLINE_RETURN: "In-store return",
       TRANSFER_OUT: "Transfer out",
       SCRAP: "Scrap",
+      RETURN_SUPPLIER: "Return to supplier",
       COUNT_LOSS: "Count loss",
       INTERNAL: "Internal use",
       BROKEN: "Damaged",
