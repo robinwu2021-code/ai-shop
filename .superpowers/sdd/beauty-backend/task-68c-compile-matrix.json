@@ -1,6 +1,6 @@
 {
   "task": "Task68C",
-  "status": "CURRENT_JAVA_MATRIX_COMPILE_SUCCESS_C_IMPLEMENTATION_PENDING",
+  "status": "CURRENT_JAVA_MATRIX_COMPILE_SUCCESS_C_CODE_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
   "sourceBase": "97bb97f18f76411acf9a7a5ec7bd57abf55e7100",
   "inputManifest": {
     "path": "/private/tmp/task68c-java-compile-inputs.json",
@@ -104,5 +104,7 @@
   "nativeGateCreated": false,
   "paymentIntegration": false,
   "canStart": false,
-  "deploymentExecuted": false
+  "deploymentExecuted": false,
+  "cCodeCommit": "1b222220605d87c2400da144668add9cbb1fc08e",
+  "inputFreezeRecheckedAfterCSource": true
 }

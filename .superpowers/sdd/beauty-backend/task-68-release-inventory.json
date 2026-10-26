@@ -1,6 +1,6 @@
 {
   "task": "Task68/C02",
-  "status": "A_CODE_COMPILED_REVIEWED_B1_CODE_PHASE_RELEASED_B2_C_PENDING",
+  "status": "ALL_36_SOURCES_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
   "baselineProductCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9",
   "baselineDocsCommit": "28ebe9f111ede8363194cd0e42d50005de465a39",
   "codingBaseCommit": null,
@@ -210,5 +210,12 @@
     "path": ".superpowers/sdd/beauty-backend/task-68c-materialization-addendum.md",
     "sha256": "ef6c5418d562eb89764413b00ac326b46387d757e8025a342bcc673629aaa0f7",
     "status": "DESIGN_STATIC_REVIEW_APPROVED_C_TWO_SCRIPT_CODE_RELEASED_RUNTIME_NOT_AUTHORIZED_NOW"
-  }
+  },
+  "codeCommits": {
+    "A": "5aa1769f2c1719cd86f0cdf4528699527827d7e6",
+    "B1": "419e9d94fa5618d8783abcdb847201c05fa1d525",
+    "B2": "5477210b96ef3339f340ac5d715263d8abf27a19",
+    "C": "1b222220605d87c2400da144668add9cbb1fc08e"
+  },
+  "codePhaseGate": ".superpowers/sdd/beauty-backend/task-68-code-phase-root-gate.json"
 }

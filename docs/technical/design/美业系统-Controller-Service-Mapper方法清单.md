@@ -3841,7 +3841,7 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 
 ## 柜台购买与人工来源增量（M2分阶段实施状态）
 
-M2B_M2C_A_B_CODE_COMPILED_REVIEWED_C_MATERIALS_PENDING_UNIFIED_TEST_PENDING
+M2B_M2C_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING
 
 主TDD§0.4/§2.45–§2.47。Task67、Task68A及68B1/B2已编码编译和独立静态复审，真实柜台优惠报价/冻结展示/旧策略恢复/优惠后现金准入消费者已接入源码；68C验证材料仍待完成。B1的18项与B2的17项用例均未执行，统一测试部署后置，canStart=false，Pay后置。
 

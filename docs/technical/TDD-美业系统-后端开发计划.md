@@ -125,7 +125,7 @@ Task60拆分为“60A代码与质量收尾”和“60B统一部署关口”：60
 | 顺序 | 业务模块/原任务 | 当前基线 | 剩余编码交付与编译检查 |
 |---|---|---|---|
 | C01 | M2b人工来源收尾，Task67/SRC-01 | 编码编译与独立静态复审完成，待统一测试 | 远程未成单空金额兼容及规范项已关闭；新增7项测试源码仅编写编译，保留历史验证边界，统一测试/部署后置 |
-| C02 | M2c柜台普通满减 | A/B1/B2已编码编译与静态复审，C验证材料待完成 | 复用共用活动及订单分摊，支持USER/GUEST、显式NONE/选择/省略、规则/价格/时效封印、旧意图原经济结果恢复；仅商家承担普通FULL_CUT |
+| C02 | M2c柜台普通满减 | A/B1/B2/C编码编译及静态复审完成，待统一测试 | 复用共用活动及订单分摊，支持USER/GUEST、显式NONE/选择/省略、规则/价格/时效封印、旧意图原经济结果恢复；仅商家承担普通FULL_CUT |
 | C03 | M3数量与开工授权，TASK-01/SRC-01 | 已审方案，业务未实现 | 共用订单行/单位授权、永久任务关联、防重复及超量、撤销竞争、持久意图/原号恢复；资源能力未齐时不开放开工 |
 | C04 | M4实际资源，共用SHR-02 | 预约容量已有，实际服务生命周期未实现 | 先统一库存头/行锁序；预约单位交接、实际占用、开放占用、结束清洁、超时阻断、暂停/换人/延时及维修保护；复用共用容量所有者 |
 | C05 | M5工作流与实际参与，TASK-01/02/03 | 人员前置S0已有 | 接单/开工、步骤推进、暂停恢复/交接、实际参与区间、完成量、资格与自身任务范围；要求数量和资源双重授权 |
@@ -1308,7 +1308,9 @@ Task68B2执行结果：精确14份Java源码已本地提交 `5477210b96ef3339f34
 
 68C材料生产顺序专项设计已完成：[R0审查](../../.superpowers/sdd/beauty-backend/review-task-68c-materialization-r0.md)发现旧类预期来源/实际观察顺序及测试启动器类路径两项Important，经限定修订，[R1复审](../../.superpowers/sdd/beauty-backend/review-task-68c-materialization-r1.md)Spec PASS/Architecture APPROVED。[最终方案](../../.superpowers/sdd/beauty-backend/task-68c-materialization-addendum.md)明确输入与派生产物、实际mapper、独立旧源码构建、显式runner工具依赖、53个具名方法、四原单时效和拥有资源清理。现按[精确两脚本清单](../../.superpowers/sdd/beauty-backend/task-68c-release-inventory.json)发布编码；本阶段不生成golden、构建旧运行时或创建native GO，所有运行行为仍统一后置。
 
-68C编码期间Java输入已冻结，根实际完成联合31模块编译5.053s及默认零售21模块编译2.225s；其中food-web实际重编译19份主源码和11份测试源码，其余为增量检查，未运行测试。[编译记录](../../.superpowers/sdd/beauty-backend/task-68c-compile-matrix.json)记录4935份输入指纹及原始日志SHA，C收口须再次比对源码未变。实际离线模型导出发现help evaluator嵌套版本缺失，按[已复审修正](../../.superpowers/sdd/beauty-backend/task-68c-classpath-ruling.md)使用固定dependency3.7.0在当前reactor导出真实依赖；成功结果不表示真实旧运行时已经验证。两脚本实现及独立代码审查仍在进行，C02尚未整体收口。
+68C编码期间Java输入已冻结，根实际完成联合31模块编译5.053s及默认零售21模块编译2.225s；其中food-web实际重编译19份主源码和11份测试源码，其余为增量检查，未运行测试。[编译记录](../../.superpowers/sdd/beauty-backend/task-68c-compile-matrix.json)记录4935份输入指纹及原始日志SHA，C收口须再次比对源码未变。实际离线模型导出发现help evaluator嵌套版本缺失，按[已复审修正](../../.superpowers/sdd/beauty-backend/task-68c-classpath-ruling.md)使用固定dependency3.7.0在当前reactor导出真实依赖；成功结果不表示真实旧运行时已经验证。两个脚本及其Java模板、测试探针已完成源码/编译检查和独立复审；C02代码阶段整体收口，运行验收仍待统一B。
+
+Task68C执行结果：两个脚本已本地提交 1b222220605d87c2400da144668add9cbb1fc08e。[R0审查](../../.superpowers/sdd/beauty-backend/review-task-68c-r0.md)发现跨Node/Java URI文本误比较和已接受目录未拒绝额外文件两项Important，修复后[R1](../../.superpowers/sdd/beauty-backend/review-task-68c-r1.md)Spec PASS/Quality APPROVED。实际旧类来源按规范本地身份及原字节核验，完整运行目录在接受和进程前后核验；三份Java模板与一份JDK纯函数测试探针已仅编译通过，未执行探针。45个Node用例、53个具名Java方法、6份golden和4份旧pending生产仍未运行。[完整C02关口](../../.superpowers/sdd/beauty-backend/task-68-code-phase-root-gate.json)记录36源码、31+21模块编译及统一测试待办；M1跳过被XML归类错误为非阻断项，登记C18最终审查，不冒称已修复。下一项C03/M3仅启动数量授权设计审计，实际业务编码须经独立设计复审。Pay后置、canStart=false，未执行SQL、应用启动或部署。
 
 ## §3 数据层之后的业务任务与启动深化
 

@@ -371,9 +371,9 @@ HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant
 
 ## 十、共用增量类型与实施状态
 
-TASK68A_B_CODE_COMPILED_STATIC_REVIEWED_C_PENDING_UNIFIED_TEST_PENDING
+TASK68_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING
 
-主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope均已编码编译和静态复审，B2真实报价/订单/现金准入消费者已接入源码。68C验证材料待完成，所有运行统一后置；均为共用所有者增量，不增加美业构件/依赖或25私有表计数。
+主TDD§2.47：共用fence/mapper、纯SPI协议、owner规则及codec/envelope、B2真实报价/订单/现金准入、C验证脚本均已编码/编译或语法检查及静态复审。三行业31+21模块编译通过，C的45Node/53Java用例、材料生产和运行均未执行；不增加美业构件/依赖或25私有表计数。
 
 | Source | Planned class / responsibility |
 |---|---|

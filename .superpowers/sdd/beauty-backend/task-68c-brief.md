@@ -1,4 +1,4 @@
-# Task68C released — finite unified-test runner materials
+# Task68C code-phase complete — finite unified-test runner materials
 
 RELEASED after B2 code5477210b96ef3339f340ac5d715263d8abf27a19/R3 and bounded C materialization R1 PASS/APPROVED. Read task-68c-materialization-addendum.md FIRST alongside this brief; its final SHA ef6c5418d562eb89764413b00ac326b46387d757e8025a342bcc673629aaa0f7 is binding for concrete stage/action/gate/tool/driver/output contracts. If initial draft wording differs, this reviewed overlay wins. Authority is mainTDD§0.4/§2.47 and Task68 design addendum§6, A collation and shared SPI overlays. Exact2existing script paths in task-68c-release-inventory.json; no product/Java/SQL/POM/config/gate edits. Root owns TDD/paired JSON/gates. Recheck original baseline hashes at release.
 
@@ -53,3 +53,6 @@ C m2c native stages explicitly pin SHOP_INVENTORY_STOCK_AUTHORITY=PLATFORM and S
 
 ## Approved classpath exporter correction
 Read task-68c-classpath-ruling.md (final SHA 07d0aef7cc864517411c6566a8fe07f015c082bfce7c8f1a3c9713e3b641de45) before implementing the materializer. This root ruling, independently approved in review-task-68c-classpath.md, overrides ONLY the addendum help:evaluate export command/own-output prefixes. Use exact cached dependency3.7.0:build-classpath test scope in the same reactor session, actual unique shop-app output and explicit current-vs-old own output prefixes. All other final addendum contracts remain binding. Static current model evidence is real; old build/classpath remains UNEXECUTED B.
+
+## Code-phase closure
+Exact2sources committed 1b222220605d87c2400da144668add9cbb1fc08e after R1 SpecPASS/QualityAPPROVED closes I1/I2. task-68c-code-phase-root-gate.json records finalpins,45Node/53JUnit UNEXECUTED,3Java templates+1JDKprobe compilation and deferredM1. No native/materialization GO or runtime acceptance. FullC02 source gate task-68-code-phase-root-gate.json covers36sources; future coding per mainTDD0.4, Paydeferred/canStartfalse.

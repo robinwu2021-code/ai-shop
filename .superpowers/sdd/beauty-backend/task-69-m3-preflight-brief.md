@@ -1,5 +1,5 @@
-# Task69 / C03 M3 quantity-grant design preflight — DRAFT_NOT_RELEASED
-Authority: main TDD0.4 C03 and2.46 C03-C07 prerequisites; accepted bm05-offline-core-design.md sections6-10, Task61 bm05-design.md/start protocol reasoning only where not superseded by manual nonPay scope. Existing user automatic execution authorization applies; no new business preference assumed. Root will dispatch only after C02 source/static/compile closure.
+# Task69 / C03 M3 quantity-grant design preflight — DESIGN_PREFLIGHT_RELEASED_NO_CODING
+Authority: main TDD0.4 C03 and2.46 C03-C07 prerequisites; accepted bm05-offline-core-design.md sections6-10, Task61 bm05-design.md/start protocol reasoning only where not superseded by manual nonPay scope. Existing user automatic execution authorization applies; no new business preference assumed. Root releases this docs-only preflight during C02 exact2JS static review. All4935 Java/POM/srcresource inputs are frozen and unchanged; C02 business A/B already accepted. M3 coding release still waits for C02 source-review closure and independent M3 design approval. This is not a second implementation author.
 
 Design task scope when released: create task-69-m3-design.md and task-69-m3-design-report.md ONLY; root owns ledger/TDD/paired JSON/inventory and any existing dirty source. No implementation/index/commit/agents/runtime. Source-backed exact interfaces/state/lock/error/recovery/schema/file/test matrices, not empty class lists. Read this brief first and narrow named authority sections; do not reread all historic task reports.
 
