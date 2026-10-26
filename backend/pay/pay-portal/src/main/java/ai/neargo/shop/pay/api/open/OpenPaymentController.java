@@ -15,6 +15,8 @@ import ai.neargo.shop.pay.api.open.OpenViews.CloseReq;
 import ai.neargo.shop.pay.api.open.OpenViews.CreateOrderReq;
 import ai.neargo.shop.pay.api.open.OpenViews.OrderView;
 import ai.neargo.shop.pay.api.open.OpenViews.StartReq;
+import ai.neargo.shop.pay.checkout.service.CheckoutService;
+import ai.neargo.shop.pay.checkout.service.CheckoutService.Issued;
 import ai.neargo.shop.pay.merchant.MerchantDefaults;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService.StoreRef;
@@ -48,9 +50,11 @@ public class OpenPaymentController {
     private final PaymentService payments;
     private final PayMerchantBindingService stores;
     private final String checkoutBase;
+    private final CheckoutService checkout;
 
     public OpenPaymentController(AppAuthService apps, PaymentService payments, PayMerchantBindingService stores,
-                                 @Value("${shop.pay.checkout.base-url:}") String checkoutBase) {
+                                 @Value("${shop.pay.checkout.base-url:}") String checkoutBase, CheckoutService checkout) {
+        this.checkout = checkout;
         this.apps = apps;
         this.payments = payments;
         this.stores = stores;
@@ -80,12 +84,14 @@ public class OpenPaymentController {
                 blank(req.bizNo()) ? req.outOrderNo() : req.bizNo(), req.outOrderNo(),
                 store.storeId(), store.storeName(), store.entityName(), market, req.amountMinor(), req.currency(),
                 req.subject(), "ONLINE", Instant.now().plus(minutes, ChronoUnit.MINUTES), store.fundsPath()));
-        return ok(OrderView.of(o, checkoutBase), http);
+        // 托管收银台（F32）：每次建单（含幂等重放）都签一张新令牌 —— 明文不落库，旧的到期自然失效
+        Issued issued = checkout.issue(o);
+        return ok(OrderView.of(o, checkoutBase + "/checkout/" + o.getPayOrderNo() + "?t=" + issued.token()), http);
     }
 
     @GetMapping("/{payOrderNo}")
     public PortalResponse<OrderView> get(PortalPrincipal who, @PathVariable String payOrderNo, HttpServletRequest http) {
-        return ok(OrderView.of(payments.query(reader(who), payOrderNo), checkoutBase), http);
+        return ok(OrderView.of(payments.query(reader(who), payOrderNo), null), http);
     }
 
     @GetMapping
@@ -96,7 +102,7 @@ public class OpenPaymentController {
         if (o == null) {
             throw BizException.of(ErrorCode.PAY_ORDER_NOT_FOUND);
         }
-        return ok(OrderView.of(payments.query(caller, o.getPayOrderNo()), checkoutBase), http);
+        return ok(OrderView.of(payments.query(caller, o.getPayOrderNo()), null), http);
     }
 
     @PostMapping("/{payOrderNo}/pay")
@@ -117,7 +123,7 @@ public class OpenPaymentController {
         PayApp app = apps.requireActive(who.subjectId());
         apps.requireScope(app, "pay:create");
         String reason = req == null || blank(req.reason()) ? "PARTNER_CLOSE" : req.reason();
-        return ok(OrderView.of(payments.close(apps.callerFor(app, "COLLECT"), payOrderNo, reason), checkoutBase), http);
+        return ok(OrderView.of(payments.close(apps.callerFor(app, "COLLECT"), payOrderNo, reason), null), http);
     }
 
     private PayCaller reader(PortalPrincipal who) {

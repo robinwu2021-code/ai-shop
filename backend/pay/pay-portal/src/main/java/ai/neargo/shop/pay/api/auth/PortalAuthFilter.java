@@ -94,7 +94,7 @@ public class PortalAuthFilter extends OncePerRequestFilter {
         PayApiRequestLog r = new PayApiRequestLog();
         r.setTraceId(requestId);
         r.setEntry(entryOf(face));
-        r.setApi(cut(req.getMethod() + " " + path, 128));
+        r.setApi(cut(req.getMethod() + " " + maskPath(face, path), 128));
         r.setPayAction(PortalActions.of(face, req.getMethod(), path));
         r.setSourceType(sourceOf(face));
         r.setAppNo(face == PortalFace.OPEN ? cut(who != null ? who.subjectId() : req.getHeader("X-App-Id"), 64) : null);
@@ -111,6 +111,25 @@ public class PortalAuthFilter extends OncePerRequestFilter {
         r.setReceivedAt(LocalDateTime.now(ZoneOffset.UTC));
         return r;
     }
+
+    /**
+     * 收银台的令牌与码号就在路径里（安全规范 §2.5 / §4.8）：记录里只留 SHA-256 前 8 位，够对上是哪一张、拿不回原值。
+     */
+    static String maskPath(PortalFace face, String path) {
+        if (face != PortalFace.CHECKOUT) {
+            return path;
+        }
+        java.util.regex.Matcher m = TOKEN_SEGMENT.matcher(path);
+        StringBuilder out = new StringBuilder();
+        while (m.find()) {
+            m.appendReplacement(out, m.group(1) + "#" + digest(m.group(2)).substring(0, 8));
+        }
+        m.appendTail(out);
+        return out.toString();
+    }
+
+    private static final java.util.regex.Pattern TOKEN_SEGMENT =
+            java.util.regex.Pattern.compile("(/(?:sessions|codes)/)([^/]+)");
 
     static String outcomeOf(int status) {
         if (status < 400) {

@@ -17110,3 +17110,6 @@ INSERT IGNORE INTO pay_refund_review_rule (rule_code, version_index, status, mar
     single_amount_minor, daily_amount_minor, refund_ratio_bp, after_days, always_review, review_timeout_minutes,
     drafted_by, created_at, updated_at) VALUES
 ('DEFAULT_CN', 1, 'DRAFT', 'CN', 'CNY', '', '', 100000, 500000, 10000, 90, 0, 1440, 'SYSTEM', NOW(3), NOW(3));
+INSERT IGNORE INTO pay_app (app_no, name, owner_type, status, scopes, rate_limit_qps, daily_refund_limit_minor, sandbox,
+    created_at, updated_at) VALUES
+('CHECKOUT', '收银台静态码', 'INTERNAL', 'ACTIVE', 'pay:create,pay:read', 200, 0, 0, NOW(3), NOW(3));

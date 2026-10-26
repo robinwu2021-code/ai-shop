@@ -15,6 +15,7 @@ import ai.neargo.shop.auth.RequestMetaFilter;
 import ai.neargo.shop.pay.api.PortalFace;
 import ai.neargo.shop.pay.api.auth.PortalAuthFilters;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import ai.neargo.shop.auth.TokenStore;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.ObjectProvider;
@@ -299,6 +300,27 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new RequestMetaFilter("PARTNER"), SecurityContextHolderFilter.class)
                 .addFilterBefore(portalFilters.forFace(PortalFace.OPEN), SecurityContextHolderFilter.class)
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+                .build();
+    }
+
+    /**
+     * 收银台（安全规范 §2.5）：顾客不登录也能付，凭证是路径里的收银令牌 / 码号，由收银台服务逐次校验；过滤器照样记请求（令牌只留哈希前缀）。
+     * <b>不开 CORS</b>（同源）；{@code X-Frame-Options: DENY} 防被套进别人页面诱导支付；{@code Referrer-Policy: no-referrer}
+     * 防令牌经 Referer 外泄；{@code Cache-Control: no-store}。
+     */
+    @Bean
+    @Profile({"api", "ops"})
+    @Order(7)
+    SecurityFilterChain checkoutChain(HttpSecurity http, PortalAuthFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher(PortalFace.CHECKOUT.prefix() + "/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(h -> h.frameOptions(f -> f.deny())
+                        .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
+                .addFilterBefore(new RequestMetaFilter("H5"), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forFace(PortalFace.CHECKOUT), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();
     }

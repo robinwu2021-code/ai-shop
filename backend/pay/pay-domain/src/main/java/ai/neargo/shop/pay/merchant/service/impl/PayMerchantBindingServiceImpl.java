@@ -41,8 +41,17 @@ public class PayMerchantBindingServiceImpl implements PayMerchantBindingService 
 
     @Override
     public Optional<StoreRef> storeByNo(String storeNo) {
-        return stores.payStoreOf(storeNo).map(s -> new StoreRef(s.storeId(), s.storeNo(), s.storeName(), s.entityName(),
-                s.market() == null ? "CN" : s.market(), s.fundsPath()));
+        return stores.payStoreOf(storeNo).map(PayMerchantBindingServiceImpl::ref);
+    }
+
+    @Override
+    public Optional<StoreRef> storeById(Long storeId) {
+        return storeId == null ? Optional.empty() : stores.payStoreById(storeId).map(PayMerchantBindingServiceImpl::ref);
+    }
+
+    private static StoreRef ref(PayStore s) {
+        return new StoreRef(s.storeId(), s.storeNo(), s.storeName(), s.entityName(), s.market() == null ? "CN" : s.market(),
+                s.fundsPath());
     }
 
     @Override

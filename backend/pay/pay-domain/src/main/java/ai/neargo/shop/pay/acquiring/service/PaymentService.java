@@ -16,6 +16,9 @@ public interface PaymentService {
     /** 按支付单号取（不做调用方判定，内部装配用）；查无此单为空 */
     PayOrder find(String payOrderNo);
 
+    /** 按 id 取（不做调用方判定，收银台按令牌找到单后用）；没有为空 */
+    PayOrder findById(Long id);
+
     /** 按支付单号查，只能查自己范围内的 */
     PayOrder query(PayCaller caller, String payOrderNo);
 

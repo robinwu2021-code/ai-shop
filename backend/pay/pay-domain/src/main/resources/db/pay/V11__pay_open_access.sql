@@ -59,3 +59,9 @@ CREATE TABLE pay_qr_code (
   UNIQUE KEY uk_pay_qr_code_1 (qr_code),
   KEY idx_pay_qr_code_1 (store_id,status)
 ) COMMENT='静态码：门店 / 桌台码，顾客输金额建单。码值随机不可枚举';
+
+-- 收银台静态码的接入方（TDD-支付服务-I5接入层 S7）：pay_order.pay_app_id 必填、(pay_app_id, out_order_no) 唯一 ——
+-- 顾客扫静态码建的单没有业务方，记在它名下；托管收银台（第三方建的单）仍归第三方，不经它。不能退款（退款走商家端）。
+INSERT INTO pay_app (app_no, name, owner_type, status, scopes, rate_limit_qps, daily_refund_limit_minor, sandbox,
+    created_at, updated_at) VALUES
+('CHECKOUT', '收银台静态码', 'INTERNAL', 'ACTIVE', 'pay:create,pay:read', 200, 0, 0, NOW(3), NOW(3));

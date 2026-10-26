@@ -68,6 +68,9 @@ public class PortalExceptionHandler {
         if (code == ErrorCode.INTERNAL_ERROR) {
             return 500;
         }
+        if (code == ErrorCode.PAY_CHECKOUT_EXPIRED) {
+            return 410;
+        }
         if (code == ErrorCode.PAY_CHANNEL_UNAVAILABLE) {
             return 503;
         }

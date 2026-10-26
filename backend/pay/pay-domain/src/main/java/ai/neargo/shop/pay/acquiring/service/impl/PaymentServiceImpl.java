@@ -9,6 +9,7 @@ import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.access.policy.CallerPolicy;
 import ai.neargo.shop.pay.acquiring.dto.CreatePaymentCmd;
 import ai.neargo.shop.pay.acquiring.route.RouteSelectionPolicy;
+import ai.neargo.shop.pay.mapper.checkout.CheckoutMappers.PayCheckoutSessionMapper;
 import ai.neargo.shop.pay.notify.service.BizNotifyService;
 import ai.neargo.shop.pay.channel.api.CallerType;
 import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests;
@@ -55,14 +56,16 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentLedgerService ledger;
     private final RouteSelectionPolicy routes;
     private final BizNotifyService notifier;
+    private final PayCheckoutSessionMapper checkoutSessions;
     private final OrdinaryPaymentInitiationService initiation;
 
     public PaymentServiceImpl(CallerPolicy policy, PayOrderMapper orders, PaymentMapper attempts,
                               @Qualifier("payTxManager") PlatformTransactionManager payTxManager,
                               @Lazy PayQueryPort channels, @Lazy PaymentLedgerService ledger,
                               RouteSelectionPolicy routes, @Lazy OrdinaryPaymentInitiationService initiation,
-                              BizNotifyService notifier) {
+                              BizNotifyService notifier, PayCheckoutSessionMapper checkoutSessions) {
         this.notifier = notifier;
+        this.checkoutSessions = checkoutSessions;
         this.routes = routes;
         this.initiation = initiation;
         this.policy = policy;
@@ -121,6 +124,11 @@ public class PaymentServiceImpl implements PaymentService {
     public PayOrder find(String payOrderNo) {
         return DataScopeContext.executeWithoutScope(() -> orders.selectOne(Wrappers.<PayOrder>lambdaQuery()
                 .eq(PayOrder::getPayOrderNo, payOrderNo)));
+    }
+
+    @Override
+    public PayOrder findById(Long id) {
+        return id == null ? null : DataScopeContext.executeWithoutScope(() -> orders.selectById(id));
     }
 
     @Override
@@ -237,6 +245,7 @@ public class PaymentServiceImpl implements PaymentService {
             patch.setStatus(PayOrderStateMachine.next(from, PayOrderEvent.CLOSED).name());
             patch.setClosedAt(LocalDateTime.now(ZoneOffset.UTC));
             DataScopeContext.executeWithoutScope(() -> orders.updateById(patch));
+            checkoutSessions.revokeAll(locked.getId());
             notifier.paymentClosed(DataScopeContext.executeWithoutScope(() -> orders.selectById(locked.getId())));
         });
         return find(payOrderNo);

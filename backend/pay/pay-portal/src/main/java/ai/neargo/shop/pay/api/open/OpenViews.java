@@ -28,11 +28,12 @@ final class OpenViews {
                      long refundedMinor, String currency, String market, String payChannel, String payMethod,
                      Long expireAt, Long succeededAt, Long closedAt, String checkoutUrl) {
 
-        static OrderView of(PayOrder o, String checkoutBase) {
+        /** @param checkoutUrl 只有建单时给（带一次性令牌）；查单与关单为空 */
+        static OrderView of(PayOrder o, String checkoutUrl) {
             return new OrderView(o.getPayOrderNo(), o.getOutOrderNo(), o.getStatus(), nz(o.getAmountMinor()),
                     nz(o.getPaidMinor()), nz(o.getRefundedMinor()), o.getCurrency(), o.getMarket(), o.getPayChannel(),
                     o.getPayMethod(), epoch(o.getExpireAt()), epoch(o.getSucceededAt()), epoch(o.getClosedAt()),
-                    checkoutBase + "/checkout/" + o.getPayOrderNo());
+                    checkoutUrl);
         }
     }
 

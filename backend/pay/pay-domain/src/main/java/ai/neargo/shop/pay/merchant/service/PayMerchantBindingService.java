@@ -20,6 +20,9 @@ public interface PayMerchantBindingService {
      */
     Optional<StoreRef> storeByNo(String storeNo);
 
+    /** 同上，按门店 id（静态码只存门店 id） */
+    Optional<StoreRef> storeById(Long storeId);
+
     /** @param market 主体市场，未填按 CN；@param fundsPath 主体的资金路径 */
     record StoreRef(Long storeId, String storeNo, String storeName, String entityName, String market, String fundsPath) {
     }

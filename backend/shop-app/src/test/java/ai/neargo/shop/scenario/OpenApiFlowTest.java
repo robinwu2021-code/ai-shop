@@ -420,6 +420,107 @@ class OpenApiFlowTest {
                 + " WHERE o.pay_order_no=?", Integer.class, other)).isZero();
     }
 
+    // ------------------------------------------------------------------ 收银台（S7，顾客不签名）
+
+    private MockHttpServletResponse visit(String method, String path, String body) throws Exception {
+        MockHttpServletRequestBuilder b = "GET".equals(method) ? get(path) : post(path);
+        if (body != null) {
+            b.contentType(MediaType.APPLICATION_JSON).content(body);
+        }
+        return mvc.perform(b).andReturn().getResponse();
+    }
+
+    private static String tokenOf(String checkoutUrl) {
+        return checkoutUrl.substring(checkoutUrl.indexOf("?t=") + 3);
+    }
+
+    @Test
+    @DisplayName("★★★ 托管收银台：建单返回带令牌的 checkoutUrl；顾客凭令牌看单（字段白名单）、选方式、看结果；结果不入账")
+    void hostedCheckout() throws Exception {
+        JsonNode created = create(APP1, SECRET1, "OUT-" + id(), 1500);
+        String no = created.get("payOrderNo").asString();
+        String token = tokenOf(created.get("checkoutUrl").asString());
+
+        MockHttpServletResponse viewed = visit("GET", "/checkout/v1/sessions/" + token, null);
+        assertThat(viewed.getStatus()).isEqualTo(200);
+        assertThat(viewed.getHeader("X-Frame-Options")).isEqualTo("DENY");
+        assertThat(viewed.getHeader("Referrer-Policy")).isEqualTo("no-referrer");
+        JsonNode v = ok(viewed);
+        assertThat(v.get("amountMinor").asLong()).isEqualTo(1500);
+        assertThat(v.get("payeeName").asString()).startsWith("开放 E-OA-");
+        assertThat(v.get("payMethods").toString()).contains("TEST_PAY");
+        assertThat(v.has("outOrderNo") || v.has("storeId") || v.has("payMerchantId")).as("字段白名单").isFalse();
+
+        JsonNode started = ok(visit("POST", "/checkout/v1/sessions/" + token + "/pay", "{\"payMethod\":\"TEST_PAY\"}"));
+        assertThat(started.get("payParams").get("prepayId").asString()).startsWith("test_");
+        assertThat(ok(visit("GET", "/checkout/v1/sessions/" + token + "/result", null)).get("result").asString())
+                .isEqualTo("PROCESSING");
+        settle.settlePayment(new SettlePort.PaymentSettled(started.get("outTradeNo").asString(), "TEST", "T-" + id(),
+                1500, System.currentTimeMillis()));
+        assertThat(ok(visit("GET", "/checkout/v1/sessions/" + token + "/result", null)).get("result").asString())
+                .isEqualTo("SUCCEEDED");
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_checkout_session WHERE token_sha256=?", Integer.class,
+                token)).as("库里没有令牌明文").isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_api_request_log WHERE entry='CHECKOUT' AND api LIKE ?",
+                Integer.class, "%" + token + "%")).as("请求记录里没有令牌明文").isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_api_request_log WHERE entry='CHECKOUT'", Integer.class))
+                .isPositive();
+        assertThat(no).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("★★★ 令牌：不存在 404；过期 410；关单后立即作废 410")
+    void tokenLifecycle() throws Exception {
+        assertThat(visit("GET", "/checkout/v1/sessions/no-such-token", null).getStatus()).isEqualTo(404);
+
+        JsonNode a = create(APP1, SECRET1, "OUT-" + id(), 500);
+        String ta = tokenOf(a.get("checkoutUrl").asString());
+        ok(call("POST", "/open/pay/v1/orders/" + a.get("payOrderNo").asString() + "/close", Map.of(), "{}",
+                fresh(APP1, SECRET1), null));
+        assertThat(visit("GET", "/checkout/v1/sessions/" + ta, null).getStatus()).isEqualTo(410);
+        assertThat(jdbc.queryForObject("SELECT status FROM pay_checkout_session WHERE pay_order_id=(SELECT id FROM pay_order"
+                + " WHERE pay_order_no=?)", String.class, a.get("payOrderNo").asString()))
+                .as("关单当场作废令牌，不靠下次访问时再判").isEqualTo("REVOKED");
+        assertThat(visit("POST", "/checkout/v1/sessions/" + ta + "/pay", "{\"payMethod\":\"TEST_PAY\"}").getStatus())
+                .isEqualTo(410);
+
+        JsonNode b = create(APP1, SECRET1, "OUT-" + id(), 500);
+        String tb = tokenOf(b.get("checkoutUrl").asString());
+        jdbc.update("UPDATE pay_checkout_session SET expire_at=? WHERE pay_order_id=(SELECT id FROM pay_order"
+                + " WHERE pay_order_no=?)", java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusMinutes(1),
+                b.get("payOrderNo").asString());
+        assertThat(visit("GET", "/checkout/v1/sessions/" + tb, null).getStatus()).isEqualTo(410);
+    }
+
+    @Test
+    @DisplayName("★★★ 静态码：看门店 → 顾客输金额建单；超单笔上限、超单码日累计拒绝；停用后 404")
+    void staticCode() throws Exception {
+        String code = "QR" + UUID.randomUUID().toString().replace("-", "");
+        jdbc.update("INSERT INTO pay_qr_code (qr_code, store_id, kind, currency, single_limit_minor, daily_limit_minor,"
+                + " status, created_by_type, created_at, updated_at) VALUES (?, ?, 'STORE', 'CNY', 5000, 8000, 'ACTIVE',"
+                + " 'BIZ', NOW(), NOW())", code, storeId);
+        JsonNode c = ok(visit("GET", "/checkout/v1/codes/" + code, null));
+        assertThat(c.get("storeName").asString()).startsWith("开放门店 ");
+        assertThat(c.get("singleLimitMinor").asLong()).isEqualTo(5000);
+
+        assertThat(visit("POST", "/checkout/v1/codes/" + code + "/orders", "{\"amountMinor\":6000}").getStatus())
+                .as("超单笔").isEqualTo(422);
+        JsonNode first = ok(visit("POST", "/checkout/v1/codes/" + code + "/orders", "{\"amountMinor\":4000}"));
+        String token = first.get("token").asString();
+        assertThat(ok(visit("GET", "/checkout/v1/sessions/" + token, null)).get("amountMinor").asLong()).isEqualTo(4000);
+        ok(visit("POST", "/checkout/v1/codes/" + code + "/orders", "{\"amountMinor\":4000}"));
+        assertThat(visit("POST", "/checkout/v1/codes/" + code + "/orders", "{\"amountMinor\":1}").getStatus())
+                .as("单码日累计 8000").isEqualTo(422);
+        Map<String, Object> order = jdbc.queryForMap("SELECT * FROM pay_order WHERE pay_order_no=?",
+                first.get("payOrderNo").asString());
+        assertThat(order.get("source_type")).isEqualTo("CHECKOUT");
+        assertThat(order.get("biz_no")).isEqualTo(code);
+
+        jdbc.update("UPDATE pay_qr_code SET status='DISABLED' WHERE qr_code=?", code);
+        assertThat(visit("GET", "/checkout/v1/codes/" + code, null).getStatus()).isEqualTo(404);
+    }
+
     @Test
     @DisplayName("★★ 门店可用支付方式：来自门店绑定 × 支付产品")
     void payMethodsOfStore() throws Exception {
