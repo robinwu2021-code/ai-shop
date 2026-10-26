@@ -1,0 +1,72 @@
+{
+  "recorded_on": "2026-10-26",
+  "result": "DEPLOYED_HEALTHY",
+  "branch": "codex/ai-shop-codex",
+  "deployed_sha": "b076524b6607b2e93663adce57ad2d35af74578f",
+  "remote_sha_verified": true,
+  "service": "ai-shop",
+  "deployment": "food-embedded,commerce-embedded",
+  "artifact": "shop-app-20261026-1545-b076524b6.jar",
+  "artifact_md5": "81a725613640af9186108fd201db8846",
+  "health": {
+    "http_status": 200,
+    "status": "UP",
+    "build_sha_verified": true
+  },
+  "schema": {
+    "business_database": "ai_shop",
+    "core_version": "589",
+    "food_version": "25",
+    "commerce_version": "4",
+    "commerce_business_tables": 17,
+    "commerce_history_tables": 1,
+    "all_applied_successfully": true,
+    "normal_runtime_mode": "VALIDATE"
+  },
+  "verification": {
+    "integrated_host_and_server_targeted_java_tests": 79,
+    "targeted_contract_guard_tests": 27,
+    "generated_outputs": 25,
+    "clean_head_backend_test_compile": "PASS",
+    "full_backend_test_suite_rerun": false,
+    "normal_pre_push": "PASS_WITH_EXISTING_GUARD_BASELINE",
+    "shared_existing_guard_failures": 4,
+    "new_guard_failures": 0
+  },
+  "payment_service": {
+    "restarted": false,
+    "pid_before": 1573208,
+    "pid_after": 1573208,
+    "active_since_before_and_after": "2026-10-25 15:10:56 CST",
+    "migration_switches_changed": false
+  },
+  "external_gateways_enabled": false,
+  "report_jobs_enabled_by_this_release": false,
+  "backup": {
+    "directory": "/data/app/ai-shop/backups/commerce-release-20261026T073543Z",
+    "business_sha256": "c367538fc6f4ec8853c646626f3ffa1b3f97372b4b2920e8181525a001500385",
+    "compressed_bytes": 9849215,
+    "gzip_integrity_checked": true,
+    "restore_drill_performed": false,
+    "protected_environment_backup": true
+  },
+  "rollback": {
+    "artifact": "shop-app-20261026-0807-e1142696b.jar",
+    "environment": "restore protected original shop-app.env from backup before restarting original artifact",
+    "database": "retain additive cim_ tables; do not automatically drop business tables"
+  },
+  "limits": [
+    "No authenticated live end-to-end provider transaction was executed.",
+    "No real source/authorization/provider gateway registered.",
+    "No real external menu synchronization or order ingestion enabled.",
+    "Standalone server packages successfully; remote business clients and internal endpoints remain pending."
+  ],
+  "commerce_auto_jobs_enabled_by_this_release": false,
+  "channel_database_activation_proof": {
+    "providers": 0,
+    "accounts": 0,
+    "sync_policies": 0,
+    "job_declaration_default_enabled": false,
+    "separate_job_database_inspected": false
+  }
+}
