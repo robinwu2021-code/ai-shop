@@ -1,6 +1,9 @@
 package ai.neargo.shop.food.channel.config;
 
 import ai.neargo.shop.food.channel.port.CoreDishOfferQueryPortImpl;
+import ai.neargo.shop.food.channel.port.CoreCatalogPriceSourcePortImpl;
+import ai.neargo.shop.spi.product.CatalogPriceSourceInternalApi;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
 import ai.neargo.shop.spi.product.DishOfferInternalApi;
 import ai.neargo.shop.spi.product.DishOfferQueryPort;
 import ai.neargo.shop.svc.ConfigServiceLocator;
@@ -21,6 +24,16 @@ import org.springframework.context.annotation.Lazy;
 @EnableConfigurationProperties(ConfigServiceLocator.class)
 @Import(InternalHttp.class)
 public class FoodOfferClientConfiguration {
+    @Bean
+    @Lazy
+    CatalogPriceSourceInternalApi catalogPriceSourceInternalApi(InternalHttp http) {
+        return http.client(ServiceName.PLATFORM, CatalogPriceSourceInternalApi.class, Duration.ofSeconds(5));
+    }
+    @Bean
+    CatalogPriceSourcePort coreCatalogPriceSourcePort(ObjectProvider<CatalogPriceSourceInternalApi> api) {
+        return new CoreCatalogPriceSourcePortImpl(api::getObject);
+    }
+
     @Bean
     @Lazy
     DishOfferInternalApi dishOfferInternalApi(InternalHttp http) {

@@ -37086,6 +37086,13 @@
         "module": "shop-base"
       },
       {
+        "host": "CatalogPriceSourceFacts",
+        "name": "PURPOSE",
+        "value": "CATALOG_BASE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "host": "Cert",
         "name": "BUSINESS_LICENSE",
         "value": "BUSINESS_LICENSE",
