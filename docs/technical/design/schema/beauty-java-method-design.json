@@ -12319,11 +12319,11 @@
     "review": ".superpowers/sdd/beauty-backend/review-task-64-r2.md"
   },
   "counterServicePlan": {
-    "status": "M2A_CODE_ACCEPTED_M2B_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING_M2C_DESIGN_FIXING",
+    "status": "M2B_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING_M2C_DESIGN_REVIEWED_CODING_READY",
     "design": "../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md",
     "designSha256": "f9eda33c67b92530bfe5754211a611f4fb47152291589e77d44bd7a4e4a47563",
     "reviewSha256": "a98c07ce1a8b1a3a52ac528ae3420516f2842e7e43869522a09862389f463ea4",
-    "authority": "主TDD§0.4/§2.45/§2.46；共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认，Task66 USER/GUEST柜台购买已验收且无需C会话。Task67人工来源、账单、当前认领及远程未成单兼容编码编译与独立静态复审完成；历史分片/真实V8→V9及有效消融按原快照保留，C01新增7项测试仅编写编译、未执行，统一测试和部署待全范围编码完成后。M2c选择/规则封印与旧意图兼容设计修订中；canStart=false，支付后置。",
+    "authority": "主TDD§0.4/§2.45–§2.47；Task67编码编译及独立静态复审完成，新增7项测试未执行。Task68采用独立复审补充方案，仅发布编码/测试源码及编译；全范围非Pay功能完成后统一测试与部署。canStart=false。",
     "routes": [
       {
         "method": "POST",
@@ -12436,7 +12436,7 @@
       },
       {
         "owner": "ai.neargo.shop.trade.service.CheckoutOrderWriter",
-        "signature": "CheckoutEconomicSnapshot quoteManualFor(CustomerParty party, CreateOrderCommand command, CheckoutPricingScope scope)"
+        "signature": "CounterQuoteSnapshot quoteManualFor(CustomerParty party, CreateOrderCommand command, CheckoutPricingScope scope)"
       },
       {
         "owner": "ai.neargo.shop.trade.service.CheckoutOrderWriter",
@@ -12605,6 +12605,90 @@
       {
         "owner": "ai.neargo.shop.beauty.service.impl.ServiceSourceObservation.SourceDomainConflict",
         "signature": "String reasonCode()"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CampaignPort",
+        "signature": "CounterCandidates counterCandidates(CustomerParty party, List<MerchantAmount> groups, Map<String,String> choices)"
+      },
+      {
+        "owner": "ai.neargo.shop.spi.marketing.CampaignPort",
+        "signature": "void requireCounterSelection(CustomerParty party, List<MerchantAmount> originalGroups, Map<String,String> originalChoices, CounterActivitySeal originalSeal, Discount originalSelected)"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.port.CampaignPortImpl",
+        "signature": "CounterCandidates evaluateCounter(CustomerParty party, List<MerchantAmount> groups, Map<String,String> choices, long ownerNowMillis)"
+      },
+      {
+        "owner": "ai.neargo.shop.promotion.service.ActivityPricingService",
+        "signature": "void rejectUnsupportedCounterChoices(List<MerchantAmount> groups, Map<String,String> choices, long ownerNowMillis)"
+      },
+      {
+        "owner": "ai.neargo.shop.promotion.service.ActivityPricingService",
+        "signature": "void rejectUnsupportedCounterPriceEffects(List<MerchantAmount> groups, long ownerNowMillis)"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignRules",
+        "signature": "Map<String,String> normalizeChoices(List<MerchantAmount> groups, Map<String,String> choices)"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignRules",
+        "signature": "List<CounterChoice> resolveChoices(List<MerchantAmount> groups, Map<String,String> choices)"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
+        "signature": "void lock(String tenant, List<String> entityNos)"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
+        "signature": "void validateSchema()"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "Long lockShared(String tenant, String kind, String no)"
+      },
+      {
+        "owner": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "signature": "int ensure(String tenant, String kind, String no)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "signature": "CounterQuoteSnapshot readQuoteSnapshot(String pricingJson)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "signature": "CheckoutEconomicSnapshot readQuote(String pricingJson)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "signature": "CounterOrderPlan readPlan(String counterPlanJson)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "signature": "String writeQuote(CounterQuoteSnapshot quote)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "signature": "String writePlan(CounterOrderPlan plan)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "signature": "String planHash(CounterOrderPlan plan)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "signature": "boolean legacyZero(CheckoutEconomicSnapshot economics, CreateOrderCommand command)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "signature": "void requireQuoteHash(CustomerParty party, List<CheckoutLineReq> originalLines, CheckoutEconomicSnapshot economics, String persistedQuoteHash)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.service.impl.ManualServiceAdmissionServiceImpl",
+        "signature": "private void requireAdmissionEconomics(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child, OrdCheckoutQuote quote, CheckoutEconomicSnapshot economics, List<OrdCheckoutLine> sourceLines, List<OrdItem> originalItems)"
+      },
+      {
+        "owner": "ai.neargo.shop.trade.service.impl.ManualServiceAdmissionServiceImpl",
+        "signature": "private void requireDeclarationEconomics(OrdManualServiceAdmission declaration, Facts facts)"
       }
     ],
     "contracts": [
@@ -12629,10 +12713,20 @@
       "Task67当前DTO：SourceObservationVO(String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart, String admissionKind, String manualState, Long manualRevision, String manualHash)；旧构造保留，人工声明不映射支付核验。",
       "Task67当前DTO：SourceBillVO(String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons, String admissionKind, String financialVerification, ManualReceiptSummaryVO manualReceipt, Long manualDeclaredMinor)；旧构造保留，人工声明不映射支付核验。",
       "Task67当前DTO：CurrencyBillVO(String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete, Long manualDeclaredMinor, String financialVerification)；旧构造保留，人工声明不映射支付核验。",
-      "Task67当前DTO：ManualReceiptSummaryVO(String declarationNo, String method, long declaredMinor, String currency, Instant receivedAt, Instant recordedAt, String provenance, String financialVerification)；旧构造保留，人工声明不映射支付核验。"
+      "Task67当前DTO：ManualReceiptSummaryVO(String declarationNo, String method, long declaredMinor, String currency, Instant receivedAt, Instant recordedAt, String provenance, String financialVerification)；旧构造保留，人工声明不映射支付核验。",
+      "Task68/C02补充方案：[选择、封存、候选展示、最终仲裁与收款核验](../../../.superpowers/sdd/beauty-backend/task-68-design-addendum.md)。原Task65冻结设计保留，冲突以本补充和主TDD§0.4为准；新增内部方法为待编码清单，不能视为已经实现。",
+      "choices只接受真实entity/store键，冲突别名BAD_REQUEST，foreign含NONE不可用；省略AUTO、NONE显式退出、指定合格非最优FULL_CUT均可。仅空goodsNos商家FULL_CUT；完整合格候选及最终NONE映射既有promotions，无新HTTP/DTO字段；其他机制依适用性明确拒绝。",
+      "CounterActivitySeal(schema=1,policy=LEGACY_FULL_CUT_V1,party,groups,requestedChoices,resolvedChoices,selectedRules,digest)保留真实version/值/范围/时效；CheckoutEconomicSnapshot仅追加属性级NON_NULL可空seal，精确保留旧18参数构造及旧hash。CounterQuoteSnapshot(schema,economic,promotions)封存在原pricing_json，展示不进经济hash/计划hash；读和原键重放不重新查询候选。",
+      "最终共用marketing平台S→排序entity S fence，READ_COMMITTED同主库；相关旧SQL/新增/版本/明细/平台报名由数据库触发器X协调。新V543及descriptor缺失或漂移则本能力不可用，普通零售/M1不随之失效；不使用选中行FOR UPDATE代替空集合防护。",
+      "旧schema0报价/待恢复计划只从原持久化操作与确认导出FROZEN_M2A_ZERO，保留旧零优惠/基价/hash/原库存；新促销不能重定价旧意图，当前基价/权限变化仍拒绝。golden必须来自真实旧序列化器，现仅固定旧源码/类，生成与对比后置统一B。",
+      "收款准入仅schema1已CONSUMED柜台报价/确认允许merchantMinor=discountMinor=真实子单商家分摊，platform/coupon/points/gift均无且due>0；核对父子金额及逐行paidShare。已售后不重新判断当前优惠有效性；M1/schema0保持零优惠，不改来源hash/库存协议，不调用Pay或普通金融已付事件。",
+      "迁移规划：共用marketing V543 owner fence；未创建M3由V543顺延V544、M4由V544顺延V545，美业V10不变。仅新增候选SQL，阶段A不执行迁移；实际开工再核号。"
     ],
     "task66AddendumStatus": "CODE_ACCEPTED_R0_PLUS_SCOPED_R1_I1_CLOSED",
     "task67AddendumStatus": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
-    "task67CodeCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9"
+    "task67CodeCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9",
+    "task68AddendumStatus": "DESIGN_STATIC_REVIEWED_CODE_PHASE_RELEASED",
+    "task68DesignSha256": "8a74b6e40a0cf792a0326eb42a720071fd8b59513a5c8a00589238ef08aff763",
+    "task68ReviewSha256": "2d12b1d9ac8fd335df7aee9de00a5eb00ca799298f540269ac11ab37e169e203"
   }
 }

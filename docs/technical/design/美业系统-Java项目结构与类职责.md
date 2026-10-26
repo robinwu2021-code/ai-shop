@@ -368,3 +368,17 @@ Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED
 | `backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplySerializer.java` | `ai.neargo.shop.svc.InternalReplySerializer`<br>Task59 public/typed/remote/private ingress; actual owners remain in existing domains |
 
 HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant/web；双JVM夹具已编码，运行待统一部署关口。
+
+## 十、待编码的共用增量类型
+
+TASK68_C02_DESIGN_REVIEWED_CODE_NOT_IMPLEMENTED
+
+主TDD§2.47及Task68设计补充；仅共享所有者增量，不增加美业构件/依赖或目标25私有表计数。
+
+| Source | Planned class / responsibility |
+|---|---|
+| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignRules`<br>counter choices/goods/seal canonicalization |
+| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java` | `ai.neargo.shop.marketing.campaign.CounterCampaignFence`<br>shared marketing owner fence and capability |
+| `backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java` | `ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper`<br>exact-PK shared fence SQL |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java` | `ai.neargo.shop.trade.order.service.create.CounterEconomicCodec`<br>old/new economic quote/plan compatibility and consumed integrity |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java` | `ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot`<br>internal immutable economic/display quote envelope |

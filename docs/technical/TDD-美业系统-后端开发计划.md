@@ -1276,6 +1276,24 @@ Task67最新代码阶段收口：来源主体及R1修复已复审通过，C01远
 
 执行更新：C01三处源码已完成修复及编译，独立复审Spec PASS/Quality APPROVED、无发现；远程未成单兼容和两行120列规范项关闭。首轮25模块编译45.695s实际编译749项宿主测试源码；最终8模块美业channel编译2.743s实际编译17项测试源码，其中新增7项用例均未执行。当前Task67按“编码编译及静态审查完成，待统一测试”收口，完整运行验收仍未完成。[C01报告](../../.superpowers/sdd/beauty-backend/task-67-compatibility-report.md)、[独立复审](../../.superpowers/sdd/beauty-backend/review-task-67-compatibility.md)。C02-I1/I2设计补充正在编写，审查通过并冻结精确清单后才发布后续业务编码。以上属于既有授权范围的工程修订，不要求重新确认支付方向，不重跑历史测试，不标记“无问题”或“可营业”。
 
+### 2.47 Task68/C02共享商家优惠：编码前方案与分片（2026-10-26）
+
+本节承接§2.46原审查，按[补充方案](../../.superpowers/sdd/beauty-backend/task-68-design-addendum.md)落地，不改Task65冻结历史。I1选择/范围、I2规则封存/旧意图兼容已修订；R2候选展示专项复审PASS。优惠后现金收款的独立前置项[限定复审](../../.superpowers/sdd/beauty-backend/review-task-68-admission-prerequisite.md)Spec PASS/Architecture APPROVED、0新增可操作发现。现发布精确分片开始编码；这不表示Task68已经实现或通过测试。
+
+| 片 | 编码与所有者边界 | 静态/编译准出；运行统一B |
+|---|---|---|
+| 68A 共用营销仲裁前置 | marketing owner fence、Mapper、V543新增SQL、单一schema真源/renderer/包内descriptor；实际表/触发器漂移关闭能力，已有零售/M1保持可用 | 明确所有相关输入的相反写者、空集合/新增行/平台报名及原始SQL；严格entity/lineage登记，编写真实并发/DDL负例测试源码及编译；不执行DDL |
+| 68B 报价与封存集成 | 两处choices入口、Router/legacy/promotion、完整合格候选；CounterActivitySeal、CounterQuoteSnapshot和codec；old-policy恢复；新counter消费后收款核验 | 与68A联接，真实USER/GUEST报价→确认→订单/分摊→现金来源测试源码；普通/M1及旧schema0字节/hash不变；当前代码reactor编译和独立静态审查 |
+| 68C 清单与统一验证材料 | 明确m2c有限runner/独立Task68运行闸门、golden基线生产器/来源、当前方法/生成文档对账 | 阶段A不产生native GO或运行成功证据；golden使用固定旧序列化器在B真正生成，不手调hash；全量测试/部署仍后置 |
+
+共享合同要点：仅空goodsNos、商家承担的FULL_CUT，平台0、无券/积分/赠品、应付正数；AUTO/NONE/显式非最优选择和真实store/entity键语义固定。所有合格选项加NONE使用既有promotions并持久化，展示不进入经济hash。新经济仅追加属性级可省略seal，旧18参数构造、旧计划/哈希和来源hash保持。已消费订单的收款核验只比较冻结报价/顾客确认及实际分摊，不重新判定当前优惠资格。
+
+并发合同：READ_COMMITTED同主库，平台S→排序entity S协调最终读；所有相关旧写/插入/明细/平台报名通过触发器X。不能用锁定选中活动代替无选中集合保护。缺失/漂移只关闭新counter优惠能力。旧schema0仅从原持久化证据导出旧零优惠恢复，不能由请求选择。
+
+迁移预留：现有平台至V542、美业至V9、库存至V14全部冻结。68A拟新增共享marketing V543；原尚未创建的M3 V543→V544、M4 V544→V545，美业V10不变。新共享表不进入25美业私表/41项目标表的统计。真实创建前再核号，阶段A只生成不执行。
+
+AC→源码：C1真实USER/GUEST10000−1000=9000、C2不支持优惠/账户/产品效果拒绝、C3规则同金额变化失效、A2原到店确认，以及旧计划/并发/逐行分摊与消费确认负例详见补充§6。类/方法、API、库表候选、源文件基线以[精确清单](../../.superpowers/sdd/beauty-backend/task-68-release-inventory.json)和paired JSON为准；原49任务/API编号不变。canStart=false，Pay链条后置。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。

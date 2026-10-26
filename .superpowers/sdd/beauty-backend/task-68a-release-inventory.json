@@ -1,0 +1,50 @@
+{
+  "task": "Task68A",
+  "status": "DESIGN_STATIC_REVIEWED_CODE_PHASE_RELEASED",
+  "codingBaseCommit": null,
+  "designSha256": "8a74b6e40a0cf792a0326eb42a720071fd8b59513a5c8a00589238ef08aff763",
+  "modify": [
+    {
+      "path": "packages/shared/tests/entity-alignment.test.ts",
+      "baselineSha256": "2756d20054045dcc8cd6443130fa53d223ac4d84a602f402f4eda411180e06ea"
+    },
+    {
+      "path": "scripts/lib/schema-lineage.mjs",
+      "baselineSha256": "ff101d151bcc656f6a463b1f0eaca3ad86f0b2cf5e549579b73ef9f07c0bec46"
+    },
+    {
+      "path": "packages/shared/tests/schema-lineage.test.ts",
+      "baselineSha256": "1a78cd9d604a5d66b278fa98f47f97a9b6dfd497d7008552ccfc27bb362fdd2b"
+    }
+  ],
+  "create": [
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V543__counter_campaign_owner_fence.sql"
+    },
+    {
+      "path": "docs/technical/design/schema/counter-campaign-owner-fence-schema.json"
+    },
+    {
+      "path": "scripts/gen-counter-campaign-owner-fence-schema.mjs"
+    },
+    {
+      "path": "backend/shop-core/src/main/resources/schema/counter-campaign-owner-fence-descriptor.json"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/CounterCampaignFenceIT.java"
+    },
+    {
+      "path": "scripts/tests/counter-campaign-owner-fence-schema.test.mjs"
+    }
+  ],
+  "runtimeTestsAllowed": false,
+  "migrationExecutionAllowed": false,
+  "paymentIntegration": false,
+  "codingBaseReference": "Root supplies exact HEAD at dispatch after this publication commit"
+}

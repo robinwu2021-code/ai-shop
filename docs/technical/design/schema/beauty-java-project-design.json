@@ -1690,5 +1690,36 @@
       "role": "Task59 public/typed/remote/private ingress; actual owners remain in existing domains"
     }
   ],
-  "implementationStatus": "Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED; candidate inventory below is not completion evidence."
+  "implementationStatus": "Task59 code/protocol scope implemented; two-JVM actual owner deployment DEFERRED; candidate inventory below is not completion evidence.",
+  "plannedSharedClasses": {
+    "status": "TASK68_C02_DESIGN_REVIEWED_CODE_NOT_IMPLEMENTED",
+    "authority": "主TDD§2.47及Task68设计补充；仅共享所有者增量，不增加美业构件/依赖或目标25私有表计数。",
+    "classes": [
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java",
+        "class": "ai.neargo.shop.marketing.campaign.CounterCampaignRules",
+        "role": "counter choices/goods/seal canonicalization"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java",
+        "class": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
+        "role": "shared marketing owner fence and capability"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java",
+        "class": "ai.neargo.shop.marketing.campaign.mapper.CounterCampaignFenceMapper",
+        "role": "exact-PK shared fence SQL"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java",
+        "class": "ai.neargo.shop.trade.order.service.create.CounterEconomicCodec",
+        "role": "old/new economic quote/plan compatibility and consumed integrity"
+      },
+      {
+        "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java",
+        "class": "ai.neargo.shop.trade.order.service.create.CounterQuoteSnapshot",
+        "role": "internal immutable economic/display quote envelope"
+      }
+    ]
+  }
 }

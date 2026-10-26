@@ -74,6 +74,13 @@ def generate():
             assert (ROOT / row['path']).is_file(), row['path']
             lines.append(f"| `{row['path']}` | `{row['class']}`<br>{row['role']} |")
         lines += ['', 'HOST实际classpath排除beauty-core/server；SERVER排除shop-app/core/merchant/web；双JVM夹具已编码，运行待统一部署关口。', '']
+    planned = data.get('plannedSharedClasses')
+    if planned:
+        lines += ['## 十、待编码的共用增量类型', '', planned['status'], '', planned['authority'], '',
+                  '| Source | Planned class / responsibility |', '|---|---|']
+        for row in planned['classes']:
+            lines.append(f"| `{row['path']}` | `{row['class']}`<br>{row['role']} |")
+        lines += ['']
     svg=['<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="510" viewBox="0 0 1080 510" role="img" aria-labelledby="title desc">', '<title id="title">美业五模块Java依赖设计</title>', '<desc id="desc">web和core使用api，channel使用api，server装配core和channel，web按需使用channel。图由模块设计JSON生成。</desc>', '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#56769b"/></marker></defs>', '<rect width="1080" height="510" fill="#f5f8fc"/>','<style>text{font-family:"PingFang SC","Noto Sans CJK SC",sans-serif;fill:#24364d;font-size:16px}.sub{font-size:13px;fill:#566b84}.head{font-size:23px;font-weight:700}</style>', '<text x="30" y="36" class="head">美业独立项目：五模块、无环依赖</text>']
     pos={'beauty-web':(40,75),'beauty-core':(820,75),'beauty-api':(430,230),'beauty-channel':(40,380),'beauty-server':(820,380)}
     for n,deps in graph.items():

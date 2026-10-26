@@ -34,3 +34,22 @@ After design release, author the finite m2c/C1–C3 and focused A2 cases/runner,
 ## 2026-10-26 independent review release gate
 
 See review-next-design-2026-10-26.md. Overall sequencing Spec PASS, immediate Task68 Architecture NEEDS_FIXES/NOT_READY_FOR_CODING. Important I1 requires exact choices/key/error/NONE/omission/candidate/goodsNos contract across both ingress guards/router/owners. Important I2 requires concrete versioned counter owner seal carrier, final owner input/linearization/contrary writers and unchanged old quote/CounterOrderPlan bytes/hash/original zero-policy recovery. Existing preflight notes alone are not coding authorization. Root must publish exact addendum/inventory/paired metadata and obtain scoped static design rereview. Minor old test-timing text synchronized here; no new tests/native authorized. C03+ and C11 owner contracts carried to their own publication gates.
+
+## Root publication preflight2026-10-26 (supersedes draft status above)
+
+C01 source already committed531d2a87/docs28ebe9f11; no source edit is still needed forTask67. Original Task68 draft check6/no-migration assumption is superseded by reviewed durable shared marketingV543 prerequisite. NewTask68 design inventory is20modify+15create; six genuinegolden baseline resources deferredtoB, not phaseAplaceholder files. Task68A releasesonly3modify+8create, notwholeC02.
+
+| Shared pair / internal consistency | Checked producer→consumer and ruling |
+|---|---|
+| 68A→68B ownerfence | A's RC/primarydatasource/capability/lock methods feed Router/current counter only; Adoes not enablediscount. Complete seven-table triggergroups required before B may return success. |
+| 68A schema→strictguards | Exact NO_ENTITY_YET and qualifiedscope_no lineage; no globalFK/prefixexemption/parserweakening. Shared table staysoutside beauty25/41design counts. |
+| 68B selection→quote display | Oneevaluation produces seal+fulloptions; quoteenvelope storesdisplayoutsideeconomic/planhash. ExistingpublicDTO unchanged; internal writerreturnchanged atsolepreparecaller. |
+| 68B oldcodec→allconsumers | Complete quote/plan consumers enumeratedinaddendum; nullableomission+oldconstructor mustpreserveoldbytes. No partialthirdformat/newflag; originaloldintentonly. |
+| 68B order→cashsource | Originalfacts merchantzero replacedonlysealedconsumedcounter; realparent-childallocation/linepaidshares and consentmatch. Currentmarketingeligibilityneverrecheckedafterconsumedorder. M1/schema0zero andsourcehashtuples unchanged. |
+| 68A/B→68C runner | Tests authored/testcompilednow; runner/task68nativeGO/pins createdbyrootonlyB. No inherited m2a/m2bgate or accidentaloldtestexecution. |
+| golden plan vsphaseA | Pinoldsource/classesbyfilesystemcopy; genuinebytesproduction/comparisononlyB. No fakegreen/hand-adjustedhash/dummyresources. |
+| plannedtypes vsactualregistry | NewoptionalplannedSharedClassesrendersection separatesuncreatedsharedclasses fromTask59actualtypes; existingfileexistassertretained. |
+| migrationreservations | Actualmaxplatform542/inventory14/beauty9; newV543, uncreatedM3/M4shiftV544/V545, beauty10unchanged. Recheckbeforecreate; nevereditexecutedSQL. |
+| codingworkflow | Latestuser§0.4overrideshistoricalTDD/runtime/nativecommands. Staticreview/generationandtestcompileonlyA, allruntimeB, deploymentC, Paydeferred. |
+
+Ruling: actual source pre-observation progress/declaration guard or sourceView canthrow existingCONFLICT for identitycontradictions; UNKNOWN/incomplete applieswhere the existing observationcatch covers it. Both remainfailclosed/no usablelines. Carrythis precise interpretation into68B tests; donotbroadencatches or changeoldguards to satisfy anoverbroadUNKNOWNassertion.

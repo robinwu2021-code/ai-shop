@@ -3443,8 +3443,14 @@
         "sha256": "80eb14c95166709bec87787e7b19c573bd1747759c22d7280eae9a29fd8fdea7"
       },
       {
-        "path": "M3–M4：平台V543/V544与美业V10候选（尚未创建）",
-        "purpose": "来源单位执行许可/真实占用及任务fence，按对应片开工重新核号",
+        "path": "backend/shop-app/src/main/resources/db/migration/V543__counter_campaign_owner_fence.sql",
+        "status": "TASK68_DESIGN_STATIC_REVIEWED_CANDIDATE_NOT_CREATED",
+        "purpose": "共用marketing并发协调表/触发器；非美业私表、非优惠资金账，descriptor和包内能力校验按Task68补充；阶段A仅生成不执行",
+        "schemaSource": "docs/technical/design/schema/counter-campaign-owner-fence-schema.json"
+      },
+      {
+        "path": "M3–M4：平台V544/V545与美业V10候选（尚未创建）",
+        "purpose": "M2c共用marketing V543 owner fence优先预留；M3来源单位执行许可顺延V544、M4真实占用顺延V545，美业V10不变；实际开工重新核号",
         "status": "CANDIDATE_NOT_CREATED_RECHECK_NUMBER_BEFORE_USE"
       }
     ],

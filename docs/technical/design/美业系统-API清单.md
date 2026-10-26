@@ -681,9 +681,9 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 
 ## 柜台购买与人工来源增量（M2分阶段实施状态）
 
-M2A_CODE_ACCEPTED_M2B_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING_M2C_DESIGN_FIXING
+M2B_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING_M2C_DESIGN_REVIEWED_CODING_READY
 
-主TDD§0.4/§2.45/§2.46；共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认，Task66 USER/GUEST柜台购买已验收且无需C会话。Task67人工来源、账单、当前认领及远程未成单兼容编码编译与独立静态复审完成；历史分片/真实V8→V9及有效消融按原快照保留，C01新增7项测试仅编写编译、未执行，统一测试和部署待全范围编码完成后。M2c选择/规则封印与旧意图兼容设计修订中；canStart=false，支付后置。
+主TDD§0.4/§2.45–§2.47；Task67编码编译及独立静态复审完成，新增7项测试未执行。Task68采用独立复审补充方案，仅发布编码/测试源码及编译；全范围非Pay功能完成后统一测试与部署。canStart=false。
 
 | Method / route | Operation / input | Result |
 |---|---|---|
@@ -740,3 +740,17 @@ Task67当前DTO：SourceBillVO(String checkoutOperationNo, String orderNo, Strin
 Task67当前DTO：CurrencyBillVO(String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete, Long manualDeclaredMinor, String financialVerification)；旧构造保留，人工声明不映射支付核验。
 
 Task67当前DTO：ManualReceiptSummaryVO(String declarationNo, String method, long declaredMinor, String currency, Instant receivedAt, Instant recordedAt, String provenance, String financialVerification)；旧构造保留，人工声明不映射支付核验。
+
+Task68/C02补充方案：[选择、封存、候选展示、最终仲裁与收款核验](../../../.superpowers/sdd/beauty-backend/task-68-design-addendum.md)。原Task65冻结设计保留，冲突以本补充和主TDD§0.4为准；新增内部方法为待编码清单，不能视为已经实现。
+
+choices只接受真实entity/store键，冲突别名BAD_REQUEST，foreign含NONE不可用；省略AUTO、NONE显式退出、指定合格非最优FULL_CUT均可。仅空goodsNos商家FULL_CUT；完整合格候选及最终NONE映射既有promotions，无新HTTP/DTO字段；其他机制依适用性明确拒绝。
+
+CounterActivitySeal(schema=1,policy=LEGACY_FULL_CUT_V1,party,groups,requestedChoices,resolvedChoices,selectedRules,digest)保留真实version/值/范围/时效；CheckoutEconomicSnapshot仅追加属性级NON_NULL可空seal，精确保留旧18参数构造及旧hash。CounterQuoteSnapshot(schema,economic,promotions)封存在原pricing_json，展示不进经济hash/计划hash；读和原键重放不重新查询候选。
+
+最终共用marketing平台S→排序entity S fence，READ_COMMITTED同主库；相关旧SQL/新增/版本/明细/平台报名由数据库触发器X协调。新V543及descriptor缺失或漂移则本能力不可用，普通零售/M1不随之失效；不使用选中行FOR UPDATE代替空集合防护。
+
+旧schema0报价/待恢复计划只从原持久化操作与确认导出FROZEN_M2A_ZERO，保留旧零优惠/基价/hash/原库存；新促销不能重定价旧意图，当前基价/权限变化仍拒绝。golden必须来自真实旧序列化器，现仅固定旧源码/类，生成与对比后置统一B。
+
+收款准入仅schema1已CONSUMED柜台报价/确认允许merchantMinor=discountMinor=真实子单商家分摊，platform/coupon/points/gift均无且due>0；核对父子金额及逐行paidShare。已售后不重新判断当前优惠有效性；M1/schema0保持零优惠，不改来源hash/库存协议，不调用Pay或普通金融已付事件。
+
+迁移规划：共用marketing V543 owner fence；未创建M3由V543顺延V544、M4由V544顺延V545，美业V10不变。仅新增候选SQL，阶段A不执行迁移；实际开工再核号。

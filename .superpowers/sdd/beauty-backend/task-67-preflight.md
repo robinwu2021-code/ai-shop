@@ -1,6 +1,6 @@
 # Task67 preparation — M2b beauty manual source, binding, bill and current-owner read
 
-Status: R0_FAIL_FIX_ROUND1_ACTIVE. Task66 accepted BASE2c0708f752d747d88a9eda7478326a964d1984fa; immutable V8 snapshot captured and exact51-path inventory/brief/addendum released (CHECK associativity plus focused manual projection/currency regressions). Product release follows task-67-brief.md staged RED-first rules; all native runs remain separate root finite gate.
+Status: CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING. Latest code commit531d2a87b98f1d15e5a002a5100c4545ab6280b9; R1/C01 reviews passed. Earlier release/test-gate descriptions below are historical snapshots; current mainTDD§0.4 forbids new test execution during coding. Task66 accepted BASE2c0708f752d747d88a9eda7478326a964d1984fa; immutable V8 snapshot captured and exact51-path inventory/brief/addendum released (CHECK associativity plus focused manual projection/currency regressions). Product release follows task-67-brief.md staged RED-first rules; all native runs remain separate root finite gate.
 
 ## Binding inputs
 
@@ -56,3 +56,7 @@ No remote server, image pull, foreign container stop, VM resize, deployment, pus
 ## R0 current gate
 
 Independent review completed: Spec FAIL/Quality NEEDS_FIXES,2Important/2Minor. Original worker resumed fix round1 on I1/I2 and root-adjudicated mandatory renderer contract M1; exact51 inventory includes new dedicated validator test. M2 remote pre-order shape tracked deferred before integration. Previous native evidence/68pure/finalcompile remain snapshot-specific, not erased or relabeled. Fresh native only if root inspects exact covering proposal and opens a new UUID gate. See review-task-67-r0.md/task-67-fix-r1-brief.md.
+
+## Final code-phase checkpoint
+
+Task67 exact51sources committed; C01 remotepreorder compatibility and literalstyle closed by fresh independent staticreview. Newremote7testmethods authored/testcompiled, notexecuted. Current authority task-67-code-phase-root-gate.json and mainTDD§2.46; wholebusiness/runtime/deployment acceptance pending. No old native GO remains reusable.

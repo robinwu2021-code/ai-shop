@@ -211,7 +211,7 @@
       "dependencies": [
         "ENG-03"
       ],
-      "acceptance": "核验真实SKU/报价/建单/履约/开工许可/通知打印合同，缺口由权威域补",
+      "acceptance": "核验真实SKU/报价/建单/履约/开工许可/通知打印合同，缺口由权威域补；Task67人工来源/账单编码编译和静态审查完成。下一C02按主TDD§2.47实现FULL_CUT/封存候选/owner fence/旧计划/已消费收款；V543占用后M3/M4未建候选顺延V544/V545。全量非Pay编码编译→统一B测试→C部署，未开放执行许可。",
       "status": "NOT_STARTED",
       "apiIds": [
         "BAPI-033"

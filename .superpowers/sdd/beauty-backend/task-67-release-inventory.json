@@ -1,7 +1,7 @@
 {
   "task": 67,
   "base": "2c0708f752d747d88a9eda7478326a964d1984fa",
-  "status": "R0_FIX_ROUND1_RELEASED_51_PATHS_NATIVE_SEPARATE_GATE",
+  "status": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
   "create": [
     "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ManualReceiptSummaryVO.java",
     "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V9__beauty_manual_source_observation.sql"
@@ -160,5 +160,7 @@
     "ownedPaths": 51,
     "newPath": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautySchemaValidatorTest.java",
     "scope": "I1/I2 plus root-adjudicated plan-mandated M1; M2 deferred"
-  }
+  },
+  "codeCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9",
+  "closure": "R1 I1/I2/M1 and C01 remote/style independent static reviews passed; exact51 source product commit; unified test/deploy pending"
 }

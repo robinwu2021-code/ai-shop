@@ -1,6 +1,6 @@
-# Task67 compatibility follow-up — draft not released
+# Task67 compatibility follow-up — code phase closed
 
-Requires accepted Task67 Important fixes first. This is R0 Minor M2, recorded in progress ledger and final-review carry-forward. No worker/product/native authorization yet.
+Status: CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING. R0 Minor M2 and R1 style follow-up are closed in code by exact3-source change, fresh independent staticreview and current source compilation; seven newly added tests remain unexecuted. Historical scope/proof requirements follow; no native authorization.
 
 Actual owner ManualServiceAdmissionServiceImpl.sourceView returns parent-null dueMinor=null, currency=CNY, orderRevision0, declaration=view(...): AWAITING_RECEIPT with null amount/method/declarationNo and no order/suborder. This is an honest current owner shape, not a malformed successful declaration. RemoteManualServiceAdmissionPort.sourceDisplay currently rejects any nonnull view with null due.
 
