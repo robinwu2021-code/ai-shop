@@ -160,8 +160,12 @@ public class InventoryStockPort implements StockPort {
         if (items == null || items.isEmpty()) {
             return;
         }
-        String owner = acl.ownerOfSku(items.get(0).skuNo());
-        reservations.restore(owner, restoreNo, toLines(owner, items), "SYSTEM");
+        // 按业主分组，与 lock 一致：回补单可能来自跨商家的父单，拿第一行的业主会把别家的货补进这家
+        Map<String, List<SkuQty>> byOwner = new LinkedHashMap<>();
+        for (SkuQty item : items) {
+            byOwner.computeIfAbsent(acl.ownerOfSku(item.skuNo()), owner -> new ArrayList<>()).add(item);
+        }
+        byOwner.forEach((owner, group) -> reservations.restore(owner, restoreNo, toLines(owner, group), "SYSTEM"));
     }
 
     @Override
@@ -186,9 +190,9 @@ public class InventoryStockPort implements StockPort {
     /**
      * 翻译只有两处：{@code skuNo → itemId}、{@code storeNo → locationId}。
      *
-     * <p><b>业主取第一行的</b>：交易域按子单拆过了，一次调用里的行属于同一个商家。
-     * {@code SkuQty} 上没有主体号，靠外部引用表反查 —— 而 SKU 在平台内全局唯一，
-     * 所以这一条是确定的。
+     * <p><b>调用方先按业主分好组再传进来</b>：锁号是父订单号，一次调用可以跨几个商家。
+     * {@code SkuQty} 上没有主体号，靠外部引用表按 SKU 反查 —— SKU 在平台内全局唯一，
+     * 所以分组是确定的。
      *
      * <p>门店设了发货源就扣源仓的；空门店走默认库位，那是存量主体级库存的落点。
      */
