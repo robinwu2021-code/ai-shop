@@ -958,7 +958,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (isNew) {
             DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(g));
         } else {
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
         }
         publishSkuUpserted(merchantNo, g,
                 saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups()));
@@ -992,7 +992,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             bakeForPublish(g);
             g.setAuditStatus(APPROVED);
             g.setPendingOnSale(false);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
             onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
             return toVO(g);
         }
@@ -1004,7 +1004,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
             g.setPendingOnSale(false);
             log.info("[免审] goods.audit=off，保存即过审：goods={} merchant={}", g.getGoodsNo(), merchantNo);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
             onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
             return toVO(g);
         }
@@ -1168,7 +1168,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             draft.setStatus(PrdGoodsDraft.SUBMITTED);
             DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(draft));
             live.setAuditStatus(AUDITING);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(live));
+            updateGoods(live);
             return toVO(live);
         }
         return swapFromDraft(live, draft, merchantNo);
@@ -2122,13 +2122,13 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                             .filter(r -> activeStores.contains(r.getStoreNo()))
                             .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
             g.setOnSale(anyOn);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
             onSaleSideEffects(g, anyOn);
             return toVO(g);
         }
 
         g.setOnSale(onSale);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         onSaleSideEffects(g, onSale);
         return toVO(g);
     }
@@ -2159,7 +2159,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         g.setAuditStatus(REJECTED);
         g.setAuditReason("平台强制下架：" + reason.trim());
         g.setOnSale(false);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         // 店级行全下且**不打 platform_suspended**：商品要重新过审才能回来，
         // 恢复走审核链路，不走门店解除处置那条标记
         for (var row : storeGoodsRows(goodsNo)) {
@@ -2191,7 +2191,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          */
         g.setAuditReason("平台下架：" + reason.trim());
         g.setOnSale(false);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         for (var row : storeGoodsRows(goodsNo)) {
             if (Boolean.TRUE.equals(row.getOnSale())) {
                 row.setOnSale(false);
@@ -2231,7 +2231,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     .filter(r -> activeStores.contains(r.getStoreNo()))
                     .anyMatch(r -> Boolean.TRUE.equals(r.getOnSale()));
             g.setOnSale(anyOn);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
             onSaleSideEffects(g, anyOn);
         }
     }
@@ -2263,7 +2263,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             }
             if (!Boolean.TRUE.equals(g.getOnSale())) {
                 g.setOnSale(true);
-                DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+                updateGoods(g);
             }
             onSaleSideEffects(g, true);
         }
@@ -2669,7 +2669,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         long now = System.currentTimeMillis();
         g.setNewNotifiedAt(now);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         events.publish(new ai.neargo.shop.spi.product.ProductEvents.NewGoodsOnSale(
                 g.getGoodsNo(), g.getEntityNo(), g.getTitle(), g.getSubtitle(), now));
     }
@@ -2852,7 +2852,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 g.setPendingOnSale(false);
                 log.info("[免审] goods.audit=off，提交即过审上架：goods={} merchant={}",
                         g.getGoodsNo(), merchantNo);
-                DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+                updateGoods(g);
                 onSaleSideEffects(g, true);
                 return toVO(g);
             }
@@ -2863,7 +2863,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 过审后仍是 false，于是他提交完以为在卖了，其实一件也卖不出去。
              */
             g.setPendingOnSale(true);
-            DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+            updateGoods(g);
         }
         return toVO(g);
     }
@@ -2893,7 +2893,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 而重审期间商品是下架的：改一次截单等于停一天生意。
          * 改的是「今天几点前下单」，不是商品本身 —— 审核结论不该因此失效。
          */
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         return toVO(g);
     }
 
@@ -3085,7 +3085,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     submitted.setStatus(PrdGoodsDraft.EDITING);
                     DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(submitted));
                     g.setAuditStatus(APPROVED);
-                    DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+                    updateGoods(g);
                     return toVO(g);
                 }
             }
@@ -3106,7 +3106,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         }
         // 用完清零：留着的话下一次审核会把一个过期的意向再兑现一遍
         g.setPendingOnSale(false);
-        DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        updateGoods(g);
         onSaleSideEffects(g, Boolean.TRUE.equals(g.getOnSale()));
         return toVO(g);
     }
@@ -3348,6 +3348,21 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             out.add(PayModes.OFFLINE);
         }
         return out;
+    }
+
+    /**
+     * 写回商品行，<b>0 行就是冲突</b>。
+     *
+     * <p>{@code prd_goods} 带 {@code @Version}：读完之后别人先改了一笔，MyBatis-Plus 的
+     * {@code updateById} 不抛异常，只返回 0 —— 不看返回值的话接口照样回成功，
+     * 而这次以为写进去的上架、改标题、过审一个字节都没落库（SKU 那几行却已经写了）。
+     * 抛 CONFLICT 让整个事务回滚，调用方拿到的是「请刷新重试」而不是一句假的成功。
+     */
+    private void updateGoods(PrdGoods g) {
+        Integer n = DataScopeContext.executeWithoutScope(() -> goodsMapper.updateById(g));
+        if (n == null || n == 0) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 
     private PrdGoods mine(String merchantNo, String goodsNo) {
