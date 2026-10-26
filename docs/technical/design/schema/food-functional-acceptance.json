@@ -7460,7 +7460,7 @@
   },
   "complexDishSupplement": {
     "date": "2026-10-26",
-    "status": "PASS_SCOPED_NOT_RELEASED",
+    "status": "PASS_SCOPED_NOT_FULL_BUSINESS_ACCEPTANCE",
     "report": "docs/technical/餐饮复杂菜品与营业日整批验收记录.md",
     "reportPathBase": "REPOSITORY_ROOT",
     "baseCommit": "2883cd303a618a729b657a2d7beb05e10b6589d7",
@@ -7484,6 +7484,10 @@
     "uniqueBy": "class and test name; latest focused result replaces prior failure",
     "finalFreshInstances": 13,
     "finalFreshPassed": 13,
-    "finalFreshLog": "/private/tmp/food-complex-final-fresh.log"
+    "finalFreshLog": "/private/tmp/food-complex-final-fresh.log",
+    "productionCommit": "e1142696be55408433f0b92a9757ff999c600a67",
+    "productionShape": "food-embedded",
+    "reportEnabled": false,
+    "paymentReleased": false
   }
 }

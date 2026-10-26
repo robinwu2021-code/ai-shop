@@ -115633,9 +115633,9 @@
     }
   },
   "currentDelivery": {
-    "recordedDate": "2026-10-25",
+    "recordedDate": "2026-10-26",
     "production": {
-      "sourceCommit": "4440eb46a23279b1fe6687bf7c012d26e9b3e687",
+      "sourceCommit": "e1142696be55408433f0b92a9757ff999c600a67",
       "shape": "food-embedded",
       "reportEnabled": false,
       "paymentReleased": false

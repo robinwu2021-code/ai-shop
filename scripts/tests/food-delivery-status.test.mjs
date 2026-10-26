@@ -5,7 +5,7 @@ import {renderFoodDeliveryStatus, validateFoodDeliveryStatus} from '../lib/food-
 const design=JSON.parse(fs.readFileSync(new URL('../../docs/technical/design/schema/food-system-design.json',import.meta.url)));
 test('current delivery has distinct evidence without promoting historical route acceptance',()=>{
  validateFoodDeliveryStatus(design.currentDelivery);
- assert.equal(design.currentDelivery.production.sourceCommit,'4440eb46a23279b1fe6687bf7c012d26e9b3e687');
+ assert.equal(design.currentDelivery.production.sourceCommit,'e1142696be55408433f0b92a9757ff999c600a67');
  assert.equal(design.currentDelivery.production.shape,'food-embedded');
  assert.equal(design.currentDelivery.businessAcceptance,'PENDING_TERMINAL_AND_REAL_OWNER_E2E');
  assert.equal(design.currentDelivery.production.reportEnabled,false);
@@ -22,7 +22,7 @@ test('generated original books lead with current release evidence and label hist
  for(const name of ['餐饮系统-API设计.md','餐饮系统-数据库设计.md','餐饮系统-领域对象与设计总览.md']) {
   const text=fs.readFileSync(new URL('../../docs/technical/design/'+name,import.meta.url),'utf8');
   assert.match(text.split('\n').slice(0,8).join('\n'),/状态[：:]/);
-  assert.match(text.slice(0,2200),/当前交付证据/);assert.match(text.slice(0,2200),/4440eb46a/);
+  assert.match(text.slice(0,2200),/当前交付证据/);assert.match(text.slice(0,2200),/e1142696b/);
  }
 });
 test('committed domain OpenAPI references resolve to actual local definitions',()=>{
