@@ -65,8 +65,17 @@ export function createPrintAcceptanceProxy({backend,enabled=false,onRecord=()=>{
      try{
       const bytes=[];for await(const chunk of response)bytes.push(chunk);const value=Buffer.concat(bytes);
       let data;try{data=JSON.parse(value);}catch{}
-      await onRecord({...record,httpStatus:response.statusCode,code:data?.code,operationNo:data?.data?.operationNo,targetNo:data?.data?.targetNo});
-      if(active?.mode==='DROP_RESPONSE')res.destroy();else{res.writeHead(response.statusCode,response.headers);res.end(value);}
+      const completed={...record,httpStatus:response.statusCode,code:data?.code,operationNo:data?.data?.operationNo,targetNo:data?.data?.targetNo};
+      if(active?.mode==='DROP_RESPONSE'){await onRecord(completed);res.destroy();}
+      else{
+       // Backend completion alone cannot prove the client received a response.
+       const delivered=await new Promise(done=>{
+        res.once('finish',()=>done(true));res.once('close',()=>done(false));
+        if(res.destroyed){done(false);return;}
+        res.writeHead(response.statusCode,response.headers);res.end(value);
+       });
+       await onRecord({...completed,outcome:delivered?'DELIVERED':'CLIENT_DISCONNECTED'});
+      }
       resolve();
      }catch(error){reject(error);}
     });

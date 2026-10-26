@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createServer} from 'node:http';
+import {createServer,request} from 'node:http';
 import {assertPrintFailure, createPrintAcceptanceProxy, verifyPrintNetworkRecords} from '../lib/print-acceptance.mjs';
 
 test('network evidence cannot pass with a new retry key, new operation or missing case',()=>{
@@ -25,6 +25,20 @@ test('negative acceptance rejects server errors, missing codes and wrong conflic
 });
 
 const listen=server=>new Promise(resolve=>server.listen(0,'127.0.0.1',()=>resolve('http://127.0.0.1:'+server.address().port)));
+test('a client disconnect before backend completion cannot be recorded as delivered',async t=>{
+ let reached,release,recorded;
+ const arrival=new Promise(resolve=>{reached=resolve;}),permit=new Promise(resolve=>{release=resolve;}),evidence=new Promise(resolve=>{recorded=resolve;});
+ const backend=createServer(async(req,res)=>{for await(const _ of req){} reached();await permit;res.end(JSON.stringify({code:0,data:{operationNo:'PO-DISCONNECT',targetNo:'SM-DISCONNECT'}}));});
+ const backendUrl=await listen(backend);t.after(()=>{backend.closeAllConnections();backend.close();});
+ const proxy=createPrintAcceptanceProxy({backend:new URL(backendUrl),enabled:true,onRecord:recorded});
+ const server=createServer((req,res)=>{proxy.forward(req,res).catch(()=>res.destroy());});
+ const url=await listen(server);t.after(()=>{server.closeAllConnections();server.close();});
+ const client=request(url+'/biz/print/simulations',{method:'POST',headers:{'Idempotency-Key':'LOCAL-DISCONNECT'}});client.on('error',()=>{});client.end('{}');
+ await arrival;
+ const closed=new Promise(resolve=>client.once('close',resolve));client.destroy();await closed;release();
+ const record=await evidence;assert.equal(record.outcome,'CLIENT_DISCONNECTED');assert.equal(record.forwarded,true);assert.equal(record.operationNo,'PO-DISCONNECT');
+});
+
 test('explicit proxy distinguishes lost request and committed lost response, and redacts secrets',async t=>{
  const receipts=new Map();let calls=0;const records=[];
  const backend=createServer(async(req,res)=>{for await(const _ of req){} calls++;const key=req.headers['idempotency-key'];if(!receipts.has(key))receipts.set(key,{code:0,data:{operationNo:'PO-'+receipts.size,targetNo:'SM-'+receipts.size}});res.setHeader('Content-Type','application/json');res.end(JSON.stringify(receipts.get(key)));});
