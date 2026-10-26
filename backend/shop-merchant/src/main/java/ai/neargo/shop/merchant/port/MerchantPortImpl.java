@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
@@ -58,6 +59,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private static final int MAX_ENTITIES_PER_ACCOUNT = 5;
 
     private final MchEntityMapper merchantMapper;
+    private final PayMerchantMirror payMirror;
     private final ai.neargo.shop.merchant.service.MerchantGovernService governService;
     /** 转存入驻资质时用来查重 —— 写侧仍走 governService，这里只读 */
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
@@ -120,7 +122,9 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             org.springframework.beans.factory.ObjectProvider<
                                     ai.neargo.shop.merchant.service.AdmissionService> admissionServiceProvider,
                             org.springframework.beans.factory.ObjectProvider<
-                                    ai.neargo.shop.merchant.service.DebtService> debtServiceProvider) {
+                                    ai.neargo.shop.merchant.service.DebtService> debtServiceProvider,
+                                    PayMerchantMirror payMirror) {
+        this.payMirror = payMirror;
         this.admissionServiceProvider = admissionServiceProvider;
         this.debtServiceProvider = debtServiceProvider;
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
@@ -1535,6 +1539,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         store.setStatus(ai.neargo.shop.merchant.entity.MchStore.ACTIVE);
         store.setFeatured("[]");
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(store));
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
     }
 
     /**
@@ -1602,6 +1607,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 ? settleAccountType : masterDataPort.settleAccountType(canonical));
         p.setAppliedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> merchantPaymentMapper.insert(p));
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
     }
 
     /**

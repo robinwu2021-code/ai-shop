@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -34,6 +35,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
     private static final Pattern PHONE = Pattern.compile(Phones.CN_MOBILE);
 
     private final UserProvisionPort userProvision;
+    private final PayMerchantMirror payMirror;
     private final MerchantAdminPort merchantAdminPort;
     private final MerchantGovernService governService;
     private final MchEntityMapper entityMapper;
@@ -58,7 +60,9 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
                                    MasterDataPort masterDataPort,
                                    MerchantQueryPort merchantQueryPort,
                                    StoreCategoryService storeCategoryService,
-                                   ai.neargo.shop.merchant.service.MerchantPlanService planService) {
+                                   ai.neargo.shop.merchant.service.MerchantPlanService planService,
+                                   PayMerchantMirror payMirror) {
+        this.payMirror = payMirror;
         this.userProvision = userProvision;
         this.merchantAdminPort = merchantAdminPort;
         this.governService = governService;
@@ -245,6 +249,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
         st.setFeatured("[]");
         st.setCreatedBy(operatorNo);
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(st));
+        payMirror.changed(cmd.merchantNo()); // 收款商户双写（I4 S4）：提交后同步新表
 
         /*
          * 经营模式显式写一遍。建表默认值（V23）正好就是 SELF_OPERATED，

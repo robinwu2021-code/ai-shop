@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -49,6 +50,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             FROZEN, Set.of(ACTIVE));
 
     private final MchEntityMapper merchantMapper;
+    private final PayMerchantMirror payMirror;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper qualificationMapper;
     private final MchEntityCommunityMapper communityMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper;
@@ -115,7 +117,9 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             ai.neargo.shop.merchant.mapper.MerchantMappers.SysAuthCodeMapper authCodeMapper,
             ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelPickupMapper channelPickupMapper,
             org.springframework.beans.factory.ObjectProvider<
-                    ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort) {
+                    ai.neargo.shop.spi.marketing.StoreVisitQueryPort> visitQueryPort,
+                    PayMerchantMirror payMirror) {
+        this.payMirror = payMirror;
         this.channelPickupMapper = channelPickupMapper;
         this.visitQueryPort = visitQueryPort;
         this.authCodeMapper = authCodeMapper;
@@ -791,6 +795,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         m.setFundsMode(mode);
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         DataScopeContext.executeWithoutScope(() -> merchantMapper.updateById(m));
         return toVO(m);
     }

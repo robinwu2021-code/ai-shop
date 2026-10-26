@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     private static final Logger log = LoggerFactory.getLogger(MerchantPaymentServiceImpl.class);
 
     private final MchPaymentMapper paymentMapper;
+    private final PayMerchantMirror payMirror;
     private final MchEntityMapper merchantMapper;
     private final MasterDataPort masterDataPort;
     /** 通道主数据。2026-09-01 从 MasterDataPort 拆出来 —— 通道属性归 pay（见 ADR-023 那条原则） */
@@ -61,7 +63,9 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
                                       tools.jackson.databind.ObjectMapper json,
                                       ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper,
                                       List<PayApplymentGateway> gatewayList,
-                                      @Value("${shop.pay.stub-channels:WECHAT,ALIPAY}") List<String> stubChannels) {
+                                      @Value("${shop.pay.stub-channels:WECHAT,ALIPAY}") List<String> stubChannels,
+                                      PayMerchantMirror payMirror) {
+        this.payMirror = payMirror;
         this.paymentMapper = paymentMapper;
         this.merchantMapper = merchantMapper;
         this.masterDataPort = masterDataPort;
@@ -261,6 +265,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
         p.setSettleAccountType(base.getSettleAccountType());
         p.setApplyStatus(MchPaymentMerchant.APPLYING);
         p.setAppliedAt(System.currentTimeMillis());
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
         return toVO(p);
     }
@@ -269,6 +274,7 @@ public class MerchantPaymentServiceImpl implements MerchantPaymentService {
     @Transactional
     public PaymentApplymentVO refresh(String merchantNo, String payChannel, String storeNo) {
         MchPaymentMerchant row = require(merchantNo, payChannel, storeNo);
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         if (row.getChannelApplyNo() == null || row.getChannelApplyNo().isBlank()) {
             // 还没提交过，没什么可查的 —— 不要去问通道一个不存在的单号
             return toVO(row);

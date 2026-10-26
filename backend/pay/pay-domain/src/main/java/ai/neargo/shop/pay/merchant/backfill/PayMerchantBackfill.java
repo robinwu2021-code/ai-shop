@@ -19,6 +19,12 @@ public interface PayMerchantBackfill {
     Result merchant(LegacyMerchant row);
 
     /**
+     * 双写（S4）：同 {@link #merchant}，但<b>旧表说了算</b> —— 已有的进件单跟上状态与申请单号（换了申请单号 = 重提，
+     * 另起一版），已有的收款商户跟上状态、资金路径与资料；状态或资金路径变了各留一条状态日志。
+     */
+    Result mirror(LegacyMerchant row);
+
+    /**
      * 一行旧收款商户，连同回填任务替它解析好的事实。
      *
      * @param storeId           开户门店 id：{@code store_no} 非空 → 该店；空串 → 主体默认门店

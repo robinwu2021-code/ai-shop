@@ -63,12 +63,25 @@
   - **B3** 门店绑定：来源 = 门店上指定的号 + 门店自己那行（ACTIVE）的号；**两者都没有才展开主体级号**；两来源不同 → **Q3**、不绑；新模型里已有不同的绑定 → `BOUND`、不改。经 `PayMerchantBindingService#bind`，同主体 / 同市场 / ACTIVE 的校验照走。
   - 报告 `Report(merchants, bindings, conflicts)`，冲突一行一条、以类别打头（Q2 / Q3 / METHOD / UNKNOWN / BOUND / STORE / NO_SUB_MCHID / CURRENCY）。
 
+### S4 · 双写
+- 开关 `shop.pay.merchant.dual-write`（`application.yml`，环境变量 `SHOP_PAY_MERCHANT_DUAL_WRITE`，默认关）。
+- **不逐个写点翻译，按主体重放回填规则**：`PayMerchantBackfillRunner#sync(entityNo)` 与回填同一套解析，只是**旧表说了算** ——
+  支付域 `PayMerchantBackfill#mirror` 让已有进件单跟上状态与申请单号（换了申请单号 = 重提，另起一版，驳回原因留在上一版；在途键随状态进出），
+  已有收款商户跟上状态、资金路径与资料，**状态变了、资金路径变了各写一条 `pay_merchant_status_log`**；门店绑定与旧表不一致就改绑（`bind` 同事务释放旧的），
+  旧表已解析不出号就解绑；Q3 照样只报不取舍、不动原绑定。
+- B3 的顺序改成与旧解析（`MerchantPortImpl#accountOf`）逐档一致：门店指定的号只有「主体级或本店专属、ACTIVE、同渠道」才算，否则往下落（旧解析也是落）；不认识的号报 `UNKNOWN` 但不再挡住展开。
+- 挂钩：`shop-base` 新 `spi.pay.PayMerchantMirrorPort`（实现 `shop-app` `paybridge.port.PayMerchantMirrorPortImpl`，看开关后调 `sync`）；
+  `shop-merchant` `service.PayMerchantMirror` / impl —— 有事务时登记到**提交之后**、同一事务同一主体只同步一次，没事务立即同步；**失败只记日志 `[pay-merchant-dual-write]`、不往外抛**。
+- 写点（9 处）：`MerchantPaymentServiceImpl#refresh`（含提交、轮询，都经它）· `#openForStore` · `MerchantPortImpl#ensurePayment` · `#ensureDefaultStore` ·
+  `StoreAdminServiceImpl#create` · `#setDefault` · `#setPayment` · `MerchantStoreServiceImpl` 门店保存 · `SelfOperatedServiceImpl` 建店 · `MerchantGovernServiceImpl#setFundsMode`。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
 | AC2 / AC3 | `PayMerchantRoutingFlowTest`（5 条：`onlyStoreBindingResolves` 同主体没绑的店解析不到；`suspendedMerchantNotCollectableButRefundable`；`collectableRoutesByPriority`；`bindingRules` 别的主体 / 别的市场 / 非 ACTIVE / 渠道不符；`rebindKeepsOneActive`） | ✅ | ① 不看状态 + 不查同主体 → 两条红 ② 没绑定兜底取任一 ACTIVE（R01 的样子）+ 改绑不释放 → 两条红 ✅ |
 | AC4 | `PayMerchantBackfillFlowTest`（3 条：`merchantsMigrated` 主体级号落默认门店、原号、资金路径取主体、默认额度落产品；`bindingsExpandedAndConflictsReported` 默认店 / 门店自己的号 / 主体级号展开 / Q3 不绑，Q2、METHOD 进报告；`idempotent` 再跑五张表行数不变） | ✅ 3/3 | ① 不展开 + Q3 自动取第一个 → `bindings…` 红 ② 进件与商户不按号幂等 → `idempotent` 红 ③ 映射不到时默默跳过 → `bindings…` 红 ✅ |
+| AC5 | `PayMerchantDualWriteFlowTest`（5 条，走真旧入口：`onboardingResultMirrored` 审核中镜像成在途进件单、回查开户后 APPROVED + 收款商户 ACTIVE + 两店绑定；`storeBindingMirrored` 门店指定号 → 改绑、仍一条 ACTIVE；`fundsModeAndStatusMirrored` 冻结 → SUSPENDED、切资金路径，各一条状态日志；`switchOffWritesNothing`；`mirrorFailureDoesNotBlockLegacy` 同步抛错时开户照样落旧表） | ✅ 5/5 | ① 挂钩不吞失败 → `mirrorFailure…` 红 ② 双写当回填用（不跟、不改绑）→ 3 条红 ③ 不看开关 → `switchOff…` 红 ④ 切资金路径不报 → 2 条红 ✅ |
 | AC1 | `MapperSmokeTest`（新 7 个 mapper）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V10 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -82,3 +95,6 @@
 3. **回填报告不数开通产品**：设计稿的报告有产品数，实现只回 `merchants / bindings / conflicts` —— 产品是商户的附属，五张表的行数由比对（S5）与幂等用例看。
 4. **微信直连（`direct`）旧行按 MERCHANT_OWN 迁、渠道商户号取旧子商户号**：旧模型直连时实际收款用平台商户号、子商户号只作标识；这样迁可保住（渠道, 渠道商户号, 子商户号）唯一，但「收款到底用谁的号」要在 S5 比对与 S6 读切时以旧解析为准核一遍。
 5. **市场 → 币种在回填里写死**（CN / AE / SA）：`pay_channel_product_market` 是按产品配的，没有「市场的本币」一处真源；其他市场进 `CURRENCY` 冲突、不迁。
+6. **双写是「按主体重放」而不是逐写点翻译**：一个主体只有几行旧数据，重放比把 9 个写点各自翻成新模型的写法简单，也不会漏写点；代价是每次写都重读这个主体的旧三表。没经过这 9 个服务的写（手工 SQL、数据修复）不会被同步，由比对（S5）报出来。
+7. **新增 `spi.pay.PayMerchantMirrorPort`**（`shop-merchant` → 支付方向，不计入支付反向依赖预算）。实现留在 `shop-app`：它要读旧表，拆 pay-svc 时改成调支付的内部接口。
+8. **B3 顺序向旧解析看齐**（S3 时门店指定号只要是本主体 ACTIVE 号就算）：别家门店的专属号、非 ACTIVE 号旧解析会往下落，S3 那版会照绑，S5 比对必然报差异。`PayMerchantBackfillFlowTest` 3 条照样绿。

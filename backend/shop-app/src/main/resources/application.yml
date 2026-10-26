@@ -600,6 +600,11 @@ shop:
     # stub 开着时替哪些渠道做进件（逗号分隔）。没点名的渠道照样「未接通」，进件直接失败 ——
     # 此前查不到网关就回落 stub，任何渠道都能「开户成功」（TDD-支付服务-I1存量缺陷 F05）。
     stub-channels: ${SHOP_PAY_STUB_CHANNELS:WECHAT,ALIPAY}
+    merchant:
+      # 收款商户双写（TDD-支付服务-I4进件与收款商户 S4）：旧表 mch_payment_merchant / mch_store / mch_entity
+      # 提交后把进件单、收款商户、门店绑定跟到支付域新表。先开它、再跑 pay-merchant-backfill，比对为 0 后才读切。
+      # 新表写失败只记日志 [pay-merchant-dual-write]，不挡旧路径
+      dual-write: ${SHOP_PAY_MERCHANT_DUAL_WRITE:false}
     wechat:
       # 显式开关：配了凭据不等于要启用（灰度、演练都可能只配不启）。
       # **不用「凭据配了没」判断**：${ENV:} 未配置时是空串，而 @ConditionalOnProperty
