@@ -1087,8 +1087,20 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
         } else {
             q = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectOne(Wrappers.<MchQualification>lambdaQuery()
                     .eq(MchQualification::getQualNo, cmd.qualNo()).last("limit 1")));
-            if (q == null) {
+            /*
+             * 按 qualNo 取出来的行**必须属于这次的主体**：查询本身绕开了数据域，
+             * 不比对 entity_no 的话，拿到别家 qualNo 的人就能改写别家的证、还顺手把它置成 VALID。
+             * 不属于 → 与「不存在」同一个回答，不泄露这个号在别家存在。
+             */
+            if (q == null || !Objects.equals(q.getEntityNo(), merchantNo)) {
                 throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            /*
+             * 平台撤销（REVOKED）是平台的结论，不是有效期问题：原地重存既不能把它翻回 VALID，
+             * 也不能改写那张被撤销的证（撤销要留痕，见 revokeQualification）。要重新登记就新建一条。
+             */
+            if (MchQualification.REVOKED.equals(q.getStatus())) {
+                throw BizException.of(ErrorCode.CONFLICT);
             }
         }
         q.setQualType(cmd.qualType());
