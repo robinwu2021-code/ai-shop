@@ -543,6 +543,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "b-app:NotifyChannelCode", dom: "message", shape: "CLASS", verdict: "OK",
     note: "商家能自己开关的四条通道（TDD-来单四渠道与商家通知设置）。与后端 MchNotifyPref.SWITCHABLE 逐字一致。**没有 INAPP**：站内信是事实记录、恒发不可关，想关它的请求在服务层被拒。端上只用它做类型收窄，渲染顺序取后端回的 switches 键序 —— 另列一份名单的后果是「后端加了第五条，页面上少一个开关」且零报错。",
     words: ["WXSUB", "WEBHOOK"] },
+  { decl: "ops-web:PayOrderStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["CREATED", "AWAITING_PAYMENT", "SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"],
+    note: "支付单状态（pay_order.status，支付运营端 /pay-ops/v1，TDD-支付服务-I5接入层 S9）。与后端 PayOrderStatus 逐字一致。" },
   { decl: "b-app:PayStatementKind", dom: "finance", shape: "CLASS", verdict: "OK", words: ["PAYMENT", "REFUND"],
     note: "商家端收款日流水的行类型（/biz/pay/statement，TDD-支付服务-I5接入层 S8）。与后端 PayStatementService.Item.kind 逐字一致。" },
   { decl: "b-app:PayQrKind", dom: "finance", shape: "CLASS", verdict: "OK", words: ["STORE", "TABLE"],
