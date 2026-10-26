@@ -1,6 +1,6 @@
 # TDD-支付服务-W2渠道层补完
 
-状态：已实现（全量回归见 §5 末）
+状态：已实现
 档位：1 · 依据：[完成度复核与剩余开发计划](./支付服务-完成度复核与剩余开发计划.md) §3.2 W2（D-11、D-15、B03–B08 剩余、R30、R31、G4、G5）· [I2 TDD](./TDD-支付服务-I2渠道统一封装.md) 偏差 0–9 · [渠道接入统一封装设计](./支付服务-渠道接入统一封装设计.md) §1、§2.3、§3、§5.2、§6、§11 · [安全规范](./支付服务-安全规范.md) §2.4 G4 / G5
 创建：2026-10-26 · 最后更新：2026-10-26 · 分支 `claude/amazing-curie-72e4fb`（自 `codex/pay-i5-access` 切出）
 
@@ -150,7 +150,10 @@ TEST → `AE,CN,HK,SA,SG,TW`；WECHAT / ALIPAY → `CN` 不变；NEWEBPAY / LINE
 
 **全量回归**（`mvn -o -pl shop-app -am test`）：基线（`796e1e3b0`，本包之前）全绿、0 失败（shop-app 段 36 分钟）；本包的结果在下一行回填。
 
-- 回归记录：（待回填）
+- 回归记录：
+  - `096983f3f`（S5 之后）`-pl shop-app -am` 全量：1 条新增红 `RefundCapacityFlowTest.historicalFailedCashQueriesOriginalEvenWithoutSendSnapshot` —— 场景给测试银行的五态 `queryRefundOutcome` 打桩，而进程内渠道问的是三态。补 `InProcessChannelTest#refundOutcomeIsRelayedVerbatim`（先红 `:140`），桥对进程内渠道原样转五态（`a4e0f045d`），退款 / 对账场景族 161 条复跑绿。
+  - `711c4c09a` 的 pre-push 全量（4352 跑）：2 条新增红 `MarketChannelAndWithdrawTest.restoreChannelSeeds` / `unrestrictedChannelVisibleEverywhere` —— 靠「传空市场 = 不限」开 TEST，V12 后空市场被拒；改为市场传 null（`f35049ff7`，偏差 11）。
+  - **最终**：`f35049ff7` 的 pre-push（干净 HEAD 副本，`mvn test` 全量 32 个模块）—— **6572 跑 / 0 红（基线 0 条）**，`EXIT 0`；同次 UI 清单、原型、契约、SQL 方言、Controller 内聚闸门全过（本机无 node_modules，vue-tsc 与端上单测按 hook 设计跳过，本包不改前端）。
 
 ## §6 对账二 · 设计 → 实现
 
