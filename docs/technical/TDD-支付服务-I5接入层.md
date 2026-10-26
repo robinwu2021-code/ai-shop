@@ -1,6 +1,6 @@
 # TDD-支付服务-I5接入层
 
-状态：实现中（S1–S4 已实现；S5 起未动）
+状态：实现中（S1–S4、S6a webhook 已实现；S6b 内部事件、S5、S7 起未动）
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §3.3–§3.6、§5 I5 · [完整设计方案](./TDD-支付服务-完整设计方案.md) §9 · [台湾阿联酋通道与开放 API](./TDD-支付服务-台湾阿联酋通道与开放API.md) §2.8 · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §3 · [ADR-044](./ADR/ADR-044-支付接入层模块pay-portal.md) · 配套：[接口清单](./支付服务-接口清单.md) · [安全规范](./支付服务-安全规范.md)
 创建：2026-10-26 · 最后更新：2026-10-26
 
@@ -151,6 +151,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | F15 | `#payMethodsOfStore` | ✅ | — |
 | F16（部分，开放 API 一侧） | `#refundRules`（退 1000 成功；超日限额 422；无 `pay:refund` 的 app 403/404） | ✅ | — |
 | 收口 | `#partnerPaymentNeverReachesTrade`：第三方单付成功后，回调 / 对账把支付单号交给交易补单 → 跳过不抛 | ✅（修前红：`NOT_FOUND`，通道会无限重推） | 修前即红 ✅ |
+| F18（S6a webhook） | `#webhookOnSuccessIsSignedAndDelivered`（成功同事务落 `pay_biz_notify`；真起本机 HTTP 服务收；接入方用自己的密钥按同一规则验签通过；推送体 `eventId` = `event_key`）· `#webhookRetriesGivesUpAndCanBeRedelivered`（5xx 退避、未到期不重投、超 24h `GIVEN_UP`、手动重推记 `MANUAL` 后送达）· `#closeIsNotifiedAndNoUrlNoRow` | ✅ | ⑤ 去掉成功处的答复 → 2 条红 ⑥ 待签串不含体摘要 → 验签那一断言红 ⑦ 永不放弃 → `GIVEN_UP` 断言红 ✅ |
 | 守卫 | `PortalRouteRulesTest`（类级前缀）· `PayReverseDependencyBudgetTest` · `TableHasProducerTest` · `ArchitectureTest` · `CallbackTemplateTest` · `OpsEndpointPermTest` 等 88 条 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -160,6 +161,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | S1 | `V11__pay_open_access.sql` · `PayAppGrant` / `PayApiNonce` / `PayQrCode` · `OpenAppMappers` / `CheckoutMappers` · `PayOpenAccessSchemaTest` |
 | S2 | `pay-portal` `api.auth.{PortalAuthFilter, PortalAuthFilters, PortalActions, PortalMasking}` · `api.common.{PortalResponse, PortalRequests, CachedBodyRequest, PortalExceptionHandler, PortalWebConfig}` · `pay-domain` `access.{entity.PayApiRequestLog, service.ApiRequestRecorder(+Impl)}` · `mapper.access.AccessMappers` · `shop-base-auth` `ApiResponseWrapper`（跳过 `/open/pay/`、`/checkout/`）· `shop-app` `SecurityConfig#openPayChain` |
 | S3 | `openapp.{SignatureCanonicalizer, NonceStore, DbNonceStore, AppKeyResolver, ConfigAppKeyResolver}` · `openapp.service.AppAuthService(+Impl)` · `api.auth.OpenSignatureAuthenticator` · `ErrorCode.PAY_APP_REFUND_LIMIT` + 三语 · `SignatureCanonicalizerTest` |
+| S6a | `pay-domain` `notify.{WebhookSender, HttpWebhookSender, WebhookTargets}` · `notify.entity.{PayBizNotify, PayBizNotifyAttempt}` · `mapper.notify.NotifyMappers`（`claim` 租约）· `notify.service.BizNotifyService(+Impl)` · `job.BizNotifyDeliveryJob` · 挂点 `PaymentOutcomeServiceImpl#apply` / `PaymentServiceImpl#close` / `RefundOutcomeServiceImpl#succeeded·failed` · `SignatureCanonicalizer#parseQuery`（自鉴权器移入，入站出站共用；`+` 按字面）· `application-testcfg.yml` `shop.pay.notify.webhook.allow-insecure-targets` |
 | S4 | `acquiring.route.RouteSelectionPolicy` · `PaymentService#start`（+ `requireOwner`、`attachAttempt` 先按支付单号挂并复制冻结列）· `RefundService#query` + 第三方只退自己的单 · `PayMerchantBindingService#storeByNo` · `api.open.{OpenPaymentController, OpenRefundController, OpenStoreController, OpenViews}` · `shop-base` `spi.pay.PayOrderNumbers` · `OrderServiceImpl#markPaid` 跳过支付单号 · `OpenApiFlowTest` · `application-testcfg.yml` |
 
 ### 偏差说明
@@ -168,6 +170,9 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 2. **F08**：开放 API 链不开 CORS（服务端对服务端），收银台的同源规则随 S7。
 3. **回调 / 对账的支付单号**：S6 改为支付事件通知业务方之前，交易侧 `markPaid` 用 `PayOrderNumbers` 跳过；`OrderPaidReconciler` 会把这类单当作「订单未付」每轮跳过一次（只打 info 日志），随 S6 退场。
 4. **反向依赖预算** `SettlePort` 59 → 62（`PaymentServiceImpl#start` 构造发起流程的嵌套记录），已在 `known-pay-reverse-deps.txt` 写明；门店解析经 `PayMerchantBindingService#storeByNo` 转一手，`MerchantQueryPort` 不增。
+6. **S6 拆成 S6a / S6b**：S6a 只做第三方 webhook（`pay_biz_notify` 就是支付侧的出站队列，不另建表）；S6b「内部消费者改走事件、`markPaid` 只剩事件消费者」会把交易侧付款从同步改为异步，波及 34 个回调相关测试类，单独一片做。
+7. **审计时间列的时区**：平台 `AuditMetaObjectHandler` 按 JVM 时区填 `created_at`，而支付表列注释写 UTC —— 答复的放弃时限依赖它，`pay_biz_notify` / `_attempt` 改为显式写 UTC（红测试在 +04:00 的机器上暴露：晚放弃 4 小时）。其它支付表的同一问题记作 W3 待查。
+8. **webhook 只签 HMAC**；RSA 接入方的平台签名私钥随 W5 密钥模块。
 5. **请求记录里没有回填 `pay_order_id` / `store_id`**：过滤器只看得到路径与结果码；关联靠 `trace_id` 与支付单号，回填留到 S6 事件里做。
 
 ## §7 待确认

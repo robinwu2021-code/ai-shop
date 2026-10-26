@@ -12,6 +12,7 @@ import ai.neargo.shop.pay.funds.FundsPaths;
 import ai.neargo.shop.pay.ledger.service.LedgerService;
 import ai.neargo.shop.pay.mapper.acquiring.AcquiringMappers.PayOrderMapper;
 import ai.neargo.shop.pay.mapper.acquiring.AcquiringMappers.PayRefundMapper;
+import ai.neargo.shop.pay.notify.service.BizNotifyService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -27,9 +28,12 @@ public class RefundOutcomeServiceImpl implements RefundOutcomeService {
     private final FundsPaths funds;
     private final LedgerService ledger;
     private final boolean ledgerEnabled;
+    private final BizNotifyService notifier;
 
     public RefundOutcomeServiceImpl(PayRefundMapper refunds, PayOrderMapper orders, FundsPaths funds,
-                                    LedgerService ledger, @Value("${shop.pay.ledger.enabled:true}") boolean ledgerEnabled) {
+                                    LedgerService ledger, @Value("${shop.pay.ledger.enabled:true}") boolean ledgerEnabled,
+                                    BizNotifyService notifier) {
+        this.notifier = notifier;
         this.refunds = refunds;
         this.orders = orders;
         this.funds = funds;
@@ -64,6 +68,8 @@ public class RefundOutcomeServiceImpl implements RefundOutcomeService {
             funds.of(o.getFundsPath()).ifPresent(strategy -> ledger.post(
                     strategy.onRefundSucceeded(o, pr.getId(), pr.getAmountMinor(), o.getPayChannel())));
         }
+        notifier.refundSucceeded(DataScopeContext.executeWithoutScope(() -> orders.selectById(o.getId())),
+                DataScopeContext.executeWithoutScope(() -> refunds.selectById(pr.getId())));
     }
 
     @Override
@@ -82,6 +88,8 @@ public class RefundOutcomeServiceImpl implements RefundOutcomeService {
         done.setStatus(PayRefundStatus.FAILED.name());
         done.setFailedReason(reason);
         DataScopeContext.executeWithoutScope(() -> refunds.updateById(done));
+        notifier.refundFailed(DataScopeContext.executeWithoutScope(() -> orders.selectById(o.getId())),
+                DataScopeContext.executeWithoutScope(() -> refunds.selectById(pr.getId())));
     }
 
     /** 挂着、且还没到终态的退款单；存量行与已结的返回空 */

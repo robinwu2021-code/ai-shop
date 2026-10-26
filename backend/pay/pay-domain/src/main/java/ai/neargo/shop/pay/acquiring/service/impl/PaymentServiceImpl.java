@@ -9,6 +9,7 @@ import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.access.policy.CallerPolicy;
 import ai.neargo.shop.pay.acquiring.dto.CreatePaymentCmd;
 import ai.neargo.shop.pay.acquiring.route.RouteSelectionPolicy;
+import ai.neargo.shop.pay.notify.service.BizNotifyService;
 import ai.neargo.shop.pay.channel.api.CallerType;
 import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests;
 import ai.neargo.shop.pay.service.OrdinaryPaymentInitiationService;
@@ -53,12 +54,15 @@ public class PaymentServiceImpl implements PaymentService {
     private final PayQueryPort channels;
     private final PaymentLedgerService ledger;
     private final RouteSelectionPolicy routes;
+    private final BizNotifyService notifier;
     private final OrdinaryPaymentInitiationService initiation;
 
     public PaymentServiceImpl(CallerPolicy policy, PayOrderMapper orders, PaymentMapper attempts,
                               @Qualifier("payTxManager") PlatformTransactionManager payTxManager,
                               @Lazy PayQueryPort channels, @Lazy PaymentLedgerService ledger,
-                              RouteSelectionPolicy routes, @Lazy OrdinaryPaymentInitiationService initiation) {
+                              RouteSelectionPolicy routes, @Lazy OrdinaryPaymentInitiationService initiation,
+                              BizNotifyService notifier) {
+        this.notifier = notifier;
         this.routes = routes;
         this.initiation = initiation;
         this.policy = policy;
@@ -233,6 +237,7 @@ public class PaymentServiceImpl implements PaymentService {
             patch.setStatus(PayOrderStateMachine.next(from, PayOrderEvent.CLOSED).name());
             patch.setClosedAt(LocalDateTime.now(ZoneOffset.UTC));
             DataScopeContext.executeWithoutScope(() -> orders.updateById(patch));
+            notifier.paymentClosed(DataScopeContext.executeWithoutScope(() -> orders.selectById(locked.getId())));
         });
         return find(payOrderNo);
     }

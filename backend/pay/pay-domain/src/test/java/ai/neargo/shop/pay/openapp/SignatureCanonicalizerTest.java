@@ -49,4 +49,14 @@ class SignatureCanonicalizerTest {
         assertThat(SignatureCanonicalizer.sha256Hex(new byte[0]))
                 .isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     }
+
+    @Test
+    @DisplayName("★★ 解析查询串：同名多值保序收集；%20 是空格，+ 是字面加号；只有名没有值记空串")
+    void parseQuery() {
+        Map<String, List<String>> q = SignatureCanonicalizer.parseQuery("a=x%20y&a=1&b=1+1&flag");
+        assertThat(q.get("a")).containsExactly("x y", "1");
+        assertThat(q.get("b")).containsExactly("1+1");
+        assertThat(q.get("flag")).containsExactly("");
+        assertThat(SignatureCanonicalizer.canonicalQuery(q)).isEqualTo("a=1&a=x%20y&b=1%2B1&flag=");
+    }
 }

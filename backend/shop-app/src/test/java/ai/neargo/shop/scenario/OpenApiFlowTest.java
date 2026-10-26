@@ -6,9 +6,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
+import ai.neargo.shop.pay.notify.service.BizNotifyService;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.trade.OrderRepairPort;
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -57,6 +65,33 @@ class OpenApiFlowTest {
     @Autowired private PayMerchantBindingService bindings;
     @Autowired private SettlePort settle;
     @Autowired private OrderRepairPort orderRepair;
+    @Autowired private BizNotifyService notifier;
+
+    /** 接入方的 webhook 接收端：真起一个 HTTP 服务，不打桩发送器 —— 签名、头、超时都走真的 */
+    private record Hook(Map<String, String> headers, String path, String body) {
+    }
+
+    private static final List<Hook> HOOKS = new CopyOnWriteArrayList<>();
+    private static final AtomicBoolean HOOK_FAILS = new AtomicBoolean(false);
+    private static HttpServer hookServer;
+
+    private static synchronized String hookUrl() throws Exception {
+        if (hookServer == null) {
+            hookServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            hookServer.createContext("/hook", ex -> {
+                Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+                ex.getRequestHeaders().forEach((k, v) -> h.put(k, v.get(0)));
+                HOOKS.add(new Hook(h, ex.getRequestURI().getPath(),
+                        new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+                byte[] out = (HOOK_FAILS.get() ? "busy" : "SUCCESS").getBytes(StandardCharsets.UTF_8);
+                ex.sendResponseHeaders(HOOK_FAILS.get() ? 500 : 200, out.length);
+                ex.getResponseBody().write(out);
+                ex.close();
+            });
+            hookServer.start();
+        }
+        return "http://127.0.0.1:" + hookServer.getAddress().getPort() + "/hook";
+    }
 
     private MockMvc mvc;
     private String storeNo;
@@ -294,6 +329,95 @@ class OpenApiFlowTest {
         // 回调控制器与三个对账器拿到这个号都会去补交易单 —— 它不是交易单
         orderRepair.markPaid(orderNo, "TEST", "T-X");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE order_no=?", Integer.class, no)).isZero();
+    }
+
+    /** 建单 → 发起 → 渠道到账：返回支付单号 */
+    private String paidOrder(long amount) throws Exception {
+        String no = create(APP1, SECRET1, "OUT-" + id(), amount).get("payOrderNo").asString();
+        JsonNode started = ok(call("POST", "/open/pay/v1/orders/" + no + "/pay", Map.of(), "{\"payMethod\":\"TEST_PAY\"}",
+                fresh(APP1, SECRET1), null));
+        settle.settlePayment(new SettlePort.PaymentSettled(started.get("outTradeNo").asString(), "TEST", "T-" + id(),
+                amount, System.currentTimeMillis()));
+        return no;
+    }
+
+    private Map<String, Object> notifyOf(String payOrderNo, String eventType) {
+        return jdbc.queryForMap("SELECT n.* FROM pay_biz_notify n JOIN pay_order o ON o.id=n.pay_order_id"
+                + " WHERE o.pay_order_no=? AND n.event_type=?", payOrderNo, eventType);
+    }
+
+    @Test
+    @DisplayName("★★★ webhook：支付成功同事务落一条答复记录；投递是带签名的 POST（与请求同构），2xx 即送达、每次投递一行")
+    void webhookOnSuccessIsSignedAndDelivered() throws Exception {
+        jdbc.update("UPDATE pay_app SET webhook_url=? WHERE app_no=?", hookUrl(), APP1);
+        HOOK_FAILS.set(false);
+        String no = paidOrder(1200);
+        Map<String, Object> n = notifyOf(no, "PAYMENT_SUCCEEDED");
+        assertThat(n.get("status")).isEqualTo("PENDING");
+        assertThat(n.get("target_type")).isEqualTo("WEBHOOK");
+        assertThat(n.get("target_url")).isEqualTo(hookUrl());
+
+        notifier.deliverDue(Instant.now(), 100);
+
+        Hook h = HOOKS.stream().filter(x -> x.body().contains(no)).findFirst().orElseThrow();
+        assertThat(h.headers().get("X-App-Id")).isEqualTo(APP1);
+        String expected = sign(SECRET1, "POST", "/hook", Map.of(), APP1, Long.parseLong(h.headers().get("X-Timestamp")),
+                h.headers().get("X-Nonce"), h.body());
+        assertThat(h.headers().get("X-Signature")).as("接入方用自己的密钥按同一规则能验过").isEqualTo(expected);
+        JsonNode body = json.readTree(h.body());
+        assertThat(body.get("eventType").asString()).isEqualTo("PAYMENT_SUCCEEDED");
+        assertThat(body.get("eventId").asString()).isEqualTo(n.get("event_key"));
+        assertThat(body.get("data").get("status").asString()).isEqualTo("SUCCEEDED");
+        assertThat(body.get("data").get("paidMinor").asLong()).isEqualTo(1200);
+
+        Map<String, Object> after = notifyOf(no, "PAYMENT_SUCCEEDED");
+        assertThat(after.get("status")).isEqualTo("DELIVERED");
+        assertThat(jdbc.queryForObject("SELECT outcome FROM pay_biz_notify_attempt WHERE pay_biz_notify_id=?",
+                String.class, after.get("id"))).isEqualTo("DELIVERED");
+    }
+
+    @Test
+    @DisplayName("★★★ webhook：对方 5xx 退避重试，超过 24 小时放弃；运营手动重推后送达（记 MANUAL）")
+    void webhookRetriesGivesUpAndCanBeRedelivered() throws Exception {
+        jdbc.update("UPDATE pay_app SET webhook_url=? WHERE app_no=?", hookUrl(), APP1);
+        String no = paidOrder(900);
+        Long id = ((Number) notifyOf(no, "PAYMENT_SUCCEEDED").get("id")).longValue();
+        HOOK_FAILS.set(true);
+        try {
+            Instant now = Instant.now();
+            notifier.deliverDue(now, 100);
+            Map<String, Object> failed = notifyOf(no, "PAYMENT_SUCCEEDED");
+            assertThat(failed.get("status")).isEqualTo("FAILED");
+            assertThat(((Number) failed.get("attempts")).intValue()).isEqualTo(1);
+            notifier.deliverDue(now, 100);
+            assertThat(((Number) notifyOf(no, "PAYMENT_SUCCEEDED").get("attempts")).intValue())
+                    .as("没到下次时间不重投").isEqualTo(1);
+
+            notifier.deliverDue(now.plus(Duration.ofHours(25)), 100);
+            assertThat(notifyOf(no, "PAYMENT_SUCCEEDED").get("status")).isEqualTo("GIVEN_UP");
+        } finally {
+            HOOK_FAILS.set(false);
+        }
+        notifier.redeliver(id, "OP-WH");
+        notifier.deliverDue(Instant.now(), 100);
+        assertThat(notifyOf(no, "PAYMENT_SUCCEEDED").get("status")).isEqualTo("DELIVERED");
+        assertThat(jdbc.queryForObject("SELECT trigger_type FROM pay_biz_notify_attempt WHERE pay_biz_notify_id=?"
+                + " ORDER BY attempt DESC LIMIT 1", String.class, id)).isEqualTo("MANUAL");
+    }
+
+    @Test
+    @DisplayName("★★ webhook：关单也答复；没有 webhook 地址的接入方不落 WEBHOOK 行")
+    void closeIsNotifiedAndNoUrlNoRow() throws Exception {
+        jdbc.update("UPDATE pay_app SET webhook_url=? WHERE app_no=?", hookUrl(), APP1);
+        String no = create(APP1, SECRET1, "OUT-" + id(), 300).get("payOrderNo").asString();
+        ok(call("POST", "/open/pay/v1/orders/" + no + "/close", Map.of(), "{}", fresh(APP1, SECRET1), null));
+        assertThat(notifyOf(no, "PAYMENT_CLOSED").get("target_type")).isEqualTo("WEBHOOK");
+
+        jdbc.update("UPDATE pay_app SET webhook_url=NULL WHERE app_no=?", APP2);
+        String other = create(APP2, SECRET2, "OUT-" + id(), 300).get("payOrderNo").asString();
+        ok(call("POST", "/open/pay/v1/orders/" + other + "/close", Map.of(), "{}", fresh(APP2, SECRET2), null));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_biz_notify n JOIN pay_order o ON o.id=n.pay_order_id"
+                + " WHERE o.pay_order_no=?", Integer.class, other)).isZero();
     }
 
     @Test
