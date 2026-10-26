@@ -123,6 +123,98 @@ class GoodsIntegrityFlowTest {
         assertThat(neg.get("code").asInt()).as("新 SKU 的初始库存为负应被拒").isNotZero();
     }
 
+    // ------------------------------------------------------------------ ③ 每条上架路径都过准入闸
+
+    @Test
+    @DisplayName("★★★ 免审提交：类目被禁售的主体提交不能直接上架")
+    void auditOffSubmitHonorsAdmission() throws Exception {
+        String biz = merchant("13700777301", "准入·免审提交店");
+        String goodsNo = createGoods(biz, "禁售提交品", 1000, 5);
+        withBannedCategory(biz, "CAT210", () -> withAuditOff(() -> {
+            JsonNode r = postJson(biz, "/biz/goods/" + goodsNo + "/submit", "{}");
+            assertThat(r.get("code").asInt()).as("免审提交绕过了准入闸")
+                    .isEqualTo(ai.neargo.shop.common.ErrorCode.CATEGORY_BANNED.code());
+        }));
+        assertThat(onSale(goodsNo)).isFalse();
+    }
+
+    @Test
+    @DisplayName("★★★ 过审兑现上架意向：主体此刻不准卖这一类 → 过审但不上架")
+    void approvalHonorsAdmission() throws Exception {
+        String biz = merchant("13700777302", "准入·过审店");
+        String goodsNo = createGoods(biz, "禁售过审品", 1000, 5);
+        assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/submit", "{}").get("code").asInt()).isZero();
+        withBannedCategory(biz, "CAT210", () ->
+                assertThat(approve(goodsNo).get("code").asInt()).isZero());
+        assertThat(onSale(goodsNo)).as("过审把禁售类目的商品推上了架").isFalse();
+        assertThat(jdbc.queryForObject("select audit_status from prd_goods where goods_no=?",
+                String.class, goodsNo)).isEqualTo("APPROVED");
+    }
+
+    @Test
+    @DisplayName("★★★ 免审发布草稿：草稿把类目换成禁售类目 → 发布被拒，线上旧版不动")
+    void auditOffPublishHonorsAdmissionForNewCategory() throws Exception {
+        String biz = merchant("13700777303", "准入·发布店");
+        String goodsNo = onSaleGoods(biz, "换类发布品", 5);
+        String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
+        String draft = goodsBody(goodsNo, skuNo, "换类发布品·改", 1000, 5).replace("CAT210", "CAT110");
+        assertThat(postJson(biz, "/biz/goods/save", draft).get("code").asInt()).isZero();
+        withBannedCategory(biz, "CAT110", () -> withAuditOff(() -> {
+            JsonNode r = postJson(biz, "/biz/goods/" + goodsNo + "/publish", "{}");
+            assertThat(r.get("code").asInt()).as("发布换版绕过了准入闸")
+                    .isEqualTo(ai.neargo.shop.common.ErrorCode.CATEGORY_BANNED.code());
+        }));
+        assertThat(jdbc.queryForObject("select category_no from prd_goods where goods_no=?",
+                String.class, goodsNo)).isEqualTo("CAT210");
+        assertThat(onSale(goodsNo)).isTrue();
+    }
+
+    @Test
+    @DisplayName("★★★ 过审换版：草稿换进禁售类目 → 不换版，旧版继续卖，草稿退回编辑")
+    void approvalSwapHonorsAdmissionForNewCategory() throws Exception {
+        String biz = merchant("13700777304", "准入·过审换版店");
+        String goodsNo = onSaleGoods(biz, "换类过审品", 5);
+        String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
+        String draft = goodsBody(goodsNo, skuNo, "换类过审品·改", 1000, 5).replace("CAT210", "CAT110");
+        assertThat(postJson(biz, "/biz/goods/save", draft).get("code").asInt()).isZero();
+        assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/publish", "{}").get("code").asInt()).isZero();
+        withBannedCategory(biz, "CAT110", () -> assertThat(approve(goodsNo).get("code").asInt()).isZero());
+        assertThat(jdbc.queryForObject("select category_no from prd_goods where goods_no=?",
+                String.class, goodsNo)).as("过审把商品换进了禁售类目").isEqualTo("CAT210");
+        assertThat(onSale(goodsNo)).as("旧版继续卖").isTrue();
+        assertThat(jdbc.queryForObject("select status from prd_goods_draft where goods_no=?",
+                String.class, goodsNo)).isEqualTo("EDITING");
+    }
+
+    private boolean onSale(String goodsNo) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("select on_sale from prd_goods where goods_no=?",
+                Boolean.class, goodsNo));
+    }
+
+    /**
+     * 让这个主体此刻「不准卖这一类」：给它换一个专用的主体形态，并给该形态配一条禁售类目策略。
+     * 只动这一家 —— 准入策略按主体形态全局生效，改共享的那几档会波及别的用例。
+     */
+    private void withBannedCategory(String token, String categoryNo, Body body) throws Exception {
+        String merchantNo = merchantNoOf(token);
+        String form = "ZZB" + Math.abs(merchantNo.hashCode() % 100000);
+        String was = jdbc.queryForObject("select legal_form from mch_entity where entity_no=?",
+                String.class, merchantNo);
+        jdbc.update("delete from mch_admission_policy where legal_form=?", form);
+        jdbc.update("insert into mch_admission_policy (legal_form, required_deposit_minor, single_order_limit_minor,"
+                + " daily_amount_limit_minor, ban_qualified_category, banned_category_codes, enabled, remark,"
+                + " tenant_no, created_at, created_by, updated_at, version, deleted)"
+                + " values (?, 0, 0, 0, 0, ?, 1, 'test', 'MAIN', now(), 'TEST', now(), 0, 0)",
+                form, "[\"" + categoryNo + "\"]");
+        jdbc.update("update mch_entity set legal_form=? where entity_no=?", form, merchantNo);
+        try {
+            body.run();
+        } finally {
+            jdbc.update("update mch_entity set legal_form=? where entity_no=?", was, merchantNo);
+            jdbc.update("delete from mch_admission_policy where legal_form=?", form);
+        }
+    }
+
     // ------------------------------------------------------------------ ⑨ SKU 价格校验
 
     @Test

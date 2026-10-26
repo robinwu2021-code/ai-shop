@@ -989,6 +989,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
              * 处置的牙齿就是下架本身。要回架得他显式再点上架，那一步有自己的校验。
              * 失败（80017/乐观锁）整个发布事务回滚，线上停在完整旧版。
              */
+            // 换版后仍在架 = 新版本此刻要对买家可见，草稿可能换了类目 —— 照上架闸门判一次
+            if (Boolean.TRUE.equals(g.getOnSale())) {
+                requireListable(g.getEntityNo(), listingStoreOf(g), g.getCategoryNo());
+            }
             bakeForPublish(g);
             g.setAuditStatus(APPROVED);
             g.setPendingOnSale(false);
@@ -997,6 +1001,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return toVO(g);
         }
         if (!stayDraft && !auditRequired()) {
+            if (Boolean.TRUE.equals(g.getPendingOnSale())) {
+                requireListable(merchantNo, listingStoreOf(g), g.getCategoryNo());
+            }
             bakeForPublish(g);
             g.setAuditStatus(APPROVED);
             if (Boolean.TRUE.equals(g.getPendingOnSale())) {
@@ -1370,6 +1377,37 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * 过审换版的 dry-run：这份草稿此刻换上去会不会失败。<b>不写任何一行</b>。
+     *
+     * <p>只判两种已知会在换版中途失败的情况 —— 准入闸（换版后仍在架时，按草稿的类目判）
+     * 与规格停档（与发布预览同一个 bakeSpecs）。
+     *
+     * @return 拦下的原因；能换回 null
+     */
+    private String swapBlocker(PrdGoods live, PrdGoodsDraft draft) {
+        SaveCommand cmd = snapshotCmd(draft.getPayload());
+        if (cmd == null) {
+            return "草稿解析失败";
+        }
+        String categoryNo = cmd.stdNo() == null || cmd.stdNo().isBlank()
+                ? cmd.categoryNo() : applyStd(cmd).categoryNo();
+        if (Boolean.TRUE.equals(live.getOnSale())) {
+            try {
+                requireListable(live.getEntityNo(), listingStoreOf(live), categoryNo);
+            } catch (BizException e) {
+                return e.getMessage();
+            }
+        }
+        String groups = writeSpecGroups(cmd.specGroups());
+        BakedSpecs baked = groups == null || groups.isBlank() ? null
+                : bakeSpecs(live.getEntityNo(), categoryNo, groups);
+        if (baked != null && !baked.unresolved().isEmpty()) {
+            return String.join("、", baked.unresolved());
+        }
+        return null;
     }
 
     private GoodsVO swapFromDraft(PrdGoods live, PrdGoodsDraft draft, String publishedBy) {
@@ -2075,9 +2113,6 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             // 而他手上一张订单都没有
             throw BizException.of(ErrorCode.GOODS_NOT_APPROVED);
         }
-        if (onSale) {
-            requireCategoryAuthorized(merchantNo, g.getCategoryNo());
-        }
         String storeNo = BizContext.current().currentStoreNo();
         /*
          * 闸二：**上架的商品，它的类目必须在这家店的经营类目里**（TDD-门店经营类目 §4.1）。
@@ -2088,7 +2123,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 反向的口子（类目被撤而商品还在）仍由 StoreCategoryService.replace 堵：底下有商品删不掉。
          */
         if (onSale) {
-            requireInStore(merchantNo, storeNo, g.getCategoryNo());
+            requireListable(merchantNo, storeNo, g.getCategoryNo());
         }
         /*
          * 多门店商家的上下架落在**门店行**上，不动主体的 on_sale。
@@ -2560,6 +2595,27 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
      * 报一个专用错误码，让端上能把「缺哪张资质、去哪申请」说出来 ——
      * 通用的「请求参数有误」会让商家反复改商品信息，而问题根本不在商品上。
      */
+    /**
+     * <b>上架闸门的唯一入口</b>：经营准入（保证金 / 禁售类目 / 资质）+ 本店经营类目。
+     *
+     * <p>此前这两道只挂在「上下架按钮」一条路上，而让商品变成 on_sale=true 的路有五条：
+     * 免审提交、过审兑现上架意向、免审编辑、发布换版（含草稿换了类目）、手动上架。
+     * 其余四条一道都不过 —— 禁售类目的主体只要不点按钮、改走提交或发布，货照样上架。
+     * 收成一个方法，新加第六条路的人只需要记住调它。
+     *
+     * @param storeNo 判经营类目用的门店；空时用商品的归属门店（运营过审没有「当前门店」）
+     */
+    private void requireListable(String merchantNo, String storeNo, String categoryNo) {
+        requireCategoryAuthorized(merchantNo, categoryNo);
+        requireInStore(merchantNo, storeNo, categoryNo);
+    }
+
+    /** 不在 B 端当前门店上下文里时（运营过审），按商品自己的归属门店判经营类目 */
+    private String listingStoreOf(PrdGoods g) {
+        String current = BizContext.current().currentStoreNo();
+        return current != null && !current.isBlank() ? current : g.getStoreNo();
+    }
+
     private void requireCategoryAuthorized(String merchantNo, String categoryNo) {
         boolean categorized = categoryNo != null && !categoryNo.isBlank();
         String required = categorized ? categoryService.requiredCodeOf(categoryNo) : null;
@@ -2845,7 +2901,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             });
             if (!auditRequired()) {
                 // 免审：提交即编译上架。编译失败（80017）直接抛给商家 ——
-                // 他就在屏幕前，逐条点名比留一个「审核中」的假状态有用
+                // 他就在屏幕前，逐条点名比留一个「审核中」的假状态有用。准入同理：当场拒
+                requireListable(merchantNo, listingStoreOf(g), g.getCategoryNo());
                 bakeForPublish(g);
                 g.setAuditStatus(APPROVED);
                 g.setOnSale(true);
@@ -3076,26 +3133,35 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                  * 换版失败（草稿引用了这期间停用的档）不打回审核结论 —— 保持旧版在售，
                  * 草稿退回 EDITING，商家重新发布时得到 80017 的逐条点名。
                  */
-                try {
-                    // 过审换版:发布人是平台审核,不是商家 —— 历史里要分得开
-                    return swapFromDraft(g, submitted, "PLATFORM_AUDIT");
-                } catch (BizException e) {
-                    log.warn("[换版] 过审换版失败，旧版继续卖、草稿退回编辑态：goods={} msg={}",
-                            g.getGoodsNo(), e.getMessage());
+                /*
+                 * ★ **先判、后换**。换版是把草稿回放进 save()，失败时前半截的写入
+                 * （商品行、SKU、删草稿）已经发生 —— 在同一个事务里 catch 住再「保持旧版」，
+                 * 留下的是半新半旧的商品（乐观锁收紧之后还会变成 CONFLICT）。所以已知会失败的
+                 * 两种情况（准入闸、规格停档）在动任何一行之前 dry-run 判掉；
+                 * 判过之后仍失败就直接抛出，整个过审回滚，草稿保持待审。
+                 */
+                String blocker = swapBlocker(g, submitted);
+                if (blocker != null) {
+                    log.warn("[换版] 过审换版被拦，旧版继续卖、草稿退回编辑态：goods={} reason={}",
+                            g.getGoodsNo(), blocker);
                     submitted.setStatus(PrdGoodsDraft.EDITING);
                     DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(submitted));
                     g.setAuditStatus(APPROVED);
                     updateGoods(g);
                     return toVO(g);
                 }
+                // 过审换版:发布人是平台审核,不是商家 —— 历史里要分得开
+                return swapFromDraft(g, submitted, "PLATFORM_AUDIT");
             }
             if (Boolean.TRUE.equals(g.getPendingOnSale())) {
                 /*
                  * 编译点的第二入口。这里烘焙失败**不打回审核**（审核员改不了商家的规格，
                  * 拒他等于把商家的问题算在审核头上）—— 改成不恢复上架 + 记 warn：
                  * 商家看到「过审但没上架」，手动上架时会撞到 80017 的逐条点名。
+                 * 准入闸同理：过审判的是内容，此刻能不能卖这一类是主体的事，不打回审核结论。
                  */
                 try {
+                    requireListable(g.getEntityNo(), listingStoreOf(g), g.getCategoryNo());
                     bakeForPublish(g);
                     g.setOnSale(true);
                 } catch (BizException e) {
