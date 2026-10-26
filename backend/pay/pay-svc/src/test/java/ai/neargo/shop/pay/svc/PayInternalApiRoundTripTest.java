@@ -31,6 +31,7 @@ import ai.neargo.shop.pay.service.FeeRuleService;
 import ai.neargo.shop.pay.service.SettleInvoiceService;
 import ai.neargo.shop.svc.ConfigServiceLocator;
 import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.shop.pay.client.PayInternalPaths;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.CallOutcome;
 import ai.neargo.svc.client.ServiceCallException;
@@ -100,16 +101,37 @@ class PayInternalApiRoundTripTest {
     }
 
     @Test
-    @DisplayName("★★ 发票列表：null 的筛选条件不带，其它参数按名字到达")
+    @DisplayName("★★ 发票列表：null 的筛选条件不带，其它参数按名字到达；主体范围解码成集合")
     void settleInvoicesParams() {
-        when(invoiceService.list(null, "某", 2, 10))
+        when(invoiceService.list(null, "某", 2, 10, java.util.Set.of("M1", "M2")))
                 .thenReturn(new PageData<>(List.of(invoice("INV1", "PENDING")), 1, 2, 10));
 
-        PageData<SettleInvoiceVO> page = api("tk").settleInvoices(null, "某", 2, 10);
+        PageData<SettleInvoiceVO> page = api("tk").settleInvoices(null, "某", 2, 10, "M1,M2");
 
         assertThat(page.total()).isEqualTo(1);
         assertThat(page.records()).extracting(SettleInvoiceVO::invoiceNo).containsExactly("INV1");
-        verify(invoiceService).list(null, "某", 2, 10);
+        verify(invoiceService).list(null, "某", 2, 10, java.util.Set.of("M1", "M2"));
+    }
+
+    @Test
+    @DisplayName("★★★ F10 不带主体范围的发票列表被拒 —— 这个进程没有数据域拦截器，缺了就是全部商家")
+    void settleInvoicesWithoutScopeIsRejected() {
+        var status = org.springframework.web.client.RestClient.create("http://localhost:" + port)
+                .get().uri(PayInternalPaths.SETTLE_INVOICES + "?page=1&size=10")
+                .header(InternalHttp.TOKEN_HEADER, "tk")
+                .exchange((req, res) -> res.getStatusCode().value());
+        assertThat(status).isEqualTo(400);
+        org.mockito.Mockito.verifyNoInteractions(invoiceService);
+    }
+
+    @Test
+    @DisplayName("★★ F10 「不限」与「一个都没有」编码不同 —— 两者都成空串的话，越权就藏在这里")
+    void merchantScopeEncodingKeepsAllAndNoneApart() {
+        assertThat(PayInternalApi.encodeMerchantScope(null)).isEqualTo("*");
+        assertThat(PayInternalApi.encodeMerchantScope(java.util.Set.of())).isEmpty();
+        assertThat(PayInternalApi.decodeMerchantScope("*")).isNull();
+        assertThat(PayInternalApi.decodeMerchantScope("")).isEmpty();
+        assertThat(PayInternalApi.decodeMerchantScope("M2,M1")).containsExactlyInAnyOrder("M1", "M2");
     }
 
     @Test

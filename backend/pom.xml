@@ -100,6 +100,8 @@
         <!-- 可见范围几何：JTS 做多边形解析/含边界精判，S2 做网格覆盖；两者纯 Java、无 JNI（ADR-034） -->
         <jts.version>1.20.0</jts.version>
         <s2.version>2.0.0</s2.version>
+        <!-- 支付渠道管线的熔断与隔离（开发计划 P4 · TDD-支付服务-I2渠道统一封装 S2）。Boot BOM 不管 -->
+        <resilience4j.version>2.3.0</resilience4j.version>
     </properties>
 
     <dependencyManagement>
@@ -138,6 +140,17 @@
                 <groupId>net.javacrumbs.shedlock</groupId>
                 <artifactId>shedlock-provider-jdbc-template</artifactId>
                 <version>${shedlock.version}</version>
+            </dependency>
+            <!-- 支付渠道管线：按（渠道 × 收款商户）熔断、按渠道隔离并发。版本只在这里出现 -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-circuitbreaker</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bulkhead</artifactId>
+                <version>${resilience4j.version}</version>
             </dependency>
             <!-- 只为 dependencyConvergence 收敛：钉的是今天本来就胜出的那个版本 -->
             <dependency>

@@ -477,6 +477,11 @@ ssh soukmind-tx-root   # 救火通道
    `setup-tls.sh` 已被 [setup-tls-acme.sh](setup-tls-acme.sh) 取代，保留仅作参考。
 7. **无演示数据** —— 需要的话加 `shop.seed.enabled=true`（2 社区 / 2 自提点 / 2 商家 / 4 商品）。
 8. **android-shell 未部署** —— rsync 时排除了，客户端打包不属服务器部署范围。
+9. **pay-svc 空跑，是无业务价值的攻击面**（2026-10-25 · 支付 I1 F11 / Review R11）—— `ai-shop-pay` 直连主库、
+   持内部密钥、暴露储值 / 迁移写端点，而主应用今天一个都不调它（`shop.pay.deployment` 仍是内嵌）。
+   代码侧已把它唯一一处非常量时间的令牌比较改掉（R12），但**进程本身该停**。需人工在服务器执行：
+   `systemctl disable --now ai-shop-pay`（回滚：`systemctl enable --now ai-shop-pay`）。
+   切独立形态（开发计划 I3 之后）再启用；在那之前若要保留，至少把 `pay.env` 的库账号换成只读账号。
 
 ## 9. 验证与排障
 

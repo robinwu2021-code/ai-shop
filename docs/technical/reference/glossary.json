@@ -31389,6 +31389,18 @@
           "ar": "اربط رقم هاتف أولاً. تسجيل الدخول بكلمة المرور يستخدم رقم هاتفك كحساب."
         },
         {
+          "key": "err.pay.approval_same_person",
+          "zh-CN": "复核人不能与申请人或上一位复核人相同",
+          "en": "The reviewer must differ from the requester and the previous reviewer",
+          "ar": "يجب أن يختلف المراجع عن مقدم الطلب والمراجع السابق"
+        },
+        {
+          "key": "err.pay.binding_invalid",
+          "zh-CN": "收款商户绑定不合法：{0}",
+          "en": "Invalid payment merchant binding: {0}",
+          "ar": "ربط تاجر الدفع غير صالح: {0}"
+        },
+        {
           "key": "err.pay.channel_unavailable",
           "zh-CN": "收款通道还没接通，请联系平台开通后再提交（不是你填的资料有问题）",
           "en": "Payouts are not connected yet — contact the platform. Nothing is wrong with what you filled in.",
@@ -31399,6 +31411,54 @@
           "zh-CN": "未知支付通道：{0}",
           "en": "Unknown payment channel: {0}",
           "ar": "قناة دفع غير معروفة: {0}"
+        },
+        {
+          "key": "err.pay.forbidden",
+          "zh-CN": "无权执行该支付操作",
+          "en": "Not allowed to perform this payment operation",
+          "ar": "غير مسموح بتنفيذ عملية الدفع هذه"
+        },
+        {
+          "key": "err.pay.onboarding_inflight",
+          "zh-CN": "这家门店在该渠道已有一张审核中的进件，请等它出结果后再提交",
+          "en": "This store already has an onboarding under review for this channel. Wait for its result before submitting again",
+          "ar": "لدى هذا المتجر طلب انضمام قيد المراجعة لهذه القناة. انتظر نتيجته قبل الإرسال مرة أخرى"
+        },
+        {
+          "key": "err.pay.onboarding_state",
+          "zh-CN": "进件单当前状态不能这样操作：{0}",
+          "en": "This onboarding cannot do that in its current state: {0}",
+          "ar": "لا يمكن تنفيذ هذا الإجراء على طلب الانضمام في حالته الحالية: {0}"
+        },
+        {
+          "key": "err.pay.order_conflict",
+          "zh-CN": "同一订单号已用不同内容建过支付单",
+          "en": "This order number was already used with different content",
+          "ar": "رقم الطلب هذا استُخدم بمحتوى مختلف"
+        },
+        {
+          "key": "err.pay.order_not_found",
+          "zh-CN": "支付单不存在",
+          "en": "Payment order not found",
+          "ar": "أمر الدفع غير موجود"
+        },
+        {
+          "key": "err.pay.order_state",
+          "zh-CN": "支付单当前状态（{0}）不允许此操作",
+          "en": "Payment order status ({0}) does not allow this operation",
+          "ar": "حالة أمر الدفع ({0}) لا تسمح بهذه العملية"
+        },
+        {
+          "key": "err.pay.refund_exceeds",
+          "zh-CN": "退款金额超出可退余额（可退 {0}）",
+          "en": "Refund exceeds the refundable balance ({0})",
+          "ar": "مبلغ الاسترداد يتجاوز الرصيد القابل للاسترداد ({0})"
+        },
+        {
+          "key": "err.pay.refund_operator_required",
+          "zh-CN": "退款必须由商家操作员发起",
+          "en": "A refund must be requested by a merchant operator",
+          "ar": "يجب أن يطلب الاسترداد مشغّل التاجر"
         },
         {
           "key": "err.pay_mode.not_supported",
@@ -33184,6 +33244,69 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "pay_app",
+      "class": "PayApp",
+      "zh": "pay_app（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：接入方：第三方系统或内部系统（内部系统也注册，用于来源可拆） 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.openapp.entity"
+    },
+    {
+      "table": "pay_approval",
+      "class": "PayApproval",
+      "zh": "pay_approval（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：两人复核单（通用）：退款、出款、密钥启用、资金路径切换、收款商户启用、复核规则生效 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.approval.entity"
+    },
+    {
+      "table": "pay_callback_log",
+      "class": "PayCallbackLog",
+      "zh": "pay_callback_log（db/pay V4–V6 · TDD-支付服务-I2渠道统一封装 S1）：回调记录（③ 渠道 → 支付）：统一回调入口收到的每一条通知（含浏览器跳回）。",
+      "module": "pay/pay-channel",
+      "package": "ai.neargo.shop.pay.channel.entity"
+    },
+    {
+      "table": "pay_channel_call_log",
+      "class": "PayChannelCallLog",
+      "zh": "pay_channel_call_log（db/pay V4–V6 · TDD-支付服务-I2渠道统一封装 S1）：渠道调用记录（② 支付 → 渠道）：每一次对渠道的 HTTP 调用，重试每次一行。",
+      "module": "pay/pay-channel",
+      "package": "ai.neargo.shop.pay.channel.entity"
+    },
+    {
+      "table": "pay_channel_followup",
+      "class": "PayChannelFollowup",
+      "zh": "pay_channel_followup（db/pay V4–V6 · TDD-支付服务-I2渠道统一封装 S1）：「未知」补查任务：渠道调用结果不明（超时、5xx、未登记渠道码）时登记，按退避自动查询，直到有结论或转人工 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-channel",
+      "package": "ai.neargo.shop.pay.channel.entity"
+    },
+    {
+      "table": "pay_channel_lifecycle_log",
+      "class": "PayChannelLifecycleLog",
+      "zh": "pay_channel_lifecycle_log（db/pay V4–V6 · TDD-支付服务-I2渠道统一封装 S1）：渠道适配器生命周期日志：每个「渠道 × 收款商户」运行时实例的一次状态变化 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-channel",
+      "package": "ai.neargo.shop.pay.channel.entity"
+    },
+    {
+      "table": "pay_channel_product",
+      "class": "PayChannelProduct",
+      "zh": "pay_channel_product（db/pay V4–V6 · TDD-支付服务-I2渠道统一封装 S1）：支付产品：渠道 × 接入模式 × 支付类型 × 支付方式。",
+      "module": "pay/pay-channel",
+      "package": "ai.neargo.shop.pay.channel.entity"
+    },
+    {
+      "table": "pay_channel_product_market",
+      "class": "PayChannelProductMarket",
+      "zh": "pay_channel_product_market（db/pay V4–V6 · TDD-支付服务-I2渠道统一封装 S1）：支付产品在哪些国家地区可用，及该地区的币种与金额范围。",
+      "module": "pay/pay-channel",
+      "package": "ai.neargo.shop.pay.channel.entity"
+    },
+    {
+      "table": "pay_checkout_session",
+      "class": "PayCheckoutSession",
+      "zh": "pay_checkout_session（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：收银会话：扫码 H5 / 托管收银台的一次性令牌，绑定一张支付单 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.acquiring.entity"
+    },
+    {
       "table": "pay_ent_command_dedup",
       "class": "PayEntCommandDedup",
       "zh": "Payment-owned catalog row; published snapshots are never rewritten or deleted.",
@@ -33238,6 +33361,97 @@
       "zh": "Negative source facts outlive in-flight remote requests and must never expire with a UI timeout.",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_exception",
+      "class": "PayException",
+      "zh": "pay_exception（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：支付异常：关单后支付、金额不符、重复支付等需要处置的事实（修 R18：关单后成功不再静默改成功） 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.acquiring.entity"
+    },
+    {
+      "table": "pay_ledger_entry",
+      "class": "PayLedgerEntry",
+      "zh": "pay_ledger_entry（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：流水分录：每一笔资金变化的复式分录行 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.ledger.entity"
+    },
+    {
+      "table": "pay_ledger_voucher",
+      "class": "PayLedgerVoucher",
+      "zh": "pay_ledger_voucher（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：记账凭证：一次资金事件一张，下挂借贷平衡的分录。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.ledger.entity"
+    },
+    {
+      "table": "pay_merchant",
+      "class": "PayMerchant",
+      "zh": "pay_merchant（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款商户 = 渠道中的商户。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.merchant.entity"
+    },
+    {
+      "table": "pay_merchant_binding",
+      "class": "PayMerchantBinding",
+      "zh": "pay_merchant_binding（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款路由绑定：门店 × 渠道同一时刻一条 ACTIVE。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.merchant.entity"
+    },
+    {
+      "table": "pay_merchant_product",
+      "class": "PayMerchantProduct",
+      "zh": "pay_merchant_product（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款商户开通的支付产品。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.merchant.entity"
+    },
+    {
+      "table": "pay_merchant_status_log",
+      "class": "PayMerchantStatusLog",
+      "zh": "pay_merchant_status_log（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款商户状态变更留痕（启用、切换资金路径、暂停、关闭） 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.merchant.entity"
+    },
+    {
+      "table": "pay_onboarding",
+      "class": "PayOnboarding",
+      "zh": "pay_onboarding（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：进件单：某门店向某渠道申请收款能力。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.onboarding.entity"
+    },
+    {
+      "table": "pay_onboarding_material",
+      "class": "PayOnboardingMaterial",
+      "zh": "pay_onboarding_material（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：进件资料：一字段一行、按版本只增。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.onboarding.entity"
+    },
+    {
+      "table": "pay_onboarding_version",
+      "class": "PayOnboardingVersion",
+      "zh": "pay_onboarding_version（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：进件提交版本：每次提交一行，外部单号每次唯一（修 R04）。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.onboarding.entity"
+    },
+    {
+      "table": "pay_order",
+      "class": "PayOrder",
+      "zh": "pay_order（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：支付订单：调用方要收的一笔钱，独立于业务订单。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.acquiring.entity"
+    },
+    {
+      "table": "pay_refund",
+      "class": "PayRefund",
+      "zh": "pay_refund（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：退款单：商家侧发起的一次退款申请，含复核。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.acquiring.entity"
+    },
+    {
+      "table": "pay_refund_review_rule",
+      "class": "PayRefundReviewRule",
+      "zh": "pay_refund_review_rule（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：退款复核规则（一行一个版本）：命中任一门槛 → 平台两人复核。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.acquiring.entity"
     },
     {
       "table": "pay_risk_shadow_log",
@@ -34545,6 +34759,34 @@
         "module": "pay/pay-channel"
       },
       {
+        "host": "CallbackLogRecorder",
+        "name": "RECEIVED",
+        "value": "RECEIVED",
+        "zh": "",
+        "module": "pay/pay-channel"
+      },
+      {
+        "host": "CallbackLogRecorder",
+        "name": "APPLIED",
+        "value": "APPLIED",
+        "zh": "",
+        "module": "pay/pay-channel"
+      },
+      {
+        "host": "CallbackLogRecorder",
+        "name": "DUPLICATE",
+        "value": "DUPLICATE",
+        "zh": "",
+        "module": "pay/pay-channel"
+      },
+      {
+        "host": "CallbackLogRecorder",
+        "name": "REJECTED",
+        "value": "REJECTED",
+        "zh": "",
+        "module": "pay/pay-channel"
+      },
+      {
         "host": "StlChannelMessage",
         "name": "CALLBACK",
         "value": "CALLBACK",
@@ -34626,6 +34868,20 @@
         "name": "MONTHLY",
         "value": "MONTHLY",
         "zh": "月结：次月首日。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "InternalCallers",
+        "name": "MALL",
+        "value": "MALL",
+        "zh": "内部 app 码（pay_app.app_no，V7 种子）",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "InternalCallers",
+        "name": "FOOD",
+        "value": "FOOD",
+        "zh": "",
         "module": "pay/pay-domain"
       },
       {
@@ -36271,6 +36527,34 @@
         "name": "PAY_MERCHANT",
         "value": "PM",
         "zh": "收款商户号业务键。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PAY_ONBOARDING",
+        "value": "PON",
+        "zh": "进件单号（pay_onboarding.onboarding_no，TDD-支付服务-I4进件与收款商户 S7）",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PAY_ORDER",
+        "value": "PYO",
+        "zh": "支付单号（pay_order.pay_order_no，TDD-支付服务-I3支付单退款流水）",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PAY_REFUND",
+        "value": "PYR",
+        "zh": "退款单号（pay_refund.pay_refund_no）",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "LEDGER_VOUCHER",
+        "value": "LVC",
+        "zh": "记账凭证号（pay_ledger_voucher.voucher_no）",
         "module": "shop-base"
       },
       {
@@ -41841,6 +42125,16 @@
     ],
     "javaEnums": [
       {
+        "name": "AccessMode",
+        "values": [
+          "MERCHANT_OWN",
+          "SERVICE_PROVIDER",
+          "PLATFORM_SUB"
+        ],
+        "zh": "接入模式：用谁的凭据调渠道（渠道接入统一封装设计 §2.1）",
+        "module": "pay/pay-channel"
+      },
+      {
         "name": "AccessRole",
         "values": [
           "READER",
@@ -42199,6 +42493,19 @@
         "module": "svc-client"
       },
       {
+        "name": "CallerType",
+        "values": [
+          "PARTNER",
+          "INTERNAL",
+          "TERMINAL",
+          "BIZ",
+          "OPS",
+          "CHECKOUT"
+        ],
+        "zh": "来源：谁调的（渠道接入统一封装设计 §11.2）",
+        "module": "pay/pay-channel"
+      },
+      {
         "name": "Capability",
         "values": [
           "SUBSCRIBE",
@@ -42219,6 +42526,26 @@
         "module": "shop-merchant"
       },
       {
+        "name": "ChannelOperation",
+        "values": [
+          "PAY",
+          "CONFIRM",
+          "QUERY",
+          "CLOSE",
+          "VOID",
+          "REFUND",
+          "REFUND_QUERY",
+          "ONBOARDING_SUBMIT",
+          "ONBOARDING_QUERY",
+          "MEDIA_UPLOAD",
+          "STATEMENT_FETCH",
+          "PAYOUT",
+          "KEY_VERIFY"
+        ],
+        "zh": "对渠道的操作（渠道接入统一封装设计 §2.1、§8.1）",
+        "module": "pay/pay-channel"
+      },
+      {
         "name": "ChannelStatus",
         "values": [
           "UNKNOWN",
@@ -42228,6 +42555,21 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "ClientType",
+        "values": [
+          "H5",
+          "APP_IOS",
+          "APP_ANDROID",
+          "MINI_PROGRAM",
+          "POS",
+          "SERVER",
+          "OPS_WEB",
+          "BIZ_APP"
+        ],
+        "zh": "来源端：从什么端发起（渠道接入统一封装设计 §11.2）。",
+        "module": "pay/pay-channel"
       },
       {
         "name": "CollectionMethod",
@@ -42321,6 +42663,15 @@
       {
         "name": "Direction",
         "values": [
+          "DR",
+          "CR"
+        ],
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "name": "Direction",
+        "values": [
           "INCREASE",
           "DECREASE"
         ],
@@ -42392,6 +42743,9 @@
           "SV_SETTLEMENT_BILL",
           "SV_SETTLEMENT_PAYMENT",
           "SV_SETTLEMENT_EVENT",
+          "PAY_ORDER",
+          "PAY_REFUND",
+          "LEDGER_VOUCHER",
           "BRAND_CHANGE"
         ],
         "zh": "Human-facing document namespace。",
@@ -42603,6 +42957,16 @@
           "GOODS_OFF_SALE",
           "STOCK_SYNC_NOT_ALIGNED",
           "STOCK_SHARED_SOURCE",
+          "PAY_FORBIDDEN",
+          "PAY_ORDER_NOT_FOUND",
+          "PAY_ORDER_CONFLICT",
+          "PAY_ORDER_STATE",
+          "PAY_REFUND_EXCEEDS",
+          "PAY_REFUND_OPERATOR_REQUIRED",
+          "PAY_APPROVAL_SAME_PERSON",
+          "PAY_BINDING_INVALID",
+          "PAY_ONBOARDING_INFLIGHT",
+          "PAY_ONBOARDING_STATE",
           "EXPRESS_CHANNEL_OFF",
           "EXPRESS_PICKUP_EXISTS",
           "EXPRESS_SENDER_INCOMPLETE",
@@ -42809,8 +43173,8 @@
           "DIRECT",
           "AGGREGATED"
         ],
-        "zh": "",
-        "module": "pay/pay-domain"
+        "zh": "资金路径：钱从消费者出发后**先落到谁的账上**。",
+        "module": "shop-base"
       },
       {
         "name": "FundsPurpose",
@@ -42943,6 +43307,20 @@
         "module": "shop-base"
       },
       {
+        "name": "InvocationState",
+        "values": [
+          "CREATED",
+          "VALIDATED",
+          "SENT",
+          "RESPONDED",
+          "CLASSIFIED",
+          "FOLLOWUP_SCHEDULED",
+          "RESOLVED"
+        ],
+        "zh": "单次调用的生命周期（渠道接入统一封装设计 §9.2）",
+        "module": "pay/pay-channel"
+      },
+      {
         "name": "JobStatus",
         "values": [
           "SUCCESS",
@@ -42965,6 +43343,19 @@
         ],
         "zh": "",
         "module": "logistics"
+      },
+      {
+        "name": "Kind",
+        "values": [
+          "CONNECT_FAILED",
+          "TIMEOUT",
+          "SERVER_ERROR",
+          "CLIENT_ERROR",
+          "BAD_SIGNATURE",
+          "UNPARSEABLE"
+        ],
+        "zh": "",
+        "module": "pay/pay-channel"
       },
       {
         "name": "Kind",
@@ -43033,6 +43424,15 @@
       {
         "name": "Kind",
         "values": [
+          "PAY",
+          "REFUND"
+        ],
+        "zh": "通知类型（路径里的 notifyType）",
+        "module": "shop-base"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "TEA",
           "HOTPOT",
           "PACKAGING",
@@ -43095,6 +43495,21 @@
         ],
         "zh": "可归档的实体。",
         "module": "shop-store-mybatis"
+      },
+      {
+        "name": "LedgerAccount",
+        "values": [
+          "MERCHANT_CHANNEL",
+          "MERCHANT_SALES",
+          "PLATFORM_CHANNEL",
+          "MERCHANT_PAYABLE",
+          "FEE_RECEIVABLE",
+          "PLATFORM_REVENUE",
+          "CHANNEL_FEE_EXPENSE",
+          "REFUND_CLEARING"
+        ],
+        "zh": "流水账户：按「钱在哪」分（设计 v4 §2.9）。",
+        "module": "pay/pay-domain"
       },
       {
         "name": "LimitPath",
@@ -43346,6 +43761,16 @@
         "module": "shop-base"
       },
       {
+        "name": "Outcome",
+        "values": [
+          "ACCEPT",
+          "DUPLICATE",
+          "REJECT"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "OverlapMode",
         "values": [
           "DISJOINT",
@@ -43394,6 +43819,102 @@
           "AGGREGATED"
         ],
         "zh": "",
+        "module": "pay/pay-channel"
+      },
+      {
+        "name": "PayAction",
+        "values": [
+          "QUERY_METHODS",
+          "CREATE_ONLINE",
+          "CREATE_IN_STORE",
+          "START_PAYMENT",
+          "QUERY",
+          "CLOSE",
+          "VOID",
+          "REQUEST_REFUND",
+          "REVIEW_REFUND",
+          "READ_LEDGER",
+          "TERMINAL_BATCH"
+        ],
+        "zh": "能力矩阵的动作（设计 v4 §2.8.2。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "name": "PayErrorCode",
+        "values": [
+          "PARAM_INVALID",
+          "PARAM_AMOUNT_SCALE",
+          "CHANNEL_UNSUPPORTED",
+          "CHANNEL_DISABLED",
+          "CHANNEL_THROTTLED",
+          "CHANNEL_UNAVAILABLE",
+          "CHANNEL_BUSY",
+          "CHANNEL_REJECTED",
+          "CHANNEL_CONNECT_FAILED",
+          "TRADE_NOT_FOUND",
+          "REFUND_REJECTED",
+          "SYSTEM_ERROR"
+        ],
+        "zh": "统一错误码（渠道接入统一封装设计 §13.1）。",
+        "module": "pay/pay-channel"
+      },
+      {
+        "name": "PayOrderEvent",
+        "values": [
+          "ATTEMPT_OPENED",
+          "SUCCEEDED",
+          "FAILED",
+          "CLOSED",
+          "PARTIALLY_REFUNDED",
+          "REFUNDED"
+        ],
+        "zh": "支付单事件。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "name": "PayOrderStatus",
+        "values": [
+          "CREATED",
+          "AWAITING_PAYMENT",
+          "AUTHORIZED",
+          "AWAITING_CONFIRM",
+          "SUCCEEDED",
+          "PARTIALLY_REFUNDED",
+          "REFUNDED",
+          "CLOSED",
+          "FAILED"
+        ],
+        "zh": "支付单状态（pay_order.status）",
+        "module": "pay/pay-domain"
+      },
+      {
+        "name": "PayRefundStatus",
+        "values": [
+          "REQUESTED",
+          "PENDING_REVIEW",
+          "PENDING_SECOND_REVIEW",
+          "APPROVED",
+          "DISPATCHED",
+          "SUCCEEDED",
+          "FAILED",
+          "REJECTED",
+          "OFFLINE_PENDING_PROOF"
+        ],
+        "zh": "退款单状态（pay_refund.status）。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "name": "PayScene",
+        "values": [
+          "ONLINE_REDIRECT",
+          "ONLINE_SDK",
+          "ONLINE_QR",
+          "IN_STORE_CARD",
+          "IN_STORE_SCAN_CUSTOMER",
+          "IN_STORE_SHOW_QR",
+          "ANY"
+        ],
+        "zh": "支付场景（渠道接入统一封装设计 §2.1）。",
         "module": "pay/pay-channel"
       },
       {
@@ -43486,6 +44007,18 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "PortalFace",
+        "values": [
+          "OPS",
+          "OPEN",
+          "TERMINAL",
+          "BIZ",
+          "CHECKOUT"
+        ],
+        "zh": "支付接入层的五个入口：每个入口一个子包、一个 URL 前缀、一套鉴权（ADR-042 §2-3）。",
+        "module": "pay/pay-portal"
       },
       {
         "name": "PreviewReason",
@@ -43803,6 +44336,16 @@
         ],
         "zh": "为什么被撤销。",
         "module": "shop-auth-store"
+      },
+      {
+        "name": "RouteStyle",
+        "values": [
+          "PATH",
+          "QUERY",
+          "LEGACY"
+        ],
+        "zh": "路由形态：新的子路径、查询参数、旧地址别名",
+        "module": "shop-base"
       },
       {
         "name": "RuleMode",
@@ -47575,6 +48118,22 @@
     },
     {
       "host": "WechatApis",
+      "name": "PARTNER_TRANSACTION_BY_OUT_TRADE_NO",
+      "type": "String",
+      "value": "\"/v3/pay/partner/transactions/out-trade-no/\"",
+      "zh": "服务商（含电商收付通）查单：必须带 sp_mchid 与 sub_mchid（F12 · Review R14）",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "WechatApis",
+      "name": "ECOMMERCE_REFUND_BY_OUT_REFUND_NO",
+      "type": "String",
+      "value": "\"/v3/ecommerce/refunds/out-refund-no/\"",
+      "zh": "电商收付通查退款：带 sub_mchid",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "WechatApis",
       "name": "APPLYMENT",
       "type": "String",
       "value": "\"/v3/ecommerce/applyments/\"",
@@ -47654,11 +48213,107 @@
       "module": "pay/pay-channel"
     },
     {
+      "host": "AvailabilityInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "30",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "BulkheadInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "100",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "CircuitBreakerInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "90",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "ClassifyInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "130",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "IdempotencyInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "70",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "LoggingInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "50",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "RecordingInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "40",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "RetryInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "110",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "TimeoutInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "120",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "TraceInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "10",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "ValidationInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "20",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
       "host": "SettleCycles",
       "name": "T_PLUS_1",
       "type": "String",
       "value": "\"T+1\"",
       "zh": "次日结。",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "CallbackTemplate",
+      "name": "NO_REF",
+      "type": "String",
+      "value": "\"-\"",
+      "zh": "旧地址没有路径引用",
       "module": "pay/pay-domain"
     },
     {
@@ -49294,6 +49949,62 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "PaymentInternalPaths",
+      "name": "PREFIX",
+      "type": "String",
+      "value": "\"/internal/pay/v1\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PaymentInternalPaths",
+      "name": "PAYMENTS",
+      "type": "String",
+      "value": "\"/internal/pay/v1/payments\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PaymentInternalPaths",
+      "name": "PAYMENT_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/v1/payments/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PaymentInternalPaths",
+      "name": "PAYMENT_CLOSE",
+      "type": "String",
+      "value": "\"/internal/pay/v1/payments/close\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PaymentInternalPaths",
+      "name": "REFUNDS",
+      "type": "String",
+      "value": "\"/internal/pay/v1/refunds\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PaymentInternalPaths",
+      "name": "CALLER",
+      "type": "String",
+      "value": "\"X-Internal-Caller\"",
+      "zh": "内部 app 码（pay_app.app_no：MALL / FOOD）",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PaymentInternalPaths",
+      "name": "CREDENTIAL",
+      "type": "String",
+      "value": "\"X-Internal-Credential\"",
+      "zh": "该调用方自己的凭据（服务端只存 SHA-256）",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "CouponQuotePolicy",
       "name": "FREIGHT_LINE",
       "type": "String",
@@ -49388,6 +50099,22 @@
       "value": "\"COALESCE(SUM(CASE WHEN v.occurred_at<period_scope.start_at THEN \"+DELTA+\" ELSE 0 END),0) AS opening,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN e.principal_delta ELSE 0 END),0) AS paid,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN e.bonus_delta ELSE 0 END),0) AS bonus,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type='CONSUME' THEN -\"+DELTA+\" ELSE 0 END),0) AS consumed,COALESCE(SUM(CASE WHEN \"+WINDOW+\" AND v.biz_type NOT IN ('RECHARGE','CONSUME') THEN \"+DELTA+\" ELSE 0 END),0) AS reversed,COALESCE(SUM(CASE WHEN v.occurred_at<period_scope.end_at THEN \"+DELTA+\" ELSE 0 END),0) AS closing,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" AND v.biz_type='RECHARGE' THEN v.voucher_no END) AS recharges,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" AND v.biz_type='CONSUME' THEN v.voucher_no END) AS uses,COUNT(DISTINCT CASE WHEN \"+WINDOW+\" THEN a.customer_no END) AS customers,COALESCE(MAX(e.id),0) AS watermark,COALESCE(SUM(CASE WHEN s.voucher_no IS NULL OR s.store_no IS NULL OR l.issuer_no IS NULL OR r.issuer_no IS NULL OR l.release_no IS NULL OR CAST(l.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) OR CAST(r.issuer_no AS BINARY(256))<>CAST(a.issuer_no AS BINARY(256)) THEN 1 ELSE 0 END),0) AS missing\"",
       "zh": "",
       "module": "pay/pay-domain"
+    },
+    {
+      "host": "PortalFace",
+      "name": "API_PACKAGE",
+      "type": "String",
+      "value": "\"ai.neargo.shop.pay.api\"",
+      "zh": "所有入口共用的包根",
+      "module": "pay/pay-portal"
+    },
+    {
+      "host": "InternalCallerFilter",
+      "name": "ATTRIBUTE",
+      "type": "String",
+      "value": "InternalCallerFilter.class.getName() + \".caller\"",
+      "zh": "端点读这个属性拿调用方码。",
+      "module": "pay/pay-svc"
     },
     {
       "host": "CacheConfig",
@@ -51845,13 +52572,16 @@
         "shedlock.version": "6.9.0",
         "cos.version": "5.6.245",
         "jts.version": "1.20.0",
-        "s2.version": "2.0.0"
+        "s2.version": "2.0.0",
+        "resilience4j.version": "2.3.0"
       },
       "managed": [
         "com.google.errorprone:error_prone_annotations",
         "com.google.geometry:s2-geometry",
         "com.qcloud:cos_api",
         "com.tngtech.archunit:archunit-junit5",
+        "io.github.resilience4j:resilience4j-bulkhead",
+        "io.github.resilience4j:resilience4j-circuitbreaker",
         "net.javacrumbs.shedlock:shedlock-provider-jdbc-template",
         "net.javacrumbs.shedlock:shedlock-spring",
         "org.apache.pdfbox:pdfbox",

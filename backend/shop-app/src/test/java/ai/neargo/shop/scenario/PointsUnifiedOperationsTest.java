@@ -203,7 +203,7 @@ import static org.assertj.core.api.Assertions.*;
         posting.post(new Voucher("B:"+type, type, "CNY", new RedeemRate(1, 1), List.of(), List.of(new FundMove(FundBucket.B, 200)), List.of(), 0, List.of(ev), "{}"));
         String text="TEST";
         agreements.publishTerms(type, "V1", text, "OPS");
-        agreements.sign(new ai.neargo.shop.pay.points.agreement.AgreementService.SignCommand(type, merchant, store, "V1", ai.neargo.shop.pay.points.policy.PointsDigests.sha256(text), "PER_ORDER", new ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext(ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath.DIRECT, "TEST", merchant, store, "A1", null, null, null, 0)), "OWNER");
+        agreements.sign(new ai.neargo.shop.pay.points.agreement.AgreementService.SignCommand(type, merchant, store, "V1", ai.neargo.shop.pay.points.policy.PointsDigests.sha256(text), "PER_ORDER", new ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext(ai.neargo.shop.spi.pay.FundsPath.DIRECT, "TEST", merchant, store, "A1", null, null, null, 0)), "OWNER");
         return store;
     }
     PointsRedeemPort.HoldCommand hold(String order, String sub, String store) {

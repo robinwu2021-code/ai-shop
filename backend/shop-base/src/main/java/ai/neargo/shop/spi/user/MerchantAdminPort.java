@@ -174,6 +174,11 @@ public interface MerchantAdminPort {
      * 调用方不传 —— 传进来的话，补发的历史回调会把用量记进当前周期。
      *
      * <p>没有收款记录时静默跳过：进件还没走完的商家没有额度可记。
+     *
+     * <p><b>按支付渠道记</b>（F02 · Review R02）：额度是收款号的属性，记到哪个号与结算取号同一条规则
+     * （{@link MerchantQueryPort#payMerchantNoOf}）。此前不带渠道、主体级 {@code LIMIT 1} 取行，支付宝的钱可能记到微信号上。
+     *
+     * @param channel 订单的实际支付渠道（{@code ord_order.pay_channel}）
      */
-    void accruePayQuota(String merchantNo, String storeNo, long amountMinor);
+    void accruePayQuota(String merchantNo, String storeNo, String channel, long amountMinor);
 }

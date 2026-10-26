@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.spi.pay.FundsPath;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -410,7 +411,7 @@ class RedeemServiceTest {
                         hash,
                         "PER_ORDER",
                         new PointsFundsGateway.FundsContext(
-                                PointsFundsGateway.FundsPath.DIRECT,
+                                FundsPath.DIRECT,
                                 "TEST",
                                 "M" + type,
                                 "ST" + type,

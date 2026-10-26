@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade;
 
+import static org.mockito.Mockito.inOrder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.doAnswer;
 
+import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.spi.inventory.InventoryReservationPort;
 import ai.neargo.shop.spi.pay.PayChannelMasterPort;
@@ -242,4 +244,46 @@ class IndustryCheckoutServiceTest {
         assertThat(result.payment().paramsExpiresAt()).isNull(); assertThat(result.readyToAccept()).isFalse();
         assertThat(json.writeValueAsString(result)).doesNotContain("SUB_MCH", "ACCOUNT:2", "payMerchantNo", "paymentRequestJson");
     }
+    /** 支付服务 I3 S3：餐饮结账先建支付单（FOOD_CHECK、这张账单的门店 id），再开通道尝试 */
+    @Test void firstPaymentCreatesFoodPayOrderBeforeOpeningTheAttempt() {
+        var fixture = ready(null); var ledger = ledger();
+        when(manager.getTransaction(any())).thenAnswer(invocation -> new SimpleTransactionStatus());
+        when(ledger.success(any())).thenReturn(new OrdinaryPaymentPort.Lookup(false, null));
+        when(ownerScopes.entityActive("MAIN", "E")).thenReturn(true);
+        when(ownerScopes.storesOwned("MAIN", "E", Set.of("S"))).thenReturn(true);
+        when(users.findActive("MAIN", "U")).thenReturn(Optional.of(new UserScopeFactsPort.ActiveUser("U", "Buyer")));
+        when(stores.cards(List.of("S"))).thenReturn(Map.of("S", new StoreDirectoryPort.StoreCard("S", "Store", "E",
+                null, "ACTIVE", true, null, null, null, null, 0, 0)));
+        when(merchants.find("E")).thenReturn(Optional.of(new MerchantQueryPort.MerchantBrief("E", "Merchant", true,
+                true, null, 0, 0, true, 0, false)));
+        when(merchants.payCapabilityOf("E", "S")).thenReturn(new MerchantQueryPort.PayCapability(Set.of("JSAPI"), false, 100000, 0));
+        when(merchants.marketOf("E")).thenReturn("CN");
+        when(channels.payableChannels("CN")).thenReturn(List.of("WECHAT"));
+        when(channels.enabledChannels("CN")).thenReturn(List.of("WECHAT"));
+        when(channels.currencyOf("WECHAT")).thenReturn("CNY");
+        when(merchants.paymentRouteOf("E", "S", "WECHAT")).thenReturn(Optional.of(fixture.request().stores().getFirst().route()));
+        when(ledger.open(any())).thenReturn(attempt("PENDING", 210, "CNY"));
+        when(ledger.refresh(any())).thenReturn(new OrdinaryPaymentPort.Lookup(true, attempt("PENDING", 210, "CNY")));
+        var initiation = mock(OrdinaryPaymentInitiationPort.class);
+        when(initiationProviders.orderedStream()).thenAnswer(invocation -> Stream.of(initiation));
+        when(initiation.initiate(any())).thenReturn(new SettlePort.PayInitResult(true, "OUT", "WECHAT",
+                Map.of("package", "prepay_id=actual-owner-token", "nonceStr", "actual-owner-nonce"), null));
+        var port = mock(PaymentPort.class);
+        @SuppressWarnings("unchecked") ObjectProvider<PaymentPort> ports = mock(ObjectProvider.class);
+        when(ports.getIfAvailable()).thenReturn(port);
+        ReflectionTestUtils.setField(service, "paymentPorts", ports);
+        when(merchants.payStoreOf("S")).thenReturn(Optional.of(new MerchantQueryPort.PayStore(42L, "S", "Store", "E",
+                "Merchant", "CN", "DIRECT")));
+        service.pay(command("WECHAT"));
+        var cmd = ArgumentCaptor.forClass(PaymentPort.InternalCreatePaymentCmd.class);
+        var order = inOrder(port, ledger);
+        order.verify(port).createPayment(cmd.capture());
+        order.verify(ledger).open(any());
+        assertThat(cmd.getValue().bizType()).isEqualTo(PaymentPort.FOOD_CHECK);
+        assertThat(cmd.getValue().storeId()).isEqualTo(42L);
+        assertThat(cmd.getValue().outOrderNo()).isEqualTo("O");
+        assertThat(cmd.getValue().amountMinor()).isEqualTo(210L);
+        assertThat(cmd.getValue().currency()).isEqualTo("CNY");
+    }
+
 }

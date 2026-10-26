@@ -49,8 +49,21 @@ public class StubApplymentGateway implements PayApplymentGateway {
         rejectWithoutReason.add(entityName);
     }
 
+    /**
+     * 让这个主体的进件停在「已发通道、在等回执」—— 真通道多半是异步审核，stub 同步出结果的话，
+     * 提交与回执之间那段状态在开发期永远走不到（F05 · Review R23 就藏在那一段里）。
+     */
+    private final java.util.Set<String> keepApplying =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /** @param entityName 提交时用的主体名 */
+    public void keepApplyingFor(String entityName) {
+        keepApplying.add(entityName);
+    }
+
     public void clearTestHooks() {
         rejectWithoutReason.clear();
+        keepApplying.clear();
     }
 
     @Override
@@ -60,7 +73,8 @@ public class StubApplymentGateway implements PayApplymentGateway {
 
     @Override
     public String submit(SubmitCommand cmd) {
-        String applyNo = "STUB-APPLY-" + cmd.entityNo();
+        // 按外部单号而不是主体编号：同主体的主体级与门店级进件各是一张单（F04 · R04）
+        String applyNo = "STUB-APPLY-" + (cmd.requestNo() == null ? cmd.entityNo() : cmd.requestNo());
         submitted.put(applyNo, cmd.entityName() == null ? "" : cmd.entityName());
         // **不打印结算账号** —— 明文账号只在这一次调用里存在，落日志等于落库
         log.info("[stub] 进件提交 entity={} legalForm={} settleType={} apply={}",
@@ -73,6 +87,9 @@ public class StubApplymentGateway implements PayApplymentGateway {
         String name = submitted.get(channelApplyNo);
         if (name == null) {
             // 查一个不存在的申请单：如实说不知道，不要编一个「审核中」
+            return new ApplymentResult("APPLYING", null, null);
+        }
+        if (keepApplying.contains(name)) {
             return new ApplymentResult("APPLYING", null, null);
         }
         if (rejectWithoutReason.contains(name)) {

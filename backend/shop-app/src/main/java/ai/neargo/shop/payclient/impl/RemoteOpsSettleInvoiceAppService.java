@@ -1,5 +1,8 @@
 package ai.neargo.shop.payclient.impl;
 
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.common.data.scope.DataScopeSpec;
+import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -59,7 +62,30 @@ public class RemoteOpsSettleInvoiceAppService implements OpsSettleInvoiceAppServ
     @Override
     public PageData<SettleInvoiceVO> list(String status, String keyword, long page, long size) {
         // 空串与 null 同义：不带这个参数，服务端按「不筛」处理（与迁移前一致）
-        return call(() -> pay.settleInvoices(blankToNull(status), blankToNull(keyword), page, size));
+        String scope = PayInternalApi.encodeMerchantScope(merchantScope(DataScopeContext.current()));
+        return call(() -> pay.settleInvoices(blankToNull(status), blankToNull(keyword), page, size, scope));
+    }
+
+    /**
+     * 当前账号能看的主体（F10 · Review R10）。内嵌形态下这件事由数据域拦截器按 {@code entity_no} 做；
+     * 独立形态的 pay-svc 没有拦截器，只能在这里算好、显式带过去。
+     *
+     * <p>宁严勿宽：没有上下文或 {@code all()} → 不限（与内嵌形态下拦截器的行为一致）；
+     * 有范围但没有「商户」维度 → 一个都不给看，而不是退化成不限。
+     *
+     * @return {@code null} = 不限
+     */
+    static java.util.Set<String> merchantScope(DataScopeSpec spec) {
+        if (spec == null || spec.all()) {
+            return null;
+        }
+        java.util.Set<String> merchants = new java.util.TreeSet<>();
+        for (DataScopeSpec.Rule rule : spec.rules()) {
+            if (ScopeDim.MERCHANT.equals(rule.dim()) && rule.refs() != null) {
+                merchants.addAll(rule.refs());
+            }
+        }
+        return merchants;
     }
 
     @Override

@@ -100,9 +100,10 @@ public class WechatPayChannelConfig {
             WechatApiV3Signer signer,
             @Value("${shop.pay.wechat.mchid:}") String mchId,
             @Value("${shop.pay.wechat.appid:}") String appId,
-            @Value("${shop.pay.wechat.notify-url:}") String notifyUrl) {
+            @Value("${shop.pay.wechat.notify-url:}") String notifyUrl,
+            @Value("${shop.pay.wechat.refund-notify-url:}") String refundNotifyUrl) {
         return new WechatDirectPayGateway(client, channelMaster, recorder, signer,
-                mchId, appId, notifyUrl);
+                mchId, appId, notifyUrl, refundNotifyUrl);
     }
 
     /**
@@ -114,8 +115,11 @@ public class WechatPayChannelConfig {
     public WechatPayGateway wechatPayGateway(
             @Qualifier("wechatChannelClient") ChannelClient client,
             PayChannelMasterService channelMaster,
-            ChannelMessageRecorder recorder) {
-        return new WechatPayGateway(client, channelMaster, recorder);
+            ChannelMessageRecorder recorder,
+            @Value("${shop.pay.wechat.mchid:}") String spMchId,
+            PaymentAccountLookup accounts) {
+        // 服务商模式：mchid 即 sp_mchid；查单 / 查退款要的 sub_mchid 由支付域按交易查（F12 · R14）
+        return new WechatPayGateway(client, channelMaster, recorder, spMchId, accounts);
     }
 
     private static String pemOf(String inline, String path, String key) {

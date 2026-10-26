@@ -189,6 +189,8 @@ public interface ReconService {
                        String source, String paymentNo, String orderNo, String channelTxnNo,
                        long channelAmountMinor, long platformAmountMinor, String status,
                        String resolution, String recoveredOrderNo, long createdAt,
-                       Long resolvedAt, String resolvedBy) {
+                       Long resolvedAt, String resolvedBy,
+                       /* 系统生成的说明（F15）。此前混在 resolution 里，运营端看不出哪句是系统说的、哪句是人定的 */
+                       String note) {
     }
 }
