@@ -150,6 +150,17 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 - 沿现有food-web.foodclient/FoodClientConfiguration注册单次FOOD typed远程服务，food-server.api.InternalStoreCalendarSourceController沿原安全链；内部POST /internal/food/store-calendar-sources/capture，不新增公开API、表、权限或任务。
 - 执行：先观察capture未实现RED；全部代码及测试完成后统一编译；集中校验原小时/跨午夜/04点切日/OPEN与CLOSED/未来策略切换/跨主体店/未知时段/缺能力/并发变化/原始输出篡改与令牌；一次守卫消融、一次独立只读复核，修复仅验证相关部分。集成及独立服务干净打包，更新三处对账，仅本地白名单提交。
 
+### L3 S2B2B2b 原公开媒体来源实施计划（2026-10-26）
+
+原MediaAssetQueryPort只返回归属和状态，目录还需要由原媒体所有者提供稳定公开地址、原图元数据和短期完整性回执。复用sys_media_asset及原MediaStore，不新增媒体表/上传路径或行业图片库。
+
+- shop-base唯一spi.media新增MediaPublicSourcePort.capture(Request(entityNo/storeNo/assetKeys))、MediaPublicSourceFacts及MediaPublicSourceInternalApi；最多20个不重复原assetKey，严格类型/未知字段拒绝；返回schemaVersion=1/purpose=CATALOG_PUBLIC_MEDIA、原Request、依请求顺序的Asset(assetKey/publicUrl/contentType/bytes/width/height/sourceRevision)、verifiedAt/validUntil/receiptNo。
+- shop-core.media.port.MediaPublicSourcePortImpl原主体/门店/GOODS/ACTIVE且无purgeBatchNo精确读原台账；原字段构成稳定修订（原台账没有version，禁止伪造版本/内容hash）。两次本域RR只读围绕事务外MediaStore.publicUrl生成，比对原元数据/归属/状态，已有外层事务拒绝。所有请求图片都必须得到事实，缺失/私有/待清理不返回部分成功。
+- 只接原MediaStore生成的稳定HTTPS地址，校验无用户信息/query/fragment/路径穿越且路径精确对应原key；不请求图片、不读取字节、不签私有URL，不承诺30秒内文件必然可下载。原本地相对地址不猜外网host，明确冲突；图片原台账必须为公开GOODS，额外核对原公开路径形态，防止脏台账将私有路径公开。
+- 沿shop-app.portal.internal挂POST /internal/media/public-sources/capture，InternalServiceResponses先令牌再输入/status，错误不回显内部信息。已发现direct图片域名过滤器会改变新回执里的规范URL；仅为此新内部路径增加上下文路径感知的原样放行，公开入口改写保持原行为。
+- commerce-channel.RemoteMediaPublicSourcePort及CommerceMediaClientAutoConfiguration供各行业共用，单次PLATFORM typed调用，校验完整事实/范围/期限/摘要，404/409等保持原状态，无目标回退。shop.commerce.media-client.enabled默认关闭，本地原owner优先，不隐式启用CIM/发布任务或真实渠道。
+- 验证：先观察原捕获缺能力RED及direct过滤器改坏回执RED→完成全部代码与专项源码→统一编译→集中H2原归属/状态/元数据/事务/变化、稳定URL/超期/缺图/严格HTTP/令牌/本地优先及旧媒体回归→一次守卫消融及一次独立只读复核→相关修复复测→干净打包/设计对账/本地精确提交。完整FOOD目录/媒体与原餐牌依赖绑定仍在下一步，不宣称已经发布菜单。
+
 ### 明确的事务和并发
 
 - 原请求journal区分PLATFORM/ENTITY/STORE，平台配置不伪造经营主体。账号授权operation允许尚无connection，按ACCOUNT/CONNECTION非空规范键去重。原请求journal与本域配置写入在本地事务；同键异payload或不兼容操作者冲突。
@@ -484,6 +495,9 @@ S0现状review、S1原FOOD来源证明、S2A共享基准价/税来源及S2B1餐�
 - [x] S2A 原商品基准价与税来源：共享CatalogPriceSourcePort及原owner实现、CORE内部HTTP、独立FOOD typed客户端完成；仅提供CATALOG_BASE，不替代最终下单试算。
 - [x] S2B1 原FOOD餐牌价格投影：复用CURRENT发布证明和共享原价/税事实，组合条目覆盖、配料与套餐单价，保留原精确用量并提供可远程重算的内部合同。
 - [x] S2B2A 无损目录v2：保留v1 JSON及摘要，支持按规格规则、精确小数、日期例外、显式未知库存，并完成冻结/数量/版本派发门禁。
+- [x] S2B2B1 原连接/CATALOG授权事实：原平台/账号/连接当前修订、有效授权与身份核验，支持本地/独立调用。
+- [x] S2B2B2a 原营业日历来源：原门店营业时间、营业日切点、未来策略时间线和日期例外，支持本地/独立调用。
+- [x] S2B2B2b 共享原公开媒体来源：原台账完整归属及元数据、稳定HTTPS和短期回执，通用远程读取与规范URL保护。
 - [ ] S2B2B 原行业完整目录适配：复用S1/S2A/S2B1原来源及价格事实，接原连接授权和餐牌渠道语境、时段与例外、展示与可信媒体，交付ChannelCatalogSourcePort.Document及原来源校验提供方；补齐独立worker客户端和非CNY覆盖价的原owner策略。原配置或币种/税依据缺失保持不可发布；原库存未知保持UNKNOWN，不回填0，不在目录捕获时预占。
 - [ ] S3 事件桥接：复用原OutboxEnvelope、事件号及CommerceRecoveryService.onPublished；消费前核对源系统、schemaVersion、aggregate和原门店/餐牌/修订。事件只是重读提示，不直接信任事件中的价格或把旧修订写成最新。重复沿原eventNo查回；乱序重新解析当前生效修订；未来生效应在到期核验，不能消费后丢失后续唤醒。新增路由须按模块是否装配条件化，禁用commerce时原发布继续成功。
 - [ ] S4 集成验证：批量完成代码与测试源码，再编译food+commerce集成宿主及独立server；只运行受影响专项。覆盖跨主体/门店、菜单内同SKU不同销售条目、REPLACE空配料、套餐依赖修订、hash篡改、未来/取消/过期发布、缺币种/税/价格回执、事件重复/乱序/重试、模块关闭。最后一次独立review并处理问题，随后白名单提交。
@@ -731,3 +745,53 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 最终验证：相同food-embedded/commerce-embedded Profile下，shop-app、food-server、commerce-server干净`clean package -DskipTests`成功（57.592秒，包含测试源码编译）；随后集中相关Java共34项全部通过（13新增、16原日历/远程回归、5相关架构/装配），0失败0跳过，16.387秒。10项设计专项、25个生成器及git diff --check通过。临时移除日历前后比较后，并发变更专项真实失败；自动恢复后本次集中测试通过。一次独立只读复核无Critical/Important/Minor发现，无二次复核。H2、真实本地HTTP和MockMvc服务令牌链不代表生产MySQL并发或真实外部平台验收；未重跑或放宽原厨房SSE无关失败规则。
 
 本批只作本地白名单提交，不推送、部署或启用真实渠道。接续S2B2B2：原可信媒体展示来源、餐牌渠道语境与完整FOOD目录组装；然后S3可靠发布通知。本次31天/256变更的边界不用于猜测更长的营业日历，扩展范围需另补有边界的组合合同。
+
+
+### S2B2B2b 共享原公开媒体事实交付（2026-10-26）
+
+原sys_media_asset和MediaStore继续拥有图片台账与地址。新增共享来源放在shop-base SPI、原读取实现在shop-core，餐饮/零售通过通用Port调用；无新表/Mapper/迁移、公开API、上传/清理逻辑、前端、定时任务、外部平台或支付配置。此批不代表完整FOOD目录适配已完成。
+
+#### 输入输出和状态
+
+`POST /internal/media/public-sources/capture`，沿原`X-Internal-Token`与InternalServiceResponses协议，不套业务信封。输入不接受URL、请求域名、图片元数据或成功证明。
+
+| 对象 | 实际字段和约束 |
+| --- | --- |
+| Request | entityNo/storeNo原编号；assetKeys为1～20项、不重复的原图片key；严格字符串，未知字段拒绝 |
+| Facts | schemaVersion=1、purpose=CATALOG_PUBLIC_MEDIA、request、assets、verifiedAt、validUntil、receiptNo |
+| Asset | assetKey/publicUrl/contentType/bytes/width/height/sourceRevision；依请求顺序，完整批次返回 |
+| 地址 | 由原MediaStore.publicUrl生成的稳定HTTPS；合法host、无用户信息/query/fragment/编码或点路径段，路径精确对应原key；不猜外网host或改写相对地址 |
+| 元数据 | bytes为真实正数且不超过JSON安全整数；width/height若已知为正整数，未知保持null；contentType若未知保持null，不从扩展名推断 |
+| 修订 | 原assetKey/主体/门店/大小/尺寸/类型/创建时刻的稳定摘要，不伪造原台账没有的version，也不冒充文件字节hash；审计updatedAt仅参与捕获期间变更比较，不制造扫描刷新导致的修订漂移 |
+| 回执 | 最多读取开始后30秒，完整事实确定性摘要；摘要不是签名，仍需服务令牌认证 |
+
+缺图、跨主体/门店、私有用途、PENDING/RECLAIMABLE/PURGED或已认领清理批次均不返回部分成功。400输入错误、401错误/缺失服务令牌、403原业务禁止、404缺失原资产/能力、409原状态/元数据冲突、期间变更或无法生成稳定公开HTTPS。远程501/503等故障保持失败，不回退或捏造空列表。错误不回显私有DB、提供方或地址信息。
+
+公开目录格式只沿原GOODS路径/旧两段key，归属始终以原台账为准，不根据路径推断主体或门店。符合台账的未知元数据可以返回；具体平台若强制尺寸/类型，后续协议适配仍须明确检查，不填0。来源不读取/下载文件、不调用exists、不签私有URL，不能把30秒事实当成文件绝不会被删除的承诺；最终外部发布仍需原目录冻结/能力门禁。
+
+#### 类和方法对账
+
+| 模块 | 实际代码与职责 |
+| --- | --- |
+| shop-base | spi.media.MediaPublicSourcePort.capture及Request/Asset/Facts；MediaPublicSourceFacts.validateRequest/publicGoodsKey/validateUrl/seal/validate及严格文本/整数codec；MediaPublicSourceInternalApi.capture |
+| shop-core | media.port.MediaPublicSourcePortImpl.capture/load：原SysMediaAssetMapper读取，限定主体/门店/GOODS/ACTIVE/无purgeBatchNo；RR读取→事务外原MediaStore地址→RR重读完整比较，拒绝外层事务；原自动扫描Component装配 |
+| shop-app | portal.internal.InternalMediaPublicSourceController.capture/malformed/unavailable；沿原内部令牌、错误状态、包装排除及隐私约定 |
+| shop-channel | MediaHostRewriteFilter仅精确跳过新内部路径，识别contextPath；规范URL参与摘要，不经direct出口改写。其他公开URL转换、SSE规则不变 |
+| commerce-channel | RemoteMediaPublicSourcePort.capture；CommerceMediaClientAutoConfiguration显式shop.commerce.media-client.enabled（默认false），本地owner优先；单次PLATFORM typed调用，5秒超时、无目标回退、不隐式启用CIM |
+
+原本地MediaStore返回相对/uploads地址时明确冲突；需要由原媒体所有者先提供稳定HTTPS，不能用调用方Host或内部服务地址替代。未来其他包含URL且依赖完整性摘要的内部路由，也必须在接线时明确保护原字节语义；本批未全局改变所有内部路径的过滤规则。
+
+#### 验收对账
+
+| 原需求 | 本次可核验子集 | 专项 |
+| --- | --- | --- |
+| AC03 原展示来源 | 原图片完整归属、原元数据、稳定原URL、未知保留、无部分成功 | MediaPublicSourcePortTest及原MediaAssetQueryPortTest |
+| AC15 原范围及事务 | 原台账真实Mapper、元数据/用途/状态/清理批次、事务外URL读取、期间变化、过期与批次上限、原Component装配 | MediaPublicSourcePortTest |
+| AC15 内部传输 | token先于解析、严格字段、摘要和期限、真实HTTP、错误保持、本地优先/默认关闭 | RemoteMediaPublicSourcePortTest、InternalMediaPublicSourceApiTest、原InternalMediaAssetApiTest |
+| AC15 出口兼容 | 新内部规范URL和回执不被改写，含contextPath；原公开direct/server转换、provider key往返保持 | MediaSourceRewriteBoundaryTest、原MediaHostRewriteFilterTest及MediaKeyRoundTripTest |
+
+初始capture缺能力NOT_FOUND为RED；新内部路径原direct过滤器改写URL也真实RED。地址专项发现URI.normalize保留根前导/../，本地Java探针复现后补显式点段拒绝，相关测试由RED转绿。集中34项相关Java通过（15新增、14原回归、5相关架构/装配），0失败0跳过；含真实本地HTTP及原过滤器/令牌/信封组合MockMvc，并非真实云存储、生产并发或跨进程上线验收。最终独立复核、消融和干净打包在附记记录。
+
+最终验证：相同food-embedded/commerce-embedded Profile下，shop-app、food-server、commerce-server干净`clean package -DskipTests`成功（约62秒，包含测试源码编译）。集中34个唯一相关Java专项通过（新增15/原媒体14/架构装配5）；守卫消融恢复并完成最终构建后，仅复验新增15项，9.071秒，全部通过、0失败0跳过，不把重复执行与34简单相加。10项设计专项、25个生成器及git diff --check通过。一次独立只读复核无Critical/Important/Minor发现，无二次复核；临时移除原元数据比较使变化专项真实失败，恢复后绿灯。不代表真实云存储下载、生产MySQL并发或实际跨进程上线验收，未重跑或放宽原厨房SSE无关失败规则。
+
+本批仅本地白名单提交，不推送、部署或启用真实外卖渠道。下一步S2B2B2c：核对原餐牌渠道绑定，将原来源/价格/连接授权/营业日历/媒体组合为完整FOOD目录；还需处理原owner非CNY覆盖价策略和组合选择的有效性，随后进入S3可靠事件桥接。共享媒体来源已经具备，不将其冒充完整FOOD目录或真实平台菜单已同步。
