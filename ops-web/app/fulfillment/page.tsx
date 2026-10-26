@@ -68,7 +68,8 @@ function FulfillmentInner() {
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
 
-  const canDispatch = allow("fulfillment:batch:read");
+  // 推进/签收是写动作，后端判 rule:update（与 OpsDispatchController 一致），读码只够看
+  const canDispatch = allow("fulfillment:rule:update");
   const canEditRule = allow("fulfillment:rule:update");
   // 物流重放单独一个码：会真去调渠道、消耗快递100 的订阅额度（TDD-物流模块 O3）
   const canReplay = allow("fulfillment:logistics:replay");
