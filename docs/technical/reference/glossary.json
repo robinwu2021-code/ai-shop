@@ -29805,6 +29805,12 @@
           "ar": "يجب أن يختلف المراجع عن مقدم الطلب والمراجع السابق"
         },
         {
+          "key": "err.pay.binding_invalid",
+          "zh-CN": "收款商户绑定不合法：{0}",
+          "en": "Invalid payment merchant binding: {0}",
+          "ar": "ربط تاجر الدفع غير صالح: {0}"
+        },
+        {
           "key": "err.pay.channel_unavailable",
           "zh-CN": "收款通道还没接通，请联系平台开通后再提交（不是你填的资料有问题）",
           "en": "Payouts are not connected yet — contact the platform. Nothing is wrong with what you filled in.",
@@ -29821,6 +29827,18 @@
           "zh-CN": "无权执行该支付操作",
           "en": "Not allowed to perform this payment operation",
           "ar": "غير مسموح بتنفيذ عملية الدفع هذه"
+        },
+        {
+          "key": "err.pay.onboarding_inflight",
+          "zh-CN": "这家门店在该渠道已有一张审核中的进件，请等它出结果后再提交",
+          "en": "This store already has an onboarding under review for this channel. Wait for its result before submitting again",
+          "ar": "لدى هذا المتجر طلب انضمام قيد المراجعة لهذه القناة. انتظر نتيجته قبل الإرسال مرة أخرى"
+        },
+        {
+          "key": "err.pay.onboarding_state",
+          "zh-CN": "进件单当前状态不能这样操作：{0}",
+          "en": "This onboarding cannot do that in its current state: {0}",
+          "ar": "لا يمكن تنفيذ هذا الإجراء على طلب الانضمام في حالته الحالية: {0}"
         },
         {
           "key": "err.pay.order_conflict",
@@ -31749,6 +31767,55 @@
       "zh": "pay_ledger_voucher（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：记账凭证：一次资金事件一张，下挂借贷平衡的分录。",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.ledger.entity"
+    },
+    {
+      "table": "pay_merchant",
+      "class": "PayMerchant",
+      "zh": "pay_merchant（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款商户 = 渠道中的商户。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.merchant.entity"
+    },
+    {
+      "table": "pay_merchant_binding",
+      "class": "PayMerchantBinding",
+      "zh": "pay_merchant_binding（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款路由绑定：门店 × 渠道同一时刻一条 ACTIVE。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.merchant.entity"
+    },
+    {
+      "table": "pay_merchant_product",
+      "class": "PayMerchantProduct",
+      "zh": "pay_merchant_product（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款商户开通的支付产品。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.merchant.entity"
+    },
+    {
+      "table": "pay_merchant_status_log",
+      "class": "PayMerchantStatusLog",
+      "zh": "pay_merchant_status_log（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款商户状态变更留痕（启用、切换资金路径、暂停、关闭） 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.merchant.entity"
+    },
+    {
+      "table": "pay_onboarding",
+      "class": "PayOnboarding",
+      "zh": "pay_onboarding（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：进件单：某门店向某渠道申请收款能力。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.onboarding.entity"
+    },
+    {
+      "table": "pay_onboarding_material",
+      "class": "PayOnboardingMaterial",
+      "zh": "pay_onboarding_material（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：进件资料：一字段一行、按版本只增。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.onboarding.entity"
+    },
+    {
+      "table": "pay_onboarding_version",
+      "class": "PayOnboardingVersion",
+      "zh": "pay_onboarding_version（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：进件提交版本：每次提交一行，外部单号每次唯一（修 R04）。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.onboarding.entity"
     },
     {
       "table": "pay_order",
@@ -34698,6 +34765,13 @@
         "name": "PAY_MERCHANT",
         "value": "PM",
         "zh": "收款商户号业务键。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "PAY_ONBOARDING",
+        "value": "PON",
+        "zh": "进件单号（pay_onboarding.onboarding_no，TDD-支付服务-I4进件与收款商户 S7）",
         "module": "shop-base"
       },
       {
@@ -41035,6 +41109,9 @@
           "PAY_REFUND_EXCEEDS",
           "PAY_REFUND_OPERATOR_REQUIRED",
           "PAY_APPROVAL_SAME_PERSON",
+          "PAY_BINDING_INVALID",
+          "PAY_ONBOARDING_INFLIGHT",
+          "PAY_ONBOARDING_STATE",
           "EXPRESS_CHANNEL_OFF",
           "EXPRESS_PICKUP_EXISTS",
           "EXPRESS_SENDER_INCOMPLETE",

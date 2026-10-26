@@ -1,6 +1,6 @@
 # TDD-支付服务-I4进件与收款商户
 
-状态：实施中
+状态：已实现
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §5 I4 · [数据库现状对比与执行方案](./支付服务-数据库现状对比与执行方案.md) §3.2、§4.5（B1–B4、S5 比对、S6 读切）、§4.6、§5（Q2 / Q3 / Q4 / Q6）· [数据库表结构说明 v4](./TDD-支付服务-数据库表结构说明.md) §6.2、§8.1、§8.2 · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §2.4 · [ADR-041](./ADR/ADR-041-进件与收款商户归支付域.md) · [代码 Review](./支付服务-代码Review-2026-10-24.md) R01 / R02 / R04 / R06 / R23 / R24 / R26
 创建：2026-10-26 · 最后更新：2026-10-26
 
@@ -12,13 +12,13 @@
 
 | 片 | 内容 | 提交 |
 |---|---|---|
-| S1 | 迁移 10（`db/pay` V10）：进件单 / 版本 / 资料，收款商户、门店绑定、开通产品、状态日志；7 个实体与 Mapper | — |
-| S2 | `spi.pay.PayMerchantQueryPort` + `PayRoute` + `PayMerchantQueryPortImpl`（只按门店绑定解析、无兜底）；`PayMerchantBindingService`（同主体、同市场、ACTIVE） | — |
-| S3 | 回填 B1–B4：平台级商户（配置里的服务商号）→ 收款商户与进件 v1 → 门店绑定（主体级号逐店展开）→ 开通产品；三份冲突报告（Q2 无默认门店、Q3 两来源不一致、方式映射不到） | — |
-| S4 | 双写 `shop.pay.merchant.dual-write`：进件结果、门店绑定、资金路径在旧表落库的同时写新表 | — |
-| S5 | 比对 C07：每个门店 × 渠道，旧解析与 `routeOf` 逐条比，差异出报告；差异为 0 是读切门禁 | — |
-| S6 | 读切 `shop.pay.merchant.read-from=legacy|pay`：旧端口的支付解析方法改由新模型回答；切回即回退 | — |
-| S7 | 进件迁入支付：`OnboardingService`（每版本外部单号唯一 R04、在途唯一 R06、驳回原因随版本 R23）+ 轮询；通过即产出收款商户并绑门店。~~旧入口在 `pay` 读切后转调~~ → 随 I5 新接口（偏差 14） | — |
+| S1 | 迁移 10（`db/pay` V10）：进件单 / 版本 / 资料，收款商户、门店绑定、开通产品、状态日志；7 个实体与 Mapper | `9453f2c76` |
+| S2 | `spi.pay.PayMerchantQueryPort` + `PayRoute` + `PayMerchantQueryPortImpl`（只按门店绑定解析、无兜底）；`PayMerchantBindingService`（同主体、同市场、ACTIVE） | `41d7f7a57` |
+| S3 | 回填 B1–B4：平台级商户（配置里的服务商号）→ 收款商户与进件 v1 → 门店绑定（主体级号逐店展开）→ 开通产品；三份冲突报告（Q2 无默认门店、Q3 两来源不一致、方式映射不到） | `13deab210` |
+| S4 | 双写 `shop.pay.merchant.dual-write`：进件结果、门店绑定、资金路径在旧表落库的同时写新表 | `c072ca47e` |
+| S5 | 比对 C07：每个门店 × 渠道，旧解析与 `routeOf` 逐条比，差异出报告；差异为 0 是读切门禁 | `93a25e803` |
+| S6 | 读切 `shop.pay.merchant.read-from=legacy|pay`：旧端口的支付解析方法改由新模型回答；切回即回退 | `529393136` |
+| S7 | 进件迁入支付：`OnboardingService`（每版本外部单号唯一 R04、在途唯一 R06、驳回原因随版本 R23）+ 轮询；通过即产出收款商户并绑门店。~~旧入口在 `pay` 读切后转调~~ → 随 I5 新接口（偏差 14） | `b39c46d28` |
 
 ## §0 对账一 · 需求 → 设计
 
@@ -114,11 +114,24 @@
 | AC6 | `PayMerchantCompareFlowTest`（5 条，漂移一律绕开双写直接改库：`consistentAfterBackfill` 回填后 3 店差异 0、但抽查不放行；`driftsReportedWithBothNumbers` 新店没绑 NO_PAY、新模型改绑 NUMBER，带门店渠道与两个号；`statusAndFundsPathDrift` 旧号冻结 NO_LEGACY、资金路径 FUNDS_PATH；`subMerchantDrift`；`confirmationIsBoundToBothValues` 确认后通过、值再变作废） | ✅ 5/5 | ① 号一致就不比子商户号与资金路径 → 2 条红 ② 确认只认门店 + 渠道 → 起初**没红**（同一步改名让别的店也出差异，`passed()` 本来就假），改成断言 s4 那一条的 `confirmed` 后红 ③ 抽查也放行 → `consistent…` 红 ④ 旧解析为空就不比 → `statusAndFundsPath…` 红 ✅ |
 | AC7 | `PayMerchantReadSwitchFlowTest`（5 条；回填后绕开校验把 s2 的新绑定改到 s3 的号上，新旧对 s2 答案不同：`payModeAnswersFromBindings` 取号 / 默认门店 / 账期 / 费用承担 / `paymentRouteOf` / 可收渠道 / 额度累加都按绑定，新店解析不到；`switchBackRestoresLegacy`；`gateClosedStaysLegacy`；`gateFollowsFullCompare` 有未确认差异刷新后关门；`channelFreeStaysLegacy`）· 默认 legacy 下 Settle / Pay / Merchant / Store / Applyment + 守卫 984 条与基线比：7 条失败，6 条在 I0 基线；`BrandStoredValueHttpSelectionTest.chooseOneWallet…` 在 I0、I3 提交上同样失败（储值快照反序列化，与本迭代无关） | ✅ 5/5 | ① 不看门禁 → 2 条红 ② 没绑定兜底旧解析（R01）→ `payMode…` 红 ③ 比对拿会被读切的 `payMerchantNoOf` → `gateFollows…` 红 ④ 测试渠道也读切 → `channelFree…` 红 ⑤ 账期 / 费用承担不读切 → `payMode…` 红 ✅ |
 | AC8 | `PayOnboardingFlowTest`（5 条，走真 `StubApplymentGateway`：`submitThenApprove` 审核中占在途键、v1 外部单号、资料逐字段、账号无明文 → 通过产出 ACTIVE 收款商户 + 状态日志 + 门店绑定；`onlyOneInflight` R06；`rejectedThenResubmitted` R23 + R04；`missingReasonFallsBack`；`pollLeavesLegacyOnboardingsAlone` 轮询推进支付单、LEGACY 单原样且回查被拒） | ✅ 5/5 | ① 外部单号不分版本（R04）→ 2 条红 ② 不占在途键（R06）→ 4 条红 ③ 重提不清当前原因（R23）→ 1 条红 ④ 不护 LEGACY 单 → 1 条红 ⑤ 通过不绑门店 → 1 条红 ✅ |
+| AC9 | 全量 `mvn -o -pl shop-app -am test`（2026-10-26 07:24–08:07 +04）：4017 条，失败 34 / 错误 28，按方法去重 70 条；与 I0 基线比多 30 条，逐条归因 —— **无一由 I4 引起**：① 21 条是跑到末尾堆满（日志 18 处 `OutOfMemoryError`）上下文加载失败的连带：`SwitchToMerchantTest` 9 · `WxPhoneLoginFlowTest` 8 · `UnifiedActivityManagementFlowTest` 2 · `UnifiedOrderActivityTransactionTest` 2，单独新 JVM 重跑全绿；② `PrintDeliveryTest` 8 条 = 基线里的 `PrintDeliveryTest.setup`（shop-core 打印，H2 不认多列 `ALTER TABLE … ADD`），这次按方法报；③ `BrandStoredValueHttpSelectionTest.chooseOneWallet…` 在 I0、I3 提交上同样失败（储值快照反序列化）。I4 的 6 个场景类都复用支付共用上下文，日志里没有一次由它们启动新上下文 —— 本迭代没有给上下文缓存加量 | ✅ | — |
 | AC1 | `MapperSmokeTest`（新 7 个 mapper）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V10 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填）
+`git diff --stat codex/pay-i3-acquiring..codex/pay-i4-merchant`：7 个提交、53 个文件（+4058 / −7），逐行对 §2：
+
+| §2 设计 | 实际文件 | 对上 |
+|---|---|---|
+| S1 迁移 10 + 7 实体 + Mapper | `db/pay/V10__pay_merchant_tables.sql` · `merchant.entity.*`（4）· `onboarding.entity.*`（3）· `mapper.merchant.MerchantMappers` · `mapper.onboarding.OnboardingMappers` · `schema-test.sql`（生成） | ✅ |
+| S2 收款路由与绑定 | `spi.pay.PayMerchantQueryPort` · `merchant.port.PayMerchantQueryPortImpl` · `merchant.service.PayMerchantBindingService` / impl · `spi.user.MerchantQueryPort#payStoreById` · `MerchantPortImpl`（实现）· `ErrorCode.PAY_BINDING_INVALID` + 三语 · `known-pay-reverse-deps.txt` · `PayMerchantRoutingFlowTest` | ✅ |
+| S3 回填 B1–B4 | `merchant.backfill.PayMerchantBackfill` / impl · `paybridge.PayMerchantBackfillRunner` · `PayMerchantBackfillJob` · `TableHasProducerTest`（删 5 行）· `PayMerchantBackfillFlowTest` | ✅ |
+| S4 双写 | `spi.pay.PayMerchantMirrorPort` · `paybridge.port.PayMerchantMirrorPortImpl` · `shop-merchant` `service.PayMerchantMirror` / impl · 9 个写点所在的 6 个类 · `PayMerchantBackfill#mirror` · `application.yml`（`dual-write`）· `PayMerchantDualWriteFlowTest` | ✅ |
+| S5 比对 C07 | `paybridge.PayMerchantComparator` · `PayMerchantCompareJob` · `application.yml`（`compare.confirmed`）· `PayMerchantCompareFlowTest` | ✅ |
+| S6 读切 | `spi.pay.PayMerchantReadSwitch` · `paybridge.port.PayMerchantReadSwitchImpl` · `MerchantPortImpl`（四个解析本体）· `MerchantQueryPort#legacyPayMerchantNoOf`（§2 S6 末条，红测试逼出）· `application.yml`（`read-from`）· `PayMerchantReadSwitchFlowTest` | ✅ |
+| S7 进件迁入支付 | `onboarding.service.OnboardingService` / impl · `merchant.MerchantDefaults`（回填与进件共用，S3 的私有方法上提）· `paybridge.PayOnboardingPollJob` · `ErrorCode` 70090 / 70091 + 三语 · `BizKey.PAY_ONBOARDING` · `known-pay-reverse-deps.txt` 35 → 38 · `PayOnboardingFlowTest` | ✅ |
+
+没有 §2 之外的文件；§2 列了却没动的只有「旧进件入口转调」（偏差 14，已从 S7 划出）。
 
 ### 偏差说明
 
@@ -134,10 +147,13 @@
 10. **旧解析只取 `payMerchantNoOf`**：执行方案列了三条旧解析，`paymentRouteOf` 只认门店显式绑定、不兜底（交易快照专用，空了不收款），与 `routeOf` 的语义不是一回事；`resolvePayment` 是私有方法，走的也是 `accountOf`。三者里只有 `payMerchantNoOf` 与新模型「门店绑定 = 收款商户」对应。
 11. **AC7「现有用例全绿」按默认 legacy 验**：现有用例直接往旧表造数、不建门店绑定，在 pay 模式下整体跑没有意义（会全部「解析不到」，那正是 R01 要的行为）。pay 模式的正确性由 `PayMerchantReadSwitchFlowTest` 覆盖；默认 legacy 下行为零变化由回归验。
 12. **读切后 `activeOnly=false` 的口径收窄**：旧的能力 / 额度解析不限状态（审核中的号也算），新模型只绑 ACTIVE 商户 —— 读切后审核中 / 冻结的号的额度与账期解析不到。额度累加在回调里「解析不到就不记」，不让回调失败。
-13. **执行方案说「17 个调用方改走 `PayMerchantQueryPort`」，本迭代不改调用方**：切换点放在旧端口内部，一处、可回退；调用方逐个迁移等进件迁入（S7）后另起。`payCapabilityOf`（付款前不知道渠道）照旧口径，待调用方带上渠道或改用 `capabilityOf` 时再切。
+13. **执行方案说「17 个调用方改走 `PayMerchantQueryPort`」，本迭代不改调用方**：切换点放在旧端口内部，一处、可回退；调用方逐个迁移等进件迁入（S7）后另起。`payCapabilityOf`（付款前不知道渠道）照旧口径，待调用方带上渠道或改用 `capabilityOf` 时再切。两处品牌包原生 SQL（`ManagementScopeServiceImpl` 按收款商户号反查主体做管理范围、`PaymentMerchantScopeServiceImpl` 列主体的收款商户）也未动：它们是「号属于谁」的归属查询，不是收款解析；读切期间旧行都在，结果不变，随旧进件入口一起迁（偏差 14）。
 14. **旧进件入口（`/biz/merchant/payment*`、`/ops/onboarding*`、`applyment-poll`）本迭代不转调支付**：读切期间新旧必须同源 —— 支付自己产出的收款商户没有旧行，
     双写（S4）会按旧表把它的门店改绑回去，比对（S5）会把它报成 `NO_LEGACY`、下次启动关上读切门禁，读切路径取资料（`legacyRowOf`）也会扑空。
     转调要和「停双写、退役比对、读切路径改从新模型取资料」一起做，落在 I5 的商家端 `/biz/pay/onboardings` 与运营端进件接口上。本迭代交付的是支付侧进件能力本身与轮询。
 15. **敏感资料只存掩码**：`ck_pay_onboarding_material_1` 要求 SENSITIVE 字段有密文 id，密钥模块搁置（执行方案 §4.6），结算账号只落 `SETTLE_ACCOUNT_MASKED`（TEXT），与旧进件一致；联系人手机按 TEXT 存（字段字典把它列为普通字段）。密钥模块就绪后改为 SENSITIVE + 密文。
 16. **草稿的 `current_version = 0`**：表注释是「当前资料版本」、默认 1；没提交过的草稿没有版本行，记 0 让「首提 = 第 1 版」不用特判。
 17. **反向依赖预算 MerchantQueryPort 35 → 38**：进件取门店快照用 S2 已登记的同一个 `payStoreById`，不是新的跨域方法；+3 是新类的 import / 字段 / 构造参数。
+18. **I3 偏差 10 转来的 `PaymentPort#startPayment` 与独立的 `RouteSelectionPolicy` 本迭代没做，再转 I5**：今天交易下单冻结路由走 `MerchantQueryPort#paymentRouteOf`
+    （商城 `OrderServiceImpl`、行业结账 `IndustryCheckoutServiceImpl`、积分目标），S6 已把它切到门店绑定 —— 读切后「选路由」事实上由 `PayMerchantQueryPort` 回答；
+    缺的是「支付域自己选方式 → 选路由 → 冻结快照」这一个入口，它与开放 API 建单同形，随 I5 一起做。
