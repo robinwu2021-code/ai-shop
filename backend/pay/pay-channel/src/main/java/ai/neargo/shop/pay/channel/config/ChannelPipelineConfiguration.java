@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.channel.config;
 
+import ai.neargo.shop.pay.channel.ChannelMessageRecorder;
 import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.channel.PayGatewayRouter;
 import ai.neargo.shop.pay.channel.api.ChannelGateway;
@@ -7,6 +8,12 @@ import ai.neargo.shop.pay.channel.callback.CallbackLogRecorder;
 import ai.neargo.shop.pay.channel.catalog.DbChannelProductCatalog;
 import ai.neargo.shop.pay.channel.fault.ChannelErrorMapper;
 import ai.neargo.shop.pay.channel.followup.FollowUpScheduler;
+import ai.neargo.shop.pay.channel.http.ChannelTransport;
+import ai.neargo.shop.pay.channel.http.JdkChannelTransport;
+import ai.neargo.shop.pay.channel.http.MaskedPlaintextSealer;
+import ai.neargo.shop.pay.channel.http.MybatisRawPayloadStore;
+import ai.neargo.shop.pay.channel.http.RawPayloadSealer;
+import ai.neargo.shop.pay.channel.http.RecordingChannelClient;
 import ai.neargo.shop.pay.channel.followup.FollowUpStore;
 import ai.neargo.shop.pay.channel.followup.MybatisFollowUpStore;
 import ai.neargo.shop.pay.channel.fault.FaultPolicyRegistry;
@@ -43,6 +50,7 @@ import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelFollowupMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelLifecycleLogMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelProductMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelProductMarketMapper;
+import ai.neargo.shop.pay.mapper.ChannelMappers.PayRawPayloadMapper;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -107,6 +115,28 @@ public class ChannelPipelineConfiguration {
                                                     @Value("${shop.pay.channel.drain-timeout:20s}") Duration drainTimeout) {
         return new ChannelLifecycleManager(List.of(followUps), new MybatisLifecycleLogStore(mapper, payTxManager),
                 drainTimeout);
+    }
+
+    /** 裸 HTTP：只给记录型客户端（RecordingClientOnlyTest） */
+    @Bean
+    ChannelTransport channelTransport(@Value("${shop.pay.channel.connect-timeout:5s}") Duration connectTimeout) {
+        return new JdkChannelTransport(connectTimeout);
+    }
+
+    /** 原文怎么存：密钥模块（W5）就绪前存脱敏全文；W5 提供加密实现时以 @Primary 或替换此 bean 接入 */
+    @Bean
+    RawPayloadSealer rawPayloadSealer() {
+        return new MaskedPlaintextSealer();
+    }
+
+    @Bean
+    RecordingChannelClient recordingChannelClient(ChannelTransport transport, CallLogStore callLogs,
+                                                  PayRawPayloadMapper rawMapper, RawPayloadSealer sealer,
+                                                  ChannelMessageRecorder legacyMessages,
+                                                  @Qualifier("payTxManager") PlatformTransactionManager payTxManager,
+                                                  @Value("${shop.pay.raw-payload.retention-days:1825}") int retentionDays) {
+        return new RecordingChannelClient(transport, callLogs, new MybatisRawPayloadStore(rawMapper, payTxManager),
+                sealer, legacyMessages, retentionDays);
     }
 
     @Bean
