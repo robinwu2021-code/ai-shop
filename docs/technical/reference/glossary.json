@@ -2326,12 +2326,6 @@
           "ar": "محفوظ"
         },
         {
-          "key": "goods.fulfillment",
-          "zh-CN": "配送方式",
-          "en": "Delivery",
-          "ar": "طريقة الاستلام"
-        },
-        {
           "key": "goods.goodRate",
           "zh-CN": "好评率 {n}%",
           "en": "{n}% positive",
@@ -4066,12 +4060,6 @@
           "ar": "وقت الطلب"
         },
         {
-          "key": "order.express",
-          "zh-CN": "运单号",
-          "en": "Tracking no.",
-          "ar": "رقم الشحنة"
-        },
-        {
           "key": "order.groupLeft",
           "zh-CN": "{t} 后截止 · 没凑齐自动全额退款",
           "en": "Closes in {t} · full refund if it doesn't fill",
@@ -4136,18 +4124,6 @@
           "zh-CN": "实付",
           "en": "Paid",
           "ar": "المدفوع"
-        },
-        {
-          "key": "order.pickup",
-          "zh-CN": "自提点",
-          "en": "Pickup point",
-          "ar": "نقطة الاستلام"
-        },
-        {
-          "key": "order.progress",
-          "zh-CN": "订单进度",
-          "en": "Order progress",
-          "ar": "تقدم الطلب"
         },
         {
           "key": "order.providedBy",
@@ -4220,18 +4196,6 @@
           "zh-CN": "订单详情",
           "en": "Order detail",
           "ar": "تفاصيل الطلب"
-        },
-        {
-          "key": "order.trace",
-          "zh-CN": "物流轨迹",
-          "en": "Tracking",
-          "ar": "تتبع الشحنة"
-        },
-        {
-          "key": "order.traceView",
-          "zh-CN": "查看",
-          "en": "View",
-          "ar": "عرض"
         },
         {
           "key": "order.weighAdjust",
@@ -8786,12 +8750,6 @@
           "ar": "الكل"
         },
         {
-          "key": "common.back",
-          "zh-CN": "返回",
-          "en": "Back",
-          "ar": "رجوع"
-        },
-        {
           "key": "common.cancel",
           "zh-CN": "取消",
           "en": "Cancel",
@@ -8820,12 +8778,6 @@
           "zh-CN": "完成",
           "en": "Done",
           "ar": "تم"
-        },
-        {
-          "key": "common.empty",
-          "zh-CN": "这里还没有内容",
-          "en": "Nothing here yet",
-          "ar": "لا يوجد محتوى بعد"
         },
         {
           "key": "common.loadFailed",
@@ -9924,90 +9876,6 @@
           "zh-CN": "升级方式",
           "en": "How to upgrade",
           "ar": "طريقة الترقية"
-        },
-        {
-          "key": "customers.daysAgo",
-          "zh-CN": "{n} 天前",
-          "en": "{n}d ago",
-          "ar": "قبل {n} يوم"
-        },
-        {
-          "key": "customers.empty",
-          "zh-CN": "暂无顾客。将店铺码发送给老客，扫码即可进入。",
-          "en": "No customers yet. Share the shop code with regulars; scanning brings them in.",
-          "ar": "لا عملاء بعد. أرسل رمز متجرك إلى عملائك الدائمين، ومسحة واحدة تُدخلهم."
-        },
-        {
-          "key": "customers.entryHint",
-          "zh-CN": "谁在买 · 谁不来了",
-          "en": "Who buys · who lapsed",
-          "ar": "من يشتري · من توقف"
-        },
-        {
-          "key": "customers.owned",
-          "zh-CN": "自带",
-          "en": "Own",
-          "ar": "عملاؤك"
-        },
-        {
-          "key": "customers.ownedTag",
-          "zh-CN": "自带客流",
-          "en": "Own customer",
-          "ar": "عميلك"
-        },
-        {
-          "key": "customers.privacyHint",
-          "zh-CN": "仅显示昵称，不显示手机号。如需联系顾客，请通过平台消息通道。",
-          "en": "Nicknames only, no phone numbers. Contact customers through the platform message channel.",
-          "ar": "الأسماء المستعارة فقط بلا أرقام هواتف. تواصل مع العملاء عبر رسائل المنصة."
-        },
-        {
-          "key": "customers.repeatRate",
-          "zh-CN": "复购率",
-          "en": "Repeat rate",
-          "ar": "معدل التكرار"
-        },
-        {
-          "key": "customers.silent",
-          "zh-CN": "沉默",
-          "en": "Lapsed",
-          "ar": "متوقفون"
-        },
-        {
-          "key": "customers.silentHint",
-          "zh-CN": "沉默指消费两次以上、但超过 14 天未到店。仅消费一次的不计入流失。",
-          "en": "Lapsed = bought twice or more but nothing for 14 days. A single purchase is not churn — that relationship never started.",
-          "ar": "المتوقف = اشترى مرتين فأكثر ثم غاب ١٤ يومًا. الشراء مرة واحدة ليس فقدانًا؛ فالعلاقة لم تبدأ أصلًا."
-        },
-        {
-          "key": "customers.silentTag",
-          "zh-CN": "{n} 天没来",
-          "en": "{n} days away",
-          "ar": "غاب {n} يومًا"
-        },
-        {
-          "key": "customers.stat",
-          "zh-CN": "买过 {n} 次 · 累计 {m}",
-          "en": "{n} orders · {m} total",
-          "ar": "{n} طلبات · {m} إجمالًا"
-        },
-        {
-          "key": "customers.title",
-          "zh-CN": "顾客",
-          "en": "Customers",
-          "ar": "العملاء"
-        },
-        {
-          "key": "customers.today",
-          "zh-CN": "今天",
-          "en": "today",
-          "ar": "اليوم"
-        },
-        {
-          "key": "customers.total",
-          "zh-CN": "顾客数",
-          "en": "Customers",
-          "ar": "عدد العملاء"
         },
         {
           "key": "delivery.empty",
@@ -14834,18 +14702,6 @@
           "ar": "متجري"
         },
         {
-          "key": "me.stores",
-          "zh-CN": "门店管理",
-          "en": "Stores",
-          "ar": "إدارة المتاجر"
-        },
-        {
-          "key": "me.switchStore",
-          "zh-CN": "切换",
-          "en": "Switch",
-          "ar": "تبديل"
-        },
-        {
           "key": "me.username",
           "zh-CN": "用户名",
           "en": "Username",
@@ -15962,52 +15818,10 @@
           "ar": "أدخل اسم القيمة، مثال: 750g"
         },
         {
-          "key": "mySpecs.addValueTitle",
-          "zh-CN": "档位名称",
-          "en": "Value name",
-          "ar": "اسم القيمة"
-        },
-        {
           "key": "mySpecs.addableHere",
           "zh-CN": "可加回",
           "en": "Add back",
           "ar": "إعادة الإضافة"
-        },
-        {
-          "key": "mySpecs.adjust",
-          "zh-CN": "调整",
-          "en": "Adjust",
-          "ar": "تعديل"
-        },
-        {
-          "key": "mySpecs.adjustHint",
-          "zh-CN": "✕ 移除档位，＋ 从平台选用或新建。重命名仅影响本店显示，不影响跨店比价。",
-          "en": "✕ removes an option, ＋ picks one from the platform or adds your own. Renaming only affects your store — comparison still works.",
-          "ar": "✕ لإزالة خيار، ＋ للاختيار من المنصة أو إضافة خيارك. إعادة التسمية تؤثر على متجرك فقط؛ تبقى المقارنة صالحة."
-        },
-        {
-          "key": "mySpecs.archive",
-          "zh-CN": "停用",
-          "en": "Disable",
-          "ar": "تعطيل"
-        },
-        {
-          "key": "mySpecs.archiveConfirm",
-          "zh-CN": "已发布的 {n} 件商品不受影响；停用后建品时不再可选。",
-          "en": "The {n} existing products are unaffected — you just cannot pick it for new ones.",
-          "ar": "المنتجات الـ {n} الحالية لن تتأثر؛ لن تتمكن فقط من اختيارها للمنتجات الجديدة."
-        },
-        {
-          "key": "mySpecs.archiveTitle",
-          "zh-CN": "停用规格",
-          "en": "Disable this spec",
-          "ar": "تعطيل هذه المواصفة"
-        },
-        {
-          "key": "mySpecs.archivedTitle",
-          "zh-CN": "已停用",
-          "en": "Disabled",
-          "ar": "المعطّلة"
         },
         {
           "key": "mySpecs.buildOwnCost",
@@ -16088,18 +15902,6 @@
           "ar": "إغلاق"
         },
         {
-          "key": "mySpecs.empty",
-          "zh-CN": "暂无自建规格。建品时如无合适选项，可在此新建。",
-          "en": "Nothing built yet. You can create one while adding a product.",
-          "ar": "لم تنشئ أي مواصفة بعد. يمكنك إنشاء واحدة أثناء إضافة منتج."
-        },
-        {
-          "key": "mySpecs.mineTitle",
-          "zh-CN": "我建的",
-          "en": "Mine",
-          "ar": "التي أنشأتها"
-        },
-        {
           "key": "mySpecs.noMoreDim",
           "zh-CN": "本类目的平台规格已全部启用",
           "en": "All specs for this category are in use",
@@ -16130,12 +15932,6 @@
           "ar": "لا خيارات بعد"
         },
         {
-          "key": "mySpecs.noValues",
-          "zh-CN": "暂无取值",
-          "en": "No values yet",
-          "ar": "لا توجد قيم بعد"
-        },
-        {
           "key": "mySpecs.own",
           "zh-CN": "本店",
           "en": "mine",
@@ -16154,22 +15950,10 @@
           "ar": "خصائص المنصة المتاحة"
         },
         {
-          "key": "mySpecs.quota",
-          "zh-CN": "已建 / 上限",
-          "en": "used / limit",
-          "ar": "المستخدم / الحد"
-        },
-        {
           "key": "mySpecs.quotaShort",
           "zh-CN": "已建 {used}/{max}",
           "en": "own {used} / {max}",
           "ar": "خاصتي {used} / {max}"
-        },
-        {
-          "key": "mySpecs.remove",
-          "zh-CN": "移除",
-          "en": "Remove",
-          "ar": "إزالة"
         },
         {
           "key": "mySpecs.removeConfirm",
@@ -16184,12 +15968,6 @@
           "ar": "إزالة المواصفة"
         },
         {
-          "key": "mySpecs.removed",
-          "zh-CN": "已移除，可重新添加",
-          "en": "Removed (tap to add back)",
-          "ar": "مُزالة (انقر للإرجاع)"
-        },
-        {
           "key": "mySpecs.rename",
           "zh-CN": "重命名",
           "en": "Rename",
@@ -16200,12 +15978,6 @@
           "zh-CN": "仅修改本店显示名称，不影响跨店比价。",
           "en": "Renaming only changes what your store shows.",
           "ar": "إعادة التسمية تغيّر ما يظهر في متجرك فقط."
-        },
-        {
-          "key": "mySpecs.renameTitle",
-          "zh-CN": "重命名",
-          "en": "New name",
-          "ar": "الاسم الجديد"
         },
         {
           "key": "mySpecs.reset",
@@ -16232,12 +16004,6 @@
           "ar": "حفظ"
         },
         {
-          "key": "mySpecs.saved",
-          "zh-CN": "已保存",
-          "en": "Saved",
-          "ar": "تم الحفظ"
-        },
-        {
           "key": "mySpecs.tabDims",
           "zh-CN": "销售规格",
           "en": "Variants",
@@ -16254,24 +16020,6 @@
           "zh-CN": "商品规格",
           "en": "Product options",
           "ar": "مواصفات المنتجات"
-        },
-        {
-          "key": "mySpecs.typeMine",
-          "zh-CN": "输入新的档位…",
-          "en": "Type a new option…",
-          "ar": "اكتب خيارًا جديدًا…"
-        },
-        {
-          "key": "mySpecs.unarchive",
-          "zh-CN": "启用",
-          "en": "Enable",
-          "ar": "تفعيل"
-        },
-        {
-          "key": "mySpecs.used",
-          "zh-CN": "用在 {n} 件商品",
-          "en": "used by {n} products",
-          "ar": "مستخدمة في {n} منتجات"
         },
         {
           "key": "mySpecs.valsLead",
@@ -22106,12 +21854,6 @@
           "ar": "موقوف"
         },
         {
-          "key": "staff.editRoles",
-          "zh-CN": "改授权",
-          "en": "Edit access",
-          "ar": "تعديل الصلاحيات"
-        },
-        {
           "key": "staff.empty",
           "zh-CN": "还没有员工",
           "en": "No staff yet",
@@ -22142,42 +21884,6 @@
           "ar": "المتاجر والأدوار"
         },
         {
-          "key": "staff.hint",
-          "zh-CN": "员工用自己的手机号 + 验证码登录，不用设密码",
-          "en": "Staff sign in with their own phone and a code — no passwords to hand out",
-          "ar": "يدخل الموظف برقمه ورمز التحقق؛ بلا كلمات مرور تُسلَّم"
-        },
-        {
-          "key": "staff.logAdd",
-          "zh-CN": "加为员工",
-          "en": "Added as staff",
-          "ar": "أُضيف كموظف"
-        },
-        {
-          "key": "staff.logDisable",
-          "zh-CN": "停用（门店授权保留）",
-          "en": "Disabled (store access kept)",
-          "ar": "إيقاف (مع بقاء صلاحيات المتجر)"
-        },
-        {
-          "key": "staff.logEnable",
-          "zh-CN": "启用",
-          "en": "Enabled",
-          "ar": "تفعيل"
-        },
-        {
-          "key": "staff.logGrant",
-          "zh-CN": "授予 {store} 的{role}",
-          "en": "Granted {role} at {store}",
-          "ar": "منح {role} في {store}"
-        },
-        {
-          "key": "staff.logRevoke",
-          "zh-CN": "撤销 {store} 的{role}",
-          "en": "Revoked {role} at {store}",
-          "ar": "سحب {role} في {store}"
-        },
-        {
           "key": "staff.logTip",
           "zh-CN": "记录谁在何时将谁的权限改成了什么。授权变更是权限扩散的唯一入口。",
           "en": "Records who changed whose permissions, when, and to what. Authorisation changes are the only route by which permissions spread.",
@@ -22200,18 +21906,6 @@
           "zh-CN": "还没有变更记录",
           "en": "No changes yet",
           "ar": "لا تغييرات بعد"
-        },
-        {
-          "key": "staff.logsFold",
-          "zh-CN": "收起记录",
-          "en": "Hide log",
-          "ar": "إخفاء السجل"
-        },
-        {
-          "key": "staff.moreRoles",
-          "zh-CN": "更多角色",
-          "en": "More roles",
-          "ar": "أدوار أخرى"
         },
         {
           "key": "staff.name",
@@ -22266,18 +21960,6 @@
           "zh-CN": "手机号",
           "en": "Phone",
           "ar": "رقم الهاتف"
-        },
-        {
-          "key": "staff.role.CLERK",
-          "zh-CN": "店员",
-          "en": "Clerk",
-          "ar": "بائع"
-        },
-        {
-          "key": "staff.role.MANAGER",
-          "zh-CN": "店长",
-          "en": "Manager",
-          "ar": "مدير"
         },
         {
           "key": "staff.roleAll",
@@ -22830,6 +22512,12 @@
           "zh-CN": "退货入库",
           "en": "Return in",
           "ar": "إدخال مرتجع"
+        },
+        {
+          "key": "stock.reason.RETURN_SUPPLIER",
+          "zh-CN": "退供应商",
+          "en": "Return to supplier",
+          "ar": "إرجاع للمورد"
         },
         {
           "key": "stock.reason.SALE",
@@ -26786,12 +26474,6 @@
           "ar": "تفعيل"
         },
         {
-          "key": "stores.hint",
-          "zh-CN": "管理门店的开设、启停与收款账户。单店门面（公告、营业时间、主推商品）在「店铺设置」中维护。",
-          "en": "How many shops you run. A single shop's front (notice / hours / picks) lives in Shop settings",
-          "ar": "هنا عدد المتاجر؛ أما واجهة المتجر الواحد فتُعدَّل في إعدادات المتجر"
-        },
-        {
           "key": "stores.linkCopied",
           "zh-CN": "链接已复制",
           "en": "Link copied",
@@ -28560,18 +28242,6 @@
           "zh-CN": "当前没有待核销的订单",
           "en": "Nothing awaiting redemption",
           "ar": "لا يوجد ما ينتظر الاستلام"
-        },
-        {
-          "key": "verify.ovBatches",
-          "zh-CN": "今日到货",
-          "en": "Arrived today",
-          "ar": "وصل اليوم"
-        },
-        {
-          "key": "verify.ovFee",
-          "zh-CN": "履约服务费",
-          "en": "Service fee",
-          "ar": "رسوم الخدمة"
         },
         {
           "key": "verify.ovPending",
