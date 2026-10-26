@@ -1,0 +1,24 @@
+{
+  "task": "Task68C",
+  "status": "RELEASED_CODE_ONLY_UNIFIED_TEST_PENDING",
+  "modify": [
+    {
+      "path": "scripts/verify-manual-counter-source.mjs",
+      "baselineSha256": "471cd2cf309a3ca9d6fc827530d49bb9793cc15295ccbf016eccf3819247d38c"
+    },
+    {
+      "path": "scripts/tests/manual-counter-source-runner.test.mjs",
+      "baselineSha256": "07e37527eeff415e91e07082e78bf75d420fbc25d08f08c94ba3c49397648fdc"
+    }
+  ],
+  "create": [],
+  "runtimeTestsAllowed": false,
+  "migrationExecutionAllowed": false,
+  "nativeGateCreationAllowed": false,
+  "paymentIntegration": false,
+  "codingBaseReference": "HEAD at root C publication commit before worker dispatch",
+  "designOverlay": "task-68c-materialization-addendum.md",
+  "designOverlaySha256": "ef6c5418d562eb89764413b00ac326b46387d757e8025a342bcc673629aaa0f7",
+  "designReview": "review-task-68c-materialization-r1.md",
+  "canStart": false
+}

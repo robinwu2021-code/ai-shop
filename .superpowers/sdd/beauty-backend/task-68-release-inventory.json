@@ -205,5 +205,10 @@
     "designSha256": "7005f0483528a88476892cbaa40e097a16f33fbcdbe2082aaf113a3ed59c12e5",
     "review": ".superpowers/sdd/beauty-backend/review-task-68b-shared-contract.md",
     "reviewSha256": "882263d7c8f882bfcc5ff4dced414214fc827252dd678a2bc3b944dd911bd388"
+  },
+  "materializationOverlay": {
+    "path": ".superpowers/sdd/beauty-backend/task-68c-materialization-addendum.md",
+    "sha256": "ef6c5418d562eb89764413b00ac326b46387d757e8025a342bcc673629aaa0f7",
+    "status": "DESIGN_STATIC_REVIEW_APPROVED_C_TWO_SCRIPT_CODE_RELEASED_RUNTIME_NOT_AUTHORIZED_NOW"
   }
 }

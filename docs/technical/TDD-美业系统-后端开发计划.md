@@ -1306,7 +1306,7 @@ Task68B1执行结果：精确9份Java源码已本地提交 `419e9d94fa5618d8783a
 
 Task68B2执行结果：精确14份Java源码已本地提交 `5477210b96ef3339f340ac5d715263d8abf27a19`，共用营销/促销/商品/订单提供方与报价、原计划、现金准入消费者已串联，普通零售/M1路径和原sourceView保持。实际24模块主/测试源码冻结编译31.430s（Core1070主/88测试、宿主413主/752测试源码）；最后测试夹具限定修订18.272s重编译752项宿主测试源码。R0的不可变身份夹具、别名规定覆盖和双行总额不变分摊负例经三轮限定修订，[R3复审](../../.superpowers/sdd/beauty-backend/review-task-68b2-r3.md)Spec/Quality APPROVED。17项场景均未执行；[关口](../../.superpowers/sdd/beauty-backend/task-68b2-code-phase-root-gate.json)明确旧Task66真实生产器四份产物、序列化golden、原生并发及完整零售/餐饮/美业编译矩阵仍待完成。源码方法对账补齐3个owner组合方法和8个本域纯规则方法，共100项共享增量登记，不增加HTTP/任务/私有表数量。m2c的prd_sku库存断言限定真实PLATFORM拥有方，不推导INVENTORY/DUAL结果；C须明确材料生产、原号/时效、实际类路径、独立Task68闸门与拥有资源清理后再编码。Pay后置、canStart=false，测试与部署继续统一后置。
 
-68C当前仅做[材料生产顺序专项细化](../../.superpowers/sdd/beauty-backend/task-68c-materialization-brief.md)：明确原输入指纹与尚未生成产物的区别、实际应用序列化器、独立旧源码构建/类路径、四原单时效以及只清理拥有资源。专项设计需独立复审后才发布两个脚本的编码；本阶段不生成golden、构建旧运行时或创建native GO。
+68C材料生产顺序专项设计已完成：[R0审查](../../.superpowers/sdd/beauty-backend/review-task-68c-materialization-r0.md)发现旧类预期来源/实际观察顺序及测试启动器类路径两项Important，经限定修订，[R1复审](../../.superpowers/sdd/beauty-backend/review-task-68c-materialization-r1.md)Spec PASS/Architecture APPROVED。[最终方案](../../.superpowers/sdd/beauty-backend/task-68c-materialization-addendum.md)明确输入与派生产物、实际mapper、独立旧源码构建、显式runner工具依赖、53个具名方法、四原单时效和拥有资源清理。现按[精确两脚本清单](../../.superpowers/sdd/beauty-backend/task-68c-release-inventory.json)发布编码；本阶段不生成golden、构建旧运行时或创建native GO，所有运行行为仍统一后置。
 
 ## §3 数据层之后的业务任务与启动深化
 
