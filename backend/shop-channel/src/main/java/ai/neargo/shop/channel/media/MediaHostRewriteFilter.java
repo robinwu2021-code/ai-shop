@@ -1,5 +1,7 @@
 package ai.neargo.shop.channel.media;
 
+import ai.neargo.shop.spi.media.MediaPublicSourceInternalApi;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -51,7 +53,10 @@ public class MediaHostRewriteFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String accept = request.getHeader("Accept");
-        return request.getRequestURI().endsWith("/stream")
+        // The internal digest binds canonical URLs; public delivery rewriting would invalidate it.
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return MediaPublicSourceInternalApi.CAPTURE_PATH.equals(path)
+                || request.getRequestURI().endsWith("/stream")
                 || (accept != null && accept.contains("text/event-stream"));
     }
 

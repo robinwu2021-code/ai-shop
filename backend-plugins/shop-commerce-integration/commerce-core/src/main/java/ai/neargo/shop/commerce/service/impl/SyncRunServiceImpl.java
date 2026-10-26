@@ -55,6 +55,7 @@ public final class SyncRunServiceImpl implements SyncRunService {
                 req.expectedScopeVersion().equals(before.scope().getVersion())
                         && req.hash().equals(snap.getContentHash()));
         db.revalidate(before, snap);
+        require(db.compatible(before, snap));
         return db.commands.execute(
                 e,
                 store,
@@ -75,6 +76,7 @@ public final class SyncRunServiceImpl implements SyncRunService {
                                         && expectedPolicyVersion != null
                                         && expectedPolicyVersion.equals(policy.getVersion()));
                     }
+                    require(db.compatible(c, snap));
                     var r = audit(new CimSyncRun(), "SYSTEM");
                     r.setRunNo(BizKey.next("CISR"));
                     r.setEntityNo(e);

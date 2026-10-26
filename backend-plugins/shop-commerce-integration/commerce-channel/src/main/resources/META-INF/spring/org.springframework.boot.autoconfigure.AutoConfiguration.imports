@@ -1,1 +1,3 @@
 ai.neargo.shop.commerce.channel.CommerceChannelAutoConfiguration
+ai.neargo.shop.commerce.channel.CommerceAuthorityClientAutoConfiguration
+ai.neargo.shop.commerce.channel.CommerceMediaClientAutoConfiguration

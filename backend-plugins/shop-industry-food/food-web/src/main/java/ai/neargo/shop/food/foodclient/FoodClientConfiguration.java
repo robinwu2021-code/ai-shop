@@ -1,6 +1,10 @@
 package ai.neargo.shop.food.foodclient;
 
 import ai.neargo.shop.food.service.QueueService;
+import ai.neargo.shop.food.service.StoreCalendarSourceService;
+import ai.neargo.shop.food.spi.StoreCalendarSourceInternalApi;
+import ai.neargo.shop.food.service.MenuCatalogPriceService;
+import ai.neargo.shop.food.spi.MenuCatalogPriceInternalApi;
 import ai.neargo.shop.food.service.DiningPickupVerificationService;
 import ai.neargo.shop.food.spi.QueueInternalApi;
 import ai.neargo.shop.food.spi.DiningPickupVerificationInternalApi;
@@ -107,6 +111,12 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(StoreCalendarSourceService.class)
+    StoreCalendarSourceService remoteStoreCalendarSourceService(InternalHttp http) {
+        return new RemoteStoreCalendarSourceService(http.client(ServiceName.FOOD,
+                StoreCalendarSourceInternalApi.class,Duration.ofSeconds(5)));
+    }
     @Bean @ConditionalOnMissingBean(DiningReportService.class)
     DiningReportService remoteDiningReportService(InternalHttp http) {
         return new RemoteDiningReportService(http.client(ServiceName.FOOD,DiningReportInternalApi.class,Duration.ofSeconds(15)));
@@ -247,6 +257,12 @@ public class FoodClientConfiguration {
     SalesRestrictionService remoteSalesRestrictionService(InternalHttp http) {
         return new RemoteSalesRestrictionService(http.client(ServiceName.FOOD, SalesRestrictionInternalApi.class,
                 Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnMissingBean(MenuCatalogPriceService.class)
+    MenuCatalogPriceService remoteMenuCatalogPriceService(InternalHttp http) {
+        return new RemoteMenuCatalogPriceService(http.client(ServiceName.FOOD,
+                MenuCatalogPriceInternalApi.class, Duration.ofSeconds(5)));
     }
     @Bean
     @ConditionalOnMissingBean(ConfigRevisionService.class)

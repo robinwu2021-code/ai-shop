@@ -73,10 +73,10 @@ code+='## L1 定位\n\n以下是目标文件与方法清单，不是已落地源
 code+='## L2 模块与依赖\n\n'+table(['模块','包/依赖','职责'],[
  ['commerce-api','ai.neargo.shop.commerce.service/dto；ai.neargo.shop.spi.commerce；仅原轻量基础合同','Service、Req/VO、唯一跨域Port及事件'],
  ['commerce-core','ai.neargo.shop.commerce.service.impl/entity/mapper/policy/statemachine/event/job/config；api+原store基础','本域持久化和编排；不依赖channel/web或FOOD/零售业务实现'],
- ['commerce-web','ai.neargo.shop.commerce.api.biz/ops/callback；api+原auth；不依赖core','公开Controller及本地/远程Service选择，原Profile和权限'],
+ ['commerce-web','ai.neargo.shop.commerce.api.biz/ops/callback/internal；api+原auth；不依赖core','公开Controller及本地/远程Service选择，原Profile和权限'],
  ['commerce-channel','ai.neargo.shop.commerce.channel.base/client/adapter/port；api+svc-client','平台网关和原业务的typed远程Port实现；不依赖core/web'],
- ['commerce-server','ai.neargo.shop.commerce.server；core+channel+原内部Web基础','独立启动，Internal*Controller和服务身份鉴权；不重复公开B/OPS入口']]);
-code+='集成形态：宿主web+core+channel；独立形态：宿主web和远程Service客户端，独立server运行core+channel。与food现有装配分工一致。服务端callback在宿主保留原URL，通过内部typed传输原始字节；两层分别核验服务身份及平台签名，不能让内部转发绕过验签。两形态只激活一个写者及一个Port实现。\n\n';
+ ['commerce-server','ai.neargo.shop.commerce.server；core+channel+web；公共BFF在独立形态关闭','独立启动，Internal*Controller和服务身份鉴权；不重复公开B/OPS入口']]);
+code+='集成形态：宿主web+core+channel；独立形态：宿主web和远程Service客户端，独立server运行core+channel+web的内部合同，公共BFF继续关闭。与food现有装配分工一致。服务端callback在宿主保留原URL，通过内部typed传输原始字节；两层分别核验服务身份及平台签名，不能让内部转发绕过验签。两形态只激活一个写者及一个Port实现。\n\n';
 code+='## L3 Controller Service Mapper对账\n\n';
 const controllers=[...new Set(d.apis.map(a=>a.controller))];
 code+=table(['模块及完整类名','Service方法','API编号'],controllers.map(c=>{const aa=d.apis.filter(a=>a.controller===c);const role=aa[0].role;const pkg=role==='B'?'biz':role==='OPS'?'ops':'callback';return ['commerce-web / ai.neargo.shop.commerce.api.'+pkg+'.'+c,[...new Set(aa.map(a=>a.service+'.'+a.method))].join(', '),aa.map(a=>a.id).join(', ')];}));

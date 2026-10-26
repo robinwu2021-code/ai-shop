@@ -138,6 +138,11 @@ public final class CommerceRecoveryServiceImpl implements CommerceRecoveryServic
                                                     r.getEntityNo(),
                                                     r.getScopeNo(),
                                                     r.getSnapshotNo()));
+                    if (!db.compatible(c, snapshot)) {
+                        failQueued(r, "SCHEMA_UNSUPPORTED");
+                        failed++;
+                        continue;
+                    }
                     try {
                         db.revalidate(c, snapshot);
                     } catch (RuntimeException invalid) {
@@ -220,6 +225,7 @@ public final class CommerceRecoveryServiceImpl implements CommerceRecoveryServic
             db.unchanged(before, c);
             db.validSnapshot(c, snapshot);
             grant = db.ready(c);
+            require(db.compatible(c, snapshot));
             long generation = Math.addExact(c.scope().getGeneration(), 1);
             op = audit(new CimOperation(), "SYSTEM");
             op.setOperationNo(BizKey.next("CIOP"));
@@ -310,6 +316,7 @@ public final class CommerceRecoveryServiceImpl implements CommerceRecoveryServic
             fence = Math.addExact(op.getFence(), 1);
             snapshot = db.snapshot(r.getEntityNo(), r.getScopeNo(), r.getSnapshotNo());
         }
+        require(db.compatible(c, snapshot));
         var a = audit(new CimOperationAttempt(), "SYSTEM");
         a.setAttemptRef(BizKey.next("CIAT"));
         a.setEntityNo(r.getEntityNo());
@@ -539,6 +546,10 @@ public final class CommerceRecoveryServiceImpl implements CommerceRecoveryServic
     }
 
     private void failQueued(CimSyncRun r) {
+        failQueued(r, "SNAPSHOT_STALE");
+    }
+
+    private void failQueued(CimSyncRun r, String code) {
         db.commands.atomic(
                 () -> {
                     db.scope(r.getEntityNo(), r.getStoreNo(), r.getScopeNo(), true);
@@ -548,7 +559,7 @@ public final class CommerceRecoveryServiceImpl implements CommerceRecoveryServic
                                     .eq("run_no", r.getRunNo())
                                     .eq("status", "QUEUED")
                                     .set("status", "FAILED")
-                                    .set("failure_code", "SNAPSHOT_STALE")
+                                    .set("failure_code", code)
                                     .set("finished_at", now())
                                     .set("next_recovery_at", null)
                                     .setSql("version=version+1"));

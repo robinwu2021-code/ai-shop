@@ -36756,6 +36756,13 @@
         "module": "shop-base"
       },
       {
+        "host": "CatalogPriceSourceFacts",
+        "name": "PURPOSE",
+        "value": "CATALOG_BASE",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "host": "Cert",
         "name": "BUSINESS_LICENSE",
         "value": "BUSINESS_LICENSE",
@@ -36830,6 +36837,13 @@
         "name": "FOOD",
         "value": "FOOD",
         "zh": "餐饮独立进程。",
+        "module": "shop-base"
+      },
+      {
+        "host": "ServiceName",
+        "name": "COMMERCE",
+        "value": "COMMERCE",
+        "zh": "统一渠道独立进程。",
         "module": "shop-base"
       },
       {

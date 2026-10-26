@@ -1,7 +1,12 @@
 package ai.neargo.shop.spi.commerce;
 
+import ai.neargo.shop.commerce.dto.CommerceIntegerDeserializer;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Validation;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -37,7 +42,34 @@ public interface ChannelCatalogSourcePort {
             List<Offer> offers,
             List<Schedule> schedules,
             Instant validUntil,
-            String receiptNo) {}
+            String receiptNo,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+                    @JsonDeserialize(using = CommerceIntegerDeserializer.class)
+                    Integer schemaVersion,
+            @JsonInclude(JsonInclude.Include.NON_NULL) ChannelCatalogDetails details) {
+        /** Original callers and persisted payloads retain their version-one shape and hashing. */
+        public Document(
+                Owner owner,
+                String currency,
+                List<ValidatedSource> sources,
+                List<Section> sections,
+                List<Offer> offers,
+                List<Schedule> schedules,
+                Instant validUntil,
+                String receiptNo) {
+            this(
+                    owner,
+                    currency,
+                    sources,
+                    sections,
+                    offers,
+                    schedules,
+                    validUntil,
+                    receiptNo,
+                    null,
+                    null);
+        }
+    }
 
     record Section(String key, String name, int sortNo) {}
 

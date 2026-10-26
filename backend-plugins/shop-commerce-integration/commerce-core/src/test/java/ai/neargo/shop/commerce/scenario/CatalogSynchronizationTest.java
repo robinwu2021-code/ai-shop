@@ -44,6 +44,7 @@ import javax.sql.DataSource;
 
 class CatalogSynchronizationTest {
     static class Source implements ChannelCatalogSourcePort, ChannelSourceValidationPort {
+        boolean detailed;
         boolean stale;
         boolean outage;
         boolean negativePrice;
@@ -74,43 +75,45 @@ class CatalogSynchronizationTest {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             captures++;
             if (captureHook != null) captureHook.run();
-            return new Document(
-                    request.owner(),
-                    "TWD",
-                    request.sources(),
-                    List.of(new Section("CAT", "Menu", 0)),
-                    List.of(
-                            new Offer(
-                                    "OFFER",
-                                    request.sources().getFirst().sourceRef(),
-                                    request.sources().getFirst().selectionRevision(),
-                                    "Tea",
-                                    "CAT",
-                                    List.of(
-                                            new Sku(
-                                                    "SKU",
-                                                    "Regular",
-                                                    price(negativePrice ? -1 : 100),
-                                                    "STOCK_POLICY")),
-                                    List.of(
-                                            new OptionGroup(
-                                                    "TOPPINGS",
-                                                    "Toppings",
-                                                    0,
-                                                    2,
-                                                    List.of(
-                                                            new OptionChoice(
-                                                                    "PEARL",
-                                                                    "Pearl",
-                                                                    price(20),
-                                                                    "TOPPING_STOCK",
-                                                                    0,
-                                                                    2)))),
-                                    List.of(),
-                                    List.of())),
-                    List.of(),
-                    Instant.now().plusSeconds(600),
-                    "CATALOG_RECEIPT");
+            var document =
+                    new Document(
+                            request.owner(),
+                            "TWD",
+                            request.sources(),
+                            List.of(new Section("CAT", "Menu", 0)),
+                            List.of(
+                                    new Offer(
+                                            "OFFER",
+                                            request.sources().getFirst().sourceRef(),
+                                            request.sources().getFirst().selectionRevision(),
+                                            "Tea",
+                                            "CAT",
+                                            List.of(
+                                                    new Sku(
+                                                            "SKU",
+                                                            "Regular",
+                                                            price(negativePrice ? -1 : 100),
+                                                            "STOCK_POLICY")),
+                                            List.of(
+                                                    new OptionGroup(
+                                                            "TOPPINGS",
+                                                            "Toppings",
+                                                            0,
+                                                            2,
+                                                            List.of(
+                                                                    new OptionChoice(
+                                                                            "PEARL",
+                                                                            "Pearl",
+                                                                            price(20),
+                                                                            "TOPPING_STOCK",
+                                                                            0,
+                                                                            2)))),
+                                            List.of(),
+                                            List.of())),
+                            List.of(),
+                            Instant.now().plusSeconds(600),
+                            "CATALOG_RECEIPT");
+            return detailed ? CatalogDetailsPolicyTest.fromLegacy(document) : document;
         }
 
         private Price price(long amount) {
@@ -123,6 +126,13 @@ class CatalogSynchronizationTest {
         AtomicInteger queries = new AtomicInteger();
         Outcome next = Outcome.SUBMITTED;
         boolean terminal;
+        boolean detailedSupported;
+        Publication lastPublication;
+
+        public boolean supportsDocumentSchema(int schema) {
+            return schema == 1 || schema == 2 && detailedSupported;
+        }
+
         boolean timeout;
         Runnable sendHook;
         Outcome queryNext;
@@ -143,6 +153,7 @@ class CatalogSynchronizationTest {
         public Result publish(Publication request) {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             sends.incrementAndGet();
+            lastPublication = request;
             if (sendHook != null) sendHook.run();
             if (timeout) throw new IllegalStateException("external timeout");
             return result(request);

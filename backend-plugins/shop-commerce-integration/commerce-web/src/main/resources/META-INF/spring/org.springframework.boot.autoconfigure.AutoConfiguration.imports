@@ -1,1 +1,2 @@
 ai.neargo.shop.commerce.config.CommerceWebAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceInternalAutoConfiguration
