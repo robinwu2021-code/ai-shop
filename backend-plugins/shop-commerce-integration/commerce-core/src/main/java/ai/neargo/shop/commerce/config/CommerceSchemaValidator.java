@@ -34,7 +34,9 @@ public final class CommerceSchemaValidator {
                     "cim_sync_policy",
                     "cim_catalog_snapshot",
                     "cim_sync_run",
-                    "cim_sync_run_item");
+                    "cim_sync_run_item",
+                    "cim_resource_mapping",
+                    "cim_resource_mapping_revision");
 
     private static final Map<String, String> COLUMNS =
             catalogColumns(
@@ -110,6 +112,19 @@ public final class CommerceSchemaValidator {
                 "cim_sync_run_item",
                 "item_no entity_no run_no attempt_no object_type object_key_hash external_ref"
                         + " source_ref result error_code evidence_ref");
+        result.put(
+                "cim_resource_mapping",
+                "mapping_no entity_no store_no connection_no object_type external_ref"
+                        + " external_identity_hash external_identity_json active_revision_no"
+                        + " latest_revision_no verification_operation_no verification_lease_until"
+                        + " next_verification_at");
+        result.put(
+                "cim_resource_mapping_revision",
+                "revision_no entity_no mapping_no revision source_owner source_ref"
+                    + " source_revision_ref sales_offer_ref mapping_snapshot content_hash"
+                    + " effective_at validation_receipt_ref external_evidence_ref mapping_origin"
+                    + " validation_status source_content_hash validation_expires_at"
+                    + " connection_revision_no authorization_no reason");
         return Map.copyOf(result);
     }
 
@@ -130,6 +145,14 @@ public final class CommerceSchemaValidator {
                 List.of(
                         Set.of("item_no"),
                         Set.of("run_no", "attempt_no", "object_type", "object_key_hash")));
+        result.put(
+                "cim_resource_mapping",
+                List.of(
+                        Set.of("mapping_no"),
+                        Set.of("connection_no", "object_type", "external_identity_hash")));
+        result.put(
+                "cim_resource_mapping_revision",
+                List.of(Set.of("revision_no"), Set.of("mapping_no", "revision")));
         return Map.copyOf(result);
     }
 
@@ -178,13 +201,13 @@ public final class CommerceSchemaValidator {
         }
         var current = flyway.info().current();
         if (current == null
-                || !"3".equals(current.getVersion().getVersion())
+                || !"4".equals(current.getVersion().getVersion())
                 || !tables(source).containsAll(TABLES)) {
             throw new IllegalStateException("Commerce schema is incomplete");
         }
         validateColumns(source);
         validateUniqueKeys(source);
-        return new CommerceSchemaReady("3");
+        return new CommerceSchemaReady("4");
     }
 
     private static void validateColumns(DataSource source) {

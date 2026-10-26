@@ -24,7 +24,8 @@ try {
  sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql', import.meta.url), 'utf8'));
  sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql', import.meta.url), 'utf8'));
  sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V3__commerce_catalog_synchronization.sql', import.meta.url), 'utf8'));
- assert.equal(sql('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()'), '15');
+ sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V4__commerce_resource_mappings.sql', import.meta.url), 'utf8'));
+ assert.equal(sql('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()'), '17');
  const connection = (no, entity, store, identity) => `INSERT INTO cim_store_connection(connection_no,entity_no,
  store_no,profile_no,account_no,external_store_ref,channel_store_key,active_revision_no,status,identity_receipt_ref,identity_verified_at,identity_valid_until)
  VALUES ('${no}','${entity}','${store}','PP','ACCOUNT','REMOTE','${identity}','REV','DRAFT','TRUSTED_TEST','2026-10-26 00:00:00','2026-10-26 01:00:00')`;
@@ -65,5 +66,9 @@ try {
  const item = (no,attempt,type) => `INSERT INTO cim_sync_run_item(item_no,entity_no,run_no,attempt_no,object_type,object_key_hash,result) VALUES ('${no}','E','RUN',${attempt},'${type}','KEY','SUCCEEDED')`;
  sql(item('I1',1,'OFFER'));sql(item('I2',1,'OFFER'),1);sql(item('I3',2,'OFFER'));sql(item('I4',1,'SKU'));
  assert.equal(sql('SELECT COUNT(*) FROM cim_sync_run_item'),'3');
- console.log('PASS: fifteen-table V1+V2+V3 migration, stable store identity, journal replay, operation scope/state uniqueness grant revisions, STORE/source/policy constraints, repeated snapshot content and attempt-scoped item uniqueness');
+ const mapping=(no,identity)=>`INSERT INTO cim_resource_mapping(mapping_no,entity_no,store_no,connection_no,object_type,external_ref,external_identity_hash,external_identity_json,latest_revision_no) VALUES ('${no}','E','S','C1','SKU','REMOTE','${identity}','{}','MR1')`;
+ sql(mapping('M1','PARENT_A'));sql(mapping('M2','PARENT_A'),1);sql(mapping('M3','PARENT_B'));
+ const mappingRevision=(no,revision)=>`INSERT INTO cim_resource_mapping_revision(revision_no,entity_no,mapping_no,revision,source_owner,source_ref,source_revision_ref,sales_offer_ref,mapping_snapshot,content_hash,mapping_origin,validation_status,connection_revision_no,reason) VALUES ('${no}','E','M1',${revision},'FOOD','SKU','R1','OFFER','{}','HASH','IMPORTED','DRAFT','CR','TEST')`;
+ sql(mappingRevision('MR1',1));sql(mappingRevision('MR2',1),1);sql(mappingRevision('MR3',2));
+ console.log('PASS: seventeen-table V1+V2+V3+V4 migration, stable store identity, journal replay, operation scope/state uniqueness grant revisions, STORE/source/policy constraints, repeated snapshot content and attempt-scoped item uniqueness, parent-scoped mapping identity and revision uniqueness');
 } finally { docker(['rm', '--force', name]); }

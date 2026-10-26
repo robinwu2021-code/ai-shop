@@ -152,6 +152,11 @@ public final class CatalogPersistence {
             CimCatalogScope scope) {}
 
     Context connection(String entity, String store, String no, boolean lock) {
+        return connection(entity, store, no, lock, true);
+    }
+
+    /** 本域历史只读可使用已改路由的连接；当前目录写入仍要求LOCAL。 */
+    Context connection(String entity, String store, String no, boolean lock, boolean requireLocal) {
         text(entity, 32);
         text(store, 32);
         text(no, 32);
@@ -188,7 +193,7 @@ public final class CatalogPersistence {
                                 .eq("revision_no", c.getActiveRevisionNo())
                                 .eq("entity_no", entity)
                                 .eq("connection_no", no));
-        require(r != null && "LOCAL".equals(r.getCatalogAuthority()));
+        require(r != null && (!requireLocal || "LOCAL".equals(r.getCatalogAuthority())));
         return new Context(a, c, r, null);
     }
 
@@ -313,6 +318,13 @@ public final class CatalogPersistence {
     }
 
     CimAuthorizationRevision ready(Context c) {
+        var grant = authorized(c);
+        gateway(c);
+        return grant;
+    }
+
+    /** 授权事实与具体能力实现分别核验，资源只读查询不依赖目录发布。 */
+    CimAuthorizationRevision authorized(Context c) {
         require(
                 "ACTIVE".equals(c.connection().getStatus())
                         && "ACTIVE".equals(c.account().getStatus()));
@@ -340,7 +352,6 @@ public final class CatalogPersistence {
         for (var n : json.readTree(a.getGrantedScopes()))
             if (n.isString() && "CATALOG".equals(n.asString())) granted = true;
         require(granted);
-        gateway(c);
         return a;
     }
 
