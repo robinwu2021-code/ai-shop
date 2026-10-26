@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1073 个接口**：后端已实现 910（85%）· 前端在调 987
+**合计 1074 个接口**：后端已实现 911（85%）· 前端在调 987
 
 ---
 
@@ -1135,7 +1135,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **480** 个接口 ｜ 后端已实现 **414**（86%）｜ 前端在调 **396**
+共 **481** 个接口 ｜ 后端已实现 **415**（86%）｜ 前端在调 **396**
 
 ### aftersale（5）
 
@@ -1202,12 +1202,13 @@
 | POST | `/ops/materials` | 保存素材（P-15.1.1–15.1.4） | — | `Material` | — | ✅ | ✅ |
 | POST | `/ops/materials/{no}/published` | setMaterialPublished | — | `Material` | — | ⬜ | ✅ |
 
-### dashboard（10）
+### dashboard（11）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/ops/auth/forgot` | 忘记密码：往登录名那个邮箱发一次性重置码 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/auth/login` | 登录 | — | `LoginResp` | — | ✅ | ⬜ |
+| POST | `/ops/auth/login/verify` | 第二因子：用登录时发到邮箱的验证码换会话（`login` 返回 `challenge` 时才需要） */ | — | `LoginResp` | — | ✅ | ⬜ |
 | GET | `/ops/auth/me` | 拿当前登录人的最新身份（`GET /ops/auth/me`） | — | `LoginResp` | — | ✅ | ⬜ |
 | POST | `/ops/auth/reset` | 用邮件里的重置码设新密码 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/dashboard/funnel` | getAcquisitionFunnel | — | `数组` | — | ✅ | ✅ |
