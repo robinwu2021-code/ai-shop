@@ -14,8 +14,6 @@ import ai.neargo.shop.pay.channel.api.command.PayCommand;
 import ai.neargo.shop.pay.channel.api.command.QueryCommand;
 import ai.neargo.shop.pay.channel.api.command.RefundCommand;
 import java.util.Currency;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * 旧调用面 → 新管线（TDD-支付服务-I2渠道统一封装 S4）。下单、退款、查单三个调用点签名不变，
@@ -43,7 +41,7 @@ public final class LegacyChannelBridge {
                 new PayCommand(meta("PAY", c.outTradeNo()), PayScene.ONLINE_SDK, new Money(c.amountMinor(), c.currency()),
                         c.subject(), c.outTradeNo(), null, c.payerId(), null));
         return switch (r) {
-            case ChannelResult.Pending p -> PayGateway.PrepayResult.ok(strings(p.instruction()), p.channelTradeNo());
+            case ChannelResult.Pending p -> PayGateway.PrepayResult.ok(p.instruction().asParams(), p.channelTradeNo());
             case ChannelResult.Succeeded s -> PayGateway.PrepayResult.ok(s.extra(), s.channelTradeNo());
             case ChannelResult.Failed f -> PayGateway.PrepayResult.fail(f.channelMessage() != null ? f.channelMessage()
                     : f.code().name());
@@ -104,11 +102,5 @@ public final class LegacyChannelBridge {
 
     private static InvocationMeta meta(String bizType, String bizNo) {
         return new InvocationMeta(null, null, null, null, null, SourceInfo.system(bizType, bizNo));
-    }
-
-    private static Map<String, String> strings(Map<String, Object> instruction) {
-        Map<String, String> out = new LinkedHashMap<>();
-        instruction.forEach((k, v) -> out.put(k, v == null ? null : String.valueOf(v)));
-        return out;
     }
 }

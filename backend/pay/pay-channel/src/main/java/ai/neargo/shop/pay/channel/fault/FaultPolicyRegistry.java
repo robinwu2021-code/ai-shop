@@ -32,7 +32,7 @@ public final class FaultPolicyRegistry {
             // 同一 out_trade_no 渠道按单号去重；仍只在请求没发出去时重发 1 次（RetryInterceptor 按 requestSent 判）
             case PAY, CLOSE -> new FaultPolicy(Duration.ofSeconds(15), 1, false, Duration.ofMillis(200), 32, 50f, 20, WAIT);
             // 同步扣款与资金出账：重发 = 可能重复扣钱 / 重复出账
-            case CONFIRM, VOID, REFUND, PAYOUT ->
+            case CONFIRM, VOID, REFUND, PAYOUT, SPLIT ->
                     new FaultPolicy(Duration.ofSeconds(20), 0, false, Duration.ZERO, 16, 50f, 20, WAIT);
             case ONBOARDING_SUBMIT, MEDIA_UPLOAD, KEY_VERIFY ->
                     new FaultPolicy(Duration.ofSeconds(30), 0, false, Duration.ZERO, 8, 50f, 20, WAIT);

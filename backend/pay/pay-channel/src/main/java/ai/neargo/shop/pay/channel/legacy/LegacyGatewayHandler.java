@@ -70,11 +70,7 @@ public final class LegacyGatewayHandler implements ChannelHandler {
         if (!r.success()) {
             return new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED, null, r.message(), false);
         }
-        Map<String, Object> params = new LinkedHashMap<>();
-        if (r.params() != null) {
-            params.putAll(r.params());
-        }
-        return new ChannelResult.Pending(params, r.tradeNo());
+        return new ChannelResult.Pending(new ai.neargo.shop.spi.pay.PayInstruction.AppSdkParams(r.params()), r.tradeNo());
     }
 
     private ChannelResult query(Invocation inv, ChannelAccountContext account, QueryCommand c) {
@@ -87,7 +83,7 @@ public final class LegacyGatewayHandler implements ChannelHandler {
             return new ChannelResult.Failed(PayErrorCode.TRADE_NOT_FOUND, null, "渠道没有这笔", false);
         }
         if (!r.paid()) {
-            return new ChannelResult.Pending(Map.of(), r.tradeNo());
+            return new ChannelResult.Pending(ai.neargo.shop.spi.pay.PayInstruction.none(), r.tradeNo());
         }
         String currency = r.currency() != null ? r.currency() : account.currency();
         Money amount = currency == null ? null : new Money(r.amountMinor(), currency);
@@ -107,7 +103,7 @@ public final class LegacyGatewayHandler implements ChannelHandler {
                     ? new ChannelResult.Failed(PayErrorCode.REFUND_REJECTED, null, r.message(), false)
                     : new ChannelResult.Unknown("REFUND_SEND_UNPROVEN");
         }
-        return new ChannelResult.Pending(Map.of(), r.providerNo());
+        return new ChannelResult.Pending(ai.neargo.shop.spi.pay.PayInstruction.none(), r.providerNo());
     }
 
     public String payChannel() {

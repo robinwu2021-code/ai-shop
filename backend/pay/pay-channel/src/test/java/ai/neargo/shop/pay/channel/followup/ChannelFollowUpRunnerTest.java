@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.channel.followup;
 
+import ai.neargo.shop.spi.pay.PayInstruction;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.pay.channel.api.AccessMode;
@@ -127,7 +129,7 @@ class ChannelFollowUpRunnerTest {
         assertThat(booked).isEmpty();
 
         open("C");
-        answer = new ChannelResult.Pending(Map.of(), null);
+        answer = new ChannelResult.Pending(PayInstruction.none(), null);
         service(NOW).runOnce(10);
         assertThat(store.status.get(2L)).isEqualTo("PENDING");
         assertThat(store.rows.get(2L).nextAt()).isEqualTo(NOW.plus(Duration.ofMinutes(1)));
