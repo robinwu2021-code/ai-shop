@@ -15,9 +15,9 @@
 | 片 | 内容 | 依赖 |
 |---|---|---|
 | S1 | 迁移 11（`pay_app_grant` · `pay_api_nonce` · `pay_qr_code`，与开发计划 §2 一致）+ 实体；`pay:*` / `mch:pay:*` 权限码与角色种子。接入方密钥**不建表**：归密钥模块 `sec_key`（表结构说明 §8.4），过渡期走部署注入 | — |
-| S2 | `pay-portal` 公共底座：`PayCaller` 注入、统一响应与异常、`Idempotency-Key`、请求留痕 `pay_api_request_log`、限流、按入口的 CORS 与安全头 | S1 |
+| S2 | `pay-portal` 公共底座：`PayCaller` 注入、统一响应与异常、`Idempotency-Key`、请求留痕 `pay_api_request_log`、限流、按入口的 CORS 与安全头；**回调入口自 `shop-core` 迁入，作为第六个面 `CALLBACK`**（复核 D-6） | S1 |
 | S3 | 开放 API 鉴权：`SignatureCanonicalizer` + 示例向量、`AppAuthService`（启用 → IP → 时间窗 → nonce → 验签 → scope → 授权）、`NonceStore`、`ConfigAppKeyResolver` ⏸ | S2 |
-| S4 | `PaymentPort#startPayment` + `RouteSelectionPolicy`（I3 偏差 10 / I4 偏差 18）；开放 API 建单 / 查单 / 选方式 / 关单 / 支付方式 | S3 |
+| S4 | `PaymentPort#startPayment` + `RouteSelectionPolicy`（I3 偏差 10 / I4 偏差 18）：**资金路径改取收款商户**、**交易尝试行写冻结路由列**（复核 D-10 / D-12）；开放 API 建单 / 查单 / 选方式 / 关单（**补渠道关单**）/ 支付方式 | S3 |
 | S5 | 退款入口收口：开放 API 退款、商家端退款、线下退款凭证；复核规则与两人复核（`pay_approval`）接到运营端 | S4 |
 | S6 | 结果事件与通知：`PaymentSucceededEvent` / `PaymentClosedEvent` / `Refund*Event` 经 Outbox；`BizNotifier` → webhook（签名、退避 ≥ 24h、放弃、手动重推）；内部消费者改走事件（I3 偏差） | S4 |
 | S7 | 收银台后端 `/checkout/v1`（动态码 / 静态码 / 托管收银台 / 结果）+ `checkout-h5` 最小版（`zh-TW` / `en` / `ar` + RTL） | S4 |
@@ -135,6 +135,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 ## §2 方案（逐片细化在开工时补）
 
 - 接口逐条见[接口清单](./支付服务-接口清单.md)；鉴权、密钥、nginx、网关与各端规范见[安全规范](./支付服务-安全规范.md)。
+- 本篇是剩余计划的 I5 部分，整体排期见[完成度复核与剩余开发计划](./支付服务-完成度复核与剩余开发计划.md) §4（I5 拆为 I5a 开放 API 主链 / I5b 商家端与运营端 / I5c 独立形态与迁移收尾）。
 - 计划写在本篇各片下，不另起 `docs/plans/`；每片照 I1–I4：先写会变红的测试 → 实现 → 消融 → 更新本篇 §5 / §6 → 提交。
 
 ## §5 对账三 · 实现 → 需求（测试）
