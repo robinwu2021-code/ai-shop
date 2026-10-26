@@ -1,0 +1,9 @@
+# Task67 compatibility follow-up — draft not released
+
+Requires accepted Task67 Important fixes first. This is R0 Minor M2, recorded in progress ledger and final-review carry-forward. No worker/product/native authorization yet.
+
+Actual owner ManualServiceAdmissionServiceImpl.sourceView returns parent-null dueMinor=null, currency=CNY, orderRevision0, declaration=view(...): AWAITING_RECEIPT with null amount/method/declarationNo and no order/suborder. This is an honest current owner shape, not a malformed successful declaration. RemoteManualServiceAdmissionPort.sourceDisplay currently rejects any nonnull view with null due.
+
+Minimal proposed scope: only beauty-channel RemoteManualServiceAdmissionPort.java and its current loopback HTTP test. Distinguish exact pre-order/no-declaration state from created order/declaration. Preserve operation/order/suborder/revision/currency correspondence and strict missing/mismatched amounts on a declared order. Never manufacture zero due, source identity, order or authority. Old provider declaration=null remains explicitly incomplete.
+
+Finite loopback regression: exact actual owner-shaped pre-order response accepted with null due unchanged; created declared response missing due rejected; contradictory due/declared amount rejected; malformed pre-order pretending declared/nonzero revision/order mismatch rejected. Existing signed bound-envelope/identity/error controls remain. Need genuine owner-shaped constructor data, not a permissive stub predicate. Per latest mainTDD§0.4, author/compile the positive/negative loopback cases and implement the minimal fix, then affected beauty-channel compile/static review; execute all tests only in unified phase B. No current Docker/native/loopback test run is authorized. Fresh independent scoped review before acceptance. Rebase exact current accepted Task67 source hashes before release.

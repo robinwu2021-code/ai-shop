@@ -914,7 +914,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.MyWorkOrderVO` | VO | workOrder,originalScopeRevision,tasks,availableActions；USER或同scope不可变claim receipt授权，不回显身份 | BAPI-155 |
 | `ai.neargo.shop.beauty.dto.NoShowVO` | VO | NoShowVO不自动扣款扣次 | BAPI-045 |
 | `ai.neargo.shop.beauty.dto.OpenAppointmentWorkOrderReq` | REQ | expectedRevision,assignments,startAt?；CHECKED_IN方可开单，原键完整hash | BAPI-052 |
-| `ai.neargo.shop.beauty.dto.OpenWorkOrderReq` | REQ | customerRef?,storeNo,items,appointmentNo?,guestNo?,expectedRevision?,assignments,startAt?；无预约客户恰一且qty展开≤10 | BAPI-054 |
+| `ai.neargo.shop.beauty.dto.OpenWorkOrderReq` | REQ | customerRef?,storeNo,items,appointmentNo?,guestNo?,expectedRevision?,assignments,startAt?,memberNo?；无预约customerRef/guestNo/memberNo恰一且qty展开≤10；memberNo不用于预约开单，旧8/4构造和null JSON指纹保留 | BAPI-054 |
 | `ai.neargo.shop.beauty.dto.OperationVO` | VO | operationNo,appointmentNo,state,action,recoveryAction,workOrderNo,failureCode; compatible five-argument constructor | BAPI-160 |
 | `ai.neargo.shop.beauty.dto.ParticipationVO` | VO | ParticipationVO含历史交接区间 | BAPI-105 |
 | `ai.neargo.shop.beauty.dto.PerformanceAdjustmentReq` | REQ | entryNo,sourceRevision,evidence,reason | BAPI-109 |
@@ -973,7 +973,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.ServiceReportVO` | VO | ServiceReportVO各事实水位 | BAPI-120 |
 | `ai.neargo.shop.beauty.dto.ServiceSalesVO` | VO | catalogVersionNo,groupKey,position,timezone,salesMode,windows,saleableNow；引用共用SalesMode/Window | BAPI-145 |
 | `ai.neargo.shop.beauty.dto.ServiceStepVO` | VO | ServiceStepVO | BAPI-060 |
-| `ai.neargo.shop.beauty.dto.ServiceSubmissionVO` | VO | Task58 actual local record: String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons | BAPI-056、BAPI-072 |
+| `ai.neargo.shop.beauty.dto.ServiceSubmissionVO` | VO | Task67 current record: String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons, CounterCheckoutQuote counterQuote | BAPI-056、BAPI-072 |
 | `ai.neargo.shop.beauty.dto.ServiceTaskDetailVO` | VO | ServiceTaskDetailVO含来源状态及允许动作 | BAPI-159 |
 | `ai.neargo.shop.beauty.dto.ServiceTaskQuery` | QUERY | storeNo,from,to,status,personnelNo,page,size,assignmentState | BAPI-057 |
 | `ai.neargo.shop.beauty.dto.ServiceTaskVO` | VO | PageData<ServiceTaskVO> | BAPI-057 |
@@ -982,7 +982,7 @@ standalone时需要以下按资源切片的目标类；embedded不装Remote实�
 | `ai.neargo.shop.beauty.dto.StartTaskReq` | REQ | expectedRevision,expectedBindingRevision | BAPI-059 |
 | `ai.neargo.shop.beauty.dto.StorePolicyQuery` | QUERY | storeNo,at | BAPI-001 |
 | `ai.neargo.shop.beauty.dto.StorePolicyVO` | VO | policyNo,storeNo,revision,policyVersionNo,effectiveRevision,validFrom,policy | BAPI-001 |
-| `ai.neargo.shop.beauty.dto.SubmitServicesReq` | REQ | Task58 actual local record: long expectedRevision, long expectedScopeRevision, List<TaskSelection> tasks, List<AddedItem> additions, SourceSelection source | BAPI-056 |
+| `ai.neargo.shop.beauty.dto.SubmitServicesReq` | REQ | long expectedRevision, long expectedScopeRevision, List<TaskSelection> tasks, List<AddedItem> additions, SourceSelection source；SourceSelection支持MANUAL_PREPARE/MANUAL_EXISTING及追加CounterCustomerRef counterCustomer；旧V2输入和构造保留 | BAPI-056 |
 | `ai.neargo.shop.beauty.dto.TaskActionResultVO` | VO | TaskActionResultVO；TaskActionResultVO含实际开始时间；TaskActionResultVO暂停不默认释放资源 | BAPI-058、BAPI-059、BAPI-063 |
 | `ai.neargo.shop.beauty.dto.TaskCancellationVO` | VO | TaskCancellationVO源取消另查进度 | BAPI-100 |
 | `ai.neargo.shop.beauty.dto.TaskCompletionVO` | VO | TaskCompletionVO分开服务和履约状态 | BAPI-064 |
@@ -1324,15 +1324,16 @@ Task58 local source kernels accepted; Task59 public/typed Remote code and protoc
 |---|---|
 | `SubmitServicesReq` | `long expectedRevision, long expectedScopeRevision, List<TaskSelection> tasks, List<AddedItem> additions, SourceSelection source` |
 | `RecoverSubmissionReq` | `long expectedRevision, String reason` |
-| `ServiceSubmissionVO` | `String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons` |
+| `ServiceSubmissionVO` | `String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons, CounterCheckoutQuote counterQuote` |
 | `SubmissionTaskVO` | `String taskNo, String skuNo, String definitionVersionNo, BigDecimal qty, String uom, long taskRevision, long bindingRevision, String sourceLineNo, String sourceState` |
-| `SourceObservationVO` | `String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart` |
+| `SourceObservationVO` | `String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart, String admissionKind, String manualState, Long manualRevision, String manualHash` |
 | `RecoveryRequestVO` | `String recoveryNo, String submissionNo, String operationNo, long acceptedRevision, String state, String recoveryAction` |
 | `WorkOrderBillVO` | `String workOrderNo, long scopeRevision, String localWatermark, Instant observedAt, List<SourceBillVO> sources, List<CurrencyBillVO> currencies, boolean complete, List<String> blockingReasons` |
-| `SourceBillVO` | `String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons` |
-| `CurrencyBillVO` | `String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete` |
+| `SourceBillVO` | `String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons, String admissionKind, String financialVerification, ManualReceiptSummaryVO manualReceipt, Long manualDeclaredMinor` |
+| `CurrencyBillVO` | `String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete, Long manualDeclaredMinor, String financialVerification` |
 | `ReceiptSummaryVO` | `String paymentOperationNo, String paymentNo, String outTradeNo, String receiptNo, String channel, String status, long amountMinor, String currency` |
 | `BusinessTraceVO` | `String businessNo, String workOrderNo, String appointmentNo, long scopeRevision, List<ServiceSubmissionVO> submissions, WorkOrderBillVO bill, boolean complete, List<String> blockingReasons` |
+| `ManualReceiptSummaryVO` | `String declarationNo, String method, long declaredMinor, String currency, Instant receivedAt, Instant recordedAt, String provenance, String financialVerification` |
 
 | Concrete helper / Bean | Contract |
 |---|---|
@@ -1516,11 +1517,11 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 本地Service接口独立声明方法并引用SPI DTO，由.port适配器实现跨域Port；Service不继承Port。相同待处理观察只延后重试，不改变准入修订、来源摘要或业务事件，避免队首长期未知记录阻塞后续恢复。
 
 
-## 柜台购买与人工来源增量（Task65 M2：设计已审查，尚未实现）
+## 柜台购买与人工来源增量（M2分阶段实施状态）
 
-M2A_CODE_ACCEPTED_M2B_M2C_PLANNED_NOT_DEPLOYED
+M2A_CODE_ACCEPTED_M2B_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING_M2C_DESIGN_FIXING
 
-共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认；USER/GUEST无需C会话，会员只提供权威身份与当前认领读取权。仍未实现，未打开服务开工。
+主TDD§0.4/§2.45/§2.46；共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认，Task66 USER/GUEST柜台购买已验收且无需C会话。Task67人工来源、账单、当前认领及远程未成单兼容编码编译与独立静态复审完成；历史分片/真实V8→V9及有效消融按原快照保留，C01新增7项测试仅编写编译、未执行，统一测试和部署待全范围编码完成后。M2c选择/规则封印与旧意图兼容设计修订中；canStart=false，支付后置。
 
 | Owner / class | Planned method |
 |---|---|
@@ -1558,9 +1559,9 @@ M2A_CODE_ACCEPTED_M2B_M2C_PLANNED_NOT_DEPLOYED
 | `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `PlaceholderTicket claimManualPlaceholder(ManualCanonical source, String actorNo)` |
 | `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation` | `BtySourceObservation adoptManualPlaceholder(ManualCanonical source, ManualSourceFacts facts, PlaceholderTicket ticket, String actorNo)` |
 | `ai.neargo.shop.beauty.service.impl.ServiceSourceBinding` | `Result bindManual(BtyServiceSubmission submission, Command command, ManualObserved observed, String actor)` |
-| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int adoptManualPlaceholder(BtySourceObservation row, long expectedVersion, long expectedFinancialEpoch)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int adoptManualPlaceholder(BtySourceObservation row, long expectedVersion, long epoch)` |
 | `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int completeManualObservation(BtySourceObservation row, long expectedVersion)` |
-| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceAllocationGuardMapper` | `int allocateManualObservedQuantity(String entity, String store, String guardNo, long expectedVersion, long manualRevision, String manualHash, long ticket, BigDecimal qty)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceAllocationGuardMapper` | `int allocateManualObservedQuantity(String entityNo, String storeNo, String guardNo, long expectedVersion, long sourceRevision, String sourceHash, long epoch, BigDecimal incrementQty, BigDecimal netQuantity, String actorNo, LocalDateTime updatedAt)` |
 | `ai.neargo.shop.spi.marketing.CampaignPort` | `List<AppliedActivity> counterCandidates(CustomerParty party, List<MerchantAmount> amounts)` |
 | `ai.neargo.shop.spi.marketing.CampaignPort` | `void requireCounterSelection(CustomerParty party, Discount discount)` |
 | `ai.neargo.shop.spi.marketing.CampaignPort` | `Map<String,Long> counterFlashPrices(CustomerParty party, Collection<String> skus)` |
@@ -1571,6 +1572,13 @@ M2A_CODE_ACCEPTED_M2B_M2C_PLANNED_NOT_DEPLOYED
 | `ai.neargo.shop.spi.member.GuestRegistrationPort` | `ClaimedCustomer resolveClaimedCustomer(Scope scope, String guestNo, String claimToken)` |
 | `ai.neargo.shop.spi.product.StockDispositionPort` | `ReleaseView releaseOriginal(ReservationLookup request)` |
 | `ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCustomerResolver` | `CounterCustomerResolution resolveBound(CheckoutScope scope, PrepareCounterReq request)` |
+| `ai.neargo.shop.beauty.policy.ReceptionIdentity` | `String customerMember(String entity, String store, String memberNo)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.WorkOrderMapper` | `BtyWorkOrder selectClaimedCandidate(String userNo, String workOrderNo)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.WorkOrderMapper` | `BtyWorkOrder selectClaimed(String entityNo, String storeNo, String guestNo, String workOrderNo)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceAllocationGuardMapper` | `int refreshManualSnapshot(String entityNo, String guardNo, long expectedVersion, long expectedSourceRevision, long newSourceRevision, BigDecimal newSourceQty, String sourceHash, String actorNo, LocalDateTime updatedAt)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `boolean hasAllocations(String entityNo, String sourceNo)` |
+| `ai.neargo.shop.beauty.mapper.BeautyMappers.SourceObservationMapper` | `int claimManualObservation(BtySourceObservation row, long expectedVersion)` |
+| `ai.neargo.shop.beauty.service.impl.ServiceSourceObservation.SourceDomainConflict` | `String reasonCode()` |
 
 实施顺序：M2a柜台购买/类型化顾客/原库存/认领隐私→M2b人工观察/绑定/账单→M2c既有商家FULL_CUT；原49任务/160API/118功能/41表目标计数保持，以下是另列共用增量计划，不是已注册接口。
 
@@ -1596,8 +1604,22 @@ Task66实际嵌套调用修正（待代码审查）：HOST CounterCustomerOwnerB
 
 Task66收银交接修正（待代码审查）：已确认原订单的place幂等键使用经核对的原operation/confirmation authority namespace；当前收银员仍独立通过全部现时权限/账号/门店及IO后复核。允许A待恢复→授权B继续原订单及双方重试，不改原接受人、顾客或凭据，不允许更换requestKey/payload；真实回归先取得业务断言RED。
 
-Task66实际映射修正（待代码审查）：真实同事务诊断确认SQL空identity_revision被实体初值1覆盖；六个可空映射字段移除误导初值，旧普通创建入口显式保留revision1，counter USER保持真实空值、GUEST保持所有者revision。精确补充PaymentDraftFactory/OrderDraftFactory两个兼容修改点，不改已执行迁移、全局MyBatis配置或报价一致性门禁。
+Task66实际映射修正（代码已验收）：真实同事务诊断确认SQL空identity_revision被实体初值1覆盖；六个可空映射字段移除误导初值，旧普通创建入口显式保留revision1，counter USER保持真实空值、GUEST保持所有者revision。精确补充PaymentDraftFactory/OrderDraftFactory两个兼容修改点，不改已执行迁移、全局MyBatis配置或报价一致性门禁。
 
-Task66实际库存诊断修正（待代码审查）：DUAL原所有者预留在空category缓存键异常后回滚，CategoryServiceImpl缓存仅排除null/blank，保留其既有null返回与库存默认策略；ReservationServiceImpl的HELD取消/过期必须在原inv事务内真实写回每行releasedQty=qty并核验balance/line/head各1行，失败全回滚、终态重试无重复释放，tracked revision沿原规则只增一次。保留严格ReleaseView，不修造旧终态数量、不改已执行DDL、库存路由或Outbox。
+Task66实际库存诊断修正（代码已验收）：DUAL原所有者预留在空category缓存键异常后回滚，CategoryServiceImpl缓存仅排除null/blank，保留其既有null返回与库存默认策略；ReservationServiceImpl的HELD取消/过期必须在原inv事务内真实写回每行releasedQty=qty并核验balance/line/head各1行，失败全回滚、终态重试无重复释放，tracked revision沿原规则只增一次。保留严格ReleaseView，不修造旧终态数量、不改已执行DDL、库存路由或Outbox。
 
 Task66独立审查I1修复：readCounterQuote在共用所有者边界必须验证完整COUNTER_READ/InternalCall<Scoped<OperationRef>>（当前身份、endpoint/action/target、完整scope/body），无bound时必须真实MERCHANT token/session校验；继续仅要求CHECKOUT_PREPARE和ORDER_VIEW及当前账号/门店，不追加CASH_RECEIVE/MANUAL_CONFIRM，不改变授权新收银员读取原订单的能力。读取前拒绝原始delegation、错误purpose/body/operation/scope。复用既有策略的完整绑定/真实token逻辑，保持其他购买/收款权限与既有哈希。
+
+Task67 M2b准备增补：工单OpenWorkOrderReq追加可选memberNo，仅未指定预约开单；沿真实共用会员所有者识别USER，不造C凭证。旧构造、空字段序列化/指纹及预约身份语义不变。V9同步四个schema启动校验所有者；嵌入仍平台主数据源，第三schema仅隔离V8→V9测试。人工来源V3与MP155当前认领证明已实现并分批验证，仍待有效消融与独立审查；SOURCE_DOMAIN_CONFLICT为内部安全诊断，HTTP冲突结构不变，拒绝时不改资金来源行；canStart=false。
+
+Task67实际Mapper签名对账：人工分配沿既有COUNT原子算法保留增量、当前净可用数量和actor/time审计参数（11参数），不是新数量账本；补录claim/refresh/hasAllocations及当前认领候选/精确读取方法，内部SOURCE_DOMAIN_CONFLICT原因不扩展HTTP字段。
+
+Task67当前DTO：ServiceSubmissionVO(String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons, CounterCheckoutQuote counterQuote)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：SourceObservationVO(String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart, String admissionKind, String manualState, Long manualRevision, String manualHash)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：SourceBillVO(String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons, String admissionKind, String financialVerification, ManualReceiptSummaryVO manualReceipt, Long manualDeclaredMinor)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：CurrencyBillVO(String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete, Long manualDeclaredMinor, String financialVerification)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：ManualReceiptSummaryVO(String declarationNo, String method, long declaredMinor, String currency, Instant receivedAt, Instant recordedAt, String provenance, String financialVerification)；旧构造保留，人工声明不映射支付核验。

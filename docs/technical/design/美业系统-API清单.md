@@ -679,11 +679,11 @@ Task64 M1已完成代码、分版本定向验证和独立审查；正式部署�
 本地Service接口独立声明方法并引用SPI DTO，由.port适配器实现跨域Port；Service不继承Port。相同待处理观察只延后重试，不改变准入修订、来源摘要或业务事件，避免队首长期未知记录阻塞后续恢复。
 
 
-## 柜台购买与人工来源增量（Task65 M2：设计已审查，尚未实现）
+## 柜台购买与人工来源增量（M2分阶段实施状态）
 
-M2A_CODE_ACCEPTED_M2B_M2C_PLANNED_NOT_DEPLOYED
+M2A_CODE_ACCEPTED_M2B_CODE_COMPILED_REVIEWED_UNIFIED_TEST_PENDING_M2C_DESIGN_FIXING
 
-共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认；USER/GUEST无需C会话，会员只提供权威身份与当前认领读取权。仍未实现，未打开服务开工。
+主TDD§0.4/§2.45/§2.46；共用Core记录MERCHANT_RECORDED_IN_PERSON购买确认，Task66 USER/GUEST柜台购买已验收且无需C会话。Task67人工来源、账单、当前认领及远程未成单兼容编码编译与独立静态复审完成；历史分片/真实V8→V9及有效消融按原快照保留，C01新增7项测试仅编写编译、未执行，统一测试和部署待全范围编码完成后。M2c选择/规则封印与旧意图兼容设计修订中；canStart=false，支付后置。
 
 | Method / route | Operation / input | Result |
 |---|---|---|
@@ -721,8 +721,22 @@ Task66实际嵌套调用修正（待代码审查）：HOST CounterCustomerOwnerB
 
 Task66收银交接修正（待代码审查）：已确认原订单的place幂等键使用经核对的原operation/confirmation authority namespace；当前收银员仍独立通过全部现时权限/账号/门店及IO后复核。允许A待恢复→授权B继续原订单及双方重试，不改原接受人、顾客或凭据，不允许更换requestKey/payload；真实回归先取得业务断言RED。
 
-Task66实际映射修正（待代码审查）：真实同事务诊断确认SQL空identity_revision被实体初值1覆盖；六个可空映射字段移除误导初值，旧普通创建入口显式保留revision1，counter USER保持真实空值、GUEST保持所有者revision。精确补充PaymentDraftFactory/OrderDraftFactory两个兼容修改点，不改已执行迁移、全局MyBatis配置或报价一致性门禁。
+Task66实际映射修正（代码已验收）：真实同事务诊断确认SQL空identity_revision被实体初值1覆盖；六个可空映射字段移除误导初值，旧普通创建入口显式保留revision1，counter USER保持真实空值、GUEST保持所有者revision。精确补充PaymentDraftFactory/OrderDraftFactory两个兼容修改点，不改已执行迁移、全局MyBatis配置或报价一致性门禁。
 
-Task66实际库存诊断修正（待代码审查）：DUAL原所有者预留在空category缓存键异常后回滚，CategoryServiceImpl缓存仅排除null/blank，保留其既有null返回与库存默认策略；ReservationServiceImpl的HELD取消/过期必须在原inv事务内真实写回每行releasedQty=qty并核验balance/line/head各1行，失败全回滚、终态重试无重复释放，tracked revision沿原规则只增一次。保留严格ReleaseView，不修造旧终态数量、不改已执行DDL、库存路由或Outbox。
+Task66实际库存诊断修正（代码已验收）：DUAL原所有者预留在空category缓存键异常后回滚，CategoryServiceImpl缓存仅排除null/blank，保留其既有null返回与库存默认策略；ReservationServiceImpl的HELD取消/过期必须在原inv事务内真实写回每行releasedQty=qty并核验balance/line/head各1行，失败全回滚、终态重试无重复释放，tracked revision沿原规则只增一次。保留严格ReleaseView，不修造旧终态数量、不改已执行DDL、库存路由或Outbox。
 
 Task66独立审查I1修复：readCounterQuote在共用所有者边界必须验证完整COUNTER_READ/InternalCall<Scoped<OperationRef>>（当前身份、endpoint/action/target、完整scope/body），无bound时必须真实MERCHANT token/session校验；继续仅要求CHECKOUT_PREPARE和ORDER_VIEW及当前账号/门店，不追加CASH_RECEIVE/MANUAL_CONFIRM，不改变授权新收银员读取原订单的能力。读取前拒绝原始delegation、错误purpose/body/operation/scope。复用既有策略的完整绑定/真实token逻辑，保持其他购买/收款权限与既有哈希。
+
+Task67 M2b准备增补：工单OpenWorkOrderReq追加可选memberNo，仅未指定预约开单；沿真实共用会员所有者识别USER，不造C凭证。旧构造、空字段序列化/指纹及预约身份语义不变。V9同步四个schema启动校验所有者；嵌入仍平台主数据源，第三schema仅隔离V8→V9测试。人工来源V3与MP155当前认领证明已实现并分批验证，仍待有效消融与独立审查；SOURCE_DOMAIN_CONFLICT为内部安全诊断，HTTP冲突结构不变，拒绝时不改资金来源行；canStart=false。
+
+Task67实际Mapper签名对账：人工分配沿既有COUNT原子算法保留增量、当前净可用数量和actor/time审计参数（11参数），不是新数量账本；补录claim/refresh/hasAllocations及当前认领候选/精确读取方法，内部SOURCE_DOMAIN_CONFLICT原因不扩展HTTP字段。
+
+Task67当前DTO：ServiceSubmissionVO(String submissionNo, String workOrderNo, String action, long revision, long originalScopeRevision, long targetScopeRevision, String status, String phase, String checkoutOperationNo, CheckoutPort.CheckoutQuote quote, String orderNo, String subOrderNo, SourceObservationVO source, List<SubmissionTaskVO> tasks, String recoveryAction, List<String> blockingReasons, CounterCheckoutQuote counterQuote)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：SourceObservationVO(String state, long observationEpoch, Long sourceRevision, String sourceHash, Long lastVerifiedRevision, String lastVerifiedHash, Instant observedAt, String reasonCode, boolean canStart, String admissionKind, String manualState, Long manualRevision, String manualHash)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：SourceBillVO(String checkoutOperationNo, String orderNo, String sourceNo, String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, String amountScope, List<ReceiptSummaryVO> receipts, List<SubmissionTaskVO> tasks, SourceObservationVO observation, boolean complete, List<String> blockingReasons, String admissionKind, String financialVerification, ManualReceiptSummaryVO manualReceipt, Long manualDeclaredMinor)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：CurrencyBillVO(String currency, Long dueMinor, Long receivedMinor, Long refundedMinor, Long netReceivedMinor, Long outstandingMinor, boolean complete, Long manualDeclaredMinor, String financialVerification)；旧构造保留，人工声明不映射支付核验。
+
+Task67当前DTO：ManualReceiptSummaryVO(String declarationNo, String method, long declaredMinor, String currency, Instant receivedAt, Instant recordedAt, String provenance, String financialVerification)；旧构造保留，人工声明不映射支付核验。

@@ -313,7 +313,7 @@ def generate():
         increment += [rule + '\n' for rule in manual['contracts']]
     counter = d.get('counterServicePlan')
     if counter:
-        increment += ['', '## 柜台购买与人工来源增量（Task65 M2：设计已审查，尚未实现）', '', counter['status'], '', counter['authority'], '',
+        increment += ['', '## 柜台购买与人工来源增量（M2分阶段实施状态）', '', counter['status'], '', counter['authority'], '',
                       '| Owner / class | Planned method |', '|---|---|']
         for row in counter['methods']:
             increment.append(f"| `{row['owner']}` | `{row['signature']}` |")

@@ -115,7 +115,7 @@ def render():
         lines += [rule + '\n' for rule in manual['contracts']]
     counter = data.get('counterServicePlan')
     if counter:
-        lines += ['', '## 柜台购买与人工来源增量（Task65 M2：设计已审查，尚未实现）', '', counter['status'], '', counter['authority'], '',
+        lines += ['', '## 柜台购买与人工来源增量（M2分阶段实施状态）', '', counter['status'], '', counter['authority'], '',
                   '| Method / route | Operation / input | Result |', '|---|---|---|']
         for row in counter['routes']:
             lines.append(f"| `{row['method']} {row['path']}` | `{row['name']}`<br>{row['request']} | {row['response']} |")

@@ -1,0 +1,164 @@
+{
+  "task": 67,
+  "base": "2c0708f752d747d88a9eda7478326a964d1984fa",
+  "status": "R0_FIX_ROUND1_RELEASED_51_PATHS_NATIVE_SEPARATE_GATE",
+  "create": [
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ManualReceiptSummaryVO.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V9__beauty_manual_source_observation.sql"
+  ],
+  "modify": [
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SubmitServicesReq.java",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ServiceSubmissionVO.java",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SourceObservationVO.java",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SourceBillVO.java",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/CurrencyBillVO.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceSubmissionAccess.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionServiceImpl.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionQuery.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceObservation.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceBinding.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderBillServiceImpl.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderQuery.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderServiceImpl.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtySourceObservation.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtyTradeBinding.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtySourceAllocationGuard.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/BeautyMappers.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySourceConfiguration.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyReceptionConfiguration.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaReady.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyPersistenceConfiguration.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyWriteGuardConfiguration.java",
+    "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionPort.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/dto/OrderVO.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPort.java",
+    "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/OpenWorkOrderReq.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ReceptionIdentity.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderCoordinator.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckExpression.java"
+  ],
+  "createTest": [
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceHostFixture.java",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceBindingIT.java",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceBillIT.java",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceV8Driver.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/ServiceSourceObservationTest.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/WorkOrderBillServiceImplTest.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautySchemaValidatorTest.java"
+  ],
+  "modifyTestAndRunner": [
+    "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPortTest.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyPersistenceWiringTest.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyWriteGuardHostWiringTest.java",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautySchemaMigrationIT.java",
+    "scripts/verify-manual-counter-source.mjs",
+    "scripts/tests/manual-counter-source-runner.test.mjs",
+    "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautyCheckExpressionTest.java"
+  ],
+  "groups": {
+    "create_receipt_projection": [
+      "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ManualReceiptSummaryVO.java"
+    ],
+    "modify_compatible_manual_request_and_safe_response": [
+      "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SubmitServicesReq.java",
+      "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ServiceSubmissionVO.java",
+      "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SourceObservationVO.java",
+      "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SourceBillVO.java",
+      "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/CurrencyBillVO.java"
+    ],
+    "modify_fact_identity_and_v2_v3_orchestration": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceSubmissionAccess.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionServiceImpl.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionQuery.java"
+    ],
+    "modify_domain_ticket_adoption_quantity_and_bill": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceObservation.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceBinding.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderBillServiceImpl.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderQuery.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderServiceImpl.java"
+    ],
+    "modify_persisted_typed_manual_domain": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtySourceObservation.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtyTradeBinding.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtySourceAllocationGuard.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/BeautyMappers.java"
+    ],
+    "modify_owner_wiring_and_exact_v9_readiness": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySourceConfiguration.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyReceptionConfiguration.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaReady.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyPersistenceConfiguration.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyWriteGuardConfiguration.java"
+    ],
+    "create_only_new_migration": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V9__beauty_manual_source_observation.sql"
+    ],
+    "modify_same_snapshot_source_and_safe_order_copies": [
+      "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionPort.java",
+      "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
+      "backend/shop-core/src/main/java/ai/neargo/shop/trade/dto/OrderVO.java",
+      "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java"
+    ],
+    "modify_bound_remote_projection_validation": [
+      "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPort.java",
+      "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPortTest.java"
+    ],
+    "create_real_host_tests_and_split_runtime_driver": [
+      "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceHostFixture.java",
+      "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceBindingIT.java",
+      "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceBillIT.java",
+      "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceV8Driver.java"
+    ],
+    "modify_focused_schema_wiring_expectations": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyPersistenceWiringTest.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyWriteGuardHostWiringTest.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautySchemaMigrationIT.java"
+    ],
+    "modify_finite_runner_and_its_contract_tests": [
+      "scripts/verify-manual-counter-source.mjs",
+      "scripts/tests/manual-counter-source-runner.test.mjs"
+    ],
+    "modify_root_ruled_member_selector_without_new_owner_contract": [
+      "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/OpenWorkOrderReq.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ReceptionIdentity.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderCoordinator.java"
+    ],
+    "create_reviewed_v9_source_and_bounded_renderer": [
+      "docs/technical/design/schema/beauty-manual-source-observation-schema.json",
+      "scripts/gen-beauty-manual-source-observation-schema.mjs",
+      "scripts/tests/beauty-manual-source-observation-schema.test.mjs"
+    ],
+    "modify_mysql_boolean_associativity_with_semantic_controls": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckExpression.java",
+      "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautyCheckExpressionTest.java"
+    ],
+    "create_manual_projection_unit_regression": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/ServiceSourceObservationTest.java"
+    ],
+    "create_bill_currency_semantic_unit_regression": [
+      "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/WorkOrderBillServiceImplTest.java"
+    ]
+  },
+  "reusedUnchanged": [
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/StoreOrderAssembler.java"
+  ],
+  "noTouch": "Applied V1–V8/V539–V542/inventoryV14, POM/dependencies, generic auth, Pay, known-*; no start authority",
+  "createSchemaSourceAndTool": [
+    "docs/technical/design/schema/beauty-manual-source-observation-schema.json",
+    "scripts/gen-beauty-manual-source-observation-schema.mjs",
+    "scripts/tests/beauty-manual-source-observation-schema.test.mjs"
+  ],
+  "fixRound1": {
+    "review": "review-task-67-r0.md",
+    "brief": "task-67-fix-r1-brief.md",
+    "previousOwnedPaths": 50,
+    "ownedPaths": 51,
+    "newPath": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautySchemaValidatorTest.java",
+    "scope": "I1/I2 plus root-adjudicated plan-mandated M1; M2 deferred"
+  }
+}

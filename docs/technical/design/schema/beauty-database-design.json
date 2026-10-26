@@ -3435,8 +3435,12 @@
       },
       {
         "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V9__beauty_manual_source_observation.sql",
-        "status": "DESIGN_REVIEWED_CANDIDATE_NOT_CREATED_RECHECK_NUMBER_BEFORE_USE",
-        "purpose": "独立manual epoch/hash与观察/绑定/数量guard；空UNKNOWN占位权威核验后同一行受限adopt、条件SQL及旧financial UPDATE防护，V8冻结不改"
+        "status": "TASK67_CODE_COMPILED_STATIC_REVIEWED_HISTORICAL_SQL_EXECUTED_UNIFIED_TEST_DEPLOY_PENDING",
+        "purpose": "独立manual epoch/hash与观察/绑定/数量guard；空UNKNOWN占位权威核验后同一行受限adopt、条件SQL及旧financial UPDATE防护，V8冻结不改",
+        "schemaSource": "docs/technical/design/schema/beauty-manual-source-observation-schema.json",
+        "renderer": "scripts/gen-beauty-manual-source-observation-schema.mjs",
+        "bytes": 11501,
+        "sha256": "80eb14c95166709bec87787e7b19c573bd1747759c22d7280eae9a29fd8fdea7"
       },
       {
         "path": "M3–M4：平台V543/V544与美业V10候选（尚未创建）",
@@ -3452,7 +3456,7 @@
       "人工准入/来源观察与金融回执分开；旧source保持UNKNOWN且不得先查Pay；金额及经办审计按权限裁剪。M1不开放canStart/任务实际占用/履约。原订单详情仅业务状态，专用B查询/source提供人工声明；M2前台账单/展示整合必须显式区分人工登记与Pay核验，开放完整现金闭环前完成，M1不声称页面/全部资金看板已实现。",
       "PAID/paid_at自动结算选择器在LIMIT前排除人工；普通支付/正式线下receipt/售后退款/修复/通用履约入口拒绝人工；原资金路径及SERVICE_EXECUTION旧完成门禁保持。退款编排的实际派发/查询/成功回调核验和现金、点数两类独立资源恢复都须在外部效果前，以短事务按子单优先锁序核对当前来源及原执行/任务身份；导入矛盾原记录持久保留冲突，不得访问Pay、释放/恢复库存或记成功。扫描排除冲突不能替代直接入口门禁；跨所有者IO不持Core根/执行/任务锁，保留普通资金所有者本地事务。",
       "Task64 M1已完成代码、分版本定向验证和独立审查；正式部署未执行，M2～M7完整核心尚未完成。M2临客及绑定→M3数量许可→M4真实占用→M5作业→M6履约关闭→M7具体任务日历。",
-      "Task65 M2设计已独立复审通过，尚未创建/执行V542与V9；精确字段/单向adopt/旧写防护/真实升级用例见[冻结设计](../../../.superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md)§2.4/3.2。不能用设计状态代替DDL或部署验证。"
+      "Task66 M2a共用USER/GUEST购买与V542已接受；Task67 M2b及远程未成单兼容编码编译、独立静态复审完成，V9已在历史隔离分片执行且SQL冻结。真实V8→V9、旧写防护、矩阵与有效消融保留原版本证据；C01新增7项远程测试仅编写编译未执行，不继承旧通过状态。全范围编码之后统一测试和部署，未开放开工。"
     ],
     "codeCommit": "fb8fc86d50a394422be408b94278d50989d8ef8a"
   }
