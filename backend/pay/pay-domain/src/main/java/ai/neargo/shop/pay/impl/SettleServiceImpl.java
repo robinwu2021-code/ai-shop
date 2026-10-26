@@ -592,11 +592,6 @@ public class SettleServiceImpl implements SettleService {
         return true;
     }
 
-    @Override
-    public String refund(String subOrderNo, long amountMinor, String reason) {
-        return refund(subOrderNo, afterSaleNoOf(subOrderNo), amountMinor, reason);
-    }
-
     /** 幂等键 = 售后单号（5.2）：一张售后单一笔；旧签名固定用 {@code AS-子单号}，一张子单只能退一次。 */
     @Override
     public String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
@@ -746,16 +741,6 @@ public class SettleServiceImpl implements SettleService {
             paymentLedger.markRefundSent(refundNo, false, true, null, "退款发送结果未知，等待原单回查");
             log.warn("[settle] 退款结果未知 paymentNo={} exception={}", refundNo, e.getClass().getSimpleName());
         }
-    }
-
-    /**
-     * 这个子单当前的售后单号 —— 退款流水的幂等键。
-     *
-     * <p>取不到时用子单号兜底：<b>幂等键宁可粗一点，也不能没有</b>。
-     * 没有键的话重试会一笔一笔地落，而对账把它们当成多退。
-     */
-    private String afterSaleNoOf(String subOrderNo) {
-        return "AS-" + subOrderNo;
     }
 
     // ---------------------------------------------------------------- 查询

@@ -253,9 +253,6 @@ public interface SettlePort {
                          long goodsPaidMinor) {
     }
 
-    /** 旧签名：幂等键固定为 {@code AS-子单号}，一张子单只能退一次钱。新代码用带售后单号的那个。 */
-    String refund(String subOrderNo, long amountMinor, String reason);
-
     /**
      * 发起退款。**调用前必须确认 {@link #reverseSplit} 已成功。**
      * 幂等键 = 售后单号：一张售后单一笔退款，同一子单的第二张售后能真的退出钱。

@@ -4,6 +4,12 @@ import ai.neargo.shop.pay.channel.entity.StlChannelMessage;
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
 import ai.neargo.shop.pay.channel.entity.SysPayChannelMarket;
 import ai.neargo.shop.pay.channel.entity.SysPayChannelRate;
+import ai.neargo.shop.pay.channel.entity.PayCallbackLog;
+import ai.neargo.shop.pay.channel.entity.PayChannelCallLog;
+import ai.neargo.shop.pay.channel.entity.PayChannelFollowup;
+import ai.neargo.shop.pay.channel.entity.PayChannelLifecycleLog;
+import ai.neargo.shop.pay.channel.entity.PayChannelProduct;
+import ai.neargo.shop.pay.channel.entity.PayChannelProductMarket;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**
@@ -61,5 +67,31 @@ public final class ChannelMappers {
     /** 渠道报文表（V286）。只增不改，按保留期清理 */
     public interface ChannelMessageMapper
             extends BaseMapper<StlChannelMessage> {
+    }
+
+    // ---------------------------------------------------------------- 支付服务 v4（I2 · db/pay V4–V6）
+
+    /** 支付产品：渠道 × 接入模式 × 支付类型 × 支付方式 */
+    public interface PayChannelProductMapper extends BaseMapper<PayChannelProduct> {
+    }
+
+    /** 支付产品 × 地区（币种、金额精度、上下限） */
+    public interface PayChannelProductMarketMapper extends BaseMapper<PayChannelProductMarket> {
+    }
+
+    /** ② 支付 → 渠道：每次 HTTP 调用一行（重试每次一行） */
+    public interface PayChannelCallLogMapper extends BaseMapper<PayChannelCallLog> {
+    }
+
+    /** ③ 渠道 → 支付：每次通知一行 */
+    public interface PayCallbackLogMapper extends BaseMapper<PayCallbackLog> {
+    }
+
+    /** 「未知」补查任务 */
+    public interface PayChannelFollowupMapper extends BaseMapper<PayChannelFollowup> {
+    }
+
+    /** 渠道适配器生命周期变化 */
+    public interface PayChannelLifecycleLogMapper extends BaseMapper<PayChannelLifecycleLog> {
     }
 }

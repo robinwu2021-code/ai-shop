@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.points.agreement.impl;
 
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.shop.pay.points.agreement.AgreementService;
 import ai.neargo.shop.pay.points.model.AgreementSnapshot;
 import ai.neargo.shop.pay.points.model.PointsKeys;
@@ -76,7 +77,7 @@ public class AgreementServiceImpl implements AgreementService {
         }
         if ("PERIODIC".equals(c.settleMode())) {
             var gateway=funds.getIfAvailable();
-            if (c.fundsContext().path()!=PointsFundsGateway.FundsPath.AGGREGATED || gateway==null
+            if (c.fundsContext().path()!=FundsPath.AGGREGATED || gateway==null
                     || !gateway.capabilities(c.fundsContext()).transfer()) {
                 throw new IllegalArgumentException("POINTS_CAPABILITY_UNSUPPORTED");
             }

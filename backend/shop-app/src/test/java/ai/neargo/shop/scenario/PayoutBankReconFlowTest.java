@@ -162,6 +162,23 @@ class PayoutBankReconFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ F09 流水号对上但金额不符 —— 不勾平，记 AMOUNT_MISMATCH；只比流水号会把少付 / 多付当成付清")
+    void payoutAmountMismatchIsNotMatched() {
+        String ref = "BF-" + run + "-amt";
+        String payoutNo = paidPayout("a", ref, 30_000);
+        bankFlow(ref, today, 29_000);
+
+        axis.scan(System.currentTimeMillis());
+
+        StlPayout p = payouts.selectOne(Wrappers.<StlPayout>lambdaQuery().eq(StlPayout::getPayoutNo, payoutNo));
+        assertThat(p.getStatus()).as("银行只划了 290 元，这笔 300 元的放款不能算付清").isNotEqualTo(StlPayout.MATCHED);
+        var diffs = myDiffs(PayoutReconAxis.CODE);
+        assertThat(diffs).extracting(d -> d.getDiffType()).containsExactly("PAYOUT_AMOUNT_MISMATCH");
+        assertThat(diffs.getFirst().getPlatformAmountMinor()).isEqualTo(30_000);
+        assertThat(diffs.getFirst().getChannelAmountMinor()).as("银行给的数记在通道侧").isEqualTo(29_000);
+    }
+
+    @Test
     @DisplayName("★★★ 同一个凭证号登在两笔放款上 —— 一笔钱记成两笔付出，每笔各记一条 DUP_REF")
     void duplicateRefAcrossPayoutsIsADiffOnEach() {
         String ref = "BF-" + run + "-dup";

@@ -2,8 +2,6 @@ package ai.neargo.shop.pay.channel;
 
 import ai.neargo.shop.pay.channel.base.AbstractApplymentGateway;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,8 +17,7 @@ import java.util.Map;
  * 结算卡放在 {@code biz_cards} 数组里，而微信是 {@code account_info} 一个对象。
  * 写在一个类里，每加一个字段都要先想清楚「这个是谁的」。
  */
-@Component
-@ConditionalOnProperty(name = "shop.pay.alipay.enabled", havingValue = "true")
+// 不自动装配，理由同 AlipayPayGateway（F12 · Review R13）；装配点在 AlipayChannelConfig
 public class AlipayApplymentGateway extends AbstractApplymentGateway {
 
     public AlipayApplymentGateway(@Qualifier("alipayChannelClient") ChannelClient client) {
@@ -39,8 +36,14 @@ public class AlipayApplymentGateway extends AbstractApplymentGateway {
 
     @Override
     protected String queryApi(String channelApplyNo) {
-        // 直付通查询与创建是两个接口名，参数带申请单号 —— 由 ChannelClient 拼进业务参数
+        // 直付通查询与创建是两个接口名
         return AlipayApis.SUB_MERCHANT_QUERY;
+    }
+
+    /** 申请单号进业务参数。此前注释说「由 ChannelClient 拼」，实际发出去的是空参数（F06 · R25） */
+    @Override
+    protected Map<String, Object> buildQuery(String channelApplyNo) {
+        return Map.of("order_id", channelApplyNo);
     }
 
     /**
@@ -67,7 +70,8 @@ public class AlipayApplymentGateway extends AbstractApplymentGateway {
                     "认不出的法律形态：" + cmd.legalForm() + "（不猜，猜错会按错误的商户类型入驻）", false);
         }
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("out_biz_no", cmd.entityNo());
+        // 每张进件单、每次提交唯一（F04 · R04）
+        body.put("out_biz_no", WechatApplymentGateway.requireRequestNo(cmd));
         body.put("name", cmd.entityName());
         body.put("alias_name", cmd.entityName());
         body.put("merchant_type", type);

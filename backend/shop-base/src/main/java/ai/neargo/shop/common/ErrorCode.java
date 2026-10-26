@@ -959,6 +959,27 @@ public enum ErrorCode {
     STOCK_SYNC_NOT_ALIGNED(70069, "err.inventory.sync_not_aligned"),
     STOCK_SHARED_SOURCE(70081, "err.inventory.shared_source"),
 
+    /** 支付服务 I3：调用方不在能力矩阵内，或这家门店不在它的范围里（设计 v4 §2.8.2） */
+    PAY_FORBIDDEN(70082, "err.pay.forbidden"),
+    /** 支付单 / 退款单查无此号（或不属于这个调用方） */
+    PAY_ORDER_NOT_FOUND(70083, "err.pay.order_not_found"),
+    /** 同一调用方单号再建一次而内容不同：幂等键撞了别的请求 */
+    PAY_ORDER_CONFLICT(70084, "err.pay.order_conflict"),
+    /** 支付单当前状态不允许这个动作。回显状态 */
+    PAY_ORDER_STATE(70085, "err.pay.order_state"),
+    /** 退款超出可退余额（实收 − 已退 − 在途占用）。回显可退余额 */
+    PAY_REFUND_EXCEEDS(70086, "err.pay.refund_exceeds"),
+    /** 退款必须由商家操作员发起：内部系统不能以系统身份退款 */
+    PAY_REFUND_OPERATOR_REQUIRED(70087, "err.pay.refund_operator_required"),
+    /** 两人复核：申请人、第一复核人、第二复核人不能是同一个人 */
+    PAY_APPROVAL_SAME_PERSON(70088, "err.pay.approval_same_person"),
+    /** 收款商户绑定被拒：别的主体的门店、别的市场、商户不是 ACTIVE、渠道不符。回显原因 */
+    PAY_BINDING_INVALID(70089, "err.pay.binding_invalid"),
+    /** 同门店同渠道已有在途进件（R06）：等它出结果，或先撤回 */
+    PAY_ONBOARDING_INFLIGHT(70090, "err.pay.onboarding_inflight"),
+    /** 进件单当前状态不允许这个动作（如审核中再提交、回填来的旧进件单由旧流程推进）。回显原因 */
+    PAY_ONBOARDING_STATE(70091, "err.pay.onboarding_state"),
+
     /*
      * 快递代下单（TDD-快递100商家寄件）。
      *

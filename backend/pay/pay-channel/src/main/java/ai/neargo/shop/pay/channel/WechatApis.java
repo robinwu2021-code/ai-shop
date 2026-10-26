@@ -56,6 +56,10 @@ public final class WechatApis {
      * USERPAYING（用户支付中）当成已支付的话，会给一笔还没付的单发货。
      */
     public static final String TRANSACTION_BY_OUT_TRADE_NO = "/v3/pay/transactions/out-trade-no/";
+    /** 服务商（含电商收付通）查单：必须带 sp_mchid 与 sub_mchid（F12 · Review R14） */
+    public static final String PARTNER_TRANSACTION_BY_OUT_TRADE_NO = "/v3/pay/partner/transactions/out-trade-no/";
+    /** 电商收付通查退款：带 sub_mchid */
+    public static final String ECOMMERCE_REFUND_BY_OUT_REFUND_NO = "/v3/ecommerce/refunds/out-refund-no/";
 
     /** 二级商户进件。 */
     public static final String APPLYMENT = "/v3/ecommerce/applyments/";

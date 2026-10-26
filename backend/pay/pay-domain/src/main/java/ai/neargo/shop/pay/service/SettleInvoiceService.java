@@ -15,6 +15,14 @@ public interface SettleInvoiceService {
     PageData<SettleInvoiceVO> list(String status, String keyword, long page, long size);
 
     /**
+     * 显式按主体收窄的列表（F10 · Review R10）：独立形态的 pay-svc 没有数据域拦截器，收窄必须由调用方带进来。
+     *
+     * @param merchantNos {@code null} = 不限；空集 = 一个都不能看
+     */
+    PageData<SettleInvoiceVO> list(String status, String keyword, long page, long size,
+                                   java.util.Set<String> merchantNos);
+
+    /**
      * 开票。三道校验，每一道防的都是<b>虚开</b>：
      * 只有 {@code PENDING} 能开（重复开票 = 重复虚开）·
      * 企业抬头必须有税号 · 金额不得超过该周期已结算金额。

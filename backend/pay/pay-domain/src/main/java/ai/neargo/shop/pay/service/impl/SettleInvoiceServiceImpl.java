@@ -29,10 +29,22 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
 
     @Override
     public PageData<SettleInvoiceVO> list(String status, String keyword, long page, long size) {
+        return list(status, keyword, page, size, null);
+    }
+
+    @Override
+    public PageData<SettleInvoiceVO> list(String status, String keyword, long page, long size,
+                                          java.util.Set<String> merchantNos) {
         long p = Math.max(page, 1);
         long s = Math.max(size, 1);
+        if (merchantNos != null && merchantNos.isEmpty()) {
+            // 一个主体都不能看：不查库，直接空页（IN () 在 SQL 里也不合法）
+            return PageData.of(java.util.List.of(), 0, p, s);
+        }
         var w = Wrappers.<StlSettleInvoice>lambdaQuery()
-                .eq(status != null && !status.isBlank(), StlSettleInvoice::getStatus, status);
+                .eq(status != null && !status.isBlank(), StlSettleInvoice::getStatus, status)
+                // 显式收窄（独立形态）；内嵌形态传 null，由数据域拦截器按 entity_no 收窄
+                .in(merchantNos != null, StlSettleInvoice::getEntityNo, merchantNos);
         if (keyword != null && !keyword.isBlank()) {
             String k = documents.internal(DocumentType.SETTLEMENT_INVOICE_REQUEST, "MAIN", keyword.trim());
             w.and(q -> q.like(StlSettleInvoice::getInvoiceNo, k)

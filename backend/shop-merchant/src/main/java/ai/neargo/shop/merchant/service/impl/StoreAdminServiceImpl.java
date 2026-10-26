@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -34,6 +35,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
             org.slf4j.LoggerFactory.getLogger(StoreAdminServiceImpl.class);
 
     private final MchStoreMapper storeMapper;
+    private final PayMerchantMirror payMirror;
     private final MchStoreRoleMapper roleMapper;
     private final MchPaymentMapper paymentMapper;
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper;
@@ -59,7 +61,9 @@ public class StoreAdminServiceImpl implements StoreAdminService {
                                  ai.neargo.shop.merchant.service.MerchantPlanService planService,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
                                  ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
-                                 ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
+                                 ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
+                                 PayMerchantMirror payMirror) {
+        this.payMirror = payMirror;
         this.serviceAreaMapper = serviceAreaMapper;
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
@@ -112,6 +116,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         // 第一家店自动成为默认店；之后新建的都不是 —— 默认标的转移是显式动作
         s.setIsDefault(existing.isEmpty());
         s.setStatus(MchStore.ACTIVE);
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(s));
         inheritServiceAreas(merchantNo, existing, s.getStoreNo());
         return toVO(s, activePayMerchantNos(merchantNo), Map.of());
@@ -250,6 +255,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
             return null;
         });
         target.setIsDefault(true);
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         return toVO(target, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
     }
 
@@ -268,6 +274,21 @@ public class StoreAdminServiceImpl implements StoreAdminService {
             if (!activePayMerchantNos(merchantNo).contains(payMerchantNo)) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
+            /*
+             * 还要是**这家店能用的号**：主体级号（store_no 为空串）给哪家店都行；
+             * 某家门店单独进件的号是那家店的结算账户，绑给别的店 = 这家店的钱进了那家店的户（F03 · Review R03）。
+             */
+            String dedicatedTo = DataScopeContext.executeWithoutScope(() ->
+                            paymentMapper.selectList(Wrappers.<MchPaymentMerchant>lambdaQuery()
+                                    .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                                    .eq(MchPaymentMerchant::getPayMerchantNo, payMerchantNo)))
+                    .stream()
+                    .map(p -> p.getStoreNo() == null ? MchPaymentMerchant.ENTITY_LEVEL : p.getStoreNo())
+                    .findFirst()
+                    .orElse(MchPaymentMerchant.ENTITY_LEVEL);
+            if (!dedicatedTo.equals(MchPaymentMerchant.ENTITY_LEVEL) && !dedicatedTo.equals(storeNo)) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             s.setPayMerchantNo(payMerchantNo);
         } else {
             // 传空是合法操作：回到「用主体的默认收款号」，不是清空错误
@@ -275,6 +296,7 @@ public class StoreAdminServiceImpl implements StoreAdminService {
         }
         // 留痕：它改变的是钱的去向，出问题时要能回答「什么时候换的」
         s.setPaymentChangedAt(System.currentTimeMillis());
+        payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
         DataScopeContext.executeWithoutScope(() -> storeMapper.updateById(s));
         return toVO(s, activePayMerchantNos(merchantNo), staffCountOf(storeNo));
     }

@@ -427,13 +427,19 @@ class ArchitectureTest {
 
     private static ArchRule domainWebRuntimeRule() {
         return noClasses().that().resideInAnyPackage(domainPackages())
-                .and(DescribedPredicate.describe("domain logic, excluding food presentation/transport/assembly",
-                        type -> !isFoodWebAdapter(type)))
+                .and(DescribedPredicate.describe("domain logic, excluding food presentation/transport/assembly and the pay portal",
+                        type -> !isFoodWebAdapter(type) && !isPayPortal(type)))
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "jakarta.servlet..", "org.springframework.web.context..",
                         "org.springframework.web.servlet..")
                 .allowEmptyShould(true)
-                .because("领域 service/policy/entity 不得依赖 Web；独立 food-web 的 presentation、typed transport 与装配不属于领域逻辑");
+                .because("领域 service/policy/entity 不得依赖 Web；独立 food-web 的 presentation、typed transport 与装配不属于领域逻辑；"
+                        + "支付接入层 pay-portal（pay.api..）是支付的 controller 与鉴权过滤器，同理（ADR-042）");
+    }
+
+    /** 支付接入层（pay-portal 模块，ADR-042 §2-2）：只豁免 {@code ai.neargo.shop.pay.api} 这一棵子树 */
+    private static boolean isPayPortal(JavaClass type) {
+        return inPackageTree(type, "ai.neargo.shop.pay.api");
     }
 
     private static boolean isFoodRemoteServiceAdapter(JavaClass type) {
@@ -519,6 +525,28 @@ class ArchitectureTest {
         }
         assertThat(ToolProvider.getSystemJavaCompiler().run(null, null, null, arguments.toArray(String[]::new))).isZero();
         return new ClassFileImporter().importPath(temporary);
+    }
+
+    @Test
+    @DisplayName("★★ 支付只豁免 pay.api 这一棵子树碰 Web —— 领域服务、实现、相邻包名照样拦（ADR-042）")
+    void payPortalIsTheOnlyPayWebException(@TempDir Path temporary) throws IOException {
+        String webField = "public jakarta.servlet.http.HttpServletRequest request;";
+        var imported = compileArchitectureExamples(temporary, Map.ofEntries(
+                Map.entry("ai.neargo.shop.pay.api.ops.ExampleController", "public class ExampleController {" + webField + "}"),
+                Map.entry("ai.neargo.shop.pay.api.auth.ExampleAuthenticator", "public class ExampleAuthenticator {" + webField + "}"),
+                Map.entry("ai.neargo.shop.pay.apiExtra.FalsePortal", "public class FalsePortal {" + webField + "}"),
+                Map.entry("ai.neargo.shop.pay.service.BadService", "public class BadService {" + webField + "}"),
+                Map.entry("ai.neargo.shop.pay.impl.BadServiceImpl", "public class BadServiceImpl {" + webField + "}")));
+        for (String valid : List.of("pay.api.ops.ExampleController", "pay.api.auth.ExampleAuthenticator")) {
+            var selection = imported.that(DescribedPredicate.describe(valid, type -> type.getName().equals("ai.neargo.shop." + valid)));
+            assertThat(selection).hasSize(1);
+            assertThat(domainWebRuntimeRule().evaluate(selection).hasViolation()).as(valid).isFalse();
+        }
+        for (String invalid : List.of("pay.apiExtra.FalsePortal", "pay.service.BadService", "pay.impl.BadServiceImpl")) {
+            var selection = imported.that(DescribedPredicate.describe(invalid, type -> type.getName().equals("ai.neargo.shop." + invalid)));
+            assertThat(selection).hasSize(1);
+            assertThat(domainWebRuntimeRule().evaluate(selection).hasViolation()).as(invalid).isTrue();
+        }
     }
 
     @Test

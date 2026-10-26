@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>pay-portal</artifactId>
+    <packaging>jar</packaging>
+    <description>支付接入层：支付运营端、开放 API、刷卡终端、商家端、收银台的 controller 与鉴权（ADR-042）</description>
+
+    <!-- 为什么单独成模块（ADR-042）：
+         pay-domain 零 controller（ADR-021 §L1：领域不鉴权、能进 AOT、不读会话、判权在接入层），
+         而这五类入口要随支付服务独立部署，放 shop-app 搬不走。
+
+         **刻意不依赖 pay-domain 与 MyBatis**（I0）：内嵌形态下 controller 直调的应用服务接口到 I5 才有；
+         接入层一旦带上持久化框架，独立形态就进不了 AOT —— 那正是 pay-domain 守了一年的东西。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+</project>

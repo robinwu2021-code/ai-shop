@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -131,6 +133,7 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
         var request = frozen(bound);
         if (bound.binding().getPaymentOutTradeNo() == null) {
             // This retries only PAY's idempotent ledger-open, never a gateway dispatch.
+            openPayOrder(bound, request);
             var attempt = payment().open(request); matched(bound, attempt);
             String outTradeNo = attempt.outTradeNo();
             String openedState = "SUCCESS".equals(attempt.status()) ? "SUCCESS" : "OPEN";
@@ -240,6 +243,19 @@ public class IndustryCheckoutServiceImpl implements IndustryCheckoutService {
                 order.getPayAmount(), "订单 " + order.getOrderNo(), order.getCurrency(),
                 List.of(new SettlePort.PaymentStore(bound.sub().getSubOrderNo(), route)));
     }
+    /** 餐饮结账也先建支付单（TDD-支付服务-I3支付单退款流水 S3）：门店是这张账单所属的门店 */
+    private void openPayOrder(Bound bound, SettlePort.PaymentOpen request) {
+        PaymentPort port = paymentPorts == null ? null : paymentPorts.getIfAvailable();
+        if (port == null || request.stores().isEmpty()) return;
+        merchants.payStoreOf(request.stores().get(0).route().storeNo()).ifPresent(s -> port.createPayment(
+                new PaymentPort.InternalCreatePaymentCmd(PaymentPort.FOOD_CHECK, request.orderNo(), request.orderNo(),
+                        s.storeId(), s.storeName(), s.entityName(), s.market(), request.amountMinor(),
+                        request.currency(), request.subject(), System.currentTimeMillis() + 15 * 60_000L,
+                        s.fundsPath())));
+    }
+
+    @Autowired(required = false) private ObjectProvider<PaymentPort> paymentPorts;
+
     private Bound bound(Identity identity, String orderNo) {
         identity(identity); key(orderNo);
         var source = binding(identity, orderNo, false);

@@ -18,10 +18,23 @@ import java.util.Map;
 // 与 WechatDirectPayGateway 互斥 —— 两者的 payChannel() 都是 WECHAT
 public class WechatPayGateway extends AbstractPayGateway {
 
+    /** 服务商商户号（sp_mchid） */
+    private final String spMchId;
+    private final PaymentAccountLookup accounts;
+
     public WechatPayGateway(ChannelClient client,
                             PayChannelMasterService channelMaster,
                             ChannelMessageRecorder recorder) {
+        this(client, channelMaster, recorder, null, no -> java.util.Optional.empty());
+    }
+
+    public WechatPayGateway(ChannelClient client,
+                            PayChannelMasterService channelMaster,
+                            ChannelMessageRecorder recorder,
+                            String spMchId, PaymentAccountLookup accounts) {
         super(client, channelMaster, recorder);
+        this.spMchId = spMchId;
+        this.accounts = accounts;
     }
 
     @Override
@@ -107,12 +120,21 @@ public class WechatPayGateway extends AbstractPayGateway {
      */
     @Override
     public QueryResult query(String outTradeNo) {
+        /*
+         * 服务商路径，必须带 sp_mchid 与这笔交易的 sub_mchid（F12 · Review R14）。
+         * 此前走普通商户路径，收付通模式下通道答不上。不知道子商户号就不查：按「查询失败」处理，
+         * 对账留到下一轮 —— 不能退化成「通道没有这笔」，那会被当成可以安全关单。
+         */
+        String sub = accounts.subMerchantOf(outTradeNo).orElse(null);
+        if (sub == null || sub.isBlank() || spMchId == null || spMchId.isBlank()) {
+            return QueryResult.failed();
+        }
         try {
             // **GET，不是 POST**：APIv3 的待签串第一行是 HTTP 方法，
             // 用 POST 调这个接口签名与方法都是错的。此前写成 post(...) 没暴露，
             // 只因为整条从未装配过 —— 真通道接上那天才第一次执行它
-            Map<String, Object> resp = client.get(
-                    WechatApis.TRANSACTION_BY_OUT_TRADE_NO + outTradeNo);
+            Map<String, Object> resp = client.get(WechatApis.PARTNER_TRANSACTION_BY_OUT_TRADE_NO + outTradeNo
+                    + "?sp_mchid=" + spMchId + "&sub_mchid=" + sub);
             Object state = resp.get("trade_state");
             if (state == null) {
                 // 通道没有这笔（微信对不存在的单返回 ORDER_NOT_EXIST，**带下划线**，2026-09-04 实测）
@@ -130,6 +152,37 @@ public class WechatPayGateway extends AbstractPayGateway {
                             ? currency : null);
         } catch (ChannelClient.ChannelException e) {
             // 查询失败 ≠ 没有这笔。返回 failed 让对账留到下一轮，别关单
+            return QueryResult.failed();
+        }
+    }
+
+    /**
+     * 查退款：收付通退款接口，带 sub_mchid（F12 · Review R14）。此前没覆写，恒为「查不通」——
+     * 收付通的退款回调回查永远失败、回 FAIL，退款一直停在处理中。
+     * {@code status=SUCCESS} 才算退成；PROCESSING / ABNORMAL / CLOSED 都是「通道有这笔、还没退成」。
+     */
+    @Override
+    public QueryResult queryRefund(String outRefundNo) {
+        String sub = accounts.subMerchantOf(outRefundNo).orElse(null);
+        if (sub == null || sub.isBlank()) {
+            return QueryResult.failed();
+        }
+        try {
+            Map<String, Object> resp = client.get(
+                    WechatApis.ECOMMERCE_REFUND_BY_OUT_REFUND_NO + outRefundNo + "?sub_mchid=" + sub);
+            Object status = resp.get("status");
+            if (status == null) {
+                return QueryResult.notFound();
+            }
+            if (!"SUCCESS".equals(status)) {
+                return QueryResult.unpaid();
+            }
+            Object amount = resp.get("amount");
+            long minor = amount instanceof Map<?, ?> m && m.get("refund") instanceof Number n ? n.longValue() : 0L;
+            return new QueryResult(true, true, true, minor,
+                    resp.get("refund_id") instanceof String id ? id : null,
+                    amount instanceof Map<?, ?> d && d.get("currency") instanceof String cur ? cur : null);
+        } catch (ChannelClient.ChannelException e) {
             return QueryResult.failed();
         }
     }

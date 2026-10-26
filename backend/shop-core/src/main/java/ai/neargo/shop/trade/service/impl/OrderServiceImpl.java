@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import java.util.Optional;
+import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
 import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
 import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
@@ -115,6 +117,8 @@ import java.util.stream.Collectors;
 @Service
 public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingService, LegacyCouponBoundOrderService {
     @Autowired(required = false) private IndustryOrderSourceMapper industryOrderSources;
+    /** 支付单（支付服务 I3）：去支付先建一张，通道尝试挂在它下面。没装（独立形态未接上）时照旧走原路 */
+    @Autowired(required = false) private PaymentPort paymentPort;
     @Autowired private LegacyCouponCheckoutJournal legacyCheckoutJournal;
     @Autowired private ObjectProvider<LegacyCouponOrderCreationCoordinator> legacyCreationCoordinators;
     @Autowired private ObjectProvider<LegacyCouponBoundOrderService> coreCreationWriters;
@@ -2219,6 +2223,30 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                         .eq(OrdIndustryOrderSource::getOrderNo, order.getOrderNo()))) > 0;
     }
 
+    /**
+     * 去支付先建支付单（TDD-支付服务-I3支付单退款流水 S3）。幂等：同一订单再点去支付是同一张。
+     * 门店取首个子单的门店 —— 支付单一单一门店，多门店商城单的分账在结算单上按子单拆，不在这里。
+     */
+    private void openPayOrder(OrdOrder order, SettlePort.PaymentOpen open) {
+        if (paymentPort == null) {
+            return;
+        }
+        OrdSubOrder first = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getOrderNo, order.getOrderNo()).orderByAsc(OrdSubOrder::getSubOrderNo).last("LIMIT 1"));
+        var store = first == null ? Optional.<MerchantQueryPort.PayStore>empty()
+                : merchantPort.payStoreOf(first.getStoreNo());
+        if (store.isEmpty()) {
+            log.warn("[pay-order] 订单 {} 解析不出门店，不建支付单（Q5 会报出来）", order.getOrderNo());
+            return;
+        }
+        var s = store.get();
+        long expireAt = order.getPayDeadlineAt() != null ? order.getPayDeadlineAt()
+                : System.currentTimeMillis() + 15 * 60_000L;
+        paymentPort.createPayment(new PaymentPort.InternalCreatePaymentCmd(PaymentPort.MALL_ORDER, order.getOrderNo(),
+                order.getOrderNo(), s.storeId(), s.storeName(), s.entityName(), s.market(), open.amountMinor(),
+                open.currency(), open.subject(), expireAt, s.fundsPath()));
+    }
+
     @Override
     public PayResult pay(String orderNo, String payChannel) {
         // 同 payMethods：子单号也要能进收银台；下游（记账、商户单号）只认主单号
@@ -2294,6 +2322,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             open = new SettlePort.PaymentOpen(orderNo, order.getUserNo(), null, channel,
                     order.getPayAmount() == null ? 0L : order.getPayAmount(), payDescription(orderNo));
         }
+        openPayOrder(order, open);
         var init = settlePort.initPayment(open);
 
         if (!init.success()) {
@@ -2503,7 +2532,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
              * 跨商家合单时一笔支付要分别记到各家头上。
              * 方法开头「已 PAID 直接返回」保证了不会重复累加。
              */
-            merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(),
+            merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(), order.getPayChannel(),
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount());
 
 
@@ -2953,6 +2982,14 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (pointsIntegrated) {
             pointsPlacement.recordCancellation(order.getOrderNo());
             eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(order.getOrderNo()));
+        }
+        if (paymentPort != null) {
+            // 关到支付这一层（R18 · TDD-支付服务-I3支付单退款流水 S7）：提交之后再关 —— 关单回滚而支付单已关的话，
+            // 下一次付款会被当成关单后到账。支付侧关前必查单，查到已付就不关
+            String orderNo = order.getOrderNo();
+            String bizType = industryOwned(order) ? PaymentPort.FOOD_CHECK : PaymentPort.MALL_ORDER;
+            AfterCommit.run("关支付单 orderNo=" + orderNo,
+                    () -> paymentPort.closePayment(bizType, orderNo, reason));
         }
         return true;
     }

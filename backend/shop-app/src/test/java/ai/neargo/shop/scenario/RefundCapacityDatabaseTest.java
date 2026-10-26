@@ -31,6 +31,8 @@ import java.util.regex.Pattern;
 @SpringJUnitConfig(RefundCapacityDatabaseTest.Config.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(properties={
+        // 只手工建了几张表：支付 v4 迁移（db/pay）要 ALTER 平台表，与 h2db profile 一样不在这里跑
+        "shop.pay.flyway.enabled=false",
     "spring.datasource.url=${points.jdbc.url:jdbc:h2:mem:capacity-native;MODE=MySQL;DATABASE_TO_LOWER=TRUE}",
     "spring.datasource.username=${points.jdbc.user:sa}","spring.datasource.password=${points.jdbc.password:}",
     "spring.datasource.driver-class-name=${points.jdbc.driver:org.h2.Driver}"})

@@ -58,6 +58,9 @@ public class ReconServiceImpl implements ReconService {
      * 那种单查一次纯属浪费，还会与关单任务抢同一行。
      */
     private final int staleMinutes;
+    /** 关单后观察窗（小时）：这段时间内关掉的收款尝试仍随掉单巡检回查（I3 S7） */
+    @Value("${shop.pay.recon.closed-watch-hours:26}")
+    private long closedWatchHours = 26;
 
     public ReconServiceImpl(SettleMappers.PaymentMapper paymentMapper,
                             SettleMappers.ReconDiffMapper diffMapper,
@@ -105,6 +108,10 @@ public class ReconServiceImpl implements ReconService {
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
                     .and(q -> q.eq(StlPayment::getDirection,StlPayment.PAY)
                             .in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
+                        // 关单后的观察窗（I3 S7）：关单关到了尝试这一层，而渠道没有关单接口、用户仍可能付成；
+                        // 回调又丢了的话只能靠这里查到。窗口有界 —— 待查集合不会再只增不减（R18）
+                        .or(c -> c.eq(StlPayment::getDirection,StlPayment.PAY).eq(StlPayment::getStatus,StlPayment.CLOSED)
+                            .ge(StlPayment::getClosedAt, now - closedWatchHours * 3_600_000L))
                         .or(r -> r.eq(StlPayment::getDirection,StlPayment.REFUND)
                             .and(t -> t.in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
                                 .or(u -> u.eq(StlPayment::getStatus,StlPayment.FAILED)
@@ -215,18 +222,21 @@ public class ReconServiceImpl implements ReconService {
     /**
      * 落一条差异。
      *
-     * <p>同一笔流水在同一账期只留一条（唯一键 {@code uk_recon_diff_payment}）——
-     * 自查每小时跑一轮，不去重的话一笔掉单会在列表里堆成几十条，
-     * 而运营要逐条点开才知道是同一笔。
+     * <p><b>同一个没解决的问题只有一条</b>，不论哪天发现的（F15 · Review R19）。
+     * 此前去重条件带账期日：自查每天跑，一笔掉单每天新开一条，运营要逐条点开才知道是同一笔。
+     * 已处置（非 PENDING）的不算 —— 同一笔处置后又出问题，是一件新的事，要新开。
+     *
+     * <p>系统生成的说明写 {@code note}；{@code resolution} 只放运营的处置结论（此前被说明占用）。
      */
     private void recordDiff(String day, StlPayment p, PayQueryPort.Result r,
                             String type, String note, Long expectedAmount) {
+        String dedupKey = p.getPayChannel() + "|" + p.getPaymentNo() + "|" + type;
         boolean exists = DataScopeContext.executeWithoutScope(() -> diffMapper.exists(
                 Wrappers.<StlReconDiff>lambdaQuery()
-                        .eq(StlReconDiff::getBillDate, day)
                         .eq(StlReconDiff::getPayChannel, p.getPayChannel())
                         .eq(StlReconDiff::getPaymentNo, p.getPaymentNo())
-                        .eq(StlReconDiff::getDiffType, type)));
+                        .eq(StlReconDiff::getDiffType, type)
+                        .eq(StlReconDiff::getStatus, StlReconDiff.PENDING)));
         if (exists) {
             return;
         }
@@ -242,7 +252,8 @@ public class ReconServiceImpl implements ReconService {
         d.setChannelAmountMinor(r.amountMinor());
         d.setPlatformAmountMinor(expectedAmount == null ? 0L : expectedAmount);
         d.setStatus(StlReconDiff.PENDING);
-        d.setResolution(note == null ? null : note.substring(0, Math.min(note.length(), 255)));
+        d.setDedupKey(dedupKey);
+        d.setNote(note == null ? null : note.substring(0, Math.min(note.length(), 255)));
         DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
     }
 
@@ -323,6 +334,6 @@ public class ReconServiceImpl implements ReconService {
                 d.getStatus(), d.getResolution(), d.getRecoveredOrderNo(),
                 d.getCreatedAt() == null ? 0L
                         : d.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-                d.getResolvedAt(), d.getResolvedBy());
+                d.getResolvedAt(), d.getResolvedBy(), d.getNote());
     }
 }

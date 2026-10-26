@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.SplitGateway;
@@ -79,7 +80,7 @@ class PerOrderSettlementTest {
     @Test
     void merchant_is_not_charged_earn_fee() {
         String no="PF"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
-        pointsBill(no,PointsFundsGateway.FundsPath.AGGREGATED,"PER_ORDER");
+        pointsBill(no,FundsPath.AGGREGATED,"PER_ORDER");
         var source=new SettleSourcePort.SettleSource("S:"+no,"M","MERCHANT_OWNED",970,0,0,null,1,
                 "STORE",30,300,"TEST","MP",0,0,null);
         var input=new SettleService.SettleInput(source,MerchantQueryPort.MODE_SELF_OPERATED,"ACCOUNT", "NATURAL",
@@ -164,7 +165,7 @@ class PerOrderSettlementTest {
         String sub="S:"+no;
         String position=PointsKeys.position("R",type,sub);
         JdbcTemplate jdbc=new JdbcTemplate(payDataSource);
-        StlBill bill=pointsBill(no,PointsFundsGateway.FundsPath.DIRECT,"PER_ORDER");
+        StlBill bill=pointsBill(no,FundsPath.DIRECT,"PER_ORDER");
         DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
         settlement.executeSplit(no);
         assertThat(gateway.sends.getOrDefault(sub,0)).isZero();
@@ -191,7 +192,7 @@ class PerOrderSettlementTest {
     @Test
     void periodic_excludes_points_from_goods_payout_but_commission_includes_them() {
         String no="PB"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
-        pointsBill(no,PointsFundsGateway.FundsPath.AGGREGATED,"PERIODIC");
+        pointsBill(no,FundsPath.AGGREGATED,"PERIODIC");
         StlFeeRule rule=new StlFeeRule(); rule.setRuleNo("RULE:"+no);
         rule.setBusinessMode(MerchantQueryPort.MODE_SELF_OPERATED); rule.setTrafficSource(StlFeeRule.PLATFORM);
         rule.setRateBp(1000); rule.setEffectiveFrom(System.currentTimeMillis()-1); rule.setEnabled(1);
@@ -213,7 +214,7 @@ class PerOrderSettlementTest {
     void aggregated_export_requires_internal_replenishment_without_extra_merchant_payment() {
         String no="AG"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
         String payout="P:"+no;
-        StlBill bill=pointsBill(no,PointsFundsGateway.FundsPath.AGGREGATED,"PER_ORDER");
+        StlBill bill=pointsBill(no,FundsPath.AGGREGATED,"PER_ORDER");
         bill.setStatus(StlBill.CONFIRMED); bill.setBusinessMode(MerchantQueryPort.MODE_SELF_OPERATED);
         bill.setPayoutNo(payout); bill.setInvoiceStatus(StlBill.INV_NONE);
         DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
@@ -247,7 +248,7 @@ class PerOrderSettlementTest {
     void periodic_goods_export_does_not_replenish_or_pay_points_early() {
         String no="PG"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
         String payout="P:"+no;
-        StlBill bill=pointsBill(no,PointsFundsGateway.FundsPath.AGGREGATED,"PERIODIC");
+        StlBill bill=pointsBill(no,FundsPath.AGGREGATED,"PERIODIC");
         bill.setStatus(StlBill.CONFIRMED); bill.setBusinessMode(MerchantQueryPort.MODE_SELF_OPERATED);
         bill.setNetMinor(955L); bill.setPayoutNo(payout); bill.setInvoiceStatus(StlBill.INV_NONE);
         DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
@@ -268,7 +269,7 @@ class PerOrderSettlementTest {
     @Test
     void aggregated_split_runs_outside_transaction_and_funds_before_cash() {
         String no="AS"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
-        var bill=pointsBill(no,PointsFundsGateway.FundsPath.AGGREGATED,"PER_ORDER");
+        var bill=pointsBill(no,FundsPath.AGGREGATED,"PER_ORDER");
         DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
         settlement.executeSplit(no);
         assertThat(funds.sends.get(bill.getSubOrderNo())).isEqualTo(1);
@@ -281,7 +282,7 @@ class PerOrderSettlementTest {
     @Test
     void missing_payment_route_does_not_send_or_resolve_current_store_account() {
         String no="MR"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
-        var bill=pointsBill(no,PointsFundsGateway.FundsPath.DIRECT,"PER_ORDER");
+        var bill=pointsBill(no,FundsPath.DIRECT,"PER_ORDER");
         bill.setPayMerchantNo(null);
         DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
         assertThatThrownBy(() -> settlement.executeSplit(no))
@@ -292,7 +293,7 @@ class PerOrderSettlementTest {
                 "SELECT COUNT(*) FROM stl_split_intent WHERE settle_no=?",Long.class,no)).isZero();
     }
 
-    private StlBill pointsBill(String no,PointsFundsGateway.FundsPath path,String mode) {
+    private StlBill pointsBill(String no,FundsPath path,String mode) {
         String type="T:"+no;
         String sub="S:"+no;
         JdbcTemplate jdbc=new JdbcTemplate(payDataSource);
@@ -330,8 +331,8 @@ class PerOrderSettlementTest {
         bill.setStatus(StlBill.PENDING); bill.setGrossMinor(1000L); bill.setNetMinor(985L);
         bill.setCommissionMinor(10L); bill.setServiceFeeMinor(5L); bill.setSplitAmountMinor(15L);
         bill.setSplitProtocolVersion(1);
-        bill.setPointsCostMinor(path==PointsFundsGateway.FundsPath.AGGREGATED?30L:0L);
-        bill.setSubsidyMinor(path==PointsFundsGateway.FundsPath.DIRECT?30L:0L); bill.setPointsFeeMinor(0L);
+        bill.setPointsCostMinor(path==FundsPath.AGGREGATED?30L:0L);
+        bill.setSubsidyMinor(path==FundsPath.DIRECT?30L:0L); bill.setPointsFeeMinor(0L);
         return bill;
     }
 

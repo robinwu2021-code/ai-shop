@@ -1,5 +1,9 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.acquiring.service.RefundOutcomeService;
+import ai.neargo.shop.pay.acquiring.service.RefundService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -72,6 +76,11 @@ public class RefundPaymentStore {
         capacity.check(origin, request.amountMinor());
         StlPayment row = row(origin, request);
         DataScopeContext.executeWithoutScope(() -> payments.insert(row));
+        RefundService refundOrders = refundOrderProvider == null ? null : refundOrderProvider.getIfAvailable();
+        if (refundOrders != null && request.amountMinor() > 0) {
+            // 退款单挂上（I3 S6）：占用支付单可退余额、判复核；超额在这里整笔回滚。零元退款没有钱要退，不建
+            refundOrders.attachExecution(origin, row, request);
+        }
         return row;
     }
 
@@ -112,6 +121,10 @@ public class RefundPaymentStore {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
             row.setSucceededAt(now);
+            RefundOutcomeService refundOutcomes = outcomes();
+            if (refundOutcomes != null) {
+                refundOutcomes.succeeded(row.getRefundExecutionNo());
+            }
         }
         return new RefundDispatchResult(row.getRefundExecutionNo(), row.getPaymentNo(), DispatchStatus.SUCCEEDED,
                 null, false, row.getSucceededAt());
@@ -162,6 +175,10 @@ public class RefundPaymentStore {
             if (changed != 1) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
+            RefundOutcomeService refundOutcomes = outcomes();
+            if (refundOutcomes != null) {
+                refundOutcomes.succeeded(no);
+            }
         }
         return new RefundDispatchResult(no, row.getPaymentNo(), DispatchStatus.SUCCEEDED,
                 null, false, row.getSucceededAt());
@@ -190,11 +207,34 @@ public class RefundPaymentStore {
 
     @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW)
     public void result(String no, String status, String error, String provider) {
-        DataScopeContext.executeWithoutScope(() -> payments.update(null, Wrappers.<StlPayment>lambdaUpdate()
+        int changed = DataScopeContext.executeWithoutScope(() -> payments.update(null, Wrappers.<StlPayment>lambdaUpdate()
                 .eq(StlPayment::getRefundExecutionNo, no).eq(StlPayment::getDirection, StlPayment.REFUND)
                 .in(StlPayment::getStatus, StlPayment.INIT, StlPayment.PENDING).set(StlPayment::getStatus, status)
                 .set(StlPayment::getErrCode, error).set(provider != null, StlPayment::getTradeNo, provider)
                 .set(StlPayment.SUCCESS.equals(status), StlPayment::getSucceededAt, System.currentTimeMillis())
                 .setSql("version = version + 1")));
+        RefundOutcomeService refundOutcomes = outcomes();
+        if (changed == 1 && refundOutcomes != null) {
+            // 退款行第一次进终态：退款单与支付单随之结（I3 S6）
+            if (StlPayment.FAILED.equals(status)) {
+                refundOutcomes.failed(no, error);
+            } else if (StlPayment.SUCCESS.equals(status)) {
+                refundOutcomes.succeeded(no);
+            }
+        }
+    }
+
+    /** 退款单（I3 S6）；手工构造的单测与只装了部分支付配置的切片测试里没有 —— 调用时再取，取不到就跳过 */
+    private ObjectProvider<RefundService> refundOrderProvider;
+    private ObjectProvider<RefundOutcomeService> refundOutcomeProvider;
+
+    private RefundOutcomeService outcomes() {
+        return refundOutcomeProvider == null ? null : refundOutcomeProvider.getIfAvailable();
+    }
+
+    @Autowired(required = false)
+    void setRefundOrders(ObjectProvider<RefundService> refundOrders, ObjectProvider<RefundOutcomeService> refundOutcomes) {
+        this.refundOrderProvider = refundOrders;
+        this.refundOutcomeProvider = refundOutcomes;
     }
 }
