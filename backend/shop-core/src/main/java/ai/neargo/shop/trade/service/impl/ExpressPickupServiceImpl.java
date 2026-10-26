@@ -21,7 +21,11 @@ import ai.neargo.shop.trade.service.MerchantOrderService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -63,6 +67,13 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
     private final MerchantDebtPort debtPort;
     private final MerchantOrderService merchantOrderService;
     private final PlatformSwitchPort switchPort;
+    /** 叫件落行那一小段的事务（见 {@link #create}）。setter 注入，不动构造签名 */
+    private TransactionTemplate tx;
+
+    @Autowired
+    public void setTransactionManager(@Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this.tx = new TransactionTemplate(manager);
+    }
 
     public ExpressPickupServiceImpl(ExpressPickupPort port, ExpressPickupMapper pickupMapper,
                                     StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
@@ -125,22 +136,22 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         /*
          * **先落行、再下单**。反过来的话，通道那边已经派了快递员，而我们这边一行都没有 ——
          * 回调来了认不出、运费也记不上。先落的这行在下单失败时改成 FAILED 留着，排查用。
+         *
+         * **落行与「有没有进行中的取件单」在同一个短事务里、先锁子单行**（上面那句 open() 只是快路径）。此前它
+         * 与 insert 之间没有串行点：商家连点两下（或两个店员同时点），两个请求都查到「没有」，
+         * 各落一行、各向通道下一单 —— 来两个快递员、运费记两笔。锁在子单上而不是加唯一键：
+         * 一张子单本来就只该有一张进行中的取件单，而「进行中」是状态集合，唯一键表达不了。
+         * 事务只包落行这一小段、<b>不包通道调用</b>：网络调用期间持着子单行锁，
+         * 同单的其它写（发货、售后占位）会被一个第三方接口的延迟拖住。
          */
-        OrdExpressPickup p = new OrdExpressPickup();
-        p.setPickupNo(BizKey.next(BizKey.EXPRESS_PICKUP));
-        p.setSubOrderNo(sub.getSubOrderNo());
-        p.setOrderNo(sub.getOrderNo());
-        p.setEntityNo(sub.getEntityNo());
-        p.setStoreNo(senderStoreNo(sub));
-        p.setProvider(OrdExpressPickup.PROVIDER_KUAIDI100);
-        p.setCarrier(carrier);
-        p.setStatus(OrdExpressPickup.CREATED);
-        p.setWeightG(weightG);
-        p.setFreightBookedMinor(0L);
-        // 环境在下单这一刻定、并落库：之后开关怎么拨，这一单的取消都回到它下单的那个环境
-        p.setSandbox(testMode());
-        stamp(p, true);
-        DataScopeContext.executeWithoutScope(() -> pickupMapper.insert(p));
+        OrdExpressPickup p = tx.execute(status -> {
+            DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getSubOrderNo, sub.getSubOrderNo()).last("FOR UPDATE")));
+            if (open(sub.getSubOrderNo()).isPresent()) {
+                throw BizException.of(ErrorCode.EXPRESS_PICKUP_EXISTS);
+            }
+            return book(sub, carrier, weightG);
+        });
 
         ExpressPickupPort.Booked b = port.create(new ExpressPickupPort.CreateCmd(
                 p.getPickupNo(), carrier, weightG, cargo(sub), sender, receiver, Boolean.TRUE.equals(p.getSandbox())));
@@ -160,6 +171,26 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
         log.info("[express] 代下单 {} sub={} carrier={} weight={}g taskId={}",
                 p.getPickupNo(), sub.getSubOrderNo(), carrier, weightG, b.taskId());
         return toVO(p);
+    }
+
+    /** 落一行 CREATED 的取件单。调用方持着子单行锁。 */
+    private OrdExpressPickup book(OrdSubOrder sub, String carrier, int weightG) {
+        OrdExpressPickup p = new OrdExpressPickup();
+        p.setPickupNo(BizKey.next(BizKey.EXPRESS_PICKUP));
+        p.setSubOrderNo(sub.getSubOrderNo());
+        p.setOrderNo(sub.getOrderNo());
+        p.setEntityNo(sub.getEntityNo());
+        p.setStoreNo(senderStoreNo(sub));
+        p.setProvider(OrdExpressPickup.PROVIDER_KUAIDI100);
+        p.setCarrier(carrier);
+        p.setStatus(OrdExpressPickup.CREATED);
+        p.setWeightG(weightG);
+        p.setFreightBookedMinor(0L);
+        // 环境在下单这一刻定、并落库：之后开关怎么拨，这一单的取消都回到它下单的那个环境
+        p.setSandbox(testMode());
+        stamp(p, true);
+        DataScopeContext.executeWithoutScope(() -> pickupMapper.insert(p));
+        return p;
     }
 
     @Override

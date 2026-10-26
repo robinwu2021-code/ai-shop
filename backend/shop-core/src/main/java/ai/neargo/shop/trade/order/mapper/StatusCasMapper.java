@@ -30,6 +30,14 @@ public interface StatusCasMapper {
     @Select("SELECT open_after_sale_no FROM ord_sub_order WHERE sub_order_no = #{no}")
     String openAfterSaleNo(@Param("no") String no);
 
+    /**
+     * 子单上还没收口的售后行数。与 {@link #openAfterSaleNo} 一起用：占位是新写法，
+     * 占位上线之前开出的售后只有行没有占位，只看占位会把它们当成「没有售后」。
+     */
+    @Select("SELECT COUNT(*) FROM ord_after_sale WHERE sub_order_no = #{no} AND deleted = 0 "
+            + "AND status NOT IN ('REFUNDED', 'REJECTED', 'CLOSED')")
+    long countOpenAfterSales(@Param("no") String no);
+
     /** 备货是原地事实：条件成功的一方才有资格记事件，不忽略0行。 */
     @Update("UPDATE ord_sub_order SET prepared_at = #{at}, updated_at = CURRENT_TIMESTAMP, version = version + 1 "
             + "WHERE sub_order_no = #{no} AND deleted = 0 AND status = 'WAIT_FULFILL' "

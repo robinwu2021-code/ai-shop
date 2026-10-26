@@ -140,17 +140,22 @@ class M4FulfillmentFlowTest {
     }
 
     @Test
-    @DisplayName("非本点的码核销失败，原因明确（NOT_THIS_PICKUP）")
+    @DisplayName("★★★ 非本点的码与不存在的码回包相同（CODE_NOT_FOUND、无子单号）—— 核销台不是探测器")
     void cannotVerifyOtherPickupCode() throws Exception {
         Ordered o = placeAndPay("13300133012", "G0002", "SK0003");   // 下到 PP0001
         // M0002 不承接任何自提点，给它临时挂一个别的点
         String other = loginAsOwnerOf("M0002", "13300133013");
 
+        /*
+         * 此前回 NOT_THIS_PICKUP 且带回子单号：一个店员账号逐个试 6 位码，
+         * 就能分辨出哪些码是活的、对应哪张子单。
+         */
         mvc().perform(post("/biz/pickup/verify").header("Authorization", "Bearer " + other)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"verifyCode\":\"" + o.verifyCode + "\"}"))
                 .andExpect(jsonPath("$.data.success").value(false))
-                .andExpect(jsonPath("$.data.reason").value("NOT_THIS_PICKUP"));
+                .andExpect(jsonPath("$.data.reason").value("CODE_NOT_FOUND"))
+                .andExpect(jsonPath("$.data.subOrderNo").doesNotExist());
     }
 
     @Test

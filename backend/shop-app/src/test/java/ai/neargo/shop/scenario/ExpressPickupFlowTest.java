@@ -235,6 +235,45 @@ class ExpressPickupFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 并发叫件同一子单：只落一张取件单、只派一个快递员")
+    void concurrentCreateBooksOnce() throws Exception {
+        /*
+         * 商家连点两下「叫快递」，或两个店员同时点。此前是「查有没有进行中的 → 落行」，
+         * 中间没有锁：两个请求都查到「没有」，各落一行、各向通道下一单 —— 来两个快递员，
+         * 运费记两笔。
+         */
+        int threads = 6;
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        var ok = new java.util.concurrent.atomic.AtomicInteger();
+        var rejected = new java.util.concurrent.atomic.AtomicInteger();
+        List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            futures.add(pool.submit(() -> {
+                start.await();
+                try {
+                    service.create(ENTITY, null, SUB, "ZTO", BigDecimal.ONE);
+                    ok.incrementAndGet();
+                } catch (BizException e) {
+                    assertThat(e.errorCode()).isEqualTo(ErrorCode.EXPRESS_PICKUP_EXISTS);
+                    rejected.incrementAndGet();
+                }
+                return null;
+            }));
+        }
+        start.countDown();
+        for (var f : futures) {
+            f.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        pool.shutdown();
+
+        assertThat(ok.get()).as("只能有一次叫件成功").isEqualTo(1);
+        assertThat(rejected.get()).isEqualTo(threads - 1);
+        assertThat(jdbc.queryForObject("select count(*) from ord_express_pickup where sub_order_no=?",
+                Integer.class, SUB)).as("两行 = 通道那边派了两个快递员").isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("★★ AC6 取件前可取消；取消后能重新叫")
     void cancelThenRebook() {
         service.create(ENTITY, null, SUB, "ZTO", BigDecimal.ONE);

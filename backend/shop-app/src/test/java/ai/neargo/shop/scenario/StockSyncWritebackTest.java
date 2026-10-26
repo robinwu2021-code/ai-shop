@@ -89,6 +89,8 @@ class StockSyncWritebackTest {
     private StockSyncLogMapper syncLog;
     @Autowired
     private InventoryWritebackService writeback;
+    @Autowired
+    private ai.neargo.shop.invbridge.OfflineSaleService offlineSales;
 
     @Test
     @DisplayName("★★★ 进货过账 → 线上可卖自动等于可用（全部可售）")
@@ -285,6 +287,51 @@ class StockSyncWritebackTest {
                         .header("Authorization", "Bearer " + s.token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
+    }
+
+    @Test
+    @DisplayName("★★★ 并发撤销同一笔线下卖出：只加回一次")
+    void concurrentRevokeReturnsGoodsOnce() throws Exception {
+        /*
+         * 店员连点两下「撤销」（或两台收银机各点一下）。此前是「先查有没有退回单、再开一张」，
+         * 中间没有锁、外层还挂在平台的事务管理器上（进销存的写各自提交）：
+         * 两个请求都查到「还没撤过」，各开一张退回单 —— 3 件卖出被加回 6 件，凭空多出一批货。
+         */
+        Shop s = syncingShop();
+        postInbound(s, 10);
+        pump();
+        String docNo = ok(post("/biz/store/" + s.storeNo + "/offline-sale")
+                .content("{\"lines\":[{\"skuNo\":\"" + s.skuNo + "\",\"qty\":3}]}"), s.token)
+                .get("docNo").asString();
+        pump();
+
+        int threads = 6;
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        AtomicInteger succeeded = new AtomicInteger();
+        List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            futures.add(pool.submit(() -> {
+                start.await();
+                try {
+                    offlineSales.revoke(s.entityNo, s.storeNo, docNo, "店员");
+                    succeeded.incrementAndGet();
+                } catch (ai.neargo.shop.common.BizException expected) {
+                    // 后到的那些被拒：已经撤过了
+                }
+                return null;
+            }));
+        }
+        start.countDown();
+        for (var f : futures) {
+            f.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        pool.shutdown();
+        pump();
+
+        assertThat(succeeded.get()).as("只能有一次撤销成功").isEqualTo(1);
+        assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand())
+                .as("10 − 3 + 3；并发撤两次就成了 13").isEqualTo(10);
     }
 
     @Test

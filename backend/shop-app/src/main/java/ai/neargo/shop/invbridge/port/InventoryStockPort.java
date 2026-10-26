@@ -1,6 +1,7 @@
 package ai.neargo.shop.invbridge.port;
 
 import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
+import ai.neargo.shop.invbridge.ReservationHoldTtl;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
@@ -42,6 +43,13 @@ import org.springframework.transaction.annotation.Transactional;
  * <h2>翻译只有两处</h2>
  * {@code skuNo → itemId}、{@code storeNo → locationId}，都走防腐层。
  * 交易域**一行不改** —— 它给的仍然是 {@code SkuQty}。
+ *
+ * <h2>{@code sellable} 有意不实现</h2>
+ * 落到接口默认值（{@code Integer.MAX_VALUE}，「算不出来、加购不拦」）。按 SKU 算可用量要先知道
+ * 主体号（{@code InventoryAclService#stockAt} 按 entityNo 取），而 {@code StockPort} 上只有 skuNo；
+ * 为加购这一步再接一条商品域查询，不如让下单锁货（{@link #lock}）做唯一的拦截点 ——
+ * 那一步按业主、按库位精确判，不足就整单拒。代价是这一档下加购不会提前提示没货，
+ * 顾客在结算时才知道。切到 INVENTORY 之前若要加购即拦，在这里补一条按 SKU 反查主体的实现。
  */
 @Component
 @Primary
@@ -49,10 +57,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class InventoryStockPort implements StockPort {
 
     /**
-     * 预留的存活时长。与平台的「未支付自动关单」同一个量级 ——
-     * 比关单短会让还能付款的单先被释放，比它长会让已关的单继续占着货。
+     * 预留的存活时长，由「未支付自动关单」的窗口推出（见 {@link ReservationHoldTtl}）——
+     * 比关单短会让还能付款的单先被释放。此前写死 30 分钟，而关单窗口可配到 24 小时。
      */
-    private static final long RESERVE_TTL_SECONDS = 30 * 60L;
+    private ReservationHoldTtl holdTtl;
+
+    @Autowired
+    public void setHoldTtl(ReservationHoldTtl holdTtl) { this.holdTtl = holdTtl; }
 
     private final StockCountService counts;
     private final ReservationService reservations;
@@ -93,7 +104,8 @@ public class InventoryStockPort implements StockPort {
         }
         for (var group : byOwner.entrySet()) {
             int lifecycleVersion = group.getValue().stream().mapToInt(SkuQty::lifecycleVersion).max().orElse(1);
-            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()), RESERVE_TTL_SECONDS, lifecycleVersion);
+            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()),
+                    ReservationHoldTtl.secondsOf(holdTtl), lifecycleVersion);
         }
         return List.of();
     }
@@ -155,8 +167,12 @@ public class InventoryStockPort implements StockPort {
         if (items == null || items.isEmpty()) {
             return;
         }
-        String owner = acl.ownerOfSku(items.get(0).skuNo());
-        reservations.restore(owner, restoreNo, toLines(owner, items), "SYSTEM");
+        // 按业主分组，与 lock 一致：回补单可能来自跨商家的父单，拿第一行的业主会把别家的货补进这家
+        Map<String, List<SkuQty>> byOwner = new LinkedHashMap<>();
+        for (SkuQty item : items) {
+            byOwner.computeIfAbsent(acl.ownerOfSku(item.skuNo()), owner -> new ArrayList<>()).add(item);
+        }
+        byOwner.forEach((owner, group) -> reservations.restore(owner, restoreNo, toLines(owner, group), "SYSTEM"));
     }
 
     @Override
@@ -181,9 +197,9 @@ public class InventoryStockPort implements StockPort {
     /**
      * 翻译只有两处：{@code skuNo → itemId}、{@code storeNo → locationId}。
      *
-     * <p><b>业主取第一行的</b>：交易域按子单拆过了，一次调用里的行属于同一个商家。
-     * {@code SkuQty} 上没有主体号，靠外部引用表反查 —— 而 SKU 在平台内全局唯一，
-     * 所以这一条是确定的。
+     * <p><b>调用方先按业主分好组再传进来</b>：锁号是父订单号，一次调用可以跨几个商家。
+     * {@code SkuQty} 上没有主体号，靠外部引用表按 SKU 反查 —— SKU 在平台内全局唯一，
+     * 所以分组是确定的。
      *
      * <p>门店设了发货源就扣源仓的；空门店走默认库位，那是存量主体级库存的落点。
      */
