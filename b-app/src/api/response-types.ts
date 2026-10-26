@@ -2,6 +2,8 @@ import type { InventorySyncEventState, InventoryOutboxMode } from "@shared/types
 import type {SvActivity,SvSubmission,SvApproval} from "./stored-value-governance";
 import type {CurrencyCode} from "@shared/types";
 import type { AfterSale, Order } from "@shared/types";
+// 商家端支付（S8）的响应类型住在 ./pay.ts；这里转出一次，OpenAPI 生成器只读本文件
+export type { PayCollectResult, PayRefundItem, PayDailyStatement, PayStatementItem, PayQrCode, PayAppGrant } from "./pay";
 
 export type MerchantOrderActionKind = "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
 

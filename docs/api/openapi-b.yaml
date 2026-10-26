@@ -14848,6 +14848,223 @@ components:
         - "managementNo"
         - "commandKey"
       additionalProperties: false
+    PayCollectResult:
+      type: "object"
+      properties:
+        payOrderNo:
+          type: "string"
+        token:
+          type: "string"
+          description: "一次性收银令牌：只在这一次响应里出现，不落任何本地存储"
+        expireAt:
+          type: "number"
+          description: "链接到期（UTC 毫秒）"
+        checkoutUrl:
+          type: "string"
+          description: "顾客扫的收银台链接 —— 页面据此画二维码"
+      required:
+        - "payOrderNo"
+        - "token"
+        - "expireAt"
+        - "checkoutUrl"
+      additionalProperties: false
+    PayRefundItem:
+      type: "object"
+      properties:
+        payRefundNo:
+          type: "string"
+        payOrderId:
+          type: "number"
+        amountMinor:
+          type: "number"
+        currency:
+          type: "string"
+        status:
+          type: "string"
+          description: "PENDING_REVIEW 待平台复核 / DISPATCHED 退款中 / SUCCEEDED / FAILED / REJECTED …"
+        reason:
+          type:
+            - "string"
+            - "null"
+        requestedBy:
+          type:
+            - "string"
+            - "null"
+        createdAt:
+          type:
+            - "number"
+            - "null"
+        succeededAt:
+          type:
+            - "number"
+            - "null"
+      required:
+        - "payRefundNo"
+        - "payOrderId"
+        - "amountMinor"
+        - "currency"
+        - "status"
+        - "reason"
+        - "requestedBy"
+        - "createdAt"
+        - "succeededAt"
+      additionalProperties: false
+    PayDailyStatement:
+      type: "object"
+      properties:
+        bizDate:
+          type: "string"
+          description: "业务日（门店市场时区）YYYY-MM-DD"
+        currency:
+          type: "string"
+        paidCount:
+          type: "number"
+        paidMinor:
+          type: "number"
+        refundCount:
+          type: "number"
+        refundMinor:
+          type: "number"
+        items:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PayStatementItem"
+      required:
+        - "bizDate"
+        - "currency"
+        - "paidCount"
+        - "paidMinor"
+        - "refundCount"
+        - "refundMinor"
+        - "items"
+      additionalProperties: false
+    PayStatementItem:
+      type: "object"
+      properties:
+        kind:
+          "$ref": "#/components/schemas/PayStatementKind"
+        no:
+          type: "string"
+        payOrderNo:
+          type:
+            - "string"
+            - "null"
+        amountMinor:
+          type: "number"
+        payChannel:
+          type:
+            - "string"
+            - "null"
+        payMethod:
+          type:
+            - "string"
+            - "null"
+        status:
+          type: "string"
+        at:
+          type:
+            - "number"
+            - "null"
+      required:
+        - "kind"
+        - "no"
+        - "payOrderNo"
+        - "amountMinor"
+        - "payChannel"
+        - "payMethod"
+        - "status"
+        - "at"
+      additionalProperties: false
+    PayStatementKind:
+      type: "string"
+      enum:
+        - "PAYMENT"
+        - "REFUND"
+      description: "流水行：收款 / 退款"
+    PayQrCode:
+      type: "object"
+      properties:
+        qrCode:
+          type: "string"
+        kind:
+          "$ref": "#/components/schemas/PayQrKind"
+        tableRef:
+          type:
+            - "string"
+            - "null"
+        currency:
+          type: "string"
+        singleLimitMinor:
+          type: "number"
+        dailyLimitMinor:
+          type: "number"
+        status:
+          "$ref": "#/components/schemas/PayQrStatus"
+        url:
+          type: "string"
+          description: "顾客扫的链接"
+      required:
+        - "qrCode"
+        - "kind"
+        - "tableRef"
+        - "currency"
+        - "singleLimitMinor"
+        - "dailyLimitMinor"
+        - "status"
+        - "url"
+      additionalProperties: false
+    PayQrKind:
+      type: "string"
+      enum:
+        - "STORE"
+        - "TABLE"
+      description: "收款码：门店码 / 桌台码"
+    PayQrStatus:
+      type: "string"
+      enum:
+        - "ACTIVE"
+        - "DISABLED"
+    PayAppGrant:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+        appNo:
+          type: "string"
+        appName:
+          type:
+            - "string"
+            - "null"
+        actions:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PayGrantAction"
+        status:
+          "$ref": "#/components/schemas/PayGrantStatus"
+        grantedAt:
+          type:
+            - "number"
+            - "null"
+      required:
+        - "id"
+        - "appNo"
+        - "appName"
+        - "actions"
+        - "status"
+        - "grantedAt"
+      additionalProperties: false
+    PayGrantAction:
+      type: "string"
+      enum:
+        - "COLLECT"
+        - "REFUND"
+        - "READ"
+      description: "授权第三方的动作：代收款 / 代退款 / 查单"
+    PayGrantStatus:
+      type: "string"
+      enum:
+        - "ACTIVE"
+        - "REVOKED"
     MerchantOrderActionKind:
       type: "string"
       enum:
@@ -29065,6 +29282,291 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/Statement"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/pay/collection":
+    post:
+      operationId: "mPayCollect"
+      summary: "代客收款（动态码）"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayCollectResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/pay/refund":
+    get:
+      operationId: "mPayRefunds"
+      summary: "本店最近退款"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/PayRefundItem"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mPayRefund"
+      summary: "发起原路退款"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayRefundItem"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/pay/statement":
+    get:
+      operationId: "mPayStatement"
+      summary: "本店收款日流水"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayDailyStatement"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/pay/qr-code":
+    get:
+      operationId: "mPayQrCodes"
+      summary: "本店收款码"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/PayQrCode"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mPayCreateQrCode"
+      summary: "生成收款码"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayQrCode"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/pay/qr-code/{qrCode}/disabled":
+    put:
+      operationId: "mPayDisableQrCode"
+      summary: "停用收款码"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/pay/app-grant":
+    get:
+      operationId: "mPayAppGrants"
+      summary: "已授权的第三方"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/PayAppGrant"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+    post:
+      operationId: "mPayGrantApp"
+      summary: "授权第三方"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PayAppGrant"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/pay/app-grant/{id}":
+    delete:
+      operationId: "mPayRevokeGrant"
+      summary: "撤销第三方授权"
+      tags:
+        - "pay"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
                 required:
                   - "code"
                   - "msg"
