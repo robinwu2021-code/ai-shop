@@ -333,6 +333,43 @@ class GoodsIntegrityFlowTest {
         throw new AssertionError("列表里没有这件货");
     }
 
+    // ------------------------------------------------------------------ ⑦ 过审不回放过期草稿
+
+    @Test
+    @DisplayName("★★★ 草稿待审 → 强制下架 → 商家直接改 → 过审：生效的是直接改的版本，不是那份过期草稿")
+    void approvalDoesNotReplayStaleDraft() throws Exception {
+        String biz = merchant("13700777701", "过期草稿店");
+        String goodsNo = onSaleGoods(biz, "原版", 5);
+        String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
+        assertThat(postJson(biz, "/biz/goods/save", goodsBody(goodsNo, skuNo, "过期草稿版", 1000, 5))
+                .get("code").asInt()).isZero();
+        assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/publish", "{}").get("code").asInt()).isZero();
+        assertThat(postJson(opsLogin(), "/ops/goods/" + goodsNo + "/force-off", "{\"reason\":\"抽查\"}")
+                .get("code").asInt()).isZero();
+        assertThat(jdbc.queryForObject("select status from prd_goods_draft where goods_no=?",
+                String.class, goodsNo)).as("强制下架要让待审草稿失效").isEqualTo("EDITING");
+
+        // 商品已下架 → 编辑直接写主行（不走草稿），回到待审
+        assertThat(postJson(biz, "/biz/goods/save", goodsBody(goodsNo, skuNo, "整改版", 1000, 5))
+                .get("code").asInt()).isZero();
+        assertThat(approve(goodsNo).get("code").asInt()).isZero();
+        assertThat(jdbc.queryForObject("select title from prd_goods where goods_no=?", String.class, goodsNo))
+                .as("过审回放了强制下架前那份草稿").isEqualTo("整改版");
+    }
+
+    @Test
+    @DisplayName("★★ 审核只对待审的商品有效：强制下架后直接点过审 → CONFLICT，不能绕开整改")
+    void auditRequiresPendingState() throws Exception {
+        String biz = merchant("13700777702", "审核前置店");
+        String goodsNo = onSaleGoods(biz, "被处置商品", 5);
+        assertThat(postJson(opsLogin(), "/ops/goods/" + goodsNo + "/force-off", "{\"reason\":\"违规\"}")
+                .get("code").asInt()).isZero();
+        assertThat(approve(goodsNo).get("code").asInt())
+                .isEqualTo(ai.neargo.shop.common.ErrorCode.CONFLICT.code());
+        assertThat(jdbc.queryForObject("select audit_status from prd_goods where goods_no=?",
+                String.class, goodsNo)).isEqualTo("REJECTED");
+    }
+
     // ------------------------------------------------------------------ ⑨ SKU 价格校验
 
     @Test

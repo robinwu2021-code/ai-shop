@@ -972,6 +972,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             DataScopeContext.executeWithoutScope(() -> goodsMapper.insert(g));
         } else {
             updateGoods(g);
+            // 直接改了主行 = 送审的是这一版；之前提交的草稿基于旧内容，留着会被过审原样换上来
+            if (PUBLISHING.get() == null) {
+                withdrawSubmittedDraft(g.getGoodsNo());
+            }
         }
         publishSkuUpserted(merchantNo, g,
                 saveSkus(merchantNo, g.getGoodsNo(), cmd.skus(), cmd.specGroups()));
@@ -1423,6 +1427,21 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             return String.join("、", baked.unresolved());
         }
         return null;
+    }
+
+    /**
+     * 把待审（SUBMITTED）草稿撤回编辑态。<b>撤回，不删</b> —— 那是商家写的内容，
+     * 他可能还想基于它改；但它不能再被过审原样换上线。
+     *
+     * <p>调用点：强制下架（处置推翻了草稿提交时的前提）、商品行被直接改写（送审的已是另一版）。
+     * 不撤的话：草稿待审 → 强制下架 → 商家整改 → 运营过审，生效的是强制下架之前那份草稿。
+     */
+    private void withdrawSubmittedDraft(String goodsNo) {
+        DataScopeContext.executeWithoutScope(() -> draftMapper.update(null,
+                Wrappers.<PrdGoodsDraft>lambdaUpdate()
+                        .set(PrdGoodsDraft::getStatus, PrdGoodsDraft.EDITING)
+                        .eq(PrdGoodsDraft::getGoodsNo, goodsNo)
+                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED)));
     }
 
     private GoodsVO swapFromDraft(PrdGoods live, PrdGoodsDraft draft, String publishedBy) {
@@ -2210,6 +2229,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         g.setAuditReason("平台强制下架：" + reason.trim());
         g.setOnSale(false);
         updateGoods(g);
+        withdrawSubmittedDraft(g.getGoodsNo());
         // 店级行全下且**不打 platform_suspended**：商品要重新过审才能回来，
         // 恢复走审核链路，不走门店解除处置那条标记
         for (var row : storeGoodsRows(goodsNo)) {
@@ -3110,6 +3130,23 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                         .eq(PrdGoods::getGoodsNo, goodsNo).last("limit 1")));
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * ★ **只有待审的东西能被审**：商品行在审（AUDITING），或者有一份已提交的草稿。
+         *
+         * 此前不判任何状态：强制下架（= 撤销过审，REJECTED）之后运营再点一次「通过」，
+         * 商品不经整改就回到过审态；更糟的是那份强制下架前提交的草稿还挂着 SUBMITTED，
+         * 过审会把它原样换上线 —— 商家之后的整改被一份过期内容覆盖。
+         *
+         * DRAFT 仍放行：运营代审未提交的新品是存量用法（大量测试夹具也这么建品），
+         * 它没有「绕过整改」的问题 —— 草稿从没过过审。
+         */
+        boolean hasSubmittedDraft = DataScopeContext.executeWithoutScope(() ->
+                draftMapper.selectCount(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                        .eq(PrdGoodsDraft::getGoodsNo, g.getGoodsNo())
+                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED))) > 0;
+        if (!hasSubmittedDraft && !AUDITING.equals(g.getAuditStatus()) && !DRAFT.equals(g.getAuditStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
         }
         if (!approved) {
             PrdGoodsDraft pending = DataScopeContext.executeWithoutScope(() ->
