@@ -472,7 +472,16 @@ public final class CatalogPersistence {
     }
 
     Document document(CimCatalogSnapshot s) {
-        return json.readValue(s.getPayloadJson(), Document.class);
+        var document = json.readValue(s.getPayloadJson(), Document.class);
+        require(
+                Objects.equals(s.getSchemaVersion(), CatalogDocumentPolicy.version(document))
+                        && CatalogDocumentPolicy.hash(document, json).equals(s.getContentHash()));
+        return document;
+    }
+
+    boolean compatible(Context context, CimCatalogSnapshot snapshot) {
+        return gateway(context)
+                .supportsDocumentSchema(CatalogDocumentPolicy.version(document(snapshot)));
     }
 
     void validSnapshot(Context c, CimCatalogSnapshot s) {

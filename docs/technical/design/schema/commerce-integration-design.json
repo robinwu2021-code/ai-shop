@@ -3399,8 +3399,8 @@
       "name": "ChannelCatalogSourcePort",
       "package": "ai.neargo.shop.spi.commerce",
       "owner": "FOOD/RETAIL",
-      "methods": "owner()->Owner；capture(CaptureCommand)->Document（ValidatedSource/Section/Offer/Sku/Price/OptionGroup/BundleGroup/Image/Schedule均为嵌套record）",
-      "purpose": "完整目录、价格来源、税口径、修订及依赖；不授予平台重算价格权限",
+      "methods": "owner()->Owner；capture(CaptureCommand)->Document；v1保留原Section/Offer/Sku等嵌套record和无版本JSON；v2(schemaVersion=2)使用唯一ChannelCatalogDetails，含按Variant选项/套餐、精确数量、选择规则和日期例外，不混写旧集合",
+      "purpose": "完整目录、原价格/税/库存依据及依赖；v2无损保留餐饮和零售语义，UNKNOWN库存不伪造数量；不授予渠道重算价格权限",
       "ac": "AC03"
     },
     {
@@ -3487,8 +3487,8 @@
       "name": "ChannelCatalogGateway",
       "package": "ai.neargo.shop.spi.commerce",
       "owner": "commerce-channel获准协议适配器",
-      "methods": "supportsQuery()->boolean；publish(Publication)->Result；query(Publication,taskRef)->Result",
-      "purpose": "冻结目录发送与原动作查回；返回operation/generation/hash绑定和allWritesTerminal及原回执；没有默认实现，不在超时后盲重发",
+      "methods": "supportsDocumentSchema(int)->boolean（默认仅v1）；supportsQuery()->boolean；publish(Publication)->Result；query(Publication,taskRef)->Result",
+      "purpose": "冻结目录发送与原动作查回；返回operation/generation/hash绑定和allWritesTerminal及原回执；没有默认实现，不在超时后盲重发 v2须显式完整支持；提交及派发重验版本，UNKNOWN恢复不降级或重发。",
       "ac": "AC03"
     },
     {
@@ -3796,8 +3796,8 @@
       "COM-029",
       "COM-030"
     ],
-    "limitations": "B端仍仅主体属主；累计29个基础/授权/目录/任务路由，17张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。独立模式远程业务客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。未生产建表、推送或部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 资源映射公共写入仅IMPORTED草稿，核验由默认关闭的唯一Job调用；MANAGED代码分配/发布证明、真实资源查询网关尚未开放。历史解析内核已实现，不代表原订单导入已就绪。",
-    "tests": "累计79个唯一受影响Java专项通过；复核及关联修复后仅复测35项。资源归属消融红灯、恢复绿灯；一项独立复核Important与原连接owner历史解析回归均RED→GREEN。原生隔离MySQL V1-V4十七表及约束通过；最终宿主/server编译打包、设计10/文档8/SQL守卫见TDD。不等同真实来源/供应商、生产JDBC并发和完整认证链验收。",
+    "limitations": "B端仍仅主体属主；累计29个基础/授权/目录/任务路由，17张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。完整渠道业务的独立模式客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。基础内核已集成部署；新增原FOOD来源/价格和目录v2尚未推送部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 资源映射公共写入仅IMPORTED草稿，核验由默认关闭的唯一Job调用；MANAGED代码分配/发布证明、真实资源查询网关尚未开放。历史解析内核已实现，不代表原订单导入已就绪。 目录v2合同/冻结/稳定摘要/版本派发门禁已实现，原FOOD完整目录适配及连接/媒体依据仍未装配。",
+    "tests": "累计79个唯一受影响Java专项通过；复核及关联修复后仅复测35项。资源归属消融红灯、恢复绿灯；一项独立复核Important与原连接owner历史解析回归均RED→GREEN。原生隔离MySQL V1-V4十七表及约束通过；最终宿主/server编译打包、设计10/文档8/SQL守卫见TDD。不等同真实来源/供应商、生产JDBC并发和完整认证链验收。 本批目录v2另有48个相关专项及5个架构/装配专项通过；历史79项不与本批简单相加。统一编译/干净打包和消融记录见原TDD。",
     "migrations": [
       "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
       "commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql",

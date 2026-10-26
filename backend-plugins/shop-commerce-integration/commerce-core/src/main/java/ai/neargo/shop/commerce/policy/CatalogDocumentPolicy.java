@@ -75,6 +75,21 @@ public final class CatalogDocumentPolicy {
                         && d.validUntil().isAfter(Instant.now()));
         text(d.receiptNo());
         require(expected.equals(d.sources()));
+        int schema = version(d);
+        if (schema == 2) {
+            require(
+                    d.sections() != null
+                            && d.sections().isEmpty()
+                            && d.offers() != null
+                            && d.offers().isEmpty()
+                            && d.schedules() != null
+                            && d.schedules().isEmpty());
+            CatalogDetailsPolicy.validate(d);
+            String payload = json.writeValueAsString(d);
+            require(payload.getBytes(StandardCharsets.UTF_8).length <= 4 * 1024 * 1024);
+            return json.readValue(payload, Document.class);
+        }
+        require(d.details() == null);
         list(d.sections(), 500);
         list(d.offers(), 10000);
         list(d.schedules(), 500);
@@ -186,7 +201,42 @@ public final class CatalogDocumentPolicy {
         done.add(ref);
     }
 
+    /**
+     * Absent version belongs to original immutable snapshots; future versions never silently
+     * downgrade.
+     */
+    public static int version(Document document) {
+        require(document != null);
+        int schema = document.schemaVersion() == null ? 1 : document.schemaVersion();
+        require(schema == 1 || schema == 2);
+        return schema;
+    }
+
+    public static long itemCount(Document document) {
+        return version(document) == 2
+                ? document.details().offers().size()
+                : document.offers().size();
+    }
+
     public static String hash(Document d, ObjectMapper json) {
+        if (version(d) == 2)
+            return ChannelIdentity.hash(
+                    json.writeValueAsString(
+                            List.of(
+                                    2,
+                                    d.owner(),
+                                    d.currency(),
+                                    d.sources().stream()
+                                            .map(
+                                                    source ->
+                                                            List.of(
+                                                                    source.owner(),
+                                                                    source.sourceRef(),
+                                                                    source.selectionRevision(),
+                                                                    source.priority(),
+                                                                    source.proof().contentHash()))
+                                            .toList(),
+                                    CatalogDetailsPolicy.businessContent(d.details(), json))));
         // Receipts, prices, selection revisions remain part of content; refreshed validation TTL is
         // not menu content.
         return ChannelIdentity.hash(

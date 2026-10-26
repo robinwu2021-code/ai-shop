@@ -9,8 +9,8 @@
 | 状态 | C1_MAPPING_ENGINE_VERIFIED |
 | 已编码迁移表 | cim_provider, cim_product_profile, cim_account, cim_store_connection, cim_connection_revision, cim_request_journal, cim_authorization_revision, cim_operation, cim_operation_attempt, cim_catalog_scope, cim_catalog_source, cim_sync_policy, cim_catalog_snapshot, cim_sync_run, cim_sync_run_item, cim_resource_mapping, cim_resource_mapping_revision |
 | 已编码API子集 | COM-001, COM-002, COM-003, COM-004, COM-005, COM-009, COM-010, COM-011, COM-006, COM-007, COM-008, COM-035, COM-070, COM-015, COM-016, COM-017, COM-018, COM-019, COM-020, COM-021, COM-022, COM-023, COM-024, COM-025, COM-026, COM-027, COM-028, COM-029, COM-030 |
-| 限制 | B端仍仅主体属主；累计29个基础/授权/目录/任务路由，17张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。独立模式远程业务客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。未生产建表、推送或部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 资源映射公共写入仅IMPORTED草稿，核验由默认关闭的唯一Job调用；MANAGED代码分配/发布证明、真实资源查询网关尚未开放。历史解析内核已实现，不代表原订单导入已就绪。 |
-| 验证 | 累计79个唯一受影响Java专项通过；复核及关联修复后仅复测35项。资源归属消融红灯、恢复绿灯；一项独立复核Important与原连接owner历史解析回归均RED→GREEN。原生隔离MySQL V1-V4十七表及约束通过；最终宿主/server编译打包、设计10/文档8/SQL守卫见TDD。不等同真实来源/供应商、生产JDBC并发和完整认证链验收。 |
+| 限制 | B端仍仅主体属主；累计29个基础/授权/目录/任务路由，17张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。完整渠道业务的独立模式客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。基础内核已集成部署；新增原FOOD来源/价格和目录v2尚未推送部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 资源映射公共写入仅IMPORTED草稿，核验由默认关闭的唯一Job调用；MANAGED代码分配/发布证明、真实资源查询网关尚未开放。历史解析内核已实现，不代表原订单导入已就绪。 目录v2合同/冻结/稳定摘要/版本派发门禁已实现，原FOOD完整目录适配及连接/媒体依据仍未装配。 |
+| 验证 | 累计79个唯一受影响Java专项通过；复核及关联修复后仅复测35项。资源归属消融红灯、恢复绿灯；一项独立复核Important与原连接owner历史解析回归均RED→GREEN。原生隔离MySQL V1-V4十七表及约束通过；最终宿主/server编译打包、设计10/文档8/SQL守卫见TDD。不等同真实来源/供应商、生产JDBC并发和完整认证链验收。 本批目录v2另有48个相关专项及5个架构/装配专项通过；历史79项不与本批简单相加。统一编译/干净打包和消融记录见原TDD。 |
 
 ## L1 定位
 
@@ -147,7 +147,7 @@ B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户�
 
 | Port / 所有者 | 方法及返回 | 约束 |
 | --- | --- | --- |
-| ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort；FOOD/RETAIL | owner()->Owner；capture(CaptureCommand)->Document（ValidatedSource/Section/Offer/Sku/Price/OptionGroup/BundleGroup/Image/Schedule均为嵌套record） | 完整目录、价格来源、税口径、修订及依赖；不授予平台重算价格权限 |
+| ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort；FOOD/RETAIL | owner()->Owner；capture(CaptureCommand)->Document；v1保留原Section/Offer/Sku等嵌套record和无版本JSON；v2(schemaVersion=2)使用唯一ChannelCatalogDetails，含按Variant选项/套餐、精确数量、选择规则和日期例外，不混写旧集合 | 完整目录、原价格/税/库存依据及依赖；v2无损保留餐饮和零售语义，UNKNOWN库存不伪造数量；不授予渠道重算价格权限 |
 | ai.neargo.shop.spi.commerce.ChannelAvailabilitySourcePort；商品/独立库存原owner | captureAvailability(CaptureAvailabilityCommand)->AvailabilitySnapshot; captureInventory(CaptureInventoryCommand)->InventoryPublicationSnapshot | 可售量/仓库/渠道配额均取原owner，不建立渠道库存账 |
 | ai.neargo.shop.spi.commerce.ChannelOrderIngestPort；FOOD/RETAIL | prepareImport(PrepareChannelOrderCommand)->ImportPreparation; getImport(ChannelOrderReference)->ImportPreparation; confirmAcceptance(ConfirmChannelAcceptanceCommand)->AcceptanceReceipt; cancelPreparedImport(CancelPreparedImportCommand)->ImportCancellationReceipt | 原核心订单、库存承诺、接单证据及一次派工；POSTPAY证明不可滥用 |
 | ai.neargo.shop.spi.commerce.ChannelOrderAmendmentPort；原订单/行业售后 | apply(ApplyChannelAmendmentCommand)->AmendmentReceipt; getAmendment(ChannelAmendmentReference)->AmendmentReceipt | 原行/数量/金额和取消/替换守恒，资金动作需另授权 |
@@ -158,7 +158,7 @@ B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户�
 | ai.neargo.shop.spi.commerce.ChannelSourceValidationPort；各资源原owner或仅调用原Port的宿主只读组合 | validate(Source(entity/store/owner/kind/ref/revision/salesOfferRef?))->Validation(status/canonicalRef/canonicalRevision/hash/validUntil/receipt/canonicalSalesOfferRef?) | 校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。 C1兼容原六参数构造；销售映射必须显式返回规范salesOfferRef，旧provider的null回执不能默认证明新关系。 |
 | ai.neargo.shop.spi.commerce.ChannelConnectionIdentityPort；可信平台授权/查询适配器 | verify(Identity)->Proof(VERIFIED/UNKNOWN/UNSUPPORTED, identity, receiptRef, verifiedAt, validUntil) | 事务外核验远端门店真实归属，本地事务锁账号/协议并复核冻结身份及有效期；无实现拒绝认领，不提供默认成功 |
 | ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway；commerce-channel获准协议适配器 | begin(AuthorizationContext)->Start；exchange(context,code)->Grant；revoke(RevocationContext)->Revocation | 原意图先提交，事务外OAuth/撤权；网关必须绑定原外部账号、凭据安全引用及可信回执；无真实提供方不授权 |
-| ai.neargo.shop.spi.commerce.ChannelCatalogGateway；commerce-channel获准协议适配器 | supportsQuery()->boolean；publish(Publication)->Result；query(Publication,taskRef)->Result | 冻结目录发送与原动作查回；返回operation/generation/hash绑定和allWritesTerminal及原回执；没有默认实现，不在超时后盲重发 |
+| ai.neargo.shop.spi.commerce.ChannelCatalogGateway；commerce-channel获准协议适配器 | supportsDocumentSchema(int)->boolean（默认仅v1）；supportsQuery()->boolean；publish(Publication)->Result；query(Publication,taskRef)->Result | 冻结目录发送与原动作查回；返回operation/generation/hash绑定和allWritesTerminal及原回执；没有默认实现，不在超时后盲重发 v2须显式完整支持；提交及派发重验版本，UNKNOWN恢复不降级或重发。 |
 | ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway；commerce-channel获准协议适配器 | query(Query(operation/entity/store/connection/profile/原账号/原门店/原授权/凭据引用/objectType/父身份))->Proof(status/规范绑定/远端回执/validUntil) | 只读原平台资源身份核验；没有默认实现，公共请求不能上传成功证据。MANAGED资源代码分配及发布原证据仍未开放。 仅核验本能力与原授权，不反向要求目录发布Gateway。 |
 | ai.neargo.shop.spi.commerce.ChannelResourceMappingPort；commerce-core | resolveHistorical(Reference(entity/store/connection/mappingNo/revisionNo))->Resolution(原身份/来源/原修订/销售条目/hash/历史远端证据/新来源回执) | 只解析显式VERIFIED历史修订并重新核验原owner；不回退当前指针，不自动批准下单。 |
 

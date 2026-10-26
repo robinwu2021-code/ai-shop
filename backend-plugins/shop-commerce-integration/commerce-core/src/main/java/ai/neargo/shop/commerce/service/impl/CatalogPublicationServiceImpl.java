@@ -83,12 +83,12 @@ public final class CatalogPublicationServiceImpl implements CatalogPublicationSe
                     s.setSnapshotNo(BizKey.next("CISN"));
                     s.setEntityNo(e);
                     s.setScopeNo(no);
-                    s.setSchemaVersion(1);
+                    s.setSchemaVersion(CatalogDocumentPolicy.version(document));
                     s.setSourceManifest(db.json.writeValueAsString(proofs));
                     s.setPayloadRef("DB:" + s.getSnapshotNo());
                     s.setPayloadJson(db.json.writeValueAsString(document));
                     s.setContentHash(hash);
-                    s.setItemCount((long) document.offers().size());
+                    s.setItemCount(CatalogDocumentPolicy.itemCount(document));
                     s.setCurrency(document.currency());
                     s.setCapturedAt(now());
                     s.setExpiresAt(LocalDateTime.ofInstant(expiry, ZoneOffset.UTC));
