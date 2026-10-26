@@ -63,6 +63,14 @@ function backendRoutes() {
   for (const m of readdirSync(join(ROOT, "backend"))) {
     const d = join(ROOT, "backend", m, "src/main/java/ai/neargo/shop");
     if (existsSync(d)) walk(d);
+    // 分组模块（backend/pay/pay-portal、backend/secret/*）：多一层目录。此前只扫一层，
+    // 于是 /pay-ops/v1 的端点全被报成「前端在调、后端没有」
+    const group = join(ROOT, "backend", m);
+    if (!statSync(group).isDirectory()) continue;
+    for (const sub of readdirSync(group)) {
+      const sd = join(group, sub, "src/main/java/ai/neargo/shop");
+      if (existsSync(sd)) walk(sd);
+    }
   }
   return out;
 }
