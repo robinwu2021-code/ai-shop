@@ -113,7 +113,12 @@ public class PayChannelMasterServiceImpl implements PayChannelMasterService {
                         .orderByAsc(SysPayChannel::getId)));
     }
 
+    /**
+     * 整体在支付库的事务里（F14 · Review R22）：市场替换是先删后插，中途失败时删已发生、插只做了一半 ——
+     * 而空的市场集合就是「不限市场」，一个只在大陆开的通道会就此对全部市场开放，且没有报错。
+     */
     @Override
+    @org.springframework.transaction.annotation.Transactional("payTxManager")
     public SysPayChannel updateSettings(String payChannel, Boolean enabled, String markets,
                                         String currency, String settleCycle) {
         SysPayChannel row = find(payChannel)

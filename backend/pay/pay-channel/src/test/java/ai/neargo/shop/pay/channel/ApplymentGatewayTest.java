@@ -34,9 +34,32 @@ class ApplymentGatewayTest {
     }
 
     private static PayApplymentGateway.SubmitCommand cmd(String legalForm, String settleType) {
+        return cmd(legalForm, settleType, "", "E-1-E-1");
+    }
+
+    private static PayApplymentGateway.SubmitCommand cmd(String legalForm, String settleType,
+                                                         String storeNo, String requestNo) {
         return new PayApplymentGateway.SubmitCommand(
                 "E-1", "老张粮油店", legalForm, "张老板", "13900000000",
-                List.of("https://cdn/license.jpg"), settleType, "6222021234567890123");
+                List.of("https://cdn/license.jpg"), settleType, "6222021234567890123", storeNo, requestNo);
+    }
+
+    @Test
+    @DisplayName("★★★ F04 外部单号用每张进件单自己的号 —— 用主体编号时，同主体的主体级与门店级进件在通道侧撞单")
+    void outRequestNoIsPerApplyment() {
+        var wc = new RecordingClient();
+        wc.reply = Map.of("applyment_id", "AP-1");
+        var wechat = new WechatApplymentGateway(wc);
+        wechat.submit(cmd("MICRO", "PERSONAL_BANK_CARD", "", "E-1-E-100"));
+        Object entityLevel = wc.body.get("out_request_no");
+        wechat.submit(cmd("MICRO", "PERSONAL_BANK_CARD", "ST-B", "E-1-ST-B-200"));
+        assertThat(entityLevel).isEqualTo("E-1-E-100");
+        assertThat(wc.body.get("out_request_no")).isEqualTo("E-1-ST-B-200").isNotEqualTo(entityLevel);
+
+        var ac = new RecordingClient();
+        ac.reply = Map.of("order_id", "ORD-1");
+        new AlipayApplymentGateway(ac).submit(cmd("MICRO", "PERSONAL_BANK_CARD", "ST-B", "E-1-ST-B-200"));
+        assertThat(ac.body.get("out_biz_no")).isEqualTo("E-1-ST-B-200");
     }
 
     // ---------------------------------------------------------------- 微信
@@ -127,6 +150,9 @@ class ApplymentGatewayTest {
 
         assertThat(g.query("ORD-1").status()).isEqualTo("ACTIVE");
         assertThat(c.api).isEqualTo(AlipayApis.SUB_MERCHANT_QUERY);
+        assertThat(c.body)
+                .as("F06 · R25：查询要带申请单号 —— 空参数查，支付宝不知道查哪一单，回查永远查不到")
+                .containsEntry("order_id", "ORD-1");
         assertThat(c.api).isNotEqualTo(AlipayApis.SUB_MERCHANT_CREATE);
     }
 

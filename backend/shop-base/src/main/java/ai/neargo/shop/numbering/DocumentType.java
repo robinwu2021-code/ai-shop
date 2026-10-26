@@ -21,6 +21,9 @@ public enum DocumentType {
     SETTLEMENT_INVOICE_REQUEST("SIR", DocumentOwner.PAY),
     SV_SETTLEMENT_BILL("VSB", DocumentOwner.PAY), SV_SETTLEMENT_PAYMENT("VSP", DocumentOwner.PAY),
     SV_SETTLEMENT_EVENT("VSE", DocumentOwner.PAY),
+    // 支付服务 v4（TDD-支付服务-I0地基 AC9）：支付单、退款单、记账凭证。I3 起开始取号
+    PAY_ORDER("PAO", DocumentOwner.PAY), PAY_REFUND("PRF", DocumentOwner.PAY),
+    LEDGER_VOUCHER("LGV", DocumentOwner.PAY),
     BRAND_CHANGE("BRC", DocumentOwner.CORE);
 
     private final String prefix;

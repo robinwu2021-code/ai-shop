@@ -1,5 +1,10 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.acquiring.dto.ChannelOutcome;
+import ai.neargo.shop.pay.acquiring.service.PaymentOutcomeService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import ai.neargo.shop.pay.acquiring.service.PaymentService;
 import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -56,16 +61,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
          */
         StlPayment open = openPaymentOf(cmd.orderNo());
         if (open != null) {
-            var original = paymentRequest(open.getOutTradeNo()).orElseThrow(
-                    () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
-            if (!Objects.equals(original.userNo(), cmd.userNo())
-                    || !Objects.equals(original.entityNo(), cmd.entityNo())
-                    || !Objects.equals(original.payChannel(), cmd.payChannel())
-                    || !Objects.equals(original.currency(), cmd.currency())
-                    || original.amountMinor() != cmd.amountMinor()) {
-                throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
-            }
-            return open.getOutTradeNo();
+            return reuse(open, cmd);
         }
         validateRequest(cmd);
         /*
@@ -99,9 +95,71 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         p.setAmountMinor(cmd.amountMinor());
         p.setCurrency(cmd.currency());
         p.setPaymentRequestJson(json.writeValueAsString(cmd));
-        DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        // 实际收款账户落到行上，退款按它找原交易（F08 · R08）。与下单时同一条规则
+        DirectAccounts.of(cmd).ifPresent(route -> {
+            p.setSubMerchantId(route.subMerchantId());
+            p.setPayMerchantNo(route.payMerchantNo());
+        });
+        try {
+            DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        } catch (org.springframework.dao.DuplicateKeyException race) {
+            /*
+             * 并发的另一次「去支付」先落了同号的行（F07 · Review R07）。上面的检查不加锁，两边都会过；
+             * 兜底的是 out_trade_no 唯一键。撞键的这一方读回那一行、按同一套快照比对，返回同一个单号 ——
+             * 对用户而言两次点击就是同一笔。
+             * 必须用加锁读：REPEATABLE READ 下普通读用的是本事务开头的快照，看不到对方刚提交的行。
+             */
+            StlPayment winner = lockPayment(outTradeNo);
+            if (winner == null) {
+                throw race;
+            }
+            return reuse(winner, cmd);
+        }
         documents.bind(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo());
+        if (payOrders != null) {
+            // 尝试挂到支付单上（I3 S3）；调用方没建支付单（开关关、存量单）时什么都不做
+            payOrders.ifAvailable(s -> s.attachAttempt(cmd.orderNo(), p.getId()));
+        }
         return outTradeNo;
+    }
+
+    /** 复用一笔未终态的收款：请求快照必须一致，否则是另一笔请求冒用了同一订单 */
+    private String reuse(StlPayment open, SettlePort.PaymentOpen cmd) {
+        var original = paymentRequest(open.getOutTradeNo()).orElseThrow(
+                () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
+        if (!Objects.equals(original.userNo(), cmd.userNo())
+                || !Objects.equals(original.entityNo(), cmd.entityNo())
+                || !Objects.equals(original.payChannel(), cmd.payChannel())
+                || !Objects.equals(original.currency(), cmd.currency())
+                || original.amountMinor() != cmd.amountMinor()) {
+            throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
+        }
+        return open.getOutTradeNo();
+    }
+
+    /** 支付单（I3 S3）；手工构造的单测里没有 */
+    private ObjectProvider<PaymentService> payOrders;
+    /** 结果唯一入口（I3 S4）；切片测试里没有 —— 调用时再取 */
+    private ObjectProvider<PaymentOutcomeService> outcomes;
+
+    @Autowired(required = false)
+    void setOutcomes(ObjectProvider<PaymentOutcomeService> outcomes) {
+        this.outcomes = outcomes;
+    }
+
+    @Autowired(required = false)
+    void setPayOrders(ObjectProvider<PaymentService> payOrders) {
+        this.payOrders = payOrders;
+    }
+
+    @Override
+    public Optional<String> paymentNoOf(String outTradeNo) {
+        if (outTradeNo == null || outTradeNo.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                        Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getOutTradeNo, outTradeNo))))
+                .map(StlPayment::getPaymentNo);
     }
 
     @Override
@@ -162,12 +220,20 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         return value != null && !value.isBlank();
     }
 
-    /** 这个订单已经向通道下过几次单 —— 决定下一个商户单号的后缀 */
+    /**
+     * 这个订单**已经结束**的下单次数 —— 决定下一个商户单号的后缀。
+     *
+     * <p>只数终态（不含 INIT / PENDING）：能走到新开一笔，说明这单没有未终态的收款，
+     * 此刻数到的在途行只可能是并发的另一次「去支付」。把它也数进去，两边就算出不同的单号
+     * （「订单号」与「订单号-2」），绕开唯一键各插一行（F07 · Review R07，并发测试实测抓到）。
+     * 只数终态时两边算出同一个号，唯一键兜住、后到的复用先到的。
+     */
     private long countPayAttempts(String orderNo) {
         return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(
                 Wrappers.<StlPayment>lambdaQuery()
                         .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOrderNo, orderNo)));
+                        .eq(StlPayment::getOrderNo, orderNo)
+                        .notIn(StlPayment::getStatus, StlPayment.INIT, StlPayment.PENDING)));
     }
 
     @Override
@@ -520,10 +586,18 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         patch.setStatus(StlPayment.SUCCESS);
         patch.setTradeNo(cmd.tradeNo());
         patch.setSucceededAt(cmd.succeededAt());
-        // Preserve the channel's actual money. Order projection independently compares its immutable amount.
+        // 尝试行记的是渠道事实（实收），全仓读成功收款的地方都按这个口径；渠道事实另在 channel_* 显式留一份。
+        // 应收以支付单 pay_order.amount_minor 为准（R20 的「原始值丢失」由支付单解决，见 TDD 偏差 5）
         patch.setAmountMinor(cmd.amountMinor());
         patch.setCurrency(cmd.currency());
+        patch.setChannelAmountMinor(cmd.amountMinor());
+        patch.setChannelCurrency(cmd.currency());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        if (outcomes != null && outcomes.getIfAvailable() != null) {
+            // 支付单这一层由结果唯一入口决定（I3 S4）：关单后到账、实收不符、重复支付都转异常，不进成功
+            outcomes.getObject().apply(new ChannelOutcome(existing.getId(), existing.getPayOrderId(), existing.getPayChannel(), cmd.tradeNo(),
+                    cmd.amountMinor(), cmd.currency(), cmd.succeededAt()));
+        }
         return existing.getOrderNo();
     }
 

@@ -274,6 +274,21 @@ class WechatDirectPayGatewayTest {
     }
 
     @Test
+    @DisplayName("★★ F13 · R32 退款回调地址按 URI 推导，不是字符串拼接 —— 带斜杠 / 查询参数的地址拼出来是坏的")
+    void refundNotifyUrlIsDerivedNotConcatenated() throws Exception {
+        for (String[] c : new String[][] {
+                {"https://h.example/pay/callback/WECHAT", "https://h.example/pay/callback/WECHAT/refund"},
+                {"https://h.example/pay/callback/WECHAT/", "https://h.example/pay/callback/WECHAT/refund"},
+                {"https://h.example/pay/callback/WECHAT?env=prod", "https://h.example/pay/callback/WECHAT/refund?env=prod"}}) {
+            RecordingClient client = new RecordingClient();
+            client.reply = Map.of("refund_id", "50000000");
+            gateway(client, APP_ID, c[0]).refund(
+                    new PayGateway.TxContext(null, "4200001", "P1", 100L), 30L, "R1", "七天无理由");
+            assertThat(client.body).as(c[0]).containsEntry("notify_url", c[1]);
+        }
+    }
+
+    @Test
     void acceptedResponseWithoutProviderIsUnknownNotARejectionProof() throws Exception {
         RecordingClient client = new RecordingClient();
         client.reply = Map.of("status", "PROCESSING");

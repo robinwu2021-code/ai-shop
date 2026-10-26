@@ -203,11 +203,6 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
-    public String refund(String subOrderNo, long amountMinor, String reason) {
-        return settleService.refund(subOrderNo, amountMinor, reason);
-    }
-
-    @Override
     public String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
         return settleService.refund(subOrderNo, afterSaleNo, amountMinor, reason);
     }

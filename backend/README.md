@@ -8,8 +8,14 @@
 **必须用 JDK 21**（`neargo-build-parent` 的 enforcer 锁 `[21,22)`；本机默认 JDK 可能是 17 或 26）：
 
 ```bash
-JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home mvn -f backend/pom.xml test
+JAVA_HOME=<任一 JDK 21 的 Home> mvn -f backend/pom.xml test
+# 例：Homebrew 装的 /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home；
+#     解压装的 ~/.local/opt/jdk-21.0.13+9/Contents/Home
 ```
+
+框架包在公司 Nexus（`nexus.neargo.ai`，public 组）。`~/.m2/settings.xml` 里配好 server 与仓库、
+账号走环境变量，**不进仓库**。**首次构建要联网并带 `-U`**（拉 `2.0.0-SNAPSHOT` 与插件）；之后可 `-o` 离线。
+SNAPSHOT 会被框架方重发，行为变了先 `-U` 重拉再判断。
 
 继承 `ai.neargo:neargo-build-parent:2.0.0-SNAPSHOT`，由其继承的 `neargo-bom:2.0.0-SNAPSHOT` 统一管理框架依赖。`neargo-common-*` 等 `ai.neargo` 构件只允许 `2.0.0-SNAPSHOT`，包含传递依赖；项目自身的 `ai.neargo.shop` 模块版本保持独立。
 

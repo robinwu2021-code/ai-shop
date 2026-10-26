@@ -73,6 +73,46 @@ class PayApplicationBootTest {
     }
 
     @Test
+    @DisplayName("★★★ 审计填充用仓库自有那份 —— 框架那份填 regionId / Instant，与实体字段对不上")
+    void auditFillIsTheRepositoryOne() {
+        /*
+         * neargo-common-data 与 security 走同一条路进来（存储层 → shop-base-auth），
+         * 它的 DataAutoConfiguration 带一个 @ConditionalOnMissingBean 的 MetaObjectHandler。
+         * shop-app 在 application.yml 里排掉了它；这个进程只扫 ai.neargo.shop.pay，
+         * 若也没排，谁来填 createdAt / createdBy / tenantNo 就取决于有没有别的 bean 先占位 ——
+         * 框架那份写的是 regionId 与 Instant，实体上一个都没有，结果是这些列被写成 null。
+         */
+        assertThat(ctx.getBeanNamesForType(ai.neargo.common.data.DataAutoConfiguration.class))
+                .as("框架的数据自动配置装上了 —— 主应用排掉了它，独立形态必须一致")
+                .isEmpty();
+        assertThat(ctx.getBeansOfType(com.baomidou.mybatisplus.core.handlers.MetaObjectHandler.class).values())
+                .as("审计填充器必须恰好一个，且是 ai.neargo.shop.common 那份")
+                .singleElement()
+                .isInstanceOf(ai.neargo.shop.common.AuditMetaObjectHandler.class);
+    }
+
+    @Test
+    @DisplayName("★★★ 这个进程的每个 HTTP 映射都在 /internal/** 下 —— 按运行时解析后的路径判，不按源码文本")
+    void onlyInternalRoutes() {
+        /*
+         * TDD-支付服务-I0地基 AC5（修 R27）。端点路径全写成 PayInternalPaths 的常量，源码里找不到字面量，
+         * 旧闸门按「文件里含 /internal 字样」放行 —— 一个注释就能骗过它。这里读 Spring 实际注册的路径。
+         * 面向人与第三方的支付接口归 pay-portal（ADR-042），不在这个进程。
+         */
+        var mapping = ctx.getBean("requestMappingHandlerMapping",
+                org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping.class);
+        java.util.List<String> paths = mapping.getHandlerMethods().entrySet().stream()
+                // Spring Boot 自带的 /error（BasicErrorController）不是我们写的端点
+                .filter(e -> !e.getValue().getBeanType().getName().startsWith("org.springframework.boot."))
+                .flatMap(e -> e.getKey().getPatternValues().stream())
+                .toList();
+        assertThat(paths).as("一条映射都没读到 —— 那下面的断言恒真").isNotEmpty();
+        assertThat(paths)
+                .as("pay-svc 出现了 /internal 之外的路径")
+                .allMatch(p -> p.equals("/internal") || p.startsWith("/internal/"));
+    }
+
+    @Test
     @DisplayName("★★ 内部端点在 —— 它是这个进程唯一对外说话的方式")
     void internalEndpointPresent() {
         assertThat(ctx.getBeanNamesForType(InternalPayEndpoint.class))

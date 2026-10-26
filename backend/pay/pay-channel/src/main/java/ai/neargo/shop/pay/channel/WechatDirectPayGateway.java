@@ -53,18 +53,46 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
     private final String mchId;
     private final String appId;
     private final String notifyUrl;
+    /** 退款结果回调地址：显式配了用它，否则由 {@link #notifyUrl} 推导（F13 · Review R32） */
+    private final String refundNotifyUrl;
 
     public WechatDirectPayGateway(ChannelClient client,
                                   PayChannelMasterService channelMaster,
                                   ChannelMessageRecorder recorder,
                                   WechatApiV3Signer signer,
                                   String mchId, String appId, String notifyUrl) {
+        this(client, channelMaster, recorder, signer, mchId, appId, notifyUrl, null);
+    }
+
+    public WechatDirectPayGateway(ChannelClient client,
+                                  PayChannelMasterService channelMaster,
+                                  ChannelMessageRecorder recorder,
+                                  WechatApiV3Signer signer,
+                                  String mchId, String appId, String notifyUrl, String refundNotifyUrl) {
         super(client, channelMaster, recorder);
         this.recorder = recorder;
         this.signer = signer;
         this.mchId = mchId;
         this.appId = appId;
         this.notifyUrl = notifyUrl;
+        this.refundNotifyUrl = refundNotifyUrl != null && !refundNotifyUrl.isBlank()
+                ? refundNotifyUrl : refundUrlOf(notifyUrl);
+    }
+
+    /**
+     * 由支付回调地址推导退款回调地址：路径末段后加 {@code refund}，查询参数原样留在后面。
+     * 此前是 {@code notifyUrl + "/refund"} —— 地址带结尾斜杠就成了 {@code …//refund}，
+     * 带查询参数就成了 {@code …?env=prod/refund}，微信照样推，只是推到一个我方不认的地址，退款一直「处理中」。
+     */
+    static String refundUrlOf(String notifyUrl) {
+        if (notifyUrl == null || notifyUrl.isBlank()) {
+            return null;
+        }
+        java.net.URI u = java.net.URI.create(notifyUrl.trim());
+        String path = u.getRawPath() == null ? "" : u.getRawPath();
+        String refundPath = (path.endsWith("/") ? path : path + "/") + "refund";
+        return u.getScheme() + "://" + u.getRawAuthority() + refundPath
+                + (u.getRawQuery() == null ? "" : "?" + u.getRawQuery());
     }
 
     @Override
@@ -331,8 +359,8 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
          * 而那是个我方代码控制不了的地址：谁在后台改一下，退款结果就再也回不来，
          * 且没有任何地方会报错，只有退款一直停在「处理中」。
          */
-        if (notifyUrl != null && !notifyUrl.isBlank()) {
-            body.put("notify_url", notifyUrl + "/refund");
+        if (refundNotifyUrl != null) {
+            body.put("notify_url", refundNotifyUrl);
         }
         body.put("amount", Map.of(
                 "refund", amountMinor,

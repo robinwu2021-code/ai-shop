@@ -149,12 +149,43 @@ public interface PayInternalApi {
     @GetExchange(PayInternalPaths.FEE_RULES_EFFECTIVE)
     Map<String, Integer> effectiveRates(@RequestParam("at") long at);
 
-    /** status / keyword 为 {@code null} 时不带这个参数（服务端按「不筛」处理） */
+    /**
+     * status / keyword 为 {@code null} 时不带这个参数（服务端按「不筛」处理）。
+     *
+     * @param merchantScope <b>必填</b>：调用方当前账号能看的主体（F10 · Review R10）。独立形态下 pay-svc 没有数据域拦截器，
+     *                      收窄条件由主应用算好显式传入、pay-svc 强制按它过滤；缺了就拒。编码见 {@link #encodeMerchantScope}
+     */
     @GetExchange(PayInternalPaths.SETTLE_INVOICES)
     PageData<SettleInvoiceVO> settleInvoices(@RequestParam(value = "status", required = false) String status,
                                              @RequestParam(value = "keyword", required = false) String keyword,
                                              @RequestParam("page") long page,
-                                             @RequestParam("size") long size);
+                                             @RequestParam("size") long size,
+                                             @RequestParam("merchantScope") String merchantScope);
+
+    /** 不限主体 */
+    String MERCHANT_SCOPE_ALL = "*";
+
+    /**
+     * 主体范围的线上编码：{@code null} = 不限 → {@code "*"}；空集 = 一个都不能看 → 空串；否则逗号分隔。
+     * 「不限」与「一个都没有」必须分得开 —— 两者都编码成空的话，越权就藏在这里。
+     */
+    static String encodeMerchantScope(java.util.Set<String> merchantNos) {
+        return merchantNos == null ? MERCHANT_SCOPE_ALL : String.join(",", new java.util.TreeSet<>(merchantNos));
+    }
+
+    /** {@link #encodeMerchantScope} 的逆。{@code null} 返回值 = 不限 */
+    static java.util.Set<String> decodeMerchantScope(String encoded) {
+        if (MERCHANT_SCOPE_ALL.equals(encoded)) {
+            return null;
+        }
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        for (String no : encoded.split(",")) {
+            if (!no.isBlank()) {
+                out.add(no.trim());
+            }
+        }
+        return out;
+    }
 
     @PostExchange(PayInternalPaths.SETTLE_INVOICE_ISSUE)
     SettleInvoiceVO issue(@PathVariable("invoiceNo") String invoiceNo, @RequestBody IssueReq req);

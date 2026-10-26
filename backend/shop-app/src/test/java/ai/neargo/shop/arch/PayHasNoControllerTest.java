@@ -59,54 +59,75 @@ class PayHasNoControllerTest {
      */
     private static final String PAY_MODULE = "pay/pay-domain";
 
-    /** 支付域对外唯一允许的 HTTP 表面。回调也在其中（2026-08-31 定：回调直接进 pay） */
-    private static final List<String> ALLOWED = List.of("/internal", "/callback");
+    /**
+     * 不许出现任何 Web 映射的模块：领域与通道。
+     *
+     * <p>2026-10-25 起（TDD-支付服务-I0地基 AC4，修 Review R27）：
+     * 旧版对「文件里含 {@code /internal} 或 {@code /callback} 字样」的 controller 放行 ——
+     * 注释里提一句 {@code /internal} 就能让一个面向前端的 controller 过闸，且领域里本就一个都没有，
+     * 这个口子只剩坏处。现在的分工是：
+     * <ul>
+     *   <li>{@code pay-domain} / {@code pay-channel}：零映射（本条）；</li>
+     *   <li>{@code pay-svc}：只许 {@code /internal/**}，按<b>运行时解析后的路径</b>判（{@code PayApplicationBootTest#onlyInternalRoutes}）；</li>
+     *   <li>{@code pay-portal}：唯一面向人与第三方的支付模块，前缀由 {@code PortalFace} 定（{@code PortalRouteRulesTest}，ADR-042）。</li>
+     * </ul>
+     */
+    private static final List<String> NO_WEB_MODULES = List.of(PAY_MODULE, "pay/pay-channel");
+
+    /** 任何一个出现即算：类级的 controller 注解，或方法级的映射注解；短名与全限定名都认（消融时漏过全限定名一次） */
+    private static final java.util.regex.Pattern WEB_MAPPING = java.util.regex.Pattern.compile(
+            "@(?:[\\w.]+\\.)?(RestController|Controller|RequestMapping|GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping)\\b");
 
     @Test
-    @DisplayName("★★★ 支付域里不许有 @RestController —— 加一个今天不会有任何症状，拆分那天才炸")
+    @DisplayName("★★★ 支付领域与通道里不许有任何 Web 映射 —— 加一个今天不会有任何症状，拆分那天才炸")
     void payDomainHasNoController() throws IOException {
-        Path src = BACKEND.resolve(PAY_MODULE + "/src/main/java");
-
-        /*
-         * **对照量。** 目录不存在时下面的扫描是空集，而空集会让断言恒真 ——
-         * 那正是模块改名或搬家之后这条闸门会悄悄失效的方式。
-         */
-        assertThat(Files.isDirectory(src))
-                .as("%s 的源码目录不在了 —— 支付域改名或搬家了？"
-                        + "把 PAY_MODULE 跟着改，否则这条闸门从此恒真", PAY_MODULE)
-                .isTrue();
-
         List<String> offenders = new ArrayList<>();
         int scanned = 0;
-        try (Stream<Path> files = Files.walk(src)) {
-            for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
-                scanned++;
-                String text = Files.readString(f, StandardCharsets.UTF_8);
-                if (!text.contains("@RestController") && !text.contains("@Controller")) {
-                    continue;
+        for (String module : NO_WEB_MODULES) {
+            Path src = BACKEND.resolve(module + "/src/main/java");
+            /*
+             * **对照量。** 目录不存在时下面的扫描是空集，而空集会让断言恒真 ——
+             * 那正是模块改名或搬家之后这条闸门会悄悄失效的方式。
+             */
+            assertThat(Files.isDirectory(src))
+                    .as("%s 的源码目录不在了 —— 改名或搬家了？把 NO_WEB_MODULES 跟着改，否则这条闸门从此恒真", module)
+                    .isTrue();
+            try (Stream<Path> files = Files.walk(src)) {
+                for (Path f : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                    scanned++;
+                    if (WEB_MAPPING.matcher(stripComments(Files.readString(f, StandardCharsets.UTF_8))).find()) {
+                        offenders.add(module + "/" + src.relativize(f));
+                    }
                 }
-                /*
-                 * `/internal` 与 `/callback` 是允许的：前者是域间内部口
-                 * （共享密钥、不认用户身份），后者是通道回调（验签，不是用户请求）。
-                 * 两者都不是「给前端的 controller」。
-                 */
-                if (ALLOWED.stream().anyMatch(text::contains)) {
-                    continue;
-                }
-                offenders.add(src.relativize(f).toString());
             }
         }
 
         assertThat(scanned).as("一个 java 文件都没扫到 —— 路径写错了？").isPositive();
 
         assertThat(offenders)
-                .as("支付域里出现了 controller：\n  %s\n"
-                        + "  三端 controller 要放在主应用（shop-app/portal/{ops,biz,mp}/pay/），\n"
-                        + "  由主应用做完鉴权、判权、数据域解析，再把**收窄后的条件**传给支付域。\n"
-                        + "  支付域对外只允许 %s。\n"
-                        + "  → 见 TDD-支付域-双形态部署与装配 §L1。",
-                        offenders, ALLOWED)
+                .as("支付领域 / 通道里出现了 Web 映射：\n  %s\n"
+                        + "  面向人与第三方的支付接口放 pay-portal（ai.neargo.shop.pay.api.<入口>，ADR-042）；\n"
+                        + "  域间内部口放 pay-svc 的 /internal/**；\n"
+                        + "  仍属主应用跨域组合的，放 shop-app/portal/{ops,biz,mp}/pay/。\n"
+                        + "  → 见 TDD-支付域-双形态部署与装配 §L1、ADR-042。", offenders)
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 判据自身能量出东西：注解在代码里命中，只在注释里提到不算")
+    void detectorFiresOnCodeNotComments() {
+        assertThat(WEB_MAPPING.matcher(stripComments("@RestController\nclass A {}")).find()).isTrue();
+        assertThat(WEB_MAPPING.matcher(stripComments("class A { @GetMapping(\"/x\") void x() {} }")).find()).isTrue();
+        assertThat(WEB_MAPPING.matcher(stripComments("@org.springframework.web.bind.annotation.RestController class A {}")).find())
+                .as("全限定名写法也要认 —— 2026-10-25 消融时它从这里漏过去").isTrue();
+        assertThat(WEB_MAPPING.matcher(stripComments("/** 别加 @RestController */ class A {}")).find()).isFalse();
+        assertThat(WEB_MAPPING.matcher(stripComments("// @PostMapping 已迁走\nclass A {}")).find()).isFalse();
+        assertThat(WEB_MAPPING.matcher(stripComments("class A { @ControllerAdviceLike void x() {} }")).find())
+                .as("按单词边界，不按前缀").isFalse();
+    }
+
+    private static String stripComments(String text) {
+        return text.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("//[^\\n]*", "");
     }
 
     /**

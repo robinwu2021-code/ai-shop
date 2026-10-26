@@ -596,6 +596,21 @@ shop:
     # 假网关：只在开发期开。默认 false —— 默认开的话，真实现没接上时
     # 线上会「支付成功」而钱根本没动，且没有任何症状，要到对账日才发现
     stub: ${SHOP_PAY_STUB:false}
+    # stub 开着时替哪些渠道做进件（逗号分隔）。没点名的渠道照样「未接通」，进件直接失败 ——
+    # 此前查不到网关就回落 stub，任何渠道都能「开户成功」（TDD-支付服务-I1存量缺陷 F05）。
+    stub-channels: ${SHOP_PAY_STUB_CHANNELS:WECHAT,ALIPAY}
+    merchant:
+      # 收款商户双写（TDD-支付服务-I4进件与收款商户 S4）：旧表 mch_payment_merchant / mch_store / mch_entity
+      # 提交后把进件单、收款商户、门店绑定跟到支付域新表。先开它、再跑 pay-merchant-backfill，比对为 0 后才读切。
+      # 新表写失败只记日志 [pay-merchant-dual-write]，不挡旧路径
+      dual-write: ${SHOP_PAY_MERCHANT_DUAL_WRITE:false}
+      # 读切（S6）：legacy = 旧表解析（默认）；pay = 门店绑定解析（没绑定就是没有，不兜底主体级号）。
+      # 配 pay 也要启动时全量比对 C07 无未确认差异才生效，否则仍走旧解析并打 ERROR [pay-merchant-read]。切回 legacy 即回退
+      read-from: ${SHOP_PAY_MERCHANT_READ_FROM:legacy}
+      compare:
+        # 比对 C07（pay-merchant-compare）里人工确认过的差异，逗号分隔，每项是日志里那条差异的 key
+        # （门店|渠道|类别|旧值|新值）。任一侧的值再变，旧确认自然不再匹配
+        confirmed: ${SHOP_PAY_MERCHANT_COMPARE_CONFIRMED:}
     wechat:
       # 显式开关：配了凭据不等于要启用（灰度、演练都可能只配不启）。
       # **不用「凭据配了没」判断**：${ENV:} 未配置时是空串，而 @ConditionalOnProperty
@@ -635,6 +650,8 @@ shop:
       # 支付结果回调。必须 HTTPS 且公网可达；不配则拒绝下单
       # （发出去也收不到通知，那笔单会停在 PENDING 只能等对账日）
       notify-url: ${WX_NOTIFY_URL:}
+      # 退款结果回调地址。空 = 由 notify-url 推导（路径末段后加 refund，查询参数保留）；地址不按这个规律时显式配
+      refund-notify-url: ${WX_REFUND_NOTIFY_URL:}
     alipay:
       enabled: ${ALIPAY_PAY_ENABLED:false}
       app-id: ${ALIPAY_APP_ID:}

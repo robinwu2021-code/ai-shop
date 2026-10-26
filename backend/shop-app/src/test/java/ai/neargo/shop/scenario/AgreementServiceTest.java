@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.spi.pay.FundsPath;
 import ai.neargo.shop.pay.points.agreement.AgreementService;
 import ai.neargo.shop.pay.points.model.RedeemRate;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway;
@@ -43,7 +44,7 @@ class AgreementServiceTest {
         agreements.publishTerms(type,"v1",text,"ops");
         String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                 .digest(text.getBytes(StandardCharsets.UTF_8)));
-        var funds=new PointsFundsGateway.FundsContext(PointsFundsGateway.FundsPath.DIRECT,"TEST",
+        var funds=new PointsFundsGateway.FundsContext(FundsPath.DIRECT,"TEST",
                 "M-AGR","ST-AGR","a1",null,null,null,0);
         var cmd=new AgreementService.SignCommand(type,"M-AGR","ST-AGR","v1",hash,"PER_ORDER",funds);
         assertThatThrownBy(() -> agreements.sign(cmd,"EMPLOYEE")).isInstanceOf(IllegalArgumentException.class);

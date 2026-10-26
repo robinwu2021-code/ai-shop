@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.service.PayMerchantMirror;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -32,6 +33,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private static final int DEFAULT_RADIUS_M = 3000;
 
     private final MchStoreMapper storeMapper;
+    private final PayMerchantMirror payMirror;
     private final MchEntityMapper merchantMapper;
     private final MchEntityCommunityMapper merchantCommunityMapper;
     private final ObjectMapper json;
@@ -63,7 +65,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                                     ai.neargo.shop.geo.ReachGeoProps geoProps,
                                     ai.neargo.shop.spi.user.CommunityQueryPort communityNamePort,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper,
-                                    ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper) {
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper,
+                                    PayMerchantMirror payMirror) {
+        this.payMirror = payMirror;
         this.channelAreaMapper = channelAreaMapper;
         this.communityNamePort = communityNamePort;
         this.serviceAreaMapper = serviceAreaMapper;
@@ -295,6 +299,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
         MchStore toSave = store;
         DataScopeContext.executeWithoutScope(() ->
                 toSave.getId() == null ? storeMapper.insert(toSave) : storeMapper.updateById(toSave));
+                payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
 
         MchEntity merchant = merchant(merchantNo);
         if (merchant != null) {

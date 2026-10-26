@@ -1,11 +1,14 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.acquiring.service.RefundService;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.channel.PayGatewayRouter;
+import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.service.RefundExecutionService;
 import ai.neargo.shop.spi.settle.RefundDispatchResult;
@@ -20,6 +23,8 @@ import org.springframework.stereotype.Service;
 public class RefundExecutionServiceImpl implements RefundExecutionService {
     @org.springframework.beans.factory.annotation.Autowired
     private PayOperationsDocuments documents;
+    /** 存量交易没落子商户号时，从它的请求快照取（F08 · Review R08） */
+    private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
     private final RefundPaymentStore store;
     private final RefundCapacityLedger capacity;
     private final PayGatewayRouter gateways;
@@ -31,6 +36,44 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
         this.store = store;
         this.gateways = gateways;
         this.adjustment = adjustment;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void setLedger(ai.neargo.shop.pay.service.PaymentLedgerService ledger) {
+        this.ledger = ledger;
+    }
+
+    /** 渠道管线（TDD-支付服务-I2 S4）；手工构造的单测里没有，直调原网关 */
+    private LegacyChannelBridge channels;
+
+    /** 退款单（I3 S6）；手工构造的单测与切片测试里没有 —— 调用时再取 */
+    private ObjectProvider<RefundService> refundOrderProvider;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setRefundOrders(ObjectProvider<RefundService> refundOrders) {
+        this.refundOrderProvider = refundOrders;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setChannels(LegacyChannelBridge channels) {
+        this.channels = channels;
+    }
+
+    /**
+     * 原交易实际进的子商户号。新交易落在行上；存量行为空时从它的请求快照按下单时同一规则取（F08 · Review R08）。
+     * 此前恒传 null：服务商 / 子商户模式下通道找不到原交易，退款失败而用户的钱已经扣了。
+     */
+    private String subMerchantOf(StlPayment origin) {
+        if (origin.getSubMerchantId() != null && !origin.getSubMerchantId().isBlank()) {
+            return origin.getSubMerchantId();
+        }
+        if (ledger == null || origin.getOutTradeNo() == null) {
+            return null;
+        }
+        return ledger.paymentRequest(origin.getOutTradeNo())
+                .flatMap(DirectAccounts::of)
+                .map(r -> r.subMerchantId())
+                .orElse(null);
     }
 
     @Override
@@ -64,8 +107,17 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
                     existing == null ? DispatchStatus.FAILED : DispatchStatus.UNKNOWN,
                     existing == null ? "REFUND_PREPARATION_CONFLICT" : "REFUND_EXECUTION_CONFLICT", false, null);
         }
+        RefundService refundOrders = refundOrderProvider == null ? null : refundOrderProvider.getIfAvailable();
+        if (refundOrders != null && !refundOrders.dispatchAllowed(request.executionNo())) {
+            // 退款单待复核（I3 S6）：不发渠道。可重试 —— 复核通过后售后重试 / 调用方再调一次即执行
+            return new RefundDispatchResult(request.executionNo(), row.getPaymentNo(), DispatchStatus.UNKNOWN,
+                    "REFUND_REVIEW_PENDING", true, null);
+        }
         if (!store.claim(request.executionNo())) {
             return query(request);
+        }
+        if (refundOrders != null) {
+            refundOrders.dispatched(request.executionNo());
         }
         if (row.getAmountMinor() == 0) {
             return store.completeZero(row.getRefundExecutionNo());
@@ -79,9 +131,11 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             if (!gateway.supportsRefundCurrency(row.getCurrency())) {
                 return failed(row, "REFUND_CURRENCY_UNSUPPORTED");
             }
-            PayGateway.Result sent = gateway.refund(new PayGateway.TxContext(null, origin.getTradeNo(),
-                    origin.getOutTradeNo(), origin.getAmountMinor(), row.getCurrency()), row.getAmountMinor(),
-                    row.getOutTradeNo(), request.reason());
+            var ctx = new PayGateway.TxContext(subMerchantOf(origin), origin.getTradeNo(),
+                    origin.getOutTradeNo(), origin.getAmountMinor(), row.getCurrency());
+            PayGateway.Result sent = channels == null
+                    ? gateway.refund(ctx, row.getAmountMinor(), row.getOutTradeNo(), request.reason())
+                    : channels.refund(row.getPayChannel(), ctx, row.getAmountMinor(), row.getOutTradeNo(), request.reason());
             if (sent == null || (!sent.success() && sent.retryable())) {
                 return unknown(row, "REFUND_SEND_UNKNOWN");
             }

@@ -32,6 +32,16 @@ public class FakePayQueryPort implements PayQueryPort {
     private final java.util.Map<String, Result> byChannel = new java.util.HashMap<>();
 
     private final java.util.Map<String,Result> byRefund = new java.util.HashMap<>();
+
+    /**
+     * 按商户单号作答，<b>比按通道、全局都优先</b>。真渠道对每一笔给各自的交易号；全局答案会把同一个交易号发给
+     * 待查集合里的每一笔 —— 掉单巡检扫到别的用例留下的尝试时，撞上 {@code (pay_channel, trade_no)} 唯一键。
+     */
+    private final java.util.Map<String, Result> byTrade = new java.util.HashMap<>();
+
+    public void answerForTrade(String outTradeNo, Result r) {
+        byTrade.put(outTradeNo, r);
+    }
     public void refundAnswer(String out,Result r) { byRefund.put(out,r); }
 
     public void answer(Result r) {
@@ -57,6 +67,7 @@ public class FakePayQueryPort implements PayQueryPort {
         askedRefund.clear();
         byRefund.clear();
         byChannel.clear();
+        byTrade.clear();
         next = new Result(true, false, false, 0, null);
     }
 
@@ -77,7 +88,7 @@ public class FakePayQueryPort implements PayQueryPort {
     @Override
     public Result query(String payChannel, String outTradeNo) {
         asked.add(outTradeNo);
-        return byChannel.getOrDefault(payChannel, next);
+        return byTrade.getOrDefault(outTradeNo, byChannel.getOrDefault(payChannel, next));
     }
 
     @Override

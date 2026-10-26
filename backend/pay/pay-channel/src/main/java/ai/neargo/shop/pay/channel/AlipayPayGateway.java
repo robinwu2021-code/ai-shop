@@ -4,8 +4,6 @@ import ai.neargo.shop.pay.channel.ChannelClient.ChannelException;
 import ai.neargo.shop.pay.channel.base.AbstractPayGateway;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,11 +21,9 @@ import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
  *       （{@code trans_out} = 平台账户）。这是<b>推断</b>，见 {@link AlipayApis#SUBSIDY}</li>
  * </ol>
  */
-@Component
-// 用**显式开关**而不是「凭据配了没」来判断是否装配：
-// `${ENV:}` 在未配置时是空串，而 @ConditionalOnProperty 认为「键存在」即成立 ——
-// 于是网关会带着空凭据启动，直到第一次调用才失败
-@ConditionalOnProperty(name = "shop.pay.alipay.enabled", havingValue = "true")
+// **不自动装配**（F12 · Review R13）：它依赖的 alipayChannelClient 全仓没有实现，
+// 此前带着 @Component + 开关，一开 shop.pay.alipay.enabled 整个应用就起不来。
+// 装配点在 AlipayChannelConfig —— 客户端实现（开发计划 I8）时在那里装上
 public class AlipayPayGateway extends AbstractPayGateway {
 
     /** 平台自己的收款账号，补差时作为出资方（{@code trans_out}）。 */

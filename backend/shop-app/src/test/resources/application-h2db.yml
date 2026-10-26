@@ -44,6 +44,10 @@ spring:
 # 试过 `INIT=RUNSCRIPT FROM 'classpath:…'`：H2 2.4 上它**静默建 0 张表**，
 # 不报错也不建表 —— 单独跑一个 JDBC 连接验过。别再用它。
 shop:
+  # 支付 v4 迁移（db/pay）是 MySQL 方言，与平台迁移一样不在 H2 上跑；测试建表走 schema-test.sql
+  pay:
+    flyway:
+      enabled: false
   inventory:
     enabled: true
     flyway-locations: classpath:db/inventory-h2

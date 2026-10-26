@@ -2,8 +2,10 @@ package ai.neargo.shop.pay.channel.port;
 
 import ai.neargo.shop.pay.channel.PayGateway;
 import ai.neargo.shop.pay.channel.PayGatewayRouter;
+import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 
 import ai.neargo.shop.spi.pay.PayQueryPort;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,8 +20,16 @@ public class PayQueryPortImpl implements PayQueryPort {
 
     private final PayGatewayRouter router;
 
+    /** 渠道管线（TDD-支付服务-I2 S4）；手工构造的单测里没有，直调原网关 */
+    private LegacyChannelBridge channels;
+
     public PayQueryPortImpl(PayGatewayRouter router) {
         this.router = router;
+    }
+
+    @Autowired(required = false)
+    void setChannels(LegacyChannelBridge channels) {
+        this.channels = channels;
     }
 
     @Override
@@ -28,7 +38,8 @@ public class PayQueryPortImpl implements PayQueryPort {
             // 通道未接入 ≠ 通道说没有这笔。前者不可据以关单
             return new Result(false, false, false, 0, null);
         }
-        PayGateway.QueryResult r = router.of(payChannel).query(outTradeNo);
+        PayGateway.QueryResult r = channels == null ? router.of(payChannel).query(outTradeNo)
+                : channels.query(payChannel, outTradeNo);
         return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo(), r.currency());
     }
 

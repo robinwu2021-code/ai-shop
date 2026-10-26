@@ -56,7 +56,7 @@ class OrderPaymentRecoveryWiringFlowTest {
     @Test
     void missingCallbackRecordsOriginalCashBeforeRepairingProjection() throws Exception {
         Purchase p = purchase("13207031001");
-        channel.answer(new PayQueryPort.Result(true, true, true, p.amount(), "RECOVERY-" + p.payNo(), "CNY"));
+        channel.answerForTrade(outTradeNo, new PayQueryPort.Result(true, true, true, p.amount(), "RECOVERY-" + p.payNo(), "CNY"));
         recovery.scan(System.currentTimeMillis() + 25 * 60_000L);
         assertFinancial(p, "SUCCESS", "CNY");
         assertThat(orderStatus(p)).isEqualTo("PAID");
@@ -70,7 +70,7 @@ class OrderPaymentRecoveryWiringFlowTest {
     @Test
     void queriedForeignCurrencyKeepsCashFactWithoutApplyingTheOrder() throws Exception {
         Purchase p = purchase("13207031002");
-        channel.answer(new PayQueryPort.Result(true, true, true, p.amount(), "USD-" + p.payNo(), "USD"));
+        channel.answerForTrade(outTradeNo, new PayQueryPort.Result(true, true, true, p.amount(), "USD-" + p.payNo(), "USD"));
         recovery.scan(System.currentTimeMillis() + 25 * 60_000L);
         assertFinancial(p, "SUCCESS", "USD");
         assertThat(orderStatus(p)).isEqualTo("WAIT_PAY");
@@ -82,7 +82,7 @@ class OrderPaymentRecoveryWiringFlowTest {
     @Test
     void unavailableQueryDoesNotCloseOrManufactureCash() throws Exception {
         Purchase p = purchase("13207031003");
-        channel.answer(new PayQueryPort.Result(false, false, false, 0, null));
+        channel.answerForTrade(outTradeNo, new PayQueryPort.Result(false, false, false, 0, null));
         recovery.scan(System.currentTimeMillis() + 25 * 60_000L);
         assertFinancial(p, "PENDING", "CNY");
         assertThat(orderStatus(p)).isEqualTo("WAIT_PAY");
@@ -94,7 +94,7 @@ class OrderPaymentRecoveryWiringFlowTest {
     void queryOfClosedOrderRetainsCashAndOneRecoverableResolution() throws Exception {
         Purchase p = purchase("13207031004");
         orders.closeUnpaid(p.payNo(), "closed before lost callback repair");
-        channel.answer(new PayQueryPort.Result(true, true, true, p.amount(), "LATE-" + p.payNo(), "CNY"));
+        channel.answerForTrade(outTradeNo, new PayQueryPort.Result(true, true, true, p.amount(), "LATE-" + p.payNo(), "CNY"));
         recovery.scan(System.currentTimeMillis() + 25 * 60_000L);
         assertFinancial(p, "SUCCESS", "CNY");
         assertThat(orderStatus(p)).isEqualTo("CLOSED");
