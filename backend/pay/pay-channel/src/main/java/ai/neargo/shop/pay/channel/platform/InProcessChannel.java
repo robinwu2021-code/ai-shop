@@ -19,6 +19,7 @@ import ai.neargo.shop.pay.channel.capability.OnlinePayCapability;
 import ai.neargo.shop.pay.channel.capability.TransactionCapability;
 import ai.neargo.shop.pay.channel.invoke.Invocation;
 import ai.neargo.shop.spi.pay.PayInstruction;
+import ai.neargo.shop.spi.pay.RefundQueryResult;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
@@ -138,6 +139,15 @@ public final class InProcessChannel implements OnlinePayCapability, TransactionC
         }
         return new ChannelResult.Succeeded(r.tradeNo(), money(r, inv.account()), null,
                 Map.of("outRefundNo", c.outRefundNo(), "amountMinor", String.valueOf(r.amountMinor())));
+    }
+
+    /**
+     * 五态查退款：模拟银行自己的五态答案，<b>原样</b>带回（与旧路由表 {@code router.of(ch).queryRefundOutcome} 逐字相同）。
+     * 三态与五态是两个问题 —— 「没有这笔」在三态里是可以说的，在五态里只能是未知 —— 进程内银行两种都会答，问哪个就答哪个，
+     * 不从一个推另一个（场景测试会单独给五态打桩）。真渠道没有这个旁路，五态由 {@code queryRefund} 的四态结果译出。
+     */
+    public RefundQueryResult refundOutcome(String outRefundNo) {
+        return bank.queryRefundOutcome(outRefundNo);
     }
 
     private static Money money(PayGateway.QueryResult r, ChannelAccountContext account) {

@@ -23,6 +23,7 @@ import ai.neargo.shop.pay.channel.context.ChannelContextFactory;
 import ai.neargo.shop.pay.channel.context.ChannelRoute;
 import ai.neargo.shop.pay.channel.handler.ChannelHandlerRegistry;
 import ai.neargo.shop.pay.channel.invoke.Invocation;
+import ai.neargo.shop.pay.channel.platform.InProcessChannel;
 import ai.neargo.shop.spi.pay.RefundQueryResult;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -149,6 +150,11 @@ public final class LegacyChannelBridge {
      * 「没有这笔」与查不通一样是未知：退款单不存在不能证明从未受理。
      */
     public RefundQueryResult queryRefundOutcome(String payChannel, String outRefundNo) {
+        Optional<InProcessChannel> inProcess = capabilities.find(payChannel, InProcessChannel.class);
+        if (inProcess.isPresent()) {
+            // 进程内模拟银行自己会答五态：原样带回，连 null 与异常也同旧路由表一样交给调用方（偏差 0）
+            return inProcess.get().refundOutcome(outRefundNo);
+        }
         long now = System.currentTimeMillis();
         return switch (refundQuery(payChannel, outRefundNo)) {
             case ChannelResult.Succeeded s -> new RefundQueryResult(RefundQueryResult.Status.SUCCEEDED,

@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.channel.platform;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -128,6 +129,16 @@ class InProcessChannelTest {
         assertThat(done.outRefundNo()).isEqualTo("R-4");
         assertThat(done.rawStatus()).isNull();
         verify(bank, times(1)).queryRefund("R-4");
+    }
+
+    @Test
+    @DisplayName("★★★ 五态查退款问的是测试银行自己的五态答案、原样带回（场景测试会直接打桩它）")
+    void refundOutcomeIsRelayedVerbatim() {
+        RefundQueryResult stub = new RefundQueryResult(RefundQueryResult.Status.SUCCEEDED, "SUCCESS", "R-9", 100,
+                "BANK:R-9", "CNY", 1);
+        doReturn(stub).when(bank).queryRefundOutcome("R-9");
+
+        assertThat(bridge.queryRefundOutcome("TEST", "R-9")).isEqualTo(stub);
     }
 
     @Test
