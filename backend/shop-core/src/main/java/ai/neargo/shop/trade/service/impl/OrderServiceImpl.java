@@ -4037,8 +4037,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
      * <p>缺了它<b>不会在下单时报错</b>，而是让后面每一步都失败、且原因都指错：
      * <ul>
      *   <li>到货登记 {@code /biz/pickup/arrived} → 返回空列表，看着像「没有这单」</li>
-     *   <li>核销 {@code /biz/pickup/verify} → {@code NOT_THIS_PICKUP}，
-     *       看着像「顾客走错店了」—— 店员会让他去别的自提点，
+     *   <li>核销 {@code /biz/pickup/verify} → {@code CODE_NOT_FOUND}（非本点与不存在同一回答，防枚举），
+     *       看着像「码念错了」—— 店员会让顾客反复核对，
      *       <b>而那单根本不属于任何自提点</b></li>
      * </ul>
      * 2026-08-17 B 端第二轮实测抓到（用例 TB-B-6-2）。
