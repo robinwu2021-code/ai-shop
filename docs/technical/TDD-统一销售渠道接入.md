@@ -9,7 +9,7 @@
 | 阅读入口 | 内容 |
 |---|---|
 | [数据库设计](./design/统一销售渠道接入-数据库设计.md) | 31张候选表、公共字段、唯一键、历史及归属 |
-| [API清单](./design/统一销售渠道接入-API清单.md) | 70个公开/回调路由、输入输出、权限及12组SPI/typed网关 |
+| [API清单](./design/统一销售渠道接入-API清单.md) | 70个公开/回调路由、输入输出、权限及14组SPI/typed网关 |
 | [代码清单](./design/统一销售渠道接入-代码清单.md) | 模块、完整包名、Controller/Service/Mapper、DTO及计划测试 |
 | [结构化真源](./design/schema/commerce-integration-design.json) | 同一份表/API/Service/AC引用，不与实现清单混用 |
 
@@ -130,6 +130,19 @@ Review Focus：同键异账号；回调伪造/过期/重放；授权实际账号
 
 Review Focus：跨店/跨主体/混合来源；陈旧或过期来源与报价；预览后改配置；UNKNOWN不重复发送；lease过期不解除远端阻断；晚attempt/generation不覆盖新状态；PARTIAL不是全量一致；默认关闭无job与mapper。
 
+
+### C1资源映射执行计划（续批）
+
+- [x] M1 先编写ResourceMappingTest及HTTP/JSON专项：草稿不用于订单解析；跨店/主体/混合来源拒绝；父身份隔离；历史修订不跟随当前指针；旧核验回执不能激活新草稿；缺凭证/过期证明不通过。整批编码与测试源码→编译→集中受影响专项，遵循用户交付节奏。
+- [x] M2 V4仅新增resource_mapping/resource_mapping_revision两表，V1～V3冻结。映射含可信store、不可变外部identity、latest/active修订、核验lease/operation/next_check；修订只追加，草稿与已核验事实不原地改写。公共写入仅IMPORTED草稿；MANAGED须将来由受控发布代码提供，不接受客户端声明。
+- [x] M3 COM-027～030四个B路由沿主体属主/STORE_ADMIN/当前门店原目录核验；Service数据库分页及严格过滤。销售条目、SKU/选项关系由扩展ChannelSourceValidationPort显式核验salesOfferRef并返回规范条目；原六参数调用兼容，不让旧provider默认核验新增语义。
+- [x] M4 ChannelResourceIdentityGateway只执行可信原平台资源查询，不修改平台；同profile唯一注册，缺真实提供方保持草稿。核验前提交原operation/attempt及lease，网络外调用来源和远端，完成时锁account→connection→mapping→operation/attempt复核原最新修订、连接修订、授权、lease/fence和证据期限。超时只重查；迟到只留证，不激活新草稿。
+- [x] M5 ResourceMappingVerificationService.verifyDue按next_check_at有界扫描，共用唯一CommerceRecoveryJob，不新增平台cron。已关闭策略不授予映射核验权；核验须ACTIVE连接/有效CATALOG授权。未知保留DRAFT；成功追加VERIFIED修订并移动active，修订来源错误不影响既有历史事实。修订新草稿先移除当前active指针，禁止继续自动使用旧配置。
+- [x] M6 ChannelResourceMappingPort.resolveHistorical必须显式mappingNo/revisionNo，拒绝DRAFT及当前版本回退；原行业重新核验冻结来源/销售条目/hash和期限，返回历史映射事实，不授予价格/库存/付款/接单资格。旧远端证据是历史依据，不伪称当前对象一致；订单仍须原owner.prepareImport。
+- [x] M7 统一宿主/server编译打包、受影响Java/HTTP/原生MySQL迁移和约束、设计/文档守卫、消融及一次独立复核；修复只相关复测，本地白名单提交。原food MenuPublicationSnapshot明确不授予价格/库存权威，本批不凭它直接注册完整目录成功适配器；真实来源桥接、事件投递、外部订单Webhook和激活仍单独交付。
+
+Review Focus：同远端子编号不同父身份不能串线；手工草稿不得成为VERIFIED；source/销售条目证明不匹配；旧证明晚到及新草稿期间不得激活；核验lease不能授权新版本；来源和远端查询不可跨事务；历史解析不得偷偷查最新映射或把过期当前凭据当历史有效证明。
+
 ## §3 选型与取舍
 
 1. 统一commerce域替代零售/餐饮各自平台系统；外部交易接入与内部资金/库存归属保持独立。
@@ -159,7 +172,7 @@ Review Focus：跨店/跨主体/混合来源；陈旧或过期来源与报价；
 | AC02 | ChannelConnectionIdentityTest#credentialRotationKeepsRemoteBusinessIdentity | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
 | AC03 | CatalogSynchronizationTest#fullStoreScopeSourcesAndSnapshotAreVersionedAndScoped、retailUsesSameKernelAndCannotMixFood；CatalogDocumentPolicyTest | C1内核子集PASS；真实来源提供方和平台适配未联验，不标全量AC完成 |
 | AC04 | CatalogSynchronizationTest#submittedAndUnknownKeepRemoteBarrierUntilTerminalProof、lateSenderCannotOverwriteRecoveredPartialOrReleaseNewGeneration及复核4项 | C1持久化阻断/恢复子集PASS；真实远端异步协议仍待适配器合同验证 |
-| AC05 | ResourceMappingTest#resolveOriginalRevisionAndRejectAmbiguousLine | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
+| AC05 | ResourceMappingTest#trustedProofAppendsVerifiedRevisionAndOldRevisionRemainsFrozen、legacySourceProofCannotConfirmSalesOfferMembership、historicalResolutionUsesOriginalConnectionOwnerAfterRouteRevision | IMPORTED历史映射及来源核验内核PASS；MANAGED原发布代码、真实行业/平台合同及订单导入准入未验 |
 | AC06 | ChannelInventoryPublicationTest#rejectCallerQuantityAndUseOriginalOwner | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
 | AC07 | ChannelWebhookRecoveryTest#lostResponseDoesNotRepeatNonIdempotentAction | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
 | AC08 | ChannelOrderImportTest#preserveExternalOriginalLinesAndAmounts | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
@@ -175,7 +188,7 @@ Review Focus：跨店/跨主体/混合来源；陈旧或过期来源与报价；
 
 ## §6 对账二 设计到实现
 
-全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计25个基础/授权/目录/任务/回调路由、15张迁移表、10个业务Service与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。未生产迁移或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、历史资源映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
+全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、12个业务Service与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。未生产迁移或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
 
 ## L4 官方资料及待核验
 
@@ -308,3 +321,43 @@ V1逐字保持冻结。V2新增授权修订、动作、调用证据三表，并�
 
 
 最终核验：集成宿主shop-app与独立commerce-server的`-DskipTests package`通过（/private/tmp/commerce-catalog-final-package.log）；修复范围23项通过（/private/tmp/commerce-catalog-review-final-green.log）；MySQL扩展约束通过（/private/tmp/commerce-catalog-mysql.log）；设计生成10项、文档8项、SQL方言与`git diff --check`通过。共67个唯一受影响Java专项证据由原59项集中、目录文档4项与新增4项回归组成；复测不重复计入。V1/V2对原交付提交无差异。执行本地文件白名单提交，不推送部署。
+
+
+## C1资源映射内核交付记录（2026-10-26）
+
+### L1 结果与范围
+
+新增COM-027～030四个B路由和V4两张表；累计二十九个已编码公开路由、十七张业务迁移表。沿commerce-api/core/web/channel/server和原B端主体属主、STORE_ADMIN、当前门店及StoreDirectoryPort边界。没有前端改动，没有复制原商品、订单、库存、凭据或资金账。
+
+### L2 功能说明
+
+| 能力 | API / 执行入口 | 行为 |
+|---|---|---|
+| 映射列表 | COM-027 listMappings | connection/type/externalRef/sourceRef筛选；sourceRef按latest，数据库分页；父身份参与稳定远端hash |
+| 历史修订 | COM-028 listRevisions | 不可变修订倒序返回；草稿和已核验事实分开，不以latest冒充active |
+| 创建草稿 | COM-029 createMapping | IMPORTED DRAFT；公共请求不接收主体、核验成功、MANAGED或证据字段；同键重放初始结果 |
+| 修改映射 | COM-030 reviseMapping | 保持外部身份不变，追加草稿、清active；终止旧只读核验的本地权限，未完成attempt记UNKNOWN；保留旧VERIFIED历史 |
+| 后台核验 | ResourceMappingVerificationService.verifyDue | 先原operation/attempt和lease，再事务外查原来源及原平台；双证明有效且原配置/授权/version仍匹配才追加VERIFIED；原共享Job默认关闭 |
+| 历史解析 | ChannelResourceMappingPort.resolveHistorical | 显式mappingNo/revisionNo，限定原entity/store/connection；原连接修订owner和LOCAL语义不随当前改路由而变；重新核验source/offer/hash，返回原事实 |
+
+核验只依赖原来源Port、资源身份查询Gateway和有效CATALOG授权，不要求目录发布Gateway。目录发布仍单独检查发布Gateway，不能因为映射能查就允许菜单发送。销售条目、SKU、选项组/选项映射必须有规范salesOfferRef关系证明；Source/Validation兼容旧六参数构造，但旧provider的null规范销售条目不授予新语义。
+
+映射失败或缺真实provider时保持草稿，原操作记UNKNOWN并延后只读重查。不会自动创建REJECTED结论或把未知解释为不存在；REJECTED仍是后续运营显式裁决候选。MANAGED代码分配/发布证明未启用。销售价格、税、库存、付款和接单是否成立仍由原业务/订单prepareImport确认；历史远端receipt仅是原核验时的证据，不代表当前远端对象未变化。
+
+### L3 验证及复核证据
+
+- 初次集中受影响Java专项75项全部通过；补审计/旧provider和复核/历史路由4项，累计79个唯一专项均通过；最后仅复测相关35项，0失败0跳过。未跑全仓后端测试。
+- 独立复核一项Important：只读核验误依赖发布网关。commerce-mapping-review-red.log记录无发布Gateway时通过数为0；修复拆分authorized与ready，commerce-mapping-review-green.log通过，同时缺发布Gateway仍拒绝菜单提交。
+- 同批补历史连接改为RETAIL/REMOTE后的解析回归：原FOOD/LOCAL修订继续可解析，新写入不绕过当前归属/LOCAL门禁。旧行为CONFLICT已复现，修复后通过。审计操作者错误亦先复现SYSTEM再修复为原actor；未完成核验的本地终止有状态断言。
+- 消融删除canonicalSalesOfferRef关系检查时，legacySourceProofCannotConfirmSalesOfferMembership红灯（commerce-mapping-offer-ablation.log）；恢复后相关专项通过。含父身份隔离、重复键、源hash漂移、来源失效、无授权、迟到回执、严格JSON及参数化sourceRef过滤。
+- 隔离临时MySQL V1/V2/V3/V4十七表及原身份/journal/操作/快照/映射父身份/修订唯一约束通过（commerce-mapping-mysql.log）；V1～V3对eb6ef11ee无差异。
+- 宿主与独立server编译打包、设计10项、文档8项、SQL守卫及diff检查，以末尾最终记录为准。H2事务与MySQL CLI DDL不冒充生产驱动并发或完整认证链验收。
+
+### L4 取舍、门禁与下一步
+
+复核一项Important已在一次修复中关闭，不重复派发复核。原来源adapter、真实远端资源规范身份、凭据存储/激活、生产JDBC并发、完整认证链和独立远程客户端仍是明确门禁。原food MenuPublicationSnapshot的schema声明不授予价格/库存权威，不能直接转成自动成功来源；下一批先补原行业可信来源/事件桥接，再推进原始Webhook验签、落库ACK和原订单导入。当前调用只读查询，未连接Keeta等真实平台。
+
+本批只在现有独立worktree本地文件白名单提交；不执行本批生产迁移、远端推送或部署。打印发布提交保留，不在渠道提交中改动。
+
+
+最终核验：`shop-app`与`commerce-server -DskipTests package`通过（/private/tmp/commerce-mapping-final-package.log）；修复范围35项通过（/private/tmp/commerce-mapping-review-green.log）；MySQL十七表及约束通过（/private/tmp/commerce-mapping-mysql.log）；设计10项、文档8项、SQL方言守卫与`git diff --check`通过。累计79个唯一Java专项按原75项集中加4项新增边界计数，重复复测不重复计入。完成一次独立复核，无未修复Important；保留实际行业/供应商及生产并发门禁。本批白名单35文件，仅本地提交。

@@ -11,6 +11,8 @@ import ai.neargo.shop.commerce.entity.CimOperationAttempt;
 import ai.neargo.shop.commerce.entity.CimProductProfile;
 import ai.neargo.shop.commerce.entity.CimProvider;
 import ai.neargo.shop.commerce.entity.CimRequestJournal;
+import ai.neargo.shop.commerce.entity.CimResourceMapping;
+import ai.neargo.shop.commerce.entity.CimResourceMappingRevision;
 import ai.neargo.shop.commerce.entity.CimStoreConnection;
 import ai.neargo.shop.commerce.entity.CimSyncPolicy;
 import ai.neargo.shop.commerce.entity.CimSyncRun;
@@ -53,6 +55,10 @@ public final class CommerceMappers {
     public interface SyncRunMapper extends BaseMapper<CimSyncRun> {}
 
     public interface SyncRunItemMapper extends BaseMapper<CimSyncRunItem> {}
+
+    public interface ResourceMappingMapper extends BaseMapper<CimResourceMapping> {}
+
+    public interface ResourceMappingRevisionMapper extends BaseMapper<CimResourceMappingRevision> {}
 
     public interface RequestJournalMapper extends BaseMapper<CimRequestJournal> {
         @Insert(

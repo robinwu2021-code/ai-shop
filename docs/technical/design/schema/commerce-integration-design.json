@@ -395,11 +395,35 @@
         {
           "name": "active_revision_no",
           "definition": "VARCHAR(32)NULL活动修订"
+        },
+        {
+          "name": "store_no",
+          "definition": "VARCHAR(32)可信连接门店"
+        },
+        {
+          "name": "external_identity_json",
+          "definition": "LONGTEXT固定父身份与原平台代码"
+        },
+        {
+          "name": "latest_revision_no",
+          "definition": "VARCHAR(32)最新修订，不与有效修订混淆"
+        },
+        {
+          "name": "verification_operation_no",
+          "definition": "VARCHAR(32)NULL当前只读核验原动作"
+        },
+        {
+          "name": "verification_lease_until",
+          "definition": "DATETIME(3)NULL核验租约"
+        },
+        {
+          "name": "next_verification_at",
+          "definition": "DATETIME(3)NULL到期扫描"
         }
       ],
       "keys": "U(mapping_no)；U(connection_no,object_type,external_identity_hash)",
       "relations": "store_connection",
-      "rules": "平台编号若只在父对象内唯一，必须把父身份纳入归一摘要；条码、名称和取餐短码不能作唯一订单/商品身份。"
+      "rules": "平台编号若只在父对象内唯一，必须把父身份纳入归一摘要；条码、名称和取餐短码不能作唯一订单/商品身份。 C1公共写入仅创建IMPORTED草稿；latest与active分离，新草稿立即撤下active但不删除原VERIFIED修订。外部identity与父身份固定；换远端身份另建映射。核验前持久化QUERY原动作/attempt，租约和版本控制迟到证明。"
     },
     {
       "name": "cim_resource_mapping_revision",
@@ -437,7 +461,7 @@
         },
         {
           "name": "sales_offer_ref",
-          "definition": "VARCHAR(128)销售条目身份"
+          "definition": "VARCHAR(128)NULL；销售条目/SKU/选项必填并由原owner证明归属，MENU/类目/仓库/库存策略不填"
         },
         {
           "name": "mapping_snapshot",
@@ -453,7 +477,7 @@
         },
         {
           "name": "validation_receipt_ref",
-          "definition": "VARCHAR(128)原来源核验回执"
+          "definition": "VARCHAR(128)NULL原来源核验回执，草稿为空"
         },
         {
           "name": "external_evidence_ref",
@@ -466,11 +490,31 @@
         {
           "name": "validation_status",
           "definition": "VARCHAR(24)DRAFT/VERIFIED/REJECTED"
+        },
+        {
+          "name": "source_content_hash",
+          "definition": "CHAR(64)NULL原资源hash"
+        },
+        {
+          "name": "validation_expires_at",
+          "definition": "DATETIME(3)NULL原核验时的双证明最短期限"
+        },
+        {
+          "name": "connection_revision_no",
+          "definition": "VARCHAR(32)冻结连接修订"
+        },
+        {
+          "name": "authorization_no",
+          "definition": "VARCHAR(32)NULL核验使用的授权修订；只存业务引用"
+        },
+        {
+          "name": "reason",
+          "definition": "VARCHAR(256)修订/核验原因"
         }
       ],
       "keys": "U(revision_no)；U(mapping_no,revision)",
       "relations": "resource_mapping",
-      "rules": "历史订单读取原映射；同SKU不同餐牌/选项用不同销售条目；不按当前映射追改历史。 手工输入先DRAFT，经ChannelSourceValidationPort核验原对象/修订/归属，再以受控发布代码或远端真实查询/订单证据确认外部身份；无证据不得自动参与订单解析。capture和prepareImport再次复核冻结依据，防止验证后来源漂移。"
+      "rules": "历史订单读取原映射；同SKU不同餐牌/选项用不同销售条目；不按当前映射追改历史。 手工输入先DRAFT，经ChannelSourceValidationPort核验原对象/修订/归属，再以受控发布代码或远端真实查询/订单证据确认外部身份；无证据不得自动参与订单解析。capture和prepareImport再次复核冻结依据，防止验证后来源漂移。 草稿/核验修订均只追加，核验通过另增VERIFIED修订；失败记录在原operation/attempt，草稿重查，无默认成功。历史解析必须显式原修订并重新证明source+salesOffer关系/hash，历史远端证明不能冒充当前远端一致性；不授予价格/库存/资金/履约准入。 历史验证使用原connection_revision_no的owner/LOCAL规则，当前连接改路由不改变原归属；当前写入仍受现有连接规则约束。"
     },
     {
       "name": "cim_catalog_scope",
@@ -2432,7 +2476,7 @@
       "method": "listMappings",
       "request": "MappingQuery",
       "response": "PageData<ResourceMappingVO>",
-      "params": "connectionNo/objectType/externalRef/sourceRef/page/size",
+      "params": "connectionNo?/objectType?/externalRef?/sourceRef?/page/size；sourceRef按latest修订筛选，库内分页",
       "tables": [
         "cim_resource_mapping",
         "cim_resource_mapping_revision"
@@ -2453,7 +2497,7 @@
       "method": "listRevisions",
       "request": "MappingRevisionQuery",
       "response": "PageData<MappingRevisionVO>",
-      "params": "mappingNo/page/size",
+      "params": "mappingNo/page/size；原不可变修订倒序，包含草稿及核验修订",
       "tables": [
         "cim_resource_mapping_revision"
       ],
@@ -2473,7 +2517,7 @@
       "method": "createMapping",
       "request": "CreateResourceMappingReq",
       "response": "ResourceMappingVO",
-      "params": "connectionNo/objectType/externalIdentity/sourceOwner/sourceRef/sourceRevision；必须真源核验",
+      "params": "connectionNo/objectType/externalIdentity{externalRef,parents[{objectType,externalRef}]}/sourceOwner/sourceRef/sourceRevision/salesOfferRef?；只返回IMPORTED DRAFT，不接收entity/状态/证明",
       "tables": [
         "cim_resource_mapping",
         "cim_resource_mapping_revision",
@@ -2495,7 +2539,7 @@
       "method": "reviseMapping",
       "request": "ReviseResourceMappingReq",
       "response": "ResourceMappingVO",
-      "params": "version/来源修订/reason；不覆盖历史",
+      "params": "version/sourceOwner/sourceRef/sourceRevision/salesOfferRef?/reason；外部identity不可变；追加草稿且清active，不覆盖历史",
       "tables": [
         "cim_resource_mapping_revision",
         "cim_resource_mapping",
@@ -3419,8 +3463,8 @@
       "name": "ChannelSourceValidationPort",
       "package": "ai.neargo.shop.spi.commerce",
       "owner": "各资源原owner或仅调用原Port的宿主只读组合",
-      "methods": "validate(Source)->Validation",
-      "purpose": "校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。",
+      "methods": "validate(Source(entity/store/owner/kind/ref/revision/salesOfferRef?))->Validation(status/canonicalRef/canonicalRevision/hash/validUntil/receipt/canonicalSalesOfferRef?)",
+      "purpose": "校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。 C1兼容原六参数构造；销售映射必须显式返回规范salesOfferRef，旧provider的null回执不能默认证明新关系。",
       "ac": "AC05"
     },
     {
@@ -3446,6 +3490,22 @@
       "methods": "supportsQuery()->boolean；publish(Publication)->Result；query(Publication,taskRef)->Result",
       "purpose": "冻结目录发送与原动作查回；返回operation/generation/hash绑定和allWritesTerminal及原回执；没有默认实现，不在超时后盲重发",
       "ac": "AC03"
+    },
+    {
+      "name": "ChannelResourceIdentityGateway",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "commerce-channel获准协议适配器",
+      "methods": "query(Query(operation/entity/store/connection/profile/原账号/原门店/原授权/凭据引用/objectType/父身份))->Proof(status/规范绑定/远端回执/validUntil)",
+      "purpose": "只读原平台资源身份核验；没有默认实现，公共请求不能上传成功证据。MANAGED资源代码分配及发布原证据仍未开放。 仅核验本能力与原授权，不反向要求目录发布Gateway。",
+      "ac": "AC05"
+    },
+    {
+      "name": "ChannelResourceMappingPort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "commerce-core",
+      "methods": "resolveHistorical(Reference(entity/store/connection/mappingNo/revisionNo))->Resolution(原身份/来源/原修订/销售条目/hash/历史远端证据/新来源回执)",
+      "purpose": "只解析显式VERIFIED历史修订并重新核验原owner；不回退当前指针，不自动批准下单。",
+      "ac": "AC05"
     }
   ],
   "acceptance": [
@@ -3683,7 +3743,7 @@
     ]
   },
   "implementation": {
-    "status": "C1_CATALOG_ENGINE_VERIFIED",
+    "status": "C1_MAPPING_ENGINE_VERIFIED",
     "moduleRoot": "backend-plugins/shop-commerce-integration",
     "migration": "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
     "tables": [
@@ -3701,7 +3761,9 @@
       "cim_sync_policy",
       "cim_catalog_snapshot",
       "cim_sync_run",
-      "cim_sync_run_item"
+      "cim_sync_run_item",
+      "cim_resource_mapping",
+      "cim_resource_mapping_revision"
     ],
     "apiIds": [
       "COM-001",
@@ -3728,14 +3790,39 @@
       "COM-023",
       "COM-024",
       "COM-025",
-      "COM-026"
+      "COM-026",
+      "COM-027",
+      "COM-028",
+      "COM-029",
+      "COM-030"
     ],
-    "limitations": "B端仍仅主体属主；累计25个基础/授权/目录/任务路由，15张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。独立模式远程业务客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。未生产建表、推送或部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。",
-    "tests": "累计67项受影响Java专项通过，复核修复后仅复测相关23项。三项Important及一个关联边界均RED→GREEN；原生隔离MySQL V1/V2/V3十五表及约束通过；宿主/server编译打包、设计10、文档8、SQL守卫证据见TDD最终核验。不等同真实适配器、生产JDBC并发或完整认证链验收。",
+    "limitations": "B端仍仅主体属主；累计29个基础/授权/目录/任务路由，17张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。独立模式远程业务客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。未生产建表、推送或部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 资源映射公共写入仅IMPORTED草稿，核验由默认关闭的唯一Job调用；MANAGED代码分配/发布证明、真实资源查询网关尚未开放。历史解析内核已实现，不代表原订单导入已就绪。",
+    "tests": "累计79个唯一受影响Java专项通过；复核及关联修复后仅复测35项。资源归属消融红灯、恢复绿灯；一项独立复核Important与原连接owner历史解析回归均RED→GREEN。原生隔离MySQL V1-V4十七表及约束通过；最终宿主/server编译打包、设计10/文档8/SQL守卫见TDD。不等同真实来源/供应商、生产JDBC并发和完整认证链验收。",
     "migrations": [
       "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
       "commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql",
-      "commerce-core/src/main/resources/db/commerce/V3__commerce_catalog_synchronization.sql"
-    ]
+      "commerce-core/src/main/resources/db/commerce/V3__commerce_catalog_synchronization.sql",
+      "commerce-core/src/main/resources/db/commerce/V4__commerce_resource_mappings.sql"
+    ],
+    "dtoTypes": {
+      "SourceReq": "ai.neargo.shop.commerce.dto.CatalogContracts.SourceReq",
+      "CreateCatalogScopeReq": "ai.neargo.shop.commerce.dto.CatalogContracts.CreateCatalogScopeReq",
+      "SaveCatalogSourcesReq": "ai.neargo.shop.commerce.dto.CatalogContracts.SaveCatalogSourcesReq",
+      "PreviewCatalogReq": "ai.neargo.shop.commerce.dto.CatalogContracts.PreviewCatalogReq",
+      "SubmitSyncRunReq": "ai.neargo.shop.commerce.dto.CatalogContracts.SubmitSyncRunReq",
+      "SaveSyncPolicyReq": "ai.neargo.shop.commerce.dto.CatalogContracts.SaveSyncPolicyReq",
+      "CancelQueuedSyncReq": "ai.neargo.shop.commerce.dto.CatalogContracts.CancelQueuedSyncReq",
+      "CatalogScopeVO": "ai.neargo.shop.commerce.dto.CatalogContracts.CatalogScopeVO",
+      "CatalogPreviewVO": "ai.neargo.shop.commerce.dto.CatalogContracts.CatalogPreviewVO",
+      "SyncPolicyVO": "ai.neargo.shop.commerce.dto.CatalogContracts.SyncPolicyVO",
+      "SyncRunVO": "ai.neargo.shop.commerce.dto.CatalogContracts.SyncRunVO",
+      "SyncRunItemVO": "ai.neargo.shop.commerce.dto.CatalogContracts.SyncRunItemVO",
+      "RecoveryVO": "ai.neargo.shop.commerce.dto.CatalogContracts.RecoveryVO",
+      "CreateResourceMappingReq": "ai.neargo.shop.commerce.dto.MappingContracts.CreateResourceMappingReq",
+      "ReviseResourceMappingReq": "ai.neargo.shop.commerce.dto.MappingContracts.ReviseResourceMappingReq",
+      "ResourceMappingVO": "ai.neargo.shop.commerce.dto.MappingContracts.ResourceMappingVO",
+      "MappingRevisionVO": "ai.neargo.shop.commerce.dto.MappingContracts.MappingRevisionVO",
+      "VerificationBatch": "ai.neargo.shop.commerce.dto.MappingContracts.VerificationBatch"
+    }
   }
 }

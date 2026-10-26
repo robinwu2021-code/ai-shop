@@ -11,6 +11,8 @@ import ai.neargo.shop.commerce.mapper.CommerceMappers.OperationMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.ProductProfileMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.ProviderMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.RequestJournalMapper;
+import ai.neargo.shop.commerce.mapper.CommerceMappers.ResourceMappingMapper;
+import ai.neargo.shop.commerce.mapper.CommerceMappers.ResourceMappingRevisionMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.StoreConnectionMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.SyncPolicyMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.SyncRunItemMapper;
@@ -22,6 +24,8 @@ import ai.neargo.shop.commerce.service.ChannelConnectionService;
 import ai.neargo.shop.commerce.service.ChannelOperationService;
 import ai.neargo.shop.commerce.service.CommerceRecoveryService;
 import ai.neargo.shop.commerce.service.ProviderService;
+import ai.neargo.shop.commerce.service.ResourceMappingService;
+import ai.neargo.shop.commerce.service.ResourceMappingVerificationService;
 import ai.neargo.shop.commerce.service.SyncPolicyService;
 import ai.neargo.shop.commerce.service.impl.CatalogPersistence;
 import ai.neargo.shop.commerce.service.impl.CatalogPublicationServiceImpl;
@@ -30,15 +34,21 @@ import ai.neargo.shop.commerce.service.impl.ChannelAccountServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelAuthorizationServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelConnectionServiceImpl;
 import ai.neargo.shop.commerce.service.impl.ChannelOperationServiceImpl;
+import ai.neargo.shop.commerce.service.impl.ChannelResourceMappingPortImpl;
 import ai.neargo.shop.commerce.service.impl.CommerceCommands;
 import ai.neargo.shop.commerce.service.impl.CommerceRecoveryServiceImpl;
+import ai.neargo.shop.commerce.service.impl.MappingPersistence;
 import ai.neargo.shop.commerce.service.impl.ProviderServiceImpl;
+import ai.neargo.shop.commerce.service.impl.ResourceMappingServiceImpl;
+import ai.neargo.shop.commerce.service.impl.ResourceMappingVerificationServiceImpl;
 import ai.neargo.shop.commerce.service.impl.SyncPolicyServiceImpl;
 import ai.neargo.shop.commerce.service.impl.SyncRunServiceImpl;
 import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway;
 import ai.neargo.shop.spi.commerce.ChannelCatalogGateway;
 import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort;
 import ai.neargo.shop.spi.commerce.ChannelConnectionIdentityPort;
+import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway;
+import ai.neargo.shop.spi.commerce.ChannelResourceMappingPort;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -197,5 +207,29 @@ public class CommerceCoreAutoConfiguration {
             CatalogPublicationServiceImpl previews,
             SyncRunServiceImpl runs) {
         return new CommerceRecoveryServiceImpl(db, previews, runs);
+    }
+
+    @Bean
+    MappingPersistence mappingPersistence(
+            CatalogPersistence db,
+            ResourceMappingMapper mappings,
+            ResourceMappingRevisionMapper revisions,
+            ObjectProvider<ChannelResourceIdentityGateway> gateways) {
+        return new MappingPersistence(db, mappings, revisions, gateways.orderedStream().toList());
+    }
+
+    @Bean
+    ResourceMappingService resourceMappingService(MappingPersistence data) {
+        return new ResourceMappingServiceImpl(data);
+    }
+
+    @Bean
+    ResourceMappingVerificationService resourceMappingVerificationService(MappingPersistence data) {
+        return new ResourceMappingVerificationServiceImpl(data);
+    }
+
+    @Bean
+    ChannelResourceMappingPort channelResourceMappingPort(MappingPersistence data) {
+        return new ChannelResourceMappingPortImpl(data);
     }
 }

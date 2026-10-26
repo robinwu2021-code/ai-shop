@@ -6,11 +6,11 @@
 
 | 项 | 实际范围 |
 | --- | --- |
-| 状态 | C1_CATALOG_ENGINE_VERIFIED |
-| 已编码迁移表 | cim_provider, cim_product_profile, cim_account, cim_store_connection, cim_connection_revision, cim_request_journal, cim_authorization_revision, cim_operation, cim_operation_attempt, cim_catalog_scope, cim_catalog_source, cim_sync_policy, cim_catalog_snapshot, cim_sync_run, cim_sync_run_item |
-| 已编码API子集 | COM-001, COM-002, COM-003, COM-004, COM-005, COM-009, COM-010, COM-011, COM-006, COM-007, COM-008, COM-035, COM-070, COM-015, COM-016, COM-017, COM-018, COM-019, COM-020, COM-021, COM-022, COM-023, COM-024, COM-025, COM-026 |
-| 限制 | B端仍仅主体属主；累计25个基础/授权/目录/任务路由，15张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。独立模式远程业务客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。未生产建表、推送或部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 |
-| 验证 | 累计67项受影响Java专项通过，复核修复后仅复测相关23项。三项Important及一个关联边界均RED→GREEN；原生隔离MySQL V1/V2/V3十五表及约束通过；宿主/server编译打包、设计10、文档8、SQL守卫证据见TDD最终核验。不等同真实适配器、生产JDBC并发或完整认证链验收。 |
+| 状态 | C1_MAPPING_ENGINE_VERIFIED |
+| 已编码迁移表 | cim_provider, cim_product_profile, cim_account, cim_store_connection, cim_connection_revision, cim_request_journal, cim_authorization_revision, cim_operation, cim_operation_attempt, cim_catalog_scope, cim_catalog_source, cim_sync_policy, cim_catalog_snapshot, cim_sync_run, cim_sync_run_item, cim_resource_mapping, cim_resource_mapping_revision |
+| 已编码API子集 | COM-001, COM-002, COM-003, COM-004, COM-005, COM-009, COM-010, COM-011, COM-006, COM-007, COM-008, COM-035, COM-070, COM-015, COM-016, COM-017, COM-018, COM-019, COM-020, COM-021, COM-022, COM-023, COM-024, COM-025, COM-026, COM-027, COM-028, COM-029, COM-030 |
+| 限制 | B端仍仅主体属主；累计29个基础/授权/目录/任务路由，17张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。独立模式远程业务客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。未生产建表、推送或部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 资源映射公共写入仅IMPORTED草稿，核验由默认关闭的唯一Job调用；MANAGED代码分配/发布证明、真实资源查询网关尚未开放。历史解析内核已实现，不代表原订单导入已就绪。 |
+| 验证 | 累计79个唯一受影响Java专项通过；复核及关联修复后仅复测35项。资源归属消融红灯、恢复绿灯；一项独立复核Important与原连接owner历史解析回归均RED→GREEN。原生隔离MySQL V1-V4十七表及约束通过；最终宿主/server编译打包、设计10/文档8/SQL守卫见TDD。不等同真实来源/供应商、生产JDBC并发和完整认证链验收。 |
 
 ## L1 定位
 
@@ -18,7 +18,7 @@
 
 ## L2 分类与公共合同
 
-公开/回调API共70项；内部业务Port及typed网关合同共12组，内部方法不算公开API。
+公开/回调API共70项；内部业务Port及typed网关合同共14组，内部方法不算公开API。
 
 | 分类 | 数量 |
 | --- | --- |
@@ -84,10 +84,10 @@ B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户�
 | COM-024 GET `/biz/x/commerce/sync-runs/{runNo}` | SyncRunRef：runNo；状态查询无远端副作用 | SyncRunVO | SyncRunService.getRun；cim_sync_run, cim_catalog_scope, cim_operation；AC04；SYNC |
 | COM-025 GET `/biz/x/commerce/sync-runs/{runNo}/items` | SyncItemQuery：runNo/page/size；原尝试结果逐项分页 | PageData<SyncRunItemVO> | SyncRunService.listItems；cim_sync_run_item；AC04；SYNC |
 | COM-026 POST `/biz/x/commerce/sync-runs/{runNo}:cancel-queued` | CancelQueuedSyncReq：version/reason；仅尚未发送QUEUED可取消，不取消远端任务 | SyncRunVO | SyncRunService.cancelQueued；cim_sync_run, cim_operation, cim_request_journal；AC04；SYNC |
-| COM-027 GET `/biz/x/commerce/stores/{storeNo}/resource-mappings` | MappingQuery：connectionNo/objectType/externalRef/sourceRef/page/size | PageData<ResourceMappingVO> | ResourceMappingService.listMappings；cim_resource_mapping, cim_resource_mapping_revision；AC05；CATALOG |
-| COM-028 GET `/biz/x/commerce/resource-mappings/{mappingNo}/revisions` | MappingRevisionQuery：mappingNo/page/size | PageData<MappingRevisionVO> | ResourceMappingService.listRevisions；cim_resource_mapping_revision；AC05；CATALOG |
-| COM-029 POST `/biz/x/commerce/resource-mappings` | CreateResourceMappingReq：connectionNo/objectType/externalIdentity/sourceOwner/sourceRef/sourceRevision；必须真源核验 | ResourceMappingVO | ResourceMappingService.createMapping；cim_resource_mapping, cim_resource_mapping_revision, cim_request_journal；AC05；CATALOG |
-| COM-030 PUT `/biz/x/commerce/resource-mappings/{mappingNo}` | ReviseResourceMappingReq：version/来源修订/reason；不覆盖历史 | ResourceMappingVO | ResourceMappingService.reviseMapping；cim_resource_mapping_revision, cim_resource_mapping, cim_request_journal；AC05；CATALOG |
+| COM-027 GET `/biz/x/commerce/stores/{storeNo}/resource-mappings` | MappingQuery：connectionNo?/objectType?/externalRef?/sourceRef?/page/size；sourceRef按latest修订筛选，库内分页 | PageData<ResourceMappingVO> | ResourceMappingService.listMappings；cim_resource_mapping, cim_resource_mapping_revision；AC05；CATALOG |
+| COM-028 GET `/biz/x/commerce/resource-mappings/{mappingNo}/revisions` | MappingRevisionQuery：mappingNo/page/size；原不可变修订倒序，包含草稿及核验修订 | PageData<MappingRevisionVO> | ResourceMappingService.listRevisions；cim_resource_mapping_revision；AC05；CATALOG |
+| COM-029 POST `/biz/x/commerce/resource-mappings` | CreateResourceMappingReq：connectionNo/objectType/externalIdentity{externalRef,parents[{objectType,externalRef}]}/sourceOwner/sourceRef/sourceRevision/salesOfferRef?；只返回IMPORTED DRAFT，不接收entity/状态/证明 | ResourceMappingVO | ResourceMappingService.createMapping；cim_resource_mapping, cim_resource_mapping_revision, cim_request_journal；AC05；CATALOG |
+| COM-030 PUT `/biz/x/commerce/resource-mappings/{mappingNo}` | ReviseResourceMappingReq：version/sourceOwner/sourceRef/sourceRevision/salesOfferRef?/reason；外部identity不可变；追加草稿且清active，不覆盖历史 | ResourceMappingVO | ResourceMappingService.reviseMapping；cim_resource_mapping_revision, cim_resource_mapping, cim_request_journal；AC05；CATALOG |
 | COM-031 POST `/biz/x/commerce/stores/{storeNo}/availability-publications` | PublishAvailabilityReq：connectionNo/原商品可售事实引用/expectedSourceVersion；不接受伪库存量 | OperationVO | ChannelAvailabilityService.publishItemAvailability；cim_operation, cim_sync_run, cim_request_journal；AC06；SYNC |
 | COM-032 POST `/biz/x/commerce/stores/{storeNo}/inventory-publications` | PublishInventoryReq：connectionNo/原库存发布策略及仓库映射引用/sourceRevision；不直接传新库存余额 | OperationVO | ChannelAvailabilityService.publishInventory；cim_operation, cim_sync_run, cim_resource_mapping_revision；AC06；SYNC |
 | COM-033 POST `/biz/x/commerce/connections/{connectionNo}:set-availability` | PublishStoreAvailabilityReq：version/OPEN或PAUSED/until/reason；受门店接单策略限制 | OperationVO | ChannelAvailabilityService.publishStoreAvailability；cim_operation, cim_sync_run, cim_request_journal；AC06；SYNC |
@@ -155,10 +155,12 @@ B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户�
 | ai.neargo.shop.spi.commerce.ChannelRedemptionSourcePort；原权益/交易能力 | authorize(AuthorizeRedemptionCommand)->RedemptionAuthorization; confirm(ConfirmRedemptionCommand)->RedemptionReceipt; reverse(AuthorizeRedemptionReverseCommand)->RedemptionAuthorization | 先持久化原消费授权，再执行平台核销，未知查回；不造券余额 |
 | ai.neargo.shop.spi.commerce.ChannelFinancialEvidencePort；独立支付/原资金所属域 | record(RecordChannelFinancialEvidenceCommand)->FinancialEvidenceReceipt; get(ChannelFinancialEvidenceReference)->FinancialEvidenceReceipt | 外部收款、退款、结算证据类型分离；不凭回调修改paid_at |
 | ai.neargo.shop.spi.commerce.ChannelCredentialPort；原安全凭据能力 | resolve(ChannelCredentialReference)->ScopedCredentialHandle | 业务只传引用；签名/刷新组件受控使用，不出日志/公共响应 |
-| ai.neargo.shop.spi.commerce.ChannelSourceValidationPort；各资源原owner或仅调用原Port的宿主只读组合 | validate(Source)->Validation | 校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。 |
+| ai.neargo.shop.spi.commerce.ChannelSourceValidationPort；各资源原owner或仅调用原Port的宿主只读组合 | validate(Source(entity/store/owner/kind/ref/revision/salesOfferRef?))->Validation(status/canonicalRef/canonicalRevision/hash/validUntil/receipt/canonicalSalesOfferRef?) | 校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。 C1兼容原六参数构造；销售映射必须显式返回规范salesOfferRef，旧provider的null回执不能默认证明新关系。 |
 | ai.neargo.shop.spi.commerce.ChannelConnectionIdentityPort；可信平台授权/查询适配器 | verify(Identity)->Proof(VERIFIED/UNKNOWN/UNSUPPORTED, identity, receiptRef, verifiedAt, validUntil) | 事务外核验远端门店真实归属，本地事务锁账号/协议并复核冻结身份及有效期；无实现拒绝认领，不提供默认成功 |
 | ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway；commerce-channel获准协议适配器 | begin(AuthorizationContext)->Start；exchange(context,code)->Grant；revoke(RevocationContext)->Revocation | 原意图先提交，事务外OAuth/撤权；网关必须绑定原外部账号、凭据安全引用及可信回执；无真实提供方不授权 |
 | ai.neargo.shop.spi.commerce.ChannelCatalogGateway；commerce-channel获准协议适配器 | supportsQuery()->boolean；publish(Publication)->Result；query(Publication,taskRef)->Result | 冻结目录发送与原动作查回；返回operation/generation/hash绑定和allWritesTerminal及原回执；没有默认实现，不在超时后盲重发 |
+| ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway；commerce-channel获准协议适配器 | query(Query(operation/entity/store/connection/profile/原账号/原门店/原授权/凭据引用/objectType/父身份))->Proof(status/规范绑定/远端回执/validUntil) | 只读原平台资源身份核验；没有默认实现，公共请求不能上传成功证据。MANAGED资源代码分配及发布原证据仍未开放。 仅核验本能力与原授权，不反向要求目录发布Gateway。 |
+| ai.neargo.shop.spi.commerce.ChannelResourceMappingPort；commerce-core | resolveHistorical(Reference(entity/store/connection/mappingNo/revisionNo))->Resolution(原身份/来源/原修订/销售条目/hash/历史远端证据/新来源回执) | 只解析显式VERIFIED历史修订并重新核验原owner；不回退当前指针，不自动批准下单。 |
 
 内部合同在commerce-api中保持唯一spi包，宿主提供本地或typed远程实现；内部路由按现有/Internal*Controller协议在提供方登记，不额外复制同义Service。拆分前为每组方法补齐实际内部path/请求schema/服务身份/签名及wrapper排除，不能据此宣称已存在内部端点。
 

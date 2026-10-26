@@ -27,6 +27,7 @@ import ai.neargo.shop.commerce.job.CommerceRecoveryJob;
 import ai.neargo.shop.commerce.service.CatalogPublicationService;
 import ai.neargo.shop.commerce.service.CatalogScopeService;
 import ai.neargo.shop.commerce.service.CommerceRecoveryService;
+import ai.neargo.shop.commerce.service.ResourceMappingVerificationService;
 import ai.neargo.shop.commerce.service.SyncPolicyService;
 import ai.neargo.shop.commerce.service.SyncRunService;
 import ai.neargo.shop.common.BizException;
@@ -195,7 +196,7 @@ class CatalogWebContractTest {
     @Test
     void recoveryUsesOneDisabledPlatformJob() {
         var service = mock(CommerceRecoveryService.class);
-        var job = new CommerceRecoveryJob(service);
+        var job = new CommerceRecoveryJob(service, mock(ResourceMappingVerificationService.class));
         assertThat(job.commerceRecoveryDeclaration().enabled()).isFalse();
         assertThat(job.name()).isEqualTo("commerce-recovery");
         verifyNoInteractions(service);
