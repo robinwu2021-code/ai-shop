@@ -93,13 +93,17 @@ class ProductionConsumptionTest {
     }
 
     private RecipePublicationSnapshot recipe(String net, String loss) {
+        return recipe("2", net, loss);
+    }
+
+    private RecipePublicationSnapshot recipe(String yield, String net, String loss) {
         var recipe =
                 new RecipeVO(
                         "RECIPE",
                         "S",
                         "SKU",
                         "DEFAULT",
-                        new BigDecimal("2"),
+                        new BigDecimal(yield),
                         "EA",
                         "ACTIVE",
                         1,
@@ -125,14 +129,37 @@ class ProductionConsumptionTest {
     }
 
     @Test
-    void preservesExactFractionalDemandAndRefusesNonterminatingDemand() {
+    void preservesExactFractionalDemandAndRoundsNonterminatingDemandUpToInventoryScale() {
+        // Terminating demand is never rounded.
         assertThat(ProductionDemandPolicy.evaluate(recipe("1", "0"), selection(), BigDecimal.ONE))
                 .containsExactly(new Line("MATERIAL", new BigDecimal("0.5"), "EA", HASH));
-        assertThatThrownBy(
-                        () ->
+        // gross = net * started / (yield * (1 - lossRate)), rounded UP once at the inventory
+        // exact-quantity scale (6): stock is never under-consumed and no order fails on division.
+        assertThat(
+                        ProductionDemandPolicy.evaluate(
+                                recipe("1", "0.7"), selection(), BigDecimal.ONE))
+                .containsExactly(new Line("MATERIAL", new BigDecimal("1.666667"), "EA", HASH));
+        // 1 / 2.7 = 0.3703703...: HALF_UP would give 0.370370 and under-consume.
+        assertThat(
+                        ProductionDemandPolicy.evaluate(
+                                recipe("3", "1", "0.1"), selection(), BigDecimal.ONE))
+                .containsExactly(new Line("MATERIAL", new BigDecimal("0.370371"), "EA", HASH));
+        // Terminating but finer than the inventory scale: 0.000001 / 2 = 0.0000005 -> 0.000001.
+        assertThat(
+                        ProductionDemandPolicy.evaluate(
+                                recipe("0.000001", "0"), selection(), BigDecimal.ONE))
+                .containsExactly(new Line("MATERIAL", new BigDecimal("0.000001"), "EA", HASH));
+        // Common parameters all produce a demand line.
+        for (var loss : List.of("0.1", "0.05", "0.02", "0.3"))
+            for (var yield : List.of("3", "6", "7"))
+                assertThat(
                                 ProductionDemandPolicy.evaluate(
-                                        recipe("1", "0.7"), selection(), BigDecimal.ONE))
-                .isInstanceOf(BizException.class);
+                                        recipe(yield, "1", loss), selection(), BigDecimal.ONE))
+                        .singleElement()
+                        .satisfies(
+                                l ->
+                                        assertThat(l.quantity().stripTrailingZeros().scale())
+                                                .isLessThanOrEqualTo(6));
     }
 
     @Test

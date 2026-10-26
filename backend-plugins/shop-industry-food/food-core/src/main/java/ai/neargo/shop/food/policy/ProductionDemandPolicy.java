@@ -7,13 +7,27 @@ import ai.neargo.shop.food.dto.RecipePublicationSnapshot;
 import ai.neargo.shop.spi.inventory.InventoryProductionPort.Line;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.TreeMap;
 
-/** Exact base-unit demand from a validated frozen recipe; unsupported precision never rounds. */
+/**
+ * Base-unit demand from a validated frozen recipe.
+ *
+ * <p>gross = net * started / (yieldQty * (1 - lossRate)). Terminating results stay exact; a
+ * non-terminating quotient (e.g. lossRate 0.1 with yield 3) is rounded once, UP, at the inventory
+ * exact-quantity scale ({@link #INVENTORY_QTY_SCALE}, inventory DECIMAL(24,6) /
+ * InventoryDemandPlanFacts.quantity), per the enhancement plan rule "由库存规定精度与舍入". Rounding
+ * up means stock is never under-consumed, and no order or production event for a published recipe
+ * fails on division. Order demand plans and production consumption share this one policy, so both
+ * sides compute identical quantities.
+ */
 public final class ProductionDemandPolicy {
+    /** Inventory exact-quantity scale; quantities beyond it cannot be reserved or issued. */
+    public static final int INVENTORY_QTY_SCALE = 6;
+
     private ProductionDemandPolicy() {}
 
     public static List<Line> evaluate(
@@ -87,16 +101,8 @@ public final class ProductionDemandPolicy {
             for (var change : changes)
                 if ("ADD".equals(change.action())) net = net.add(change.qty());
             if (net.signum() < 0) throw conflict();
-            BigDecimal gross;
-            try {
-                gross =
-                        net.multiply(started)
-                                .divide(body.recipe().yieldQty())
-                                .divide(BigDecimal.ONE.subtract(line.lossRate()))
-                                .stripTrailingZeros();
-            } catch (ArithmeticException precision) {
-                throw unsupported();
-            }
+            BigDecimal gross =
+                    gross(net.multiply(started), body.recipe().yieldQty(), line.lossRate());
             if (gross.signum() == 0) continue;
             if (units.containsKey(line.itemRef())
                     && (!units.get(line.itemRef()).equals(line.unit())
@@ -126,6 +132,16 @@ public final class ProductionDemandPolicy {
                                     hashes.get(item)));
                 });
         return List.copyOf(result);
+    }
+
+    /**
+     * One division, so the result is rounded at most once. A quotient that is exact within the
+     * inventory scale is returned unchanged; anything finer (non-terminating, or terminating beyond
+     * six decimals) is rounded UP.
+     */
+    static BigDecimal gross(BigDecimal netTotal, BigDecimal yieldQty, BigDecimal lossRate) {
+        var divisor = yieldQty.multiply(BigDecimal.ONE.subtract(lossRate));
+        return netTotal.divide(divisor, INVENTORY_QTY_SCALE, RoundingMode.UP).stripTrailingZeros();
     }
 
     private static BizException unsupported() {
