@@ -635,7 +635,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 356,
+        "b-app": 357,
         "c-app": 98
       }
     },
@@ -677,7 +677,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 207,
+        "b-app": 208,
         "c-app": 34
       }
     },
@@ -4647,8 +4647,8 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 38,
-      "localSelectors": 8,
+      "libClassHits": 40,
+      "localSelectors": 9,
       "localCssLines": 2,
       "rolled": []
     },

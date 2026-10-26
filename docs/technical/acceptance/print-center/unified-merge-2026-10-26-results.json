@@ -1,0 +1,102 @@
+{
+  "status": "PASS_INTEGRATED_TREE",
+  "targetBranch": "codex/ai-shop-codex",
+  "targetBase": "3d4f48b6b1bc5c2a8afdf550fcf4c293a8efae39",
+  "featureCommit": "cc049c132c528e5f27783c10cfd095f5955c30c9",
+  "integrationBranch": "codex/print-unified-20261026",
+  "backend": {
+    "tests": 154,
+    "passed": 153,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "classes": 29,
+    "scope": "printing plus owner/refund/entitlement and architecture regression; not full repository suite"
+  },
+  "frontend": {
+    "ops": {
+      "files": 84,
+      "passed": 876,
+      "typecheck": "PASS",
+      "productionWebpackBuild": "PASS",
+      "artifactAssertion": "PASS"
+    },
+    "merchant": {
+      "files": 65,
+      "passed": 358,
+      "typecheck": "PASS",
+      "h5Build": "PASS"
+    }
+  },
+  "migrationCheck": {
+    "status": "PASS",
+    "allVersionsUnique": true,
+    "existingMigrationsUnchanged": true,
+    "printingFactMigration": "V589__business_print_facts.sql",
+    "priorNativeSqlSha256": "4991acca0b885361ec724c7986eb8566006f989ec887df641ad6b1d58f58031e",
+    "contentIdenticalToPriorNativeValidatedSql": true,
+    "originalIndustryV587Preserved": true
+  },
+  "testConfigurationFix": "Retain unified child memory/timezone settings and restore inherited managed Mockito startup agent masked by child argLine; no test baseline widening.",
+  "review": "PASS_STATIC_NO_CRITICAL_OR_IMPORTANT",
+  "limits": [
+    "no remote push or deployment",
+    "no new browser/hardware/COS run",
+    "native SQL unchanged from prior validated byte-identical migration; no complete Flyway upgrade test"
+  ],
+  "logs": {
+    "backend-compile.log": {
+      "sha256": "735d6956636fca655117f46efb517bda28d9ff303e62bcbf3e8b12933bc91609"
+    },
+    "backend-recompile.log": {
+      "sha256": "272768c9d84cf657fbac9a5b529d120df04b57e83fbc3ea4fc36c4149857b057"
+    },
+    "backend-tests.log": {
+      "sha256": "b09a3e6a8aaf45c4cc9838928968e950b70fbbba97427364b37fa358bc9da704"
+    },
+    "backend-tests-final.log": {
+      "sha256": "e669e50022694e67814c933352aba5d961597fef6b35bc1b2271ce86c09d9f23"
+    },
+    "ops-typecheck.log": {
+      "sha256": "f87c8c938039efe314d49f052253256902028f65cf8b5993408f753fcea6d207"
+    },
+    "ops-build.log": {
+      "sha256": "f1eb0ceaa5a8b328ea4212473896d61dac5215e5bb36986e846e4a2978504ec8"
+    },
+    "ops-tests.log": {
+      "sha256": "455a68d649952f03234aa0143529676e5697dfeb64e7b534d8e18d94cb43ed0d"
+    },
+    "ops-artifact.log": {
+      "sha256": "719ca895784a3fd5821b8885034d4d1a8c68730282cca3c9f69797675220475d"
+    },
+    "merchant-typecheck.log": {
+      "sha256": "946417da732dd7fc51054196b1e672365097df7c14324668d9377d98d94fc8a1"
+    },
+    "merchant-build.log": {
+      "sha256": "8469c9104dbdb5738feb794863d5e76395d6d8640c092c0558e5593dff023245"
+    },
+    "merchant-tests.log": {
+      "sha256": "78a2bdd49560df017c8cb1db7def6c6d2481b6ddefcfd5b316c9fcf2ce99bec9"
+    },
+    "generation.log": {
+      "sha256": "b4b8604604e7759abc12fe6d34ee3a84c2b56dbf84a6770a756834d2182f2583"
+    },
+    "api-guards.log": {
+      "sha256": "bbafc4a788269e9acf519fd9668f1dd2299105414a832a08283b1c7df39f47ac"
+    },
+    "data-guards.log": {
+      "sha256": "6cbaa22b63ebf38748ebb6e0dab6dd61aa89bf36bf1e21a356141c604d413d6c"
+    },
+    "ui-guards.log": {
+      "sha256": "ef117bb6225ee656238e8baab7077bdeb95cf6a0bd85319a83e46dbe45e7db72"
+    },
+    "migration-check.json": {
+      "sha256": "b53b4a31ac0f5b2e26975189c773ea10821341ae51c3fbec9a839f85e503b110"
+    }
+  },
+  "generatedFreshness": {
+    "status": "PASS",
+    "generators": 25,
+    "logSha256": "3c8fc86e2adc9a49711c7effd7fcbaa5238e92f4eece9971c3cb45cdd4feac4f"
+  }
+}

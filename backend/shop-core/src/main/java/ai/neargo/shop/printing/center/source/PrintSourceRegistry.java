@@ -27,6 +27,20 @@ public final class PrintSourceRegistry {
         return p;
     }
 
+    public Set<String> scenes() {
+        return sources.values().stream().flatMap(port -> port.scenes().stream()).collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    public Set<String> sourceTypesForScene(String scene) {
+        var types = new TreeSet<String>();
+        sources.forEach((type, port) -> { if (port.scenes().contains(scene)) types.add(type); });
+        return Set.copyOf(types);
+    }
+
+    public List<PrintFactRef> referencesByOrder(PrintScope scope, String no) {
+        return sources.values().stream().distinct().flatMap(port -> port.referencesByOrder(scope,no).stream()).distinct().toList();
+    }
+
     public boolean supports(String type, String scene) {
         return sources.containsKey(type) && sources.get(type).scenes().contains(scene);
     }

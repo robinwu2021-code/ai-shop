@@ -1848,7 +1848,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 147,
+      "count": 148,
       "domains": [
         {
           "name": "经营看板",
@@ -3672,6 +3672,19 @@
             },
             {
               "app": "ops-web",
+              "route": "/printing",
+              "title": "打印运营",
+              "domain": "平台管理",
+              "group": "打印运营",
+              "matrix": "P-17.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/printing"
+            },
+            {
+              "app": "ops-web",
               "route": "/jobs",
               "title": "任务与执行日志",
               "domain": "平台管理",
@@ -3792,5 +3805,5 @@
       ]
     }
   ],
-  "total": 303
+  "total": 304
 }

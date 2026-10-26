@@ -68,26 +68,6 @@
       "app": "ops-web",
       "method": "GET",
       "path": "/ops/pay/entitlements/{instanceNo}/lifecycle"
-    },
-    {
-      "app": "ops-web",
-      "method": "GET",
-      "path": "/ops/print/health"
-    },
-    {
-      "app": "ops-web",
-      "method": "GET",
-      "path": "/ops/print/incidents"
-    },
-    {
-      "app": "ops-web",
-      "method": "GET",
-      "path": "/ops/print/operations/{operationNo}"
-    },
-    {
-      "app": "ops-web",
-      "method": "POST",
-      "path": "/ops/print/reconciliations"
     }
   ],
   "contracts": [

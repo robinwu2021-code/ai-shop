@@ -67,6 +67,16 @@ public final class EntitlementEvents {
         @Override public String aggregateId() { return rechargeNo; }
         @Override public String eventType() { return "STORED_VALUE_CREDITED"; }
     }
+    /** Posting-owner receipt contract. balanceAfterMinor is frozen in the credit transaction, never queried later. */
+    public record StoredValueReceiptConfirmed(String eventNo, String tenantNo, String rechargeNo,
+            String accountNo, String entityNo, String storeNo, long principalAmountMinor,
+            long giftAmountMinor, long balanceAfterMinor, String currency, long occurredAt)
+            implements PayEntitlementEvent {
+        public int schemaVersion() { return 1; }
+        public String aggregateType() { return "STORED_VALUE_RECHARGE"; }
+        public String aggregateId() { return rechargeNo; }
+        public String eventType() { return "STORED_VALUE_RECEIPT_CONFIRMED"; }
+    }
     public record StoredValueRechargeReceived(String eventNo, String tenantNo, String rechargeNo, String entityNo,
                                                long occurredAt) implements PayEntitlementEvent {
         @Override public int schemaVersion() { return 1; }

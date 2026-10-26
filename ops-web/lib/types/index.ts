@@ -330,3 +330,5 @@ export interface OpsPromoActivity {
 }
 
 export type { EarningContext, EarningRule, EarningRulePage, EarningChange, EarningCalculation, OrderEarningInspection, EarningCategory } from "../points-earning";
+
+export type { PrintTarget, PrintHealth, PrintFleetHealth, PrintIncident, PrintIncidentPage, PrintReconcileRequest, PrintOperation } from "../api/print-types";

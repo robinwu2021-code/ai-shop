@@ -54,7 +54,7 @@ public final class PrintPreviewFacts {
                     null,
                     List.of());
         }
-        require(actor.dataScopes().contains("SOURCE_ORDER_READ"), "print.forbidden");
+        require(actor.dataScopes().containsAll(PrintSourceDataScopes.required(reference.type())), "print.forbidden");
         require(scene.equals(reference.scene()), "print.sourceMismatch");
         var port = sources.require(reference.type());
         var ref = port.resolveReference(reference, scope(actor));
@@ -62,7 +62,7 @@ public final class PrintPreviewFacts {
         access(
                 new PrintScope(ref.tenantNo(), ref.entityNo(), ref.storeNo()),
                 actor,
-                Set.of("SOURCE_ORDER_READ"));
+                PrintSourceDataScopes.required(ref.sourceType()));
         require(fact.printability() == Printability.READY, "print.sourceBlocked");
         scenes.validateSource(fact);
         return fact;

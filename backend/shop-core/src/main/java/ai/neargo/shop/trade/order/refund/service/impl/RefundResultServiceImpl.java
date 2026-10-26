@@ -46,6 +46,9 @@ public class RefundResultServiceImpl implements RefundResultService {
     private ai.neargo.shop.trade.order.printing.service.OrderPrintFactService printFacts;
     @org.springframework.beans.factory.annotation.Autowired
     public void setPrintFacts(ai.neargo.shop.trade.order.printing.service.OrderPrintFactService facts) {this.printFacts=facts;}
+    private ai.neargo.shop.trade.order.printing.BusinessPrintFactService receiptFacts;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setReceiptFacts(ai.neargo.shop.trade.order.printing.BusinessPrintFactService facts) { this.receiptFacts=facts; }
     private final RefundExecutionStore store;
     private final StatusCasMapper locks;
     private final AfterSaleMapper afterSales;
@@ -192,6 +195,9 @@ public class RefundResultServiceImpl implements RefundResultService {
         }
         if (printFacts != null) printFacts.recordControl(child.getOrderNo(),child.getSubOrderNo(),
                 "REFUND_CONFIRMED","REFUND:"+current.getExecutionNo(),java.time.Instant.ofEpochMilli(current.getSucceededAt()));
+        if (receiptFacts != null && Integer.valueOf(2).equals(current.getClosureVersion())
+                && child.getStoreNo()!=null && !child.getStoreNo().isBlank())
+            receiptFacts.recordRefund(as,child,current);
         events.publish(new OrderEvents.AfterSaleRefunded(as.getAfterSaleNo(), as.getSubOrderNo(),
                 as.getUserNo(), current.getAmountMinor()));
     }

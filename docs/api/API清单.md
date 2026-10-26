@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1059 个接口**：后端已实现 896（85%）· 前端在调 978
+**合计 1063 个接口**：后端已实现 900（85%）· 前端在调 978
 
 ---
 
@@ -1120,7 +1120,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **476** 个接口 ｜ 后端已实现 **410**（86%）｜ 前端在调 **396**
+共 **480** 个接口 ｜ 后端已实现 **414**（86%）｜ 前端在调 **396**
 
 ### aftersale（5）
 
@@ -1575,6 +1575,15 @@
 | GET | `/ops/payments/recon-diffs` | 对账差异列表（P-4.2.1） | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ⬜ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ⬜ |
+
+### print（4）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/print/health` | Scoped fleet health from PrintMonitorDtos. */ | — | `PrintFleetHealth` | — | ✅ | ⬜ |
+| GET | `/ops/print/incidents` | Scoped incident page; backend status codes pass through unchanged. */ | — | `PrintIncidentPage` | — | ✅ | ⬜ |
+| GET | `/ops/print/operations/{operationNo}` | Read an operation only within the explicit target. */ | — | `PrintOperation` | — | ✅ | ⬜ |
+| POST | `/ops/print/reconciliations` | Audited maintenance; same key is retained for exact-intent error recovery. */ | — | `PrintOperation` | — | ✅ | ⬜ |
 
 ### product（49）
 
