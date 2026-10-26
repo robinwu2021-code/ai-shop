@@ -48,8 +48,8 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryMirrorConsumer.class);
 
-    /** 与 {@code DualWriteStockPort} 里的 TTL 同一个量级 —— 比它短会先把还能付款的单释放掉 */
-    private static final long RESERVE_TTL_SECONDS = 30 * 60L;
+    /** 预留时长由关单窗口推出（见 {@link ReservationHoldTtl}）—— 比关单短会先把还能付款的单释放掉 */
+    private ReservationHoldTtl holdTtl;
 
     private final StockCountService counts;
     private final ReservationService reservations;
@@ -66,6 +66,9 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
 
     @Autowired
     public void setReturnReceipts(ReturnReceiptService returnReceipts) { this.returnReceipts = returnReceipts; }
+
+    @Autowired
+    public void setHoldTtl(ReservationHoldTtl holdTtl) { this.holdTtl = holdTtl; }
 
     public InventoryMirrorConsumer(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                                    LocationService locations, ObjectMapper json) {
@@ -126,7 +129,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         String owner = requireOwner(first(p));
         int lifecycleVersion = p.path("items").isArray() && !p.path("items").isEmpty()
                 ? p.path("items").get(0).path("lifecycleVersion").asInt(1) : 1;
-        reservations.reserve(owner, ref, lines, RESERVE_TTL_SECONDS, lifecycleVersion);
+        reservations.reserve(owner, ref, lines, ReservationHoldTtl.secondsOf(holdTtl), lifecycleVersion);
     }
 
     private void restoreOriginal(String purpose, JsonNode payload) {

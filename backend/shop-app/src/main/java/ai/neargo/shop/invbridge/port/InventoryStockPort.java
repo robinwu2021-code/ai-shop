@@ -1,6 +1,7 @@
 package ai.neargo.shop.invbridge.port;
 
 import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
+import ai.neargo.shop.invbridge.ReservationHoldTtl;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
@@ -49,10 +50,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class InventoryStockPort implements StockPort {
 
     /**
-     * 预留的存活时长。与平台的「未支付自动关单」同一个量级 ——
-     * 比关单短会让还能付款的单先被释放，比它长会让已关的单继续占着货。
+     * 预留的存活时长，由「未支付自动关单」的窗口推出（见 {@link ReservationHoldTtl}）——
+     * 比关单短会让还能付款的单先被释放。此前写死 30 分钟，而关单窗口可配到 24 小时。
      */
-    private static final long RESERVE_TTL_SECONDS = 30 * 60L;
+    private ReservationHoldTtl holdTtl;
+
+    @Autowired
+    public void setHoldTtl(ReservationHoldTtl holdTtl) { this.holdTtl = holdTtl; }
 
     private final StockCountService counts;
     private final ReservationService reservations;
@@ -93,7 +97,8 @@ public class InventoryStockPort implements StockPort {
         }
         for (var group : byOwner.entrySet()) {
             int lifecycleVersion = group.getValue().stream().mapToInt(SkuQty::lifecycleVersion).max().orElse(1);
-            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()), RESERVE_TTL_SECONDS, lifecycleVersion);
+            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()),
+                    ReservationHoldTtl.secondsOf(holdTtl), lifecycleVersion);
         }
         return List.of();
     }
