@@ -103,10 +103,16 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         assertUsable(uc, coupon);
 
         // 商家券只对本店商品计门槛、也只减本店的钱
+        java.util.Set<String> stores = storesOf(coupon);
         List<CouponPort.MerchantAmount> applicable = groups.stream()
                 .filter(g -> coupon.getEntityNo() == null || coupon.getEntityNo().isBlank()
                         || coupon.getEntityNo().equals(g.merchantNo()))
+                // 指定门店的券只认那几家店出货的组：门槛只按它们计、钱也只减它们
+                .filter(g -> stores == null || (g.storeNo() != null && stores.contains(g.storeNo())))
                 .toList();
+        if (stores != null && applicable.isEmpty()) {
+            throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
+        }
         long base = applicable.stream().mapToLong(CouponPort.MerchantAmount::goodsAmount).sum();
         if (base < nz(coupon.getMinAmountMinor())) {
             throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
@@ -273,6 +279,36 @@ public class CouponAllocServiceImpl implements CouponAllocService {
                 Wrappers.<PmtCoupon>lambdaQuery()
                         .eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
         return c == null ? null : c.getTitle();
+    }
+
+    /** 门店范围（{@code pmt_coupon_scope}）。setter 注入：直接 new 本类的切片测试没有它 */
+    private ai.neargo.shop.promotion.mapper.PromotionMappers.CouponScopeMapper scopeMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setScopeMapper(ai.neargo.shop.promotion.mapper.PromotionMappers.CouponScopeMapper scopeMapper) {
+        this.scopeMapper = scopeMapper;
+    }
+
+    /**
+     * 「指定门店」券能用的门店号；不是门店券给 null（= 不按门店限）。
+     *
+     * <p>建券时下单抵扣只放行全店与指定门店，门店列表落在 {@code pmt_coupon_scope}；此前算价只按主体筛，
+     * 写着「仅限河坊街店」的券在总店的单上照样减 —— 商家为一家店做的让利被全主体吃掉，到对账才发现。
+     * <b>读不到范围就当一家店都不认</b>（空集合）：宁可这张券用不了，也不能退回成全店券。
+     */
+    private java.util.Set<String> storesOf(PmtCoupon coupon) {
+        if (!PmtCoupon.SCOPE_STORE.equals(coupon.getScopeType())) {
+            return null;
+        }
+        if (scopeMapper == null) {
+            return java.util.Set.of();
+        }
+        return DataScopeContext.executeWithoutScope(() -> scopeMapper.selectList(
+                        Wrappers.<ai.neargo.shop.promotion.entity.PmtCouponScope>lambdaQuery()
+                                .eq(ai.neargo.shop.promotion.entity.PmtCouponScope::getCouponNo, coupon.getCouponNo())
+                                .eq(ai.neargo.shop.promotion.entity.PmtCouponScope::getScopeType, PmtCoupon.SCOPE_STORE)))
+                .stream().map(ai.neargo.shop.promotion.entity.PmtCouponScope::getRefNo)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     private void assertUsable(PmtUserCoupon uc, PmtCoupon coupon) {
