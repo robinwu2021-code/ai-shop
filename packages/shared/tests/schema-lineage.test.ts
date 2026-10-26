@@ -13,7 +13,7 @@
 //   旧 pts_user_ledger / stl_points_pool 属于未上线旧方案，保留空表，不参与当前链路
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
+import { readColumnNames, readSchema as replaySchema } from "../../../scripts/lib/ddl.mjs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -580,8 +580,14 @@ describe("对账血缘", () => {
     const inH2 = new Set(
       [...h2.matchAll(/CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)/gi)].map((m) => m[1]!),
     );
-    const onlyJs = [...schema.keys()].filter((t) => !inH2.has(t));
-    const onlyPy = [...inH2].filter((t) => !schema.has(t));
+    // 默认 H2 基线先重放 CORE，再重放 PAY；与 Python 使用相同来源和顺序。
+    // 仅此跨语言对照包含 PAY，资金账归属登记仍按平台 CORE 范围校验。
+    const combined = replaySchema(ROOT, [
+      "backend/shop-app/src/main/resources/db/migration",
+      "backend/pay/pay-domain/src/main/resources/db/pay",
+    ]) as Map<string, unknown>;
+    const onlyJs = [...combined.keys()].filter((t) => !inH2.has(t));
+    const onlyPy = [...inH2].filter((t) => !combined.has(t));
     expect(
       { onlyJs, onlyPy },
       "JS 与 python 解析出的表集合不一致 —— 重跑 npm run gen:erd 与 gen-test-schema.py",
