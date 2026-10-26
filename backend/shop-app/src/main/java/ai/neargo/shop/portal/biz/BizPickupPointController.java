@@ -75,17 +75,23 @@ public class BizPickupPointController {
                 fallback));
     }
 
-    /** "default" = 默认门店，与送货方式端点同一约定 */
+    /**
+     * "default" = 默认门店，与送货方式端点同一约定。
+     *
+     * <p>属于本主体之外还要<b>这个人被授权到这家店</b>（{@link BizContext#requireStoreAccess}）：
+     * 只判主体的话，只管 A 店的店员把 storeNo 换成 B 店，就能给 B 店建自提点。
+     * 默认店同样要判 —— 店员不一定被授权到主体默认店。
+     */
     private String requireOwnStore(String merchantNo, String storeNo) {
         List<String> mine = merchantPort.storeNos(merchantNo);
         if (storeNo == null || storeNo.isBlank() || "default".equals(storeNo)) {
-            return merchantPort.defaultStoreNo(merchantNo)
-                    .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+            return BizContext.requireStoreAccess(merchantPort.defaultStoreNo(merchantNo)
+                    .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND)));
         }
         if (!mine.contains(storeNo)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return storeNo;
+        return BizContext.requireStoreAccess(storeNo);
     }
 
     public record SelfBuildReq(String storeNo, String name, String address, Integer latE6, Integer lngE6,
