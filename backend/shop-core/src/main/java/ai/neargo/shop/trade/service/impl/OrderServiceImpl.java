@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
 import java.util.Optional;
+import ai.neargo.shop.spi.pay.PayOrderNumbers;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
 import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
@@ -2375,6 +2376,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     @Override
     public void markPaid(String orderNo, String payChannel, String payTradeNo) {
+        // 第三方 / 收银台的支付单不是交易单：回调与三个对账器都经这里补单，一处跳过、五条路都安全（I5 S4）
+        if (PayOrderNumbers.isPayOrderNo(orderNo)) {
+            log.info("[markPaid] {} 是支付单号、不是交易单，跳过", orderNo);
+            return;
+        }
         OrdOrder source = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
         if (source == null) throw BizException.of(ErrorCode.NOT_FOUND);

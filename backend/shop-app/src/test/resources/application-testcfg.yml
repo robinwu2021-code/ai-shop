@@ -52,6 +52,19 @@ shop:
     # 生产走 SHOP_PAY_PAYOUT_ACCOUNT_KEY —— **不配的话商家提交收款账户会直接抛**
     # （PayoutAccountCipher 刻意失败即拒，绝不退回明文落库）。
     payout-account-key: bmVhcmdvLXBheW91dC10ZXN0LWtleS0zMmJ5dGVzISE=
+    # 开放 API（TDD-支付服务-I5接入层）：测试打开，两个沙箱接入方的 HMAC 密钥（ConfigAppKeyResolver 过渡期读这里）。
+    # 生产没有任何默认值：密钥只经部署注入，密钥模块就绪后改由 secret 模块给
+    open:
+      enabled: true
+      # 测试应用是沙箱应用（pay_app.sandbox=1）；生产默认 production，沙箱应用打生产会 401
+      environment: sandbox
+      apps:
+        APP-OPEN-T1:
+          hmac-secret: open-t1-secret-0123456789abcdef0123
+        APP-OPEN-T2:
+          hmac-secret: open-t2-secret-0123456789abcdef0123
+    checkout:
+      base-url: https://pay.test
   ops:
     # 初始密码走响应体而不是邮件。**生产默认 mail**。
     #

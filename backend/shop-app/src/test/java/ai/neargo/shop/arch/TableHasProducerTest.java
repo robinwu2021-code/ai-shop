@@ -75,7 +75,6 @@ class TableHasProducerTest {
         NO_PRODUCER.put("pay_app", "db/pay V7 种子 MALL / FOOD；第三方接入方入口随 I5");
         NO_PRODUCER.put("pay_checkout_session", "收银会话随 I5 开放 API / 收银台");
         NO_PRODUCER.put("pay_app_grant", "I5 S8 商家授权第三方（迁移 11）");
-        NO_PRODUCER.put("pay_api_nonce", "I5 S3 开放 API 验签防重放（迁移 11）");
         NO_PRODUCER.put("pay_qr_code", "I5 S7 静态码（迁移 11）");
         NO_PRODUCER.put("pts_user_account", "积分 V3 已下线旧余额入口，生产使用 pts_account");
         NO_PRODUCER.put("pts_user_ledger", "积分 V3 已下线旧流水入口，生产使用 pts_voucher/pts_entry");

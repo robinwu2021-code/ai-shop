@@ -979,6 +979,8 @@ public enum ErrorCode {
     PAY_ONBOARDING_INFLIGHT(70090, "err.pay.onboarding_inflight"),
     /** 进件单当前状态不允许这个动作（如审核中再提交、回填来的旧进件单由旧流程推进）。回显原因 */
     PAY_ONBOARDING_STATE(70091, "err.pay.onboarding_state"),
+    /** 接入方当日退款额度不足（开放 API，安全规范 §2.3）。回显还能退多少 */
+    PAY_APP_REFUND_LIMIT(70092, "err.pay.app_refund_limit"),
 
     /*
      * 快递代下单（TDD-快递100商家寄件）。

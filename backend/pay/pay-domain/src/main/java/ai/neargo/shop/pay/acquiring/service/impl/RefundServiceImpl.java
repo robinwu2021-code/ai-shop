@@ -6,6 +6,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.access.PayAction;
 import ai.neargo.shop.pay.access.PayCaller;
+import ai.neargo.shop.pay.channel.api.CallerType;
 import ai.neargo.shop.pay.access.policy.CallerPolicy;
 import ai.neargo.shop.pay.acquiring.dto.RefundRequestCmd;
 import ai.neargo.shop.pay.acquiring.entity.PayOrder;
@@ -30,6 +31,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -73,7 +75,7 @@ public class RefundServiceImpl implements RefundService {
     public PayRefund request(PayCaller caller, RefundRequestCmd cmd) {
         PayOrder order = DataScopeContext.executeWithoutScope(() -> orders.selectOne(Wrappers.<PayOrder>lambdaQuery()
                 .eq(PayOrder::getPayOrderNo, cmd.payOrderNo())));
-        if (order == null) {
+        if (order == null || !ownedBy(caller, order.getPayAppId())) {
             throw BizException.of(ErrorCode.PAY_ORDER_NOT_FOUND);
         }
         policy.check(caller, PayAction.REQUEST_REFUND, order.getStoreId());
@@ -92,6 +94,22 @@ public class RefundServiceImpl implements RefundService {
         executions.request(new RefundRequest(cmd.outRefundNo(), bizRefundNo, null, origin.getPaymentNo(),
                 cmd.amountMinor(), order.getCurrency(), cmd.reason()));
         return byId(pr.getId());
+    }
+
+    @Override
+    public PayRefund query(PayCaller caller, String payRefundNo) {
+        PayRefund r = DataScopeContext.executeWithoutScope(() -> refunds.selectOne(Wrappers.<PayRefund>lambdaQuery()
+                .eq(PayRefund::getPayRefundNo, payRefundNo)));
+        if (r == null || !ownedBy(caller, r.getPayAppId())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        policy.check(caller, PayAction.QUERY, r.getStoreId());
+        return r;
+    }
+
+    /** 第三方只能动自己建的单（与 {@code PaymentServiceImpl#requireOwner} 同一条规则）：不归它的一律当作不存在 */
+    private static boolean ownedBy(PayCaller caller, Long payAppId) {
+        return caller.type() != CallerType.PARTNER || Objects.equals(caller.callerId(), payAppId);
     }
 
     @Override

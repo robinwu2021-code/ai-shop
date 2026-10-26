@@ -30,4 +30,17 @@ public interface PaymentService {
      * 由收款账本在开尝试的同一事务里调；找不到支付单（开关关、存量单）什么都不做。
      */
     void attachAttempt(String outOrderNo, Long stlPaymentId);
+
+    /**
+     * 选方式发起支付（TDD-支付服务-I5接入层 S4）：选路由 → 冻结到支付单（收款商户、渠道、接入模式、资金路径、密钥版本）→
+     * 开交易尝试（冻结值随之落到尝试行）→ 调渠道下单，返回端上唤起收银台的参数。
+     */
+    StartPaymentResult start(PayCaller caller, String payOrderNo, StartPaymentCmd cmd);
+
+    /** @param payerOpenId / payerAppId 微信 JSAPI 时必填（付款人在该公众号 / 小程序下的身份） */
+    record StartPaymentCmd(String payMethod, String payerOpenId, String payerAppId) {
+    }
+
+    record StartPaymentResult(String payOrderNo, String outTradeNo, String payChannel, java.util.Map<String, String> payParams) {
+    }
 }

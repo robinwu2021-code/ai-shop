@@ -1,6 +1,6 @@
 # TDD-支付服务-I5接入层
 
-状态：草稿（功能清单与切片待确认，未动代码）
+状态：实现中（S1–S4 已实现；S5 起未动）
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §3.3–§3.6、§5 I5 · [完整设计方案](./TDD-支付服务-完整设计方案.md) §9 · [台湾阿联酋通道与开放 API](./TDD-支付服务-台湾阿联酋通道与开放API.md) §2.8 · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §3 · [ADR-044](./ADR/ADR-044-支付接入层模块pay-portal.md) · 配套：[接口清单](./支付服务-接口清单.md) · [安全规范](./支付服务-安全规范.md)
 创建：2026-10-26 · 最后更新：2026-10-26
 
@@ -140,11 +140,35 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 
 ## §5 对账三 · 实现 → 需求（测试）
 
-（实现时填。每条 F 至少一个测试方法；鉴权类每个失败分支一条；矩阵逐格一条。）
+| F | 测试 | 跑过 | 消融（改回去必须红） |
+|---|---|---|---|
+| F01 F05 F11 | `OpenApiFlowTest#authFailuresNeverReachBusiness`（无头、签名错、时间窗外、nonce 重放、未知 app、错密钥 → 401；≥ 6 行 `REJECTED_AUTH`；无 `pay_order`） | ✅ | ① 不占 nonce → 「重放」那一断言红 ✅ |
+| F02 F12 | `#ungrantedStoreForbidden`（403）· `#queryIsScopedToTheApp`（同门店另一 app 查 404） | ✅ | ② 去掉 `PaymentServiceImpl#requireOwner` → `queryIsScoped…` 红 ✅ |
+| F04 F13 | `#signedCreateIsIdempotent`（同体同单、异体 409、`checkoutUrl` 带单号） | ✅ | — |
+| F06 | 全部用例断言 `{code, message, data, requestId}` 单层结构 | ✅ | ③ `ApiResponseWrapper` 不跳 `/open/pay/` → 6 条红（被包成双层）✅ |
+| F10 | `SignatureCanonicalizerTest`（2 条；期望值由 Python 独立算出） | ✅ | ④ 星号不编码 → `fixedVector` 红 ✅ |
+| F14 | `#startPaymentFreezesRoute`（渠道 TEST、`prepayId`、支付单与尝试行冻结 `pay_merchant_id` / `funds_path`）· `#closeUnpaid` | ✅ | — |
+| F15 | `#payMethodsOfStore` | ✅ | — |
+| F16（部分，开放 API 一侧） | `#refundRules`（退 1000 成功；超日限额 422；无 `pay:refund` 的 app 403/404） | ✅ | — |
+| 收口 | `#partnerPaymentNeverReachesTrade`：第三方单付成功后，回调 / 对账把支付单号交给交易补单 → 跳过不抛 | ✅（修前红：`NOT_FOUND`，通道会无限重推） | 修前即红 ✅ |
+| 守卫 | `PortalRouteRulesTest`（类级前缀）· `PayReverseDependencyBudgetTest` · `TableHasProducerTest` · `ArchitectureTest` · `CallbackTemplateTest` · `OpsEndpointPermTest` 等 88 条 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
 
-（实现后填）
+| 片 | 文件 |
+|---|---|
+| S1 | `V11__pay_open_access.sql` · `PayAppGrant` / `PayApiNonce` / `PayQrCode` · `OpenAppMappers` / `CheckoutMappers` · `PayOpenAccessSchemaTest` |
+| S2 | `pay-portal` `api.auth.{PortalAuthFilter, PortalAuthFilters, PortalActions, PortalMasking}` · `api.common.{PortalResponse, PortalRequests, CachedBodyRequest, PortalExceptionHandler, PortalWebConfig}` · `pay-domain` `access.{entity.PayApiRequestLog, service.ApiRequestRecorder(+Impl)}` · `mapper.access.AccessMappers` · `shop-base-auth` `ApiResponseWrapper`（跳过 `/open/pay/`、`/checkout/`）· `shop-app` `SecurityConfig#openPayChain` |
+| S3 | `openapp.{SignatureCanonicalizer, NonceStore, DbNonceStore, AppKeyResolver, ConfigAppKeyResolver}` · `openapp.service.AppAuthService(+Impl)` · `api.auth.OpenSignatureAuthenticator` · `ErrorCode.PAY_APP_REFUND_LIMIT` + 三语 · `SignatureCanonicalizerTest` |
+| S4 | `acquiring.route.RouteSelectionPolicy` · `PaymentService#start`（+ `requireOwner`、`attachAttempt` 先按支付单号挂并复制冻结列）· `RefundService#query` + 第三方只退自己的单 · `PayMerchantBindingService#storeByNo` · `api.open.{OpenPaymentController, OpenRefundController, OpenStoreController, OpenViews}` · `shop-base` `spi.pay.PayOrderNumbers` · `OrderServiceImpl#markPaid` 跳过支付单号 · `OpenApiFlowTest` · `application-testcfg.yml` |
+
+### 偏差说明
+
+1. **F07 限流、F19 沙箱路由未做**：S3 只按 `shop.pay.open.environment` 拒绝环境不符的应用（沙箱应用打生产 401）；按 `rate_limit_qps` 限流与沙箱固定走 TEST 渠道留到 S6 前补。
+2. **F08**：开放 API 链不开 CORS（服务端对服务端），收银台的同源规则随 S7。
+3. **回调 / 对账的支付单号**：S6 改为支付事件通知业务方之前，交易侧 `markPaid` 用 `PayOrderNumbers` 跳过；`OrderPaidReconciler` 会把这类单当作「订单未付」每轮跳过一次（只打 info 日志），随 S6 退场。
+4. **反向依赖预算** `SettlePort` 59 → 62（`PaymentServiceImpl#start` 构造发起流程的嵌套记录），已在 `known-pay-reverse-deps.txt` 写明；门店解析经 `PayMerchantBindingService#storeByNo` 转一手，`MerchantQueryPort` 不增。
+5. **请求记录里没有回填 `pay_order_id` / `store_id`**：过滤器只看得到路径与结果码；关联靠 `trace_id` 与支付单号，回填留到 S6 事件里做。
 
 ## §7 待确认
 

@@ -22,6 +22,9 @@ public interface RefundService {
      */
     void attachExecution(StlPayment origin, StlPayment refundRow, RefundRequest request);
 
+    /** 按退款单号查，只能查自己范围内的（第三方只认自己发起的退款）；不存在或不归它 → {@code NOT_FOUND} */
+    PayRefund query(PayCaller caller, String payRefundNo);
+
     /** 能不能发渠道：待复核 / 已驳回不发 */
     boolean dispatchAllowed(String executionNo);
 

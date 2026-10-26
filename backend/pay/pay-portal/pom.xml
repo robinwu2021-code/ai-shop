@@ -31,5 +31,17 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- 内嵌形态直调支付应用服务（ADR-044 §2-4）：接入方鉴权、支付单、退款都在 pay-domain -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-domain</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 可信客户端 IP 只有一处来源（ClientMeta，安全规范 §4.5） -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base-auth</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>

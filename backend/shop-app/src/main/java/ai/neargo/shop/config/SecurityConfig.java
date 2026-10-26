@@ -11,6 +11,10 @@ import ai.neargo.shop.auth.BizIdentityResolver;
 import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
 import ai.neargo.shop.auth.MerchantTokenAuthFilter;
 import ai.neargo.shop.auth.OperatorTokenAuthFilter;
+import ai.neargo.shop.auth.RequestMetaFilter;
+import ai.neargo.shop.pay.api.PortalFace;
+import ai.neargo.shop.pay.api.auth.PortalAuthFilters;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import ai.neargo.shop.auth.TokenStore;
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.ObjectProvider;
@@ -276,6 +280,25 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new ai.neargo.shop.auth.RequestMetaFilter("CHANNEL"),
                         org.springframework.security.web.context.SecurityContextHolderFilter.class)
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+                .build();
+    }
+
+    /**
+     * 开放 API（ADR-044；安全规范 §5.1）：{@code /open/pay/**} 只认 AppId + 签名，由支付接入层的鉴权过滤器认人 ——
+     * 认不出就 401、请求不进 controller，并写一行请求记录。不认 Bearer、无会话、<b>不开 CORS</b>（服务端对服务端），
+     * 来源 IP 经 {@code ClientMeta}。Spring Security 这一层全放行：鉴权在链上的过滤器里已经做完。
+     */
+    @Bean
+    @Profile({"api", "ops"})
+    @Order(6)
+    SecurityFilterChain openPayChain(HttpSecurity http, PortalAuthFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher(PortalFace.OPEN.prefix() + "/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(new RequestMetaFilter("PARTNER"), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forFace(PortalFace.OPEN), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();
     }
