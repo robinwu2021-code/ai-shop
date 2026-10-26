@@ -27,4 +27,6 @@ public class CimOperationAttempt extends BaseEntity {
     private String outcome;
     private String responseRef;
     private String errorCode;
+    private String lateEvidenceRef;
+    private String lateOutcome;
 }

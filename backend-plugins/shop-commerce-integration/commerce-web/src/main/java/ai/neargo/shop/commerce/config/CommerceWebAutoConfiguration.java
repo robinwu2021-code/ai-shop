@@ -1,12 +1,17 @@
 package ai.neargo.shop.commerce.config;
 
 import ai.neargo.shop.commerce.api.CommerceRequestScope;
+import ai.neargo.shop.commerce.api.biz.BizCatalogPreviewController;
+import ai.neargo.shop.commerce.api.biz.BizCatalogScopeController;
 import ai.neargo.shop.commerce.api.biz.BizChannelAccountController;
 import ai.neargo.shop.commerce.api.biz.BizChannelAuthorizationController;
 import ai.neargo.shop.commerce.api.biz.BizChannelConnectionController;
 import ai.neargo.shop.commerce.api.biz.BizChannelOperationController;
 import ai.neargo.shop.commerce.api.biz.BizChannelProviderController;
+import ai.neargo.shop.commerce.api.biz.BizSyncPolicyController;
+import ai.neargo.shop.commerce.api.biz.BizSyncRunController;
 import ai.neargo.shop.commerce.api.callback.ChannelAuthorizationCallbackController;
+import ai.neargo.shop.commerce.job.CommerceRecoveryJob;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -24,6 +29,11 @@ import org.springframework.context.annotation.Profile;
     BizChannelProviderController.class,
     BizChannelAuthorizationController.class,
     BizChannelOperationController.class,
+    BizCatalogScopeController.class,
+    BizCatalogPreviewController.class,
+    BizSyncPolicyController.class,
+    BizSyncRunController.class,
+    CommerceRecoveryJob.class,
     ChannelAuthorizationCallbackController.class
 })
 public class CommerceWebAutoConfiguration {

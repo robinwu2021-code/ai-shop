@@ -23,7 +23,8 @@ try {
  assert.ok(ready, 'Disposable MySQL failed to start');
  sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql', import.meta.url), 'utf8'));
  sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql', import.meta.url), 'utf8'));
- assert.equal(sql('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()'), '9');
+ sql(readFileSync(new URL('../backend-plugins/shop-commerce-integration/commerce-core/src/main/resources/db/commerce/V3__commerce_catalog_synchronization.sql', import.meta.url), 'utf8'));
+ assert.equal(sql('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()'), '15');
  const connection = (no, entity, store, identity) => `INSERT INTO cim_store_connection(connection_no,entity_no,
  store_no,profile_no,account_no,external_store_ref,channel_store_key,active_revision_no,status,identity_receipt_ref,identity_verified_at,identity_valid_until)
  VALUES ('${no}','${entity}','${store}','PP','ACCOUNT','REMOTE','${identity}','REV','DRAFT','TRUSTED_TEST','2026-10-26 00:00:00','2026-10-26 01:00:00')`;
@@ -52,5 +53,17 @@ try {
  account_no,revision_no,credential_ref,granted_scopes,capability_hash,authorized_at,status,evidence_ref)
  VALUES ('${no}','E','${account}',1,'vault:test-reference','["ORDER"]','HASH','2026-10-26 00:00:00','GRANTED','RECEIPT')`;
  sql(revision('AR1','A1')); sql(revision('AR2','A1'), 1); sql(revision('AR3','A2'));
- console.log('PASS: nine-table V1+V2 migration, stable store identity, journal replay, operation scope/state uniqueness and grant revisions');
+ const scope = no => `INSERT INTO cim_catalog_scope(scope_no,entity_no,store_no,connection_no,remote_scope_key,name,remote_consistency,generation,status) VALUES ('${no}','E','S','C1','STORE','Menu','UNKNOWN',0,'ACTIVE')`;
+ sql(scope('SC1'));sql(scope('SC2'),1);
+ const source = no => `INSERT INTO cim_catalog_source(source_no,entity_no,scope_no,source_owner,source_ref,selection_revision,priority,status) VALUES ('${no}','E','SC1','FOOD','MENU','R1',0,'ACTIVE')`;
+ sql(source('CS1'));sql(source('CS2'),1);
+ const policy = no => `INSERT INTO cim_sync_policy(policy_no,entity_no,store_no,scope_no,enabled,on_publish,on_availability,scheduled_check,debounce_seconds,recovery_profile) VALUES ('${no}','E','S','SC1',false,true,false,true,30,'QUERY_ONLY')`;
+ sql(policy('SP1'));sql(policy('SP2'),1);
+ const snapshot = no => `INSERT INTO cim_catalog_snapshot(snapshot_no,entity_no,scope_no,schema_version,source_manifest,payload_ref,payload_json,content_hash,item_count,currency,captured_at,expires_at,scope_version,connection_revision_no) VALUES ('${no}','E','SC1',1,'[]','DB:${no}','{}','SAME_HASH',0,'TWD','2026-10-26 00:00:00','2026-10-26 01:00:00',0,'REV')`;
+ sql(snapshot('SN1'));sql(snapshot('SN2'));
+ sql(`INSERT INTO cim_sync_run(run_no,entity_no,store_no,connection_no,scope_no,run_type,trigger_type,snapshot_no,request_hash,status) VALUES ('RUN','E','S','C1','SC1','CATALOG_REPLACE','MANUAL','SN1','HASH','QUEUED')`);
+ const item = (no,attempt,type) => `INSERT INTO cim_sync_run_item(item_no,entity_no,run_no,attempt_no,object_type,object_key_hash,result) VALUES ('${no}','E','RUN',${attempt},'${type}','KEY','SUCCEEDED')`;
+ sql(item('I1',1,'OFFER'));sql(item('I2',1,'OFFER'),1);sql(item('I3',2,'OFFER'));sql(item('I4',1,'SKU'));
+ assert.equal(sql('SELECT COUNT(*) FROM cim_sync_run_item'),'3');
+ console.log('PASS: fifteen-table V1+V2+V3 migration, stable store identity, journal replay, operation scope/state uniqueness grant revisions, STORE/source/policy constraints, repeated snapshot content and attempt-scoped item uniqueness');
 } finally { docker(['rm', '--force', name]); }

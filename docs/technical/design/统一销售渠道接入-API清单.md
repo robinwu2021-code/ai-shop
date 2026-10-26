@@ -6,11 +6,11 @@
 
 | 项 | 实际范围 |
 | --- | --- |
-| 状态 | C0_AUTHORIZATION_ENGINE_VERIFIED |
-| 已编码迁移表 | cim_provider, cim_product_profile, cim_account, cim_store_connection, cim_connection_revision, cim_request_journal, cim_authorization_revision, cim_operation, cim_operation_attempt |
-| 已编码API子集 | COM-001, COM-002, COM-003, COM-004, COM-005, COM-009, COM-010, COM-011, COM-006, COM-007, COM-008, COM-035, COM-070 |
-| 限制 | B端仍仅主体属主；基础列表仅分页，候选高级筛选仍明确拒绝。累计13个基础/授权/查询/回调路由，9张迁移业务表。真实授权和门店归属提供方均未注册；通用OAuth回调目前只接受state/code/error，授权须有明确有效期，其他协议须扩展合同后启用。授权URL只允许既定公开参数，回跳绑定登记地址。UNKNOWN/过期/崩溃主动恢复worker、目录同步、订单导入、履约售后及真实平台仍未开放；独立业务远程客户端和内部端点未完成。未生产建表、推送或部署。 |
-| 验证 | 44项受影响Java专项通过；集成宿主与server编译通过，最终打包通过（TDD留证）；原生隔离MySQL V1+V2及约束通过；设计10、文档8通过。两项复核问题4个回归RED→GREEN；真实平台/生产驱动并发和完整认证链未联验。 |
+| 状态 | C1_CATALOG_ENGINE_VERIFIED |
+| 已编码迁移表 | cim_provider, cim_product_profile, cim_account, cim_store_connection, cim_connection_revision, cim_request_journal, cim_authorization_revision, cim_operation, cim_operation_attempt, cim_catalog_scope, cim_catalog_source, cim_sync_policy, cim_catalog_snapshot, cim_sync_run, cim_sync_run_item |
+| 已编码API子集 | COM-001, COM-002, COM-003, COM-004, COM-005, COM-009, COM-010, COM-011, COM-006, COM-007, COM-008, COM-035, COM-070, COM-015, COM-016, COM-017, COM-018, COM-019, COM-020, COM-021, COM-022, COM-023, COM-024, COM-025, COM-026 |
+| 限制 | B端仍仅主体属主；累计25个基础/授权/目录/任务路由，15张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。独立模式远程业务客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。未生产建表、推送或部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 |
+| 验证 | 累计67项受影响Java专项通过，复核修复后仅复测相关23项。三项Important及一个关联边界均RED→GREEN；原生隔离MySQL V1/V2/V3十五表及约束通过；宿主/server编译打包、设计10、文档8、SQL守卫证据见TDD最终核验。不等同真实适配器、生产JDBC并发或完整认证链验收。 |
 
 ## L1 定位
 
@@ -18,7 +18,7 @@
 
 ## L2 分类与公共合同
 
-公开/回调API共70项；内部业务Port共11组，内部方法不算公开API。
+公开/回调API共70项；内部业务Port及typed网关合同共12组，内部方法不算公开API。
 
 | 分类 | 数量 |
 | --- | --- |
@@ -72,18 +72,18 @@ B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户�
 | COM-012 PUT `/biz/x/commerce/connections/{connectionNo}` | SaveConnectionConfigurationReq：version/acceptMode/fulfillmentProfile/sourceRoutingRef；不能换主体或远端身份 | ChannelConnectionVO | ChannelConnectionService.saveConfiguration；cim_connection_revision, cim_store_connection, cim_request_journal；AC02；BASE |
 | COM-013 POST `/biz/x/commerce/connections/{connectionNo}:verify` | VerifyChannelConnectionReq：version；能力核验异步动作 | OperationVO | ChannelConnectionService.verify；cim_store_connection, cim_operation, cim_operation_attempt；AC02；BASE |
 | COM-014 POST `/biz/x/commerce/connections/{connectionNo}:set-status` | SetConnectionStatusReq：version/status/reason；停新单不丢弃已绑定历史事件 | ChannelConnectionVO | ChannelConnectionService.setStatus；cim_store_connection, cim_request_journal；AC02；BASE |
-| COM-015 POST `/biz/x/commerce/stores/{storeNo}/catalog-scopes` | CreateCatalogScopeReq：connectionNo/remoteScopeKey/name/sourceRefs；完整替换范围按平台能力限制 | CatalogScopeVO | CatalogScopeService.createScope；cim_catalog_scope, cim_catalog_source, cim_request_journal；AC03；CATALOG |
-| COM-016 GET `/biz/x/commerce/stores/{storeNo}/catalog-scopes` | CatalogScopeQuery：connectionNo/status/page/size | PageData<CatalogScopeVO> | CatalogScopeService.listScopes；cim_catalog_scope；AC03；CATALOG |
-| COM-017 GET `/biz/x/commerce/catalog-scopes/{scopeNo}` | CatalogScopeRef：scopeNo | CatalogScopeVO | CatalogScopeService.getScope；cim_catalog_scope, cim_catalog_source；AC03；CATALOG |
-| COM-018 PUT `/biz/x/commerce/catalog-scopes/{scopeNo}` | SaveCatalogSourcesReq：version/sourceOwner+sourceRef+selectionRevision；无原始价格覆盖 | CatalogScopeVO | CatalogScopeService.saveSources；cim_catalog_scope, cim_catalog_source, cim_request_journal；AC03；CATALOG |
-| COM-019 GET `/biz/x/commerce/catalog-scopes/{scopeNo}/sync-policy` | CatalogScopeRef：scopeNo | SyncPolicyVO | SyncPolicyService.getPolicy；cim_sync_policy；AC04；SYNC |
-| COM-020 PUT `/biz/x/commerce/catalog-scopes/{scopeNo}/sync-policy` | SaveSyncPolicyReq：version/enabled/onPublish/onAvailability/scheduledCheck/debounceSeconds/recoveryProfile | SyncPolicyVO | SyncPolicyService.savePolicy；cim_sync_policy, cim_request_journal；AC04；SYNC |
-| COM-021 POST `/biz/x/commerce/catalog-scopes/{scopeNo}:preview` | PreviewCatalogReq：sourceRevisions/expectedScopeVersion；返回snapshotNo/hash/diff/blockers/expiresAt | CatalogPreviewVO | CatalogPublicationService.preview；cim_catalog_snapshot, cim_catalog_source, cim_resource_mapping_revision；AC03；SYNC |
-| COM-022 POST `/biz/x/commerce/stores/{storeNo}/sync-runs` | SubmitSyncRunReq：scopeNo/snapshotNo/hash/expectedScopeVersion/reason；首版只提交CATALOG，其他类型走类型化接口 | SyncRunVO | SyncRunService.submit；cim_sync_run, cim_operation, cim_request_journal；AC04；SYNC |
-| COM-023 GET `/biz/x/commerce/stores/{storeNo}/sync-runs` | SyncRunQuery：connectionNo/type/triggerType/status/from/to/page/size | PageData<SyncRunVO> | SyncRunService.listRuns；cim_sync_run；AC04；SYNC |
-| COM-024 GET `/biz/x/commerce/sync-runs/{runNo}` | SyncRunRef：runNo；期望/已提交/最后全量确认及remoteConsistency分别输出 | SyncRunVO | SyncRunService.getRun；cim_sync_run, cim_catalog_scope, cim_operation；AC04；SYNC |
-| COM-025 GET `/biz/x/commerce/sync-runs/{runNo}/items` | SyncItemQuery：runNo/attemptNo/objectType/result/page/size | PageData<SyncRunItemVO> | SyncRunService.listItems；cim_sync_run_item；AC04；SYNC |
-| COM-026 POST `/biz/x/commerce/sync-runs/{runNo}:cancel-queued` | CancelQueuedSyncReq：version/reason；仅未发出动作，非远端撤回 | SyncRunVO | SyncRunService.cancelQueued；cim_sync_run, cim_operation, cim_request_journal；AC04；SYNC |
+| COM-015 POST `/biz/x/commerce/stores/{storeNo}/catalog-scopes` | CreateCatalogScopeReq：connectionNo/remoteScopeKey=STORE/name/sourceRefs[{sourceOwner,sourceRef,selectionRevision,priority}] | CatalogScopeVO | CatalogScopeService.createScope；cim_catalog_scope, cim_catalog_source, cim_request_journal；AC03；CATALOG |
+| COM-016 GET `/biz/x/commerce/stores/{storeNo}/catalog-scopes` | CatalogScopeQuery：page/size/connectionNo?/status?；仅ACTIVE范围 | PageData<CatalogScopeVO> | CatalogScopeService.listScopes；cim_catalog_scope；AC03；CATALOG |
+| COM-017 GET `/biz/x/commerce/catalog-scopes/{scopeNo}` | CatalogScopeRef：scopeNo；由上下文验证当前门店 | CatalogScopeVO | CatalogScopeService.getScope；cim_catalog_scope, cim_catalog_source；AC03；CATALOG |
+| COM-018 PUT `/biz/x/commerce/catalog-scopes/{scopeNo}` | SaveCatalogSourcesReq：version/sourceRefs；完整替换来源配置，已发送动作不撤销 | CatalogScopeVO | CatalogScopeService.saveSources；cim_catalog_scope, cim_catalog_source, cim_request_journal；AC03；CATALOG |
+| COM-019 GET `/biz/x/commerce/catalog-scopes/{scopeNo}/sync-policy` | CatalogScopeRef：scopeNo；返回默认关闭策略 | SyncPolicyVO | SyncPolicyService.getPolicy；cim_sync_policy；AC04；SYNC |
+| COM-020 PUT `/biz/x/commerce/catalog-scopes/{scopeNo}/sync-policy` | SaveSyncPolicyReq：version/enabled/onPublish/onAvailability=false/scheduledCheck/debounceSeconds/recoveryProfile=QUERY_ONLY | SyncPolicyVO | SyncPolicyService.savePolicy；cim_sync_policy, cim_request_journal；AC04；SYNC |
+| COM-021 POST `/biz/x/commerce/catalog-scopes/{scopeNo}:preview` | PreviewCatalogReq：expectedScopeVersion；返回snapshotNo/hash/currency/itemCount/expiresAt/scopeVersion/document；无调用者价格/库存覆盖 | CatalogPreviewVO | CatalogPublicationService.preview；cim_catalog_snapshot, cim_catalog_source, cim_catalog_scope；AC03；SYNC |
+| COM-022 POST `/biz/x/commerce/stores/{storeNo}/sync-runs` | SubmitSyncRunReq：scopeNo/snapshotNo/hash/expectedScopeVersion/reason；QUEUED无generation，发送时才分配 | SyncRunVO | SyncRunService.submit；cim_sync_run, cim_operation, cim_request_journal；AC04；SYNC |
+| COM-023 GET `/biz/x/commerce/stores/{storeNo}/sync-runs` | SyncRunQuery：page/size/connectionNo?/status?；数据库分页 | PageData<SyncRunVO> | SyncRunService.listRuns；cim_sync_run；AC04；SYNC |
+| COM-024 GET `/biz/x/commerce/sync-runs/{runNo}` | SyncRunRef：runNo；状态查询无远端副作用 | SyncRunVO | SyncRunService.getRun；cim_sync_run, cim_catalog_scope, cim_operation；AC04；SYNC |
+| COM-025 GET `/biz/x/commerce/sync-runs/{runNo}/items` | SyncItemQuery：runNo/page/size；原尝试结果逐项分页 | PageData<SyncRunItemVO> | SyncRunService.listItems；cim_sync_run_item；AC04；SYNC |
+| COM-026 POST `/biz/x/commerce/sync-runs/{runNo}:cancel-queued` | CancelQueuedSyncReq：version/reason；仅尚未发送QUEUED可取消，不取消远端任务 | SyncRunVO | SyncRunService.cancelQueued；cim_sync_run, cim_operation, cim_request_journal；AC04；SYNC |
 | COM-027 GET `/biz/x/commerce/stores/{storeNo}/resource-mappings` | MappingQuery：connectionNo/objectType/externalRef/sourceRef/page/size | PageData<ResourceMappingVO> | ResourceMappingService.listMappings；cim_resource_mapping, cim_resource_mapping_revision；AC05；CATALOG |
 | COM-028 GET `/biz/x/commerce/resource-mappings/{mappingNo}/revisions` | MappingRevisionQuery：mappingNo/page/size | PageData<MappingRevisionVO> | ResourceMappingService.listRevisions；cim_resource_mapping_revision；AC05；CATALOG |
 | COM-029 POST `/biz/x/commerce/resource-mappings` | CreateResourceMappingReq：connectionNo/objectType/externalIdentity/sourceOwner/sourceRef/sourceRevision；必须真源核验 | ResourceMappingVO | ResourceMappingService.createMapping；cim_resource_mapping, cim_resource_mapping_revision, cim_request_journal；AC05；CATALOG |
@@ -147,7 +147,7 @@ B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户�
 
 | Port / 所有者 | 方法及返回 | 约束 |
 | --- | --- | --- |
-| ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort；FOOD/RETAIL | capture(CaptureCatalogCommand)->ChannelCatalogSnapshot | 完整目录、价格来源、税口径、修订及依赖；不授予平台重算价格权限 |
+| ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort；FOOD/RETAIL | owner()->Owner；capture(CaptureCommand)->Document（ValidatedSource/Section/Offer/Sku/Price/OptionGroup/BundleGroup/Image/Schedule均为嵌套record） | 完整目录、价格来源、税口径、修订及依赖；不授予平台重算价格权限 |
 | ai.neargo.shop.spi.commerce.ChannelAvailabilitySourcePort；商品/独立库存原owner | captureAvailability(CaptureAvailabilityCommand)->AvailabilitySnapshot; captureInventory(CaptureInventoryCommand)->InventoryPublicationSnapshot | 可售量/仓库/渠道配额均取原owner，不建立渠道库存账 |
 | ai.neargo.shop.spi.commerce.ChannelOrderIngestPort；FOOD/RETAIL | prepareImport(PrepareChannelOrderCommand)->ImportPreparation; getImport(ChannelOrderReference)->ImportPreparation; confirmAcceptance(ConfirmChannelAcceptanceCommand)->AcceptanceReceipt; cancelPreparedImport(CancelPreparedImportCommand)->ImportCancellationReceipt | 原核心订单、库存承诺、接单证据及一次派工；POSTPAY证明不可滥用 |
 | ai.neargo.shop.spi.commerce.ChannelOrderAmendmentPort；原订单/行业售后 | apply(ApplyChannelAmendmentCommand)->AmendmentReceipt; getAmendment(ChannelAmendmentReference)->AmendmentReceipt | 原行/数量/金额和取消/替换守恒，资金动作需另授权 |
@@ -155,9 +155,10 @@ B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户�
 | ai.neargo.shop.spi.commerce.ChannelRedemptionSourcePort；原权益/交易能力 | authorize(AuthorizeRedemptionCommand)->RedemptionAuthorization; confirm(ConfirmRedemptionCommand)->RedemptionReceipt; reverse(AuthorizeRedemptionReverseCommand)->RedemptionAuthorization | 先持久化原消费授权，再执行平台核销，未知查回；不造券余额 |
 | ai.neargo.shop.spi.commerce.ChannelFinancialEvidencePort；独立支付/原资金所属域 | record(RecordChannelFinancialEvidenceCommand)->FinancialEvidenceReceipt; get(ChannelFinancialEvidenceReference)->FinancialEvidenceReceipt | 外部收款、退款、结算证据类型分离；不凭回调修改paid_at |
 | ai.neargo.shop.spi.commerce.ChannelCredentialPort；原安全凭据能力 | resolve(ChannelCredentialReference)->ScopedCredentialHandle | 业务只传引用；签名/刷新组件受控使用，不出日志/公共响应 |
-| ai.neargo.shop.spi.commerce.ChannelSourceValidationPort；各资源原owner或仅调用原Port的宿主只读组合 | validate(SourceValidationCommand)->SourceValidationReceipt | 校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。 |
+| ai.neargo.shop.spi.commerce.ChannelSourceValidationPort；各资源原owner或仅调用原Port的宿主只读组合 | validate(Source)->Validation | 校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。 |
 | ai.neargo.shop.spi.commerce.ChannelConnectionIdentityPort；可信平台授权/查询适配器 | verify(Identity)->Proof(VERIFIED/UNKNOWN/UNSUPPORTED, identity, receiptRef, verifiedAt, validUntil) | 事务外核验远端门店真实归属，本地事务锁账号/协议并复核冻结身份及有效期；无实现拒绝认领，不提供默认成功 |
 | ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway；commerce-channel获准协议适配器 | begin(AuthorizationContext)->Start；exchange(context,code)->Grant；revoke(RevocationContext)->Revocation | 原意图先提交，事务外OAuth/撤权；网关必须绑定原外部账号、凭据安全引用及可信回执；无真实提供方不授权 |
+| ai.neargo.shop.spi.commerce.ChannelCatalogGateway；commerce-channel获准协议适配器 | supportsQuery()->boolean；publish(Publication)->Result；query(Publication,taskRef)->Result | 冻结目录发送与原动作查回；返回operation/generation/hash绑定和allWritesTerminal及原回执；没有默认实现，不在超时后盲重发 |
 
 内部合同在commerce-api中保持唯一spi包，宿主提供本地或typed远程实现；内部路由按现有/Internal*Controller协议在提供方登记，不额外复制同义Service。拆分前为每组方法补齐实际内部path/请求schema/服务身份/签名及wrapper排除，不能据此宣称已存在内部端点。
 
