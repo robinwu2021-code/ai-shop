@@ -1,6 +1,6 @@
 # TDD-支付服务-I5接入层
 
-状态：实现中（S1–S4、S6a webhook、S7 收银台（后端 + `checkout-h5`）、S8 商家端后端已实现；S8 b-app 页面、S6b 内部事件、S5、S9 起未动）
+状态：实现中（S1–S4、S6a webhook、S7 收银台（后端 + `checkout-h5`）、S8 商家端（后端 + b-app 四页）已实现；S6b 内部事件、S5、S9、S10 未动）
 档位：2 · 依据：[开发计划 · 支付服务](./开发计划-支付服务.md) §3.3–§3.6、§5 I5 · [完整设计方案](./TDD-支付服务-完整设计方案.md) §9 · [台湾阿联酋通道与开放 API](./TDD-支付服务-台湾阿联酋通道与开放API.md) §2.8 · [代码清单](./支付服务-代码清单-开放API刷卡POS内部调用.md) §3 · [ADR-044](./ADR/ADR-044-支付接入层模块pay-portal.md) · 配套：[接口清单](./支付服务-接口清单.md) · [安全规范](./支付服务-安全规范.md)
 创建：2026-10-26 · 最后更新：2026-10-26
 
@@ -157,6 +157,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | F31（静态码） | `#staticCode`（看门店；超单笔 422；建两单后超单码日累计 422；单记 `CHECKOUT` 来源、`biz_no` = 码；停用后 404） | ✅ | ⑪ 不查日累计 → 红 ✅ |
 | F35（`checkout-h5`） | `checkout-h5` vitest 19 条：`app.test.ts`（收款方在金额上方且服务端字符串只当文本；410 / 404 同一失效屏；小数位缺失不显示金额不给付款；AE 市场 + 非中文浏览器 → `ar` 从右到左；`?lang=` 压过浏览器语言；选方式 → 测试通道 → 结果页；回跳页无令牌只说回原页面；静态码超单笔前端先拦、合法金额按最小单位提交）· `channel.test.ts`（跳转只认 https、JSAPI 交 WeixinJSBridge）· `money.test.ts` · `i18n.test.ts`（四语键集与占位符一致）· `routes.test.ts`；`npm run check`：`tsc` 无错、构建、**首屏 7.5 KB gzip（预算 100 KB）**；浏览器实看 6 屏（mock） | ✅ | ⑫ 字符串走 innerHTML → 注入用例红 ⑬ 跳转不限协议 → 红 ⑭ 小数位兜底成 2 → 2 条红 ⑮ 前端不拦单笔上限 → 红；RTL 闸门：往 CSS 写一条 `padding-left` → 报出 ✅ |
 | F40 F42 F43 F44 F45（S8 后端） | `BizPayFlowTest`：`#unauthenticatedIsRejectedAndLogged`（无商家令牌 401 + `BIZ_API` 鉴权失败留痕）· `#collectPayStatementRefund`（代客收款出动态码 → 顾客经收银台付 → 本店日流水 → 发起退款，退款单记 `BIZ` 来源与操作员）· `#cannotTouchAnotherShop`（别家已付的单退不了、流水里没有）· `#staticCodes`（码值 ≥ 22 字符、能扫、停用后 404、别家停不了）· `#appGrants`（授权 / 列表 / 撤销即 REVOKED；内部接入方不可授权）· `BizEndpointPermTest`（7 个端点登记权限码） | ✅ 5/5 | ⑯ 商家链去掉 BIZ 接入层过滤器 → 留痕断言红 ⑰ 停码不查门店 → 红 ⑱ 可授权内部接入方 → 红 ⑲ 流水不按门店 → 红（**第一版 A 的单没付，消融不红；先让 A 付成后才红**）✅ |
+| S8 b-app | 四页 `pay-collect` / `pay-flow`（收款流水，退款从收款行发起）/ `pay-qrcodes` / `pay-grants`；入口在「我的」，每格按自己的权限码显示；`vue-tsc` 无错、b-app vitest 358 条全过；契约闸门（`check-app-contract`）10 个端点对上后端；`check-shared-guards` 回到基线；mock 模式浏览器实看四页（代客收款出二维码） | ✅ | 契约扫描器：第一版报 8 个端点「后端没有」—— 它不认不带路径的 `@PostMapping`，补上后对上；「失败长得像空」守卫逼出代客收款页的页内失败提示 |
 | 守卫 | `PortalRouteRulesTest`（类级前缀）· `PayReverseDependencyBudgetTest` · `TableHasProducerTest` · `ArchitectureTest` · `CallbackTemplateTest` · `OpsEndpointPermTest` 等 88 条 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -170,6 +171,7 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | S7 | `pay-domain` `checkout.entity.PayCheckoutSession` · `checkout.service.CheckoutService(+Impl)` · `CheckoutMappers`（`PayCheckoutSessionMapper#revokeAll`、`PayQrCodeMapper#dailyTotal`）· `PaymentService#findById` · `PaymentServiceImpl#close` 作废令牌 · `PayMerchantBindingService#storeById` · `V11` 追加 `CHECKOUT` 接入方种子 · `ErrorCode.PAY_CHECKOUT_EXPIRED / _LIMIT` + 三语 · `pay-portal` `api.checkout.CheckoutController` · `api.auth.CheckoutVisitorAuthenticator` · `PortalAuthFilter#maskPath` · `PortalExceptionHandler`（410）· `OpenPaymentController` 建单签令牌 · `shop-app` `SecurityConfig#checkoutChain` · `schema-test.sql` 重新生成 |
 | F35 | 新工作区 `checkout-h5/`（Vite + TypeScript，无框架：`routes.ts` 路由真源 · `app.ts` · `views/{pay,code,result}.ts` · `api.ts` · `channel.ts` · `i18n.ts` 四语 · `money.ts` · `mock.ts` 本机假接口 · `scripts/check-size.mjs` 首屏预算）· 根 `package.json` / `package-lock.json`（只加工作区三处条目）· `.gitignore` · `.claude/launch.json`（`checkout-h5-mock`）· `scripts/gen-ui-catalog.py`（`read_checkout`）· `scripts/check-rtl-physical.mjs`（扫 `.css`）· `prototypes/pay-checkout-h5.html` + 登记 · `ui-catalog.json` 重新生成 · 后端 `CheckoutService` 视图加 `currencyScale` / `market` |
 | S8 后端 | `pay-portal` `api.biz.{BizPayContext, BizPayCollectionController, BizPayRefundController, BizPayQrCodeController, BizPayStatementController, BizPayAppGrantController}` · `api.auth.BizSessionAuthenticator` · `pay-domain` `CheckoutService#collect` · `checkout.service.QrCodeService(+Impl)` · `RefundService#recentOfStore` · `acquiring.service.PayStatementService(+Impl)` · `openapp.service.AppGrantService(+Impl)` · `InternalCallers.CHECKOUT` · `funds.BizDates#startUtc` · `shop-base-auth` `BizPerms`（`mch:pay:collect/refund/statement/app-grant/qr` + 说明）· `SecurityConfig#merchantChain`（挂 BIZ 接入层过滤器）· `BizEndpointPermTest` · `TableHasProducerTest`（删两条陈行）· 接口清单 §5 |
+| S8 b-app | `b-app` `api/{pay.ts, pay-http.ts, mocks/pay.ts}` · `endpoints.ts` / `contract.ts` / `http.ts` / `mocks/index.ts` · `pages/{pay-collect, pay-flow, pay-qrcodes, pay-grants}` · `components/biz/biz-pay-qr.vue` · `pages/me`（入口）· `shared/nav.ts` · `pages.json` · 三语 `bizPay` · 二维码点阵移到 `packages/shared/src/utils/qrcode.ts`（c-app 原文件改为转出）· `enum-registry.ts`（5 个枚举）· `scripts/check-app-contract.py`（认不带路径的映射）· `scripts/gen-ui-catalog.py`（「钱」域）· 共享守卫补账：`docs/api/响应格式规范.md`（13 个支付错误码）· `docs/technical/README.md`（索引 I0–I4、W3）· `gen-perm-endpoint-matrix.mjs`（P0 `/ops/auth/login/verify` 进 PUBLIC，矩阵重新生成）· `scripts/lib/ddl.mjs` + `schema-lineage.test.ts`（与 H2 对照时带上 db/pay）· `gen:spec` 重新生成 |
 | S4 | `acquiring.route.RouteSelectionPolicy` · `PaymentService#start`（+ `requireOwner`、`attachAttempt` 先按支付单号挂并复制冻结列）· `RefundService#query` + 第三方只退自己的单 · `PayMerchantBindingService#storeByNo` · `api.open.{OpenPaymentController, OpenRefundController, OpenStoreController, OpenViews}` · `shop-base` `spi.pay.PayOrderNumbers` · `OrderServiceImpl#markPaid` 跳过支付单号 · `OpenApiFlowTest` · `application-testcfg.yml` |
 
 ### 偏差说明
@@ -196,3 +198,5 @@ S3–S7 是开放 API 的主链（试点接入方的完成标准），S8 / S9 �
 | Q4 | `checkout-h5` 的生产域名 | 独立子域 `pay.{品牌域名}`（Apple Pay 验证文件、渠道回跳地址都登记在它上面） |
 | Q5 | 旧运营路径转发周期 | 一个版本周期（约 2 周），期间旧路径打弃用日志，归零后删除 |
 12. **S8 取舍**：代客收款单记在内部接入方 `CHECKOUT` 名下（`pay_order.pay_app_id` 必填），商家账号在 `operator_no` / 退款单 `requested_by`；代客收款单列了独立权限码 `mch:pay:collect`（计划写「与退款同组」——收钱与退钱分开授权更合理）；路径按 `/biz` 单数约定；线下退款凭证（F41）与进件迁入（F46）未做。
+13. **共享守卫此前在本分支从未跑过**（工作区没有 `node_modules`）：装上依赖后一次报出 10 条新增失败，其中 6 条是 I0–I5 早先提交欠下的（文档未进索引、错误码未进响应规范、P0 新端点未登记、JS 与 python 的建表解析对支付库分叉），本片一并补齐。
+

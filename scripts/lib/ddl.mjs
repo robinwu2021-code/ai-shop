@@ -29,6 +29,13 @@ export const MIGRATION_DIR = "backend/shop-app/src/main/resources/db/migration";
  */
 export const INVENTORY_MIGRATION_DIR = "backend/shop-inventory/src/main/resources/db/inventory";
 
+/**
+ * 支付库的迁移目录（db/pay，另一条 Flyway 历史，独立部署时是 ai_shop_pay 库）。
+ * 默认同样不进 `readSchema`（ER 图、表清单只画平台库）；单测的 H2 脚本（gen-test-schema.py）
+ * 把它接在平台迁移后面，所以与 H2 对照的那条守卫要显式带上它。
+ */
+export const PAY_MIGRATION_DIR = "backend/pay/pay-domain/src/main/resources/db/pay";
+
 // 元器件的迁移目录（ai_shop_elec）2026-09-30 随元器件迁到独立项目 ai-hxkey，不再在这里扫。
 
 /** 每张表都有、不参与任何业务关系的审计列 */

@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 116,
+      "count": 120,
       "domains": [
         {
           "name": "其它",
@@ -895,6 +895,50 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/invoice/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/pay-collect/index",
+              "title": "代客收款",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/pay-collect/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/pay-flow/index",
+              "title": "收款流水",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/pay-flow/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/pay-qrcodes/index",
+              "title": "收款码",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/pay-qrcodes/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/pay-grants/index",
+              "title": "授权第三方",
+              "domain": "钱",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/pay-grants/index"
             },
             {
               "app": "b-app",
@@ -3872,5 +3916,5 @@
       ]
     }
   ],
-  "total": 309
+  "total": 313
 }

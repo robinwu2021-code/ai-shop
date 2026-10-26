@@ -13,7 +13,7 @@
 //   旧 pts_user_ledger / stl_points_pool 属于未上线旧方案，保留空表，不参与当前链路
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
+import { MIGRATION_DIR as PLATFORM_DIR, PAY_MIGRATION_DIR, readColumnNames } from "../../../scripts/lib/ddl.mjs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -580,8 +580,10 @@ describe("对账血缘", () => {
     const inH2 = new Set(
       [...h2.matchAll(/CREATE TABLE(?: IF NOT EXISTS)?\s+(\w+)/gi)].map((m) => m[1]!),
     );
-    const onlyJs = [...schema.keys()].filter((t) => !inH2.has(t));
-    const onlyPy = [...inH2].filter((t) => !schema.has(t));
+    // H2 脚本是平台库 + 支付库（gen-test-schema.py 接着重放 db/pay）：对照时 JS 侧也读这两个目录
+    const both = readColumnNames(ROOT, [PLATFORM_DIR, PAY_MIGRATION_DIR]) as Map<string, unknown>;
+    const onlyJs = [...both.keys()].filter((t) => !inH2.has(t));
+    const onlyPy = [...inH2].filter((t) => !both.has(t));
     expect(
       { onlyJs, onlyPy },
       "JS 与 python 解析出的表集合不一致 —— 重跑 npm run gen:erd 与 gen-test-schema.py",

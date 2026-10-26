@@ -49,6 +49,11 @@ def backend() -> set[tuple[str, str]]:
                 r'@(Get|Post|Put|Delete|Patch)Mapping\(\s*(?:value\s*=\s*)?"([^"]*)"', src):
             full = path if (base and path.startswith(base)) or not base else base.rstrip("/") + path
             out.add((method.upper(), norm(full)))
+        # 不带路径的 `@PostMapping` / `@GetMapping()`：路径就是类上的 @RequestMapping（2026-10-26 支付接入层的
+        # 商家端控制器这么写）。此前只认带字符串的写法，这类端点一律被报成「后端没有」
+        if base:
+            for method in re.findall(r'@(Get|Post|Put|Delete|Patch)Mapping(?:\(\s*\))?(?=\s)', src):
+                out.add((method.upper(), norm(base)))
     return out
 
 

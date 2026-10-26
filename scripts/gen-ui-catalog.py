@@ -37,7 +37,9 @@ DOMAINS = [
     ("团购与求团", ["groups", "quotes", "requests", "group", "request", "request-create", "group-host",
                     "group-open"]),
     ("钱", ["settle", "payment", "plan", "wallet", "points", "points-records",
-            "income", "invoice"]),
+            "income", "invoice",
+            # 商家端支付（TDD-支付服务-I5接入层 S8）
+            "pay-collect", "pay-flow", "pay-qrcodes", "pay-grants"]),
     ("数据", ["stats", "cross-store"]),
     # 进销存（P-18）。**独立成一个域，不并进「商品」** —— 那边管的是
     # 「这件货长什么样、能不能卖」，这边管的是「现在有多少、是怎么变成这么多的」
