@@ -84,6 +84,13 @@ public class InventoryBackfillJob implements JobHandler {
 
     @Override
     public JobResult run(JobInvocation invocation) {
+        /*
+         * **先搬在途预留，再搬余额并对差。**只搬余额时进销存 reserved=0、平台 held>0，
+         * 只要还有未付款的单，对差就永远不干净；硬切过去那些已被下单占住的货会重新可售。
+         * 余额还没搬的 SKU 在这里被跳过（顺序反了会扣成负数），下一轮余额到位后再带上。
+         * dry-run 不写，所以不搬。
+         */
+        int held = dryRun ? 0 : backfill.migrateHeldLocks(batch);
         Report r = backfill.run(dryRun, batch, cursor);
         cursor = r.nextAfterId();   // null = 扫完了，下一轮从头开始
         if (!r.clean()) {
@@ -92,7 +99,7 @@ public class InventoryBackfillJob implements JobHandler {
                     r.diffs().size(), r.pending(), r.diffs().stream().limit(3).toList());
         }
         return JobResult.ok("scanned=" + r.scannedSkus() + " moved=" + r.moved()
-                + " skipped=" + r.skipped() + " pending=" + r.pending()
+                + " skipped=" + r.skipped() + " held=" + held + " pending=" + r.pending()
                 + " diffs=" + r.diffs().size()
                 + (r.nextAfterId() == null ? " (到末尾)" : " (下一轮 after=" + r.nextAfterId() + ")")
                 + (dryRun ? " (dry-run)" : ""));

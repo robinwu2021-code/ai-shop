@@ -1,6 +1,7 @@
 package ai.neargo.shop.invbridge.impl;
 
 import ai.neargo.shop.invbridge.InventoryBackfillService;
+import ai.neargo.shop.invbridge.ReservationHoldTtl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.inventory.dto.InventoryVOs.ItemDetailVO;
@@ -82,10 +83,15 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
     private static final int DIFF_PAGES_MAX = 200;
 
     /**
-     * 搬过来的在途预留活多久。与平台的「未支付自动关单」同一个量级 ——
-     * 比它短会把还能付款的单先释放掉，比它长会让已关的单继续占着货。
+     * 搬过来的在途预留活多久：与下单锁货同一个口径（{@link ReservationHoldTtl}，由未支付关单窗口推出）。
+     * 写死 30 分钟时，关单窗口配成 2 小时的单在搬过去 30 分钟后就被回收 —— 还能付款，货已可卖。
      */
-    private static final long HELD_TTL_SECONDS = 30 * 60L;
+    private ReservationHoldTtl holdTtl;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setHoldTtl(ReservationHoldTtl holdTtl) {
+        this.holdTtl = holdTtl;
+    }
 
     /**
      * {@inheritDoc}
@@ -95,11 +101,29 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
      */
     @Override
     public int migrateHeldLocks(int limit) {
-        List<PrdStockLock> held = DataScopeContext.executeWithoutScope(() ->
-                lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
-                        .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED)
-                        .orderByAsc(PrdStockLock::getId)
-                        .last("LIMIT " + limit)));
+        /*
+         * **按 id 翻到底**，limit 只是每页大小。此前只取前 limit 行：在途锁多于一页时，
+         * 后面那些每一轮都摸不到 —— 而前面那页搬过之后平台侧状态不变，下一轮还是同一页。
+         * 先收齐再成组：同一单的几行可能跨页，分页内成组会把一单拆成两次 reserve。
+         */
+        int page = Math.max(limit, 1);
+        List<PrdStockLock> held = new ArrayList<>();
+        Long after = null;
+        while (true) {
+            Long from = after;
+            List<PrdStockLock> rows = DataScopeContext.executeWithoutScope(() ->
+                    lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
+                            .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED)
+                            .gt(from != null, PrdStockLock::getId, from)
+                            .orderByAsc(PrdStockLock::getId)
+                            .last("LIMIT " + page)));
+            held.addAll(rows);
+            if (rows.size() < page) {
+                break;
+            }
+            after = rows.get(rows.size() - 1).getId();
+        }
+        long ttl = ReservationHoldTtl.secondsOf(holdTtl);
 
         /*
          * **按「锁号 + 货主」成组搬，不是逐行。**锁号就是订单号：一单买两个规格是两行 LOCKED、同一个锁号。
@@ -135,7 +159,7 @@ public class InventoryBackfillServiceImpl implements InventoryBackfillService {
         for (var e : groups.entrySet()) {
             String[] ref = refOf.get(e.getKey());
             try {
-                reservations.reserve(ref[0], ref[1], e.getValue(), HELD_TTL_SECONDS);
+                reservations.reserve(ref[0], ref[1], e.getValue(), ttl);
                 moved += e.getValue().size();
             } catch (RuntimeException ex) {
                 // 已经搬过（同 ref）或此刻可用不足，都不该中断整批
