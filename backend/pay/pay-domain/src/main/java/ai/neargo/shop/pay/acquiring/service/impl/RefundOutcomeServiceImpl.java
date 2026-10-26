@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.acquiring.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.acquiring.entity.PayOrder;
 import ai.neargo.shop.pay.acquiring.entity.PayRefund;
+import ai.neargo.shop.pay.acquiring.service.PayExceptionService;
 import ai.neargo.shop.pay.acquiring.service.RefundOutcomeService;
 import ai.neargo.shop.pay.acquiring.statemachine.PayOrderEvent;
 import ai.neargo.shop.pay.acquiring.statemachine.PayOrderStateMachine;
@@ -16,6 +17,7 @@ import ai.neargo.shop.pay.notify.service.BizNotifyService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -29,11 +31,13 @@ public class RefundOutcomeServiceImpl implements RefundOutcomeService {
     private final LedgerService ledger;
     private final boolean ledgerEnabled;
     private final BizNotifyService notifier;
+    private final ObjectProvider<PayExceptionService> exceptionRefunds;
 
     public RefundOutcomeServiceImpl(PayRefundMapper refunds, PayOrderMapper orders, FundsPaths funds,
                                     LedgerService ledger, @Value("${shop.pay.ledger.enabled:true}") boolean ledgerEnabled,
-                                    BizNotifyService notifier) {
+                                    BizNotifyService notifier, ObjectProvider<PayExceptionService> exceptionRefunds) {
         this.notifier = notifier;
+        this.exceptionRefunds = exceptionRefunds;
         this.refunds = refunds;
         this.orders = orders;
         this.funds = funds;
@@ -43,6 +47,11 @@ public class RefundOutcomeServiceImpl implements RefundOutcomeService {
 
     @Override
     public void succeeded(String executionNo) {
+        PayExceptionService exc = exceptionRefunds.getIfAvailable();
+        if (exc != null && executionNo != null && executionNo.startsWith(PayExceptionService.EXECUTION_PREFIX)) {
+            exc.refundSettled(executionNo, true, null);
+            return;
+        }
         PayRefund pr = open(executionNo);
         if (pr == null) {
             return;
@@ -74,6 +83,11 @@ public class RefundOutcomeServiceImpl implements RefundOutcomeService {
 
     @Override
     public void failed(String executionNo, String reason) {
+        PayExceptionService exc = exceptionRefunds.getIfAvailable();
+        if (exc != null && executionNo != null && executionNo.startsWith(PayExceptionService.EXECUTION_PREFIX)) {
+            exc.refundSettled(executionNo, false, reason);
+            return;
+        }
         PayRefund pr = open(executionNo);
         if (pr == null) {
             return;

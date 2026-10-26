@@ -5,6 +5,8 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import ai.neargo.shop.pay.acquiring.backfill.PayIntegrity;
+import ai.neargo.shop.pay.acquiring.service.PayExceptionService;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
 import ai.neargo.shop.pay.notify.service.BizNotifyService;
 import ai.neargo.shop.spi.settle.SettlePort;
@@ -66,6 +68,8 @@ class OpenApiFlowTest {
     @Autowired private SettlePort settle;
     @Autowired private OrderRepairPort orderRepair;
     @Autowired private BizNotifyService notifier;
+    @Autowired private PayExceptionService payExceptions;
+    @Autowired private PayIntegrity integrity;
 
     /** 接入方的 webhook 接收端：真起一个 HTTP 服务，不打桩发送器 —— 签名、头、超时都走真的 */
     private record Hook(Map<String, String> headers, String path, String body) {
@@ -519,6 +523,53 @@ class OpenApiFlowTest {
 
         jdbc.update("UPDATE pay_qr_code SET status='DISABLED' WHERE qr_code=?", code);
         assertThat(visit("GET", "/checkout/v1/codes/" + code, null).getStatus()).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("★★★ 关单后到账（W3 E04）：记 LATE_PAYMENT；原路退回走那笔尝试本身，不碰已关支付单的可退余额；退成即结案、再退不重复")
+    void latePaymentIsRefundedToTheCustomer() throws Exception {
+        String no = create(APP1, SECRET1, "OUT-" + id(), 650).get("payOrderNo").asString();
+        JsonNode started = ok(call("POST", "/open/pay/v1/orders/" + no + "/pay", Map.of(), "{\"payMethod\":\"TEST_PAY\"}",
+                fresh(APP1, SECRET1), null));
+        ok(call("POST", "/open/pay/v1/orders/" + no + "/close", Map.of(), "{}", fresh(APP1, SECRET1), null));
+        settle.settlePayment(new SettlePort.PaymentSettled(started.get("outTradeNo").asString(), "TEST", "T-" + id(),
+                650, System.currentTimeMillis()));
+        Map<String, Object> exc = jdbc.queryForMap("SELECT e.* FROM pay_exception e JOIN pay_order o ON o.id=e.pay_order_id"
+                + " WHERE o.pay_order_no=?", no);
+        assertThat(exc.get("kind")).isEqualTo("LATE_PAYMENT");
+        assertThat(exc.get("status")).isEqualTo("OPEN");
+        Long excId = ((Number) exc.get("id")).longValue();
+
+        payExceptions.refund(excId, "OP-LATE");
+
+        Map<String, Object> after = jdbc.queryForMap("SELECT * FROM pay_exception WHERE id=?", excId);
+        assertThat(after.get("status")).isIn("AUTO_REFUNDING", "RESOLVED");
+        assertThat(after.get("handled_by")).isEqualTo("OP-LATE");
+        Map<String, Object> refundRow = jdbc.queryForMap("SELECT * FROM stl_payment WHERE direction='REFUND'"
+                + " AND after_sale_no=?", "PAYEXC:" + excId);
+        assertThat(((Number) refundRow.get("amount_minor")).longValue()).isEqualTo(650);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_refund r JOIN pay_order o ON o.id=r.pay_order_id"
+                + " WHERE o.pay_order_no=?", Integer.class, no)).as("已关支付单不开退款单").isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM pay_order WHERE pay_order_no=?", String.class, no))
+                .isEqualTo("CLOSED");
+        if ("SUCCESS".equals(refundRow.get("status"))) {
+            assertThat(after.get("status")).as("渠道已退成").isEqualTo("RESOLVED");
+        }
+
+        payExceptions.refund(excId, "OP-LATE");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE direction='REFUND' AND after_sale_no=?",
+                Integer.class, "PAYEXC:" + excId)).as("再点一次不重复退").isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★★★ 资金恒等式①（W3 E09）：每张支付单「已付 − 已退 = 流水净额」；改坏一张，巡检点得出它")
+    void ledgerMatchesEveryPaidOrder() throws Exception {
+        String healthy = paidOrder(880);
+        String broken = paidOrder(990);
+        assertThat(integrity.ledgerMismatchedOrders(10_000)).doesNotContain(healthy, broken);
+        jdbc.update("UPDATE pay_order SET paid_minor = paid_minor + 1 WHERE pay_order_no=?", broken);
+        assertThat(integrity.ledgerMismatchedOrders(10_000)).contains(broken).doesNotContain(healthy);
+        assertThat(integrity.unbalancedVouchers()).isZero();
     }
 
     @Test

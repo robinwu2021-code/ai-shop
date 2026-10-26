@@ -58,6 +58,21 @@ public class ReconServiceImpl implements ReconService {
      * 那种单查一次纯属浪费，还会与关单任务抢同一行。
      */
     private final int staleMinutes;
+    /** 掉单巡检一页的行数 */
+    static final int STALE_PAGE = 200;
+    /** 一轮最多查多少笔（W3 E05：十万行积压时不能一轮全拉回来逐笔调渠道） */
+    @Value("${shop.pay.recon.stale-scan.max-per-run:2000}")
+    private int maxPerRun = 2000;
+    /** 每个渠道一轮最多查多少笔：一个渠道积压不饿死别的渠道，也不把它的查单接口打满 */
+    @Value("${shop.pay.recon.stale-scan.per-channel-per-run:500}")
+    private int perChannelPerRun = 500;
+    /** 游标：上一轮停在哪个 id。只在本进程内（多实例时巡检本就由调度锁保证单跑） */
+    private volatile long staleCursor;
+
+    long staleCursor() {
+        return staleCursor;
+    }
+
     /** 关单后观察窗（小时）：这段时间内关掉的收款尝试仍随掉单巡检回查（I3 S7） */
     @Value("${shop.pay.recon.closed-watch-hours:26}")
     private long closedWatchHours = 26;
@@ -103,8 +118,34 @@ public class ReconServiceImpl implements ReconService {
 
     @Override
     public List<ReconService.Finding> checkStalePayments(long now) {
+        return checkStalePayments(now, new ReconService.ScanLimits(maxPerRun, perChannelPerRun));
+    }
+
+    @Override
+    public List<ReconService.Finding> checkStalePayments(long now, ReconService.ScanLimits limits) {
+        String day=DAY.format(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()));
+        var findings=new java.util.ArrayList<ReconService.Finding>();
+        java.util.Map<String,Integer> perChannel=new java.util.HashMap<>();
+        long cursor=staleCursor;
+        while(findings.size()<limits.maxPerRun()) {
+            List<StlPayment> page=stalePage(now,cursor);
+            for(var payment:page) {
+                if(findings.size()>=limits.maxPerRun()) break;
+                if(payment.getId()!=null) cursor=payment.getId();
+                // 渠道份额用完的行这轮跳过：游标照样前移，扫到底从头时再轮到它
+                if(perChannel.merge(String.valueOf(payment.getPayChannel()),1,Integer::sum)>limits.perChannelPerRun()) continue;
+                findings.add(checkAndArchive(payment,day));
+            }
+            if(page.size()<STALE_PAGE) { cursor=0; break; }
+        }
+        staleCursor=cursor;
+        return findings;
+    }
+
+    /** 一页待查：按 id 升序、从游标往后 */
+    private List<StlPayment> stalePage(long now,long cursor) {
         long cutoff = now - staleMinutes * 60_000L;
-        List<StlPayment> stale = DataScopeContext.executeWithoutScope(() ->
+        return DataScopeContext.executeWithoutScope(() ->
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
                     .and(q -> q.eq(StlPayment::getDirection,StlPayment.PAY)
                             .in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
@@ -119,37 +160,39 @@ public class ReconServiceImpl implements ReconService {
                                         .or().eq(StlPayment::getRefundTerminalProof,"")))
                                 .or().in(StlPayment::getRefundQueryState,"MANUAL_REQUIRED","LATE_SUCCESS","TERMINAL_FAILED"))))
                     .le(StlPayment::getCreatedAt,java.time.LocalDateTime.ofInstant(
-                            Instant.ofEpochMilli(cutoff),ZoneId.systemDefault()))));
-        String day=DAY.format(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()));
-        var findings=new java.util.ArrayList<ReconService.Finding>();
-        for(var payment:stale) {
-            ReconService.Finding finding;
-            try { finding=checkOne(payment,day); }
-            catch(RuntimeException invalid) {
-                String error=invalid instanceof IllegalArgumentException
-                        ? "REFUND_RECON_RECEIPT_INVALID" : "REFUND_RECON_WRITE_FAILED";
-                log.warn("[recon] 单笔核对失败 payment={} outRefundNo={} error={} exception={}",
-                        payment.getPaymentNo(),payment.getOutTradeNo(),error,invalid.getClass().getSimpleName());
-                finding=new ReconService.Finding(payment.getPaymentNo(),payment.getOrderNo(),payment.getPayChannel(),
-                        payment.getOutTradeNo(),payment.getDirection(),payment.getAmountMinor(),false,false,true,
-                        0,null,day,payment.getCurrency(),null,error);
-            }
-            if(finding.isRefund() && (finding.requiresManual() || finding.queryFailed())) {
-                try { recordFinding(finding,refundIssueType(finding),
-                        (finding.errorCode()==null?"REFUND_MANUAL_REQUIRED":finding.errorCode())
-                                + " 原退款号="+finding.outTradeNo()+"，需人工核对；不得自动释放或重新付款"); }
-                catch(RuntimeException archiveFailure) {
-                    log.error("[recon] 异常归档失败 payment={} exception={}",
-                            payment.getPaymentNo(),archiveFailure.getClass().getSimpleName());
-                    finding=new ReconService.Finding(finding.paymentNo(),finding.orderNo(),finding.payChannel(),
-                            finding.outTradeNo(),finding.direction(),finding.ourAmountMinor(),false,false,true,
-                            finding.channelAmountMinor(),finding.channelTradeNo(),finding.day(),finding.channelCurrency(),
-                            finding.refundOutcome(),"REFUND_RECON_ARCHIVE_FAILED");
-                }
-            }
-            findings.add(finding);
+                            Instant.ofEpochMilli(cutoff),ZoneId.systemDefault()))
+                    .gt(StlPayment::getId,cursor)
+                    .orderByAsc(StlPayment::getId)
+                    .last("LIMIT "+STALE_PAGE)));
+    }
+
+    /** 单笔核对并归档；一笔失败不挡下一笔 */
+    private ReconService.Finding checkAndArchive(StlPayment payment,String day) {
+        ReconService.Finding finding;
+        try { finding=checkOne(payment,day); }
+        catch(RuntimeException invalid) {
+            String error=invalid instanceof IllegalArgumentException
+                    ? "REFUND_RECON_RECEIPT_INVALID" : "REFUND_RECON_WRITE_FAILED";
+            log.warn("[recon] 单笔核对失败 payment={} outRefundNo={} error={} exception={}",
+                    payment.getPaymentNo(),payment.getOutTradeNo(),error,invalid.getClass().getSimpleName());
+            finding=new ReconService.Finding(payment.getPaymentNo(),payment.getOrderNo(),payment.getPayChannel(),
+                    payment.getOutTradeNo(),payment.getDirection(),payment.getAmountMinor(),false,false,true,
+                    0,null,day,payment.getCurrency(),null,error);
         }
-        return findings;
+        if(finding.isRefund() && (finding.requiresManual() || finding.queryFailed())) {
+            try { recordFinding(finding,refundIssueType(finding),
+                    (finding.errorCode()==null?"REFUND_MANUAL_REQUIRED":finding.errorCode())
+                            + " 原退款号="+finding.outTradeNo()+"，需人工核对；不得自动释放或重新付款"); }
+            catch(RuntimeException archiveFailure) {
+                log.error("[recon] 异常归档失败 payment={} exception={}",
+                        payment.getPaymentNo(),archiveFailure.getClass().getSimpleName());
+                finding=new ReconService.Finding(finding.paymentNo(),finding.orderNo(),finding.payChannel(),
+                        finding.outTradeNo(),finding.direction(),finding.ourAmountMinor(),false,false,true,
+                        finding.channelAmountMinor(),finding.channelTradeNo(),finding.day(),finding.channelCurrency(),
+                        finding.refundOutcome(),"REFUND_RECON_ARCHIVE_FAILED");
+            }
+        }
+        return finding;
     }
 
     private String refundIssueType(ReconService.Finding finding) {

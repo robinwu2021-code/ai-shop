@@ -13,6 +13,7 @@ import ai.neargo.shop.pay.acquiring.entity.PayOrder;
 import ai.neargo.shop.pay.acquiring.entity.PayRefund;
 import ai.neargo.shop.pay.acquiring.entity.PayRefundReviewRule;
 import ai.neargo.shop.pay.acquiring.policy.RefundReviewPolicy;
+import ai.neargo.shop.pay.acquiring.service.PayExceptionService;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
 import ai.neargo.shop.pay.acquiring.statemachine.PayRefundStatus;
 import ai.neargo.shop.pay.approval.entity.PayApproval;
@@ -114,7 +115,9 @@ public class RefundServiceImpl implements RefundService {
 
     @Override
     public void attachExecution(StlPayment origin, StlPayment refundRow, RefundRequest request) {
-        if (origin.getPayOrderId() == null) {
+        if (origin.getPayOrderId() == null || (request.afterSaleNo() != null
+                && request.afterSaleNo().startsWith(PayExceptionService.SOURCE_PREFIX))) {
+            // 支付异常的原路退回（W3 E04）：钱不在支付单的余额里，不开退款单
             return;
         }
         PayOrder order = DataScopeContext.executeWithoutScope(() -> orders.selectById(origin.getPayOrderId()));
