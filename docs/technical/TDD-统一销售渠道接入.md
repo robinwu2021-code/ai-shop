@@ -1,6 +1,6 @@
 # TDD 统一销售渠道接入
 
-> 状态：开发中，2026-10-26；C0授权、C1目录引擎与资源映射已集成部署，运行提交b076524b6，实际17张业务表/29条公开路由。行业真实来源桥接与C2–C5尚未完成。历史批次记录保留当时状态，以本文末尾当前交付记录为准。需求：[PRD](../requirements/PRD-统一销售渠道接入.md)；决策：[ADR042](./ADR/ADR-042-统一销售渠道接入与行业来源隔离.md)。
+> 状态：开发中，2026-10-26；C0授权、C1目录引擎与资源映射已集成部署，运行提交b076524b6，实际17张业务表/29条公开路由。原FOOD餐牌资源核验已编码且相关专项通过；完整来源/价格/事件桥接与C2–C5尚未完成。历史批次记录保留当时状态，以本文末尾当前交付记录为准。需求：[PRD](../requirements/PRD-统一销售渠道接入.md)；决策：[ADR042](./ADR/ADR-042-统一销售渠道接入与行业来源隔离.md)。
 
 ## L1 入口与结论
 
@@ -60,6 +60,27 @@
 **订单导入**：原始字节验签→event/receipt持久化→协议ACK→必要时查原单→来源/金额/映射核验→原业务prepareImport→平台接单/核验既有接受→原业务confirmAcceptance→原受理Outbox→厨房/拣货/打印。即时单、待付款快递单、券核销按不同准入策略；平台已接受但本地失败，持续原键恢复并优先告警，不能只标本地失败后丢弃。
 
 **履约及售后回传**：原owner提交事实→原Outbox→按订单关联建立operation→网关调用→结果/回调/查回。仅真实已完成数量可回传；备餐不是签收，退款申请不是退款成功，退餐不是自动库存回补。来源反射事件不重复触发同一出站动作，防止回调回传循环。
+
+### L3 S1餐牌原来源核验实施合同（2026-10-26）
+
+本切片对应AC03/AC05/AC15，沿ConfigRevisionService新增verifyMenuResource(Query)，内部POST `/internal/food/config-revisions/verify-menu-resource`。不新增表或公开B/C/云端端点，复用原FOOD服务令牌和私有持久化。旧提供方默认NOT_FOUND，禁止静默回退到工作草稿。
+
+- Query：entityNo、storeNo、menuNo、revisionNo、kind（MENU/CATEGORY/OFFER/SKU/OPTION_GROUP/OPTION）、resourceRef、salesOfferRef、optionGroupRef、mode（CURRENT/HISTORICAL）。SKU/配料组/配料必须指定餐牌条目salesOfferRef；OPTION另需optionGroupRef，证明该选项确属本次餐牌条目采用的原组，而不是只证明全局编号存在。OFFER的salesOfferRef必须等于resourceRef。MENU/CATEGORY不接受销售条目或选项组条件。
+- Proof：schemaVersion=1、原Query、ConfigRevisionContentVO publication内容、canonical Resource（kind/ref/salesOfferRef/optionGroupRef）、verifiedAt、validUntil、receiptNo。自包含原文用于远程客户端重验原scope/hash及投影，回执摘要只是完整性校验，可信来源仍是FOOD令牌通道；不作为价格、库存、付款、接单或签名凭据。
+- ConfigRevisionServiceImpl在原REPEATABLE_READ只读事务内查指定修订、门店scope、有效状态与原内容hash。CURRENT同时比较当前生效修订；HISTORICAL允许已被后续修订替代的原有效内容，但拒绝尚未生效或取消的修订。保守地不授予已取消来源核验资格，历史订单仍沿原订单不可变凭据处理。
+- 证明默认30秒有效，CURRENT期限不能越过已知下一生效修订；校验和投影在同一次只读快照内完成。与之后发布/编辑的并发变化仍须下游在写入/发送前重验，不把30秒TTL当锁。
+- MenuSourcePolicy只投影已冻结原分类、启用销售条目、EXPLICIT/ALL下原SKU归属及itemOptions冻结组；不读可编辑继承关系，REPLACE空组必须保持空。OPTION核验原组依赖中的optionItemNo，不用modifierNo/specValueNo冒充选项身份。
+
+| 文件/类 | 方法与责任 | 验证 |
+|---|---|---|
+| food-api dto.MenuSourceContracts | Query/Kind/Mode/Resource/Proof，严格JSON和原身份 | HTTP非法字段、数值冒充字符串及枚举拒绝 |
+| food-api policy.MenuSourcePolicy | validateQuery/project/receipt/validateProof，原内容与远程回执重验 | 非原条目SKU、组/选项父身份、hash/时间/回执不匹配拒绝 |
+| food-api service.ConfigRevisionService与spi.ConfigRevisionInternalApi | 默认关闭方法和typed内部合同 | 旧提供方不支持不通过 |
+| food-core service.impl.ConfigRevisionServiceImpl | verifyMenuResource，一致性只读事务/当前与历史边界/期限 | MenuSourceVerificationTest |
+| food-web foodclient.RemoteConfigRevisionService | typed调用一次、重验原scope/document/query/resource/期限，不将超时变成功 | RemoteMenuSourceVerificationTest |
+| food-server api.InternalConfigRevisionController | 原令牌鉴权下delegate，不操作Mapper | InternalMenuSourceApiTest |
+
+执行顺序：合同及失败专项→原owner实现和远程/内部接线及全部测试源码→集成宿主/独立server编译→受影响专项→一次消融和独立复核→相关修复复测/文档对账/白名单提交。先交付原FOOD能力，本切片不注册commerce完整目录提供方；S2价格/税与S3事件接线继续待办。
 
 ### 明确的事务和并发
 
@@ -184,11 +205,13 @@ Review Focus：同远端子编号不同父身份不能串线；手工草稿不�
 | AC14 | ChannelStatisticsTest#excludeUnknownAndCancellationFromSuccessDenominator | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
 | AC15 | CommerceDeploymentTest#sameContractsWithLocalAndRemoteProviders | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
 
+S1子集验收：AC03/AC05对应MenuSourceVerificationTest的8项（原scope/EXPLICIT与ALL成员/当前与历史/原组及选项/非法状态/依赖SKU/分类销售条目）；AC15对应RemoteMenuSourceVerificationTest的3项和InternalMenuSourceApiTest的2项。共13项新增专项，连同26项原发布/远程合同回归累计39个唯一Java专项，0失败0跳过。当前修订检查消融使`currentRejectsOldAndFutureRevisionsWhileHistoryPreservesOriginalFacts`真实失败，恢复后8项来源专项全部通过。测试是H2事务、typed客户端Mock与真实服务令牌过滤链的MockMvc，不冒充生产数据库并发或真实跨进程端到端验证。
+
 前轮只验证文档生成、引用及结构一致性，不把设计守卫当业务验收。当前已新增Java子集，按每个AC登记真实源码/用例/执行范围及必要消融，不回填虚假绿灯。
 
 ## §6 对账二 设计到实现
 
-全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、12个业务Service与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。未生产迁移或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
+全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、12个业务Service与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。该内核已集成发布；新增S1原FOOD内部核验尚未推送或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
 
 ## L4 官方资料及待核验
 
@@ -375,7 +398,7 @@ V1逐字保持冻结。V2新增授权修订、动作、调用证据三表，并�
 
 ### L2 下一步：行业原始来源与发布事件桥接
 
-本轮已开始代码现状review与依赖对齐；以下为下一批开发计划，未标完成项不代表已有提供方可用。先完成来源/事件，再执行原设计C2回调和订单导入，不以人工导入映射替代原来源核验。
+S0现状review和S1原FOOD来源证明已完成；S2价格/税及S3事件桥接继续待开发。以下未标完成项不代表已有提供方可用。先完成来源/事件，再执行原设计C2回调和订单导入，不以人工导入映射替代原来源核验。
 
 | 现有对象/实现 | 可以复用 | 仍需补齐 |
 |---|---|---|
@@ -389,7 +412,7 @@ V1逐字保持冻结。V2新增授权修订、动作、调用证据三表，并�
 #### L3 顺序与验收
 
 - [x] S0 核对现有原owner读接口、价格边界、事件路由及模块依赖；明确已部署能力与未接线能力。
-- [ ] S1 原来源证明：在原FOOD能力上补充类型化资源投影，复用getRevision/resolveRevision，不另建餐牌主数据。输入entityNo、storeNo、menuNo、publicationRevisionNo及明确资源kind/ref/salesOfferRef；输出原revisionNo、contentHash、canonical resource/sales-offer关系、证明期限和原回执。当前核验须匹配当前生效修订；历史查询只证明原不可变资源，不授予当下销售资格。旧提供方不支持新合同应关闭处理。
+- [x] S1 原来源证明：在原FOOD能力上补充类型化资源投影，复用getRevision/resolveRevision，不另建餐牌主数据。输入entityNo、storeNo、menuNo、publicationRevisionNo及明确资源kind/ref/salesOfferRef；输出原revisionNo、contentHash、canonical resource/sales-offer关系、证明期限和原回执。当前核验须匹配当前生效修订；历史查询只证明原不可变资源，不授予当下销售资格。旧提供方不支持新合同应关闭处理。
 - [ ] S2 原价格与税：先在商品/价格owner扩充市场、币种与可信价格依据；FOOD组合已发布餐牌的合法覆盖价及选项/套餐加价，再交付ChannelCatalogSourcePort.Document。复用PricingTaxSettingPort的商家税配置，包含加税/含税口径和版本；原配置缺失保持不可发布。原库存未知保持UNKNOWN，不回填0，也不在目录捕获时预占库存。
 - [ ] S3 事件桥接：复用原OutboxEnvelope、事件号及CommerceRecoveryService.onPublished；消费前核对源系统、schemaVersion、aggregate和原门店/餐牌/修订。事件只是重读提示，不直接信任事件中的价格或把旧修订写成最新。重复沿原eventNo查回；乱序重新解析当前生效修订；未来生效应在到期核验，不能消费后丢失后续唤醒。新增路由须按模块是否装配条件化，禁用commerce时原发布继续成功。
 - [ ] S4 集成验证：批量完成代码与测试源码，再编译food+commerce集成宿主及独立server；只运行受影响专项。覆盖跨主体/门店、菜单内同SKU不同销售条目、REPLACE空配料、套餐依赖修订、hash篡改、未来/取消/过期发布、缺币种/税/价格回执、事件重复/乱序/重试、模块关闭。最后一次独立review并处理问题，随后白名单提交。
@@ -401,3 +424,43 @@ V1逐字保持冻结。V2新增授权修订、动作、调用证据三表，并�
 来源证明与目录Document复用现有cim_catalog_source、cim_catalog_snapshot、cim_request_journal及原fnb_config_revision；本批不新增第二套商品/订单表，也不为来源事实再建可编辑副本。需要新增持久化字段时另增Flyway版本，不修改已发布V1–V4。S1–S3内部合同不计入29条现有公开路由；如新增HTTP内部合同，需同步服务令牌鉴权和服务端/客户端合同测试。
 
 S4完成后才进入C2：先原始回调验签和持久化ACK，再进行原owner.prepareImport、平台接单确认及厨房/零售履约，后续仍按PRD/ADR042处理资金、售后和统计边界。Keeta等真实账号与SDK继续为后续获准协议适配，不是本批启动前置。
+
+
+## S1原餐牌资源核验交付记录（2026-10-26，本地）
+
+### L2 已实现
+
+新增一个FOOD内部POST合同，复用ConfigRevisionService、原服务令牌和fnb_config_revision。支持MENU/CATEGORY/OFFER/SKU/OPTION_GROUP/OPTION六种冻结资源；输入输出、CURRENT/HISTORICAL及父归属规则见§2。公开commerce路由仍为29条，业务表仍为17张；该FOOD内部路由独立登记，未伪称完整目录适配器已经注册。
+
+原owner同一REPEATABLE_READ快照核验修订、scope、hash和资源关系；当前证明最多30秒并截断下一已知生效时点。远端一次typed调用后重验Query、原文与规范资源、期限及摘要，超时不当成功。原未支持提供方默认NOT_FOUND。
+
+### L3 需求/设计/代码对账
+
+| §2设计单元 | 实际文件及结果 |
+|---|---|
+| 严格请求/响应 | 新增food-api/dto/MenuSourceContracts.java及policy/MenuSourcePolicy.java；单独保留optionGroupRef与salesOfferRef |
+| 原服务与持久化 | 扩展food-api/service/ConfigRevisionService.java和food-core/service/impl/ConfigRevisionServiceImpl.java；只读复用ConfigRevisionMapper，无新表/Mapper/迁移 |
+| 内部HTTP与远程读 | 扩展food-api/spi/ConfigRevisionInternalApi.java、food-server/api/InternalConfigRevisionController.java、food-web/foodclient/RemoteConfigRevisionService.java |
+| 验收 | 新增core/MenuSourceVerificationTest.java、web/RemoteMenuSourceVerificationTest.java、server/InternalMenuSourceApiTest.java；39个唯一Java专项通过 |
+| 范围 | 10个Java文件及本TDD；生成索引随生成器更新；无前端或真实平台启用 |
+
+### L3 验证及复核
+
+先批量写代码与测试源码、再集成编译、再统一专项。第一次独立服务编译读到旧本地shop-base SNAPSHOT；随后使用临时聚合POM把backend、food-channel、food-server纳入同一reactor，完整当前源码编译通过，没有改变项目生产模块结构或安装旧缓存冒充成功。
+
+- `/private/tmp/menu-source-red.log`：初始4项因默认NOT_FOUND失败，证明新能力原本不存在。
+- `/private/tmp/menu-source-boundaries-red.log`：非法发布状态、ALL误包含依赖SKU两项真实失败；收紧后均通过。
+- `/private/tmp/menu-source-focused-green.log`：38项受影响Java专项通过；补齐分类/销售条目正反场景后`menu-source-core-final.log`来源8项通过，累计39个唯一用例。
+- `/private/tmp/menu-source-ablation-red.log`：移除当前修订比较，指定旧修订测试失败；`menu-source-ablation-restored.log`恢复后通过。
+- 设计/清单守卫25项、生成物25组与diff检查通过，最终打包及提交记录见本批最后回执。
+- 一次独立最终复核：无Critical/Important或Minor，不再重复派发复核。复核后仅删除无关格式化差异及补正向分类测试，业务逻辑保持一致。
+
+### L4 实施决定与后续边界
+
+当前修订选择由原FOOD服务在可信令牌通道内证明；远端自包含原文可以重验hash和成员关系，但不能凭一份文档重建完整发布时间线。若原owner选择逻辑出错，客户端无法仅靠摘要纠正，故保留原服务测试及发送前再核验要求。
+
+跨进程时间校验采用严格UTC有效期，不新增时钟偏差宽限；部署节点需同步时钟，偏差可能使来源证明被安全拒绝。证明摘要不是签名或资金凭据。
+
+S2下一步先扩充原商品报价的市场/币种、价格修订及税依据，再组合餐牌覆盖价、配料和套餐价格；S3随后接入原Outbox发布事件。完整ChannelCatalogSourcePort/ChannelSourceValidationPort提供方尚未装配，当前不会向真实外卖平台发送菜单。已取消历史来源继续拒绝新证明，历史订单仍沿原冻结订单事实解释。本批无生产数据库变更，不改变上一批已部署版本。
+
+最终回执：`menu-source-final-package.log`集成宿主、food-server和commerce-server统一源码打包BUILD SUCCESS（30.870秒）；包标记为local-menu-source-verification，不作线上发布件。消融恢复后的来源8项PASS，累计39个唯一相关Java用例，设计/清单25项、文档70份、生成物25组及diff检查通过。一次独立复核无重要问题或延后Minor。本批本地白名单12文件提交；无推送、无部署、无数据库迁移。
