@@ -3381,18 +3381,40 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
              */
             String storeTemplate = merchantPort.expressTemplateNo(g.merchantNo(), stores.get(g.key())).orElse(null);
             List<FreightPort.FreightLine> lines = new ArrayList<>();
+            long groupGram = 0L;
             for (Line l : g.lines()) {
                 String own = goodsTemplates.get(l.snapshot().goodsNo());
                 String template = own != null && activeTemplate.computeIfAbsent(own, freightPort::active)
                         ? own : storeTemplate;
-                Integer w = l.snapshot().nominalGram();
-                boolean weighed = w != null && w > 0;
-                lines.add(new FreightPort.FreightLine(template, weighed ? w * l.qty() : 0,
-                        weighed ? 0 : l.qty(), l.amount()));
+                int gram = weighedGram(l.snapshot().nominalGram(), l.qty());
+                groupGram += gram;
+                lines.add(new FreightPort.FreightLine(template, gram, gram > 0 ? 0 : l.qty(), l.amount()));
+            }
+            if (groupGram > Integer.MAX_VALUE) {
+                // 每行没溢出、加起来溢出：FreightPort 按 int 累加，同样会绕成负数 —— 与单行同一个处理
+                throw BizException.of(ErrorCode.BAD_REQUEST);
             }
             freightPort.quoteMerged(lines, address).ifPresent(q -> out.put(g.key(), q));
         }
         return out;
+    }
+
+    /**
+     * 一行的计费重（克）= 标称克重 × 件数；没填克重返回 0（这一行按件数走首重）。
+     *
+     * <p>用 {@link Math#multiplyExact} 而不是 {@code Integer * int}：溢出会绕成负数，
+     * 再被运费模板的 {@code max(0, 重量)} 抹成 0 —— 越重越包邮。溢出的单一律 {@code BAD_REQUEST}，
+     * 两千多吨的一行不是真实的快递单。
+     */
+    static int weighedGram(Integer nominalGram, int qty) {
+        if (nominalGram == null || nominalGram <= 0) {
+            return 0;
+        }
+        try {
+            return Math.multiplyExact(nominalGram, qty);
+        } catch (ArithmeticException overflow) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
     }
 
     private static Split applyFreight(Split split, Map<String, FreightPort.Quote> quotes) {
