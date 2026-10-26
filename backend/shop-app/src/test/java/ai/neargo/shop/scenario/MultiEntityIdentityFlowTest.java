@@ -307,6 +307,58 @@ class MultiEntityIdentityFlowTest {
     }
 
     @Test
+    @DisplayName("★★ 越权：带别人家资质的 qualNo 去「更新」→ NOT_FOUND，别人的证一个字都不能变")
+    void qualNoOfAnotherEntityIsNotFound() throws Exception {
+        String others = merchant("12600170090", "资质·别人的");
+        String othersQual = saveQualAs(others, null, "别人的执照");
+        String mine = merchant("12600170091", "资质·我的");
+
+        String body = mvc().perform(post("/biz/qualifications/save").header("Authorization", "Bearer " + mine)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"qualNo\":\"" + othersQual + "\",\"qualType\":\"BUSINESS_LICENSE\","
+                                + "\"qualName\":\"被改掉的执照\",\"imageUrl\":\"https://x/evil.jpg\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("code").asInt()).as("别人的 qualNo 必须当作不存在").isEqualTo(10404);
+
+        var onOthers = okData(others, "/biz/qualifications")
+                .get("items").valueStream().map(i -> i.get("qualName").asString()).toList();
+        assertThat(onOthers).as("别人那张证没被改写").contains("别人的执照").doesNotContain("被改掉的执照");
+    }
+
+    @Test
+    @DisplayName("★★ 平台撤销的资质，商家重存不能把它「复活」成 VALID")
+    void merchantResaveDoesNotResurrectRevokedQualification() throws Exception {
+        String mine = merchant("12600170092", "资质·被撤销");
+        String qualNo = saveQualAs(mine, null, "被撤销的执照");
+        mvc().perform(post("/ops/qualifications/" + qualNo + "/revoke")
+                        .header("Authorization", "Bearer " + opsLogin()))
+                .andExpect(jsonPath("$.data.status").value("REVOKED"));
+
+        String body = mvc().perform(post("/biz/qualifications/save").header("Authorization", "Bearer " + mine)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"qualNo\":\"" + qualNo + "\",\"qualType\":\"BUSINESS_LICENSE\","
+                                + "\"qualName\":\"被撤销的执照\",\"imageUrl\":\"https://x/again.jpg\"}"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("code").asInt()).as("撤销的证不接受原地重存").isNotZero();
+
+        var status = okData(mine, "/biz/qualifications").get("items").valueStream()
+                .filter(i -> qualNo.equals(i.get("qualNo").asString()))
+                .map(i -> i.get("status").asString()).findFirst().orElseThrow();
+        assertThat(status).as("撤销是平台的结论，商家重存不能把它翻回 VALID").isEqualTo("REVOKED");
+    }
+
+    private String saveQualAs(String token, String qualNo, String name) throws Exception {
+        String body = mvc().perform(post("/biz/qualifications/save").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" + (qualNo == null ? "" : "\"qualNo\":\"" + qualNo + "\",")
+                                + "\"qualType\":\"BUSINESS_LICENSE\",\"qualName\":\"" + name
+                                + "\",\"imageUrl\":\"https://x/y.jpg\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("qualNo").asString();
+    }
+
+    @Test
     @DisplayName("★★ 建店时挂到另一张证照下 —— 撞的是那张证照的额度，不是当前这张的")
     void createStoreCanTargetAnotherOwnedEntity() throws Exception {
         String phone = "12600170080";

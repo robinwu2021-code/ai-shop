@@ -410,7 +410,8 @@ public class AuthServiceImpl implements AuthService {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
         }
         registerNewCredentials(user, List.of(phoneCredential));
-        if (req.merchantNo() != null && !req.merchantNo().isBlank()) {
+        // 同 findOrCreate：端上自报的 merchantNo 只补空归属，不改写已有归属
+        if (user.getEntityNo() == null && req.merchantNo() != null && !req.merchantNo().isBlank()) {
             user.setEntityNo(req.merchantNo());
             userMapper.updateById(user);
         }
@@ -602,9 +603,15 @@ public class AuthServiceImpl implements AuthService {
                 yield List.of(new Credential(IdentityType.PHONE, cmd.principal(), null));
             }
             case GRANT_APPLE ->
-                // TODO(S4) 校验 identityToken 签名后取 sub。
-                // Apple 永远给不出手机号，所以真接通后这里之后要接一道「强制绑定手机号」
-                    List.of(new Credential(IdentityType.APPLE_SUB, cmd.principal(), "APP"));
+                /*
+                 * TODO(S4) 校验 identityToken 签名后取 sub；Apple 永远给不出手机号，
+                 * 真接通后这里之后还要接一道「强制绑定手机号」。
+                 *
+                 * <p>**验签接通前一律拒绝，不能把 principal 当 sub 收下**：principal 是调用方
+                 * 自己报的字符串，此前直接拿它查 APPLE_SUB 凭证 —— 任何人报出别人的 sub
+                 * 就能拿到那个账号的 token，报一个新串就能无限注册。与未知 grant 同码 10400。
+                 */
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
             default -> throw BizException.of(ErrorCode.BAD_REQUEST);
         };
     }
@@ -636,8 +643,15 @@ public class AuthServiceImpl implements AuthService {
                 log.error("凭证 {} 指向不存在的用户 {}，登录中止", credentials.getFirst().type(), userNo);
                 throw BizException.of(ErrorCode.INTERNAL_ERROR);
             }
-            // 从店铺码进来的老用户：刷新常去店，归因由 marketing 域按优先级裁决（S5）
-            if (cmd.merchantNo() != null && !cmd.merchantNo().isBlank()) {
+            /*
+             * 从店铺码进来的老用户：**只在归属尚为空时补上**，不改写已有归属。
+             *
+             * <p>merchantNo 是端上自报的（店铺码 / 分享链接参数），此前每次登录都拿它覆盖
+             * entity_no —— 换个店铺码再登一次，用户就被「转」给了另一家商户，归因被任意改写。
+             * 归属在建户时定下（{@link #createAccount}），之后的改动由 marketing 域按优先级裁决（S5），
+             * 不在登录这条路上顺手做。
+             */
+            if (user.getEntityNo() == null && cmd.merchantNo() != null && !cmd.merchantNo().isBlank()) {
                 user.setEntityNo(cmd.merchantNo());
                 userMapper.updateById(user);
             }

@@ -210,7 +210,17 @@ public class Kuaidi100PickupGateway implements ExpressPickupPort {
             JsonNode d = root.path("data");
             int status = d.hasNonNull("status") ? d.path("status").asInt(-1) : root.path("status").asInt(-1);
             String tracking = firstText(d, root, "kuaidinum");
-            return Optional.of(new Callback(taskId, text(d, "orderId"), status, tracking,
+            /*
+             * 认单标识只取签名覆盖到的 param。表单里的 taskId 不在签名里：此前原样带出去认单，
+             * 于是拿一条自己的合法回调、把 taskId 改成别人的，就能把别人的取件单推成「已取件」、
+             * 回填运单号、记运费。现在它只用来比对：param 里有 taskId 而两者对不上，整条不认。
+             */
+            String signedTaskId = firstText(d, root, "taskId");
+            if (signedTaskId != null && taskId != null && !signedTaskId.equals(taskId.trim())) {
+                log.warn("[kd100] 回调表单 taskId={} 与签名报文 taskId={} 不一致，不认", taskId, signedTaskId);
+                return Optional.empty();
+            }
+            return Optional.of(new Callback(signedTaskId, text(d, "orderId"), status, tracking,
                     grams(d.path("weight").asText(null)), minor(d.path("freight").asText(null)),
                     minor(d.path("defPrice").asText(null)), text(d, "courierName"), text(d, "courierMobile"),
                     firstText(d, root, "message")));

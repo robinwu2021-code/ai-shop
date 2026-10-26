@@ -33,7 +33,22 @@ class Kuaidi100PickupGatewayTest {
         assertThat(cb.listPriceMinor()).isEqualTo(1500L);
         assertThat(cb.chargedWeightG()).isEqualTo(2500);
         assertThat(cb.courierName()).isEqualTo("王大");
+        assertThat(cb.orderId()).as("认单靠签名覆盖到的 orderId").isEqualTo("O1");
+        assertThat(cb.taskId()).as("表单里的 taskId 不在签名里，不能原样当成可信标识带出去").isNull();
+    }
+
+    /** data 里带 taskId 的回调（签名算法同上，期望签名用 Python hashlib 独立算出） */
+    private static final String CB_WITH_TASK = "{\"kuaidicom\":\"zhongtong\",\"kuaidinum\":\"ZT123\","
+            + "\"status\":\"200\",\"message\":\"成功\",\"data\":{\"taskId\":\"TASK1\",\"orderId\":\"O1\",\"status\":10}}";
+
+    @Test
+    @DisplayName("★★★ 表单 taskId 与签名里的 taskId 对不上：不认 —— 否则拿自己的合法回调就能改别人的取件单")
+    void unsignedTaskIdMustAgreeWithSigned() {
+        String sign = "806410EE0EB4BB80ED350587C0AB6836";
+        assertThat(Kuaidi100PickupGateway.parse("TASK-VICTIM", sign, CB_WITH_TASK, "SALT")).isEmpty();
+        var cb = Kuaidi100PickupGateway.parse("TASK1", sign, CB_WITH_TASK, "SALT").orElseThrow();
         assertThat(cb.taskId()).isEqualTo("TASK1");
+        assertThat(cb.orderId()).isEqualTo("O1");
     }
 
     @Test

@@ -111,16 +111,13 @@ public final class Perms {
     // ── 履约调度与物流（P-5.1 / P-5.2）──────────────────────────────────────
 
     /**
-     * 到货批次与跨自提点分拣汇总。
+     * 到货批次与跨自提点分拣汇总。<b>只读</b>。
      *
-     * <p><b>批次推进（发车/到货/签收）故意共用这个码</b>，是全表第二处不拆读写的地方
-     * （第一处是店招审核 {@code STORE_PAGE_AUDIT}）。理由与那里相同：
-     * 「看批次」与「发车」是同一个人同一次动作的两半，拆出来会得到一个
-     * 只有社区运营用、且他必然同时持有的码 —— 那种码只增加配置负担。
-     *
-     * <p>还有一条更硬的理由：<b>ops-web 的发车按钮就是用这个码门控的</b>
-     * （{@code app/fulfillment/page.tsx} 的 {@code canDispatch}）。
-     * 后端另判一个写码，等于造一个「看得见、点下去 403」的按钮。
+     * <p>批次推进（发车/到货/签收）此前共用这个码，于是「能看批次」就「能签收」——
+     * 只读角色也能改订单的履约状态。现在推进判 {@link #FULFILLMENT_RULE_UPDATE}：
+     * 不新增码，种子里持本码的角色（超管、社区运营）本就同时持那个写码。
+     * ops-web 的发车按钮（{@code app/fulfillment/page.tsx} 的 {@code canDispatch}）同步改判写码，
+     * 不留「看得见、点下去 403」的按钮。
      */
     public static final String FULFILLMENT_BATCH_READ = "fulfillment:batch:read";
 
@@ -131,7 +128,8 @@ public final class Perms {
     public static final String FULFILLMENT_LOGISTICS_READ = "fulfillment:logistics:read";
 
     /**
-     * 履约与物流的**规则写**：逾期处置、运费模板与超区、运力启停、换运单号。
+     * 履约与物流的**规则写**：逾期处置、运费模板与超区、运力启停、换运单号，
+     * 以及批次推进（发车/到货/签收）。
      *
      * <p>四件事共用一个码是 ops-web 的既有口径（三个 tab 的 {@code canEdit} 都是它）。
      * 它们的共同点是「配错了订单发不出去 / 客诉」，而读它们的人（客服、财务）

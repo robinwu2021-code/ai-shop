@@ -310,6 +310,36 @@ class OpsPermConfigFlowTest {
                 .andExpect(jsonPath("$.code").value(10404));
     }
 
+    @Test
+    @DisplayName("★★ 只读批次的人（fulfillment:batch:read）不能推进/签收批次 —— 推进是写动作")
+    void batchReadOnlyCannotAdvanceBatch() throws Exception {
+        String admin = opsLogin("admin", "admin123");
+        String roleCode = "BATCHRO" + System.currentTimeMillis() % 100000;
+        mvc().perform(post("/ops/perm/roles").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleCode\":\"" + roleCode + "\",\"name\":\"批次只读\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        grantPoints(admin, roleCode, "\"OPS_FULFILLMENT__TAB_SORTING\"");
+
+        String uname = "batchro" + System.currentTimeMillis() % 100000 + "@example.com";
+        String created = mvc().perform(post("/ops/staffs").header("Authorization", "Bearer " + admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + uname + "\",\"realName\":\"只看批次的人\","
+                                + "\"roles\":[\"" + roleCode + "\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String reader = opsLogin(uname, json.readTree(created).get("data").get("initialPassword").asString());
+        // 前提要验到：他确实持读码、确实不持写码 —— 否则下面的 10403 可能拦在别的地方
+        assertThat(permsOf(reader)).contains("fulfillment:batch:read").doesNotContain("fulfillment:rule:update");
+
+        mvc().perform(get("/ops/fulfillment/batches").header("Authorization", "Bearer " + reader))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/ops/fulfillment/batches/NO_SUCH_BATCH/status")
+                        .header("Authorization", "Bearer " + reader)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"SIGNED\"}"))
+                .andExpect(jsonPath("$.code").value(10403));
+    }
+
     private void grantPoints(String admin, String roleCode, String codes) throws Exception {
         mvc().perform(post("/ops/perm/roles/" + roleCode + "/points")
                         .header("Authorization", "Bearer " + admin)
