@@ -105,6 +105,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -4368,13 +4369,45 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
 
     private String newUnusedVerifyCode() { return originalOwnerUnusedVerifyCode(subOrderMapper); }
 
+    /**
+     * 已结束的单让出号段前要冷却多久。核销码只对<b>活码</b>有意义：终态的单不能再核销，
+     * 但刚核销完的码立刻发给下一个顾客，店员会在同一个核销台上看到「这个码昨天用过」。
+     */
+    static final java.time.Duration VERIFY_CODE_RECYCLE_AFTER = java.time.Duration.ofDays(30);
+
+    private static final Set<String> VERIFY_CODE_FINAL =
+            Set.of(OrdSubOrder.COMPLETED, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED);
+
     /** Same original namespace for paid pickup and authorized lifecycle-3 unpaid acceptance. */
     static String originalOwnerUnusedVerifyCode(StoreOrderMapper mapper) {
+        return originalOwnerUnusedVerifyCode(mapper, OrderServiceImpl::newVerifyCode);
+    }
+
+    /**
+     * 先查后写、撞了换一个；撞上的是<b>终态且已过冷却期</b>的旧单，就把码从它身上摘下来复用。
+     *
+     * <p>{@code uk_verify_code} 是全表永久唯一，历史单的码一直占着号段 ——
+     * 100 万个号用满之后支付确认会恒抛，用户付了钱、子单停在待发码。只对活码唯一需要迁移改索引；
+     * 在那之前回收旧码是不动库表的最小修法。摘码用条件更新（仍是这个码才摘），并发由唯一键兜底。
+     * 被回收的单丢掉 {@code verify_code}，核销记录仍在 {@code ful_verify_log}（码 + 子单号）。
+     */
+    static String originalOwnerUnusedVerifyCode(StoreOrderMapper mapper, java.util.function.Supplier<String> codes) {
+        java.time.LocalDateTime recycleBefore = java.time.LocalDateTime.now().minus(VERIFY_CODE_RECYCLE_AFTER);
         for (int i = 0; i < VERIFY_CODE_TRIES; i++) {
-            String code = newVerifyCode();
-            Long used = mapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
+            String code = codes.get();
+            List<OrdSubOrder> holders = mapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
                     .eq(OrdSubOrder::getVerifyCode, code));
-            if (used == null || used == 0L) {
+            if (holders.isEmpty()) {
+                return code;
+            }
+            OrdSubOrder holder = holders.get(0);
+            if (holders.size() == 1
+                    && VERIFY_CODE_FINAL.contains(holder.getStatus())
+                    && holder.getUpdatedAt() != null && holder.getUpdatedAt().isBefore(recycleBefore)
+                    && mapper.update(null, Wrappers.<OrdSubOrder>lambdaUpdate()
+                            .set(OrdSubOrder::getVerifyCode, null)
+                            .eq(OrdSubOrder::getId, holder.getId())
+                            .eq(OrdSubOrder::getVerifyCode, code)) == 1) {
                 return code;
             }
         }
