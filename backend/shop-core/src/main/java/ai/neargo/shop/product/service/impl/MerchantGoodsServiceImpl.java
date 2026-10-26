@@ -510,7 +510,20 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
          * 会话不带任何维度（超管 / ALL）时 DataScopeHandler 直接放行，与今天一致。
          */
         var w = Wrappers.<PrdGoods>lambdaQuery();
-        applyStatus(w, "PENDING");
+        /*
+         * 待审 = 商品行在审（新品 / 免审关时的直接编辑）**或** 在售商品有一份已提交的草稿。
+         * 后者的 live 行保持 APPROVED（线上照卖旧版，见 publishDraft），只能从草稿表认出来。
+         * 草稿表同样按 MERCHANT 登记了数据域，这里**不豁免**：配了商家域的审核员只捞到自己那几家。
+         */
+        List<String> submitted = draftMapper.selectList(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                        .select(PrdGoodsDraft::getGoodsNo)
+                        .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED))
+                .stream().map(PrdGoodsDraft::getGoodsNo).toList();
+        if (submitted.isEmpty()) {
+            applyStatus(w, "PENDING");
+        } else {
+            w.and(x -> x.eq(PrdGoods::getAuditStatus, AUDITING).or().in(PrdGoods::getGoodsNo, submitted));
+        }
         w.orderByDesc(PrdGoods::getId);
         Page<PrdGoods> p = goodsMapper.selectPage(Page.of(page, size), w);
         return PageData.of(toVOs(p.getRecords()), p.getTotal(), page, size);
@@ -1169,13 +1182,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (auditRequired()) {
             /*
              * 审核开：**线上继续卖旧版** —— 这正是双版本对 V247 的全部改进。
-             * live 行只把 audit_status 置 AUDITING（进现有审核队列，队列代码零改动），
-             * on_sale 一个字节不动。过审回调里换版（见 audit 方法的草稿分支）。
+             * 过审回调里换版（见 audit 方法的草稿分支）。
+             *
+             * ★ **待审状态记在草稿行上（SUBMITTED），live 行一个字节不动。**
+             * 第一版把 live 的 audit_status 置成 AUDITING 好让它「零改动」进审核队列 ——
+             * 而买家列表、详情、下单快照全都要求 APPROVED：审核期间旧版不是「继续卖」，
+             * 是从买家那边整件消失。待审队列与看板改成同时认 SUBMITTED 草稿。
              */
             draft.setStatus(PrdGoodsDraft.SUBMITTED);
             DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(draft));
-            live.setAuditStatus(AUDITING);
-            updateGoods(live);
             return toVO(live);
         }
         return swapFromDraft(live, draft, merchantNo);
@@ -3096,6 +3111,28 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         if (g == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (!approved) {
+            PrdGoodsDraft pending = DataScopeContext.executeWithoutScope(() ->
+                    draftMapper.selectOne(Wrappers.<PrdGoodsDraft>lambdaQuery()
+                            .eq(PrdGoodsDraft::getGoodsNo, g.getGoodsNo())
+                            .eq(PrdGoodsDraft::getStatus, PrdGoodsDraft.SUBMITTED).last("limit 1")));
+            if (pending != null) {
+                /*
+                 * **驳回的是草稿，不是线上那一版。** 双版本下待审的是 SUBMITTED 草稿，
+                 * live 行一直是过审在卖的旧版 —— 走下面的通用驳回会把它一起下架，
+                 * 等于「改个错别字被驳回 = 商品停卖」，正是双版本要消灭的那件事。
+                 * 草稿退回编辑态让商家改了再发；原因落在商品行上，商家侧照常看得到。
+                 * （发布曾把 live 置 AUDITING 的存量行，这里一并拨回 APPROVED。）
+                 */
+                pending.setStatus(PrdGoodsDraft.EDITING);
+                DataScopeContext.executeWithoutScope(() -> draftMapper.updateById(pending));
+                g.setAuditStatus(APPROVED);
+                g.setAuditReason(reason.trim());
+                updateGoods(g);
+                revisions.recordRejected(goodsNo, reason.trim());
+                return toVO(g);
+            }
+        }
         g.setAuditStatus(approved ? APPROVED : REJECTED);
         // 原因落在商品行上（V96）：它是商家能看到的那半边。过审清空 ——
         // 旧原因留着会被当成「还有问题没改完」
@@ -3150,6 +3187,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                     updateGoods(g);
                     return toVO(g);
                 }
+                // 先落下上面已置好的 APPROVED + 清空原因：上一轮驳回草稿时落在商品行上的原因过审即清。
+                // 换版内部按 goodsNo 重读商品行，读到的就是这一版
+                updateGoods(g);
                 // 过审换版:发布人是平台审核,不是商家 —— 历史里要分得开
                 return swapFromDraft(g, submitted, "PLATFORM_AUDIT");
             }

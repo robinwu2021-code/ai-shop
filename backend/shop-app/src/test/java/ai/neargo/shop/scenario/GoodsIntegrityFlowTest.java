@@ -215,6 +215,60 @@ class GoodsIntegrityFlowTest {
         }
     }
 
+    // ------------------------------------------------------------------ ④ 审核开着发布：线上版不能消失
+
+    @Test
+    @DisplayName("★★★ 审核开着发布草稿 → 待审期间买家列表/详情/下单快照照旧是旧版；进待审队列；过审换版")
+    void publishUnderAuditKeepsLiveVersionBuyable() throws Exception {
+        String biz = merchant("13700777401", "双版本·审核店");
+        String goodsNo = onSaleGoods(biz, "旧版商品", 20);
+        String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
+        String merchantNo = merchantNoOf(biz);
+        assertThat(postJson(biz, "/biz/goods/save", goodsBody(goodsNo, skuNo, "新版商品", 1000, 20))
+                .get("code").asInt()).isZero();
+        assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/publish", "{}").get("code").asInt()).isZero();
+
+        JsonNode d = buyerGet("/mp/goods/" + goodsNo);
+        assertThat(d.get("code").asInt()).as("待审期间买家详情 404 了 —— 线上版消失").isZero();
+        assertThat(d.get("data").get("title").asString()).isEqualTo("旧版商品");
+        JsonNode list = buyerGet("/mp/goods?merchantNo=" + merchantNo + "&size=50").get("data").get("records");
+        assertThat(list.findValuesAsString("goodsNo")).as("待审期间从买家列表里消失了").contains(goodsNo);
+        assertThat(goodsQueryPort.snapshot(List.of(skuNo), Map.of()).get(skuNo).onSale())
+                .as("待审期间下单快照判成不可售").isTrue();
+
+        JsonNode queue = json.readTree(mvc().perform(get("/ops/goods/audit-queue?page=1&size=200")
+                        .header("Authorization", "Bearer " + opsLogin()))
+                .andReturn().getResponse().getContentAsString()).get("data").get("records");
+        assertThat(queue.findValuesAsString("goodsNo")).as("提交的草稿要进待审队列").contains(goodsNo);
+
+        assertThat(approve(goodsNo).get("code").asInt()).isZero();
+        assertThat(buyerGet("/mp/goods/" + goodsNo).get("data").get("title").asString()).isEqualTo("新版商品");
+        assertThat(onSale(goodsNo)).isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ 驳回待审草稿：线上旧版照卖，草稿退回编辑，驳回原因商家看得到")
+    void rejectingDraftKeepsLiveSelling() throws Exception {
+        String biz = merchant("13700777402", "双版本·驳回店");
+        String goodsNo = onSaleGoods(biz, "驳回旧版", 20);
+        String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
+        assertThat(postJson(biz, "/biz/goods/save", goodsBody(goodsNo, skuNo, "驳回新版", 1000, 20))
+                .get("code").asInt()).isZero();
+        assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/publish", "{}").get("code").asInt()).isZero();
+        assertThat(postJson(opsLogin(), "/ops/goods/" + goodsNo + "/audit",
+                "{\"approved\":false,\"reason\":\"图不清楚\"}").get("code").asInt()).isZero();
+
+        assertThat(onSale(goodsNo)).as("驳回的是草稿，不该把线上旧版拉下架").isTrue();
+        assertThat(buyerGet("/mp/goods/" + goodsNo).get("data").get("title").asString()).isEqualTo("驳回旧版");
+        assertThat(jdbc.queryForObject("select status from prd_goods_draft where goods_no=?",
+                String.class, goodsNo)).isEqualTo("EDITING");
+        assertThat(detail(biz, goodsNo).get("auditReason").asString()).contains("图不清楚");
+    }
+
+    private JsonNode buyerGet(String path) throws Exception {
+        return json.readTree(mvc().perform(get(path)).andReturn().getResponse().getContentAsString());
+    }
+
     // ------------------------------------------------------------------ ⑨ SKU 价格校验
 
     @Test
