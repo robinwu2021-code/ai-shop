@@ -301,6 +301,38 @@ class GoodsIntegrityFlowTest {
         assertThat(buyerGet("/mp/goods/" + live).get("code").asInt()).as("强制下架").isEqualTo(notFound);
     }
 
+    // ------------------------------------------------------------------ ⑥ 展示价 = 扣款价
+
+    @Test
+    @DisplayName("★★★ 门店单独定价 12、主体价 10 → 买家列表、详情、规格询价都显示 12（与下单扣款一致）")
+    void buyerSeesStorePrice() throws Exception {
+        String biz = merchant("13700777601", "门店价店");
+        String goodsNo = onSaleGoods(biz, "门店价商品", 5);
+        String skuNo = detail(biz, goodsNo).get("skus").get(0).get("skuNo").asString();
+        String storeNo = jdbc.queryForObject("select store_no from prd_goods where goods_no=?", String.class, goodsNo);
+        assertThat(storeNo).as("新建商品应有归属门店").isNotNull();
+        // goodsBody 主体价 1000；本店单独定 1200
+        assertThat(postJson(biz, "/biz/goods/" + goodsNo + "/store-price",
+                "{\"skuNo\":\"" + skuNo + "\",\"price\":1200}")
+                .get("code").asInt()).isZero();
+        assertThat(goodsQueryPort.snapshot(List.of(skuNo), Map.of()).get(skuNo).price())
+                .as("前提：下单扣的是门店价").isEqualTo(1200L);
+
+        JsonNode d = buyerGet("/mp/goods/" + goodsNo).get("data");
+        assertThat(d.get("price").asLong()).as("详情展示价").isEqualTo(1200L);
+        assertThat(d.get("skus").get(0).get("price").asLong()).as("详情 SKU 价").isEqualTo(1200L);
+        assertThat(buyerGet("/mp/goods/" + goodsNo + "/sku-price?skuNo=" + skuNo).get("data").get("price").asLong())
+                .as("规格询价").isEqualTo(1200L);
+        JsonNode list = buyerGet("/mp/goods?merchantNo=" + merchantNoOf(biz) + "&size=50").get("data").get("records");
+        for (JsonNode row : list) {
+            if (goodsNo.equals(row.get("goodsNo").asString())) {
+                assertThat(row.get("price").asLong()).as("列表展示价").isEqualTo(1200L);
+                return;
+            }
+        }
+        throw new AssertionError("列表里没有这件货");
+    }
+
     // ------------------------------------------------------------------ ⑨ SKU 价格校验
 
     @Test
