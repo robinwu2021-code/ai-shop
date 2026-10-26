@@ -3,7 +3,7 @@
 > 状态：草稿（**待确认**）· 创建 2026-08-05
 > 来源：由 [需求矩阵-三端](../../requirements/需求矩阵-三端.md) 逐个 L4 功能点反推得出，并对齐
 > [architecture.md](./architecture.md) §5 契约口径、[c-app/src/api/endpoints.ts](../../../c-app/src/api/endpoints.ts)（C 端端点表 = 现有唯一真源）、
-> [待完成功能清单](../../requirements/待完成功能清单.md) 的实现状态。
+> [待完成功能清单](../../requirements/archive/待完成功能清单.md) 的实现状态。
 > 定位：本文是**后端接口的权威清单**，回答「后端一共要提供哪些端点、归哪个模块、谁能调、对应矩阵哪一条」。
 > 请求/响应字段级细节不在本文，由后续各域的 OpenAPI（`docs/api/openapi.yaml`）承载。
 
@@ -753,7 +753,7 @@
 ## 八、关联文档
 
 - 需求矩阵：[需求矩阵-三端](../../requirements/需求矩阵-三端.md)（本文每一行的来源）
-- C 端细则：[C端功能清单](../../requirements/C端功能清单.md) · 实现状态：[待完成功能清单](../../requirements/待完成功能清单.md)
+- C 端细则：[C端功能清单](../../requirements/C端功能清单.md) · 实现状态：[待完成功能清单](../../requirements/archive/待完成功能清单.md)
 - 架构与契约口径：[architecture.md](./architecture.md) · [TDD-c-app](../design/TDD-c-app.md)
 - C 端端点表（现存唯一真源）：[c-app/src/api/endpoints.ts](../../../c-app/src/api/endpoints.ts)
 - 决策：[ADR-001 商家端形态](../ADR/ADR-001-商家端形态与拆分时机.md) · [ADR-002 分账结算](../ADR/ADR-002-结算走微信支付分账.md) · [ADR-003 报价不审核](../ADR/ADR-003-报价不审核而用锁价公示信用防加价.md) · [ADR-004 去团长化](../ADR/ADR-004-增长模型从孵化团长转向商家自带客流.md) · [ADR-005 履约方式与自提点](../ADR/ADR-005-履约方式与自提点模型.md) · [ADR-006 积分](../ADR/ADR-006-积分方案.md)

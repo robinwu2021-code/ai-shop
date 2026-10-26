@@ -1,6 +1,11 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.pay.mapper.SettleMappers.FeeRuleMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import ai.neargo.shop.pay.entity.StlFeeRule;
 import ai.neargo.shop.pay.service.FeeRuleService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -33,6 +38,29 @@ class FeeRuleFlowTest {
 
     @Autowired
     private FeeRuleService feeRuleService;
+
+    @Autowired
+    private FeeRuleMapper feeRules;
+
+    private long lastIdBefore;
+
+    /*
+     * 本类加的规则都是**立即或很快生效**的平台级费率（8%、自带客流 4%……），而 stl_fee_rule 全库一份。
+     * 不撤的话，按字母序排在后面的结算用例（M7 的费率说明、账单佣金……）全拿到改过的费率。
+     * 按 id 水位撤：只动本条用例自己加的行。
+     */
+    @BeforeEach
+    void rememberWatermark() {
+        StlFeeRule last = DataScopeContext.executeWithoutScope(() -> feeRules.selectOne(
+                Wrappers.<StlFeeRule>lambdaQuery().orderByDesc(StlFeeRule::getId).last("limit 1")));
+        lastIdBefore = last == null ? 0 : last.getId();
+    }
+
+    @AfterEach
+    void withdrawOwnRules() {
+        DataScopeContext.executeWithoutScope(() -> feeRules.delete(
+                Wrappers.<StlFeeRule>lambdaQuery().gt(StlFeeRule::getId, lastIdBefore)));
+    }
 
     @Test
     @DisplayName("★ 初始四格与上线前的配置一致：第三方自带客流 0、平台客流 5%")

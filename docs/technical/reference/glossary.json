@@ -38095,27 +38095,6 @@
       },
       {
         "host": "MsgTemplate",
-        "name": "SUBSCRIBE",
-        "value": "SUBSCRIBE",
-        "zh": "@deprecated 旧叫法，实际存的是 WXSUB",
-        "module": "shop-core"
-      },
-      {
-        "host": "MsgTemplate",
-        "name": "PUSH",
-        "value": "PUSH",
-        "zh": "@deprecated 与 CHANNEL_PUSH 同值，保留以免旧引用编译不过",
-        "module": "shop-core"
-      },
-      {
-        "host": "MsgTemplate",
-        "name": "INBOX",
-        "value": "INBOX",
-        "zh": "@deprecated 旧叫法，实际存的是 INAPP",
-        "module": "shop-core"
-      },
-      {
-        "host": "MsgTemplate",
         "name": "CHANNEL_INAPP",
         "value": "INAPP",
         "zh": "站内信。",

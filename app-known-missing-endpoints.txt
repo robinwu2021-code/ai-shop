@@ -6,7 +6,8 @@
 #
 # ── C 端：我的卡包
 # 页面 c-app/src/pages/cards/index.vue 在调它。这一页同时还有第二个问题：
-# **pages.json 里注册了，但 app 里没有任何一处跳得过去**，只有直接输路由才到得了。
+# 入口只有「我的」页一格（me/index.vue），被 `FEATURES.cards = false` 关着 ——
+# 开关不开就跳不过去，只有直接输路由才到得了。
 # 所以「补后端」与「撤这一页」都是合理的收场，需要产品定。
 GET /mp/card/mine
 #

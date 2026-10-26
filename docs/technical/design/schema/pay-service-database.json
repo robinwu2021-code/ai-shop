@@ -1,0 +1,6009 @@
+{
+  "status": "DESIGN_ONLY_NOT_APPLIED",
+  "version": "v4",
+  "idType": "BIGINT AUTO_INCREMENT (Java Long)",
+  "standardColumns": [
+    "id",
+    "created_at",
+    "created_by",
+    "updated_at",
+    "updated_by",
+    "version",
+    "deleted"
+  ],
+  "standardColumnsEn": {
+    "id": "Primary key, BIGINT AUTO_INCREMENT (Java Long); all references point here",
+    "created_at": "Created at (UTC)",
+    "created_by": "Created by",
+    "updated_at": "Updated at (UTC)",
+    "updated_by": "Updated by",
+    "version": "Optimistic lock version",
+    "deleted": "Logical delete flag; money and history facts are never deleted"
+  },
+  "tables": [
+    {
+      "name": "pay_channel_product",
+      "module": "pay-channel",
+      "group": "渠道与地区",
+      "purpose": "支付产品：渠道 × 接入模式 × 支付类型 × 支付方式。运营开关；实际能力以代码实现的接口为准，启动比对",
+      "columns": [
+        {
+          "name": "product_code",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "产品码（种子数据的自然键），如 NEWEBPAY_CREDIT、LINEPAY_ONLINE、PAYBY_POS_CARD",
+          "meaningEn": "Product code (natural key of seed data)"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道码（值域，见 sys_pay_channel）",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "access_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "MERCHANT_OWN / SERVICE_PROVIDER / PLATFORM_SUB：用谁的凭据调渠道",
+          "meaningEn": "Whose credentials call the channel"
+        },
+        {
+          "name": "pay_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ONLINE / OFFLINE / CARD：走哪类能力接口",
+          "meaningEn": "Payment type"
+        },
+        {
+          "name": "pay_method",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "统一支付方式码：CARD_ONLINE / APPLE_PAY / ATM / CVS / LINE_PAY / TAIWAN_PAY / WALLET / JSAPI / SCAN_CUSTOMER / STORE_QR / CARD_PRESENT …",
+          "meaningEn": "Unified payment method code"
+        },
+        {
+          "name": "channel_method",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道侧方式码：蓝新 CREDIT / VACC / CVS，微信 JSAPI，PayBy 产品码",
+          "meaningEn": "Channel-side method code"
+        },
+        {
+          "name": "allowed_funds_paths",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "逗号分隔：DIRECT / AGGREGATED；TW 两家只允许 DIRECT",
+          "meaningEn": "Allowed funds paths, comma separated"
+        },
+        {
+          "name": "refund_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ONLINE 原路退 / OFFLINE 无原路退需线下 / UNSUPPORTED",
+          "meaningEn": "Refund mode"
+        },
+        {
+          "name": "partial_refund",
+          "sqlType": "TINYINT(1) NOT NULL DEFAULT 0",
+          "meaning": "是否支持部分退款",
+          "meaningEn": "Supports partial refunds"
+        },
+        {
+          "name": "max_partial_refunds",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "单笔最多部分退款次数；0 = 未知 / 不限",
+          "meaningEn": "Max partial refunds per payment; 0 = unknown / unlimited"
+        },
+        {
+          "name": "refund_interval_seconds",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "两次退款最小间隔",
+          "meaningEn": "Minimum seconds between two refunds"
+        },
+        {
+          "name": "refund_window_days",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "可退款天数；0 = 未知",
+          "meaningEn": "Refundable days; 0 = unknown"
+        },
+        {
+          "name": "two_phase",
+          "sqlType": "TINYINT(1) NOT NULL DEFAULT 0",
+          "meaning": "是否两段式（ATM / 超商取号后再缴费；LINE Pay 授权后 confirm）",
+          "meaningEn": "Two-phase flow (ATM / CVS code then payment; LINE Pay authorise then confirm)"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ENABLED / DISABLED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "sort_no",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "收银台排序",
+          "meaningEn": "Sort order at checkout"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "product_code"
+        ],
+        [
+          "pay_channel",
+          "access_mode",
+          "pay_type",
+          "pay_method"
+        ]
+      ],
+      "indexes": [
+        [
+          "pay_channel",
+          "status"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "支付产品",
+      "titleEn": "Channel Product",
+      "purposeEn": "Payment product = channel × access mode × payment type × payment method. An ops switch; real capability is whatever the code implements, compared at startup."
+    },
+    {
+      "name": "pay_channel_product_market",
+      "module": "pay-channel",
+      "group": "渠道与地区",
+      "purpose": "支付产品在哪些国家地区可用，及该地区的币种与金额范围。无行 = 该产品在该地区不可用",
+      "columns": [
+        {
+          "name": "pay_channel_product_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "支付产品 pay_channel_product.id",
+          "meaningEn": "Channel product (pay_channel_product.id)"
+        },
+        {
+          "name": "market",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "市场码（值域，见 sys_market）",
+          "meaningEn": "Market code"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "该地区收款币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "single_min_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "单笔下限（最小单位）",
+          "meaningEn": "Single payment minimum"
+        },
+        {
+          "name": "single_max_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "单笔上限；0 = 不限",
+          "meaningEn": "Single payment maximum; 0 = unlimited"
+        },
+        {
+          "name": "amount_scale",
+          "sqlType": "TINYINT NOT NULL",
+          "meaning": "出通道金额精度：TWD 在蓝新 / LINE Pay 为 0（整数元），AED 为 2；有余数即拒",
+          "meaningEn": "Decimal scale sent to the channel; a remainder is rejected, never rounded"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ENABLED / DISABLED",
+          "meaningEn": "Status"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_channel_product_id",
+          "market"
+        ]
+      ],
+      "indexes": [
+        [
+          "market",
+          "status"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "支付产品地区",
+      "titleEn": "Channel Product Market",
+      "purposeEn": "Countries / regions where a product is available, with currency and amount limits. No row = unavailable in that market."
+    },
+    {
+      "name": "pay_onboarding",
+      "module": "pay-domain/onboarding",
+      "group": "进件与收款商户",
+      "purpose": "进件单：某门店向某渠道申请收款能力。资料与每次提交是版本；成功产出 pay_merchant",
+      "columns": [
+        {
+          "name": "onboarding_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "进件单号（对外：进件回调地址里使用）",
+          "meaningEn": "Onboarding application number"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "market",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "市场码",
+          "meaningEn": "Market code"
+        },
+        {
+          "name": "access_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "MERCHANT_OWN / SERVICE_PROVIDER / PLATFORM_SUB",
+          "meaningEn": "Whose credentials call the channel"
+        },
+        {
+          "name": "funds_path",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DIRECT / AGGREGATED",
+          "meaningEn": "Where funds settle"
+        },
+        {
+          "name": "parent_pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "SERVICE_PROVIDER / PLATFORM_SUB 时挂在哪个平台级收款商户下（pay_merchant.id）",
+          "meaningEn": "Parent platform-level payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "legal_form",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "通道进件档位（小微 / 个体户 / 企业…），不是法律形态真源",
+          "meaningEn": "Channel onboarding tier (not the legal-form source of truth)"
+        },
+        {
+          "name": "current_version",
+          "sqlType": "INT NOT NULL DEFAULT 1",
+          "meaning": "当前资料版本",
+          "meaningEn": "Current version"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT / SUBMITTED / CHANNEL_REVIEW / NEED_SIGN / APPROVED / REJECTED / CANCELLED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "channel_apply_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "渠道侧申请单号（当前版本）",
+          "meaningEn": "Channel-side application number"
+        },
+        {
+          "name": "sign_url",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "NEED_SIGN 时渠道给的签约链接",
+          "meaningEn": "Signing URL from the channel (NEED_SIGN)"
+        },
+        {
+          "name": "reject_reason",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "当前版本驳回原因，原样给商家看；历史原因在版本表",
+          "meaningEn": "Rejection reason, shown to the merchant as is"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "APPROVED 后产出的收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "entity_name_snapshot",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "建单时门店所属主体名快照",
+          "meaningEn": "Entity name snapshot at creation"
+        },
+        {
+          "name": "store_name_snapshot",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "建单时门店名快照",
+          "meaningEn": "Store name snapshot"
+        },
+        {
+          "name": "initiator_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "BIZ 商家自助 / OPS 运营代办",
+          "meaningEn": "Initiator type"
+        },
+        {
+          "name": "initiator_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发起人（审计字段，与 created_by 同口径，不作关联）",
+          "meaningEn": "Initiated by (audit field, not a reference)"
+        },
+        {
+          "name": "submitted_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "最近一次提交（UTC）",
+          "meaningEn": "Submitted at"
+        },
+        {
+          "name": "decided_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "渠道给出终态的时间",
+          "meaningEn": "Final decision at"
+        },
+        {
+          "name": "inflight_key",
+          "sqlType": "VARCHAR(100) NULL",
+          "meaning": "在途唯一键：SUBMITTED / CHANNEL_REVIEW / NEED_SIGN 时 = store_id|pay_channel，否则 NULL；服务同事务维护（防 R06 重复进件）",
+          "meaningEn": "Uniqueness helper while in flight, otherwise NULL"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "onboarding_no"
+        ],
+        [
+          "inflight_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_id",
+          "pay_channel"
+        ],
+        [
+          "status",
+          "submitted_at"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "进件单",
+      "titleEn": "Onboarding Application",
+      "purposeEn": "A store applying to a channel for collection capability. Materials and each submission are versioned; success produces a pay_merchant."
+    },
+    {
+      "name": "pay_onboarding_version",
+      "module": "pay-domain/onboarding",
+      "group": "进件与收款商户",
+      "purpose": "进件提交版本：每次提交一行，外部单号每次唯一（修 R04）；驳回原因随版本保留（修 R23）",
+      "columns": [
+        {
+          "name": "pay_onboarding_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "进件单 pay_onboarding.id",
+          "meaningEn": "Onboarding application (pay_onboarding.id)"
+        },
+        {
+          "name": "version_index",
+          "sqlType": "INT NOT NULL",
+          "meaning": "版本序号，从 1 起",
+          "meaningEn": "Version number, from 1"
+        },
+        {
+          "name": "out_request_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "提交给渠道的外部单号（out_request_no / out_biz_no），每版本唯一",
+          "meaningEn": "External request number sent to the channel, unique per submission"
+        },
+        {
+          "name": "materials_sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "本版资料规范化摘要，防止提交后资料被改",
+          "meaningEn": "Canonical digest of this version's materials"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT / SUBMITTED / CHANNEL_REVIEW / NEED_SIGN / APPROVED / REJECTED / SUPERSEDED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "channel_apply_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "渠道申请单号",
+          "meaningEn": "Channel-side application number"
+        },
+        {
+          "name": "result_code",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "渠道结果码",
+          "meaningEn": "Channel result code"
+        },
+        {
+          "name": "reject_reason",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "该版本驳回原因",
+          "meaningEn": "Rejection reason, shown to the merchant as is"
+        },
+        {
+          "name": "submitted_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "提交人（审计字段）",
+          "meaningEn": "Submitted by"
+        },
+        {
+          "name": "submitted_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "提交时间",
+          "meaningEn": "Submitted at"
+        },
+        {
+          "name": "decided_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "终态时间",
+          "meaningEn": "Final decision at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_onboarding_id",
+          "version_index"
+        ],
+        [
+          "out_request_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "channel_apply_no"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "进件提交版本",
+      "titleEn": "Onboarding Submission Version",
+      "purposeEn": "One row per submission; the external request number is unique per submission and the rejection reason is kept with its version."
+    },
+    {
+      "name": "pay_onboarding_material",
+      "module": "pay-domain/onboarding",
+      "group": "进件与收款商户",
+      "purpose": "进件资料：一字段一行、按版本只增。敏感字段只存密文 id 与掩码；文件存对象存储，库里只存引用与哈希",
+      "columns": [
+        {
+          "name": "pay_onboarding_version_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "所属版本 pay_onboarding_version.id",
+          "meaningEn": "Onboarding version (pay_onboarding_version.id)"
+        },
+        {
+          "name": "field_code",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "字段码：LEGAL_NAME / LICENSE_NO / ID_NUMBER / BANK_ACCOUNT / CONTACT_MOBILE / LICENSE_IMAGE …（字段字典按渠道维护）",
+          "meaningEn": "Field code"
+        },
+        {
+          "name": "field_kind",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "TEXT 普通 / SENSITIVE 敏感 / FILE 文件",
+          "meaningEn": "Field kind"
+        },
+        {
+          "name": "value_text",
+          "sqlType": "VARCHAR(1024) NULL",
+          "meaning": "仅 TEXT：明文值",
+          "meaningEn": "TEXT only: plain value"
+        },
+        {
+          "name": "value_masked",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "SENSITIVE / FILE：展示用掩码或文件名",
+          "meaningEn": "Masked value or file name"
+        },
+        {
+          "name": "sec_secret_blob_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "仅 SENSITIVE：密文 sec_secret_blob.id（密钥模块，命名空间 PAY）；查看明文写 sec_access_log",
+          "meaningEn": "Ciphertext (sec_secret_blob.id, key module)"
+        },
+        {
+          "name": "file_ref",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "仅 FILE：对象存储私有桶键",
+          "meaningEn": "Object storage key (private bucket)"
+        },
+        {
+          "name": "file_sha256",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "仅 FILE：内容哈希",
+          "meaningEn": "File content hash"
+        },
+        {
+          "name": "channel_media_id",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "已上传渠道换得的媒体号（微信 media_id 等）",
+          "meaningEn": "Media ID returned after uploading to the channel"
+        },
+        {
+          "name": "channel_media_expire_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "渠道媒体号过期时间",
+          "meaningEn": "Channel media ID expiry"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_onboarding_version_id",
+          "field_code"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "field_kind <> 'SENSITIVE' OR (sec_secret_blob_id IS NOT NULL AND value_text IS NULL)",
+        "field_kind <> 'FILE' OR file_ref IS NOT NULL"
+      ],
+      "notes": [],
+      "titleZh": "进件资料",
+      "titleEn": "Onboarding Material",
+      "purposeEn": "One field per row, append-only by version. Sensitive values are stored only as cipher references and masks; files live in object storage."
+    },
+    {
+      "name": "pay_merchant",
+      "module": "pay-domain/merchant",
+      "group": "进件与收款商户",
+      "purpose": "收款商户 = 渠道中的商户。一个主体（经其门店）对多个收款商户；每个只属于一个渠道、一个市场、一种接入模式、一种资金路径。取代 mch_payment_merchant",
+      "columns": [
+        {
+          "name": "pay_merchant_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "收款商户号（对外：回调地址、结算单）。**迁移时沿用 mch_payment_merchant.pay_merchant_no 原值**",
+          "meaningEn": "Payment merchant number"
+        },
+        {
+          "name": "owner_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "STORE 商家门店开的 / PLATFORM 平台自己的（服务商号、平台账户、CN 平台直连号）",
+          "meaningEn": "Owner type"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "开户门店 mch_store.id；owner_type=PLATFORM 时为 NULL。其他门店共用经 pay_merchant_binding",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "market",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "市场码",
+          "meaningEn": "Market code"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "收款与结算币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "access_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "MERCHANT_OWN / SERVICE_PROVIDER / PLATFORM_SUB",
+          "meaningEn": "Whose credentials call the channel"
+        },
+        {
+          "name": "funds_path",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DIRECT 结算到商户自己的账户（含微信二级商户）/ AGGREGATED 结算到平台账户",
+          "meaningEn": "Where funds settle"
+        },
+        {
+          "name": "channel_merchant_id",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "渠道商户号：蓝新 MerchantID / LINE Pay ChannelId / PayBy Partner-Id / 微信 mchid（SP 模式为服务商号）",
+          "meaningEn": "Merchant ID inside the channel"
+        },
+        {
+          "name": "sub_merchant_id",
+          "sqlType": "VARCHAR(64) NOT NULL DEFAULT ''",
+          "meaning": "子商户号：微信 sub_mchid / 支付宝 smid / PayBy 子商户标识；无则空串（参与唯一键）",
+          "meaningEn": "Sub-merchant ID inside the channel; empty string if none"
+        },
+        {
+          "name": "parent_pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "SERVICE_PROVIDER / PLATFORM_SUB 时引用平台级收款商户 pay_merchant.id（取其密钥）",
+          "meaningEn": "Parent platform-level payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "pay_onboarding_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "产出它的进件单 pay_onboarding.id；存量迁移行可空",
+          "meaningEn": "Onboarding application (pay_onboarding.id)"
+        },
+        {
+          "name": "sec_key_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "调用渠道用的密钥 sec_key.id（MERCHANT_OWN 必填；SP / 平台子商户取父商户的）",
+          "meaningEn": "Key (sec_key.id, key module)"
+        },
+        {
+          "name": "sec_key_version",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "当前密钥版本号；交易冻结此值",
+          "meaningEn": "Key version number frozen for this record"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ONBOARDING / ACTIVE / REFUND_ONLY / SUSPENDED / CLOSED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "legal_form",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "通道档位",
+          "meaningEn": "Channel onboarding tier (not the legal-form source of truth)"
+        },
+        {
+          "name": "invoice_capable",
+          "sqlType": "TINYINT(1) NOT NULL DEFAULT 0",
+          "meaning": "能否开票（下单前必须披露）",
+          "meaningEn": "Can issue invoices (must be disclosed before ordering)"
+        },
+        {
+          "name": "settle_account_type",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "PERSONAL_BANK_CARD / CORPORATE_BANK / MERCHANT_ID / IBAN",
+          "meaningEn": "Settlement account type"
+        },
+        {
+          "name": "settle_account_masked",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "结算账户掩码；明文只在渠道",
+          "meaningEn": "Masked settlement account"
+        },
+        {
+          "name": "settle_cycle",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "渠道结算周期：T1 / T2 / WEEKLY …",
+          "meaningEn": "Channel settlement cycle"
+        },
+        {
+          "name": "fee_bearer",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "通道费承担方：MERCHANT / PLATFORM",
+          "meaningEn": "Who bears the channel fee"
+        },
+        {
+          "name": "split_reversible",
+          "sqlType": "TINYINT(1) NULL",
+          "meaning": "分账可回退授权；NULL = 未知按未授权",
+          "meaningEn": "Split reversal authorised; NULL = unknown, treated as not authorised"
+        },
+        {
+          "name": "priority",
+          "sqlType": "INT NOT NULL DEFAULT 100",
+          "meaning": "同一支付方式多条可用路由时的选择顺序，小者优先",
+          "meaningEn": "Route priority; smaller wins"
+        },
+        {
+          "name": "entity_name_snapshot",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "开户时主体名快照（PLATFORM 为空）",
+          "meaningEn": "Entity name snapshot at creation"
+        },
+        {
+          "name": "activated_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "启用时间",
+          "meaningEn": "Activated at"
+        },
+        {
+          "name": "activated_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "启用人（审计字段）",
+          "meaningEn": "Activated by"
+        },
+        {
+          "name": "refund_only_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "转 REFUND_ONLY 时间",
+          "meaningEn": "Moved to REFUND_ONLY at"
+        },
+        {
+          "name": "closed_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "关闭时间",
+          "meaningEn": "Closed at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_merchant_no"
+        ],
+        [
+          "pay_channel",
+          "channel_merchant_id",
+          "sub_merchant_id"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_id",
+          "pay_channel",
+          "status"
+        ],
+        [
+          "market",
+          "status"
+        ],
+        [
+          "parent_pay_merchant_id"
+        ]
+      ],
+      "checks": [
+        "owner_type = 'PLATFORM' OR store_id IS NOT NULL",
+        "access_mode <> 'MERCHANT_OWN' OR sec_key_id IS NOT NULL OR status IN ('ONBOARDING','CLOSED')",
+        "access_mode = 'MERCHANT_OWN' OR parent_pay_merchant_id IS NOT NULL"
+      ],
+      "notes": [
+        "「这家门店这个渠道收到哪个商户」不在本表约束，由 pay_merchant_binding 的 active_key 唯一索引保证"
+      ],
+      "titleZh": "收款商户",
+      "titleEn": "Payment Merchant",
+      "purposeEn": "A merchant account inside a channel, opened by a store (or owned by the platform). Each belongs to exactly one channel, market, access mode and funds path. Replaces mch_payment_merchant."
+    },
+    {
+      "name": "pay_merchant_binding",
+      "module": "pay-domain/merchant",
+      "group": "进件与收款商户",
+      "purpose": "收款路由绑定：门店 × 渠道同一时刻一条 ACTIVE。取代 mch_store.pay_merchant_no 与旧表的 store_no 维度（修 R02/R03/R26）",
+      "columns": [
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE / INACTIVE",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "active_key",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "ACTIVE 时 = store_id|pay_channel，否则 NULL；服务同事务维护",
+          "meaningEn": "Uniqueness helper: composite key while ACTIVE, otherwise NULL; maintained by the service in the same transaction"
+        },
+        {
+          "name": "bound_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "绑定人（审计字段）",
+          "meaningEn": "Bound by"
+        },
+        {
+          "name": "bound_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "绑定时间",
+          "meaningEn": "Bound at"
+        },
+        {
+          "name": "unbound_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "解绑时间",
+          "meaningEn": "Unbound at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "active_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "pay_merchant_id",
+          "status"
+        ],
+        [
+          "store_id",
+          "pay_channel"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "只按门店绑定，**没有主体级默认号**：一个收款商户给多家店用，就给每家店各建一条绑定。解析无绑定即不可收款，不做「取第一个可用号」兜底（R01 根因）",
+        "绑定时校验：收款商户 ACTIVE、市场与门店一致、开户门店与本门店同属一个主体（经核心系统 Port 判断）"
+      ],
+      "titleZh": "收款路由绑定",
+      "titleEn": "Payment Merchant Binding",
+      "purposeEn": "Store × channel routing binding; at most one ACTIVE per store per channel. No entity-level default."
+    },
+    {
+      "name": "pay_merchant_product",
+      "module": "pay-domain/merchant",
+      "group": "进件与收款商户",
+      "purpose": "收款商户开通的支付产品。只能由渠道回执或运营确认写入，禁止按主体类型推断",
+      "columns": [
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "pay_channel_product_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "支付产品 pay_channel_product.id",
+          "meaningEn": "Channel product (pay_channel_product.id)"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "OPEN / CLOSED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "source",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "CHANNEL_RECEIPT / OPS_CONFIRMED",
+          "meaningEn": "Source"
+        },
+        {
+          "name": "quota_limit_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "累计收款额度；0 = 未设置（不是额度为零）",
+          "meaningEn": "Cumulative collection quota; 0 = not set (not zero quota)"
+        },
+        {
+          "name": "quota_period",
+          "sqlType": "VARCHAR(16) NULL",
+          "meaning": "额度周期标识，如 2026 / 2026-10",
+          "meaningEn": "Quota period, e.g. 2026 / 2026-10"
+        },
+        {
+          "name": "quota_used_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "本周期已用；累加必须检查乐观锁返回值（修 R24）",
+          "meaningEn": "Used in current period; updates must check the optimistic lock result"
+        },
+        {
+          "name": "opened_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "开通时间",
+          "meaningEn": "Opened at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_merchant_id",
+          "pay_channel_product_id"
+        ]
+      ],
+      "indexes": [
+        [
+          "pay_channel_product_id",
+          "status"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "商户开通产品",
+      "titleEn": "Merchant Product",
+      "purposeEn": "Products a payment merchant has opened; written only from channel receipts or ops confirmation, never inferred."
+    },
+    {
+      "name": "pay_merchant_status_log",
+      "module": "pay-domain/merchant",
+      "group": "进件与收款商户",
+      "purpose": "收款商户状态变更留痕（启用、切换资金路径、暂停、关闭）",
+      "columns": [
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "from_status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "原状态",
+          "meaningEn": "Previous status"
+        },
+        {
+          "name": "to_status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "新状态",
+          "meaningEn": "New status"
+        },
+        {
+          "name": "reason",
+          "sqlType": "VARCHAR(255) NOT NULL",
+          "meaning": "原因",
+          "meaningEn": "Reason"
+        },
+        {
+          "name": "pay_approval_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "对应复核单 pay_approval.id",
+          "meaningEn": "Approval (pay_approval.id)"
+        },
+        {
+          "name": "operator_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "操作人（审计字段）",
+          "meaningEn": "Operator"
+        },
+        {
+          "name": "changed_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "时间",
+          "meaningEn": "Changed at"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "pay_merchant_id",
+          "changed_at"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "收款商户状态日志",
+      "titleEn": "Payment Merchant Status Log",
+      "purposeEn": "Audit trail of payment merchant status changes (activation, funds path switch, suspension, closing)."
+    },
+    {
+      "name": "pay_order",
+      "module": "pay-domain/acquiring",
+      "group": "支付订单、交易与退款",
+      "purpose": "支付订单：调用方要收的一笔钱，独立于业务订单。一张支付单可有多次通道尝试（stl_payment）",
+      "columns": [
+        {
+          "name": "pay_order_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "支付单号（对外：接口响应、收银台、对账）",
+          "meaningEn": "Payment order number"
+        },
+        {
+          "name": "pay_app_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "调用方 pay_app.id（内部系统也注册 app，如 MALL / FOOD）",
+          "meaningEn": "App (pay_app.id)"
+        },
+        {
+          "name": "out_order_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "调用方订单号；与 pay_app_id 联合唯一（幂等）",
+          "meaningEn": "Caller's order number; unique with app_id (idempotency)"
+        },
+        {
+          "name": "biz_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "MALL_ORDER / FOOD_CHECK / STORED_VALUE / PARTNER / COLLECT …",
+          "meaningEn": "Business type of the caller"
+        },
+        {
+          "name": "biz_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "调用方业务单号（字符串，由调用方给出，不作关联）",
+          "meaningEn": "Business document number"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "entity_name_snapshot",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "成交时主体名",
+          "meaningEn": "Entity name snapshot at creation"
+        },
+        {
+          "name": "store_name_snapshot",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "成交时门店名",
+          "meaningEn": "Store name snapshot"
+        },
+        {
+          "name": "market",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "市场码",
+          "meaningEn": "Market code"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "应付金额（最小单位），建单后不改",
+          "meaningEn": "Amount in minor units"
+        },
+        {
+          "name": "paid_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "通道实收",
+          "meaningEn": "Amount actually collected"
+        },
+        {
+          "name": "refunded_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "已退",
+          "meaningEn": "Refunded so far"
+        },
+        {
+          "name": "reserved_refund_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "退款复核 / 在途占用",
+          "meaningEn": "Reserved by refunds under review / in flight"
+        },
+        {
+          "name": "subject",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "商品标题（展示在通道收银台）",
+          "meaningEn": "Subject shown on the channel cashier"
+        },
+        {
+          "name": "scene",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ONLINE / IN_STORE",
+          "meaningEn": "Scene"
+        },
+        {
+          "name": "pay_type",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "选定方式后写入：ONLINE / OFFLINE / CARD",
+          "meaningEn": "Payment type"
+        },
+        {
+          "name": "pay_method",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "选定的统一支付方式码",
+          "meaningEn": "Unified payment method code"
+        },
+        {
+          "name": "pay_channel_product_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "选定的支付产品 pay_channel_product.id",
+          "meaningEn": "Channel product (pay_channel_product.id)"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "**路由快照**：收款商户 pay_merchant.id（选定方式时冻结，此后不改）",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "路由快照：渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "access_mode",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "路由快照：接入模式",
+          "meaningEn": "Whose credentials call the channel"
+        },
+        {
+          "name": "funds_path",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "路由快照：资金路径",
+          "meaningEn": "Where funds settle"
+        },
+        {
+          "name": "sub_merchant_id",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "路由快照：渠道子商户号（渠道侧字符串）",
+          "meaningEn": "Sub-merchant ID inside the channel; empty string if none"
+        },
+        {
+          "name": "sec_key_version",
+          "sqlType": "INT NULL",
+          "meaning": "路由快照：密钥版本号",
+          "meaningEn": "Key version number frozen for this record"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "CREATED / AWAITING_PAYMENT / AUTHORIZED / AWAITING_CONFIRM / SUCCEEDED / PARTIALLY_REFUNDED / REFUNDED / CLOSED / FAILED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "notify_url",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "第三方 webhook 覆盖地址（白名单内）",
+          "meaningEn": "Per-order webhook URL override (allow-listed)"
+        },
+        {
+          "name": "return_url",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "付款后跳回（白名单内）",
+          "meaningEn": "Return URL after payment (allow-listed)"
+        },
+        {
+          "name": "source_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PARTNER / INTERNAL / TERMINAL / BIZ / OPS / CHECKOUT",
+          "meaningEn": "Source type"
+        },
+        {
+          "name": "source_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "来源 id：PARTNER / INTERNAL → pay_app.id；TERMINAL → pay_terminal.id；CHECKOUT → pay_qr_code.id 或 pay_checkout_session.id；BIZ / OPS → 账号 id",
+          "meaningEn": "Source id, resolved by source_type"
+        },
+        {
+          "name": "operator_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "收银员 / 商家操作员（审计字段）",
+          "meaningEn": "Operator"
+        },
+        {
+          "name": "user_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "顾客 usr_account.id（已登录时）",
+          "meaningEn": "Customer (usr_account.id, when logged in)"
+        },
+        {
+          "name": "request_sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "建单请求规范化摘要：同幂等键不同内容 → 拒绝",
+          "meaningEn": "Canonical request digest: same idempotency key with different content is rejected"
+        },
+        {
+          "name": "expire_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "支付截止",
+          "meaningEn": "Expires at"
+        },
+        {
+          "name": "succeeded_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "成功时间",
+          "meaningEn": "Succeeded at"
+        },
+        {
+          "name": "closed_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "关单时间",
+          "meaningEn": "Closed at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_order_no"
+        ],
+        [
+          "pay_app_id",
+          "out_order_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "biz_type",
+          "biz_no"
+        ],
+        [
+          "store_id",
+          "created_at"
+        ],
+        [
+          "status",
+          "expire_at"
+        ],
+        [
+          "pay_merchant_id",
+          "succeeded_at"
+        ],
+        [
+          "user_id",
+          "created_at"
+        ]
+      ],
+      "checks": [
+        "paid_minor >= 0 AND refunded_minor >= 0 AND reserved_refund_minor >= 0",
+        "refunded_minor + reserved_refund_minor <= paid_minor"
+      ],
+      "notes": [],
+      "titleZh": "支付订单",
+      "titleEn": "Payment Order",
+      "purposeEn": "An amount a caller wants to collect, independent of the business order. One payment order can have several channel attempts (stl_payment)."
+    },
+    {
+      "name": "pay_refund",
+      "module": "pay-domain/acquiring",
+      "group": "支付订单、交易与退款",
+      "purpose": "退款单：商家侧发起的一次退款申请，含复核。执行由 RefundExecutionService 落 stl_payment(direction=REFUND)",
+      "columns": [
+        {
+          "name": "pay_refund_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "退款单号（对外）",
+          "meaningEn": "Refund number"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "原支付单 pay_order.id（路由一律取原单快照；本表无路由列）",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "pay_app_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "发起方 pay_app.id",
+          "meaningEn": "App (pay_app.id)"
+        },
+        {
+          "name": "out_refund_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发起方退款单号（幂等）",
+          "meaningEn": "Caller's refund number (idempotency)"
+        },
+        {
+          "name": "biz_refund_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "业务售后单号（字符串，取代合成的 AS-{subOrderNo}，R21）",
+          "meaningEn": "Business after-sale number"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种（= 原单）",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "退款金额",
+          "meaningEn": "Amount in minor units"
+        },
+        {
+          "name": "refund_mode",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ONLINE 原路 / OFFLINE 线下（商家自退并上传凭证）",
+          "meaningEn": "Refund mode"
+        },
+        {
+          "name": "reason",
+          "sqlType": "VARCHAR(255) NOT NULL",
+          "meaning": "退款原因",
+          "meaningEn": "Reason"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "REQUESTED / PENDING_REVIEW / PENDING_SECOND_REVIEW / APPROVED / DISPATCHED / SUCCEEDED / FAILED / REJECTED / OFFLINE_PENDING_PROOF",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "requested_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "发起人（审计字段）",
+          "meaningEn": "Requested by"
+        },
+        {
+          "name": "authorized_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "店长授权人（终端发起时，审计字段）",
+          "meaningEn": "Store manager who authorised (terminal requests)"
+        },
+        {
+          "name": "pay_refund_review_rule_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "命中的复核规则版本 pay_refund_review_rule.id（一行即一个版本）",
+          "meaningEn": "Matched rule version (pay_refund_review_rule.id)"
+        },
+        {
+          "name": "hit_reasons",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "命中原因：SINGLE_AMOUNT / DAILY_AMOUNT / RATIO / AFTER_DAYS / ALWAYS / NO_ACTIVE_RULE",
+          "meaningEn": "Review rule hit reasons"
+        },
+        {
+          "name": "pay_approval_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "复核单 pay_approval.id",
+          "meaningEn": "Approval (pay_approval.id)"
+        },
+        {
+          "name": "stl_payment_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "执行时生成的通道交易 stl_payment.id",
+          "meaningEn": "Channel transaction (stl_payment.id)"
+        },
+        {
+          "name": "offline_proof_ref",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "线下退款凭证文件引用",
+          "meaningEn": "Offline refund proof file"
+        },
+        {
+          "name": "source_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "BIZ / TERMINAL / PARTNER",
+          "meaningEn": "Source type"
+        },
+        {
+          "name": "source_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "来源 id（同 pay_order.source_id）",
+          "meaningEn": "Source id, resolved by source_type"
+        },
+        {
+          "name": "failed_reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "失败原因（原样告知商家）",
+          "meaningEn": "Failure reason (shown to the merchant as is)"
+        },
+        {
+          "name": "succeeded_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "成功时间",
+          "meaningEn": "Succeeded at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_refund_no"
+        ],
+        [
+          "pay_app_id",
+          "out_refund_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "pay_order_id"
+        ],
+        [
+          "status",
+          "created_at"
+        ],
+        [
+          "store_id",
+          "created_at"
+        ],
+        [
+          "biz_refund_no"
+        ]
+      ],
+      "checks": [
+        "amount_minor > 0"
+      ],
+      "notes": [],
+      "titleZh": "退款单",
+      "titleEn": "Refund",
+      "purposeEn": "A refund requested by the merchant side, including review. Execution writes stl_payment(direction=REFUND)."
+    },
+    {
+      "name": "pay_refund_review_rule",
+      "module": "pay-domain/acquiring",
+      "group": "支付订单、交易与退款",
+      "purpose": "退款复核规则（一行一个版本）：命中任一门槛 → 平台两人复核。某市场无 ACTIVE 规则 = 该市场全部复核",
+      "columns": [
+        {
+          "name": "rule_code",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "规则码：同一规则的各版本共用",
+          "meaningEn": "Rule code shared by all versions of a rule"
+        },
+        {
+          "name": "version_index",
+          "sqlType": "INT NOT NULL",
+          "meaning": "版本",
+          "meaningEn": "Version number, from 1"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT / ACTIVE / RETIRED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "active_key",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "ACTIVE 时 = rule_code：一条规则同一时刻一个生效版本",
+          "meaningEn": "Uniqueness helper: composite key while ACTIVE, otherwise NULL; maintained by the service in the same transaction"
+        },
+        {
+          "name": "market",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "市场（必填）",
+          "meaningEn": "Market code"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种（必填）",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "门店 mch_store.id；NULL = 全市场（门店级更具体者优先）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "source_type",
+          "sqlType": "VARCHAR(24) NOT NULL DEFAULT ''",
+          "meaning": "空串 = 全来源",
+          "meaningEn": "Source type"
+        },
+        {
+          "name": "pay_method",
+          "sqlType": "VARCHAR(32) NOT NULL DEFAULT ''",
+          "meaning": "空串 = 全方式",
+          "meaningEn": "Unified payment method code"
+        },
+        {
+          "name": "single_amount_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "单笔 ≥ 此值",
+          "meaningEn": "Single refund ≥ value"
+        },
+        {
+          "name": "daily_amount_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "门店当日（市场时区）累计 + 本笔 ≥ 此值",
+          "meaningEn": "Merchant's daily total incl. this refund ≥ value"
+        },
+        {
+          "name": "refund_ratio_bp",
+          "sqlType": "INT NULL",
+          "meaning": "本笔占原单比例 ≥ 此值（万分比）",
+          "meaningEn": "Refund / original amount ≥ value (basis points)"
+        },
+        {
+          "name": "after_days",
+          "sqlType": "INT NULL",
+          "meaning": "原单支付超过 N 天",
+          "meaningEn": "Original payment older than N days"
+        },
+        {
+          "name": "always_review",
+          "sqlType": "TINYINT(1) NOT NULL DEFAULT 0",
+          "meaning": "强制全部复核",
+          "meaningEn": "Always require review"
+        },
+        {
+          "name": "review_timeout_minutes",
+          "sqlType": "INT NOT NULL DEFAULT 1440",
+          "meaning": "超时提醒（不自动通过）",
+          "meaningEn": "Review timeout reminder (never auto-approves)"
+        },
+        {
+          "name": "drafted_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "起草人（审计字段）",
+          "meaningEn": "Drafted by"
+        },
+        {
+          "name": "activated_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "生效确认人，必须 ≠ 起草人",
+          "meaningEn": "Activated by"
+        },
+        {
+          "name": "activated_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "生效时间",
+          "meaningEn": "Activated at"
+        },
+        {
+          "name": "retired_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "退役时间",
+          "meaningEn": "Retired at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "rule_code",
+          "version_index"
+        ],
+        [
+          "active_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "market",
+          "currency",
+          "status"
+        ]
+      ],
+      "checks": [
+        "status <> 'ACTIVE' OR always_review = 1 OR single_amount_minor IS NOT NULL OR daily_amount_minor IS NOT NULL OR refund_ratio_bp IS NOT NULL OR after_days IS NOT NULL",
+        "activated_by IS NULL OR activated_by <> drafted_by"
+      ],
+      "notes": [],
+      "titleZh": "退款复核规则",
+      "titleEn": "Refund Review Rule",
+      "purposeEn": "One row per rule version; hitting any threshold requires two-person platform review. A market without an ACTIVE rule reviews every refund."
+    },
+    {
+      "name": "pay_approval",
+      "module": "pay-domain/approval",
+      "group": "支付订单、交易与退款",
+      "purpose": "两人复核单（通用）：退款、出款、密钥启用、资金路径切换、收款商户启用、复核规则生效",
+      "columns": [
+        {
+          "name": "subject_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "REFUND / PAYOUT / KEY_ENABLE / FUNDS_PATH_SWITCH / MERCHANT_ACTIVATE / REVIEW_RULE_ACTIVATE",
+          "meaningEn": "Subject type"
+        },
+        {
+          "name": "subject_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "对象 id（按 subject_type：pay_refund / stl_payout / sec_key_version / pay_merchant / pay_refund_review_rule）",
+          "meaningEn": "Subject id, resolved by subject_type"
+        },
+        {
+          "name": "subject_sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "提交复核时对象内容摘要；复核时对象被改动即失效",
+          "meaningEn": "Digest of the subject when submitted; any later change invalidates the approval"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "涉及金额",
+          "meaningEn": "Amount in minor units"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NULL",
+          "meaning": "币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "requested_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "申请人",
+          "meaningEn": "Requested by"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PENDING_FIRST / PENDING_SECOND / APPROVED / REJECTED / CANCELLED / EXPIRED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "open_key",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "进行中时 = subject_type|subject_id：一个对象同时只有一张进行中复核单",
+          "meaningEn": "Uniqueness helper while open, otherwise NULL"
+        },
+        {
+          "name": "first_reviewer",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "第一复核人",
+          "meaningEn": "First reviewer"
+        },
+        {
+          "name": "first_decided_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "时间",
+          "meaningEn": "First review at"
+        },
+        {
+          "name": "second_reviewer",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "第二复核人",
+          "meaningEn": "Second reviewer"
+        },
+        {
+          "name": "second_decided_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "时间",
+          "meaningEn": "Second review at"
+        },
+        {
+          "name": "reject_reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "驳回原因",
+          "meaningEn": "Rejection reason, shown to the merchant as is"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "open_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "status",
+          "created_at"
+        ],
+        [
+          "subject_type",
+          "subject_id"
+        ]
+      ],
+      "checks": [
+        "first_reviewer IS NULL OR first_reviewer <> requested_by",
+        "second_reviewer IS NULL OR (second_reviewer <> requested_by AND second_reviewer <> first_reviewer)"
+      ],
+      "notes": [],
+      "titleZh": "两人复核单",
+      "titleEn": "Approval",
+      "purposeEn": "Generic two-person review for refunds, payouts, key enablement, funds path switch and rule activation."
+    },
+    {
+      "name": "pay_exception",
+      "module": "pay-domain/acquiring",
+      "group": "支付订单、交易与退款",
+      "purpose": "支付异常：关单后支付、金额不符、重复支付等需要处置的事实（修 R18：关单后成功不再静默改成功）",
+      "columns": [
+        {
+          "name": "kind",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "LATE_PAYMENT / AMOUNT_MISMATCH / DUPLICATE_PAYMENT / CURRENCY_MISMATCH",
+          "meaningEn": "Kind"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "支付单 pay_order.id",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "stl_payment_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "通道尝试 stl_payment.id",
+          "meaningEn": "Channel transaction (stl_payment.id)"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "涉及金额",
+          "meaningEn": "Amount in minor units"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "OPEN / AUTO_REFUNDING / RESOLVED / IGNORED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "resolution",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "处置结论（只放结论）",
+          "meaningEn": "Resolution (conclusion only)"
+        },
+        {
+          "name": "note",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "说明",
+          "meaningEn": "Note"
+        },
+        {
+          "name": "handled_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "处置人",
+          "meaningEn": "Handled by"
+        },
+        {
+          "name": "handled_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "处置时间",
+          "meaningEn": "Handled at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "kind",
+          "stl_payment_id"
+        ]
+      ],
+      "indexes": [
+        [
+          "status",
+          "created_at"
+        ],
+        [
+          "pay_order_id"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "支付异常",
+      "titleEn": "Payment Exception",
+      "purposeEn": "Facts that need handling: payment after close, amount mismatch, duplicate payment, currency mismatch."
+    },
+    {
+      "name": "pay_checkout_session",
+      "module": "pay-domain/acquiring",
+      "group": "支付订单、交易与退款",
+      "purpose": "收银会话：扫码 H5 / 托管收银台的一次性令牌，绑定一张支付单",
+      "columns": [
+        {
+          "name": "token_sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "令牌哈希；明文只在链接里",
+          "meaningEn": "Token hash; plaintext only in the link"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "支付单 pay_order.id",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "OPEN / PAYING / DONE / EXPIRED / REVOKED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "expire_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "过期（≤ 支付单过期）",
+          "meaningEn": "Expires at"
+        },
+        {
+          "name": "user_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "顾客 usr_account.id（登录后回填）",
+          "meaningEn": "Customer (usr_account.id, when logged in)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "token_sha256"
+        ]
+      ],
+      "indexes": [
+        [
+          "pay_order_id"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "收银会话",
+      "titleEn": "Checkout Session",
+      "purposeEn": "One-time token for the H5 / hosted checkout, bound to one payment order."
+    },
+    {
+      "name": "pay_qr_code",
+      "module": "pay-domain/acquiring",
+      "group": "支付订单、交易与退款",
+      "purpose": "静态码：门店 / 桌台码，顾客输金额建单。码值随机不可枚举",
+      "columns": [
+        {
+          "name": "qr_code",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "码值（随机，出现在 URL 里）",
+          "meaningEn": "QR code value (random)"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "kind",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "STORE / TABLE",
+          "meaningEn": "Kind"
+        },
+        {
+          "name": "table_ref",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "桌台（餐饮）",
+          "meaningEn": "Dining table reference"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "single_limit_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "单笔上限",
+          "meaningEn": "Single payment limit"
+        },
+        {
+          "name": "daily_limit_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "单码日累计上限",
+          "meaningEn": "Daily limit per code"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE / DISABLED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "created_by_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "BIZ / OPS",
+          "meaningEn": "Created from (merchant / ops)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "qr_code"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_id",
+          "status"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "静态收款码",
+      "titleEn": "Static QR Code",
+      "purposeEn": "Store / table QR code where the customer enters the amount. Codes are random and not enumerable."
+    },
+    {
+      "name": "pay_ledger_voucher",
+      "module": "pay-domain/ledger",
+      "group": "流水",
+      "purpose": "记账凭证：一次资金事件一张，下挂借贷平衡的分录。只增不改，更正只能追加冲正凭证",
+      "columns": [
+        {
+          "name": "voucher_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "凭证号（给财务看的编号）",
+          "meaningEn": "Voucher number"
+        },
+        {
+          "name": "voucher_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PAY_SUCCEEDED / REFUND_SUCCEEDED / CHANNEL_FEE / PLATFORM_FEE / SETTLEMENT / PAYOUT / FEE_OFFSET / ADJUST / REVERSAL",
+          "meaningEn": "Voucher type"
+        },
+        {
+          "name": "ref_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PAY_ORDER / PAY_REFUND / STL_BILL / STL_PAYOUT / FEE_RECEIVABLE / MANUAL",
+          "meaningEn": "Referenced document type"
+        },
+        {
+          "name": "ref_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "引用对象 id（按 ref_type）；MANUAL 为空",
+          "meaningEn": "Referenced object id, resolved by ref_type"
+        },
+        {
+          "name": "idem_key",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "幂等键：voucher_type|ref_type|ref_id[|序号]，同一事件只记一次",
+          "meaningEn": "Idempotency key: one money event is booked once"
+        },
+        {
+          "name": "reversal_of_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "冲正哪张凭证 pay_ledger_voucher.id",
+          "meaningEn": "Voucher being reversed (pay_ledger_voucher.id)"
+        },
+        {
+          "name": "market",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "市场",
+          "meaningEn": "Market code"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种（一张凭证单币种）",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "total_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "借方合计 = 贷方合计",
+          "meaningEn": "Debit total = credit total"
+        },
+        {
+          "name": "biz_date",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "业务日（按市场时区切日）",
+          "meaningEn": "Business date, cut by market time zone"
+        },
+        {
+          "name": "funds_path",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "资金路径",
+          "meaningEn": "Where funds settle"
+        },
+        {
+          "name": "source_type",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "来源类型（继承支付单）",
+          "meaningEn": "Source type"
+        },
+        {
+          "name": "source_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "来源 id",
+          "meaningEn": "Source id, resolved by source_type"
+        },
+        {
+          "name": "operator_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "人工凭证的操作人",
+          "meaningEn": "Operator"
+        },
+        {
+          "name": "memo",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "摘要",
+          "meaningEn": "Memo"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "voucher_no"
+        ],
+        [
+          "idem_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "ref_type",
+          "ref_id"
+        ],
+        [
+          "biz_date",
+          "voucher_type"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "Mapper 只提供 insert 与查询；update / delete 由架构测试禁止"
+      ],
+      "titleZh": "记账凭证",
+      "titleEn": "Ledger Voucher",
+      "purposeEn": "One voucher per money event with balanced entries. Append-only; corrections only by reversal vouchers."
+    },
+    {
+      "name": "pay_ledger_entry",
+      "module": "pay-domain/ledger",
+      "group": "流水",
+      "purpose": "流水分录：每一笔资金变化的复式分录行",
+      "columns": [
+        {
+          "name": "pay_ledger_voucher_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "所属凭证 pay_ledger_voucher.id",
+          "meaningEn": "Voucher (pay_ledger_voucher.id)"
+        },
+        {
+          "name": "line_no",
+          "sqlType": "INT NOT NULL",
+          "meaning": "行号",
+          "meaningEn": "Line number"
+        },
+        {
+          "name": "account",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "MERCHANT_CHANNEL（DIRECT，平台外备查）/ PLATFORM_CHANNEL / MERCHANT_PAYABLE / FEE_RECEIVABLE / PLATFORM_REVENUE / CHANNEL_FEE_EXPENSE / REFUND_CLEARING",
+          "meaningEn": "Ledger account"
+        },
+        {
+          "name": "direction",
+          "sqlType": "CHAR(2) NOT NULL",
+          "meaning": "DR / CR",
+          "meaningEn": "Direction"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "金额，恒为正",
+          "meaningEn": "Amount in minor units"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "market",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "市场",
+          "meaningEn": "Market code"
+        },
+        {
+          "name": "funds_path",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "资金路径",
+          "meaningEn": "Where funds settle"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "支付单 pay_order.id（便于按单拉流水）",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "biz_date",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "业务日",
+          "meaningEn": "Business date, cut by market time zone"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_ledger_voucher_id",
+          "line_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_id",
+          "biz_date"
+        ],
+        [
+          "pay_merchant_id",
+          "biz_date"
+        ],
+        [
+          "account",
+          "biz_date"
+        ],
+        [
+          "pay_order_id"
+        ]
+      ],
+      "checks": [
+        "amount_minor > 0",
+        "direction IN ('DR','CR')"
+      ],
+      "notes": [
+        "凭证构造时校验：借贷平衡；MERCHANT_CHANNEL 不得与 PLATFORM_* 直接对转"
+      ],
+      "titleZh": "流水分录",
+      "titleEn": "Ledger Entry",
+      "purposeEn": "Double-entry line for every change of money."
+    },
+    {
+      "name": "pay_api_request_log",
+      "module": "pay-portal / pay-domain/log",
+      "group": "四向记录",
+      "purpose": "请求记录（① 业务方 → 支付）：第三方、内部系统、终端、商家端、运营端、收银台对支付的每一次接口调用，含鉴权失败的请求",
+      "columns": [
+        {
+          "name": "trace_id",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "追踪号：本次请求生成，向下传给渠道调用、回调、答复三张记录",
+          "meaningEn": "Trace id generated at the entry and shared by request, call, callback and notification records"
+        },
+        {
+          "name": "entry",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "入口：OPEN_API / TERMINAL_API / INTERNAL_PORT / INTERNAL_HTTP / BIZ_API / OPS_API / CHECKOUT",
+          "meaningEn": "Entry point"
+        },
+        {
+          "name": "api",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "接口标识，如 POST /open/pay/v1/orders、PaymentPort#createPayment",
+          "meaningEn": "Channel API name"
+        },
+        {
+          "name": "pay_action",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "动作（PayAction；不叫 action，避开 SQL 关键字）：CREATE_ONLINE / START_PAYMENT / QUERY / CLOSE / REQUEST_REFUND / VOID …",
+          "meaningEn": "Action (PayAction; not named action to avoid the SQL keyword)"
+        },
+        {
+          "name": "source_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "来源：PARTNER / INTERNAL / TERMINAL / BIZ / OPS / CHECKOUT",
+          "meaningEn": "Source type"
+        },
+        {
+          "name": "source_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "来源 id：pay_app.id / pay_terminal.id / 账号 id（按 source_type）",
+          "meaningEn": "Source id, resolved by source_type"
+        },
+        {
+          "name": "app_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "对外 AppId（展示用，鉴权失败时也记）",
+          "meaningEn": "Public AppId (sent in the X-App-Id header)"
+        },
+        {
+          "name": "client_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "来源端：H5 / APP_IOS / APP_ANDROID / MINI_PROGRAM / POS / SERVER / OPS_WEB / BIZ_APP",
+          "meaningEn": "Client end (H5 / iOS / Android / mini program / POS / server / ops web / merchant app)"
+        },
+        {
+          "name": "client_ip",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "来源 IP（经可信代理头）",
+          "meaningEn": "Client IP"
+        },
+        {
+          "name": "user_agent_digest",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "User-Agent 摘要",
+          "meaningEn": "User-Agent digest"
+        },
+        {
+          "name": "device_id",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "设备：终端号或设备指纹",
+          "meaningEn": "Device: terminal SN or device fingerprint"
+        },
+        {
+          "name": "operator_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "收银员 / 商家操作员 / 运营（审计字段）",
+          "meaningEn": "Operator"
+        },
+        {
+          "name": "biz_type",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "业务类型：MALL_ORDER / FOOD_CHECK / PARTNER …",
+          "meaningEn": "Business type of the caller"
+        },
+        {
+          "name": "biz_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "调用方业务单号（原样）",
+          "meaningEn": "Business document number"
+        },
+        {
+          "name": "idempotency_key",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "幂等键（Idempotency-Key 或 out_order_no / out_refund_no）",
+          "meaningEn": "Idempotency key"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "门店 mch_store.id；鉴权失败或与门店无关的请求为空",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "request_amount_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "请求金额（最小单位）",
+          "meaningEn": "Requested amount in minor units"
+        },
+        {
+          "name": "request_currency",
+          "sqlType": "CHAR(3) NULL",
+          "meaning": "请求币种",
+          "meaningEn": "Requested currency"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "处理后关联的支付单 pay_order.id",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "pay_refund_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "处理后关联的退款单 pay_refund.id",
+          "meaningEn": "Refund (pay_refund.id)"
+        },
+        {
+          "name": "request_masked",
+          "sqlType": "TEXT NULL",
+          "meaning": "请求参数脱敏副本（头部 + 体，递归脱敏）",
+          "meaningEn": "Masked request (recursively masked)"
+        },
+        {
+          "name": "request_raw_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "请求加密原文 pay_raw_payload.id（密钥模块就绪前为空）",
+          "meaningEn": "Encrypted raw request (pay_raw_payload.id)"
+        },
+        {
+          "name": "response_masked",
+          "sqlType": "TEXT NULL",
+          "meaning": "返回给业务方的内容脱敏副本",
+          "meaningEn": "Masked response"
+        },
+        {
+          "name": "http_status",
+          "sqlType": "INT NULL",
+          "meaning": "返回的 HTTP 状态（进程内调用为空）",
+          "meaningEn": "HTTP status; empty on timeout"
+        },
+        {
+          "name": "result_code",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "统一结果码 PayErrorCode（成功为 OK）",
+          "meaningEn": "Unified result code returned to the caller"
+        },
+        {
+          "name": "outcome",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACCEPTED / REJECTED_AUTH / REJECTED_PARAM / REJECTED_FORBIDDEN / DUPLICATE / ERROR",
+          "meaningEn": "Request outcome"
+        },
+        {
+          "name": "elapsed_ms",
+          "sqlType": "INT NULL",
+          "meaning": "处理耗时",
+          "meaningEn": "Elapsed milliseconds"
+        },
+        {
+          "name": "received_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "收到时间",
+          "meaningEn": "Received at"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "trace_id"
+        ],
+        [
+          "pay_order_id"
+        ],
+        [
+          "source_type",
+          "source_id",
+          "received_at"
+        ],
+        [
+          "biz_type",
+          "biz_no"
+        ],
+        [
+          "outcome",
+          "received_at"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "鉴权失败的请求也记（outcome=REJECTED_AUTH，只记脱敏后的头部与指纹），用于发现撞库与重放",
+        "查询类请求同样记录；量大时按月归档"
+      ],
+      "titleZh": "请求记录",
+      "titleEn": "API Request Log",
+      "purposeEn": "① Business side → payment: every API call from partners, internal systems, terminals, merchant / ops consoles and checkout, including rejected ones."
+    },
+    {
+      "name": "pay_channel_call_log",
+      "module": "pay-channel/http",
+      "group": "四向记录",
+      "purpose": "渠道调用记录（② 支付 → 渠道）：每一次对渠道的 HTTP 调用，重试每次一行。由管线的 RecordingInterceptor 与 RecordingChannelClient 写，处理器无法绕过",
+      "columns": [
+        {
+          "name": "trace_id",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "追踪号（来自请求记录，补查任务沿用原追踪号）",
+          "meaningEn": "Trace id generated at the entry and shared by request, call, callback and notification records"
+        },
+        {
+          "name": "invocation_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "单次调用号：同一次调用的多次重试共用",
+          "meaningEn": "Invocation number shared by the retries of one call"
+        },
+        {
+          "name": "market",
+          "sqlType": "VARCHAR(8) NULL",
+          "meaning": "市场",
+          "meaningEn": "Market code"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "access_mode",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "接入模式",
+          "meaningEn": "Whose credentials call the channel"
+        },
+        {
+          "name": "scene",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "场景：ONLINE_REDIRECT / ONLINE_SDK / ONLINE_QR / IN_STORE_CARD / IN_STORE_SCAN_CUSTOMER / IN_STORE_SHOW_QR / ANY",
+          "meaningEn": "Scene"
+        },
+        {
+          "name": "operation",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "操作：PAY / CONFIRM / QUERY / CLOSE / VOID / REFUND / REFUND_QUERY / ONBOARDING_SUBMIT / ONBOARDING_QUERY / MEDIA_UPLOAD / STATEMENT_FETCH / PAYOUT / KEY_VERIFY",
+          "meaningEn": "Channel operation"
+        },
+        {
+          "name": "api",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "渠道接口名，如 MPG_GATEWAY / QUERY_TRADE / CREDIT_CLOSE / V3_REQUEST / V3_CONFIRM / ACQUIRE2_PLACE_ORDER",
+          "meaningEn": "Channel API name"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "以哪个收款商户的身份调 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "ref_type",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "PAY_ORDER / PAY_REFUND / ONBOARDING / STATEMENT / PAYOUT / KEY",
+          "meaningEn": "Referenced document type"
+        },
+        {
+          "name": "ref_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "业务对象 id（按 ref_type）",
+          "meaningEn": "Referenced object id, resolved by ref_type"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "支付单 pay_order.id",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "stl_payment_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "通道尝试 stl_payment.id",
+          "meaningEn": "Channel transaction (stl_payment.id)"
+        },
+        {
+          "name": "out_trade_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "发给渠道的单号（字符串原样，便于按用户报障单号检索）",
+          "meaningEn": "Our trade number sent to the channel"
+        },
+        {
+          "name": "attempt",
+          "sqlType": "INT NOT NULL DEFAULT 1",
+          "meaning": "本次调用的第几次发送",
+          "meaningEn": "Send attempt number within this invocation"
+        },
+        {
+          "name": "retry_of_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "重试自哪一行 pay_channel_call_log.id",
+          "meaningEn": "Previous attempt (pay_channel_call_log.id)"
+        },
+        {
+          "name": "source_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "来源：PARTNER / INTERNAL / TERMINAL / BIZ / OPS / CHECKOUT",
+          "meaningEn": "Source type"
+        },
+        {
+          "name": "source_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "来源 id：pay_app.id / pay_terminal.id / 账号 id（按 source_type）",
+          "meaningEn": "Source id, resolved by source_type"
+        },
+        {
+          "name": "client_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "来源端：H5 / APP_IOS / APP_ANDROID / MINI_PROGRAM / POS / SERVER / OPS_WEB / BIZ_APP",
+          "meaningEn": "Client end (H5 / iOS / Android / mini program / POS / server / ops web / merchant app)"
+        },
+        {
+          "name": "request_amount_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "请求金额（最小单位）",
+          "meaningEn": "Requested amount in minor units"
+        },
+        {
+          "name": "request_currency",
+          "sqlType": "CHAR(3) NULL",
+          "meaning": "请求币种",
+          "meaningEn": "Requested currency"
+        },
+        {
+          "name": "channel_amount_text",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "按渠道精度换算后实际发给渠道的金额字符串，如 TWD \"1200\"、AED \"35.50\"",
+          "meaningEn": "Amount string actually sent to the channel after scale conversion"
+        },
+        {
+          "name": "amount_scale",
+          "sqlType": "TINYINT NULL",
+          "meaning": "换算所用精度（pay_channel_product_market.amount_scale）",
+          "meaningEn": "Decimal scale sent to the channel; a remainder is rejected, never rounded"
+        },
+        {
+          "name": "response_amount_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "渠道响应声明的金额（最小单位）",
+          "meaningEn": "Amount declared in the channel response (minor units)"
+        },
+        {
+          "name": "response_currency",
+          "sqlType": "CHAR(3) NULL",
+          "meaning": "渠道响应币种",
+          "meaningEn": "Currency in the channel response"
+        },
+        {
+          "name": "fee_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "渠道手续费（以回执为准）",
+          "meaningEn": "Fee in minor units"
+        },
+        {
+          "name": "http_method",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "GET / POST",
+          "meaningEn": "HTTP method"
+        },
+        {
+          "name": "url_path",
+          "sqlType": "VARCHAR(255) NOT NULL",
+          "meaning": "路径（不含主机与查询串里的密钥）",
+          "meaningEn": "Path (no host, no secrets in query)"
+        },
+        {
+          "name": "request_masked",
+          "sqlType": "TEXT NULL",
+          "meaning": "请求脱敏副本（递归脱敏）",
+          "meaningEn": "Masked request (recursively masked)"
+        },
+        {
+          "name": "request_raw_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "请求加密原文 pay_raw_payload.id",
+          "meaningEn": "Encrypted raw request (pay_raw_payload.id)"
+        },
+        {
+          "name": "response_masked",
+          "sqlType": "TEXT NULL",
+          "meaning": "响应脱敏副本",
+          "meaningEn": "Masked response"
+        },
+        {
+          "name": "response_raw_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "响应加密原文 pay_raw_payload.id",
+          "meaningEn": "Encrypted raw response (pay_raw_payload.id)"
+        },
+        {
+          "name": "http_status",
+          "sqlType": "INT NULL",
+          "meaning": "HTTP 状态码；超时为空",
+          "meaningEn": "HTTP status; empty on timeout"
+        },
+        {
+          "name": "elapsed_ms",
+          "sqlType": "INT NULL",
+          "meaning": "耗时",
+          "meaningEn": "Elapsed milliseconds"
+        },
+        {
+          "name": "channel_trade_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "响应里的通道单号",
+          "meaningEn": "Channel transaction number"
+        },
+        {
+          "name": "outcome",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "传输结果：SENT / RESPONDED / TIMEOUT / CONNECT_FAILED / REJECTED_BEFORE_SEND",
+          "meaningEn": "Transport outcome"
+        },
+        {
+          "name": "outcome_class",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "统一结果：SUCCEEDED / PENDING / FAILED / UNKNOWN（超时、5xx、未登记渠道码一律 UNKNOWN）",
+          "meaningEn": "Unified outcome; timeouts, 5xx and unregistered codes are always UNKNOWN"
+        },
+        {
+          "name": "unified_error_code",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "统一错误码 PayErrorCode",
+          "meaningEn": "Unified error code (PayErrorCode)"
+        },
+        {
+          "name": "error_code",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "渠道原始错误码",
+          "meaningEn": "Channel error code"
+        },
+        {
+          "name": "error_msg",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "渠道原始错误信息",
+          "meaningEn": "Error message"
+        },
+        {
+          "name": "fault_policy",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "本次生效的容错策略摘要（超时 / 重试次数 / 是否可重发）",
+          "meaningEn": "Effective fault policy summary (timeouts / retries / resend allowed)"
+        },
+        {
+          "name": "breaker_state",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "发送时熔断器状态：CLOSED / HALF_OPEN / OPEN",
+          "meaningEn": "Circuit breaker state at send time"
+        },
+        {
+          "name": "sent_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "发出时间",
+          "meaningEn": "Sent at"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "trace_id"
+        ],
+        [
+          "invocation_no"
+        ],
+        [
+          "pay_order_id"
+        ],
+        [
+          "stl_payment_id"
+        ],
+        [
+          "out_trade_no"
+        ],
+        [
+          "ref_type",
+          "ref_id"
+        ],
+        [
+          "pay_channel",
+          "sent_at"
+        ],
+        [
+          "outcome_class",
+          "sent_at"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "独立事务写入，失败不阻断业务；写入失败计数进监控",
+        "按月归档（数据量最大的表之一）",
+        "发出前先写一行（outcome=SENT），返回后回写：超时时也能证明「发出去了」"
+      ],
+      "titleZh": "渠道调用记录",
+      "titleEn": "Channel Call Log",
+      "purposeEn": "② Payment → channel: every HTTP call to a channel, one row per retry. Written by the pipeline's RecordingInterceptor and RecordingChannelClient; handlers cannot bypass it."
+    },
+    {
+      "name": "pay_callback_log",
+      "module": "pay-domain/callback",
+      "group": "四向记录",
+      "purpose": "回调记录（③ 渠道 → 支付）：统一回调入口收到的每一条通知（含浏览器跳回）。先落库、再验签处理",
+      "columns": [
+        {
+          "name": "trace_id",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "追踪号：按单回查到原支付单的追踪号（解析不出时为空）",
+          "meaningEn": "Trace id generated at the entry and shared by request, call, callback and notification records"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "路径里的渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "notify_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PAY / REFUND / ONBOARDING / PAYOUT / RETURN",
+          "meaningEn": "Notification type"
+        },
+        {
+          "name": "path_ref",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "路径里的引用原文（pay_merchant_no 或 onboarding_no，对外单号）",
+          "meaningEn": "Reference as received in the callback path (external number)"
+        },
+        {
+          "name": "route_style",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PATH 子路径 / QUERY 参数 / LEGACY 旧地址别名",
+          "meaningEn": "How the callback was routed"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "解析出的收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "pay_onboarding_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "解析出的进件单 pay_onboarding.id",
+          "meaningEn": "Onboarding application (pay_onboarding.id)"
+        },
+        {
+          "name": "http_method",
+          "sqlType": "VARCHAR(8) NOT NULL",
+          "meaning": "GET / POST",
+          "meaningEn": "HTTP method"
+        },
+        {
+          "name": "remote_ip",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "来源 IP（经可信代理头）",
+          "meaningEn": "Source IP (via trusted proxy header)"
+        },
+        {
+          "name": "headers_masked",
+          "sqlType": "TEXT NULL",
+          "meaning": "请求头脱敏副本",
+          "meaningEn": "Masked request headers"
+        },
+        {
+          "name": "body_masked",
+          "sqlType": "TEXT NULL",
+          "meaning": "报文脱敏副本（验签前仅存指纹 + 前缀）",
+          "meaningEn": "Masked body (fingerprint + prefix before verification)"
+        },
+        {
+          "name": "pay_raw_payload_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "完整原文 pay_raw_payload.id（含头与体；密钥模块就绪前为空）",
+          "meaningEn": "Raw payload (pay_raw_payload.id)"
+        },
+        {
+          "name": "raw_sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "原文哈希（重复通知识别）",
+          "meaningEn": "Raw payload hash (detects duplicate notifications)"
+        },
+        {
+          "name": "verify_result",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PENDING / PASSED / FAILED / MERCHANT_MISMATCH / STALE",
+          "meaningEn": "Signature verification result"
+        },
+        {
+          "name": "notify_amount_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "通知里声明的金额（最小单位）",
+          "meaningEn": "Notified amount in minor units"
+        },
+        {
+          "name": "notify_currency",
+          "sqlType": "CHAR(3) NULL",
+          "meaning": "通知币种",
+          "meaningEn": "Notified currency"
+        },
+        {
+          "name": "fee_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "通知里的手续费",
+          "meaningEn": "Fee in minor units"
+        },
+        {
+          "name": "amount_matched",
+          "sqlType": "TINYINT(1) NULL",
+          "meaning": "通知金额与支付单 / 退款单是否一致；不一致记 pay_exception 且不推进成功",
+          "meaningEn": "Whether the notified amount matches the order / refund"
+        },
+        {
+          "name": "unified_status",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "映射后的统一状态：SUCCEEDED / FAILED / CLOSED / REFUNDED …",
+          "meaningEn": "Mapped unified status"
+        },
+        {
+          "name": "outcome",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "RECEIVED / APPLIED / DUPLICATE / REJECTED / ERROR",
+          "meaningEn": "Handling outcome"
+        },
+        {
+          "name": "outcome_reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "原因",
+          "meaningEn": "Outcome reason"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "关联支付单 pay_order.id",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "pay_refund_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "关联退款单 pay_refund.id",
+          "meaningEn": "Refund (pay_refund.id)"
+        },
+        {
+          "name": "stl_payment_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "关联通道尝试 stl_payment.id",
+          "meaningEn": "Channel transaction (stl_payment.id)"
+        },
+        {
+          "name": "out_trade_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "报文里的我方单号（原样）",
+          "meaningEn": "Our trade number sent to the channel"
+        },
+        {
+          "name": "channel_trade_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "通道单号",
+          "meaningEn": "Channel transaction number"
+        },
+        {
+          "name": "ack_body",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "回给渠道的应答",
+          "meaningEn": "Acknowledgement returned to the channel"
+        },
+        {
+          "name": "replay_of_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "重放自哪条回调 pay_callback_log.id",
+          "meaningEn": "Replayed from callback (pay_callback_log.id)"
+        },
+        {
+          "name": "replayed_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "重放操作人",
+          "meaningEn": "Replayed by"
+        },
+        {
+          "name": "received_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "收到时间",
+          "meaningEn": "Received at"
+        },
+        {
+          "name": "handled_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "处理完成时间",
+          "meaningEn": "Handled at"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "trace_id"
+        ],
+        [
+          "pay_order_id"
+        ],
+        [
+          "stl_payment_id"
+        ],
+        [
+          "out_trade_no"
+        ],
+        [
+          "channel_trade_no"
+        ],
+        [
+          "pay_channel",
+          "received_at"
+        ],
+        [
+          "outcome",
+          "received_at"
+        ],
+        [
+          "raw_sha256"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "取代 stl_channel_message 的回调部分；旧表停写只读"
+      ],
+      "titleZh": "回调记录",
+      "titleEn": "Callback Log",
+      "purposeEn": "③ Channel → payment: every notification received on the unified callback endpoint (including browser returns). Persisted before verification."
+    },
+    {
+      "name": "pay_raw_payload",
+      "module": "pay-domain/log",
+      "group": "四向记录",
+      "purpose": "加密原文：调用请求 / 响应、回调原文、对账单原件。与记录表分开，便于按期限清理与单独授权",
+      "columns": [
+        {
+          "name": "kind",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "CALL_REQUEST / CALL_RESPONSE / CALLBACK / STATEMENT",
+          "meaningEn": "Kind"
+        },
+        {
+          "name": "storage",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DB / OBJECT（大文件如对账单走对象存储）",
+          "meaningEn": "Storage location"
+        },
+        {
+          "name": "cipher_text",
+          "sqlType": "MEDIUMTEXT NULL",
+          "meaning": "storage=DB：AES-GCM 密文",
+          "meaningEn": "AES-256-GCM ciphertext (Base64, incl. IV and tag)"
+        },
+        {
+          "name": "object_key",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "storage=OBJECT：对象存储键（对象本身加密）",
+          "meaningEn": "Object storage key (object encrypted)"
+        },
+        {
+          "name": "data_key_cipher",
+          "sqlType": "VARCHAR(512) NOT NULL",
+          "meaning": "被主密钥包裹的数据密钥（经密钥模块 API 加解密）",
+          "meaningEn": "Data key wrapped by the master key"
+        },
+        {
+          "name": "sec_master_key_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "包裹所用主密钥 sec_master_key.id",
+          "meaningEn": "Master key (sec_master_key.id)"
+        },
+        {
+          "name": "sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "明文哈希（举证用）",
+          "meaningEn": "Plaintext hash (evidence)"
+        },
+        {
+          "name": "size_bytes",
+          "sqlType": "INT NOT NULL",
+          "meaning": "明文字节数",
+          "meaningEn": "Plaintext size in bytes"
+        },
+        {
+          "name": "retain_until",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "保留至（合规期限，Q4）",
+          "meaningEn": "Retain until (compliance period)"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "retain_until"
+        ],
+        [
+          "sec_master_key_id"
+        ]
+      ],
+      "checks": [
+        "(storage = 'DB' AND cipher_text IS NOT NULL) OR (storage = 'OBJECT' AND object_key IS NOT NULL)"
+      ],
+      "notes": [
+        "读取原文需 pay:log:raw，每次写 sec_access_log(RAW_PAYLOAD_VIEW)"
+      ],
+      "titleZh": "报文原文",
+      "titleEn": "Raw Payload",
+      "purposeEn": "Encrypted originals of call requests / responses, callbacks and statements, kept apart from logs for retention and access control."
+    },
+    {
+      "name": "pay_biz_notify",
+      "module": "pay-domain/notify",
+      "group": "四向记录",
+      "purpose": "答复记录（④ 支付 → 业务方）：一次对业务方的通知，内部系统走领域事件、外部系统走签名 webhook、终端走推送。取代 pay_webhook_delivery",
+      "columns": [
+        {
+          "name": "trace_id",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "触发它的那次请求 / 回调 / 补查的追踪号",
+          "meaningEn": "Trace id generated at the entry and shared by request, call, callback and notification records"
+        },
+        {
+          "name": "event_type",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "PAYMENT_SUCCEEDED / PAYMENT_FAILED / PAYMENT_CLOSED / REFUND_SUCCEEDED / REFUND_FAILED / REFUND_REVIEW_REJECTED",
+          "meaningEn": "Business event type"
+        },
+        {
+          "name": "event_key",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "事件幂等键：event_type|对象 id|状态版本；推送体里同样带上，供业务方去重",
+          "meaningEn": "Event idempotency key (event type | object id | state version)"
+        },
+        {
+          "name": "state_version",
+          "sqlType": "INT NOT NULL",
+          "meaning": "对象状态版本：业务方据此丢弃旧通知，保证顺序",
+          "meaningEn": "Object state version; receivers drop older notifications"
+        },
+        {
+          "name": "target_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "INTERNAL_EVENT 内部系统（Outbox 领域事件）/ WEBHOOK 外部系统 / TERMINAL 终端推送",
+          "meaningEn": "Receiver type: INTERNAL_EVENT / WEBHOOK / TERMINAL"
+        },
+        {
+          "name": "pay_app_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "接收方 pay_app.id",
+          "meaningEn": "App (pay_app.id)"
+        },
+        {
+          "name": "target_url",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "WEBHOOK 的目标地址（支付单 notify_url 优先，否则接入方 webhook_url）",
+          "meaningEn": "Target URL"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "支付单 pay_order.id",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "pay_refund_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "退款单 pay_refund.id",
+          "meaningEn": "Refund (pay_refund.id)"
+        },
+        {
+          "name": "notify_amount_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "告诉业务方的金额（最小单位）",
+          "meaningEn": "Notified amount in minor units"
+        },
+        {
+          "name": "notify_currency",
+          "sqlType": "CHAR(3) NULL",
+          "meaning": "币种",
+          "meaningEn": "Notified currency"
+        },
+        {
+          "name": "payload_masked",
+          "sqlType": "TEXT NOT NULL",
+          "meaning": "推送内容（脱敏）",
+          "meaningEn": "Pushed payload"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PENDING / DELIVERED / FAILED / GIVEN_UP",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "attempts",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "已投递次数",
+          "meaningEn": "Delivery attempts so far"
+        },
+        {
+          "name": "next_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "下次投递时间（指数退避）",
+          "meaningEn": "Next attempt at"
+        },
+        {
+          "name": "delivered_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "送达时间",
+          "meaningEn": "Delivered at"
+        },
+        {
+          "name": "given_up_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "放弃时间（≥ 24h 仍失败）",
+          "meaningEn": "Given up at (still failing after ≥ 24h)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "target_type",
+          "pay_app_id",
+          "event_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "status",
+          "next_at"
+        ],
+        [
+          "pay_order_id"
+        ],
+        [
+          "trace_id"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "至少一次 + 幂等：同一 event_key 只建一条；业务方可能收到多次，以 event_key 去重、以 state_version 保序",
+        "外部系统以查询为准：推送只是提醒"
+      ],
+      "titleZh": "答复记录",
+      "titleEn": "Business Notification",
+      "purposeEn": "④ Payment → business side: one notification to a receiver — domain event for internal systems, signed webhook for partners, push for terminals. Replaces pay_webhook_delivery."
+    },
+    {
+      "name": "pay_biz_notify_attempt",
+      "module": "pay-domain/notify",
+      "group": "四向记录",
+      "purpose": "答复投递记录：pay_biz_notify 的每一次投递一行（含手动重推）",
+      "columns": [
+        {
+          "name": "pay_biz_notify_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "所属通知 pay_biz_notify.id",
+          "meaningEn": "Notification (pay_biz_notify.id)"
+        },
+        {
+          "name": "attempt",
+          "sqlType": "INT NOT NULL",
+          "meaning": "第几次投递",
+          "meaningEn": "Delivery attempt number"
+        },
+        {
+          "name": "trigger_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "AUTO 自动 / MANUAL 运营手动重推",
+          "meaningEn": "Trigger type"
+        },
+        {
+          "name": "triggered_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "手动重推的操作人",
+          "meaningEn": "Manually re-sent by"
+        },
+        {
+          "name": "sent_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "发出时间",
+          "meaningEn": "Sent at"
+        },
+        {
+          "name": "http_status",
+          "sqlType": "INT NULL",
+          "meaning": "对方返回的 HTTP 状态（INTERNAL_EVENT 为空）",
+          "meaningEn": "HTTP status; empty on timeout"
+        },
+        {
+          "name": "response_masked",
+          "sqlType": "VARCHAR(1024) NULL",
+          "meaning": "对方响应（截断、脱敏）",
+          "meaningEn": "Masked response"
+        },
+        {
+          "name": "elapsed_ms",
+          "sqlType": "INT NULL",
+          "meaning": "耗时",
+          "meaningEn": "Elapsed milliseconds"
+        },
+        {
+          "name": "outcome",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DELIVERED / REJECTED / TIMEOUT / ERROR",
+          "meaningEn": "Delivery outcome"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_biz_notify_id",
+          "attempt"
+        ]
+      ],
+      "indexes": [],
+      "checks": [],
+      "notes": [],
+      "titleZh": "答复投递记录",
+      "titleEn": "Notification Attempt",
+      "purposeEn": "One row per delivery attempt of a business notification, including manual re-sends."
+    },
+    {
+      "name": "pay_channel_followup",
+      "module": "pay-channel/fault",
+      "group": "渠道运行",
+      "purpose": "「未知」补查任务：渠道调用结果不明（超时、5xx、未登记渠道码）时登记，按退避自动查询，直到有结论或转人工",
+      "columns": [
+        {
+          "name": "invocation_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原调用号（pay_channel_call_log.invocation_no）",
+          "meaningEn": "Invocation number shared by the retries of one call"
+        },
+        {
+          "name": "trace_id",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "原追踪号：补查产生的调用记录沿用它",
+          "meaningEn": "Trace id generated at the entry and shared by request, call, callback and notification records"
+        },
+        {
+          "name": "operation",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "原操作：PAY / CONFIRM / REFUND / CLOSE / VOID / PAYOUT",
+          "meaningEn": "Channel operation"
+        },
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "pay_order_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "支付单 pay_order.id",
+          "meaningEn": "Payment order (pay_order.id)"
+        },
+        {
+          "name": "stl_payment_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "通道尝试 stl_payment.id",
+          "meaningEn": "Channel transaction (stl_payment.id)"
+        },
+        {
+          "name": "pay_refund_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "退款单 pay_refund.id",
+          "meaningEn": "Refund (pay_refund.id)"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PENDING / RESOLVED / ESCALATED / CANCELLED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "open_key",
+          "sqlType": "VARCHAR(100) NULL",
+          "meaning": "PENDING 时 = operation|stl_payment_id|pay_refund_id：同一对象同一操作只有一个进行中补查",
+          "meaningEn": "Uniqueness helper while open, otherwise NULL"
+        },
+        {
+          "name": "attempts",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "已补查次数",
+          "meaningEn": "Follow-up attempts so far"
+        },
+        {
+          "name": "next_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "下次补查时间（指数退避）",
+          "meaningEn": "Next follow-up at (exponential backoff)"
+        },
+        {
+          "name": "last_result",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "最近一次补查结果摘要",
+          "meaningEn": "Last follow-up result"
+        },
+        {
+          "name": "resolved_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "得出结论的时间",
+          "meaningEn": "Resolved at"
+        },
+        {
+          "name": "pay_exception_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "超过上限转人工时建的 pay_exception.id",
+          "meaningEn": "Escalated exception (pay_exception.id)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "open_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "status",
+          "next_at"
+        ],
+        [
+          "pay_order_id"
+        ],
+        [
+          "invocation_no"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "补查结论与回调、对账补单进同一个结果入口，哪条先到都只入账一次"
+      ],
+      "titleZh": "补查任务",
+      "titleEn": "Channel Follow-up",
+      "purposeEn": "Follow-up task for an UNKNOWN channel outcome (timeout, 5xx, unregistered code): queried with backoff until resolved or escalated."
+    },
+    {
+      "name": "pay_channel_lifecycle_log",
+      "module": "pay-channel/lifecycle",
+      "group": "渠道运行",
+      "purpose": "渠道适配器生命周期日志：每个「渠道 × 收款商户」运行时实例的一次状态变化",
+      "columns": [
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "收款商户 pay_merchant.id；渠道级状态（整个渠道停用）为空",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "from_state",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "原状态：REGISTERED / INITIALIZED / ACTIVE / DEGRADED / SUSPENDED / DRAINING / STOPPED",
+          "meaningEn": "Previous state"
+        },
+        {
+          "name": "to_state",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "新状态",
+          "meaningEn": "New state"
+        },
+        {
+          "name": "reason",
+          "sqlType": "VARCHAR(255) NOT NULL",
+          "meaning": "原因：熔断打开、健康检查失败、运营停用、凭据吊销、应用关闭…",
+          "meaningEn": "Reason"
+        },
+        {
+          "name": "operator_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "操作人（系统触发为 SYSTEM）",
+          "meaningEn": "Operator (SYSTEM when automatic)"
+        },
+        {
+          "name": "occurred_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "发生时间",
+          "meaningEn": "Occurred at"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "pay_channel",
+          "occurred_at"
+        ],
+        [
+          "pay_merchant_id",
+          "occurred_at"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "渠道生命周期日志",
+      "titleEn": "Channel Lifecycle Log",
+      "purposeEn": "State changes of each channel × payment-merchant runtime instance."
+    },
+    {
+      "name": "pay_app",
+      "module": "pay-domain/openapp",
+      "group": "接入方与终端",
+      "purpose": "接入方：第三方系统或内部系统（内部系统也注册，用于来源可拆）",
+      "columns": [
+        {
+          "name": "app_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "对外 AppId（请求头 X-App-Id 传的就是它）",
+          "meaningEn": "Public AppId (sent in the X-App-Id header)"
+        },
+        {
+          "name": "name",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "名称",
+          "meaningEn": "Display name"
+        },
+        {
+          "name": "owner_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PARTNER / INTERNAL",
+          "meaningEn": "Owner type"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE / SUSPENDED / REVOKED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "scopes",
+          "sqlType": "VARCHAR(255) NOT NULL",
+          "meaning": "逗号分隔：pay:create,pay:read,pay:refund,ledger:read,settle:read",
+          "meaningEn": "API scopes, comma separated"
+        },
+        {
+          "name": "ip_whitelist",
+          "sqlType": "VARCHAR(1024) NULL",
+          "meaning": "IP / CIDR 白名单",
+          "meaningEn": "IP / CIDR allow-list"
+        },
+        {
+          "name": "webhook_url",
+          "sqlType": "VARCHAR(512) NULL",
+          "meaning": "结果推送地址",
+          "meaningEn": "Webhook URL"
+        },
+        {
+          "name": "return_url_whitelist",
+          "sqlType": "VARCHAR(1024) NULL",
+          "meaning": "允许的跳回域名",
+          "meaningEn": "Allowed return domains"
+        },
+        {
+          "name": "rate_limit_qps",
+          "sqlType": "INT NOT NULL DEFAULT 20",
+          "meaning": "限流",
+          "meaningEn": "Rate limit (QPS)"
+        },
+        {
+          "name": "daily_refund_limit_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "日退款上限；0 = 不允许退款",
+          "meaningEn": "Daily refund limit; 0 = refunds not allowed"
+        },
+        {
+          "name": "sandbox",
+          "sqlType": "TINYINT(1) NOT NULL DEFAULT 0",
+          "meaning": "沙箱 app（路由到 TEST 渠道）",
+          "meaningEn": "Sandbox app (routed to TEST channel)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "app_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "owner_type",
+          "status"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "接入方的签名密钥在密钥模块 sec_key（owner_type=PARTNER_APP / INTERNAL_APP，owner_id = pay_app.id，direction=INBOUND）"
+      ],
+      "titleZh": "接入方",
+      "titleEn": "API Client App",
+      "purposeEn": "A third-party or internal system calling the payment API (internal systems are registered too, so sources can be told apart)."
+    },
+    {
+      "name": "pay_app_grant",
+      "module": "pay-domain/openapp",
+      "group": "接入方与终端",
+      "purpose": "接入方授权：门店授权某 app 代本店收款或退款（原 pay_app_merchant，按命名基准改名）",
+      "columns": [
+        {
+          "name": "pay_app_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "接入方 pay_app.id",
+          "meaningEn": "App (pay_app.id)"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "actions",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "逗号分隔：COLLECT,REFUND,READ",
+          "meaningEn": "Granted actions, comma separated"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE / REVOKED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "granted_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "授权人（商家，审计字段）",
+          "meaningEn": "Granted by (merchant)"
+        },
+        {
+          "name": "granted_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "授权时间",
+          "meaningEn": "Granted at"
+        },
+        {
+          "name": "revoked_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "撤销时间",
+          "meaningEn": "Revoked at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_app_id",
+          "store_id"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_id",
+          "status"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "接入方授权",
+      "titleEn": "App Grant",
+      "purposeEn": "A store authorises an app to collect / refund on its behalf."
+    },
+    {
+      "name": "pay_api_nonce",
+      "module": "pay-domain/openapp",
+      "group": "接入方与终端",
+      "purpose": "签名 nonce 防重放（无 Redis 时的落库实现）；按 expire_at 定期清理",
+      "columns": [
+        {
+          "name": "caller_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "APP / TERMINAL",
+          "meaningEn": "Caller type"
+        },
+        {
+          "name": "caller_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "pay_app.id 或 pay_terminal.id",
+          "meaningEn": "pay_app.id or pay_terminal.id"
+        },
+        {
+          "name": "nonce",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "随机串",
+          "meaningEn": "Random nonce"
+        },
+        {
+          "name": "expire_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "过期（= 请求时间 + 300s）",
+          "meaningEn": "Expires at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "caller_type",
+          "caller_id",
+          "nonce"
+        ]
+      ],
+      "indexes": [
+        [
+          "expire_at"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "签名防重放",
+      "titleEn": "API Nonce",
+      "purposeEn": "Nonce store against replay of signed requests (DB fallback when Redis is absent); purged by expire_at."
+    },
+    {
+      "name": "pay_terminal",
+      "module": "pay-domain/terminal",
+      "group": "接入方与终端",
+      "purpose": "刷卡机终端（自研 App）：绑定收款商户与门店",
+      "columns": [
+        {
+          "name": "terminal_sn",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "终端序列号（设备上可见，对外）",
+          "meaningEn": "Terminal serial number"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "绑定的收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "model",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "机型",
+          "meaningEn": "Device model"
+        },
+        {
+          "name": "reader_kit",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "读卡套件型号 / 版本（按渠道认证清单校验）",
+          "meaningEn": "Card reader kit model / version (checked against channel certification)"
+        },
+        {
+          "name": "app_version",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "终端 App 版本",
+          "meaningEn": "Terminal app version"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "REGISTERED / ACTIVE / LOST / RETIRED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "activation_code_sha256",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "一次性激活码哈希",
+          "meaningEn": "Hash of the one-time activation code"
+        },
+        {
+          "name": "activation_expire_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "激活码过期（10 分钟）",
+          "meaningEn": "Activation code expiry (10 minutes)"
+        },
+        {
+          "name": "device_fingerprint",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "激活时设备指纹",
+          "meaningEn": "Device fingerprint at activation"
+        },
+        {
+          "name": "sec_key_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "设备密钥 sec_key.id（owner_type=TERMINAL），激活时生成",
+          "meaningEn": "Key (sec_key.id, key module)"
+        },
+        {
+          "name": "daily_refund_limit_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "单终端日退款上限",
+          "meaningEn": "Daily refund limit; 0 = refunds not allowed"
+        },
+        {
+          "name": "last_seen_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "最近心跳",
+          "meaningEn": "Last heartbeat"
+        },
+        {
+          "name": "activated_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "激活时间",
+          "meaningEn": "Activated at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "terminal_sn"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_id",
+          "status"
+        ],
+        [
+          "pay_merchant_id"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "刷卡机终端",
+      "titleEn": "Terminal",
+      "purposeEn": "In-house card terminal app, bound to a payment merchant and a store."
+    },
+    {
+      "name": "pay_manager_code",
+      "module": "pay-domain/terminal",
+      "group": "接入方与终端",
+      "purpose": "店长授权码：终端撤销 / 退款的授权，由商家端设置，只存哈希",
+      "columns": [
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "manager_account_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "店长账号 mch_account.id（核心系统）",
+          "meaningEn": "Store manager account (mch_account.id, core system)"
+        },
+        {
+          "name": "code_hash",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "授权码哈希（加盐慢哈希）",
+          "meaningEn": "Salted slow hash of the code"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE / REVOKED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "failed_attempts",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "连续失败次数（超限锁定）",
+          "meaningEn": "Consecutive failed attempts (locks when exceeded)"
+        },
+        {
+          "name": "locked_until",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "锁定至",
+          "meaningEn": "Locked until"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "store_id",
+          "manager_account_id"
+        ]
+      ],
+      "indexes": [],
+      "checks": [],
+      "notes": [],
+      "titleZh": "店长授权码",
+      "titleEn": "Manager Code",
+      "purposeEn": "Store manager authorisation code for terminal voids / refunds; hash only."
+    },
+    {
+      "name": "pay_terminal_batch",
+      "module": "pay-domain/terminal",
+      "group": "接入方与终端",
+      "purpose": "终端日结：终端上报与服务端汇总比对",
+      "columns": [
+        {
+          "name": "pay_terminal_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "终端 pay_terminal.id",
+          "meaningEn": "Terminal (pay_terminal.id)"
+        },
+        {
+          "name": "biz_date",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "营业日",
+          "meaningEn": "Business date, cut by market time zone"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "reported_count",
+          "sqlType": "INT NOT NULL",
+          "meaning": "终端上报笔数",
+          "meaningEn": "Count reported by terminal"
+        },
+        {
+          "name": "reported_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "终端上报金额",
+          "meaningEn": "Amount reported by terminal"
+        },
+        {
+          "name": "reported_void_count",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "撤销笔数",
+          "meaningEn": "Void count reported"
+        },
+        {
+          "name": "reported_void_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "撤销金额",
+          "meaningEn": "Void amount reported"
+        },
+        {
+          "name": "server_count",
+          "sqlType": "INT NULL",
+          "meaning": "服务端汇总笔数",
+          "meaningEn": "Server-side count"
+        },
+        {
+          "name": "server_minor",
+          "sqlType": "BIGINT NULL",
+          "meaning": "服务端汇总金额",
+          "meaningEn": "Server-side amount"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "REPORTED / MATCHED / MISMATCHED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "operator_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "日结收银员（审计字段）",
+          "meaningEn": "Operator"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_terminal_id",
+          "biz_date"
+        ]
+      ],
+      "indexes": [],
+      "checks": [],
+      "notes": [],
+      "titleZh": "终端日结",
+      "titleEn": "Terminal Batch",
+      "purposeEn": "End-of-day settlement reported by a terminal, compared with the server-side totals."
+    },
+    {
+      "name": "sec_master_key",
+      "module": "secret（独立模块）",
+      "group": "密钥管理",
+      "purpose": "主密钥登记：按命名空间与环境登记包裹数据密钥的主密钥元数据。本表不存任何密钥材料",
+      "columns": [
+        {
+          "name": "kms_key_id",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "KMS key id 或环境注入别名（是名字，不是密钥）",
+          "meaningEn": "KMS key id or injected alias (a name, not a key)"
+        },
+        {
+          "name": "provider",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ENV 部署注入 / KMS 云 KMS / HSM 硬件",
+          "meaningEn": "Key provider"
+        },
+        {
+          "name": "namespace",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PAY / LOGISTICS / INVENTORY / NOTIFY / PLATFORM：每个域一套主密钥，进程只能解本域",
+          "meaningEn": "Namespace: one set of master keys per domain; a process can only decrypt its own"
+        },
+        {
+          "name": "env",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "SANDBOX / PRODUCTION：两套环境主密钥必须不同",
+          "meaningEn": "Environment"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "ACTIVE 用于新加密 / DECRYPT_ONLY 只解密（轮换后的旧主密钥）/ RETIRED 已无密文引用",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "active_key",
+          "sqlType": "VARCHAR(48) NULL",
+          "meaning": "ACTIVE 时 = namespace|env：每个命名空间每个环境同一时刻一个 ACTIVE",
+          "meaningEn": "Uniqueness helper: composite key while ACTIVE, otherwise NULL; maintained by the service in the same transaction"
+        },
+        {
+          "name": "activated_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "启用时间",
+          "meaningEn": "Activated at"
+        },
+        {
+          "name": "rotated_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "被新主密钥替换的时间",
+          "meaningEn": "Replaced by a new master key at"
+        },
+        {
+          "name": "retired_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "退役时间（全部密文已重新包裹）",
+          "meaningEn": "Retired at"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "kms_key_id"
+        ],
+        [
+          "active_key"
+        ]
+      ],
+      "indexes": [],
+      "checks": [],
+      "notes": [],
+      "titleZh": "主密钥登记",
+      "titleEn": "Master Key",
+      "purposeEn": "Master key metadata per namespace and environment. No key material here; material stays in KMS / HSM or the deployment environment."
+    },
+    {
+      "name": "sec_secret_blob",
+      "module": "secret（独立模块）",
+      "group": "密钥管理",
+      "purpose": "密文存储：密钥私密材料与各域敏感字段的信封加密密文。数据密钥由主密钥包裹，主密钥不落库",
+      "columns": [
+        {
+          "name": "namespace",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "命名空间（同 sec_master_key.namespace）",
+          "meaningEn": "Namespace: one set of master keys per domain; a process can only decrypt its own"
+        },
+        {
+          "name": "purpose",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "KEY_MATERIAL 密钥材料 / SENSITIVE_FIELD 敏感字段（如进件证件号、银行账号）",
+          "meaningEn": "Purpose"
+        },
+        {
+          "name": "owner_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "KEY_VERSION / ONBOARDING_MATERIAL / …（调用方模块的对象类型）",
+          "meaningEn": "Owner type"
+        },
+        {
+          "name": "owner_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "归属对象 id（sec_key_version.id 或 pay_onboarding_material.id 等）",
+          "meaningEn": "Owner object id, resolved by owner_type"
+        },
+        {
+          "name": "env",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "SANDBOX / PRODUCTION",
+          "meaningEn": "Environment"
+        },
+        {
+          "name": "cipher_text",
+          "sqlType": "TEXT NOT NULL",
+          "meaning": "AES-256-GCM 密文（Base64，含 IV 与认证标签）",
+          "meaningEn": "AES-256-GCM ciphertext (Base64, incl. IV and tag)"
+        },
+        {
+          "name": "data_key_cipher",
+          "sqlType": "VARCHAR(512) NOT NULL",
+          "meaning": "被主密钥包裹的数据密钥",
+          "meaningEn": "Data key wrapped by the master key"
+        },
+        {
+          "name": "sec_master_key_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "包裹所用主密钥 sec_master_key.id",
+          "meaningEn": "Master key (sec_master_key.id)"
+        },
+        {
+          "name": "algorithm",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "AES-256-GCM",
+          "meaningEn": "Algorithm"
+        },
+        {
+          "name": "aad_sha256",
+          "sqlType": "CHAR(64) NOT NULL",
+          "meaning": "附加认证数据（id + namespace + owner_type + owner_id + env）的摘要：密文被挪到别的行即解密失败",
+          "meaningEn": "Digest of additional authenticated data (id + namespace + owner_type + owner_id + env); moving ciphertext to another row breaks decryption"
+        },
+        {
+          "name": "rewrapped_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "最近一次主密钥轮换重新包裹的时间",
+          "meaningEn": "Last re-wrapped by master key rotation"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "namespace",
+          "owner_type",
+          "owner_id"
+        ],
+        [
+          "sec_master_key_id"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "只有密钥模块的 SecretVault（进程内库）读写；任何接口、日志、导出都不出现 cipher_text"
+      ],
+      "titleZh": "密文存储",
+      "titleEn": "Secret Blob",
+      "purposeEn": "Envelope-encrypted ciphertext of key material and sensitive fields of any domain. Data keys are wrapped by a master key that never touches the database."
+    },
+    {
+      "name": "sec_key_policy",
+      "module": "secret（独立模块）",
+      "group": "密钥管理",
+      "purpose": "密钥策略：按命名空间、归属类型与环境规定有效期、到期提醒、轮换重叠期、双人控制",
+      "columns": [
+        {
+          "name": "namespace",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "命名空间",
+          "meaningEn": "Namespace: one set of master keys per domain; a process can only decrypt its own"
+        },
+        {
+          "name": "owner_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PAY_MERCHANT / CHANNEL_PLATFORM / PARTNER_APP / INTERNAL_APP / TERMINAL / PROVIDER …",
+          "meaningEn": "Owner type"
+        },
+        {
+          "name": "env",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "SANDBOX / PRODUCTION",
+          "meaningEn": "Environment"
+        },
+        {
+          "name": "max_age_days",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "版本最长使用天数；0 = 不强制（以证书有效期为准）",
+          "meaningEn": "Maximum days a version may be used; 0 = not enforced"
+        },
+        {
+          "name": "warn_before_days",
+          "sqlType": "INT NOT NULL DEFAULT 30",
+          "meaning": "到期前多少天提醒",
+          "meaningEn": "Warn N days before expiry"
+        },
+        {
+          "name": "overlap_days",
+          "sqlType": "INT NOT NULL DEFAULT 7",
+          "meaning": "轮换重叠期：新版本启用后旧版本仍可用的天数",
+          "meaningEn": "Rotation overlap: days the old version stays usable"
+        },
+        {
+          "name": "dual_control",
+          "sqlType": "TINYINT(1) NOT NULL DEFAULT 1",
+          "meaning": "启用 / 吊销是否需要两人",
+          "meaningEn": "Enable / revoke requires two people"
+        },
+        {
+          "name": "verify_before_enable",
+          "sqlType": "TINYINT(1) NOT NULL DEFAULT 1",
+          "meaning": "启用前是否必须测试调用通过",
+          "meaningEn": "A test call must pass before enabling"
+        },
+        {
+          "name": "reveal_on_issue_only",
+          "sqlType": "TINYINT(1) NOT NULL DEFAULT 1",
+          "meaning": "平台生成的密钥明文是否只在发放时展示一次",
+          "meaningEn": "Generated key plaintext is shown only once at issue"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "namespace",
+          "owner_type",
+          "env"
+        ]
+      ],
+      "indexes": [],
+      "checks": [],
+      "notes": [],
+      "titleZh": "密钥策略",
+      "titleEn": "Key Policy",
+      "purposeEn": "Lifetime, expiry warning, rotation overlap and dual control by namespace, owner type and environment."
+    },
+    {
+      "name": "sec_key",
+      "module": "secret（独立模块）",
+      "group": "密钥管理",
+      "purpose": "密钥：调用外部 API 与被外部调用的每一把密钥。支付命名空间下包括：我方调渠道、渠道平台公钥、第三方与内部系统调我方、刷卡机。材料在版本表",
+      "columns": [
+        {
+          "name": "namespace",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PAY / LOGISTICS / INVENTORY / NOTIFY / PLATFORM",
+          "meaningEn": "Namespace: one set of master keys per domain; a process can only decrypt its own"
+        },
+        {
+          "name": "name",
+          "sqlType": "VARCHAR(128) NOT NULL",
+          "meaning": "名称（给人看）",
+          "meaningEn": "Display name"
+        },
+        {
+          "name": "owner_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PAY_MERCHANT 收款商户调渠道 / CHANNEL_PLATFORM 渠道平台公钥与证书 / PARTNER_APP 第三方接入方 / INTERNAL_APP 内部系统 / TERMINAL 刷卡机 / PROVIDER 其他域的外部服务商",
+          "meaningEn": "Owner type"
+        },
+        {
+          "name": "owner_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "归属对象 id：pay_merchant.id / pay_app.id / pay_terminal.id …",
+          "meaningEn": "Owner object id, resolved by owner_type"
+        },
+        {
+          "name": "counterparty",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "对端系统码：NEWEBPAY / LINEPAY / PAYBY / WECHAT / ALIPAY / KUAIDI100 …",
+          "meaningEn": "Counterparty system code"
+        },
+        {
+          "name": "direction",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "OUTBOUND 我方调外部时使用 / INBOUND 外部调我方时我方验证 / COUNTERPARTY_VERIFY 验对端响应与回调",
+          "meaningEn": "Direction"
+        },
+        {
+          "name": "key_usage",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "SIGN 签名 / VERIFY 验签 / HMAC / ENCRYPT 加解密 / MTLS 双向证书",
+          "meaningEn": "Key usage (column not named usage: USAGE is a MariaDB reserved word)"
+        },
+        {
+          "name": "algorithm",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "HMAC_SHA256 / RSA_SHA256 / AES_256_CBC / AES_256_GCM / ECDSA_P256 …",
+          "meaningEn": "Algorithm"
+        },
+        {
+          "name": "material_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "SYMMETRIC_SECRET / PRIVATE_KEY / PUBLIC_KEY / CERTIFICATE / COMPOSITE（蓝新 HashKey + HashIV）",
+          "meaningEn": "Key material type"
+        },
+        {
+          "name": "env",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "SANDBOX / PRODUCTION：生产密钥永不进入沙箱",
+          "meaningEn": "Environment"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT / ACTIVE / SUSPENDED / REVOKED / EXPIRED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "current_version",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "当前 ACTIVE 版本号；0 = 尚无",
+          "meaningEn": "Current version"
+        },
+        {
+          "name": "sec_key_policy_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "适用策略 sec_key_policy.id；空 = 按 namespace + owner_type + env 取默认",
+          "meaningEn": "Policy (sec_key_policy.id)"
+        },
+        {
+          "name": "expires_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "当前版本到期时间（证书有效期或策略最长使用期，取早者）",
+          "meaningEn": "Expires at"
+        },
+        {
+          "name": "last_used_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "最近使用（异步刷新）",
+          "meaningEn": "Last used (refreshed asynchronously)"
+        },
+        {
+          "name": "use_count",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "累计使用次数（异步累加，近似值）",
+          "meaningEn": "Use count (approximate, accumulated asynchronously)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "namespace",
+          "owner_type",
+          "owner_id",
+          "direction",
+          "key_usage",
+          "env"
+        ]
+      ],
+      "indexes": [
+        [
+          "status",
+          "expires_at"
+        ],
+        [
+          "counterparty",
+          "status"
+        ]
+      ],
+      "checks": [],
+      "notes": [
+        "同一归属、同一用途、同一环境只有一把密钥；轮换是在它下面加版本，而不是新建密钥",
+        "webhook 推送签名复用接入方的 INBOUND HMAC 密钥（对称），不单独建"
+      ],
+      "titleZh": "密钥",
+      "titleEn": "Key",
+      "purposeEn": "Every key for calling external APIs or being called by them. In the PAY namespace: our channel calls, channel platform keys, partner / internal apps, terminals. Material lives in versions."
+    },
+    {
+      "name": "sec_key_version",
+      "module": "secret（独立模块）",
+      "group": "密钥管理",
+      "purpose": "密钥版本：一把密钥的每一份材料。私密材料只存密文 id，公钥与证书可明文存放",
+      "columns": [
+        {
+          "name": "sec_key_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "所属密钥 sec_key.id",
+          "meaningEn": "Key (sec_key.id, key module)"
+        },
+        {
+          "name": "version_index",
+          "sqlType": "INT NOT NULL",
+          "meaning": "版本号，从 1 起（交易冻结的是这个号）",
+          "meaningEn": "Version number, from 1"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DRAFT 已录入 / VERIFIED 测试通过 / ACTIVE 当前 / ROTATING 重叠期仍可用 / RETIRED 仅验旧签与在途单 / REVOKED 立即失效",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "active_key",
+          "sqlType": "VARCHAR(32) NULL",
+          "meaning": "ACTIVE 时 = sec_key_id：一把密钥同一时刻一个 ACTIVE 版本",
+          "meaningEn": "Uniqueness helper: composite key while ACTIVE, otherwise NULL; maintained by the service in the same transaction"
+        },
+        {
+          "name": "sec_secret_blob_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "私密材料的密文 sec_secret_blob.id（对称密钥、私钥）",
+          "meaningEn": "Ciphertext (sec_secret_blob.id, key module)"
+        },
+        {
+          "name": "public_material",
+          "sqlType": "TEXT NULL",
+          "meaning": "公钥或证书 PEM（可公开，不加密）",
+          "meaningEn": "Public key or certificate PEM (public, not encrypted)"
+        },
+        {
+          "name": "fingerprint",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "指纹：公钥 / 证书为 SHA-256，对称密钥为 HMAC 派生前缀；唯一可回显的信息",
+          "meaningEn": "Fingerprint — the only key information ever shown"
+        },
+        {
+          "name": "external_key_id",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "外部密钥标识：微信平台证书序列号、PayBy 公钥 ID、接入方 key id",
+          "meaningEn": "External key identifier (WeChat platform cert serial, PayBy key ID, app key ID)"
+        },
+        {
+          "name": "source",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "GENERATED 平台生成 / UPLOADED 人工录入 / FETCHED 从对端下载（微信平台证书）",
+          "meaningEn": "Source"
+        },
+        {
+          "name": "valid_from",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "生效起（证书 notBefore）",
+          "meaningEn": "Valid from (certificate notBefore)"
+        },
+        {
+          "name": "valid_to",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "生效止（证书 notAfter / 策略最长使用期）",
+          "meaningEn": "Valid to (certificate notAfter / policy max age)"
+        },
+        {
+          "name": "entered_by",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "录入或生成人",
+          "meaningEn": "Entered / generated by"
+        },
+        {
+          "name": "verified_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "测试调用通过时间",
+          "meaningEn": "Test call passed at"
+        },
+        {
+          "name": "verify_evidence",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "测试调用证据：调用方模块写入的记录引用，如 PAY:pay_channel_call_log:123（不作关联）",
+          "meaningEn": "Test-call evidence written by the calling module (not a reference)"
+        },
+        {
+          "name": "enabled_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "启用人，必须 ≠ 录入人",
+          "meaningEn": "Enabled by; must differ from the person who entered it"
+        },
+        {
+          "name": "enabled_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "启用时间",
+          "meaningEn": "Enabled at"
+        },
+        {
+          "name": "overlap_until",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "轮换后旧版本仍可用至",
+          "meaningEn": "Old version usable until (after rotation)"
+        },
+        {
+          "name": "retired_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "退役时间",
+          "meaningEn": "Retired at"
+        },
+        {
+          "name": "revoked_by",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "吊销人",
+          "meaningEn": "Revoked by"
+        },
+        {
+          "name": "revoked_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "吊销时间",
+          "meaningEn": "Revoked at"
+        },
+        {
+          "name": "revoke_reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "吊销原因（泄露、离职、商户解约…）",
+          "meaningEn": "Revocation reason (leak, staff exit, merchant termination…)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "sec_key_id",
+          "version_index"
+        ],
+        [
+          "active_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "sec_key_id",
+          "status"
+        ],
+        [
+          "external_key_id"
+        ],
+        [
+          "status",
+          "valid_to"
+        ]
+      ],
+      "checks": [
+        "sec_secret_blob_id IS NOT NULL OR public_material IS NOT NULL",
+        "enabled_by IS NULL OR enabled_by <> entered_by"
+      ],
+      "notes": [
+        "交易冻结的是 (sec_key_id, version_index)：退款、查单、验旧回调用冻结版本，RETIRED 也可用，REVOKED 不可用"
+      ],
+      "titleZh": "密钥版本",
+      "titleEn": "Key Version",
+      "purposeEn": "Each piece of material of a key. Secret material is stored only as a ciphertext id; public keys and certificates may be stored in clear."
+    },
+    {
+      "name": "sec_key_event",
+      "module": "secret（独立模块）",
+      "group": "密钥管理",
+      "purpose": "密钥生命周期事件：创建、录入、测试、启用、轮换、退役、吊销、到期提醒、重新包裹。只增不改",
+      "columns": [
+        {
+          "name": "sec_key_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "密钥 sec_key.id",
+          "meaningEn": "Key (sec_key.id, key module)"
+        },
+        {
+          "name": "sec_key_version_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "版本 sec_key_version.id（密钥级事件为空）",
+          "meaningEn": "Key version (sec_key_version.id)"
+        },
+        {
+          "name": "event_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "CREATED / MATERIAL_ADDED / VERIFIED / VERIFY_FAILED / ENABLED / ROTATION_STARTED / RETIRED / REVOKED / SUSPENDED / RESUMED / EXPIRING_SOON / EXPIRED / REWRAPPED",
+          "meaningEn": "Event type"
+        },
+        {
+          "name": "operator_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "OPS 运营 / BIZ 商家 / SYSTEM 系统任务",
+          "meaningEn": "Operator type"
+        },
+        {
+          "name": "operator_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "操作人（审计字段）",
+          "meaningEn": "Operator"
+        },
+        {
+          "name": "approval_ref",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "两人复核证据：调用方模块的复核单引用，如 PAY:pay_approval:88（不作关联）",
+          "meaningEn": "Approval evidence from the calling module (not a reference)"
+        },
+        {
+          "name": "reason",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "原因",
+          "meaningEn": "Reason"
+        },
+        {
+          "name": "client_ip",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "操作来源 IP",
+          "meaningEn": "Client IP"
+        },
+        {
+          "name": "occurred_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "发生时间",
+          "meaningEn": "Occurred at"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "sec_key_id",
+          "occurred_at"
+        ],
+        [
+          "event_type",
+          "occurred_at"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "密钥生命周期事件",
+      "titleEn": "Key Event",
+      "purposeEn": "Lifecycle events: created, material added, verified, enabled, rotated, retired, revoked, expiry warnings, re-wrapped. Append-only."
+    },
+    {
+      "name": "sec_access_log",
+      "module": "secret（独立模块）",
+      "group": "密钥管理",
+      "purpose": "明文接触记录：任何人看到明文（发放时展示、查看敏感字段、查看报文原文、应急调阅）逐次记录。只增不改",
+      "columns": [
+        {
+          "name": "access_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "REVEAL_ON_ISSUE 发放时展示 / SENSITIVE_FIELD_VIEW / RAW_PAYLOAD_VIEW / BREAK_GLASS 应急调阅",
+          "meaningEn": "Type of plaintext access"
+        },
+        {
+          "name": "namespace",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "命名空间",
+          "meaningEn": "Namespace: one set of master keys per domain; a process can only decrypt its own"
+        },
+        {
+          "name": "sec_key_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "涉及的密钥 sec_key.id",
+          "meaningEn": "Key (sec_key.id, key module)"
+        },
+        {
+          "name": "sec_secret_blob_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "涉及的密文 sec_secret_blob.id",
+          "meaningEn": "Ciphertext (sec_secret_blob.id, key module)"
+        },
+        {
+          "name": "target_type",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "其他对象类型：RAW_PAYLOAD …",
+          "meaningEn": "Other object type"
+        },
+        {
+          "name": "target_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "其他对象 id（如 pay_raw_payload.id）",
+          "meaningEn": "Other object id (e.g. pay_raw_payload.id)"
+        },
+        {
+          "name": "accessor_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "查看人",
+          "meaningEn": "Who accessed"
+        },
+        {
+          "name": "accessor_role",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "查看时的岗位 / 权限码",
+          "meaningEn": "Role / permission code at access time"
+        },
+        {
+          "name": "reason",
+          "sqlType": "VARCHAR(255) NOT NULL",
+          "meaning": "查看理由（必填）",
+          "meaningEn": "Reason"
+        },
+        {
+          "name": "approval_ref",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "BREAK_GLASS 必须有复核单引用",
+          "meaningEn": "Approval evidence from the calling module (not a reference)"
+        },
+        {
+          "name": "client_ip",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "来源 IP",
+          "meaningEn": "Client IP"
+        },
+        {
+          "name": "accessed_at",
+          "sqlType": "DATETIME(3) NOT NULL",
+          "meaning": "时间",
+          "meaningEn": "Accessed at"
+        }
+      ],
+      "uniqueKeys": [],
+      "indexes": [
+        [
+          "accessor_no",
+          "accessed_at"
+        ],
+        [
+          "access_type",
+          "accessed_at"
+        ]
+      ],
+      "checks": [
+        "sec_key_id IS NOT NULL OR sec_secret_blob_id IS NOT NULL OR target_id IS NOT NULL",
+        "access_type <> 'BREAK_GLASS' OR approval_ref IS NOT NULL"
+      ],
+      "notes": [
+        "服务进程的常规解密不逐次记（量太大），由 sec_key.use_count / last_used_at 与监控覆盖；人接触明文一律逐次记"
+      ],
+      "titleZh": "明文接触记录",
+      "titleEn": "Plaintext Access Log",
+      "purposeEn": "Every time a person sees plaintext (reveal on issue, sensitive field, raw payload, break-glass). Append-only."
+    },
+    {
+      "name": "stl_channel_statement",
+      "module": "pay-domain/recon",
+      "group": "对账与结算",
+      "purpose": "渠道对账单原件：按收款商户 × 账单日一份",
+      "columns": [
+        {
+          "name": "pay_channel",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道码",
+          "meaningEn": "Channel code"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "收款商户 pay_merchant.id（AGGREGATED 为平台账户）",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "bill_date",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "账单日（渠道口径）",
+          "meaningEn": "Bill date (channel's calendar)"
+        },
+        {
+          "name": "bill_type",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "TRADE / SETTLEMENT / FEE",
+          "meaningEn": "Statement type"
+        },
+        {
+          "name": "pay_raw_payload_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "原件 pay_raw_payload.id",
+          "meaningEn": "Raw payload (pay_raw_payload.id)"
+        },
+        {
+          "name": "source",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "DOWNLOAD / QUERY_FALLBACK（逐笔查单退化）/ MANUAL_UPLOAD",
+          "meaningEn": "Source"
+        },
+        {
+          "name": "line_count",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "行数",
+          "meaningEn": "Line count"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "FETCHING / FETCHED / PARSED / RECONCILED / FAILED",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "fetch_attempts",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "拉取次数",
+          "meaningEn": "Fetch attempts"
+        },
+        {
+          "name": "error_msg",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "失败原因",
+          "meaningEn": "Error message"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "pay_merchant_id",
+          "bill_date",
+          "bill_type"
+        ]
+      ],
+      "indexes": [
+        [
+          "status",
+          "bill_date"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "渠道对账单",
+      "titleEn": "Channel Statement",
+      "purposeEn": "Original channel statement per payment merchant per bill date."
+    },
+    {
+      "name": "stl_channel_statement_line",
+      "module": "pay-domain/recon",
+      "group": "对账与结算",
+      "purpose": "对账单标准行：各渠道格式统一后的逐笔记录",
+      "columns": [
+        {
+          "name": "stl_channel_statement_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "对账单 stl_channel_statement.id",
+          "meaningEn": "Channel statement (stl_channel_statement.id)"
+        },
+        {
+          "name": "line_no",
+          "sqlType": "INT NOT NULL",
+          "meaning": "行号",
+          "meaningEn": "Line number"
+        },
+        {
+          "name": "direction",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PAY / REFUND",
+          "meaningEn": "Direction"
+        },
+        {
+          "name": "out_trade_no",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "对账单里的我方单号（原样）",
+          "meaningEn": "Our trade number sent to the channel"
+        },
+        {
+          "name": "channel_trade_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "通道单号",
+          "meaningEn": "Channel transaction number"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "金额",
+          "meaningEn": "Amount in minor units"
+        },
+        {
+          "name": "fee_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "手续费",
+          "meaningEn": "Fee in minor units"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "channel_status",
+          "sqlType": "VARCHAR(32) NOT NULL",
+          "meaning": "渠道状态",
+          "meaningEn": "Channel-side status"
+        },
+        {
+          "name": "trade_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "交易时间",
+          "meaningEn": "Trade time"
+        },
+        {
+          "name": "match_status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "PENDING / MATCHED / DIFF",
+          "meaningEn": "Match status"
+        },
+        {
+          "name": "stl_payment_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "匹配上的通道交易 stl_payment.id",
+          "meaningEn": "Channel transaction (stl_payment.id)"
+        },
+        {
+          "name": "stl_recon_diff_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "差异单 stl_recon_diff.id",
+          "meaningEn": "Reconciliation diff (stl_recon_diff.id)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "stl_channel_statement_id",
+          "line_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "out_trade_no"
+        ],
+        [
+          "channel_trade_no"
+        ],
+        [
+          "stl_payment_id"
+        ]
+      ],
+      "checks": [],
+      "notes": [],
+      "titleZh": "对账单明细",
+      "titleEn": "Channel Statement Line",
+      "purposeEn": "Normalised line of a channel statement."
+    },
+    {
+      "name": "pay_fee_receivable",
+      "module": "pay-domain/settle",
+      "group": "对账与结算",
+      "purpose": "平台费应收（DIRECT 路径：钱不经过平台，平台费事后向商家收）",
+      "columns": [
+        {
+          "name": "receivable_no",
+          "sqlType": "VARCHAR(64) NOT NULL",
+          "meaning": "应收单号（对外：给商家的账单编号）",
+          "meaningEn": "Receivable number"
+        },
+        {
+          "name": "store_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "门店 mch_store.id（核心系统；关联核心系统一律用门店 id）",
+          "meaningEn": "Store (mch_store.id, core system); the core system is always referenced by store id"
+        },
+        {
+          "name": "pay_merchant_id",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "产生该费用的收款商户 pay_merchant.id",
+          "meaningEn": "Payment merchant (pay_merchant.id)"
+        },
+        {
+          "name": "period_from",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "账期起（含）",
+          "meaningEn": "Period start (inclusive)"
+        },
+        {
+          "name": "period_to",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "账期止（不含）",
+          "meaningEn": "Period end (exclusive)"
+        },
+        {
+          "name": "currency",
+          "sqlType": "CHAR(3) NOT NULL",
+          "meaning": "币种",
+          "meaningEn": "Currency (ISO 4217)"
+        },
+        {
+          "name": "amount_minor",
+          "sqlType": "BIGINT NOT NULL",
+          "meaning": "应收",
+          "meaningEn": "Amount in minor units"
+        },
+        {
+          "name": "offset_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "已抵扣（同币种 AGGREGATED 出款中扣）",
+          "meaningEn": "Offset against AGGREGATED payouts (same currency)"
+        },
+        {
+          "name": "collected_minor",
+          "sqlType": "BIGINT NOT NULL DEFAULT 0",
+          "meaning": "已收",
+          "meaningEn": "Collected so far"
+        },
+        {
+          "name": "status",
+          "sqlType": "VARCHAR(24) NOT NULL",
+          "meaning": "OPEN / PARTIAL / SETTLED / WRITTEN_OFF",
+          "meaningEn": "Status"
+        },
+        {
+          "name": "due_date",
+          "sqlType": "DATE NOT NULL",
+          "meaning": "到期日",
+          "meaningEn": "Due date"
+        },
+        {
+          "name": "overdue_days",
+          "sqlType": "INT NOT NULL DEFAULT 0",
+          "meaning": "逾期天数（任务每日刷新）",
+          "meaningEn": "Days overdue (refreshed daily)"
+        }
+      ],
+      "uniqueKeys": [
+        [
+          "receivable_no"
+        ],
+        [
+          "pay_merchant_id",
+          "period_from",
+          "period_to"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_id",
+          "status"
+        ],
+        [
+          "status",
+          "due_date"
+        ]
+      ],
+      "checks": [
+        "offset_minor + collected_minor <= amount_minor"
+      ],
+      "notes": [],
+      "titleZh": "平台费应收",
+      "titleEn": "Platform Fee Receivable",
+      "purposeEn": "Platform fee owed by the merchant on the DIRECT path, where money does not pass through the platform."
+    }
+  ],
+  "existingTableAdditions": {
+    "sys_pay_channel": [
+      [
+        "callback_style",
+        "VARCHAR(16) NOT NULL DEFAULT 'PATH'",
+        "PATH 子路径 / QUERY 参数：渠道是否接受带路径变量的回调地址",
+        "PATH sub-path / QUERY parameters: whether the channel accepts path variables in callback URLs"
+      ],
+      [
+        "sandbox_host",
+        "VARCHAR(128) NULL",
+        "沙箱主机（不含密钥）",
+        "Sandbox host (no secrets)"
+      ],
+      [
+        "prod_host",
+        "VARCHAR(128) NULL",
+        "正式主机",
+        "Production host"
+      ],
+      [
+        "supports_statement",
+        "TINYINT(1) NOT NULL DEFAULT 0",
+        "是否有对账单下载接口（无则退化逐笔查单）",
+        "Channel offers statement download (otherwise falls back to per-trade query)"
+      ]
+    ],
+    "sys_pay_channel_market": [
+      [
+        "status",
+        "VARCHAR(24) NOT NULL DEFAULT 'ENABLED'",
+        "ENABLED / DISABLED；**语义改为无行 = 不可用**，TEST 通道补显式行",
+        "Status"
+      ]
+    ],
+    "stl_payment": [
+      [
+        "pay_order_id",
+        "BIGINT NULL",
+        "所属支付单 pay_order.id（回填后对新数据必填）",
+        "Payment order (pay_order.id)"
+      ],
+      [
+        "pay_refund_id",
+        "BIGINT NULL",
+        "REFUND 方向：所属退款单 pay_refund.id",
+        "Refund (pay_refund.id)"
+      ],
+      [
+        "pay_merchant_id",
+        "BIGINT NULL",
+        "冻结的收款商户 pay_merchant.id（修 R08）",
+        "Payment merchant (pay_merchant.id)"
+      ],
+      [
+        "sub_merchant_id",
+        "VARCHAR(64) NULL",
+        "冻结的渠道子商户号；退款从这里取（修 R08）",
+        "Sub-merchant ID inside the channel; empty string if none"
+      ],
+      [
+        "funds_path",
+        "VARCHAR(24) NULL",
+        "冻结的资金路径",
+        "Where funds settle"
+      ],
+      [
+        "market",
+        "VARCHAR(8) NULL",
+        "市场",
+        "Market code"
+      ],
+      [
+        "sec_key_version",
+        "INT NULL",
+        "冻结的密钥版本号",
+        "Key version number frozen for this record"
+      ],
+      [
+        "channel_amount_minor",
+        "BIGINT NULL",
+        "通道回执金额；**不再覆盖 amount_minor**（修 R20）",
+        "Amount on the channel receipt; no longer overwrites amount_minor"
+      ],
+      [
+        "channel_currency",
+        "CHAR(3) NULL",
+        "通道回执币种",
+        "Currency on the channel receipt"
+      ]
+    ],
+    "stl_recon_diff": [
+      [
+        "dedup_key",
+        "VARCHAR(160) NULL",
+        "去重键（不含账单日），同一异常不每天新建（修 R19）",
+        "Dedup key without bill date, so one anomaly is not re-created daily"
+      ],
+      [
+        "note",
+        "VARCHAR(512) NULL",
+        "说明；resolution 只放处置结论",
+        "Note"
+      ],
+      [
+        "pay_merchant_id",
+        "BIGINT NULL",
+        "收款商户 pay_merchant.id",
+        "Payment merchant (pay_merchant.id)"
+      ],
+      [
+        "stl_channel_statement_id",
+        "BIGINT NULL",
+        "来源对账单 stl_channel_statement.id",
+        "Channel statement (stl_channel_statement.id)"
+      ]
+    ],
+    "stl_bank_flow": [
+      [
+        "currency",
+        "CHAR(3) NULL",
+        "币种（多市场）",
+        "Currency (ISO 4217)"
+      ],
+      [
+        "own_account_ref",
+        "VARCHAR(64) NULL",
+        "本方账户引用",
+        "Our account reference"
+      ]
+    ],
+    "stl_bill": [
+      [
+        "market",
+        "VARCHAR(8) NULL",
+        "市场",
+        "Market code"
+      ],
+      [
+        "pay_order_id",
+        "BIGINT NULL",
+        "来源支付单 pay_order.id",
+        "Payment order (pay_order.id)"
+      ]
+    ]
+  },
+  "existingTableUniqueKeys": {
+    "stl_payment": [
+      [
+        "out_trade_no"
+      ]
+    ],
+    "stl_recon_diff": [
+      [
+        "dedup_key"
+      ]
+    ]
+  },
+  "existingTableIndexes": {
+    "stl_payment": [
+      [
+        "pay_order_id"
+      ],
+      [
+        "pay_merchant_id",
+        "succeeded_at"
+      ]
+    ]
+  },
+  "externalTables": {
+    "sys_market": [
+      "国家地区",
+      "Market",
+      "Existing: countries / regions with currency, scale and time zone."
+    ],
+    "sys_pay_channel": [
+      "支付渠道",
+      "Pay Channel",
+      "Existing: channel registry; capability flags become ops switches."
+    ],
+    "sys_pay_channel_market": [
+      "渠道地区",
+      "Pay Channel Market",
+      "Existing: channel × market; semantics change to 'no row = unavailable'."
+    ],
+    "stl_payment": [
+      "通道交易",
+      "Channel Transaction",
+      "Existing: one channel attempt (pay / refund); gains pay_order_no, frozen route and a unique out_trade_no."
+    ],
+    "stl_recon_diff": [
+      "对账差异",
+      "Reconciliation Diff",
+      "Existing: reconciliation differences; gains a dedup key."
+    ],
+    "stl_bank_flow": [
+      "银行流水",
+      "Bank Flow",
+      "Existing: imported bank statement lines; gains currency."
+    ],
+    "stl_bill": [
+      "结算单",
+      "Settlement Bill",
+      "Existing: per sub-order settlement bill; gains market and pay order."
+    ],
+    "mch_store": [
+      "门店",
+      "Store",
+      "Core system: store under an entity."
+    ],
+    "mch_account": [
+      "商家账号",
+      "Merchant Account",
+      "Core system: merchant-side login account."
+    ],
+    "usr_account": [
+      "消费者账号",
+      "Consumer Account",
+      "Core system: consumer account."
+    ]
+  },
+  "relations": [
+    {
+      "child": "sys_pay_channel_market",
+      "column": "pay_channel",
+      "parent": "sys_pay_channel",
+      "parentColumn": "pay_channel",
+      "kind": "CODE",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "sys_pay_channel_market",
+      "column": "market",
+      "parent": "sys_market",
+      "parentColumn": "market",
+      "kind": "CODE",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_product",
+      "column": "pay_channel",
+      "parent": "sys_pay_channel",
+      "parentColumn": "pay_channel",
+      "kind": "CODE",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_product_market",
+      "column": "pay_channel_product_id",
+      "parent": "pay_channel_product",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_product_market",
+      "column": "market",
+      "parent": "sys_market",
+      "parentColumn": "market",
+      "kind": "CODE",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_onboarding",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": true,
+      "note": "申请门店"
+    },
+    {
+      "child": "pay_onboarding",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "APPROVED 后产出"
+    },
+    {
+      "child": "pay_onboarding",
+      "column": "parent_pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": "挂在平台级商户下"
+    },
+    {
+      "child": "pay_onboarding_version",
+      "column": "pay_onboarding_id",
+      "parent": "pay_onboarding",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_onboarding_material",
+      "column": "pay_onboarding_version_id",
+      "parent": "pay_onboarding_version",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_onboarding_material",
+      "column": "sec_secret_blob_id",
+      "parent": "sec_secret_blob",
+      "parentColumn": "id",
+      "kind": "MODULE",
+      "draw": true,
+      "note": "仅 SENSITIVE 字段"
+    },
+    {
+      "child": "pay_merchant",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": true,
+      "note": "开户门店；PLATFORM 为空"
+    },
+    {
+      "child": "pay_merchant",
+      "column": "parent_pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "SELF",
+      "draw": true,
+      "note": "SP / 平台子商户 → 平台级商户"
+    },
+    {
+      "child": "pay_merchant",
+      "column": "pay_onboarding_id",
+      "parent": "pay_onboarding",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": "与 pay_onboarding.pay_merchant_id 互指，图上只画一条"
+    },
+    {
+      "child": "pay_merchant",
+      "column": "sec_key_id",
+      "parent": "sec_key",
+      "parentColumn": "id",
+      "kind": "MODULE",
+      "draw": true,
+      "note": "调用渠道用的密钥"
+    },
+    {
+      "child": "pay_merchant_binding",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_merchant_binding",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_merchant_product",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_merchant_product",
+      "column": "pay_channel_product_id",
+      "parent": "pay_channel_product",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_merchant_status_log",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_merchant_status_log",
+      "column": "pay_approval_id",
+      "parent": "pay_approval",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_order",
+      "column": "pay_app_id",
+      "parent": "pay_app",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_order",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "路由快照，选定方式时冻结"
+    },
+    {
+      "child": "pay_order",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_order",
+      "column": "pay_channel_product_id",
+      "parent": "pay_channel_product",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_order",
+      "column": "user_id",
+      "parent": "usr_account",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_order",
+      "column": "source_id",
+      "parent": "pay_app / pay_terminal / pay_qr_code / pay_checkout_session / 账号",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 source_type 区分"
+    },
+    {
+      "child": "stl_payment",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "PAY 方向：一单多次尝试"
+    },
+    {
+      "child": "stl_payment",
+      "column": "pay_refund_id",
+      "parent": "pay_refund",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "REFUND 方向"
+    },
+    {
+      "child": "pay_refund",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "路由一律取原单快照"
+    },
+    {
+      "child": "pay_refund",
+      "column": "pay_app_id",
+      "parent": "pay_app",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_refund",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_refund",
+      "column": "pay_refund_review_rule_id",
+      "parent": "pay_refund_review_rule",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "命中的规则版本"
+    },
+    {
+      "child": "pay_refund",
+      "column": "pay_approval_id",
+      "parent": "pay_approval",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_refund",
+      "column": "stl_payment_id",
+      "parent": "stl_payment",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": "执行生成的通道交易，与 stl_payment.pay_refund_id 互指"
+    },
+    {
+      "child": "pay_refund",
+      "column": "source_id",
+      "parent": "pay_app / pay_terminal / 账号",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 source_type 区分"
+    },
+    {
+      "child": "pay_exception",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": "经 stl_payment 可达，图上不画"
+    },
+    {
+      "child": "pay_exception",
+      "column": "stl_payment_id",
+      "parent": "stl_payment",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_checkout_session",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_checkout_session",
+      "column": "user_id",
+      "parent": "usr_account",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_qr_code",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_refund_review_rule",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": "NULL = 全市场规则"
+    },
+    {
+      "child": "pay_approval",
+      "column": "subject_id",
+      "parent": "pay_refund / stl_payout / sec_key_version / pay_merchant / pay_refund_review_rule",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 subject_type 区分"
+    },
+    {
+      "child": "pay_ledger_entry",
+      "column": "pay_ledger_voucher_id",
+      "parent": "pay_ledger_voucher",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_ledger_entry",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_ledger_entry",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_ledger_entry",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_ledger_voucher",
+      "column": "reversal_of_id",
+      "parent": "pay_ledger_voucher",
+      "parentColumn": "id",
+      "kind": "SELF",
+      "draw": true,
+      "note": "冲正凭证"
+    },
+    {
+      "child": "pay_ledger_voucher",
+      "column": "source_id",
+      "parent": "pay_app / pay_terminal / 账号",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 source_type 区分"
+    },
+    {
+      "child": "pay_ledger_voucher",
+      "column": "ref_id",
+      "parent": "pay_order / pay_refund / stl_bill / stl_payout / pay_fee_receivable",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 ref_type 区分"
+    },
+    {
+      "child": "pay_channel_call_log",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_call_log",
+      "column": "stl_payment_id",
+      "parent": "stl_payment",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_call_log",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "以哪个商户身份调"
+    },
+    {
+      "child": "pay_channel_call_log",
+      "column": "request_raw_id / response_raw_id",
+      "parent": "pay_raw_payload",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_call_log",
+      "column": "ref_id",
+      "parent": "pay_order / pay_refund / pay_onboarding / stl_channel_statement / stl_payout / sec_key",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 ref_type 区分"
+    },
+    {
+      "child": "pay_callback_log",
+      "column": "pay_raw_payload_id",
+      "parent": "pay_raw_payload",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_callback_log",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_callback_log",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": "图上不画（避免穿框）"
+    },
+    {
+      "child": "pay_callback_log",
+      "column": "pay_refund_id",
+      "parent": "pay_refund",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_callback_log",
+      "column": "pay_onboarding_id",
+      "parent": "pay_onboarding",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_callback_log",
+      "column": "stl_payment_id",
+      "parent": "stl_payment",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_callback_log",
+      "column": "replay_of_id",
+      "parent": "pay_callback_log",
+      "parentColumn": "id",
+      "kind": "SELF",
+      "draw": true,
+      "note": "重放来源"
+    },
+    {
+      "child": "pay_channel_call_log",
+      "column": "retry_of_id",
+      "parent": "pay_channel_call_log",
+      "parentColumn": "id",
+      "kind": "SELF",
+      "draw": true,
+      "note": "重试链"
+    },
+    {
+      "child": "pay_channel_call_log",
+      "column": "source_id",
+      "parent": "pay_app / pay_terminal / 账号",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 source_type 区分"
+    },
+    {
+      "child": "pay_api_request_log",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "处理后关联"
+    },
+    {
+      "child": "pay_api_request_log",
+      "column": "pay_refund_id",
+      "parent": "pay_refund",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_api_request_log",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_api_request_log",
+      "column": "request_raw_id",
+      "parent": "pay_raw_payload",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_api_request_log",
+      "column": "source_id",
+      "parent": "pay_app / pay_terminal / 账号",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 source_type 区分"
+    },
+    {
+      "child": "pay_biz_notify",
+      "column": "pay_app_id",
+      "parent": "pay_app",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "接收方"
+    },
+    {
+      "child": "pay_biz_notify",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": "经 trace_id 与支付单时间线关联，图上不画"
+    },
+    {
+      "child": "pay_biz_notify",
+      "column": "pay_refund_id",
+      "parent": "pay_refund",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_biz_notify_attempt",
+      "column": "pay_biz_notify_id",
+      "parent": "pay_biz_notify",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_followup",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_followup",
+      "column": "pay_order_id",
+      "parent": "pay_order",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_followup",
+      "column": "stl_payment_id",
+      "parent": "stl_payment",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_followup",
+      "column": "pay_refund_id",
+      "parent": "pay_refund",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_channel_followup",
+      "column": "pay_exception_id",
+      "parent": "pay_exception",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "超过上限转人工"
+    },
+    {
+      "child": "pay_channel_lifecycle_log",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "渠道级状态为空"
+    },
+    {
+      "child": "pay_raw_payload",
+      "column": "sec_master_key_id",
+      "parent": "sec_master_key",
+      "parentColumn": "id",
+      "kind": "MODULE",
+      "draw": false,
+      "note": "数据密钥经密钥模块包裹"
+    },
+    {
+      "child": "pay_app_grant",
+      "column": "pay_app_id",
+      "parent": "pay_app",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_app_grant",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_api_nonce",
+      "column": "caller_id",
+      "parent": "pay_app / pay_terminal",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 caller_type 区分"
+    },
+    {
+      "child": "pay_terminal",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_terminal",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "pay_terminal",
+      "column": "sec_key_id",
+      "parent": "sec_key",
+      "parentColumn": "id",
+      "kind": "MODULE",
+      "draw": true,
+      "note": "设备密钥"
+    },
+    {
+      "child": "pay_manager_code",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_manager_code",
+      "column": "manager_account_id",
+      "parent": "mch_account",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_terminal_batch",
+      "column": "pay_terminal_id",
+      "parent": "pay_terminal",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "sec_secret_blob",
+      "column": "sec_master_key_id",
+      "parent": "sec_master_key",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "sec_secret_blob",
+      "column": "owner_id",
+      "parent": "sec_key_version / pay_onboarding_material / …",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 owner_type 区分"
+    },
+    {
+      "child": "sec_key",
+      "column": "owner_id",
+      "parent": "pay_merchant / pay_app / pay_terminal / …",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 owner_type 区分"
+    },
+    {
+      "child": "sec_key",
+      "column": "sec_key_policy_id",
+      "parent": "sec_key_policy",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "sec_key_version",
+      "column": "sec_key_id",
+      "parent": "sec_key",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "sec_key_version",
+      "column": "sec_secret_blob_id",
+      "parent": "sec_secret_blob",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "私密材料；公开材料存本表 public_material"
+    },
+    {
+      "child": "sec_key_event",
+      "column": "sec_key_id",
+      "parent": "sec_key",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "sec_key_event",
+      "column": "sec_key_version_id",
+      "parent": "sec_key_version",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": ""
+    },
+    {
+      "child": "sec_access_log",
+      "column": "sec_secret_blob_id",
+      "parent": "sec_secret_blob",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "sec_access_log",
+      "column": "sec_key_id",
+      "parent": "sec_key",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": false,
+      "note": "经 sec_secret_blob 可达，图上不画"
+    },
+    {
+      "child": "sec_access_log",
+      "column": "target_id",
+      "parent": "pay_raw_payload / …",
+      "parentColumn": "id",
+      "kind": "POLY",
+      "draw": false,
+      "note": "按 target_type 区分"
+    },
+    {
+      "child": "stl_channel_statement",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "stl_channel_statement",
+      "column": "pay_raw_payload_id",
+      "parent": "pay_raw_payload",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "stl_channel_statement_line",
+      "column": "stl_channel_statement_id",
+      "parent": "stl_channel_statement",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "stl_channel_statement_line",
+      "column": "stl_payment_id",
+      "parent": "stl_payment",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": "匹配上的交易"
+    },
+    {
+      "child": "stl_channel_statement_line",
+      "column": "stl_recon_diff_id",
+      "parent": "stl_recon_diff",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_fee_receivable",
+      "column": "pay_merchant_id",
+      "parent": "pay_merchant",
+      "parentColumn": "id",
+      "kind": "LOCAL",
+      "draw": true,
+      "note": ""
+    },
+    {
+      "child": "pay_fee_receivable",
+      "column": "store_id",
+      "parent": "mch_store",
+      "parentColumn": "id",
+      "kind": "CROSS",
+      "draw": false,
+      "note": ""
+    }
+  ]
+}

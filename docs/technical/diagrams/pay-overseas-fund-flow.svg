@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="400" viewBox="0 0 880 400" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>三条资金路径：TW 直入 · AE 直收 · AE 平台代收</title>
+<desc>实线是钱，虚线是信息。前两条路径钱不经过平台，平台只拿到通知与对账单，平台费靠应收单另行收取；第三条钱先进平台的 PayBy 账户，平台扣费后出款。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#3E8A5C" stroke-width="1.6" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.new{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.2}
+.money{stroke:#3E8A5C;stroke-width:1.8;fill:none}
+.info{stroke:#8A94A2;stroke-width:1.2;fill:none;stroke-dasharray:4 3}
+.band{stroke:#EDEFF2;stroke-width:1}
+</style></defs>
+
+<text class="b" x="26" y="24">① TW · 蓝新 / LINE Pay —— DIRECT（唯一模式）</text>
+<rect class="box" x="26" y="34" width="110" height="40" rx="7"/><text class="n" x="44" y="58">顾客</text>
+<rect class="new" x="196" y="34" width="190" height="40" rx="7"/><text class="n" x="210" y="52">蓝新 / LINE Pay</text><text class="t" x="210" y="67">商户自己的合约与密钥</text>
+<rect class="key" x="446" y="34" width="170" height="40" rx="7"/><text class="n" x="460" y="58">商户银行账户</text>
+<rect class="box" x="676" y="34" width="178" height="40" rx="7"/><text class="n" x="690" y="52">平台</text><text class="t" x="690" y="67">核对结算 + 平台费应收</text>
+<path class="money" d="M136 54 H190" marker-end="url(#am)"/>
+<path class="money" d="M386 54 H440" marker-end="url(#am)"/>
+<path class="info" d="M291 74 V96 H765 V80" marker-end="url(#ar)"/>
+<text class="t" x="420" y="110">通知 · 查单 · 对账单（钱不经过平台）</text>
+<line class="band" x1="26" y1="128" x2="854" y2="128"/>
+
+<text class="b" x="26" y="150">② AE · PayBy DIRECT —— 商户自己进件通过</text>
+<rect class="box" x="26" y="160" width="110" height="40" rx="7"/><text class="n" x="44" y="184">顾客</text>
+<rect class="new" x="196" y="160" width="190" height="40" rx="7"/><text class="n" x="210" y="178">PayBy</text><text class="t" x="210" y="193">商户自签 Partner-Id</text>
+<rect class="key" x="446" y="160" width="170" height="40" rx="7"/><text class="n" x="460" y="178">商户 IBAN（AE）</text><text class="t" x="460" y="193">T+2 自动结算</text>
+<rect class="box" x="676" y="160" width="178" height="40" rx="7"/><text class="n" x="690" y="178">平台</text><text class="t" x="690" y="193">核对结算 + 平台费应收</text>
+<path class="money" d="M136 180 H190" marker-end="url(#am)"/>
+<path class="money" d="M386 180 H440" marker-end="url(#am)"/>
+<path class="info" d="M291 200 V222 H765 V206" marker-end="url(#ar)"/>
+<text class="t" x="420" y="236">通知 · 查单 · 对账单</text>
+<line class="band" x1="26" y1="254" x2="854" y2="254"/>
+
+<text class="b" x="26" y="276">③ AE · PayBy PLATFORM —— 商户挂在平台账户下</text>
+<rect class="box" x="26" y="286" width="110" height="40" rx="7"/><text class="n" x="44" y="310">顾客</text>
+<rect class="new" x="196" y="286" width="190" height="40" rx="7"/><text class="n" x="210" y="304">PayBy</text><text class="t" x="210" y="319">平台账户 + 子商户标识</text>
+<rect class="new" x="446" y="286" width="170" height="40" rx="7"/><text class="n" x="460" y="304">平台 PayBy 余额</text><text class="t" x="460" y="319">按子商户记待结</text>
+<rect class="key" x="676" y="286" width="178" height="40" rx="7"/><text class="n" x="690" y="304">商户 IBAN（AE）</text><text class="t" x="690" y="319">扣平台费后出款</text>
+<path class="money" d="M136 306 H190" marker-end="url(#am)"/>
+<path class="money" d="M386 306 H440" marker-end="url(#am)"/>
+<path class="money" d="M616 306 H670" marker-end="url(#am)"/>
+<text class="t" x="560" y="346">出款型结算单 → PayoutService</text>
+
+<text class="t" x="26" y="378">绿色实线 = 资金；灰色虚线 = 信息。①② 的平台费只能事后向商户收（应收单），③ 可以在出款时直接扣。</text>
+</svg>

@@ -5,10 +5,12 @@ import java.time.Instant;
 import ai.neargo.shop.spi.report.ReportContracts.SourceKey;
 import ai.neargo.shop.spi.report.ReportContracts.Coverage;
 import ai.neargo.shop.spi.report.ReportContracts.BuildProblem;
+import java.util.Collections;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import ai.neargo.shop.spi.report.ReportContracts.MetricFact;
 import ai.neargo.shop.spi.report.ReportContracts.Partition;
@@ -32,7 +34,11 @@ public interface ReportQueryPort {
             String aggregationSet, Set<String> metricCodes, Map<String,String> filters, Mode mode, int limit,String actorNo) {
         public Query {
             ReportContracts.identifier(actorNo,64);
-            scopes=List.copyOf(scopes); metricCodes=Set.copyOf(metricCodes); filters=Map.copyOf(filters);
+            scopes=List.copyOf(scopes); filters=Map.copyOf(filters);
+            // Sorted, not Set.copyOf: the export request/snapshot hash keeps array order, and
+            // Set.copyOf iterates in a per-JVM random order, so a task created on one instance
+            // would read back as REPORT_EXPORT_SNAPSHOT_CORRUPT after a restart or on another.
+            metricCodes=Collections.unmodifiableSortedSet(new TreeSet<>(metricCodes));
             if (scopes.isEmpty() || scopes.size()>30 || Set.copyOf(scopes).size()!=scopes.size()
                     || from==null || to==null || !from.isBefore(to) || from.plusDays(366).isBefore(to)
                     || metricCodes.isEmpty() || metricCodes.size()>64 || filters.size()>20 || mode==null

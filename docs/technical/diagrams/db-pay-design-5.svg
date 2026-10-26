@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1220" height="684" viewBox="0 0 1220 684" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>支付服务 ER · 四向记录</title>
+<desc>由 pay-service-database.json 生成。实线 = 必填引用，虚线 = 可空引用；子表端 N，父表端 1 或 0..1；灰框 = 现有表，虚线框 = 核心系统表（按 id 引用，不建外键）；浅色框 = 其他分组的表。</desc>
+<defs><style>.n{font-size:12.5px;font-weight:600;fill:#161A21}.k{font-size:10.5px;fill:#3D4652;font-family:ui-monospace,Menlo,monospace}.t{font-size:10px;fill:#8A94A2}.own{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.3}.oth{fill:#FFFBF5;stroke:#EBCFA6;stroke-width:1}.ex{fill:#F5F6F8;stroke:#C9D0D9;stroke-width:1.2}.core{fill:#fff;stroke:#9AA4B2;stroke-width:1.2;stroke-dasharray:5 3}.l{stroke:#7D8794;stroke-width:1.3;fill:none}.lo{stroke:#7D8794;stroke-width:1.3;fill:none;stroke-dasharray:5 4}.m{font-size:10.5px;font-weight:600;fill:#4A5563;paint-order:stroke;stroke:#fff;stroke-width:3}</style></defs>
+<text class="t" x="20" y="18">支付服务 ER · 四向记录（生成自结构化模型，勿手改）</text>
+<line class="lo" x1="228.7" y1="247.0" x2="320.0" y2="188.9"/>
+<text class="m" x="234.9" y="244.6">N</text>
+<text class="m" x="300.2" y="200.4">0..1</text>
+<line class="lo" x1="260.0" y1="303.3" x2="320.0" y2="303.2"/>
+<text class="m" x="268.0" y="307.3">N</text>
+<text class="m" x="298.0" y="307.2">0..1</text>
+<line class="lo" x1="140.0" y1="360.0" x2="140.0" y2="446.0"/>
+<text class="m" x="136.0" y="376.0">N</text>
+<text class="m" x="132.0" y="436.0">0..1</text>
+<line class="lo" x1="240.3" y1="360.0" x2="393.0" y2="446.0"/>
+<text class="m" x="246.8" y="369.9">N</text>
+<text class="m" x="372.8" y="443.1">0..1</text>
+<line class="lo" x1="620.0" y1="380.1" x2="491.6" y2="446.0"/>
+<text class="m" x="605.3" y="389.6">N</text>
+<text class="m" x="496.1" y="443.6">0..1</text>
+<line class="lo" x1="635.9" y1="247.0" x2="554.3" y2="191.0"/>
+<text class="m" x="622.0" y="244.2">N</text>
+<text class="m" x="557.9" y="202.9">0..1</text>
+<line class="lo" x1="740.0" y1="247.0" x2="740.0" y2="191.0"/>
+<text class="m" x="736.0" y="239.0">N</text>
+<text class="m" x="732.0" y="209.0">0..1</text>
+<line class="lo" x1="740.0" y1="390.0" x2="740.0" y2="446.0"/>
+<text class="m" x="736.0" y="406.0">N</text>
+<text class="m" x="732.0" y="436.0">0..1</text>
+<line class="lo" x1="260.0" y1="94.8" x2="320.0" y2="100.7"/>
+<text class="m" x="267.9" y="100.0">N</text>
+<text class="m" x="298.1" y="103.3">0..1</text>
+<line class="l" x1="1040.0" y1="247.0" x2="1040.0" y2="101.0"/>
+<text class="m" x="1036.0" y="239.0">N</text>
+<text class="m" x="1037.0" y="119.0">1</text>
+<line class="lo" x1="951.3" y1="247.0" x2="860.0" y2="188.9"/>
+<text class="m" x="937.1" y="244.6">N</text>
+<text class="m" x="863.8" y="200.4">0..1</text>
+<line class="l" x1="1040.0" y1="446.0" x2="1040.0" y2="360.0"/>
+<text class="m" x="1036.0" y="438.0">N</text>
+<text class="m" x="1037.0" y="378.0">1</text>
+<rect class="own" x="20" y="34" width="240" height="98" rx="6"/>
+<text class="n" x="30" y="52">pay_api_request_log</text>
+<text class="k" x="30" y="70">→ pay_order_id</text>
+<text class="k" x="30" y="85">→ pay_refund_id</text>
+<text class="k" x="30" y="100">→ store_id</text>
+<text class="k" x="30" y="115">→ request_raw_id</text>
+<rect class="oth" x="320" y="34" width="240" height="157" rx="6"/>
+<text class="n" x="330" y="52">pay_order</text>
+<text class="t" x="330" y="66">见「支付订单、交易与退款」</text>
+<text class="k" x="330" y="84">UK pay_order_no</text>
+<text class="k" x="330" y="99">UK pay_app_id, out_order_no</text>
+<text class="k" x="330" y="114">→ pay_app_id</text>
+<text class="k" x="330" y="129">→ pay_merchant_id</text>
+<text class="k" x="330" y="144">→ store_id</text>
+<text class="k" x="330" y="159">→ pay_channel_product_id</text>
+<text class="k" x="330" y="174">→ user_id</text>
+<rect class="oth" x="620" y="34" width="240" height="157" rx="6"/>
+<text class="n" x="630" y="52">pay_refund</text>
+<text class="t" x="630" y="66">见「支付订单、交易与退款」</text>
+<text class="k" x="630" y="84">UK pay_refund_no</text>
+<text class="k" x="630" y="99">UK pay_app_id, out_refund_no</text>
+<text class="k" x="630" y="114">→ pay_order_id</text>
+<text class="k" x="630" y="129">→ pay_app_id</text>
+<text class="k" x="630" y="144">→ store_id</text>
+<text class="k" x="630" y="159">→ pay_refund_review_rule_id</text>
+<text class="k" x="630" y="174">→ pay_approval_id</text>
+<rect class="oth" x="920" y="34" width="240" height="67" rx="6"/>
+<text class="n" x="930" y="52">pay_app</text>
+<text class="t" x="930" y="66">见「接入方与终端」</text>
+<text class="k" x="930" y="84">UK app_no</text>
+<rect class="own" x="20" y="247" width="240" height="113" rx="6"/>
+<text class="n" x="30" y="265">pay_channel_call_log</text>
+<text class="k" x="30" y="283">→ pay_order_id</text>
+<text class="k" x="30" y="298">→ stl_payment_id</text>
+<text class="k" x="30" y="313">→ pay_merchant_id</text>
+<text class="k" x="30" y="328">→ request_raw_id / response_raw_…</text>
+<text class="k" x="30" y="343">→ retry_of_id</text>
+<rect class="ex" x="320" y="247" width="240" height="112" rx="6"/>
+<text class="n" x="330" y="265">stl_payment</text>
+<text class="t" x="330" y="279">现有表</text>
+<text class="k" x="330" y="297">PK id</text>
+<text class="k" x="330" y="312">UK out_trade_no（新增）</text>
+<text class="k" x="330" y="327">→ pay_order_id（新增）</text>
+<text class="k" x="330" y="342">→ pay_refund_id（新增）</text>
+<rect class="own" x="620" y="247" width="240" height="143" rx="6"/>
+<text class="n" x="630" y="265">pay_callback_log</text>
+<text class="k" x="630" y="283">→ pay_raw_payload_id</text>
+<text class="k" x="630" y="298">→ pay_order_id</text>
+<text class="k" x="630" y="313">→ pay_merchant_id</text>
+<text class="k" x="630" y="328">→ pay_refund_id</text>
+<text class="k" x="630" y="343">→ pay_onboarding_id</text>
+<text class="k" x="630" y="358">→ stl_payment_id</text>
+<text class="k" x="630" y="373">→ replay_of_id</text>
+<rect class="own" x="920" y="247" width="240" height="113" rx="6"/>
+<text class="n" x="930" y="265">pay_biz_notify</text>
+<text class="k" x="930" y="283">UK target_type, pay_app_id,</text>
+<text class="k" x="930" y="298">   event_key</text>
+<text class="k" x="930" y="313">→ pay_app_id</text>
+<text class="k" x="930" y="328">→ pay_order_id</text>
+<text class="k" x="930" y="343">→ pay_refund_id</text>
+<rect class="oth" x="20" y="446" width="240" height="172" rx="6"/>
+<text class="n" x="30" y="464">pay_merchant</text>
+<text class="t" x="30" y="478">见「进件与收款商户」</text>
+<text class="k" x="30" y="496">UK pay_merchant_no</text>
+<text class="k" x="30" y="511">UK pay_channel,</text>
+<text class="k" x="30" y="526">   channel_merchant_id,</text>
+<text class="k" x="30" y="541">   sub_merchant_id</text>
+<text class="k" x="30" y="556">→ store_id</text>
+<text class="k" x="30" y="571">→ parent_pay_merchant_id</text>
+<text class="k" x="30" y="586">→ pay_onboarding_id</text>
+<text class="k" x="30" y="601">→ sec_key_id</text>
+<rect class="own" x="320" y="446" width="240" height="53" rx="6"/>
+<text class="n" x="330" y="464">pay_raw_payload</text>
+<text class="k" x="330" y="482">→ sec_master_key_id</text>
+<rect class="oth" x="620" y="446" width="240" height="127" rx="6"/>
+<text class="n" x="630" y="464">pay_onboarding</text>
+<text class="t" x="630" y="478">见「进件与收款商户」</text>
+<text class="k" x="630" y="496">UK onboarding_no</text>
+<text class="k" x="630" y="511">UK inflight_key</text>
+<text class="k" x="630" y="526">→ store_id</text>
+<text class="k" x="630" y="541">→ pay_merchant_id</text>
+<text class="k" x="630" y="556">→ parent_pay_merchant_id</text>
+<rect class="own" x="920" y="446" width="240" height="68" rx="6"/>
+<text class="n" x="930" y="464">pay_biz_notify_attempt</text>
+<text class="k" x="930" y="482">UK pay_biz_notify_id, attempt</text>
+<text class="k" x="930" y="497">→ pay_biz_notify_id</text>
+</svg>

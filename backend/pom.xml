@@ -56,7 +56,8 @@
              但多一条：它的数据全部可重建 —— 丢了重跑日结即可，所以不参与任何业务事务。
              本模块只是持久层；读交易域算汇总那一步是**跨域组合**，按规矩住在 shop-app -->
         <module>shop-report</module>
-        <!-- 电子元器件：独立进程（elec-svc）+ 独立库（ai_shop_elec）。主应用不引它，只给它开 /internal/elec -->
+        <!-- 电子元器件：2026-09-30 已迁到独立仓库 ai-hxkey（服务 / 库 / 目录均名 hxkey）。
+             这里只剩 elec-api —— 两仓之间的内部契约，ai-hxkey 从 ~/.m2 引它 -->
         <module>elec</module>
         <!-- 外部通道适配：只装适配器，不装业务判断 -->
         <module>shop-channel</module>

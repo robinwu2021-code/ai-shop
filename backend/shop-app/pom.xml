@@ -72,7 +72,7 @@
             <artifactId>shop-report</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- 元器件是独立进程（elec-svc），主应用**不引它的代码**，只引零依赖的内部契约：
+        <!-- 元器件已迁到独立仓库 ai-hxkey（服务名 hxkey），主应用**不引它的代码**，只引零依赖的内部契约：
              给它开的 /internal/elec/** 与它那一侧的客户端用同一份路径与 record -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
@@ -222,6 +222,13 @@
                          This keeps the same single test execution and -Dtest selection semantics;
                          graph fixtures release their references after their own rules finish. -->
                     <runOrder>alphabetical</runOrder>
+                    <!-- 整套 shop-app 用例共用一个 H2 内存库并缓存多份 Spring 上下文，默认堆（物理内存 1/4）
+                         在 16GB 机器上只有 4GB，全量跑到 Payment*/Points* 一带就 OutOfMemoryError ——
+                         表现成几十条「Failed to load ApplicationContext」与 H2「database has been closed」。
+                         按比例给而不是写死 -Xmx：内存小的机器不会因此被撑爆。 -->
+                    <!-- 时区与生产一致（国内节点，Asia/Shanghai）。积分统计等按 JVM 本地时间落库、按北京营业日取数，
+                         开发机在别的时区时每天有几个小时两边的「今天」不是同一天，相关用例就固定变红。 -->
+                    <argLine>-XX:MaxRAMPercentage=40 -Duser.timezone=Asia/Shanghai</argLine>
                     <!-- 用属性而不是写死：空的 <excludedGroups/> 在 profile 合并时不会覆盖父值 -->
                     <systemPropertyVariables>
                         <food.build.shape>${food.build.shape}</food.build.shape>

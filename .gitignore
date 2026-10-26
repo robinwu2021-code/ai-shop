@@ -40,3 +40,8 @@ android-shell/local.properties
 
 # Task-local implementation ledger
 .superpowers/
+
+# Python 字节码缓存。2026-09-17 曾把一整棵 Xcode 下的 __pycache__（33 个 .pyc）
+# 误提交进 c-app/，2026-10-25 清理时补上这条。
+__pycache__/
+*.pyc

@@ -124,7 +124,7 @@
 | `registerPushToken` | `POST /mp/push-token` | 是 | (stores) | — |
 | `unregisterPushToken` | `POST /mp/push-token/unregister` | 是 | (stores) | — |
 | `askQuestion` | `POST /mp/question` | 是 | goods | — |
-| `regions` | `GET /mp/regions` | 游客 | (components)/biz · city-pick | — |
+| `regions` | `GET /mp/regions` | 游客 | city-pick | — |
 | `reviewList` | `GET /mp/review` | 游客 | goods · merchant · store | — |
 | `createReview` | `POST /mp/review` | 是 | review-write | — |
 | `toggleReviewLike` | `POST /mp/review/:reviewNo/like` | 是 | goods · merchant | — |

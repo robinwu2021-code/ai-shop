@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>渠道接入统一封装：四个方向、一条管线、一个 trace_id</title>
+<desc>业务方的请求经接入层（记录①）进应用服务，再经渠道门面进入固定顺序的拦截器管线，由按地区、渠道、场景、操作选出的处理器翻译成渠道报文，经协议适配签名、经记录型客户端发出（记录②）。渠道回调经回调网关（记录③）进入唯一的结果入口，结果由业务通知器按接收方类型统一答复内部系统、外部系统与终端（记录④）。四张记录表共用 trace_id 与 pay_order_id。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12px;font-weight:600;fill:#161A21}
+.t{font-size:10px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.08em}
+.c{font-size:9.5px;fill:#3D4652}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.new{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.2}
+.db{fill:#F3F6FB;stroke:#9DB2D0;stroke-width:1.2}
+.chip{fill:#fff;stroke:#E0B27A;stroke-width:1}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+</style></defs>
+
+<text class="b" x="20" y="20">请求方向（① 业务方 → 支付 → ② 渠道）</text>
+<rect class="box" x="20" y="30" width="120" height="62" rx="7"/><text class="n" x="30" y="48">业务方</text><text class="t" x="30" y="64">第三方 · 内部系统</text><text class="t" x="30" y="78">终端 · 商家 · 收银台</text>
+<rect class="new" x="160" y="30" width="130" height="62" rx="7"/><text class="n" x="170" y="48">接入层</text><text class="t" x="170" y="64">鉴权 · 生成 trace_id</text><text class="t" x="170" y="78">记录 ①</text>
+<rect class="box" x="310" y="30" width="130" height="62" rx="7"/><text class="n" x="320" y="48">应用服务</text><text class="t" x="320" y="64">状态机 · 选路由</text><text class="t" x="320" y="78">冻结快照</text>
+<rect class="key" x="460" y="30" width="160" height="62" rx="7"/><text class="n" x="470" y="48">渠道门面 Facade</text><text class="t" x="470" y="64">ChannelGateway</text><text class="t" x="470" y="78">+ 五个类型化接口</text>
+<path class="ar" d="M140 61 H154" marker-end="url(#ar)"/>
+<path class="ar" d="M290 61 H304" marker-end="url(#ar)"/>
+<path class="ar" d="M440 61 H454" marker-end="url(#ar)"/>
+
+<text class="b" x="20" y="122">调用管线（责任链，顺序固定）</text>
+<rect class="key" x="20" y="130" width="860" height="76" rx="8"/>
+<rect class="chip" x="32" y="142" width="74" height="22" rx="5"/><text class="c" x="40" y="157">追踪 Trace</text>
+<rect class="chip" x="112" y="142" width="74" height="22" rx="5"/><text class="c" x="120" y="157">校验·金额</text>
+<rect class="chip" x="192" y="142" width="74" height="22" rx="5"/><text class="c" x="200" y="157">可用性</text>
+<rect class="chip" x="272" y="142" width="74" height="22" rx="5"/><text class="c" x="280" y="157">记录 ②</text>
+<rect class="chip" x="352" y="142" width="74" height="22" rx="5"/><text class="c" x="360" y="157">统一日志</text>
+<rect class="chip" x="432" y="142" width="74" height="22" rx="5"/><text class="c" x="440" y="157">指标</text>
+<rect class="chip" x="512" y="142" width="74" height="22" rx="5"/><text class="c" x="520" y="157">幂等</text>
+<rect class="chip" x="592" y="142" width="74" height="22" rx="5"/><text class="c" x="600" y="157">限流</text>
+<rect class="chip" x="672" y="142" width="74" height="22" rx="5"/><text class="c" x="680" y="157">熔断</text>
+<rect class="chip" x="752" y="142" width="116" height="22" rx="5"/><text class="c" x="760" y="157">隔离 · 重试 · 超时</text>
+<text class="t" x="32" y="186">最内层：结果分类 → Succeeded / Pending / Failed / Unknown；Unknown 登记补查（pay_channel_followup），不当失败</text>
+<text class="t" x="32" y="199">处理器不重试、不写库、不打业务日志 —— 这些都在管线里统一做</text>
+<path class="ar" d="M540 92 V124" marker-end="url(#ar)"/>
+
+<text class="b" x="20" y="232">渠道侧</text>
+<text class="t" x="290" y="232">处理器按「地区 × 渠道 × 接入模式 × 场景 × 操作」选出</text>
+<rect class="new" x="20" y="240" width="250" height="70" rx="7"/><text class="n" x="30" y="258">处理器 Strategy + Template</text><text class="t" x="30" y="274">ChannelHandlerRegistry 按五维键解析</text><text class="t" x="30" y="288">NewebPayMpgPay · LinePayOffline ·</text><text class="t" x="30" y="301">PayByCardPay · WechatJsapiPay …</text>
+<rect class="new" x="290" y="240" width="180" height="70" rx="7"/><text class="n" x="300" y="258">协议适配 Adapter</text><text class="t" x="300" y="274">签名 · 验签 · 加解密</text><text class="t" x="300" y="288">错误码 → 统一码</text>
+<rect class="new" x="490" y="240" width="180" height="70" rx="7"/><text class="n" x="500" y="258">记录型客户端 Decorator</text><text class="t" x="500" y="274">RecordingChannelClient</text><text class="t" x="500" y="288">原始报文 · 状态码 · 耗时</text>
+<rect class="box" x="690" y="240" width="190" height="70" rx="7"/><text class="n" x="700" y="258">渠道</text><text class="t" x="700" y="274">TW 蓝新 · LINE Pay</text><text class="t" x="700" y="288">AE PayBy · CN 微信 · 支付宝</text>
+<path class="ar" d="M145 206 V234" marker-end="url(#ar)"/>
+<path class="ar" d="M270 275 H284" marker-end="url(#ar)"/>
+<path class="ar" d="M470 275 H484" marker-end="url(#ar)"/>
+<path class="ar" d="M670 275 H684" marker-end="url(#ar)"/>
+
+<text class="b" x="20" y="340">答复方向（③ 渠道 → 支付 → ④ 业务方）</text>
+<rect class="new" x="690" y="350" width="190" height="62" rx="7"/><text class="n" x="700" y="368">回调网关</text><text class="t" x="700" y="384">先落 ③ → 验签 → 核金额</text><text class="t" x="700" y="398">→ 回查（走同一管线）</text>
+<rect class="key" x="460" y="350" width="210" height="62" rx="7"/><text class="n" x="470" y="368">唯一结果入口</text><text class="t" x="470" y="384">PaymentOutcomeService</text><text class="t" x="470" y="398">回调 · 补查 · 对账补单都进这里</text>
+<rect class="new" x="250" y="350" width="190" height="62" rx="7"/><text class="n" x="260" y="368">业务通知器 Observer</text><text class="t" x="260" y="384">BizNotifier → NotifyChannel</text><text class="t" x="260" y="398">记录 ④（每次投递一行）</text>
+<rect class="box" x="20" y="350" width="210" height="62" rx="7"/><text class="n" x="30" y="368">统一答复业务方</text><text class="t" x="30" y="384">内部系统：领域事件（Outbox）</text><text class="t" x="30" y="398">外部系统：签名 webhook · 终端：轮询</text>
+<path class="ar" d="M785 310 V344" marker-end="url(#ar)"/>
+<path class="ar" d="M690 381 H676" marker-end="url(#ar)"/>
+<path class="ar" d="M460 381 H446" marker-end="url(#ar)"/>
+<path class="ar" d="M250 381 H236" marker-end="url(#ar)"/>
+
+<text class="b" x="20" y="442">数据库记录（同一 trace_id · pay_order_id 串起四个方向）</text>
+<rect class="db" x="20" y="450" width="200" height="56" rx="7"/><text class="n" x="30" y="468">① pay_api_request_log</text><text class="t" x="30" y="484">来源 · 来源端 · 请求金额</text><text class="t" x="30" y="497">入参 / 出参 · 幂等键</text>
+<rect class="db" x="236" y="450" width="200" height="56" rx="7"/><text class="n" x="246" y="468">② pay_channel_call_log</text><text class="t" x="246" y="484">请求 / 渠道表示 / 响应金额 · 手续费</text><text class="t" x="246" y="497">四态结果 · 重试链 · 熔断状态</text>
+<rect class="db" x="452" y="450" width="200" height="56" rx="7"/><text class="n" x="462" y="468">③ pay_callback_log</text><text class="t" x="462" y="484">通知金额 · 是否一致</text><text class="t" x="462" y="497">验签结果 · 原文指纹</text>
+<rect class="db" x="668" y="450" width="212" height="56" rx="7"/><text class="n" x="678" y="468">④ pay_biz_notify (+attempt)</text><text class="t" x="678" y="484">内部事件 / webhook / 终端</text><text class="t" x="678" y="497">通知金额 · 每次投递结果</text>
+<text class="t" x="20" y="530">另有 pay_channel_followup（「未知」补查）与 pay_channel_lifecycle_log（渠道适配器状态变化）。</text>
+<text class="t" x="20" y="546">橙 = 新增 · 绿 = 核心约束所在 · 蓝 = 数据表 · 白 = 现有 / 外部</text>
+</svg>
