@@ -269,6 +269,38 @@ class GoodsIntegrityFlowTest {
         return json.readTree(mvc().perform(get(path)).andReturn().getResponse().getContentAsString());
     }
 
+    // ------------------------------------------------------------------ ⑤ 买家详情只给过审的货
+
+    @Test
+    @DisplayName("★★★ 买家详情：草稿 / 待审 / 驳回 / 强制下架 一律 404；过审后下架的仍可看（标为不在售）")
+    void buyerDetailHidesUnapprovedGoods() throws Exception {
+        String biz = merchant("13700777501", "买家详情店");
+        int notFound = ai.neargo.shop.common.ErrorCode.NOT_FOUND.code();
+        String draft = createGoods(biz, "从没提交过", 1000, 5);
+        assertThat(buyerGet("/mp/goods/" + draft).get("code").asInt()).as("草稿").isEqualTo(notFound);
+        assertThat(buyerGet("/mp/goods/" + draft + "/sku-price?skuNo="
+                + detail(biz, draft).get("skus").get(0).get("skuNo").asString()).get("code").asInt())
+                .as("草稿的 SKU 询价").isEqualTo(notFound);
+
+        assertThat(postJson(biz, "/biz/goods/" + draft + "/submit", "{}").get("code").asInt()).isZero();
+        assertThat(buyerGet("/mp/goods/" + draft).get("code").asInt()).as("待审").isEqualTo(notFound);
+
+        assertThat(postJson(opsLogin(), "/ops/goods/" + draft + "/audit",
+                "{\"approved\":false,\"reason\":\"不行\"}").get("code").asInt()).isZero();
+        assertThat(buyerGet("/mp/goods/" + draft).get("code").asInt()).as("驳回").isEqualTo(notFound);
+
+        String live = onSaleGoods(biz, "过审在售", 5);
+        assertThat(buyerGet("/mp/goods/" + live).get("code").asInt()).isZero();
+        assertThat(postJson(biz, "/biz/goods/" + live + "/toggle", "{\"onSale\":false}").get("code").asInt()).isZero();
+        JsonNode off = buyerGet("/mp/goods/" + live);
+        assertThat(off.get("code").asInt()).as("过审后商家自己下架：链接还能打开，标不在售").isZero();
+        assertThat(off.get("data").get("onSale").asBoolean()).isFalse();
+
+        assertThat(postJson(opsLogin(), "/ops/goods/" + live + "/force-off", "{\"reason\":\"违规\"}")
+                .get("code").asInt()).isZero();
+        assertThat(buyerGet("/mp/goods/" + live).get("code").asInt()).as("强制下架").isEqualTo(notFound);
+    }
+
     // ------------------------------------------------------------------ ⑨ SKU 价格校验
 
     @Test

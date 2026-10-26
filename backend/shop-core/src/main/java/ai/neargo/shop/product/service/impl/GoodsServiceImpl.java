@@ -392,6 +392,26 @@ public class GoodsServiceImpl implements GoodsService {
         return PageData.of(records, page.getTotal(), page.getCurrent(), page.getSize());
     }
 
+    /**
+     * 买家能不能打开这件货：<b>必须过审</b>（APPROVED）。
+     *
+     * <p>{@code detail()} 是商家与运营共用的组装，不看任何状态 —— 买家详情直接复用它，
+     * 于是草稿、待审、被驳回、被平台强制下架的商品，拿到货号就能看全内容
+     * （强制下架的处置在买家那里等于没发生）。列表与下单快照早就按 APPROVED 判了，只漏了详情。
+     *
+     * <p><b>过审后商家自己下架的仍可看</b>（VO 的 onSale=false，端上据此灰掉购买）：
+     * 收藏夹、订单里的历史链接要能打开，看到「已下架」比看到「不存在」诚实。
+     * 不存在与未过审回同一个 NOT_FOUND —— 后者不该被确认存在。
+     */
+    private void requireBuyerVisible(String goodsNo) {
+        PrdGoods g = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectOne(
+                Wrappers.<PrdGoods>lambdaQuery().select(PrdGoods::getAuditStatus)
+                        .eq(PrdGoods::getGoodsNo, goodsNo).last("limit 1")));
+        if (g == null || !"APPROVED".equals(g.getAuditStatus())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+    }
+
     /** 商品的归属门店（V384）；没有归属返回 null */
     private String ownerStoreOf(String goodsNo) {
         PrdGoods g = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectOne(
@@ -480,6 +500,7 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public GoodsVO detailForBuyer(String goodsNo, String storeNo) {
+        requireBuyerVisible(goodsNo);
         GoodsVO v = detail(goodsNo);
         /*
          * ★ 商品只属于一家门店（V384，ADR-031）：有归属就按它 —— 链接上带的门店号只是「从哪进来的」，
@@ -636,6 +657,8 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public ai.neargo.shop.product.dto.SkuPriceVO skuPrice(String goodsNo, String skuNo) {
+        // 与买家详情同一道门：没过审的货连单个规格的价都不该问得到
+        requireBuyerVisible(goodsNo);
         // ★ 与本类其它公共目录查询同一条规矩：买家侧读 SKU 必须显式豁免数据域。
         // prd_sku 登记 MERCHANT 锚点之后，不豁免就是 1=0 —— 症状是「规格切换后价格取不到」
         PrdSku sku = DataScopeContext.executeWithoutScope(() -> skuMapper.selectOne(
