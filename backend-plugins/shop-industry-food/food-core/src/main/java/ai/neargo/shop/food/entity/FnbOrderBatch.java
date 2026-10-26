@@ -2,6 +2,8 @@ package ai.neargo.shop.food.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 
 import lombok.Getter;
@@ -15,6 +17,8 @@ import java.time.LocalDateTime;
 @Setter
 @TableName("fnb_order_batch")
 public class FnbOrderBatch extends BaseEntity {
+    /** Recovery lease; only the recovery scanner moves it, entity write-back never does (C2). */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
     private LocalDateTime nextRecoveryAt;
     private String entityNo;
     private String batchNo;
