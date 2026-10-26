@@ -770,9 +770,9 @@ Task68B2精确14源码已编码编译与静态复审：候选/封存/原计划/�
 
 ## 服务执行数量授权（M3，分片实施状态）
 
-M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED
+M3_A1_CODE_REVIEWED_COMPILED_A2_RELEASED
 
-主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。
+主TDD§0.4/§2.48；A1代码bf8fe7688与R1 Spec PASS/Quality APPROVED，24模块编译完成；A2精确13新建+15修改已发布。A3–A5逐片接续；所有测试及部署统一后置，canStart=false。
 
 | Method / route | Planned operation / input | Result |
 |---|---|---|
@@ -798,4 +798,4 @@ Core/Beauty恢复Bean分别coreServiceExecutionRecoveryJob/beautyServiceExecutio
 
 M4真实占用/双向单位证明、生命周期2库存保留及头→行锁序是实际开工硬前置；M5人工参与和M6履约独立，M3不开放canStart、doneQty或支付链。
 
-5条内部HTTP为A4待实现，未新增公开开工空壳；权限复用Task62，未新增权限码、默认授权、配置键或i18n词条；所有计划方法均非运行验收。
+5条内部HTTP为A4待实现；A1已定义合同并完成严格协议、哈希及存储，未新增公开开工空壳；实际业务所有者接入与运行验收仍待后续分片。权限复用Task62，未新增权限码、默认授权、配置键或i18n词条。

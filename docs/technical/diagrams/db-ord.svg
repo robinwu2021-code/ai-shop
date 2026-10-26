@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="680" height="1376" viewBox="0 0 680 1376" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>交易 表关系</title><desc>39 张表，箭头由引用方指向被引用方。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="1608" viewBox="0 0 680 1608" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>交易 表关系</title><desc>42 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
@@ -49,6 +49,15 @@
 <path class="ar" d="M340 1074 L340 92 L100 92 L100 77" marker-end="url(#a)"/>
 <path class="ar" d="M340 1074 L340 440 L100 440 L100 425" marker-end="url(#a)"/>
 <path class="ar" d="M436 610 L436 104 L100 104 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M244 1538 L244 1020 L260 1020 L260 1005" marker-end="url(#a)"/>
+<path class="ar" d="M244 1538 L244 92 L100 92 L100 77" marker-end="url(#a)"/>
+<path class="ar" d="M244 1538 L244 440 L100 440 L100 425" marker-end="url(#a)"/>
+<path class="ar" d="M244 1538 L244 1484 L340 1484 L340 1469" marker-end="url(#a)"/>
+<path class="ar" d="M340 1466 L340 1520 L244 1520 L244 1535" marker-end="url(#a)"/>
+<path class="ar" d="M340 1466 L340 1508 L436 1508 L436 1535" marker-end="url(#a)"/>
+<path class="ar" d="M340 1422 L340 1136 L340 1136 L340 1121" marker-end="url(#a)"/>
+<path class="ar" d="M340 1422 L340 672 L244 672 L244 657" marker-end="url(#a)"/>
+<path class="ar" d="M436 1538 L436 1496 L340 1496 L340 1469" marker-end="url(#a)"/>
 <rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="50" text-anchor="middle" font-size="13">ord_order</text>
 <text class="s" x="100" y="65" text-anchor="middle">主订单：用户视角，一次…</text>
@@ -166,6 +175,15 @@
 <rect x="351" y="1306" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="436" y="1332" text-anchor="middle" font-size="11">ord_points_refund_binding</text>
 
+<rect x="255" y="1422" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="1442" text-anchor="middle" font-size="13">ord_service_execution</text>
+<text class="s" x="340" y="1457" text-anchor="middle">Original manual execution…</text>
+<rect x="159" y="1538" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="244" y="1558" text-anchor="middle" font-size="11">ord_service_execution_unit</text>
+<text class="s" x="244" y="1573" text-anchor="middle">Permanent original manual…</text>
+<rect x="351" y="1538" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="436" y="1558" text-anchor="middle" font-size="9.5">ord_service_execution_action</text>
+<text class="s" x="436" y="1573" text-anchor="middle">Append-only original exec…</text>
 <text class="l" x="100" y="436" text-anchor="middle">sub_order_no</text>
 <text class="l" x="100" y="88" text-anchor="middle">order_no</text>
 <text class="l" x="180" y="448" text-anchor="middle">sub_order_no</text>
@@ -210,4 +228,13 @@
 <text class="l" x="340" y="436" text-anchor="middle">sub_order_no</text>
 <text class="l" x="220" y="88" text-anchor="middle">order_no</text>
 <text class="l" x="220" y="436" text-anchor="middle">sub_order_no</text>
-<text class="l" x="268" y="100" text-anchor="middle">order_no</text></svg>
+<text class="l" x="268" y="100" text-anchor="middle">order_no</text>
+<text class="l" x="252" y="1016" text-anchor="middle">source_operation_no</text>
+<text class="l" x="172" y="88" text-anchor="middle">order_no</text>
+<text class="l" x="172" y="436" text-anchor="middle">sub_order_no</text>
+<text class="l" x="292" y="1480" text-anchor="middle">current_execution_no</text>
+<text class="l" x="292" y="1516" text-anchor="middle">unit_no</text>
+<text class="l" x="388" y="1504" text-anchor="middle">prepare_action_no</text>
+<text class="l" x="340" y="1132" text-anchor="middle">declaration_no</text>
+<text class="l" x="292" y="668" text-anchor="middle">confirmation_no</text>
+<text class="l" x="388" y="1492" text-anchor="middle">execution_no</text></svg>

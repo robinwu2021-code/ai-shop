@@ -3470,35 +3470,35 @@
     "codeCommit": "fb8fc86d50a394422be408b94278d50989d8ef8a"
   },
   "executionServicePlan": {
-    "status": "M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED",
-    "authority": "主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。",
+    "status": "M3_A1_CODE_REVIEWED_COMPILED_A2_RELEASED",
+    "authority": "主TDD§0.4/§2.48；A1代码bf8fe7688与R1 Spec PASS/Quality APPROVED，24模块编译完成；A2精确13新建+15修改已发布。A3–A5逐片接续；所有测试及部署统一后置，canStart=false。",
     "candidates": [
       {
         "path": "backend/shop-app/src/main/resources/db/migration/V544__manual_service_execution_authority.sql",
-        "purpose": "A1新增Core永久单位/尝试授权/原始动作3表；尚未编码执行",
-        "status": "A1_CODE_RELEASED_SQL_NOT_CREATED"
+        "purpose": "已编码Core永久单位/尝试授权/原始动作3表，单一schema渲染及懒校验；DDL未执行",
+        "status": "A1_DDL_AUTHORED_REVIEWED_NOT_EXECUTED"
       },
       {
         "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V10__beauty_service_execution_fence.sql",
-        "purpose": "A2候选新增美业永久执行围栏1表；尚未发布A2编码",
-        "status": "A2_PLANNED_SQL_NOT_CREATED"
+        "purpose": "A2已发布新增美业永久执行围栏1表编码；尚未创建/执行",
+        "status": "A2_CODE_RELEASED_SQL_NOT_CREATED"
       }
     ],
     "tables": [
       {
         "name": "ord_service_execution_unit",
         "owner": "Core",
-        "status": "PLANNED_NOT_CREATED"
+        "status": "A1_SCHEMA_AUTHORED_REVIEWED_NOT_INSTALLED"
       },
       {
         "name": "ord_service_execution",
         "owner": "Core",
-        "status": "PLANNED_NOT_CREATED"
+        "status": "A1_SCHEMA_AUTHORED_REVIEWED_NOT_INSTALLED"
       },
       {
         "name": "ord_service_execution_action",
         "owner": "Core",
-        "status": "PLANNED_NOT_CREATED"
+        "status": "A1_SCHEMA_AUTHORED_REVIEWED_NOT_INSTALLED"
       },
       {
         "name": "bty_service_execution_fence",
@@ -3515,7 +3515,7 @@
       "V1–V9基础28私表严格校验；V10候选新增1表共29，base readiness9与执行能力分开；仅已知扩展损坏隔离到受影响操作，基础或未知结构损坏仍拒绝启动。",
       "Core/Beauty恢复Bean分别coreServiceExecutionRecoveryJob/beautyServiceExecutionRecoveryJob，声明和逻辑任务名亦不同，禁止开启bean覆盖。",
       "M4真实占用/双向单位证明、生命周期2库存保留及头→行锁序是实际开工硬前置；M5人工参与和M6履约独立，M3不开放canStart、doneQty或支付链。",
-      "5条内部HTTP为A4待实现，未新增公开开工空壳；权限复用Task62，未新增权限码、默认授权、配置键或i18n词条；所有计划方法均非运行验收。"
+      "5条内部HTTP为A4待实现；A1已定义合同并完成严格协议、哈希及存储，未新增公开开工空壳；实际业务所有者接入与运行验收仍待后续分片。权限复用Task62，未新增权限码、默认授权、配置键或i18n词条。"
     ]
   }
 }

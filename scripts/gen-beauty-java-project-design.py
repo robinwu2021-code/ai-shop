@@ -83,7 +83,7 @@ def generate():
         lines += ['']
     execution = data.get('plannedExecutionClasses')
     if execution:
-        lines += ['## 十一、服务执行数量授权类型（M3计划）', '', execution['status'], '', execution['authority'], '',
+        lines += ['## 十一、服务执行数量授权类型（M3分片状态）', '', execution['status'], '', execution['authority'], '',
                   '| Source | Planned class / responsibility |', '|---|---|']
         for row in execution['classes']:
             lines.append(f"| `{row['path']}` | `{row['class']}`<br>{row['role']} |")

@@ -146,7 +146,7 @@ def generate():
         lines += [rule + '\n' for rule in manual['contracts']]
     execution = schema.get('executionServicePlan')
     if execution:
-        lines += ['', '## 服务执行数量授权增量（M3候选，未创建/未执行）', '', execution['status'], '', execution['authority'], '',
+        lines += ['', '## 服务执行数量授权增量（M3分片状态，DDL均未执行）', '', execution['status'], '', execution['authority'], '',
                   '| Candidate migration | State | Purpose |', '|---|---|---|']
         for row in execution['candidates']:
             lines.append(f"| `{row['path']}` | {row['status']} | {row['purpose']} |")

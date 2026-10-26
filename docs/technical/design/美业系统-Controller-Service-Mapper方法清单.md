@@ -4019,21 +4019,21 @@ Task68B1精确9源码已编码编译和静态复审，18项测试仅编写/编�
 Task68B2精确14源码已编码编译与静态复审：候选/封存/原计划/现金准入串联真实共用拥有方；普通零售/M1读取及来源hash保持。R0三项测试问题经R3关闭，17项场景仅编写编译，非运行成功。别名实际SQL等价、双行总额不变分摊负例已补齐；prd_sku库存断言只对应PLATFORM，不能推导INVENTORY/DUAL已验证。真正旧Task66生产器四份产物与六份旧序列化golden仍由C整理/B执行，不能用假记录替代。
 
 
-## 服务执行数量授权（M3，计划方法非已实现）
+## 服务执行数量授权（M3，合同、已编码与计划状态分别列示）
 
-M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED
+M3_A1_CODE_REVIEWED_COMPILED_A2_RELEASED
 
-主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。
+主TDD§0.4/§2.48；A1代码bf8fe7688与R1 Spec PASS/Quality APPROVED，24模块编译完成；A2精确13新建+15修改已发布。A3–A5逐片接续；所有测试及部署统一后置，canStart=false。
 
 | Owner / class | Planned signature | Slice / state |
 |---|---|---|
-| `ServiceExecutionPort` | `Grant prepare(PrepareExecution command)` | A3 / PLANNED_NOT_IMPLEMENTED |
-| `ServiceExecutionPort` | `Grant query(ExecutionLookup lookup)` | A3 / PLANNED_NOT_IMPLEMENTED |
-| `ServiceExecutionPort` | `Grant queryOriginal(ExecutionLookup lookup)` | A3 / PLANNED_NOT_IMPLEMENTED |
-| `ServiceExecutionSourcePort` | `StartIntent freeze(FreezeStart command)` | A2 / PLANNED_NOT_IMPLEMENTED |
-| `ServiceExecutionSourcePort` | `StartIntent inspect(StartIntentLookup lookup)` | A2 / PLANNED_NOT_IMPLEMENTED |
-| `ServiceExecutionSourcePort` | `StartIntent inspectOriginal(StartIntentLookup lookup)` | A2 / PLANNED_NOT_IMPLEMENTED |
-| `ServiceExecutionContract` | `String bindingHash(ExecutionBinding binding)` | A1 / PLANNED_NOT_IMPLEMENTED |
+| `ServiceExecutionPort` | `Grant prepare(PrepareExecution command)` | A3 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionPort` | `Grant query(ExecutionLookup lookup)` | A3 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionPort` | `Grant queryOriginal(ExecutionLookup lookup)` | A3 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionSourcePort` | `StartIntent freeze(FreezeStart command)` | A2 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionSourcePort` | `StartIntent inspect(StartIntentLookup lookup)` | A2 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionSourcePort` | `StartIntent inspectOriginal(StartIntentLookup lookup)` | A2 / A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING |
+| `ServiceExecutionContract` | `String bindingHash(ExecutionBinding binding)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
 | `ServiceTaskExecutionService` | `ExecutionPreparation prepareTask(FreezeStart command)` | A2 / PLANNED_NOT_IMPLEMENTED |
 | `ServiceTaskExecutionService` | `ExecutionPreparation queryTask(StartIntentLookup lookup)` | A2 / PLANNED_NOT_IMPLEMENTED |
 | `ServiceExecutionService` | `int requestSuspendLocked(ExecutionCoordinates coordinates, String reason)` | A3 / PLANNED_NOT_IMPLEMENTED |
@@ -4041,8 +4041,41 @@ M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED
 | `ServiceTaskExecutionService` | `int recoverPending(int limit)` | A5 / PLANNED_NOT_IMPLEMENTED |
 | `Beauty.ServiceExecutionFenceCoordinator` | `void onManualCompletionLocked(BtySourceObservation row, long appliedEpoch, String actor)` | A2 / PLANNED_NOT_IMPLEMENTED |
 | `Core.ServiceExecutionServiceImpl` | `boolean applySourceSuspensionLocked(ExecutionBinding binding, SourceSuspension proof)` | A3 / PLANNED_NOT_IMPLEMENTED |
-| `Core.ServiceExecutionSchemaVerifier` | `void requireAvailable()` | A1 / PLANNED_NOT_IMPLEMENTED |
+| `Core.ServiceExecutionSchemaVerifier` | `void requireAvailable()` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
 | `Beauty.ServiceExecutionSchemaVerifier` | `Installation installation()` | A2 / PLANNED_NOT_IMPLEMENTED |
+| `ServiceExecutionContract` | `String payloadHash(ExecutionBinding binding, OperatorPersonnelFact personnel, String operatorNamespaceHash, String resourceCommandNo, String resourceCommandHash)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String intentHash(StartIntent intent)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String bindingJson(ExecutionBinding binding)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String suspensionJson(ExecutionBinding binding, SourceSuspension suspension)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String actionHash(ExecutionBinding binding, String kind, String actionNo, long expectedGrantRevision, String actorNamespaceHash, StartIntentLookup proof, SourceSuspension suspension)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String suspensionHash(ExecutionBinding binding, SourceSuspension suspension)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `void requireSuspensionBinding(ExecutionBinding binding, SourceSuspension suspension)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `void requireTaskQuantity(BigDecimal quantity, String uom)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionContract` | `String canonical(Object value)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `OrdCheckoutLine lockLine(ExecutionBinding binding)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `OrdServiceExecution find(ExecutionScope scope, String executionNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `OrdServiceExecution lockExecution(ExecutionScope scope, String executionNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `List<OrdServiceExecution> lockSourceExecutions(ExecutionScope scope, String sourceLineNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `OrdServiceExecution findKey(ExecutionScope scope, String keyHash)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `int insertPrepared(OrdServiceExecution row)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `int requestSuspend(ExecutionBinding binding, String bindingHash, long expectedVersion, String reason, LocalDateTime retryAt)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `int claimObservation(ExecutionScope scope, String executionNo, long expectedVersion, long expectedEpoch, LocalDateTime now, LocalDateTime leaseUntil)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `int applyObservation(ExecutionScope scope, String executionNo, String bindingHash, long expectedVersion, long expectedEpoch, String actionNo, String actionHash, String reason, LocalDateTime retryAt)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper` | `List<OrdServiceExecution> pending(LocalDateTime now, LocalDateTime afterRetryAt, long afterId, int limit)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `List<OrdServiceExecutionUnit> lockLineUnits(ExecutionScope scope, String sourceLineNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `OrdServiceExecutionUnit findTask(ExecutionScope scope, String taskNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `int insertBound(OrdServiceExecutionUnit row)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `int reserve(ExecutionBinding binding, long expectedVersion)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.UnitMapper` | `QuantityFacts quantity(ExecutionScope scope, String sourceLineNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.ActionMapper` | `OrdServiceExecutionAction findKey(ExecutionScope scope, String executionNo, String kind, String keyHash)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.ActionMapper` | `int insertPending(OrdServiceExecutionAction row)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `ServiceExecutionMapper.ActionMapper` | `int finalizeResult(ExecutionScope scope, String executionNo, String actionNo, String actionHash, long expectedVersion, long expectedEpoch, String state, long resultRevision)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `Core.ServiceExecutionSchemaVerifier` | `Installation installation()` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `String digest(Call<?> call)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `void require(Call<?> call, Reply<?> reply)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `void requireRoute(Call<?> call, String endpoint, String action, String executionNo)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `void requireCoordinates(Call<?> call, String tenant, String entity, String store)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
+| `InternalBindings` | `<T> Reply<T> reply(Call<?> call, T result)` | A1 / CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED |
 
 共用Core拥有订单行Q及永久(sourceLineNo,unitOrdinal)→task关联，美业不复制订单或数量账；任务仅支持精确COUNT1，1.000000合法，聚合及小数历史不猜测拆分。
 
@@ -4060,4 +4093,4 @@ Core/Beauty恢复Bean分别coreServiceExecutionRecoveryJob/beautyServiceExecutio
 
 M4真实占用/双向单位证明、生命周期2库存保留及头→行锁序是实际开工硬前置；M5人工参与和M6履约独立，M3不开放canStart、doneQty或支付链。
 
-5条内部HTTP为A4待实现，未新增公开开工空壳；权限复用Task62，未新增权限码、默认授权、配置键或i18n词条；所有计划方法均非运行验收。
+5条内部HTTP为A4待实现；A1已定义合同并完成严格协议、哈希及存储，未新增公开开工空壳；实际业务所有者接入与运行验收仍待后续分片。权限复用Task62，未新增权限码、默认授权、配置键或i18n词条。

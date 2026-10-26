@@ -1728,68 +1728,68 @@
     ]
   },
   "plannedExecutionClasses": {
-    "status": "M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED",
-    "authority": "主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。",
+    "status": "M3_A1_CODE_REVIEWED_COMPILED_A2_RELEASED",
+    "authority": "主TDD§0.4/§2.48；A1代码bf8fe7688与R1 Spec PASS/Quality APPROVED，24模块编译完成；A2精确13新建+15修改已发布。A3–A5逐片接续；所有测试及部署统一后置，canStart=false。",
     "classes": [
       {
         "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionPort.java",
         "class": "ai.neargo.shop.spi.trade.ServiceExecutionPort",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourcePort.java",
         "class": "ai.neargo.shop.spi.trade.ServiceExecutionSourcePort",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionContract.java",
         "class": "ai.neargo.shop.spi.trade.ServiceExecutionContract",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionInternalApi.java",
         "class": "ai.neargo.shop.spi.trade.ServiceExecutionInternalApi",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourceInternalApi.java",
         "class": "ai.neargo.shop.spi.trade.ServiceExecutionSourceInternalApi",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionOriginalProtocol.java",
         "class": "ai.neargo.shop.spi.trade.ExecutionOriginalProtocol",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/ExecutionOriginalCodec.java",
         "class": "ai.neargo.shop.svc.ExecutionOriginalCodec",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionUnit.java",
         "class": "ai.neargo.shop.trade.entity.OrdServiceExecutionUnit",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecution.java",
         "class": "ai.neargo.shop.trade.entity.OrdServiceExecution",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionAction.java",
         "class": "ai.neargo.shop.trade.entity.OrdServiceExecutionAction",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ServiceExecutionMapper.java",
         "class": "ai.neargo.shop.trade.mapper.ServiceExecutionMapper",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       },
       {
         "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ServiceExecutionSchemaVerifier.java",
         "class": "ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier",
-        "role": "[A1待编码] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
+        "role": "[A1代码审查/编译完成，运行待验证] 共用数量授权合同/严格原号协议/永久单位及授权存储；详见冻结设计§3/§7/§8"
       }
     ]
   }

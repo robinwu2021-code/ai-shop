@@ -4317,11 +4317,11 @@
     "task68CodePhaseGate": ".superpowers/sdd/beauty-backend/task-68-code-phase-root-gate.json"
   },
   "executionServicePlan": {
-    "status": "M3_DESIGN_STATIC_REVIEWED_A1_CODE_PHASE_RELEASED",
+    "status": "M3_A1_CODE_REVIEWED_COMPILED_A2_RELEASED",
     "design": "../../../.superpowers/sdd/beauty-backend/task-69-m3-design.md",
     "designSha256": "2e33ad2ff0072f322064062e1592b8cbf2e7e11623c9d21fd636c6704fe387e5",
     "reviewSha256": "a4b0084130e32a5fef7d2cb21c72e2f1d2e2f42ebe1b84a970778436f97b059a",
-    "authority": "主TDD§0.4/§2.48；设计R2 Spec PASS/Architecture APPROVED。当前仅发布A1精确23文件编码；A2–A5逐片核对后发布，全部测试及部署后置。",
+    "authority": "主TDD§0.4/§2.48；A1代码bf8fe7688与R1 Spec PASS/Quality APPROVED，24模块编译完成；A2精确13新建+15修改已发布。A3–A5逐片接续；所有测试及部署统一后置，canStart=false。",
     "routes": [
       {
         "method": "POST",
@@ -4374,43 +4374,43 @@
         "owner": "ServiceExecutionPort",
         "signature": "Grant prepare(PrepareExecution command)",
         "stage": "A3",
-        "status": "PLANNED_NOT_IMPLEMENTED"
+        "status": "A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING"
       },
       {
         "owner": "ServiceExecutionPort",
         "signature": "Grant query(ExecutionLookup lookup)",
         "stage": "A3",
-        "status": "PLANNED_NOT_IMPLEMENTED"
+        "status": "A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING"
       },
       {
         "owner": "ServiceExecutionPort",
         "signature": "Grant queryOriginal(ExecutionLookup lookup)",
         "stage": "A3",
-        "status": "PLANNED_NOT_IMPLEMENTED"
+        "status": "A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING"
       },
       {
         "owner": "ServiceExecutionSourcePort",
         "signature": "StartIntent freeze(FreezeStart command)",
         "stage": "A2",
-        "status": "PLANNED_NOT_IMPLEMENTED"
+        "status": "A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING"
       },
       {
         "owner": "ServiceExecutionSourcePort",
         "signature": "StartIntent inspect(StartIntentLookup lookup)",
         "stage": "A2",
-        "status": "PLANNED_NOT_IMPLEMENTED"
+        "status": "A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING"
       },
       {
         "owner": "ServiceExecutionSourcePort",
         "signature": "StartIntent inspectOriginal(StartIntentLookup lookup)",
         "stage": "A2",
-        "status": "PLANNED_NOT_IMPLEMENTED"
+        "status": "A1_CONTRACT_DEFINED_BUSINESS_OWNER_PENDING"
       },
       {
         "owner": "ServiceExecutionContract",
         "signature": "String bindingHash(ExecutionBinding binding)",
         "stage": "A1",
-        "status": "PLANNED_NOT_IMPLEMENTED"
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
       },
       {
         "owner": "ServiceTaskExecutionService",
@@ -4458,13 +4458,211 @@
         "owner": "Core.ServiceExecutionSchemaVerifier",
         "signature": "void requireAvailable()",
         "stage": "A1",
-        "status": "PLANNED_NOT_IMPLEMENTED"
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
       },
       {
         "owner": "Beauty.ServiceExecutionSchemaVerifier",
         "signature": "Installation installation()",
         "stage": "A2",
         "status": "PLANNED_NOT_IMPLEMENTED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "String payloadHash(ExecutionBinding binding, OperatorPersonnelFact personnel, String operatorNamespaceHash, String resourceCommandNo, String resourceCommandHash)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "String intentHash(StartIntent intent)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "String bindingJson(ExecutionBinding binding)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "String suspensionJson(ExecutionBinding binding, SourceSuspension suspension)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "String actionHash(ExecutionBinding binding, String kind, String actionNo, long expectedGrantRevision, String actorNamespaceHash, StartIntentLookup proof, SourceSuspension suspension)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "String suspensionHash(ExecutionBinding binding, SourceSuspension suspension)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "void requireSuspensionBinding(ExecutionBinding binding, SourceSuspension suspension)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "void requireTaskQuantity(BigDecimal quantity, String uom)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionContract",
+        "signature": "String canonical(Object value)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "OrdCheckoutLine lockLine(ExecutionBinding binding)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "OrdServiceExecution find(ExecutionScope scope, String executionNo)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "OrdServiceExecution lockExecution(ExecutionScope scope, String executionNo)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "List<OrdServiceExecution> lockSourceExecutions(ExecutionScope scope, String sourceLineNo)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "OrdServiceExecution findKey(ExecutionScope scope, String keyHash)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "int insertPrepared(OrdServiceExecution row)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "int requestSuspend(ExecutionBinding binding, String bindingHash, long expectedVersion, String reason, LocalDateTime retryAt)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "int claimObservation(ExecutionScope scope, String executionNo, long expectedVersion, long expectedEpoch, LocalDateTime now, LocalDateTime leaseUntil)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "int applyObservation(ExecutionScope scope, String executionNo, String bindingHash, long expectedVersion, long expectedEpoch, String actionNo, String actionHash, String reason, LocalDateTime retryAt)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper",
+        "signature": "List<OrdServiceExecution> pending(LocalDateTime now, LocalDateTime afterRetryAt, long afterId, int limit)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper.UnitMapper",
+        "signature": "List<OrdServiceExecutionUnit> lockLineUnits(ExecutionScope scope, String sourceLineNo)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper.UnitMapper",
+        "signature": "OrdServiceExecutionUnit findTask(ExecutionScope scope, String taskNo)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper.UnitMapper",
+        "signature": "int insertBound(OrdServiceExecutionUnit row)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper.UnitMapper",
+        "signature": "int reserve(ExecutionBinding binding, long expectedVersion)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper.UnitMapper",
+        "signature": "QuantityFacts quantity(ExecutionScope scope, String sourceLineNo)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper.ActionMapper",
+        "signature": "OrdServiceExecutionAction findKey(ExecutionScope scope, String executionNo, String kind, String keyHash)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper.ActionMapper",
+        "signature": "int insertPending(OrdServiceExecutionAction row)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "ServiceExecutionMapper.ActionMapper",
+        "signature": "int finalizeResult(ExecutionScope scope, String executionNo, String actionNo, String actionHash, long expectedVersion, long expectedEpoch, String state, long resultRevision)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "Core.ServiceExecutionSchemaVerifier",
+        "signature": "Installation installation()",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "InternalBindings",
+        "signature": "String digest(Call<?> call)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "InternalBindings",
+        "signature": "void require(Call<?> call, Reply<?> reply)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "InternalBindings",
+        "signature": "void requireRoute(Call<?> call, String endpoint, String action, String executionNo)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "InternalBindings",
+        "signature": "void requireCoordinates(Call<?> call, String tenant, String entity, String store)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
+      },
+      {
+        "owner": "InternalBindings",
+        "signature": "<T> Reply<T> reply(Call<?> call, T result)",
+        "stage": "A1",
+        "status": "CODE_REVIEWED_COMPILED_NOT_RUNTIME_VERIFIED"
       }
     ],
     "contracts": [
@@ -4476,7 +4674,8 @@
       "V1–V9基础28私表严格校验；V10候选新增1表共29，base readiness9与执行能力分开；仅已知扩展损坏隔离到受影响操作，基础或未知结构损坏仍拒绝启动。",
       "Core/Beauty恢复Bean分别coreServiceExecutionRecoveryJob/beautyServiceExecutionRecoveryJob，声明和逻辑任务名亦不同，禁止开启bean覆盖。",
       "M4真实占用/双向单位证明、生命周期2库存保留及头→行锁序是实际开工硬前置；M5人工参与和M6履约独立，M3不开放canStart、doneQty或支付链。",
-      "5条内部HTTP为A4待实现，未新增公开开工空壳；权限复用Task62，未新增权限码、默认授权、配置键或i18n词条；所有计划方法均非运行验收。"
-    ]
+      "5条内部HTTP为A4待实现；A1已定义合同并完成严格协议、哈希及存储，未新增公开开工空壳；实际业务所有者接入与运行验收仍待后续分片。权限复用Task62，未新增权限码、默认授权、配置键或i18n词条。"
+    ],
+    "foundationReport": "../../../.superpowers/sdd/beauty-backend/task-69a1-report.md"
   }
 }

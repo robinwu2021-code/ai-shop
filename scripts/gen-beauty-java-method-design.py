@@ -320,7 +320,7 @@ def generate():
         increment += [''] + [rule + '\n' for rule in counter['contracts']]
     execution = d.get('executionServicePlan')
     if execution:
-        increment += ['', '## 服务执行数量授权（M3，计划方法非已实现）', '', execution['status'], '', execution['authority'], '',
+        increment += ['', '## 服务执行数量授权（M3，合同、已编码与计划状态分别列示）', '', execution['status'], '', execution['authority'], '',
                       '| Owner / class | Planned signature | Slice / state |', '|---|---|---|']
         for row in execution['methods']:
             increment.append(f"| `{row['owner']}` | `{row['signature']}` | {row['stage']} / {row['status']} |")
