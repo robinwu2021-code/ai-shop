@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,6 +109,41 @@ class BasicPartialRefundSettlementFlowTest {
         assertThat(((Number) bill(sub).get("refunded_goods_minor")).longValue()).isEqualTo(2 * oneItem);
     }
 
+    /**
+     * 分账后回退已提交、执行单还没来得及转 CASH 就崩了：续跑时那行 preSplit=false 的流水就是确认，
+     * 必须继续退现金；不能当成「没确认」永远停在 REVERSE_UNCONFIRMED（买家的钱永远不退）。
+     * 流水与本次方案对不上（同一售后单、不同金额）则不得放行。
+     */
+    @Test
+    void replayAfterCommittedPostSplitReversalProceedsToCash() throws Exception {
+        String token = TestLogin.consumer(mvc(), json, otp, "13207073103");
+        String sub = buy(token, 3, "partial-settle-replay");
+        String afterSale = heldFullRefund(sub, token);
+        String no = "RF-" + afterSale;
+        jdbc.update("update ord_refund_execution set status='PROCESSING',error_code=null,next_attempt_at=0"
+                + " where execution_no=?", no);
+        settled(sub, true, null);
+        refunds.recover(no);
+        assertThat(phase(no)).isEqualTo("CASH");
+        assertThat(flag(journal(afterSale).get("pre_split"))).isFalse();
+
+        // 崩在 cashReady 之前：回退与流水已提交，执行单仍在回退阶段
+        jdbc.update("update ord_refund_execution set phase='REVERSAL',status='PROCESSING',error_code=null,"
+                + "next_attempt_at=0 where execution_no=?", no);
+        refunds.recover(no);
+        assertThat(phase(no)).as("已提交的分账后回退就是确认，继续退现金").isEqualTo("CASH");
+        assertThat(jdbc.queryForObject("select count(*) from stl_split_log where sub_order_no=?"
+                + " and split_action='REVERSE'", Integer.class, sub)).as("不重复发回退").isOne();
+
+        jdbc.update("update stl_bill_refund set goods_minor=goods_minor-1 where after_sale_no=?", afterSale);
+        jdbc.update("update ord_refund_execution set phase='REVERSAL',status='PROCESSING',error_code=null,"
+                + "next_attempt_at=0 where execution_no=?", no);
+        refunds.recover(no);
+        assertThat(phase(no)).as("流水与方案对不上，不放行").isEqualTo("REVERSAL");
+        assertThat(jdbc.queryForObject("select error_code from ord_refund_execution where execution_no=?",
+                String.class, no)).isEqualTo("REVERSE_UNCONFIRMED");
+    }
+
     /** 整单退款先在结算侧暂挂：分账进行中回退不成，执行单停在回退阶段，没有任何结算流水。 */
     private String heldFullRefund(String sub, String token) throws Exception {
         jdbc.update("update stl_bill set status='SPLITTING' where sub_order_no=?", sub);
@@ -146,7 +182,7 @@ class BasicPartialRefundSettlementFlowTest {
     }
 
     private Map<String, Object> journal(String afterSale) {
-        return jdbc.queryForList("select goods_minor, merchant_reverse_minor, final_refund from stl_bill_refund"
+        return jdbc.queryForList("select goods_minor, merchant_reverse_minor, final_refund, pre_split from stl_bill_refund"
                 + " where after_sale_no=?", afterSale).stream().findFirst().orElse(null);
     }
 
