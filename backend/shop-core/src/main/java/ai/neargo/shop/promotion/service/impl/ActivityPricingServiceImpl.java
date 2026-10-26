@@ -495,6 +495,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             return Map.of();
         }
         Map<String, Long> out = new HashMap<>();
+        Map<String, Boolean> owned = new HashMap<>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_PRICE)) {
             /*
              * ★ **团购的成团价不是限时特价**（2026-09-18）。
@@ -517,7 +518,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 continue;
             }
             for (String goodsNo : goodsOf(a.getActivityNo())) {
-                if (!goodsNos.contains(goodsNo)) {
+                if (!goodsNos.contains(goodsNo) || !ownedBy(a, goodsNo, owned)) {
                     continue;
                 }
                 long price = nz(a.getBenefitAmountMinor());
@@ -534,6 +535,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             return Map.of();
         }
         Map<String, CampaignPort.GiftRule> out = new HashMap<>();
+        Map<String, Boolean> owned = new HashMap<>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_GIFT)) {
             if (!audienceHits(a, a.getEntityNo(), userNo)) {
                 continue;
@@ -544,7 +546,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 continue;
             }
             for (String goodsNo : goodsOf(a.getActivityNo())) {
-                if (!goodsNos.contains(goodsNo)) {
+                if (!goodsNos.contains(goodsNo) || !ownedBy(a, goodsNo, owned)) {
                     continue;
                 }
                 CampaignPort.GiftRule cur = out.get(goodsNo);
@@ -724,6 +726,30 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             out.add(a);
         }
         return out;
+    }
+
+    /** 货的归属（见 {@link #ownedBy}）。setter 注入：切片测试里没有它时不过滤，运行时恒在 */
+    private ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProductFacts(ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts) {
+        this.productFacts = productFacts;
+    }
+
+    /**
+     * 这件货是不是活动主体自己的。
+     *
+     * <p>保存时已经拦住了别家的货（ActivityServiceImpl#assertGoodsOwned），这里是<b>纵深防御</b>：
+     * 库里可能已有拦截之前存下的行，而按货号反查活动不看活动归属 —— A 店一个 ¥0.01 特价
+     * 就会改掉 B 店那件货在全平台的价。一次调用内按「主体|货号」缓存。
+     */
+    private boolean ownedBy(PmtActivity a, String goodsNo, Map<String, Boolean> cache) {
+        if (productFacts == null) {
+            return true;
+        }
+        String tenant = a.getTenantNo() == null || a.getTenantNo().isBlank() ? "MAIN" : a.getTenantNo();
+        return cache.computeIfAbsent(tenant + "|" + a.getEntityNo() + "|" + goodsNo, k -> a.getEntityNo() != null
+                && productFacts.goodsOwned(tenant, a.getEntityNo(), java.util.Set.of(goodsNo)));
     }
 
     private List<String> goodsOf(String activityNo) {

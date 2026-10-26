@@ -117,6 +117,7 @@ public class ActivityServiceImpl implements ActivityService {
             throw BizException.of(ErrorCode.ACTIVITY_RULE_LOCKED);
         }
         assertSane(a, d);
+        assertGoodsOwned(a, d.goodsNos());
         assertNoGroupOverlap(a, d);
         boolean started = !create && started(a);
         if (!started) {
@@ -576,6 +577,34 @@ public class ActivityServiceImpl implements ActivityService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setMemberPort(ai.neargo.shop.spi.member.MemberQueryPort memberPort) {
         this.memberPort = memberPort;
+    }
+
+    /** 参与商品归属校验。setter 注入：直接 new 本类的切片测试里没有它时不校验，运行时恒在 */
+    private ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProductFacts(ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts) {
+        this.productFacts = productFacts;
+    }
+
+    /**
+     * 参与商品必须是<b>这个活动的主体自己的货</b>。
+     *
+     * <p>算价按货号反查活动（{@code idx_pmt_goods_ref}），不看活动是谁建的 —— 此前这里照单全收，
+     * A 店建一个 ¥0.01 的限时特价、填上 B 店的货号，B 的货就在全平台按 A 定的价卖。
+     * 与统一模型同一个判据（ActivityVersionServiceImpl 的权益商品校验用的 {@code goodsOwned}），
+     * 别家的货一律当不存在：区分「不存在」与「不是你的」就是一个货号归属探测器。
+     */
+    private void assertGoodsOwned(PmtActivity a, List<String> goodsNos) {
+        if (productFacts == null || goodsNos == null) {
+            return;
+        }
+        java.util.Set<String> nos = new java.util.LinkedHashSet<>();
+        goodsNos.stream().filter(x -> !blank(x)).forEach(nos::add);
+        String tenant = blank(a.getTenantNo()) ? "MAIN" : a.getTenantNo();
+        if (!nos.isEmpty() && !productFacts.goodsOwned(tenant, a.getEntityNo(), nos)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
     }
 
     private void saveGoods(String entityNo, String activityNo, List<String> goodsNos) {

@@ -4,6 +4,7 @@ import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.numbering.CoreMarketingDocumentNumbers;
 import ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort;
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+import ai.neargo.shop.spi.product.ProductScopeFactsPort;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,6 +34,16 @@ public class CampaignServiceImpl implements CampaignService {
         this.documentNumbers = documentNumbers;
     }
 
+    /**
+     * 参与商品归属校验（见 {@link #assertGoodsOwned}）。setter 注入：直接 new 本类的切片测试里没有它时不校验，
+     * 运行时它恒在（{@code ProductScopeFactsPortImpl} 是 shop-core 的组件）。
+     */
+    private ProductScopeFactsPort productFacts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProductFacts(ProductScopeFactsPort productFacts) {
+        this.productFacts = productFacts;
+    }
 
     private static final String DRAFT = "DRAFT";
     private static final String RUNNING = "RUNNING";
@@ -115,6 +127,7 @@ public class CampaignServiceImpl implements CampaignService {
             }
         }
 
+        assertGoodsOwned(c.getTenantNo(), merchantNo, cmd.goodsNos());
         c.setName(cmd.name().trim());
         c.setStartAt(cmd.startAt());
         c.setEndAt(cmd.endAt());
@@ -157,6 +170,30 @@ public class CampaignServiceImpl implements CampaignService {
         if (!MktCampaign.FULL_CUT.equals(cmd.type())) {
             throw BizException.of(ErrorCode.CAMPAIGN_STORE_UNSUPPORTED);
         }
+    }
+
+    /**
+     * 参与商品必须是**这家商家自己的货**。
+     *
+     * <p>此前 goodsNos 照单全收：A 店建一个 ¥0.01 的限时特价、把 B 店的货号填进去，
+     * 算价按货号反查活动、不看活动是谁建的 —— B 的货在全平台按 A 定的价卖，B 毫不知情。
+     * 与统一模型同一个判据（{@code ProductScopeFactsPort.goodsOwned}，ActivityVersionServiceImpl 的权益商品校验），
+     * 不是本店的货一律当不存在（NOT_FOUND）：区分「不存在」与「不是你的」就是一个货号归属探测器。
+     */
+    private void assertGoodsOwned(String tenantNo, String merchantNo, List<String> goodsNos) {
+        if (productFacts == null || goodsNos == null || goodsNos.isEmpty()) {
+            return;
+        }
+        Set<String> nos = new LinkedHashSet<>();
+        goodsNos.stream().filter(no -> no != null && !no.isBlank()).forEach(nos::add);
+        if (!nos.isEmpty() && !productFacts.goodsOwned(tenantOf(tenantNo), merchantNo, nos)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+    }
+
+    /** 一期只有 MAIN 租户（BaseEntity 的约定）；新建的行还没落库，租户列为空 */
+    private static String tenantOf(String tenantNo) {
+        return tenantNo == null || tenantNo.isBlank() ? "MAIN" : tenantNo;
     }
 
     /**
