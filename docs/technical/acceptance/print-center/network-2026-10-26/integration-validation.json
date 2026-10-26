@@ -7,7 +7,8 @@
       "PrintOrderSoftwareFlowTest": 4,
       "StoredValueCreditFlowTest": 4
     },
-    "total": 10
+    "total": 10,
+    "candidate": "b929fb350fbe599caa5594b52458a98119e2c9ad"
   },
   "optionalCommerce": {
     "status": "PASS",
@@ -21,7 +22,8 @@
       "CommerceWebContractTest": 7
     },
     "total": 55,
-    "note": "core and web explicitly selected; outside default reactor tests"
+    "note": "core and web explicitly selected; outside default reactor tests",
+    "candidate": "b929fb350fbe599caa5594b52458a98119e2c9ad"
   },
   "printScripts": {
     "status": "PASS",
@@ -34,13 +36,14 @@
   "normalFullGate": {
     "status": "PASS",
     "mode": "NORMAL_PRE_PUSH_DRY_RUN",
-    "validatedSha": "f012e043103f99be062d6258e956b49ab343240c",
+    "validatedSha": "b929fb350fbe599caa5594b52458a98119e2c9ad",
+    "remoteBaseline": "b180c53f894f12d1bfa0a0f88846cab3b81836cf",
     "testSourceCompilation": "PASS",
-    "backendTests": 6499,
+    "backendTests": 6582,
     "backendFailures": 0,
     "backendFailureBaseline": 0,
     "reactorSummaryCount": 32,
-    "elapsedSeconds": 1548,
+    "elapsedSeconds": 1715,
     "frontend": {
       "sharedAssertions": 589,
       "sharedFailures": 4,
@@ -52,14 +55,19 @@
     "generatorsCurrent": 25,
     "bypassFlagsUsed": false,
     "remoteUpdatedByDryRun": false,
-    "pushTarget": "origin/codex/ai-shop-codex"
+    "pushTarget": "origin/codex/ai-shop-codex",
+    "scopeBoundary": {
+      "unpublishedOtherTaskCommit": "03abb07f18bbda758eb0621c68870bf1fd978694",
+      "included": false,
+      "sharedWorktreePreserved": true
+    }
   },
   "orphanArtifactFix": {
     "status": "PASS",
     "tests": 2,
     "historicalDiagnosticCode": "moved to explicitly labeled Markdown code example; no whitelist change"
   },
-  "finalIntegratedSourceSha": "1a778d5651c3577b082401d54296fd6c52251c86",
+  "finalIntegratedSourceSha": "b929fb350fbe599caa5594b52458a98119e2c9ad",
   "optionalFoodSource": {
     "status": "PASS",
     "classes": {
@@ -73,6 +81,19 @@
       "PrintOrderSoftwareFlowTest": 4
     },
     "explicitSourceReactorCompilation": "PASS",
-    "defaultBackendAndBuildInputsUnchangedSinceValidatedSha": true
+    "defaultBackendAndBuildInputsUnchangedSinceValidatedSha": true,
+    "candidate": "b929fb350fbe599caa5594b52458a98119e2c9ad"
+  },
+  "frontendProductionBuilds": {
+    "candidate": "b929fb350fbe599caa5594b52458a98119e2c9ad",
+    "merchantH5": "PASS",
+    "opsNext": "PASS",
+    "opsTypescript": "PASS"
+  },
+  "extraExistingScriptRecheck": {
+    "tests": 7,
+    "passed": 4,
+    "failed": 3,
+    "sameFailuresReproducedOnBase": true
   }
 }
