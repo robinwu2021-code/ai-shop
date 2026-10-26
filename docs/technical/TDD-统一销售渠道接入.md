@@ -1,6 +1,6 @@
 # TDD 统一销售渠道接入
 
-> 状态：开发中，2026-10-26；C0授权、C1目录引擎与资源映射已集成部署，运行提交b076524b6，实际17张业务表/29条公开路由。原FOOD餐牌资源核验及S2A共享基准价/税来源已编码且相关专项通过；完整餐牌价格组合/来源/事件桥接与C2–C5尚未完成。历史批次记录保留当时状态，以本文末尾当前交付记录为准。需求：[PRD](../requirements/PRD-统一销售渠道接入.md)；决策：[ADR042](./ADR/ADR-042-统一销售渠道接入与行业来源隔离.md)。
+> 状态：开发中，2026-10-26；C0授权、C1目录引擎与资源映射已集成部署，运行提交b076524b6，实际17张业务表/29条公开路由。原FOOD餐牌资源核验、S2A共享基准价/税来源及S2B1餐牌价格投影已编码且相关专项通过；完整餐牌价格组合/来源/事件桥接与C2–C5尚未完成。历史批次记录保留当时状态，以本文末尾当前交付记录为准。需求：[PRD](../requirements/PRD-统一销售渠道接入.md)；决策：[ADR042](./ADR/ADR-042-统一销售渠道接入与行业来源隔离.md)。
 
 ## L1 入口与结论
 
@@ -103,6 +103,17 @@
 | food-channel port.CoreCatalogPriceSourcePortImpl及config.FoodOfferClientConfiguration | 懒加载typed客户端及新原能力Bean，不替换旧DishOffer Bean | CoreCatalogPriceSourcePortTest |
 
 不新增表/Mapper/权限码/i18n/运行配置，不修改已发布迁移；共享能力仍在原零售及核心模块。内部组合入口沿现有InternalDishOfferEndpoint放宿主portal.internal，避免Servlet请求/异常鉴权类型进入商品领域；独立商品服务将来需重新装配该入口，原能力Port保持可复用。执行：失败专项→完成生产与测试源码→集成宿主、food-server、commerce-server统一编译→集中相关专项→一次消融和独立复核→仅相关修复复测→文档对账/白名单本地提交。
+
+### L3 S2B1原餐牌价格投影实施计划（2026-10-26）
+
+继续AC03/AC05/AC15：先交付可远程核验的原FOOD价格投影，再在S2B2装配完整ChannelCatalogSourcePort.Document。当前commerce没有真实连接授权提供方；价格投影不能越过该门禁。复用S1完整发布凭据及S2A基准价/税，不引入commerce-api到FOOD原领域，也不把原结账试算替换为渠道目录计算。
+
+- 输入只有entityNo/storeNo/menuNo/revisionNo，严格原编号且拒绝未知JSON字段；服务自己读取CURRENT菜单证明、收集实际MAIN/配料/套餐差价所需原SKU，再调用共享CatalogPriceSourcePort。单菜单所需SKU最多100；超限明确拒绝，不拆成无一致性保证的多批价格，也不返回部分目录。配方库存原料不作为售卖价候选。
+- 同商品在不同menuItem下独立定价；EXPLICIT/ALL沿已发布原SKU集合；REPLACE空选项仍为空。MODIFIER读取冻结salesSkuNo报价，SPEC_VALUE为明确免费规格；组合配料不另求和原料价格。套餐INCLUDED=0，ADD_SKU=选中SKU价，DIFF_BASE=max(选中SKU价−基准SKU价,0)，均保留unitsPerPick原精确数量，不能提前取整改变原下单公式。主SKU、配料和套餐SKU可用本item覆盖价，覆盖币种须匹配可信市场。原覆盖定义/结账仍保持CNY限制，不将CNY换算为AED/TWD；无覆盖价支持共享原市场币种。无货不造0，定价不授予库存资格。
+- MenuCatalogPriceContracts保留原Proof、完整product Facts、扁平PriceLine（item、主SKU分支、group/choice、kind、sku、unitPriceMinor、unitsPerPick、sourceRevision）及短期限/摘要。每一行绑定原餐牌hash、item及依赖身份、原价修订和税事实。传输接收端重算完整投影，防漏行、多行、改价、串条目及伪凭据，不只检查receipt摘要。依赖原SKU归属必须与原价事实一致。
+- MenuCatalogPriceServiceImpl不持有事务调用其他owner，先后核验CURRENT菜单，原hash/修订变化则CONFLICT；有效期取最新菜单与基准价凭据最短期限。仍是时点事实，无法消除ABA或读取后变化；最终下单沿原能力重算，不锁价/锁库存。
+- 新增food-api dto.MenuCatalogPriceContracts、policy.MenuCatalogPricePolicy、service.MenuCatalogPriceService、spi.MenuCatalogPriceInternalApi；food-core service.impl.MenuCatalogPriceServiceImpl；food-web foodclient.RemoteMenuCatalogPriceService并沿FoodClientConfiguration装配；food-server api.InternalMenuCatalogPriceController沿原令牌链。无新公开路由、表/Mapper/迁移、权限或支付配置。
+- 执行：写拒绝默认能力的失败专项→完成实现及全部测试源码→集成与独立server统一编译→集中相关专项→一次守卫消融和独立复核→仅相关修复复测→三处对账、生成清单、精确白名单本地提交。预期覆盖重复SKU不同条目、覆盖/零/未知、原SKU归属、配料/免费规格、套餐三模式/差价和小数用量、缺基准价/币种冲突、原证明过期/变化、输出篡改及令牌/status。既有SSE架构问题保持单独待办，不放宽守卫。
 
 ### 明确的事务和并发
 
@@ -233,7 +244,7 @@ S1子集验收：AC03/AC05对应MenuSourceVerificationTest的8项（原scope/EXP
 
 ## §6 对账二 设计到实现
 
-全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、12个业务Service与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。该内核已集成发布；新增S1原FOOD内部核验与S2A共享基准价/税来源尚未推送或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
+全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、12个业务Service与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。该内核已集成发布；新增S1原FOOD内部核验、S2A共享基准价/税来源与S2B1餐牌价格投影尚未推送或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
 
 ## L4 官方资料及待核验
 
@@ -420,7 +431,7 @@ V1逐字保持冻结。V2新增授权修订、动作、调用证据三表，并�
 
 ### L2 下一步：行业原始来源与发布事件桥接
 
-S0现状review、S1原FOOD来源证明和S2A共享基准价/税来源已完成；S2B餐牌价格组合及S3事件桥接继续待开发。以下未标完成项不代表已有提供方可用。先完成来源/事件，再执行原设计C2回调和订单导入，不以人工导入映射替代原来源核验。
+S0现状review、S1原FOOD来源证明、S2A共享基准价/税来源及S2B1餐牌价格投影已完成；S2B2完整目录与S3事件桥接继续待开发。以下未标完成项不代表已有提供方可用。先完成来源/事件，再执行原设计C2回调和订单导入，不以人工导入映射替代原来源核验。
 
 | 现有对象/实现 | 可以复用 | 仍需补齐 |
 |---|---|---|
@@ -436,7 +447,8 @@ S0现状review、S1原FOOD来源证明和S2A共享基准价/税来源已完成�
 - [x] S0 核对现有原owner读接口、价格边界、事件路由及模块依赖；明确已部署能力与未接线能力。
 - [x] S1 原来源证明：在原FOOD能力上补充类型化资源投影，复用getRevision/resolveRevision，不另建餐牌主数据。输入entityNo、storeNo、menuNo、publicationRevisionNo及明确资源kind/ref/salesOfferRef；输出原revisionNo、contentHash、canonical resource/sales-offer关系、证明期限和原回执。当前核验须匹配当前生效修订；历史查询只证明原不可变资源，不授予当下销售资格。旧提供方不支持新合同应关闭处理。
 - [x] S2A 原商品基准价与税来源：共享CatalogPriceSourcePort及原owner实现、CORE内部HTTP、独立FOOD typed客户端完成；仅提供CATALOG_BASE，不替代最终下单试算。
-- [ ] S2B 餐牌价格组合与完整目录：复用S2A原商品市场、币种与可信价格依据，FOOD组合已发布餐牌的合法覆盖价及选项/套餐加价，再交付ChannelCatalogSourcePort.Document。复用PricingTaxSettingPort的商家税配置，包含加税/含税口径和版本；原配置缺失保持不可发布。原库存未知保持UNKNOWN，不回填0，也不在目录捕获时预占库存。
+- [x] S2B1 原FOOD餐牌价格投影：复用CURRENT发布证明和共享原价/税事实，组合条目覆盖、配料与套餐单价，保留原精确用量并提供可远程重算的内部合同。
+- [ ] S2B2 完整渠道目录：复用S1/S2A/S2B1原来源及价格事实，接原连接授权和餐牌渠道语境、时段与例外、展示与可信媒体，交付ChannelCatalogSourcePort.Document及原来源校验提供方；补齐独立worker客户端和非CNY覆盖价的原owner策略。原配置或币种/税依据缺失保持不可发布；原库存未知保持UNKNOWN，不回填0，不在目录捕获时预占。
 - [ ] S3 事件桥接：复用原OutboxEnvelope、事件号及CommerceRecoveryService.onPublished；消费前核对源系统、schemaVersion、aggregate和原门店/餐牌/修订。事件只是重读提示，不直接信任事件中的价格或把旧修订写成最新。重复沿原eventNo查回；乱序重新解析当前生效修订；未来生效应在到期核验，不能消费后丢失后续唤醒。新增路由须按模块是否装配条件化，禁用commerce时原发布继续成功。
 - [ ] S4 集成验证：批量完成代码与测试源码，再编译food+commerce集成宿主及独立server；只运行受影响专项。覆盖跨主体/门店、菜单内同SKU不同销售条目、REPLACE空配料、套餐依赖修订、hash篡改、未来/取消/过期发布、缺币种/税/价格回执、事件重复/乱序/重试、模块关闭。最后一次独立review并处理问题，随后白名单提交。
 
@@ -511,3 +523,40 @@ AC03的原价依据和AC15的本地/远程合同子集已实现，完整AC仍待
 下一批S2B：基于S1已发布资源证明和本批共享事实，在原FOOD能力组合餐牌覆盖价、配料与套餐增价，形成完整ChannelCatalogSourcePort.Document；继续保留未知库存，不自动叠加本地活动。随后S3接入原可靠发布事件。真实外卖渠道、C2订单导入等仍待办。本批仅本地提交，不推送、不部署，不改变线上b076524b6。
 
 最终核验：同一源码临时reactor以food-embedded、commerce-embedded完成shop-app、food-server、commerce-server的clean package（跳过重复测试），BUILD SUCCESS，1分05秒；仅本地验证标记，不作为生产发布SHA。设计及清单25项、V2文档70份、生成物25项及diff检查通过。集成架构既有SSE失败保持上述记录，不宣称全绿。
+
+
+## S2B1原餐牌价格投影交付记录（2026-10-26，本地）
+
+### L2 已实现与调用
+
+原FOOD MenuCatalogPriceService.capture(Query)按指定当前发布修订生成完整餐牌价格行，集成模式使用原本地Service，独立调用沿FOOD服务令牌HTTP。新增内部POST `/internal/food/menu-catalog-prices/capture`，仅接受entityNo、storeNo、menuNo、revisionNo四个原编号，拒绝调用方币种、价格、税率及未知字段。
+
+输出Facts包括schemaVersion、原query、menuProof、productFacts、prices、verifiedAt/validUntil/receiptNo。每条PriceLine保留menuItemNo、mainSkuNo、groupNo、choiceNo、kind、skuNo、unitPriceMinor、unitsPerPick、sourceRevision。MAIN/OPTION使用当前原价或本条目合法覆盖价，SPEC_VALUE和BUNDLE_INCLUDED为明确0，BUNDLE_ADD使用选中SKU单价，BUNDLE_DIFFERENCE为max(选中单价−基准单价,0)。unitsPerPick是原精确十进制字符串（套餐沿原三位小数合同）；投影不提前计算每选一次后的四舍五入金额，最终按原结算数量公式计算。
+
+明细修订绑定可信市场/币种、餐牌内容hash、item/主SKU分支/group/choice、原商品修订及税hash；即使免费规格也不跨市场复用修订。整份回执绑定所有原证据和明细。接收端校验原scope/当前菜单证明/完整SKU集合/税事实/期限，再重算全部价格行，重新计算一个摘要不能把改价或漏行变成合法目录。
+
+原菜单上架与选项关系、EXPLICIT/ALL成员、套餐三种模式和同SKU不同item语义保持原合同。配料使用其原销售SKU，不求和原料成本；本接口不返回库存承诺或扣库存，不选券/活动、不计算订单总税、不确认支付。
+
+### L3 需求、设计、代码和验收对账
+
+| 需求/设计 | 实现与方法 | 实际专项 |
+|---|---|---|
+| AC03 原价格及餐牌组合 | food-api.dto.MenuCatalogPriceContracts；policy.MenuCatalogPricePolicy的productRequest/compose/seal/validate/receipt | MenuCatalogPriceServiceTest的16项：市场、独立item、配料/免费规格、套餐三模式/数量、未知/0/覆盖、币种拒绝、归属、篡改、超限、ALL与期限 |
+| AC03/AC05 原当前发布依据 | food-core.service.impl.MenuCatalogPriceServiceImpl.capture，前后调用ConfigRevisionService.verifyMenuResource | currentSourceMustBeRecheckedAfterOriginalPriceRead；原MenuSourceVerificationTest 8项回归 |
+| AC15 原服务接口和装配 | food-api.service.MenuCatalogPriceService；spi.MenuCatalogPriceInternalApi；food-core.config.FoodAutoConfiguration新增Bean；food-web.foodclient.RemoteMenuCatalogPriceService与FoodClientConfiguration新增Bean | 新远程3项含真实本地HttpServer/typed InternalHttp令牌；原远程3项；FoodConditionalWiringTest 8项 |
+| AC15 内部传输 | food-server.api.InternalMenuCatalogPriceController.capture/businessFailure | 新内部HTTP 2项含实际SecurityFilterChain；原内部HTTP 2项 |
+| 原结账兼容 | 未改DiningPriceSourcePolicy或MenuPricePolicy | DiningPriceSourcePolicyTest 6项 |
+
+本批实际12个Java文件（10新增、2装配修改），另更新原TDD与索引；没有新Mapper、数据库迁移、公开API、权限/i18n/配置键。共48个唯一相关Java业务/接口专项通过，0失败0跳过（新增21、原回归27）。4项相关集成架构规则及1项条件装配守卫通过。上一批已确认的厨房SSE隔离问题ARC-SSE-01仍待单独修复，本批未重跑该无关失败项，未放宽守卫。
+
+### L4 边界和下一步
+
+S2B1是完整原餐牌价格投影，不是完整ChannelCatalogSourcePort.Document，也没有注册实际commerce目录提供方。S2B2继续接原连接授权/餐牌渠道范围、时段与例外、商品展示/媒体证据、独立worker的原来源客户端装配以及原餐牌非CNY覆盖价维护扩展；未具备的能力明确拒绝，不把本投影冒充平台菜单已同步。S3可靠原发布事件桥接随后执行。
+
+实施取舍：原FOOD不反向依赖commerce-api，通过原Service合同供后续适配器转换；现有CNY覆盖维护及结账保持兼容，非CNY覆盖不做汇率或标签替换；单菜单只接受最多100个实际销售/增价SKU，超过上限整份拒绝，避免无一致性保证的分批事实；最多20000条投影行。时点事实不是锁价/库存/支付授权，前后检查无法消除ABA或读取后变化，原下单仍须重算。回执摘要不代替服务身份认证。严格UTC期限沿S1/S2A，节点时钟不同步可安全拒绝。
+
+本批仅本地提交，不推送部署、不改变线上b076524b6及任何支付开关。独立复核、消融和最终打包以随后核验记录为准。
+
+独立只读复核一次，无确认的Critical/Important或延期Minor。复核不运行构建，实际48项和编译结果由执行侧日志核验；本地测试不冒充线上令牌配置/原owner可用性。原服务身份是信任边界，若可信owner本身被攻破，内容摘要不能防止其同时伪造事实和摘要，未在本切片引入新的签名协议。
+
+最终核验：商品归属守卫消融后originalProductScopeAndGoodsOwnershipCannotBeRewrittenBySourcePrices真实失败（期望异常未抛），原样恢复后仅复测该项，1项通过；免费规格市场修订专项也有先失败再修复证据。同源码临时reactor以food-embedded、commerce-embedded完成shop-app、food-server、commerce-server的clean package（跳过重复测试），BUILD SUCCESS，58.493秒；仅本地验证标记，不作为生产发布SHA。设计及清单25项、V2文档70份、生成物25项、diff检查通过。

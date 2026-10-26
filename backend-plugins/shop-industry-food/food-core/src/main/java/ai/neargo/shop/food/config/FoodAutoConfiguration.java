@@ -1,6 +1,9 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.food.service.MenuCatalogPriceService;
+import ai.neargo.shop.food.service.impl.MenuCatalogPriceServiceImpl;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
 import ai.neargo.shop.food.port.LazyGoodsCatalogQueryPortImpl;
 import ai.neargo.shop.food.port.LazyMaterialCatalogQueryPortImpl;
 import ai.neargo.shop.food.port.LazyGoodsMetadataQueryPortImpl;
@@ -156,6 +159,14 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(MenuCatalogPriceService.class)
+    MenuCatalogPriceService menuCatalogPriceService(ConfigRevisionService revisions,
+            ObjectProvider<CatalogPriceSourcePort> prices, ObjectMapper json) {
+        return new MenuCatalogPriceServiceImpl(revisions, prices::getIfAvailable, json, Clock.systemUTC());
+    }
+
     private static GoodsCatalogQueryPort lazyGoods(ObjectProvider<GoodsCatalogQueryPort> provider) {
         return new LazyGoodsCatalogQueryPortImpl(provider);
     }
