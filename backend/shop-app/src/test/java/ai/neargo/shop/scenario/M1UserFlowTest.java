@@ -300,6 +300,18 @@ class M1UserFlowTest {
     }
 
     @Test
+    @DisplayName("★★ APPLE 登录在 identityToken 验签接通前一律拒绝 —— 否则任何人报一个 sub 就能顶替那个账号")
+    void appleGrantIsRejectedUntilTokenVerified() throws Exception {
+        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"APPLE\",\"principal\":\"apple-sub-x\",\"agreed\":true}"))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = json.readTree(body);
+        assertThat(root.get("code").asInt()).isEqualTo(10400);
+        JsonNode data = root.get("data");
+        assertThat(data == null || data.isNull() || data.get("token") == null).isTrue();
+    }
+
+    @Test
     @DisplayName("OTP 一次性：用过的验证码不能重放")
     void otpCannotBeReplayed() throws Exception {
         mvc().perform(post("/mp/user/otp/send")

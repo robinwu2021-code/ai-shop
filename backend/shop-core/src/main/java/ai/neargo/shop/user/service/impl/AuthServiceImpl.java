@@ -602,9 +602,15 @@ public class AuthServiceImpl implements AuthService {
                 yield List.of(new Credential(IdentityType.PHONE, cmd.principal(), null));
             }
             case GRANT_APPLE ->
-                // TODO(S4) 校验 identityToken 签名后取 sub。
-                // Apple 永远给不出手机号，所以真接通后这里之后要接一道「强制绑定手机号」
-                    List.of(new Credential(IdentityType.APPLE_SUB, cmd.principal(), "APP"));
+                /*
+                 * TODO(S4) 校验 identityToken 签名后取 sub；Apple 永远给不出手机号，
+                 * 真接通后这里之后还要接一道「强制绑定手机号」。
+                 *
+                 * <p>**验签接通前一律拒绝，不能把 principal 当 sub 收下**：principal 是调用方
+                 * 自己报的字符串，此前直接拿它查 APPLE_SUB 凭证 —— 任何人报出别人的 sub
+                 * 就能拿到那个账号的 token，报一个新串就能无限注册。与未知 grant 同码 10400。
+                 */
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
             default -> throw BizException.of(ErrorCode.BAD_REQUEST);
         };
     }
