@@ -47,6 +47,7 @@ public final class PayEntitlementEventCodec {
             case "STORED_VALUE_RECHARGE_CANCELLED" ->
                     json.readValue(payload, EntitlementEvents.StoredValueRechargeCancelled.class);
             case "LEGACY_COUPON_USAGE_CHANGED" -> json.readValue(payload, EntitlementEvents.LegacyCouponUsageChanged.class);
+            case "STORED_VALUE_RECEIPT_CONFIRMED" -> json.readValue(payload, EntitlementEvents.StoredValueReceiptConfirmed.class);
             case "STORED_VALUE_CREDITED" -> json.readValue(payload, EntitlementEvents.StoredValueCredited.class);
             default -> throw new IllegalArgumentException("Unsupported entitlement event type");
         };
@@ -98,6 +99,12 @@ public final class PayEntitlementEventCodec {
         } else if (event instanceof EntitlementEvents.StoredValueRechargeCancelled cancelled) {
             if (!"MAIN".equals(cancelled.tenantNo()) || !id(cancelled.rechargeNo()) || !id(cancelled.entityNo()))
                 throw new IllegalArgumentException("Stored value cancellation event identity is incomplete");
+        } else if (event instanceof EntitlementEvents.StoredValueReceiptConfirmed receipt) {
+            if (!"MAIN".equals(receipt.tenantNo()) || !id(receipt.rechargeNo()) || !id(receipt.accountNo())
+                    || !id(receipt.entityNo()) || !id(receipt.storeNo()) || !id(receipt.currency())
+                    || receipt.principalAmountMinor() < 0 || receipt.giftAmountMinor() < 0
+                    || receipt.balanceAfterMinor() < Math.addExact(receipt.principalAmountMinor(),receipt.giftAmountMinor()))
+                throw new IllegalArgumentException("Stored value receipt fields are incomplete");
         } else if (event instanceof EntitlementEvents.StoredValueCredited credited) {
             if (!id(credited.rechargeNo()) || !id(credited.accountNo()) || !id(credited.customerNo()) || credited.userNo()!=null && !id(credited.userNo())
                     || !id(credited.entityNo()) || !id(credited.storeNo()) || !id(credited.currency())

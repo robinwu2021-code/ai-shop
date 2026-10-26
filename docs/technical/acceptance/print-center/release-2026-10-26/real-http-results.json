@@ -1,0 +1,38 @@
+{
+  "mode": "REAL_ISOLATED_H2_HTTP",
+  "status": "PASS",
+  "checks": [
+    {
+      "check": "wallet-only-source-summary-and-cross-store-isolation",
+      "status": "PASS"
+    },
+    {
+      "check": "recharge-real-source-simulation-pdf-and-denial",
+      "status": "PASS",
+      "factNo": "BFffbc5cd99c4141069ab81d3f8a1d",
+      "sourceRevision": "1",
+      "simulationNo": "SM42d56db953364e5cb3f950926854",
+      "exportNo": "EX67867e44edfa4aa9ab1a19518f7c",
+      "pdfBytes": 14667
+    },
+    {
+      "check": "refund-real-source-simulation-pdf-and-denial",
+      "status": "PASS",
+      "factNo": "BFded68f2460994653a37b39929a54",
+      "sourceRevision": "1",
+      "simulationNo": "SM5316f3c45cb94306962c9f08b117",
+      "exportNo": "EXa5a4b3377c084e608f3ae46987a4",
+      "pdfBytes": 16057
+    },
+    {
+      "check": "ops-health-incidents-dry-run-replay-query-conflict",
+      "status": "PASS",
+      "operationNo": "PO94458ebae609400aac1f6e475461"
+    }
+  ],
+  "partialRefund": "REJECTED_20011_NO_AFTERSALE_NO_RECEIPT",
+  "limitations": [
+    "No physical printer, cloud vendor or production database.",
+    "Multiple same-scene refunds are tested separately with a labeled contract fixture."
+  ]
+}

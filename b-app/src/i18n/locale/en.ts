@@ -203,6 +203,11 @@ export default {
     "networkUnknown": "Result unconfirmed. Check the original operation or retry it."
 },
   printCenter: {
+  "simulationDetails": "Simulation details",
+  "expectedResults": "Expected results",
+  "actualResults": "Actual results",
+  "eventJournal": "Event journal",
+
   "existingDeviceNo": "Existing printer number (when adopting)",
   "adoptionHint": "To adopt a registered printer, enter its existing number to share its task queue. Unverified legacy devices must be adopted before adding printers.",
   "title": "Print center",
@@ -213,9 +218,9 @@ export default {
   "refresh": "Refresh",
   "failed": "Operation failed. Please retry.",
   "mockHint": "Demo data is active. Connect the backend to manage printers, run simulations and export PDFs.",
-  "order": "Order",
+  "order": "Business reference",
   "summary": "Expected {expected} · Original confirmed {confirmed} · Replacements {resolved} · Uncertain {unknown}",
-  "submit": "Generate receipts",
+  "submit": "Generate selected business receipt",
   "simulate": "Simulate printing",
   "simulationHint": "Simulation checks content and handling rules. It does not prove physical output.",
   "runSimulation": "Run simulation",

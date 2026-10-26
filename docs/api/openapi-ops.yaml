@@ -13625,6 +13625,267 @@ components:
         - "snapshot"
         - "ledger"
       additionalProperties: false
+    PrintTarget:
+      type: "object"
+      properties:
+        tenantNo:
+          type: "string"
+          description: "Tenant reference, up to 32 characters; validated by backend actor data scope."
+        entityNo:
+          type: "string"
+          description: "Merchant entity reference, up to 64 characters, not a numeric ID."
+        storeNo:
+          type: "string"
+          description: "Store reference within entity and tenant, up to 64 characters."
+      required:
+        - "tenantNo"
+        - "entityNo"
+        - "storeNo"
+      additionalProperties: false
+      description: "Explicit target references from Ops*Query; tenant identity supports 32 characters and entity/store V1 identities support 64."
+    PrintHealth:
+      type: "object"
+      properties:
+        activePrinters:
+          type: "number"
+          description: "Active printer count."
+        pendingJobs:
+          type: "number"
+          description: "Pending job count."
+        unknownJobs:
+          type: "number"
+          description: "Unknown outcome job count; never implies completion."
+        blockedRequests:
+          type: "number"
+          description: "Blocked request count."
+        asOf:
+          type: "string"
+          description: "Server snapshot Instant."
+      required:
+        - "activePrinters"
+        - "pendingJobs"
+        - "unknownJobs"
+        - "blockedRequests"
+        - "asOf"
+      additionalProperties: false
+      description: "PrintMonitorDtos.GetHealthVO; counts are integer jobs/devices, timestamps are ISO-8601 Instant."
+    PrintFleetHealth:
+      type: "object"
+      properties:
+        stores:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PrintHealth"
+          description: "Scoped health snapshots."
+        asOf:
+          type: "string"
+          description: "Fleet snapshot Instant."
+      required:
+        - "stores"
+        - "asOf"
+      additionalProperties: false
+      description: "PrintMonitorDtos.FleetHealthVO; store order is backend-owned."
+    PrintIncident:
+      type: "object"
+      properties:
+        incidentNo:
+          type: "string"
+          description: "Incident business reference."
+        storeNo:
+          type: "string"
+          description: "Owning store reference."
+        incidentType:
+          type: "string"
+          description: "Backend incident classification."
+        targetType:
+          type: "string"
+          description: "Backend target classification."
+        targetNo:
+          type: "string"
+          description: "Target business reference."
+        severity:
+          type: "string"
+          description: "Backend severity code."
+        status:
+          type: "string"
+          description: "Backend status code."
+        occurrenceCount:
+          type: "number"
+          description: "Number of occurrences."
+        firstSeenAt:
+          type: "string"
+          description: "First observed Instant."
+        lastSeenAt:
+          type: "string"
+          description: "Last observed Instant."
+        revision:
+          type: "number"
+          description: "Optimistic revision, no UI write endpoint."
+      required:
+        - "incidentNo"
+        - "storeNo"
+        - "incidentType"
+        - "targetType"
+        - "targetNo"
+        - "severity"
+        - "status"
+        - "occurrenceCount"
+        - "firstSeenAt"
+        - "lastSeenAt"
+        - "revision"
+      additionalProperties: false
+      description: "PrintMonitorDtos.IncidentVO."
+    PrintIncidentPage:
+      "$ref": "#/components/schemas/Page%3CPrintIncident%3E"
+    "Page<PrintIncident>":
+      type: "object"
+      properties:
+        records:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PrintIncident"
+          description: "当前页数据"
+        total:
+          type: "number"
+          description: "满足条件的总条数（不是总页数）"
+        page:
+          type: "number"
+          description: "当前页码，从 1 起"
+        size:
+          type: "number"
+          description: "每页条数"
+      required:
+        - "records"
+        - "total"
+        - "page"
+        - "size"
+      additionalProperties: false
+    PrintReconcileRequest:
+      type: "object"
+      properties:
+        tenantNo:
+          type: "string"
+          description: "Tenant reference, up to 32 characters; validated by backend actor data scope."
+        entityNo:
+          type: "string"
+          description: "Merchant entity reference, up to 64 characters, not a numeric ID."
+        storeNo:
+          type: "string"
+          description: "Store reference within entity and tenant, up to 64 characters."
+        sourceKind:
+          type: "string"
+          description: "Source kind owned by backend adapters."
+        from:
+          type: "string"
+          description: "Inclusive scan start Instant."
+        to:
+          type: "string"
+          description: "Scan end Instant."
+        dryRun:
+          type: "boolean"
+          description: "True previews; false executes scoped maintenance."
+        reason:
+          type: "string"
+          description: "Required audit rationale."
+      required:
+        - "dryRun"
+        - "entityNo"
+        - "from"
+        - "reason"
+        - "sourceKind"
+        - "storeNo"
+        - "tenantNo"
+        - "to"
+      additionalProperties: false
+      description: "OpsReconcileReq; from/to are Instants, not epoch milliseconds."
+    PrintOperation:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+          description: "Operation business reference."
+        type:
+          type: "string"
+          description: "Backend operation type."
+        status:
+          type: "string"
+          enum:
+            - "PENDING"
+            - "UNKNOWN"
+            - "SUCCEEDED"
+            - "FAILED"
+          description: "PENDING/UNKNOWN are unfinished; SUCCEEDED describes operation only, never physical output."
+        targetType:
+          type: "string"
+          description: "Backend target type."
+        targetNo:
+          type: "string"
+          description: "Backend target reference."
+        result:
+          anyOf:
+            - type: "object"
+              properties:
+                canonicalJson:
+                  type: "string"
+                sha256:
+                  type: "string"
+              required:
+                - "canonicalJson"
+                - "sha256"
+              additionalProperties: false
+            - type: "null"
+          description: "Frozen backend result, may be absent while pending."
+        error:
+          anyOf:
+            - type: "object"
+              properties:
+                key:
+                  type: "string"
+                retryable:
+                  type: "boolean"
+                traceNo:
+                  type: "string"
+                conflicts:
+                  anyOf:
+                    - type: "object"
+                      properties:
+                        canonicalJson:
+                          type: "string"
+                        sha256:
+                          type: "string"
+                      required:
+                        - "canonicalJson"
+                        - "sha256"
+                      additionalProperties: false
+                    - type: "null"
+              required:
+                - "key"
+                - "retryable"
+                - "traceNo"
+                - "conflicts"
+              additionalProperties: false
+            - type: "null"
+          description: "Backend error metadata, not a retry authorization."
+        createdAt:
+          type: "string"
+          description: "Creation Instant."
+        finishedAt:
+          type:
+            - "string"
+            - "null"
+          description: "Completion Instant, absent when unfinished."
+      required:
+        - "operationNo"
+        - "type"
+        - "status"
+        - "targetType"
+        - "targetNo"
+        - "result"
+        - "error"
+        - "createdAt"
+        - "finishedAt"
+      additionalProperties: false
+      description: "PrintOperation and FrozenJson preserve canonical JSON/hash without inventing execution counts."
 security:
   - bearerAuth: []
 paths:
@@ -26101,6 +26362,138 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/print/health":
+    get:
+      operationId: "printHealth"
+      summary: "Scoped fleet health from PrintMonitorDtos. */"
+      tags:
+        - "print"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PrintFleetHealth"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/print/incidents":
+    get:
+      operationId: "printIncidents"
+      summary: "Scoped incident page; backend status codes pass through unchanged. */"
+      tags:
+        - "print"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    properties:
+                      records:
+                        type: "array"
+                        items:
+                          "$ref": "#/components/schemas/PrintIncident"
+                      total:
+                        type: "integer"
+                      page:
+                        type: "integer"
+                      size:
+                        type: "integer"
+                    required:
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/print/reconciliations":
+    post:
+      operationId: "reconcilePrint"
+      summary: "Audited maintenance; same key is retained for exact-intent error recovery. */"
+      tags:
+        - "print"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PrintOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/print/operations/{operationNo}":
+    get:
+      operationId: "printOperation"
+      summary: "Read an operation only within the explicit target. */"
+      tags:
+        - "print"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PrintOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "operationNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/product/stats":
     get:
       operationId: "productStats"

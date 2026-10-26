@@ -74,6 +74,7 @@ class MediaRefCoverageTest {
 
     static {
         NOT_MEDIA.put("prn_template.content", "PrintDocumentPolicy.template/render只允许{{document}}与{{reprint}}的纯文本替换；内容打印为文本，不渲染上传图片");
+        NOT_MEDIA.put("biz_print_fact.receipt_intent_key", "BusinessPrintFactServiceImpl保存sourceType+sourceNo的SHA256作为收据业务意图幂等键；只含散列值，不是上传资产地址，注释中的意图不表示图片");
         NOT_MEDIA.put("ord_print_fact.receipt_intent_key", "OrderPrintFactRecorder将RECEIPT+身份+子单做SHA256，用于收据scene幂等；注释中的意图不是图片");
         NOT_MEDIA.put("sv_voucher.biz_no","储值凭证关联的业务号，注释中的意图是业务意图，不是图片");
         NOT_MEDIA.put("ent_use_allocation.operation_no","核销操作编号，关联使用意图，不是图片地址");

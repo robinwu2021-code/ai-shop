@@ -231,6 +231,17 @@
 
     <profiles>
         <profile>
+            <id>commerce-embedded</id>
+            <modules>
+                <module>../backend-plugins/shop-commerce-integration/commerce-api</module>
+                <module>../backend-plugins/shop-commerce-integration/commerce-core</module>
+                <module>../backend-plugins/shop-commerce-integration/commerce-web</module>
+                <module>../backend-plugins/shop-commerce-integration/commerce-channel</module>
+                <module>../backend-plugins/shop-commerce-integration/commerce-server</module>
+            </modules>
+        </profile>
+
+        <profile>
             <id>food-embedded</id>
             <modules>
                 <module>../backend-plugins/shop-industry-food/food-api</module>

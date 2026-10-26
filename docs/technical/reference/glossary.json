@@ -19502,6 +19502,12 @@
           "ar": "Safe retry"
         },
         {
+          "key": "printCenter.actualResults",
+          "zh-CN": "实际结果",
+          "en": "Actual results",
+          "ar": "النتائج الفعلية"
+        },
+        {
           "key": "printCenter.addAgent",
           "zh-CN": "创建Windows代理",
           "en": "Create Windows agent",
@@ -19622,6 +19628,12 @@
           "ar": "Enable"
         },
         {
+          "key": "printCenter.eventJournal",
+          "zh-CN": "事件记录",
+          "en": "Event journal",
+          "ar": "سجل الأحداث"
+        },
+        {
           "key": "printCenter.evidenceRef",
           "zh-CN": "受控证据或现场核验编号",
           "en": "Controlled evidence or verification reference",
@@ -19632,6 +19644,12 @@
           "zh-CN": "已有打印机编号（接管时填写）",
           "en": "Existing printer number (when adopting)",
           "ar": "رقم الطابعة الحالية (عند ربطها)"
+        },
+        {
+          "key": "printCenter.expectedResults",
+          "zh-CN": "预期结果",
+          "en": "Expected results",
+          "ar": "النتائج المتوقعة"
         },
         {
           "key": "printCenter.exportPdf",
@@ -19749,9 +19767,9 @@
         },
         {
           "key": "printCenter.order",
-          "zh-CN": "订单",
-          "en": "Order",
-          "ar": "Order"
+          "zh-CN": "业务单号",
+          "en": "Business reference",
+          "ar": "مرجع العملية"
         },
         {
           "key": "printCenter.orderEntry",
@@ -19956,6 +19974,12 @@
           "zh-CN": "模拟打印",
           "en": "Simulate printing",
           "ar": "محاكاة الطباعة"
+        },
+        {
+          "key": "printCenter.simulationDetails",
+          "zh-CN": "模拟详情",
+          "en": "Simulation details",
+          "ar": "تفاصيل المحاكاة"
         },
         {
           "key": "printCenter.simulationFailed",
@@ -20175,9 +20199,9 @@
         },
         {
           "key": "printCenter.submit",
-          "zh-CN": "生成订单小票",
-          "en": "Generate receipts",
-          "ar": "Generate receipts"
+          "zh-CN": "生成当前业务小票",
+          "en": "Generate selected business receipt",
+          "ar": "إنشاء إيصال العملية المحددة"
         },
         {
           "key": "printCenter.summary",
@@ -32047,6 +32071,13 @@
   ],
   "entities": [
     {
+      "table": "biz_print_fact",
+      "class": "BusinessPrintFact",
+      "zh": "Read-only receipt attachment; delivery remains owned by PrintService.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.order.printing"
+    },
+    {
       "table": "cmt_community",
       "class": "CmtCommunity",
       "zh": "社区（小区/网格）。",
@@ -36695,6 +36726,13 @@
         "name": "QRCODE_PRINT",
         "value": "QP",
         "zh": "店铺码印刷量登记。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "BUSINESS_PRINT_FACT",
+        "value": "BF",
+        "zh": "Immutable business printing fact (refund / stored-value receipt).",
         "module": "shop-base"
       },
       {

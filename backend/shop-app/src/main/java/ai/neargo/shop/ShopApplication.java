@@ -17,7 +17,7 @@ import org.springframework.context.annotation.FilterType;
 @ComponentScan(excludeFilters = {
         @ComponentScan.Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
         @ComponentScan.Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class),
-        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "ai\\.neargo\\.shop\\.food\\..*")
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "ai\\.neargo\\.shop\\.(food|commerce)\\..*")
 })
 public class ShopApplication {
 

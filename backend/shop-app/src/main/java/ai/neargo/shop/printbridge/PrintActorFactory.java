@@ -40,6 +40,9 @@ public class PrintActorFactory {
         for (var p : PRINT_PERMS) if (ctx.can(p)) granted.add(p);
         if (ctx.can(BizPerms.ORDER_VIEW) && !BizPerms.onlyCourierOrderView(ctx.staffRoles()))
             granted.add("SOURCE_ORDER_READ");
+        if (ctx.can(BizPerms.SV_RECHARGE_READ) && ctx.can(BizPerms.SV_ACCOUNT_READ))
+            granted.add("SOURCE_RECHARGE_READ");
+        if (ctx.can(BizPerms.AFTERSALE)) granted.add("SOURCE_REFUND_READ");
         return new PrintActor(
                 user.tenantNo(),
                 BizContext.requireMerchantNo(),

@@ -234,7 +234,9 @@
                          按比例给而不是写死 -Xmx：内存小的机器不会因此被撑爆。 -->
                     <!-- 时区与生产一致（国内节点，Asia/Shanghai）。积分统计等按 JVM 本地时间落库、按北京营业日取数，
                          开发机在别的时区时每天有几个小时两边的「今天」不是同一天，相关用例就固定变红。 -->
-                    <argLine>-XX:MaxRAMPercentage=40 -Duser.timezone=Asia/Shanghai</argLine>
+                    <!-- argLine overrides the parent value: retain its startup agent so Java 21
+                         test runs do not depend on permission to attach dynamically. -->
+                    <argLine>-XX:MaxRAMPercentage=40 -Duser.timezone=Asia/Shanghai -javaagent:"${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar"</argLine>
                     <!-- 用属性而不是写死：空的 <excludedGroups/> 在 profile 合并时不会覆盖父值 -->
                     <systemPropertyVariables>
                         <food.build.shape>${food.build.shape}</food.build.shape>
@@ -265,6 +267,18 @@
     </properties>
 
     <profiles>
+        <profile>
+            <id>commerce-embedded</id>
+            <dependencies>
+                <dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-core</artifactId>
+                    <version>${project.version}</version></dependency>
+                <dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-web</artifactId>
+                    <version>${project.version}</version></dependency>
+                <dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-channel</artifactId>
+                    <version>${project.version}</version></dependency>
+            </dependencies>
+        </profile>
+
         <!-- Each Surefire execution owns a fresh fork: close Spring contexts and release
              JVM/static caches between bounded batches. Override default-test rather than
              adding an unfiltered ninth run. A focused -Dtest uses the usual single run.

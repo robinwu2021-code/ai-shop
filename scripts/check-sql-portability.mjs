@@ -131,7 +131,7 @@ const RULES = [
 /** 扫 SQL 迁移，以及 Java 里手写的 SQL（@Select/@Update/... 与文本块） */
 function targets() {
   const out = [];
-  (function walk(d) {
+  function walk(d) {
     for (const f of readdirSync(d)) {
       const p = join(d, f);
       if (statSync(p).isDirectory()) {
@@ -141,7 +141,10 @@ function targets() {
         out.push(p);
       }
     }
-  })(join(ROOT, "backend"));
+  }
+  for (const directory of ["backend", "backend-plugins/shop-commerce-integration"]) {
+    if (existsSync(join(ROOT, directory))) walk(join(ROOT, directory));
+  }
   return out;
 }
 

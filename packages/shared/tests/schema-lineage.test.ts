@@ -297,6 +297,7 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  print_fact_no: "订单支付事实由ord_print_fact持有，退款和充值事实由biz_print_fact持有；完整打印引用按sourceType、租户、主体、门店、场景和版本选择来源，不能仅按同名编号跨表join。",
   trace_no: "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
   receipt_no: "权益迁移返回凭证与打印设备回执是独立证据族，必须按来源表选择所属域。",
   route_no: "打印管理路由目录与统一投递目标路由是不同层级；管理版本引用catalog，投递路由仍由统一服务持有。",

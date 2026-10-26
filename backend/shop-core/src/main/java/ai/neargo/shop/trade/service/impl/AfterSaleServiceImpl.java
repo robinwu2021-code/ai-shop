@@ -955,7 +955,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      *
      * @param cashMinor 本次实际退回的**现金**（分）；积分形式为 0
      */
-    private void settleRefundTerminal(OrdAfterSale as, String label, long cashMinor, boolean fullyRefunded) {
+    private ai.neargo.shop.trade.order.printing.BusinessPrintFactService printReceiptFacts;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPrintReceiptFacts(ai.neargo.shop.trade.order.printing.BusinessPrintFactService facts) { printReceiptFacts=facts; }
+
+    private void settleRefundTerminal(OrdAfterSale as, String label, long cashMinor, boolean fullyRefunded,
+            ai.neargo.shop.trade.order.refund.model.RefundPlan receiptPlan) {
         // 落终态。**回补的标记与状态一起写** —— 分两次写的话，
         // 中间挂掉会让重试再补一次，而多出来的那几件不会有任何地方报错
         as.setRefundedAt(System.currentTimeMillis());
@@ -973,6 +978,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                     Actor.SYSTEM, null, label, fullRefundContext());
         }
         if(!refundObligations.versioned("PRF-"+as.getAfterSaleNo())) returnBenefitsIfWholeOrderRefunded(sub);
+        if (printReceiptFacts != null && sub != null && sub.getStoreNo()!=null && !sub.getStoreNo().isBlank())
+            printReceiptFacts.recordPointsRefund(as,sub,receiptPlan,pointsRefundSource.inspect(as.getAfterSaleNo()));
         eventBus.publish(new OrderEvents.AfterSaleRefunded(as.getAfterSaleNo(), as.getSubOrderNo(),
                 as.getUserNo(), cashMinor));
     }
@@ -1746,7 +1753,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 pointsResources.prepare(as,plan);
             } else {
                 restoreStockIfReturned(as,plan);
-                settleRefundTerminal(as,cash==0?"积分退款已确认":"退款到账已核验",cash,result.progress()==RefundProgress.FULL);
+                settleRefundTerminal(as,cash==0?"积分退款已确认":"退款到账已核验",cash,result.progress()==RefundProgress.FULL,plan);
                 pointsRefundSource.commit(no);
                 pointsClosure.finalizeSubOrder(plan.subOrderNo());
             }
@@ -1774,7 +1781,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             var decision=new ai.neargo.shop.trade.order.refund.policy.RefundClosurePolicy().decide(facts);
             as.setRefundPaymentNo(payment);
             settleRefundTerminal(as,cash==0?"零现金退款权益已结清":"退款及权益已结清",cash,
-                    decision.targetOrderStatus()==ai.neargo.shop.trade.order.machine.order.OrderStatus.REFUNDED);
+                    decision.targetOrderStatus()==ai.neargo.shop.trade.order.machine.order.OrderStatus.REFUNDED,plan);
             pointsRefundSource.commit(no);
             pointsClosure.finalizeSubOrder(plan.subOrderNo());
         });

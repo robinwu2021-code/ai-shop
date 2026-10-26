@@ -10672,6 +10672,38 @@ CREATE TABLE IF NOT EXISTS ord_print_fact
     CONSTRAINT uk_ord_print_receipt_intent UNIQUE (tenant_no, entity_no, store_no, receipt_intent_key)
 );
 
+CREATE TABLE IF NOT EXISTS biz_print_fact
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    print_fact_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(64) NULL,
+    sub_order_no VARCHAR(64) NULL,
+    source_type VARCHAR(32) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    owner_event_hash VARCHAR(64) NOT NULL,
+    source_fact_key VARCHAR(64) NOT NULL,
+    receipt_intent_key VARCHAR(64) NULL,
+    biz_revision VARCHAR(64) NOT NULL,
+    scene VARCHAR(32) NOT NULL,
+    trigger_type VARCHAR(32) NOT NULL,
+    payload_schema_version INT NOT NULL,
+    source_occurred_at DATETIME(3) NOT NULL,
+    snapshot TEXT NOT NULL,
+    snapshot_hash VARCHAR(64) NOT NULL,
+    printability VARCHAR(16) NOT NULL,
+    block_code VARCHAR(64) NULL,
+    diagnostics TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_biz_print_fact_no UNIQUE (tenant_no, print_fact_no),
+    CONSTRAINT uk_biz_print_fact_source UNIQUE (tenant_no, entity_no, store_no, source_fact_key),
+    CONSTRAINT uk_biz_print_receipt_intent UNIQUE (tenant_no, entity_no, store_no, receipt_intent_key)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -16993,6 +17025,12 @@ INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updat
 INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PRINT_RESOLVE','OPS_SYSTEM','打印对账处理','打印管理',NULL,'ops:print:resolve','ops:print:resolve','IMPLEMENTED',0,NULL,'ACTION',990,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PRINT_RESOLVE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PRINT_RESOLVE' AND end_code='OPS');
 UPDATE mch_brand SET logo = REPLACE(logo, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE logo LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,gated_by,sort,created_at,updated_at)
+VALUES ('OPS_PRINTING','OPS_IAM','打印运营','打印运营','/printing','ops:print:read','ops:print:read','IMPLEMENTED',1,'P-17.1','MENU','shop.print.enabled',50,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
+SELECT 'SUPER_ADMIN','OPS_PRINTING','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL
+WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PRINTING' AND end_code='OPS');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+ <modelVersion>4.0.0</modelVersion>
+ <parent><groupId>ai.neargo.shop</groupId><artifactId>shop-parent</artifactId>
+ <version>0.1.0-SNAPSHOT</version><relativePath>../../../backend/pom.xml</relativePath></parent>
+ <artifactId>commerce-server</artifactId><dependencies><dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-core</artifactId><version>${project.version}</version></dependency>
+<dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-channel</artifactId><version>${project.version}</version></dependency>
+<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
+<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
+<dependency><groupId>com.mysql</groupId><artifactId>mysql-connector-j</artifactId><scope>runtime</scope></dependency>
+<dependency><groupId>org.flywaydb</groupId><artifactId>flyway-mysql</artifactId><scope>runtime</scope></dependency>
+</dependencies><build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId>
+ <configuration><mainClass>ai.neargo.shop.commerce.server.CommerceApplication</mainClass></configuration>
+ <executions><execution><goals><goal>repackage</goal></goals></execution></executions></plugin></plugins></build>
+</project>

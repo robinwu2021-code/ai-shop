@@ -92,6 +92,7 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
    * （少一条菜单，人只会以为自己没权限，不会报障）。
    */
   const ADDED_SINCE_MERGE = new Set<string>([
+    "/printing", // Newly delivered, permission and runtime gated printing operations.
     // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
     // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
     "/merchants?tab=self-operated",

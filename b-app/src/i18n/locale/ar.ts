@@ -203,6 +203,11 @@ export default {
     "networkUnknown": "النتيجة غير مؤكدة. تحقق من العملية الأصلية أو أعد محاولتها."
 },
   printCenter: {
+  "simulationDetails": "تفاصيل المحاكاة",
+  "expectedResults": "النتائج المتوقعة",
+  "actualResults": "النتائج الفعلية",
+  "eventJournal": "سجل الأحداث",
+
   "existingDeviceNo": "رقم الطابعة الحالية (عند ربطها)",
   "adoptionHint": "لربط طابعة مسجلة، أدخل رقمها الحالي لمشاركة قائمة مهامها. يجب التحقق من الأجهزة القديمة وربطها قبل إضافة طابعات.",
   "title": "مركز الطباعة",
@@ -213,9 +218,9 @@ export default {
   "refresh": "تحديث",
   "failed": "تعذرت العملية. حاول مرة أخرى.",
   "mockHint": "Demo data is active. Connect the backend to manage printers, run simulations and export PDFs.",
-  "order": "Order",
+  "order": "مرجع العملية",
   "summary": "Expected {expected} · Original confirmed {confirmed} · Replacements {resolved} · Uncertain {unknown}",
-  "submit": "Generate receipts",
+  "submit": "إنشاء إيصال العملية المحددة",
   "simulate": "محاكاة الطباعة",
   "simulationHint": "Simulation checks content and handling rules. It does not prove physical output.",
   "runSimulation": "تشغيل المحاكاة",

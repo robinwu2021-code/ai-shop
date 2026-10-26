@@ -205,6 +205,11 @@ export default {
     "networkUnknown": "结果待确认，请查询原单或按原操作重试。"
 },
   printCenter: {
+  "simulationDetails": "模拟详情",
+  "expectedResults": "预期结果",
+  "actualResults": "实际结果",
+  "eventJournal": "事件记录",
+
   "existingDeviceNo": "已有打印机编号（接管时填写）",
   "adoptionHint": "接管已登记的打印机时，请填写原编号以共用任务队列。有未核验的旧设备时，必须先完成接管，才能添加打印机。",
   "title": "打印中心",
@@ -215,9 +220,9 @@ export default {
   "refresh": "刷新",
   "failed": "操作失败，请重试",
   "mockHint": "当前为演示数据。连接真实后端后可管理打印、运行模拟和导出PDF。",
-  "order": "订单",
+  "order": "业务单号",
   "summary": "应打 {expected} · 原票完成 {confirmed} · 补票解决 {resolved} · 待核实 {unknown}",
-  "submit": "生成订单小票",
+  "submit": "生成当前业务小票",
   "simulate": "模拟打印",
   "simulationHint": "模拟仅校验内容和处理策略，不代表打印机已出纸。",
   "runSimulation": "运行模拟",

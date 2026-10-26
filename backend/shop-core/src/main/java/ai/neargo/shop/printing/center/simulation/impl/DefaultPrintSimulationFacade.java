@@ -124,13 +124,12 @@ public class DefaultPrintSimulationFacade implements PrintSimulationFacade {
                                             null,
                                             List.of());
                         } else {
-                            require(
-                                    a.dataScopes().contains("SOURCE_ORDER_READ"),
-                                    "print.sourceForbidden");
                             var ref = c.source().factRef();
                             require(
                                     ref != null && ref.scene().equals(c.scene()),
                                     "print.sourceMismatch");
+                            require(a.dataScopes().containsAll(PrintSourceDataScopes.required(ref.sourceType())),
+                                    "print.sourceForbidden");
                             access(
                                     new PrintScope(ref.tenantNo(), ref.entityNo(), ref.storeNo()),
                                     a,
