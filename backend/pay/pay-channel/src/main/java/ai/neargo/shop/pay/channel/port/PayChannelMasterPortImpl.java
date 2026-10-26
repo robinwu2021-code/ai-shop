@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.channel.port;
 
+import ai.neargo.shop.pay.channel.capability.ChannelCapabilityRegistry;
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 import ai.neargo.shop.spi.pay.PayChannelMasterPort;
@@ -11,11 +12,11 @@ import org.springframework.stereotype.Component;
 public class PayChannelMasterPortImpl implements PayChannelMasterPort {
 
     private final PayChannelMasterService master;
-    /** 判断通道有没有网关实现 —— 运营开着但没接入的通道下不了单 */
-    private final ai.neargo.shop.pay.channel.PayGatewayRouter router;
+    /** 判断通道有没有装能力实现 —— 运营开着但没接入的通道下不了单（W2：替代 PayGatewayRouter） */
+    private final ChannelCapabilityRegistry capabilities;
 
-    public PayChannelMasterPortImpl(PayChannelMasterService master, ai.neargo.shop.pay.channel.PayGatewayRouter router) {
-        this.router = router;
+    public PayChannelMasterPortImpl(PayChannelMasterService master, ChannelCapabilityRegistry capabilities) {
+        this.capabilities = capabilities;
         this.master = master;
     }
 
@@ -35,14 +36,14 @@ public class PayChannelMasterPortImpl implements PayChannelMasterPort {
 
     @Override
     public List<String> payableChannels(String market) {
-        // 与 enabledChannels 同一份筛选，再交上「网关装配了没有」
-        return enabledChannels(market).stream().filter(router::supports).toList();
+        // 与 enabledChannels 同一份筛选，再交上「能力实现装配了没有」
+        return enabledChannels(market).stream().filter(capabilities::supports).toList();
     }
 
     @Override
     public String currencyOf(String payChannel) {
         return master.find(payChannel)
-                .map(ai.neargo.shop.pay.channel.entity.SysPayChannel::getCurrency)
+                .map(SysPayChannel::getCurrency)
                 .filter(c -> c != null && !c.isBlank())
                 .orElse(null);
     }

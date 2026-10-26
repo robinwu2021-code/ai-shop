@@ -36,6 +36,9 @@ public final class JsonPayLogger implements PayLogger {
             f.put("channelCode", fail.channelCode());
         } else if (result instanceof ChannelResult.Unknown u) {
             f.put("reason", u.reason());
+        } else if (result instanceof ChannelResult.Pending p && p.channelStatus() != null) {
+            // 渠道原始状态 / 处理器的诊断（如微信 paySign 自验）：处理器不打日志，由这一行带出
+            f.put("channelStatus", p.channelStatus());
         }
         String line = write(f);
         switch (result) {

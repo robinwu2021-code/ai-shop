@@ -2,7 +2,6 @@ package ai.neargo.shop.pay.channel.config;
 
 import ai.neargo.shop.pay.channel.ChannelMessageRecorder;
 import ai.neargo.shop.pay.channel.PayGateway;
-import ai.neargo.shop.pay.channel.PayGatewayRouter;
 import ai.neargo.shop.pay.channel.api.ChannelGateway;
 import ai.neargo.shop.pay.channel.callback.CallbackLogRecorder;
 import ai.neargo.shop.pay.channel.capability.ChannelCapability;
@@ -42,11 +41,10 @@ import ai.neargo.shop.pay.channel.invoke.record.ChannelCallRecorder;
 import ai.neargo.shop.pay.channel.invoke.record.MybatisCallLogStore;
 import ai.neargo.shop.pay.channel.lifecycle.ChannelLifecycleManager;
 import ai.neargo.shop.pay.channel.lifecycle.MybatisLifecycleLogStore;
-import ai.neargo.shop.pay.channel.legacy.LegacyAccessModes;
 import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
-import ai.neargo.shop.pay.channel.legacy.LegacyGatewayHandler;
 import ai.neargo.shop.pay.channel.log.JsonPayLogger;
 import ai.neargo.shop.pay.channel.log.PayLogger;
+import ai.neargo.shop.pay.channel.platform.InProcessChannel;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayCallbackLogMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelCallLogMapper;
 import ai.neargo.shop.pay.mapper.ChannelMappers.PayChannelFollowupMapper;
@@ -66,8 +64,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * 渠道管线的装配（TDD-支付服务-I2渠道统一封装 S4）。拦截器顺序由各自的 {@code ORDER} 定，执行器构造时冻结；
- * 处理器 = 新写的 {@link ChannelHandler} bean + 每个现有 {@link PayGateway} 的过渡适配。
+ * 渠道管线的装配（TDD-支付服务-I2渠道统一封装 S4 · W2渠道层补完 S1–S5）。拦截器顺序由各自的 {@code ORDER} 定，执行器构造时冻结；
+ * 处理器由能力实现派生（{@link ChannelCapabilityRegistry}），真渠道的 HTTP 一律经 {@link RecordingChannelClient}。
  *
  * <p>「开着的产品都有处理器」那条启动校验读库，装在跑支付库迁移的进程里（shop-app {@code PayDataSourceConfig}），
  * 不在这里：独立的 pay-svc 不跑迁移，它的装配冒烟连的是空库。
@@ -148,13 +146,12 @@ public class ChannelPipelineConfiguration {
         return new JsonPayLogger();
     }
 
+    /** 处理器 = 单独写的 {@link ChannelHandler} bean + 每个能力实现一个（W2 S5：不再有旧网关的过渡适配） */
     @Bean
-    ChannelHandlerRegistry channelHandlerRegistry(List<ChannelHandler> handlers, List<PayGateway> gateways,
-                                                  ChannelProductCatalog catalog) {
-        List<ChannelHandler> all = new ArrayList<>(handlers);
-        for (PayGateway g : gateways) {
-            all.add(new LegacyGatewayHandler(g, LegacyAccessModes.of(g)));
-        }
+    ChannelHandlerRegistry channelHandlerRegistry(ObjectProvider<ChannelHandler> handlers,
+                                                  ChannelCapabilityRegistry capabilities, ChannelProductCatalog catalog) {
+        List<ChannelHandler> all = new ArrayList<>(handlers.orderedStream().toList());
+        all.addAll(capabilities.handlers());
         return new ChannelHandlerRegistry(all, catalog);
     }
 
@@ -172,15 +169,22 @@ public class ChannelPipelineConfiguration {
     }
 
     @Bean
-    LegacyChannelBridge legacyChannelBridge(ChannelGateway channelGateway, PayGatewayRouter router,
-                                            ChannelContextFactory contexts) {
-        return new LegacyChannelBridge(channelGateway, router, contexts);
+    LegacyChannelBridge legacyChannelBridge(ChannelGateway channelGateway, ChannelHandlerRegistry handlers,
+                                            ChannelCapabilityRegistry capabilities, ChannelContextFactory contexts) {
+        return new LegacyChannelBridge(channelGateway, handlers, capabilities, contexts);
     }
 
-    /** 本部署装了哪些渠道能力（替代按渠道名一张表的路由，W2 S1） */
+    /**
+     * 本部署装了哪些渠道能力（替代按渠道名一张表的 {@code PayGatewayRouter}，W2 S1 / S5）：真渠道的能力实现 bean
+     * （微信、支付宝，各自的配置按开关装）+ 每个进程内模拟银行（TEST / STUB / FREE 的 {@link PayGateway}）一个
+     * {@link InProcessChannel}。
+     */
     @Bean
-    ChannelCapabilityRegistry channelCapabilities(ObjectProvider<ChannelCapability> capabilities) {
-        return new ChannelCapabilityRegistry(capabilities.orderedStream().toList());
+    ChannelCapabilityRegistry channelCapabilities(ObjectProvider<ChannelCapability> capabilities,
+                                                  ObjectProvider<PayGateway> inProcessBanks) {
+        List<ChannelCapability> all = new ArrayList<>(capabilities.orderedStream().toList());
+        inProcessBanks.orderedStream().map(InProcessChannel::new).forEach(all::add);
+        return new ChannelCapabilityRegistry(all);
     }
 
     /** ChannelAccountContext 的唯一构造者（W2 S4） */

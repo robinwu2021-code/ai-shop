@@ -61,9 +61,9 @@ class OrderPayMethodTest {
     @Autowired
     private MerchantMappers.MchPaymentMapper paymentMapper;
 
-    /** 判据来自路由表：装配了才算接得上，与通道表的 enabled 位是两件事 */
+    /** 判据来自装配：装了能力实现才算接得上，与通道表的 enabled 位是两件事（W2：路由表退役，改问能力注册表） */
     @Autowired
-    private ai.neargo.shop.pay.channel.PayGatewayRouter router;
+    private ai.neargo.shop.pay.channel.capability.ChannelCapabilityRegistry router;
 
     private static int seq = 0;
 
@@ -187,7 +187,7 @@ class OrderPayMethodTest {
          * 点「立即支付」必然失败，而失败信息是「收款通道还没接通」，
          * 看起来像商家没进件。
          *
-         * 判据来自路由表（{@code PayGatewayRouter.supports}）而不是通道表的
+         * 判据来自装配（{@code ChannelCapabilityRegistry.supports}）而不是通道表的
          * enabled 位：enabled 说的是「运营开没开这条」，
          * 装配说的是「代码接没接这条」，**两者可以不一致，而不一致的那一侧就是坑**。
          * 2026-09-04 线上正是这个状态：支付宝 enabled=1 而网关没接。
