@@ -7,5 +7,6 @@
  <artifactId>commerce-web</artifactId><dependencies><dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-api</artifactId><version>${project.version}</version></dependency>
 <dependency><groupId>ai.neargo.shop</groupId><artifactId>shop-base-auth</artifactId><version>${project.version}</version></dependency>
 <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-autoconfigure</artifactId></dependency>
+<dependency><groupId>ai.neargo.shop</groupId><artifactId>job-api</artifactId><version>${project.version}</version></dependency>
 </dependencies>
 </project>

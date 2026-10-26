@@ -38,12 +38,12 @@ db+=table(['表','阶段','职责','Entity'],d.tables.map(t=>[t.name,t.phase,t.p
 db+='## L3 公共字段与逐表字段\n\n'+table(['公共字段','类型','规则'],d.common.fields)+d.common.types+'\n\n';
 db+='租户/主体/门店身份沿原体系；主体级表不伪造store_no。所有内部资源查询都验证可信entity/store/账号数据范围。模块内逻辑引用按关联双方scope验证，跨域不建物理外键；不让外部调用者传主体冒充授权。\n\n';
 for(const t of d.tables){db+=`### ${t.name} · ${t.purpose}\n\n阶段：${t.phase}。Entity：\`ai.neargo.shop.commerce.entity.${t.entity}\`。除下表外包含公共字段。\n\n`+table(['字段','类型与说明'],t.fields.map(f=>[f.name,f.definition]))+`键：${t.keys}。\n\n逻辑关联：${t.relations||'本域原请求事实'}。\n\n约束：${t.rules}\n\n`;}
-db+='## L4 事务与迁移边界\n\n'+d.common.lease+'\n\n原有fnb_menu_channel_binding继续归餐饮，新增connection引用通过增量迁移实施；旧fnb_external_mapping若已有运行映射，须先盘点和迁移证明，禁止双写；fnb_sync_batch是边缘离线恢复，不挪作渠道任务。\n\n迁移候选资源路径commerce-core/src/main/resources/db/commerce，历史表cim_flyway_history；首版V1实际编号及初始化流程在编码前核号，全量设计不是可执行迁移；实际V1/V2增量迁移及业务表数见实施进度，尚未在生产执行。禁止修改原已发布Flyway。业务表默认不物理分区；仅事件/尝试长期量大后按实际保留与索引评估，避免预先引入分区与唯一键冲突。\n\n快递包裹、退货包裹、成本估值和券消费若原owner缺合同，先补原域，不在此复制。statement/line仅结算对账事实，不是报表聚合表或资金账。生产report库、日报和经营指标最后实施。\n\n[总览](../TDD-统一销售渠道接入.md) · [API](./统一销售渠道接入-API清单.md) · [代码](./统一销售渠道接入-代码清单.md)\n';
+db+='## L4 事务与迁移边界\n\n'+d.common.lease+'\n\n原有fnb_menu_channel_binding继续归餐饮，新增connection引用通过增量迁移实施；旧fnb_external_mapping若已有运行映射，须先盘点和迁移证明，禁止双写；fnb_sync_batch是边缘离线恢复，不挪作渠道任务。\n\n迁移候选资源路径commerce-core/src/main/resources/db/commerce，历史表cim_flyway_history；首版V1实际编号及初始化流程在编码前核号，全量设计不是可执行迁移；实际V1/V2/V3增量迁移及业务表数见实施进度，尚未在生产执行。禁止修改原已发布Flyway。业务表默认不物理分区；仅事件/尝试长期量大后按实际保留与索引评估，避免预先引入分区与唯一键冲突。\n\n快递包裹、退货包裹、成本估值和券消费若原owner缺合同，先补原域，不在此复制。statement/line仅结算对账事实，不是报表聚合表或资金账。生产report库、日报和经营指标最后实施。\n\n[总览](../TDD-统一销售渠道接入.md) · [API](./统一销售渠道接入-API清单.md) · [代码](./统一销售渠道接入-代码清单.md)\n';
 files.set(base+'统一销售渠道接入-数据库设计.md',db);
 let api=header('统一销售渠道接入 API清单');
 api+=progress();
 api+='## L1 定位\n\n一套B端API服务零售、餐饮，C端点餐/购物继续沿原业务API，不另造渠道C端下单入口。OPS只做基础配置和授权支持，回调不使用商家登录认证。下列为完整目标路由，实际已编码子集见实施进度；不是运行中OpenAPI发现结果。\n\n';
-api+=`## L2 分类与公共合同\n\n公开/回调API共${d.apis.length}项；内部业务Port共${d.ports.length}组，内部方法不算公开API。\n\n`;
+api+=`## L2 分类与公共合同\n\n公开/回调API共${d.apis.length}项；内部业务Port及typed网关合同共${d.ports.length}组，内部方法不算公开API。\n\n`;
 api+=table(['分类','数量'],[...new Set(d.apis.map(a=>a.role))].map(role=>[role,d.apis.filter(a=>a.role===role).length]));
 api+=`B端返回沿原ApiResult包装，列表为PageData<T>，Controller直接返回VO；内部typed与Webhook/授权响应须按原wrapper机制排除，不套业务JSON。${d.common.pagination}\n\n`;
 api+='B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户管理为主体级管理员能力，不把当前门店角色当账号全部权限。OPS显式entityNo/storeNo仅作目标，仍按运营数据域交叉核验。普通GET无外部网络副作用；refresh/recover均POST且返回原动作。\n\n所有写动作需要Idempotency-Key，同键异hash或不兼容操作者冲突。对象修改/状态动作需要version；创建不传version。Req缺失/非法字段BAD_REQUEST，跨域资源按平台统一策略拒绝，旧版本CONFLICT，未获能力明确拒绝；不补假成功。所有枚举错误码需登记原ErrorCode与三语文案，本文不预造数值码。\n\n拟权限组：INTEGRATION/CATALOG/ORDER/FULFILLMENT/AFTER_SALE/FINANCE/ACCOUNT_ADMIN，映射到原BizPerms及授权模型，不能仅凭新增常量就给员工授权。权限实际代码在实施时登记，不建立第二套RBAC。\n\n';
@@ -88,6 +88,7 @@ code+='关键Mapper方法（均带可信scope）：Connection.selectByChannelSto
 const reqs=[...new Set(d.apis.map(a=>a.request))].sort();const vos=[...new Set(d.apis.map(a=>a.response.replace(/^PageData</,'').replace(/>$/,'')))].sort();
 code+=table(['类型','完整包名/模块'],[...reqs.map(x=>[x,'commerce-api / ai.neargo.shop.commerce.dto.'+x]),...vos.filter(x=>!reqs.includes(x)).map(x=>[x,'commerce-api / ai.neargo.shop.commerce.dto.'+x])] );
 const portTypes=[...new Set(d.ports.flatMap(p=>[...p.methods.matchAll(/\b[A-Z][A-Za-z0-9]*\b/g)].map(m=>m[0])))].filter(x=>!reqs.includes(x)&&!vos.includes(x)).sort();
+code+='本批目录Req/VO实际为`ai.neargo.shop.commerce.dto.CatalogContracts`中的嵌套record；查询筛选直接绑定RequestParam，候选Query类未单独落地。目录内部数据合同在`ChannelCatalogSourcePort`与`ChannelCatalogGateway`的嵌套record中，不存在同名dto副本。以下其余全量目标类型仍为候选。\n\n';
 code+='内部合同数据类型同在commerce-api的dto（凭据handle为spi受控类型，不参与JSON或公共响应）：'+portTypes.map(x=>'`'+x+'`').join('、')+'。\n\n';
 code+='### 跨域Port与提供方\n\n'+table(['唯一接口','提供方/方法'],d.ports.map(p=>[p.package+'.'+p.name,p.owner+'；'+p.methods]));
 code+='接口放commerce-api而非把commerce反向依赖塞入shop-base。餐饮实现放`ai.neargo.shop.food.port`，零售来源/订单实现归相应product/trade的`.port`；确需跨域只读组合放宿主`ai.neargo.shop.commercebridge.port`并只调用Port。实现可命名FoodChannelCatalogSourcePortImpl、RetailChannelCatalogSourcePortImpl、FoodChannelOrderIngestPortImpl、RetailChannelOrderIngestPortImpl；远程实现放commerce-channel的`.port`，保持同一SPI。所有本地/远程实现按sourceOwner和部署形态注册，不按客户端输入选择。\n\n### 平台网关及辅助类\n\n外部网关SPI在`ai.neargo.shop.spi.commerce`：CommerceGateway仅标识/能力；CatalogGateway、AvailabilityGateway、InventoryGateway、OrderGateway、FulfillmentGateway、AfterSaleGateway、RedemptionGateway、StatementGateway分别提供typed操作，不能用Object+action字符串代替类型安全。平台实现继承统一基类并只声明实际支持接口。\n\n';
@@ -108,8 +109,8 @@ code+=table(['模块/完整类名','职责'],[
  ['commerce-core / ai.neargo.shop.commerce.event.ChannelCatalogSourceChangedConsumer','消费原来源版本，合并未发意图'],
  ['commerce-core / ai.neargo.shop.commerce.event.ChannelFulfillmentChangedConsumer','消费已提交履约事实，原动作身份去重'],
  ['commerce-core / ai.neargo.shop.commerce.event.ChannelOperationRequestedConsumer','原Outbox唤醒，不另建发送队列账'],
- ['commerce-core / ai.neargo.shop.commerce.job.CommerceRecoveryJob','唯一常规定时入口：漏同步检查/到期状态/UNKNOWN/导入恢复；任务平台锁和DBfence'],
- ['commerce-core / ai.neargo.shop.commerce.config.CommerceAutoConfiguration','关闭/集成/独立装配；Mapper/迁移本域隔离'],
+ ['commerce-web / ai.neargo.shop.commerce.job.CommerceRecoveryJob','唯一常规定时入口：漏同步检查/到期状态/UNKNOWN/导入恢复；任务平台锁和DBfence'],
+ ['commerce-core / ai.neargo.shop.commerce.config.CommerceCoreAutoConfiguration','关闭/集成/独立装配；Mapper/迁移本域隔离'],
  ['commerce-web / ai.neargo.shop.commerce.config.CommerceWebAutoConfiguration','B/OPS/callback及远程Service选择'],
  ['commerce-server / ai.neargo.shop.commerce.server.CommerceApplication','独立宿主启动，沿父POM，无新框架版本']]);
 code+='## L4 实施检查及验收清单\n\n下列是全量目标类清单，已编码子集见实施进度；未列入实际范围的类仍PLANNED，不把方法清单当已编译结果。新工程必须扩展架构扫描面：Controller不依赖Mapper/core、core不依赖web/channel及行业实现、唯一spi、无环、默认关闭和独立模式唯一写者。\n\n'+table(['AC','计划测试方法','执行状态'],d.acceptance.map(a=>[a[0],a[2],'全量验收尚未完成；子集证据见TDD']));

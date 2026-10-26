@@ -9,7 +9,7 @@
 | 阅读入口 | 内容 |
 |---|---|
 | [数据库设计](./design/统一销售渠道接入-数据库设计.md) | 31张候选表、公共字段、唯一键、历史及归属 |
-| [API清单](./design/统一销售渠道接入-API清单.md) | 70个公开/回调路由、输入输出、权限及11组SPI |
+| [API清单](./design/统一销售渠道接入-API清单.md) | 70个公开/回调路由、输入输出、权限及12组SPI/typed网关 |
 | [代码清单](./design/统一销售渠道接入-代码清单.md) | 模块、完整包名、Controller/Service/Mapper、DTO及计划测试 |
 | [结构化真源](./design/schema/commerce-integration-design.json) | 同一份表/API/Service/AC引用，不与实现清单混用 |
 
@@ -118,6 +118,18 @@ Review Focus：重放异payload与异actor；重复连接跨主体；无网关�
 
 Review Focus：同键异账号；回调伪造/过期/重放；授权实际账号不匹配；URL包含密钥或任意回跳；发送超时不重发；早到回调不被晚HTTP结果回退；撤权未确认不恢复ACTIVE。
 
+### C1目录同步执行计划（续批）
+
+- [x] C1.1 先写目录范围/来源核验/快照/同步阻断/恢复及HTTP测试源码，整批编码后统一编译，再集中专项。
+- [x] C1.2 V3增量迁移六表scope/source/policy/snapshot/run/run_item；V1/V2冻结。首版remote_scope_key固定STORE，由服务器确定，同一连接唯一。来源仅FOOD或RETAIL且与连接一致；保存时事务外核验原owner，事务内锁连接/范围复核版本，禁止混合目录。
+- [x] C1.3 类型化ChannelCatalogSourcePort捕获完整已发布目录，原价/税/配料/套餐/时段均由owner给证据，不重新定价；ChannelSourceValidationPort逐来源核对规范身份和修订、hash、期限和回执。预览保存不可变规范快照、来源证明及连接修订，4MiB/10000销售条目上限；首版payload_json存本域表、payload_ref为DB业务引用，以后再迁对象存储。
+- [x] C1.4 COM-015～026共12路由：范围创建/读写、策略读写、预览、手动提交/查询/明细和取消未发任务。保留主体属主和门店核验；查询用数据库分页，发送前必须重新核验来源、快照hash/期限、连接ACTIVE/授权CATALOG及有效期。
+- [x] C1.5 手动/自动共用QUEUED run。dispatch获得范围锁才分配generation与active operation，提交attempt后事务外发送。SUBMITTED/UNKNOWN或未终结可写子任务持续阻断；恢复只按原operation查询，不盲重发；终结PARTIAL允许后续全量修复，lastConfirmed只记历史全量成功。
+- [x] C1.6 typed发布通知按原事件键去重并核验新修订，合并尚未发送的自动意图；定时策略、queued dispatch和原任务query共用CommerceRecoveryService有界入口。单个CommerceRecoveryJob沿原JobHandler注册，默认不启用；首批仅目录，onAvailability不开放，不新增每平台cron。
+- [x] C1.7 统一集成/server编译和打包，集中受影响专项、原生MySQL迁移/唯一键、消融与一次独立复核，修复后本地提交。真实FOOD/RETAIL来源提供方、获准外部Gateway与连接激活适配未接入时不伪造目录或发送；本批不宣称真实平台联验。
+
+Review Focus：跨店/跨主体/混合来源；陈旧或过期来源与报价；预览后改配置；UNKNOWN不重复发送；lease过期不解除远端阻断；晚attempt/generation不覆盖新状态；PARTIAL不是全量一致；默认关闭无job与mapper。
+
 ## §3 选型与取舍
 
 1. 统一commerce域替代零售/餐饮各自平台系统；外部交易接入与内部资金/库存归属保持独立。
@@ -145,8 +157,8 @@ Review Focus：同键异账号；回调伪造/过期/重放；授权实际账号
 |---|---|---|
 | AC01 | ChannelAuthorizationScopeTest#rejectCrossEntityAccountAndReplayState | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
 | AC02 | ChannelConnectionIdentityTest#credentialRotationKeepsRemoteBusinessIdentity | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
-| AC03 | CatalogPublicationTest#aggregateSourcesWithoutFullReplaceCollision | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
-| AC04 | SyncRunStateTest#lateAckCannotAdvanceGenerationOrHidePartialState | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
+| AC03 | CatalogSynchronizationTest#fullStoreScopeSourcesAndSnapshotAreVersionedAndScoped、retailUsesSameKernelAndCannotMixFood；CatalogDocumentPolicyTest | C1内核子集PASS；真实来源提供方和平台适配未联验，不标全量AC完成 |
+| AC04 | CatalogSynchronizationTest#submittedAndUnknownKeepRemoteBarrierUntilTerminalProof、lateSenderCannotOverwriteRecoveredPartialOrReleaseNewGeneration及复核4项 | C1持久化阻断/恢复子集PASS；真实远端异步协议仍待适配器合同验证 |
 | AC05 | ResourceMappingTest#resolveOriginalRevisionAndRejectAmbiguousLine | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
 | AC06 | ChannelInventoryPublicationTest#rejectCallerQuantityAndUseOriginalOwner | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
 | AC07 | ChannelWebhookRecoveryTest#lostResponseDoesNotRepeatNonIdempotentAction | NOT_RUN；未创建Java实现，集中测试阶段补证据 |
@@ -163,7 +175,7 @@ Review Focus：同键异账号；回调伪造/过期/重放；授权实际账号
 
 ## §6 对账二 设计到实现
 
-全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计13个基础/授权/查询/回调路由、9张迁移表、5个业务Service与本域journal、身份和远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。未生产迁移或发布。通用授权引擎已交付；真实授权适配器、目录完整同步、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
+全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计25个基础/授权/目录/任务/回调路由、15张迁移表、10个业务Service与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。未生产迁移或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、历史资源映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
 
 ## L4 官方资料及待核验
 
@@ -259,3 +271,40 @@ V1逐字保持冻结。V2新增授权修订、动作、调用证据三表，并�
 真实平台真实性、凭据安全存储、外部账号证明及撤权确认由获准typed适配器提供，没有默认成功实现。真实认证链启动、生产驱动并发、独立远程客户端、UNKNOWN/崩溃/过期恢复worker和凭据轮换清理仍是后续门禁。
 
 下一批继续Task2的餐饮/零售目录来源核验、catalog scope/source/snapshot/run持久化、手动/自动共用同步任务和有界恢复；其后才是原owner订单及履约。Keeta等真实平台继续只规划，不启用资金或券，不推送部署。
+
+
+## C1目录同步内核交付记录（2026-10-26）
+
+### L1 本批结果
+
+新增六表与COM-015～026十二路由；目录范围、来源修订、预览、策略、手动排队、自动通知、恢复和明细均有实际Service/Mapper。累计十五张业务迁移表、二十五个已编码路由。V1/V2保持字节不变，只新增V3。价格、税、配料组合、套餐、图片和餐牌时段由原行业typed来源返回，渠道不创建第二份商品/订单/库存账。
+
+### L2 功能与调用
+
+| 操作 | 核心方法 | 约束 |
+|---|---|---|
+| 全店范围及来源 | CatalogScopeService.createScope/saveSources | 一个连接一个STORE；FOOD/RETAIL互斥；主体/门店及可信来源核验 |
+| 冻结预览 | CatalogPublicationService.preview | 最长五分钟；4MiB/10000条；完整文档和原价/税/库存策略引用；配置版本与连接修订冻结 |
+| 手动同步 | SyncRunService.submit/cancelQueued | 提交与发送分别进行；只能取消QUEUED；未决外部动作不能人工reason解锁 |
+| 自动策略 | SyncPolicyService.savePolicy、CommerceRecoveryService.onPublished | 默认关；发布通知原键去重、事务外原owner核验、合并尚未消费通知；建任务事务内复核策略版本和enabled |
+| 恢复 | CommerceRecoveryService.recoverDue、CommerceRecoveryJob | 单个默认关闭平台Job；最多100项一批，通常50；恢复只查询原动作；阻断队列不挤占原动作查询预算 |
+| 状态/明细 | getScope/getRun/listRuns/listItems | lastConfirmed是历史；当前配置/连接修订不同不标CONSISTENT；分项仅记录平台实际返回 |
+
+首版定时核验当前已选修订、缺少本地发送的意图和原任务状态，不具备自动发现新source head或读取远端实时菜单漂移的合同；来源改版由原owner的可信发布通知推进。onAvailability=true明确拒绝，未接库存变化事件。关闭策略阻止新自动意图，不取消此前已提交任务；可单独取消QUEUED。策略保存、自动提交和恢复按account→connection→scope→run→operation顺序串行，同一范围策略修改也由scope锁保护。
+
+### L3 验证与复核
+
+- 初次受影响Java专项59项通过；另补4项目录文档规则、4项复核/关联回归，累计67个唯一专项均已通过；修复后仅复测目录/HTTP相关23项，0失败0跳过。没有执行全仓后端测试。
+- 复核三项Important及一个关联边界均先复现再修复：队列饥饿、旧成功覆盖新配置STALE、捕获中关闭策略仍建任务、相同内容但新配置被自动去重跳过。原失败与修复通过日志分别在/private/tmp/commerce-catalog-review-red.log、commerce-catalog-binding-red.log、commerce-catalog-review-final-green.log。这些回归同时证明移除对应保护会失败，不以镜像断言替代业务场景。
+- 过期预览、来源hash变化、跨主体/混合行业、缺授权、原价格非法、超时不重发、迟到attempt只留证、PARTIAL历史确认、配料价格/库存依据、套餐环、跨夜时段及严格HTTP JSON均有源码验证。
+- 原生隔离MySQL V1/V2/V3十五表及唯一约束通过；不使用业务库凭据。H2事务场景与MySQL CLI DDL证据不冒充生产JDBC并发验收。
+- 最终宿主/独立server编译打包、设计生成10项、文档规范8项及SQL方言守卫以末尾最终核验记录为准。
+
+### L4 保留门禁与下一批
+
+本批不接真实Keeta或其他平台，不注册默认成功来源/网关，不开放连接激活；C0 OAuth的UNKNOWN/过期/崩溃恢复尚未由本目录worker接管。真实行业来源桥接、历史资源映射、外部订单Webhook持久化/验签/ACK、接单及原订单导入仍是后续任务，之后再接履约/售后。独立服务远程客户端/内部端点、生产驱动并发、真实认证链与供应商协议另验。
+
+已完成一次独立复核并关闭三项Important，关联稳定哈希边界同批修复；不做第二轮复核。当前开发期间分支并入了打印发布提交，渠道交付仅提交本批白名单文件，不改动或回退打印工作。未推送、未生产建表、未部署。
+
+
+最终核验：集成宿主shop-app与独立commerce-server的`-DskipTests package`通过（/private/tmp/commerce-catalog-final-package.log）；修复范围23项通过（/private/tmp/commerce-catalog-review-final-green.log）；MySQL扩展约束通过（/private/tmp/commerce-catalog-mysql.log）；设计生成10项、文档8项、SQL方言与`git diff --check`通过。共67个唯一受影响Java专项证据由原59项集中、目录文档4项与新增4项回归组成；复测不重复计入。V1/V2对原交付提交无差异。执行本地文件白名单提交，不推送部署。

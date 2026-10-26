@@ -2,6 +2,9 @@ package ai.neargo.shop.commerce.mapper;
 
 import ai.neargo.shop.commerce.entity.CimAccount;
 import ai.neargo.shop.commerce.entity.CimAuthorizationRevision;
+import ai.neargo.shop.commerce.entity.CimCatalogScope;
+import ai.neargo.shop.commerce.entity.CimCatalogSnapshot;
+import ai.neargo.shop.commerce.entity.CimCatalogSource;
 import ai.neargo.shop.commerce.entity.CimConnectionRevision;
 import ai.neargo.shop.commerce.entity.CimOperation;
 import ai.neargo.shop.commerce.entity.CimOperationAttempt;
@@ -9,6 +12,9 @@ import ai.neargo.shop.commerce.entity.CimProductProfile;
 import ai.neargo.shop.commerce.entity.CimProvider;
 import ai.neargo.shop.commerce.entity.CimRequestJournal;
 import ai.neargo.shop.commerce.entity.CimStoreConnection;
+import ai.neargo.shop.commerce.entity.CimSyncPolicy;
+import ai.neargo.shop.commerce.entity.CimSyncRun;
+import ai.neargo.shop.commerce.entity.CimSyncRunItem;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
@@ -35,6 +41,18 @@ public final class CommerceMappers {
     public interface OperationMapper extends BaseMapper<CimOperation> {}
 
     public interface OperationAttemptMapper extends BaseMapper<CimOperationAttempt> {}
+
+    public interface CatalogScopeMapper extends BaseMapper<CimCatalogScope> {}
+
+    public interface CatalogSourceMapper extends BaseMapper<CimCatalogSource> {}
+
+    public interface SyncPolicyMapper extends BaseMapper<CimSyncPolicy> {}
+
+    public interface CatalogSnapshotMapper extends BaseMapper<CimCatalogSnapshot> {}
+
+    public interface SyncRunMapper extends BaseMapper<CimSyncRun> {}
+
+    public interface SyncRunItemMapper extends BaseMapper<CimSyncRunItem> {}
 
     public interface RequestJournalMapper extends BaseMapper<CimRequestJournal> {
         @Insert(

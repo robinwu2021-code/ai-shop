@@ -508,7 +508,7 @@
         },
         {
           "name": "remote_consistency",
-          "definition": "VARCHAR(24)UNKNOWN/CONSISTENT/PENDING/PARTIAL/DRIFT"
+          "definition": "VARCHAR(24)UNKNOWN/CONSISTENT/PENDING/PARTIAL/STALE/SUBMITTED/DRIFT"
         },
         {
           "name": "generation",
@@ -525,6 +525,10 @@
         {
           "name": "remote_pending_evidence",
           "definition": "JSONNULL未决平台菜单/图片等变更子任务及查回证据"
+        },
+        {
+          "name": "store_no",
+          "definition": "VARCHAR(32)可信连接门店，便于服务端分页"
         }
       ],
       "keys": "U(scope_no)；U(connection_no,remote_scope_key)",
@@ -619,11 +623,19 @@
         {
           "name": "next_check_at",
           "definition": "DATETIME(3)NULLUTC"
+        },
+        {
+          "name": "store_no",
+          "definition": "VARCHAR(32)可信门店"
+        },
+        {
+          "name": "pending_event_ref",
+          "definition": "VARCHAR(128)NULL已核验原发布通知，CAS合并"
         }
       ],
       "keys": "U(policy_no)；U(scope_no)；I(enabled,next_check_at)",
       "relations": "catalog_scope",
-      "rules": "自动只同步获准的已发布事实。只合并未发送意图，不覆盖已发送任务；资金及非幂等动作不能配置为盲重试。"
+      "rules": "自动只同步获准的已发布事实。只合并未发送意图，不覆盖已发送任务；资金及非幂等动作不能配置为盲重试。 C1默认关闭；仅onPublish和五分钟来源核验，onAvailability=true明确拒绝。定时任务仅一个平台Job，默认停用。"
     },
     {
       "name": "cim_catalog_snapshot",
@@ -653,7 +665,7 @@
         },
         {
           "name": "payload_ref",
-          "definition": "VARCHAR(256)受控对象存储引用"
+          "definition": "VARCHAR(256)受控负载引用；首版DB:snapshotNo"
         },
         {
           "name": "content_hash",
@@ -674,11 +686,23 @@
         {
           "name": "expires_at",
           "definition": "DATETIME(3)预览有效期限，具体TTL用配置；提交必须验证"
+        },
+        {
+          "name": "payload_json",
+          "definition": "LONGTEXT冻结原目录，首版最大4MiB"
+        },
+        {
+          "name": "scope_version",
+          "definition": "BIGINT来源配置版本"
+        },
+        {
+          "name": "connection_revision_no",
+          "definition": "VARCHAR(32)冻结连接修订"
         }
       ],
       "keys": "U(snapshot_no)；I(scope_no,content_hash)；I(expires_at)",
       "relations": "catalog_scope",
-      "rules": "确定性规范化后计算摘要；平台协议字段从快照转换。现有MenuPublicationSnapshot不直接授予价格/库存权威。快照含原价格来源及税口径，不自行估价。 相同内容可重新捕获新的有效证据，不以(scope,hash)唯一键阻止过期后的合法预览。"
+      "rules": "确定性规范化后计算摘要；平台协议字段从快照转换。现有MenuPublicationSnapshot不直接授予价格/库存权威。快照含原价格来源及税口径，不自行估价。 相同内容可重新捕获新的有效证据，不以(scope,hash)唯一键阻止过期后的合法预览。 C1哈希覆盖按原owner给定顺序的稳定业务内容及源内容hash，原价格/税/价格回执保留；验证有效期/验证回执号刷新不改变菜单hash。冻结完整payload另存本域JSON，不把hash当不透明TTL校验凭证。源端应确定性输出数组顺序。"
     },
     {
       "name": "cim_sync_run",
@@ -749,6 +773,10 @@
         {
           "name": "failure_code",
           "definition": "VARCHAR(64)NULL"
+        },
+        {
+          "name": "operation_no",
+          "definition": "VARCHAR(32)NULL发送时绑定原动作"
         }
       ],
       "keys": "U(run_no)；I(entity_no,store_no,created_at,id)；I(status,next_recovery_at,id)",
@@ -1171,6 +1199,14 @@
         {
           "name": "error_code",
           "definition": "VARCHAR(64)NULL"
+        },
+        {
+          "name": "late_evidence_ref",
+          "definition": "VARCHAR(256)NULL过期尝试迟到证据，首次追加后不覆盖"
+        },
+        {
+          "name": "late_outcome",
+          "definition": "VARCHAR(24)NULL迟到结论，仅留证不推进当前状态"
         }
       ],
       "keys": "U(attempt_ref)；U(operation_no,attempt_no)；I(provider_task_ref)",
@@ -2142,7 +2178,7 @@
       "method": "createScope",
       "request": "CreateCatalogScopeReq",
       "response": "CatalogScopeVO",
-      "params": "connectionNo/remoteScopeKey/name/sourceRefs；完整替换范围按平台能力限制",
+      "params": "connectionNo/remoteScopeKey=STORE/name/sourceRefs[{sourceOwner,sourceRef,selectionRevision,priority}]",
       "tables": [
         "cim_catalog_scope",
         "cim_catalog_source",
@@ -2164,7 +2200,7 @@
       "method": "listScopes",
       "request": "CatalogScopeQuery",
       "response": "PageData<CatalogScopeVO>",
-      "params": "connectionNo/status/page/size",
+      "params": "page/size/connectionNo?/status?；仅ACTIVE范围",
       "tables": [
         "cim_catalog_scope"
       ],
@@ -2184,7 +2220,7 @@
       "method": "getScope",
       "request": "CatalogScopeRef",
       "response": "CatalogScopeVO",
-      "params": "scopeNo",
+      "params": "scopeNo；由上下文验证当前门店",
       "tables": [
         "cim_catalog_scope",
         "cim_catalog_source"
@@ -2205,7 +2241,7 @@
       "method": "saveSources",
       "request": "SaveCatalogSourcesReq",
       "response": "CatalogScopeVO",
-      "params": "version/sourceOwner+sourceRef+selectionRevision；无原始价格覆盖",
+      "params": "version/sourceRefs；完整替换来源配置，已发送动作不撤销",
       "tables": [
         "cim_catalog_scope",
         "cim_catalog_source",
@@ -2227,7 +2263,7 @@
       "method": "getPolicy",
       "request": "CatalogScopeRef",
       "response": "SyncPolicyVO",
-      "params": "scopeNo",
+      "params": "scopeNo；返回默认关闭策略",
       "tables": [
         "cim_sync_policy"
       ],
@@ -2247,7 +2283,7 @@
       "method": "savePolicy",
       "request": "SaveSyncPolicyReq",
       "response": "SyncPolicyVO",
-      "params": "version/enabled/onPublish/onAvailability/scheduledCheck/debounceSeconds/recoveryProfile",
+      "params": "version/enabled/onPublish/onAvailability=false/scheduledCheck/debounceSeconds/recoveryProfile=QUERY_ONLY",
       "tables": [
         "cim_sync_policy",
         "cim_request_journal"
@@ -2268,11 +2304,11 @@
       "method": "preview",
       "request": "PreviewCatalogReq",
       "response": "CatalogPreviewVO",
-      "params": "sourceRevisions/expectedScopeVersion；返回snapshotNo/hash/diff/blockers/expiresAt",
+      "params": "expectedScopeVersion；返回snapshotNo/hash/currency/itemCount/expiresAt/scopeVersion/document；无调用者价格/库存覆盖",
       "tables": [
         "cim_catalog_snapshot",
         "cim_catalog_source",
-        "cim_resource_mapping_revision"
+        "cim_catalog_scope"
       ],
       "ac": "AC03",
       "phase": "SYNC",
@@ -2290,7 +2326,7 @@
       "method": "submit",
       "request": "SubmitSyncRunReq",
       "response": "SyncRunVO",
-      "params": "scopeNo/snapshotNo/hash/expectedScopeVersion/reason；首版只提交CATALOG，其他类型走类型化接口",
+      "params": "scopeNo/snapshotNo/hash/expectedScopeVersion/reason；QUEUED无generation，发送时才分配",
       "tables": [
         "cim_sync_run",
         "cim_operation",
@@ -2312,7 +2348,7 @@
       "method": "listRuns",
       "request": "SyncRunQuery",
       "response": "PageData<SyncRunVO>",
-      "params": "connectionNo/type/triggerType/status/from/to/page/size",
+      "params": "page/size/connectionNo?/status?；数据库分页",
       "tables": [
         "cim_sync_run"
       ],
@@ -2332,7 +2368,7 @@
       "method": "getRun",
       "request": "SyncRunRef",
       "response": "SyncRunVO",
-      "params": "runNo；期望/已提交/最后全量确认及remoteConsistency分别输出",
+      "params": "runNo；状态查询无远端副作用",
       "tables": [
         "cim_sync_run",
         "cim_catalog_scope",
@@ -2354,7 +2390,7 @@
       "method": "listItems",
       "request": "SyncItemQuery",
       "response": "PageData<SyncRunItemVO>",
-      "params": "runNo/attemptNo/objectType/result/page/size",
+      "params": "runNo/page/size；原尝试结果逐项分页",
       "tables": [
         "cim_sync_run_item"
       ],
@@ -2374,7 +2410,7 @@
       "method": "cancelQueued",
       "request": "CancelQueuedSyncReq",
       "response": "SyncRunVO",
-      "params": "version/reason；仅未发出动作，非远端撤回",
+      "params": "version/reason；仅尚未发送QUEUED可取消，不取消远端任务",
       "tables": [
         "cim_sync_run",
         "cim_operation",
@@ -3319,7 +3355,7 @@
       "name": "ChannelCatalogSourcePort",
       "package": "ai.neargo.shop.spi.commerce",
       "owner": "FOOD/RETAIL",
-      "methods": "capture(CaptureCatalogCommand)->ChannelCatalogSnapshot",
+      "methods": "owner()->Owner；capture(CaptureCommand)->Document（ValidatedSource/Section/Offer/Sku/Price/OptionGroup/BundleGroup/Image/Schedule均为嵌套record）",
       "purpose": "完整目录、价格来源、税口径、修订及依赖；不授予平台重算价格权限",
       "ac": "AC03"
     },
@@ -3383,7 +3419,7 @@
       "name": "ChannelSourceValidationPort",
       "package": "ai.neargo.shop.spi.commerce",
       "owner": "各资源原owner或仅调用原Port的宿主只读组合",
-      "methods": "validate(SourceValidationCommand)->SourceValidationReceipt",
+      "methods": "validate(Source)->Validation",
       "purpose": "校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。",
       "ac": "AC05"
     },
@@ -3402,6 +3438,14 @@
       "methods": "begin(AuthorizationContext)->Start；exchange(context,code)->Grant；revoke(RevocationContext)->Revocation",
       "purpose": "原意图先提交，事务外OAuth/撤权；网关必须绑定原外部账号、凭据安全引用及可信回执；无真实提供方不授权",
       "ac": "AC01"
+    },
+    {
+      "name": "ChannelCatalogGateway",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "commerce-channel获准协议适配器",
+      "methods": "supportsQuery()->boolean；publish(Publication)->Result；query(Publication,taskRef)->Result",
+      "purpose": "冻结目录发送与原动作查回；返回operation/generation/hash绑定和allWritesTerminal及原回执；没有默认实现，不在超时后盲重发",
+      "ac": "AC03"
     }
   ],
   "acceptance": [
@@ -3639,7 +3683,7 @@
     ]
   },
   "implementation": {
-    "status": "C0_AUTHORIZATION_ENGINE_VERIFIED",
+    "status": "C1_CATALOG_ENGINE_VERIFIED",
     "moduleRoot": "backend-plugins/shop-commerce-integration",
     "migration": "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
     "tables": [
@@ -3651,7 +3695,13 @@
       "cim_request_journal",
       "cim_authorization_revision",
       "cim_operation",
-      "cim_operation_attempt"
+      "cim_operation_attempt",
+      "cim_catalog_scope",
+      "cim_catalog_source",
+      "cim_sync_policy",
+      "cim_catalog_snapshot",
+      "cim_sync_run",
+      "cim_sync_run_item"
     ],
     "apiIds": [
       "COM-001",
@@ -3666,13 +3716,26 @@
       "COM-007",
       "COM-008",
       "COM-035",
-      "COM-070"
+      "COM-070",
+      "COM-015",
+      "COM-016",
+      "COM-017",
+      "COM-018",
+      "COM-019",
+      "COM-020",
+      "COM-021",
+      "COM-022",
+      "COM-023",
+      "COM-024",
+      "COM-025",
+      "COM-026"
     ],
-    "limitations": "B端仍仅主体属主；基础列表仅分页，候选高级筛选仍明确拒绝。累计13个基础/授权/查询/回调路由，9张迁移业务表。真实授权和门店归属提供方均未注册；通用OAuth回调目前只接受state/code/error，授权须有明确有效期，其他协议须扩展合同后启用。授权URL只允许既定公开参数，回跳绑定登记地址。UNKNOWN/过期/崩溃主动恢复worker、目录同步、订单导入、履约售后及真实平台仍未开放；独立业务远程客户端和内部端点未完成。未生产建表、推送或部署。",
-    "tests": "44项受影响Java专项通过；集成宿主与server编译通过，最终打包通过（TDD留证）；原生隔离MySQL V1+V2及约束通过；设计10、文档8通过。两项复核问题4个回归RED→GREEN；真实平台/生产驱动并发和完整认证链未联验。",
+    "limitations": "B端仍仅主体属主；累计25个基础/授权/目录/任务路由，15张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。独立模式远程业务客户端/内部端点、订单导入、履约售后、资金对账及真实平台仍未开放。未生产建表、推送或部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。",
+    "tests": "累计67项受影响Java专项通过，复核修复后仅复测相关23项。三项Important及一个关联边界均RED→GREEN；原生隔离MySQL V1/V2/V3十五表及约束通过；宿主/server编译打包、设计10、文档8、SQL守卫证据见TDD最终核验。不等同真实适配器、生产JDBC并发或完整认证链验收。",
     "migrations": [
       "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
-      "commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql"
+      "commerce-core/src/main/resources/db/commerce/V2__commerce_authorization_operations.sql",
+      "commerce-core/src/main/resources/db/commerce/V3__commerce_catalog_synchronization.sql"
     ]
   }
 }
