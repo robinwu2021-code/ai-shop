@@ -252,6 +252,26 @@ public interface CampaignPort {
     void commit(String userNo, String orderNo, Discount discount);
 
     /**
+     * 下单成功后回执<b>限时特价与买赠</b>用掉的份数（与订单同事务，放在 {@link #commit} 旁边）。
+     *
+     * <p>这两种的优惠不在 {@code Discount} 里 —— 特价改的是商品价（{@link #flashPrices}）、赠品是加行（{@link #giftRules}）——
+     * 所以 {@link #commit} 从来扣不到它们的限量：「限量 100 份」等于不限。按货号回执，由营销侧按下单那一刻
+     * 胜出的活动去扣（与价、赠品出自同一次挑选），一单一个活动扣一份。
+     *
+     * <p>老实现为空：{@code mkt_campaign} 没有限量这个概念。
+     */
+    default void commitItemBenefits(String userNo, String orderNo, List<ItemBenefitUse> uses) {
+    }
+
+    /**
+     * 这一单里一件享受了特价或买赠的货。
+     *
+     * @param gift false = 按限时特价成交；true = 触发了买赠（送出了赠品）
+     */
+    record ItemBenefitUse(String goodsNo, String merchantNo, boolean gift) {
+    }
+
+    /**
      * 这一单在这家店用上的活动要额外送多少积分（自己组合的「送积分」，原型 s11）。
      * 付款成功时随常规积分一起发 —— 同一次发放、同一笔费用金，不另走一条发分路径。
      * 老模型没有这个概念，缺省 0。

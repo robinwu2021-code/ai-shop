@@ -101,6 +101,16 @@ public class PmtCoupon extends BaseEntity {
         return CouponCalculation.discount(benefitMode, benefitValue, benefitCapMinor, base);
     }
 
+    /**
+     * 此刻开始了没有。<b>绝对有效期的券在开始时刻之前不能用，不论它是怎么到手的</b>。
+     *
+     * <p>领券中心按窗口判「能不能领」，定向发放却不判开始时刻；而持有那一张（{@code PmtUserCoupon#usableAt}）
+     * 只记了到期时刻 —— 「双十一当天可用」的券提前定向发出去，当天就能抵扣。相对有效期的券领到即开始。
+     */
+    public boolean startedAt(long now) {
+        return !ABSOLUTE.equals(validityMode) || startAt == null || startAt <= now;
+    }
+
     /** 一张能用几次。次卡（豆浆 5 杯）就是这一列 &gt; 1 */
     public int timesTotalOrOne() {
         return timesTotal == null || timesTotal < 1 ? 1 : timesTotal;

@@ -172,8 +172,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                     ComboHit h = comboHit(a, g);
                     if (h != null && (g.pointsRewardsEnabled() || h.points() == 0)
                             && (h.off() > 0 || h.points() > 0)) {
+                        // 预算只剩一部分时按剩余封顶（理由见下面减钱那一支）
                         out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
-                                h.off(), 1, 0L, null, a.getName()).atStore(g.storeNo()));
+                                Math.min(h.off(), a.budgetLeft()), 1, 0L, null, a.getName()).atStore(g.storeNo()));
                     }
                     continue;
                 }
@@ -183,6 +184,12 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 }
                 // 减不能超过商品额：券那边同一条规矩，否则会减出负数
                 long off = Math.min(nz(a.getBenefitAmountMinor()), g.goodsAmount());
+                /*
+                 * 也不能超过剩余预算：预算剩 4 元时照减 6 元，扣预算那条带条件的 UPDATE 会拒掉这一单，
+                 * 而活动看起来还「有预算」—— 之后每一单都减、每一单都扣不进去，预算形同虚设。
+                 * 按剩余封顶，最后一单正好把预算用完，活动随之结束。
+                 */
+                off = Math.min(off, a.budgetLeft());
                 if (off > 0) {
                     out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
                             off, 1, 0L, null, a.getName()).atStore(g.storeNo()));
@@ -215,10 +222,34 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getOrderNo, orderNo)
                         .eq(ai.neargo.shop.promotion.entity.PmtApply::getPromoType,
                                 CampaignPort.AppliedDiscount.ACTIVITY)));
+        // 平台活动按出资方记两行，份数只跟平台那一行退（见 releasePlatform）：先记下哪些活动有平台那一行
+        java.util.Set<String> withPlatformRow = new java.util.HashSet<>();
+        for (var r : rows) {
+            if (ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM.equals(r.getFunder())) {
+                withPlatformRow.add(r.getPromoNo() + "|" + r.getEntityNo());
+            }
+        }
         for (var r : rows.stream().sorted(java.util.Comparator.comparing(PmtApply::getPromoNo)
                 .thenComparing(r -> r.getStoreNo() == null ? "" : r.getStoreNo())).toList()) {
             if (unifiedOrders != null && unifiedOrders.release(r)) continue;
+            /*
+             * 作废这一行。**幂等就在这里**：逻辑删之后下次查不到，也就不会再退一次；
+             * 并且**先删、删中了才退** —— 两次关单并发撞在一起时，只有删中那一行的那次退量，
+             * 不会两边都退。不物理删：这张表是对账与活动效果的账本，删了就查不出「当时发生过什么」。
+             */
+            int claimed = DataScopeContext.executeWithoutScope(() -> applyMapper.deleteById(r.getId()));
+            // 超发那一行没占份数也没占预算（见 commit）：作废即可，退了就是退走别人的那一份
+            if (claimed != 1 || PmtApply.QUOTA_OVERRUN.equals(r.getRedeemMode())) {
+                continue;
+            }
             long amount = r.getAmountMinor() == null ? 0L : r.getAmountMinor();
+            PmtActivity a = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                    Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, r.getPromoNo())
+                            .last("limit 1")));
+            if (a != null && a.isPlatform()) {
+                releasePlatform(r, amount, withPlatformRow.contains(r.getPromoNo() + "|" + r.getEntityNo()));
+                continue;
+            }
             /*
              * 配额按「份」退，一单占一份（与 commit 那边的 qty 同一口径）。
              * **用 SQL 直接减并且不许减成负数** —— 并发下两次关单撞在一起时，
@@ -231,11 +262,41 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                             .setSql("quota_used = quota_used - 1")
                             .setSql("budget_used_minor = GREATEST(budget_used_minor - "
                                     + amount + ", 0)")));
-            /*
-             * 作废这一行。**幂等就在这里**：逻辑删之后下次查不到，也就不会再退一次。
-             * 不物理删：这张表是对账与活动效果的账本，删了就查不出「当时发生过什么」。
-             */
-            DataScopeContext.executeWithoutScope(() -> applyMapper.deleteById(r.getId()));
+        }
+    }
+
+    /**
+     * 平台活动这一单的退回：**与 {@link #commitPlatform} 扣的逐项对上**。
+     *
+     * <p>那边扣了两样：报名单上的一份（quota_used）、活动上平台出的那部分钱（budget_used_minor += platformMinor），
+     * 并按出资方记了两行 pmt_apply。此前这里按商家活动的口径去减<b>活动</b>的 quota_used —— 平台活动那一列恒为 0，
+     * 带条件的 UPDATE 一行不中，连同预算一起没退：每取消一单，报名永久少一份、平台预算永久少一笔。
+     *
+     * <ul>
+     *   <li>平台那一行：退预算（金额就是当时的 platformMinor），并退报名的那一份 —— 份数只跟这一行退，
+     *       一单只占一份，不能两行各退一次；</li>
+     *   <li>商家那一行：commitPlatform 没有为它扣过任何东西，作废即可。</li>
+     * </ul>
+     * 平台出资为 0 的单（全由商家出）只有商家那一行，份数跟它退。
+     */
+    private void releasePlatform(PmtApply r, long amount, boolean orderHasPlatformRow) {
+        boolean platformRow = ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM.equals(r.getFunder());
+        if (!platformRow && orderHasPlatformRow) {
+            return;
+        }
+        if (platformRow && amount > 0) {
+            DataScopeContext.executeWithoutScope(() -> activityMapper.update(null,
+                    Wrappers.<PmtActivity>lambdaUpdate()
+                            .eq(PmtActivity::getActivityNo, r.getPromoNo())
+                            .setSql("budget_used_minor = GREATEST(budget_used_minor - " + amount + ", 0)")));
+        }
+        if (enrollmentMapper != null) {
+            DataScopeContext.executeWithoutScope(() -> enrollmentMapper.update(null,
+                    Wrappers.<ai.neargo.shop.promotion.entity.PmtEnrollment>lambdaUpdate()
+                            .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getActivityNo, r.getPromoNo())
+                            .eq(ai.neargo.shop.promotion.entity.PmtEnrollment::getEntityNo, r.getEntityNo())
+                            .apply("quota_used > 0")
+                            .setSql("quota_used = quota_used - 1")));
         }
     }
 
@@ -491,10 +552,25 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Override
     public Map<String, Long> flashPrices(String userNo, Collection<String> goodsNos) {
+        Map<String, Long> out = new HashMap<>();
+        flashWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, nz(a.getBenefitAmountMinor())));
+        return out;
+    }
+
+    @Override
+    public Map<String, String> flashActivityOf(String userNo, Collection<String> goodsNos) {
+        Map<String, String> out = new HashMap<>();
+        flashWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, a.getActivityNo()));
+        return out;
+    }
+
+    /** 每件货此刻胜出的限时特价活动（取最低价）。价与「扣哪个活动的量」出自同一次挑选，不会对不上 */
+    private Map<String, PmtActivity> flashWinners(String userNo, Collection<String> goodsNos) {
         if (goodsNos == null || goodsNos.isEmpty()) {
             return Map.of();
         }
-        Map<String, Long> out = new HashMap<>();
+        Map<String, PmtActivity> out = new HashMap<>();
+        Map<String, Boolean> owned = new HashMap<>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_PRICE)) {
             /*
              * ★ **团购的成团价不是限时特价**（2026-09-18）。
@@ -517,12 +593,11 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 continue;
             }
             for (String goodsNo : goodsOf(a.getActivityNo())) {
-                if (!goodsNos.contains(goodsNo)) {
+                if (!goodsNos.contains(goodsNo) || !ownedBy(a, goodsNo, owned)) {
                     continue;
                 }
-                long price = nz(a.getBenefitAmountMinor());
                 // **取最低价**：与满减「取最优」同一侧 —— 都往对用户有利的方向走
-                out.merge(goodsNo, price, Math::min);
+                out.merge(goodsNo, a, (x, y) -> nz(y.getBenefitAmountMinor()) < nz(x.getBenefitAmountMinor()) ? y : x);
             }
         }
         return out;
@@ -530,10 +605,26 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
 
     @Override
     public Map<String, CampaignPort.GiftRule> giftRules(String userNo, Collection<String> goodsNos) {
+        Map<String, CampaignPort.GiftRule> out = new HashMap<>();
+        giftWinners(userNo, goodsNos).forEach((goodsNo, a) ->
+                out.put(goodsNo, new CampaignPort.GiftRule(nz(a.getTriggerQty()), nz(a.getBenefitQty()))));
+        return out;
+    }
+
+    @Override
+    public Map<String, String> giftActivityOf(String userNo, Collection<String> goodsNos) {
+        Map<String, String> out = new HashMap<>();
+        giftWinners(userNo, goodsNos).forEach((goodsNo, a) -> out.put(goodsNo, a.getActivityNo()));
+        return out;
+    }
+
+    /** 每件货此刻胜出的买赠活动（送得最多那个） */
+    private Map<String, PmtActivity> giftWinners(String userNo, Collection<String> goodsNos) {
         if (goodsNos == null || goodsNos.isEmpty()) {
             return Map.of();
         }
-        Map<String, CampaignPort.GiftRule> out = new HashMap<>();
+        Map<String, PmtActivity> out = new HashMap<>();
+        Map<String, Boolean> owned = new HashMap<>();
         for (PmtActivity a : liveByGoods(goodsNos, PmtActivity.BENEFIT_GIFT)) {
             if (!audienceHits(a, a.getEntityNo(), userNo)) {
                 continue;
@@ -544,17 +635,64 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                 continue;
             }
             for (String goodsNo : goodsOf(a.getActivityNo())) {
-                if (!goodsNos.contains(goodsNo)) {
+                if (!goodsNos.contains(goodsNo) || !ownedBy(a, goodsNo, owned)) {
                     continue;
                 }
-                CampaignPort.GiftRule cur = out.get(goodsNo);
+                PmtActivity cur = out.get(goodsNo);
                 // 送得最多的那个赢 —— 同样往对用户有利的一侧走
-                if (cur == null || giftM > cur.giftM()) {
-                    out.put(goodsNo, new CampaignPort.GiftRule(buyN, giftM));
+                if (cur == null || giftM > nz(cur.getBenefitQty())) {
+                    out.put(goodsNo, a);
                 }
             }
         }
         return out;
+    }
+
+    @Override
+    @Transactional
+    public boolean commitItemUsage(String userNo, String orderNo, String activityNo, String merchantNo, int qty) {
+        if (orderNo == null || activityNo == null || qty <= 0) {
+            return true;
+        }
+        // 同一单同一活动只扣一次：下单链路重试、补偿重放都不能把份数多扣一遍
+        Long done = DataScopeContext.executeWithoutScope(() -> applyMapper.selectCount(Wrappers.<PmtApply>lambdaQuery()
+                .eq(PmtApply::getOrderNo, orderNo)
+                .eq(PmtApply::getPromoType, PmtApply.ACTIVITY)
+                .eq(PmtApply::getPromoNo, activityNo)));
+        if (done != null && done > 0) {
+            return true;
+        }
+        CampaignPort.AppliedActivity it = new CampaignPort.AppliedActivity(activityNo, merchantNo, 0L, qty);
+        int affected = DataScopeContext.executeWithoutScope(() ->
+                activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                        .eq(PmtActivity::getActivityNo, activityNo)
+                        .in(PmtActivity::getBenefitType, PmtActivity.BENEFIT_PRICE, PmtActivity.BENEFIT_GIFT)
+                        .and(w -> w.isNull(PmtActivity::getQuota)
+                                .or().apply("quota_used + {0} <= quota", qty))
+                        .setSql("quota_used = quota_used + " + qty)));
+        if (affected == 0) {
+            // 与 commit 同一口径：不翻脸、记一行超发的账（金额 0：优惠在价里）
+            log.warn("[活动] 特价/买赠限量已满仍命中：活动 {} 订单 {} 多发 {} 份", activityNo, orderNo, qty);
+            insertApply(userNo, orderNo, it, 0L, ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT,
+                    PmtApply.QUOTA_OVERRUN);
+            return false;
+        }
+        // 一份一行：release 按行退，一行退一份（与 commit 那边「一单一份」同一口径）
+        for (int i = 0; i < qty; i++) {
+            insertApply(userNo, orderNo, it, 0L, ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT);
+        }
+        PmtActivity a = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+                Wrappers.<PmtActivity>lambdaQuery().eq(PmtActivity::getActivityNo, activityNo).last("limit 1")));
+        if (a != null && a.getQuota() != null && nz(a.getQuotaUsed()) >= a.getQuota()) {
+            DataScopeContext.executeWithoutScope(() ->
+                    activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                            .eq(PmtActivity::getActivityNo, activityNo)
+                            .eq(PmtActivity::getStatus, PmtActivity.RUNNING)
+                            .set(PmtActivity::getStatus, PmtActivity.ENDED)
+                            .set(PmtActivity::getEndedReason, PmtActivity.ENDED_QUOTA)));
+            log.info("[活动] {} 到量自动结束", activityNo);
+        }
+        return true;
     }
 
     @Override
@@ -578,18 +716,32 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                             // 限量为空 = 不限；有限量时必须还装得下这一单
                             .and(w -> w.isNull(PmtActivity::getQuota)
                                     .or().apply("quota_used + {0} <= quota", it.qty()))
+                            /*
+                             * 预算同理：没设（空或 0）= 不限；设了就必须还装得下这一单的钱。
+                             * 此前这里无条件累加 —— 预算只是一个会一直涨的计数，从不拦任何一单。
+                             */
+                            .and(w -> w.isNull(PmtActivity::getBudgetMinor)
+                                    .or().le(PmtActivity::getBudgetMinor, 0)
+                                    .or().apply("budget_used_minor + {0} <= budget_minor", it.amountMinor()))
                             .setSql("quota_used = quota_used + " + it.qty())
                             .setSql("budget_used_minor = budget_used_minor + "
                                     + it.amountMinor())));
             if (affected == 0) {
                 /*
-                 * 没抢到最后一份。**不抛异常**：订单已经按算价时的金额落库了，
+                 * 没抢到最后一份（或预算装不下这一单）。**不抛异常**：订单已经按算价时的金额落库了，
                  * 这时候翻脸会让用户付了钱却下不成单 —— 那比多发一份的损失大得多。
                  * 记 WARN，让运营看到「超发了几份」：那是限量与并发之间必然存在的
                  * 一点点重叠，不是错误。
                  */
                 log.warn("[活动] 限量已满仍命中：活动 {} 订单 {} 多发 {} 份",
                         it.activityNo(), orderNo, it.qty());
+                /*
+                 * 只记 WARN 不够：这一单确实减了钱，活动效果、对账、订单详情的「优惠依据」却都查不到它，
+                 * 超发了几份只能翻日志。照样记一行，标明是超发（redeem_mode = QUOTA_OVERRUN）——
+                 * 份数与预算都没占，取消时 release 也不退。
+                 */
+                insertApply(userNo, orderNo, it, it.amountMinor(),
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT, PmtApply.QUOTA_OVERRUN);
                 continue;
             }
             /*
@@ -623,6 +775,15 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                                 .set(PmtActivity::getStatus, PmtActivity.ENDED)
                                 .set(PmtActivity::getEndedReason, PmtActivity.ENDED_QUOTA)));
                 log.info("[活动] {} 到量自动结束", it.activityNo());
+            } else if (a != null && !a.hasBudgetLeft()) {
+                // 预算用完同样收尾，并说清是预算停的（ENDED_BUDGET 此前定义了却从没人写）
+                DataScopeContext.executeWithoutScope(() ->
+                        activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
+                                .eq(PmtActivity::getActivityNo, it.activityNo())
+                                .eq(PmtActivity::getStatus, PmtActivity.RUNNING)
+                                .set(PmtActivity::getStatus, PmtActivity.ENDED)
+                                .set(PmtActivity::getEndedReason, PmtActivity.ENDED_BUDGET)));
+                log.info("[活动] {} 预算用完自动结束", it.activityNo());
             }
         }
     }
@@ -643,6 +804,16 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         .setSql("quota_used = quota_used + " + it.qty())));
         if (affected == 0) {
             log.warn("[平台活动] 报名份数已满仍命中：报名 {} 订单 {}", it.enrollmentNo(), orderNo);
+            // 与商家活动同一处理：按出资方照样记账、标超发，份数与预算不占、取消不退
+            long merchantPart = it.amountMinor() - it.platformMinor();
+            if (it.platformMinor() > 0) {
+                insertApply(userNo, orderNo, it, it.platformMinor(),
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_PLATFORM, PmtApply.QUOTA_OVERRUN);
+            }
+            if (merchantPart > 0) {
+                insertApply(userNo, orderNo, it, merchantPart,
+                        ai.neargo.shop.promotion.entity.PmtCoupon.BY_MERCHANT, PmtApply.QUOTA_OVERRUN);
+            }
             return;
         }
         DataScopeContext.executeWithoutScope(() -> activityMapper.update(null, Wrappers.<PmtActivity>lambdaUpdate()
@@ -658,6 +829,11 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
     }
 
     private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder) {
+        insertApply(userNo, orderNo, it, amount, funder, ai.neargo.shop.promotion.entity.PmtCoupon.REDEEM_ORDER);
+    }
+
+    private void insertApply(String userNo, String orderNo, CampaignPort.AppliedActivity it, long amount, String funder,
+                             String redeemMode) {
         PmtApply row = new PmtApply();
         row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY));
         row.setPromoType(PmtApply.ACTIVITY);
@@ -665,7 +841,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
         row.setUserNo(userNo);
         row.setEntityNo(it.merchantNo());
         row.setOrderNo(orderNo);
-        row.setRedeemMode(ai.neargo.shop.promotion.entity.PmtCoupon.REDEEM_ORDER);
+        row.setRedeemMode(redeemMode);
         row.setAmountMinor(amount);
         row.setFunder(funder);
         row.setAppliedAt(System.currentTimeMillis());
@@ -694,7 +870,9 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a.getStoreNo() != null && !a.getStoreNo().equals(storeNo)) {
                 continue;
             }
-            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            // 预算与限量同等对待：用完的活动不再参与算价（只设预算的长期活动靠这一条才停得下来）
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()
+                    || !a.hasBudgetLeft()) {
                 continue;
             }
             out.add(a);
@@ -718,12 +896,37 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a == null || !benefitType.equals(a.getBenefitType())) {
                 continue;
             }
-            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()
+                    || !a.hasBudgetLeft()) {
                 continue;
             }
             out.add(a);
         }
         return out;
+    }
+
+    /** 货的归属（见 {@link #ownedBy}）。setter 注入：切片测试里没有它时不过滤，运行时恒在 */
+    private ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setProductFacts(ai.neargo.shop.spi.product.ProductScopeFactsPort productFacts) {
+        this.productFacts = productFacts;
+    }
+
+    /**
+     * 这件货是不是活动主体自己的。
+     *
+     * <p>保存时已经拦住了别家的货（ActivityServiceImpl#assertGoodsOwned），这里是<b>纵深防御</b>：
+     * 库里可能已有拦截之前存下的行，而按货号反查活动不看活动归属 —— A 店一个 ¥0.01 特价
+     * 就会改掉 B 店那件货在全平台的价。一次调用内按「主体|货号」缓存。
+     */
+    private boolean ownedBy(PmtActivity a, String goodsNo, Map<String, Boolean> cache) {
+        if (productFacts == null) {
+            return true;
+        }
+        String tenant = a.getTenantNo() == null || a.getTenantNo().isBlank() ? "MAIN" : a.getTenantNo();
+        return cache.computeIfAbsent(tenant + "|" + a.getEntityNo() + "|" + goodsNo, k -> a.getEntityNo() != null
+                && productFacts.goodsOwned(tenant, a.getEntityNo(), java.util.Set.of(goodsNo)));
     }
 
     private List<String> goodsOf(String activityNo) {
