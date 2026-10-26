@@ -1,0 +1,3626 @@
+{
+  "schemaVersion": 1,
+  "status": "DRAFT_NOT_IMPLEMENTED",
+  "date": "2026-10-26",
+  "domain": "commerce",
+  "moduleRoot": "backend-plugins/shop-commerce-integration",
+  "package": "ai.neargo.shop.commerce",
+  "tablePrefix": "cim_",
+  "apiPrefix": "/biz/x/commerce",
+  "platforms": [
+    [
+      "UBER_EATS",
+      "TW",
+      "INSTANT_DELIVERY",
+      "官方Marketplace合同；账号权限待核验"
+    ],
+    [
+      "FOODPANDA",
+      "TW",
+      "INSTANT_DELIVERY",
+      "餐饮POS合同待确认；不能套用商超Partner API"
+    ],
+    [
+      "KEETA",
+      "AE",
+      "INSTANT_DELIVERY",
+      "已查阅标准文档；按用户决定仅规划真实接入"
+    ],
+    [
+      "TALABAT",
+      "AE",
+      "INSTANT_DELIVERY",
+      "POS合同与地区权限待确认"
+    ],
+    [
+      "DELIVEROO",
+      "AE",
+      "INSTANT_DELIVERY",
+      "菜单/订单合同；接单模式按账号确认"
+    ],
+    [
+      "NOON_FOOD",
+      "AE",
+      "INSTANT_DELIVERY",
+      "待获取官方获准合同"
+    ],
+    [
+      "CAREEM_FOOD",
+      "AE",
+      "INSTANT_DELIVERY",
+      "待获取官方获准合同"
+    ],
+    [
+      "SMILES_FOOD",
+      "AE",
+      "INSTANT_DELIVERY",
+      "待获取官方获准合同"
+    ],
+    [
+      "TAOBAO",
+      "CN",
+      "MARKETPLACE",
+      "商品/交易/物流/售后按应用权限核验"
+    ],
+    [
+      "DOUYIN",
+      "CN",
+      "ECOMMERCE",
+      "抖店协议及权限核验"
+    ],
+    [
+      "DOUYIN",
+      "CN",
+      "LOCAL_LIFE",
+      "生活服务验券/核销协议独立核验"
+    ]
+  ],
+  "tables": [
+    {
+      "name": "cim_provider",
+      "phase": "BASE",
+      "purpose": "平台品牌目录",
+      "entity": "CimProvider",
+      "fields": [
+        {
+          "name": "provider_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "provider_code",
+          "definition": "VARCHAR(32)品牌代码"
+        },
+        {
+          "name": "name",
+          "definition": "VARCHAR(128)展示名"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)启用状态"
+        }
+      ],
+      "keys": "U(provider_code)；U(provider_no)",
+      "relations": "",
+      "rules": "品牌不决定行业、产品、币种或履约；无实现网关不能因启用目录就可调用。"
+    },
+    {
+      "name": "cim_product_profile",
+      "phase": "BASE",
+      "purpose": "平台业务产品与获准协议定义",
+      "entity": "CimProductProfile",
+      "fields": [
+        {
+          "name": "profile_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "provider_no",
+          "definition": "VARCHAR(32)平台"
+        },
+        {
+          "name": "product_code",
+          "definition": "VARCHAR(32)业务产品"
+        },
+        {
+          "name": "market",
+          "definition": "VARCHAR(8)市场"
+        },
+        {
+          "name": "protocol_code",
+          "definition": "VARCHAR(64)协议档案"
+        },
+        {
+          "name": "capability_definition",
+          "definition": "JSON非凭据能力定义"
+        },
+        {
+          "name": "identity_schema_version",
+          "definition": "INT平台身份归一版本"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)状态"
+        },
+        {
+          "name": "identity_namespace",
+          "definition": "VARCHAR(128)协议远端身份命名空间；不可随Token或本地账号变化"
+        },
+        {
+          "name": "store_identity_scope",
+          "definition": "VARCHAR(24)GLOBAL/ACCOUNT；仅获准协议可确定"
+        }
+      ],
+      "keys": "U(profile_no)；U(provider_no,product_code,market,protocol_code)",
+      "relations": "provider",
+      "rules": "实现能力、协议能力、账号授权和门店开关取交集；未核验不能开能力。配置变更影响历史时追加档案而非改旧语义。"
+    },
+    {
+      "name": "cim_account",
+      "phase": "BASE",
+      "purpose": "主体所有的渠道授权账号",
+      "entity": "CimAccount",
+      "fields": [
+        {
+          "name": "account_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)经营主体"
+        },
+        {
+          "name": "profile_no",
+          "definition": "VARCHAR(32)协议"
+        },
+        {
+          "name": "external_account_ref",
+          "definition": "VARCHAR(128)稳定外部账号"
+        },
+        {
+          "name": "active_authorization_no",
+          "definition": "VARCHAR(32)NULL活动授权修订"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)状态"
+        }
+      ],
+      "keys": "U(account_no)；U(entity_no,profile_no,external_account_ref)",
+      "relations": "product_profile",
+      "rules": "Token刷新不改变账号身份；敏感凭据仅安全存储引用。一个账号可关联多渠道门店。"
+    },
+    {
+      "name": "cim_authorization_revision",
+      "phase": "BASE",
+      "purpose": "不可变授权范围与凭据引用",
+      "entity": "CimAuthorizationRevision",
+      "fields": [
+        {
+          "name": "authorization_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "account_no",
+          "definition": "VARCHAR(32)账号"
+        },
+        {
+          "name": "revision_no",
+          "definition": "BIGINT修订"
+        },
+        {
+          "name": "credential_ref",
+          "definition": "VARCHAR(128)安全存储引用"
+        },
+        {
+          "name": "granted_scopes",
+          "definition": "JSON实际获准范围"
+        },
+        {
+          "name": "capability_hash",
+          "definition": "CHAR(64)核验摘要"
+        },
+        {
+          "name": "authorized_at",
+          "definition": "DATETIME(3)UTC"
+        },
+        {
+          "name": "expires_at",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)授权状态"
+        }
+      ],
+      "keys": "U(authorization_no)；U(account_no,revision_no)",
+      "relations": "account",
+      "rules": "凭据轮换和撤权可追溯；刷新Token在原安全存储中处理，原已获授权证据不静默改写。"
+    },
+    {
+      "name": "cim_store_connection",
+      "phase": "BASE",
+      "purpose": "稳定外部门店与本地主体门店绑定",
+      "entity": "CimStoreConnection",
+      "fields": [
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)经营主体"
+        },
+        {
+          "name": "store_no",
+          "definition": "VARCHAR(32)本地门店"
+        },
+        {
+          "name": "profile_no",
+          "definition": "VARCHAR(32)协议"
+        },
+        {
+          "name": "account_no",
+          "definition": "VARCHAR(32)账号"
+        },
+        {
+          "name": "external_store_ref",
+          "definition": "VARCHAR(128)外部门店"
+        },
+        {
+          "name": "channel_store_key",
+          "definition": "CHAR(64)稳定远端业务身份"
+        },
+        {
+          "name": "active_revision_no",
+          "definition": "VARCHAR(32)NULL配置修订"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)状态"
+        },
+        {
+          "name": "identity_receipt_ref",
+          "definition": "VARCHAR(128)可信平台授权/查询的原门店归属回执，公共请求不可自报"
+        },
+        {
+          "name": "identity_verified_at",
+          "definition": "DATETIME(3)UTC归属核验时点"
+        },
+        {
+          "name": "identity_valid_until",
+          "definition": "DATETIME(3)UTC创建时仍有效，激活须另复核"
+        }
+      ],
+      "keys": "U(connection_no)；U(channel_store_key)；I(entity_no,store_no,status)",
+      "relations": "product_profile,account",
+      "rules": "身份归一按协议声明的远端命名空间。内部账号号和Token不得进入稳定键；外部账号仅在协议确实以其限定门店时纳入。禁止直接换主体或重建连接绕过订单去重；换授权沿同一连接。转让归属流程首版不开放。 创建草稿也会永久认领唯一远端身份，因此必须先取得精确绑定主体/账号/协议修订/远端店的可信归属证据；无提供方或UNKNOWN拒绝写入，不能用自报externalStoreRef抢占其他商家。"
+    },
+    {
+      "name": "cim_connection_revision",
+      "phase": "BASE",
+      "purpose": "门店接入、履约及路由配置快照",
+      "entity": "CimConnectionRevision",
+      "fields": [
+        {
+          "name": "revision_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)连接"
+        },
+        {
+          "name": "revision",
+          "definition": "BIGINT修订"
+        },
+        {
+          "name": "source_owner",
+          "definition": "VARCHAR(24)FOOD/RETAIL"
+        },
+        {
+          "name": "accept_mode",
+          "definition": "VARCHAR(24)MANUAL/AUTO/PLATFORM"
+        },
+        {
+          "name": "fulfillment_profile",
+          "definition": "VARCHAR(32)即时/快递/核销"
+        },
+        {
+          "name": "catalog_authority",
+          "definition": "VARCHAR(24)本地发布/外部导入草稿"
+        },
+        {
+          "name": "source_routing_ref",
+          "definition": "VARCHAR(64)可信业务路由"
+        },
+        {
+          "name": "config_json",
+          "definition": "JSON白名单配置"
+        },
+        {
+          "name": "config_hash",
+          "definition": "CHAR(64)摘要"
+        }
+      ],
+      "keys": "U(revision_no)；U(connection_no,revision)",
+      "relations": "store_connection",
+      "rules": "默认一笔外部单一个接入责任方；混合行业订单首版拒绝，不能两消费者分别导入。不能用accept_mode伪造资金证明。"
+    },
+    {
+      "name": "cim_resource_mapping",
+      "phase": "CATALOG",
+      "purpose": "稳定远端对象映射身份",
+      "entity": "CimResourceMapping",
+      "fields": [
+        {
+          "name": "mapping_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)连接"
+        },
+        {
+          "name": "object_type",
+          "definition": "VARCHAR(32)类目/销售条目/SKU/选项/仓库等"
+        },
+        {
+          "name": "external_ref",
+          "definition": "VARCHAR(128)平台原号"
+        },
+        {
+          "name": "external_identity_hash",
+          "definition": "CHAR(64)含协议规定的父对象身份"
+        },
+        {
+          "name": "active_revision_no",
+          "definition": "VARCHAR(32)NULL活动修订"
+        }
+      ],
+      "keys": "U(mapping_no)；U(connection_no,object_type,external_identity_hash)",
+      "relations": "store_connection",
+      "rules": "平台编号若只在父对象内唯一，必须把父身份纳入归一摘要；条码、名称和取餐短码不能作唯一订单/商品身份。"
+    },
+    {
+      "name": "cim_resource_mapping_revision",
+      "phase": "CATALOG",
+      "purpose": "映射修订及冻结来源",
+      "entity": "CimResourceMappingRevision",
+      "fields": [
+        {
+          "name": "revision_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "mapping_no",
+          "definition": "VARCHAR(32)映射"
+        },
+        {
+          "name": "revision",
+          "definition": "BIGINT修订"
+        },
+        {
+          "name": "source_owner",
+          "definition": "VARCHAR(24)来源业务"
+        },
+        {
+          "name": "source_ref",
+          "definition": "VARCHAR(128)来源对象"
+        },
+        {
+          "name": "source_revision_ref",
+          "definition": "VARCHAR(128)原修订"
+        },
+        {
+          "name": "sales_offer_ref",
+          "definition": "VARCHAR(128)销售条目身份"
+        },
+        {
+          "name": "mapping_snapshot",
+          "definition": "JSON白名单映射"
+        },
+        {
+          "name": "content_hash",
+          "definition": "CHAR(64)摘要"
+        },
+        {
+          "name": "effective_at",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "validation_receipt_ref",
+          "definition": "VARCHAR(128)原来源核验回执"
+        },
+        {
+          "name": "external_evidence_ref",
+          "definition": "VARCHAR(256)NULL已确认发布/原订单/平台查询的远端身份依据"
+        },
+        {
+          "name": "mapping_origin",
+          "definition": "VARCHAR(24)MANAGED/IMPORTED"
+        },
+        {
+          "name": "validation_status",
+          "definition": "VARCHAR(24)DRAFT/VERIFIED/REJECTED"
+        }
+      ],
+      "keys": "U(revision_no)；U(mapping_no,revision)",
+      "relations": "resource_mapping",
+      "rules": "历史订单读取原映射；同SKU不同餐牌/选项用不同销售条目；不按当前映射追改历史。 手工输入先DRAFT，经ChannelSourceValidationPort核验原对象/修订/归属，再以受控发布代码或远端真实查询/订单证据确认外部身份；无证据不得自动参与订单解析。capture和prepareImport再次复核冻结依据，防止验证后来源漂移。"
+    },
+    {
+      "name": "cim_catalog_scope",
+      "phase": "CATALOG",
+      "purpose": "远端完整目录的发布所有权与版本指针",
+      "entity": "CimCatalogScope",
+      "fields": [
+        {
+          "name": "scope_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)连接"
+        },
+        {
+          "name": "remote_scope_key",
+          "definition": "VARCHAR(128)协议声明的完整替换范围"
+        },
+        {
+          "name": "name",
+          "definition": "VARCHAR(128)名称"
+        },
+        {
+          "name": "desired_snapshot_no",
+          "definition": "VARCHAR(32)NULL期望快照"
+        },
+        {
+          "name": "last_confirmed_snapshot_no",
+          "definition": "VARCHAR(32)NULL最后全量确认"
+        },
+        {
+          "name": "remote_consistency",
+          "definition": "VARCHAR(24)UNKNOWN/CONSISTENT/PENDING/PARTIAL/DRIFT"
+        },
+        {
+          "name": "generation",
+          "definition": "BIGINT已启动发送代次；排队新期望不抢占未决远端动作"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)状态"
+        },
+        {
+          "name": "active_operation_no",
+          "definition": "VARCHAR(32)NULL阻断后续全量发布的原动作"
+        },
+        {
+          "name": "remote_pending_evidence",
+          "definition": "JSONNULL未决平台菜单/图片等变更子任务及查回证据"
+        }
+      ],
+      "keys": "U(scope_no)；U(connection_no,remote_scope_key)",
+      "relations": "store_connection",
+      "rules": "全量覆盖一整个店铺的平台只允许一个remote_scope_key=STORE；早餐/午餐不能各建覆盖范围。最后确认快照是历史证据，PARTIAL时不代表远端仍是该完整版本。 scope键由服务器依据协议归一；不能通过自报任意remoteScopeKey创建第二个全店发布者。 串行覆盖远端完整异步执行期。SUBMITTED/UNKNOWN及未决可写子任务阻断后续全量发送；过期本地lease仅换worker，不清activeOperation。须取得原平台任务/子任务明确终结、确已取消或获准有序覆盖证明才释放；PARTIAL确认终结后才可新全量修复。无查回能力保持阻断并告警，不能仅凭人工reason解除。"
+    },
+    {
+      "name": "cim_catalog_source",
+      "phase": "CATALOG",
+      "purpose": "完整目录包含的行业来源",
+      "entity": "CimCatalogSource",
+      "fields": [
+        {
+          "name": "source_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "scope_no",
+          "definition": "VARCHAR(32)范围"
+        },
+        {
+          "name": "source_owner",
+          "definition": "VARCHAR(24)FOOD/RETAIL"
+        },
+        {
+          "name": "source_ref",
+          "definition": "VARCHAR(128)餐饮绑定/零售选品引用"
+        },
+        {
+          "name": "selection_revision",
+          "definition": "VARCHAR(128)指定配置修订"
+        },
+        {
+          "name": "priority",
+          "definition": "INT展示顺序"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)状态"
+        }
+      ],
+      "keys": "U(source_no)；U(scope_no,source_owner,source_ref)",
+      "relations": "catalog_scope",
+      "rules": "同一个完整范围可聚合多个来源；平台不支持混合品类则捕获时拒绝。来源引用保留原域所有权。 首版来源必须与连接source_owner一致；跨行业混合目录也关闭，避免允许下单却无法履约。多个餐牌或多个零售选品可同域聚合。"
+    },
+    {
+      "name": "cim_sync_policy",
+      "phase": "SYNC",
+      "purpose": "范围内自动同步策略",
+      "entity": "CimSyncPolicy",
+      "fields": [
+        {
+          "name": "policy_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "scope_no",
+          "definition": "VARCHAR(32)范围"
+        },
+        {
+          "name": "enabled",
+          "definition": "BOOLEAN"
+        },
+        {
+          "name": "on_publish",
+          "definition": "BOOLEAN"
+        },
+        {
+          "name": "on_availability",
+          "definition": "BOOLEAN"
+        },
+        {
+          "name": "scheduled_check",
+          "definition": "BOOLEAN"
+        },
+        {
+          "name": "debounce_seconds",
+          "definition": "INT合并窗口"
+        },
+        {
+          "name": "recovery_profile",
+          "definition": "VARCHAR(32)受控恢复策略"
+        },
+        {
+          "name": "next_check_at",
+          "definition": "DATETIME(3)NULLUTC"
+        }
+      ],
+      "keys": "U(policy_no)；U(scope_no)；I(enabled,next_check_at)",
+      "relations": "catalog_scope",
+      "rules": "自动只同步获准的已发布事实。只合并未发送意图，不覆盖已发送任务；资金及非幂等动作不能配置为盲重试。"
+    },
+    {
+      "name": "cim_catalog_snapshot",
+      "phase": "SYNC",
+      "purpose": "不可变的完整通用目录",
+      "entity": "CimCatalogSnapshot",
+      "fields": [
+        {
+          "name": "snapshot_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "scope_no",
+          "definition": "VARCHAR(32)范围"
+        },
+        {
+          "name": "schema_version",
+          "definition": "INT"
+        },
+        {
+          "name": "source_manifest",
+          "definition": "JSON来源/修订/价格/配方等引用"
+        },
+        {
+          "name": "payload_ref",
+          "definition": "VARCHAR(256)受控对象存储引用"
+        },
+        {
+          "name": "content_hash",
+          "definition": "CHAR(64)内容摘要"
+        },
+        {
+          "name": "item_count",
+          "definition": "BIGINT"
+        },
+        {
+          "name": "currency",
+          "definition": "VARCHAR(8)目录币种"
+        },
+        {
+          "name": "captured_at",
+          "definition": "DATETIME(3)UTC"
+        },
+        {
+          "name": "expires_at",
+          "definition": "DATETIME(3)预览有效期限，具体TTL用配置；提交必须验证"
+        }
+      ],
+      "keys": "U(snapshot_no)；I(scope_no,content_hash)；I(expires_at)",
+      "relations": "catalog_scope",
+      "rules": "确定性规范化后计算摘要；平台协议字段从快照转换。现有MenuPublicationSnapshot不直接授予价格/库存权威。快照含原价格来源及税口径，不自行估价。 相同内容可重新捕获新的有效证据，不以(scope,hash)唯一键阻止过期后的合法预览。"
+    },
+    {
+      "name": "cim_sync_run",
+      "phase": "SYNC",
+      "purpose": "一次逻辑同步或核对执行",
+      "entity": "CimSyncRun",
+      "fields": [
+        {
+          "name": "run_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "store_no",
+          "definition": "VARCHAR(32)门店"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)连接"
+        },
+        {
+          "name": "scope_no",
+          "definition": "VARCHAR(32)NULL目录范围"
+        },
+        {
+          "name": "run_type",
+          "definition": "VARCHAR(32)CATALOG/AVAILABILITY/INVENTORY/STORE_STATUS/CHECK"
+        },
+        {
+          "name": "trigger_type",
+          "definition": "VARCHAR(24)AUTO_EVENT/MANUAL/SCHEDULED/RECOVERY"
+        },
+        {
+          "name": "source_event_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "snapshot_no",
+          "definition": "VARCHAR(32)NULL"
+        },
+        {
+          "name": "request_hash",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "generation",
+          "definition": "BIGINT NULL；获得远端发送权时分配，QUEUED不分配"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "started_at",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "finished_at",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "next_recovery_at",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "failure_code",
+          "definition": "VARCHAR(64)NULL"
+        }
+      ],
+      "keys": "U(run_no)；I(entity_no,store_no,created_at,id)；I(status,next_recovery_at,id)",
+      "relations": "store_connection,catalog_scope,catalog_snapshot",
+      "rules": "状态：QUEUED/RUNNING/SUBMITTED/SUCCEEDED/PARTIAL/FAILED/UNKNOWN/CANCELLED。恢复同一run；菜单重新发布另建run并重新确认完整快照。"
+    },
+    {
+      "name": "cim_sync_run_item",
+      "phase": "SYNC",
+      "purpose": "每个尝试的条目及图片结果",
+      "entity": "CimSyncRunItem",
+      "fields": [
+        {
+          "name": "item_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "run_no",
+          "definition": "VARCHAR(32)任务"
+        },
+        {
+          "name": "attempt_no",
+          "definition": "BIGINT"
+        },
+        {
+          "name": "object_type",
+          "definition": "VARCHAR(32)销售条目/选项/图片"
+        },
+        {
+          "name": "object_key_hash",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "external_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "source_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "result",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "error_code",
+          "definition": "VARCHAR(64)NULL"
+        },
+        {
+          "name": "evidence_ref",
+          "definition": "VARCHAR(256)NULL"
+        }
+      ],
+      "keys": "U(item_no)；U(run_no,attempt_no,object_type,object_key_hash)；I(run_no,result)",
+      "relations": "sync_run",
+      "rules": "菜单和图片结果分别记录；失败条目不能拼成全量成功。平台只返回总结果时保留粒度，不生成伪逐项成功。"
+    },
+    {
+      "name": "cim_request_journal",
+      "phase": "BASE",
+      "purpose": "公开写接口的原请求幂等",
+      "entity": "CimRequestJournal",
+      "fields": [
+        {
+          "name": "request_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)NULL；仅PLATFORM作用域可空"
+        },
+        {
+          "name": "endpoint_key",
+          "definition": "VARCHAR(96)规范动作"
+        },
+        {
+          "name": "key_hash",
+          "definition": "CHAR(64)Idempotency-Key摘要"
+        },
+        {
+          "name": "actor_no",
+          "definition": "VARCHAR(32)操作者"
+        },
+        {
+          "name": "request_hash",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "result_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "result_snapshot",
+          "definition": "LONGTEXT NULL；服务端编码的冻结JSON响应"
+        },
+        {
+          "name": "scope_kind",
+          "definition": "VARCHAR(24)PLATFORM/ENTITY/STORE"
+        },
+        {
+          "name": "scope_key",
+          "definition": "CHAR(64)服务端规范作用域；GLOBAL平台范围不伪造经营主体"
+        }
+      ],
+      "keys": "U(request_no)；U(tenant_no,scope_kind,scope_key,endpoint_key,key_hash)",
+      "relations": "",
+      "rules": "同键不同参数/不兼容操作者冲突；insert-first或稳定锁保证并发唯一。复用现有编号/哈希/审计组件，只有本域命令事实另存。"
+    },
+    {
+      "name": "cim_inbound_event",
+      "phase": "EVENT",
+      "purpose": "逻辑入站事件和处理租约",
+      "entity": "CimInboundEvent",
+      "fields": [
+        {
+          "name": "event_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)连接"
+        },
+        {
+          "name": "dedupe_key",
+          "definition": "CHAR(64)协议归一身份"
+        },
+        {
+          "name": "provider_event_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "event_type",
+          "definition": "VARCHAR(64)"
+        },
+        {
+          "name": "payload_hash",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "original_receipt_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "occurred_at",
+          "definition": "DATETIME(3)NULL平台原时间"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "attempt_no",
+          "definition": "BIGINT"
+        },
+        {
+          "name": "fence",
+          "definition": "BIGINT"
+        },
+        {
+          "name": "lease_until",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "next_attempt_at",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "result_ref",
+          "definition": "VARCHAR(128)NULL"
+        }
+      ],
+      "keys": "U(event_no)；U(connection_no,dedupe_key)；I(status,next_attempt_at,id)",
+      "relations": "store_connection",
+      "rules": "无平台唯一事件号时按协议业务事件/修订构造；不只用请求时间。事件至少一次投递，目标业务接口仍须幂等。"
+    },
+    {
+      "name": "cim_inbound_receipt",
+      "phase": "EVENT",
+      "purpose": "到达报文与重复或冲突证据",
+      "entity": "CimInboundReceipt",
+      "fields": [
+        {
+          "name": "receipt_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)连接"
+        },
+        {
+          "name": "event_no",
+          "definition": "VARCHAR(32)NULL逻辑事件"
+        },
+        {
+          "name": "received_at",
+          "definition": "DATETIME(3)UTC"
+        },
+        {
+          "name": "payload_ref",
+          "definition": "VARCHAR(256)受控原始字节引用"
+        },
+        {
+          "name": "payload_hash",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "signature_result",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "classification",
+          "definition": "VARCHAR(24)ORIGINAL/DUPLICATE/CONFLICT"
+        },
+        {
+          "name": "retention_until",
+          "definition": "DATETIME(3)"
+        }
+      ],
+      "keys": "U(receipt_no)；I(connection_no,received_at,id)；I(event_no,classification)",
+      "relations": "inbound_event",
+      "rules": "相同事件不同摘要另存CONFLICT且告警，不覆盖原事件。未验签请求只作脱敏安全计数，不创建受信主体事实。已受理原报文按凭据代次保存验签证据。"
+    },
+    {
+      "name": "cim_operation",
+      "phase": "EVENT",
+      "purpose": "出站动作或受控内部交接意图",
+      "entity": "CimOperation",
+      "fields": [
+        {
+          "name": "operation_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "store_no",
+          "definition": "VARCHAR(32)NULL；账号级动作不伪造门店"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)NULL；CONNECTION动作必填"
+        },
+        {
+          "name": "destination",
+          "definition": "VARCHAR(24)PROVIDER/SOURCE_OWNER"
+        },
+        {
+          "name": "operation_type",
+          "definition": "VARCHAR(48)"
+        },
+        {
+          "name": "business_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "business_revision",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "semantic_key",
+          "definition": "CHAR(64)原动作身份"
+        },
+        {
+          "name": "request_hash",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "request_ref",
+          "definition": "VARCHAR(256)"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "current_attempt_no",
+          "definition": "BIGINT"
+        },
+        {
+          "name": "fence",
+          "definition": "BIGINT"
+        },
+        {
+          "name": "lease_until",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "next_recovery_at",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "original_evidence_ref",
+          "definition": "VARCHAR(256)NULL"
+        },
+        {
+          "name": "account_no",
+          "definition": "VARCHAR(32)账号级动作必填，连接级动作由连接确定"
+        },
+        {
+          "name": "profile_no",
+          "definition": "VARCHAR(32)平台协议档案"
+        },
+        {
+          "name": "target_scope_kind",
+          "definition": "VARCHAR(24)ACCOUNT/CONNECTION"
+        },
+        {
+          "name": "target_scope_key",
+          "definition": "CHAR(64)服务端账号或稳定店铺动作范围"
+        },
+        {
+          "name": "callback_state_hash",
+          "definition": "CHAR(64)NULL授权回调nonce摘要，绑定原账号及操作者"
+        },
+        {
+          "name": "expires_at",
+          "definition": "DATETIME(3)NULL授权状态及一次性预览操作期限"
+        }
+      ],
+      "keys": "U(operation_no)；U(target_scope_key,destination,semantic_key)；U(callback_state_hash)；I(status,next_recovery_at,id)",
+      "relations": "store_connection,account,product_profile",
+      "rules": "状态明确SUCCEEDED/SUBMITTED/PARTIAL/REJECTED/UNKNOWN；HTTP200不等于业务完成。内外交接同一逻辑意图持久化，Outbox只负责唤醒。超时进入UNKNOWN并按能力查回，不自动换动作号。 账号授权动作允许尚无连接；target_scope_kind决定合法必填项，不能依赖NULL唯一键去重；授权state单次消费及期限在原动作版本锁内校验。"
+    },
+    {
+      "name": "cim_operation_attempt",
+      "phase": "EVENT",
+      "purpose": "每次发送及查询的不可变调用证据",
+      "entity": "CimOperationAttempt",
+      "fields": [
+        {
+          "name": "attempt_ref",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "operation_no",
+          "definition": "VARCHAR(32)动作"
+        },
+        {
+          "name": "attempt_no",
+          "definition": "BIGINT"
+        },
+        {
+          "name": "fence",
+          "definition": "BIGINT"
+        },
+        {
+          "name": "attempt_kind",
+          "definition": "VARCHAR(24)SEND/QUERY/CALLBACK"
+        },
+        {
+          "name": "provider_request_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "provider_task_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "started_at",
+          "definition": "DATETIME(3)"
+        },
+        {
+          "name": "finished_at",
+          "definition": "DATETIME(3)NULL"
+        },
+        {
+          "name": "outcome",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "response_ref",
+          "definition": "VARCHAR(256)NULL"
+        },
+        {
+          "name": "error_code",
+          "definition": "VARCHAR(64)NULL"
+        }
+      ],
+      "keys": "U(attempt_ref)；U(operation_no,attempt_no)；I(provider_task_ref)",
+      "relations": "operation",
+      "rules": "旧attempt/ACK可追加证据，不能覆盖新代次。凭据敏感字段不进请求快照及日志；查询同样有调用证据。"
+    },
+    {
+      "name": "cim_order_link",
+      "phase": "ORDER",
+      "purpose": "外部交易与原行业及核心订单关联",
+      "entity": "CimOrderLink",
+      "fields": [
+        {
+          "name": "channel_order_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "store_no",
+          "definition": "VARCHAR(32)门店"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)连接"
+        },
+        {
+          "name": "channel_store_key",
+          "definition": "CHAR(64)稳定店铺身份"
+        },
+        {
+          "name": "external_order_ref",
+          "definition": "VARCHAR(128)真实订单号"
+        },
+        {
+          "name": "external_order_key",
+          "definition": "CHAR(64)协议归一订单身份"
+        },
+        {
+          "name": "source_owner",
+          "definition": "VARCHAR(24)接入责任方"
+        },
+        {
+          "name": "active_revision_no",
+          "definition": "VARCHAR(32)原单快照指针"
+        },
+        {
+          "name": "import_ref",
+          "definition": "VARCHAR(64)NULL"
+        },
+        {
+          "name": "source_order_ref",
+          "definition": "VARCHAR(64)NULL"
+        },
+        {
+          "name": "core_order_ref",
+          "definition": "VARCHAR(64)NULL"
+        },
+        {
+          "name": "import_status",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "acceptance_status",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "platform_status",
+          "definition": "VARCHAR(64)"
+        },
+        {
+          "name": "fulfillment_status",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "financial_evidence_status",
+          "definition": "VARCHAR(32)"
+        }
+      ],
+      "keys": "U(channel_order_no)；U(channel_store_key,external_order_key)；I(entity_no,store_no,created_at,id)",
+      "relations": "store_connection,order_revision",
+      "rules": "取餐短码不作主键；回调和查询统一原订单身份。创建未付单不等于可发货。订单来源、履约及资金状态分别维护。多核心子单关联在导入回执内保留，不假定平台父单只能有一个子单。"
+    },
+    {
+      "name": "cim_order_revision",
+      "phase": "ORDER",
+      "purpose": "不可变平台订单快照及解释依据",
+      "entity": "CimOrderRevision",
+      "fields": [
+        {
+          "name": "revision_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "channel_order_no",
+          "definition": "VARCHAR(32)原单"
+        },
+        {
+          "name": "external_revision",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "source_event_no",
+          "definition": "VARCHAR(32)NULL"
+        },
+        {
+          "name": "normalized_snapshot_ref",
+          "definition": "VARCHAR(256)"
+        },
+        {
+          "name": "raw_receipt_ref",
+          "definition": "VARCHAR(32)NULL"
+        },
+        {
+          "name": "content_hash",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "mapping_revision_refs",
+          "definition": "JSON原映射"
+        },
+        {
+          "name": "catalog_evidence",
+          "definition": "JSON目录解释依据及模式"
+        },
+        {
+          "name": "currency",
+          "definition": "VARCHAR(8)"
+        },
+        {
+          "name": "amount_evidence",
+          "definition": "JSON带语义的原金额及原分配引用"
+        },
+        {
+          "name": "captured_at",
+          "definition": "DATETIME(3)"
+        }
+      ],
+      "keys": "U(revision_no)；U(channel_order_no,content_hash)",
+      "relations": "order_link,inbound_event",
+      "rules": "不以当前菜单改写成交。平台无目录修订时记录EXPLICIT_REVISION/VERIFIED_LINE_MAPPING/UNRESOLVED；无法解释则阻止自动受理。税/折扣来源缺失保持未知。"
+    },
+    {
+      "name": "cim_order_line_link",
+      "phase": "ORDER",
+      "purpose": "外部父子原行与核心分摊的多对多关联",
+      "entity": "CimOrderLineLink",
+      "fields": [
+        {
+          "name": "link_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "channel_order_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "order_revision_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "external_line_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "parent_external_line_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "component_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "source_line_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "core_order_ref",
+          "definition": "VARCHAR(64)"
+        },
+        {
+          "name": "core_item_ref",
+          "definition": "VARCHAR(64)受控契约引用"
+        },
+        {
+          "name": "sale_quantity",
+          "definition": "DECIMAL(20,6)"
+        },
+        {
+          "name": "quantity_unit",
+          "definition": "VARCHAR(16)"
+        },
+        {
+          "name": "allocation_evidence_ref",
+          "definition": "VARCHAR(256)"
+        }
+      ],
+      "keys": "U(link_no)；U(order_revision_no,external_line_ref,component_ref,core_order_ref,core_item_ref)",
+      "relations": "order_revision",
+      "rules": "不重新计算分摊；保留套餐/小料及多子单映射。一条外部原行可映射多个核心组件，接口不暴露物理自增id。"
+    },
+    {
+      "name": "cim_fulfillment_link",
+      "phase": "FULFILLMENT",
+      "purpose": "原履约单或包裹的渠道关联",
+      "entity": "CimFulfillmentLink",
+      "fields": [
+        {
+          "name": "link_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "channel_order_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "source_owner",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "source_fulfillment_ref",
+          "definition": "VARCHAR(128)原履约业务号"
+        },
+        {
+          "name": "source_revision",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "fulfillment_type",
+          "definition": "VARCHAR(24)INSTANT/PARCEL/PICKUP"
+        },
+        {
+          "name": "external_fulfillment_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "tracking_evidence_ref",
+          "definition": "VARCHAR(256)NULL"
+        },
+        {
+          "name": "operation_no",
+          "definition": "VARCHAR(32)回传动作"
+        }
+      ],
+      "keys": "U(link_no)；U(channel_order_no,source_owner,source_fulfillment_ref,source_revision)",
+      "relations": "order_link,operation",
+      "rules": "这里只关联原配送/仓库/行业履约；不另建WMS或渠道库存账。快递一单多包裹；备餐完成不冒充签收。"
+    },
+    {
+      "name": "cim_fulfillment_line_link",
+      "phase": "FULFILLMENT",
+      "purpose": "本次履约原行及数量关联",
+      "entity": "CimFulfillmentLineLink",
+      "fields": [
+        {
+          "name": "link_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "fulfillment_link_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "order_line_link_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "quantity",
+          "definition": "DECIMAL(20,6)"
+        },
+        {
+          "name": "unit",
+          "definition": "VARCHAR(16)"
+        },
+        {
+          "name": "source_receipt_ref",
+          "definition": "VARCHAR(128)"
+        }
+      ],
+      "keys": "U(link_no)；U(fulfillment_link_no,order_line_link_no)",
+      "relations": "fulfillment_link,order_line_link",
+      "rules": "累计履约数量由原owner守恒核验，渠道仅保留已确认回执。"
+    },
+    {
+      "name": "cim_after_sale_link",
+      "phase": "AFTER_SALE",
+      "purpose": "平台售后与原售后关联",
+      "entity": "CimAfterSaleLink",
+      "fields": [
+        {
+          "name": "case_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "channel_order_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "external_case_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "external_case_key",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "case_type",
+          "definition": "VARCHAR(24)REFUND/RETURN/EXCHANGE/CANCEL"
+        },
+        {
+          "name": "source_after_sale_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "platform_status",
+          "definition": "VARCHAR(64)"
+        },
+        {
+          "name": "local_status",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "original_evidence_ref",
+          "definition": "VARCHAR(256)"
+        },
+        {
+          "name": "financial_evidence_ref",
+          "definition": "VARCHAR(128)NULL"
+        }
+      ],
+      "keys": "U(case_no)；U(channel_order_no,external_case_key)",
+      "relations": "order_link",
+      "rules": "退款申请不是退款完成；取消、退货、库存回补分别取原owner事实。资金阶段前仅接收/查询，不自动执行退款。"
+    },
+    {
+      "name": "cim_after_sale_line_link",
+      "phase": "AFTER_SALE",
+      "purpose": "售后原行及数量金额证据",
+      "entity": "CimAfterSaleLineLink",
+      "fields": [
+        {
+          "name": "link_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "case_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "external_case_line_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "order_line_link_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "quantity",
+          "definition": "DECIMAL(20,6)NULL"
+        },
+        {
+          "name": "unit",
+          "definition": "VARCHAR(16)NULL"
+        },
+        {
+          "name": "amount_minor",
+          "definition": "BIGINT NULL"
+        },
+        {
+          "name": "currency",
+          "definition": "VARCHAR(8)NULL"
+        },
+        {
+          "name": "source_receipt_ref",
+          "definition": "VARCHAR(128)NULL"
+        }
+      ],
+      "keys": "U(link_no)；U(case_no,external_case_line_ref,order_line_link_no)",
+      "relations": "after_sale_link,order_line_link",
+      "rules": "未知量/金额不填0；不把仅退款当退实物；退换货包裹取原售后物流合同。"
+    },
+    {
+      "name": "cim_redemption_link",
+      "phase": "VOUCHER",
+      "purpose": "平台券履约与本地权益核销关联",
+      "entity": "CimRedemptionLink",
+      "fields": [
+        {
+          "name": "redemption_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "external_certificate_key",
+          "definition": "CHAR(64)受保护券身份"
+        },
+        {
+          "name": "source_redemption_ref",
+          "definition": "VARCHAR(128)NULL"
+        },
+        {
+          "name": "original_operation_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "evidence_ref",
+          "definition": "VARCHAR(256)"
+        }
+      ],
+      "keys": "U(redemption_no)；U(connection_no,external_certificate_key,original_operation_no)",
+      "relations": "store_connection,operation",
+      "rules": "不创建第二份券余额；券明文受控存储。核销/撤销均需原权益与交易owner合同，首版不默认开放。重复核销身份由平台券实例和原业务消费唯一证明。 原权益owner须基于券实例/原消费和平台状态作排他授权，不能仅凭本表operation唯一键认定券可再次消费。"
+    },
+    {
+      "name": "cim_redemption_item",
+      "phase": "VOUCHER",
+      "purpose": "一次核销的券与本地消费原行关联",
+      "entity": "CimRedemptionItem",
+      "fields": [
+        {
+          "name": "item_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "redemption_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "external_certificate_key",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "source_consumption_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "source_line_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "quantity",
+          "definition": "DECIMAL(20,6)"
+        },
+        {
+          "name": "unit",
+          "definition": "VARCHAR(16)"
+        },
+        {
+          "name": "source_receipt_ref",
+          "definition": "VARCHAR(128)"
+        }
+      ],
+      "keys": "U(item_no)；U(redemption_no,external_certificate_key,source_consumption_ref,source_line_ref)",
+      "relations": "redemption_link",
+      "rules": "重复执行不得再次消费同一券；能否多次/部分核销以协议和原权益合同校验，不按本表数量自行放行。"
+    },
+    {
+      "name": "cim_statement",
+      "phase": "FINANCIAL",
+      "purpose": "不可变平台账单版本",
+      "entity": "CimStatement",
+      "fields": [
+        {
+          "name": "statement_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "account_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)NULL账号级账单"
+        },
+        {
+          "name": "external_statement_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "statement_revision",
+          "definition": "VARCHAR(64)"
+        },
+        {
+          "name": "currency",
+          "definition": "VARCHAR(8)"
+        },
+        {
+          "name": "period_from",
+          "definition": "DATETIME(3)"
+        },
+        {
+          "name": "period_to",
+          "definition": "DATETIME(3)"
+        },
+        {
+          "name": "payload_ref",
+          "definition": "VARCHAR(256)"
+        },
+        {
+          "name": "content_hash",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)"
+        }
+      ],
+      "keys": "U(statement_no)；U(account_no,external_statement_ref,statement_revision)",
+      "relations": "account,store_connection",
+      "rules": "账单日、经营营业日、到账日不混用；账号跨门店账单先验证全部归属，店级接口不得泄露其他门店行。"
+    },
+    {
+      "name": "cim_statement_line",
+      "phase": "FINANCIAL",
+      "purpose": "平台账单原行及对账结果",
+      "entity": "CimStatementLine",
+      "fields": [
+        {
+          "name": "line_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "statement_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "external_line_ref",
+          "definition": "VARCHAR(128)"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)NULL待归属"
+        },
+        {
+          "name": "channel_order_no",
+          "definition": "VARCHAR(32)NULL"
+        },
+        {
+          "name": "line_type",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "signed_amount_minor",
+          "definition": "BIGINT NULL"
+        },
+        {
+          "name": "currency",
+          "definition": "VARCHAR(8)"
+        },
+        {
+          "name": "allocation_evidence",
+          "definition": "JSONNULL"
+        },
+        {
+          "name": "reconciliation_status",
+          "definition": "VARCHAR(24)"
+        },
+        {
+          "name": "difference_code",
+          "definition": "VARCHAR(64)NULL"
+        }
+      ],
+      "keys": "U(line_no)；U(statement_no,external_line_ref)；I(connection_no,reconciliation_status)",
+      "relations": "statement,order_link",
+      "rules": "原行类型和符号含义显式保存；到账不是净利润。无法归属行不分摊伪造店级金额。"
+    },
+    {
+      "name": "cim_financial_evidence_link",
+      "phase": "FINANCIAL",
+      "purpose": "平台证据向原资金owner交接关联",
+      "entity": "CimFinancialEvidenceLink",
+      "fields": [
+        {
+          "name": "evidence_no",
+          "definition": "VARCHAR(32)业务号"
+        },
+        {
+          "name": "entity_no",
+          "definition": "VARCHAR(32)主体"
+        },
+        {
+          "name": "connection_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "channel_order_no",
+          "definition": "VARCHAR(32)NULL"
+        },
+        {
+          "name": "external_evidence_key",
+          "definition": "CHAR(64)"
+        },
+        {
+          "name": "evidence_type",
+          "definition": "VARCHAR(32)COLLECTION/REFUND/SETTLEMENT"
+        },
+        {
+          "name": "source_receipt_ref",
+          "definition": "VARCHAR(128)NULL原资金回执"
+        },
+        {
+          "name": "operation_no",
+          "definition": "VARCHAR(32)"
+        },
+        {
+          "name": "status",
+          "definition": "VARCHAR(24)"
+        }
+      ],
+      "keys": "U(evidence_no)；U(connection_no,evidence_type,external_evidence_key)",
+      "relations": "order_link,operation",
+      "rules": "不直接改核心paid_at、不凭回调造本地付款。平台代收、平台应收和实际到账由原资金合同分别认定。"
+    }
+  ],
+  "apis": [
+    {
+      "id": "COM-001",
+      "group": "平台",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/providers",
+      "service": "ProviderService",
+      "method": "listProviders",
+      "request": "ProviderQuery",
+      "response": "PageData<ProviderVO>",
+      "params": "market/productCode/status/page/size",
+      "tables": [
+        "cim_provider",
+        "cim_product_profile"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "BizChannelProviderController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-002",
+      "group": "平台",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/providers/{providerNo}/profiles",
+      "service": "ProviderService",
+      "method": "listProfiles",
+      "request": "ProfileQuery",
+      "response": "PageData<ProductProfileVO>",
+      "params": "providerNo/market/productCode/page/size",
+      "tables": [
+        "cim_product_profile"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "BizChannelProviderController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-003",
+      "group": "账号",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/accounts",
+      "service": "ChannelAccountService",
+      "method": "createAccount",
+      "request": "CreateChannelAccountReq",
+      "response": "ChannelAccountVO",
+      "params": "profileNo/externalAccountRef；无entityNo及明文密钥",
+      "tables": [
+        "cim_account",
+        "cim_request_journal"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "BizChannelAccountController",
+      "permissionGroup": "ACCOUNT_ADMIN",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-004",
+      "group": "账号",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/accounts",
+      "service": "ChannelAccountService",
+      "method": "listAccounts",
+      "request": "AccountQuery",
+      "response": "PageData<ChannelAccountVO>",
+      "params": "profileNo/status/page/size；账号摘要按可见门店裁剪",
+      "tables": [
+        "cim_account"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "BizChannelAccountController",
+      "permissionGroup": "ACCOUNT_ADMIN",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-005",
+      "group": "账号",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/accounts/{accountNo}",
+      "service": "ChannelAccountService",
+      "method": "getAccount",
+      "request": "AccountRef",
+      "response": "ChannelAccountVO",
+      "params": "accountNo；不返回Token/credentialRef细节",
+      "tables": [
+        "cim_account",
+        "cim_authorization_revision"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "BizChannelAccountController",
+      "permissionGroup": "ACCOUNT_ADMIN",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-006",
+      "group": "授权",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/accounts/{accountNo}:authorize",
+      "service": "ChannelAuthorizationService",
+      "method": "authorize",
+      "request": "AuthorizeChannelAccountReq",
+      "response": "AuthorizationActionVO",
+      "params": "version/returnTargetCode；回跳目标服务端登记",
+      "tables": [
+        "cim_account",
+        "cim_authorization_revision",
+        "cim_operation",
+        "cim_request_journal"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "BizChannelAuthorizationController",
+      "permissionGroup": "ACCOUNT_ADMIN",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-007",
+      "group": "授权",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/accounts/{accountNo}:revoke",
+      "service": "ChannelAuthorizationService",
+      "method": "revoke",
+      "request": "RevokeChannelAuthorizationReq",
+      "response": "OperationVO",
+      "params": "version/reasonCode/reason",
+      "tables": [
+        "cim_account",
+        "cim_authorization_revision",
+        "cim_operation",
+        "cim_request_journal"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "BizChannelAuthorizationController",
+      "permissionGroup": "ACCOUNT_ADMIN",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-008",
+      "group": "授权",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/accounts/{accountNo}/authorization-revisions",
+      "service": "ChannelAuthorizationService",
+      "method": "listRevisions",
+      "request": "AuthorizationQuery",
+      "response": "PageData<AuthorizationRevisionVO>",
+      "params": "accountNo/page/size；敏感引用裁剪",
+      "tables": [
+        "cim_authorization_revision"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "BizChannelAuthorizationController",
+      "permissionGroup": "ACCOUNT_ADMIN",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-009",
+      "group": "连接",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/stores/{storeNo}/connections",
+      "service": "ChannelConnectionService",
+      "method": "createConnection",
+      "request": "CreateChannelConnectionReq",
+      "response": "ChannelConnectionVO",
+      "params": "accountNo/externalStoreRef/sourceOwner/fulfillmentProfile；派生profile和channelStoreKey",
+      "tables": [
+        "cim_store_connection",
+        "cim_connection_revision",
+        "cim_request_journal"
+      ],
+      "ac": "AC02",
+      "phase": "BASE",
+      "controller": "BizChannelConnectionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-010",
+      "group": "连接",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/connections",
+      "service": "ChannelConnectionService",
+      "method": "listConnections",
+      "request": "ConnectionQuery",
+      "response": "PageData<ChannelConnectionVO>",
+      "params": "provider/product/market/status/page/size",
+      "tables": [
+        "cim_store_connection"
+      ],
+      "ac": "AC02",
+      "phase": "BASE",
+      "controller": "BizChannelConnectionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-011",
+      "group": "连接",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/connections/{connectionNo}",
+      "service": "ChannelConnectionService",
+      "method": "getConnection",
+      "request": "ConnectionRef",
+      "response": "ChannelConnectionVO",
+      "params": "connectionNo；门店、账号授权交叉核验",
+      "tables": [
+        "cim_store_connection",
+        "cim_connection_revision"
+      ],
+      "ac": "AC02",
+      "phase": "BASE",
+      "controller": "BizChannelConnectionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-012",
+      "group": "连接",
+      "role": "B",
+      "verb": "PUT",
+      "path": "/biz/x/commerce/connections/{connectionNo}",
+      "service": "ChannelConnectionService",
+      "method": "saveConfiguration",
+      "request": "SaveConnectionConfigurationReq",
+      "response": "ChannelConnectionVO",
+      "params": "version/acceptMode/fulfillmentProfile/sourceRoutingRef；不能换主体或远端身份",
+      "tables": [
+        "cim_connection_revision",
+        "cim_store_connection",
+        "cim_request_journal"
+      ],
+      "ac": "AC02",
+      "phase": "BASE",
+      "controller": "BizChannelConnectionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-013",
+      "group": "连接",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/connections/{connectionNo}:verify",
+      "service": "ChannelConnectionService",
+      "method": "verify",
+      "request": "VerifyChannelConnectionReq",
+      "response": "OperationVO",
+      "params": "version；能力核验异步动作",
+      "tables": [
+        "cim_store_connection",
+        "cim_operation",
+        "cim_operation_attempt"
+      ],
+      "ac": "AC02",
+      "phase": "BASE",
+      "controller": "BizChannelConnectionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-014",
+      "group": "连接",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/connections/{connectionNo}:set-status",
+      "service": "ChannelConnectionService",
+      "method": "setStatus",
+      "request": "SetConnectionStatusReq",
+      "response": "ChannelConnectionVO",
+      "params": "version/status/reason；停新单不丢弃已绑定历史事件",
+      "tables": [
+        "cim_store_connection",
+        "cim_request_journal"
+      ],
+      "ac": "AC02",
+      "phase": "BASE",
+      "controller": "BizChannelConnectionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-015",
+      "group": "目录范围",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/stores/{storeNo}/catalog-scopes",
+      "service": "CatalogScopeService",
+      "method": "createScope",
+      "request": "CreateCatalogScopeReq",
+      "response": "CatalogScopeVO",
+      "params": "connectionNo/remoteScopeKey/name/sourceRefs；完整替换范围按平台能力限制",
+      "tables": [
+        "cim_catalog_scope",
+        "cim_catalog_source",
+        "cim_request_journal"
+      ],
+      "ac": "AC03",
+      "phase": "CATALOG",
+      "controller": "BizCatalogScopeController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-016",
+      "group": "目录范围",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/catalog-scopes",
+      "service": "CatalogScopeService",
+      "method": "listScopes",
+      "request": "CatalogScopeQuery",
+      "response": "PageData<CatalogScopeVO>",
+      "params": "connectionNo/status/page/size",
+      "tables": [
+        "cim_catalog_scope"
+      ],
+      "ac": "AC03",
+      "phase": "CATALOG",
+      "controller": "BizCatalogScopeController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-017",
+      "group": "目录范围",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/catalog-scopes/{scopeNo}",
+      "service": "CatalogScopeService",
+      "method": "getScope",
+      "request": "CatalogScopeRef",
+      "response": "CatalogScopeVO",
+      "params": "scopeNo",
+      "tables": [
+        "cim_catalog_scope",
+        "cim_catalog_source"
+      ],
+      "ac": "AC03",
+      "phase": "CATALOG",
+      "controller": "BizCatalogScopeController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-018",
+      "group": "目录范围",
+      "role": "B",
+      "verb": "PUT",
+      "path": "/biz/x/commerce/catalog-scopes/{scopeNo}",
+      "service": "CatalogScopeService",
+      "method": "saveSources",
+      "request": "SaveCatalogSourcesReq",
+      "response": "CatalogScopeVO",
+      "params": "version/sourceOwner+sourceRef+selectionRevision；无原始价格覆盖",
+      "tables": [
+        "cim_catalog_scope",
+        "cim_catalog_source",
+        "cim_request_journal"
+      ],
+      "ac": "AC03",
+      "phase": "CATALOG",
+      "controller": "BizCatalogScopeController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-019",
+      "group": "自动同步",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/catalog-scopes/{scopeNo}/sync-policy",
+      "service": "SyncPolicyService",
+      "method": "getPolicy",
+      "request": "CatalogScopeRef",
+      "response": "SyncPolicyVO",
+      "params": "scopeNo",
+      "tables": [
+        "cim_sync_policy"
+      ],
+      "ac": "AC04",
+      "phase": "SYNC",
+      "controller": "BizSyncPolicyController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-020",
+      "group": "自动同步",
+      "role": "B",
+      "verb": "PUT",
+      "path": "/biz/x/commerce/catalog-scopes/{scopeNo}/sync-policy",
+      "service": "SyncPolicyService",
+      "method": "savePolicy",
+      "request": "SaveSyncPolicyReq",
+      "response": "SyncPolicyVO",
+      "params": "version/enabled/onPublish/onAvailability/scheduledCheck/debounceSeconds/recoveryProfile",
+      "tables": [
+        "cim_sync_policy",
+        "cim_request_journal"
+      ],
+      "ac": "AC04",
+      "phase": "SYNC",
+      "controller": "BizSyncPolicyController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-021",
+      "group": "目录预览",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/catalog-scopes/{scopeNo}:preview",
+      "service": "CatalogPublicationService",
+      "method": "preview",
+      "request": "PreviewCatalogReq",
+      "response": "CatalogPreviewVO",
+      "params": "sourceRevisions/expectedScopeVersion；返回snapshotNo/hash/diff/blockers/expiresAt",
+      "tables": [
+        "cim_catalog_snapshot",
+        "cim_catalog_source",
+        "cim_resource_mapping_revision"
+      ],
+      "ac": "AC03",
+      "phase": "SYNC",
+      "controller": "BizCatalogPreviewController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-022",
+      "group": "手动同步",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/stores/{storeNo}/sync-runs",
+      "service": "SyncRunService",
+      "method": "submit",
+      "request": "SubmitSyncRunReq",
+      "response": "SyncRunVO",
+      "params": "scopeNo/snapshotNo/hash/expectedScopeVersion/reason；首版只提交CATALOG，其他类型走类型化接口",
+      "tables": [
+        "cim_sync_run",
+        "cim_operation",
+        "cim_request_journal"
+      ],
+      "ac": "AC04",
+      "phase": "SYNC",
+      "controller": "BizSyncRunController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-023",
+      "group": "同步状态",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/sync-runs",
+      "service": "SyncRunService",
+      "method": "listRuns",
+      "request": "SyncRunQuery",
+      "response": "PageData<SyncRunVO>",
+      "params": "connectionNo/type/triggerType/status/from/to/page/size",
+      "tables": [
+        "cim_sync_run"
+      ],
+      "ac": "AC04",
+      "phase": "SYNC",
+      "controller": "BizSyncRunController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-024",
+      "group": "同步状态",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/sync-runs/{runNo}",
+      "service": "SyncRunService",
+      "method": "getRun",
+      "request": "SyncRunRef",
+      "response": "SyncRunVO",
+      "params": "runNo；期望/已提交/最后全量确认及remoteConsistency分别输出",
+      "tables": [
+        "cim_sync_run",
+        "cim_catalog_scope",
+        "cim_operation"
+      ],
+      "ac": "AC04",
+      "phase": "SYNC",
+      "controller": "BizSyncRunController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-025",
+      "group": "同步明细",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/sync-runs/{runNo}/items",
+      "service": "SyncRunService",
+      "method": "listItems",
+      "request": "SyncItemQuery",
+      "response": "PageData<SyncRunItemVO>",
+      "params": "runNo/attemptNo/objectType/result/page/size",
+      "tables": [
+        "cim_sync_run_item"
+      ],
+      "ac": "AC04",
+      "phase": "SYNC",
+      "controller": "BizSyncRunController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-026",
+      "group": "同步取消",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/sync-runs/{runNo}:cancel-queued",
+      "service": "SyncRunService",
+      "method": "cancelQueued",
+      "request": "CancelQueuedSyncReq",
+      "response": "SyncRunVO",
+      "params": "version/reason；仅未发出动作，非远端撤回",
+      "tables": [
+        "cim_sync_run",
+        "cim_operation",
+        "cim_request_journal"
+      ],
+      "ac": "AC04",
+      "phase": "SYNC",
+      "controller": "BizSyncRunController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-027",
+      "group": "映射",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/resource-mappings",
+      "service": "ResourceMappingService",
+      "method": "listMappings",
+      "request": "MappingQuery",
+      "response": "PageData<ResourceMappingVO>",
+      "params": "connectionNo/objectType/externalRef/sourceRef/page/size",
+      "tables": [
+        "cim_resource_mapping",
+        "cim_resource_mapping_revision"
+      ],
+      "ac": "AC05",
+      "phase": "CATALOG",
+      "controller": "BizResourceMappingController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-028",
+      "group": "映射",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/resource-mappings/{mappingNo}/revisions",
+      "service": "ResourceMappingService",
+      "method": "listRevisions",
+      "request": "MappingRevisionQuery",
+      "response": "PageData<MappingRevisionVO>",
+      "params": "mappingNo/page/size",
+      "tables": [
+        "cim_resource_mapping_revision"
+      ],
+      "ac": "AC05",
+      "phase": "CATALOG",
+      "controller": "BizResourceMappingController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-029",
+      "group": "映射",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/resource-mappings",
+      "service": "ResourceMappingService",
+      "method": "createMapping",
+      "request": "CreateResourceMappingReq",
+      "response": "ResourceMappingVO",
+      "params": "connectionNo/objectType/externalIdentity/sourceOwner/sourceRef/sourceRevision；必须真源核验",
+      "tables": [
+        "cim_resource_mapping",
+        "cim_resource_mapping_revision",
+        "cim_request_journal"
+      ],
+      "ac": "AC05",
+      "phase": "CATALOG",
+      "controller": "BizResourceMappingController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-030",
+      "group": "映射",
+      "role": "B",
+      "verb": "PUT",
+      "path": "/biz/x/commerce/resource-mappings/{mappingNo}",
+      "service": "ResourceMappingService",
+      "method": "reviseMapping",
+      "request": "ReviseResourceMappingReq",
+      "response": "ResourceMappingVO",
+      "params": "version/来源修订/reason；不覆盖历史",
+      "tables": [
+        "cim_resource_mapping_revision",
+        "cim_resource_mapping",
+        "cim_request_journal"
+      ],
+      "ac": "AC05",
+      "phase": "CATALOG",
+      "controller": "BizResourceMappingController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-031",
+      "group": "可售",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/stores/{storeNo}/availability-publications",
+      "service": "ChannelAvailabilityService",
+      "method": "publishItemAvailability",
+      "request": "PublishAvailabilityReq",
+      "response": "OperationVO",
+      "params": "connectionNo/原商品可售事实引用/expectedSourceVersion；不接受伪库存量",
+      "tables": [
+        "cim_operation",
+        "cim_sync_run",
+        "cim_request_journal"
+      ],
+      "ac": "AC06",
+      "phase": "SYNC",
+      "controller": "BizChannelAvailabilityController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-032",
+      "group": "库存",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/stores/{storeNo}/inventory-publications",
+      "service": "ChannelAvailabilityService",
+      "method": "publishInventory",
+      "request": "PublishInventoryReq",
+      "response": "OperationVO",
+      "params": "connectionNo/原库存发布策略及仓库映射引用/sourceRevision；不直接传新库存余额",
+      "tables": [
+        "cim_operation",
+        "cim_sync_run",
+        "cim_resource_mapping_revision"
+      ],
+      "ac": "AC06",
+      "phase": "SYNC",
+      "controller": "BizChannelAvailabilityController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-033",
+      "group": "门店接单",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/connections/{connectionNo}:set-availability",
+      "service": "ChannelAvailabilityService",
+      "method": "publishStoreAvailability",
+      "request": "PublishStoreAvailabilityReq",
+      "response": "OperationVO",
+      "params": "version/OPEN或PAUSED/until/reason；受门店接单策略限制",
+      "tables": [
+        "cim_operation",
+        "cim_sync_run",
+        "cim_request_journal"
+      ],
+      "ac": "AC06",
+      "phase": "SYNC",
+      "controller": "BizChannelAvailabilityController",
+      "permissionGroup": "CATALOG",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-034",
+      "group": "动作查询",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/operations",
+      "service": "ChannelOperationService",
+      "method": "listOperations",
+      "request": "OperationQuery",
+      "response": "PageData<OperationVO>",
+      "params": "connectionNo/type/status/from/to/page/size",
+      "tables": [
+        "cim_operation"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "BizChannelOperationController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-035",
+      "group": "动作查询",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/operations/{operationNo}",
+      "service": "ChannelOperationService",
+      "method": "getOperation",
+      "request": "OperationRef",
+      "response": "OperationVO",
+      "params": "operationNo；脱敏错误、回执及可恢复操作",
+      "tables": [
+        "cim_operation"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "BizChannelOperationController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-036",
+      "group": "动作证据",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/operations/{operationNo}/attempts",
+      "service": "ChannelOperationService",
+      "method": "listAttempts",
+      "request": "AttemptQuery",
+      "response": "PageData<OperationAttemptVO>",
+      "params": "operationNo/page/size；不返回原始密钥或顾客PII",
+      "tables": [
+        "cim_operation_attempt"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "BizChannelOperationController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-037",
+      "group": "动作查询",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/operations/{operationNo}:refresh",
+      "service": "ChannelOperationService",
+      "method": "refresh",
+      "request": "RefreshOperationReq",
+      "response": "OperationVO",
+      "params": "version/reason；仅按已声明能力查询原动作",
+      "tables": [
+        "cim_operation",
+        "cim_operation_attempt",
+        "cim_request_journal"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "BizChannelOperationController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-038",
+      "group": "动作恢复",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/operations/{operationNo}:recover",
+      "service": "ChannelOperationService",
+      "method": "recover",
+      "request": "RecoverOperationReq",
+      "response": "OperationVO",
+      "params": "version/reason；原键/原hash，UNKNOWN不能任意换键重发",
+      "tables": [
+        "cim_operation",
+        "cim_operation_attempt",
+        "cim_request_journal"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "BizChannelOperationController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-039",
+      "group": "订单",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/orders",
+      "service": "ChannelOrderService",
+      "method": "listOrders",
+      "request": "ChannelOrderQuery",
+      "response": "PageData<ChannelOrderVO>",
+      "params": "connectionNo/externalOrderRef/sourceOwner/importStatus/platformStatus/from/to/page/size",
+      "tables": [
+        "cim_order_link"
+      ],
+      "ac": "AC08",
+      "phase": "ORDER",
+      "controller": "BizChannelOrderController",
+      "permissionGroup": "ORDER",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-040",
+      "group": "订单",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/orders/{channelOrderNo}",
+      "service": "ChannelOrderService",
+      "method": "getOrder",
+      "request": "ChannelOrderRef",
+      "response": "ChannelOrderVO",
+      "params": "订单业务号；分状态、原金额依据和核心关联，不返回物理id",
+      "tables": [
+        "cim_order_link",
+        "cim_order_revision"
+      ],
+      "ac": "AC08",
+      "phase": "ORDER",
+      "controller": "BizChannelOrderController",
+      "permissionGroup": "ORDER",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-041",
+      "group": "订单原行",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/orders/{channelOrderNo}/lines",
+      "service": "ChannelOrderService",
+      "method": "listLines",
+      "request": "ChannelOrderLineQuery",
+      "response": "PageData<ChannelOrderLineVO>",
+      "params": "orderRevisionNo/page/size",
+      "tables": [
+        "cim_order_line_link"
+      ],
+      "ac": "AC08",
+      "phase": "ORDER",
+      "controller": "BizChannelOrderController",
+      "permissionGroup": "ORDER",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-042",
+      "group": "订单修订",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/orders/{channelOrderNo}/revisions",
+      "service": "ChannelOrderService",
+      "method": "listRevisions",
+      "request": "ChannelOrderRevisionQuery",
+      "response": "PageData<ChannelOrderRevisionVO>",
+      "params": "channelOrderNo/page/size",
+      "tables": [
+        "cim_order_revision"
+      ],
+      "ac": "AC08",
+      "phase": "ORDER",
+      "controller": "BizChannelOrderController",
+      "permissionGroup": "ORDER",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-043",
+      "group": "接单",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/orders/{channelOrderNo}:accept",
+      "service": "ChannelOrderService",
+      "method": "accept",
+      "request": "AcceptChannelOrderReq",
+      "response": "OperationVO",
+      "params": "version/可信备货时间；仅INSTANT且POS_ACCEPT能力，业务准备后确认",
+      "tables": [
+        "cim_order_link",
+        "cim_operation",
+        "cim_request_journal"
+      ],
+      "ac": "AC09",
+      "phase": "ORDER",
+      "controller": "BizChannelOrderController",
+      "permissionGroup": "ORDER",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-044",
+      "group": "拒单",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/orders/{channelOrderNo}:reject",
+      "service": "ChannelOrderService",
+      "method": "reject",
+      "request": "RejectChannelOrderReq",
+      "response": "OperationVO",
+      "params": "version/reasonCode/reason；无拒单能力或已受理按取消合同处理",
+      "tables": [
+        "cim_order_link",
+        "cim_operation",
+        "cim_request_journal"
+      ],
+      "ac": "AC09",
+      "phase": "ORDER",
+      "controller": "BizChannelOrderController",
+      "permissionGroup": "ORDER",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-045",
+      "group": "订单刷新",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/orders/{channelOrderNo}:refresh",
+      "service": "ChannelOrderService",
+      "method": "refreshOrder",
+      "request": "RefreshChannelOrderReq",
+      "response": "OperationVO",
+      "params": "version；查询外部原单并按快照规则处理，不能直接覆盖",
+      "tables": [
+        "cim_order_link",
+        "cim_order_revision",
+        "cim_operation"
+      ],
+      "ac": "AC08",
+      "phase": "ORDER",
+      "controller": "BizChannelOrderController",
+      "permissionGroup": "ORDER",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-046",
+      "group": "导入恢复",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/orders/{channelOrderNo}:recover-import",
+      "service": "ChannelOrderService",
+      "method": "recoverImport",
+      "request": "RecoverChannelImportReq",
+      "response": "OperationVO",
+      "params": "version/reason；先查原行业导入结果",
+      "tables": [
+        "cim_order_link",
+        "cim_operation"
+      ],
+      "ac": "AC09",
+      "phase": "ORDER",
+      "controller": "BizChannelOrderController",
+      "permissionGroup": "ORDER",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-047",
+      "group": "事件",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/inbound-events",
+      "service": "ChannelEventService",
+      "method": "listEvents",
+      "request": "InboundEventQuery",
+      "response": "PageData<InboundEventVO>",
+      "params": "connectionNo/type/status/orderRef/from/to/page/size",
+      "tables": [
+        "cim_inbound_event"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "BizChannelEventController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-048",
+      "group": "事件证据",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/inbound-events/{eventNo}/receipts",
+      "service": "ChannelEventService",
+      "method": "listReceipts",
+      "request": "InboundReceiptQuery",
+      "response": "PageData<InboundReceiptVO>",
+      "params": "eventNo/page/size；摘要/分类，不直接下载原敏感报文",
+      "tables": [
+        "cim_inbound_receipt"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "BizChannelEventController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-049",
+      "group": "事件恢复",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/inbound-events/{eventNo}:recover",
+      "service": "ChannelEventService",
+      "method": "recoverEvent",
+      "request": "RecoverInboundEventReq",
+      "response": "InboundEventVO",
+      "params": "version/reason；重放已验签的原快照，冲突需原事实核验",
+      "tables": [
+        "cim_inbound_event",
+        "cim_operation",
+        "cim_request_journal"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "BizChannelEventController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-050",
+      "group": "履约",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/orders/{channelOrderNo}/fulfillments",
+      "service": "ChannelFulfillmentService",
+      "method": "listFulfillments",
+      "request": "FulfillmentQuery",
+      "response": "PageData<FulfillmentLinkVO>",
+      "params": "channelOrderNo/page/size",
+      "tables": [
+        "cim_fulfillment_link",
+        "cim_fulfillment_line_link"
+      ],
+      "ac": "AC10",
+      "phase": "FULFILLMENT",
+      "controller": "BizChannelFulfillmentController",
+      "permissionGroup": "FULFILLMENT",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-051",
+      "group": "履约回传",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/stores/{storeNo}/fulfillment-publications",
+      "service": "ChannelFulfillmentService",
+      "method": "publishFulfillment",
+      "request": "PublishFulfillmentReq",
+      "response": "OperationVO",
+      "params": "channelOrderNo/sourceOwner/sourceFulfillmentRef/sourceRevision；只传原履约引用不自报已完成",
+      "tables": [
+        "cim_fulfillment_link",
+        "cim_fulfillment_line_link",
+        "cim_operation"
+      ],
+      "ac": "AC10",
+      "phase": "FULFILLMENT",
+      "controller": "BizChannelFulfillmentController",
+      "permissionGroup": "FULFILLMENT",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-052",
+      "group": "售后",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/after-sales",
+      "service": "ChannelAfterSaleService",
+      "method": "listCases",
+      "request": "AfterSaleQuery",
+      "response": "PageData<AfterSaleLinkVO>",
+      "params": "connectionNo/channelOrderNo/type/status/from/to/page/size",
+      "tables": [
+        "cim_after_sale_link"
+      ],
+      "ac": "AC11",
+      "phase": "AFTER_SALE",
+      "controller": "BizChannelAfterSaleController",
+      "permissionGroup": "AFTER_SALE",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-053",
+      "group": "售后",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/after-sales/{caseNo}",
+      "service": "ChannelAfterSaleService",
+      "method": "getCase",
+      "request": "AfterSaleRef",
+      "response": "AfterSaleLinkVO",
+      "params": "caseNo；原行及资金证据分状态",
+      "tables": [
+        "cim_after_sale_link",
+        "cim_after_sale_line_link"
+      ],
+      "ac": "AC11",
+      "phase": "AFTER_SALE",
+      "controller": "BizChannelAfterSaleController",
+      "permissionGroup": "AFTER_SALE",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-054",
+      "group": "售后执行",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/after-sales/{caseNo}:apply-decision",
+      "service": "ChannelAfterSaleService",
+      "method": "applyDecision",
+      "request": "ApplyAfterSaleDecisionReq",
+      "response": "OperationVO",
+      "params": "version/sourceDecisionRef/sourceRevision；退款须原售后+资金授权，不接受任意金额",
+      "tables": [
+        "cim_after_sale_link",
+        "cim_operation",
+        "cim_financial_evidence_link"
+      ],
+      "ac": "AC11",
+      "phase": "AFTER_SALE",
+      "controller": "BizChannelAfterSaleController",
+      "permissionGroup": "AFTER_SALE",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-055",
+      "group": "核销预览",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/stores/{storeNo}/redemption-previews",
+      "service": "ChannelRedemptionService",
+      "method": "preview",
+      "request": "PreviewChannelRedemptionReq",
+      "response": "RedemptionPreviewVO",
+      "params": "connectionNo/受控券引用/sourceConsumptionRef；验券并核验原权益合同",
+      "tables": [
+        "cim_operation"
+      ],
+      "ac": "AC12",
+      "phase": "VOUCHER",
+      "controller": "BizChannelRedemptionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-056",
+      "group": "核销",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/stores/{storeNo}/redemptions",
+      "service": "ChannelRedemptionService",
+      "method": "redeem",
+      "request": "RedeemChannelCertificateReq",
+      "response": "OperationVO",
+      "params": "previewRef/expectedHash/sourceAuthorizationRef；原业务消费唯一身份",
+      "tables": [
+        "cim_redemption_link",
+        "cim_redemption_item",
+        "cim_operation"
+      ],
+      "ac": "AC12",
+      "phase": "VOUCHER",
+      "controller": "BizChannelRedemptionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-057",
+      "group": "核销查询",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/redemptions/{redemptionNo}",
+      "service": "ChannelRedemptionService",
+      "method": "getRedemption",
+      "request": "RedemptionRef",
+      "response": "RedemptionVO",
+      "params": "redemptionNo；不暴露明文券码",
+      "tables": [
+        "cim_redemption_link",
+        "cim_redemption_item"
+      ],
+      "ac": "AC12",
+      "phase": "VOUCHER",
+      "controller": "BizChannelRedemptionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-058",
+      "group": "撤销核销",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/redemptions/{redemptionNo}:reverse",
+      "service": "ChannelRedemptionService",
+      "method": "reverse",
+      "request": "ReverseChannelRedemptionReq",
+      "response": "OperationVO",
+      "params": "version/sourceReversalAuthorizationRef/reason；依协议及原权益合同",
+      "tables": [
+        "cim_redemption_link",
+        "cim_operation"
+      ],
+      "ac": "AC12",
+      "phase": "VOUCHER",
+      "controller": "BizChannelRedemptionController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-059",
+      "group": "账单",
+      "role": "B",
+      "verb": "POST",
+      "path": "/biz/x/commerce/accounts/{accountNo}/statement-imports",
+      "service": "ChannelReconciliationService",
+      "method": "importStatement",
+      "request": "ImportChannelStatementReq",
+      "response": "StatementImportVO",
+      "params": "平台账单引用或受控文件引用/hash；主体级财务权限+账号全部范围",
+      "tables": [
+        "cim_statement",
+        "cim_statement_line",
+        "cim_request_journal"
+      ],
+      "ac": "AC13",
+      "phase": "FINANCIAL",
+      "controller": "BizChannelReconciliationController",
+      "permissionGroup": "FINANCE",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-060",
+      "group": "账单",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/accounts/{accountNo}/statements",
+      "service": "ChannelReconciliationService",
+      "method": "listStatements",
+      "request": "StatementQuery",
+      "response": "PageData<StatementVO>",
+      "params": "期间/currency/status/page/size；主体级财务权限，门店角色不开放",
+      "tables": [
+        "cim_statement"
+      ],
+      "ac": "AC13",
+      "phase": "FINANCIAL",
+      "controller": "BizChannelReconciliationController",
+      "permissionGroup": "FINANCE",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-061",
+      "group": "账单明细",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/statement-lines",
+      "service": "ChannelReconciliationService",
+      "method": "listStoreLines",
+      "request": "StatementLineQuery",
+      "response": "PageData<StatementLineVO>",
+      "params": "statementNo/connectionNo/differenceCode/page/size；强制门店行过滤",
+      "tables": [
+        "cim_statement_line"
+      ],
+      "ac": "AC13",
+      "phase": "FINANCIAL",
+      "controller": "BizChannelReconciliationController",
+      "permissionGroup": "FINANCE",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-062",
+      "group": "同步统计",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/statistics/sync",
+      "service": "ChannelStatisticsService",
+      "method": "syncStatistics",
+      "request": "SyncStatisticsQuery",
+      "response": "SyncStatisticsVO",
+      "params": "from/to/provider/product/type；按run创建时间队列，同一asOf快照",
+      "tables": [
+        "cim_sync_run"
+      ],
+      "ac": "AC14",
+      "phase": "BASE",
+      "controller": "BizChannelStatisticsController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-063",
+      "group": "平台统计",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/statistics/providers",
+      "service": "ChannelStatisticsService",
+      "method": "providerStatistics",
+      "request": "ProviderStatisticsQuery",
+      "response": "PageData<ProviderStatisticsVO>",
+      "params": "from/to/provider/product/page/size",
+      "tables": [
+        "cim_sync_run",
+        "cim_store_connection"
+      ],
+      "ac": "AC14",
+      "phase": "BASE",
+      "controller": "BizChannelStatisticsController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-064",
+      "group": "订单接入统计",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/statistics/order-imports",
+      "service": "ChannelStatisticsService",
+      "method": "importStatistics",
+      "request": "ImportStatisticsQuery",
+      "response": "ImportStatisticsVO",
+      "params": "from/to/connectionNo；技术导入数，不是成交金额",
+      "tables": [
+        "cim_order_link",
+        "cim_inbound_event"
+      ],
+      "ac": "AC14",
+      "phase": "BASE",
+      "controller": "BizChannelStatisticsController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-065",
+      "group": "健康",
+      "role": "B",
+      "verb": "GET",
+      "path": "/biz/x/commerce/stores/{storeNo}/integration-health",
+      "service": "ChannelStatisticsService",
+      "method": "health",
+      "request": "IntegrationHealthQuery",
+      "response": "IntegrationHealthVO",
+      "params": "connectionNo/provider；授权、积压、最老待办、远端一致性",
+      "tables": [
+        "cim_store_connection",
+        "cim_operation",
+        "cim_sync_run",
+        "cim_inbound_event"
+      ],
+      "ac": "AC14",
+      "phase": "BASE",
+      "controller": "BizChannelStatisticsController",
+      "permissionGroup": "INTEGRATION",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-066",
+      "group": "平台支持",
+      "role": "OPS",
+      "verb": "GET",
+      "path": "/ops/x/commerce/support/health",
+      "service": "CommerceSupportService",
+      "method": "supportHealth",
+      "request": "CommerceSupportQuery",
+      "response": "IntegrationHealthVO",
+      "params": "entityNo/storeNo；只读支持数据域显式核验",
+      "tables": [
+        "cim_store_connection",
+        "cim_operation"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "OpsCommerceSupportController",
+      "permissionGroup": "SYSTEM_SUPPORT",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-067",
+      "group": "平台支持",
+      "role": "OPS",
+      "verb": "GET",
+      "path": "/ops/x/commerce/support/operations/{operationNo}",
+      "service": "CommerceSupportService",
+      "method": "supportOperation",
+      "request": "CommerceSupportOperationQuery",
+      "response": "OperationVO",
+      "params": "entityNo/storeNo/operationNo；交叉核验对象归属",
+      "tables": [
+        "cim_operation",
+        "cim_operation_attempt"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "OpsCommerceSupportController",
+      "permissionGroup": "SYSTEM_SUPPORT",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-068",
+      "group": "平台基础配置",
+      "role": "OPS",
+      "verb": "PUT",
+      "path": "/ops/x/commerce/product-profiles/{profileNo}",
+      "service": "ProviderService",
+      "method": "saveProfile",
+      "request": "SaveProductProfileReq",
+      "response": "ProductProfileVO",
+      "params": "version/受控开关和协议参数；变更语义则追加档案，不审批商家目录",
+      "tables": [
+        "cim_product_profile",
+        "cim_request_journal"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "OpsChannelProviderController",
+      "permissionGroup": "SYSTEM_SUPPORT",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-069",
+      "group": "平台回调",
+      "role": "CALLBACK",
+      "verb": "POST",
+      "path": "/callback/commerce/{providerCode}/{endpointNo}",
+      "service": "ChannelWebhookService",
+      "method": "receive",
+      "request": "RawChannelWebhook",
+      "response": "ChannelAcknowledgement",
+      "params": "原始字节/必要请求头/平台路由；验签后可信定位账号门店；ACK按协议",
+      "tables": [
+        "cim_inbound_event",
+        "cim_inbound_receipt"
+      ],
+      "ac": "AC07",
+      "phase": "EVENT",
+      "controller": "ChannelWebhookController",
+      "permissionGroup": "PROVIDER_SIGNATURE",
+      "status": "PLANNED"
+    },
+    {
+      "id": "COM-070",
+      "group": "授权回调",
+      "role": "CALLBACK",
+      "verb": "GET",
+      "path": "/callback/commerce/{providerCode}/authorization",
+      "service": "ChannelAuthorizationService",
+      "method": "completeAuthorization",
+      "request": "RawAuthorizationCallback",
+      "response": "AuthorizationCallbackResult",
+      "params": "code/state及协议字段；state绑定操作者/账号/有效期/单次消费，不接受任意回跳",
+      "tables": [
+        "cim_authorization_revision",
+        "cim_operation"
+      ],
+      "ac": "AC01",
+      "phase": "BASE",
+      "controller": "ChannelAuthorizationCallbackController",
+      "permissionGroup": "PROVIDER_SIGNATURE",
+      "status": "PLANNED"
+    }
+  ],
+  "ports": [
+    {
+      "name": "ChannelCatalogSourcePort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "FOOD/RETAIL",
+      "methods": "capture(CaptureCatalogCommand)->ChannelCatalogSnapshot",
+      "purpose": "完整目录、价格来源、税口径、修订及依赖；不授予平台重算价格权限",
+      "ac": "AC03"
+    },
+    {
+      "name": "ChannelAvailabilitySourcePort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "商品/独立库存原owner",
+      "methods": "captureAvailability(CaptureAvailabilityCommand)->AvailabilitySnapshot; captureInventory(CaptureInventoryCommand)->InventoryPublicationSnapshot",
+      "purpose": "可售量/仓库/渠道配额均取原owner，不建立渠道库存账",
+      "ac": "AC06"
+    },
+    {
+      "name": "ChannelOrderIngestPort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "FOOD/RETAIL",
+      "methods": "prepareImport(PrepareChannelOrderCommand)->ImportPreparation; getImport(ChannelOrderReference)->ImportPreparation; confirmAcceptance(ConfirmChannelAcceptanceCommand)->AcceptanceReceipt; cancelPreparedImport(CancelPreparedImportCommand)->ImportCancellationReceipt",
+      "purpose": "原核心订单、库存承诺、接单证据及一次派工；POSTPAY证明不可滥用",
+      "ac": "AC09"
+    },
+    {
+      "name": "ChannelOrderAmendmentPort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "原订单/行业售后",
+      "methods": "apply(ApplyChannelAmendmentCommand)->AmendmentReceipt; getAmendment(ChannelAmendmentReference)->AmendmentReceipt",
+      "purpose": "原行/数量/金额和取消/替换守恒，资金动作需另授权",
+      "ac": "AC11"
+    },
+    {
+      "name": "ChannelFulfillmentSourcePort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "FOOD/零售/原物流履约",
+      "methods": "capture(CaptureFulfillmentCommand)->FulfillmentSnapshot",
+      "purpose": "制作/拣货/包裹/交接均取已提交原事实；回传无权发明履约",
+      "ac": "AC10"
+    },
+    {
+      "name": "ChannelRedemptionSourcePort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "原权益/交易能力",
+      "methods": "authorize(AuthorizeRedemptionCommand)->RedemptionAuthorization; confirm(ConfirmRedemptionCommand)->RedemptionReceipt; reverse(AuthorizeRedemptionReverseCommand)->RedemptionAuthorization",
+      "purpose": "先持久化原消费授权，再执行平台核销，未知查回；不造券余额",
+      "ac": "AC12"
+    },
+    {
+      "name": "ChannelFinancialEvidencePort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "独立支付/原资金所属域",
+      "methods": "record(RecordChannelFinancialEvidenceCommand)->FinancialEvidenceReceipt; get(ChannelFinancialEvidenceReference)->FinancialEvidenceReceipt",
+      "purpose": "外部收款、退款、结算证据类型分离；不凭回调修改paid_at",
+      "ac": "AC13"
+    },
+    {
+      "name": "ChannelCredentialPort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "原安全凭据能力",
+      "methods": "resolve(ChannelCredentialReference)->ScopedCredentialHandle",
+      "purpose": "业务只传引用；签名/刷新组件受控使用，不出日志/公共响应",
+      "ac": "AC01"
+    },
+    {
+      "name": "ChannelSourceValidationPort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "各资源原owner或仅调用原Port的宿主只读组合",
+      "methods": "validate(SourceValidationCommand)->SourceValidationReceipt",
+      "purpose": "校验entity/store/来源归属、资源类型、sourceRef/sourceRevision和授权销售条目；返回VALID/STALE/UNSUPPORTED/UNKNOWN、规范身份/原修订/hash/有效期及原回执；不跨库读原表。目录/映射/仓库来源均须typed验证，金额最终由原定价及订单prepareImport核验。",
+      "ac": "AC05"
+    },
+    {
+      "name": "ChannelConnectionIdentityPort",
+      "package": "ai.neargo.shop.spi.commerce",
+      "owner": "可信平台授权/查询适配器",
+      "methods": "verify(Identity)->Proof(VERIFIED/UNKNOWN/UNSUPPORTED, identity, receiptRef, verifiedAt, validUntil)",
+      "purpose": "事务外核验远端门店真实归属，本地事务锁账号/协议并复核冻结身份及有效期；无实现拒绝认领，不提供默认成功",
+      "ac": "AC02"
+    }
+  ],
+  "acceptance": [
+    [
+      "AC01",
+      "渠道授权、平台配置、账号和主体/门店范围统一且不泄密",
+      "ChannelAuthorizationScopeTest#rejectCrossEntityAccountAndReplayState"
+    ],
+    [
+      "AC02",
+      "稳定渠道门店身份在换授权后仍保持订单去重，配置修订可追溯",
+      "ChannelConnectionIdentityTest#credentialRotationKeepsRemoteBusinessIdentity"
+    ],
+    [
+      "AC03",
+      "餐饮和零售生成有原价依据的完整目录，单一远端范围只一个发布者",
+      "CatalogPublicationTest#aggregateSourcesWithoutFullReplaceCollision"
+    ],
+    [
+      "AC04",
+      "自动/手动共用任务，旧ACK和部分失败不伪装最新全量确认",
+      "SyncRunStateTest#lateAckCannotAdvanceGenerationOrHidePartialState"
+    ],
+    [
+      "AC05",
+      "历史映射及原行/组件身份保留，名称和条码不作猜测映射",
+      "ResourceMappingTest#resolveOriginalRevisionAndRejectAmbiguousLine"
+    ],
+    [
+      "AC06",
+      "多渠道可售量取原库存承诺，不能通过API自报余额",
+      "ChannelInventoryPublicationTest#rejectCallerQuantityAndUseOriginalOwner"
+    ],
+    [
+      "AC07",
+      "回调先验签落库ACK，重复/冲突/乱序和UNKNOWN可追溯且原键恢复",
+      "ChannelWebhookRecoveryTest#lostResponseDoesNotRepeatNonIdempotentAction"
+    ],
+    [
+      "AC08",
+      "外部主子单/精确数量/金额映射原核心订单，不按当前目录改价",
+      "ChannelOrderImportTest#preserveExternalOriginalLinesAndAmounts"
+    ],
+    [
+      "AC09",
+      "行业准备、平台接单、资金履约准入、受理/一次派工分开确认",
+      "ChannelAcceptanceTest#unknownAcceptanceNeverDispatchesKitchenOrShipment"
+    ],
+    [
+      "AC10",
+      "即时出餐、零售拣货、多包裹发货分别回传已提交事实",
+      "ChannelFulfillmentTest#publishOnlyOriginalCompletedQuantities"
+    ],
+    [
+      "AC11",
+      "取消/退餐/退货/退款分别沿原合同，不伪回补或重复退款",
+      "ChannelAfterSaleTest#refundRequestDoesNotBecomeMoneyOrStockReceipt"
+    ],
+    [
+      "AC12",
+      "券核销/撤销由原消费和权益授权，重复或结果未知不再消费",
+      "ChannelRedemptionTest#recoverOriginalCertificateConsumption"
+    ],
+    [
+      "AC13",
+      "账单/到账/经营日期和资金证据分离，缺失不填伪0",
+      "ChannelReconciliationTest#unknownAllocationCannotLeakAcrossStores"
+    ],
+    [
+      "AC14",
+      "技术统计分母、时点和去重规则明确，不冒充成交/净利",
+      "ChannelStatisticsTest#excludeUnknownAndCancellationFromSuccessDenominator"
+    ],
+    [
+      "AC15",
+      "集成和独立部署无业务实现环依赖，关闭不影响零售餐饮",
+      "CommerceDeploymentTest#sameContractsWithLocalAndRemoteProviders"
+    ]
+  ],
+  "common": {
+    "fields": [
+      [
+        "id",
+        "BIGINT AUTO_INCREMENT",
+        "物理主键，不出URL/公共响应"
+      ],
+      [
+        "tenant_no",
+        "VARCHAR(32)",
+        "一期MAIN，保留原平台口径"
+      ],
+      [
+        "created_at/updated_at",
+        "DATETIME(3)",
+        "UTC LocalDateTime，沿原填充"
+      ],
+      [
+        "created_by/updated_by",
+        "VARCHAR(32)",
+        "原操作者或SYSTEM"
+      ],
+      [
+        "version",
+        "BIGINT",
+        "乐观锁，初始0"
+      ],
+      [
+        "deleted",
+        "INT",
+        "沿BaseEntity；事实/修订禁止业务archive"
+      ]
+    ],
+    "types": "业务号VARCHAR(32)且按原编号组件；外部标识默认VARCHAR(128)，协议更长时设计前补约，禁止截断；hash CHAR(64)；数量DECIMAL(20,6)；金额BIGINT最小单位并执行原MoneyMinor JSON安全边界；字符标识使用平台现有utf8mb4二进制比较策略。",
+    "pagination": "page>=1，size默认20/最大100；时间from含to不含，查询最长31天是本方案首版默认建议，超出明确拒绝；历史分页稳定排序created_at,id，物理id仅排序不返回。",
+    "statistics": "from/to为UTC Instant，按run.created_at划定同期任务，单一asOf读快照；成功率SUCCEEDED/(SUCCEEDED+FAILED+PARTIAL)，分母0返回null；UNKNOWN/执行中/CANCELLED单列。订单接入数按稳定外部订单身份去重，回调到达次数另计。",
+    "lease": "DB时间判断lease；领取先锁业务资源再锁operation；写回必须同时满足operation状态、attemptNo、fence；恢复不得持有事务跨网络。",
+    "routing": "首版同一连接的目录及订单只有一个sourceOwner，来源由连接冻结路由解析；仅同域多餐牌/多选品聚合。混合行业目录和订单均关闭，防止已发布但无法履约。",
+    "remoteBarrier": "全量串行覆盖远端异步期及可写子任务；SUBMITTED/UNKNOWN不因租约到期放行后续。仅原任务明确终结/取消或协议有序覆盖证明释放，缺查回能力保持阻断；新期望可排队但不发送。"
+  },
+  "diagram": {
+    "nodes": [
+      [
+        "authority",
+        "平台 账号 连接",
+        [
+          "cim_provider",
+          "cim_product_profile",
+          "cim_account",
+          "cim_authorization_revision",
+          "cim_store_connection",
+          "cim_connection_revision"
+        ]
+      ],
+      [
+        "catalog",
+        "目录 来源 映射",
+        [
+          "cim_catalog_scope",
+          "cim_catalog_source",
+          "cim_resource_mapping",
+          "cim_resource_mapping_revision"
+        ]
+      ],
+      [
+        "sync",
+        "快照 自动手动同步",
+        [
+          "cim_catalog_snapshot",
+          "cim_sync_policy",
+          "cim_sync_run",
+          "cim_sync_run_item"
+        ]
+      ],
+      [
+        "event",
+        "原请求 事件 动作",
+        [
+          "cim_request_journal",
+          "cim_inbound_event",
+          "cim_inbound_receipt",
+          "cim_operation",
+          "cim_operation_attempt"
+        ]
+      ],
+      [
+        "order",
+        "原订单与原行关联",
+        [
+          "cim_order_link",
+          "cim_order_revision",
+          "cim_order_line_link"
+        ]
+      ],
+      [
+        "fulfillment",
+        "履约与售后关联",
+        [
+          "cim_fulfillment_link",
+          "cim_fulfillment_line_link",
+          "cim_after_sale_link",
+          "cim_after_sale_line_link"
+        ]
+      ],
+      [
+        "voucher",
+        "券核销关联",
+        [
+          "cim_redemption_link",
+          "cim_redemption_item"
+        ]
+      ],
+      [
+        "finance",
+        "账单与资金证据",
+        [
+          "cim_statement",
+          "cim_statement_line",
+          "cim_financial_evidence_link"
+        ]
+      ]
+    ],
+    "edges": [
+      [
+        "authority",
+        "catalog"
+      ],
+      [
+        "catalog",
+        "sync"
+      ],
+      [
+        "sync",
+        "event"
+      ],
+      [
+        "authority",
+        "order"
+      ],
+      [
+        "event",
+        "order"
+      ],
+      [
+        "order",
+        "fulfillment"
+      ],
+      [
+        "event",
+        "voucher"
+      ],
+      [
+        "order",
+        "finance"
+      ]
+    ]
+  },
+  "implementation": {
+    "status": "C0_DRAFT_SLICE_VERIFIED",
+    "moduleRoot": "backend-plugins/shop-commerce-integration",
+    "migration": "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",
+    "tables": [
+      "cim_provider",
+      "cim_product_profile",
+      "cim_account",
+      "cim_store_connection",
+      "cim_connection_revision",
+      "cim_request_journal"
+    ],
+    "apiIds": [
+      "COM-001",
+      "COM-002",
+      "COM-003",
+      "COM-004",
+      "COM-005",
+      "COM-009",
+      "COM-010",
+      "COM-011"
+    ],
+    "limitations": "八个路由已编码，仅属主草稿管理及分页；连接创建另需可信远端归属SPI证明，无生产提供方时拒绝认领身份；筛选参数尚未实现并明确拒绝；授权/核验/启用、目录发送、订单导入及真实平台未开放。独立服务可构建，尚无远程Service客户端或内部业务端点，不能宣称已独立业务闭环。未执行生产建表或部署。",
+    "tests": "集成宿主与独立server编译通过；29项Java专项通过（包括真实宿主Mapper扫描）；设计10、文档8通过；隔离原生MySQL迁移及约束通过；完整认证链、原生JDBC/Flyway并发与独立业务闭环尚未联验。"
+  }
+}

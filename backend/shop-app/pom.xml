@@ -251,6 +251,18 @@
     </properties>
 
     <profiles>
+        <profile>
+            <id>commerce-embedded</id>
+            <dependencies>
+                <dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-core</artifactId>
+                    <version>${project.version}</version></dependency>
+                <dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-web</artifactId>
+                    <version>${project.version}</version></dependency>
+                <dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-channel</artifactId>
+                    <version>${project.version}</version></dependency>
+            </dependencies>
+        </profile>
+
         <!-- Each Surefire execution owns a fresh fork: close Spring contexts and release
              JVM/static caches between bounded batches. Override default-test rather than
              adding an unfiltered ninth run. A focused -Dtest uses the usual single run.
