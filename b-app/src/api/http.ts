@@ -199,6 +199,7 @@ import type {
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
+  mResolveMemberCode: (body) => http.post(E.mResolveMemberCode.path, body),
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
   mSetPassword: (password) => http.post<void>(E.mSetPassword.path, { password }),
   mSetDisplayName: (displayName) => http.post<void>(E.mSetDisplayName.path, { displayName }),

@@ -841,6 +841,9 @@ export interface EstateList {
 }
 
 export interface MerchantApi {
+  // 既有端点与 mock 已注册，补齐公开接口声明。
+  mResolveMemberCode(body: { memberCode: string; storeNo: string }): Promise<{ customerRef: string; maskedName: string; expiresAt: string }>;
+
   // ---- 账号与入驻（B-11.1）
   mLogin(req: LoginReq): Promise<MerchantLoginResp>;
   mProfile(): Promise<MerchantProfile>;

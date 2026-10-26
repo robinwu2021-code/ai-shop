@@ -23,14 +23,14 @@
 | pages | 93 |
 | registeredRoutes | 93 |
 | components | 42 |
-| localeKeys | 3104 |
-| catalogEntries | 3104 |
+| localeKeys | 3098 |
+| catalogEntries | 3098 |
 | references | 2825 |
 | dynamicReferences | 265 |
 | duplicateGroups | 265 |
-| duplicateKeys | 694 |
+| duplicateKeys | 693 |
 | literalCandidates | 1 |
-| longCopyCandidates | 17 |
+| longCopyCandidates | 15 |
 | layoutCandidates | 19 |
 
 ## 页面清单
@@ -298,10 +298,10 @@
 | --- | --- | --- | --- |
 | 已驳回 | apply.statusREJECTED、goods.statusREJECTED、goods.revStatusREJECTED、payment.status.REJECTED、store.pickup.stREJECTED、afterSale.status.REJECTED、afterSale.rejected、invoice.statusREJECTED、payoutAccount.status.REJECTED、me.statusREJECTED | — | 否 |
 | 商品 | tab.goods、goods.title、order.items、reviews.dimGoods、platformApply.goods、group.goods、groupOpen.goods、activityEdit.comboType.GOODS、activityEdit.goods、couponEdit.scope | — | 否 |
-| 已停用 | mySpecs.archivedTitle、stores.disabled、staff.disabled、store.pickup.stSUSPENDED、payoutAccount.status.DISABLED、crossStore.disabled、memberTags.disabled、suppliers.archived | — | 否 |
 | 审核中 | apply.statusAPPLYING、goods.statusPENDING、payment.status.APPLYING、store.noticeAuditing、store.pickup.stPENDING、entities.stReviewing、me.statusAPPLYING | — | 否 |
 | 进行中 | groups.tab.OPEN、groups.status.OPEN、activities.tab.live、activities.status.live、activityEdit.status.RUNNING、stockCheck.counting、stockDocs.status.COUNTING | — | 否 |
 | 已结束 | platformActs.tab.ENDED、platformActs.ended、activities.tab.ended、activityEdit.status.ENDED、coupons.tab.ENDED、coupons.status.ENDED、reachTasks.couponEnded | — | 否 |
+| 已停用 | stores.disabled、staff.disabled、store.pickup.stSUSPENDED、payoutAccount.status.DISABLED、crossStore.disabled、memberTags.disabled、suppliers.archived | — | 否 |
 | 营业执照 | apply.qualBUSINESS_LICENSE、qual.typeLicense、payment.missing.licenses、payment.licenses、entities.title、entityDetail.license | — | 否 |
 | 活动 | platformApply.activity、group.activity、groupOpen.activity、marketing.activities、activities.title、message.tab.MARKETING | — | 否 |
 | 清空 | skuIdentity.ruleDashV、goods.clear、goods.clearOk、store.timeRange.clear、store.polygonClear、stockCheck.clearAll | — | 否 |

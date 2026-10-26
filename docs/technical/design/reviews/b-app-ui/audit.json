@@ -10,14 +10,14 @@
     "pages": 93,
     "registeredRoutes": 93,
     "components": 42,
-    "localeKeys": 3104,
-    "catalogEntries": 3104,
+    "localeKeys": 3098,
+    "catalogEntries": 3098,
     "references": 2825,
     "dynamicReferences": 265,
     "duplicateGroups": 265,
-    "duplicateKeys": 694,
+    "duplicateKeys": 693,
     "literalCandidates": 1,
-    "longCopyCandidates": 17,
+    "longCopyCandidates": 15,
     "layoutCandidates": 19
   },
   "parity": [
@@ -1398,21 +1398,6 @@
       "sameInAllLanguages": false
     },
     {
-      "text": "已停用",
-      "keys": [
-        "mySpecs.archivedTitle",
-        "stores.disabled",
-        "staff.disabled",
-        "store.pickup.stSUSPENDED",
-        "payoutAccount.status.DISABLED",
-        "crossStore.disabled",
-        "memberTags.disabled",
-        "suppliers.archived"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": false
-    },
-    {
       "text": "审核中",
       "keys": [
         "apply.statusAPPLYING",
@@ -1450,6 +1435,20 @@
         "coupons.tab.ENDED",
         "coupons.status.ENDED",
         "reachTasks.couponEnded"
+      ],
+      "canonicalCandidate": null,
+      "sameInAllLanguages": false
+    },
+    {
+      "text": "已停用",
+      "keys": [
+        "stores.disabled",
+        "staff.disabled",
+        "store.pickup.stSUSPENDED",
+        "payoutAccount.status.DISABLED",
+        "crossStore.disabled",
+        "memberTags.disabled",
+        "suppliers.archived"
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": false
@@ -3914,18 +3913,6 @@
     }
   ],
   "longCopyCandidates": [
-    {
-      "key": "printCenter.summary",
-      "text": "应打 {expected} · 原票完成 {confirmed} · 补票解决 {resolved} · 待核实 {unknown}",
-      "length": 66,
-      "references": []
-    },
-    {
-      "key": "qual.intro",
-      "text": "上架被拒多数不是商品本身的问题，而是该类目需要尚未提交的资质。提交后由平台核验，通过即可上架。",
-      "length": 47,
-      "references": []
-    },
     {
       "key": "stores.hint",
       "text": "管理门店的开设、启停与收款账户。单店门面（公告、营业时间、主推商品）在「店铺设置」中维护。",

@@ -6332,12 +6332,6 @@
           "ar": "كل يوم"
         },
         {
-          "key": "activities.new",
-          "zh-CN": "新建活动",
-          "en": "New promotion",
-          "ar": "عرض جديد"
-        },
-        {
           "key": "activities.pause",
           "zh-CN": "暂停",
           "en": "Pause",
@@ -6530,6 +6524,12 @@
           "ar": "الأحد"
         },
         {
+          "key": "activityCreate.title",
+          "zh-CN": "新建活动",
+          "en": "Create activity",
+          "ar": "إنشاء نشاط"
+        },
+        {
           "key": "activityEdit.audience",
           "zh-CN": "人群",
           "en": "Customers",
@@ -6546,12 +6546,6 @@
           "zh-CN": "预算（元）",
           "en": "Budget",
           "ar": "الميزانية"
-        },
-        {
-          "key": "activityEdit.cancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
         },
         {
           "key": "activityEdit.comboAddBen",
@@ -6710,12 +6704,6 @@
           "ar": "لا يوجد أحد في هذا الجمهور حاليًا، فلن يستفيد أحد. ارجع واختر جمهورًا آخر"
         },
         {
-          "key": "activityEdit.edit",
-          "zh-CN": "编辑",
-          "en": "Edit",
-          "ar": "تعديل"
-        },
-        {
           "key": "activityEdit.editable",
           "zh-CN": "可改",
           "en": "Editable",
@@ -6794,12 +6782,6 @@
           "ar": "أثناء التشغيل يمكن تعديل وقت الانتهاء والحدود فقط؛ لتغيير القواعد أنهِه وأنشئ نشاطًا جديدًا"
         },
         {
-          "key": "activityEdit.name",
-          "zh-CN": "名称",
-          "en": "Name",
-          "ar": "الاسم"
-        },
-        {
           "key": "activityEdit.namePh",
           "zh-CN": "活动名称",
           "en": "Promotion name",
@@ -6860,12 +6842,6 @@
           "ar": "أكمل القواعد"
         },
         {
-          "key": "activityEdit.next",
-          "zh-CN": "下一步",
-          "en": "Next",
-          "ar": "التالي"
-        },
-        {
           "key": "activityEdit.openGroups",
           "zh-CN": "已开的团",
           "en": "Open groups",
@@ -6888,12 +6864,6 @@
           "zh-CN": "全部期",
           "en": "All batches",
           "ar": "كل الدفعات"
-        },
-        {
-          "key": "activityEdit.pickPh",
-          "zh-CN": "请选择",
-          "en": "Select",
-          "ar": "اختر"
         },
         {
           "key": "activityEdit.pickupDay.0",
@@ -6924,12 +6894,6 @@
           "zh-CN": "选择玩法",
           "en": "Choose type",
           "ar": "اختر النوع"
-        },
-        {
-          "key": "activityEdit.prev",
-          "zh-CN": "上一步",
-          "en": "Back",
-          "ar": "رجوع"
         },
         {
           "key": "activityEdit.progress",
@@ -7056,12 +7020,6 @@
           "zh-CN": "满（元）",
           "en": "Spend over",
           "ar": "عند الإنفاق"
-        },
-        {
-          "key": "activityEdit.save",
-          "zh-CN": "保存",
-          "en": "Save",
-          "ar": "حفظ"
         },
         {
           "key": "activityEdit.saved",
@@ -7382,10 +7340,34 @@
           "ar": "طلبات معلقة"
         },
         {
+          "key": "afterSale.quarantineHint",
+          "zh-CN": "不可销售的退货计入隔离库存，不增加可售库存。",
+          "en": "Unsaleable returns enter quarantine stock and do not increase saleable stock.",
+          "ar": "تُضاف المرتجعات غير القابلة للبيع إلى المخزون المعزول ولا تزيد المخزون القابل للبيع."
+        },
+        {
           "key": "afterSale.reasonPh",
           "zh-CN": "请说明驳回理由，顾客可见",
           "en": "Give the reason for rejection; visible to the customer",
           "ar": "اذكر سبب الرفض؛ يراه العميل"
+        },
+        {
+          "key": "afterSale.receiptAllRequired",
+          "zh-CN": "请收齐本单退货后确认整单退款",
+          "en": "Receive all returned items before confirming the full refund",
+          "ar": "استلم جميع المنتجات المرتجعة قبل تأكيد الاسترداد الكامل"
+        },
+        {
+          "key": "afterSale.receiptTitle",
+          "zh-CN": "退货验收",
+          "en": "Return inspection",
+          "ar": "فحص المرتجعات"
+        },
+        {
+          "key": "afterSale.receivedQty",
+          "zh-CN": "实收件数",
+          "en": "Received quantity",
+          "ar": "الكمية المستلمة"
         },
         {
           "key": "afterSale.refundAmount",
@@ -7416,6 +7398,12 @@
           "zh-CN": "已驳回，等待顾客确认或申请平台介入。",
           "en": "Rejected. Awaiting the customer's confirmation or escalation.",
           "ar": "تم الرفض؛ بانتظار قبول العميل أو التصعيد إلى المنصة."
+        },
+        {
+          "key": "afterSale.requestedQty",
+          "zh-CN": "申请 {n} 件",
+          "en": "Requested: {n} items",
+          "ar": "الكمية المطلوبة: {n} قطعة"
         },
         {
           "key": "afterSale.returnExpress",
@@ -7452,6 +7440,12 @@
           "zh-CN": "货物已验收，平台库存已更新",
           "en": "Return accepted; platform stock updated",
           "ar": "تم الاستلام وتحديث مخزون المنصة"
+        },
+        {
+          "key": "afterSale.saleable",
+          "zh-CN": "可再次销售",
+          "en": "Saleable",
+          "ar": "قابل للبيع"
         },
         {
           "key": "afterSale.stage.LABELED",
@@ -7556,6 +7550,12 @@
           "ar": "إرجاع واسترجاع"
         },
         {
+          "key": "afterSale.unsaleable",
+          "zh-CN": "不可销售／隔离",
+          "en": "Unsaleable / quarantined",
+          "ar": "غير قابل للبيع / معزول"
+        },
+        {
           "key": "afterSale.waitReceiptHint",
           "zh-CN": "货在途。买家签收后请确认退款。",
           "en": "In transit. Confirm the refund once the buyer receives it.",
@@ -7611,9 +7611,9 @@
         },
         {
           "key": "apply.categoryHint",
-          "zh-CN": "填写日常说法即可。可上架的类目由平台审核确定，通过后在「经营资质」中查看。",
-          "en": "Everyday wording is fine. Sellable categories are determined by platform review and listed under Category permits once approved.",
-          "ar": "بكلماتك أنت. التصنيفات المسموح بعرضها تُحدَّد أثناء المراجعة، وتظهر في «تصاريح الفئات» بعد الموافقة."
+          "zh-CN": "填写日常经营品类；审核后的可售类目在「经营资质」中查看。",
+          "en": "Enter your product categories. Approved categories are listed under Qualifications.",
+          "ar": "أدخل أصناف نشاطك. تظهر الأصناف المعتمدة في مؤهلات النشاط."
         },
         {
           "key": "apply.categoryPh",
@@ -7647,9 +7647,9 @@
         },
         {
           "key": "apply.hint",
-          "zh-CN": "个人可先开店经营。经营稳定后，平台可代办个体工商户，一并解决收款额度与税务。",
-          "en": "Individuals may open a shop first. Once trading, the platform can register a sole proprietorship, covering both the payment limit and tax.",
-          "ar": "يمكن للأفراد البدء أولًا؛ وعند النمو تتولى المنصة استخراج السجل التجاري."
+          "zh-CN": "个人主体可先开店；后续可联系平台咨询个体工商户代办。",
+          "en": "Individuals can open a shop. Contact the platform later for help registering a sole proprietorship.",
+          "ar": "يمكن للأفراد فتح متجر. تواصل مع المنصة لاحقًا للمساعدة في تسجيل منشأة فردية."
         },
         {
           "key": "apply.hintMore",
@@ -7713,9 +7713,9 @@
         },
         {
           "key": "apply.onBehalfHint",
-          "zh-CN": "你名下已经有一张待审的入驻申请，是运营在线下替你录入的。资料你可以在下面逐项核对并修改；不是你本人的话，请联系平台。",
-          "en": "There is already a pending onboarding application in your name, entered by our staff in person. You can review and edit every field below. If this was not for you, please contact the platform.",
-          "ar": "يوجد بالفعل طلب انضمام قيد المراجعة باسمك، أدخله موظفونا ميدانيًا. يمكنك مراجعة كل حقل أدناه وتعديله. إن لم يكن هذا الطلب لك، يُرجى التواصل مع المنصة."
+          "zh-CN": "平台已代填申请，请核对资料；非本人申请请联系平台。",
+          "en": "The platform entered this application for you. Check the details; contact support if it is not yours.",
+          "ar": "أدخلت المنصة هذا الطلب نيابة عنك. راجع البيانات وتواصل معها إذا لم يكن الطلب لك."
         },
         {
           "key": "apply.onBehalfTitle",
@@ -7797,9 +7797,9 @@
         },
         {
           "key": "apply.scopeHint",
-          "zh-CN": "决定商品的可见范围。范围过大会产生无法配送的订单，过小则整片小区都搜索不到本店。",
-          "en": "Determines where products are visible. Too wide produces undeliverable orders; too narrow leaves the shop unsearchable nearby.",
-          "ar": "يحدّد من يرى بضاعتك. النطاق الواسع يعني بيعًا لا تستطيع توصيله، والضيّق يعني ألّا يجدك أحد"
+          "zh-CN": "商品仅在所选范围可见，请按实际配送能力设置。",
+          "en": "Products are visible only in this area. Match it to your delivery coverage.",
+          "ar": "تظهر المنتجات ضمن النطاق المحدد فقط. اضبطه وفق قدرتك الفعلية على التوصيل."
         },
         {
           "key": "apply.sec1",
@@ -7887,9 +7887,9 @@
         },
         {
           "key": "apply.subjectHint",
-          "zh-CN": "个人主体免营业执照，结算账户在收款进件时填写；持有营业执照可选个体户或企业",
-          "en": "Individual entities need no business licence; the settlement account is entered during payment onboarding. With a licence, choose sole proprietorship or company.",
-          "ar": "الأفراد لا يحتاجون رخصة تجارية؛ يُدخل حساب التسوية عند تفعيل التحصيل"
+          "zh-CN": "个人主体免营业执照；持证请选择个体户或企业。收款账户在收款进件时填写。",
+          "en": "Individuals do not need a business licence. Licence holders select sole proprietor or company. Add settlement details during payment onboarding.",
+          "ar": "لا يحتاج الأفراد إلى رخصة تجارية. يختار حاملو الرخصة منشأة فردية أو شركة. تُدخل بيانات التسوية عند إعداد التحصيل."
         },
         {
           "key": "apply.subjectINDIVIDUAL",
@@ -7944,12 +7944,6 @@
           "zh-CN": "满足任一即可",
           "en": "Any of these",
           "ar": "أيٌّ منها"
-        },
-        {
-          "key": "audience.cancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
         },
         {
           "key": "audience.cover",
@@ -8018,12 +8012,6 @@
           "ar": "اختر"
         },
         {
-          "key": "audience.ok",
-          "zh-CN": "确定",
-          "en": "Done",
-          "ar": "تم"
-        },
-        {
           "key": "audience.segments",
           "zh-CN": "我的人群",
           "en": "My audiences",
@@ -8058,12 +8046,6 @@
           "zh-CN": "打上",
           "en": "Add",
           "ar": "إضافة"
-        },
-        {
-          "key": "batchTag.cancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
         },
         {
           "key": "batchTag.done",
@@ -8156,6 +8138,24 @@
           "ar": "إلغاء"
         },
         {
+          "key": "common.choose",
+          "zh-CN": "请选择",
+          "en": "Select",
+          "ar": "اختر"
+        },
+        {
+          "key": "common.clear",
+          "zh-CN": "清除",
+          "en": "Clear",
+          "ar": "مسح"
+        },
+        {
+          "key": "common.collapse",
+          "zh-CN": "收起",
+          "en": "Collapse",
+          "ar": "طي"
+        },
+        {
           "key": "common.comingSoon",
           "zh-CN": "该功能将在后续版本上线",
           "en": "This feature is coming in a later release",
@@ -8168,10 +8168,22 @@
           "ar": "تأكيد"
         },
         {
+          "key": "common.copy",
+          "zh-CN": "复制",
+          "en": "Copy",
+          "ar": "نسخ"
+        },
+        {
           "key": "common.delete",
           "zh-CN": "删除",
-          "en": null,
-          "ar": null
+          "en": "Delete",
+          "ar": "حذف"
+        },
+        {
+          "key": "common.disable",
+          "zh-CN": "停用",
+          "en": "Disable",
+          "ar": "تعطيل"
         },
         {
           "key": "common.done",
@@ -8180,10 +8192,28 @@
           "ar": "تم"
         },
         {
+          "key": "common.edit",
+          "zh-CN": "编辑",
+          "en": "Edit",
+          "ar": "تعديل"
+        },
+        {
           "key": "common.empty",
           "zh-CN": "这里还没有内容",
           "en": "Nothing here yet",
           "ar": "لا يوجد محتوى بعد"
+        },
+        {
+          "key": "common.enable",
+          "zh-CN": "启用",
+          "en": "Enable",
+          "ar": "تفعيل"
+        },
+        {
+          "key": "common.itemCount",
+          "zh-CN": "{n} 件",
+          "en": "{n} items",
+          "ar": "{n} قطعة"
         },
         {
           "key": "common.loadFailed",
@@ -8198,10 +8228,34 @@
           "ar": "الشبكة على الأرجح. تحقّق منها ثم أعد المحاولة."
         },
         {
+          "key": "common.loadMore",
+          "zh-CN": "加载更多",
+          "en": "Load more",
+          "ar": "تحميل المزيد"
+        },
+        {
           "key": "common.loading",
           "zh-CN": "加载中…",
           "en": "Loading…",
           "ar": "جارٍ التحميل…"
+        },
+        {
+          "key": "common.more",
+          "zh-CN": "更多",
+          "en": "More",
+          "ar": "المزيد"
+        },
+        {
+          "key": "common.name",
+          "zh-CN": "名称",
+          "en": "Name",
+          "ar": "الاسم"
+        },
+        {
+          "key": "common.next",
+          "zh-CN": "下一步",
+          "en": "Next",
+          "ar": "التالي"
         },
         {
           "key": "common.no",
@@ -8222,16 +8276,46 @@
           "ar": "لا تملك صلاحية الوصول"
         },
         {
+          "key": "common.optional",
+          "zh-CN": "选填",
+          "en": "Optional",
+          "ar": "اختياري"
+        },
+        {
+          "key": "common.phone",
+          "zh-CN": "手机号",
+          "en": "Mobile number",
+          "ar": "رقم الجوال"
+        },
+        {
+          "key": "common.previous",
+          "zh-CN": "上一步",
+          "en": "Previous",
+          "ar": "السابق"
+        },
+        {
           "key": "common.remove",
           "zh-CN": "移除",
           "en": "Remove",
           "ar": "إزالة"
         },
         {
+          "key": "common.rename",
+          "zh-CN": "重命名",
+          "en": "Rename",
+          "ar": "إعادة التسمية"
+        },
+        {
           "key": "common.retry",
           "zh-CN": "重试",
           "en": "Retry",
           "ar": "إعادة"
+        },
+        {
+          "key": "common.rules",
+          "zh-CN": "规则说明",
+          "en": "Rules",
+          "ar": "القواعد"
         },
         {
           "key": "common.save",
@@ -8258,6 +8342,18 @@
           "ar": "انتهت الجلسة، يرجى تسجيل الدخول مجددًا"
         },
         {
+          "key": "common.statisticsBasis",
+          "zh-CN": "统计口径",
+          "en": "Calculation basis",
+          "ar": "أساس الحساب"
+        },
+        {
+          "key": "common.status",
+          "zh-CN": "状态",
+          "en": "Status",
+          "ar": "الحالة"
+        },
+        {
           "key": "common.submit",
           "zh-CN": "提交",
           "en": "Submit",
@@ -8270,16 +8366,16 @@
           "ar": "حدث خطأ ما — يرجى المحاولة مرة أخرى"
         },
         {
+          "key": "common.unsaved",
+          "zh-CN": "有修改未保存",
+          "en": "Unsaved changes",
+          "ar": "تغييرات غير محفوظة"
+        },
+        {
           "key": "common.yes",
           "zh-CN": "是",
           "en": "Yes",
           "ar": "نعم"
-        },
-        {
-          "key": "coupon.issues",
-          "zh-CN": "发放记录",
-          "en": "Send history",
-          "ar": "سجل الإرسال"
         },
         {
           "key": "coupon.issuesN",
@@ -8336,12 +8432,6 @@
           "ar": "المصروف"
         },
         {
-          "key": "coupon.status",
-          "zh-CN": "状态",
-          "en": "Status",
-          "ar": "الحالة"
-        },
-        {
           "key": "coupon.threshold",
           "zh-CN": "门槛",
           "en": "Minimum",
@@ -8372,12 +8462,6 @@
           "ar": "الصلاحية"
         },
         {
-          "key": "couponEdit.back",
-          "zh-CN": "上一步",
-          "en": "Back",
-          "ar": "رجوع"
-        },
-        {
           "key": "couponEdit.badEnd",
           "zh-CN": "截止日期不能早于今天",
           "en": "End date can't be in the past",
@@ -8388,12 +8472,6 @@
           "zh-CN": "折扣范围 1–9.9",
           "en": "Discount must be 1–9.9",
           "ar": "الخصم بين 1 و9.9"
-        },
-        {
-          "key": "couponEdit.cancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
         },
         {
           "key": "couponEdit.cap",
@@ -8534,12 +8612,6 @@
           "ar": "الحد الأدنى للشراء"
         },
         {
-          "key": "couponEdit.name",
-          "zh-CN": "名称",
-          "en": "Name",
-          "ar": "الاسم"
-        },
-        {
           "key": "couponEdit.namePh",
           "zh-CN": "顾客可见",
           "en": "Shown to customers",
@@ -8594,12 +8666,6 @@
           "ar": "أدخل القيمة"
         },
         {
-          "key": "couponEdit.next",
-          "zh-CN": "下一步",
-          "en": "Next",
-          "ar": "التالي"
-        },
-        {
           "key": "couponEdit.perUser",
           "zh-CN": "每人",
           "en": "Per person",
@@ -8622,12 +8688,6 @@
           "zh-CN": "如 9 即 9 折",
           "en": "e.g. 9 = 10% off",
           "ar": "مثلًا 9 تعني خصم 10٪"
-        },
-        {
-          "key": "couponEdit.save",
-          "zh-CN": "保存",
-          "en": "Save",
-          "ar": "حفظ"
         },
         {
           "key": "couponEdit.scope",
@@ -8784,12 +8844,6 @@
           "zh-CN": "人群",
           "en": "Audience",
           "ar": "الجمهور"
-        },
-        {
-          "key": "couponSend.cancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
         },
         {
           "key": "couponSend.confirmBody",
@@ -9038,12 +9092,6 @@
           "ar": "أنشئ قسيمة ثم أرسلها إلى فئة من العملاء"
         },
         {
-          "key": "coupons.new",
-          "zh-CN": "新建券",
-          "en": "New coupon",
-          "ar": "قسيمة جديدة"
-        },
-        {
           "key": "coupons.status.ACTIVE",
           "zh-CN": "在发",
           "en": "Issuing",
@@ -9195,9 +9243,9 @@
         },
         {
           "key": "crossStore.oosNote",
-          "zh-CN": "缺货只数已按门店单独设过库存的规格；没设过分店库存的走店铺总量，不算这家店缺货。",
-          "en": "Counts only variants whose stock is set per store; those without per-store stock fall back to the shop total and are not counted as out of stock here.",
-          "ar": "تُحسب فقط الأصناف التي يُدار مخزونها على مستوى الفرع؛ أما التي بلا مخزون فرعي فتعتمد على إجمالي المتجر ولا تُحسب نفاداً لهذا الفرع."
+          "zh-CN": "缺货仅统计已单设门店库存的规格，共用库存不计入。",
+          "en": "Only SKUs with separate store stock count as out of stock here; shared stock is excluded.",
+          "ar": "يُحتسب نفاد المخزون للأصناف ذات المخزون المستقل للفرع فقط، ويُستثنى المخزون المشترك."
         },
         {
           "key": "crossStore.orders",
@@ -9219,9 +9267,9 @@
         },
         {
           "key": "crossStore.ratingScope",
-          "zh-CN": "主体口径 · 全部门店合计 {n} 条评价。评价目前挂在店铺上，还没有按门店拆分。",
-          "en": "Shop-wide · {n} reviews across all stores. Reviews are attached to the shop and are not split per store yet.",
-          "ar": "على مستوى المتجر · {n} تقييمًا لكل الفروع معًا. التقييمات مرتبطة بالمتجر ولم تُقسَّم على الفروع بعد."
+          "zh-CN": "主体合计 {n} 条评价，暂不按门店拆分。",
+          "en": "{n} reviews across the entity; not yet split by store.",
+          "ar": "{n} تقييمًا للكيان؛ لا تُفصل حسب الفرع حاليًا."
         },
         {
           "key": "crossStore.repeatBasis",
@@ -9513,9 +9561,9 @@
         },
         {
           "key": "deposit.shortHint",
-          "zh-CN": "补足之前，收款限额会一直压着 —— 超限的订单会付款失败，而买家看到的只是「支付失败」。",
-          "en": "Until you top up, your payment limits stay capped — orders over the limit fail, and the buyer only sees \"payment failed\".",
-          "ar": "إلى أن تستكمل المبلغ تبقى حدود التحصيل مخفّضة — الطلبات التي تتجاوز الحد تفشل، والمشتري لا يرى سوى «فشل الدفع»."
+          "zh-CN": "保证金额度不足时，超限订单可能付款失败，请及时补足。",
+          "en": "Insufficient deposit coverage may cause over-limit payments to fail. Top up your deposit.",
+          "ar": "قد تفشل المدفوعات المتجاوزة للحد عند نقص تغطية الضمان. أضف إلى الضمان."
         },
         {
           "key": "deposit.title",
@@ -9702,12 +9750,6 @@
           "zh-CN": "已开通，可收款",
           "en": "Active — can take payments",
           "ar": "مفعّل؛ يمكن استلام المدفوعات"
-        },
-        {
-          "key": "entityDetail.payment",
-          "zh-CN": "收款账户",
-          "en": "Payout account",
-          "ar": "حساب التحصيل"
         },
         {
           "key": "entityDetail.quals",
@@ -11025,9 +11067,9 @@
         },
         {
           "key": "goods.publishStale",
-          "zh-CN": "线上商品在你保存之后有过变动。下方差异以此刻线上为基准，核对后可继续发布，或放弃草稿以线上为准",
-          "en": "The live product changed after you saved. The differences below are against the current live version — review them, then publish, or drop the draft",
-          "ar": "تغيّر المنتج المعروض بعد حفظك. الفروق أدناه مقارنة بالنسخة المعروضة الآن — راجعها ثم انشر، أو تخلَّ عن المسودة"
+          "zh-CN": "线上已有更新。请核对下方差异后发布，或放弃草稿以线上为准。",
+          "en": "The live product changed. Review the differences before publishing, or discard this draft to keep the live version.",
+          "ar": "تغير المنتج المنشور. راجع الفروق قبل النشر، أو تجاهل المسودة للاحتفاظ بالنسخة المنشورة."
         },
         {
           "key": "goods.publishStaleBtn",
@@ -11523,9 +11565,9 @@
         },
         {
           "key": "goods.stockByInvHint",
-          "zh-CN": "这家店的库存以进销存为准，这一页只是展示。进货开进货单，数对不上开盘点单。",
-          "en": "This store's stock is authoritative in Inventory; the number here is display only. Record a purchase for goods coming in, or a stocktake when the count differs.",
-          "ar": "مخزون هذا المتجر مرجعه نظام المخزون، والرقم هنا للعرض فقط. سجّل أمر شراء للوارد، أو أمر جرد عند اختلاف العدّ."
+          "zh-CN": "库存由进销存管理：补货请开进货单，数量差异请盘点。",
+          "en": "Stock is managed in inventory. Use a purchase receipt to replenish or a stock count to correct quantities.",
+          "ar": "يُدار المخزون في نظام المخزون. استخدم مستند شراء للتزويد أو جردًا لتصحيح الكميات."
         },
         {
           "key": "goods.stockByInvTitle",
@@ -11535,9 +11577,9 @@
         },
         {
           "key": "goods.stockInvHint",
-          "zh-CN": "进销存记着 {n}（{where}）。这里改的是商城显示的数，两本账各记各的",
-          "en": "Inventory has {n} ({where}). This edits the storefront number — the two ledgers are kept separately",
-          "ar": "المخزون يسجل {n} ({where}). هذا يعدّل رقم المتجر — الدفتران منفصلان"
+          "zh-CN": "实物库存 {n}（{where}）；此处仅调整商城数量。",
+          "en": "Physical stock: {n} ({where}). This changes online quantity only.",
+          "ar": "المخزون الفعلي: {n} ({where}). يُعدّل هنا مقدار المتجر الإلكتروني فقط."
         },
         {
           "key": "goods.stockInvNone",
@@ -11798,12 +11840,6 @@
           "ar": "حسب قواعد النشاط"
         },
         {
-          "key": "groupOpen.cancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
-        },
-        {
           "key": "groupOpen.deadline",
           "zh-CN": "截止",
           "en": "Deadline",
@@ -11832,12 +11868,6 @@
           "zh-CN": "请先在「活动」中新建拼团",
           "en": "Create a group-buy activity under Activities first",
           "ar": "أنشئ نشاط شراء جماعي من الأنشطة أولًا"
-        },
-        {
-          "key": "groupOpen.pick",
-          "zh-CN": "请选择",
-          "en": "Select",
-          "ar": "اختر"
         },
         {
           "key": "groupOpen.pickup",
@@ -12003,15 +12033,15 @@
         },
         {
           "key": "home.blockerHint.agreement",
-          "zh-CN": "你的资料由平台运营人员代为提交，《商家服务协议》需要你本人确认。生意照做不受影响。",
-          "en": "Your details were submitted for you by platform staff. The Merchant Service Agreement needs your own confirmation. Trading is unaffected.",
-          "ar": "قدّم موظفو المنصة بياناتك نيابةً عنك، و«اتفاقية التاجر» تحتاج تأكيدك أنت. لا يتأثر عملك."
+          "zh-CN": "资料由平台代提交，请本人确认《商家服务协议》；当前经营不受影响。",
+          "en": "The platform submitted your details. Confirm the Merchant Service Agreement yourself; current operations are unaffected.",
+          "ar": "قدمت المنصة بياناتك. أكّد اتفاقية خدمة التاجر بنفسك؛ لا يتأثر النشاط الحالي."
         },
         {
           "key": "home.blockerHint.license",
-          "zh-CN": "补交营业执照后店铺才对顾客可见。已录入的商品全部保留，审核通过后立即上架。",
-          "en": "The shop becomes visible once the business licence is submitted. Products already entered are kept and go live on approval.",
-          "ar": "أضف السجل التجاري ليتمكن العملاء من رؤية متجرك. كل ما أعددته يبقى، ويظهر فور الموافقة."
+          "zh-CN": "补交营业执照并通过审核后，店铺才对顾客可见；已录商品保留。",
+          "en": "Submit your business licence for review to make the shop visible. Existing products are retained.",
+          "ar": "قدّم الرخصة التجارية للمراجعة ليظهر المتجر للعملاء. تُحفظ المنتجات المُدخلة."
         },
         {
           "key": "home.blockerHint.payment",
@@ -12021,21 +12051,15 @@
         },
         {
           "key": "home.blockerHint.payoutAccount",
-          "zh-CN": "货款按账期打到你的收款账户，现在还没有一张可用的。单子照常成交，钱先记着。",
-          "en": "Proceeds are paid to your bank account on the settlement cycle, and there is no usable account yet. Orders still go through; the money is held.",
-          "ar": "تُحوَّل المستحقات إلى حسابك البنكي حسب دورة التسوية، ولا يوجد حساب صالح بعد. الطلبات تستمر والمبلغ محفوظ لك."
+          "zh-CN": "请设置收款账户。订单可正常成交，货款保留待按账期结算。",
+          "en": "Set up a payout account. Orders can still be placed; funds are retained for scheduled settlement.",
+          "ar": "أعدّ حساب التحصيل. تستمر الطلبات وتُحفظ الأموال للتسوية وفق الدورة المحددة."
         },
         {
           "key": "home.blockerHint.scope",
-          "zh-CN": "经营范围里没有一个纳入的地方（只有排除也算），货对谁都不可见",
-          "en": "Your scope includes nowhere (exclusions alone do not count), so nobody can see your goods",
-          "ar": "نطاقك لا يشمل أي مكان (الاستبعادات وحدها لا تكفي)، فبضاعتك غير مرئية لأحد"
-        },
-        {
-          "key": "home.catalogEntry",
-          "zh-CN": "经营类目",
-          "en": "Categories",
-          "ar": "الفئات"
+          "zh-CN": "请添加至少一个经营区域，让顾客看到商品。",
+          "en": "Add at least one service area so customers can see your products.",
+          "ar": "أضف منطقة خدمة واحدة على الأقل ليتمكن العملاء من رؤية منتجاتك."
         },
         {
           "key": "home.cell.afterSale",
@@ -12098,12 +12122,6 @@
           "ar": "لديك سجل تجاري؟ قدّم مباشرة"
         },
         {
-          "key": "home.inv.all",
-          "zh-CN": "全部",
-          "en": "All",
-          "ar": "الكل"
-        },
-        {
           "key": "home.inv.onSale",
           "zh-CN": "在售",
           "en": "In stock",
@@ -12134,22 +12152,10 @@
           "ar": "راكد"
         },
         {
-          "key": "home.inv.title",
-          "zh-CN": "进销存",
-          "en": "Inventory",
-          "ar": "المخزون"
-        },
-        {
           "key": "home.laterBatch",
           "zh-CN": "该功能在后续批次交付",
           "en": "Ships in a later batch",
           "ar": "تُسلَّم في دفعة لاحقة"
-        },
-        {
-          "key": "home.marketingEntry",
-          "zh-CN": "营销",
-          "en": "Marketing",
-          "ar": "التسويق"
         },
         {
           "key": "home.notMerchant",
@@ -12182,12 +12188,6 @@
           "ar": "حتى {s}"
         },
         {
-          "key": "home.notifyEntry",
-          "zh-CN": "通知设置",
-          "en": "Notifications",
-          "ar": "الإشعارات"
-        },
-        {
           "key": "home.orders",
           "zh-CN": "订单",
           "en": "Orders",
@@ -12207,9 +12207,9 @@
         },
         {
           "key": "home.quickStartBody",
-          "zh-CN": "填写店名即可开店。营业执照可稍后在「去入驻」中补交；补齐前店铺对顾客不可见，但商品、经营范围与员工均可先行配置。",
-          "en": "A shop name is enough to open. The licence can be added later under Apply; until then the shop is not visible to customers, but products, business scope and staff can all be configured.",
-          "ar": "يكفي اسم لتفتح. أضف السجل لاحقًا من «التقديم»؛ حتى ذلك الحين لا يراك العملاء، لكن يمكنك إعداد المنتجات والنطاق والموظفين."
+          "zh-CN": "填写店名即可配置商品、经营范围与员工；补齐资质前店铺对顾客不可见。",
+          "en": "Enter a shop name to configure products, coverage and staff. The shop stays hidden until the required documents are complete.",
+          "ar": "أدخل اسم المتجر لإعداد المنتجات ونطاق الخدمة والموظفين. يبقى المتجر مخفيًا حتى اكتمال المستندات المطلوبة."
         },
         {
           "key": "home.quickStartPh",
@@ -12228,36 +12228,6 @@
           "zh-CN": "评分",
           "en": "Rating",
           "ar": "التقييم"
-        },
-        {
-          "key": "home.scopeEntry",
-          "zh-CN": "经营范围",
-          "en": "Coverage",
-          "ar": "التغطية"
-        },
-        {
-          "key": "home.shipEntry",
-          "zh-CN": "发货设置",
-          "en": "Shipping",
-          "ar": "الشحن"
-        },
-        {
-          "key": "home.skuIdentityEntry",
-          "zh-CN": "商品编码",
-          "en": "SKU codes",
-          "ar": "أكواد المنتجات"
-        },
-        {
-          "key": "home.specsEntry",
-          "zh-CN": "商品规格",
-          "en": "Options",
-          "ar": "المواصفات"
-        },
-        {
-          "key": "home.storeEntry",
-          "zh-CN": "店铺设置",
-          "en": "Shop",
-          "ar": "المتجر"
         },
         {
           "key": "home.today",
@@ -12554,22 +12524,10 @@
           "ar": "أدخل رقم الفاتورة"
         },
         {
-          "key": "invoice.blockNoTitle",
-          "zh-CN": "平台还没配开票信息",
-          "en": "Platform invoicing details are not set",
-          "ar": "بيانات فوترة المنصة غير مُعدّة"
-        },
-        {
           "key": "invoice.blockNoTitleName",
           "zh-CN": "请填开票方名称",
           "en": "Enter the issuer name",
           "ar": "أدخل اسم المُصدِر"
-        },
-        {
-          "key": "invoice.copy",
-          "zh-CN": "复制",
-          "en": "Copy",
-          "ar": "نسخ"
         },
         {
           "key": "invoice.crossPeriod",
@@ -12660,12 +12618,6 @@
           "zh-CN": "已核验",
           "en": "Verified",
           "ar": "تم التحقق"
-        },
-        {
-          "key": "invoice.submit",
-          "zh-CN": "提交",
-          "en": "Submit",
-          "ar": "إرسال"
         },
         {
           "key": "invoice.submitBlock",
@@ -12932,12 +12884,6 @@
           "ar": "لا توجد كلمة مرور بعد؟ سجّل الدخول برمز ثم عيّنها من حسابي"
         },
         {
-          "key": "login.phone",
-          "zh-CN": "手机号",
-          "en": "Phone",
-          "ar": "رقم الهاتف"
-        },
-        {
           "key": "login.phoneInvalid",
           "zh-CN": "请输入 11 位手机号",
           "en": "Enter an 11-digit phone number",
@@ -13010,22 +12956,10 @@
           "ar": "العروض"
         },
         {
-          "key": "marketing.coupons",
-          "zh-CN": "优惠券",
-          "en": "Coupons",
-          "ar": "القسائم"
-        },
-        {
           "key": "marketing.enrollable",
           "zh-CN": "{n} 可报名",
           "en": "{n} open",
           "ar": "{n} متاحة"
-        },
-        {
-          "key": "marketing.groups",
-          "zh-CN": "团",
-          "en": "Group buys",
-          "ar": "الشراء الجماعي"
         },
         {
           "key": "marketing.groupsShort",
@@ -13038,12 +12972,6 @@
           "zh-CN": "{n} 在发",
           "en": "{n} issuing",
           "ar": "{n} قيد الإصدار"
-        },
-        {
-          "key": "marketing.members",
-          "zh-CN": "会员",
-          "en": "Members",
-          "ar": "الأعضاء"
         },
         {
           "key": "marketing.monthDiscount",
@@ -13070,40 +12998,16 @@
           "ar": "{n} اليوم · يغلق {t}"
         },
         {
-          "key": "marketing.periods",
-          "zh-CN": "集单",
-          "en": "Batch orders",
-          "ar": "الطلبات المجمعة"
-        },
-        {
           "key": "marketing.periodsShort",
           "zh-CN": "{n} 待处理",
           "en": "{n} to handle",
           "ar": "{n} بانتظار المعالجة"
         },
         {
-          "key": "marketing.platform",
-          "zh-CN": "平台活动",
-          "en": "Platform campaigns",
-          "ar": "حملات المنصة"
-        },
-        {
-          "key": "marketing.quotes",
-          "zh-CN": "求团报价",
-          "en": "Group quote requests",
-          "ar": "طلبات التسعير الجماعي"
-        },
-        {
           "key": "marketing.quotesPending",
           "zh-CN": "{n} 待报价",
           "en": "{n} awaiting quote",
           "ar": "{n} بانتظار التسعير"
-        },
-        {
-          "key": "marketing.reachTasks",
-          "zh-CN": "发出去的",
-          "en": "Sent",
-          "ar": "المُرسَل"
         },
         {
           "key": "marketing.running",
@@ -13124,18 +13028,6 @@
           "ar": "الحساب"
         },
         {
-          "key": "me.accountEntry",
-          "zh-CN": "账号",
-          "en": "Account",
-          "ar": "الحساب"
-        },
-        {
-          "key": "me.appearance",
-          "zh-CN": "外观与语言",
-          "en": "Appearance & language",
-          "ar": "المظهر واللغة"
-        },
-        {
           "key": "me.appearanceValue",
           "zh-CN": "配色 · 明暗 · 语言",
           "en": "Colour · Light/dark · Language",
@@ -13148,12 +13040,6 @@
           "ar": "مساعدة التجار"
         },
         {
-          "key": "me.income",
-          "zh-CN": "收入",
-          "en": "Income",
-          "ar": "الدخل"
-        },
-        {
           "key": "me.loggedOut",
           "zh-CN": "已退出登录",
           "en": "Signed out",
@@ -13164,12 +13050,6 @@
           "zh-CN": "退出登录",
           "en": "Sign out",
           "ar": "تسجيل الخروج"
-        },
-        {
-          "key": "me.messages",
-          "zh-CN": "消息",
-          "en": "Messages",
-          "ar": "الرسائل"
         },
         {
           "key": "me.notLogin",
@@ -13214,28 +13094,10 @@
           "ar": "تعيين"
         },
         {
-          "key": "me.payment",
-          "zh-CN": "收款设置",
-          "en": "Payouts",
-          "ar": "إعدادات التحصيل"
-        },
-        {
           "key": "me.settle",
           "zh-CN": "结算",
           "en": "Settlement",
           "ar": "كشف التسوية"
-        },
-        {
-          "key": "me.staff",
-          "zh-CN": "员工",
-          "en": "Staff",
-          "ar": "الموظفون"
-        },
-        {
-          "key": "me.stats",
-          "zh-CN": "经营数据",
-          "en": "Business data",
-          "ar": "بيانات الأعمال"
         },
         {
           "key": "me.statusACTIVE",
@@ -13272,12 +13134,6 @@
           "zh-CN": "我的店铺",
           "en": "My shop",
           "ar": "متجري"
-        },
-        {
-          "key": "me.stores",
-          "zh-CN": "门店管理",
-          "en": "Stores",
-          "ar": "إدارة المتاجر"
         },
         {
           "key": "me.switchStore",
@@ -13317,15 +13173,9 @@
         },
         {
           "key": "memberAdd.leadHint",
-          "zh-CN": "顾客尚未注册平台账号时，此条记为「线索」：不会收到任何消息；顾客注册后自动认领，此处填写的备注与标签均会保留。",
-          "en": "Before the customer has a platform account this is saved as a lead: no messages are sent. It is claimed automatically once they register, and the notes and tags entered here are kept.",
-          "ar": "ما دام لم ينضم للمنصة يبقى سجلاً مبدئياً: لا تُرسل له أي رسالة. عند تسجيله يُربط تلقائياً وتبقى ملاحظتك ووسومك."
-        },
-        {
-          "key": "memberAdd.phone",
-          "zh-CN": "手机号",
-          "en": "Phone",
-          "ar": "رقم الهاتف"
+          "zh-CN": "未注册顾客记为线索，不接收消息；注册后自动认领，备注与标签保留。",
+          "en": "Unregistered customers are leads and receive no messages. Registration claims the record automatically; notes and tags are retained.",
+          "ar": "يُسجل العملاء غير المسجلين كعملاء محتملين ولا يتلقون رسائل. تُربط السجلات تلقائيًا عند التسجيل وتُحفظ الملاحظات والوسوم."
         },
         {
           "key": "memberAdd.phonePh",
@@ -13338,12 +13188,6 @@
           "zh-CN": "备注",
           "en": "Note",
           "ar": "ملاحظة"
-        },
-        {
-          "key": "memberAdd.remarkPh",
-          "zh-CN": "选填",
-          "en": "Optional",
-          "ar": "اختياري"
         },
         {
           "key": "memberAdd.saved",
@@ -13446,12 +13290,6 @@
           "zh-CN": "已下单",
           "en": "Ordered",
           "ar": "طلب"
-        },
-        {
-          "key": "memberDetail.saveTags",
-          "zh-CN": "保存",
-          "en": "Save",
-          "ar": "حفظ"
         },
         {
           "key": "memberDetail.sources",
@@ -13665,9 +13503,9 @@
         },
         {
           "key": "memberSegments.reachHint",
-          "zh-CN": "「可收到」比命中人数少，是因为线索会员（手录的号）和关掉消息的人进不了受众",
-          "en": "“Reachable” is lower than the match count because leads (hand-entered numbers) and opt-outs cannot be sent to",
-          "ar": "«يمكن الوصول إليهم» أقل من عدد المطابقين لأن العملاء المحتملين (أرقام مُدخلة يدويًا) والملغين لا يمكن إرسال شيء إليهم"
+          "zh-CN": "可触达人数不含线索会员和关闭消息的顾客。",
+          "en": "Reachable counts exclude leads and customers who opted out of messages.",
+          "ar": "لا يشمل عدد المستلمين العملاء المحتملين والعملاء الذين أوقفوا الرسائل."
         },
         {
           "key": "memberSegments.recount",
@@ -13694,16 +13532,10 @@
           "ar": "حذف «{name}»"
         },
         {
-          "key": "memberSegments.rename",
-          "zh-CN": "改名",
-          "en": "Rename",
-          "ar": "إعادة تسمية"
-        },
-        {
           "key": "memberSegments.ruleHint",
-          "zh-CN": "人群保存的是筛选条件而非固定名单。符合条件的顾客每天都在变化，发券时会重新计算。",
-          "en": "A segment stores conditions, not a fixed list. Who qualifies changes daily and is recalculated when vouchers are issued.",
-          "ar": "الشريحة تحفظ الشرط لا القائمة؛ من ينطبق عليه يتغير يوميًا، لذا يُعاد الحساب عند الإرسال"
+          "zh-CN": "人群按条件动态变化，发券时重新计算。",
+          "en": "Audiences change with their conditions and are recalculated when coupons are sent.",
+          "ar": "تتغير المجموعات وفق الشروط وتُعاد حسابها عند إرسال القسائم."
         },
         {
           "key": "memberSegments.title",
@@ -13725,15 +13557,15 @@
         },
         {
           "key": "memberSettings.confirmEntity",
-          "zh-CN": "改回按主体后，只要在任何一家店买过就算老客。随时可以再切成按门店，一个数都不少。",
-          "en": "Per business, buying at any store makes them a returning customer. You can switch back to per store any time without losing a number.",
-          "ar": "على مستوى النشاط، الشراء من أي فرع يجعله عميلًا عائدًا. يمكنك العودة إلى مستوى الفرع في أي وقت دون فقدان أي رقم."
+          "zh-CN": "任一门店消费过即计为老客。可切回门店统计，数据保留。",
+          "en": "A purchase at any store counts as a returning customer. You can return to per-store counts; data is retained.",
+          "ar": "الشراء من أي فرع يُحتسب كعميل عائد. يمكنك الرجوع لإحصاء كل فرع وتُحفظ البيانات."
         },
         {
           "key": "memberSettings.confirmStore",
-          "zh-CN": "改为按门店统计后，在其他门店消费过的顾客在本店仍计为新客，四层人数与活动受众将同步变化。可随时切回，数据不受影响。",
-          "en": "Switching to per-store means a customer who has bought at another store still counts as new here; the four tiers and promotion audiences change accordingly. Switch back at any time; no data is lost.",
-          "ar": "على مستوى الفرع، من اشترى من فرع آخر يبقى جديدًا هنا، وتتغير معه أعداد المستويات وجمهور الحملات. يمكنك الرجوع في أي وقت دون فقدان أي رقم."
+          "zh-CN": "改为门店独立统计，四层人数与活动受众将重新计算。可切回，数据保留。",
+          "en": "Switch to per-store counts; all four segments and campaign audiences will be recalculated. You can switch back; data is retained.",
+          "ar": "التبديل إلى إحصاء كل فرع؛ تُعاد حساب الفئات الأربع وجمهور الحملات. يمكنك الرجوع وتُحفظ البيانات."
         },
         {
           "key": "memberSettings.confirmTitle",
@@ -13752,12 +13584,6 @@
           "zh-CN": "在任何一家店买过，就是这个主体的会员。多数商家用这个",
           "en": "Buying at any store makes them a member of the business. Most merchants use this",
           "ar": "الشراء من أي فرع يجعله عضوًا في النشاط كله. معظم التجار يستخدمون هذا"
-        },
-        {
-          "key": "memberSettings.entry",
-          "zh-CN": "会员设置",
-          "en": "Member settings",
-          "ar": "إعدادات الأعضاء"
         },
         {
           "key": "memberSettings.levelComputedAt",
@@ -13809,9 +13635,9 @@
         },
         {
           "key": "memberSettings.sleepFirst",
-          "zh-CN": "口径由平台统一设定，每天凌晨重算。先判沉睡：下单再多，超过 {n} 天没来也算沉睡",
-          "en": "Set by the platform and recalculated every night. Dormant is checked first: however many orders, no visit for over {n} days counts as dormant",
-          "ar": "تحددها المنصة ويُعاد حسابها كل ليلة. يُفحص الخمول أولًا: مهما كثرت الطلبات، الغياب لأكثر من {n} يومًا يُعد خاملًا"
+          "zh-CN": "每日重算，优先判定沉睡：超过 {n} 天未消费即计入。",
+          "en": "Recalculated daily. Inactivity takes priority: no purchase for over {n} days counts as inactive.",
+          "ar": "يُعاد الحساب يوميًا. يُحكم بالخمول أولًا عند تجاوز {n} يومًا دون شراء."
         },
         {
           "key": "memberSettings.store",
@@ -13821,9 +13647,9 @@
         },
         {
           "key": "memberSettings.storeHint",
-          "zh-CN": "各门店独立计算。在其他门店消费过的顾客，在本店仍计为新客；适用于门店距离较远的情况。",
-          "en": "Counted per store. A customer who has bought at another store still counts as new here; useful when stores are far apart.",
-          "ar": "كل فرع يحسب لنفسه. من اشترى من فرع آخر يبقى عميلًا جديدًا هنا؛ استخدمه حين تتباعد الفروع"
+          "zh-CN": "各门店独立计算新老客，其他门店的消费不计入。",
+          "en": "New and returning customers are calculated per store; purchases at other stores are excluded.",
+          "ar": "يُحسب العملاء الجدد والعائدون لكل فرع بشكل مستقل، ولا تُحتسب مشتريات الفروع الأخرى."
         },
         {
           "key": "memberSettings.title",
@@ -13856,12 +13682,6 @@
           "ar": "دمج"
         },
         {
-          "key": "memberTag.name",
-          "zh-CN": "名称",
-          "en": "Name",
-          "ar": "الاسم"
-        },
-        {
           "key": "memberTag.none",
           "zh-CN": "还没有活动或人群用到它",
           "en": "No promotions or audiences use it yet",
@@ -13872,12 +13692,6 @@
           "zh-CN": "人群 · {name}",
           "en": "Audience · {name}",
           "ar": "جمهور · {name}"
-        },
-        {
-          "key": "memberTag.status",
-          "zh-CN": "状态",
-          "en": "Status",
-          "ar": "الحالة"
         },
         {
           "key": "memberTag.thisMonth",
@@ -13922,12 +13736,6 @@
           "ar": "لا تُحذف الوسوم بل تُوقف؛ الحذف يكسر الحملات التي تشير إليها"
         },
         {
-          "key": "memberTags.disable",
-          "zh-CN": "停用",
-          "en": "Disable",
-          "ar": "إيقاف"
-        },
-        {
           "key": "memberTags.disableTitle",
           "zh-CN": "停用「{a}」？",
           "en": "Disable \"{a}\"?",
@@ -13950,12 +13758,6 @@
           "zh-CN": "还没有标签",
           "en": "No tags yet",
           "ar": "لا وسوم بعد"
-        },
-        {
-          "key": "memberTags.enable",
-          "zh-CN": "启用",
-          "en": "Enable",
-          "ar": "تفعيل"
         },
         {
           "key": "memberTags.merge",
@@ -14024,12 +13826,6 @@
           "ar": "وسم جديد"
         },
         {
-          "key": "memberTags.rename",
-          "zh-CN": "改名",
-          "en": "Rename",
-          "ar": "إعادة تسمية"
-        },
-        {
           "key": "memberTags.system",
           "zh-CN": "系统标签",
           "en": "System tags",
@@ -14037,9 +13833,9 @@
         },
         {
           "key": "memberTags.systemHint",
-          "zh-CN": "按公开口径每日自动计算，不可改名、不可手动标记。修改后会导致各门店对同一标签理解不一致。",
-          "en": "Calculated daily on a published basis. It cannot be renamed or applied by hand; changing it would leave stores reading the same tag differently.",
-          "ar": "تُحسب يومياً وفق قواعد معلنة. لا يمكن تسميتها أو وضعها يدوياً"
+          "zh-CN": "系统每日计算，不可改名或手动标记。",
+          "en": "Calculated daily by the system; cannot be renamed or assigned manually.",
+          "ar": "يحسبها النظام يوميًا؛ لا يمكن إعادة تسميتها أو تعيينها يدويًا."
         },
         {
           "key": "memberTags.title",
@@ -14360,12 +14156,6 @@
           "ar": "إضافة مواصفة"
         },
         {
-          "key": "mySpecs.addProp",
-          "zh-CN": "添加参数",
-          "en": "Add detail",
-          "ar": "إضافة تفصيل"
-        },
-        {
           "key": "mySpecs.addPropValue",
           "zh-CN": "添加可选值",
           "en": "Add value",
@@ -14376,12 +14166,6 @@
           "zh-CN": "平台未收录的可选值可在此新建；新建后归属该参数，顾客筛选不受影响。",
           "en": "e.g. the platform has Local and Domestic, but yours is from Yunnan. It lands on the same axis, so filtering still works.",
           "ar": "مثلًا لدى المنصة «محلي» و«وطني»، وبضاعتك من يوننان. ستقع على المحور نفسه فتبقى التصفية صالحة."
-        },
-        {
-          "key": "mySpecs.addPropValuePh",
-          "zh-CN": "请输入可选值",
-          "en": "Enter a value",
-          "ar": "أدخل قيمة"
         },
         {
           "key": "mySpecs.addValue",
@@ -14421,33 +14205,9 @@
         },
         {
           "key": "mySpecs.adjustHint",
-          "zh-CN": "✕ 移除档位，＋ 从平台选用或新建。重命名仅影响本店显示，不影响跨店比价。",
-          "en": "✕ removes an option, ＋ picks one from the platform or adds your own. Renaming only affects your store — comparison still works.",
-          "ar": "✕ لإزالة خيار، ＋ للاختيار من المنصة أو إضافة خيارك. إعادة التسمية تؤثر على متجرك فقط؛ تبقى المقارنة صالحة."
-        },
-        {
-          "key": "mySpecs.archive",
-          "zh-CN": "停用",
-          "en": "Disable",
-          "ar": "تعطيل"
-        },
-        {
-          "key": "mySpecs.archiveConfirm",
-          "zh-CN": "已发布的 {n} 件商品不受影响；停用后建品时不再可选。",
-          "en": "The {n} existing products are unaffected — you just cannot pick it for new ones.",
-          "ar": "المنتجات الـ {n} الحالية لن تتأثر؛ لن تتمكن فقط من اختيارها للمنتجات الجديدة."
-        },
-        {
-          "key": "mySpecs.archiveTitle",
-          "zh-CN": "停用规格",
-          "en": "Disable this spec",
-          "ar": "تعطيل هذه المواصفة"
-        },
-        {
-          "key": "mySpecs.archivedTitle",
-          "zh-CN": "已停用",
-          "en": "Disabled",
-          "ar": "المعطّلة"
+          "zh-CN": "重命名仅影响本店显示，不影响跨店比价。",
+          "en": "Renaming affects this shop only, not cross-shop price comparison.",
+          "ar": "تؤثر إعادة التسمية في هذا المتجر فقط، ولا تؤثر في مقارنة الأسعار بين المتاجر."
         },
         {
           "key": "mySpecs.buildOwnCost",
@@ -14480,22 +14240,10 @@
           "ar": "خاصية جديدة"
         },
         {
-          "key": "mySpecs.buildOwnPropValue",
-          "zh-CN": "新建可选值",
-          "en": "New value",
-          "ar": "قيمة جديدة"
-        },
-        {
           "key": "mySpecs.buildOwnValue",
           "zh-CN": "新建档位",
           "en": "New option",
           "ar": "خيار جديد"
-        },
-        {
-          "key": "mySpecs.cancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
         },
         {
           "key": "mySpecs.catAllRemoved",
@@ -14520,12 +14268,6 @@
           "zh-CN": "暂无参数",
           "en": "No parameters yet",
           "ar": "لا خصائص بعد"
-        },
-        {
-          "key": "mySpecs.collapse",
-          "zh-CN": "收起",
-          "en": "Close",
-          "ar": "إغلاق"
         },
         {
           "key": "mySpecs.empty",
@@ -14606,12 +14348,6 @@
           "ar": "خاصتي {used} / {max}"
         },
         {
-          "key": "mySpecs.remove",
-          "zh-CN": "移除",
-          "en": "Remove",
-          "ar": "إزالة"
-        },
-        {
           "key": "mySpecs.removeConfirm",
           "zh-CN": "「{name}」及其在本类目下的档位设置将一并移除。已发布商品不受影响。",
           "en": "“{name}” and the options you kept under it will be removed from this category. Existing products are unaffected.",
@@ -14624,28 +14360,10 @@
           "ar": "إزالة المواصفة"
         },
         {
-          "key": "mySpecs.removed",
-          "zh-CN": "已移除，可重新添加",
-          "en": "Removed (tap to add back)",
-          "ar": "مُزالة (انقر للإرجاع)"
-        },
-        {
-          "key": "mySpecs.rename",
-          "zh-CN": "重命名",
-          "en": "Rename",
-          "ar": "إعادة تسمية"
-        },
-        {
           "key": "mySpecs.renameTip",
           "zh-CN": "仅修改本店显示名称，不影响跨店比价。",
           "en": "Renaming only changes what your store shows.",
           "ar": "إعادة التسمية تغيّر ما يظهر في متجرك فقط."
-        },
-        {
-          "key": "mySpecs.renameTitle",
-          "zh-CN": "重命名",
-          "en": "New name",
-          "ar": "الاسم الجديد"
         },
         {
           "key": "mySpecs.reset",
@@ -14654,40 +14372,16 @@
           "ar": "استعادة الافتراضي"
         },
         {
-          "key": "mySpecs.restHide",
-          "zh-CN": "收起",
-          "en": "Hide the others",
-          "ar": "إخفاء البقية"
-        },
-        {
           "key": "mySpecs.restShow",
           "zh-CN": "其他平台规格（{n}）",
           "en": "Other platform specs ({n})",
           "ar": "مواصفات المنصة الأخرى ({n})"
         },
         {
-          "key": "mySpecs.save",
-          "zh-CN": "保存",
-          "en": "Save",
-          "ar": "حفظ"
-        },
-        {
-          "key": "mySpecs.saved",
-          "zh-CN": "已保存",
-          "en": "Saved",
-          "ar": "تم الحفظ"
-        },
-        {
           "key": "mySpecs.tabDims",
           "zh-CN": "销售规格",
           "en": "Variants",
           "ar": "الخيارات"
-        },
-        {
-          "key": "mySpecs.tabProps",
-          "zh-CN": "商品参数",
-          "en": "Details",
-          "ar": "التفاصيل"
         },
         {
           "key": "mySpecs.title",
@@ -14700,12 +14394,6 @@
           "zh-CN": "输入新的档位…",
           "en": "Type a new option…",
           "ar": "اكتب خيارًا جديدًا…"
-        },
-        {
-          "key": "mySpecs.unarchive",
-          "zh-CN": "启用",
-          "en": "Enable",
-          "ar": "تفعيل"
         },
         {
           "key": "mySpecs.used",
@@ -14880,12 +14568,6 @@
           "zh-CN": "已配置",
           "en": "Configured",
           "ar": "مُهيّأ"
-        },
-        {
-          "key": "notifySetting.saved",
-          "zh-CN": "已保存",
-          "en": "Saved",
-          "ar": "تم الحفظ"
         },
         {
           "key": "notifySetting.scene.AFTER_SALE_APPLIED",
@@ -15644,12 +15326,6 @@
           "ar": "ما بعد البيع"
         },
         {
-          "key": "order.tabAll",
-          "zh-CN": "全部",
-          "en": "All",
-          "ar": "الكل"
-        },
-        {
           "key": "order.tabDone",
           "zh-CN": "已完成",
           "en": "Done",
@@ -16011,9 +15687,9 @@
         },
         {
           "key": "payment.rejectNoReason",
-          "zh-CN": "已驳回，但通道没有说明原因。请联系平台客服协助查询 —— 先别重复提交同一份资料。",
-          "en": "Rejected, but the channel gave no reason. Contact platform support — do not resubmit the same documents yet.",
-          "ar": "تم الرفض دون بيان السبب من القناة. تواصل مع دعم المنصة — ولا تعِد إرسال المستندات نفسها الآن."
+          "zh-CN": "通道未提供驳回原因，请联系平台查询，暂勿重复提交。",
+          "en": "The provider gave no rejection reason. Contact support before resubmitting.",
+          "ar": "لم يذكر مزود الدفع سبب الرفض. تواصل مع المنصة قبل إعادة التقديم."
         },
         {
           "key": "payment.settleAccount",
@@ -16053,9 +15729,9 @@
         },
         {
           "key": "payment.storeHint",
-          "zh-CN": "不单独开就是合并结算，这家店的钱走主体默认收款号；单独开之后打进它自己的账户。",
-          "en": "Without its own account, a store settles through the entity's default one; open one and that store's money lands in its own account.",
-          "ar": "بدون حساب خاص يُسوّى الفرع عبر حساب الكيان الافتراضي؛ وبفتح حساب له تصل أمواله إلى حسابه هو."
+          "zh-CN": "合并结算使用主体默认收款账户；单独结算使用本店账户。",
+          "en": "Combined settlement uses the entity’s default account; separate settlement uses this store’s account.",
+          "ar": "تستخدم التسوية المشتركة حساب الكيان الافتراضي، وتستخدم التسوية المنفصلة حساب هذا الفرع."
         },
         {
           "key": "payment.storeOpen",
@@ -16224,12 +15900,6 @@
           "zh-CN": "已驳回",
           "en": "Rejected",
           "ar": "مرفوض"
-        },
-        {
-          "key": "payoutAccount.submit",
-          "zh-CN": "提交",
-          "en": "Submit",
-          "ar": "إرسال"
         },
         {
           "key": "payoutAccount.submitted",
@@ -16520,6 +16190,60 @@
           "ar": "عرض الطلبات والمبالغ"
         },
         {
+          "key": "perm.biz:print:config",
+          "zh-CN": "配置打印模板与路由",
+          "en": "Configure receipt templates and routing",
+          "ar": "إعداد قوالب الإيصالات ومسارات الطباعة"
+        },
+        {
+          "key": "perm.biz:print:device",
+          "zh-CN": "管理打印设备",
+          "en": "Manage printers",
+          "ar": "إدارة أجهزة الطباعة"
+        },
+        {
+          "key": "perm.biz:print:export",
+          "zh-CN": "导出打印PDF",
+          "en": "Export receipt PDFs",
+          "ar": "تصدير ملفات PDF للإيصالات"
+        },
+        {
+          "key": "perm.biz:print:extra",
+          "zh-CN": "加印小票",
+          "en": "Print extra receipt copies",
+          "ar": "طباعة نسخ إضافية من الإيصالات"
+        },
+        {
+          "key": "perm.biz:print:read",
+          "zh-CN": "查看打印任务",
+          "en": "View print tasks",
+          "ar": "عرض مهام الطباعة"
+        },
+        {
+          "key": "perm.biz:print:reprint",
+          "zh-CN": "补打小票",
+          "en": "Reprint receipts",
+          "ar": "إعادة طباعة الإيصالات"
+        },
+        {
+          "key": "perm.biz:print:resolve",
+          "zh-CN": "核实打印异常",
+          "en": "Resolve uncertain print outcomes",
+          "ar": "التحقق من نتائج الطباعة غير المؤكدة"
+        },
+        {
+          "key": "perm.biz:print:simulate",
+          "zh-CN": "模拟打印",
+          "en": "Simulate printing",
+          "ar": "محاكاة الطباعة"
+        },
+        {
+          "key": "perm.biz:print:submit",
+          "zh-CN": "提交打印",
+          "en": "Submit print jobs",
+          "ar": "إرسال مهام الطباعة"
+        },
+        {
           "key": "perm.biz:receive",
           "zh-CN": "到货登记与分拣",
           "en": "Goods-in and picking",
@@ -16560,6 +16284,78 @@
           "zh-CN": "核销取货",
           "en": "Redeem pickups",
           "ar": "تسليم الطلبات بالرمز"
+        },
+        {
+          "key": "perm.pay:ent:issue",
+          "zh-CN": "定向发放权益",
+          "en": "Issue entitlements to selected customers",
+          "ar": "إصدار المزايا لعملاء محددين"
+        },
+        {
+          "key": "perm.pay:ent:issue:manage",
+          "zh-CN": "管理权益发行规则",
+          "en": "Manage entitlement issuance rules",
+          "ar": "إدارة قواعد إصدار المزايا"
+        },
+        {
+          "key": "perm.pay:ent:read",
+          "zh-CN": "查看权益与核销记录",
+          "en": "View entitlements and redemption records",
+          "ar": "عرض المزايا وسجلات الاسترداد"
+        },
+        {
+          "key": "perm.pay:ent:template:publish",
+          "zh-CN": "发布与停用权益模板",
+          "en": "Publish or disable entitlement templates",
+          "ar": "نشر قوالب المزايا أو تعطيلها"
+        },
+        {
+          "key": "perm.pay:ent:template:read",
+          "zh-CN": "查看权益模板",
+          "en": "View entitlement templates",
+          "ar": "عرض قوالب المزايا"
+        },
+        {
+          "key": "perm.pay:ent:template:write",
+          "zh-CN": "编辑权益模板",
+          "en": "Edit entitlement templates",
+          "ar": "تعديل قوالب المزايا"
+        },
+        {
+          "key": "perm.pay:ent:use",
+          "zh-CN": "核销权益",
+          "en": "Redeem entitlements",
+          "ar": "استرداد المزايا"
+        },
+        {
+          "key": "perm.pay:sv:account:read",
+          "zh-CN": "查看顾客储值可用余额",
+          "en": "View customers’ available stored-value balances",
+          "ar": "عرض أرصدة العملاء المتاحة"
+        },
+        {
+          "key": "perm.pay:sv:consume:create",
+          "zh-CN": "使用储值核销服务",
+          "en": "Redeem services using stored value",
+          "ar": "استرداد الخدمات باستخدام الرصيد"
+        },
+        {
+          "key": "perm.pay:sv:recharge:create",
+          "zh-CN": "办理与取消未实收储值",
+          "en": "Create or cancel unpaid top-ups",
+          "ar": "إنشاء أو إلغاء عمليات شحن الرصيد غير المحصلة"
+        },
+        {
+          "key": "perm.pay:sv:recharge:read",
+          "zh-CN": "查看储值办理进度",
+          "en": "View top-up progress",
+          "ar": "عرض تقدم عمليات شحن الرصيد"
+        },
+        {
+          "key": "perm.pay:sv:recharge:receive",
+          "zh-CN": "核验储值实收",
+          "en": "Verify top-up payments received",
+          "ar": "التحقق من استلام دفعات شحن الرصيد"
         },
         {
           "key": "picking.arrivedDoneBody",
@@ -16689,9 +16485,9 @@
         },
         {
           "key": "plan.contactBody",
-          "zh-CN": "目前由平台人工开通：联系对接人或客服说明需升级的档位，开通后额度立即生效，无需重新登录。",
-          "en": "Currently enabled manually: tell your contact or support which plan you need. The quota takes effect immediately, with no need to sign in again.",
-          "ar": "التنشيط يدوي حاليًا من المنصة: أبلغ مسؤول حسابك أو الدعم بالباقة التي تريدها. يسري الحد فورًا دون إعادة تسجيل الدخول."
+          "zh-CN": "请联系平台开通档位。开通后额度生效，无需重新登录。",
+          "en": "Contact the platform to activate a plan. Limits take effect on activation without signing in again.",
+          "ar": "تواصل مع المنصة لتفعيل الباقة. تسري الحدود عند التفعيل دون تسجيل الدخول مجددًا."
         },
         {
           "key": "plan.contactBtn",
@@ -16734,12 +16530,6 @@
           "zh-CN": "已过期 · 宽限期 7 天",
           "en": "Expired · 7-day grace period",
           "ar": "انتهت الباقة؛ أنت في مهلة 7 أيام"
-        },
-        {
-          "key": "plan.meCell",
-          "zh-CN": "套餐",
-          "en": "Plan",
-          "ar": "الباقة"
         },
         {
           "key": "plan.meSub",
@@ -16970,12 +16760,6 @@
           "ar": "مقبول؛ يبدأ تلقائيًا في مواعيد الحملة"
         },
         {
-          "key": "platformApply.cancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
-        },
-        {
           "key": "platformApply.goods",
           "zh-CN": "商品",
           "en": "Products",
@@ -17046,12 +16830,6 @@
           "zh-CN": "{n} / 单",
           "en": "{n} / order",
           "ar": "{n} / طلب"
-        },
-        {
-          "key": "platformApply.pick",
-          "zh-CN": "请选择",
-          "en": "Select",
-          "ar": "اختر"
         },
         {
           "key": "platformApply.platformPer",
@@ -17294,12 +17072,6 @@
           "ar": "لا توجد قيود لهذا المتجر وهذا النوع"
         },
         {
-          "key": "points.loadMore",
-          "zh-CN": "加载更多",
-          "en": "Load more",
-          "ar": "تحميل المزيد"
-        },
-        {
           "key": "points.minorUnit",
           "zh-CN": "最小货币单位",
           "en": "minor currency units",
@@ -17426,12 +17198,6 @@
           "ar": "تعذر التحميل أو التحديث. حدّث الكشف وراجع آخر إصدار قبل المحاولة."
         },
         {
-          "key": "points.statementMore",
-          "zh-CN": "加载更多",
-          "en": "Load more",
-          "ar": "تحميل المزيد"
-        },
-        {
           "key": "points.statementRefresh",
           "zh-CN": "刷新账单",
           "en": "Refresh statements",
@@ -17544,6 +17310,804 @@
           "zh-CN": "积分类型",
           "en": "Points type",
           "ar": "نوع النقاط"
+        },
+        {
+          "key": "printCenter.acknowledge",
+          "zh-CN": "已知悉",
+          "en": "Acknowledge",
+          "ar": "Acknowledge"
+        },
+        {
+          "key": "printCenter.action.CANCEL",
+          "zh-CN": "取消",
+          "en": "Cancel",
+          "ar": "Cancel"
+        },
+        {
+          "key": "printCenter.action.CONFIRM",
+          "zh-CN": "现场确认已出纸",
+          "en": "Confirm physical output",
+          "ar": "Confirm physical output"
+        },
+        {
+          "key": "printCenter.action.EXTRA",
+          "zh-CN": "加印一份",
+          "en": "Add one copy",
+          "ar": "Add one copy"
+        },
+        {
+          "key": "printCenter.action.QUERY",
+          "zh-CN": "查询结果",
+          "en": "Query result",
+          "ar": "Query result"
+        },
+        {
+          "key": "printCenter.action.REPRINT",
+          "zh-CN": "补打",
+          "en": "Reprint",
+          "ar": "Reprint"
+        },
+        {
+          "key": "printCenter.action.RETRY",
+          "zh-CN": "安全重试",
+          "en": "Safe retry",
+          "ar": "Safe retry"
+        },
+        {
+          "key": "printCenter.addAgent",
+          "zh-CN": "创建Windows代理",
+          "en": "Create Windows agent",
+          "ar": "Create Windows agent"
+        },
+        {
+          "key": "printCenter.addPrinter",
+          "zh-CN": "添加打印机",
+          "en": "Add printer",
+          "ar": "Add printer"
+        },
+        {
+          "key": "printCenter.agents",
+          "zh-CN": "本地代理",
+          "en": "Local agents",
+          "ar": "Local agents"
+        },
+        {
+          "key": "printCenter.autoPrint",
+          "zh-CN": "自动打印本场景",
+          "en": "Automatically print this scene",
+          "ar": "Automatically print this scene"
+        },
+        {
+          "key": "printCenter.blockedHint",
+          "zh-CN": "生成被阻断，请检查来源、模板或路由。诊断码：",
+          "en": "Generation blocked. Check source data, template or route. Diagnostic code:",
+          "ar": "Generation blocked. Check source data, template or route. Diagnostic code:"
+        },
+        {
+          "key": "printCenter.cancelHint",
+          "zh-CN": "尚未提交的任务将取消，已投递的任务需要设备明确确认。",
+          "en": "Unsubmitted tasks can be cancelled. Submitted tasks require device confirmation.",
+          "ar": "Unsubmitted tasks can be cancelled. Submitted tasks require device confirmation."
+        },
+        {
+          "key": "printCenter.clearGate",
+          "zh-CN": "解除设备未决闸门",
+          "en": "Resolve device uncertainty",
+          "ar": "Resolve device uncertainty"
+        },
+        {
+          "key": "printCenter.clearGateHint",
+          "zh-CN": "仅在旧执行端已停止、原队列已终止并完成现场核验后操作；原票仍保留待核实。",
+          "en": "Verify that the old executor has stopped and its queue has terminated. The original ticket remains uncertain.",
+          "ar": "Verify that the old executor has stopped and its queue has terminated. The original ticket remains uncertain."
+        },
+        {
+          "key": "printCenter.cloud",
+          "zh-CN": "云打印",
+          "en": "Cloud",
+          "ar": "Cloud"
+        },
+        {
+          "key": "printCenter.confirmHint",
+          "zh-CN": "仅在已现场看到完整小票时确认。队列已接收或PDF已生成均不代表打印完成。",
+          "en": "Confirm only after seeing the complete physical receipt. Queue acceptance or PDF generation is insufficient.",
+          "ar": "Confirm only after seeing the complete physical receipt. Queue acceptance or PDF generation is insufficient."
+        },
+        {
+          "key": "printCenter.confirmedLabel",
+          "zh-CN": "原票完成",
+          "en": "Original completed",
+          "ar": "الأصل مكتمل"
+        },
+        {
+          "key": "printCenter.copies",
+          "zh-CN": "每台打印份数（1～10）",
+          "en": "Copies per printer (1–10)",
+          "ar": "Copies per printer (1–10)"
+        },
+        {
+          "key": "printCenter.devices",
+          "zh-CN": "打印设备",
+          "en": "Printers",
+          "ar": "الطابعات"
+        },
+        {
+          "key": "printCenter.discoveryHint",
+          "zh-CN": "先在Windows代理中登记设备标识和队列，再在此选择。",
+          "en": "Register the device identity and queue in the Windows agent first.",
+          "ar": "Register the device identity and queue in the Windows agent first."
+        },
+        {
+          "key": "printCenter.download",
+          "zh-CN": "下载PDF",
+          "en": "Download PDF",
+          "ar": "تنزيل PDF"
+        },
+        {
+          "key": "printCenter.downloadFailed",
+          "zh-CN": "PDF下载失败，请重新获取下载授权",
+          "en": "PDF download failed. Request a new download grant.",
+          "ar": "PDF download failed. Request a new download grant."
+        },
+        {
+          "key": "printCenter.duplicateRisk",
+          "zh-CN": "确认承担重复出纸风险？",
+          "en": "Accept duplicate-output risk?",
+          "ar": "Accept duplicate-output risk?"
+        },
+        {
+          "key": "printCenter.duplicateRiskHint",
+          "zh-CN": "原票结果仍未明确，补打可能重复出纸；不会清除原设备的未决任务。",
+          "en": "The original result is uncertain. A replacement may duplicate output and does not clear the original device gate.",
+          "ar": "The original result is uncertain. A replacement may duplicate output and does not clear the original device gate."
+        },
+        {
+          "key": "printCenter.empty",
+          "zh-CN": "暂无打印任务",
+          "en": "No print tasks",
+          "ar": "لا توجد مهام طباعة"
+        },
+        {
+          "key": "printCenter.evidenceRef",
+          "zh-CN": "受控证据或现场核验编号",
+          "en": "Controlled evidence or verification reference",
+          "ar": "Controlled evidence or verification reference"
+        },
+        {
+          "key": "printCenter.expectedLabel",
+          "zh-CN": "应打",
+          "en": "Expected",
+          "ar": "المتوقع"
+        },
+        {
+          "key": "printCenter.exportPdf",
+          "zh-CN": "导出PDF",
+          "en": "Export PDF",
+          "ar": "Export PDF"
+        },
+        {
+          "key": "printCenter.failed",
+          "zh-CN": "操作失败，请重试",
+          "en": "Operation failed. Please retry.",
+          "ar": "تعذرت العملية. حاول مرة أخرى."
+        },
+        {
+          "key": "printCenter.fixture.ACCEPTED_NO_RESULT",
+          "zh-CN": "受理后无结果",
+          "en": "Accepted no result",
+          "ar": "Accepted no result"
+        },
+        {
+          "key": "printCenter.fixture.DUPLICATE_RECEIPT",
+          "zh-CN": "重复回执",
+          "en": "Duplicate receipt",
+          "ar": "Duplicate receipt"
+        },
+        {
+          "key": "printCenter.fixture.LATE_RECEIPT",
+          "zh-CN": "迟到回执",
+          "en": "Late receipt",
+          "ar": "Late receipt"
+        },
+        {
+          "key": "printCenter.fixture.NOT_ACCEPTED",
+          "zh-CN": "明确未受理",
+          "en": "Not accepted",
+          "ar": "Not accepted"
+        },
+        {
+          "key": "printCenter.fixture.OFFLINE",
+          "zh-CN": "打印机离线",
+          "en": "Offline",
+          "ar": "Offline"
+        },
+        {
+          "key": "printCenter.fixture.PAPER_OUT",
+          "zh-CN": "打印机缺纸",
+          "en": "Paper out",
+          "ar": "Paper out"
+        },
+        {
+          "key": "printCenter.fixture.PARTIAL_COPIES",
+          "zh-CN": "部分出纸",
+          "en": "Partial copies",
+          "ar": "Partial copies"
+        },
+        {
+          "key": "printCenter.fixture.SUCCESS",
+          "zh-CN": "正常完成",
+          "en": "Success",
+          "ar": "Success"
+        },
+        {
+          "key": "printCenter.fixture.TIMEOUT_UNKNOWN",
+          "zh-CN": "超时结果未知",
+          "en": "Timeout unknown",
+          "ar": "Timeout unknown"
+        },
+        {
+          "key": "printCenter.footer",
+          "zh-CN": "附加说明（可选）",
+          "en": "Additional note (optional)",
+          "ar": "Additional note (optional)"
+        },
+        {
+          "key": "printCenter.local",
+          "zh-CN": "本地打印",
+          "en": "Local",
+          "ar": "Local"
+        },
+        {
+          "key": "printCenter.mockHint",
+          "zh-CN": "当前为演示数据。连接真实后端后可管理打印、运行模拟和导出PDF。",
+          "en": "Demo data is active. Connect the backend to manage printers, run simulations and export PDFs.",
+          "ar": "Demo data is active. Connect the backend to manage printers, run simulations and export PDFs."
+        },
+        {
+          "key": "printCenter.newPrinterPaused",
+          "zh-CN": "新打印机默认暂停，核对连接和纸宽后再启用。",
+          "en": "New printers start paused. Verify the connection and paper width before enabling.",
+          "ar": "New printers start paused. Verify the connection and paper width before enabling."
+        },
+        {
+          "key": "printCenter.next",
+          "zh-CN": "下一页",
+          "en": "Next",
+          "ar": "التالي"
+        },
+        {
+          "key": "printCenter.operation",
+          "zh-CN": "操作",
+          "en": "Operation",
+          "ar": "Operation"
+        },
+        {
+          "key": "printCenter.operationHint",
+          "zh-CN": "操作已受理与打印完成分别记录，请查看任务状态。",
+          "en": "Command acceptance and physical printing are recorded separately. Check the task status.",
+          "ar": "Command acceptance and physical printing are recorded separately. Check the task status."
+        },
+        {
+          "key": "printCenter.order",
+          "zh-CN": "订单",
+          "en": "Order",
+          "ar": "Order"
+        },
+        {
+          "key": "printCenter.orderEntry",
+          "zh-CN": "订单小票与打印",
+          "en": "Receipts and printing",
+          "ar": "Receipts and printing"
+        },
+        {
+          "key": "printCenter.pages",
+          "zh-CN": "页",
+          "en": "pages",
+          "ar": "pages"
+        },
+        {
+          "key": "printCenter.pairAgent",
+          "zh-CN": "生成配对材料",
+          "en": "Issue pairing material",
+          "ar": "Issue pairing material"
+        },
+        {
+          "key": "printCenter.pause",
+          "zh-CN": "暂停",
+          "en": "Pause",
+          "ar": "Pause"
+        },
+        {
+          "key": "printCenter.pdfHint",
+          "zh-CN": "文件生成不代表真实出纸",
+          "en": "File generation does not prove physical output.",
+          "ar": "File generation does not prove physical output."
+        },
+        {
+          "key": "printCenter.policyHint",
+          "zh-CN": "只影响新触发；默认伴随生成PDF，并在批次完成时通知门店负责人。",
+          "en": "Applies to new triggers. Also generates PDFs and notifies store managers when the batch is resolved.",
+          "ar": "Applies to new triggers. Also generates PDFs and notifies store managers when the batch is resolved."
+        },
+        {
+          "key": "printCenter.previous",
+          "zh-CN": "上一页",
+          "en": "Previous",
+          "ar": "السابق"
+        },
+        {
+          "key": "printCenter.probe",
+          "zh-CN": "检测连接",
+          "en": "Probe connection",
+          "ar": "Probe connection"
+        },
+        {
+          "key": "printCenter.publicKey",
+          "zh-CN": "代理公钥",
+          "en": "Agent public key",
+          "ar": "Agent public key"
+        },
+        {
+          "key": "printCenter.publishRoute",
+          "zh-CN": "发布打印去向",
+          "en": "Publish destinations",
+          "ar": "Publish destinations"
+        },
+        {
+          "key": "printCenter.publishTemplate",
+          "zh-CN": "发布小票模板",
+          "en": "Publish template",
+          "ar": "Publish template"
+        },
+        {
+          "key": "printCenter.reason",
+          "zh-CN": "操作原因",
+          "en": "Reason",
+          "ar": "السبب"
+        },
+        {
+          "key": "printCenter.receiptFields",
+          "zh-CN": "票面字段",
+          "en": "Receipt fields",
+          "ar": "Receipt fields"
+        },
+        {
+          "key": "printCenter.refresh",
+          "zh-CN": "刷新",
+          "en": "Refresh",
+          "ar": "تحديث"
+        },
+        {
+          "key": "printCenter.replacedHint",
+          "zh-CN": "已由补打解决，原票状态保留",
+          "en": "Resolved by a replacement; the original result is preserved.",
+          "ar": "Resolved by a replacement; the original result is preserved."
+        },
+        {
+          "key": "printCenter.required",
+          "zh-CN": "必需",
+          "en": "Required",
+          "ar": "Required"
+        },
+        {
+          "key": "printCenter.requiredFieldsHint",
+          "zh-CN": "必需字段和系统警示始终保留。",
+          "en": "Mandatory fields and system warnings remain visible.",
+          "ar": "Mandatory fields and system warnings remain visible."
+        },
+        {
+          "key": "printCenter.resolveRequired",
+          "zh-CN": "待核实任务的风险补打需要异常处理权限",
+          "en": "Reprinting an uncertain ticket requires resolution permission.",
+          "ar": "Reprinting an uncertain ticket requires resolution permission."
+        },
+        {
+          "key": "printCenter.resolvedLabel",
+          "zh-CN": "补票解决",
+          "en": "Resolved by reprint",
+          "ar": "تمت المعالجة بإعادة الطباعة"
+        },
+        {
+          "key": "printCenter.retryGeneration",
+          "zh-CN": "恢复初打生成",
+          "en": "Recover initial generation",
+          "ar": "Recover initial generation"
+        },
+        {
+          "key": "printCenter.revokeAgent",
+          "zh-CN": "撤销代理",
+          "en": "Revoke agent",
+          "ar": "Revoke agent"
+        },
+        {
+          "key": "printCenter.revokeHint",
+          "zh-CN": "撤销后代理不能再领取任务或提交证据，已有未决任务仍需核查。",
+          "en": "Revoked agents cannot claim work or report evidence. Existing uncertain attempts still need review.",
+          "ar": "Revoked agents cannot claim work or report evidence. Existing uncertain attempts still need review."
+        },
+        {
+          "key": "printCenter.rotateCredential",
+          "zh-CN": "更换凭据",
+          "en": "Rotate credentials",
+          "ar": "Rotate credentials"
+        },
+        {
+          "key": "printCenter.route",
+          "zh-CN": "打印去向",
+          "en": "Print destinations",
+          "ar": "Print destinations"
+        },
+        {
+          "key": "printCenter.routeHint",
+          "zh-CN": "选择本场景需要出纸的设备，每个选中设备独立生成任务。",
+          "en": "Each selected printer receives an independent task.",
+          "ar": "Each selected printer receives an independent task."
+        },
+        {
+          "key": "printCenter.routeSelectionRequired",
+          "zh-CN": "请选择设备，份数须为1～10的整数",
+          "en": "Select a printer and an integer copy count from 1 to 10.",
+          "ar": "Select a printer and an integer copy count from 1 to 10."
+        },
+        {
+          "key": "printCenter.runSimulation",
+          "zh-CN": "运行模拟",
+          "en": "Run simulation",
+          "ar": "تشغيل المحاكاة"
+        },
+        {
+          "key": "printCenter.savePolicy",
+          "zh-CN": "保存场景策略",
+          "en": "Save scene policy",
+          "ar": "Save scene policy"
+        },
+        {
+          "key": "printCenter.savePreview",
+          "zh-CN": "保存草稿并预览",
+          "en": "Save draft and preview",
+          "ar": "Save draft and preview"
+        },
+        {
+          "key": "printCenter.sealedPairingCopied",
+          "zh-CN": "加密配对材料已复制，请交给对应Windows代理使用。",
+          "en": "Encrypted pairing material copied for the matching Windows agent.",
+          "ar": "Encrypted pairing material copied for the matching Windows agent."
+        },
+        {
+          "key": "printCenter.selectAgent",
+          "zh-CN": "选择本地代理",
+          "en": "Select agent",
+          "ar": "Select agent"
+        },
+        {
+          "key": "printCenter.selectQueue",
+          "zh-CN": "选择已登记队列",
+          "en": "Select registered queue",
+          "ar": "Select registered queue"
+        },
+        {
+          "key": "printCenter.serial",
+          "zh-CN": "打印机SN",
+          "en": "Printer serial number",
+          "ar": "Printer serial number"
+        },
+        {
+          "key": "printCenter.simulate",
+          "zh-CN": "模拟打印",
+          "en": "Simulate printing",
+          "ar": "محاكاة الطباعة"
+        },
+        {
+          "key": "printCenter.simulationFailed",
+          "zh-CN": "模拟校验失败",
+          "en": "Simulation checks failed",
+          "ar": "Simulation checks failed"
+        },
+        {
+          "key": "printCenter.simulationHint",
+          "zh-CN": "模拟仅校验内容和处理策略，不代表打印机已出纸。",
+          "en": "Simulation checks content and handling rules. It does not prove physical output.",
+          "ar": "Simulation checks content and handling rules. It does not prove physical output."
+        },
+        {
+          "key": "printCenter.simulationPassed",
+          "zh-CN": "模拟校验通过",
+          "en": "Simulation checks passed",
+          "ar": "Simulation checks passed"
+        },
+        {
+          "key": "printCenter.sourceUnavailable",
+          "zh-CN": "业务来源未接入，自动打印不可用",
+          "en": "Source not connected. Auto-print unavailable.",
+          "ar": "المصدر غير متصل. الطباعة التلقائية غير متاحة."
+        },
+        {
+          "key": "printCenter.status.ACCEPTED",
+          "zh-CN": "已受理，未确认出纸",
+          "en": "Accepted; output unconfirmed",
+          "ar": "Accepted; output unconfirmed"
+        },
+        {
+          "key": "printCenter.status.ACKNOWLEDGED",
+          "zh-CN": "已知悉",
+          "en": "Acknowledged",
+          "ar": "Acknowledged"
+        },
+        {
+          "key": "printCenter.status.ACTIVE",
+          "zh-CN": "已启用",
+          "en": "Active",
+          "ar": "Active"
+        },
+        {
+          "key": "printCenter.status.BLOCKED",
+          "zh-CN": "生成被阻断",
+          "en": "Blocked",
+          "ar": "Blocked"
+        },
+        {
+          "key": "printCenter.status.CANCELLED",
+          "zh-CN": "已取消",
+          "en": "Cancelled",
+          "ar": "Cancelled"
+        },
+        {
+          "key": "printCenter.status.COMPLETED",
+          "zh-CN": "打印已完成",
+          "en": "Physical printing confirmed",
+          "ar": "Physical printing confirmed"
+        },
+        {
+          "key": "printCenter.status.DISPATCHING",
+          "zh-CN": "正在投递",
+          "en": "Dispatching",
+          "ar": "Dispatching"
+        },
+        {
+          "key": "printCenter.status.ERROR",
+          "zh-CN": "设备异常",
+          "en": "Error",
+          "ar": "Error"
+        },
+        {
+          "key": "printCenter.status.EXPIRED",
+          "zh-CN": "PDF已过期",
+          "en": "Expired",
+          "ar": "Expired"
+        },
+        {
+          "key": "printCenter.status.FAILED",
+          "zh-CN": "失败",
+          "en": "Failed",
+          "ar": "Failed"
+        },
+        {
+          "key": "printCenter.status.GENERATED",
+          "zh-CN": "票据已生成",
+          "en": "Generated",
+          "ar": "Generated"
+        },
+        {
+          "key": "printCenter.status.GENERATING",
+          "zh-CN": "PDF生成中",
+          "en": "Generating",
+          "ar": "Generating"
+        },
+        {
+          "key": "printCenter.status.NO_PRINT_REQUIRED",
+          "zh-CN": "无自动打印需求",
+          "en": "No print required",
+          "ar": "No print required"
+        },
+        {
+          "key": "printCenter.status.OFFLINE",
+          "zh-CN": "离线",
+          "en": "Offline",
+          "ar": "Offline"
+        },
+        {
+          "key": "printCenter.status.ONLINE",
+          "zh-CN": "在线",
+          "en": "Online",
+          "ar": "Online"
+        },
+        {
+          "key": "printCenter.status.OPEN",
+          "zh-CN": "待处理",
+          "en": "Open",
+          "ar": "Open"
+        },
+        {
+          "key": "printCenter.status.PAIRING",
+          "zh-CN": "待配对",
+          "en": "Pairing",
+          "ar": "Pairing"
+        },
+        {
+          "key": "printCenter.status.PAPER_OUT",
+          "zh-CN": "缺纸",
+          "en": "Paper out",
+          "ar": "Paper out"
+        },
+        {
+          "key": "printCenter.status.PASSED",
+          "zh-CN": "模拟校验通过",
+          "en": "Simulation checks passed",
+          "ar": "Simulation checks passed"
+        },
+        {
+          "key": "printCenter.status.PAUSED",
+          "zh-CN": "已暂停",
+          "en": "Paused",
+          "ar": "Paused"
+        },
+        {
+          "key": "printCenter.status.PENDING",
+          "zh-CN": "待处理",
+          "en": "Pending",
+          "ar": "Pending"
+        },
+        {
+          "key": "printCenter.status.PRINTING",
+          "zh-CN": "正在打印",
+          "en": "Printing",
+          "ar": "Printing"
+        },
+        {
+          "key": "printCenter.status.READY",
+          "zh-CN": "PDF可下载",
+          "en": "PDF available",
+          "ar": "PDF available"
+        },
+        {
+          "key": "printCenter.status.RESOLVED",
+          "zh-CN": "已解决",
+          "en": "Resolved",
+          "ar": "Resolved"
+        },
+        {
+          "key": "printCenter.status.RETIRED",
+          "zh-CN": "已退役",
+          "en": "Retired",
+          "ar": "Retired"
+        },
+        {
+          "key": "printCenter.status.RETRY_WAIT",
+          "zh-CN": "等待安全重试",
+          "en": "Retry wait",
+          "ar": "Retry wait"
+        },
+        {
+          "key": "printCenter.status.REVOKED",
+          "zh-CN": "已撤销",
+          "en": "Revoked",
+          "ar": "Revoked"
+        },
+        {
+          "key": "printCenter.status.RUNNING",
+          "zh-CN": "模拟处理中",
+          "en": "Running",
+          "ar": "Running"
+        },
+        {
+          "key": "printCenter.status.SKIPPED",
+          "zh-CN": "无需自动打印",
+          "en": "Skipped",
+          "ar": "Skipped"
+        },
+        {
+          "key": "printCenter.status.STALE",
+          "zh-CN": "已过时，待确认",
+          "en": "Stale",
+          "ar": "Stale"
+        },
+        {
+          "key": "printCenter.status.SUCCEEDED",
+          "zh-CN": "操作已完成",
+          "en": "Operation completed",
+          "ar": "Operation completed"
+        },
+        {
+          "key": "printCenter.status.UNKNOWN",
+          "zh-CN": "结果待核实",
+          "en": "Result uncertain",
+          "ar": "Result uncertain"
+        },
+        {
+          "key": "printCenter.submit",
+          "zh-CN": "生成订单小票",
+          "en": "Generate receipts",
+          "ar": "Generate receipts"
+        },
+        {
+          "key": "printCenter.tabs.exports",
+          "zh-CN": "PDF导出",
+          "en": "PDF exports",
+          "ar": "PDF exports"
+        },
+        {
+          "key": "printCenter.tabs.incidents",
+          "zh-CN": "异常",
+          "en": "Incidents",
+          "ar": "Incidents"
+        },
+        {
+          "key": "printCenter.tabs.jobs",
+          "zh-CN": "打印任务",
+          "en": "Tasks",
+          "ar": "Tasks"
+        },
+        {
+          "key": "printCenter.tabs.requests",
+          "zh-CN": "打印需求",
+          "en": "Requests",
+          "ar": "Requests"
+        },
+        {
+          "key": "printCenter.tabs.simulations",
+          "zh-CN": "模拟记录",
+          "en": "Simulations",
+          "ar": "Simulations"
+        },
+        {
+          "key": "printCenter.templateMissing",
+          "zh-CN": "模板尚未加载，请刷新",
+          "en": "Template not loaded. Refresh first.",
+          "ar": "Template not loaded. Refresh first."
+        },
+        {
+          "key": "printCenter.templates",
+          "zh-CN": "小票模板",
+          "en": "Receipt templates",
+          "ar": "قوالب الإيصالات"
+        },
+        {
+          "key": "printCenter.testHint",
+          "zh-CN": "会实际投递测试小票，请确认设备和纸张已就绪。",
+          "en": "A physical test ticket will be submitted. Check the printer and paper.",
+          "ar": "A physical test ticket will be submitted. Check the printer and paper."
+        },
+        {
+          "key": "printCenter.testPrint",
+          "zh-CN": "打印测试票",
+          "en": "Print test ticket",
+          "ar": "Print test ticket"
+        },
+        {
+          "key": "printCenter.title",
+          "zh-CN": "打印中心",
+          "en": "Print center",
+          "ar": "مركز الطباعة"
+        },
+        {
+          "key": "printCenter.unknownHint",
+          "zh-CN": "结果待核实，请先查询或现场核验，不要直接重试原任务。",
+          "en": "Check the result or verify on site before retrying.",
+          "ar": "Check the result or verify on site before retrying."
+        },
+        {
+          "key": "printCenter.unknownLabel",
+          "zh-CN": "待核实",
+          "en": "Needs review",
+          "ar": "يتطلب التحقق"
+        },
+        {
+          "key": "printCenter.vendorKey",
+          "zh-CN": "飞鹅UKEY（仅写入）",
+          "en": "Feie UKEY (write only)",
+          "ar": "Feie UKEY (write only)"
+        },
+        {
+          "key": "printCenter.vendorUser",
+          "zh-CN": "飞鹅开发者账号",
+          "en": "Feie developer account",
+          "ar": "Feie developer account"
+        },
+        {
+          "key": "printCenter.viewTasks",
+          "zh-CN": "查看任务",
+          "en": "View tasks",
+          "ar": "View tasks"
         },
         {
           "key": "purchase.addItem",
@@ -17661,9 +18225,9 @@
         },
         {
           "key": "qual.expireHint",
-          "zh-CN": "长期有效就留空。填了的话到期前 30 天这一页会标出来，过期后新商品上不了架。",
-          "en": "Leave blank if it never expires. If set, this page flags it 30 days ahead, and after expiry new products cannot be listed.",
-          "ar": "اتركه فارغًا إن كان دائمًا."
+          "zh-CN": "长期有效可留空。到期前30天提醒；过期后新商品无法上架。",
+          "en": "Leave blank if permanent. A reminder appears 30 days before expiry; new products cannot be listed after expiry.",
+          "ar": "اتركه فارغًا للصلاحية الدائمة. يظهر تنبيه قبل الانتهاء بـ30 يومًا، ولا تُنشر منتجات جديدة بعد الانتهاء."
         },
         {
           "key": "qual.expired",
@@ -17708,12 +18272,6 @@
           "ar": "ارفع"
         },
         {
-          "key": "qual.intro",
-          "zh-CN": "上架被拒多数不是商品本身的问题，而是该类目需要尚未提交的资质。提交后由平台核验，通过即可上架。",
-          "en": "A rejected listing is usually not the product itself but a credential this category requires. Submit it for platform verification; once approved the category can be listed.",
-          "ar": "رفض الإدراج غالبًا ليس بسبب المنتج؛ هذه الفئة تحتاج ترخيصًا لم ترفعه بعد."
-        },
-        {
           "key": "qual.locked",
           "zh-CN": "还不能卖的类目",
           "en": "Categories still locked",
@@ -17745,21 +18303,15 @@
         },
         {
           "key": "qual.notGrantedHint",
-          "zh-CN": "这几类现在也能上架，传证只是为了把资质补齐；平台核过之后这一栏会变成「已经能卖的类目」。",
-          "en": "These categories can already be listed; uploading only completes your paperwork. After review they move to “Categories you can sell”.",
-          "ar": "هذه الفئات قابلة للعرض الآن، والرفع لاستكمال الأوراق فقط؛ بعد المراجعة تنتقل إلى «فئات يمكنك بيعها»."
+          "zh-CN": "目前可售，资质待补；核验通过后归入已开通类目。",
+          "en": "Currently sellable; documents are pending. Moves to approved categories after verification.",
+          "ar": "البيع متاح حاليًا والمستندات غير مكتملة. يُنقل إلى الأصناف المعتمدة بعد التحقق."
         },
         {
           "key": "qual.prefilled",
           "zh-CN": "已按证照填好{f}，请核对",
           "en": "Filled {f} from the document — please check",
           "ar": "تمت تعبئة {f} من الوثيقة — يرجى التحقق"
-        },
-        {
-          "key": "qual.submit",
-          "zh-CN": "提交",
-          "en": "Submit",
-          "ar": "إرسال"
         },
         {
           "key": "qual.submitHint",
@@ -17936,16 +18488,10 @@
           "ar": "{n} من الجيران يريدون هذا"
         },
         {
-          "key": "reach.bodyPh",
-          "zh-CN": "选填",
-          "en": "Optional",
-          "ar": "اختياري"
-        },
-        {
           "key": "reach.confirmBody",
-          "zh-CN": "消息发出去撤不回来。频次限制会挡住最近收到过的人，所以这个数可能比人群小。",
-          "en": "Messages cannot be recalled. The frequency limit holds back anyone who heard from you recently, so this number may be smaller than the group.",
-          "ar": "لا يمكن سحب الرسائل بعد إرسالها. حد التكرار يمنع من استلم منك مؤخرًا، لذا قد يكون العدد أقل من المجموعة."
+          "zh-CN": "发送后不可撤回；近期已接收消息的顾客可能因频次限制被排除。",
+          "en": "Messages cannot be recalled. Recent recipients may be excluded by frequency limits.",
+          "ar": "لا يمكن سحب الرسائل بعد إرسالها. قد يُستثنى من تلقى رسائل مؤخرًا بسبب حدود التكرار."
         },
         {
           "key": "reach.confirmBtn",
@@ -18075,9 +18621,9 @@
         },
         {
           "key": "reach.sceneHint.WAKEUP",
-          "zh-CN": "召回长期未到店的顾客。同一顾客 14 天内最多收到一条，过于频繁会被屏蔽。",
-          "en": "Win back customers who have not visited for a while. One message per customer per 14 days; more often invites blocking.",
-          "ar": "لإعادة من انقطع. رسالة واحدة كل 14 يومًا؛ الإلحاح يؤدي إلى الحظر"
+          "zh-CN": "召回长期未到店的顾客；同一顾客14天内最多1条。",
+          "en": "Re-engage inactive customers; at most one message per customer in 14 days.",
+          "ar": "استعد العملاء غير النشطين؛ رسالة واحدة كحد أقصى لكل عميل خلال14 يومًا."
         },
         {
           "key": "reach.sceneQ",
@@ -18290,12 +18836,6 @@
           "ar": "نهائي"
         },
         {
-          "key": "reachTasks.tab.ALL",
-          "zh-CN": "全部",
-          "en": "All",
-          "ar": "الكل"
-        },
-        {
           "key": "reachTasks.tab.COUPON",
           "zh-CN": "券",
           "en": "Coupons",
@@ -18459,9 +18999,9 @@
         },
         {
           "key": "schedule.capacityHint",
-          "zh-CN": "名额指该时段可同时接单的数量。开出后只能停约、不能修改名额：调小会使已预约的订单变为超卖，且系统不会报错。如需调整，请停用旧时段并新开一个。",
-          "en": "Capacity is how many orders a slot can take at once. Once opened it can only be closed, not resized: reducing it oversells slots already booked, and the system raises no error. To adjust, close the slot and open a new one.",
-          "ar": "السعة = عدد الطلبات التي يستوعبها هذا الموعد. بعد الفتح يمكن الإغلاق فقط لا التعديل؛ تصغيرها يحوّل الحجوزات القائمة إلى بيع زائد دون أي تنبيه. للتعديل أغلقه وافتح موعدًا جديدًا."
+          "zh-CN": "每时段可同时接单数。开出后不可修改；调整需停用旧时段并新开。",
+          "en": "Concurrent bookings per slot. Capacity cannot change after opening; disable the old slot and create a new one.",
+          "ar": "عدد الحجوزات المتزامنة لكل فترة. لا يمكن تعديله بعد الفتح؛ عطّل الفترة القديمة وأنشئ أخرى."
         },
         {
           "key": "schedule.close",
@@ -18890,12 +19430,6 @@
           "ar": "الافتراضيات"
         },
         {
-          "key": "shipSetting.saved",
-          "zh-CN": "已保存",
-          "en": "Saved",
-          "ar": "تم الحفظ"
-        },
-        {
           "key": "shipSetting.sender",
           "zh-CN": "寄件信息",
           "en": "Sender",
@@ -18972,12 +19506,6 @@
           "zh-CN": "加收地区",
           "en": "Surcharged regions",
           "ar": "مناطق برسوم إضافية"
-        },
-        {
-          "key": "shipSetting.unsaved",
-          "zh-CN": "有修改未保存",
-          "en": "Unsaved changes",
-          "ar": "تغييرات غير محفوظة"
         },
         {
           "key": "shipSetting.weight",
@@ -19322,12 +19850,6 @@
           "ar": "{name} (نسخة)"
         },
         {
-          "key": "staff.copyRole",
-          "zh-CN": "复制",
-          "en": "Copy",
-          "ar": "نسخ"
-        },
-        {
           "key": "staff.dangerTitle",
           "zh-CN": "停用",
           "en": "Disable",
@@ -19338,12 +19860,6 @@
           "zh-CN": "员工详情",
           "en": "Staff detail",
           "ar": "تفاصيل الموظف"
-        },
-        {
-          "key": "staff.disable",
-          "zh-CN": "停用",
-          "en": "Disable",
-          "ar": "إيقاف"
         },
         {
           "key": "staff.disableHint",
@@ -19368,12 +19884,6 @@
           "zh-CN": "还没有员工",
           "en": "No staff yet",
           "ar": "لا موظفين بعد"
-        },
-        {
-          "key": "staff.enable",
-          "zh-CN": "启用",
-          "en": "Enable",
-          "ar": "تفعيل"
         },
         {
           "key": "staff.enableHint",
@@ -19514,12 +20024,6 @@
           "ar": "المالك غير مقيّد بصلاحيات المتاجر؛ كلها له"
         },
         {
-          "key": "staff.phone",
-          "zh-CN": "手机号",
-          "en": "Phone",
-          "ar": "رقم الهاتف"
-        },
-        {
           "key": "staff.role.CLERK",
           "zh-CN": "店员",
           "en": "Clerk",
@@ -19652,18 +20156,6 @@
           "ar": "الموظفون والصلاحيات"
         },
         {
-          "key": "statement.allPeriods",
-          "zh-CN": "全部",
-          "en": "All",
-          "ar": "الكل"
-        },
-        {
-          "key": "statement.billCount",
-          "zh-CN": "结算单",
-          "en": "Settlements",
-          "ar": "التسويات"
-        },
-        {
           "key": "statement.billCountValue",
           "zh-CN": "{n} 笔",
           "en": "{n}",
@@ -19692,12 +20184,6 @@
           "zh-CN": "结算单号",
           "en": "Settlement no.",
           "ar": "رقم التسوية"
-        },
-        {
-          "key": "statement.csvStatus",
-          "zh-CN": "状态",
-          "en": "Status",
-          "ar": "الحالة"
         },
         {
           "key": "statement.csvVoucher",
@@ -19824,12 +20310,6 @@
           "zh-CN": "每一行带费率与凭证号，可与银行流水逐笔勾对。",
           "en": "Every line carries its rate and voucher number, so you can match it against your bank entries.",
           "ar": "كل سطر يحمل نسبته ورقم سنده، فتطابقه ببنود حسابك البنكي."
-        },
-        {
-          "key": "stats.compareEntry",
-          "zh-CN": "跨店对比",
-          "en": "Compare stores",
-          "ar": "مقارنة الفروع"
         },
         {
           "key": "stats.gmv",
@@ -19988,12 +20468,6 @@
           "ar": "راكد {n} يوم"
         },
         {
-          "key": "stock.more",
-          "zh-CN": "更多",
-          "en": "More",
-          "ar": "المزيد"
-        },
-        {
           "key": "stock.offSale",
           "zh-CN": "（已下架）",
           "en": "(delisted)",
@@ -20084,6 +20558,12 @@
           "ar": "إدخال مرتجع"
         },
         {
+          "key": "stock.reason.RETURN_SUPPLIER",
+          "zh-CN": "退供应商",
+          "en": "Return to supplier",
+          "ar": "إرجاع إلى المورد"
+        },
+        {
           "key": "stock.reason.SALE",
           "zh-CN": "线上销售",
           "en": "Sale out",
@@ -20142,12 +20622,6 @@
           "zh-CN": "在途",
           "en": "In transit",
           "ar": "قيد النقل"
-        },
-        {
-          "key": "stock.tabAll",
-          "zh-CN": "全部",
-          "en": "All",
-          "ar": "الكل"
         },
         {
           "key": "stock.tabReserved",
@@ -20216,6 +20690,18 @@
           "ar": "حصة"
         },
         {
+          "key": "stockAlign.batchSummary",
+          "zh-CN": "{completed} 项完成 · {blocked} 项阻断 · {waiting} 项等待",
+          "en": "{completed} completed · {blocked} blocked · {waiting} waiting",
+          "ar": "{completed} مكتمل · {blocked} متوقف · {waiting} قيد الانتظار"
+        },
+        {
+          "key": "stockAlign.blockedFirst",
+          "zh-CN": "请先处理阻断项，再重新预览",
+          "en": "Resolve blocked items, then preview again",
+          "ar": "عالج العناصر المتوقفة ثم أعد المعاينة"
+        },
+        {
           "key": "stockAlign.byCount",
           "zh-CN": "已实地盘点",
           "en": "Counted on site",
@@ -20226,6 +20712,12 @@
           "zh-CN": "以线上库存为准",
           "en": "Use online stock",
           "ar": "اعتماد المخزون عبر الإنترنت"
+        },
+        {
+          "key": "stockAlign.confirmBatch",
+          "zh-CN": "确认对齐",
+          "en": "Confirm alignment",
+          "ar": "تأكيد المطابقة"
         },
         {
           "key": "stockAlign.confirmCountHint",
@@ -20252,6 +20744,18 @@
           "ar": "اعتماد المخزون عبر الإنترنت؟"
         },
         {
+          "key": "stockAlign.continueBatch",
+          "zh-CN": "继续处理未完成项",
+          "en": "Continue remaining items",
+          "ar": "متابعة العناصر المتبقية"
+        },
+        {
+          "key": "stockAlign.diagnostic",
+          "zh-CN": "诊断码：{code}",
+          "en": "Diagnostic code: {code}",
+          "ar": "رمز التشخيص: {code}"
+        },
+        {
           "key": "stockAlign.diff",
           "zh-CN": "差 {n}",
           "en": "Off by {n}",
@@ -20276,10 +20780,100 @@
           "ar": "قارن المخزون الفعلي بالمخزون عبر الإنترنت واختر المعتمد."
         },
         {
+          "key": "stockAlign.lineStatus.ALIGNED",
+          "zh-CN": "已对齐",
+          "en": "Aligned",
+          "ar": "تمت المطابقة"
+        },
+        {
+          "key": "stockAlign.lineStatus.BLOCKED",
+          "zh-CN": "已阻断",
+          "en": "Blocked",
+          "ar": "متوقف"
+        },
+        {
+          "key": "stockAlign.lineStatus.COMPLETED",
+          "zh-CN": "已完成",
+          "en": "Completed",
+          "ar": "مكتمل"
+        },
+        {
+          "key": "stockAlign.lineStatus.DONE",
+          "zh-CN": "已完成",
+          "en": "Completed",
+          "ar": "مكتمل"
+        },
+        {
+          "key": "stockAlign.lineStatus.EXPIRED",
+          "zh-CN": "已过期",
+          "en": "Expired",
+          "ar": "منتهي الصلاحية"
+        },
+        {
+          "key": "stockAlign.lineStatus.FAILED",
+          "zh-CN": "处理失败",
+          "en": "Failed",
+          "ar": "فشل"
+        },
+        {
+          "key": "stockAlign.lineStatus.PENDING",
+          "zh-CN": "待处理",
+          "en": "Pending",
+          "ar": "قيد الانتظار"
+        },
+        {
+          "key": "stockAlign.lineStatus.PREVIEW",
+          "zh-CN": "待确认",
+          "en": "Awaiting confirmation",
+          "ar": "بانتظار التأكيد"
+        },
+        {
+          "key": "stockAlign.lineStatus.PROCESSING",
+          "zh-CN": "处理中",
+          "en": "Processing",
+          "ar": "قيد المعالجة"
+        },
+        {
+          "key": "stockAlign.lineStatus.SKIPPED",
+          "zh-CN": "未执行",
+          "en": "Not applied",
+          "ar": "لم يُنفذ"
+        },
+        {
+          "key": "stockAlign.lineStatus.STALE",
+          "zh-CN": "数据已变更",
+          "en": "Data changed",
+          "ar": "تغيرت البيانات"
+        },
+        {
+          "key": "stockAlign.lineStatus.UNKNOWN",
+          "zh-CN": "待核实",
+          "en": "Needs review",
+          "ar": "يتطلب التحقق"
+        },
+        {
+          "key": "stockAlign.lineStatus.WAITING",
+          "zh-CN": "等待处理",
+          "en": "Waiting",
+          "ar": "بانتظار المعالجة"
+        },
+        {
           "key": "stockAlign.mall",
           "zh-CN": "线上 {n}",
           "en": "Online {n}",
           "ar": "عبر الإنترنت {n}"
+        },
+        {
+          "key": "stockAlign.modeCount",
+          "zh-CN": "按已实地盘点",
+          "en": "Use physical count",
+          "ar": "اعتماد الجرد الفعلي"
+        },
+        {
+          "key": "stockAlign.modeMall",
+          "zh-CN": "以线上库存为准",
+          "en": "Use online stock",
+          "ar": "اعتماد المخزون عبر الإنترنت"
         },
         {
           "key": "stockAlign.note.ENTITY_MULTI_STORE",
@@ -20298,6 +20892,18 @@
           "zh-CN": "实存 {n}",
           "en": "Physical {n}",
           "ar": "الفعلي {n}"
+        },
+        {
+          "key": "stockAlign.previewTitle",
+          "zh-CN": "对齐预览",
+          "en": "Alignment preview",
+          "ar": "معاينة المطابقة"
+        },
+        {
+          "key": "stockAlign.resultTitle",
+          "zh-CN": "批次处理结果",
+          "en": "Batch results",
+          "ar": "نتائج الدفعة"
         },
         {
           "key": "stockAlign.same",
@@ -20367,9 +20973,9 @@
         },
         {
           "key": "stockCheck.overdueHint",
-          "zh-CN": "这张盘点单已超过 24 小时。请完成并过账，或确认后作废以恢复该库位的实物出入库。",
-          "en": "This count has been open for over 24 hours. Post it, or confirm voiding to resume physical stock movements at this location.",
-          "ar": "مضى على هذا الجرد أكثر من 24 ساعة. رحّله أو أكّد إلغاءه لاستئناف حركة المخزون الفعلية في هذا الموقع."
+          "zh-CN": "盘点已超24小时。请过账或确认作废，以恢复本库位实物出入库。",
+          "en": "This count is over 24 hours old. Post or void it to resume physical movements at this location.",
+          "ar": "تجاوز الجرد24 ساعة. رحّله أو أكّد إلغاءه لاستئناف حركة المخزون الفعلي في هذا الموقع."
         },
         {
           "key": "stockCheck.pickAll",
@@ -20481,9 +21087,9 @@
         },
         {
           "key": "stockCheck.unfilled",
-          "zh-CN": "还有 {n} 件未录入实盘数；全部录入后才能过账，实盘为 0 也请填写 0。",
-          "en": "{n} items still need a counted quantity. Enter all quantities before posting; enter 0 when none are on hand.",
-          "ar": "ما زالت كمية الجرد غير مسجلة لـ {n} عناصر. أدخل الكميات كلها قبل الترحيل، واكتب 0 إذا لم يتوفر شيء."
+          "zh-CN": "还有 {n} 件未录入实盘数；实盘为0也须填写，录齐后才能过账。",
+          "en": "{n} items have no count. Enter zero where appropriate; all counts are required before posting.",
+          "ar": "لم يُدخل الجرد الفعلي لـ{n} صنف. أدخل صفرًا عند اللزوم؛ يلزم استكمال الجرد قبل الترحيل."
         },
         {
           "key": "stockCheck.voidConfirm",
@@ -20546,12 +21152,6 @@
           "ar": "ناقص في {n}"
         },
         {
-          "key": "stockCross.tabAll",
-          "zh-CN": "全部",
-          "en": "All",
-          "ar": "الكل"
-        },
-        {
           "key": "stockCross.tabShortage",
           "zh-CN": "有店缺货",
           "en": "Short somewhere",
@@ -20562,12 +21162,6 @@
           "zh-CN": "跨店库存",
           "en": "Stock across stores",
           "ar": "المخزون عبر المتاجر"
-        },
-        {
-          "key": "stockDetail.adjust",
-          "zh-CN": "盘这一件",
-          "en": "Count this item",
-          "ar": "جرد هذا الصنف"
         },
         {
           "key": "stockDetail.adjustBadNumber",
@@ -20652,18 +21246,6 @@
           "zh-CN": "预留",
           "en": "Reserved",
           "ar": "المحجوز"
-        },
-        {
-          "key": "stockDetail.safety",
-          "zh-CN": "安全库存",
-          "en": "Safety stock",
-          "ar": "حد التنبيه"
-        },
-        {
-          "key": "stockDetail.safetyBadNumber",
-          "zh-CN": "填一个不小于 0 的整数",
-          "en": "Enter a whole number, 0 or more",
-          "ar": "أدخل عددًا صحيحًا 0 أو أكثر"
         },
         {
           "key": "stockDetail.safetyFollow",
@@ -21351,9 +21933,9 @@
         },
         {
           "key": "stockReport.scopeHint",
-          "zh-CN": "只统计接入进销存的商品，按当前门店。线下卖出只计件数，不计销售额 —— 与经营报表的销售额不是同一个口径。",
-          "en": "Covers only products tracked in inventory, for the current store. In-store sales count quantity only, not revenue — a different basis from the sales report.",
-          "ar": "يشمل فقط المنتجات المُدارة في المخزون لهذا المتجر. البيع في المتجر يُحسب بالكمية فقط دون الإيرادات، وهو أساس مختلف عن تقرير المبيعات."
+          "zh-CN": "仅统计当前门店接入进销存的商品。线下卖出只计件数、不计销售额，与经营报表口径不同。",
+          "en": "Includes inventory-managed products in the current store only. Offline sales count quantities, not revenue, unlike the business report.",
+          "ar": "يشمل المنتجات المُدارة بالمخزون في الفرع الحالي فقط. تُحسب كميات المبيعات غير المتصلة دون إيراداتها، بخلاف تقرير الأعمال."
         },
         {
           "key": "stockReport.slow",
@@ -21452,12 +22034,6 @@
           "ar": "{n} منتجات · متوقف افتراضيًا"
         },
         {
-          "key": "stockSettings.empty",
-          "zh-CN": "还没有经营类目",
-          "en": "No business categories yet",
-          "ar": "لا توجد فئات نشاط بعد"
-        },
-        {
           "key": "stockSettings.goodsCount",
           "zh-CN": "{n} 件商品",
           "en": "{n} products",
@@ -21494,10 +22070,10 @@
           "ar": "إعدادات المخزون"
         },
         {
-          "key": "stockSync.align",
-          "zh-CN": "期初对齐",
-          "en": "Opening alignment",
-          "ar": "المطابقة الافتتاحية"
+          "key": "stockSync.appliedQty",
+          "zh-CN": "线上数量 {before} → {after}",
+          "en": "Online stock: {before} → {after}",
+          "ar": "المخزون عبر الإنترنت: {before} → {after}"
         },
         {
           "key": "stockSync.goodsRule",
@@ -21524,6 +22100,60 @@
           "ar": "أكمل المطابقة الافتتاحية أولًا"
         },
         {
+          "key": "stockSync.noResult",
+          "zh-CN": "尚无结果",
+          "en": "No result yet",
+          "ar": "لا توجد نتيجة بعد"
+        },
+        {
+          "key": "stockSync.notApplied",
+          "zh-CN": "未执行，请查看处理状态",
+          "en": "Not applied; check the processing status",
+          "ar": "لم يُنفذ؛ تحقق من حالة المعالجة"
+        },
+        {
+          "key": "stockSync.operationNo",
+          "zh-CN": "操作号：{no}",
+          "en": "Operation: {no}",
+          "ar": "العملية: {no}"
+        },
+        {
+          "key": "stockSync.operationStatus.BLOCKED",
+          "zh-CN": "暂不可同步",
+          "en": "Sync blocked",
+          "ar": "المزامنة متوقفة"
+        },
+        {
+          "key": "stockSync.operationStatus.COMPLETED",
+          "zh-CN": "已完成",
+          "en": "Completed",
+          "ar": "مكتمل"
+        },
+        {
+          "key": "stockSync.operationStatus.FAILED",
+          "zh-CN": "需处理",
+          "en": "Needs attention",
+          "ar": "يتطلب معالجة"
+        },
+        {
+          "key": "stockSync.operationStatus.PROCESSING",
+          "zh-CN": "处理中",
+          "en": "Processing",
+          "ar": "قيد المعالجة"
+        },
+        {
+          "key": "stockSync.operationStatus.UNKNOWN",
+          "zh-CN": "待核实",
+          "en": "Needs review",
+          "ar": "يتطلب التحقق"
+        },
+        {
+          "key": "stockSync.operationStatus.WAITING",
+          "zh-CN": "等待同步",
+          "en": "Waiting to sync",
+          "ar": "بانتظار المزامنة"
+        },
+        {
           "key": "stockSync.param.CAP",
           "zh-CN": "最多放几件",
           "en": "Maximum",
@@ -21546,6 +22176,18 @@
           "zh-CN": "给门店留几件",
           "en": "How many to keep",
           "ar": "كم تُبقي"
+        },
+        {
+          "key": "stockSync.recordsEmpty",
+          "zh-CN": "暂无库存同步记录",
+          "en": "No stock sync records",
+          "ar": "لا توجد سجلات لمزامنة المخزون"
+        },
+        {
+          "key": "stockSync.recordsTitle",
+          "zh-CN": "库存同步记录",
+          "en": "Stock sync records",
+          "ar": "سجل مزامنة المخزون"
         },
         {
           "key": "stockSync.rule.ALL",
@@ -21644,6 +22286,24 @@
           "ar": "مزامنة المخزون عبر الإنترنت"
         },
         {
+          "key": "stockSync.skip.DONE_BEFORE",
+          "zh-CN": "此操作已处理，未重复调整库存。",
+          "en": "Already processed; no duplicate adjustment.",
+          "ar": "عولجت هذه العملية سابقًا؛ لم يُكرر تعديل المخزون."
+        },
+        {
+          "key": "stockSync.skip.ENTITY_MULTI_STORE",
+          "zh-CN": "请先为此规格设置独立门店库存。",
+          "en": "Set separate store stock first.",
+          "ar": "اضبط أولًا مخزونًا مستقلًا لهذا الفرع."
+        },
+        {
+          "key": "stockSync.skip.NO_SKU",
+          "zh-CN": "未找到对应规格，请核对商品。",
+          "en": "SKU not found; check the product.",
+          "ar": "لم يُعثر على الصنف؛ تحقق من المنتج."
+        },
+        {
           "key": "stockSync.state.ALIGNED",
           "zh-CN": "已对齐，未开启",
           "en": "Aligned, off",
@@ -21662,16 +22322,16 @@
           "ar": "قيد المزامنة"
         },
         {
-          "key": "stockSync.status",
-          "zh-CN": "状态",
-          "en": "Status",
-          "ar": "الحالة"
-        },
-        {
           "key": "stockSync.switchLabel",
           "zh-CN": "同步到线上",
           "en": "Sync to online",
           "ar": "مزامنة مع المتجر الإلكتروني"
+        },
+        {
+          "key": "stockSync.unchangedQty",
+          "zh-CN": "无需调整，线上数量 {n}",
+          "en": "No adjustment needed. Online stock: {n}",
+          "ar": "لا حاجة للتعديل. المخزون عبر الإنترنت: {n}"
         },
         {
           "key": "store.addArea",
@@ -22083,9 +22743,9 @@
         },
         {
           "key": "store.offConfirmBody",
-          "zh-CN": "只勾了这一路的在售商品，关掉后顾客下不了单。商品不会被自动改动，关掉后请到「商品」里补选其他送货方式。",
-          "en": "Goods that only offer this method can't be ordered after. Goods are not changed automatically — add another method under Goods afterwards.",
-          "ar": "البضائع التي تعتمد هذه الطريقة فقط لن تُطلب بعد الإيقاف. لا تُعدَّل البضائع تلقائياً؛ أضف طريقة أخرى من «البضائع»."
+          "zh-CN": "关闭后，仅使用此方式的商品将无法下单。商品设置保留，请另选送货方式。",
+          "en": "Products using only this method cannot be ordered after it is disabled. Product settings are retained; select another method.",
+          "ar": "لن يمكن طلب المنتجات التي تعتمد هذه الطريقة فقط بعد تعطيلها. تُحفظ إعداداتها؛ اختر طريقة توصيل أخرى."
         },
         {
           "key": "store.offConfirmList",
@@ -22413,9 +23073,9 @@
         },
         {
           "key": "store.pickup.buildHint",
-          "zh-CN": "填写门牌上的正式名称与地址，并在地图上标注位置。没有坐标的自提点，顾客无法通过定位找到。",
-          "en": "Enter the official name and address as shown on the premises, and mark the location on the map. Customers cannot find a pickup point without coordinates.",
-          "ar": "اكتب الاسم والعنوان الرسميين وحدّد النقطة على الخريطة؛ نقطة بلا إحداثيات لا تُعثر عليها بالموقع"
+          "zh-CN": "请填写正式名称、地址，并标注地图位置，便于顾客查找。",
+          "en": "Enter the official name and address, and mark the location so customers can find it.",
+          "ar": "أدخل الاسم الرسمي والعنوان وحدد الموقع على الخريطة ليتمكن العملاء من العثور عليه."
         },
         {
           "key": "store.pickup.built",
@@ -22443,9 +23103,9 @@
         },
         {
           "key": "store.pickup.lead",
-          "zh-CN": "顾客在这些点取货。范围内的常驻点可以直接挑；没有的自建一个，运营核实后生效。",
-          "en": "Customers collect at these points. Pick existing points within your coverage, or build your own — it goes live after ops review.",
-          "ar": "يستلم العملاء من هذه النقاط. اختر نقاطًا ضمن نطاقك أو أنشئ نقطتك؛ تُعتمد بعد مراجعة التشغيل."
+          "zh-CN": "可选择范围内自提点；新建自提点经核实后生效。",
+          "en": "Select a pickup point in your area. New points become available after verification.",
+          "ar": "اختر نقطة استلام ضمن النطاق. تصبح النقاط الجديدة متاحة بعد التحقق."
         },
         {
           "key": "store.pickup.locate",
@@ -22719,9 +23379,9 @@
         },
         {
           "key": "store.reachDesc.PICKUP",
-          "zh-CN": "送至自提点，由顾客自行领取；超出配送的自提点范围则无法送达。适用于社区菜摊、理发店等。",
-          "en": "Delivered to a pickup point for customers to collect. Anything beyond the served points cannot be reached. Suited to neighbourhood stalls and salons.",
-          "ar": "تُترك في نقطة استلام ويأتي العميل لأخذها. لا شيء خارج تلك النقاط."
+          "zh-CN": "送到自提点，顾客自取；仅配送至范围内的自提点。",
+          "en": "Deliver to pickup points for customer collection, within the supported area only.",
+          "ar": "التوصيل إلى نقاط الاستلام ليستلم العملاء طلباتهم، ضمن النطاق المدعوم فقط."
         },
         {
           "key": "store.reachDesc.SHIPPING",
@@ -23097,9 +23757,9 @@
         },
         {
           "key": "store.unlimitedIdle",
-          "zh-CN": "「全平台不限」只对快递和自送生效 —— 本店当前只开了自提，这一条暂时不起作用",
-          "en": "“No area limit” only applies to express and own delivery — this store currently offers pickup only, so it has no effect yet",
-          "ar": "«بدون حدود للنطاق» ينطبق على التوصيل السريع والتوصيل الذاتي فقط — هذا المتجر يوفر الاستلام فقط حاليًا، لذا لا تأثير له بعد"
+          "zh-CN": "本店仅开通自提，全平台范围设置暂不生效。",
+          "en": "Only pickup is enabled; platform-wide delivery coverage does not apply.",
+          "ar": "الاستلام فقط مفعّل؛ لا ينطبق نطاق التوصيل على مستوى المنصة."
         },
         {
           "key": "store.unsaved",
@@ -23144,22 +23804,10 @@
           "ar": "أضف فئة للمتجر قبل إنشاء المنتجات"
         },
         {
-          "key": "storeCategories.goodsCount",
-          "zh-CN": "{n} 件",
-          "en": "{n} items",
-          "ar": "{n} منتجات"
-        },
-        {
           "key": "storeCategories.inUse",
           "zh-CN": "该类目下仍有商品，请先移至其他类目",
           "en": "This category still contains products. Move them to another category first.",
           "ar": "هذا الرف يحتوي على منتجات؛ انقلها أولاً."
-        },
-        {
-          "key": "storeCategories.invLabel",
-          "zh-CN": "接入进销存",
-          "en": "Use Inventory",
-          "ar": "ربط بالمخزون"
         },
         {
           "key": "storeCategories.needCert",
@@ -23264,18 +23912,6 @@
           "ar": "آخر اختيار"
         },
         {
-          "key": "storePick.manage",
-          "zh-CN": "管理",
-          "en": "Manage",
-          "ar": "إدارة"
-        },
-        {
-          "key": "storePick.switch",
-          "zh-CN": "切换",
-          "en": "Switch",
-          "ar": "تبديل"
-        },
-        {
           "key": "storePick.switching",
           "zh-CN": "切换中…",
           "en": "Switching…",
@@ -23294,18 +23930,6 @@
           "ar": "+ متجر جديد"
         },
         {
-          "key": "stores.address",
-          "zh-CN": "门店地址",
-          "en": "Address",
-          "ar": "العنوان"
-        },
-        {
-          "key": "stores.addressPh",
-          "zh-CN": "如 3 号楼 2 单元",
-          "en": "e.g. Block 3, Unit 2",
-          "ar": "مثال: مبنى ٣ وحدة ٢"
-        },
-        {
           "key": "stores.currentTag",
           "zh-CN": "当前经营",
           "en": "Currently managing",
@@ -23318,22 +23942,10 @@
           "ar": "الافتراضي"
         },
         {
-          "key": "stores.disable",
-          "zh-CN": "停用",
-          "en": "Disable",
-          "ar": "إيقاف"
-        },
-        {
           "key": "stores.disabled",
           "zh-CN": "已停用",
           "en": "Disabled",
           "ar": "موقوف"
-        },
-        {
-          "key": "stores.enable",
-          "zh-CN": "启用",
-          "en": "Enable",
-          "ar": "تفعيل"
         },
         {
           "key": "stores.hint",
@@ -23396,12 +24008,6 @@
           "ar": "التحصيل غير مفعّل"
         },
         {
-          "key": "stores.payment",
-          "zh-CN": "收款账户",
-          "en": "Payout account",
-          "ar": "التحصيل إلى"
-        },
-        {
           "key": "stores.planSuspended",
           "zh-CN": "套餐降级 · 只读",
           "en": "Read-only · plan downgrade",
@@ -23414,12 +24020,6 @@
           "ar": "عرض الباقة"
         },
         {
-          "key": "stores.qualEntry",
-          "zh-CN": "经营资质",
-          "en": "Category permits",
-          "ar": "تصاريح الفئات"
-        },
-        {
           "key": "stores.quotaHint",
           "zh-CN": "门店数量受当前套餐额度限制，超出额度将无法创建",
           "en": "Your plan caps how many stores you can open; going over is rejected",
@@ -23430,12 +24030,6 @@
           "zh-CN": "门店额度按所选证照计算，保存时校验。",
           "en": "The store quota follows the selected credential and is checked on save.",
           "ar": "حصة الفروع تتبع الرخصة التي اخترتها، ويتم التحقق عند الحفظ."
-        },
-        {
-          "key": "stores.rename",
-          "zh-CN": "重命名",
-          "en": "Rename",
-          "ar": "إعادة تسمية"
         },
         {
           "key": "stores.setDefault",
@@ -23499,9 +24093,9 @@
         },
         {
           "key": "stores.underEntityHint",
-          "zh-CN": "门店额度按证照计算：挂在哪张证照下，即占用该证照的额度。创建后暂不支持改挂。",
-          "en": "The store quota follows the credential it is filed under. Re-filing is not supported after creation.",
-          "ar": "حصة الفروع تتبع الرخصة؛ الفرع يستهلك حصة تلك الرخصة. لا يمكن نقله لاحقًا حاليًا."
+          "zh-CN": "占用所选证照的门店额度，创建后暂不能更换证照。",
+          "en": "Counts toward the selected licence’s store limit. The licence cannot be changed after creation.",
+          "ar": "يُحتسب ضمن حد الفروع للرخصة المحددة. لا يمكن تغيير الرخصة بعد الإنشاء."
         },
         {
           "key": "stores.viewEntity",
@@ -23514,12 +24108,6 @@
           "zh-CN": "建为「{name}」",
           "en": "Create “{name}”",
           "ar": "إنشاء «{name}»"
-        },
-        {
-          "key": "supplier.empty",
-          "zh-CN": "还没有供应商",
-          "en": "No suppliers yet",
-          "ar": "لا يوجد مورّدون بعد"
         },
         {
           "key": "supplier.emptyTip",
@@ -23540,12 +24128,6 @@
           "ar": "ابحث بالاسم أو جهة الاتصال"
         },
         {
-          "key": "suppliers.add",
-          "zh-CN": "新建供应商",
-          "en": "New supplier",
-          "ar": "مورّد جديد"
-        },
-        {
           "key": "suppliers.addPh",
           "zh-CN": "如 老周粮油",
           "en": "e.g. Zhou Grain & Oil",
@@ -23556,12 +24138,6 @@
           "zh-CN": "新建供应商",
           "en": "New supplier",
           "ar": "مورّد جديد"
-        },
-        {
-          "key": "suppliers.archive",
-          "zh-CN": "停用",
-          "en": "Archive",
-          "ar": "أرشفة"
         },
         {
           "key": "suppliers.archiveHint",
@@ -23610,24 +24186,6 @@
           "zh-CN": "平台维护的档案，名称跟平台走",
           "en": "Maintained by the platform — the name follows it",
           "ar": "تديره المنصة — الاسم يتبعها"
-        },
-        {
-          "key": "suppliers.rename",
-          "zh-CN": "改名",
-          "en": "Rename",
-          "ar": "إعادة تسمية"
-        },
-        {
-          "key": "suppliers.renameTitle",
-          "zh-CN": "改名",
-          "en": "Rename",
-          "ar": "إعادة تسمية"
-        },
-        {
-          "key": "suppliers.restore",
-          "zh-CN": "启用",
-          "en": "Restore",
-          "ar": "استعادة"
         },
         {
           "key": "suppliers.title",
@@ -23846,12 +24404,6 @@
           "ar": "{name} · كمية التحويل"
         },
         {
-          "key": "transfer.receive",
-          "zh-CN": "确认收货",
-          "en": "Confirm receipt",
-          "ar": "تأكيد الاستلام"
-        },
-        {
           "key": "transfer.receiveBody",
           "zh-CN": "{n} 件入到「{to}」。收货后在途清零。",
           "en": "{n} units into \"{to}\". In-transit drops to zero on receipt.",
@@ -23880,12 +24432,6 @@
           "zh-CN": "两端不能是同一个库位",
           "en": "The two ends cannot be the same location",
           "ar": "لا يمكن أن يكون الطرفان الموقع نفسه"
-        },
-        {
-          "key": "transfer.ship",
-          "zh-CN": "确认发出",
-          "en": "Ship",
-          "ar": "إرسال"
         },
         {
           "key": "transfer.shipConfirm",
@@ -24036,12 +24582,6 @@
           "zh-CN": "请输入取货码",
           "en": "Enter the pickup code",
           "ar": "أدخل رمز الاستلام"
-        },
-        {
-          "key": "verify.couponCancel",
-          "zh-CN": "取消",
-          "en": "Cancel",
-          "ar": "إلغاء"
         },
         {
           "key": "verify.couponCodePh",
@@ -27135,6 +27675,24 @@
           "ar": "يجب أن يكون وقت إغلاق الطلبات قبل وقت الوصول، وإلا استمر الطلب بعد وصول البضاعة"
         },
         {
+          "key": "err.print.blocked",
+          "zh-CN": "打印操作未完成，请检查配置或任务状态",
+          "en": "Printing could not proceed. Check the configuration or task status.",
+          "ar": "تعذر متابعة الطباعة. تحقق من الإعدادات أو حالة المهمة."
+        },
+        {
+          "key": "err.print.conflict",
+          "zh-CN": "打印数据已变化，请刷新后重试",
+          "en": "Print data changed. Refresh before retrying.",
+          "ar": "تغيرت بيانات الطباعة. حدّث الصفحة قبل المحاولة."
+        },
+        {
+          "key": "err.print.unavailable",
+          "zh-CN": "打印能力暂不可用，请检查配置",
+          "en": "Printing is unavailable. Check the configuration.",
+          "ar": "الطباعة غير متاحة. تحقق من الإعدادات."
+        },
+        {
           "key": "err.reset_token.invalid",
           "zh-CN": "重置码无效或已过期，请重新申请",
           "en": "Reset code is invalid or expired. Please request a new one",
@@ -28698,6 +29256,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_print_fact",
+      "class": "OrderPrintFact",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.order.printing"
+    },
+    {
       "table": "ord_refund_execution",
       "class": "OrdRefundExecution",
       "zh": "The immutable refund plan survives gateway ambiguity and independent resource recovery.",
@@ -29200,6 +29765,160 @@
       "zh": "主题 × 商品，多对多。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prn_action_log",
+      "class": "PrnActionLog",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_agent",
+      "class": "PrnAgent",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_attempt",
+      "class": "PrnAttempt",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_batch",
+      "class": "PrnBatch",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_credential_version",
+      "class": "PrnCredentialVersion",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_export_task",
+      "class": "PrnExportTask",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_incident",
+      "class": "PrnIncident",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_job",
+      "class": "PrnJob",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_operation",
+      "class": "PrnOperation",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_policy_version",
+      "class": "PrnPolicyVersion",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_printer",
+      "class": "PrnPrinter",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_printer_runtime",
+      "class": "PrnPrinterRuntime",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_receipt",
+      "class": "PrnReceipt",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_reconcile_cursor",
+      "class": "PrnReconcileCursor",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_request",
+      "class": "PrnRequest",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_route",
+      "class": "PrnRoute",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_route_version",
+      "class": "PrnRouteVersion",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_scene_policy",
+      "class": "PrnScenePolicy",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_simulation_run",
+      "class": "PrnSimulationRun",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_store_stream",
+      "class": "PrnStoreStream",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_template",
+      "class": "PrnTemplate",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
+    },
+    {
+      "table": "prn_template_version",
+      "class": "PrnTemplateVersion",
+      "zh": "",
+      "module": "print",
+      "package": "ai.neargo.shop.print.persistence.entity"
     },
     {
       "table": "pts_user_account",
@@ -30792,6 +31511,13 @@
         "value": "NEEDS_REVIEW",
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "host": "PdfFontBundle",
+        "name": "VERSION",
+        "value": "NOTO_SC_V1",
+        "zh": "",
+        "module": "print"
       },
       {
         "host": "InvManagedAppService",
@@ -37143,6 +37869,22 @@
         "module": "shop-core"
       },
       {
+        "name": "AgentRequestPurpose",
+        "values": [
+          "OPEN_SESSION",
+          "HEARTBEAT",
+          "CLAIM",
+          "ACKNOWLEDGE",
+          "RENEW_LEASE",
+          "REPORT_EVIDENCE",
+          "RECOVER",
+          "COMMAND_RESULT",
+          "READ_DISPATCH"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "Aggregate",
         "values": [
           "PAYMENT",
@@ -37366,6 +38108,16 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "DispatchOutcome",
+        "values": [
+          "ACCEPTED",
+          "NOT_ACCEPTED",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "DispatchStatus",
         "values": [
           "ACCEPTED",
@@ -37379,6 +38131,9 @@
       {
         "name": "ErrorCode",
         "values": [
+          "PRINT_BLOCKED",
+          "PRINT_CONFLICT",
+          "PRINT_UNAVAILABLE",
           "BAD_REQUEST",
           "UNAUTHORIZED",
           "TOKEN_EXPIRED",
@@ -37655,6 +38410,28 @@
         "module": "shop-base"
       },
       {
+        "name": "ExportSourceType",
+        "values": [
+          "JOB",
+          "BATCH",
+          "SIMULATION"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "ExportStatus",
+        "values": [
+          "PENDING",
+          "GENERATING",
+          "READY",
+          "FAILED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "FactKind",
         "values": [
           "PAID",
@@ -37774,6 +38551,17 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "GuardDecision",
+        "values": [
+          "ALLOW_HISTORICAL_RECEIPT",
+          "CANCEL_UNSUBMITTED_EXECUTION",
+          "REQUIRE_VOID",
+          "HOLD_UNKNOWN"
+        ],
+        "zh": "",
+        "module": "print"
       },
       {
         "name": "HolderType",
@@ -38022,6 +38810,22 @@
         "module": "shop-core"
       },
       {
+        "name": "ObservedPrintStatus",
+        "values": [
+          "RECEIVED",
+          "SUBMITTING",
+          "ACCEPTED",
+          "PRINTING",
+          "CONFIRMED",
+          "NOT_ACCEPTED",
+          "UNKNOWN",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "Op",
         "values": [
           "SUBSIDY",
@@ -38184,6 +38988,15 @@
         "module": "shop-core"
       },
       {
+        "name": "PdfOutputProfile",
+        "values": [
+          "ORIGINAL_ROLL",
+          "A4_SHEET"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "Phase",
         "values": [
           "PENDING",
@@ -38262,6 +39075,168 @@
         "module": "shop-base"
       },
       {
+        "name": "PrintArtifactKind",
+        "values": [
+          "LIVE_EXPORT",
+          "SIMULATION_EXPORT"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintAttemptStatus",
+        "values": [
+          "PREPARED",
+          "SUBMITTING",
+          "ACCEPTED",
+          "PRINTING",
+          "CONFIRMED",
+          "NOT_ACCEPTED",
+          "UNKNOWN",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintBatchStatus",
+        "values": [
+          "PENDING",
+          "PROCESSING",
+          "PARTIAL",
+          "ATTENTION",
+          "COMPLETED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintEvidenceLevel",
+        "values": [
+          "NONE",
+          "DEVICE_CONFIRMED",
+          "PROVIDER_CONFIRMED",
+          "MANUAL_CONFIRMED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintJobKind",
+        "values": [
+          "INITIAL",
+          "REPRINT",
+          "EXTRA",
+          "VOID",
+          "TEST"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintJobStatus",
+        "values": [
+          "PENDING",
+          "DISPATCHING",
+          "ACCEPTED",
+          "PRINTING",
+          "COMPLETED",
+          "RETRY_WAIT",
+          "UNKNOWN",
+          "FAILED",
+          "CANCELLED",
+          "STALE"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintMode",
+        "values": [
+          "CURRENT_VERSION",
+          "EXISTING_FACT"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintOperationStatus",
+        "values": [
+          "PENDING",
+          "UNKNOWN",
+          "SUCCEEDED",
+          "FAILED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintReceiptStatus",
+        "values": [
+          "PENDING",
+          "APPLIED",
+          "IGNORED",
+          "CONFLICT",
+          "UNMATCHED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrintRequestStatus",
+        "values": [
+          "PENDING",
+          "BLOCKED",
+          "GENERATED",
+          "CANCELLED",
+          "SKIPPED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "Printability",
+        "values": [
+          "READY",
+          "BLOCKED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrinterAdminStatus",
+        "values": [
+          "ACTIVE",
+          "PAUSED",
+          "RETIRED"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrinterConnectionType",
+        "values": [
+          "CLOUD",
+          "LOCAL"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "PrinterHealthStatus",
+        "values": [
+          "ONLINE",
+          "OFFLINE",
+          "PAPER_OUT",
+          "ERROR",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
         "name": "Quality",
         "values": [
           "SALEABLE",
@@ -38324,6 +39299,15 @@
         ],
         "zh": "退款进度：与订单状态正交 —— 部分退款不改订单状态，只改它。",
         "module": "shop-core"
+      },
+      {
+        "name": "ResolutionPurpose",
+        "values": [
+          "PRODUCTION",
+          "SAMPLE_PREVIEW"
+        ],
+        "zh": "",
+        "module": "print"
       },
       {
         "name": "RestoreResult",
@@ -38431,6 +39415,43 @@
         ],
         "zh": "发货单（ord_shipment）状态。",
         "module": "shop-core"
+      },
+      {
+        "name": "SimulationFixtureCode",
+        "values": [
+          "SUCCESS",
+          "NOT_ACCEPTED",
+          "OFFLINE",
+          "PAPER_OUT",
+          "ACCEPTED_NO_RESULT",
+          "TIMEOUT_UNKNOWN",
+          "DUPLICATE_RECEIPT",
+          "LATE_RECEIPT",
+          "PARTIAL_COPIES"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "SimulationSourceType",
+        "values": [
+          "SAMPLE",
+          "JOB",
+          "FACT"
+        ],
+        "zh": "",
+        "module": "print"
+      },
+      {
+        "name": "SimulationStatus",
+        "values": [
+          "PENDING",
+          "RUNNING",
+          "PASSED",
+          "FAILED"
+        ],
+        "zh": "",
+        "module": "print"
       },
       {
         "name": "Source",
@@ -38737,6 +39758,15 @@
         ],
         "zh": "Owner and regional evidence decide tax effects rather than a coupon or points label.",
         "module": "shop-base"
+      },
+      {
+        "name": "TemplateSelectionMode",
+        "values": [
+          "SCENE_DEFAULT",
+          "PINNED_VERSION"
+        ],
+        "zh": "",
+        "module": "print"
       },
       {
         "name": "TicketRealm",
@@ -40613,6 +41643,9 @@
         "name": "ROUTES",
         "client": "b-app",
         "values": [
+          "/pages/print-center/index",
+          "/pages/print-devices/index",
+          "/pages/print-templates/index",
           "/pages/home/index",
           "/pages/orders/index",
           "/pages/goods-list/index",
@@ -43432,9 +44465,81 @@
     },
     {
       "host": "BizPerms",
+      "name": "PRINT_READ",
+      "type": "String",
+      "value": "\"biz:print:read\"",
+      "zh": "角色 → 权限码。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_SUBMIT",
+      "type": "String",
+      "value": "\"biz:print:submit\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_REPRINT",
+      "type": "String",
+      "value": "\"biz:print:reprint\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_EXTRA",
+      "type": "String",
+      "value": "\"biz:print:extra\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_DEVICE",
+      "type": "String",
+      "value": "\"biz:print:device\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_CONFIG",
+      "type": "String",
+      "value": "\"biz:print:config\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_RESOLVE",
+      "type": "String",
+      "value": "\"biz:print:resolve\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_SIMULATE",
+      "type": "String",
+      "value": "\"biz:print:simulate\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PRINT_EXPORT",
+      "type": "String",
+      "value": "\"biz:print:export\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -43444,6 +44549,22 @@
       "type": "String",
       "value": "AbstractTokenAuthFilter.TOKEN_EXPIRED_ATTR",
       "zh": "@deprecated 已上移到 AbstractTokenAuthFilter#TOKEN_EXPIRED_ATTR。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRINT_READ",
+      "type": "String",
+      "value": "\"ops:print:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PRINT_RESOLVE",
+      "type": "String",
+      "value": "\"ops:print:resolve\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -44999,7 +46120,9 @@
         "com.tngtech.archunit:archunit-junit5",
         "net.javacrumbs.shedlock:shedlock-provider-jdbc-template",
         "net.javacrumbs.shedlock:shedlock-spring",
-        "org.locationtech.jts:jts-core"
+        "org.apache.pdfbox:pdfbox",
+        "org.locationtech.jts:jts-core",
+        "org.xerial:sqlite-jdbc"
       ],
       "literalVersions": []
     },

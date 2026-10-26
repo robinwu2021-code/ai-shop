@@ -22,6 +22,8 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { concatenatedTranslationPrefixes } from "./lib/i18n-dynamic-prefixes.mjs";
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const APPS = [
   { app: "b-app", locale: "b-app/src/i18n/locale/zh-CN.ts", src: ["b-app/src"] },
@@ -154,9 +156,11 @@ function refsOf(files) {
       for (const m of tpl.matchAll(T_SINGLE)) keys.add(m[1]);
       for (const m of tpl.matchAll(T_DOUBLE)) keys.add(m[2]);
       for (const m of tpl.matchAll(DYNAMIC)) prefixes.add(m[1]);
+      for (const prefix of concatenatedTranslationPrefixes(tpl)) prefixes.add(prefix);
     }
     for (const m of script.matchAll(LITERAL)) keys.add(m[1]);
     for (const m of script.matchAll(DYNAMIC)) prefixes.add(m[1]);
+    for (const prefix of concatenatedTranslationPrefixes(script)) prefixes.add(prefix);
   }
   return { keys, prefixes };
 }

@@ -1,0 +1,46 @@
+  packages/shared：566 条断言 / 26 红（基线 12 条）
+
+🎉 packages/shared 这些已经变好了，重新冻结一次（node scripts/check-shared-guards.mjs --update）：
+    修好了  i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 ar：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家
+    修好了  i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 en：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家
+    修好了  i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 zh-CN：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家
+    修好了  i18n-parity.test.ts::三语词条一致性 b-app: 三语的 key 集合完全一致
+    修好了  spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明
+    修好了  spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明
+    修好了  spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明
+    修好了  typography.test.ts::字阶 圆角只用 token 五档 —— 差 4rpx 的两个圆角，没人分得出，只会让人各写各的
+    修好了  typography.test.ts::字阶 页面与组件的字号必须落在字阶上（图标/emoji 占位除外）
+  （清单只准变短 —— 不更新的话，下次涨回去也没人发现）
+
+✗ packages/shared 新增了守卫失败，这些不在 known-guard-failures.txt 里：
+    bean-validation-wired.test.ts::Bean Validation：注解要真的会触发 ★★★ 带约束的 DTO 用作 @RequestBody 时，参数必须有 @Valid —— 少了它规则一次都不跑
+    biz-role-seed.test.ts::B 端角色种子 ★★★ 预置角色的权限码：代码与种子必须逐条相等
+    data-scope-coverage.test.ts::数据域表册覆盖 ★★★ 带归属列的表要么登记、要么写明为什么不用（棘轮：只许降不许升）
+    doc-standard.test.ts::文档规范 md 引用的 md 必须存在 —— 目录重整最容易碎的就是这个，而且不报错
+    doc-standard.test.ts::文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错
+    doc-standard.test.ts::文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明
+    doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升）
+    entity-alignment.test.ts::Java 实体与库表对齐 实体不缺列 —— 少一个字段 MyBatis 不报错，只是**读不出那一列**
+    entity-alignment.test.ts::Java 实体与库表对齐 每张业务表都有实体，或已登记为「知道欠着」
+    enum-fields.test.ts::枚举对账 · 按字段 ★★ 未判定的取值域列只准变少 —— 新出现的要点名
+    enum-fields.test.ts::枚举对账 · 按字段 取值域提取本身不能坏掉（提不出来要报 fatal，不能静默通过）
+    enum-registry.test.ts::枚举登记表 规范 §D5 · 不允许在 interface 里内联字面量联合类型
+    inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ docs/ 里任何一处「N 张 inv_ 表」都必须等于迁移里真实的张数
+    inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 《数据库表结构》里写的「N 张表」必须等于迁移里真实的张数
+    inv-doc-table-count.test.ts::进销存文档 × 迁移 ★★★ 文档正文里逐张列出的表 = 迁移里的表（多一张少一张都算）
+    inventory-write-ownership.test.ts::进销存表的写权 ★★★ shop-inventory 之外的 SQL 注解里不许出现 inv_ 表的写语句
+    message-placeholder.test.ts::带占位符的错误文案 ★★ 反向：传了参数的码，文案里必须有 {0} —— 没有的话参数被静默吞掉，用户只看到泛话
+    ops-data-scope.test.ts::运营端数据域接入 ★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错
+    ops-data-scope.test.ts::运营端数据域接入 ★★★ G4 ops 查询读到的表要么登记数据域，要么写明为什么不该登记
+    ops-perm-matrix.test.ts::运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条
+    schema-lineage.test.ts::对账血缘 与 gen-erd.mjs 的键归属表一致 —— 两份分叉会让 ER 图连错线
+    schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类
+    spec-completeness.test.ts::契约完整性 错误码分段表与 ErrorCode.java 一致
+
+  本机重现：cd packages/shared && npx vitest run
+  ops-web：770 条断言 / 1 红（基线 0 条）
+
+✗ ops-web 新增了守卫失败，这些不在 known-guard-failures.txt 里：
+    lib/gated-endpoints.test.ts::运行时开关 ↔ 菜单登记 后端每个门着运营端端点的开关，菜单里都要有登记 —— 否则整域关掉时界面毫无信号
+
+  本机重现：cd ops-web && npx vitest run
