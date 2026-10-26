@@ -77,7 +77,7 @@ public class CouponAllocServiceImpl implements CouponAllocService {
                     Wrappers.<PmtCoupon>lambdaQuery().eq(PmtCoupon::getCouponNo, uc.getCouponNo()).last("limit 1")));
             if (c != null && PmtCoupon.ACTIVE.equals(c.getStatus())
                     && PmtCoupon.REDEEM_ORDER.equals(c.getRedeemMode())
-                    && uc.usableAt(now, c.timesTotalOrOne())) {
+                    && uc.usableAt(now, c.timesTotalOrOne()) && c.startedAt(now)) {
                 out.add(uc.getUserCouponNo());
             }
         }
@@ -352,6 +352,8 @@ public class CouponAllocServiceImpl implements CouponAllocService {
     private void assertUsable(PmtUserCoupon uc, PmtCoupon coupon) {
         long now = System.currentTimeMillis();
         boolean ok = uc.usableAt(now, coupon.timesTotalOrOne())
+                // 绝对有效期没到开始时刻不能用（定向发放不判开始时刻，持有的那张只记了到期）
+                && coupon.startedAt(now)
                 && PmtCoupon.ACTIVE.equals(coupon.getStatus())
                 // 到店核销的券**不参与下单算价**：一张券两条路一定会被用两次，
                 // 而对账时谁也说不清是重复核销还是重复抵扣

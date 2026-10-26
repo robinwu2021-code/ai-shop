@@ -328,7 +328,8 @@ public class PmtCouponServiceImpl implements CouponService {
     }
 
     private ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon heldView(PmtUserCoupon uc, PmtCoupon c, long now) {
-        boolean usable = uc.usableAt(now, c.timesTotalOrOne()) && PmtCoupon.ACTIVE.equals(c.getStatus());
+        boolean usable = uc.usableAt(now, c.timesTotalOrOne()) && c.startedAt(now)
+                && PmtCoupon.ACTIVE.equals(c.getStatus());
         return new ai.neargo.shop.promotion.dto.CouponVOs.HeldCoupon(uc.getUserCouponNo(),
                 customerView(c, true), uc.getStatus(), usable, nz(uc.getReceivedAt()), uc.getUsedAt(),
                 nz(uc.getExpireAt())).withDocumentNo(uc.getDocumentNo());
