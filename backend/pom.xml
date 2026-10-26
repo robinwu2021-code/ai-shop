@@ -249,5 +249,18 @@
                 <module>../backend-plugins/shop-industry-food/food-web</module>
             </modules>
         </profile>
+
+        <!--
+          只给验证用（scripts/check-head-compiles.sh 的餐饮一步）：与 food-embedded 叠加，
+          把 channel / server 也拉进同一个 reactor，插件五个模块的测试一起跑。
+          不是构建形态 —— shop-app 不依赖这两个模块，宿主 classpath 不变。
+        -->
+        <profile>
+            <id>food-verify</id>
+            <modules>
+                <module>../backend-plugins/shop-industry-food/food-channel</module>
+                <module>../backend-plugins/shop-industry-food/food-server</module>
+            </modules>
+        </profile>
     </profiles>
 </project>

@@ -5,7 +5,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
-import ai.neargo.shop.food.service.QueueNotificationLifecycle;
+import ai.neargo.shop.food.lifecycle.QueueNotificationLifecycle;
 import ai.neargo.shop.food.service.QueueNotificationService;
 import ai.neargo.shop.food.spi.QueueNotificationPort;
 

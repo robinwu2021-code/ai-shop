@@ -24,6 +24,10 @@ import ai.neargo.shop.food.mapper.FoodMappers.CoreOrderBindingMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.SettlementMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.SettlementItemMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ChargeIntentMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ReturnMapper;
+import ai.neargo.shop.food.service.DiningOrderService;
+import ai.neargo.shop.food.service.DiningReturnService;
+import ai.neargo.shop.food.service.impl.DiningTransactionRecoveryServiceImpl;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.SalesQuotaClaimService;
 import ai.neargo.shop.food.service.DiningCheckoutService;
@@ -41,6 +45,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -55,7 +60,8 @@ class DiningCheckoutServiceTest extends FoodWriteGuardFixture {
     private static final String DIGEST = "d".repeat(64);
     private record Context(Fixture db, DiningCheckoutService service, Supplier<DiningCheckoutService> restart,
             IndustryCheckoutPort core, OutboxPublisher publisher, SalesQuotaClaimService quotas,
-            AtomicReference<IndustryCheckoutPort.View> actual, AtomicBoolean timeout, AtomicInteger sends) { }
+            AtomicReference<IndustryCheckoutPort.View> actual, AtomicBoolean timeout, AtomicInteger sends,
+            Function<Instant, DiningTransactionRecoveryServiceImpl> recovery) { }
     private void run(Consumer<Context> test) {
         runner().run(context -> {
             var f = prepare(context);
@@ -114,7 +120,13 @@ class DiningCheckoutServiceTest extends FoodWriteGuardFixture {
                     sql.getMapper(OrderBatchMapper.class), sql.getMapper(CoreOrderBindingMapper.class), sql.getMapper(SettlementMapper.class),
                     sql.getMapper(SettlementItemMapper.class), sql.getMapper(ChargeIntentMapper.class), quotas, () -> core, publisher,
                     json, Clock.fixed(NOW, ZoneOffset.UTC), context.getBean(PlatformTransactionManager.class));
-            test.accept(new Context(f, restart.get(), restart, core, publisher, quotas, actual, timeout, sends));
+            var service = restart.get();
+            // The real recovery scanner over the same rows; only the settlement queue holds candidates here.
+            Function<Instant, DiningTransactionRecoveryServiceImpl> recovery = at -> new DiningTransactionRecoveryServiceImpl(
+                    sql.getMapper(OrderBatchMapper.class), sql.getMapper(SettlementMapper.class), mock(ReturnMapper.class),
+                    mock(DiningOrderService.class), service, mock(DiningReturnService.class), Clock.fixed(at, ZoneOffset.UTC),
+                    context.getBean(PlatformTransactionManager.class));
+            test.accept(new Context(f, service, restart, core, publisher, quotas, actual, timeout, sends, recovery));
         });
     }
     private static void noRpcTransaction() { assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse(); }
@@ -213,6 +225,59 @@ class DiningCheckoutServiceTest extends FoodWriteGuardFixture {
             assertThatThrownBy(() -> c.service.customerFinalize(BUYER, source.settlementNo())).isInstanceOf(BizException.class);
             verify(c.quotas, never()).consume(any(), any(), any());
             assertThat(c.service.staffGet("E", "A", "STAFF", source.settlementNo()).payment()).isNull();
+        });
+    }
+    private static long version(Context c) {
+        return c.db.sql().queryForObject("SELECT version FROM fnb_settlement", Long.class);
+    }
+    /** C2: the recovery lease is bookkeeping, not a business change, so the pay page's echoed version stays valid. */
+    @Test void recoveryLeasesOverAnOpenPayPageNeverInvalidateTheEchoedVersionForPay() {
+        run(c -> {
+            var source = create(c, "CREATE");
+            assertThat(c.recovery.apply(NOW).recoverDue(200).pending()).isOne();
+            // The customer is still on the pay page when the lease expires and the next job run re-claims.
+            assertThat(c.recovery.apply(NOW.plusSeconds(180)).recoverDue(200).claimed()).isOne();
+            assertThat(version(c)).isEqualTo(source.version());
+            var paying = c.service.customerPay(BUYER, source.settlementNo(),
+                    new PayDiningSettlementReq(source.version(), DIGEST, "WECHAT"), "PAY");
+            assertThat(paying.status()).isEqualTo("COLLECTING");
+            assertThat(c.sends.get()).isOne();
+        });
+    }
+    @Test void recoveryLeasesOverAnOpenPayPageNeverInvalidateTheEchoedVersionForCancel() {
+        run(c -> {
+            var source = create(c, "CREATE");
+            c.recovery.apply(NOW).recoverDue(200);
+            c.recovery.apply(NOW.plusSeconds(180)).recoverDue(200);
+            var cancelled = c.service.customerCancel(BUYER, source.settlementNo(),
+                    new DiningSettlementVersionReq(source.version()));
+            assertThat(cancelled.status()).isEqualTo("CANCELLED");
+        });
+    }
+    /** A recovery that does change business state advances the version exactly once and fences stale writes. */
+    @Test void recoveryThatSettlesAdvancesVersionOnceAndStalePayOrCancelStillConflicts() {
+        run(c -> {
+            var source = create(c, "CREATE");
+            c.actual.set(result("PAID", "SUCCESS", false)); // paid on the owner side; FOOD never sent a charge
+            assertThat(c.recovery.apply(NOW).recoverDue(200).pending()).isOne();
+            assertThat(c.db.sql().queryForObject("SELECT status FROM fnb_settlement", String.class)).isEqualTo("SETTLED");
+            assertThat(version(c)).isEqualTo(source.version() + 1);
+            assertThatThrownBy(() -> c.service.customerPay(BUYER, source.settlementNo(),
+                    new PayDiningSettlementReq(source.version(), DIGEST, "WECHAT"), "PAY")).isInstanceOf(BizException.class);
+            assertThatThrownBy(() -> c.service.customerCancel(BUYER, source.settlementNo(),
+                    new DiningSettlementVersionReq(source.version()))).isInstanceOf(BizException.class);
+            assertThat(c.sends.get()).isZero();
+            assertThat(c.db.sql().queryForObject("SELECT COUNT(*) FROM fnb_charge_intent", Integer.class)).isZero();
+            assertThat(c.db.sql().queryForObject("SELECT status FROM fnb_settlement", String.class)).isEqualTo("SETTLED");
+        });
+    }
+    @Test void finishedRecoveryRetiresTheLeaseWithoutAnotherVersionStep() {
+        run(c -> {
+            var source = create(c, "CREATE");
+            c.actual.set(result("PAID", "SUCCESS", true));
+            assertThat(c.recovery.apply(NOW).recoverDue(200).complete()).isOne();
+            assertThat(version(c)).isEqualTo(source.version() + 1); // the SETTLED projection only
+            assertThat(c.recovery.apply(NOW.plusSeconds(3600)).recoverDue(200).claimed()).isZero();
         });
     }
 }

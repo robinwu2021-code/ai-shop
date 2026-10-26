@@ -1,4 +1,4 @@
-package ai.neargo.shop.food.service;
+package ai.neargo.shop.food.lifecycle;
 
 /** Local queue owner transaction only; this records an intention and never contacts a supplier. */
 public interface QueueNotificationLifecycle {

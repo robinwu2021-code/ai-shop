@@ -25,7 +25,7 @@ import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.DiningDeliveryService;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
-import ai.neargo.shop.food.service.FoodFeeSourceLifecycle;
+import ai.neargo.shop.food.lifecycle.FoodFeeSourceLifecycle;
 import ai.neargo.shop.food.service.SalesRestrictionService;
 import ai.neargo.shop.spi.product.DishOfferFacts;
 import ai.neargo.shop.spi.product.DishOfferQueryPort;

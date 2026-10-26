@@ -55,6 +55,7 @@ import ai.neargo.shop.food.service.DiningOrderService;
 import ai.neargo.shop.food.service.DiningReturnService;
 import ai.neargo.shop.food.service.DiningCheckoutService;
 import ai.neargo.shop.food.job.DiningTransactionRecoveryJob;
+import ai.neargo.shop.food.job.FoodMaintenanceJobs;
 import ai.neargo.shop.food.api.biz.BizSettlementController;
 import ai.neargo.shop.food.api.mp.MpSettlementController;
 import ai.neargo.shop.food.api.biz.BizDiningReturnController;
@@ -119,8 +120,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "ai.neargo.shop.food.config.FoodBusinessOperationsConfiguration",
         "ai.neargo.shop.food.config.DiningIdentityAutoConfiguration",
         "ai.neargo.shop.food.config.DiningDeliveryAutoConfiguration",
-        "ai.neargo.shop.food.config.FoodOrderAuthorityConfiguration"})
-@Import({FoodClientConfiguration.class, DiningTransactionRecoveryJob.class, FoodBusinessOperationsWebConfiguration.class})
+        "ai.neargo.shop.food.config.FoodOrderAuthorityConfiguration",
+        "ai.neargo.shop.food.config.FoodMaintenanceConfiguration"})
+@Import({FoodClientConfiguration.class, DiningTransactionRecoveryJob.class, FoodMaintenanceJobs.class,
+        FoodBusinessOperationsWebConfiguration.class})
 @ConditionalOnFoodWebEnabled
 @Profile({"api", "ops"})
 public class FoodWebAutoConfiguration {

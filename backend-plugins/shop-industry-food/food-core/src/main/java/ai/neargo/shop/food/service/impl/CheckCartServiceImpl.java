@@ -43,7 +43,7 @@ import ai.neargo.shop.food.service.CatalogService;
 import ai.neargo.shop.food.service.CheckBusinessGuardService;
 import ai.neargo.shop.food.service.CheckCartService;
 import ai.neargo.shop.food.service.DiningIdentityService;
-import ai.neargo.shop.food.service.ServiceSlotLifecycle;
+import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.food.CartChanged;
 import ai.neargo.shop.spi.food.DiningSessionChanged;

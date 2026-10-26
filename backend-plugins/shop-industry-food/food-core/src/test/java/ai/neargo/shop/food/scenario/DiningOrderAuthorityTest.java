@@ -8,6 +8,12 @@ import static org.mockito.Mockito.when;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.CartVO;
+import ai.neargo.shop.food.dto.CatalogSkuVO;
+import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
+import ai.neargo.shop.food.dto.ConfigRevisionVO;
+import ai.neargo.shop.food.dto.RecipeLineVO;
+import ai.neargo.shop.food.dto.RecipePublicationSnapshot;
+import ai.neargo.shop.food.dto.RecipeVO;
 import ai.neargo.shop.food.dto.CatalogItemVO;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.PartyVO;
 import ai.neargo.shop.food.dto.DiningPriceFacts;
@@ -17,12 +23,14 @@ import ai.neargo.shop.food.dto.OrderLineInput;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.DiningIdentityService;
 import ai.neargo.shop.food.service.DiningPricingFactsService;
+import ai.neargo.shop.food.policy.PublicationDocuments;
 import ai.neargo.shop.food.service.impl.DiningOrderAuthorityServiceImpl;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort.MaterialFact;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort.SkuMaterialFact;
+import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.SkuIdentityFact;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Command;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Identity;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Mode;
@@ -40,11 +48,12 @@ class DiningOrderAuthorityTest {
     private final DiningPricingFactsService facts = mock(DiningPricingFactsService.class);
     private final DiningIdentityService parties = mock(DiningIdentityService.class);
     private final MaterialCatalogQueryPort materials = mock(MaterialCatalogQueryPort.class);
+    private final ConfigRevisionService revisions = mock(ConfigRevisionService.class);
     private final DiningOrderAuthorityServiceImpl service =
             new DiningOrderAuthorityServiceImpl(
                     facts,
                     parties,
-                    mock(ConfigRevisionService.class),
+                    revisions,
                     materials,
                     new ObjectMapper());
     private final PricingSourceRef source =
@@ -61,6 +70,15 @@ class DiningOrderAuthorityTest {
 
     private DiningPriceFacts source(
             List<DiningPriceFacts.Unit> units, MeasurementPolicy measure, String session) {
+        return source(units, measure, session, List.of(), List.of());
+    }
+
+    private DiningPriceFacts source(
+            List<DiningPriceFacts.Unit> units,
+            MeasurementPolicy measure,
+            String session,
+            List<CatalogSkuVO> skus,
+            List<DiningPriceFacts.DependencyRef> dependencies) {
         var line =
                 new OrderLineInput(
                         "L",
@@ -98,7 +116,7 @@ class DiningOrderAuthorityTest {
                         null,
                         new DishVO("G", "SINGLE", 0, null, measure, 0, 0),
                         List.of(),
-                        List.of());
+                        skus);
         var payload =
                 new DiningPriceFacts.Payload(
                         "E",
@@ -106,7 +124,7 @@ class DiningOrderAuthorityTest {
                         cart,
                         List.of(
                                 new DiningPriceFacts.MenuRef(
-                                        "M", "R", 1, "a".repeat(64), List.of())),
+                                        "M", "R", 1, "a".repeat(64), dependencies)),
                         List.of(),
                         List.of(),
                         List.of(),
@@ -174,6 +192,77 @@ class DiningOrderAuthorityTest {
                                                     0,
                                                     "OWN"));
                         });
+        assertThat(service.demandPlan(command, "ORDER", "SUB")).isEqualTo(plan);
+    }
+
+    /** Published recipe whose demand fraction does not terminate: 1 / (3 * (1 - 0.1)). */
+    private void publishedRecipe(String yield, String net, String loss) {
+        String materialHash =
+                MaterialCatalogFacts.definitionHash("MAT", "E", "Flour", "EA", 0, "OWN");
+        var recipe =
+                new RecipeVO(
+                        "REC",
+                        "S",
+                        "SKU",
+                        "DEFAULT",
+                        new BigDecimal(yield),
+                        "EA",
+                        "ACTIVE",
+                        1,
+                        1,
+                        List.of(
+                                new RecipeLineVO(
+                                        "RL",
+                                        "MAT",
+                                        new BigDecimal(net),
+                                        "EA",
+                                        new BigDecimal(loss),
+                                        materialHash)),
+                        List.of());
+        var body =
+                new RecipePublicationSnapshot(
+                        3,
+                        "RECIPE",
+                        "REC",
+                        1,
+                        recipe,
+                        List.of(new SkuIdentityFact("SKU", "G", "E", "S", 0)),
+                        List.of(
+                                new MaterialFact(
+                                        "MAT", "E", "Flour", "EA", 0, "OWN", "BASE_ONLY",
+                                        "INTEGER_ONLY", materialHash)),
+                        List.of(),
+                        null);
+        var json = new ObjectMapper();
+        String document = PublicationDocuments.freeze(json, body);
+        String hash = PublicationDocuments.hash(json, document);
+        when(revisions.getRevision("E", "S", "RECREV"))
+                .thenReturn(
+                        new ConfigRevisionContentVO(
+                                new ConfigRevisionVO(
+                                        "RECREV", "RECIPE", "REC", 1, null, hash, "ACTIVE"),
+                                document));
+        source(
+                List.of(unit("SKU", "a", "MAIN", "1")),
+                new MeasurementPolicy("EA", "COUNT", 0, null),
+                null,
+                List.of(
+                        new CatalogSkuVO(
+                                "SKU", null, "REC", 100L, "CNY", null, null, null, true, false,
+                                null, true, false, null)),
+                List.of(new DiningPriceFacts.DependencyRef("RECIPE", "REC", "RECREV", 1, hash)));
+    }
+
+    @Test
+    void nonTerminatingRecipeDemandIsRoundedUpToInventoryScaleInsteadOfFailingTheOrder() {
+        publishedRecipe("3", "1", "0.1");
+        var plan = service.demandPlan(command, "ORDER", "SUB");
+        assertThat(InventoryDemandPlanFacts.validate(plan)).isEqualTo(plan);
+        var leaf = plan.branches().getFirst().leaves().getFirst();
+        assertThat(plan.branches().getFirst().kind()).isEqualTo("RECIPE_MATERIAL");
+        assertThat(leaf.itemRef()).isEqualTo("MAT");
+        // 1 / 2.7 = 0.370370...: never under-consume, at the inventory DECIMAL(24,6) scale.
+        assertThat(leaf.quantity()).isEqualByComparingTo("0.370371");
         assertThat(service.demandPlan(command, "ORDER", "SUB")).isEqualTo(plan);
     }
 

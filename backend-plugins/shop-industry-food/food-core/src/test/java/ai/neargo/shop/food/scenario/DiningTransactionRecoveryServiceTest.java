@@ -44,7 +44,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 class DiningTransactionRecoveryServiceTest extends FoodWriteGuardFixture {
     private static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-23T12:00:00Z"), ZoneOffset.UTC);
     private record State(Fixture f, DiningTransactionRecoveryServiceImpl service, DiningOrderService orders,
-            DiningCheckoutService checkout, DiningReturnService returns) { }
+            DiningCheckoutService checkout, DiningReturnService returns, SqlSessionTemplate sql) { }
     private void run(Consumer<State> action) {
         runner().run(context -> {
             Fixture f = prepare(context);
@@ -59,7 +59,7 @@ class DiningTransactionRecoveryServiceTest extends FoodWriteGuardFixture {
             var service = new DiningTransactionRecoveryServiceImpl(sql.getMapper(OrderBatchMapper.class),
                     sql.getMapper(SettlementMapper.class), sql.getMapper(ReturnMapper.class), orders, checkout,
                     returns, CLOCK, context.getBean(PlatformTransactionManager.class));
-            action.accept(new State(f, service, orders, checkout, returns));
+            action.accept(new State(f, service, orders, checkout, returns, sql));
         });
     }
     private static void create(Fixture f, Class<?> entity) {
@@ -95,7 +95,10 @@ class DiningTransactionRecoveryServiceTest extends FoodWriteGuardFixture {
                     + "VALUES('E','A','RETURN','UNKNOWN','original','2026-10-23 10:00:00')");
             when(s.orders.recoverOriginal("E","A","POISON")).thenAnswer(call -> {
                 outside();
-                assertThat(s.f.sql().queryForObject("SELECT version FROM fnb_order_batch", Long.class)).isEqualTo(1L);
+                // The committed claim is a lease, not a business change: the echoed client version is untouched.
+                assertThat(s.f.sql().queryForObject("SELECT version FROM fnb_order_batch", Long.class)).isZero();
+                assertThat(s.f.sql().queryForObject("SELECT next_recovery_at FROM fnb_order_batch", LocalDateTime.class))
+                        .isEqualTo(LocalDateTime.of(2026, 10, 23, 12, 2));
                 throw new IllegalStateException("owner unavailable");
             });
             when(s.returns.recoverOriginal("E","A","RETURN")).thenAnswer(call -> {
@@ -146,6 +149,23 @@ class DiningTransactionRecoveryServiceTest extends FoodWriteGuardFixture {
             assertThat(s.f.sql().queryForObject("SELECT status FROM fnb_settlement",String.class)).isEqualTo("SETTLED");
             verify(s.checkout).recoverOriginal("E","A","PAY");
             verifyNoMoreInteractions(s.checkout); verifyNoInteractions(s.orders,s.returns);
+        });
+    }
+    /** C2: a staff cancel that read the batch before the claim still wins, and its write-back cannot drop the lease. */
+    @Test void businessWriteWithThePreviouslyReadVersionSucceedsAndCannotRewriteTheRecoveryLease() {
+        run(s -> {
+            order(s, "B");
+            var mapper = s.sql.getMapper(OrderBatchMapper.class);
+            FnbOrderBatch staleRead = mapper.selectList(null).get(0);
+            assertThat(staleRead.getVersion()).isZero();
+            when(s.orders.recoverOriginal("E", "A", "B")).thenReturn(new DiningOrderBatchVO("B", "A", null, "C", 0, "Q",
+                    "UNKNOWN", "POSTPAY", null, null, null, null, "CNY", 100L, 0));
+            assertThat(s.service.recoverDue(5).pending()).isOne();
+            staleRead.setStatus("CANCEL_PENDING");
+            assertThat(mapper.updateById(staleRead)).isOne();
+            assertThat(s.f.sql().queryForObject("SELECT version FROM fnb_order_batch", Long.class)).isOne();
+            assertThat(s.f.sql().queryForObject("SELECT next_recovery_at FROM fnb_order_batch", LocalDateTime.class))
+                    .isEqualTo(LocalDateTime.of(2026, 10, 23, 12, 2));
         });
     }
     @Test void boundsAndCallerTransactionRejectBeforeOwnerAccess() {

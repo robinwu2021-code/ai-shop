@@ -34,6 +34,8 @@ import ai.neargo.shop.food.service.DiningReturnService;
 import ai.neargo.shop.food.service.DiningCheckoutService;
 import ai.neargo.shop.food.service.DiningTransactionRecoveryService;
 import ai.neargo.shop.food.spi.DiningTransactionRecoveryInternalApi;
+import ai.neargo.shop.food.service.FoodMaintenanceService;
+import ai.neargo.shop.food.spi.FoodMaintenanceInternalApi;
 import ai.neargo.shop.food.spi.DiningCheckoutInternalApi;
 import ai.neargo.shop.food.spi.DiningReturnInternalApi;
 import ai.neargo.shop.food.spi.DiningOrderInternalApi;
@@ -188,6 +190,14 @@ public class FoodClientConfiguration {
     DiningTransactionRecoveryService remoteDiningTransactionRecoveryService(InternalHttp http) {
         return new RemoteDiningTransactionRecoveryService(http.client(ServiceName.FOOD,
                 DiningTransactionRecoveryInternalApi.class, Duration.ofSeconds(5)));
+    }
+
+    /** 批量补偿可能逐条下厨/打印/调库存，读超时贴着任务声明的 60 秒超时留余量，而不是在线接口的 5 秒。 */
+    @Bean
+    @ConditionalOnMissingBean(FoodMaintenanceService.class)
+    FoodMaintenanceService remoteFoodMaintenanceService(InternalHttp http) {
+        return new RemoteFoodMaintenanceService(http.client(ServiceName.FOOD,
+                FoodMaintenanceInternalApi.class, Duration.ofSeconds(50)));
     }
 
     @Bean

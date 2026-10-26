@@ -25,7 +25,14 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** Fair source projection queues. A claim commits before owner access; poison records retain a bounded backoff. */
+/**
+ * Fair source projection queues. A claim commits before owner access; poison records retain a bounded backoff.
+ *
+ * <p>The lease lives only in {@code next_recovery_at} and is claimed/retired by compare-and-set on that column.
+ * The business {@code version} that clients echo (pay/cancel, staff cancel) is never touched by a claim or a
+ * finish; only the owner services move it, under their row lock and optimistic version check, when recovery
+ * actually projects a state change. A due row that is merely re-leased therefore never 409s an open page (C2).
+ */
 public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRecoveryService {
     private static final List<String> ORDER_PENDING = List.of("PREPARED", "PLACING", "UNKNOWN", "CANCEL_PENDING");
     private static final List<String> CHECKOUT_PENDING = List.of("FROZEN", "COLLECTING", "SETTLED");
@@ -48,7 +55,7 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
     }
     private enum Kind { ORDER, CHECKOUT, RETURN }
     private record Candidate(Kind kind, long id, String entity, String store, String number,
-                             long version, LocalDateTime due, LocalDateTime created) {
+                             LocalDateTime due, LocalDateTime created) {
         LocalDateTime effectiveDue() {
             return due != null ? due : created != null ? created : LocalDateTime.of(1970, 1, 1, 0, 0);
         }
@@ -92,13 +99,13 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
                     .and(q -> q.isNull(FnbOrderBatch::getNextRecoveryAt).or().le(FnbOrderBatch::getNextRecoveryAt, now))
                     .last("ORDER BY COALESCE(next_recovery_at,created_at),id LIMIT 200")).forEach(row ->
                     result.add(new Candidate(Kind.ORDER, row.getId(), row.getEntityNo(), row.getStoreNo(), row.getBatchNo(),
-                            row.getVersion(), row.getNextRecoveryAt(), row.getCreatedAt())));
+                            row.getNextRecoveryAt(), row.getCreatedAt())));
             settlements.selectList(Wrappers.<FnbSettlement>lambdaQuery().eq(FnbSettlement::getTenantNo, "MAIN")
                     .isNotNull(FnbSettlement::getRequestSnapshot).in(FnbSettlement::getStatus, CHECKOUT_PENDING)
                     .and(q -> q.isNull(FnbSettlement::getNextRecoveryAt).or().le(FnbSettlement::getNextRecoveryAt, now))
                     .last("ORDER BY COALESCE(next_recovery_at,created_at),id LIMIT 200")).forEach(row ->
                     result.add(new Candidate(Kind.CHECKOUT, row.getId(), row.getEntityNo(), row.getStoreNo(),
-                            row.getSettlementNo(), row.getVersion(), row.getNextRecoveryAt(), row.getCreatedAt())));
+                            row.getSettlementNo(), row.getNextRecoveryAt(), row.getCreatedAt())));
             returns.selectList(Wrappers.<FnbReturn>lambdaQuery().eq(FnbReturn::getTenantNo, "MAIN")
                     .isNotNull(FnbReturn::getRequestSnapshot).notIn(FnbReturn::getStatus, "CLOSED", "REFUNDED")
                     .and(q -> q.isNull(FnbReturn::getFinancialStatus)
@@ -106,41 +113,36 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
                     .and(q -> q.isNull(FnbReturn::getNextRecoveryAt).or().le(FnbReturn::getNextRecoveryAt, now))
                     .last("ORDER BY COALESCE(next_recovery_at,created_at),id LIMIT 200")).forEach(row ->
                     result.add(new Candidate(Kind.RETURN, row.getId(), row.getEntityNo(), row.getStoreNo(), row.getReturnNo(),
-                            row.getVersion(), row.getNextRecoveryAt(), row.getCreatedAt())));
+                            row.getNextRecoveryAt(), row.getCreatedAt())));
             return result;
         });
     }
     private boolean claim(Candidate row, LocalDateTime now, LocalDateTime lease) {
+        // CAS on the lease value read by the scan; deliberately no version predicate or version step.
         return switch (row.kind()) {
             case ORDER -> batches.update(null, Wrappers.<FnbOrderBatch>lambdaUpdate()
                     .eq(FnbOrderBatch::getTenantNo, "MAIN").eq(FnbOrderBatch::getId, row.id())
                     .eq(FnbOrderBatch::getEntityNo, row.entity()).eq(FnbOrderBatch::getStoreNo, row.store())
-                    .eq(FnbOrderBatch::getVersion, row.version())
                     .isNull(row.due() == null, FnbOrderBatch::getNextRecoveryAt)
                     .eq(row.due() != null, FnbOrderBatch::getNextRecoveryAt, row.due()).in(FnbOrderBatch::getStatus, ORDER_PENDING)
                     .and(q -> q.isNull(FnbOrderBatch::getNextRecoveryAt).or().le(FnbOrderBatch::getNextRecoveryAt, now))
-                    .set(FnbOrderBatch::getNextRecoveryAt, lease).set(FnbOrderBatch::getVersion, row.version() + 1)
-                    .set(FnbOrderBatch::getUpdatedAt, now).set(FnbOrderBatch::getUpdatedBy, "SYSTEM")) == 1;
+                    .set(FnbOrderBatch::getNextRecoveryAt, lease)) == 1;
             case CHECKOUT -> settlements.update(null, Wrappers.<FnbSettlement>lambdaUpdate()
                     .eq(FnbSettlement::getTenantNo, "MAIN").eq(FnbSettlement::getId, row.id())
                     .eq(FnbSettlement::getEntityNo, row.entity()).eq(FnbSettlement::getStoreNo, row.store())
-                    .eq(FnbSettlement::getVersion, row.version())
                     .isNull(row.due() == null, FnbSettlement::getNextRecoveryAt)
                     .eq(row.due() != null, FnbSettlement::getNextRecoveryAt, row.due()).in(FnbSettlement::getStatus, CHECKOUT_PENDING)
                     .and(q -> q.isNull(FnbSettlement::getNextRecoveryAt).or().le(FnbSettlement::getNextRecoveryAt, now))
-                    .set(FnbSettlement::getNextRecoveryAt, lease).set(FnbSettlement::getVersion, row.version() + 1)
-                    .set(FnbSettlement::getUpdatedAt, now).set(FnbSettlement::getUpdatedBy, "SYSTEM")) == 1;
+                    .set(FnbSettlement::getNextRecoveryAt, lease)) == 1;
             case RETURN -> returns.update(null, Wrappers.<FnbReturn>lambdaUpdate()
                     .eq(FnbReturn::getTenantNo, "MAIN").eq(FnbReturn::getId, row.id())
                     .eq(FnbReturn::getEntityNo, row.entity()).eq(FnbReturn::getStoreNo, row.store())
-                    .eq(FnbReturn::getVersion, row.version())
                     .isNull(row.due() == null, FnbReturn::getNextRecoveryAt)
                     .eq(row.due() != null, FnbReturn::getNextRecoveryAt, row.due()).notIn(FnbReturn::getStatus, "CLOSED", "REFUNDED")
                     .and(q -> q.isNull(FnbReturn::getFinancialStatus)
                             .or().ne(FnbReturn::getFinancialStatus, "NOT_REQUESTED"))
                     .and(q -> q.isNull(FnbReturn::getNextRecoveryAt).or().le(FnbReturn::getNextRecoveryAt, now))
-                    .set(FnbReturn::getNextRecoveryAt, lease).set(FnbReturn::getVersion, row.version() + 1)
-                    .set(FnbReturn::getUpdatedAt, now).set(FnbReturn::getUpdatedBy, "SYSTEM")) == 1;
+                    .set(FnbReturn::getNextRecoveryAt, lease)) == 1;
         };
     }
     private boolean recover(Candidate row) {
@@ -161,23 +163,21 @@ public class DiningTransactionRecoveryServiceImpl implements DiningTransactionRe
         };
     }
     private boolean finish(Candidate row, LocalDateTime lease) {
-        // Version can advance during the original owner's local projection. The exact lease fences a later claimant.
+        // Version can advance during the original owner's local projection; the exact lease fences a later claimant.
+        // Retiring the lease is bookkeeping, so it leaves the business version alone.
         return switch (row.kind()) {
             case ORDER -> batches.update(null, Wrappers.<FnbOrderBatch>lambdaUpdate()
                     .eq(FnbOrderBatch::getId, row.id()).eq(FnbOrderBatch::getEntityNo, row.entity())
                     .eq(FnbOrderBatch::getTenantNo, "MAIN").eq(FnbOrderBatch::getStoreNo, row.store())
-                    .eq(FnbOrderBatch::getNextRecoveryAt, lease).set(FnbOrderBatch::getNextRecoveryAt, FINISHED)
-                    .setSql("version=version+1")) == 1;
+                    .eq(FnbOrderBatch::getNextRecoveryAt, lease).set(FnbOrderBatch::getNextRecoveryAt, FINISHED)) == 1;
             case CHECKOUT -> settlements.update(null, Wrappers.<FnbSettlement>lambdaUpdate()
                     .eq(FnbSettlement::getId, row.id()).eq(FnbSettlement::getEntityNo, row.entity())
                     .eq(FnbSettlement::getTenantNo, "MAIN").eq(FnbSettlement::getStoreNo, row.store())
-                    .eq(FnbSettlement::getNextRecoveryAt, lease).set(FnbSettlement::getNextRecoveryAt, FINISHED)
-                    .setSql("version=version+1")) == 1;
+                    .eq(FnbSettlement::getNextRecoveryAt, lease).set(FnbSettlement::getNextRecoveryAt, FINISHED)) == 1;
             case RETURN -> returns.update(null, Wrappers.<FnbReturn>lambdaUpdate()
                     .eq(FnbReturn::getId, row.id()).eq(FnbReturn::getEntityNo, row.entity())
                     .eq(FnbReturn::getTenantNo, "MAIN").eq(FnbReturn::getStoreNo, row.store())
-                    .eq(FnbReturn::getNextRecoveryAt, lease).set(FnbReturn::getNextRecoveryAt, FINISHED)
-                    .setSql("version=version+1")) == 1;
+                    .eq(FnbReturn::getNextRecoveryAt, lease).set(FnbReturn::getNextRecoveryAt, FINISHED)) == 1;
         };
     }
     private <T> T transaction(Supplier<T> action) { return sql(() -> write.execute(tx -> action.get())); }

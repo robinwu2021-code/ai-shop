@@ -40,7 +40,7 @@ import ai.neargo.shop.food.policy.ServiceCalendarPolicy;
 import ai.neargo.shop.food.service.CatalogService;
 import ai.neargo.shop.food.service.ConfigRevisionService;
 import ai.neargo.shop.food.service.SalesRestrictionService;
-import ai.neargo.shop.food.service.ServiceSlotLifecycle;
+import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.spi.product.DishOfferFacts;
 import ai.neargo.shop.spi.product.DishOfferQueryPort;

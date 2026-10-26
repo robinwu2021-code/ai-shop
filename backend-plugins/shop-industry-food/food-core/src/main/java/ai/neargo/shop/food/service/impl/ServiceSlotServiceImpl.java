@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.support.BusinessCommandJournal;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -10,7 +11,7 @@ import ai.neargo.shop.food.dto.ServiceSlotContracts.SlotVO;
 import ai.neargo.shop.food.entity.FoodBusinessOperationRow;
 import ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
-import ai.neargo.shop.food.service.ServiceSlotLifecycle;
+import ai.neargo.shop.food.lifecycle.ServiceSlotLifecycle;
 import ai.neargo.shop.food.service.ServiceSlotService;
 import ai.neargo.shop.idem.IdempotencyService;
 

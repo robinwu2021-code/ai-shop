@@ -161,6 +161,49 @@ fi
 echo "✓ 没有新增失败（基线 $(wc -l < "$BASE" | tr -d ' ') 条一条没多）"
 rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并打印路径
 
+# ── 餐饮插件（backend-plugins/shop-industry-food）──
+#
+# 上面的全量只编零售形态（backend/ 默认 reactor），插件五个模块与宿主的 food-embedded 测试
+# 都不在里面 —— 2026-10-26 评审时 HEAD 上已经红着一条插件测试（FoodArchitectureTest），
+# 就是因为没有任何闸门编它、测它。这里用 food-embedded + food-verify 两个 profile
+# 把插件拉进同一个 reactor，**只跑餐饮的测试**（零售全量上面已经跑过，不重复）。
+#
+# 排除两类：
+#   FoodMigrationPackagingIT —— 读打好的 jar，属于 verify 阶段；
+#   *Native*                 —— 宿主侧原生 HTTP 场景，要一次性 MySQL（scripts/verify-food-primary-mysql.py），
+#                               与插件里 FOOD_TEST_DISPOSABLE 门控的用例同一类，常规构建不跑。
+# 判据是 0 失败（插件没有已知失败清单）。约 2 分钟。
+FOOD_LOG="$(mktemp "${TMPDIR:-/tmp}/head-food-test.XXXXXX")"
+echo "→ 餐饮插件：mvn -Pfood-embedded,food-verify test（只跑餐饮测试，约 2 分钟）"
+START=$(date +%s)
+set +e
+(cd "$WT/backend" && mvn -o -B -fae -Pfood-embedded,food-verify test \
+    -Dtest='ai/neargo/shop/food/**,**/Food*,!FoodMigrationPackagingIT,!**/*Native*' \
+    -Dsurefire.failIfNoSpecifiedTests=false) > "$FOOD_LOG" 2>&1
+FOOD_RC=$?
+set -e
+echo "  用时 $(( $(date +%s) - START )) 秒"
+FOOD_TOTAL="$(grep -oE '^\[(INFO|ERROR)\] Tests run: [0-9]+, Failures: [0-9]+, Errors: [0-9]+, Skipped: [0-9]+$' "$FOOD_LOG" \
+  | sed -E 's/.*Tests run: ([0-9]+),.*/\1/' | awk 'NF{s+=$1} END{print s+0}')"
+FOOD_FAILED="$({ grep -E '^\[ERROR\]   [A-Za-z0-9_]+\.[a-zA-Z0-9_]+' "$FOOD_LOG" || true; } \
+  | sed -E 's/^\[ERROR\]   ([A-Za-z0-9_]+)\.([a-zA-Z0-9_]+).*/\1.\2/' | sort -u)"
+echo "  餐饮 $FOOD_TOTAL 跑 / $(printf '%s' "$FOOD_FAILED" | grep -c . || true) 红"
+if [ "$FOOD_TOTAL" -lt 800 ]; then
+  echo ""
+  echo "✗ 餐饮测试没有正常跑起来（识别到 $FOOD_TOTAL 条，正常在 900 上下）。日志：$FOOD_LOG"
+  tail -30 "$FOOD_LOG"
+  exit 1
+fi
+if [ -n "$FOOD_FAILED" ] || [ "$FOOD_RC" -ne 0 ]; then
+  echo ""
+  echo "✗ 餐饮插件测试失败："
+  printf '%s\n' "$FOOD_FAILED" | sed '/^$/d; s/^/    /'
+  echo "  完整日志：$FOOD_LOG"
+  exit 1
+fi
+echo "✓ 餐饮插件与宿主 food-embedded 测试全绿"
+rm -f "$FOOD_LOG"
+
 # 记下**这一次验的是哪个提交**，给 deploy-backend.sh 比对用。
 #
 # 为什么需要：闸门跑四到六分钟，而这个目录常有多个会话在推 —— 跑完之后 HEAD 会前进，
@@ -182,7 +225,7 @@ rm -f "$LOG"   # 通过就不留垃圾；上面每条失败路径都保留它并
 # 会有这种「看起来莫名其妙被拦」的时刻。
 {
     printf '%s\n' "$VERIFIED_SHA"
-    printf '%s · 编译 + 全量 %s 跑 / %s 红（基线 %s 条）\n' \
+    printf '%s · 编译 + 全量 %s 跑 / %s 红（基线 %s 条）· 餐饮 %s 跑 / 0 红\n' \
         "$(date '+%F %T')" "$TOTAL" \
-        "$(wc -l < "$NOW" | tr -d ' ')" "$(wc -l < "$BASE" | tr -d ' ')"
+        "$(wc -l < "$NOW" | tr -d ' ')" "$(wc -l < "$BASE" | tr -d ' ')" "$FOOD_TOTAL"
 } > "$(git rev-parse --git-dir)/gate-verified-sha"
