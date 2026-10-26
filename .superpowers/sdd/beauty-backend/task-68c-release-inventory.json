@@ -20,5 +20,10 @@
   "designOverlay": "task-68c-materialization-addendum.md",
   "designOverlaySha256": "ef6c5418d562eb89764413b00ac326b46387d757e8025a342bcc673629aaa0f7",
   "designReview": "review-task-68c-materialization-r1.md",
-  "canStart": false
+  "canStart": false,
+  "classpathExporterCorrection": {
+    "path": ".superpowers/sdd/beauty-backend/task-68c-classpath-ruling.md",
+    "sha256": "07d0aef7cc864517411c6566a8fe07f015c082bfce7c8f1a3c9713e3b641de45",
+    "review": ".superpowers/sdd/beauty-backend/review-task-68c-classpath.md"
+  }
 }

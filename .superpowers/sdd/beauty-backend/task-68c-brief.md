@@ -50,3 +50,6 @@ These are accepted source contracts, not proof of executed bootstrap/old-to-new 
 ## Stock topology ruling after B2 R1
 
 C m2c native stages explicitly pin SHOP_INVENTORY_STOCK_AUTHORITY=PLATFORM and SHOP_INVENTORY_ENABLED=false; StockPortImpl.stockAuthority() is actual PLATFORM. Keep m2a/m2b topology behavior unchanged. Root gate/evidence records PLATFORM; B2 prd_sku stock/locked_stock assertions prove that owner only. No INVENTORY/DUAL runtime result or full authority matrix is claimed; existing separate original-owner matrix remains a unified-B obligation. Pin same topology for genuineold/current pending comparison. This choice does not fake a StockPort, weaken dispatch or change businessSQL.
+
+## Approved classpath exporter correction
+Read task-68c-classpath-ruling.md (final SHA 07d0aef7cc864517411c6566a8fe07f015c082bfce7c8f1a3c9713e3b641de45) before implementing the materializer. This root ruling, independently approved in review-task-68c-classpath.md, overrides ONLY the addendum help:evaluate export command/own-output prefixes. Use exact cached dependency3.7.0:build-classpath test scope in the same reactor session, actual unique shop-app output and explicit current-vs-old own output prefixes. All other final addendum contracts remain binding. Static current model evidence is real; old build/classpath remains UNEXECUTED B.

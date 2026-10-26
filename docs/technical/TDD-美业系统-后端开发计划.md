@@ -1308,6 +1308,8 @@ Task68B2执行结果：精确14份Java源码已本地提交 `5477210b96ef3339f34
 
 68C材料生产顺序专项设计已完成：[R0审查](../../.superpowers/sdd/beauty-backend/review-task-68c-materialization-r0.md)发现旧类预期来源/实际观察顺序及测试启动器类路径两项Important，经限定修订，[R1复审](../../.superpowers/sdd/beauty-backend/review-task-68c-materialization-r1.md)Spec PASS/Architecture APPROVED。[最终方案](../../.superpowers/sdd/beauty-backend/task-68c-materialization-addendum.md)明确输入与派生产物、实际mapper、独立旧源码构建、显式runner工具依赖、53个具名方法、四原单时效和拥有资源清理。现按[精确两脚本清单](../../.superpowers/sdd/beauty-backend/task-68c-release-inventory.json)发布编码；本阶段不生成golden、构建旧运行时或创建native GO，所有运行行为仍统一后置。
 
+68C编码期间Java输入已冻结，根实际完成联合31模块编译5.053s及默认零售21模块编译2.225s；其中food-web实际重编译19份主源码和11份测试源码，其余为增量检查，未运行测试。[编译记录](../../.superpowers/sdd/beauty-backend/task-68c-compile-matrix.json)记录4935份输入指纹及原始日志SHA，C收口须再次比对源码未变。实际离线模型导出发现help evaluator嵌套版本缺失，按[已复审修正](../../.superpowers/sdd/beauty-backend/task-68c-classpath-ruling.md)使用固定dependency3.7.0在当前reactor导出真实依赖；成功结果不表示真实旧运行时已经验证。两脚本实现及独立代码审查仍在进行，C02尚未整体收口。
+
 ## §3 数据层之后的业务任务与启动深化
 
 每部分开工前重新核对功能矩阵对应行、API输入输出、类/方法、表字段、权限与真实跨域提供方，提交“可实施 / 需先补合同 / 延后关闭”结论，再编码。上次形成的类清单不代替这次业务规则梳理。
