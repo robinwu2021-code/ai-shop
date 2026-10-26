@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 接入层 controller 的落点与前缀（TDD-支付服务-I0地基 AC3；ADR-042 §2-3）。
+ * 接入层 controller 的落点与前缀（TDD-支付服务-I0地基 AC3；ADR-044 §2-3）。
  *
  * <p>今天模块里一个 controller 都没有 —— 所以先用正反例证明规则本身量得出东西，
  * 再扫真实 controller；否则「零违规」与「什么都没查」长得一模一样。

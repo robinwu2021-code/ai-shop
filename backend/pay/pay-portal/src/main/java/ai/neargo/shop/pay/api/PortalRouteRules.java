@@ -7,7 +7,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * 一个 controller 类有没有落在它所在入口的前缀下（ADR-042 §2-3；TDD-支付服务-I0地基 AC3）。
+ * 一个 controller 类有没有落在它所在入口的前缀下（ADR-044 §2-3；TDD-支付服务-I0地基 AC3）。
  *
  * <p>为什么要查：五个入口的鉴权链按前缀挂。一个放在 {@code api.open} 包里、却映射到 {@code /biz/pay/**} 的 controller，
  * 会被商家会话那条链放行，而它的作者以为自己写的是验签接口 —— 编译、启动、调用都不会报错。

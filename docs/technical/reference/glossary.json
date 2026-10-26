@@ -29489,6 +29489,30 @@
           "ar": null
         },
         {
+          "key": "login.codeBack",
+          "zh-CN": "换个账号",
+          "en": "Use another account",
+          "ar": null
+        },
+        {
+          "key": "login.codeSent",
+          "zh-CN": "验证码已发到 {to}，5 分钟内有效。",
+          "en": "We sent a code to {to}. It expires in 5 minutes.",
+          "ar": null
+        },
+        {
+          "key": "login.codeSubmit",
+          "zh-CN": "验证并登录",
+          "en": "Verify and sign in",
+          "ar": null
+        },
+        {
+          "key": "login.codeTitle",
+          "zh-CN": "邮箱验证码",
+          "en": "Email code",
+          "ar": null
+        },
+        {
           "key": "login.forgot",
           "zh-CN": "忘记密码？",
           "en": "Forgot password?",
@@ -44055,7 +44079,7 @@
           "BIZ",
           "CHECKOUT"
         ],
-        "zh": "支付接入层的五个入口：每个入口一个子包、一个 URL 前缀、一套鉴权（ADR-042 §2-3）。",
+        "zh": "支付接入层的五个入口：每个入口一个子包、一个 URL 前缀、一套鉴权（ADR-044 §2-3）。",
         "module": "pay/pay-portal"
       },
       {

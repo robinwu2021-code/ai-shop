@@ -57,8 +57,11 @@ public class OpsPlatformController {
     public LoginResultVO login(@jakarta.validation.Valid @RequestBody LoginReq req) {
         try {
             LoginResultVO r = opsService.login(req.username(), req.password());
-            auditor.succeeded(ai.neargo.shop.auth.Realm.OPERATOR,
-                    r.staff() == null ? null : r.staff().staffNo());
+            // 开着第二因子时这一步只发了挑战，「登录成功」记在第二步
+            if (r.token() != null) {
+                auditor.succeeded(ai.neargo.shop.auth.Realm.OPERATOR,
+                        r.staff() == null ? null : r.staff().staffNo());
+            }
             return r;
         } catch (ai.neargo.shop.common.BizException e) {
             // 失败要留痕。成功那一侧见 LoginAuditor 类注释
@@ -67,6 +70,26 @@ public class OpsPlatformController {
                     e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
             throw e;
         }
+    }
+
+    /**
+     * 第二因子（安全规范 §2.7）：用登录时发到邮箱的 6 位码换会话。免鉴权（此刻还没有会话），安全性在挑战号 + 码 + 次数上限。
+     * 成功与失败都进登录日志 —— 第二步失败多半是有人拿到了密码。
+     */
+    @PostMapping("/ops/auth/login/verify")
+    public LoginResultVO verifyLogin(@jakarta.validation.Valid @RequestBody VerifyReq req) {
+        try {
+            LoginResultVO r = opsService.verifySecondFactor(req.challenge(), req.code());
+            auditor.succeeded(ai.neargo.shop.auth.Realm.OPERATOR, r.staff() == null ? null : r.staff().staffNo());
+            return r;
+        } catch (ai.neargo.shop.common.BizException e) {
+            auditor.failed(ai.neargo.shop.auth.Realm.OPERATOR, "second-factor",
+                    e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
+            throw e;
+        }
+    }
+
+    public record VerifyReq(@NotBlank String challenge, @NotBlank String code) {
     }
 
     /**

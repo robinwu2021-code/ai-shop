@@ -61,6 +61,11 @@ shop:
     # 「mail 模式下响应体里没有明文」这条**不是没测**：
     # OpsPasswordDeliveryFlowTest 用默认值单独跑，它是这次改造的核心断言。
     password-delivery: response
+    auth:
+      # 运营登录第二因子关掉。**生产默认 email，prod profile 关不掉**（OpsSecondFactorGuard）。
+      # 59 个测试类经 /ops/auth/login 拿令牌，开着就都得去邮件里解码 —— 与上面初始密码走响应体同一取舍。
+      # 「开着时只给挑战、凭邮件码换会话」由 OpsLoginProtectionFlowTest 在共用上下文里打开单独验。
+      second-factor: "off"
   otp:
     # 发码限流关掉。**生产默认 true**。
     #

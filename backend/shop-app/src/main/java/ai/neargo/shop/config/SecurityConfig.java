@@ -235,7 +235,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(reg -> reg
                         // 忘记密码的两条同样免鉴权：忘了密码自然登不进来。
                         // 安全性靠邮件里那个一次性令牌，以及「账号不存在也返回成功」
-                        .requestMatchers("/ops/auth/login", "/ops/auth/forgot",
+                        .requestMatchers("/ops/auth/login", "/ops/auth/login/verify", "/ops/auth/forgot",
                                 "/ops/auth/reset").permitAll()
                         /*
                          * **异步与错误分派放行。** 不放的话，SSE（/ops/stream）每次到点
@@ -258,6 +258,25 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class)
                 // 401 要带包体，且区分「没登录」与「登录过期」—— 见 ApiAuthEntryPoint
                 .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
+                .build();
+    }
+
+    /**
+     * 渠道回调（安全规范 §2.4 / §5.1，G11）：此前 {@code /pay/callback/**} 不匹配任何链，安全全靠 controller 自己。
+     * 现在给它一条显式的链：无会话、不认 Bearer、放行到 controller（可信靠验签 + 主动查单）；**不开 CORS**（服务端对服务端）；
+     * 用 {@link ai.neargo.shop.auth.RequestMetaFilter} 设可信来源 IP（{@code ClientMeta}），回调记录里的 IP 不再取客户端自报的头。
+     */
+    @Bean
+    @Profile({"api", "ops"})
+    @Order(5)
+    SecurityFilterChain channelCallbackChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher("/pay/callback/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(new ai.neargo.shop.auth.RequestMetaFilter("CHANNEL"),
+                        org.springframework.security.web.context.SecurityContextHolderFilter.class)
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();
     }
 

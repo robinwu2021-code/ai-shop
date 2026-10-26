@@ -13,9 +13,9 @@
 
     <artifactId>pay-portal</artifactId>
     <packaging>jar</packaging>
-    <description>支付接入层：支付运营端、开放 API、刷卡终端、商家端、收银台的 controller 与鉴权（ADR-042）</description>
+    <description>支付接入层：支付运营端、开放 API、刷卡终端、商家端、收银台的 controller 与鉴权（ADR-044）</description>
 
-    <!-- 为什么单独成模块（ADR-042）：
+    <!-- 为什么单独成模块（ADR-044）：
          pay-domain 零 controller（ADR-021 §L1：领域不鉴权、能进 AOT、不读会话、判权在接入层），
          而这五类入口要随支付服务独立部署，放 shop-app 搬不走。
 

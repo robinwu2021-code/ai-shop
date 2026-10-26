@@ -97,7 +97,7 @@ class PayApplicationBootTest {
         /*
          * TDD-支付服务-I0地基 AC5（修 R27）。端点路径全写成 PayInternalPaths 的常量，源码里找不到字面量，
          * 旧闸门按「文件里含 /internal 字样」放行 —— 一个注释就能骗过它。这里读 Spring 实际注册的路径。
-         * 面向人与第三方的支付接口归 pay-portal（ADR-042），不在这个进程。
+         * 面向人与第三方的支付接口归 pay-portal（ADR-044），不在这个进程。
          */
         var mapping = ctx.getBean("requestMappingHandlerMapping",
                 org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping.class);

@@ -3,7 +3,7 @@ package ai.neargo.shop.pay.onboarding.service;
 import java.util.List;
 
 /**
- * 进件（TDD-支付服务-I4进件与收款商户 S7；ADR-041）：某门店向某渠道申请收款能力。资料与每次提交是版本；
+ * 进件（TDD-支付服务-I4进件与收款商户 S7；ADR-043）：某门店向某渠道申请收款能力。资料与每次提交是版本；
  * 通过即产出收款商户 {@code pay_merchant} 并绑上门店。
  * <ul>
  *   <li>R04：每次提交一版，外部单号 = 进件单号-V{版本}，每版唯一；</li>

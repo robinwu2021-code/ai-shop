@@ -63,7 +63,9 @@ spring:
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/ai_shop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
     username: ${SHOP_DB_USER:shop}
-    password: ${SHOP_DB_PASS:shop}
+    # 不带默认值（安全规范 §3.2，NoSecretDefaultInConfigTest）：漏配就启动失败，而不是静默用一个人人知道的口令。
+    # 本机运行先 export SHOP_DB_PASS；测试走 h2db profile 自带空口令
+    password: ${SHOP_DB_PASS}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # ⚠️ 建表只走 Flyway。sql.init 每次启动重跑、ALTER 不幂等、无版本记录，
@@ -103,6 +105,11 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  ops:
+    auth:
+      # 运营登录第二因子（安全规范 §2.7，G9）：email = 密码对了再发 6 位码到登录邮箱，凭码换会话。
+      # 只有测试世界配 off（testcfg）；prod profile 配 off 启动即失败（OpsSecondFactorGuard）
+      second-factor: ${SHOP_OPS_SECOND_FACTOR:email}
   management:
     signing-key: ${SHOP_MANAGEMENT_SIGNING_KEY:}
   core:

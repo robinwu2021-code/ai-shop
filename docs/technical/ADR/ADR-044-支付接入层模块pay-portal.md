@@ -1,8 +1,9 @@
-# ADR 042 支付接入层模块 pay-portal
+# ADR 044 支付接入层模块 pay-portal
 
 > 状态：已接受 · 2026-10-25（按[开发计划 · 支付服务](../开发计划-支付服务.md) P1 推荐项执行）
 > 关联：[完整设计方案](../TDD-支付服务-完整设计方案.md) D1 · [I0 地基](../TDD-支付服务-I0地基.md)
 > 修订：ADR-021 §L1（「支付域没有 controller，三端 controller 全在主应用」）—— 增加一个**支付自己的接入层模块**
+> 编号：原 ADR-042，2026-10-26 与「统一销售渠道接入」撞号，顺延为 044（[完成度复核](../支付服务-完成度复核与剩余开发计划.md) D-1）
 
 ## 1 背景
 
@@ -22,6 +23,7 @@ ADR-021 §L1 规定 `pay-domain` 没有 controller，换来四条收益：领域
    - `pay` 是 `ArchitectureTest` 的领域包，领域包不得依赖 Servlet；鉴权过滤器必然依赖它。
      因此 `ai.neargo.shop.pay.api..` 与餐饮的 `food.api..` 一样，从「领域不得碰 Web 运行时」规则里豁免 —— **只豁免这一个子包**。
 3. **每个入口一个固定前缀**，由 `PortalFace` 枚举唯一定义：`/pay-ops/v1`、`/open/pay/v1`、`/terminal/pay/v1`、`/biz/pay`、`/checkout/v1`。
+   **2026-10-26 补**：渠道回调 `/pay/callback` 作为第六个面 `CALLBACK`，自 `shop-core` 迁入（[完成度复核](../支付服务-完成度复核与剩余开发计划.md) D-6；I5 S2）。回调入口同样不能进 `pay-domain`（`PayHasNoControllerTest`），而它的鉴权（渠道验签）与其余五个面同样属于接入层。
    controller 的类级映射必须落在本包对应的前缀下（`PortalRouteRules` 守卫）。
 4. **两种装配**：内嵌（今天）作为依赖装进 `shop-app`，直调 `pay-domain` 应用服务；独立（I5 起）单独成进程，经 `/internal/pay` 调 `pay-svc`。
    鉴权以 `PortalAuthenticator` 接口隔离，换形态只换实现、不改 controller。

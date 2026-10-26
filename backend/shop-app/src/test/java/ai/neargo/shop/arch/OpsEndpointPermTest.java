@@ -67,6 +67,7 @@ class OpsEndpointPermTest {
      */
     private static final Map<String, String> ANY_OPERATOR = new TreeMap<>(Map.ofEntries(
             Map.entry("/ops/auth/login", "登录本身。要权限才能登录是个死循环"),
+            Map.entry("/ops/auth/login/verify", "登录第二步（邮箱验证码）—— 此时同样还没有会话"),
             Map.entry("/ops/auth/forgot", "找回密码 —— 此时他还没有会话"),
             Map.entry("/ops/auth/reset", "重置密码，凭邮件/短信里的令牌，不凭会话权限"),
             Map.entry("/ops/captcha", "图形验证码，登录前就要取"),
