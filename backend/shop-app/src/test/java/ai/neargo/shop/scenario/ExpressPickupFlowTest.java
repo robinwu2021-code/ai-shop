@@ -97,13 +97,20 @@ class ExpressPickupFlowTest {
             return new Booked(true, taskId, orderId, null, "ok");
         }
 
+        /**
+         * 与真网关同形：认单标识只取「签名覆盖到的」那部分。param 第 4 段是签名里的 orderId，
+         * 缺省时取与这个 taskId 配对的那张（create 签发的 T-x ↔ O-x）—— 即一条合法回调；
+         * 用例要伪造「签名里是别的单、表单 taskId 指向受害单」时显式给第 4 段。
+         */
         @Override
         public Optional<Callback> parseCallback(String taskId, String sign, String param) {
             if (!"GOOD".equals(sign)) {
                 return Optional.empty();
             }
             String[] f = param.split("\\|", -1);
-            return Optional.of(new Callback(taskId, null, Integer.parseInt(f[0]),
+            String signedOrderId = f.length > 3 ? f[3]
+                    : taskId != null && taskId.startsWith("T-") ? "O-" + taskId.substring(2) : null;
+            return Optional.of(new Callback(null, signedOrderId, Integer.parseInt(f[0]),
                     f[1].isEmpty() ? null : f[1], null, f[2].isEmpty() ? null : Long.parseLong(f[2]),
                     null, "王师傅", "13800000000", "msg"));
         }
@@ -208,6 +215,23 @@ class ExpressPickupFlowTest {
         assertThatThrownBy(() -> service.cancel(ENTITY, null, SUB))
                 .as("已取件不能取消")
                 .isInstanceOf(BizException.class).extracting("errorCode").isEqualTo(ErrorCode.EXPRESS_NOT_CANCELLABLE);
+    }
+
+    @Test
+    @DisplayName("★★★ 认单用签名里的 orderId：表单 taskId 指向别的单时不认，什么都不落")
+    void callbackUsesSignedIdentifierNotFormTaskId() {
+        PickupVO p = service.create(ENTITY, null, SUB, "ZTO", new BigDecimal("2.5"));
+        String victimTask = "T-" + p.pickupNo();
+
+        // 签名覆盖的是另一张单（攻击者自己的合法回调），表单 taskId 改成受害单
+        assertThat(service.onCallback(victimTask, "GOOD", "10|ZT-EVIL|1|O-ATTACKER")).isFalse();
+        assertThat(subStatus()).as("受害单不能被别人的回调推成已发货").isEqualTo("WAIT_FULFILL");
+        assertThat(service.latest(ENTITY, null, SUB).status()).isEqualTo(OrdExpressPickup.CREATED);
+        assertThat(debt()).isZero();
+
+        // 签名里的 orderId 与表单 taskId 是同一张单：照常处理
+        assertThat(service.onCallback(victimTask, "GOOD", "1||")).isTrue();
+        assertThat(service.latest(ENTITY, null, SUB).status()).isEqualTo(OrdExpressPickup.ACCEPTED);
     }
 
     @Test

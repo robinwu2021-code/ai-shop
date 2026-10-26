@@ -210,14 +210,30 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
             return false;
         }
         ExpressPickupPort.Callback cb = parsed.get();
-        String tid = cb.taskId() != null ? cb.taskId() : taskId;
+        /*
+         * 认单只用签名覆盖到的标识（通道订单号优先，其次签名里的 taskId）；
+         * 表单 taskId 不在签名里，**不能拿它选行** —— 否则一条自己的合法回调改个 taskId
+         * 就能推动别人的取件单。表单 taskId 只做比对：与选中行对不上就不认。
+         */
+        if (cb.orderId() == null && cb.taskId() == null) {
+            log.warn("[express] 回调签名报文里没有 orderId / taskId，无从认单 taskId(表单)={}", taskId);
+            return false;
+        }
         OrdExpressPickup p = DataScopeContext.executeWithoutScope(() ->
                 pickupMapper.selectOne(Wrappers.<OrdExpressPickup>lambdaQuery()
-                        .eq(OrdExpressPickup::getTaskId, tid)
+                        .eq(cb.orderId() != null, OrdExpressPickup::getProviderOrderId, cb.orderId())
+                        .eq(cb.orderId() == null, OrdExpressPickup::getTaskId, cb.taskId())
                         .last("limit 1")));
         if (p == null) {
-            // 下单那一侧还没写回 taskId（回调比下单返回还快）：回失败让通道重推，不丢这条
-            log.warn("[express] 回调认不出取件单 taskId={} status={}", tid, cb.providerStatus());
+            // 下单那一侧还没写回 orderId / taskId（回调比下单返回还快）：回失败让通道重推，不丢这条
+            log.warn("[express] 回调认不出取件单 orderId={} taskId={} status={}",
+                    cb.orderId(), cb.taskId(), cb.providerStatus());
+            return false;
+        }
+        if ((cb.taskId() != null && !cb.taskId().equals(p.getTaskId()))
+                || (taskId != null && !taskId.isBlank() && !taskId.trim().equals(p.getTaskId()))) {
+            log.warn("[express] 回调标识互相矛盾，不认 pickupNo={} 行taskId={} 签名taskId={} 表单taskId={}",
+                    p.getPickupNo(), p.getTaskId(), cb.taskId(), taskId);
             return false;
         }
 
