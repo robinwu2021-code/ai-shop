@@ -605,6 +605,10 @@ shop:
       # 提交后把进件单、收款商户、门店绑定跟到支付域新表。先开它、再跑 pay-merchant-backfill，比对为 0 后才读切。
       # 新表写失败只记日志 [pay-merchant-dual-write]，不挡旧路径
       dual-write: ${SHOP_PAY_MERCHANT_DUAL_WRITE:false}
+      compare:
+        # 比对 C07（pay-merchant-compare）里人工确认过的差异，逗号分隔，每项是日志里那条差异的 key
+        # （门店|渠道|类别|旧值|新值）。任一侧的值再变，旧确认自然不再匹配
+        confirmed: ${SHOP_PAY_MERCHANT_COMPARE_CONFIRMED:}
     wechat:
       # 显式开关：配了凭据不等于要启用（灰度、演练都可能只配不启）。
       # **不用「凭据配了没」判断**：${ENV:} 未配置时是空串，而 @ConditionalOnProperty

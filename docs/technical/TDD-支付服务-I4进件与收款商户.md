@@ -75,6 +75,14 @@
 - 写点（9 处）：`MerchantPaymentServiceImpl#refresh`（含提交、轮询，都经它）· `#openForStore` · `MerchantPortImpl#ensurePayment` · `#ensureDefaultStore` ·
   `StoreAdminServiceImpl#create` · `#setDefault` · `#setPayment` · `MerchantStoreServiceImpl` 门店保存 · `SelfOperatedServiceImpl` 建店 · `MerchantGovernServiceImpl#setFundsMode`。
 
+### S5 · 比对 C07
+- shop-app `paybridge.PayMerchantComparator#compare(entityNos, confirmed)`：每个主体的每个门店 × 渠道（旧表出现过的渠道 ∪ 新模型可收款的渠道；线下 / 免单 / 桩 / 测试渠道旧解析不按渠道过滤，不比）——
+  旧 `MerchantQueryPort#payMerchantNoOf`（结算取号那条，ACTIVE）对新 `PayMerchantQueryPort#routeOf`：
+  `NO_PAY` 旧有新无 · `NO_LEGACY` 旧无新有 · `NUMBER` 号不同；号相同再比 `SUB_MCHID`（旧 `sub_mchid` 对新「直连取渠道商户号、否则取子商户号」）与 `FUNDS_PATH`（主体 `funds_mode` 对 `pay_merchant.funds_path`）。
+- 每条差异带主体、门店、渠道、新旧两个值；**人工确认按 `Diff#key()` = 门店|渠道|类别|旧值|新值** 认，任一侧值再变确认自然失效。
+- **门禁** `Result#readSwitchAllowed()` = 全量比对 且 未确认差异为 0（按主体抽查只说明这几家对上了，不放行）。S6 读切以它为准。
+- 调度壳 `PayMerchantCompareJob`（`pay-merchant-compare`，只手动触发、全量）：每条差异一行日志 `[pay-merchant-compare] … key=…` 留档；确认清单读 `shop.pay.merchant.compare.confirmed`（新配置项，逗号分隔）；放行记成功、否则记失败。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试方法 | 跑过 | 消融验证 |
@@ -82,6 +90,7 @@
 | AC2 / AC3 | `PayMerchantRoutingFlowTest`（5 条：`onlyStoreBindingResolves` 同主体没绑的店解析不到；`suspendedMerchantNotCollectableButRefundable`；`collectableRoutesByPriority`；`bindingRules` 别的主体 / 别的市场 / 非 ACTIVE / 渠道不符；`rebindKeepsOneActive`） | ✅ | ① 不看状态 + 不查同主体 → 两条红 ② 没绑定兜底取任一 ACTIVE（R01 的样子）+ 改绑不释放 → 两条红 ✅ |
 | AC4 | `PayMerchantBackfillFlowTest`（3 条：`merchantsMigrated` 主体级号落默认门店、原号、资金路径取主体、默认额度落产品；`bindingsExpandedAndConflictsReported` 默认店 / 门店自己的号 / 主体级号展开 / Q3 不绑，Q2、METHOD 进报告；`idempotent` 再跑五张表行数不变） | ✅ 3/3 | ① 不展开 + Q3 自动取第一个 → `bindings…` 红 ② 进件与商户不按号幂等 → `idempotent` 红 ③ 映射不到时默默跳过 → `bindings…` 红 ✅ |
 | AC5 | `PayMerchantDualWriteFlowTest`（5 条，走真旧入口：`onboardingResultMirrored` 审核中镜像成在途进件单、回查开户后 APPROVED + 收款商户 ACTIVE + 两店绑定；`storeBindingMirrored` 门店指定号 → 改绑、仍一条 ACTIVE；`fundsModeAndStatusMirrored` 冻结 → SUSPENDED、切资金路径，各一条状态日志；`switchOffWritesNothing`；`mirrorFailureDoesNotBlockLegacy` 同步抛错时开户照样落旧表） | ✅ 5/5 | ① 挂钩不吞失败 → `mirrorFailure…` 红 ② 双写当回填用（不跟、不改绑）→ 3 条红 ③ 不看开关 → `switchOff…` 红 ④ 切资金路径不报 → 2 条红 ✅ |
+| AC6 | `PayMerchantCompareFlowTest`（5 条，漂移一律绕开双写直接改库：`consistentAfterBackfill` 回填后 3 店差异 0、但抽查不放行；`driftsReportedWithBothNumbers` 新店没绑 NO_PAY、新模型改绑 NUMBER，带门店渠道与两个号；`statusAndFundsPathDrift` 旧号冻结 NO_LEGACY、资金路径 FUNDS_PATH；`subMerchantDrift`；`confirmationIsBoundToBothValues` 确认后通过、值再变作废） | ✅ 5/5 | ① 号一致就不比子商户号与资金路径 → 2 条红 ② 确认只认门店 + 渠道 → 起初**没红**（同一步改名让别的店也出差异，`passed()` 本来就假），改成断言 s4 那一条的 `confirmed` 后红 ③ 抽查也放行 → `consistent…` 红 ④ 旧解析为空就不比 → `statusAndFundsPath…` 红 ✅ |
 | AC1 | `MapperSmokeTest`（新 7 个 mapper）· `SchemaDriftTest` · `PayMigrationTest` · 本机 MySQL 9.7 临时库执行 V10 | ✅ | — |
 
 ## §6 对账二 · 设计 → 实现
@@ -93,8 +102,10 @@
 1. **V10 不建 `ck_pay_merchant_2`**，理由见 §2 S1。
 2. **反向依赖预算 MerchantQueryPort 31 → 35**：绑定校验要知道门店的主体与市场，新增 `payStoreById`（真的跨域调用，pay-svc 独立时要补一个 HTTP 客户端方法），已登记 `known-pay-reverse-deps.txt`。
 3. **回填报告不数开通产品**：设计稿的报告有产品数，实现只回 `merchants / bindings / conflicts` —— 产品是商户的附属，五张表的行数由比对（S5）与幂等用例看。
-4. **微信直连（`direct`）旧行按 MERCHANT_OWN 迁、渠道商户号取旧子商户号**：旧模型直连时实际收款用平台商户号、子商户号只作标识；这样迁可保住（渠道, 渠道商户号, 子商户号）唯一，但「收款到底用谁的号」要在 S5 比对与 S6 读切时以旧解析为准核一遍。
+4. **微信直连（`direct`）旧行按 MERCHANT_OWN 迁、渠道商户号取旧子商户号**：旧模型直连时实际收款用平台商户号、子商户号只作标识；这样迁可保住（渠道, 渠道商户号, 子商户号）唯一，但「收款到底用谁的号」要以旧解析为准核一遍。**S5 比对核不出这一点**：比的是数据（旧 `sub_mchid` 对新渠道商户号，按构造必然相等），不是网关实际拿哪个商户号下单 —— 留给 S6，读切时直连网关必须仍用配置里的平台商户号。
 5. **市场 → 币种在回填里写死**（CN / AE / SA）：`pay_channel_product_market` 是按产品配的，没有「市场的本币」一处真源；其他市场进 `CURRENCY` 冲突、不迁。
 6. **双写是「按主体重放」而不是逐写点翻译**：一个主体只有几行旧数据，重放比把 9 个写点各自翻成新模型的写法简单，也不会漏写点；代价是每次写都重读这个主体的旧三表。没经过这 9 个服务的写（手工 SQL、数据修复）不会被同步，由比对（S5）报出来。
 7. **新增 `spi.pay.PayMerchantMirrorPort`**（`shop-merchant` → 支付方向，不计入支付反向依赖预算）。实现留在 `shop-app`：它要读旧表，拆 pay-svc 时改成调支付的内部接口。
 8. **B3 顺序向旧解析看齐**（S3 时门店指定号只要是本主体 ACTIVE 号就算）：别家门店的专属号、非 ACTIVE 号旧解析会往下落，S3 那版会照绑，S5 比对必然报差异。`PayMerchantBackfillFlowTest` 3 条照样绿。
+9. **比对不建表**：设计稿说「比对结果留档」，没有对应的表；留档 = 任务运行记录 + 每条差异一行日志，人工确认放配置 `shop.pay.merchant.compare.confirmed`（随配置变更走审计）。确认量大到配置放不下时再加表。
+10. **旧解析只取 `payMerchantNoOf`**：执行方案列了三条旧解析，`paymentRouteOf` 只认门店显式绑定、不兜底（交易快照专用，空了不收款），与 `routeOf` 的语义不是一回事；`resolvePayment` 是私有方法，走的也是 `accountOf`。三者里只有 `payMerchantNoOf` 与新模型「门店绑定 = 收款商户」对应。
