@@ -7421,6 +7421,167 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
+### pay
+
+#### GET `/biz/pay/app-grant`
+
+已授权的第三方　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayAppGrant`](#payappgrant)\[\]
+
+
+#### POST `/biz/pay/app-grant`
+
+授权第三方　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayAppGrant`](#payappgrant)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `appNo` | `string` | 是 | — |
+| `appName` | `string,null` | 是 | — |
+| `actions` | [`PayGrantAction`](#paygrantaction)\[\] | 是 | — |
+| `status` | [`PayGrantStatus`](#paygrantstatus) | 是 | — |
+| `grantedAt` | `number,null` | 是 | — |
+
+
+#### DELETE `/biz/pay/app-grant/{id}`
+
+撤销第三方授权　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### POST `/biz/pay/collection`
+
+代客收款（动态码）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayCollectResult`](#paycollectresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payOrderNo` | `string` | 是 | — |
+| `token` | `string` | 是 | 一次性收银令牌：只在这一次响应里出现，不落任何本地存储 |
+| `expireAt` | `number` | 是 | 链接到期（UTC 毫秒） |
+| `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
+
+
+#### GET `/biz/pay/qr-code`
+
+本店收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayQrCode`](#payqrcode)\[\]
+
+
+#### POST `/biz/pay/qr-code`
+
+生成收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayQrCode`](#payqrcode)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qrCode` | `string` | 是 | — |
+| `kind` | [`PayQrKind`](#payqrkind) | 是 | — |
+| `tableRef` | `string,null` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `singleLimitMinor` | `number` | 是 | — |
+| `dailyLimitMinor` | `number` | 是 | — |
+| `status` | [`PayQrStatus`](#payqrstatus) | 是 | — |
+| `url` | `string` | 是 | 顾客扫的链接 |
+
+
+#### PUT `/biz/pay/qr-code/{qrCode}/disabled`
+
+停用收款码　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/biz/pay/refund`
+
+本店最近退款　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayRefundItem`](#payrefunditem)\[\]
+
+
+#### POST `/biz/pay/refund`
+
+发起原路退款　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayRefundItem`](#payrefunditem)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payRefundNo` | `string` | 是 | — |
+| `payOrderId` | `number` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `status` | `string` | 是 | PENDING_REVIEW 待平台复核 / DISPATCHED 退款中 / SUCCEEDED / FAILED / REJECTED … |
+| `reason` | `string,null` | 是 | — |
+| `requestedBy` | `string,null` | 是 | — |
+| `createdAt` | `number,null` | 是 | — |
+| `succeededAt` | `number,null` | 是 | — |
+
+
+#### GET `/biz/pay/statement`
+
+本店收款日流水　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PayDailyStatement`](#paydailystatement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bizDate` | `string` | 是 | 业务日（门店市场时区）YYYY-MM-DD |
+| `currency` | `string` | 是 | — |
+| `paidCount` | `number` | 是 | — |
+| `paidMinor` | `number` | 是 | — |
+| `refundCount` | `number` | 是 | — |
+| `refundMinor` | `number` | 是 | — |
+| `items` | [`PayStatementItem`](#paystatementitem)\[\] | 是 | — |
+
+
 ### payout-account
 
 #### GET `/biz/payout-account`
@@ -14583,6 +14744,120 @@ Processing state of the order points refund projection.
 | `CN` | `number` | 否 | — |
 | `AE` | `number` | 否 | — |
 | `US` | `number` | 否 | — |
+
+### PayAppGrant
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `appNo` | `string` | 是 | — |
+| `appName` | `string,null` | 是 | — |
+| `actions` | [`PayGrantAction`](#paygrantaction)\[\] | 是 | — |
+| `status` | [`PayGrantStatus`](#paygrantstatus) | 是 | — |
+| `grantedAt` | `number,null` | 是 | — |
+
+### PayCollectResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payOrderNo` | `string` | 是 | — |
+| `token` | `string` | 是 | 一次性收银令牌：只在这一次响应里出现，不落任何本地存储 |
+| `expireAt` | `number` | 是 | 链接到期（UTC 毫秒） |
+| `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
+
+### PayDailyStatement
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `bizDate` | `string` | 是 | 业务日（门店市场时区）YYYY-MM-DD |
+| `currency` | `string` | 是 | — |
+| `paidCount` | `number` | 是 | — |
+| `paidMinor` | `number` | 是 | — |
+| `refundCount` | `number` | 是 | — |
+| `refundMinor` | `number` | 是 | — |
+| `items` | [`PayStatementItem`](#paystatementitem)\[\] | 是 | — |
+
+### PayGrantAction
+
+授权第三方的动作：代收款 / 代退款 / 查单
+
+枚举取值：
+
+- `COLLECT`
+- `REFUND`
+- `READ`
+
+### PayGrantStatus
+
+枚举取值：
+
+- `ACTIVE`
+- `REVOKED`
+
+### PayQrCode
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `qrCode` | `string` | 是 | — |
+| `kind` | [`PayQrKind`](#payqrkind) | 是 | — |
+| `tableRef` | `string,null` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `singleLimitMinor` | `number` | 是 | — |
+| `dailyLimitMinor` | `number` | 是 | — |
+| `status` | [`PayQrStatus`](#payqrstatus) | 是 | — |
+| `url` | `string` | 是 | 顾客扫的链接 |
+
+### PayQrKind
+
+收款码：门店码 / 桌台码
+
+枚举取值：
+
+- `STORE`
+- `TABLE`
+
+### PayQrStatus
+
+枚举取值：
+
+- `ACTIVE`
+- `DISABLED`
+
+### PayRefundItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `payRefundNo` | `string` | 是 | — |
+| `payOrderId` | `number` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `status` | `string` | 是 | PENDING_REVIEW 待平台复核 / DISPATCHED 退款中 / SUCCEEDED / FAILED / REJECTED … |
+| `reason` | `string,null` | 是 | — |
+| `requestedBy` | `string,null` | 是 | — |
+| `createdAt` | `number,null` | 是 | — |
+| `succeededAt` | `number,null` | 是 | — |
+
+### PayStatementItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `kind` | [`PayStatementKind`](#paystatementkind) | 是 | — |
+| `no` | `string` | 是 | — |
+| `payOrderNo` | `string,null` | 是 | — |
+| `amountMinor` | `number` | 是 | — |
+| `payChannel` | `string,null` | 是 | — |
+| `payMethod` | `string,null` | 是 | — |
+| `status` | `string` | 是 | — |
+| `at` | `number,null` | 是 | — |
+
+### PayStatementKind
+
+流水行：收款 / 退款
+
+枚举取值：
+
+- `PAYMENT`
+- `REFUND`
 
 ### PaymentApplyStatus
 

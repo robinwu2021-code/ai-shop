@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 620,
+        "b-app": 621,
         "c-app": 105
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 437,
+        "b-app": 441,
         "c-app": 88
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 443,
+        "b-app": 453,
         "c-app": 320
       }
     },
@@ -415,7 +415,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 0
       }
     },
@@ -469,7 +469,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 54,
+        "b-app": 66,
         "c-app": 38
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 182,
+        "b-app": 188,
         "c-app": 61
       }
     },
@@ -513,7 +513,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 137,
+        "b-app": 139,
         "c-app": 82
       }
     },
@@ -635,7 +635,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 357,
+        "b-app": 366,
         "c-app": 98
       }
     },
@@ -677,7 +677,7 @@
         "padding": "12px var(--sh-pad-page, 14px)"
       },
       "usage": {
-        "b-app": 208,
+        "b-app": 212,
         "c-app": 34
       }
     },
@@ -827,7 +827,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 296,
+        "b-app": 304,
         "c-app": 93
       }
     },
@@ -939,7 +939,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 78,
+        "b-app": 83,
         "c-app": 12
       }
     },
@@ -979,7 +979,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 85,
+        "b-app": 88,
         "c-app": 24
       }
     },
@@ -1035,7 +1035,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 158,
+        "b-app": 163,
         "c-app": 30
       }
     },
@@ -1095,7 +1095,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 375,
+        "b-app": 386,
         "c-app": 157
       }
     },
@@ -1159,7 +1159,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 177,
+        "b-app": 178,
         "c-app": 58
       }
     },
@@ -1457,7 +1457,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 698,
+        "b-app": 712,
         "c-app": 218
       }
     },
@@ -1489,7 +1489,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 406,
+        "b-app": 417,
         "c-app": 110
       }
     },
@@ -1505,7 +1505,7 @@
         "padding": "8px 0"
       },
       "usage": {
-        "b-app": 28,
+        "b-app": 30,
         "c-app": 7
       }
     },
@@ -1847,7 +1847,7 @@
         "margin-top": "14px"
       },
       "usage": {
-        "b-app": 14,
+        "b-app": 21,
         "c-app": 3
       }
     },
@@ -1879,7 +1879,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 24,
+        "b-app": 27,
         "c-app": 0
       }
     }
@@ -2143,7 +2143,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 87,
+        "b-app": 91,
         "c-app": 42,
         "lib": 1
       },
@@ -2225,7 +2225,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 32,
+        "b-app": 34,
         "c-app": 4,
         "lib": 0
       },
@@ -2299,7 +2299,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 135,
+        "b-app": 139,
         "c-app": 29,
         "lib": 13
       },
@@ -2338,7 +2338,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 119,
+        "b-app": 121,
         "c-app": 3,
         "lib": 0
       },
@@ -2594,7 +2594,7 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 116,
+        "b-app": 120,
         "c-app": 43,
         "lib": 1
       },
@@ -2641,7 +2641,7 @@
         "pad?: boolean"
       ],
       "usage": {
-        "b-app": 23,
+        "b-app": 25,
         "c-app": 0,
         "lib": 0
       },
@@ -3248,6 +3248,46 @@
       ],
       "rootDecl": {
         "margin-bottom": "12rpx"
+      }
+    },
+    {
+      "name": "biz-pay-qr",
+      "file": "b-app/src/components/biz/biz-pay-qr.vue",
+      "scope": "B 端",
+      "lines": 48,
+      "props": [
+        "link: string",
+        "size?: number"
+      ],
+      "usage": {
+        "b-app": 2,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "—",
+      "why": "—",
+      "uses": {
+        "tiers": [],
+        "rawFontSize": [],
+        "spacing": [
+          24
+        ],
+        "radius": [
+          16
+        ],
+        "deps": []
+      },
+      "rootClasses": [
+        "payqr"
+      ],
+      "rootDecl": {
+        "margin": "24rpx auto 0",
+        "display": "flex",
+        "flex-direction": "column",
+        "align-items": "center",
+        "padding": "24rpx",
+        "background": "var(--sh-qr-paper)",
+        "border-radius": "16rpx"
       }
     },
     {
@@ -4241,7 +4281,7 @@
         "sh-scaffold",
         "sh-theme-sheet"
       ],
-      "libClassHits": 86,
+      "libClassHits": 102,
       "localSelectors": 8,
       "localCssLines": 34,
       "rolled": []
@@ -4478,6 +4518,66 @@
       "libClassHits": 25,
       "localSelectors": 5,
       "localCssLines": 21,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "pay-collect",
+      "key": "b-app/pay-collect",
+      "file": "b-app/src/pages/pay-collect/index.vue",
+      "components": [
+        "sh-go",
+        "sh-scaffold",
+        "sh-section",
+        "biz-pay-qr"
+      ],
+      "libClassHits": 21,
+      "localSelectors": 3,
+      "localCssLines": 11,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "pay-flow",
+      "key": "b-app/pay-flow",
+      "file": "b-app/src/pages/pay-flow/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-kv",
+        "sh-scaffold"
+      ],
+      "libClassHits": 42,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "pay-grants",
+      "key": "b-app/pay-grants",
+      "file": "b-app/src/pages/pay-grants/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 1,
+      "localCssLines": 4,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "pay-qrcodes",
+      "key": "b-app/pay-qrcodes",
+      "file": "b-app/src/pages/pay-qrcodes/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "biz-pay-qr"
+      ],
+      "libClassHits": 20,
+      "localSelectors": 1,
+      "localCssLines": 3,
       "rolled": []
     },
     {
@@ -6297,6 +6397,17 @@
     },
     {
       "app": "b-app",
+      "page": "biz-pay-qr",
+      "key": "b-app/biz-pay-qr",
+      "file": "b-app/src/components/biz/biz-pay-qr.vue",
+      "components": [],
+      "libClassHits": 0,
+      "localSelectors": 4,
+      "localCssLines": 18,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "biz-pickup-sheet",
       "key": "b-app/biz-pickup-sheet",
       "file": "b-app/src/components/biz/biz-pickup-sheet.vue",
@@ -6754,8 +6865,8 @@
   "counts": {
     "tokens": 16,
     "blocks": 82,
-    "components": 42,
-    "pages": 198,
+    "components": 43,
+    "pages": 203,
     "gapKinds": 3
   }
 }

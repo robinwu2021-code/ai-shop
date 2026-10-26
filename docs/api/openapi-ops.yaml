@@ -1592,7 +1592,13 @@ components:
           description: "角色。**权限判定以后端为准**，前端只做菜单裁剪"
         token:
           type: "string"
-          description: "访问令牌。STAFF 池，与 C 端、B 端账号不通用"
+          description: "访问令牌。STAFF 池，与 C 端、B 端账号不通用。**还差第二因子时为空串**（见  {@link  challenge } ）"
+        challenge:
+          type: "string"
+          description: "第二因子挑战号（支付服务-安全规范 §2.7）。有值 = 密码对了、验证码已发到邮箱，**还没登录** —— 拿它和邮件里的 6 位码调 `verifyLogin` 换会话。"
+        challengeTo:
+          type: "string"
+          description: "验证码发到了哪个邮箱（后端已掩码），给用户确认「去哪收」"
         perms:
           type: "array"
           items:
@@ -15652,6 +15658,38 @@ paths:
     post:
       operationId: "login"
       summary: "登录"
+      tags:
+        - "dashboard"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/LoginResp"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/auth/login/verify":
+    post:
+      operationId: "verifyLogin"
+      summary: "第二因子：用登录时发到邮箱的验证码换会话（`login` 返回 `challenge` 时才需要） */"
       tags:
         - "dashboard"
       responses:

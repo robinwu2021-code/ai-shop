@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1063 个接口**：后端已实现 900（85%）· 前端在调 978
+**合计 1073 个接口**：后端已实现 910（85%）· 前端在调 987
 
 ---
 
@@ -316,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **450** 个接口 ｜ 后端已实现 **355**（79%）｜ 前端在调 **449**
+共 **460** 个接口 ｜ 后端已实现 **365**（79%）｜ 前端在调 **458**
 
 ### activities（4）
 
@@ -786,6 +786,21 @@
 | GET | `/biz/order/{orderNo}/trace` | 物流轨迹 | — | `ShipmentTrace` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/waybill` | 更正运单 | — | `Order` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/worklist` | 按优先级分页的订单待办 | — | `object` | 🔒 | ✅ | ✅ |
+
+### pay（10）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/pay/app-grant` | 已授权的第三方 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/pay/app-grant` | 授权第三方 | — | `PayAppGrant` | 🔒 | ✅ | ✅ |
+| DELETE | `/biz/pay/app-grant/{id}` | 撤销第三方授权 | — | — | 🔒 | ✅ | ⬜ |
+| POST | `/biz/pay/collection` | 代客收款（动态码） | — | `PayCollectResult` | 🔒 | ✅ | ✅ |
+| GET | `/biz/pay/qr-code` | 本店收款码 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/pay/qr-code` | 生成收款码 | — | `PayQrCode` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/pay/qr-code/{qrCode}/disabled` | 停用收款码 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/pay/refund` | 本店最近退款 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/pay/refund` | 发起原路退款 | — | `PayRefundItem` | 🔒 | ✅ | ✅ |
+| GET | `/biz/pay/statement` | 本店收款日流水 | — | `PayDailyStatement` | 🔒 | ✅ | ✅ |
 
 ### payout-account（2）
 
