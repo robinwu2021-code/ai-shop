@@ -123,6 +123,32 @@ class GoodsIntegrityFlowTest {
         assertThat(neg.get("code").asInt()).as("新 SKU 的初始库存为负应被拒").isNotZero();
     }
 
+    // ------------------------------------------------------------------ ⑨ SKU 价格校验
+
+    @Test
+    @DisplayName("★★ SKU 价格：负数、市场价为 null（含带划线价时的 NPE）一律 400，不落库")
+    void skuPricesAreValidated() throws Exception {
+        String biz = merchant("13700777901", "价格校验店");
+        int bad = ai.neargo.shop.common.ErrorCode.BAD_REQUEST.code();
+        JsonNode negative = postJson(biz, "/biz/goods/save", goodsBody(null, null, "负价商品", -1, 5));
+        assertThat(negative.get("code").asInt()).as("负价").isEqualTo(bad);
+
+        String nullMarket = "{\"categoryNo\":\"CAT210\",\"title\":\"空市场价\",\"subtitle\":\"t\",\"cover\":\"c\","
+                + "\"images\":[],\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":100,"
+                + "\"priceByMarket\":{\"AE\":null},\"stock\":1}]}";
+        assertThat(postJson(biz, "/biz/goods/save", nullMarket).get("code").asInt()).as("市场价 null").isEqualTo(bad);
+
+        String nullWithOrigin = nullMarket.replace("\"stock\":1", "\"stock\":1,\"originPrice\":200")
+                .replace("空市场价", "空市场价带划线");
+        assertThat(postJson(biz, "/biz/goods/save", nullWithOrigin).get("code").asInt())
+                .as("带划线价时 null 市场价曾经 NPE → 500").isEqualTo(bad);
+
+        String negMarket = nullMarket.replace("\"AE\":null", "\"AE\":-3").replace("空市场价", "负市场价");
+        assertThat(postJson(biz, "/biz/goods/save", negMarket).get("code").asInt()).as("负市场价").isEqualTo(bad);
+        assertThat(jdbc.queryForObject("select count(*) from prd_goods where title in "
+                + "('负价商品','空市场价','空市场价带划线','负市场价')", Integer.class)).isZero();
+    }
+
     // ------------------------------------------------------------------ 工具
 
     /** 建一件过审且在售的商品（单 SKU，CAT210） */

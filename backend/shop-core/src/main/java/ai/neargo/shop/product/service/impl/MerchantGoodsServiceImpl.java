@@ -1660,6 +1660,17 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 }
                 prices.putAll(sku.priceByMarket());
             }
+            /*
+             * **每个市场的价都必须有、且 ≥ 0**。priceByMarket 是 Map<String, Long>，
+             * 端上发 {"AE": null} 时这里原先照单全收：带划线价的那一支在比较时拆箱 NPE（500），
+             * 不带的那一支把 price=null 落进库 —— 列表按 0 元展示、下单按 0 元扣钱。
+             * 负价同理：一件「倒贴钱」的商品没有任何一道闸会拦。
+             */
+            for (Long p : prices.values()) {
+                if (p == null || p < 0) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
+            }
             for (var e : prices.entrySet()) {
                 String key = skuNo + "@" + e.getKey();
                 PrdSku row = byNo.get(key);
