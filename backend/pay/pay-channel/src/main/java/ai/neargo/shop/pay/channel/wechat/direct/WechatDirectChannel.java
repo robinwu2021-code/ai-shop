@@ -1,7 +1,6 @@
 package ai.neargo.shop.pay.channel.wechat.direct;
 
 import ai.neargo.shop.pay.channel.api.AccessMode;
-import ai.neargo.shop.pay.channel.api.ChannelAccountContext;
 import ai.neargo.shop.pay.channel.api.ChannelOperation;
 import ai.neargo.shop.pay.channel.api.ChannelResult;
 import ai.neargo.shop.pay.channel.api.Money;

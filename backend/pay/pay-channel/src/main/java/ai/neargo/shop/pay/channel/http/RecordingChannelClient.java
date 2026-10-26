@@ -216,9 +216,10 @@ public final class RecordingChannelClient {
             return;
         }
         try {
-            Map<String, Object> masked = new LinkedHashMap<>();
-            masked.put("body", body);
-            legacy.sent(payChannel, api, inv == null ? null : inv.command().outNo(), ok, reason, masked);
+            // 原样交给旧报文表，它自己递归脱敏（PayloadMasker#mask）
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("body", body);
+            legacy.sent(payChannel, api, inv == null ? null : inv.command().outNo(), ok, reason, payload);
         } catch (RuntimeException e) {
             fail("stl_channel_message", e);
         }

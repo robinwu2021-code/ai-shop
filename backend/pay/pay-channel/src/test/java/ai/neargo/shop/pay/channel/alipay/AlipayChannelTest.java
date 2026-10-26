@@ -10,7 +10,6 @@ import ai.neargo.shop.pay.channel.api.ChannelKey;
 import ai.neargo.shop.pay.channel.api.ChannelResult;
 import ai.neargo.shop.pay.channel.api.InvocationMeta;
 import ai.neargo.shop.pay.channel.api.Money;
-import ai.neargo.shop.pay.channel.api.PayErrorCode;
 import ai.neargo.shop.pay.channel.api.SourceInfo;
 import ai.neargo.shop.pay.channel.api.command.SplitCommand;
 import ai.neargo.shop.pay.channel.capability.ChannelCapabilityRegistry;
