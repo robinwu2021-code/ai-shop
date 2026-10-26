@@ -1,5 +1,5 @@
 {
-  "candidate": "65d5c360ed0998fc0d19ed6b23f786f1cceb505b",
+  "candidate": "b929fb350fbe599caa5594b52458a98119e2c9ad",
   "businessSourceIntegration": {
     "status": "PASS",
     "classes": {
@@ -95,5 +95,6 @@
     "passed": 4,
     "failed": 3,
     "sameFailuresReproducedOnBase": true
-  }
+  },
+  "initialEvidenceCandidate": "65d5c360ed0998fc0d19ed6b23f786f1cceb505b"
 }
