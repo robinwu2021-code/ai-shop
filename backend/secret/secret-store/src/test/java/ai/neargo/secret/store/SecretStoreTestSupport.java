@@ -7,6 +7,10 @@ import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
@@ -16,6 +20,7 @@ import org.flywaydb.core.Flyway;
 import org.h2.jdbcx.JdbcDataSource;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
@@ -41,10 +46,8 @@ public final class SecretStoreTestSupport {
     }
 
     public static Store freshStore() {
-        JdbcDataSource ds = new JdbcDataSource();
-        ds.setURL("jdbc:h2:mem:secretstore" + SEQ.incrementAndGet()
-                + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
-        ds.setUser("sa");
+        String mysqlUrl = System.getProperty("secret.mysql.url");
+        DataSource ds = mysqlUrl == null || mysqlUrl.isBlank() ? h2() : mysql();
         int applied = Flyway.configure()
                 .dataSource(ds)
                 .locations("classpath:db/secret")
@@ -73,6 +76,32 @@ public final class SecretStoreTestSupport {
         } catch (Exception e) {
             throw new IllegalStateException("secret store fixture failed", e);
         }
+    }
+
+    private static DataSource h2() {
+        JdbcDataSource ds = new JdbcDataSource();
+        ds.setURL("jdbc:h2:mem:secretstore" + SEQ.incrementAndGet()
+                + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
+        ds.setUser("sa");
+        return ds;
+    }
+
+    /**
+     * {@code -Dsecret.mysql.url=jdbc:mysql://127.0.0.1:3306/}（库名留空）时：每个用例建一个新库 {@code sec_t<pid>_<n>}。
+     * 只给本机临时实例用 —— 它会 CREATE DATABASE。
+     */
+    private static DataSource mysql() {
+        String base = System.getProperty("secret.mysql.url");
+        String user = System.getProperty("secret.mysql.user", "root");
+        String password = System.getProperty("secret.mysql.password", "");
+        String db = "sec_t" + ProcessHandle.current().pid() + "_" + SEQ.incrementAndGet();
+        try (Connection c = DriverManager.getConnection(base, user, password);
+             Statement st = c.createStatement()) {
+            st.execute("CREATE DATABASE " + db);
+        } catch (SQLException e) {
+            throw new IllegalStateException("cannot create scratch database on " + base, e);
+        }
+        return new DriverManagerDataSource(base + db, user, password);
     }
 
     /** 与平台 AuditMetaObjectHandler 同口径（测试里没有登录用户，一律 SYSTEM） */

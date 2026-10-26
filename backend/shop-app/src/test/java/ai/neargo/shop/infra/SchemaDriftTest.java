@@ -144,10 +144,14 @@ class SchemaDriftTest {
                 replay(Files.readString(f, StandardCharsets.UTF_8), migration);
             }
         }
-        // 支付 v4 的独立迁移目录接在后面（与生产执行顺序、与 gen-test-schema.py 同口径）
-        Path pay = root.resolve("../pay/pay-domain/src/main/resources/db/pay").normalize();
-        if (Files.isDirectory(pay)) {
-            try (var files = Files.list(pay)) {
+        // 支付 v4、密钥模块（W5）的独立迁移目录接在后面（与生产执行顺序、与 gen-test-schema.py 同口径）
+        for (String extra : List.of("../pay/pay-domain/src/main/resources/db/pay",
+                "../secret/secret-store/src/main/resources/db/secret")) {
+            Path dir = root.resolve(extra).normalize();
+            if (!Files.isDirectory(dir)) {
+                continue;
+            }
+            try (var files = Files.list(dir)) {
                 for (Path f : files.filter(f -> f.getFileName().toString().matches("V\\d+__.*\\.sql"))
                         .sorted(Comparator.comparingInt(SchemaDriftTest::versionOf)).toList()) {
                     replay(Files.readString(f, StandardCharsets.UTF_8), migration);

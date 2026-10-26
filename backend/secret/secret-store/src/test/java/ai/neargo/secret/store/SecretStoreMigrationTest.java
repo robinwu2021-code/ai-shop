@@ -11,18 +11,18 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** db/secret V1 在 H2（MySQL 模式）上原样执行，七张表齐、历史记在 sec_flyway_history，实体与列对得上 */
-class SecretMigrationH2Test {
+/** db/secret V1 原样执行（默认 H2 MySQL 模式；-Dsecret.mysql.url 时真 MySQL），七张表齐、历史记在 sec_flyway_history，实体与列对得上 */
+class SecretStoreMigrationTest {
 
     @Test
-    @DisplayName("★★ db/secret 跑在 H2 上：七张 sec_* 表 + sec_flyway_history，DDL 默认值生效")
+    @DisplayName("★★ db/secret 原样跑通：七张 sec_* 表 + sec_flyway_history，DDL 默认值生效")
     void migrationCreatesSevenTables() throws Exception {
         var store = SecretStoreTestSupport.freshStore();
 
         assertThat(store.migrationsApplied()).isEqualTo(1);
         List<String> tables = new ArrayList<>();
         try (Connection c = store.dataSource().getConnection();
-             ResultSet rs = c.getMetaData().getTables(null, null, "sec_%", new String[] {"TABLE"})) {
+             ResultSet rs = c.getMetaData().getTables(c.getCatalog(), null, "sec_%", new String[] {"TABLE"})) {
             while (rs.next()) {
                 tables.add(rs.getString("TABLE_NAME"));
             }
