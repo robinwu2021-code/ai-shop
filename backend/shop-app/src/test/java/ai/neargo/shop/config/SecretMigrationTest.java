@@ -62,7 +62,7 @@ class SecretMigrationTest {
         var first = SecretDataSourceConfig.migrateSecret(ds, true, "classpath:db/secret");
 
         assertThat(first.historyTable()).isEqualTo("sec_flyway_history");
-        assertThat(first.applied()).isEqualTo(1);
+        assertThat(first.applied()).as("V1 七表 + V2 存储分档").isEqualTo(2);
         assertThat(tables(ds)).containsExactlyInAnyOrder("sec_flyway_history", "sec_master_key", "sec_secret_blob",
                 "sec_key_policy", "sec_key", "sec_key_version", "sec_key_event", "sec_access_log");
         assertThat(SecretDataSourceConfig.migrateSecret(ds, true, "classpath:db/secret").applied())

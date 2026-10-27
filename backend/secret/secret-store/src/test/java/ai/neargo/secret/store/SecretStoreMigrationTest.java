@@ -11,7 +11,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** db/secret V1 原样执行（默认 H2 MySQL 模式；-Dsecret.mysql.url 时真 MySQL），七张表齐、历史记在 sec_flyway_history，实体与列对得上 */
+/** db/secret V1、V2 原样执行（默认 H2 MySQL 模式；-Dsecret.mysql.url 时真 MySQL），七张表齐、历史记在 sec_flyway_history，实体与列对得上 */
 class SecretStoreMigrationTest {
 
     @Test
@@ -19,7 +19,7 @@ class SecretStoreMigrationTest {
     void migrationCreatesSevenTables() throws Exception {
         var store = SecretStoreTestSupport.freshStore();
 
-        assertThat(store.migrationsApplied()).isEqualTo(1);
+        assertThat(store.migrationsApplied()).as("V1 七表 + V2 存储分档").isEqualTo(2);
         List<String> tables = new ArrayList<>();
         try (Connection c = store.dataSource().getConnection();
              ResultSet rs = c.getMetaData().getTables(c.getCatalog(), null, "sec_%", new String[] {"TABLE"})) {
@@ -44,5 +44,30 @@ class SecretStoreMigrationTest {
         assertThat(back.getOverlapDays()).isEqualTo(7);
         assertThat(back.getWarnBeforeDays()).isEqualTo(30);
         assertThat(back.getDualControl()).isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ V2：版本记录自己的存储档（默认 L2）与只用于显示的前缀")
+    void v2AddsStorageTierAndDisplayPrefix() throws Exception {
+        var store = SecretStoreTestSupport.freshStore();
+        try (Connection c = store.dataSource().getConnection();
+             ResultSet rs = c.getMetaData().getColumns(c.getCatalog(), null, "sec_key_version", null)) {
+            List<String> columns = new ArrayList<>();
+            while (rs.next()) {
+                columns.add(rs.getString("COLUMN_NAME").toLowerCase());
+            }
+            assertThat(columns).contains("storage_tier", "display_prefix");
+        }
+        var v = new ai.neargo.secret.store.entity.SecKeyVersion();
+        v.setSecKeyId(1L);
+        v.setVersionIndex(1);
+        v.setStatus("DRAFT");
+        v.setPublicMaterial("-----BEGIN PUBLIC KEY-----");
+        v.setFingerprint("f");
+        v.setSource("UPLOADED");
+        v.setEnteredBy("ops-alice");
+        store.mapper(SecretMappers.KeyVersionMapper.class).insert(v);
+        assertThat(store.mapper(SecretMappers.KeyVersionMapper.class).selectById(v.getId()).getStorageTier())
+                .as("没写档位的行取 DDL 默认值").isEqualTo("L2");
     }
 }

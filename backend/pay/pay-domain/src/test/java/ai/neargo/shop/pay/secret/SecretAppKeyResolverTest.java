@@ -134,5 +134,20 @@ class SecretAppKeyResolverTest {
         public String fingerprintOf(KeyVersionRef ref) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public IssuedSecret generate(long keyId, Generation generation) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public List<KeyVersionRef> verificationVersions(long keyId) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Optional<KeyVersionRef> findVersion(long keyId, String externalKeyId) {
+            throw new UnsupportedOperationException();
+        }
     }
 }
