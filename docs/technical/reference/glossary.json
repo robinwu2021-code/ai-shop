@@ -44611,7 +44611,8 @@
           "ILLEGAL_STATE",
           "DUAL_CONTROL",
           "VERSION_UNUSABLE",
-          "KEY_UNUSABLE"
+          "KEY_UNUSABLE",
+          "WRONG_USAGE"
         ],
         "zh": "",
         "module": "secret"
@@ -44762,6 +44763,15 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "SecretFormat",
+        "values": [
+          "ALNUM_32",
+          "BASE64URL_32B"
+        ],
+        "zh": "平台生成对称密钥时的形态。",
+        "module": "secret"
       },
       {
         "name": "SecretNamespace",
@@ -45184,6 +45194,18 @@
         ],
         "zh": "Typed inventory lifecycle states, including partial fulfillment and partial cancellation.",
         "module": "shop-inventory"
+      },
+      {
+        "name": "StorageTier",
+        "values": [
+          "L1",
+          "L2",
+          "L3",
+          "L4",
+          "L5"
+        ],
+        "zh": "密钥材料存在哪一档（sec_key_version.storage_tier，TDD-支付服务-开放API加解密与密钥分发 §2.8.1）。",
+        "module": "secret"
       },
       {
         "name": "StoreActivityType",
@@ -50655,6 +50677,14 @@
       "type": "KeyPurpose",
       "value": "new KeyPurpose(Direction.COUNTERPARTY_VERIFY, Usage.VERIFY)",
       "zh": "验渠道的响应与回调签名（平台公钥 / 证书）",
+      "module": "secret"
+    },
+    {
+      "host": "KeyPurpose",
+      "name": "PARTNER_DATA",
+      "type": "KeyPurpose",
+      "value": "new KeyPurpose(Direction.INBOUND, Usage.ENCRYPT)",
+      "zh": "开放 API 的数据加密：接入方的 EncryptKey（解入站敏感字段、加密推送与对账单）， 以及平台加密私钥（增强方案）—— 两者方向与用途相同，靠 owner_type（PARTNER_APP / PLATFORM_OPEN）区分",
       "module": "secret"
     },
     {
