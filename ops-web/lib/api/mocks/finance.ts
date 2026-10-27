@@ -573,6 +573,12 @@ export const financeMock: FinanceApi = {
   updatePayChannel: async (channel, v) => {
     const row = db.payChannels.find((c) => c.payChannel === channel);
     if (!row) fail("通道不存在", "Channel not found");
+    // 与后端 PayChannelMasterServiceImpl#updateSettings 一致：W2 起「无市场行 = 不可用」，空列表直接拒
+    if (v.markets !== undefined) {
+      const codes = v.markets.replace(/[[\]"\s]/g, "").split(",").filter(Boolean);
+      if (!codes.length) fail("至少填一个市场；要停用请用开关", "Enter at least one market; use Disable to turn it off");
+      v = { ...v, markets: JSON.stringify(codes) };
+    }
     Object.assign(row, v);
     return wait(withCurrentRate(row), 300);
   },

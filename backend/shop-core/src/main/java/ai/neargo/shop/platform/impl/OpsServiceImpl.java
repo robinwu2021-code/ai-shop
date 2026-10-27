@@ -65,6 +65,11 @@ public class OpsServiceImpl implements OpsService {
     private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final StaffMapper staffMapper;
+    /** 第二因子：{@code email} 发码到登录邮箱 / {@code off} 只在测试世界（{@link OpsSecondFactorGuard} 拦生产） */
+    @org.springframework.beans.factory.annotation.Value("${shop.ops.auth.second-factor:email}")
+    private volatile String secondFactor;
+    private final OpsLoginGuard loginGuard;
+    private final OpsLoginChallenges loginChallenges;
     private final RoleMemberMapper roleMemberMapper;
     private final RolePermResolver rolePermResolver;
     /** 改角色/数据域之后清它 —— 身份也是现算的了（见 LiveIdentityResolver） */
@@ -131,7 +136,10 @@ public class OpsServiceImpl implements OpsService {
                           @org.springframework.context.annotation.Lazy
                           ai.neargo.shop.spi.notify.OpsAlertPort opsAlertPort,
                           @org.springframework.beans.factory.annotation.Value(
-                                  "${shop.web.base-url:}") String webBaseUrl) {
+                                  "${shop.web.base-url:}") String webBaseUrl,
+                          OpsLoginGuard loginGuard, OpsLoginChallenges loginChallenges) {
+        this.loginGuard = loginGuard;
+        this.loginChallenges = loginChallenges;
         this.opsAlertPort = opsAlertPort;
         this.webBaseUrl = webBaseUrl;
         this.mailPort = mailPort;
@@ -182,6 +190,15 @@ public class OpsServiceImpl implements OpsService {
 
     @Override
     public LoginResultVO login(String username, String password) {
+        /*
+         * 防撞库（安全规范 §2.7，G9）：账号 15 分钟 5 次失败、或同 IP 20 次失败 → 连密码都不验直接拒。
+         * 锁定期内输对也不放 —— 否则「试到第 6 次刚好对」就是一次成功的撞库。
+         */
+        String ip = clientIp();
+        if (loginGuard.blocked(username, ip)) {
+            log.warn("[ops] 登录被防撞库拦下 user={} ip={}", Masks.email(username), ip);
+            throw BizException.of(ErrorCode.TOO_MANY_REQUESTS);
+        }
         SysOpsStaff staff = DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectOne(Wrappers.<SysOpsStaff>lambdaQuery()
                         .eq(SysOpsStaff::getUsername, username).last("limit 1")));
@@ -189,18 +206,64 @@ public class OpsServiceImpl implements OpsService {
         // **用户不存在与密码错误返回同一个错误** —— 区分开等于送了个用户名探测器
         if (staff == null || !passwordHasher.matches(password, staff.getPassword())
                 || !"ACTIVE".equals(staff.getStatus())) {
+            loginGuard.failed(username, ip);
             throw BizException.of(ErrorCode.UNAUTHORIZED);
         }
+        loginGuard.succeeded(username);
         /*
          * 存量密码就地升级成 bcrypt。**登录成功这一刻是唯一能拿到明文的时机**。
          *
          * 放在验证之后：验证失败也重写等于把错误密码写进库，
          * 而那种故障发生在「用户下次输对了密码」的时刻，最难让人相信是系统的问题。
          */
-        if (passwordHasher.needsUpgrade(staff.getPassword())) {
+        boolean upgraded = passwordHasher.needsUpgrade(staff.getPassword());
+        if (upgraded) {
             staff.setPassword(passwordHasher.encode(password));
         }
+        if ("email".equals(secondFactor)) {
+            if (upgraded) {
+                staffMapper.updateById(staff);   // 会话要等第二步，升级后的哈希先落库
+            }
+            return challenge(staff);
+        }
         return issue(staff);
+    }
+
+    /**
+     * 第二因子（安全规范 §2.7）：密码对了只发挑战，不发会话 —— 6 位码发到登录邮箱，凭「挑战号 + 码」换会话。
+     * 运营账号就是邮箱（与忘记密码同一个收件地址），不另存第二套联系方式。
+     */
+    private LoginResultVO challenge(SysOpsStaff staff) {
+        OpsLoginChallenges.Issued c = loginChallenges.issue(staff.getStaffNo());
+        mailTemplatePort.send(staff.getUsername(), MailTemplatePort.TPL_OPS_LOGIN_CODE,
+                org.springframework.context.i18n.LocaleContextHolder.getLocale().toLanguageTag(),
+                "【数智邻购】运营端登录验证码 / Ops sign-in code",
+                java.util.Map.of("code", c.code(), "ttlMinutes", "5"),
+                "运营端登录验证码：{code}（{ttlMinutes} 分钟内有效，只能用一次）。\n"
+                        + "如果不是你本人在登录，请立即修改密码并联系管理员。\n\n"
+                        + "Ops sign-in code: {code} (valid for {ttlMinutes} minutes, single use).\n"
+                        + "If this wasn't you, change your password now and tell an administrator.\n",
+                NotifyBizType.OTP, null);
+        return LoginResultVO.challenge(c.challenge(), Masks.email(staff.getUsername()));
+    }
+
+    @Override
+    public LoginResultVO verifySecondFactor(String challenge, String code) {
+        String staffNo = loginChallenges.verify(challenge, code)
+                .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED));
+        SysOpsStaff staff = DataScopeContext.executeWithoutScope(() ->
+                staffMapper.selectOne(Wrappers.<SysOpsStaff>lambdaQuery()
+                        .eq(SysOpsStaff::getStaffNo, staffNo).last("limit 1")));
+        if (staff == null || !"ACTIVE".equals(staff.getStatus())) {
+            // 发码之后被停用：码再对也不放
+            throw BizException.of(ErrorCode.UNAUTHORIZED);
+        }
+        return issue(staff);
+    }
+
+    private static String clientIp() {
+        RequestMetaContext.Meta meta = RequestMetaContext.current();
+        return meta == null ? null : meta.ip();
     }
 
     @Override

@@ -10,4 +10,10 @@ public interface PayIntegrity {
 
     /** Q7：借贷不平（或合计与借方不符）的凭证数 */
     long unbalancedVouchers();
+
+    /**
+     * 资金恒等式①（W3 E09）：已成功的支付单里「已付 − 已退」与流水净额（收款账户借方 − 贷方）对不上的单号，按 id 升序最多
+     * {@code limit} 张。未冻结资金路径的存量单不在内（它们本来就没记流水，等回填 B7）。
+     */
+    java.util.List<String> ledgerMismatchedOrders(int limit);
 }

@@ -12,6 +12,9 @@ export interface DashboardApi {
    */
   login(username: string, password: string): Promise<LoginResp>;
 
+  /** 第二因子：用登录时发到邮箱的验证码换会话（`login` 返回 `challenge` 时才需要） */
+  verifyLogin(challenge: string, code: string): Promise<LoginResp>;
+
   /**
    * 忘记密码：往登录名那个邮箱发一次性重置码。
    *

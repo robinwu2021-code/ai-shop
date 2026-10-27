@@ -119,19 +119,14 @@ public class ChannelPayCallbackController {
                 rawBody));
     }
 
-    /** 经可信代理头取来源 IP（入口在网关之后，直连地址恒为网关）；只作记录，不作判断 */
+    /**
+     * 来源 IP：与全站同一处可信来源（{@code ClientMeta}，安全规范 §4.5）—— 只认反代覆写的 {@code X-Real-IP}，
+     * 伪造的 {@code X-Forwarded-For} 不进回调记录。只作记录，不作判断（回调的可信靠验签 + 查单）。
+     */
     private static String remoteIp(Map<String, String> headers) {
-        for (var e : headers.entrySet()) {
-            if ("x-forwarded-for".equalsIgnoreCase(e.getKey()) && e.getValue() != null) {
-                return e.getValue().split(",")[0].trim();
-            }
-        }
-        for (var e : headers.entrySet()) {
-            if ("x-real-ip".equalsIgnoreCase(e.getKey())) {
-                return e.getValue();
-            }
-        }
-        return null;
+        // 回调链（SecurityConfig#channelCallbackChain）的 RequestMetaFilter 经 ClientMeta 设好；领域代码不碰 servlet
+        ai.neargo.shop.auth.RequestMetaContext.Meta meta = ai.neargo.shop.auth.RequestMetaContext.current();
+        return meta == null ? null : meta.ip();
     }
 
     private String handle(Envelope envelope) {

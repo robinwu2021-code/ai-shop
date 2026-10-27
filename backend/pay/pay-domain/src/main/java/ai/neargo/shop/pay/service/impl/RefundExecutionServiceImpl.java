@@ -7,7 +7,6 @@ import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.channel.PayGateway;
-import ai.neargo.shop.pay.channel.PayGatewayRouter;
 import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.service.RefundExecutionService;
@@ -27,14 +26,15 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
     private final RefundPaymentStore store;
     private final RefundCapacityLedger capacity;
-    private final PayGatewayRouter gateways;
+    /** 渠道层（TDD-支付服务-I2 S4 管线；W2 S5 去掉路由表与「直调原网关」的旁路） */
+    private final LegacyChannelBridge channels;
     private final UnsplitRefundAdjustment adjustment;
 
-    public RefundExecutionServiceImpl(RefundPaymentStore store, PayGatewayRouter gateways,
+    public RefundExecutionServiceImpl(RefundPaymentStore store, LegacyChannelBridge channels,
                                       UnsplitRefundAdjustment adjustment, RefundCapacityLedger capacity) {
         this.capacity = capacity;
         this.store = store;
-        this.gateways = gateways;
+        this.channels = channels;
         this.adjustment = adjustment;
     }
 
@@ -42,9 +42,6 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     void setLedger(ai.neargo.shop.pay.service.PaymentLedgerService ledger) {
         this.ledger = ledger;
     }
-
-    /** 渠道管线（TDD-支付服务-I2 S4）；手工构造的单测里没有，直调原网关 */
-    private LegacyChannelBridge channels;
 
     /** 退款单（I3 S6）；手工构造的单测与切片测试里没有 —— 调用时再取 */
     private ObjectProvider<RefundService> refundOrderProvider;
@@ -54,10 +51,6 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
         this.refundOrderProvider = refundOrders;
     }
 
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    void setChannels(LegacyChannelBridge channels) {
-        this.channels = channels;
-    }
 
     /**
      * 原交易实际进的子商户号。新交易落在行上；存量行为空时从它的请求快照按下单时同一规则取（F08 · Review R08）。
@@ -127,15 +120,13 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             if (origin == null) {
                 return failed(row, "ORIGIN_PAYMENT_MISSING");
             }
-            PayGateway gateway = gateways.of(row.getPayChannel());
-            if (!gateway.supportsRefundCurrency(row.getCurrency())) {
+            if (!channels.supportsRefundCurrency(row.getPayChannel(), row.getCurrency())) {
                 return failed(row, "REFUND_CURRENCY_UNSUPPORTED");
             }
             var ctx = new PayGateway.TxContext(subMerchantOf(origin), origin.getTradeNo(),
                     origin.getOutTradeNo(), origin.getAmountMinor(), row.getCurrency());
-            PayGateway.Result sent = channels == null
-                    ? gateway.refund(ctx, row.getAmountMinor(), row.getOutTradeNo(), request.reason())
-                    : channels.refund(row.getPayChannel(), ctx, row.getAmountMinor(), row.getOutTradeNo(), request.reason());
+            PayGateway.Result sent = channels.refund(row.getPayChannel(), ctx, row.getAmountMinor(), row.getOutTradeNo(),
+                    request.reason());
             if (sent == null || (!sent.success() && sent.retryable())) {
                 return unknown(row, "REFUND_SEND_UNKNOWN");
             }
@@ -194,7 +185,7 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             return result(row, DispatchStatus.UNKNOWN, "REFUND_ZERO_CONFIRMATION_REQUIRED", false);
         }
         try {
-            var found = gateways.of(row.getPayChannel()).queryRefundOutcome(row.getOutTradeNo());
+            var found = channels.queryRefundOutcome(row.getPayChannel(), row.getOutTradeNo());
             if (found == null) return unknown(row, "REFUND_QUERY_UNKNOWN");
             if (!row.getOutTradeNo().equals(found.outRefundNo()))
                 return result(row, DispatchStatus.UNKNOWN, "REFUND_QUERY_IDENTITY_MISMATCH", false);

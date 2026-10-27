@@ -380,7 +380,7 @@ export const NAV: NavSection[] = [
 
   // ── P-12 结算与资金 ─────────────────────────────────────────────────────
   {
-    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance"], href: "/finance",
+    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance", "pay"], href: "/finance", match: ["/finance", "/pay-ops/orders", "/pay-ops/exceptions", "/pay-ops/refunds", "/pay-ops/notifies"],
     children: [
       // 分账指令/重试/报备状态都是结算单**行上的动作与列**，不单独成页
       { href: "/finance", label: "结算单与分账", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
@@ -419,6 +419,11 @@ export const NAV: NavSection[] = [
        * 却打不通接口（接口要的是 finance:recon:read），于是变成一个死按钮。
        */
       { href: "/finance?tab=channel-messages", label: "渠道报文", perm: "finance:recon:read", group: "分账结算", matrix: "P-12.1", ready: true },
+      // 支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）：独立页面，挂在「结算与资金」下（L1 已满，不另开域）
+      { href: "/pay-ops/orders", label: "支付单", perm: "pay:order:view", group: "支付运营", matrix: "P-12.1", ready: true },
+      { href: "/pay-ops/exceptions", label: "支付异常", perm: "pay:order:view", group: "支付运营", matrix: "P-12.1", ready: true },
+      { href: "/pay-ops/refunds", label: "退款复核", perm: "pay:refund:view", group: "支付运营", matrix: "P-12.1", ready: true },
+      { href: "/pay-ops/notifies", label: "业务通知", perm: "pay:log:view", group: "支付运营", matrix: "P-12.1", ready: true },
     ],
   },
 

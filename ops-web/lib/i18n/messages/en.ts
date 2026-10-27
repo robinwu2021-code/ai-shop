@@ -78,6 +78,10 @@ export const en: Messages = {
     resetNewHint: "At least 8 characters",
     resetSubmit: "Set new password",
     resetDone: "Password reset — every other session has been signed out",
+    codeTitle: "Email code",
+    codeSent: "We sent a code to {to}. It expires in 5 minutes.",
+    codeSubmit: "Verify and sign in",
+    codeBack: "Use another account",
   },
   role: {
     SUPER_ADMIN: "Super admin",

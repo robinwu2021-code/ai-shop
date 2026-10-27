@@ -1,8 +1,14 @@
 package ai.neargo.shop.pay.channel.followup;
 
+import ai.neargo.shop.spi.pay.PayInstruction;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.pay.channel.api.AccessMode;
+import ai.neargo.shop.pay.channel.api.ChannelKey;
+import ai.neargo.shop.pay.channel.capability.ChannelCapabilityRegistry;
+import ai.neargo.shop.pay.channel.context.ChannelContextFactory;
+import ai.neargo.shop.pay.channel.handler.ChannelProductCatalog;
 import ai.neargo.shop.pay.channel.api.ChannelResult;
 import ai.neargo.shop.pay.channel.api.Money;
 import ai.neargo.shop.pay.channel.api.PayErrorCode;
@@ -14,6 +20,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -97,7 +104,17 @@ class ChannelFollowUpRunnerTest {
         return new ChannelFollowUpRunner(store, (account, cmd) -> {
             queriedTraces.add(cmd.meta().traceId() + ":" + ((QueryCommand) cmd).outTradeNo());
             return answer;
-        }, (ch, out, trade, amount, currency) -> booked.add(out + "/" + trade + "/" + amount + currency),
+        }, new ChannelContextFactory(new ChannelCapabilityRegistry(List.of()), new ChannelProductCatalog() {
+            @Override
+            public Set<ChannelKey> enabledPayKeys() {
+                return Set.of();
+            }
+
+            @Override
+            public boolean payEnabled(ChannelKey key) {
+                return true;
+            }
+        }), (ch, out, trade, amount, currency) -> booked.add(out + "/" + trade + "/" + amount + currency),
                 Clock.fixed(now, ZoneOffset.UTC));
     }
 
@@ -127,7 +144,7 @@ class ChannelFollowUpRunnerTest {
         assertThat(booked).isEmpty();
 
         open("C");
-        answer = new ChannelResult.Pending(Map.of(), null);
+        answer = new ChannelResult.Pending(PayInstruction.none(), null);
         service(NOW).runOnce(10);
         assertThat(store.status.get(2L)).isEqualTo("PENDING");
         assertThat(store.rows.get(2L).nextAt()).isEqualTo(NOW.plus(Duration.ofMinutes(1)));

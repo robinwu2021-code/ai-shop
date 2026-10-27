@@ -14,6 +14,7 @@ import ai.neargo.shop.spi.user.MerchantQueryPort.PayStore;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,21 @@ public class PayMerchantBindingServiceImpl implements PayMerchantBindingService 
         this.bindings = bindings;
         this.stores = stores;
         this.tx = new TransactionTemplate(payTxManager);
+    }
+
+    @Override
+    public Optional<StoreRef> storeByNo(String storeNo) {
+        return stores.payStoreOf(storeNo).map(PayMerchantBindingServiceImpl::ref);
+    }
+
+    @Override
+    public Optional<StoreRef> storeById(Long storeId) {
+        return storeId == null ? Optional.empty() : stores.payStoreById(storeId).map(PayMerchantBindingServiceImpl::ref);
+    }
+
+    private static StoreRef ref(PayStore s) {
+        return new StoreRef(s.storeId(), s.storeNo(), s.storeName(), s.entityName(), s.market() == null ? "CN" : s.market(),
+                s.fundsPath());
     }
 
     @Override

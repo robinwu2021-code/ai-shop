@@ -1,6 +1,8 @@
 package ai.neargo.shop.pay.channel.handler;
 
+import ai.neargo.shop.pay.channel.api.AccessMode;
 import ai.neargo.shop.pay.channel.api.ChannelKey;
+import java.util.OptionalInt;
 import java.util.Set;
 
 /**
@@ -17,4 +19,20 @@ public interface ChannelProductCatalog {
      * 引入产品表不能把现有收款拦掉。键的地区为空（调用方还不知道地区）时，只要该渠道 × 接入模式 × 场景有任一开着的地区即可。
      */
     boolean payEnabled(ChannelKey key);
+
+    /**
+     * 出通道金额精度（{@code pay_channel_product_market.amount_scale}）。地区为空时按币种找；找不到或同币种有两种精度为空，
+     * 由调用方按币种默认小数位兜底（W2 S4 {@code ChannelContextFactory}）。
+     */
+    default OptionalInt amountScale(String payChannel, AccessMode accessMode, String market, String currency) {
+        return OptionalInt.empty();
+    }
+
+    /**
+     * 同一原单两次退款的最小间隔（{@code pay_channel_product.refund_interval_seconds}，取该渠道 × 接入模式各产品的最大值）；
+     * 0 = 不限（W2 S7 退款间隔环）。
+     */
+    default int refundIntervalSeconds(String payChannel, AccessMode accessMode) {
+        return 0;
+    }
 }

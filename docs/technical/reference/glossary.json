@@ -8720,6 +8720,474 @@
           "ar": "{a} ليس لديهم الوسم؛ سيُزال من {n}"
         },
         {
+          "key": "bizPay.collect.again",
+          "zh-CN": "再收一笔",
+          "en": "Collect another",
+          "ar": "تحصيل دفعة أخرى"
+        },
+        {
+          "key": "bizPay.collect.amount",
+          "zh-CN": "收款金额",
+          "en": "Amount",
+          "ar": "المبلغ"
+        },
+        {
+          "key": "bizPay.collect.amountPlaceholder",
+          "zh-CN": "输入金额",
+          "en": "Enter amount",
+          "ar": "أدخل المبلغ"
+        },
+        {
+          "key": "bizPay.collect.expiresAt",
+          "zh-CN": "{time} 前有效",
+          "en": "Valid until {time}",
+          "ar": "صالح حتى {time}"
+        },
+        {
+          "key": "bizPay.collect.generate",
+          "zh-CN": "生成收款码",
+          "en": "Create payment code",
+          "ar": "إنشاء رمز الدفع"
+        },
+        {
+          "key": "bizPay.collect.hint",
+          "zh-CN": "生成后请顾客用手机扫码付款，到账以收款流水为准。",
+          "en": "Ask the customer to scan the code with their phone. Check Payments to confirm it arrived.",
+          "ar": "اطلب من العميل مسح الرمز بهاتفه. راجع المدفوعات للتأكد من وصول المبلغ."
+        },
+        {
+          "key": "bizPay.collect.invalidAmount",
+          "zh-CN": "请输入正确的金额",
+          "en": "Please enter a valid amount",
+          "ar": "يرجى إدخال مبلغ صحيح"
+        },
+        {
+          "key": "bizPay.collect.scanHint",
+          "zh-CN": "请顾客扫码付款",
+          "en": "Ask the customer to scan and pay",
+          "ar": "اطلب من العميل المسح والدفع"
+        },
+        {
+          "key": "bizPay.collect.subject",
+          "zh-CN": "备注",
+          "en": "Note",
+          "ar": "ملاحظة"
+        },
+        {
+          "key": "bizPay.collect.subjectPlaceholder",
+          "zh-CN": "顾客付款时能看到（选填）",
+          "en": "Shown to the customer (optional)",
+          "ar": "تظهر للعميل (اختياري)"
+        },
+        {
+          "key": "bizPay.collect.title",
+          "zh-CN": "代客收款",
+          "en": "Collect payment",
+          "ar": "تحصيل دفعة"
+        },
+        {
+          "key": "bizPay.collect.viewFlow",
+          "zh-CN": "看收款流水",
+          "en": "View payments",
+          "ar": "عرض المدفوعات"
+        },
+        {
+          "key": "bizPay.common.failed",
+          "zh-CN": "操作没有成功，请稍后再试",
+          "en": "That didn't work. Please try again later",
+          "ar": "تعذّر تنفيذ العملية، يرجى المحاولة لاحقًا"
+        },
+        {
+          "key": "bizPay.common.invalidAmount",
+          "zh-CN": "请输入正确的金额",
+          "en": "Please enter a valid amount",
+          "ar": "يرجى إدخال مبلغ صحيح"
+        },
+        {
+          "key": "bizPay.flow.count",
+          "zh-CN": "{n} 笔",
+          "en": "{n} payments",
+          "ar": "{n} عملية"
+        },
+        {
+          "key": "bizPay.flow.empty",
+          "zh-CN": "这天没有收款",
+          "en": "No payments on this day",
+          "ar": "لا توجد مدفوعات في هذا اليوم"
+        },
+        {
+          "key": "bizPay.flow.nextDay",
+          "zh-CN": "后一天",
+          "en": "Next day",
+          "ar": "اليوم التالي"
+        },
+        {
+          "key": "bizPay.flow.noRefunds",
+          "zh-CN": "还没有退款",
+          "en": "No refunds yet",
+          "ar": "لا توجد عمليات استرداد بعد"
+        },
+        {
+          "key": "bizPay.flow.paid",
+          "zh-CN": "收款",
+          "en": "Received",
+          "ar": "المستلم"
+        },
+        {
+          "key": "bizPay.flow.prevDay",
+          "zh-CN": "前一天",
+          "en": "Previous day",
+          "ar": "اليوم السابق"
+        },
+        {
+          "key": "bizPay.flow.refund",
+          "zh-CN": "退款",
+          "en": "Refund",
+          "ar": "استرداد"
+        },
+        {
+          "key": "bizPay.flow.refundRow",
+          "zh-CN": "退款",
+          "en": "Refund",
+          "ar": "استرداد"
+        },
+        {
+          "key": "bizPay.flow.refunded",
+          "zh-CN": "退款",
+          "en": "Refunded",
+          "ar": "المسترد"
+        },
+        {
+          "key": "bizPay.flow.refundsTitle",
+          "zh-CN": "最近退款",
+          "en": "Recent refunds",
+          "ar": "أحدث عمليات الاسترداد"
+        },
+        {
+          "key": "bizPay.flow.title",
+          "zh-CN": "收款流水",
+          "en": "Payments",
+          "ar": "المدفوعات"
+        },
+        {
+          "key": "bizPay.grant.action_COLLECT",
+          "zh-CN": "代收款",
+          "en": "Collect",
+          "ar": "تحصيل"
+        },
+        {
+          "key": "bizPay.grant.action_READ",
+          "zh-CN": "查单",
+          "en": "View orders",
+          "ar": "عرض الطلبات"
+        },
+        {
+          "key": "bizPay.grant.action_REFUND",
+          "zh-CN": "代退款",
+          "en": "Refund",
+          "ar": "استرداد"
+        },
+        {
+          "key": "bizPay.grant.actions",
+          "zh-CN": "授权范围",
+          "en": "Access",
+          "ar": "الصلاحيات"
+        },
+        {
+          "key": "bizPay.grant.add",
+          "zh-CN": "添加授权",
+          "en": "Add access",
+          "ar": "إضافة وصول"
+        },
+        {
+          "key": "bizPay.grant.appNo",
+          "zh-CN": "第三方 AppId",
+          "en": "Third-party AppId",
+          "ar": "معرّف التطبيق للطرف الثالث"
+        },
+        {
+          "key": "bizPay.grant.appNoHint",
+          "zh-CN": "向第三方服务商索取，形如 APP-XXXX",
+          "en": "Ask the provider; it looks like APP-XXXX",
+          "ar": "اطلبه من المزوّد، مثل APP-XXXX"
+        },
+        {
+          "key": "bizPay.grant.empty",
+          "zh-CN": "还没有授权任何第三方",
+          "en": "No third parties have access",
+          "ar": "لا يوجد أي طرف ثالث لديه وصول"
+        },
+        {
+          "key": "bizPay.grant.hint",
+          "zh-CN": "让接入平台的第三方系统（如点餐、会员软件）代本店收款或退款。随时可撤销，撤销后立即失效。",
+          "en": "Let a connected third-party system (ordering, membership software…) collect or refund for this store. You can revoke it at any time and it stops immediately.",
+          "ar": "اسمح لنظام طرف ثالث متصل (الطلبات، العضوية…) بالتحصيل أو الاسترداد لهذا المتجر. يمكنك الإلغاء في أي وقت ويتوقف فورًا."
+        },
+        {
+          "key": "bizPay.grant.revoke",
+          "zh-CN": "撤销授权",
+          "en": "Revoke access",
+          "ar": "إلغاء الوصول"
+        },
+        {
+          "key": "bizPay.grant.revokeConfirm",
+          "zh-CN": "撤销对「{app}」的授权？",
+          "en": "Revoke access for “{app}”?",
+          "ar": "إلغاء وصول «{app}»؟"
+        },
+        {
+          "key": "bizPay.grant.revokeHint",
+          "zh-CN": "撤销后它立即不能再代本店收款或退款。",
+          "en": "It immediately can no longer collect or refund for this store.",
+          "ar": "لن يتمكن فورًا من التحصيل أو الاسترداد لهذا المتجر."
+        },
+        {
+          "key": "bizPay.grant.st_ACTIVE",
+          "zh-CN": "已授权",
+          "en": "Active",
+          "ar": "نشط"
+        },
+        {
+          "key": "bizPay.grant.st_REVOKED",
+          "zh-CN": "已撤销",
+          "en": "Revoked",
+          "ar": "ملغى"
+        },
+        {
+          "key": "bizPay.grant.title",
+          "zh-CN": "授权第三方",
+          "en": "Third-party access",
+          "ar": "وصول الأطراف الثالثة"
+        },
+        {
+          "key": "bizPay.method.ALIPAY",
+          "zh-CN": "支付宝",
+          "en": "Alipay",
+          "ar": "Alipay"
+        },
+        {
+          "key": "bizPay.method.TEST_PAY",
+          "zh-CN": "测试支付",
+          "en": "Test payment",
+          "ar": "دفع تجريبي"
+        },
+        {
+          "key": "bizPay.method.WECHAT_PAY",
+          "zh-CN": "微信支付",
+          "en": "WeChat Pay",
+          "ar": "WeChat Pay"
+        },
+        {
+          "key": "bizPay.method.other",
+          "zh-CN": "在线支付",
+          "en": "Online payment",
+          "ar": "الدفع الإلكتروني"
+        },
+        {
+          "key": "bizPay.qr.add",
+          "zh-CN": "生成收款码",
+          "en": "Create payment code",
+          "ar": "إنشاء رمز دفع"
+        },
+        {
+          "key": "bizPay.qr.daily",
+          "zh-CN": "每日上限",
+          "en": "Daily limit",
+          "ar": "الحد اليومي"
+        },
+        {
+          "key": "bizPay.qr.dailyBelowSingle",
+          "zh-CN": "每日上限不能小于单笔上限",
+          "en": "The daily limit can't be lower than the per-payment limit",
+          "ar": "لا يمكن أن يكون الحد اليومي أقل من الحد لكل عملية"
+        },
+        {
+          "key": "bizPay.qr.disable",
+          "zh-CN": "停用",
+          "en": "Disable",
+          "ar": "إيقاف"
+        },
+        {
+          "key": "bizPay.qr.disableConfirm",
+          "zh-CN": "停用这张收款码？",
+          "en": "Disable this payment code?",
+          "ar": "إيقاف رمز الدفع هذا؟"
+        },
+        {
+          "key": "bizPay.qr.disableHint",
+          "zh-CN": "停用后顾客再扫会提示已失效，不能恢复；需要时重新生成一张。",
+          "en": "Customers who scan it will be told it is no longer valid. This can't be undone; create a new one if needed.",
+          "ar": "سيُبلَّغ من يمسحه بأنه لم يعد صالحًا. لا يمكن التراجع؛ أنشئ رمزًا جديدًا عند الحاجة."
+        },
+        {
+          "key": "bizPay.qr.empty",
+          "zh-CN": "还没有收款码",
+          "en": "No payment codes yet",
+          "ar": "لا توجد رموز دفع بعد"
+        },
+        {
+          "key": "bizPay.qr.hide",
+          "zh-CN": "收起二维码",
+          "en": "Hide QR code",
+          "ar": "إخفاء رمز QR"
+        },
+        {
+          "key": "bizPay.qr.hint",
+          "zh-CN": "打印贴在收银台或桌上，顾客扫码自己输金额付款。每张码有单笔与每日上限。",
+          "en": "Print and place at the counter or on a table; customers scan and enter the amount. Each code has a per-payment and a daily limit.",
+          "ar": "اطبعه وضعه عند الكاشير أو على الطاولة؛ يمسح العميل الرمز ويدخل المبلغ. لكل رمز حد لكل عملية وحد يومي."
+        },
+        {
+          "key": "bizPay.qr.limits",
+          "zh-CN": "单笔 {single} · 每日 {daily}",
+          "en": "Per payment {single} · daily {daily}",
+          "ar": "لكل عملية {single} · يوميًا {daily}"
+        },
+        {
+          "key": "bizPay.qr.show",
+          "zh-CN": "显示二维码",
+          "en": "Show QR code",
+          "ar": "عرض رمز QR"
+        },
+        {
+          "key": "bizPay.qr.single",
+          "zh-CN": "单笔上限",
+          "en": "Per-payment limit",
+          "ar": "الحد لكل عملية"
+        },
+        {
+          "key": "bizPay.qr.st_ACTIVE",
+          "zh-CN": "使用中",
+          "en": "Active",
+          "ar": "نشط"
+        },
+        {
+          "key": "bizPay.qr.st_DISABLED",
+          "zh-CN": "已停用",
+          "en": "Disabled",
+          "ar": "موقوف"
+        },
+        {
+          "key": "bizPay.qr.store",
+          "zh-CN": "门店码",
+          "en": "Store code",
+          "ar": "رمز المتجر"
+        },
+        {
+          "key": "bizPay.qr.table",
+          "zh-CN": "桌台码 · {ref}",
+          "en": "Table code · {ref}",
+          "ar": "رمز الطاولة · {ref}"
+        },
+        {
+          "key": "bizPay.qr.tableKind",
+          "zh-CN": "桌台码",
+          "en": "Table code",
+          "ar": "رمز الطاولة"
+        },
+        {
+          "key": "bizPay.qr.tableRef",
+          "zh-CN": "桌号",
+          "en": "Table",
+          "ar": "الطاولة"
+        },
+        {
+          "key": "bizPay.qr.title",
+          "zh-CN": "收款码",
+          "en": "Payment codes",
+          "ar": "رموز الدفع"
+        },
+        {
+          "key": "bizPay.refund.amount",
+          "zh-CN": "退款金额",
+          "en": "Refund amount",
+          "ar": "مبلغ الاسترداد"
+        },
+        {
+          "key": "bizPay.refund.confirmHint",
+          "zh-CN": "原路退回顾客的付款账户；命中平台复核规则时要等平台通过。",
+          "en": "The money goes back to the customer's original account. Refunds that hit a platform review rule wait for approval.",
+          "ar": "يعود المبلغ إلى حساب العميل الأصلي. عمليات الاسترداد الخاضعة لقواعد المراجعة تنتظر موافقة المنصة."
+        },
+        {
+          "key": "bizPay.refund.confirmTitle",
+          "zh-CN": "确认退款 {amount}？",
+          "en": "Refund {amount}?",
+          "ar": "استرداد {amount}؟"
+        },
+        {
+          "key": "bizPay.refund.invalidAmount",
+          "zh-CN": "退款金额不对：要大于 0，且不超过这笔收款",
+          "en": "The amount must be above 0 and no more than this payment",
+          "ar": "يجب أن يكون المبلغ أكبر من 0 وألا يتجاوز هذه الدفعة"
+        },
+        {
+          "key": "bizPay.refund.maxHint",
+          "zh-CN": "这笔最多可退 {amount}",
+          "en": "Up to {amount} can be refunded for this payment",
+          "ar": "يمكن استرداد حتى {amount} من هذه الدفعة"
+        },
+        {
+          "key": "bizPay.refund.reason",
+          "zh-CN": "退款原因",
+          "en": "Reason",
+          "ar": "السبب"
+        },
+        {
+          "key": "bizPay.refundStatus.APPROVED",
+          "zh-CN": "复核通过",
+          "en": "Approved",
+          "ar": "تمت الموافقة"
+        },
+        {
+          "key": "bizPay.refundStatus.DISPATCHED",
+          "zh-CN": "退款中",
+          "en": "Refunding",
+          "ar": "جارٍ الاسترداد"
+        },
+        {
+          "key": "bizPay.refundStatus.FAILED",
+          "zh-CN": "退款失败",
+          "en": "Refund failed",
+          "ar": "فشل الاسترداد"
+        },
+        {
+          "key": "bizPay.refundStatus.OFFLINE_PENDING_PROOF",
+          "zh-CN": "待上传线下退款凭证",
+          "en": "Awaiting offline refund proof",
+          "ar": "بانتظار إثبات الاسترداد"
+        },
+        {
+          "key": "bizPay.refundStatus.PENDING_REVIEW",
+          "zh-CN": "待平台复核",
+          "en": "Awaiting platform review",
+          "ar": "بانتظار مراجعة المنصة"
+        },
+        {
+          "key": "bizPay.refundStatus.PENDING_SECOND_REVIEW",
+          "zh-CN": "待平台复核",
+          "en": "Awaiting platform review",
+          "ar": "بانتظار مراجعة المنصة"
+        },
+        {
+          "key": "bizPay.refundStatus.REJECTED",
+          "zh-CN": "平台已驳回",
+          "en": "Rejected by the platform",
+          "ar": "رفضته المنصة"
+        },
+        {
+          "key": "bizPay.refundStatus.REQUESTED",
+          "zh-CN": "已提交",
+          "en": "Submitted",
+          "ar": "تم الإرسال"
+        },
+        {
+          "key": "bizPay.refundStatus.SUCCEEDED",
+          "zh-CN": "已退款",
+          "en": "Refunded",
+          "ar": "تم الاسترداد"
+        },
+        {
           "key": "channel.EXPRESS",
           "zh-CN": "快递配送",
           "en": "Courier delivery",
@@ -29159,6 +29627,30 @@
           "ar": null
         },
         {
+          "key": "login.codeBack",
+          "zh-CN": "换个账号",
+          "en": "Use another account",
+          "ar": null
+        },
+        {
+          "key": "login.codeSent",
+          "zh-CN": "验证码已发到 {to}，5 分钟内有效。",
+          "en": "We sent a code to {to}. It expires in 5 minutes.",
+          "ar": null
+        },
+        {
+          "key": "login.codeSubmit",
+          "zh-CN": "验证并登录",
+          "en": "Verify and sign in",
+          "ar": null
+        },
+        {
+          "key": "login.codeTitle",
+          "zh-CN": "邮箱验证码",
+          "en": "Email code",
+          "ar": null
+        },
+        {
           "key": "login.forgot",
           "zh-CN": "忘记密码？",
           "en": "Forgot password?",
@@ -31083,6 +31575,12 @@
           "ar": "اربط رقم هاتف أولاً. تسجيل الدخول بكلمة المرور يستخدم رقم هاتفك كحساب."
         },
         {
+          "key": "err.pay.app_refund_limit",
+          "zh-CN": "该接入方今日退款额度不足（还可退 {0}）",
+          "en": "Daily refund limit for this app reached (remaining {0})",
+          "ar": "تم بلوغ حد الاسترداد اليومي لهذا التطبيق (المتبقي {0})"
+        },
+        {
           "key": "err.pay.approval_same_person",
           "zh-CN": "复核人不能与申请人或上一位复核人相同",
           "en": "The reviewer must differ from the requester and the previous reviewer",
@@ -31105,6 +31603,18 @@
           "zh-CN": "未知支付通道：{0}",
           "en": "Unknown payment channel: {0}",
           "ar": "قناة دفع غير معروفة: {0}"
+        },
+        {
+          "key": "err.pay.checkout_expired",
+          "zh-CN": "收款链接已失效，请向商家重新获取",
+          "en": "This payment link is no longer valid. Please ask the merchant for a new one",
+          "ar": "رابط الدفع هذا لم يعد صالحًا، يرجى طلب رابط جديد من التاجر"
+        },
+        {
+          "key": "err.pay.checkout_limit",
+          "zh-CN": "金额超过收款码的限额",
+          "en": "The amount exceeds the limit of this payment code",
+          "ar": "المبلغ يتجاوز حد رمز الدفع هذا"
         },
         {
           "key": "err.pay.forbidden",
@@ -32945,9 +33455,30 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "pay_api_nonce",
+      "class": "PayApiNonce",
+      "zh": "pay_api_nonce（db/pay V11 · TDD-支付服务-I5接入层 S1）：签名 nonce 防重放（无 Redis 时的落库实现），按 expire_at 定期清理。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.openapp.entity"
+    },
+    {
+      "table": "pay_api_request_log",
+      "class": "PayApiRequestLog",
+      "zh": "pay_api_request_log（db/pay V5 · 写入方 TDD-支付服务-I5接入层 S2）：业务方 → 支付的每一次请求（四向记录之①）。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.access.entity"
+    },
+    {
       "table": "pay_app",
       "class": "PayApp",
       "zh": "pay_app（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：接入方：第三方系统或内部系统（内部系统也注册，用于来源可拆） 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.openapp.entity"
+    },
+    {
+      "table": "pay_app_grant",
+      "class": "PayAppGrant",
+      "zh": "pay_app_grant（db/pay V11 · TDD-支付服务-I5接入层 S1）：门店授权某接入方代本店收款或退款。",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.openapp.entity"
     },
@@ -32957,6 +33488,20 @@
       "zh": "pay_approval（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：两人复核单（通用）：退款、出款、密钥启用、资金路径切换、收款商户启用、复核规则生效 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.approval.entity"
+    },
+    {
+      "table": "pay_biz_notify",
+      "class": "PayBizNotify",
+      "zh": "pay_biz_notify（db/pay V5 · 写入方 TDD-支付服务-I5接入层 S6）：支付 → 业务方的一次答复（四向记录之④）。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.notify.entity"
+    },
+    {
+      "table": "pay_biz_notify_attempt",
+      "class": "PayBizNotifyAttempt",
+      "zh": "pay_biz_notify_attempt（db/pay V5 · 写入方 TDD-支付服务-I5接入层 S6）：答复的每一次投递一行，含运营手动重推",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.notify.entity"
     },
     {
       "table": "pay_callback_log",
@@ -33006,6 +33551,13 @@
       "zh": "pay_checkout_session（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：收银会话：扫码 H5 / 托管收银台的一次性令牌，绑定一张支付单 字段注释取自结构化模型 pay-service-database.json，逐列定义以表结构说明为准。",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.acquiring.entity"
+    },
+    {
+      "table": "pay_checkout_session",
+      "class": "PayCheckoutSession",
+      "zh": "pay_checkout_session（db/pay V8 · 写入方 TDD-支付服务-I5接入层 S7）：收银令牌。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.checkout.entity"
     },
     {
       "table": "pay_ent_command_dedup",
@@ -33139,6 +33691,20 @@
       "zh": "pay_order（db/pay V7–V9 · TDD-支付服务-I3支付单退款流水 S1）：支付订单：调用方要收的一笔钱，独立于业务订单。",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.acquiring.entity"
+    },
+    {
+      "table": "pay_qr_code",
+      "class": "PayQrCode",
+      "zh": "pay_qr_code（db/pay V11 · TDD-支付服务-I5接入层 S1）：静态码（门店 / 桌台码），顾客输金额建单。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.checkout.entity"
+    },
+    {
+      "table": "pay_raw_payload",
+      "class": "PayRawPayload",
+      "zh": "pay_raw_payload（db/pay V5 · TDD-支付服务-W2渠道层补完 S3）：加密原文 —— 调用请求 / 响应、回调原文、对账单原件。",
+      "module": "pay/pay-channel",
+      "package": "ai.neargo.shop.pay.channel.entity"
     },
     {
       "table": "pay_refund",
@@ -33804,6 +34370,55 @@
       "zh": "评价点赞明细 —— rvw_review.like_count 的真源。",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.review.entity"
+    },
+    {
+      "table": "sec_access_log",
+      "class": "SecAccessLog",
+      "zh": "sec_access_log（db/secret V1 · TDD-支付服务-W5密钥模块）：明文接触记录：任何人看到明文（发放时展示、查看敏感字段、查看报文原文、应急调阅）逐次记录。",
+      "module": "secret",
+      "package": "ai.neargo.secret.store.entity"
+    },
+    {
+      "table": "sec_key",
+      "class": "SecKey",
+      "zh": "sec_key（db/secret V1 · TDD-支付服务-W5密钥模块）：密钥：调用外部 API 与被外部调用的每一把密钥。",
+      "module": "secret",
+      "package": "ai.neargo.secret.store.entity"
+    },
+    {
+      "table": "sec_key_event",
+      "class": "SecKeyEvent",
+      "zh": "sec_key_event（db/secret V1 · TDD-支付服务-W5密钥模块）：密钥生命周期事件：创建、录入、测试、启用、轮换、退役、吊销、到期提醒、重新包裹。",
+      "module": "secret",
+      "package": "ai.neargo.secret.store.entity"
+    },
+    {
+      "table": "sec_key_policy",
+      "class": "SecKeyPolicy",
+      "zh": "sec_key_policy（db/secret V1 · TDD-支付服务-W5密钥模块）：密钥策略：按命名空间、归属类型与环境规定有效期、到期提醒、轮换重叠期、双人控制 字段注释取自 DDL，逐列定义以表结构说明 §6.8 为准。",
+      "module": "secret",
+      "package": "ai.neargo.secret.store.entity"
+    },
+    {
+      "table": "sec_key_version",
+      "class": "SecKeyVersion",
+      "zh": "sec_key_version（db/secret V1 · TDD-支付服务-W5密钥模块）：密钥版本：一把密钥的每一份材料。",
+      "module": "secret",
+      "package": "ai.neargo.secret.store.entity"
+    },
+    {
+      "table": "sec_master_key",
+      "class": "SecMasterKey",
+      "zh": "sec_master_key（db/secret V1 · TDD-支付服务-W5密钥模块）：主密钥登记：按命名空间与环境登记包裹数据密钥的主密钥元数据。",
+      "module": "secret",
+      "package": "ai.neargo.secret.store.entity"
+    },
+    {
+      "table": "sec_secret_blob",
+      "class": "SecSecretBlob",
+      "zh": "sec_secret_blob（db/secret V1 · TDD-支付服务-W5密钥模块）：密文存储：密钥私密材料与各域敏感字段的信封加密密文。",
+      "module": "secret",
+      "package": "ai.neargo.secret.store.entity"
     },
     {
       "table": "stl_bank_flow",
@@ -34583,6 +35198,13 @@
         "name": "FOOD",
         "value": "FOOD",
         "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "InternalCallers",
+        "name": "CHECKOUT",
+        "value": "CHECKOUT",
+        "zh": "收银台接入方（V11 种子）：静态码与商家代客收款建的单记在它名下",
         "module": "pay/pay-domain"
       },
       {
@@ -42269,7 +42891,8 @@
           "MEDIA_UPLOAD",
           "STATEMENT_FETCH",
           "PAYOUT",
-          "KEY_VERIFY"
+          "KEY_VERIFY",
+          "SPLIT"
         ],
         "zh": "对渠道的操作（渠道接入统一封装设计 §2.1、§8.1）",
         "module": "pay/pay-channel"
@@ -42406,6 +43029,16 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "Direction",
+        "values": [
+          "OUTBOUND",
+          "INBOUND",
+          "COUNTERPARTY_VERIFY"
+        ],
+        "zh": "sec_key.direction",
+        "module": "secret"
       },
       {
         "name": "DispatchOutcome",
@@ -42696,6 +43329,9 @@
           "PAY_BINDING_INVALID",
           "PAY_ONBOARDING_INFLIGHT",
           "PAY_ONBOARDING_STATE",
+          "PAY_APP_REFUND_LIMIT",
+          "PAY_CHECKOUT_EXPIRED",
+          "PAY_CHECKOUT_LIMIT",
           "EXPRESS_CHANNEL_OFF",
           "EXPRESS_PICKUP_EXISTS",
           "EXPRESS_SENDER_INCOMPLETE",
@@ -43089,6 +43725,17 @@
       {
         "name": "Kind",
         "values": [
+          "SUBSIDY",
+          "SUBSIDY_RETURN",
+          "SPLIT",
+          "SPLIT_REVERSE"
+        ],
+        "zh": "",
+        "module": "pay/pay-channel"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "SOURCE_FACT",
           "EARN_GRANT",
           "REFUND_CONFIRMATION",
@@ -43394,18 +44041,6 @@
         "module": "print"
       },
       {
-        "name": "Op",
-        "values": [
-          "SUBSIDY",
-          "SUBSIDY_RETURN",
-          "SPLIT",
-          "SPLIT_REVERSE",
-          "REFUND"
-        ],
-        "zh": "五个资金动作。",
-        "module": "pay/pay-channel"
-      },
-      {
         "name": "Operation",
         "values": [
           "SUBSIDY",
@@ -43582,6 +44217,8 @@
           "CHANNEL_CONNECT_FAILED",
           "TRADE_NOT_FOUND",
           "REFUND_REJECTED",
+          "REFUND_CLOSED",
+          "REFUND_ABNORMAL",
           "SYSTEM_ERROR"
         ],
         "zh": "统一错误码（渠道接入统一封装设计 §13.1）。",
@@ -43746,7 +44383,7 @@
           "BIZ",
           "CHECKOUT"
         ],
-        "zh": "支付接入层的五个入口：每个入口一个子包、一个 URL 前缀、一套鉴权（ADR-042 §2-3）。",
+        "zh": "支付接入层的五个入口：每个入口一个子包、一个 URL 前缀、一套鉴权（ADR-044 §2-3）。",
         "module": "pay/pay-portal"
       },
       {
@@ -43966,6 +44603,22 @@
       {
         "name": "Reason",
         "values": [
+          "NOT_FOUND",
+          "NAMESPACE_MISMATCH",
+          "ENV_NOT_CONFIGURED",
+          "NO_MASTER_KEY",
+          "INTEGRITY",
+          "ILLEGAL_STATE",
+          "DUAL_CONTROL",
+          "VERSION_UNUSABLE",
+          "KEY_UNUSABLE"
+        ],
+        "zh": "",
+        "module": "secret"
+      },
+      {
+        "name": "Reason",
+        "values": [
           "OK",
           "NO_ACCOUNT",
           "FROZEN",
@@ -44109,6 +44762,18 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "SecretNamespace",
+        "values": [
+          "PAY",
+          "LOGISTICS",
+          "INVENTORY",
+          "NOTIFY",
+          "PLATFORM"
+        ],
+        "zh": "命名空间：每个域一套主密钥，进程只能解本域（表结构说明 §3.0）。",
+        "module": "secret"
       },
       {
         "name": "SettleMode",
@@ -44662,6 +45327,18 @@
         ],
         "zh": "",
         "module": "pay/pay-domain"
+      },
+      {
+        "name": "Usage",
+        "values": [
+          "SIGN",
+          "VERIFY",
+          "HMAC",
+          "ENCRYPT",
+          "MTLS"
+        ],
+        "zh": "sec_key.key_usage（列不叫 usage：MariaDB 保留字）",
+        "module": "secret"
       },
       {
         "name": "ValueType",
@@ -46101,6 +46778,25 @@
         "zh": ""
       },
       {
+        "name": "PayGrantAction",
+        "client": "b-app",
+        "values": [
+          "COLLECT",
+          "REFUND",
+          "READ"
+        ],
+        "zh": "授权第三方的动作：代收款 / 代退款 / 查单"
+      },
+      {
+        "name": "PayGrantStatus",
+        "client": "b-app",
+        "values": [
+          "ACTIVE",
+          "REVOKED"
+        ],
+        "zh": ""
+      },
+      {
         "name": "PayMethod",
         "client": "shared",
         "values": [
@@ -46119,6 +46815,46 @@
           "OFFLINE"
         ],
         "zh": "支付方式。"
+      },
+      {
+        "name": "PayOrderStatus",
+        "client": "ops-web",
+        "values": [
+          "CREATED",
+          "AWAITING_PAYMENT",
+          "SUCCEEDED",
+          "PARTIALLY_REFUNDED",
+          "REFUNDED",
+          "CLOSED"
+        ],
+        "zh": ""
+      },
+      {
+        "name": "PayQrKind",
+        "client": "b-app",
+        "values": [
+          "STORE",
+          "TABLE"
+        ],
+        "zh": "收款码：门店码 / 桌台码"
+      },
+      {
+        "name": "PayQrStatus",
+        "client": "b-app",
+        "values": [
+          "ACTIVE",
+          "DISABLED"
+        ],
+        "zh": ""
+      },
+      {
+        "name": "PayStatementKind",
+        "client": "b-app",
+        "values": [
+          "PAYMENT",
+          "REFUND"
+        ],
+        "zh": "流水行：收款 / 退款"
       },
       {
         "name": "PaymentApplyStatus",
@@ -46681,6 +47417,10 @@
           "/pages/deposit/index",
           "/pages/invoice/index",
           "/pages/statement/index",
+          "/pages/pay-collect/index",
+          "/pages/pay-flow/index",
+          "/pages/pay-qrcodes/index",
+          "/pages/pay-grants/index",
           "/pages/stats/index",
           "/pages/cross-store/index",
           "/pages/plan/index",
@@ -47870,67 +48610,11 @@
       "module": "pay/pay-channel"
     },
     {
-      "host": "WechatDirectApis",
-      "name": "HOST",
+      "host": "AlipayProtocol",
+      "name": "GATEWAY",
       "type": "String",
-      "value": "WechatApis.HOST",
-      "zh": "主域名。",
-      "module": "pay/pay-channel"
-    },
-    {
-      "host": "WechatDirectApis",
-      "name": "HOST_BACKUP",
-      "type": "String",
-      "value": "WechatApis.HOST_BACKUP",
+      "value": "\"https://openapi.alipay.com/gateway.do\"",
       "zh": "",
-      "module": "pay/pay-channel"
-    },
-    {
-      "host": "WechatDirectApis",
-      "name": "JSAPI",
-      "type": "String",
-      "value": "\"/v3/pay/transactions/jsapi\"",
-      "zh": "JSAPI 下单（小程序 / 公众号）。",
-      "module": "pay/pay-channel"
-    },
-    {
-      "host": "WechatDirectApis",
-      "name": "APP",
-      "type": "String",
-      "value": "\"/v3/pay/transactions/app\"",
-      "zh": "APP 下单。",
-      "module": "pay/pay-channel"
-    },
-    {
-      "host": "WechatDirectApis",
-      "name": "H5",
-      "type": "String",
-      "value": "\"/v3/pay/transactions/h5\"",
-      "zh": "H5 下单。",
-      "module": "pay/pay-channel"
-    },
-    {
-      "host": "WechatDirectApis",
-      "name": "TRANSACTION_BY_OUT_TRADE_NO",
-      "type": "String",
-      "value": "\"/v3/pay/transactions/out-trade-no/\"",
-      "zh": "按商户订单号查单。",
-      "module": "pay/pay-channel"
-    },
-    {
-      "host": "WechatDirectApis",
-      "name": "REFUND",
-      "type": "String",
-      "value": "\"/v3/refund/domestic/refunds\"",
-      "zh": "退款。",
-      "module": "pay/pay-channel"
-    },
-    {
-      "host": "WechatDirectApis",
-      "name": "REFUND_BY_OUT_REFUND_NO",
-      "type": "String",
-      "value": "\"/v3/refund/domestic/refunds/\"",
-      "zh": "按商户退款单号查退款。",
       "module": "pay/pay-channel"
     },
     {
@@ -47939,6 +48623,14 @@
       "type": "String",
       "value": "\"*\"",
       "zh": "通配：该通道下全部支付方式 / 全部主体形态。",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "MaskedPlaintextSealer",
+      "name": "NOT_ENCRYPTED",
+      "type": "String",
+      "value": "\"NONE:MASKED_PLAINTEXT\"",
+      "zh": "data_key_cipher 的标记值：这一行没有加密、也不是完整原文",
       "module": "pay/pay-channel"
     },
     {
@@ -47990,10 +48682,26 @@
       "module": "pay/pay-channel"
     },
     {
+      "host": "MetricsInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "60",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
       "host": "RecordingInterceptor",
       "name": "ORDER",
       "type": "int",
       "value": "40",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "RefundIntervalInterceptor",
+      "name": "ORDER",
+      "type": "int",
+      "value": "80",
       "zh": "",
       "module": "pay/pay-channel"
     },
@@ -48026,6 +48734,22 @@
       "name": "ORDER",
       "type": "int",
       "value": "20",
+      "zh": "",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "WechatV3Protocol",
+      "name": "HOST",
+      "type": "String",
+      "value": "\"https://api.mch.weixin.qq.com\"",
+      "zh": "主域名。",
+      "module": "pay/pay-channel"
+    },
+    {
+      "host": "WechatV3Protocol",
+      "name": "HOST_BACKUP",
+      "type": "String",
+      "value": "\"https://api2.mch.weixin.qq.com\"",
       "zh": "",
       "module": "pay/pay-channel"
     },
@@ -49838,12 +50562,108 @@
       "module": "pay/pay-portal"
     },
     {
+      "host": "PortalAuthFilter",
+      "name": "FAILURE",
+      "type": "String",
+      "value": "PortalAuthFilter.class.getName() + \".failure\"",
+      "zh": "鉴权器写进请求属性的失败原因（只进记录）",
+      "module": "pay/pay-portal"
+    },
+    {
+      "host": "CachedBodyRequest",
+      "name": "MAX_BODY",
+      "type": "int",
+      "value": "1 << 20",
+      "zh": "",
+      "module": "pay/pay-portal"
+    },
+    {
+      "host": "PortalRequests",
+      "name": "REQUEST_ID",
+      "type": "String",
+      "value": "PortalRequests.class.getName() + \".requestId\"",
+      "zh": "",
+      "module": "pay/pay-portal"
+    },
+    {
+      "host": "PortalRequests",
+      "name": "PRINCIPAL",
+      "type": "String",
+      "value": "PortalRequests.class.getName() + \".principal\"",
+      "zh": "",
+      "module": "pay/pay-portal"
+    },
+    {
+      "host": "PortalRequests",
+      "name": "RESULT_CODE",
+      "type": "String",
+      "value": "PortalRequests.class.getName() + \".resultCode\"",
+      "zh": "",
+      "module": "pay/pay-portal"
+    },
+    {
+      "host": "PortalRequests",
+      "name": "IDEMPOTENCY_KEY",
+      "type": "String",
+      "value": "\"Idempotency-Key\"",
+      "zh": "",
+      "module": "pay/pay-portal"
+    },
+    {
+      "host": "PortalResponse",
+      "name": "OK",
+      "type": "int",
+      "value": "0",
+      "zh": "",
+      "module": "pay/pay-portal"
+    },
+    {
       "host": "InternalCallerFilter",
       "name": "ATTRIBUTE",
       "type": "String",
       "value": "InternalCallerFilter.class.getName() + \".caller\"",
       "zh": "端点读这个属性拿调用方码。",
       "module": "pay/pay-svc"
+    },
+    {
+      "host": "KeyPurpose",
+      "name": "INBOUND_HMAC",
+      "type": "KeyPurpose",
+      "value": "new KeyPurpose(Direction.INBOUND, Usage.HMAC)",
+      "zh": "第三方 / 内部系统调我方：我方用它验 HMAC 签名",
+      "module": "secret"
+    },
+    {
+      "host": "KeyPurpose",
+      "name": "OUTBOUND_SIGN",
+      "type": "KeyPurpose",
+      "value": "new KeyPurpose(Direction.OUTBOUND, Usage.SIGN)",
+      "zh": "我方调渠道：签名",
+      "module": "secret"
+    },
+    {
+      "host": "KeyPurpose",
+      "name": "OUTBOUND_ENCRYPT",
+      "type": "KeyPurpose",
+      "value": "new KeyPurpose(Direction.OUTBOUND, Usage.ENCRYPT)",
+      "zh": "我方调渠道：报文加解密（如微信 APIv3 密钥、蓝新 HashKey + HashIV）",
+      "module": "secret"
+    },
+    {
+      "host": "KeyPurpose",
+      "name": "COUNTERPARTY_VERIFY",
+      "type": "KeyPurpose",
+      "value": "new KeyPurpose(Direction.COUNTERPARTY_VERIFY, Usage.VERIFY)",
+      "zh": "验渠道的响应与回调签名（平台公钥 / 证书）",
+      "module": "secret"
+    },
+    {
+      "host": "SecretLifecycleJob",
+      "name": "NAME",
+      "type": "String",
+      "value": "\"secret-lifecycle\"",
+      "zh": "",
+      "module": "secret"
     },
     {
       "host": "CacheConfig",
@@ -50567,10 +51387,50 @@
     },
     {
       "host": "BizPerms",
+      "name": "PAY_COLLECT",
+      "type": "String",
+      "value": "\"mch:pay:collect\"",
+      "zh": "商家端支付（TDD-支付服务-I5接入层 S8，接口清单 §5）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PAY_REFUND",
+      "type": "String",
+      "value": "\"mch:pay:refund\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PAY_STATEMENT",
+      "type": "String",
+      "value": "\"mch:pay:statement\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PAY_APP_GRANT",
+      "type": "String",
+      "value": "\"mch:pay:app-grant\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "PAY_QR",
+      "type": "String",
+      "value": "\"mch:pay:qr\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "PRINT_READ",
       "type": "String",
       "value": "\"biz:print:read\"",
-      "zh": "角色 → 权限码。",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {
@@ -50641,7 +51501,7 @@
       "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(PRINT_READ, \"查看打印任务\"), Map.entry(PRINT_SUBMIT, \"提交打印\"), Map.entry(PRINT_REPRINT, \"补打小票\"), Map.entry(PRINT_EXTRA, \"加印小票\"), Map.entry(PRINT_DEVICE, \"管理打印设备\"), Map.entry(PRINT_CONFIG, \"配置打印模板与路由\"), Map.entry(PRINT_RESOLVE, \"核实打印异常\"), Map.entry(PRINT_SIMULATE, \"模拟打印\"), Map.entry(PRINT_EXPORT, \"导出打印PDF\"), Map.entry(PRICING_TAX_READ, \"查看商家税配置\"), Map.entry(PRICING_TAX_UPDATE, \"维护商家税配置（仅主体属主）\"), Map.entry(PRICING_CONFIG_READ, \"查看门店结账规则\"), Map.entry(PRICING_CONFIG_UPDATE, \"编辑门店结账规则草稿\"), Map.entry(PRICING_CONFIG_PUBLISH, \"发布门店结账规则\"), Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(REPORT_EXPORT, \"导出经营报表\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_PLAN_READ, \"查看门店储值方案\"), Map.entry(SV_PLAN_MANAGE, \"管理门店储值方案\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(PAY_COLLECT, \"代客收款（出动态收款码）\"), Map.entry(PAY_REFUND, \"发起原路退款\"), Map.entry(PAY_STATEMENT, \"看本店收款流水\"), Map.entry(PAY_APP_GRANT, \"授权第三方代本店收款或退款\"), Map.entry(PAY_QR, \"生成与停用本店收款码\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -50915,6 +51775,62 @@
       "type": "String",
       "value": "\"finance:payout:execute\"",
       "zh": "登记付款。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ORDER_VIEW",
+      "type": "String",
+      "value": "\"pay:order:view\"",
+      "zh": "支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_ORDER_MANAGE",
+      "type": "String",
+      "value": "\"pay:order:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_REFUND_VIEW",
+      "type": "String",
+      "value": "\"pay:refund:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_REFUND_REVIEW",
+      "type": "String",
+      "value": "\"pay:refund:review\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_LOG_VIEW",
+      "type": "String",
+      "value": "\"pay:log:view\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_NOTIFY_RESEND",
+      "type": "String",
+      "value": "\"pay:notify:resend\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_QR_MANAGE",
+      "type": "String",
+      "value": "\"pay:qr:manage\"",
+      "zh": "",
       "module": "shop-base-auth"
     },
     {

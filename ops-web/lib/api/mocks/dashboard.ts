@@ -27,6 +27,10 @@ export const dashboardMock: DashboardApi = {
     const role = MOCK_ROLE_OF[username] ?? "SUPER_ADMIN";
     return wait({ username, role, token: `mock-${role}`, perms: backendPermsOf(role) }, 350);
   },
+  /** mock 不发验证码（mock 的 login 也从不返回 challenge）；直接按超管放行，只为契约齐全 */
+  verifyLogin: () =>
+    wait({ username: "admin", role: "SUPER_ADMIN" as const, token: "mock-SUPER_ADMIN",
+           perms: backendPermsOf("SUPER_ADMIN") }, 200),
   /*
    * mock 的 me 从当前登录态回读角色 —— 不能凭空返回超管，
    * 那会让「刷新后权限被放大」在 mock 下永远看不出来。

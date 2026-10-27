@@ -1,4 +1,4 @@
--- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql 得到。
+-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql、db/secret/V*.sql 得到。
 -- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
@@ -11476,6 +11476,246 @@ CREATE TABLE IF NOT EXISTS pay_merchant_status_log
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS pay_app_grant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_app_id BIGINT NOT NULL,
+    store_id BIGINT NOT NULL,
+    actions VARCHAR(128) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    granted_by VARCHAR(64) NOT NULL,
+    granted_at DATETIME(3) NOT NULL,
+    revoked_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_app_grant_1 UNIQUE (pay_app_id,store_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_api_nonce
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    caller_type VARCHAR(24) NOT NULL,
+    caller_id BIGINT NOT NULL,
+    nonce VARCHAR(64) NOT NULL,
+    expire_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_api_nonce_1 UNIQUE (caller_type,caller_id,nonce)
+);
+
+CREATE TABLE IF NOT EXISTS pay_qr_code
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    qr_code VARCHAR(64) NOT NULL,
+    store_id BIGINT NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    table_ref VARCHAR(64) NULL,
+    currency CHAR(3) NOT NULL,
+    single_limit_minor BIGINT NOT NULL,
+    daily_limit_minor BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    created_by_type VARCHAR(24) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_qr_code_1 UNIQUE (qr_code)
+);
+
+CREATE TABLE IF NOT EXISTS sec_master_key
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    kms_key_id VARCHAR(128) NOT NULL,
+    provider VARCHAR(24) NOT NULL,
+    namespace VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(48) NULL,
+    activated_at DATETIME(3) NULL,
+    rotated_at DATETIME(3) NULL,
+    retired_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_master_key_1 UNIQUE (kms_key_id),
+    CONSTRAINT uk_sec_master_key_2 UNIQUE (active_key)
+);
+
+CREATE TABLE IF NOT EXISTS sec_secret_blob
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    purpose VARCHAR(24) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    owner_id BIGINT NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    cipher_text TEXT NOT NULL,
+    data_key_cipher VARCHAR(512) NOT NULL,
+    sec_master_key_id BIGINT NOT NULL,
+    algorithm VARCHAR(32) NOT NULL,
+    aad_sha256 CHAR(64) NOT NULL,
+    rewrapped_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    max_age_days INT NOT NULL DEFAULT 0,
+    warn_before_days INT NOT NULL DEFAULT 30,
+    overlap_days INT NOT NULL DEFAULT 7,
+    dual_control TINYINT(1) NOT NULL DEFAULT 1,
+    verify_before_enable TINYINT(1) NOT NULL DEFAULT 1,
+    reveal_on_issue_only TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_policy_1 UNIQUE (namespace,owner_type,env)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    namespace VARCHAR(24) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    owner_type VARCHAR(24) NOT NULL,
+    owner_id BIGINT NOT NULL,
+    counterparty VARCHAR(32) NULL,
+    direction VARCHAR(24) NOT NULL,
+    key_usage VARCHAR(24) NOT NULL,
+    algorithm VARCHAR(32) NOT NULL,
+    material_type VARCHAR(24) NOT NULL,
+    env VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    current_version INT NOT NULL DEFAULT 0,
+    sec_key_policy_id BIGINT NULL,
+    expires_at DATETIME(3) NULL,
+    last_used_at DATETIME(3) NULL,
+    use_count BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_1 UNIQUE (namespace,owner_type,owner_id,direction,key_usage,env)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    sec_key_id BIGINT NOT NULL,
+    version_index INT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    active_key VARCHAR(32) NULL,
+    sec_secret_blob_id BIGINT NULL,
+    public_material TEXT NULL,
+    fingerprint VARCHAR(64) NOT NULL,
+    external_key_id VARCHAR(64) NULL,
+    source VARCHAR(24) NOT NULL,
+    valid_from DATETIME(3) NULL,
+    valid_to DATETIME(3) NULL,
+    entered_by VARCHAR(64) NOT NULL,
+    verified_at DATETIME(3) NULL,
+    verify_evidence VARCHAR(128) NULL,
+    enabled_by VARCHAR(64) NULL,
+    enabled_at DATETIME(3) NULL,
+    overlap_until DATETIME(3) NULL,
+    retired_at DATETIME(3) NULL,
+    revoked_by VARCHAR(64) NULL,
+    revoked_at DATETIME(3) NULL,
+    revoke_reason VARCHAR(255) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sec_key_version_1 UNIQUE (sec_key_id,version_index),
+    CONSTRAINT uk_sec_key_version_2 UNIQUE (active_key),
+    CONSTRAINT ck_sec_key_version_1 CHECK (sec_secret_blob_id IS NOT NULL OR public_material IS NOT NULL),
+    CONSTRAINT ck_sec_key_version_2 CHECK (enabled_by IS NULL OR enabled_by <> entered_by)
+);
+
+CREATE TABLE IF NOT EXISTS sec_key_event
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    sec_key_id BIGINT NOT NULL,
+    sec_key_version_id BIGINT NULL,
+    event_type VARCHAR(24) NOT NULL,
+    operator_type VARCHAR(24) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    approval_ref VARCHAR(128) NULL,
+    reason VARCHAR(255) NULL,
+    client_ip VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS sec_access_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    access_type VARCHAR(24) NOT NULL,
+    namespace VARCHAR(24) NOT NULL,
+    sec_key_id BIGINT NULL,
+    sec_secret_blob_id BIGINT NULL,
+    target_type VARCHAR(24) NULL,
+    target_id BIGINT NULL,
+    accessor_no VARCHAR(64) NOT NULL,
+    accessor_role VARCHAR(64) NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    approval_ref VARCHAR(128) NULL,
+    client_ip VARCHAR(64) NULL,
+    accessed_at DATETIME(3) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT ck_sec_access_log_1 CHECK (sec_key_id IS NOT NULL OR sec_secret_blob_id IS NOT NULL OR target_id IS NOT NULL),
+    CONSTRAINT ck_sec_access_log_2 CHECK (access_type <> 'BREAK_GLASS' OR approval_ref IS NOT NULL)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -17031,6 +17271,30 @@ ON DUPLICATE KEY UPDATE point_code=point_code;
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at)
 SELECT 'SUPER_ADMIN','OPS_PRINTING','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL
 WHERE NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PRINTING' AND end_code='OPS');
+INSERT IGNORE INTO sys_function (function_code, name, end_code, icon, href, sort, enabled, created_at, updated_at)
+VALUES ('OPS_PAY', '支付运营', 'OPS', 'CreditCard', '/pay-ops/orders', 115, 1, NOW(), NOW())
+ON DUPLICATE KEY UPDATE function_code = function_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_01','OPS_PAY','支付单','支付单','/pay-ops/orders','pay:order:view','pay:order:view','IMPLEMENTED',1,'P-12.1','MENU',10,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_02','OPS_PAY','退款复核','退款','/pay-ops/refunds','pay:refund:view','pay:refund:view','IMPLEMENTED',1,'P-12.1','MENU',20,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_03','OPS_PAY','业务通知','记录','/pay-ops/notifies','pay:log:view','pay:log:view','IMPLEMENTED',1,'P-12.1','MENU',30,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_04','OPS_PAY','支付异常','支付单','/pay-ops/exceptions','pay:order:view','pay:order:view','IMPLEMENTED',1,'P-12.1','MENU',40,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_REFUND_REVIEW','OPS_PAY','退款复核（通过 / 驳回）','退款',NULL,'pay:refund:review','pay:refund:review','IMPLEMENTED',1,NULL,'ACTION',50,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_NOTIFY_RESEND','OPS_PAY','业务通知手动重推','记录',NULL,'pay:notify:resend','pay:notify:resend','IMPLEMENTED',1,NULL,'ACTION',60,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ORDER_MANAGE','OPS_PAY','支付异常处置（原路退回 / 无需处置）','支付单',NULL,'pay:order:manage','pay:order:manage','IMPLEMENTED',1,NULL,'ACTION',70,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_QR_MANAGE','OPS_PAY','收款码风控停用','支付单',NULL,'pay:qr:manage','pay:qr:manage','IMPLEMENTED',0,NULL,'ACTION',80,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_01','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_01' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_02','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_02' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_03','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_03' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_04','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_04' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_REFUND_REVIEW','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_REFUND_REVIEW' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_NOTIFY_RESEND','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_NOTIFY_RESEND' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ORDER_MANAGE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ORDER_MANAGE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_QR_MANAGE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_QR_MANAGE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_01','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_01' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_02','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_02' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_03','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_03' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_04','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_04' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','ACT__PAY_REFUND_REVIEW','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='ACT__PAY_REFUND_REVIEW' AND end_code='OPS');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES
@@ -17051,3 +17315,31 @@ INSERT IGNORE INTO pay_refund_review_rule (rule_code, version_index, status, mar
     single_amount_minor, daily_amount_minor, refund_ratio_bp, after_days, always_review, review_timeout_minutes,
     drafted_by, created_at, updated_at) VALUES
 ('DEFAULT_CN', 1, 'DRAFT', 'CN', 'CNY', '', '', 100000, 500000, 10000, 90, 0, 1440, 'SYSTEM', NOW(3), NOW(3));
+INSERT IGNORE INTO pay_app (app_no, name, owner_type, status, scopes, rate_limit_qps, daily_refund_limit_minor, sandbox,
+    created_at, updated_at) VALUES
+('CHECKOUT', '收银台静态码', 'INTERNAL', 'ACTIVE', 'pay:create,pay:read', 200, 0, 0, NOW(3), NOW(3));
+INSERT IGNORE INTO sys_pay_channel_market
+    (pay_channel, market, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('TEST', 'CN', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'HK', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'SG', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('TEST', 'SA', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+INSERT IGNORE INTO sys_pay_channel
+    (pay_channel, name, enabled, supports_subsidy, supports_split, supports_payout, pay_methods, currency,
+     tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('NEWEBPAY', '蓝新金流', 0, 0, 0, 0, '["CARD_ONLINE","ATM","CVS"]', 'TWD',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('LINEPAY', 'LINE Pay', 0, 0, 0, 0, '["LINE_PAY"]', 'TWD',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('PAYBY', 'PayBy', 0, 0, 0, 1, '["WALLET","CARD_ONLINE"]', 'AED',
+     'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);
+INSERT IGNORE INTO sys_pay_channel_market
+    (pay_channel, market, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
+VALUES
+    ('NEWEBPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('LINEPAY', 'TW', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0),
+    ('PAYBY', 'AE', 'MAIN', '2026-10-26 00:00:00', 'SYSTEM', '2026-10-26 00:00:00', 'SYSTEM', 0, 0);

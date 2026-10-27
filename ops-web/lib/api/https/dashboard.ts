@@ -22,8 +22,32 @@ interface BackendStaff {
 }
 
 interface BackendLogin {
-  token: string;
-  staff?: BackendStaff;
+  token: string | null;
+  staff?: BackendStaff | null;
+  /** 开着第二因子时，密码那一步只回这两项（安全规范 §2.7） */
+  challenge?: string | null;
+  challengeTo?: string | null;
+}
+
+/** 登录与第二步共用的摊平：两份的话，将来改一处另一处就成了「登录后按钮全失效」的那种缺陷 */
+function toLoginResp(raw: BackendLogin | undefined, fallbackUsername: string) {
+  const staff = raw?.staff ?? undefined;
+  return {
+    username: staff?.username ?? fallbackUsername,
+    role: toOpsRole(staff?.roles?.[0]),
+    token: raw?.token ?? "",
+    /*
+     * perms 一直在响应里，而此前**这一行不存在** —— 拿到手就丢了，
+     * 判权全靠前端本地的 ROLE_PERMS。两套各自演化的结果是
+     * 「前端显示的权限与后端实际允许的没有任何关系」。
+     */
+    perms: staff?.perms ?? [],
+    merchantNo: staff?.merchantNo,
+    communityNo: staff?.communityNo,
+    pickupNo: staff?.pickupNo,
+    challenge: raw?.token ? undefined : raw?.challenge ?? undefined,
+    challengeTo: raw?.token ? undefined : raw?.challengeTo ?? undefined,
+  };
 }
 
 /**
@@ -93,21 +117,11 @@ export const dashboardHttp: DashboardApi = {
    */
   login: async (username, password) => {
     const raw = await client.post<BackendLogin>("/ops/auth/login", { username, password });
-    const staff = raw?.staff;
-    return {
-      username: staff?.username ?? username,
-      role: toOpsRole(staff?.roles?.[0]),
-      token: raw?.token ?? "",
-      /*
-       * perms 一直在响应里，而此前**这一行不存在** —— 拿到手就丢了，
-       * 判权全靠前端本地的 ROLE_PERMS。两套各自演化的结果是
-       * 「前端显示的权限与后端实际允许的没有任何关系」。
-       */
-      perms: staff?.perms ?? [],
-      merchantNo: staff?.merchantNo,
-      communityNo: staff?.communityNo,
-      pickupNo: staff?.pickupNo,
-    };
+    return toLoginResp(raw, username);
+  },
+  verifyLogin: async (challenge, code) => {
+    const raw = await client.post<BackendLogin>("/ops/auth/login/verify", { challenge, code });
+    return toLoginResp(raw, "");
   },
   me: async () => {
     const staff = await client.get<BackendStaff>("/ops/auth/me");

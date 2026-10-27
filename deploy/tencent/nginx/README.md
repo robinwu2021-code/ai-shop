@@ -11,6 +11,15 @@
 > 改完把快照同步回来。别写脚本从这里往上覆盖 —— 两个 server 块里
 > 有证书路径这类与机器绑定的东西。
 
+> ⚠️ **2026-10-26 起这份快照领先于服务器**（安全规范 §4，P0 · G1 / G2），在服务器照做之前两边不一致：
+> 1. `mkdir -p /etc/nginx/ai-shop`，按 `ops-allow.conf.example` 写 `/etc/nginx/ai-shop/ops-allow.conf`（办公网 / VPN 出口网段，**不进仓库**）；
+> 2. 把 `www.hxmall.top.conf` 的这几处改动合到服务器那份：全部 `X-Forwarded-For` 改为 `$remote_addr`（覆写，不追加）；
+>    `/ops-web/`、`/ops-web/assets/` 加白名单 include + `deny all`；公共正则 location 去掉 `ops`，另起 `/ops/`、`/pay-ops/` 两段；
+>    80 端口 server 加 `/internal/` deny；
+> 3. `cp -p` 备份 → `nginx -t` → `systemctl reload nginx`；从办公网与外网各开一次 `/ops-web/`，外网应 403；
+> 4. 与应用发布**先后无关**：现网 nginx 早已写 `X-Real-IP $remote_addr`，新应用（`ClientMeta` 只认本机 / 私网转来的 `X-Real-IP`）先上也拿得到真 IP；旧应用读被覆写后的 `X-Forwarded-For` 同样是真 IP。
+> 仓库里由 `NginxEdgeRulesTest` 守住这几条，改快照时它会先红。
+
 | 文件 | 对应 server |
 |---|---|
 | `ai-shop-ip.conf` | 按 IP 访问（`http://106.55.27.246/...`）。**商家端那个薄壳走的就是这条** —— `android-shell` release 的 `shell_entry` 指着 `http://106.55.27.246/b/` |

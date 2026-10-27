@@ -2,7 +2,6 @@ package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.shop.common.PayChannels;
 import ai.neargo.shop.pay.channel.PayGateway;
-import ai.neargo.shop.pay.channel.PayGatewayRouter;
 import ai.neargo.shop.pay.channel.legacy.LegacyChannelBridge;
 import ai.neargo.shop.pay.service.OrdinaryPaymentInitiationService;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
@@ -11,24 +10,17 @@ import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests;
 import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests.PayerIdentity;
 import java.util.Objects;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /** Shared ordinary initiation; settlement generation and refund projections remain app orchestration. */
 @Service
 public class OrdinaryPaymentInitiationServiceImpl implements OrdinaryPaymentInitiationService {
     private final PaymentLedgerService ledger;
-    private final PayGatewayRouter gateways;
-    /** 渠道管线（TDD-支付服务-I2 S4）；手工构造的单测里没有，直调原网关 */
-    private LegacyChannelBridge channels;
+    /** 渠道层（TDD-支付服务-I2 S4 管线；W2 S5 去掉路由表与「直调原网关」的旁路） */
+    private final LegacyChannelBridge channels;
 
-    public OrdinaryPaymentInitiationServiceImpl(PaymentLedgerService ledger, PayGatewayRouter gateways) {
+    public OrdinaryPaymentInitiationServiceImpl(PaymentLedgerService ledger, LegacyChannelBridge channels) {
         this.ledger = ledger;
-        this.gateways = gateways;
-    }
-
-    @Autowired(required = false)
-    void setChannels(LegacyChannelBridge channels) {
         this.channels = channels;
     }
 
@@ -51,10 +43,7 @@ public class OrdinaryPaymentInitiationServiceImpl implements OrdinaryPaymentInit
         if ("WECHAT".equals(frozen.payChannel())) {
             ledger.freezePayer(outTradeNo, frozen.userNo(), payer.openId(), payer.appId());
         }
-        PayGateway gateway;
-        try {
-            gateway = gateways.of(frozen.payChannel());
-        } catch (RuntimeException missingGateway) {
+        if (!channels.supports(frozen.payChannel())) {
             return new SettlePort.PayInitResult(false, outTradeNo, frozen.payChannel(),
                     Map.of(), "支付通道未接入：" + frozen.payChannel());
         }
@@ -63,7 +52,7 @@ public class OrdinaryPaymentInitiationServiceImpl implements OrdinaryPaymentInit
         // A thrown or ambiguous response leaves the same original intent pending for query/recovery.
         var command = new PayGateway.PrepayCommand(outTradeNo, frozen.amountMinor(),
                 frozen.currency(), frozen.subject(), "JSAPI", subMchId, payerId);
-        var response = channels == null ? gateway.prepay(command) : channels.prepay(frozen.payChannel(), command);
+        var response = channels.prepay(frozen.payChannel(), command);
         if (response == null) {
             throw new IllegalStateException("PAY_CHANNEL_RESPONSE_MISSING");
         }

@@ -49,6 +49,9 @@ function LoginForm() {
   const [forgot, setForgot] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  // 第二因子（安全规范 §2.7）：密码对了只拿到挑战号，还要邮箱里的 6 位码
+  const [challenge, setChallenge] = useState<{ id: string; to?: string } | null>(null);
+  const [code, setCode] = useState("");
   const didAutoLogin = useRef(false);
 
   // ?u=admin&p=xxx → 自动提交一次（测试用）
@@ -67,20 +70,44 @@ function LoginForm() {
     setErr("");
     try {
       const r = await api.login(u, p);
-      login({
-        username: r.username,
-        role: r.role,
-        token: r.token,
-        perms: r.perms,
-        merchantNo: r.merchantNo,
-        communityNo: r.communityNo,
-      });
-      router.replace("/");
+      if (r.challenge) {
+        // 还没登录：不写登录态、不跳转，换到输码那一步
+        setChallenge({ id: r.challenge, to: r.challengeTo });
+        setCode("");
+        return;
+      }
+      enter(r);
     } catch (e) {
       setErr((e as Error).message || t("common.failed"));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function verify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!challenge) return;
+    setBusy(true);
+    setErr("");
+    try {
+      enter(await api.verifyLogin(challenge.id, code.trim()));
+    } catch (e) {
+      setErr((e as Error).message || t("common.failed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function enter(r: Awaited<ReturnType<typeof api.login>>) {
+    login({
+      username: r.username,
+      role: r.role,
+      token: r.token,
+      perms: r.perms,
+      merchantNo: r.merchantNo,
+      communityNo: r.communityNo,
+    });
+    router.replace("/");
   }
 
   async function submit(e: React.FormEvent) {
@@ -101,6 +128,24 @@ function LoginForm() {
           <p className="txt-body text-muted-foreground">{t("login.subtitle")}</p>
         </CardHeader>
         <CardContent>
+          {challenge ? (
+            <form className="space-y-3" onSubmit={verify}>
+              <Notice tone="info">{t("login.codeSent", { to: challenge.to ?? username })}</Notice>
+              <div className="space-y-1">
+                <label className="txt-body text-muted-foreground">{t("login.codeTitle")}</label>
+                <Input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric"
+                       autoComplete="one-time-code" maxLength={6} placeholder="000000" />
+              </div>
+              {err && <div className="rounded-field bg-destructive/10 px-3.5 py-2 txt-body text-destructive">{err}</div>}
+              <Button className="w-full" type="submit" disabled={busy || code.trim().length !== 6}>
+                {busy ? t("common.loading") : t("login.codeSubmit")}
+              </Button>
+              <button type="button" onClick={() => { setChallenge(null); setCode(""); setErr(""); }}
+                      className="focus-ring w-full txt-caption text-muted-foreground hover:text-foreground">
+                {t("login.codeBack")}
+              </button>
+            </form>
+          ) : (
           <form className="space-y-3" onSubmit={submit}>
             <div className="space-y-1">
               <label className="txt-body text-muted-foreground">{t("login.username")}</label>
@@ -120,6 +165,7 @@ function LoginForm() {
               {busy ? t("common.loading") : t("login.submit")}
             </Button>
           </form>
+          )}
 
           {/*
             忘记密码。这条路径此前完全不存在 —— 后端只有登录与改自己的密码，

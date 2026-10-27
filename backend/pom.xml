@@ -31,6 +31,9 @@
              各自做什么见 job/pom.xml 里那四条注释。
              它们的包名是 ai.neargo.job.*，与业务域分开：worker 要的正是「不认识业务」 -->
         <module>job</module>
+        <!-- 平台级密钥管理三个模块（契约 / 持久层 / 信封加密与生命周期）收在 backend/secret/ 下，见 secret/pom.xml。
+             包名 ai.neargo.secret.*：业务域依赖它，它不依赖任何业务域（表结构说明 §3.0） -->
+        <module>secret</module>
         <!-- 服务间调用的传输零件（@HttpExchange + RestClient）。**只依赖 spring-web**：
              shop-base 与 job-worker 都要用，而 job-worker 不能依赖 shop-base，所以单独成模块 -->
         <module>svc-client</module>

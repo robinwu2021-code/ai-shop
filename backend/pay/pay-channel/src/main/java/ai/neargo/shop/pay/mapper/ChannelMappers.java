@@ -10,6 +10,7 @@ import ai.neargo.shop.pay.channel.entity.PayChannelFollowup;
 import ai.neargo.shop.pay.channel.entity.PayChannelLifecycleLog;
 import ai.neargo.shop.pay.channel.entity.PayChannelProduct;
 import ai.neargo.shop.pay.channel.entity.PayChannelProductMarket;
+import ai.neargo.shop.pay.channel.entity.PayRawPayload;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
 /**
@@ -93,5 +94,9 @@ public final class ChannelMappers {
 
     /** 渠道适配器生命周期变化 */
     public interface PayChannelLifecycleLogMapper extends BaseMapper<PayChannelLifecycleLog> {
+    }
+
+    /** 原文（W2 S3：记录型客户端写；V5 建表时无人写） */
+    public interface PayRawPayloadMapper extends BaseMapper<PayRawPayload> {
     }
 }

@@ -8,10 +8,12 @@ import ai.neargo.shop.pay.channel.api.PayScene;
 /**
  * 对渠道的一次请求：<b>不可变命令</b>，可记录、可重放（补查、回调重放）、可审计（渠道接入统一封装设计 §2.2）。
  *
- * <p>I2 先落 CN 现有链路用到的五种；confirm / void / 进件 / 对账单 / 出款随用到它们的迭代（I6 / I7 / I8）加入 permits。
+ * <p>I2 落 CN 现有链路用到的五种；W2 补齐能力接口要的撤销、分账、进件、对账单、出款（TDD-支付服务-W2渠道层补完 S1）。
+ * confirm（LINE Pay）随 I8 加入。
  */
 public sealed interface ChannelCommand
-        permits PayCommand, QueryCommand, CloseCommand, RefundCommand, RefundQueryCommand {
+        permits PayCommand, QueryCommand, CloseCommand, RefundCommand, RefundQueryCommand, VoidCommand, SplitCommand,
+        OnboardingSubmitCommand, OnboardingQueryCommand, StatementFetchCommand, PayoutCommand {
 
     ChannelOperation operation();
 

@@ -8,7 +8,8 @@
     "c-app",
     "b-app",
     "ops-web",
-    "site"
+    "site",
+    "checkout-h5"
   ],
   "scripts": {
     "dev:c": "npm run dev:h5 -w ai-shop-c-app",
@@ -17,6 +18,8 @@
     "dev:p": "npm run dev -w ai-shop-ops-web -- --port 3100",
     "build:p": "npm run build -w ai-shop-ops-web",
     "check:p": "npm run check -w ai-shop-ops-web",
+    "dev:checkout": "npm run dev -w ai-shop-checkout-h5",
+    "check:checkout": "npm run check -w ai-shop-checkout-h5",
     "dev:site": "npm run dev -w ai-shop-site",
     "build:site": "npm run build -w ai-shop-site",
     "check:site": "npm run check -w ai-shop-site",

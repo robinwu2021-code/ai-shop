@@ -1,6 +1,8 @@
 /** Existing namespace contracts; do not rename deployed APIs to normalize their spelling. */
 export function usesPluralCollections(path) {
   return /^\/ops(?:\/|$)/.test(path)
+    // 支付运营端（ADR-044 OPS 面，与 /ops 同一套运营会话）：沿用 /ops 的复数约定
+    || /^\/pay-ops\/v1(?:\/|$)/.test(path)
     || /^\/biz\/management\//.test(path)
     || /^\/biz\/stores\/(?:\{[^}]+\}|:[^/]+)(?:\/|$)/.test(path);
 }

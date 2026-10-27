@@ -101,7 +101,9 @@ class CallbackTemplateTest {
         // 带上真实的安全过滤链：新地址要与旧地址一样不走 Bearer、靠验签
         return MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build()
                 .perform(post(path).contentType(MediaType.APPLICATION_JSON).content(body)
-                        .header("X-Forwarded-For", "203.0.113.7, 10.0.0.1"))
+                        // nginx 覆写的可信头；伪造的 XFF 最左值不能进记录（安全规范 §4.5）
+                        .header("X-Real-IP", "203.0.113.7")
+                        .header("X-Forwarded-For", "6.6.6.6, 203.0.113.7"))
                 .andReturn().getResponse().getContentAsString();
     }
 

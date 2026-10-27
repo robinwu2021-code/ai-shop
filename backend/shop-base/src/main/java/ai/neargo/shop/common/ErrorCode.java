@@ -979,6 +979,12 @@ public enum ErrorCode {
     PAY_ONBOARDING_INFLIGHT(70090, "err.pay.onboarding_inflight"),
     /** 进件单当前状态不允许这个动作（如审核中再提交、回填来的旧进件单由旧流程推进）。回显原因 */
     PAY_ONBOARDING_STATE(70091, "err.pay.onboarding_state"),
+    /** 接入方当日退款额度不足（开放 API，安全规范 §2.3）。回显还能退多少 */
+    PAY_APP_REFUND_LIMIT(70092, "err.pay.app_refund_limit"),
+    /** 收银令牌过期、已作废或支付单已关（安全规范 §2.5：除「不存在」外只回这一种） */
+    PAY_CHECKOUT_EXPIRED(70093, "err.pay.checkout_expired"),
+    /** 静态码超单笔上限或单码日累计上限 */
+    PAY_CHECKOUT_LIMIT(70094, "err.pay.checkout_limit"),
 
     /*
      * 快递代下单（TDD-快递100商家寄件）。

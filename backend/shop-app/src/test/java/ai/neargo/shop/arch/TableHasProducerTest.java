@@ -73,7 +73,8 @@ class TableHasProducerTest {
         // 支付服务 I3（TDD-支付服务-I3支付单退款流水）：表先建、写入逐片落地，落地一片删一行
         NO_PRODUCER.put("pay_refund_review_rule", "db/pay V8 种子；运营维护入口随 I5");
         NO_PRODUCER.put("pay_app", "db/pay V7 种子 MALL / FOOD；第三方接入方入口随 I5");
-        NO_PRODUCER.put("pay_checkout_session", "收银会话随 I5 开放 API / 收银台");
+        NO_PRODUCER.put("sec_key_policy", "W5 密钥模块：无策略行时按 DDL 默认值（重叠 7 天、提前 30 天提醒、启用前须验证）；"
+                + "运营维护策略随密钥运营接口（完成度复核 §3.5 接口一行）");
         NO_PRODUCER.put("pts_user_account", "积分 V3 已下线旧余额入口，生产使用 pts_account");
         NO_PRODUCER.put("pts_user_ledger", "积分 V3 已下线旧流水入口，生产使用 pts_voucher/pts_entry");
         NO_PRODUCER.put("stl_points_pool", "积分 V3 废除商家返分费入池，生产使用 pts_fund_pool");

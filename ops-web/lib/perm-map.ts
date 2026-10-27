@@ -95,6 +95,14 @@ export const UI_PERM_MAP: Record<string, string | typeof UNIMPLEMENTED> = {
   // 与发票核验按钮**对谁都不显示**（含财务角色本人），且没有任何报错 ——
   // 就是这张表注释里说的「按钮神秘消失」。两个码在 Perms.java 里一直都有。
   "finance:payout:execute": "finance:payout:execute",
+  // 支付运营端（S9）：UI 码与后端码同名
+  "pay:order:view": "pay:order:view",
+  "pay:order:manage": "pay:order:manage",
+  "pay:refund:view": "pay:refund:view",
+  "pay:refund:review": "pay:refund:review",
+  "pay:log:view": "pay:log:view",
+  "pay:notify:resend": "pay:notify:resend",
+  "pay:qr:manage": "pay:qr:manage",
   "finance:invoice:verify": "finance:invoice:verify",
   "risk:blacklist:update": "risk:blacklist:update",
   "risk:rule:update": "risk:rule:update",

@@ -27,6 +27,12 @@
             <artifactId>job-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 平台级密钥管理（W5）：进程内的唯一解密点。数据源、迁移、主密钥注入在 SecretDataSourceConfig -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>secret-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>shop-base</artifactId>
@@ -59,7 +65,7 @@
             <artifactId>pay-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- 支付接入层，内嵌形态（ADR-042）：controller 由 ShopApplication 的组件扫描装上 -->
+        <!-- 支付接入层，内嵌形态（ADR-044）：controller 由 ShopApplication 的组件扫描装上 -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>pay-portal</artifactId>

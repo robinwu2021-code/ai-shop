@@ -132,6 +132,16 @@ public final class BizPerms {
      *   <li><b>理货员没有 ORDER_VIEW。</b> 分拣单本身够他用且不含金额，给了是多给。</li>
      * </ul>
      */
+    /*
+     * 商家端支付（TDD-支付服务-I5接入层 S8，接口清单 §5）。默认只有主体属主（OWNER 的 *）有：
+     * 店长也碰不了钱 —— 老板要让谁收款、退款，给他建一个勾了这些码的角色。
+     */
+    public static final String PAY_COLLECT = "mch:pay:collect";
+    public static final String PAY_REFUND = "mch:pay:refund";
+    public static final String PAY_STATEMENT = "mch:pay:statement";
+    public static final String PAY_APP_GRANT = "mch:pay:app-grant";
+    public static final String PAY_QR = "mch:pay:qr";
+
     public static final String PRINT_READ = "biz:print:read";
     public static final String PRINT_SUBMIT = "biz:print:submit";
     public static final String PRINT_REPRINT = "biz:print:reprint";
@@ -207,6 +217,11 @@ public final class BizPerms {
             Map.entry(ENT_TEMPLATE_WRITE, "编辑权益模板"),
             Map.entry(ENT_TEMPLATE_PUBLISH, "发布与停用权益模板"),
             Map.entry(ENT_ISSUE_MANAGE, "管理权益发行规则"),
+            Map.entry(PAY_COLLECT, "代客收款（出动态收款码）"),
+            Map.entry(PAY_REFUND, "发起原路退款"),
+            Map.entry(PAY_STATEMENT, "看本店收款流水"),
+            Map.entry(PAY_APP_GRANT, "授权第三方代本店收款或退款"),
+            Map.entry(PAY_QR, "生成与停用本店收款码"),
             Map.entry(FINANCE, "结算账单与收款进件"));
 
     /**

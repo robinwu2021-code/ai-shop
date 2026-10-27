@@ -369,6 +369,18 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mInvoiceTitle: { method: "GET", path: "/biz/settle/invoice-title", auth: true, summary: "平台开票信息" },
   mMyInvoices: { method: "GET", path: "/biz/settle/invoices", auth: true, summary: "我提交的票" },
   mStatement: { method: "GET", path: "/biz/settle/statement", auth: true, summary: "对账单" },
+
+  // 商家端支付（/biz/pay，TDD-支付服务-I5接入层 S8）：代客收款、退款、本店收款流水、收款码、授权第三方
+  mPayCollect: { method: "POST", path: "/biz/pay/collection", auth: true, summary: "代客收款（动态码）" },
+  mPayRefunds: { method: "GET", path: "/biz/pay/refund", auth: true, summary: "本店最近退款" },
+  mPayRefund: { method: "POST", path: "/biz/pay/refund", auth: true, summary: "发起原路退款" },
+  mPayStatement: { method: "GET", path: "/biz/pay/statement", auth: true, summary: "本店收款日流水" },
+  mPayQrCodes: { method: "GET", path: "/biz/pay/qr-code", auth: true, summary: "本店收款码" },
+  mPayCreateQrCode: { method: "POST", path: "/biz/pay/qr-code", auth: true, summary: "生成收款码" },
+  mPayDisableQrCode: { method: "PUT", path: "/biz/pay/qr-code/{qrCode}/disabled", auth: true, summary: "停用收款码" },
+  mPayAppGrants: { method: "GET", path: "/biz/pay/app-grant", auth: true, summary: "已授权的第三方" },
+  mPayGrantApp: { method: "POST", path: "/biz/pay/app-grant", auth: true, summary: "授权第三方" },
+  mPayRevokeGrant: { method: "DELETE", path: "/biz/pay/app-grant/{id}", auth: true, summary: "撤销第三方授权" },
   mSubmitInvoice: { method: "POST", path: "/biz/settle/invoices", auth: true, summary: "提交进项票" },
 
   // 收款账户（ADR-011 自营供应商模式）。**读写同一条路径、单数**：

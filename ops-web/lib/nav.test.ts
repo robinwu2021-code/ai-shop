@@ -93,6 +93,15 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
    */
   const ADDED_SINCE_MERGE = new Set<string>([
     "/printing", // Newly delivered, permission and runtime gated printing operations.
+    /*
+     * 支付运营端四页（2026-10-26，TDD-支付服务-I5接入层 S9）。挂在「结算与资金」下的「支付运营」分组：
+     * 支付单、支付异常挂 pay:order:view，退款复核挂 pay:refund:view，业务通知挂 pay:log:view。
+     * 超管与财务两行各多出这四条（财务持有三个读码与复核码，不持处置与重推码）。
+     */
+    "/pay-ops/orders",
+    "/pay-ops/exceptions",
+    "/pay-ops/refunds",
+    "/pay-ops/notifies",
     // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
     // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
     "/merchants?tab=self-operated",

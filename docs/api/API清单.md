@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1063 个接口**：后端已实现 900（85%）· 前端在调 978
+**合计 1074 个接口**：后端已实现 911（85%）· 前端在调 987
 
 ---
 
@@ -316,7 +316,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **450** 个接口 ｜ 后端已实现 **355**（79%）｜ 前端在调 **449**
+共 **460** 个接口 ｜ 后端已实现 **365**（79%）｜ 前端在调 **458**
 
 ### activities（4）
 
@@ -787,6 +787,21 @@
 | POST | `/biz/order/{orderNo}/waybill` | 更正运单 | — | `Order` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/worklist` | 按优先级分页的订单待办 | — | `object` | 🔒 | ✅ | ✅ |
 
+### pay（10）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/biz/pay/app-grant` | 已授权的第三方 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/pay/app-grant` | 授权第三方 | — | `PayAppGrant` | 🔒 | ✅ | ✅ |
+| DELETE | `/biz/pay/app-grant/{id}` | 撤销第三方授权 | — | — | 🔒 | ✅ | ⬜ |
+| POST | `/biz/pay/collection` | 代客收款（动态码） | — | `PayCollectResult` | 🔒 | ✅ | ✅ |
+| GET | `/biz/pay/qr-code` | 本店收款码 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/pay/qr-code` | 生成收款码 | — | `PayQrCode` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/pay/qr-code/{qrCode}/disabled` | 停用收款码 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/pay/refund` | 本店最近退款 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/pay/refund` | 发起原路退款 | — | `PayRefundItem` | 🔒 | ✅ | ✅ |
+| GET | `/biz/pay/statement` | 本店收款日流水 | — | `PayDailyStatement` | 🔒 | ✅ | ✅ |
+
 ### payout-account（2）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -1120,7 +1135,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **480** 个接口 ｜ 后端已实现 **414**（86%）｜ 前端在调 **396**
+共 **481** 个接口 ｜ 后端已实现 **415**（86%）｜ 前端在调 **396**
 
 ### aftersale（5）
 
@@ -1187,12 +1202,13 @@
 | POST | `/ops/materials` | 保存素材（P-15.1.1–15.1.4） | — | `Material` | — | ✅ | ✅ |
 | POST | `/ops/materials/{no}/published` | setMaterialPublished | — | `Material` | — | ⬜ | ✅ |
 
-### dashboard（10）
+### dashboard（11）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/ops/auth/forgot` | 忘记密码：往登录名那个邮箱发一次性重置码 | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/auth/login` | 登录 | — | `LoginResp` | — | ✅ | ⬜ |
+| POST | `/ops/auth/login/verify` | 第二因子：用登录时发到邮箱的验证码换会话（`login` 返回 `challenge` 时才需要） */ | — | `LoginResp` | — | ✅ | ⬜ |
 | GET | `/ops/auth/me` | 拿当前登录人的最新身份（`GET /ops/auth/me`） | — | `LoginResp` | — | ✅ | ⬜ |
 | POST | `/ops/auth/reset` | 用邮件里的重置码设新密码 | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/dashboard/funnel` | getAcquisitionFunnel | — | `数组` | — | ✅ | ✅ |

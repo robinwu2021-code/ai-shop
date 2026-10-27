@@ -3292,6 +3292,66 @@
      "route": "/pages/order/index"
     }
    ]
+  },
+  {
+   "slug": "pay-checkout-h5",
+   "file": "pay-checkout-h5.html",
+   "title": "收银台 H5：顾客扫码 / 跳转付款",
+   "kind": "pages",
+   "clients": [
+    "checkout-h5"
+   ],
+   "status": "在建",
+   "date": "2026-10-26",
+   "summary": "顾客完全不受信的收银台：动态码 / 托管收银台看单、选方式、看结果；静态码输金额；失效统一一屏；阿拉伯语 RTL。六屏。",
+   "screens": [
+    {
+     "id": "s01",
+     "title": "付款",
+     "client": "checkout-h5",
+     "route": "/c/:token"
+    },
+    {
+     "id": "s02",
+     "title": "跳转渠道",
+     "client": "checkout-h5",
+     "route": ""
+    },
+    {
+     "id": "s03",
+     "title": "付款结果",
+     "client": "checkout-h5",
+     "route": "/result/:payOrderNo"
+    },
+    {
+     "id": "s04",
+     "title": "静态码输金额",
+     "client": "checkout-h5",
+     "route": "/q/:code"
+    },
+    {
+     "id": "s05",
+     "title": "链接失效",
+     "client": "checkout-h5",
+     "route": ""
+    },
+    {
+     "id": "s06",
+     "title": "阿拉伯语",
+     "client": "checkout-h5",
+     "route": ""
+    }
+   ],
+   "docs": [
+    {
+     "path": "docs/technical/TDD-支付服务-I5接入层.md",
+     "label": "TDD · I5 接入层 S7"
+    },
+    {
+     "path": "docs/technical/支付服务-安全规范.md",
+     "label": "安全规范 §2.5"
+    }
+   ]
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"
