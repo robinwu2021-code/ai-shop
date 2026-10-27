@@ -37,6 +37,12 @@
             <artifactId>pay-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 入口过滤器、鉴权器、请求记录写入都在接入守卫（ADR-045） -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-guard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- 可信客户端 IP 只有一处来源（ClientMeta，安全规范 §4.5） -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>

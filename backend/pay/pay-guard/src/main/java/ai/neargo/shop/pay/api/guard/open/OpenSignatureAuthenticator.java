@@ -1,10 +1,10 @@
-package ai.neargo.shop.pay.api.auth;
+package ai.neargo.shop.pay.api.guard.open;
 
 import ai.neargo.shop.auth.ClientMeta;
-import ai.neargo.shop.pay.api.PortalFace;
-import ai.neargo.shop.pay.api.common.CachedBodyRequest;
+import ai.neargo.shop.pay.api.guard.PortalFace;
+import ai.neargo.shop.pay.api.guard.core.CachedBodyRequest;
 import ai.neargo.shop.pay.openapp.SignatureCanonicalizer;
-import ai.neargo.shop.pay.openapp.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +13,9 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import ai.neargo.shop.pay.api.guard.core.PortalAuthFilter;
+import ai.neargo.shop.pay.api.guard.core.PortalAuthenticator;
+import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 
 /**
  * 开放 API 鉴权（安全规范 §2.3）：读 {@code X-App-Id / X-Timestamp / X-Nonce / X-Signature} 与缓存的原始请求体，交给

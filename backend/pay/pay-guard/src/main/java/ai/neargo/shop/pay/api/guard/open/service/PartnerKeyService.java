@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.openapp.service;
+package ai.neargo.shop.pay.api.guard.open.service;
 
 /**
  * 接入方密钥的发放（TDD-支付服务-开放API加解密与密钥分发 §2.1 / §2.3 · 类清单 §4.1）：

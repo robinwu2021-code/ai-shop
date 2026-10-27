@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.api;
+package ai.neargo.shop.pay.api.guard;
 
 import java.util.Arrays;
 import java.util.Optional;

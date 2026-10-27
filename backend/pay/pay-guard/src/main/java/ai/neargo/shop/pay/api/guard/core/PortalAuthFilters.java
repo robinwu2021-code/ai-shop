@@ -1,7 +1,7 @@
-package ai.neargo.shop.pay.api.auth;
+package ai.neargo.shop.pay.api.guard.core;
 
 import ai.neargo.shop.pay.access.service.ApiRequestRecorder;
-import ai.neargo.shop.pay.api.PortalFace;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;

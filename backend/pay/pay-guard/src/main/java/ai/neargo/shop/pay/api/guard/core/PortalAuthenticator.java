@@ -1,6 +1,6 @@
-package ai.neargo.shop.pay.api.auth;
+package ai.neargo.shop.pay.api.guard.core;
 
-import ai.neargo.shop.pay.api.PortalFace;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 

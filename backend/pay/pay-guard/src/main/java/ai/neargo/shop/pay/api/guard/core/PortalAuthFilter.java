@@ -1,13 +1,13 @@
-package ai.neargo.shop.pay.api.auth;
+package ai.neargo.shop.pay.api.guard.core;
 
 import ai.neargo.shop.auth.ClientMeta;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Messages;
 import ai.neargo.shop.pay.access.entity.PayApiRequestLog;
 import ai.neargo.shop.pay.access.service.ApiRequestRecorder;
-import ai.neargo.shop.pay.api.PortalFace;
-import ai.neargo.shop.pay.api.common.CachedBodyRequest;
-import ai.neargo.shop.pay.api.common.PortalRequests;
+import ai.neargo.shop.pay.api.guard.PortalFace;
+import ai.neargo.shop.pay.api.guard.core.CachedBodyRequest;
+import ai.neargo.shop.pay.api.guard.core.PortalRequests;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

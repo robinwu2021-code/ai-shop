@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.openapp.service;
+package ai.neargo.shop.pay.api.guard.open.service;
 
 import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.openapp.entity.PayApp;

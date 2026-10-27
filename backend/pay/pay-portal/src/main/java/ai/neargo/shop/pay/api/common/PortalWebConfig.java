@@ -1,6 +1,6 @@
 package ai.neargo.shop.pay.api.common;
 
-import ai.neargo.shop.pay.api.auth.PortalPrincipal;
+import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 import java.util.List;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.MethodParameter;
@@ -9,6 +9,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import ai.neargo.shop.pay.api.guard.core.PortalRequests;
 
 /**
  * controller 只能经参数拿到「谁在调」（{@link PortalPrincipal}），由过滤器认出、放进请求属性 ——

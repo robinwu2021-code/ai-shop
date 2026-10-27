@@ -71,6 +71,12 @@
             <artifactId>pay-portal</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 支付接入守卫（ADR-045）：SecurityConfig 按入口挂它的过滤器 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-guard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>shop-inventory</artifactId>

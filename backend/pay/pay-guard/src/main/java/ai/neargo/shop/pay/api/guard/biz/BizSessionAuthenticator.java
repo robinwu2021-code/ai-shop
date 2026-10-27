@@ -1,13 +1,16 @@
-package ai.neargo.shop.pay.api.auth;
+package ai.neargo.shop.pay.api.guard.biz;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.pay.api.PortalFace;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Component;
+import ai.neargo.shop.pay.api.guard.core.PortalAuthFilter;
+import ai.neargo.shop.pay.api.guard.core.PortalAuthenticator;
+import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 
 /**
  * 商家端入口（ADR-044 §2-4 内嵌形态）：复用主应用的商家会话 —— 商家链上的令牌过滤器已认过人、{@code BizContextFilter}

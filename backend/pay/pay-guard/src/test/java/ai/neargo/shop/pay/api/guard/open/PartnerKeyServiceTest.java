@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.openapp;
+package ai.neargo.shop.pay.api.guard.open;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,9 +22,9 @@ import ai.neargo.secret.api.SecretNamespace;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.pay.mapper.openapp.OpenAppMappers.PayAppMapper;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
-import ai.neargo.shop.pay.openapp.service.PartnerKeyService;
-import ai.neargo.shop.pay.openapp.service.PartnerKeyService.IssuedCredential;
-import ai.neargo.shop.pay.openapp.service.impl.PartnerKeyServiceImpl;
+import ai.neargo.shop.pay.api.guard.open.service.PartnerKeyService;
+import ai.neargo.shop.pay.api.guard.open.service.PartnerKeyService.IssuedCredential;
+import ai.neargo.shop.pay.api.guard.open.service.impl.PartnerKeyServiceImpl;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

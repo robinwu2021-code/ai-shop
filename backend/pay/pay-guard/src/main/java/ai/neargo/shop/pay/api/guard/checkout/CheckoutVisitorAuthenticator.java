@@ -1,11 +1,13 @@
-package ai.neargo.shop.pay.api.auth;
+package ai.neargo.shop.pay.api.guard.checkout;
 
 import ai.neargo.shop.auth.ClientMeta;
-import ai.neargo.shop.pay.api.PortalFace;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Component;
+import ai.neargo.shop.pay.api.guard.core.PortalAuthenticator;
+import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 
 /**
  * 收银台入口（安全规范 §2.5）：顾客不登录也能付，凭证是路径里的收银令牌 / 码号，由收银台服务逐次校验。

@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 
 /**
  * 一个 controller 类有没有落在它所在入口的前缀下（ADR-044 §2-3；TDD-支付服务-I0地基 AC3）。

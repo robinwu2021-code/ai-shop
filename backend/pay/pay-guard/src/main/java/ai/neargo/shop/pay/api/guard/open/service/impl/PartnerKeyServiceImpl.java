@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.openapp.service.impl;
+package ai.neargo.shop.pay.api.guard.open.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.secret.api.KeyOwner;
@@ -13,7 +13,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.mapper.openapp.OpenAppMappers.PayAppMapper;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
-import ai.neargo.shop.pay.openapp.service.PartnerKeyService;
+import ai.neargo.shop.pay.api.guard.open.service.PartnerKeyService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;

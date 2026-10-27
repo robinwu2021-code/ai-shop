@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.api.auth;
+package ai.neargo.shop.pay.api.guard.core;
 
 import java.util.regex.Pattern;
 

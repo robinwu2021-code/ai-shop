@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.api.common;
+package ai.neargo.shop.pay.api.guard.core;
 
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
