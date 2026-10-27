@@ -1,6 +1,7 @@
 # TDD-支付服务-接入守卫模块 pay-guard · 代码结构、代码清单与数据库设计
 
-状态：**草稿**（随 [TDD-支付服务-接入守卫模块pay-guard](./TDD-支付服务-接入守卫模块pay-guard.md) v2 一起确认）
+状态：**草稿**（随 [TDD-支付服务-接入守卫模块pay-guard](./TDD-支付服务-接入守卫模块pay-guard.md) v4.1 一起确认；[ADR-045](./ADR/ADR-045-支付接入守卫与网关集成在支付服务.md)）
+迁移号：已按[开发计划](./开发计划-支付接入守卫与独立部署.md) §0.2 改为 V16（请求记录来源）· V15（终端）· V17（开放 API 加解密）；V13 / V14 归 W6 对账
 基线：`codex/ai-shop-codex`（2026-10-27，已含 W5 密钥模块、I5 接入层、K1-DB `ed7d5aed6`；`db/pay` 已到 V12）
 创建：2026-10-27 · 最后更新：2026-10-27
 
@@ -53,7 +54,7 @@ shop-base-auth  │   secret-api
 backend/pay/pay-guard/
 ├── pom.xml
 └── src/
-    ├── main/java/ai/neargo/shop/pay/guard/
+    ├── main/java/ai/neargo/shop/pay/api/guard/
     │   ├── PayEntry.java                         入口枚举：INTERNAL / OPEN / TERMINAL / OPS / BIZ / CHECKOUT + 前缀
     │   ├── GuardEntryCondition.java              @ConditionalOnGuardEntry 的实现：按 shop.pay.guard.entries 装配
     │   ├── ConditionalOnGuardEntry.java          注解
@@ -126,7 +127,7 @@ backend/pay/pay-guard/
     │       ├── CallerArgumentResolver.java       controller 参数 PayCaller 自动注入
     │       └── GuardWebConfig.java               注册上面的解析器
     │
-    └── test/java/ai/neargo/shop/pay/guard/
+    └── test/java/ai/neargo/shop/pay/api/guard/
         ├── core/GuardPipelineTest.java
         ├── core/EntryIsolationTest.java
         ├── sign/SignatureCanonicalizerTest.java      ♻️ 自 pay-domain
@@ -265,14 +266,14 @@ backend/pay/pay-guard/
 
 | 迁移 | 内容 | 随哪片 |
 |---|---|---|
-| **V13** `pay_request_log_call_source` | `pay_api_request_log` 加 8 列 + 1 个索引：内部调用来源 | G3 |
-| **V14** `pay_terminal` | 新表 `pay_terminal` · `pay_manager_code` · `pay_terminal_batch` | G5 |
-| （另） | 开放 API 加解密的 `pay_app.sign_type`、`pay_biz_notify` 冻结密钥版本、`pay_api_request_log.sign_key_version / encrypt_serial`；开发者控制台三张表 —— 见[开放API加解密-数据库设计](./TDD-支付服务-开放API加解密-数据库设计.md) §4，**迁移号从那份的 V12 顺延为 V15**（V12 已被 `pay_channel_market_explicit` 占用） | G4 |
+| **V16** `pay_request_log_call_source` | `pay_api_request_log` 加 8 列 + 1 个索引：内部调用来源 | G3 |
+| **V15** `pay_terminal` | 新表 `pay_terminal` · `pay_manager_code` · `pay_terminal_batch` | G5 |
+| （另） | 开放 API 加解密的 `pay_app.sign_type`、`pay_biz_notify` 冻结密钥版本、`pay_api_request_log.sign_key_version / encrypt_serial`；开发者控制台三张表 —— 见[开放API加解密-数据库设计](./TDD-支付服务-开放API加解密-数据库设计.md) §4，**迁移号从那份的 V12 顺延为 V17**（V12 已被 `pay_channel_market_explicit` 占用，V13 / V14 归 W6 对账） | G4 |
 
-### 3.1 V13 · 请求记录加来源
+### 3.1 V16 · 请求记录加来源
 
 ```sql
--- 支付服务 v4 · 迁移 13（接入守卫 G3）：内部调用不校验、只留痕（用户 2026-10-27 定）——
+-- 支付服务 v4 · 迁移 16（接入守卫 G3；V13 / V14 归 W6 对账）：内部调用不校验、只留痕（用户 2026-10-27 定）——
 -- 来源信息由调用参数 CallSource 带进来，落在请求记录里。外部入口这些列为空。
 
 ALTER TABLE pay_api_request_log ADD COLUMN source_service VARCHAR(64) NULL COMMENT '调用方服务名（spring.application.name）；内部调用取不到记 UNKNOWN';
@@ -304,12 +305,12 @@ CREATE INDEX idx_pay_api_request_log_6 ON pay_api_request_log (source_service, r
 
 保留期与查询沿用 `pay_api_request_log` 现有规则；新索引用于「某个服务这一小时调了多少次、失败几次」。
 
-### 3.2 V14 · POS 终端
+### 3.2 V15 · POS 终端
 
 列定义取自唯一真源 `design/schema/pay-service-database.json`（表结构说明 v4），**逐字不改**；激活码就在 `pay_terminal` 上（`activation_code_sha256` + `activation_expire_at`），不另建表。
 
 ```sql
--- 支付服务 v4 · 迁移 14（接入守卫 G5）：刷卡 POS 终端、店长授权码、终端日结。
+-- 支付服务 v4 · 迁移 15（接入守卫 G5；号与复核 §3.8 一致）：刷卡 POS 终端、店长授权码、终端日结。
 -- 设备密钥不在这里：sec_key(PAY, TERMINAL, pay_terminal.id, INBOUND, HMAC)，pay_terminal.sec_key_id 只存引用。
 
 CREATE TABLE pay_terminal (
@@ -386,7 +387,7 @@ CREATE TABLE pay_terminal_batch (
 
 | 入口 | 读 | 写 | 密钥（`sec_*`） |
 |---|---|---|---|
-| 内部系统 | `pay_app`（按调用方码取 id，取不到照样放行） | `pay_api_request_log`（V13 新列） | 无 |
+| 内部系统 | `pay_app`（按调用方码取 id，取不到照样放行） | `pay_api_request_log`（V16 新列） | 无 |
 | 外部 API | `pay_app` · `pay_app_grant` | `pay_api_nonce` · `pay_api_request_log` | `PARTNER_APP` 的 AppSecret / EncryptKey；`PLATFORM_OPEN` 的平台密钥（增强方案） |
 | POS 终端 | `pay_terminal` | `pay_terminal`（激活、心跳）· `pay_api_nonce` · `pay_api_request_log` | `TERMINAL` 的设备密钥 |
 | 运营端 | 平台账号 / 角色表（不在支付库） | `pay_api_request_log` | 无 |
@@ -394,7 +395,7 @@ CREATE TABLE pay_terminal_batch (
 
 ### 3.4 同步真源
 
-`pay-service-database.json` 是表结构说明的唯一真源，但生成器不在仓库（开放API加解密-类清单 Q-C3）。V13 的 8 列与 V14 三张表（已在 JSON 里）落地后，把 V13 的列补进 JSON；在生成器补回之前不手改《数据库表结构说明》。
+`pay-service-database.json` 是表结构说明的唯一真源，但生成器不在仓库（开放API加解密-类清单 Q-C3）。V16 的 8 列与 V15 三张表（已在 JSON 里）落地后，把 V16 的列补进 JSON；在生成器补回之前不手改《数据库表结构说明》。
 
 ---
 
@@ -403,4 +404,4 @@ CREATE TABLE pay_terminal_batch (
 | # | 问题 | 倾向 |
 |---|---|---|
 | Q-D1 | `pay_api_request_log` 写入量：内嵌调用每笔下单至少 2 行（建单 + 发起），查单补偿任务也会写 —— 补偿任务的查单是否也记 | 记，但 `origin_client=JOB` 的查单按 1/10 抽样（`record-port-calls` 加 `job-sample-rate`）；建单 / 退款 / 关单全记 |
-| Q-D2 | V13 与开放 API 加解密的迁移是否合并成一个 | 不合并：G3 先上，G4 晚，分开迁移各自可回滚 |
+| Q-D2 | V16 与开放 API 加解密的迁移是否合并成一个 | 不合并：G3 先上，G4 晚，分开迁移各自可回滚 |

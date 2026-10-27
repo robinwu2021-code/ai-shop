@@ -1,7 +1,7 @@
 # TDD-支付服务-接入守卫模块 pay-guard
 
-状态：**草稿 v2**（2026-10-27 用户已定内部调用与运营端两条，见版本表；其余待确认 §6 S1 / S3 与 Q1、Q4、Q5）
-档位：**2**（新 Maven 模块、跨 `pay-portal` / `pay-svc` / `pay-domain` 搬家、对外鉴权规则、跨域调用契约加字段）→ 本 TDD + ADR（建议 ADR-045「支付接入守卫独立成模块」）
+状态：**草稿 v4.1**（2026-10-27 用户已定内部调用、运营端、部署拓扑、业务终端归属四条，见版本表；[ADR-045](./ADR/ADR-045-支付接入守卫与网关集成在支付服务.md) 已接受；其余待确认 §6 S3 与 Q2、Q4）
+档位：**2**（新 Maven 模块、跨 `pay-portal` / `pay-svc` / `pay-domain` 搬家、对外鉴权规则、跨域调用契约加字段）→ 本 TDD + [ADR-045](./ADR/ADR-045-支付接入守卫与网关集成在支付服务.md)
 依据：[支付服务-代码清单-开放API刷卡POS内部调用](./支付服务-代码清单-开放API刷卡POS内部调用.md) §1–§5（三条路径的类）·
 [TDD-支付服务-开放API加解密与密钥分发](./TDD-支付服务-开放API加解密与密钥分发.md) v2.2（签名 / 加密参数 P1–P8）·
 [开放API加解密-类清单](./TDD-支付服务-开放API加解密-类清单.md) §9（K1-DB 已实现：`KeyVault`、`PartnerKeyService`，分支 `claude/key-store-db` `ed7d5aed6`）·
@@ -100,7 +100,7 @@ shop-base（spi.pay.CallSource）◀── 内部调用方（商城、餐饮…�
 | 外部 API（AppSecret / EncryptKey）与 POS（设备密钥）凭证的**发放、轮换、吊销** —— 调 `KeyRegistry` | 接入方 / 终端 / 授权的**业务数据**：`pay_app`、`pay_app_grant`、`pay_terminal`、`pay_manager_code` 的实体、Mapper、管理服务 |
 | `PayEntry`（入口枚举，取代 `PortalFace`，多一个 `INTERNAL`） | `pay_api_request_log` 的实体与 Mapper（守卫只调 `ApiRequestRecorder` 写） |
 
-包根 `ai.neargo.shop.pay.guard`（`ai.neargo.shop.pay.access` 已是 `pay-domain` 里 `PayCaller` 所在的包，不复用）。
+包根 `ai.neargo.shop.pay.api.guard`（ADR-045：守卫依赖 Servlet，而 `ArchitectureTest` 只豁免 `pay.api` 这一棵子树，放在其下不放宽任何规则；`ai.neargo.shop.pay.access` 已是 `pay-domain` 里 `PayCaller` 所在的包，不复用）。
 
 **运营端与商家端的认人不在 `pay-guard`**：它们用平台账号体系（`shop-base-auth`），守卫只把平台已认出的人转成 `PayCaller`（G10）。
 
@@ -344,7 +344,7 @@ public final class CallSources {
 | 3 | 解 `X-Call-Source` → `CallSource`（服务、业务线、实例、自报 IP、追踪号、上游接口、来源端、终端用户 IP、UA 摘要、操作人）；缺失或损坏**照样放行**，记 `UNKNOWN` |
 | 4 | 追踪号接力：`trace_id` 沿用 `CallSource.traceId`，并写进本进程的 MDC，日志能按一个号串起两边 |
 | 5 | 放行 |
-| 6 | 结束时写记录：支付侧写 `pay_api_request_log`（`entry=INTERNAL_HTTP`，V13 的来源列）；业务侧写 `shop-app` 现有的接口访问日志（`ApiAccessLogFilter`）并带上同样的来源字段 |
+| 6 | 结束时写记录：支付侧写 `pay_api_request_log`（`entry=INTERNAL_HTTP`，V16 的来源列）；业务侧写 `shop-app` 现有的接口访问日志（`ApiAccessLogFilter`）并带上同样的来源字段 |
 | 开关 | `verify-credential`（默认 `false`）：打开后恢复今天 `InternalCallerFilter` 的「调用方码 + 凭据哈希」校验，不改代码 |
 | 网络 | 唯一防线是网络隔离：nginx 所有 server `deny /internal/`，两个服务的内部端口只对内网 |
 
@@ -480,7 +480,7 @@ ops-web/
 
 ## §3 类清单
 
-### 3.1 `pay-guard`（新模块，包 `ai.neargo.shop.pay.guard`）
+### 3.1 `pay-guard`（新模块，包 `ai.neargo.shop.pay.api.guard`）
 
 | 子包 | 类 | 状态 | 说明 |
 |---|---|---|---|
@@ -523,7 +523,7 @@ ops-web/
 
 ### 3.3 数据库
 
-**`pay_api_request_log` 加列**（`db/pay` V12 或其后，与开放 API 加解密的 V12 合并为一个迁移）：
+**`pay_api_request_log` 加列**（`db/pay` **V16**；V13 / V14 已排给 W6 对账、V15 给终端，开放 API 加解密另走 V17 —— 开发计划 §0.2）：
 
 | 列 | 类型 | 说明 |
 |---|---|---|
@@ -569,7 +569,7 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | `OpenApiGuardTest` | 加解密 TDD 的 P1–P3 向量；`X-Key-Serial`；重叠期两版本；响应签名可验 |
 | `TerminalGuardTest` | 激活码单次、过期；挂失后下一次请求 401；响应签名；加密卡数据不进记录 |
 | `OpsGuardTest` | 非运营令牌 401；平台改角色后下一个请求的 `PayCaller` 权限随之变；守卫不含任何权限码字面量 |
-| `PayCallerConstructionTest`（ArchUnit，新） | `new PayCaller(...)` 只允许出现在 `ai.neargo.shop.pay.guard..`（G7） |
+| `PayCallerConstructionTest`（ArchUnit，新） | `new PayCaller(...)` 只允许出现在 `ai.neargo.shop.pay.api.guard..`（G7） |
 | `GuardDependencyTest`（ArchUnit，新） | `pay-portal` / `pay-svc` 的 controller 不读 `X-App-Id` / `X-Terminal-Sn` / `X-Internal-*` / `X-Call-Source` / `X-Signature`；`pay-guard` 不依赖 `pay-portal` / `pay-svc`；`guard.ops` 不引用 `Perms`（权限判定只在端点注解，G10） |
 | 现有 `OpenApiFlowTest` · `PortalRouteRulesTest` · `OpsEndpointPermTest` · `PayApplicationBootTest` · `SchemaDriftTest` | 每片后原样通过 |
 
@@ -591,8 +591,8 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 
 | # | 问题 | 倾向 |
 |---|---|---|
-| Q1 | 模块名 `pay-guard`（包 `ai.neargo.shop.pay.guard`） | `pay-guard`：短；`access` 已被 `pay-domain` 占用 |
+| ~~Q1~~ | ~~模块名与包根~~ | **已定（ADR-045）**：模块 `pay-guard`，包根 `ai.neargo.shop.pay.api.guard` |
 | Q2 | 独立形态 `pay-svc` 真正上线前，`internal.verify-credential` 是否打开 | 上线评审时再定；在此之前内部入口的边界只有网络隔离（§2.3 A 边界说明） |
 | Q3 | `CallSource` 是否也用于储值、权益等其他内部 Port（不止 `PaymentPort`） | 是：同一个类放在 `spi.pay`，其他 Port 迁移时照加；本篇只改 `PaymentPort` |
 | Q4 | POS 激活码由运营生成还是商家端也能生成 | 两者都能（代码清单 §4.4） |
-| Q5 | ADR 编号 | ADR-045（`ADR/` 现有最大 044） |
+| ~~Q5~~ | ~~ADR 编号~~ | **已定**：[ADR-045](./ADR/ADR-045-支付接入守卫与网关集成在支付服务.md) |

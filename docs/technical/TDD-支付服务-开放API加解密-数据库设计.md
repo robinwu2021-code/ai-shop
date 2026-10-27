@@ -1,12 +1,13 @@
 # TDD-支付服务-开放API加解密-数据库设计
 
-状态：**草稿**（随 [TDD-支付服务-开放API加解密与密钥分发](./TDD-支付服务-开放API加解密与密钥分发.md) v2.1 一起确认）
+状态：**草稿**（随 [TDD-支付服务-开放API加解密与密钥分发](./TDD-支付服务-开放API加解密与密钥分发.md) v2.2 一起确认）
+迁移号：本篇的 `db/pay` V12 **改为 V17**（V12 已被 `pay_channel_market_explicit` 占用，V13 / V14 归 W6 对账、V15 归终端、V16 归请求记录来源 —— [开发计划](./开发计划-支付接入守卫与独立部署.md) §0.2）；其中开发者控制台三张表随控制台另出（V18）
 配套：[API 清单](./TDD-支付服务-开放API加解密-API清单.md) · [类清单](./TDD-支付服务-开放API加解密-类清单.md)
 创建：2026-10-26 · 最后更新：2026-10-26
 
-> **基线**：本篇是**增量**，基于分支 `claude/silly-gates-90cc7e`（W5 密钥模块 + I5 接入层，**尚未合入** `codex/ai-shop-codex`）里已经写好的迁移：
+> **基线**：本篇是**增量**，基于分支 `claude/silly-gates-90cc7e`（W5 密钥模块 + I5 接入层，**已合入** `codex/ai-shop-codex`）里已经写好的迁移：
 > `db/secret/V1__sec_tables.sql`（`sec_*` 七表）· `db/pay/V7__pay_app_internal.sql`（`pay_app`）· `db/pay/V5__pay_four_way_records.sql`（`pay_api_request_log`、`pay_biz_notify`）· `db/pay/V11__pay_open_access.sql`（`pay_app_grant`、`pay_api_nonce`、`pay_qr_code`）。
-> 迁移号接在它们后面：**`db/secret` V2**、**`db/pay` V12**。那个分支合入之前，这两个文件不能落盘。
+> 迁移号接在它们后面：**`db/secret` V2**（✅ 已随 K1-DB 合入）、**`db/pay` V17**。
 
 ---
 
@@ -16,12 +17,12 @@
 |---|---|---|---|
 | 加列 · 改约束 | `sec_key_version` | secret V2 | 存储五档：每个版本记录自己在哪一档（`storage_tier`、`storage_ref`）；L4 / L5 既没有密文也没有公钥，原约束 `ck_sec_key_version_1` 要放宽 |
 | 加列 | `sec_key_version` | secret V2 | `display_prefix`：AppSecret 的 `sk_live_` / `sk_test_` 只用于显示，不进材料 |
-| 加列 | `pay_app` | pay V12 | `sign_type`（HMAC / RSA） |
-| 新表 | `pay_app_developer` | pay V12 | 开发者控制台账号：接入方自己登录、自己生成密钥（运营看不到明文） |
-| 新表 | `pay_app_activation` | pay V12 | 一次性激活链接（库里只存令牌哈希） |
-| 新表 | `pay_app_key_challenge` | pay V12 | 增强方案上传公钥时的持有证明（无 Redis 时用） |
-| 加列 | `pay_biz_notify` | pay V12 | 冻结推送用的 EncryptKey / 签名密钥版本：重推必须用当初那把 |
-| 加列 | `pay_api_request_log` | pay V12 | 记下验签命中的密钥版本与加密字段的版本，用于排障与轮换进度统计 |
+| 加列 | `pay_app` | pay V17 | `sign_type`（HMAC / RSA） |
+| 新表 | `pay_app_developer` | pay V17 | 开发者控制台账号：接入方自己登录、自己生成密钥（运营看不到明文） |
+| 新表 | `pay_app_activation` | pay V17 | 一次性激活链接（库里只存令牌哈希） |
+| 新表 | `pay_app_key_challenge` | pay V17 | 增强方案上传公钥时的持有证明（无 Redis 时用） |
+| 加列 | `pay_biz_notify` | pay V17 | 冻结推送用的 EncryptKey / 签名密钥版本：重推必须用当初那把 |
+| 加列 | `pay_api_request_log` | pay V17 | 记下验签命中的密钥版本与加密字段的版本，用于排障与轮换进度统计 |
 
 **不新增密钥表**：AppSecret、EncryptKey、接入方 RSA 公钥、平台签名 / 加密密钥全部登记在 `sec_key` / `sec_key_version`，下面 §2 写清每一种怎么登记。
 
@@ -91,7 +92,7 @@ CREATE INDEX idx_sec_key_version_4 ON sec_key_version (storage_tier, status);
 
 ---
 
-## §4 pay V12
+## §4 pay V17
 
 ```sql
 -- 支付服务 v4 · 迁移 12：开放 API 加解密与密钥分发（TDD-支付服务-开放API加解密与密钥分发 v2.1）。

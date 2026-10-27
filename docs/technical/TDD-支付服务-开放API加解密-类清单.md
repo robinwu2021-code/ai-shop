@@ -1,10 +1,11 @@
 # TDD-支付服务-开放API加解密-类清单
 
-状态：**草稿**（随 [TDD-支付服务-开放API加解密与密钥分发](./TDD-支付服务-开放API加解密与密钥分发.md) v2.1 一起确认）
+状态：**草稿**（随 [TDD-支付服务-开放API加解密与密钥分发](./TDD-支付服务-开放API加解密与密钥分发.md) v2.2 一起确认）
+后续：本篇 K2–K6 的实施归入[开发计划-支付接入守卫与独立部署](./开发计划-支付接入守卫与独立部署.md) M3（类落在 `pay-guard`，包根 `ai.neargo.shop.pay.api.guard`）
 配套：[API 清单](./TDD-支付服务-开放API加解密-API清单.md) · [数据库设计](./TDD-支付服务-开放API加解密-数据库设计.md)
 创建：2026-10-26 · 最后更新：2026-10-26
 
-> **基线**：分支 `claude/silly-gates-90cc7e`（W5 密钥模块 + I5 接入层，**未合入**）。表中「已有」指那个分支上的类；
+> **基线**：分支 `claude/silly-gates-90cc7e`（W5 密钥模块 + I5 接入层，**已合入** `codex/ai-shop-codex`）。表中「已有」指那个分支上的类；
 > 「改」写清改什么；「新」给出包与职责。包规划遵循 [references/java.md §七](../../.claude/skills/ai-shop-dev-standards/references/java.md)、
 > `PayHasNoControllerTest`（支付域不得有 controller，controller 只在 `pay-portal`）与 `ArchitectureTest`。
 
@@ -206,7 +207,7 @@ public interface KeyVault {
 | K1 | secret V2 + `StorageTier` / `SecretFormat` / `KeyVault` + `RoutingKeyVault` + L1 / L2 后端 + `KeyTierPolicy` + `MaterialCache` | W5 分支合入 |
 | K2 | `AppSignatureVerifier` 替换 `AppKeyResolver`；错误码细分；`X-Key-Serial` | K1 |
 | K3 | 响应签名、字段解密、`/certificates`（基础方案返回空）、`/ping` | K2 |
-| K4 | pay V12 + 开发者控制台后端（激活、登录、生成 / 重置 / 作废） | K1；TDD Q2 定位置 |
+| K4 | pay V17 / V18 + 开发者控制台后端（激活、登录、生成 / 重置 / 作废） | K1；TDD Q2 定位置 |
 | K5 | 推送信封（随 I5 webhook 投递） | K3 · I5 |
 | K6 | L3 KMS 主密钥实现、L4 外部服务、L5 远程运算 + 平台密钥对 + 增强方案 | Q-C1 |
 
