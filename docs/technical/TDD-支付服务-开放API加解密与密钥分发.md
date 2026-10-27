@@ -1,6 +1,8 @@
 # TDD-支付服务-开放API加解密与密钥分发
 
-状态：**草稿 v2.1**（AC 待确认后转「已确认」）
+状态：**草稿 v2.2**（AC 待确认后转「已确认」）
+详细设计：[API 清单](./TDD-支付服务-开放API加解密-API清单.md) · [类清单](./TDD-支付服务-开放API加解密-类清单.md) · [数据库设计](./TDD-支付服务-开放API加解密-数据库设计.md)
+（三份均以分支 `claude/silly-gates-90cc7e` 上已实现的 W5 密钥模块与 I5 接入层为基线；**与本篇冲突时以三份详细设计为准**）
 档位：**2**（对外签名 / 加密规则 v1 发布后不可改、新增对外端点与报文结构、新增存储分级）→ 本 TDD + ADR（编号见 Q5）
 关联需求：[PRD-支付域](../requirements/PRD-支付域.md)；完整设计 AC21（第三方以 AppId + 签名调用 `/open/pay/v1/**`）
 上游设计（本篇只补它们没写的，不重复）：
@@ -14,6 +16,7 @@
 | v1 | 三层防护、六把密钥、信封加密存储、解密运行时 |
 | v2 | ① **基础方案改为「平台发 AppId + AppSecret + EncryptKey」**（对称，参照微信 / 支付宝 / 企业微信），RSA 降为增强方案（§2.1 / §2.3）；② **密钥存储分五档、统一接口 `KeyVault`**，从配置明文到 HSM（§2.8）；③ **加解密参数逐项列表**（§2.4） |
 | v2.1 | Q7 定：AppSecret 带 `sk_live_` / `sk_test_` 前缀，**前缀不参与 HMAC**（§2.1 / §2.3 / P1 / P7 / §2.11）；Q8 定：EncryptKey 不加前缀 |
+| v2.2 | 出详细设计三份；与已实现的 W5 / I5 对账（API 清单 §0）后回改本篇：JSON 字段与事件名改 camelCase（`refundAccount.accountNo`、`payment.succeeded`），§2.11 向量重算；材料缓存 TTL 5 分钟 → 60 秒（安全规范 §2.3）；nonce 长度 8–64（以代码为准）；§2.8.2 的接口形状以类清单 §1 为准 |
 
 > **一句话**：接入方在平台控制台拿到 **AppId + AppSecret + EncryptKey**；AppSecret 管签名（谁发的、有没有被改、是不是重放），
 > EncryptKey 管加密（敏感字段、推送内容、对账单）。平台侧所有密钥经统一接口 `KeyVault` 存取，按环境与密钥类别选五档存储之一。
@@ -174,7 +177,7 @@
 | 十六进制 | 小写 |
 | 时间戳 | Unix 毫秒，十进制字符串，如 `1761465600000` |
 | 换行 | `\n`（0x0A），最后一行后**没有**换行 |
-| Nonce | 16–64 位 `[A-Za-z0-9]` |
+| Nonce | 8–64 位 `[A-Za-z0-9]`（以已实现的 `AppAuthServiceImpl` 为准） |
 | KeySerial | 密钥版本号，控制台显示，如 `S2026102601` |
 | 二进制拼接 | `‖` 表示字节串首尾相接 |
 
@@ -188,11 +191,11 @@
 | `AppId` | 控制台 | 同 `X-App-Id` | `APP7Q2K9XW` |
 | `Timestamp` | 发送时刻 | 同 `X-Timestamp`，与服务器偏差 ≤ 300s | `1761465600000` |
 | `Nonce` | 每次新生成 | 同 `X-Nonce`，300s 内不可重复 | `8c1f0e2a5b7d4c3e9f60a1b2c3d4e5f6` |
-| `BodyHash` | 请求体 | `hex(SHA-256(发出去的原始字节))`；无 body 为空串的哈希 `e3b0c442…7852b855` | `c8e1bf82…66458495` |
+| `BodyHash` | 请求体 | `hex(SHA-256(发出去的原始字节))`；无 body 为空串的哈希 `e3b0c442…7852b855` | `a5c9b0a0…37bd9a35` |
 | 待签串 | — | `METHOD\nPATH\nCANONICAL_QUERY\nAppId\nTimestamp\nNonce\nBodyHash` | — |
 | 算法 · 基础 | — | HMAC-SHA256，密钥 = AppSecret **去掉 `sk_live_` / `sk_test_` 前缀后**的 32 位的 UTF-8 字节 | `Zk3Qm9Lp…Gs0Ay` |
 | 算法 · 增强 | — | SHA256withRSA（RSASSA-PKCS1-v1_5），接入方私钥，RSA-2048 | — |
-| 输出 | — | `Base64(签名字节)` → `X-Signature` | `CMoNzsnE9+VC…` |
+| 输出 | — | `Base64(签名字节)` → `X-Signature` | `nsNjeNX+z0xM…` |
 | 版本 | — | `X-Key-Serial`（推荐带；不带时平台逐把试有效版本，最多 2 把） | `S2026102601` |
 
 请求头合计：`X-App-Id` · `X-Timestamp` · `X-Nonce` · `X-Key-Serial` · `X-Signature` ·（有加密字段时）`X-Encrypt-Serial` ·（建单 / 退款）`Idempotency-Key`。
@@ -217,7 +220,7 @@
 | 算法 | AES-256-GCM | RSA-OAEP |
 | 密钥 | EncryptKey 的 UTF-8 字节（32 字节） | 平台加密证书公钥（RSA-2048） |
 | IV / Nonce | 每个字段独立随机 12 字节 | — |
-| AAD | `AppId|字段路径`，如 `APP7Q2K9XW|refund_account.account_no`（字段路径为 JSON 点路径，数组用下标：`items.0.phone`） | — |
+| AAD | `AppId|字段路径`，如 `APP7Q2K9XW|refundAccount.accountNo`（字段路径为 JSON 点路径，camelCase，数组用下标：`items.0.phone`） | — |
 | 认证标签 | 128 bit | — |
 | OAEP 参数 | — | 摘要 SHA-256、MGF1 SHA-256、label 为空 |
 | 明文上限 | 4 KB | 190 字节 |
@@ -232,15 +235,16 @@
 
 ```json
 {
-  "event_id": "EVT20261026000001",
-  "event_type": "PAY.SUCCEEDED",
-  "created_at": "2026-10-26T08:00:00.000Z",
+  "eventId": "EVT20261026000001",
+  "eventType": "payment.succeeded",
+  "stateVersion": 3,
+  "createdAt": "2026-10-26T08:00:00.000Z",
   "resource": {
     "algorithm": "AEAD_AES_256_GCM",
-    "key_serial": "S2026102601",
+    "keySerial": "S2026102601",
     "nonce": "Dw4NDAsKCQgHBgUE",
-    "associated_data": "PAY.SUCCEEDED|EVT20261026000001",
-    "ciphertext": "i6y9W9OIcucavN6m…"
+    "associatedData": "payment.succeeded|EVT20261026000001",
+    "ciphertext": "i6y9W9OYb/Ebq+KW…"
   }
 }
 ```
@@ -248,22 +252,22 @@
 | 参数 | 取值 |
 |---|---|
 | 算法 | `AEAD_AES_256_GCM` |
-| 密钥 | `key_serial` 指向的 EncryptKey（UTF-8 字节） |
+| 密钥 | `keySerial` 指向的 EncryptKey（UTF-8 字节） |
 | Nonce | `Base64(12 字节随机)`，**单独放在 `nonce` 字段**，每条消息新生成，绝不复用 |
-| AAD | `associated_data` 字段原样的 UTF-8 字节 = `event_type|event_id` |
+| AAD | `associatedData` 字段原样的 UTF-8 字节 = `eventType|eventId` |
 | 密文 | `ciphertext = Base64(密文 ‖ 16 字节 Tag)`（**不含** nonce —— 与 P3 的打包格式不同，按微信 APIv3 惯例） |
 | 明文 | 业务结果 JSON；其中的敏感字段只给掩码 |
 
-接入方处理顺序：验签（P2）→ 时间戳 → 解密 → 按 `event_id` 幂等 → 以查单为准再发货 → 返回 2xx（否则退避重试 ≥ 24h）。
+接入方处理顺序：验签（P2）→ 时间戳 → 解密 → 按 `eventId` 幂等 → 以查单为准再发货 → 返回 2xx（否则退避重试 ≥ 24h）。
 
 #### P5 · 对账单文件
 
 | 参数 | 取值 |
 |---|---|
-| 获取 | `GET /statements/{bill_date}` → `download_url`（5 分钟有效）+ `key_serial` + `nonce` + `sha256` |
+| 获取 | `GET /statements/{billDate}` → `downloadUrl`（5 分钟有效）+ `keySerial` + `nonce` + `sha256` |
 | 处理 | 下载 → 校验 `sha256(文件字节)` → AES-256-GCM 解密 → gunzip → CSV |
 | 密钥 / Nonce | EncryptKey / 响应里的 `nonce`（Base64，12 字节） |
-| AAD | `statement|{AppId}|{bill_date}` |
+| AAD | `statement|{AppId}|{billDate}` |
 | 文件内容 | `密文 ‖ Tag`（与 P4 相同，nonce 不在文件里） |
 
 #### P6 · 平台存储加密（我方内部，L2 / L3 档）
@@ -331,7 +335,7 @@ TLS ─▶ body ≤ 1MB ─▶ ① AppId 存在且 ACTIVE、环境匹配（沙�
 
 | 端点 | 字段 |
 |---|---|
-| `POST /orders/{no}/refunds`（ATM / 超商付款的线下退款） | `refund_account.bank_code`、`refund_account.account_no`、`refund_account.account_name` |
+| `POST /orders/{no}/refunds`（ATM / 超商付款的线下退款） | `refundAccount.bankCode`、`refundAccount.accountNo`、`refundAccount.accountName` |
 | `POST /orders` | `payer.phone`、`payer.email`、`payer.name`（选填，传了必须加密） |
 
 卡号、CVV、磁道、PIN **开放 API 根本不收**（PCI 边界在渠道读卡套件 / 渠道收银台，上游 §2.8.5）；请求里出现疑似卡号直接 400。
@@ -358,6 +362,10 @@ TLS ─▶ body ≤ 1MB ─▶ ① AppId 存在且 ACTIVE、环境匹配（沙�
 
 接口按**操作**定义，不按「取明文」定义 —— 只有这样，最重的 L5（密钥根本取不出来）也能实现同一个接口，业务代码换档不改一行。
 
+> **v2.2 落地形状**（[类清单](./TDD-支付服务-开放API加解密-类清单.md) §1）：下面是概念草图。对齐已实现的 W5 后，
+> `KeyVault` 只保留 `mac / sign / encrypt / decrypt / tierOf`，引用类型用已有的 `KeyVersionRef`；
+> 生成、录入、吊销留在已有的 `KeyRegistry`；封存业务敏感字段用已有的 `SecretVault`（`seal / open`），不重复造。
+
 ```java
 /** 唯一的密钥入口。业务代码只依赖它，不知道背后是哪一档。 */
 public interface KeyVault {
@@ -374,8 +382,6 @@ public interface KeyVault {
     byte[] decrypt(KeyRef ref, byte[] ciphertext, byte[] aad);     // AES-GCM；RSA 密钥时为 RSA-OAEP，aad 须为空
 
     /** 封存一段业务敏感数据（如解出的退款账号），返回 blob 引用。 */
-    KeyRef seal(KeyOwner owner, byte[] plaintext);
-    SecretHandle unseal(KeyRef ref);
 
     void revoke(KeyRef ref, String reason);
 
@@ -413,9 +419,9 @@ ConfigKeyVault  DatabaseKeyVault ─ MasterKeyProvider  ExternalSecretVault  Kms
 | 实现 | 档 | 取材料 / 运算 | 缓存 |
 |---|---|---|---|
 | `ConfigKeyVault` | L1 | 读配置键 `shop.secret.l1.{storageRef}` | 启动时读入 |
-| `DatabaseKeyVault` + `LocalMasterKeyProvider` | L2 | 读 `sec_secret_blob` → 本地主密钥解 DEK → 解密文 → 本地运算 | DEK 与材料，TTL 5 分钟 |
+| `DatabaseKeyVault` + `LocalMasterKeyProvider` | L2 | 读 `sec_secret_blob` → 本地主密钥解 DEK → 解密文 → 本地运算 | DEK 与材料，TTL 60 秒 |
 | `DatabaseKeyVault` + `KmsMasterKeyProvider` | L3 | 同上，DEK 由 KMS `Decrypt` 解 | 同上 |
-| `ExternalSecretVault` | L4 | 按 `storageRef`（路径 + 版本）读外部服务 → 本地运算 | 材料，TTL 5 分钟 |
+| `ExternalSecretVault` | L4 | 按 `storageRef`（路径 + 版本）读外部服务 → 本地运算 | 材料，TTL 60 秒 |
 | `KmsKeyVault` | L5 | 不取材料；`mac / sign / decrypt` 直接转调 KMS | 无（也不能有） |
 
 L2 与 L3 是**同一个实现**、换一个主密钥提供者 —— 库表、密文格式（P6）完全一样，所以 L2 → L3 升档只需重新包裹 DEK（表结构说明 §3.7 的主密钥轮换流程），不动密文。
@@ -462,10 +468,10 @@ shop:
 1. 读 `sec_key_version`：状态对用途有效（入站验签 ACTIVE / ROTATING；出站签名与加密只用 ACTIVE；冻结版本的单按表结构说明 §3.4）
 2. **材料缓存**命中 → 直接第 5 步
 3. 读 `sec_secret_blob` → **DEK 缓存**未命中则 KMS `Decrypt(data_key_cipher, EncryptionContext)`
-4. AES-256-GCM 解 `cipher_text`（AAD 按 P6 重算）→ 放入材料缓存（进程内 LRU，TTL 5 分钟、上限 10k，不序列化、不进分布式缓存）
+4. AES-256-GCM 解 `cipher_text`（AAD 按 P6 重算）→ 放入材料缓存（进程内 LRU，TTL 60 秒、上限 10k，不序列化、不进分布式缓存）
 5. 本地 HMAC → 返回结果；明文材料不离开 `KeyVault`
 
-**吊销 ≤ 5s 生效**：吊销写库后发 `sec.key.revoked`（Redis pub/sub），各节点清该 key 的两层缓存；TTL 5 分钟是事件丢失时的兜底上限。
+**吊销 ≤ 5s 生效**：吊销写库后发 `sec.key.revoked`（Redis pub/sub），各节点清该 key 的两层缓存；TTL 60 秒是事件丢失时的兜底上限。
 **不泄露**：`KeyVault` 对外只返回运算结果或 `SecretHandle`；异常只带 `sec_key_id` 与版本；`PayloadMasker` 脱敏 `X-Signature`、`ciphertext`、`x-sensitive` 字段；
 机器解密只记指标不逐条写 `sec_access_log`，人看明文（生成时一次、break-glass）才写访问日志。
 
@@ -494,13 +500,13 @@ EncryptKey   = Pa7Ve2Ky9Wq4Zm6Tn3Lr8Hs5Dc1Fb0Gx
 **P1 请求签名（基础方案）**
 
 ```
-body        = {"out_order_no":"M20261026001","amount_minor":12000,"currency":"TWD","pay_method":"LINEPAY"}
-BodyHash    = c8e1bf8292264e1e28b2c5ca8fa73626afdba0c7b104e0385cb07c5f66458495
-待签串       = POST\n/open/pay/v1/orders\n\nAPP7Q2K9XW\n1761465600000\n8c1f0e2a5b7d4c3e9f60a1b2c3d4e5f6\nc8e1bf82…66458495
-X-Signature = CMoNzsnE9+VC4VGEtdxEgkWpbwJZNs/12gU9dZj05dU=
+body        = {"outOrderNo":"M20261026001","amountMinor":12000,"currency":"TWD","payMethod":"LINEPAY"}
+BodyHash    = a5c9b0a01becc5121d926a7d702ff9e6d0d335367a53b9787e6e481d37bd9a35
+待签串       = POST\n/open/pay/v1/orders\n\nAPP7Q2K9XW\n1761465600000\n8c1f0e2a5b7d4c3e9f60a1b2c3d4e5f6\na5c9b0a0…37bd9a35
+X-Signature = nsNjeNX+z0xMF/hIgsbFLBkbDWOFBAIYwMnKD+fQVxU=
 
 反例（把前缀一起当密钥 —— 错误）：
-X-Signature = UmtH+tajanZ5ISo0o8lU5LYpds90K8FnxwiACFuWJXY=   ← 算出这个说明没去前缀；平台返回 401
+X-Signature = COTZmHskHe/MoBidbfalyUR4Qx96IXyeiRbFmEZboFA=   ← 算出这个说明没去前缀；平台返回 401
 ```
 
 **P2 响应签名（基础方案，响应体为 `{}`）**
@@ -517,17 +523,17 @@ X-Signature = umstQTPXokyyX02RxHKAeiNbQUc1VAAvHykNvWaInfQ=
 ```
 明文   = 8123004567
 IV     = a1b2c3d4e5f60718293a4b5c（hex）
-AAD    = APP7Q2K9XW|refund_account.account_no
-字段值 = obLD1OX2BxgpOktc59/SAi1E7uW27NTqQxuK0ucc0Sc2LrYbyto=
+AAD    = APP7Q2K9XW|refundAccount.accountNo
+字段值 = obLD1OX2BxgpOktc59/SAi1E7uW27KsqhePcgjLC58SwEbcblEo=
 ```
 
 **P4 推送资源解密**
 
 ```
 nonce           = Dw4NDAsKCQgHBgUE
-associated_data = PAY.SUCCEEDED|EVT20261026000001
-ciphertext      = i6y9W9OIcucavN6mvYgKuhLmhVT5HShl27jm1PdGdDwH9sv5D2DGH2MCIc0Mr90jTp/QVLRVFlgNGHmKHGc7uOMoSWpXlHwObfJ1w0wBuKypTa7aQI7Zq2oBhaL0xWs+ZXhWOneP4l4nlzyzw9ZW1UGyELhLcNPj3mXMCVAohNM10hsc7nFcP+vlVg==
-解密得到         = {"pay_order_no":"P20261026000001","out_order_no":"M20261026001","status":"SUCCEEDED","amount_minor":12000,"currency":"TWD"}
+associatedData  = payment.succeeded|EVT20261026000001
+ciphertext      = i6y9W9OYb/Ebq+KW8d0K0AKGhVL6Gytj2b7m1PdHZiEHtZziNWb9FWMoK51p4/8zRI+rV7RVFlkNG22WDiVt9bUuTikZw1x5FJNj00sHucvBKouVA9nWskgdhbnZijhhODpEMGqfsRtlyXu+1d0Gig2FPt5TL08SvdMd8tDLDgT5wbA7AIE=
+解密得到         = {"payOrderNo":"P20261026000001","outOrderNo":"M20261026001","status":"SUCCEEDED","amountMinor":12000,"currency":"TWD"}
 ```
 
 接入方参考代码（Java，基础方案）：
@@ -608,7 +614,7 @@ ADR（编号见 Q5）记录不可逆部分：对外签名与加密规则 v1（P1
 | 接入方把 AppSecret 写进代码仓库 / 前端 | 被冒用 | 文档明令；签名只能在服务端做（无 CORS）；IP 白名单；`sk_live_` 前缀模式登记到代码托管平台密钥扫描，命中即走泄露应急 |
 | 平台库 + 主密钥同时泄露（L2 档） | 全部 AppSecret 泄露 | 生产默认 L3；L2 仅限客户自担的私有化部署 |
 | GCM nonce 复用 | 该 EncryptKey 等同泄露 | IV 只由 `SecureRandom` 生成、不接受外部传入；单把加密次数上限 2³⁰ 后强制轮换 |
-| KMS 不可用 | 缓存过期后无法验签 | 缓存撑 5 分钟；对外 503；告警 |
+| KMS 不可用 | 缓存过期后无法验签 | 缓存撑 60 秒；对外 503；告警 |
 | 接入方时钟漂移 | 全量 401 | `timestampExpired` 单列 + 沙箱回显服务器时间 |
 | 内部人员导出明文 | 冒用接入方 | 运营无生成 / 查看入口；人看明文写访问日志；启用两人 |
 
