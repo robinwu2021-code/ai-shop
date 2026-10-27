@@ -28,6 +28,9 @@ shop:
     targets:
       PLATFORM: ${PLATFORM_API_BASE_URL:}
   pay:
+    # 接入守卫按入口装配（ADR-045）：这个进程今天只承接内部调用。对外入口随独立部署切换（开发计划 M7）再加
+    guard:
+      entries: INTERNAL
     report-facts:
       enabled: ${PAY_REPORT_FACTS_ENABLED:true}
     entitlement:

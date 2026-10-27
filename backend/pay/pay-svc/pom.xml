@@ -43,6 +43,12 @@
             <artifactId>pay-domain</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 接入守卫（ADR-045）：/internal/pay/v1 的调用方识别在这里；只装 INTERNAL 入口（application.yml） -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-guard</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- 通道适配。独立形态下回调验签与向通道查单都在这个进程里做 -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>

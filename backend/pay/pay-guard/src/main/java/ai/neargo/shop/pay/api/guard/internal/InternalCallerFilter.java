@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.svc;
+package ai.neargo.shop.pay.api.guard.internal;
 
 import ai.neargo.shop.pay.client.PaymentInternalPaths;
 import jakarta.servlet.FilterChain;
@@ -8,11 +8,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 
 /**
  * 只挂 {@code /internal/pay/v1/**}：按 {@code X-Internal-Caller} + 凭据识别调用方，认不出一律 401（原因只进日志）；
  * 认得就把调用方码放进请求属性，端点据此限定业务类型（代码清单 §5.3）。
  */
+@ConditionalOnGuardEntry(PortalFace.INTERNAL)
 @Component
 public class InternalCallerFilter extends OncePerRequestFilter {
 

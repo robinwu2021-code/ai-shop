@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.svc;
+package ai.neargo.shop.pay.api.guard.internal;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -11,6 +11,8 @@ import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 
 /**
  * 过渡实现（⏸，密钥模块就绪后换）：每个调用方一把凭据，部署环境里只放它的 SHA-256 ——
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Component;
  *
  * <p>比对用 {@link MessageDigest#isEqual}（常量时间，R12）；没配的调用方一律不认。
  */
+@ConditionalOnGuardEntry(PortalFace.INTERNAL)
 @Component
 public class ConfigInternalCallerRegistry implements InternalCallerRegistry {
 

@@ -145,6 +145,8 @@ public class PortalAuthFilter extends OncePerRequestFilter {
 
     private static String entryOf(PortalFace f) {
         return switch (f) {
+            // pay_api_request_log.entry 的值域（V5）：经 HTTP 的内部调用记 INTERNAL_HTTP，进程内的记 INTERNAL_PORT
+            case INTERNAL -> "INTERNAL_HTTP";
             case OPEN -> "OPEN_API";
             case TERMINAL -> "TERMINAL_API";
             case BIZ -> "BIZ_API";
@@ -155,6 +157,7 @@ public class PortalAuthFilter extends OncePerRequestFilter {
 
     private static String sourceOf(PortalFace f) {
         return switch (f) {
+            case INTERNAL -> "INTERNAL";
             case OPEN -> "PARTNER";
             case TERMINAL -> "TERMINAL";
             case BIZ -> "BIZ";

@@ -4,13 +4,20 @@ import java.util.Arrays;
 import java.util.Optional;
 
 /**
- * 支付接入层的五个入口：每个入口一个子包、一个 URL 前缀、一套鉴权（ADR-044 §2-3）。
+ * 支付接入层的入口：每个入口一个 URL 前缀、一套鉴权（ADR-044 §2-3、ADR-045）。对外入口另有一个 controller 子包。
  *
  * <p>前缀只在这里定义一次。nginx 分流、鉴权过滤器挂载、守卫 {@link PortalRouteRules} 都从这里取，
  * 改一个入口的前缀只改这一行 —— 而不是在五处字符串里各改一遍、漏一处就静默走到别的鉴权链。
+ *
+ * <p>哪个进程装哪些入口由 {@code shop.pay.guard.entries} 决定（{@link ConditionalOnGuardEntry}）。
  */
 public enum PortalFace {
 
+    /**
+     * 内部系统（业务服务调支付）：{@code pay-svc} 的 {@code /internal/pay/v1}。端点在 {@code pay-svc}，
+     * 不在本包的 controller 子包下 —— {@code PortalRouteRules} 只管 {@link #API_PACKAGE} 里的 controller，管不到它
+     */
+    INTERNAL("internal", "/internal/pay/v1"),
     /** 支付运营端：运营会话 + {@code pay:*} 权限码 + 关键操作两人复核 */
     OPS("ops", "/pay-ops/v1"),
     /** 第三方开放 API：AppId + 签名、时间窗、nonce */

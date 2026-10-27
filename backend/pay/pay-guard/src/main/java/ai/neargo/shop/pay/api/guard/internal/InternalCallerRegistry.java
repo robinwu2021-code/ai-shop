@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.svc;
+package ai.neargo.shop.pay.api.guard.internal;
 
 import java.util.Optional;
 

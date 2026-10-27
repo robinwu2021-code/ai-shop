@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import ai.neargo.shop.pay.api.guard.internal.InternalCallerFilter;
 
 /**
  * 支付单内部端点（开发计划 §3.1 独立形态；TDD-支付服务-I3支付单退款流水 S8）：建单、查单、关单、退款 → 与内嵌同一个

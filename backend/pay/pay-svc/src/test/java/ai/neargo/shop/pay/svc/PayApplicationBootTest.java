@@ -119,6 +119,24 @@ class PayApplicationBootTest {
                 .as("内部端点没装上，这个进程起来了也没人能和它说话")
                 .hasSize(1);
     }
+    @Test
+    @DisplayName("★★★ 只装内部入口的守卫（shop.pay.guard.entries=INTERNAL）：对外入口的鉴权器与开放 API 服务一个都不进这个进程")
+    void onlyTheInternalGuardIsWired() {
+        /*
+         * pay-guard 是 shop-app 与 pay-svc 共用的一个 jar（ADR-045），而这个进程扫描整个 ai.neargo.shop.pay。
+         * 不按入口装配的话，开放 API 的鉴权器与它要的接入方服务会被一起扫进来 —— 进程能起来，但多了一套它不该有的入口。
+         */
+        assertThat(ctx.getBeanNamesForType(ai.neargo.shop.pay.api.guard.internal.InternalCallerFilter.class))
+                .as("内部调用过滤器没装上 —— /internal/pay/v1 就没人识别调用方了")
+                .hasSize(1);
+        assertThat(ctx.getBeansOfType(ai.neargo.shop.pay.api.guard.core.PortalAuthenticator.class))
+                .as("对外入口的鉴权器进了支付服务进程")
+                .isEmpty();
+        assertThat(ctx.getBeanNamesForType(ai.neargo.shop.pay.api.guard.open.service.AppAuthService.class))
+                .as("开放 API 的接入方鉴权服务进了支付服务进程")
+                .isEmpty();
+    }
+
     @Test void saleCapacityAndReverseSourceHaveExactlyOneStandaloneOwner() {
         assertThat(ctx.getBeansOfType(EntitlementSaleReservationPort.class)).hasSize(1);
         assertThat(ctx.getBeansOfType(EntitlementSaleSourcePort.class)).hasSize(1);

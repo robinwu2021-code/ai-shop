@@ -19,8 +19,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
+import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 
 /** {@link PartnerKeyService} 的实现：只做「哪个接入方、哪一种密钥」，材料的生成与加密保存全在密钥模块 */
+@ConditionalOnGuardEntry(PortalFace.OPEN)
 @Service
 public class PartnerKeyServiceImpl implements PartnerKeyService {
 

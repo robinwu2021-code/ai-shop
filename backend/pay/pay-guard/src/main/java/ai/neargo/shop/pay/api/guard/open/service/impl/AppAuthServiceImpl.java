@@ -31,8 +31,11 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 
 /** {@link AppAuthService} 的实现 */
+@ConditionalOnGuardEntry(PortalFace.OPEN)
 @Service
 public class AppAuthServiceImpl implements AppAuthService {
 

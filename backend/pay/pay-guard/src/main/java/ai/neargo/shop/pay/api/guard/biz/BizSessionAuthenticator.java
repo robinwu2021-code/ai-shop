@@ -11,11 +11,13 @@ import org.springframework.stereotype.Component;
 import ai.neargo.shop.pay.api.guard.core.PortalAuthFilter;
 import ai.neargo.shop.pay.api.guard.core.PortalAuthenticator;
 import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
+import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
 
 /**
  * 商家端入口（ADR-044 §2-4 内嵌形态）：复用主应用的商家会话 —— 商家链上的令牌过滤器已认过人、{@code BizContextFilter}
  * 已解析好门店作用域，这里只确认「是商家令牌」并给出调用方，让接入层照样写请求记录。认不出（没登录、跨端令牌）就 401。
  */
+@ConditionalOnGuardEntry(PortalFace.BIZ)
 @Component
 public class BizSessionAuthenticator implements PortalAuthenticator {
 

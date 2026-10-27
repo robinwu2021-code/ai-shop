@@ -16,11 +16,13 @@ import org.springframework.stereotype.Component;
 import ai.neargo.shop.pay.api.guard.core.PortalAuthFilter;
 import ai.neargo.shop.pay.api.guard.core.PortalAuthenticator;
 import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
+import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
 
 /**
  * 开放 API 鉴权（安全规范 §2.3）：读 {@code X-App-Id / X-Timestamp / X-Nonce / X-Signature} 与缓存的原始请求体，交给
  * {@link AppAuthService}。失败原因只进日志与请求记录，回给调用方的只有统一的 401。
  */
+@ConditionalOnGuardEntry(PortalFace.OPEN)
 @Component
 public class OpenSignatureAuthenticator implements PortalAuthenticator {
 
