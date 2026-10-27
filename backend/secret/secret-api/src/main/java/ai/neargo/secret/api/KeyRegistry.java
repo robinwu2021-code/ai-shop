@@ -31,6 +31,12 @@ public interface KeyRegistry {
      */
     IssuedSecret generate(long keyId, int lengthBytes, String issuedBy, String reason);
 
+    /**
+     * 按指定形态生成（同上：明文只此一次、记 {@code REVEAL_ON_ISSUE}）。
+     * 版本另记显示前缀与 KeySerial（{@code external_key_id} = 序列号前缀 + 生成日 yyyyMMdd + 两位版本号）。
+     */
+    IssuedSecret generate(long keyId, Generation generation);
+
     /** 测试调用通过：DRAFT → VERIFIED，证据是调用方模块的记录引用（如 {@code PAY:pay_channel_call_log:123}） */
     void markVerified(KeyVersionRef ref, String evidence, String operator);
 
@@ -56,6 +62,12 @@ public interface KeyRegistry {
 
     /** 验入站签名可接受的材料：ACTIVE 加上仍在重叠期内的 ROTATING（表结构说明 §3.3 轮换表） */
     List<byte[]> verificationMaterials(long keyId);
+
+    /** 同上，但只给版本引用（ACTIVE 在前）：交 {@link KeyVault} 运算，材料不离开密钥模块 —— L5 也能验签 */
+    List<KeyVersionRef> verificationVersions(long keyId);
+
+    /** 按 KeySerial（{@code external_key_id}）找版本：请求头 {@code X-Key-Serial} / {@code X-Encrypt-Serial} 用 */
+    Optional<KeyVersionRef> findVersion(long keyId, String externalKeyId);
 
     /** 指纹：唯一可回显的密钥信息 */
     String fingerprintOf(KeyVersionRef ref);
@@ -84,12 +96,36 @@ public interface KeyRegistry {
                    LocalDateTime expiresAt) {
     }
 
-    /** 发放结果：明文只此一次，调用方展示后即丢弃，不得落库、不得进日志 */
-    record IssuedSecret(KeyVersionRef ref, byte[] plaintext, String fingerprint) {
+    /**
+     * 一次按形态的生成。
+     *
+     * @param displayPrefix 只用于显示的前缀（{@code sk_live_} / {@code sk_test_}），可空；<b>不进材料</b>
+     * @param serialPrefix  KeySerial 前缀（AppSecret {@code S}、EncryptKey {@code E}），可空 = 不生成 KeySerial
+     */
+    record Generation(SecretFormat format, String displayPrefix, String serialPrefix, String issuedBy, String reason) {
+
+        public Generation {
+            if (format == null || issuedBy == null || issuedBy.isBlank()) {
+                throw new IllegalArgumentException("format and issuedBy are required");
+            }
+        }
+    }
+
+    /**
+     * 发放结果：明文只此一次，调用方展示后即丢弃，不得落库、不得进日志。
+     *
+     * @param plaintext     材料本身（不含显示前缀）
+     * @param externalKeyId KeySerial；生成时没要求则为空
+     */
+    record IssuedSecret(KeyVersionRef ref, byte[] plaintext, String fingerprint, String externalKeyId) {
+
+        public IssuedSecret(KeyVersionRef ref, byte[] plaintext, String fingerprint) {
+            this(ref, plaintext, fingerprint, null);
+        }
 
         @Override
         public String toString() {
-            return "IssuedSecret[ref=" + ref + ", fingerprint=" + fingerprint + "]";
+            return "IssuedSecret[ref=" + ref + ", fingerprint=" + fingerprint + ", serial=" + externalKeyId + "]";
         }
     }
 }

@@ -1,5 +1,6 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.secret.core.DatabaseKeyVault;
 import ai.neargo.secret.core.DefaultKeyRegistry;
 import ai.neargo.secret.core.DefaultSecretVault;
 import ai.neargo.secret.core.InjectedMasterKeyProvider;
@@ -164,6 +165,12 @@ public class SecretDataSourceConfig {
     DefaultKeyRegistry secretKeyRegistry(SecretStoreMappers db, DefaultSecretVault vault, SecretSettings settings,
                                          @Qualifier("secretTxManager") PlatformTransactionManager tx) {
         return new DefaultKeyRegistry(db, vault, settings, tx);
+    }
+
+    /** 密钥运算入口：本片只有基于数据库的两档（L2 注入主密钥 / L3 KMS 主密钥），其余档落地时换成按档路由 */
+    @Bean
+    DatabaseKeyVault secretKeyVault(SecretStoreMappers db, DefaultKeyRegistry registry, SecretSettings settings) {
+        return new DatabaseKeyVault(db, registry, settings);
     }
 
     @Bean

@@ -17,6 +17,11 @@ public record KeyPurpose(Direction direction, Usage usage) {
     public static final KeyPurpose OUTBOUND_ENCRYPT = new KeyPurpose(Direction.OUTBOUND, Usage.ENCRYPT);
     /** 验渠道的响应与回调签名（平台公钥 / 证书） */
     public static final KeyPurpose COUNTERPARTY_VERIFY = new KeyPurpose(Direction.COUNTERPARTY_VERIFY, Usage.VERIFY);
+    /**
+     * 开放 API 的数据加密：接入方的 EncryptKey（解入站敏感字段、加密推送与对账单），
+     * 以及平台加密私钥（增强方案）—— 两者方向与用途相同，靠 {@code owner_type}（PARTNER_APP / PLATFORM_OPEN）区分
+     */
+    public static final KeyPurpose PARTNER_DATA = new KeyPurpose(Direction.INBOUND, Usage.ENCRYPT);
 
     public KeyPurpose {
         if (direction == null || usage == null) {

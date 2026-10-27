@@ -5,6 +5,7 @@ import ai.neargo.secret.api.SecretException;
 import ai.neargo.secret.api.SecretNamespace;
 import ai.neargo.secret.api.SecretRef;
 import ai.neargo.secret.api.SecretVault;
+import ai.neargo.secret.api.StorageTier;
 import ai.neargo.secret.store.entity.SecMasterKey;
 import ai.neargo.secret.store.entity.SecSecretBlob;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -40,6 +41,11 @@ public class DefaultSecretVault implements SecretVault {
         this.provider = provider;
         this.settings = settings;
         this.tx = new TransactionTemplate(txManager);
+    }
+
+    /** 本进程写入的密文落在哪一档：注入式主密钥 = L2，KMS / HSM 主密钥 = L3（材料都在库里，只是主密钥不同） */
+    StorageTier storageTier() {
+        return "ENV".equals(provider.providerType()) ? StorageTier.L2 : StorageTier.L3;
     }
 
     @Override

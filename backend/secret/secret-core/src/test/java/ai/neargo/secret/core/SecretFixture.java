@@ -23,6 +23,7 @@ final class SecretFixture {
     MasterKeyBook book;
     DefaultSecretVault vault;
     DefaultKeyRegistry registry;
+    DatabaseKeyVault keyVault;
     SecretLifecycleService lifecycle;
     final String env;
 
@@ -73,6 +74,7 @@ final class SecretFixture {
         var mappers = SecretStoreMappers.of(store.session());
         vault = new DefaultSecretVault(mappers, book, provider, settings, store.txManager());
         registry = new DefaultKeyRegistry(mappers, vault, settings, store.txManager());
+        keyVault = new DatabaseKeyVault(mappers, registry, settings);
         lifecycle = new SecretLifecycleService(mappers, book, provider, vault, settings, store.txManager());
         book.sync();
         return this;

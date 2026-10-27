@@ -77,4 +77,10 @@ public class SecKeyVersion extends SecBaseEntity {
 
     /** 吊销原因（泄露、离职、商户解约…） */
     private String revokeReason;
+
+    /** 存储档 L1–L5（db/secret V2）：每个版本各自记录，路由按它分发 */
+    private String storageTier;
+
+    /** 只用于显示的前缀（AppSecret 的 sk_live_ / sk_test_）；不参与任何运算，不属于材料 */
+    private String displayPrefix;
 }

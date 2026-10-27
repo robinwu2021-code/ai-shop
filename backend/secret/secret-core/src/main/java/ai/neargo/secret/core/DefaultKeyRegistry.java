@@ -18,8 +18,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -38,6 +38,7 @@ public class DefaultKeyRegistry implements KeyRegistry {
     /** 冻结版本可用于退款、查单、验旧回调的状态（表结构说明 §3.3） */
     private static final Set<String> FROZEN_USABLE = Set.of("ACTIVE", "ROTATING", "RETIRED");
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final DateTimeFormatter SERIAL_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final SecretStoreMappers db;
     private final DefaultSecretVault vault;
@@ -87,7 +88,7 @@ public class DefaultKeyRegistry implements KeyRegistry {
 
     @Override
     public KeyVersionRef addVersion(long keyId, NewVersion v) {
-        return tx.execute(s -> insertVersion(requireKey(keyId), v).ref);
+        return tx.execute(s -> insertVersion(requireKey(keyId), v, null, null).ref);
     }
 
     @Override
@@ -95,14 +96,22 @@ public class DefaultKeyRegistry implements KeyRegistry {
         if (lengthBytes < 32) {
             throw new IllegalArgumentException("generated keys must be at least 32 bytes");
         }
-        byte[] random = new byte[lengthBytes];
-        RANDOM.nextBytes(random);
         // 材料是可打印的 Base64URL 文本本身：对方拿到的就是这串字符，按 UTF-8 字节当 HMAC 密钥，两边不会差一层编码
-        byte[] material = Base64.getUrlEncoder().withoutPadding().encodeToString(random)
-                .getBytes(StandardCharsets.US_ASCII);
+        return issue(keyId, SecretFormats.base64Url(lengthBytes, RANDOM), null, null, issuedBy, reason);
+    }
+
+    @Override
+    public IssuedSecret generate(long keyId, Generation g) {
+        return issue(keyId, SecretFormats.generate(g.format(), RANDOM), g.displayPrefix(), g.serialPrefix(),
+                g.issuedBy(), g.reason());
+    }
+
+    private IssuedSecret issue(long keyId, byte[] material, String displayPrefix, String serialPrefix,
+                               String issuedBy, String reason) {
         return tx.execute(s -> {
             SecKey key = requireKey(keyId);
-            Inserted ins = insertVersion(key, new NewVersion(material, null, "GENERATED", null, null, null, issuedBy));
+            Inserted ins = insertVersion(key, new NewVersion(material, null, "GENERATED", null, null, null, issuedBy),
+                    displayPrefix, serialPrefix);
             SecAccessLog log = new SecAccessLog();
             log.setAccessType("REVEAL_ON_ISSUE");
             log.setNamespace(key.getNamespace());
@@ -113,7 +122,7 @@ public class DefaultKeyRegistry implements KeyRegistry {
             log.setReason(reason == null || reason.isBlank() ? "issue generated key" : reason);
             log.setAccessedAt(settings.now());
             db.accessLogs().insert(log);
-            return new IssuedSecret(ins.ref, material, ins.row.getFingerprint());
+            return new IssuedSecret(ins.ref, material, ins.row.getFingerprint(), ins.row.getExternalKeyId());
         });
     }
 
@@ -225,24 +234,44 @@ public class DefaultKeyRegistry implements KeyRegistry {
 
     @Override
     public List<byte[]> verificationMaterials(long keyId) {
+        List<byte[]> out = new ArrayList<>();
+        for (SecKeyVersion v : verifiableRows(keyId)) {
+            out.add(secretOf(new KeyVersionRef(keyId, v.getVersionIndex()), v));
+        }
+        return out;
+    }
+
+    @Override
+    public List<KeyVersionRef> verificationVersions(long keyId) {
+        return verifiableRows(keyId).stream().map(v -> new KeyVersionRef(keyId, v.getVersionIndex())).toList();
+    }
+
+    @Override
+    public Optional<KeyVersionRef> findVersion(long keyId, String externalKeyId) {
+        if (externalKeyId == null || externalKeyId.isBlank()) {
+            return Optional.empty();
+        }
+        requireKey(keyId);
+        return Optional.ofNullable(db.versions().selectOne(Wrappers.<SecKeyVersion>lambdaQuery()
+                        .eq(SecKeyVersion::getSecKeyId, keyId).eq(SecKeyVersion::getExternalKeyId, externalKeyId)))
+                .map(v -> new KeyVersionRef(keyId, v.getVersionIndex()));
+    }
+
+    /** ACTIVE 加上仍在重叠期内的 ROTATING；ACTIVE 在前：验签先试当前那把，命中率最高 */
+    private List<SecKeyVersion> verifiableRows(long keyId) {
         SecKey key = requireKey(keyId);
         if (!"ACTIVE".equals(key.getStatus())) {
             return List.of();
         }
         LocalDateTime now = settings.now();
-        List<byte[]> out = new ArrayList<>();
-        // ACTIVE 在前：验签先试当前那把，命中率最高
-        for (SecKeyVersion v : db.versions().selectList(Wrappers.<SecKeyVersion>lambdaQuery()
-                .eq(SecKeyVersion::getSecKeyId, keyId)
-                .in(SecKeyVersion::getStatus, "ACTIVE", "ROTATING")
-                .orderByDesc(SecKeyVersion::getVersionIndex))) {
-            boolean inOverlap = "ACTIVE".equals(v.getStatus())
-                    || v.getOverlapUntil() != null && v.getOverlapUntil().isAfter(now);
-            if (inOverlap) {
-                out.add(secretOf(new KeyVersionRef(keyId, v.getVersionIndex()), v));
-            }
-        }
-        return out;
+        return db.versions().selectList(Wrappers.<SecKeyVersion>lambdaQuery()
+                        .eq(SecKeyVersion::getSecKeyId, keyId)
+                        .in(SecKeyVersion::getStatus, "ACTIVE", "ROTATING")
+                        .orderByDesc(SecKeyVersion::getVersionIndex))
+                .stream()
+                .filter(v -> "ACTIVE".equals(v.getStatus())
+                        || v.getOverlapUntil() != null && v.getOverlapUntil().isAfter(now))
+                .toList();
     }
 
     @Override
@@ -253,7 +282,7 @@ public class DefaultKeyRegistry implements KeyRegistry {
     private record Inserted(KeyVersionRef ref, SecKeyVersion row) {
     }
 
-    private Inserted insertVersion(SecKey key, NewVersion v) {
+    private Inserted insertVersion(SecKey key, NewVersion v, String displayPrefix, String serialPrefix) {
         boolean hasSecret = v.secretMaterial() != null && v.secretMaterial().length > 0;
         boolean hasPublic = v.publicMaterial() != null && !v.publicMaterial().isBlank();
         // 与 ck_sec_key_version_1 同一条：私密材料与公开材料至少一个
@@ -277,7 +306,11 @@ public class DefaultKeyRegistry implements KeyRegistry {
         row.setPublicMaterial(hasPublic ? v.publicMaterial() : null);
         row.setFingerprint(hasSecret ? EnvelopeCipher.symmetricFingerprint(v.secretMaterial())
                 : EnvelopeCipher.sha256Hex(v.publicMaterial().getBytes(StandardCharsets.UTF_8)));
-        row.setExternalKeyId(v.externalKeyId());
+        // KeySerial：前缀 + 生成日 + 两位版本号（S2026102601）。版本号在同一把密钥内唯一，序列号因此也唯一，不用另查
+        row.setExternalKeyId(serialPrefix == null ? v.externalKeyId()
+                : serialPrefix + SERIAL_DATE.format(settings.now()) + String.format("%02d", max + 1));
+        row.setStorageTier(vault.storageTier().name());
+        row.setDisplayPrefix(displayPrefix);
         row.setSource(v.source());
         row.setValidFrom(v.validFrom());
         row.setValidTo(v.validTo());

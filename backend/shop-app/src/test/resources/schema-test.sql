@@ -11662,6 +11662,8 @@ CREATE TABLE IF NOT EXISTS sec_key_version
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    storage_tier VARCHAR(8) NOT NULL DEFAULT 'L2',
+    display_prefix VARCHAR(16) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sec_key_version_1 UNIQUE (sec_key_id,version_index),
     CONSTRAINT uk_sec_key_version_2 UNIQUE (active_key),
