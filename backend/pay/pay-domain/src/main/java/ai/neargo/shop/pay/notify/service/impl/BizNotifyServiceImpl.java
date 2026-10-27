@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -110,7 +111,7 @@ public class BizNotifyServiceImpl implements BizNotifyService {
             return;
         }
         String eventKey = eventType + "|" + (r == null ? "O" + o.getId() : "R" + r.getId()) + "|" + TERMINAL_STATE_VERSION;
-        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime now = columnTime(Instant.now());
         PayBizNotify n = new PayBizNotify();
         n.setTraceId(UUID.randomUUID().toString().replace("-", ""));
         n.setEventType(eventType);
@@ -166,7 +167,7 @@ public class BizNotifyServiceImpl implements BizNotifyService {
 
     @Override
     public int deliverDue(Instant now, int limit) {
-        LocalDateTime t = LocalDateTime.ofInstant(now, ZoneOffset.UTC);
+        LocalDateTime t = columnTime(now);
         List<PayBizNotify> due = DataScopeContext.executeWithoutScope(() -> notifies.selectList(
                 Wrappers.<PayBizNotify>lambdaQuery().in(PayBizNotify::getStatus, "PENDING", "FAILED")
                         .eq(PayBizNotify::getTargetType, "WEBHOOK").le(PayBizNotify::getNextAt, t)
@@ -188,7 +189,15 @@ public class BizNotifyServiceImpl implements BizNotifyService {
         if (n == null || !"WEBHOOK".equals(n.getTargetType())) {
             throw new IllegalArgumentException("没有这条 webhook 答复：" + notifyId);
         }
-        deliver(n, LocalDateTime.now(ZoneOffset.UTC), "MANUAL", operatorNo);
+        deliver(n, columnTime(Instant.now()), "MANUAL", operatorNo);
+    }
+
+    /**
+     * 时间列是 DATETIME(3)，带微秒写进去会被四舍五入：刚落的行 next_at 可能进位到当前时刻之后半毫秒，
+     * 紧接着的一轮投递扫不到它。写库与比较都先截到毫秒（UTC，与列注释一致）。
+     */
+    static LocalDateTime columnTime(Instant at) {
+        return LocalDateTime.ofInstant(at.truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC);
     }
 
     private void deliver(PayBizNotify n, LocalDateTime now, String trigger, String operatorNo) {
