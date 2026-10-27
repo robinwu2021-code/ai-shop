@@ -33,7 +33,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 class InternalDiningSessionApiTest {
     final WebApplicationContextRunner runner=new WebApplicationContextRunner().withUserConfiguration(Host.class)
-            .withPropertyValues("shop.food.enabled=true","shop.services.internal-token=wire");
+            .withPropertyValues("shop.food.enabled=true","shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     @Test void allFiveRoutesUseServiceTokenAndReturnRawTypedObjects() {
         runner.run(c -> {
             var mvc=mvc(c);String common="\"entityNo\":\"E\",\"storeNo\":\"A\"";
@@ -44,7 +44,7 @@ class InternalDiningSessionApiTest {
                     new String[]{DiningSessionInternalApi.RESOLVE_PATH,"{\"tableToken\":\"raw\"}","$.tableNo"},
                     new String[]{DiningSessionInternalApi.START_PATH,"{"+common+",\"buyerNo\":\"buyer\",\"idempotencyKey\":\"original\",\"request\":{\"tableToken\":\"raw\"}}","$.accessToken"},
                     new String[]{DiningSessionInternalApi.END_PATH,"{\"sessionNo\":\"S1\",\"accessToken\":\"short\",\"buyerNo\":\"buyer\",\"idempotencyKey\":\"original\"}","$.operation.status"})) {
-                mvc.perform(post(item[0]).header(InternalHttp.TOKEN_HEADER,"wire").contentType(MediaType.APPLICATION_JSON)
+                mvc.perform(post(item[0]).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system()).contentType(MediaType.APPLICATION_JSON)
                         .content(item[1])).andExpect(status().isOk()).andExpect(jsonPath(item[2]).exists())
                         .andExpect(jsonPath("$.code").doesNotExist());
                 mvc.perform(post(item[0]).contentType(MediaType.APPLICATION_JSON).content(item[1]))
@@ -55,10 +55,10 @@ class InternalDiningSessionApiTest {
     @Test void rejectsMalformedAndPreservesBusinessConflict() {
         runner.run(c -> {
             var mvc=mvc(c);
-            mvc.perform(post(DiningSessionInternalApi.RESOLVE_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(DiningSessionInternalApi.RESOLVE_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content("{\"tableToken\":\"conflict\"}"))
                     .andExpect(status().isConflict());
-            mvc.perform(post(DiningSessionInternalApi.RESOLVE_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(DiningSessionInternalApi.RESOLVE_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content("{}")) .andExpect(status().isBadRequest());
         });
     }

@@ -1,6 +1,9 @@
 package ai.neargo.svc.client;
 
+import org.springframework.http.client.ClientHttpRequestInterceptor;
+
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
@@ -22,6 +25,8 @@ import java.util.function.Supplier;
  * @param addressConfigKey 「地址没配」时报错里点名的配置项，可为 {@code null}。
  *                       <b>报错要说清改哪个配置</b> —— 只说「没配地址」的话，读的人还得先去猜键名
  * @param tokenConfigKey   同上，「令牌没配」时点名的配置项
+ * @param interceptors     定地址、加令牌之后再挂的拦截器（默认空）。给某一个服务的调用方加自己的协议头用，
+ *                         例如餐饮的签名凭证；本模块不知道它们做什么
  */
 public record ServiceClientSpec(
         String service,
@@ -32,13 +37,22 @@ public record ServiceClientSpec(
         Duration connectTimeout,
         Duration readTimeout,
         String addressConfigKey,
-        String tokenConfigKey) {
+        String tokenConfigKey,
+        List<ClientHttpRequestInterceptor> interceptors) {
 
     /** 不点名配置项的写法（报错里只说「没配」） */
     public ServiceClientSpec(String service, Function<String, Optional<String>> baseUrl, String tokenHeader,
                              Supplier<String> token, boolean requireToken, Duration connectTimeout,
                              Duration readTimeout) {
         this(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, readTimeout, null, null);
+    }
+
+    /** 不带额外拦截器的写法 */
+    public ServiceClientSpec(String service, Function<String, Optional<String>> baseUrl, String tokenHeader,
+                             Supplier<String> token, boolean requireToken, Duration connectTimeout,
+                             Duration readTimeout, String addressConfigKey, String tokenConfigKey) {
+        this(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, readTimeout,
+                addressConfigKey, tokenConfigKey, List.of());
     }
 
     public ServiceClientSpec {
@@ -48,17 +62,26 @@ public record ServiceClientSpec(
         Objects.requireNonNull(token, "token");
         Objects.requireNonNull(connectTimeout, "connectTimeout");
         Objects.requireNonNull(readTimeout, "readTimeout");
+        interceptors = interceptors == null ? List.of() : List.copyOf(interceptors);
     }
 
     /** 同一个服务、换一个读超时 —— job 侧每个任务的超时各不相同 */
     public ServiceClientSpec withReadTimeout(Duration timeout) {
         return new ServiceClientSpec(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, timeout,
-                addressConfigKey, tokenConfigKey);
+                addressConfigKey, tokenConfigKey, interceptors);
     }
 
     /** 报错里点名配置项 */
     public ServiceClientSpec withConfigKeys(String addressKey, String tokenKey) {
         return new ServiceClientSpec(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, readTimeout,
-                addressKey, tokenKey);
+                addressKey, tokenKey, interceptors);
+    }
+
+    /** 追加拦截器（在定地址、加令牌之后执行，按给出的顺序） */
+    public ServiceClientSpec withInterceptors(List<ClientHttpRequestInterceptor> more) {
+        var all = new java.util.ArrayList<>(interceptors);
+        all.addAll(more);
+        return new ServiceClientSpec(service, baseUrl, tokenHeader, token, requireToken, connectTimeout, readTimeout,
+                addressConfigKey, tokenConfigKey, all);
     }
 }

@@ -91,7 +91,7 @@ class FoodConfigPublicationPrimaryDatabaseTest {
                     .withPropertyValues("shop.outbox.sources.platform.mode=unified",
                             "shop.outbox.sources.inventory.mode=legacy", "shop.outbox.enabled=false",
                             "spring.datasource.url=" + url, "spring.datasource.username=root",
-                            "spring.datasource.password=", "shop.services.internal-token=wire",
+                            "spring.datasource.password=", "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY,
                             "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort(),
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure."
                                     + "DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure."
@@ -105,7 +105,7 @@ class FoodConfigPublicationPrimaryDatabaseTest {
                                 ConfigRevisionInternalApi.LIST_PATH, ConfigRevisionInternalApi.GET_PATH, ConfigRevisionInternalApi.RESOLVE_PATH)) {
                             mvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isUnauthorized());
-                            mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire")
+                            mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                     .contentType(MediaType.APPLICATION_JSON).content("{}"))
                                     .andExpect(status().isBadRequest());
                         }
@@ -113,7 +113,7 @@ class FoodConfigPublicationPrimaryDatabaseTest {
                             try {
                                 var result = mvc.perform(post(ex.getRequestURI().getPath())
                                         .header(InternalHttp.TOKEN_HEADER,
-                                                ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER))
+                                                ex.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                         .contentType(MediaType.APPLICATION_JSON)
                                                 .content(ex.getRequestBody().readAllBytes()))
                                         .andReturn().getResponse();

@@ -38,7 +38,7 @@ class InternalMenuCatalogPriceApiTest {
             new WebApplicationContextRunner()
                     .withUserConfiguration(Host.class)
                     .withPropertyValues(
-                            "shop.food.enabled=true", "shop.services.internal-token=wire");
+                            "shop.food.enabled=true", "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     static final String BODY =
             "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"menuNo\":\"M\",\"revisionNo\":\"R1\"}";
 
@@ -65,7 +65,7 @@ class InternalMenuCatalogPriceApiTest {
                                     "{}"))
                         mvc.perform(
                                         post(MenuCatalogPriceInternalApi.CAPTURE_PATH)
-                                                .header(InternalHttp.TOKEN_HEADER, "wire")
+                                                .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content(bad))
                                 .andExpect(status().isBadRequest());
@@ -101,7 +101,7 @@ class InternalMenuCatalogPriceApiTest {
                                             "receipt"));
                     mvc.perform(
                                     post(MenuCatalogPriceInternalApi.CAPTURE_PATH)
-                                            .header(InternalHttp.TOKEN_HEADER, "wire")
+                                            .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                             .contentType(MediaType.APPLICATION_JSON)
                                             .content(BODY))
                             .andExpect(status().isOk())
@@ -123,7 +123,7 @@ class InternalMenuCatalogPriceApiTest {
                         doThrow(BizException.of(expected.getKey())).when(service).capture(query);
                         mvc.perform(
                                         post(MenuCatalogPriceInternalApi.CAPTURE_PATH)
-                                                .header(InternalHttp.TOKEN_HEADER, "wire")
+                                                .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content(BODY))
                                 .andExpect(status().is(expected.getValue()));

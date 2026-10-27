@@ -38,7 +38,7 @@ class InternalStoreCalendarSourceApiTest {
             new WebApplicationContextRunner()
                     .withUserConfiguration(Host.class)
                     .withPropertyValues(
-                            "shop.food.enabled=true", "shop.services.internal-token=wire");
+                            "shop.food.enabled=true", "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     static final String BODY =
             "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"fromDate\":\"2026-10-20\",\"toDate\":\"2026-10-21\"}";
 
@@ -66,7 +66,7 @@ class InternalStoreCalendarSourceApiTest {
                                     "{}"))
                         mvc.perform(
                                         post(StoreCalendarSourceInternalApi.CAPTURE_PATH)
-                                                .header(InternalHttp.TOKEN_HEADER, "wire")
+                                                .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content(bad))
                                 .andExpect(status().isBadRequest());
@@ -105,7 +105,7 @@ class InternalStoreCalendarSourceApiTest {
                                             "receipt"));
                     mvc.perform(
                                     post(StoreCalendarSourceInternalApi.CAPTURE_PATH)
-                                            .header(InternalHttp.TOKEN_HEADER, "wire")
+                                            .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                             .contentType(MediaType.APPLICATION_JSON)
                                             .content(BODY))
                             .andExpect(status().isOk())
@@ -125,7 +125,7 @@ class InternalStoreCalendarSourceApiTest {
                         doThrow(BizException.of(expected.getKey())).when(service).capture(query);
                         mvc.perform(
                                         post(StoreCalendarSourceInternalApi.CAPTURE_PATH)
-                                                .header(InternalHttp.TOKEN_HEADER, "wire")
+                                                .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content(BODY))
                                 .andExpect(status().is(expected.getValue()));

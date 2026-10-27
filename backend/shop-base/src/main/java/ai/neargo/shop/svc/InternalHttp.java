@@ -3,7 +3,12 @@ package ai.neargo.shop.svc;
 import ai.neargo.svc.client.ServiceClientSpec;
 import ai.neargo.svc.client.ServiceClients;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,10 +36,19 @@ public class InternalHttp {
 
     private final ServiceLocator locator;
     private final String token;
+    private final ObjectProvider<InternalServiceInterceptor> perService;
 
-    public InternalHttp(ServiceLocator locator, @Value("${shop.services.internal-token:}") String token) {
+    /** 不带按服务拦截器的写法（测试、手工装配） */
+    public InternalHttp(ServiceLocator locator, String token) {
+        this(locator, token, null);
+    }
+
+    @Autowired
+    public InternalHttp(ServiceLocator locator, @Value("${shop.services.internal-token:}") String token,
+                        ObjectProvider<InternalServiceInterceptor> perService) {
         this.locator = locator;
         this.token = token == null ? "" : token;
+        this.perService = perService;
     }
 
     /**
@@ -42,8 +56,23 @@ public class InternalHttp {
      * @param readTimeout 读超时，按服务给
      */
     public <T> T client(String service, Class<T> api, Duration readTimeout) {
+        return client(service, api, readTimeout, new ClientHttpRequestInterceptor[0]);
+    }
+
+    /**
+     * 同上，另挂调用方自己的拦截器（在加令牌之后执行）。用于某个服务额外要求的协议头，
+     * 如餐饮独立服务的签名凭证 {@code X-Food-Scope}。
+     */
+    public <T> T client(String service, Class<T> api, Duration readTimeout, ClientHttpRequestInterceptor... extra) {
+        List<ClientHttpRequestInterceptor> all = new ArrayList<>();
+        if (perService != null) {
+            perService.orderedStream().filter(i -> service.equals(i.service()))
+                    .forEach(i -> all.add(i.interceptor()));
+        }
+        all.addAll(List.of(extra));
         return ServiceClients.create(api, new ServiceClientSpec(
                 service, locator::baseUrlOf, TOKEN_HEADER, () -> token, true, CONNECT_TIMEOUT, readTimeout)
-                .withConfigKeys("shop.services.targets." + service, "shop.services.internal-token"));
+                .withConfigKeys("shop.services.targets." + service, "shop.services.internal-token")
+                .withInterceptors(all));
     }
 }

@@ -26,18 +26,18 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 class InternalDiningBatchQueryApiTest {
     @Test void existingServiceTokenProtectsTypedBatchFiltersAndNestedPageBounds() {
         new WebApplicationContextRunner().withUserConfiguration(Host.class).withPropertyValues("shop.food.enabled=true",
-                "shop.services.internal-token=wire").run(c -> {
+                "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY).run(c -> {
             var mvc=MockMvcBuilders.webAppContextSetup(c).addFilters(c.getBean(FilterChainProxy.class)).build();
             String request="""
                     {"entityNo":"E","storeNo":"A","actorNo":"staff","query":{"page":1,"size":20,
                     "originalCheckNo":"OLD","checkNo":"CURRENT","businessDate":"2026-10-24","status":"BOUND","orderSource":"POS"}}
                     """;
-            mvc.perform(post(DiningBatchQueryInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(DiningBatchQueryInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content(request)).andExpect(status().isOk())
                     .andExpect(jsonPath("$.total").value(0)).andExpect(jsonPath("$.code").doesNotExist());
             mvc.perform(post(DiningBatchQueryInternalApi.LIST_PATH).contentType(MediaType.APPLICATION_JSON).content(request))
                     .andExpect(status().isUnauthorized());
-            mvc.perform(post(DiningBatchQueryInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"wire")
+            mvc.perform(post(DiningBatchQueryInternalApi.LIST_PATH).header(InternalHttp.TOKEN_HEADER,"wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                     .contentType(MediaType.APPLICATION_JSON).content(request.replace("\"size\":20","\"size\":101")))
                     .andExpect(status().isBadRequest());
         });

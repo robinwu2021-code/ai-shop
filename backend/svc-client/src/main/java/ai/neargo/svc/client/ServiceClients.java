@@ -46,12 +46,14 @@ public final class ServiceClients {
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(jdk);
         factory.setReadTimeout(spec.readTimeout());
 
-        RestClient rest = RestClient.builder()
+        RestClient.Builder builder = RestClient.builder()
                 .requestFactory(factory)
                 .baseUrl(PLACEHOLDER_BASE)
-                // 顺序有意义：先确定地址（没配就不必再看令牌），再加令牌
+                // 顺序有意义：先确定地址（没配就不必再看令牌），再加令牌，最后是调用方自己的协议头
                 .requestInterceptor(new ResolveBaseUrl(spec))
-                .requestInterceptor(new AttachToken(spec))
+                .requestInterceptor(new AttachToken(spec));
+        spec.interceptors().forEach(builder::requestInterceptor);
+        RestClient rest = builder
                 .defaultStatusHandler(status -> !status.is2xxSuccessful(), (req, res) -> {
                     int code = res.getStatusCode().value();
                     throw new ServiceCallException(CallOutcome.REMOTE_ERROR, spec.service(), code,

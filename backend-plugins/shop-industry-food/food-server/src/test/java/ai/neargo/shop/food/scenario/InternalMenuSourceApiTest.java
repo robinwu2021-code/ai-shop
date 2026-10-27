@@ -38,7 +38,7 @@ class InternalMenuSourceApiTest {
             new WebApplicationContextRunner()
                     .withUserConfiguration(Host.class)
                     .withPropertyValues(
-                            "shop.food.enabled=true", "shop.services.internal-token=wire");
+                            "shop.food.enabled=true", "shop.services.internal-token=wire", ai.neargo.shop.food.scope.FoodScopeTestSigning.KEY_PROPERTY);
     static final String BODY =
             "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"menuNo\":\"M\",\"revisionNo\":\"R1\","
                 + "\"kind\":\"SKU\",\"resourceRef\":\"S1\",\"salesOfferRef\":\"ITEM\",\"mode\":\"CURRENT\"}";
@@ -68,7 +68,7 @@ class InternalMenuSourceApiTest {
                                     BODY.substring(0, BODY.length() - 1) + ",\"priceMinor\":1}")) {
                         mvc.perform(
                                         post(ConfigRevisionInternalApi.MENU_SOURCE_PATH)
-                                                .header(InternalHttp.TOKEN_HEADER, "wire")
+                                                .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                                 .contentType(MediaType.APPLICATION_JSON)
                                                 .content(invalid))
                                 .andExpect(status().isBadRequest());
@@ -110,7 +110,7 @@ class InternalMenuSourceApiTest {
                                     });
                     mvc.perform(
                                     post(ConfigRevisionInternalApi.MENU_SOURCE_PATH)
-                                            .header(InternalHttp.TOKEN_HEADER, "wire")
+                                            .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                             .contentType(MediaType.APPLICATION_JSON)
                                             .content(BODY))
                             .andExpect(status().isOk())
@@ -118,7 +118,7 @@ class InternalMenuSourceApiTest {
                             .andExpect(jsonPath("$.schemaVersion").value(1));
                     mvc.perform(
                                     post(ConfigRevisionInternalApi.MENU_SOURCE_PATH)
-                                            .header(InternalHttp.TOKEN_HEADER, "wire")
+                                            .header(InternalHttp.TOKEN_HEADER, "wire").with(ai.neargo.shop.food.scope.FoodScopeTestSigning.system())
                                             .contentType(MediaType.APPLICATION_JSON)
                                             .content(BODY.replace("R1", "OLD")))
                             .andExpect(status().isConflict());
