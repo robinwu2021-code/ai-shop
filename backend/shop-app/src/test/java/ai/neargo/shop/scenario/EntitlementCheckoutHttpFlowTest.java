@@ -19,6 +19,9 @@ import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.service.EntitlementOrderUseService;
 import ai.neargo.shop.trade.entitlement.EntitlementServiceSnapshotPolicy;
 import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.pay.channel.TestPayGateway;
+import ai.neargo.shop.support.CheckoutScenarioPayments;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -46,13 +49,15 @@ class EntitlementCheckoutHttpFlowTest {
     @Autowired WebApplicationContext web;
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
+    @Autowired SettlePort settlement;
+    @Autowired TestPayGateway testChannel;
     @Autowired TokenStores tokens;
     @Autowired OtpStore otp;
     @Autowired EntitlementOrderUseDecisionConsumer consumer;
     @Autowired EntitlementOrderUseService orderUses;
     @Autowired OrderService orderService;
     @MockitoSpyBean EntitlementUsePort pay;
-    private String id() { return UUID.randomUUID().toString(); }
+    private String id() { return UUID.randomUUID().toString().replace("-", ""); }
     private String phone() {
         return "125" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
     }
@@ -146,7 +151,8 @@ class EntitlementCheckoutHttpFlowTest {
         assertThat(jdbc.queryForObject("SELECT pay_amount FROM ord_order WHERE order_no=?", Long.class, order))
                 .isEqualTo(800);
         assertThat(orderUses.sealForPayment("MAIN", order).getPayAmount()).isEqualTo(800);
-        orderService.markPaid(order, "WX", id());
+        String paidTrade = CheckoutScenarioPayments.receive(jdbc, settlement, testChannel, order);
+        orderService.markPaid(order, CheckoutScenarioPayments.CHANNEL, paidTrade);
         var decided = new SysOutbox(); decided.setEventType("ENTITLEMENT_ORDER_USE_DECIDED");
         decided.setPayload(jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE aggregate_id=? "
                 + "AND event_type='ENTITLEMENT_ORDER_USE_DECIDED'", String.class, op));

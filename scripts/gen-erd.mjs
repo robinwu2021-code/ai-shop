@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { domainOverview, tableGraph } from "./lib/svg-erd.mjs";
 import { readSchema } from "./lib/ddl.mjs";
+import { KEY_OWNERS, NAME_COLLISIONS as NAME_COLLISIONS_WHY } from "./lib/schema-keys.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -64,73 +65,9 @@ const DOMAINS = [
  *
  * **必须显式登记，不能从表名推断** —— 真实的表名与主键列名经常对不上：
  * `stl_bill` 的主键叫 `settle_no`、`pts_user_ledger` 的叫 `ledger_no`。
- * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
+ * 与 schema-lineage 守卫直接共享 scripts/lib/schema-keys.mjs。
  */
-export const KEY_OWNERS = {
-  build_no: "pts_statement_build",
-  payout_no: "stl_payout",
-  voucher_no: "pts_voucher",
-  evidence_no: "pts_fund_evidence",
-  receivable_no: "pts_receivable",
-  statement_no: "pts_store_statement",
-  cash_payment_no: "stl_payment",
-  origin_payment_no: "stl_payment",
-  pay_no: "ord_create_intent",
-  /*
-   * ── 2026-08-29 补齐的十三个 ──
-   * 与 packages/shared/tests/schema-lineage.test.ts 的 KEY_OWNERS **必须逐条相等**
-   * （那边有一条断言盯着，两份分叉会让 ER 图连错线）。
-   * 归属判据：看哪张表把它建成了唯一键，只有一张的就是它的主。
-   */
-  std_no: "prd_spu_std",
-  dim_no: "prd_spec_dim",
-  value_no: "prd_spec_value",
-  topic_no: "prd_topic",
-  // 事件号：sys_outbox 是主，sys_event_consumed（事件级幂等）引用它
-  event_no: "sys_outbox",
-  shipment_no: "lgs_waybill",
-  // 商户订单号：stl_payment 是主，trd_shipping_upload（微信发货上报台账 V323）引用它。
-  // 判据与理由见 packages/shared/tests/schema-lineage.test.ts 的同一条 —— 两份必须一致
-  out_trade_no: "stl_payment",
-  area_no: "mch_service_area",
-  // person_no 与 member_no 是两级：跨商家的人 vs 他在某一家的会员身份
-  person_no: "usr_person",
-  member_no: "mbr_member",
-  tag_no: "mbr_tag",
-  segment_no: "mbr_segment",
-  activity_no: "pmt_activity",
-  fission_no: "mkt_fission_campaign",
-  task_no: "notify_push_task",
-  entity_no: "mch_entity",
-  // 门店与商家账号。store_no 与 entity_no 是两级，别按名字互相 join
-  store_no: "mch_store",
-  mch_account_no: "mch_account",
-  pay_merchant_no: "mch_payment_merchant",
-  user_no: "usr_account",
-  order_no: "ord_order",
-  sub_order_no: "ord_sub_order",
-  community_no: "cmt_community",
-  pickup_no: "cmt_pickup_point",
-  goods_no: "prd_goods",
-  sku_no: "prd_sku",
-  category_no: "prd_category",
-  coupon_no: "mkt_coupon",
-  quote_no: "mkt_quote",
-  group_no: "mkt_group_buy",
-  period_no: "pmt_period",
-  enrollment_no: "pmt_enrollment",
-  review_no: "rvw_review",
-  staff_no: "sys_ops_staff",
-  settle_no: "stl_bill",
-  after_sale_no: "ord_after_sale",
-  payment_no: "stl_payment",
-  // 商家进账挂用户的 USE 流水：一次使用一条进账。积分发出后与发放方脱钩（V28）
-  use_ledger_no: "pts_user_ledger",
-  inviter_no: "usr_account",
-  issuer_merchant_no: "mch_entity",
-  // 保证金账户/流水按商家挂；命名欠账见 schema-lineage.test.ts 里的说明
-  merchant_no: "mch_entity",
-};
+export { KEY_OWNERS };
 
 /**
  * 专题图：一个业务域**横跨多个表名前缀**时，按前缀分的图看不全它。
@@ -252,18 +189,7 @@ const TOPICS = [
  * 手写的那份在 `pts_merchant_ledger` 被删（V34）之后还挂着 `ledger_no` 一行，
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
-const NAME_COLLISIONS_WHY = {
-  parent_no: "不同层级树的父节点，必须结合所属树。",
-  provider_no: "通道回执需结合通道、资金方向与原请求。",
-  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
-  revision_no: "商品版本与积分账单版本，各自独立。",
-  holder_no: "积分持有人多态编号，必须结合 holder_type。",
-  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
-  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
-  request_no: "`mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号",
-  express_no: "`ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反**",
-  operator_no: "各表各自记录操作人，不是外键",
-};
+
 const NAME_COLLISIONS = new Set(Object.keys(NAME_COLLISIONS_WHY));
 
 /** 每张表都有，画进图里只会挤满屏幕 */

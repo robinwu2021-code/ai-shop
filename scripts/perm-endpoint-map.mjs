@@ -23,6 +23,18 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  ["GET", /^\/ops\/pay\/entitlement-dead-letters$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlement-exceptions(?:\/\{exceptionNo\}(?:\/actions)?)?$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlement-reconciliations(?:\/\{reconNo\}(?:\/differences)?)?$/, "ops:pay:ent:read"],
+  ["GET", /^\/ops\/pay\/entitlements\/\{instanceNo\}\/lifecycle$/, "ops:pay:ent:read"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}\/(retry-event|retry-grant)$/, "ops:pay:ent:recover"],
+  ["POST", /^\/ops\/pay\/entitlement-exceptions\/\{exceptionNo\}\/query-source$/, "ops:pay:ent:verify"],
+  ["POST", /^\/ops\/pay\/entitlement-reconciliations$/, "ops:pay:ent:verify"],
+  ["POST", /^\/ops\/pay\/entitlements\/\{instanceNo\}\/freeze$/, "ops:pay:ent:freeze"],
+  ["GET", /^\/ops\/points\/(accounts|stats-period|transactions)$/, "finance:settle:read"],
+  ["GET", /^\/ops\/points\/transactions\/\{voucherNo\}$/, "finance:settle:read"],
+  ["GET", /^\/ops\/print\/(health|incidents|operations\/\{operationNo\})$/, "ops:print:read"],
+  ["POST", /^\/ops\/print\/reconciliations$/, "ops:print:resolve"],
   ["GET", /^\/ops\/points\/adjustments$/, "finance:settle:read"],
   ["POST", /^\/ops\/points\/adjustments$/, "finance:settle:execute"],
   ["POST", /^\/ops\/points\/adjustment-review$/, "finance:payout:execute"],

@@ -1,5 +1,6 @@
 package ai.neargo.shop.spi.inventory;
 
+import jakarta.validation.Valid;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort.MaterialFact;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
@@ -15,7 +16,7 @@ public interface MaterialCatalogInternalApi {
     String BATCH_PATH = "/internal/inventory/catalog/materials/batch";
 
     @PostExchange(BATCH_PATH)
-    List<MaterialFact> lookupBatch(@RequestBody BatchLookup request);
+    List<MaterialFact> lookupBatch(@Valid @RequestBody BatchLookup request);
 
     record BatchLookup(
             @NotBlank @Size(max=32) @JsonDeserialize(using=MaterialCatalogFacts.TextDeserializer.class) String entityNo,

@@ -290,8 +290,8 @@ onShow(() => void load());
         ></sh-uploader>
       </view>
       <view class="acts">
-        <view class="sh-btn sh-btn--muted qualification-action" @tap="form = null">{{ $t("common.cancel") }}</view>
-        <view class="sh-btn qualification-action" @tap="submit">{{ $t("common.submit") }}</view>
+        <view class="sh-btn sh-btn--muted sh-fill" @tap="form = null">{{ $t("common.cancel") }}</view>
+        <view class="sh-btn sh-fill" @tap="submit">{{ $t("common.submit") }}</view>
       </view>
       <text class="sh-muted sh-hint">{{ $t("qual.submitHint") }}</text>
     </view>
@@ -332,10 +332,6 @@ onShow(() => void load());
   display: flex;
   gap: 16rpx;
   margin-top: 24rpx;
-}
-.qualification-action {
-  flex: 1;
-  min-width: 0;
 }
 .qualification-upload {
   flex: none;

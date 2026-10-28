@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 435,
+        "b-app": 450,
         "c-app": 303
       }
     },
@@ -393,7 +393,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 11,
+        "b-app": 12,
         "c-app": 20
       }
     },
@@ -1443,7 +1443,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 173,
+        "b-app": 176,
         "c-app": 94
       }
     },
@@ -4574,7 +4574,7 @@
         "sh-scaffold",
         "sh-stat"
       ],
-      "libClassHits": 88,
+      "libClassHits": 95,
       "localSelectors": 9,
       "localCssLines": 2,
       "rolled": []
@@ -4587,7 +4587,7 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 78,
+      "libClassHits": 81,
       "localSelectors": 5,
       "localCssLines": 2,
       "rolled": []
@@ -4601,7 +4601,7 @@
         "sh-check",
         "sh-scaffold"
       ],
-      "libClassHits": 45,
+      "libClassHits": 51,
       "localSelectors": 4,
       "localCssLines": 2,
       "rolled": []
@@ -4635,18 +4635,10 @@
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 53,
-      "localSelectors": 10,
-      "localCssLines": 35,
-      "rolled": [
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "libClassHits": 55,
+      "localSelectors": 9,
+      "localCssLines": 31,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -4891,17 +4883,9 @@
         "sh-scaffold"
       ],
       "libClassHits": 63,
-      "localSelectors": 9,
-      "localCssLines": 32,
-      "rolled": [
-        {
-          "id": "semcolor",
-          "label": "语义色自写",
-          "lib": ".is-danger / .is-success / .is-warning",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-          "gap": false
-        }
-      ]
+      "localSelectors": 8,
+      "localCssLines": 29,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -4930,18 +4914,10 @@
         "sh-section",
         "sh-stat"
       ],
-      "libClassHits": 33,
+      "libClassHits": 34,
       "localSelectors": 14,
-      "localCssLines": 62,
-      "rolled": [
-        {
-          "id": "fill",
-          "label": "占满剩余自写",
-          "lib": ".sh-fill",
-          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-          "gap": false
-        }
-      ]
+      "localCssLines": 60,
+      "rolled": []
     },
     {
       "app": "b-app",
@@ -6337,27 +6313,6 @@
         "b-app/goods-edit",
         "b-app/store-scope-polygon",
         "c-app/after-sale"
-      ]
-    },
-    {
-      "id": "fill",
-      "label": "占满剩余自写",
-      "lib": ".sh-fill",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
-      "pages": [
-        "b-app/qualifications",
-        "b-app/stock-detail"
-      ]
-    },
-    {
-      "id": "semcolor",
-      "label": "语义色自写",
-      "lib": ".is-danger / .is-success / .is-warning",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-(?:danger|success|warning)\\);?\\s*\\}",
-      "pages": [
-        "b-app/stock-check"
       ]
     },
     {

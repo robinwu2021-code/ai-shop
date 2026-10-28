@@ -32,9 +32,18 @@ function javaFiles(dir: string, out: string[] = []): string[] {
 }
 
 const rel = (p: string) => p.slice(ROOT.length + 1);
-const outsiders = javaFiles(BACKEND).filter((f) => !f.startsWith(OWNER));
+// Scenario fixtures deliberately seed isolated H2 databases; the ownership boundary is production code.
+// Keep every production module covered, including application adapters and infrastructure SQL.
+const isProductionOutsider = (f: string) => f.includes("/src/main/java/") && !f.startsWith(OWNER + "/");
+const outsiders = javaFiles(BACKEND).filter(isProductionOutsider);
 
 describe("进销存表的写权", () => {
+  it("scenario fixtures are separate from the production write boundary", () => {
+    expect(isProductionOutsider(join(BACKEND, "shop-app/src/test/java/Fixture.java"))).toBe(false);
+    expect(isProductionOutsider(join(BACKEND, "shop-app/src/main/java/Adapter.java"))).toBe(true);
+    expect(isProductionOutsider(join(OWNER, "src/main/java/Owner.java"))).toBe(false);
+  });
+
   it("有东西可查", () => {
     expect(outsiders.length).toBeGreaterThan(100);
   });

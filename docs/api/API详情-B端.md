@@ -4808,8 +4808,8 @@ _无字段_
 | `aggregateId` | `string` | 是 | Event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Inventory or order event type. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | Delivery state of the synchronization event. |
-| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | Outbox implementation that persisted the event. |
+| `status` | [`InventoryTraceStatus`](#inventorytracestatus) | 是 | Delivery state of the synchronization event. |
+| `outboxMode` | [`InventoryOutboxMode`](#inventoryoutboxmode) | 是 | Outbox implementation that persisted the event. |
 
 `reservations[]` 的字段：
 
@@ -7518,7 +7518,7 @@ _无字段_
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentBatchStatus`](#stockalignmentbatchstatus) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7563,7 +7563,7 @@ _无字段_
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentBatchStatus`](#stockalignmentbatchstatus) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7622,7 +7622,7 @@ _无字段_
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentBatchStatus`](#stockalignmentbatchstatus) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -7664,8 +7664,8 @@ _无字段_
 | `storeNo` | `string` | 是 | Merchant store identifier used to scope inventory values. |
 | `skuNo` | `string` | 是 | SKU identifier for the inventory row. |
 | `unit` | `string,null` | 是 | Physical stock unit; null when the SKU has no configured unit. |
-| `inventoryState` | `UNMANAGED` \| `INITIALIZING` \| `MAPPED` | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
-| `accountingMode` | `PAYMENT_DEDUCT` \| `HANDOFF_DEDUCT` | 是 | Point at which physical inventory is deducted: payment or handoff. |
+| `inventoryState` | [`InventoryState`](#inventorystate) | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
+| `accountingMode` | [`InventoryAccountingMode`](#inventoryaccountingmode) | 是 | Physical inventory deduction point; the current service deducts on payment. |
 | `onHand` | `number,null` | 是 | Physical on-hand quantity; null means the value is unknown. |
 | `reserved` | `number,null` | 是 | Quantity reserved by open fulfillment work; null means unknown. |
 | `available` | `number,null` | 是 | Physical quantity not reserved; null means it cannot be calculated. |
@@ -9378,6 +9378,44 @@ _无字段_
 - `BLOCKED`
 - `NEEDS_CONFIRM`
 
+### InventoryAccountingMode
+
+Physical inventory is currently deducted on payment (InventoryOverviewQuery.render).
+
+类型：`string`
+
+### InventoryOutboxMode
+
+Inventory wire value domain.
+
+枚举取值：
+
+- `UNIFIED`
+- `LEGACY`
+
+### InventoryState
+
+Inventory wire value domain.
+
+枚举取值：
+
+- `UNMANAGED`
+- `INITIALIZING`
+- `MAPPED`
+
+### InventoryTraceStatus
+
+Inventory wire value domain.
+
+枚举取值：
+
+- `COMPLETED`
+- `PENDING`
+- `FAILED`
+- `WARNING`
+- `SKIPPED`
+- `ARCHIVED`
+
 ### LimitReason
 
 与后端 `OrderVO.ItemVO.LIMIT_STOCK / LIMIT_PER_USER` 逐字一致
@@ -9826,8 +9864,8 @@ _无字段_
 | `aggregateId` | `string` | 是 | Event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Inventory or order event type. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | Delivery state of the synchronization event. |
-| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | Outbox implementation that persisted the event. |
+| `status` | [`InventoryTraceStatus`](#inventorytracestatus) | 是 | Delivery state of the synchronization event. |
+| `outboxMode` | [`InventoryOutboxMode`](#inventoryoutboxmode) | 是 | Outbox implementation that persisted the event. |
 
 `reservations[]` 的字段：
 
@@ -11726,7 +11764,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `mode` | [`StockAlignMode`](#stockalignmode) | 是 | Whether alignment adopts mall quantities or a physical count. |
 | `snapshotVersion` | `string` | 是 | Inventory snapshot version used to guard against stale confirmation. |
 | `expiresAt` | `number,null` | 是 | Expiry time in milliseconds; null when the preview has no expiry. |
-| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | Current preview or execution state of the batch. |
+| `status` | [`StockAlignmentBatchStatus`](#stockalignmentbatchstatus) | 是 | Current preview or execution state of the batch. |
 | `completed` | `number` | 是 | Number of rows aligned successfully. |
 | `blocked` | `number` | 是 | Number of rows blocked from alignment. |
 | `waiting` | `number` | 是 | Number of rows waiting for a later operation. |
@@ -11747,6 +11785,20 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `status` | `string` | 是 | — |
 | `operationNo` | `string` | 是 | — |
 | `errorCode` | `string,null` | 是 | — |
+
+### StockAlignmentBatchStatus
+
+Inventory wire value domain.
+
+枚举取值：
+
+- `PREVIEW`
+- `PROCESSING`
+- `PARTIAL`
+- `BLOCKED`
+- `COMPLETED`
+- `STALE`
+- `EXPIRED`
 
 ### StockBalance
 
@@ -11935,8 +11987,8 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 | `storeNo` | `string` | 是 | Merchant store identifier used to scope inventory values. |
 | `skuNo` | `string` | 是 | SKU identifier for the inventory row. |
 | `unit` | `string,null` | 是 | Physical stock unit; null when the SKU has no configured unit. |
-| `inventoryState` | `UNMANAGED` \| `INITIALIZING` \| `MAPPED` | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
-| `accountingMode` | `PAYMENT_DEDUCT` \| `HANDOFF_DEDUCT` | 是 | Point at which physical inventory is deducted: payment or handoff. |
+| `inventoryState` | [`InventoryState`](#inventorystate) | 是 | Inventory onboarding state: unmanaged, initializing or mapped. |
+| `accountingMode` | [`InventoryAccountingMode`](#inventoryaccountingmode) | 是 | Physical inventory deduction point; the current service deducts on payment. |
 | `onHand` | `number,null` | 是 | Physical on-hand quantity; null means the value is unknown. |
 | `reserved` | `number,null` | 是 | Quantity reserved by open fulfillment work; null means unknown. |
 | `available` | `number,null` | 是 | Physical quantity not reserved; null means it cannot be calculated. |
@@ -11990,9 +12042,21 @@ Merchant stock overview; matches InventoryOverviewQuery. Null physical values me
 | `operationNo` | `string` | 是 | Identifier of this stock synchronization operation. |
 | `skuNo` | `string` | 是 | SKU whose stock was synchronized. |
 | `reason` | `string` | 是 | Business reason recorded for the synchronization. |
-| `status` | `PROCESSING` \| `WAITING` \| `FAILED` \| `BLOCKED` \| `COMPLETED` | 是 | Current processing state of the operation. |
+| `status` | [`StockSyncOperationStatus`](#stocksyncoperationstatus) | 是 | Current processing state of the operation. |
 | `result` | `object`（见下） \| `null` | 是 | Applied quantity change or skip details; null before processing finishes. |
 | `updatedAt` | `string` | 是 | Time when this operation was last updated. |
+
+### StockSyncOperationStatus
+
+Inventory wire value domain.
+
+枚举取值：
+
+- `PROCESSING`
+- `WAITING`
+- `FAILED`
+- `BLOCKED`
+- `COMPLETED`
 
 ### StockSyncState
 

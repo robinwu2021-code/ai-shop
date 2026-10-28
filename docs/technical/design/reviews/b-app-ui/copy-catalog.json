@@ -3867,7 +3867,14 @@
         "line": 156
       }
     },
-    "references": []
+    "references": [
+      {
+        "key": "stockOverview.book",
+        "file": "b-app/src/pages/stock-detail/index.vue",
+        "line": 249,
+        "kind": "call"
+      }
+    ]
   },
   {
     "key": "stockOverview.section",

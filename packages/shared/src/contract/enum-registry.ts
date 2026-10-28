@@ -72,6 +72,15 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
+  { decl: "ops-web:PointsTransactionDirection", dom: "finance", shape: "CLASS", verdict: "OK", note: "Transaction inspection business direction: EARN, REDEEM or REVERSAL, matching PointsInspectionService.Direction." },
+  { decl: "ops-web:InventoryTraceStatus", dom: "inventory", shape: "STATUS", verdict: "OK", words: ["COMPLETED", "WARNING", "SKIPPED", "ARCHIVED"], note: "Inventory event delivery state projection." },
+  { decl: "ops-web:InventoryOutboxMode", dom: "inventory", shape: "CLASS", verdict: "OK", note: "Unified or legacy persistence source of an inventory trace event." },
+  { decl: "shared:InventoryState", dom: "inventory", shape: "CLASS", verdict: "OK", words: ["UNMANAGED", "INITIALIZING", "MAPPED"], note: "Inventory service wire value domain; preserves the existing values." },
+  { decl: "shared:StockSyncOperationStatus", dom: "inventory", shape: "STATUS", verdict: "OK", words: ["WAITING", "BLOCKED", "COMPLETED"], note: "Inventory service wire value domain; preserves the existing values." },
+  { decl: "shared:StockAlignmentBatchStatus", dom: "inventory", shape: "STATUS", verdict: "OK", words: ["PREVIEW", "PARTIAL", "BLOCKED", "COMPLETED", "STALE", "EXPIRED"], note: "Inventory service wire value domain; preserves the existing values." },
+  { decl: "shared:InventoryTraceStatus", dom: "inventory", shape: "STATUS", verdict: "OK", words: ["COMPLETED", "WARNING", "SKIPPED", "ARCHIVED"], note: "Inventory service wire value domain; preserves the existing values." },
+  { decl: "shared:InventoryOutboxMode", dom: "inventory", shape: "CLASS", verdict: "OK", words: ["UNIFIED", "LEGACY"], note: "Inventory service wire value domain; preserves the existing values." },
+
   { decl: "shared:RecipientSalutation", dom: "user", shape: "CLASS", verdict: "OK",
     note: "地址簿与订单收件人快照的称呼码；usr_address.salutation 注释给出完整值域。" },
   { decl: "shared:ShipPrecheckVerdict", dom: "fulfillment", shape: "CLASS", verdict: "OK",

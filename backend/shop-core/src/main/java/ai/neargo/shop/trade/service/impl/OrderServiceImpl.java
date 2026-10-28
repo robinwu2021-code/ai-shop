@@ -2199,8 +2199,24 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
-        if (settlePort.successPayment(orderNo) != null
-                || paymentResolutions.view(orderNo, order.getUserNo()) != null) {
+        if (paymentResolutions.view(orderNo, order.getUserNo()) != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        var received = settlePort.successPayment(orderNo);
+        if (received != null) {
+            // FREE settlement commits in pay before the order/outbox projection. Recover that
+            // original receipt after a projection rollback; never initiate another payment.
+            if (ai.neargo.shop.common.PayChannels.FREE.equals(received.payChannel())
+                    && Long.valueOf(0L).equals(order.getPayAmount())) {
+                if (entitlementOrderUses != null) {
+                    order = entitlementOrderUses.sealForPayment(order.getTenantNo(), orderNo);
+                }
+                if (!java.util.Objects.equals(order.getCurrency(), received.currency())) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+                orderServiceProvider.getObject().markPaid(orderNo, received.payChannel(), received.tradeNo());
+                return new PayResult(orderNo, received.payChannel(), java.util.Map.of(), true);
+            }
             throw BizException.of(ErrorCode.CONFLICT);
         }
         if (order.getPayDeadlineAt() != null && order.getPayDeadlineAt() < System.currentTimeMillis()) {
@@ -2288,7 +2304,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          */
         boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
         if (settled) {
-            orderServiceProvider.getObject().markPaid(orderNo, init.payChannel(), init.outTradeNo());
+            // Merchant request IDs and provider trade IDs are different identities.
+            var receipt = settlePort.successPayment(orderNo);
+            if (receipt == null) throw BizException.of(ErrorCode.CONFLICT);
+            orderServiceProvider.getObject().markPaid(orderNo, init.payChannel(), receipt.tradeNo());
         }
         return new PayResult(orderNo, init.payChannel(), init.payParams(), settled);
     }

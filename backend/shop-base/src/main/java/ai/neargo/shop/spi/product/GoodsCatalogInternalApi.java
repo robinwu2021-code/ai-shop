@@ -1,5 +1,6 @@
 package ai.neargo.shop.spi.product;
 
+import jakarta.validation.Valid;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.GoodsFact;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort.GoodsSummary;
 import java.util.List;
@@ -13,7 +14,7 @@ import org.springframework.web.service.annotation.PostExchange;
 public interface GoodsCatalogInternalApi {
     String SKU_PATH = "/internal/product/catalog/goods/sku";
     @PostExchange(SKU_PATH)
-    GoodsCatalogQueryPort.SkuIdentityFact lookupSku(@RequestBody SkuLookup request);
+    GoodsCatalogQueryPort.SkuIdentityFact lookupSku(@Valid @RequestBody SkuLookup request);
 
     record SkuLookup(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
             @NotBlank @Size(max=32) String skuNo) { }
@@ -21,12 +22,12 @@ public interface GoodsCatalogInternalApi {
     String LOOKUP_PATH = "/internal/product/catalog/goods/lookup";
 
     @PostExchange(LOOKUP_PATH)
-    GoodsFact lookup(@RequestBody Lookup request);
+    GoodsFact lookup(@Valid @RequestBody Lookup request);
 
     String BATCH_PATH = "/internal/product/catalog/goods/batch";
 
     @PostExchange(BATCH_PATH)
-    List<GoodsSummary> lookupBatch(@RequestBody BatchLookup request);
+    List<GoodsSummary> lookupBatch(@Valid @RequestBody BatchLookup request);
 
     record BatchLookup(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
             @NotNull @Size(min=1,max=256) List<@NotBlank @Size(max=32) String> goodsNos) { }

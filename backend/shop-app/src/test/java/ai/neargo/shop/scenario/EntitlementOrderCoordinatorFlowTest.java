@@ -28,6 +28,9 @@ import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.trade.dto.AuthorizationCommand;
 import ai.neargo.shop.trade.service.EntitlementAuthorizationService;
 import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.pay.channel.TestPayGateway;
+import ai.neargo.shop.support.CheckoutScenarioPayments;
 import ai.neargo.shop.trade.service.EntitlementOrderUseService;
 import java.util.List;
 import java.util.UUID;
@@ -54,6 +57,8 @@ class EntitlementOrderCoordinatorFlowTest {
     @MockitoSpyBean EntitlementUsePort uses;
     @Autowired EntitlementUseSourcePort sources;
     @Autowired JdbcTemplate jdbc;
+    @Autowired SettlePort settlement;
+    @Autowired TestPayGateway testChannel;
     @Autowired ObjectMapper json;
     @Autowired EntitlementOrderUseDecisionConsumer consumer;
     private String order;
@@ -65,7 +70,8 @@ class EntitlementOrderCoordinatorFlowTest {
     private String instance;
     @BeforeEach
     void setup() {
-        String id = UUID.randomUUID().toString();
+        // Four-character role prefix plus 28 random hex characters fits 32-character business keys.
+        String id = UUID.randomUUID().toString().replace("-", "").substring(0, 24);
         order = "OF-O" + id;
         sub = "OF-SO" + id;
         user = "OF-U" + id;
@@ -138,7 +144,8 @@ class EntitlementOrderCoordinatorFlowTest {
         assertThat(jdbc.queryForObject("SELECT paid_share_minor FROM ord_item WHERE order_no=?", Long.class, order))
                 .isEqualTo(800);
         assertThat(orderUses.sealForPayment("MAIN", order).getPayAmount()).isEqualTo(800);
-        orderService.markPaid(order, "WX", "TX" + UUID.randomUUID());
+        String paidTrade = CheckoutScenarioPayments.receive(jdbc, settlement, testChannel, order);
+        orderService.markPaid(order, CheckoutScenarioPayments.CHANNEL, paidTrade);
         String payload = jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE aggregate_id=? "
                 + "AND event_type='ENTITLEMENT_ORDER_USE_DECIDED'", String.class, c.operationNo());
         var event = new SysOutbox(); event.setPayload(payload);
@@ -150,10 +157,11 @@ class EntitlementOrderCoordinatorFlowTest {
     @Test void failedTerminalOutboxRollsBackTheCorePaidDecisionWithoutReleasingThePayHold() {
         var c = command();
         coordinator.prepare(context, c);
+        String paidTrade = CheckoutScenarioPayments.receive(jdbc, settlement, testChannel, order);
         jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT reject_ent_decision "
                 + "CHECK (aggregate_id<>'" + c.operationNo() + "' OR event_type<>'ENTITLEMENT_ORDER_USE_DECIDED')");
         try {
-            assertThatThrownBy(() -> orderService.markPaid(order, "WX", "TX-failed"))
+            assertThatThrownBy(() -> orderService.markPaid(order, CheckoutScenarioPayments.CHANNEL, paidTrade))
                     .isInstanceOf(RuntimeException.class);
         } finally { jdbc.execute("ALTER TABLE sys_outbox DROP CONSTRAINT reject_ent_decision"); }
         assertThat(jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?", String.class, order))
@@ -161,7 +169,7 @@ class EntitlementOrderCoordinatorFlowTest {
         assertThat(jdbc.queryForObject("SELECT status FROM ord_ent_order_use WHERE operation_no=?", String.class,
                 c.operationNo())).isEqualTo("APPLIED");
         assertThat(uses.query(context, entity, c.operationNo()).status()).isEqualTo(State.HELD);
-        orderService.markPaid(order, "WX", "TX-retry");
+        orderService.markPaid(order, CheckoutScenarioPayments.CHANNEL, paidTrade);
         assertThat(coordinator.recover(context, entity, c.operationNo()).status()).isEqualTo(State.COMMITTED);
     }
     @AfterEach void clearAuthentication() { SecurityContextHolder.clearContext(); }
@@ -180,7 +188,24 @@ class EntitlementOrderCoordinatorFlowTest {
         assertThat(jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?", String.class, order))
                 .isEqualTo("WAIT_PAY");
         assertThat(uses.query(context, entity, c.operationNo()).status()).isEqualTo(State.HELD);
+        var receipt = settlement.successPayment(order);
+        assertThat(receipt).isNotNull();
+        assertThat(receipt.payChannel()).isEqualTo("FREE");
+        assertThat(receipt.amountMinor()).isZero();
+        assertThat(receipt.tradeNo()).isNotEqualTo(order);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_payment_resolution WHERE pay_no=?",
+                Integer.class, order)).isZero();
+        jdbc.update("UPDATE ord_order SET currency='USD' WHERE order_no=?", order);
+        assertThatThrownBy(() -> orderService.pay(order, null)).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?", String.class, order))
+                .isEqualTo("WAIT_PAY");
+        assertThat(uses.query(context, entity, c.operationNo()).status()).isEqualTo(State.HELD);
+        jdbc.update("UPDATE ord_order SET currency='CNY' WHERE order_no=?", order);
         assertThat(orderService.pay(order, null).settled()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT pay_trade_no FROM ord_order WHERE order_no=?",
+                String.class, order)).isEqualTo(receipt.tradeNo());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE order_no=? AND direction='PAY'",
+                Integer.class, order)).isOne();
         assertThat(coordinator.recover(context, entity, c.operationNo()).status()).isEqualTo(State.COMMITTED);
     }
     @Test void scopedCouponPreservesTheFrozenPerLineDiscountInsteadOfRedistributingIt() {

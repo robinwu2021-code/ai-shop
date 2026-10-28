@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.pay.channel.TestPayGateway;
+import ai.neargo.shop.support.CheckoutScenarioPayments;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.TokenStores;
@@ -56,6 +59,8 @@ class PaidCardCheckoutFlowTest {
     @Autowired OrderService orders;
     @Autowired EntitlementManagementAppService catalog;
     @Autowired JdbcTemplate jdbc;
+    @Autowired SettlePort settlement;
+    @Autowired TestPayGateway testChannel;
     @Autowired WebApplicationContext web;
     @Autowired ObjectMapper json;
     @Autowired OtpStore otp;
@@ -128,11 +133,12 @@ class PaidCardCheckoutFlowTest {
         assertThat(payJdbc().queryForObject("SELECT COUNT(*) FROM ent_instance WHERE entity_no=?",Integer.class,entity)).isZero();
         paymentGate.requireReady("MAIN",order);
         assertThat(catalog.get(scope,template.templateNo()).issuePolicy().heldCount()).isEqualTo(4);
-        orders.markPaid(order,"WECHAT","PAY"+id());
+        String paidTrade = CheckoutScenarioPayments.receive(jdbc, settlement, testChannel, order);
+        orders.markPaid(order, CheckoutScenarioPayments.CHANNEL, paidTrade);
         var event=new ai.neargo.shop.event.SysOutbox();
         event.setEventType("ORDER_PAID"); event.setAggregateId(order);
         event.setPayload(json.writeValueAsString(new ai.neargo.shop.spi.trade.OrderEvents.OrderPaid(
-                order,actor,60000,"WECHAT")));
+                order,actor,60000,CheckoutScenarioPayments.CHANNEL)));
         events.consume(event); events.consume(event);
         assertThat(coordinator.recover(ctx,order).issued()).isEqualTo(4);
         assertThat(payJdbc().queryForObject("SELECT COUNT(*) FROM ent_instance WHERE entity_no=?",Integer.class,entity)).isEqualTo(4);

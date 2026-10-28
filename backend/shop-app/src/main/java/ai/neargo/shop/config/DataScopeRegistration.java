@@ -36,6 +36,9 @@ public class DataScopeRegistration implements DataScopeRegistrar {
         registry.register("ord_ent_order_use", Map.of(
                 ScopeDim.SELF, "user_no", ScopeDim.MERCHANT, "entity_no"));
 
+        // 收藏仅由登录买家自己的收藏服务读写，无跨用户聚合读取。
+        registry.register("prd_goods_favorite", Map.of(ScopeDim.SELF, "user_no"));
+
         // —— 交易：子订单是商家视角的账本，也是 C 端「我的订单」的来源 ——
         // SELF 必须登记，理由见类注释第 2 条。
         // COMMUNITY 是运营端接入时补的（V137 的冗余列）：运营会话的维度是

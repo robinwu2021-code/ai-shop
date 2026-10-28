@@ -14,7 +14,12 @@ import type { PageQ, SettlementQ, PointsReceivableQ } from "../query";
 
 import type { OrderPointsStoreObligations, OrderPointsIntegrationQ, OrderPointsIntegrationPolicy, OrderPointsIntegrationChange, OrderPointsInspection, OrderPointsManualRefundPage, OrderPointsRefundActionResult } from "@/lib/types";
 
+import type { PointsAccountsQ, PointsAccounts, PointsTransactionsQ, PointsTransactions, PointsTransactionDetail, PointsPeriodQ, PointsPeriodStats } from "../inspection-types";
 export interface FinanceApi {
+  pointsAccounts(q: PointsAccountsQ): Promise<PointsAccounts>;
+  pointsTransactions(q: PointsTransactionsQ): Promise<PointsTransactions>;
+  pointsTransaction(typeCode: string, voucherNo: string): Promise<PointsTransactionDetail>;
+  pointsPeriodStats(q: PointsPeriodQ): Promise<PointsPeriodStats>;
   pointsAdjustments(q: { typeCode: string; after?: number; limit?: number }): Promise<PointsAdjustmentPage>;
   submitPointsAdjustment(value: PointsAdjustmentSubmission): Promise<import("@/lib/types").PointsOperation>;
   reviewPointsAdjustment(value: PointsAdjustmentReview): Promise<import("@/lib/types").PointsOperation>;

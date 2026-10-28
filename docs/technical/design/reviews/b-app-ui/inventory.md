@@ -25,8 +25,8 @@
 | components | 42 |
 | localeKeys | 3098 |
 | catalogEntries | 3098 |
-| references | 2825 |
-| dynamicReferences | 265 |
+| references | 2826 |
+| dynamicReferences | 264 |
 | duplicateGroups | 265 |
 | duplicateKeys | 693 |
 | literalCandidates | 1 |
@@ -114,7 +114,7 @@
 | stock-align/index.vue | 是 | sh-scaffold ×1、sh-empty ×1、sh-actionbar ×1 | 17 | 0 | 0 |
 | stock-check/index.vue | 是 | sh-scaffold ×1、sh-empty ×2、sh-check ×1、sh-actionbar ×2 | 37 | 0 | 0 |
 | stock-cross/index.vue | 是 | sh-scaffold ×1、sh-empty ×1、sh-go ×1 | 6 | 0 | 0 |
-| stock-detail/index.vue | 是 | sh-scaffold ×1、sh-stat ×1、sh-section ×3、sh-kv ×8、sh-empty ×1 | 37 | 0 | 0 |
+| stock-detail/index.vue | 是 | sh-scaffold ×1、sh-stat ×1、sh-section ×3、sh-kv ×8、sh-empty ×1 | 38 | 0 | 0 |
 | stock-docs/index.vue | 是 | sh-scaffold ×1、sh-tabs ×1、sh-empty ×1、sh-icon ×1 | 16 | 0 | 0 |
 | stock-out/index.vue | 是 | sh-scaffold ×1、biz-store-tag ×1、sh-kv ×4、sh-add ×1、sh-icon ×1、sh-actionbar ×1、biz-item-picker ×1 | 22 | 0 | 0 |
 | stock-report/index.vue | 是 | sh-scaffold ×1、sh-section ×4、biz-rule-help ×1、sh-kv ×9、sh-empty ×1、sh-icon ×2 | 22 | 0 | 0 |
@@ -236,7 +236,7 @@
 | sh-chip--warning | 7 | 10 |
 | sh-dialog__act | 1 | 2 |
 | sh-dialog__acts | 0 | 0 |
-| sh-fill | 58 | 160 |
+| sh-fill | 58 | 163 |
 | sh-grip | 0 | 0 |
 | sh-hint | 39 | 106 |
 | sh-hit | 4 | 33 |
@@ -277,11 +277,11 @@
 | sh-wrap | 25 | 49 |
 | txt-body | 48 | 396 |
 | txt-bold | 7 | 12 |
-| txt-caption | 77 | 378 |
+| txt-caption | 80 | 393 |
 | txt-display | 25 | 35 |
 | txt-faint | 0 | 0 |
 | txt-hero | 3 | 3 |
-| txt-ink | 2 | 4 |
+| txt-ink | 3 | 5 |
 | txt-mega | 6 | 6 |
 | txt-price | 10 | 16 |
 | txt-primary | 13 | 16 |
@@ -580,4 +580,4 @@
 | en | 0 | 0 | 0 |
 | ar | 0 | 0 | 0 |
 
-静态引用未命中中文词库：0 处。动态引用：265 处，详情见 audit.json。
+静态引用未命中中文词库：0 处。动态引用：264 处，详情见 audit.json。

@@ -16,6 +16,10 @@ function findIndustry(industry: string) {
 }
 
 export const systemMock: SystemApi = {
+  printHealth: async () => { fail("演示没有打印监控事实", "No print monitoring facts in this demo"); },
+  printIncidents: async () => { fail("演示没有打印事件事实", "No print incidents in this demo"); },
+  printOperation: async () => { fail("演示没有打印操作记录", "No print operations in this demo"); },
+  reconcilePrint: async () => { fail("演示不执行打印对账", "Print reconciliation unavailable in demo"); },
   // ── 测试号固定验证码白名单 ──
   //
   // 后端那四条护栏里，**只有「已存在账号」这条 mock 演不出来**（mock 里没有账号表）。

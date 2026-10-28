@@ -537,17 +537,11 @@ class PointsOrderLiveCreationTest {
         assertThat(merchants.paymentRouteOf(entity, store, "TEST")).isPresent();
         assertThat(merchants.activeChannelsOf(entity, store)).contains("TEST");
         assertThat(channels.payableChannels(merchants.marketOf(entity))).contains("TEST");
-        policies.change(
-                new PointsIntegrationPolicyService.IntegrationPolicyChange(
-                        "QA-ACTIVE-" + tag,
-                        store,
-                        "ONLINE",
-                        PointsIntegrationPolicyService.Mode.ACTIVE,
-                        true,
-                        true,
-                        -1,
-                        "synthetic test"),
-                "QA_OPS");
+        // Participation is global; creating a synthetic store needs no per-store write.
+        var policy = policies.policy(store, "ONLINE");
+        assertThat(policy.mode()).isEqualTo(PointsIntegrationPolicyService.Mode.ACTIVE);
+        assertThat(policy.earnEnabled()).isTrue();
+        assertThat(policy.redeemEnabled()).isTrue();
         String buyer = TestLogin.consumer(mvc(), json, otp, buyerPhone);
         return new Fixture(buyer, store, goods, sku);
     }

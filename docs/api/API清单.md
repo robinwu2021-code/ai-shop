@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 912 个接口**：后端已实现 827（91%）· 前端在调 834
+**合计 920 个接口**：后端已实现 834（91%）· 前端在调 840
 
 ---
 
@@ -959,7 +959,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **465** 个接口 ｜ 后端已实现 **399**（86%）｜ 前端在调 **387**
+共 **473** 个接口 ｜ 后端已实现 **406**（86%）｜ 前端在调 **393**
 
 ### aftersale（5）
 
@@ -1041,7 +1041,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（92）
+### finance（96）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1070,6 +1070,7 @@
 | POST | `/ops/payouts/{payoutNo}/paid` | 登记凭证 | — | `Payout` | — | ✅ | ✅ |
 | GET | `/ops/points/account` | pointsAccount | — | `PointsAccountView` | — | ✅ | ✅ |
 | POST | `/ops/points/account-freeze` | freezePointsAccount | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/accounts` | pointsAccounts | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/adjustment-review` | reviewPointsAdjustment | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/points/adjustments` | pointsAdjustments | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/adjustments` | submitPointsAdjustment | — | `object` | — | ✅ | ✅ |
@@ -1109,11 +1110,14 @@
 | POST | `/ops/points/statement-draft` | draftPointsStatements | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/statements` | pointsStatements | — | `PointsStatementPage` | — | ✅ | ✅ |
 | GET | `/ops/points/stats` | pointsStats | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/points/stats-period` | pointsPeriodStats | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/stats-rebuild` | rebuildPointsStats | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/switches` | pointsSwitches | — | `PointsSwitchPage` | — | ✅ | ✅ |
 | POST | `/ops/points/switches` | changePointsSwitch | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/points/terms` | pointsTerms | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/terms` | publishPointsTerms | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/transactions` | pointsTransactions | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/points/transactions/{voucherNo}` | pointsTransaction | — | `object` | — | ✅ | ⬜ |
 | POST | `/ops/points/type-state` | transitionPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/points/types` | pointsTypes | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/points/types` | createPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
@@ -1501,7 +1505,7 @@
 | POST | `/ops/stores/templates` | 新建/保存模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 | POST | `/ops/stores/templates/{templateNo}/enabled` | 启用/停用模板 | — | `StoreTemplate` | — | ⬜ | ✅ |
 
-### system（30）
+### system（34）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1527,6 +1531,10 @@
 | GET | `/ops/media/reclaimable` | listMediaReclaimable | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/media/scan` | 重扫 | — | `MediaScanResult` | — | ✅ | ✅ |
 | GET | `/ops/media/stores` | 门店占用 | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/print/health` | printHealth | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/print/incidents` | printIncidents | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/print/operations/{no}` | printOperation | — | `object` | — | ⬜ | ⬜ |
+| POST | `/ops/print/reconciliations` | reconcilePrint | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/rule-texts` | getRuleTexts | — | `RuleTexts` | — | ✅ | ✅ |
 | POST | `/ops/rule-texts` | 规则文案（P-17.1.4） | — | `RuleTexts` | — | ✅ | ✅ |
 | GET | `/ops/service-scopes` | listServiceScopes | — | `数组` | — | ✅ | ✅ |

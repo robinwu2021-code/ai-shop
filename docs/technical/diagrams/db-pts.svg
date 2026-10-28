@@ -4,17 +4,15 @@
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
 .l{font-size:10.5px;fill:#5A6472;paint-order:stroke;stroke:#F7F9FB;stroke-width:3.5;stroke-linejoin:round}.b{font-size:11px;fill:#5A6472;letter-spacing:.1em}
-.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M100 958 L100 208 L260 208 L260 193" marker-end="url(#a)"/>
-<path class="ar" d="M260 958 L260 220 L260 220 L260 193" marker-end="url(#a)"/>
-<path class="ar" d="M420 958 L420 324 L580 324 L580 309" marker-end="url(#a)"/>
-<path class="ar" d="M580 958 L580 232 L420 232 L420 193" marker-end="url(#a)"/>
-<path class="ar" d="M100 1074 L100 324 L580 324 L580 309" marker-end="url(#a)"/>
-<path class="ar" d="M260 1074 L260 336 L580 336 L580 309" marker-end="url(#a)"/>
-<path class="ar" d="M420 1074 L420 440 L580 440 L580 425" marker-end="url(#a)"/>
-<path class="ar" d="M580 1074 L580 208 L420 208 L420 193" marker-end="url(#a)"/>
-<path class="ar" d="M148 1190 L148 904 L244 904 L244 889" marker-end="url(#a)"/>
-<path class="ar" d="M340 1190 L340 324 L580 324 L580 309" marker-end="url(#a)"/>
-<path class="ar" d="M532 1190 L532 336 L580 336 L580 309" marker-end="url(#a)"/>
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}</style></defs><path class="ar" d="M148 958 L148 440 L260 440 L260 425" marker-end="url(#a)"/>
+<path class="ar" d="M340 958 L340 324 L100 324 L100 309" marker-end="url(#a)"/>
+<path class="ar" d="M532 958 L532 452 L260 452 L260 425" marker-end="url(#a)"/>
+<path class="ar" d="M148 1074 L148 440 L260 440 L260 425" marker-end="url(#a)"/>
+<path class="ar" d="M340 1074 L340 556 L260 556 L260 541" marker-end="url(#a)"/>
+<path class="ar" d="M532 1074 L532 324 L100 324 L100 309" marker-end="url(#a)"/>
+<path class="ar" d="M148 1190 L148 904 L420 904 L420 889" marker-end="url(#a)"/>
+<path class="ar" d="M340 1190 L340 440 L260 440 L260 425" marker-end="url(#a)"/>
+<path class="ar" d="M532 1190 L532 452 L260 452 L260 425" marker-end="url(#a)"/>
 <rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="50" text-anchor="middle" font-size="13">pts_user_account</text>
 <text class="s" x="100" y="65" text-anchor="middle">用户积分账户（锁行 +…</text>
@@ -34,101 +32,101 @@
 <text class="n" x="260" y="166" text-anchor="middle" font-size="13">pts_voucher</text>
 <text class="s" x="260" y="181" text-anchor="middle">Points v3 pts_vouch…</text>
 <rect x="351" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="166" text-anchor="middle" font-size="13">pts_fund_evidence</text>
-<text class="s" x="420" y="181" text-anchor="middle">Points v3 pts_fund_…</text>
+<text class="n" x="420" y="166" text-anchor="middle" font-size="13">pts_ledger_entry</text>
+<text class="s" x="420" y="181" text-anchor="middle">Points v3 pts_ledge…</text>
 <rect x="511" y="146" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="166" text-anchor="middle" font-size="11">pts_refund_reserve</text>
-<text class="s" x="580" y="181" text-anchor="middle">Points v3 pts_refun…</text>
+<text class="n" x="580" y="166" text-anchor="middle" font-size="13">pts_pool_flow</text>
+<text class="s" x="580" y="181" text-anchor="middle">Points v3 pts_pool_…</text>
 <rect x="31" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="282" text-anchor="middle" font-size="11">pts_grant_position</text>
-<text class="s" x="100" y="297" text-anchor="middle">Points v3 pts_grant…</text>
+<text class="n" x="100" y="282" text-anchor="middle" font-size="13">pts_fund_evidence</text>
+<text class="s" x="100" y="297" text-anchor="middle">Points v3 pts_fund_…</text>
 <rect x="191" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="282" text-anchor="middle" font-size="9.5">pts_refund_preparation</text>
+<text class="n" x="260" y="282" text-anchor="middle" font-size="11">pts_refund_reserve</text>
 <text class="s" x="260" y="297" text-anchor="middle">Points v3 pts_refun…</text>
 <rect x="351" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="282" text-anchor="middle" font-size="13">pts_payout_ticket</text>
-<text class="s" x="420" y="297" text-anchor="middle">Points v3 pts_payou…</text>
+<text class="n" x="420" y="282" text-anchor="middle" font-size="11">pts_grant_position</text>
+<text class="s" x="420" y="297" text-anchor="middle">Points v3 pts_grant…</text>
 <rect x="511" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="282" text-anchor="middle" font-size="11">pts_store_statement</text>
-<text class="s" x="580" y="297" text-anchor="middle">Points v3 pts_store…</text>
+<text class="n" x="580" y="282" text-anchor="middle" font-size="9.5">pts_refund_preparation</text>
+<text class="s" x="580" y="297" text-anchor="middle">Points v3 pts_refun…</text>
 <rect x="31" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="398" text-anchor="middle" font-size="13">pts_grant_line</text>
-<text class="s" x="100" y="413" text-anchor="middle">Points v3 pts_grant…</text>
+<text class="n" x="100" y="398" text-anchor="middle" font-size="13">pts_payout_ticket</text>
+<text class="s" x="100" y="413" text-anchor="middle">Points v3 pts_payou…</text>
 <rect x="191" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="398" text-anchor="middle" font-size="13">pts_redeem_line</text>
-<text class="s" x="260" y="413" text-anchor="middle">Points v3 pts_redee…</text>
+<text class="n" x="260" y="398" text-anchor="middle" font-size="11">pts_store_statement</text>
+<text class="s" x="260" y="413" text-anchor="middle">Points v3 pts_store…</text>
 <rect x="351" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="398" text-anchor="middle" font-size="9.5">pts_merchant_agreement</text>
-<text class="s" x="420" y="413" text-anchor="middle">Points v3 pts_merch…</text>
+<text class="n" x="420" y="398" text-anchor="middle" font-size="13">pts_grant_line</text>
+<text class="s" x="420" y="413" text-anchor="middle">Points v3 pts_grant…</text>
 <rect x="511" y="378" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="398" text-anchor="middle" font-size="13">pts_receivable</text>
-<text class="s" x="580" y="413" text-anchor="middle">Points v3 pts_recei…</text>
+<text class="n" x="580" y="398" text-anchor="middle" font-size="13">pts_redeem_line</text>
+<text class="s" x="580" y="413" text-anchor="middle">Points v3 pts_redee…</text>
 <rect x="31" y="494" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="514" text-anchor="middle" font-size="9.5">pts_refund_preparation_line</text>
-<text class="s" x="100" y="529" text-anchor="middle">Points v3 pts_refun…</text>
+<text class="n" x="100" y="514" text-anchor="middle" font-size="9.5">pts_merchant_agreement</text>
+<text class="s" x="100" y="529" text-anchor="middle">Points v3 pts_merch…</text>
 <rect x="191" y="494" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="514" text-anchor="middle" font-size="13">pts_topup_plan</text>
-<text class="s" x="260" y="529" text-anchor="middle">Points v3 pts_topup…</text>
+<text class="n" x="260" y="514" text-anchor="middle" font-size="13">pts_receivable</text>
+<text class="s" x="260" y="529" text-anchor="middle">Points v3 pts_recei…</text>
 <rect x="351" y="494" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="514" text-anchor="middle" font-size="13">pts_switch</text>
-<text class="s" x="420" y="529" text-anchor="middle">Points v3 pts_switch</text>
+<text class="n" x="420" y="514" text-anchor="middle" font-size="9.5">pts_refund_preparation_line</text>
+<text class="s" x="420" y="529" text-anchor="middle">Points v3 pts_refun…</text>
 <rect x="511" y="494" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="514" text-anchor="middle" font-size="13">pts_switch_log</text>
-<text class="s" x="580" y="529" text-anchor="middle">Points v3 pts_switc…</text>
+<text class="n" x="580" y="514" text-anchor="middle" font-size="13">pts_topup_plan</text>
+<text class="s" x="580" y="529" text-anchor="middle">Points v3 pts_topup…</text>
 <rect x="31" y="610" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="630" text-anchor="middle" font-size="11">pts_pause_interval</text>
-<text class="s" x="100" y="645" text-anchor="middle">Points v3 pts_pause…</text>
+<text class="n" x="100" y="630" text-anchor="middle" font-size="13">pts_switch</text>
+<text class="s" x="100" y="645" text-anchor="middle">Points v3 pts_switch</text>
 <rect x="191" y="610" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="630" text-anchor="middle" font-size="11">pts_lifecycle_fact</text>
-<text class="s" x="260" y="645" text-anchor="middle">Points v3 pts_lifec…</text>
+<text class="n" x="260" y="630" text-anchor="middle" font-size="13">pts_switch_log</text>
+<text class="s" x="260" y="645" text-anchor="middle">Points v3 pts_switc…</text>
 <rect x="351" y="610" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="630" text-anchor="middle" font-size="13">pts_inbox</text>
-<text class="s" x="420" y="645" text-anchor="middle">Points v3 pts_inbox</text>
+<text class="n" x="420" y="630" text-anchor="middle" font-size="11">pts_pause_interval</text>
+<text class="s" x="420" y="645" text-anchor="middle">Points v3 pts_pause…</text>
 <rect x="511" y="610" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="630" text-anchor="middle" font-size="13">pts_outbox</text>
-<text class="s" x="580" y="645" text-anchor="middle">Points v3 pts_outbox</text>
+<text class="n" x="580" y="630" text-anchor="middle" font-size="11">pts_lifecycle_fact</text>
+<text class="s" x="580" y="645" text-anchor="middle">Points v3 pts_lifec…</text>
 <rect x="31" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="746" text-anchor="middle" font-size="13">pts_stat_daily</text>
-<text class="s" x="100" y="761" text-anchor="middle">Points v3 pts_stat_…</text>
+<text class="n" x="100" y="746" text-anchor="middle" font-size="13">pts_inbox</text>
+<text class="s" x="100" y="761" text-anchor="middle">Points v3 pts_inbox</text>
 <rect x="191" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="746" text-anchor="middle" font-size="13">pts_cursor</text>
-<text class="s" x="260" y="761" text-anchor="middle">Points v3 pts_cursor</text>
+<text class="n" x="260" y="746" text-anchor="middle" font-size="13">pts_outbox</text>
+<text class="s" x="260" y="761" text-anchor="middle">Points v3 pts_outbox</text>
 <rect x="351" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="752" text-anchor="middle" font-size="9.5">pts_availability_projection</text>
-
+<text class="n" x="420" y="746" text-anchor="middle" font-size="13">pts_stat_daily</text>
+<text class="s" x="420" y="761" text-anchor="middle">Points v3 pts_stat_…</text>
 <rect x="511" y="726" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="752" text-anchor="middle" font-size="9.5">pts_statement_final_fact</text>
+<text class="n" x="580" y="746" text-anchor="middle" font-size="13">pts_cursor</text>
+<text class="s" x="580" y="761" text-anchor="middle">Points v3 pts_cursor</text>
+<rect x="31" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="100" y="868" text-anchor="middle" font-size="9.5">pts_availability_projection</text>
 
-<rect x="159" y="842" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="244" y="868" text-anchor="middle" font-size="13">pts_statement_build</text>
+<rect x="191" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="260" y="868" text-anchor="middle" font-size="9.5">pts_statement_final_fact</text>
 
-<rect x="351" y="842" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="436" y="868" text-anchor="middle" font-size="13">pts_user_adjustment</text>
+<rect x="351" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="420" y="868" text-anchor="middle" font-size="11">pts_statement_build</text>
 
-<rect x="31" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="978" text-anchor="middle" font-size="13">pts_ledger_entry</text>
-<text class="s" x="100" y="993" text-anchor="middle">Points v3 pts_ledge…</text>
-<rect x="191" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="978" text-anchor="middle" font-size="13">pts_pool_flow</text>
-<text class="s" x="260" y="993" text-anchor="middle">Points v3 pts_pool_…</text>
-<rect x="351" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="978" text-anchor="middle" font-size="11">pts_redeem_position</text>
-<text class="s" x="420" y="993" text-anchor="middle">Points v3 pts_redee…</text>
-<rect x="511" y="958" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="978" text-anchor="middle" font-size="13">pts_fund_transfer</text>
-<text class="s" x="580" y="993" text-anchor="middle">Points v3 pts_fund_…</text>
-<rect x="31" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="100" y="1094" text-anchor="middle" font-size="9.5">pts_statement_revision</text>
-<text class="s" x="100" y="1109" text-anchor="middle">Points v3 pts_state…</text>
-<rect x="191" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="260" y="1094" text-anchor="middle" font-size="11">pts_statement_line</text>
-<text class="s" x="260" y="1109" text-anchor="middle">Points v3 pts_state…</text>
-<rect x="351" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="420" y="1094" text-anchor="middle" font-size="9.5">pts_receivable_allocation</text>
-<text class="s" x="420" y="1109" text-anchor="middle">Points v3 pts_recei…</text>
-<rect x="511" y="1074" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="580" y="1094" text-anchor="middle" font-size="13">pts_pool_request</text>
-<text class="s" x="580" y="1109" text-anchor="middle">Points v3 pts_pool_…</text>
+<rect x="511" y="842" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="580" y="868" text-anchor="middle" font-size="11">pts_user_adjustment</text>
+
+<rect x="63" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="978" text-anchor="middle" font-size="13">pts_redeem_position</text>
+<text class="s" x="148" y="993" text-anchor="middle">Points v3 pts_redeem_posi…</text>
+<rect x="255" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="978" text-anchor="middle" font-size="13">pts_fund_transfer</text>
+<text class="s" x="340" y="993" text-anchor="middle">Points v3 pts_fund_transf…</text>
+<rect x="447" y="958" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="978" text-anchor="middle" font-size="11">pts_statement_revision</text>
+<text class="s" x="532" y="993" text-anchor="middle">Points v3 pts_statement_r…</text>
+<rect x="63" y="1074" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="1094" text-anchor="middle" font-size="13">pts_statement_line</text>
+<text class="s" x="148" y="1109" text-anchor="middle">Points v3 pts_statement_l…</text>
+<rect x="255" y="1074" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="1094" text-anchor="middle" font-size="11">pts_receivable_allocation</text>
+<text class="s" x="340" y="1109" text-anchor="middle">Points v3 pts_receivable_…</text>
+<rect x="447" y="1074" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="1094" text-anchor="middle" font-size="13">pts_pool_request</text>
+<text class="s" x="532" y="1109" text-anchor="middle">Points v3 pts_pool_request</text>
 <rect x="63" y="1190" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="148" y="1216" text-anchor="middle" font-size="11">pts_statement_build_item</text>
 
@@ -138,14 +136,12 @@
 <rect x="447" y="1190" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="532" y="1216" text-anchor="middle" font-size="11">pts_statement_confirmation</text>
 
-<text class="l" x="180" y="204" text-anchor="middle">voucher_no</text>
-<text class="l" x="260" y="216" text-anchor="middle">voucher_no</text>
-<text class="l" x="500" y="320" text-anchor="middle">statement_no</text>
-<text class="l" x="500" y="228" text-anchor="middle">evidence_no</text>
-<text class="l" x="340" y="320" text-anchor="middle">statement_no</text>
-<text class="l" x="420" y="332" text-anchor="middle">statement_no</text>
-<text class="l" x="500" y="436" text-anchor="middle">receivable_no</text>
-<text class="l" x="500" y="204" text-anchor="middle">evidence_no</text>
-<text class="l" x="196" y="900" text-anchor="middle">build_no</text>
-<text class="l" x="460" y="320" text-anchor="middle">statement_no</text>
-<text class="l" x="556" y="332" text-anchor="middle">statement_no</text></svg>
+<text class="l" x="204" y="436" text-anchor="middle">statement_no</text>
+<text class="l" x="220" y="320" text-anchor="middle">evidence_no</text>
+<text class="l" x="396" y="448" text-anchor="middle">statement_no</text>
+<text class="l" x="204" y="436" text-anchor="middle">statement_no</text>
+<text class="l" x="300" y="552" text-anchor="middle">receivable_no</text>
+<text class="l" x="316" y="320" text-anchor="middle">evidence_no</text>
+<text class="l" x="284" y="900" text-anchor="middle">build_no</text>
+<text class="l" x="300" y="436" text-anchor="middle">statement_no</text>
+<text class="l" x="396" y="448" text-anchor="middle">statement_no</text></svg>

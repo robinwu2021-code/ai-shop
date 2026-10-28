@@ -3,6 +3,10 @@ import { client } from "../http-client";
 import type { SystemApi } from "../contracts/system";
 
 export const systemHttp: SystemApi = {
+  printHealth: (q) => client.get("/ops/print/health", q),
+  printIncidents: (q) => client.get("/ops/print/incidents", q),
+  printOperation: (no, q) => client.get(`/ops/print/operations/${encodeURIComponent(no)}`, q),
+  reconcilePrint: (v, key) => client.post("/ops/print/reconciliations", v, undefined, { "Idempotency-Key": key }),
   // ── 测试号固定验证码白名单 ──
   listTestPhones: () => client.get("/ops/test-phones"),
   saveTestPhone: (v) => client.post("/ops/test-phones", v),

@@ -27070,9 +27070,9 @@
         },
         {
           "key": "err.inventory.shared_source",
-          "zh-CN": "该门店与门店 {1} 共用发货库存，暂不支持分别同步全部库存，请先配置独立发货库位",
-          "en": "This store shares its stock source with store {1}. Configure independent stock locations before enabling stock sync.",
-          "ar": "يشترك هذا المتجر في مصدر المخزون مع المتجر {1}. يرجى إعداد مواقع مخزون مستقلة قبل تفعيل المزامنة."
+          "zh-CN": "门店 {0} 与门店 {1} 共用发货库存，暂不支持分别同步全部库存，请先配置独立发货库位",
+          "en": "Store {0} shares its stock source with store {1}. Configure independent stock locations before enabling stock sync.",
+          "ar": "يشترك المتجر {0} في مصدر المخزون مع المتجر {1}. يرجى إعداد مواقع مخزون مستقلة قبل تفعيل المزامنة."
         },
         {
           "key": "err.inventory.sync_not_aligned",
@@ -40651,6 +40651,68 @@
         "zh": "切换的结果。"
       },
       {
+        "name": "InventoryAccountingMode",
+        "client": "shared",
+        "values": [
+          "PAYMENT_DEDUCT"
+        ],
+        "zh": "Physical inventory is currently deducted on payment (InventoryOverviewQuery.render)."
+      },
+      {
+        "name": "InventoryOutboxMode",
+        "client": "ops-web",
+        "values": [
+          "UNIFIED",
+          "LEGACY"
+        ],
+        "zh": "Persisted event transport implementation."
+      },
+      {
+        "name": "InventoryOutboxMode",
+        "client": "shared",
+        "values": [
+          "UNIFIED",
+          "LEGACY"
+        ],
+        "zh": "Inventory wire value domain."
+      },
+      {
+        "name": "InventoryState",
+        "client": "shared",
+        "values": [
+          "UNMANAGED",
+          "INITIALIZING",
+          "MAPPED"
+        ],
+        "zh": "Inventory wire value domain."
+      },
+      {
+        "name": "InventoryTraceStatus",
+        "client": "ops-web",
+        "values": [
+          "COMPLETED",
+          "PENDING",
+          "FAILED",
+          "WARNING",
+          "SKIPPED",
+          "ARCHIVED"
+        ],
+        "zh": "Inventory synchronization event delivery states."
+      },
+      {
+        "name": "InventoryTraceStatus",
+        "client": "shared",
+        "values": [
+          "COMPLETED",
+          "PENDING",
+          "FAILED",
+          "WARNING",
+          "SKIPPED",
+          "ARCHIVED"
+        ],
+        "zh": "Inventory wire value domain."
+      },
+      {
         "name": "InvoiceRequestStatus",
         "client": "shared",
         "values": [
@@ -41548,6 +41610,16 @@
         "zh": "PointsStatsQ 的 scope 取值域，按服务端契约校验。"
       },
       {
+        "name": "PointsTransactionDirection",
+        "client": "ops-web",
+        "values": [
+          "EARN",
+          "REDEEM",
+          "REVERSAL"
+        ],
+        "zh": ""
+      },
+      {
         "name": "PointsTypeChangeAction",
         "client": "ops-web",
         "values": [
@@ -42270,6 +42342,20 @@
         "zh": "对齐清单一行的提示。"
       },
       {
+        "name": "StockAlignmentBatchStatus",
+        "client": "shared",
+        "values": [
+          "PREVIEW",
+          "PROCESSING",
+          "PARTIAL",
+          "BLOCKED",
+          "COMPLETED",
+          "STALE",
+          "EXPIRED"
+        ],
+        "zh": "Inventory wire value domain."
+      },
+      {
         "name": "StockDocKind",
         "client": "shared",
         "values": [
@@ -42277,6 +42363,18 @@
           "OUT"
         ],
         "zh": "库存台账的方向。"
+      },
+      {
+        "name": "StockSyncOperationStatus",
+        "client": "shared",
+        "values": [
+          "PROCESSING",
+          "WAITING",
+          "FAILED",
+          "BLOCKED",
+          "COMPLETED"
+        ],
+        "zh": "Inventory wire value domain."
       },
       {
         "name": "StockSyncStatus",

@@ -1,5 +1,6 @@
 "use client";
 
+import { PointsInspectionLists } from "./inspection-lists";
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -76,6 +77,7 @@ export function PointsQueriesTab({ canEdit, canReconRead, canReconRun }: { canEd
     {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
     {save.data && <Notice>{t("操作已受理", "Operation accepted")} {save.data.requestId} · {save.data.reference}</Notice>}
     <label className="block">{t("操作原因", "Operation reason")}<Input dir="auto" value={reason} onChange={(e) => setReason(e.target.value)} /></label>
+    <PointsInspectionLists typeCode={code} />
     <div className={card}><h3 className="txt-heading">{t("门店 / 用户账户分格", "Store / user account buckets")}</h3>
       <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); setAccountQ({ typeCode: code, holderType: String(d.get("holder")) as PointsHolder, holderNo: String(d.get("subject")).trim() }); }}><label>{t("账户类型", "Holder type")}<Select name="holder">{HOLDERS.map((h) => <option key={h}>{h}</option>)}</Select></label><label>{t("门店 / 用户 / 平台编号", "Store / user / platform ID")}<Input dir="auto" name="subject" required /></label><Button disabled={!code} type="submit">{t("查询", "Search")}</Button></form>
       {account.isFetching && <p dir="auto">{t("加载中…", "Loading…")}</p>}

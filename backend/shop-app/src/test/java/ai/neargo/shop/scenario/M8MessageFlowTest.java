@@ -1,5 +1,13 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.SysOutboxMapper;
+import ai.neargo.shop.message.NotificationConsumer;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
+
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.support.CashReceiptFixture;
@@ -48,6 +56,12 @@ class M8MessageFlowTest {
 
     @Autowired
     private ai.neargo.shop.event.OutboxDispatcher dispatcher;
+
+    @Autowired
+    private SysOutboxMapper outbox;
+
+    @MockitoSpyBean
+    private NotificationConsumer notifications;
 
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
@@ -155,14 +169,43 @@ class M8MessageFlowTest {
     @DisplayName("投递失败的事件保留在待发送队列，不会被标记为已发送")
     void failedDeliveryStaysPending() throws Exception {
         String token = login("12700127005");
-        buyAndPay(token, "m8-fail");
+        String orderNo = buyAndPay(token, "m8-fail");
+        var event = outbox.selectOne(Wrappers.<SysOutbox>lambdaQuery()
+                .eq(SysOutbox::getAggregateId, orderNo)
+                .eq(SysOutbox::getEventType, "ORDER_PAID"));
+        assertThat(event).isNotNull();
+        assertThat(event.getStatus()).isEqualTo(SysOutbox.PENDING);
+        String eventNo = event.getEventNo();
+        doThrow(new IllegalStateException("M8 transient notification failure"))
+                .doCallRealMethod().when(notifications)
+                .consume(argThat(row -> eventNo.equals(row.getEventNo())));
+        try {
+            // Scope delivery and assertions to this real payment event. Other tests may have
+            // unrelated failures still waiting for their backoff; they must not be discarded.
+            var failed = dispatcher.dispatchOne(event.getId());
+            assertThat(failed.sent()).isFalse();
+            assertThat(failed.retryAfter()).isNotNull();
+            assertThat(failed.retryAfter().toMillis()).isPositive();
+            var pending = outbox.selectById(event.getId());
+            assertThat(pending.getStatus()).isEqualTo(SysOutbox.PENDING);
+            assertThat(pending.getRetryCount()).isEqualTo(1);
+            assertThat(pending.getNextRetryAt()).isNotNull();
+            assertThat(pending.getSentAt()).isNull();
+            assertThat(pending.getLastError()).contains("M8 transient notification failure");
+            assertThat(countOf(messages(token), "支付成功")).isZero();
 
-        long pendingBefore = dispatcher.pendingCount();
-        assertThat(pendingBefore).isPositive();
-
-        dispatcher.dispatchPending();
-        // 正常投递后队列应清空 —— 队列不清空说明消费者抛了异常，那是必须被发现的
-        assertThat(dispatcher.pendingCount()).isZero();
+            // Simulate the scheduled retry of the same event after its recorded backoff.
+            var retried = dispatcher.dispatchOne(event.getId());
+            assertThat(retried.sent()).isTrue();
+            assertThat(retried.retryAfter()).isNull();
+            assertThat(outbox.selectById(event.getId()).getStatus()).isEqualTo(SysOutbox.SENT);
+            assertThat(countOf(messages(token), "支付成功")).isEqualTo(1);
+            dispatcher.dispatchOne(event.getId());
+            assertThat(countOf(messages(token), "支付成功")).isEqualTo(1);
+        } finally {
+            doCallRealMethod().when(notifications)
+                    .consume(argThat(row -> eventNo.equals(row.getEventNo())));
+        }
     }
 
     // ---------------------------------------------------------------- 消息中心
@@ -333,7 +376,7 @@ class M8MessageFlowTest {
         return json.readTree(body).get("data").get("records").get(0).get("verifyCode").asString();
     }
 
-    private void buyAndPay(String token, String idemKey) throws Exception {
+    private String buyAndPay(String token, String idemKey) throws Exception {
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}"));
@@ -347,6 +390,7 @@ class M8MessageFlowTest {
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
         assertThat(payOrderNo).isNotBlank();
         new CashReceiptFixture(context).pay(token, payOrderNo);
+        return payOrderNo;
     }
 
     private String loginAsOwnerOf(String merchantNo, String phone) throws Exception {

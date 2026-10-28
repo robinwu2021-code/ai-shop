@@ -252,19 +252,31 @@ class ActivityBenefitCoordinatorFlowTest {
         var context = new EntitlementContext("MAIN", owner[0], id(), "a".repeat(64));
         var plan = intents.begin(context, new BenefitClaimCommand(version, null, null, owner[1], owner[2]), "event");
         var child = plan.grants().getFirst(); pay.prepare(context, child);
-        String eventNo = "BE" + plan.parentSource().grantKey().substring(0, 60);
-        jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT ck_benefit_outbox_failure CHECK(event_no <> '"
-                + eventNo + "')");
+        // Outbox owns generated event IDs. Reject this source decision by its persisted
+        // aggregate identity so the failure still exercises the real transaction boundary.
+        jdbc.execute("ALTER TABLE sys_outbox ADD CONSTRAINT ck_benefit_outbox_failure CHECK(NOT ("
+                + "aggregate_id = '" + plan.intentNo()
+                + "' AND event_type = 'ACTIVITY_BENEFIT_DECIDED'))");
         try {
             assertThatThrownBy(() -> intents.decide(context, plan.intentNo(), true))
                     .isInstanceOf(RuntimeException.class);
             assertThat(intents.mine(context, plan.intentNo()).status()).isEqualTo("PENDING");
+            assertThat(jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=? AND event_type=?",
+                    Integer.class, plan.intentNo(), "ACTIVITY_BENEFIT_DECIDED")).isZero();
             assertThat(pay.query(context, owner[1], child.grantNo()).status())
                     .isEqualTo(EntitlementGrantPort.State.PREPARED);
         } finally { jdbc.execute("ALTER TABLE sys_outbox DROP CONSTRAINT ck_benefit_outbox_failure"); }
         intents.decide(context, plan.intentNo(), true);
-        var event = new SysOutbox(); event.setEventNo(eventNo);
-        event.setPayload(jdbc.queryForObject("SELECT payload FROM sys_outbox WHERE event_no=?", String.class, eventNo));
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=? AND event_type=?",
+                Integer.class, plan.intentNo(), "ACTIVITY_BENEFIT_DECIDED")).isEqualTo(1);
+        var event = new SysOutbox();
+        event.setEventNo(jdbc.queryForObject(
+                "SELECT event_no FROM sys_outbox WHERE aggregate_id=? AND event_type=?",
+                String.class, plan.intentNo(), "ACTIVITY_BENEFIT_DECIDED"));
+        event.setPayload(jdbc.queryForObject(
+                "SELECT payload FROM sys_outbox WHERE event_no=?", String.class, event.getEventNo()));
         consumer.consume(event); consumer.consume(event);
         assertThat(intents.mine(context, plan.intentNo()).status()).isEqualTo("COMMITTED");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_instance WHERE grant_no=?", Integer.class,

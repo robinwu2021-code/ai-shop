@@ -136,6 +136,7 @@ export const POINT_CODES: Record<string, string> = {
   "/iam?tab=roles": "OPS_IAM__TAB_ROLES",
   "/iam?tab=menu": "OPS_IAM__TAB_MENU",
   "/iam?tab=audit": "OPS_IAM__TAB_AUDIT",
+  "/print": "OPS_PRINT",
   "/jobs": "OPS_JOBS",
   "/system": "OPS_SYSTEM",
   "/system?tab=market": "OPS_SYSTEM__TAB_MARKET",

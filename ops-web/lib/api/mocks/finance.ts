@@ -38,6 +38,10 @@ function mustBill(settleNo: string) {
 }
 
 export const financeMock: FinanceApi = {
+  pointsAccounts: async (q) => ({ rows: [], next: q.after ?? 0, hasMore: false }),
+  pointsTransactions: async (q) => ({ rows: [], next: q.after ?? 0, hasMore: false }),
+  pointsTransaction: async () => { fail("演示没有对应凭证", "No corresponding voucher in this demo"); },
+  pointsPeriodStats: async () => { fail("演示没有统计快照", "No statistics snapshots in this demo"); },
   pointsAdjustments: (q) => wait({ rows: [], next: q.after ?? 0, hasMore: false }),
   submitPointsAdjustment: () => fail("演示环境不支持积分调账", "Adjustment requires a connected backend"),
   reviewPointsAdjustment: () => fail("演示环境不支持积分调账", "Adjustment requires a connected backend"),

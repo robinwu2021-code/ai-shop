@@ -1,5 +1,6 @@
 package ai.neargo.shop.spi.user;
 
+import jakarta.validation.Valid;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,7 +13,7 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 /** Only the original platform resolves store ownership; callers send store keys rather than self-declared entities. */
 public interface StoreCardInternalApi {
     String BATCH_PATH = "/internal/user/store-cards/batch";
-    @PostExchange(BATCH_PATH) List<CardReceipt> lookupBatch(@RequestBody BatchLookup request);
+    @PostExchange(BATCH_PATH) List<CardReceipt> lookupBatch(@Valid @RequestBody BatchLookup request);
     record BatchLookup(@NotNull @Size(min=1, max=100)
             @JsonDeserialize(contentUsing=StoreCardFacts.TextDeserializer.class)
             List<@NotBlank @Size(max=32) String> storeNos) {

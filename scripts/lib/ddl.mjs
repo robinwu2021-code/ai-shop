@@ -130,7 +130,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
     const indexes = [];
     // 索引名 → 列规格。**DROP INDEX 是按名字删的**，不记名字就删不掉
     const indexNames = new Map();
-    for (const raw of body.split("\n")) {
+    for (const raw of splitTopLevel(stripSqlComments(body))) {
       const line = raw.trim();
       const u = line.match(/^UNIQUE KEY (\w+) \(([^)]*)\)/i);
       if (u) {
@@ -309,10 +309,13 @@ function splitTopLevel(body) {
   let buf = "";
   let depth = 0;
   let quoted = false;
-  for (const ch of body) {
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
     if (quoted) {
       buf += ch;
-      if (ch === "'") quoted = false;
+      if (ch === "\\" && i + 1 < body.length) buf += body[++i];
+      else if (ch === "'" && body[i + 1] === "'") buf += body[++i];
+      else if (ch === "'") quoted = false;
       continue;
     }
     if (ch === "'") quoted = true;
@@ -327,4 +330,10 @@ function splitTopLevel(body) {
   }
   if (buf.trim()) parts.push(buf.trim());
   return parts;
+}
+
+/** Remove SQL comments without erasing quoted column comments or defaults. */
+function stripSqlComments(sql) {
+  return sql.replace(/'(?:''|\\.|[^'])*'|--[^\n]*|\/\*[\s\S]*?\*\//g, (token) =>
+    token.startsWith("'") ? token : " ");
 }

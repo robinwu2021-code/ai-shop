@@ -246,7 +246,7 @@ onShow(load);
 
       <sh-stat
         :items="[
-          { value: detail.onHand, label: String($t(overview?.accountingMode === 'HANDOFF_DEDUCT' ? 'stockOverview.physical' : 'stockOverview.book')) },
+          { value: detail.onHand, label: String($t('stockOverview.book')) },
           { value: detail.reserved, label: String($t('stockDetail.reserved')), tone: 'warn' },
           { value: detail.available, label: String($t('stockDetail.available')) },
         ]"
@@ -336,7 +336,7 @@ onShow(load);
             <text class="txt-strong led__title">{{ $t(`stock.reason.${r.reasonCode}`) }}</text>
             <view class="led__meta">
               <!-- 单号用链接色：这一行可点，而「可点」在密排的流水里得看得出来 -->
-              <text class="sh-link sh-num led__doc" :title="r.docNo">{{ r.docNo }}</text>
+              <text class="sh-link sh-num sh-fill led__doc" :title="r.docNo">{{ r.docNo }}</text>
               <text class="sh-muted led__operator">{{ r.operator || "—" }}</text>
             </view>
             <text class="txt-caption sh-num">{{ at(r.occurredAt) }}</text>
@@ -403,8 +403,6 @@ onShow(load);
 }
 .led__doc {
   display: block;
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

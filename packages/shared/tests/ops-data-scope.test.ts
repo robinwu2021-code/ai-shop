@@ -1047,6 +1047,41 @@ function schemaColumns(): Map<string, Set<string>> {
 
 // ────────────────────────────────────────────────── 守卫
 
+// Print reads authorize an actor and constrain every mapper query explicitly. This is
+// verified source evidence for these three paths, not a global table/bypass exemption.
+const PRINT_PATH_TABLES: Record<string, string[]> = {
+  "/ops/print/health": ["prn_printer", "prn_job", "prn_request"],
+  "/ops/print/incidents": ["prn_incident"],
+  "/ops/print/operations/{operationNo}": ["prn_operation"],
+};
+const bodyOf = (cls: string, method: string) => classes.get(cls)?.methods.get(method)?.join("\n") ?? "";
+const printActorBody = bodyOf("PrintActorFactory", "operator");
+const printTargetBody = bodyOf("PrintOpsServiceImpl", "target");
+const printScopedBody = bodyOf("PrintSupport", "scoped");
+const printScopeProof = {
+  authorizedBeforeFacts: printActorBody.includes("Realm.OPERATOR")
+    && printActorBody.includes("Objects.equals(user.tenantNo(), tenant)")
+    && printActorBody.includes("ScopeDim.MERCHANT.equals(r.dim())")
+    && printActorBody.includes("r.refs().contains(entity)")
+    && printActorBody.indexOf("!allowed") >= 0
+    && printActorBody.indexOf("!allowed") < printActorBody.indexOf("merchants.storesOwned("),
+  targetIdentity: ["a.tenantNo().equals(tenant)", "a.entityNos().contains(entity)", "a.storeNos().contains(store)"]
+    .every(fragment => printTargetBody.includes(fragment)),
+  sqlIdentity: ["tenant_no", "entity_no", "store_no"].every(column => printScopedBody.includes(`.eq("${column}",`)),
+  allReadsScoped: [["PrintMonitorServiceImpl", "getHealth"], ["PrintMonitorServiceImpl", "listIncidents"],
+    ["PrintQueryServiceImpl", "getOperation"]].every(([cls, method]) => {
+      const body = bodyOf(cls!, method!);
+      const reads = [...body.matchAll(/\.select(?:One|Count|Page|List)\s*\(/g)].length;
+      const scoped = [...body.matchAll(/PrintSupport\.<\w+>scoped\(scope\(a\)\)/g)].length;
+      return reads > 0 && reads === scoped;
+    }),
+  opsEntryTargets: ["getFleetHealth", "listIncidents", "getOperation"]
+    .every(method => bodyOf("PrintOpsServiceImpl", method).includes("target(a,")),
+};
+const printScopeVerified = Object.values(printScopeProof).every(Boolean);
+const verifiedPrintPath = (e: { cls: string; path: string }) =>
+  printScopeVerified && e.cls === "OpsPrintController" && e.path in PRINT_PATH_TABLES;
+
 describe("运营端数据域接入", () => {
   const registry = registeredTables();
   const registered = new Set(registry.keys());
@@ -1067,11 +1102,17 @@ describe("运营端数据域接入", () => {
     ).toBeGreaterThan(20);
   });
 
+  it("打印显式范围合同必须同时校验会话、目标与每条SQL", () => {
+    expect(printScopeProof).toEqual({ authorizedBeforeFacts: true, targetIdentity: true,
+      sqlIdentity: true, allReadsScoped: true, opsEntryTargets: true });
+  });
+
   it("★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错", () => {
     const offenders: string[] = [];
     for (const e of gets) {
       for (const [site, tables] of bypassSites(e.cls, e.method, registered)) {
         if (site in SCOPE_BYPASS_OK) continue;
+        if (site === "MerchantScopeFactsPortImpl#storesOwned" && verifiedPrintPath(e)) continue;
         offenders.push(`GET ${e.path} → ${site}（${tables.join("/")}）`);
       }
     }
@@ -1350,6 +1391,7 @@ describe("运营端数据域接入", () => {
         for (const t of tablesIn(e.cls, body)) {
           if (registered.has(t) || !schema.has(t)) continue;
           if (t in OPS_READS_UNREGISTERED_OK) continue;
+          if (verifiedPrintPath(e) && PRINT_PATH_TABLES[e.path]!.includes(t)) continue;
           // 没有归属列的表（字典、配置、菜单）本来就不该按主体裁
           if (!OWNER_COLUMNS.some((o) => schema.get(t)!.has(o))) continue;
           offenders.push(`${t} ← ${e.verb} ${e.path}`);
@@ -1382,9 +1424,21 @@ describe("运营端数据域接入", () => {
     ).toEqual([]);
   });
 
-  it("★★★ G3 每张已注册表都要为运营会话的三个维度备好锚点 —— 缺一个，那类运营整页空白且不报错", () => {
+  it("仅买家收藏登记不要求虚构运营锚点；新增运营读取时仍须检查", () => {
+    const opsReads = new Set(gets.flatMap(e => (classes.get(e.cls)?.methods.get(e.method) ?? [])
+      .flatMap(body => [...tablesIn(e.cls, body)])));
+    expect(registered.has("prd_goods_favorite")).toBe(true);
+    expect(opsReads.has("prd_goods_favorite")).toBe(false);
+  });
+
+  it("★★★ G3 每张被运营读取的已注册表都要为运营会话的三个维度备好锚点 —— 缺一个，那类运营整页空白且不报错", () => {
     const holes: string[] = [];
+    const opsReads = new Set(gets.flatMap(e => (classes.get(e.cls)?.methods.get(e.method) ?? [])
+      .flatMap(body => [...tablesIn(e.cls, body)])));
     for (const [table, anchors] of registry) {
+      // A consumer-only table has no ops page to become blank. Future ops readers
+      // are discovered by the same call graph as G4, so they enter this check.
+      if (!opsReads.has(table)) continue;
       for (const dim of OPS_DIMS) {
         const col = anchors[dim];
         if (col) continue;

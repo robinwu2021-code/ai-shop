@@ -5888,6 +5888,22 @@ components:
         - "titleMaxLength"
       additionalProperties: false
       description: "建品规则（商品①）。提审那一刻校验，**拦在进审核队列之前**。\n\n<p>**三条默认全关**（等于今天的行为）：一旦打开，命中的存量商品下次提审全会被拦， 而平台上有 200 个 SPU、194 个正卡在审核里。默认打开等于在没人预告的情况下 让一批商家的提交突然失败。"
+    InventoryTraceStatus:
+      type: "string"
+      enum:
+        - "COMPLETED"
+        - "PENDING"
+        - "FAILED"
+        - "WARNING"
+        - "SKIPPED"
+        - "ARCHIVED"
+      description: "Inventory synchronization event delivery states."
+    InventoryOutboxMode:
+      type: "string"
+      enum:
+        - "UNIFIED"
+        - "LEGACY"
+      description: "Persisted event transport implementation."
     InvHealthRow:
       type: "object"
       properties:
@@ -6277,20 +6293,10 @@ components:
           type: "string"
           description: "System that requested or handled the synchronization."
         status:
-          type: "string"
-          enum:
-            - "COMPLETED"
-            - "PENDING"
-            - "FAILED"
-            - "WARNING"
-            - "SKIPPED"
-            - "ARCHIVED"
+          "$ref": "#/components/schemas/InventoryTraceStatus"
           description: "Delivery state of the synchronization event."
         outboxMode:
-          type: "string"
-          enum:
-            - "UNIFIED"
-            - "LEGACY"
+          "$ref": "#/components/schemas/InventoryOutboxMode"
           description: "Outbox implementation that persisted the event."
       required:
         - "aggregateId"
@@ -14997,6 +15003,116 @@ paths:
                     type: "array"
                     items:
                       "$ref": "#/components/schemas/StoreRankRow"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/accounts":
+    get:
+      operationId: "pointsAccounts"
+      summary: "pointsAccounts"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/transactions":
+    get:
+      operationId: "pointsTransactions"
+      summary: "pointsTransactions"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/transactions/{voucherNo}":
+    get:
+      operationId: "pointsTransaction"
+      summary: "pointsTransaction"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "voucherNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/stats-period":
+    get:
+      operationId: "pointsPeriodStats"
+      summary: "pointsPeriodStats"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
                 required:
                   - "code"
                   - "msg"
@@ -27878,6 +27994,138 @@ paths:
           required: true
           schema:
             type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/print/health":
+    get:
+      operationId: "printHealth"
+      summary: "printHealth"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/print/incidents":
+    get:
+      operationId: "printIncidents"
+      summary: "printIncidents"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    properties:
+                      records:
+                        type: "array"
+                        items:
+                          type: "object"
+                      total:
+                        type: "integer"
+                      page:
+                        type: "integer"
+                      size:
+                        type: "integer"
+                    required:
+                      - "records"
+                      - "total"
+                      - "page"
+                      - "size"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/print/operations/{no}":
+    get:
+      operationId: "printOperation"
+      summary: "printOperation"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "no"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/print/reconciliations":
+    post:
+      operationId: "reconcilePrint"
+      summary: "reconcilePrint"
+      tags:
+        - "system"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody:
         required: true
         content:

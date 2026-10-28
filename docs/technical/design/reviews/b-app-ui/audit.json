@@ -12,8 +12,8 @@
     "components": 42,
     "localeKeys": 3098,
     "catalogEntries": 3098,
-    "references": 2825,
-    "dynamicReferences": 265,
+    "references": 2826,
+    "dynamicReferences": 264,
     "duplicateGroups": 265,
     "duplicateKeys": 693,
     "literalCandidates": 1,
@@ -1160,11 +1160,6 @@
       "file": "b-app/src/pages/stock-detail/index.vue",
       "line": 140,
       "expression": "`stock.reason.${r}`"
-    },
-    {
-      "file": "b-app/src/pages/stock-detail/index.vue",
-      "line": 249,
-      "expression": "overview?.accountingMode === 'HANDOFF_DEDUCT' ? 'stockOverview.physical' : 'stockOverview.book'"
     },
     {
       "file": "b-app/src/pages/stock-detail/index.vue",
@@ -4504,7 +4499,7 @@
     {
       "name": "sh-fill",
       "pageCount": 58,
-      "instances": 160
+      "instances": 163
     },
     {
       "name": "sh-grip",
@@ -4708,8 +4703,8 @@
     },
     {
       "name": "txt-caption",
-      "pageCount": 77,
-      "instances": 378
+      "pageCount": 80,
+      "instances": 393
     },
     {
       "name": "txt-display",
@@ -4728,8 +4723,8 @@
     },
     {
       "name": "txt-ink",
-      "pageCount": 2,
-      "instances": 4
+      "pageCount": 3,
+      "instances": 5
     },
     {
       "name": "txt-mega",
@@ -7561,6 +7556,7 @@
         "print-summary": 1,
         "print-nav": 1,
         "print-hint": 9,
+        "txt-caption": 7,
         "sh-cell": 2,
         "print-error": 3,
         "print-tabs": 1,
@@ -7604,6 +7600,7 @@
         "sh-btn--sm": 12,
         "sh-cell": 2,
         "print-hint": 3,
+        "txt-caption": 3,
         "sh-row": 3,
         "sh-row--between": 1,
         "print-actions": 2
@@ -7643,13 +7640,15 @@
         "sh-btn--soft": 2,
         "sh-btn--sm": 4,
         "print-hint": 4,
+        "txt-caption": 5,
         "txt-strong": 2,
         "sh-row": 3,
         "sh-row--between": 3,
         "field": 2,
         "field__label": 2,
         "field__input": 2,
-        "print-receipt": 1
+        "print-receipt": 1,
+        "txt-ink": 1
       },
       "props": [],
       "propNames": [],
@@ -7736,7 +7735,7 @@
         "sh-row": 2,
         "sh-row--divided": 1,
         "row": 1,
-        "sh-fill": 2,
+        "sh-fill": 4,
         "txt-strong": 1,
         "row__name": 1,
         "txt-caption": 4,
@@ -7760,13 +7759,12 @@
         "field__label": 4,
         "field__input": 3,
         "acts": 1,
-        "sh-btn--muted": 1,
-        "qualification-action": 2
+        "sh-btn--muted": 1
       },
       "props": [],
       "propNames": [],
-      "lines": 344,
-      "cssNonblankLines": 37,
+      "lines": 340,
+      "cssNonblankLines": 33,
       "registered": true,
       "referenceCount": 23,
       "literalCount": 0,
@@ -8546,7 +8544,7 @@
         "txt-caption": 2,
         "sh-hint": 3,
         "sh-mt-sm": 3,
-        "overdue": 1,
+        "is-danger": 1,
         "acts": 1,
         "voidlink": 1,
         "row__meta": 1,
@@ -8561,8 +8559,8 @@
       },
       "props": [],
       "propNames": [],
-      "lines": 534,
-      "cssNonblankLines": 35,
+      "lines": 531,
+      "cssNonblankLines": 32,
       "registered": true,
       "referenceCount": 37,
       "literalCount": 0,
@@ -8640,7 +8638,7 @@
         "loc__safety": 1,
         "led__hint": 1,
         "led": 1,
-        "sh-fill": 1,
+        "sh-fill": 2,
         "txt-strong": 2,
         "led__title": 1,
         "led__meta": 1,
@@ -8652,10 +8650,10 @@
       },
       "props": [],
       "propNames": [],
-      "lines": 440,
-      "cssNonblankLines": 67,
+      "lines": 438,
+      "cssNonblankLines": 65,
       "registered": true,
-      "referenceCount": 37,
+      "referenceCount": 38,
       "literalCount": 0,
       "layoutCandidateCount": 0
     },

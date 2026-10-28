@@ -1,0 +1,176 @@
+{
+  "date": "2026-10-28",
+  "focusedBackend": [
+    {
+      "name": "ai.neargo.shop.scenario.EntitlementCheckoutHttpFlowTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.printbridge.PrintActorFactoryTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.scenario.PaidCardCheckoutFlowTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.scenario.ActivityBenefitCoordinatorFlowTest",
+      "tests": "11",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.scenario.M8MessageFlowTest",
+      "tests": "16",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.scenario.GoodsFavoriteFlowTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.scenario.PointsOrderDetachmentWiringTest",
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.scenario.PointsOrderLiveCreationTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.scenario.ShippingRefundSnapshotFlowTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.support.IsolatedH2ContextCustomizerFactoryTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "ai.neargo.shop.scenario.EntitlementOrderCoordinatorFlowTest",
+      "tests": "8",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "shared": {
+    "tests": 574,
+    "failedKnown": 3,
+    "baselineEntries": 3
+  },
+  "b": 253,
+  "c": 599,
+  "ops": 777,
+  "preflight": [
+    {
+      "script": "scripts/gen-ui-catalog.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/gen-proto-index.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/gen-inv-ui-inventory.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/gen-ops-feature-list.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-v2-docs.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-ops-contract.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-app-contract.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/tests/test-backend-ui-delivery.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-app-backend-orphan.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-settle-status-i18n.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-app-orphan.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/tests/backend-ui-delivery.test.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-ops-orphan.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-i18n-orphan.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-rtl-physical.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-controller-cohesion.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-sql-portability.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-generated-docs.mjs",
+      "exit": 0
+    },
+    {
+      "script": "scripts/gen-ui-lib.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-page-spec.py",
+      "exit": 0
+    },
+    {
+      "script": "scripts/check-handrolled-ui.mjs",
+      "exit": 0
+    }
+  ]
+}

@@ -5,7 +5,12 @@ import type {
   MediaReclaimable, MediaReclaimableQuery, MediaScanResult, MediaStoreUsage, OtpTestPhone, Page,
 } from "@/lib/types";
 
+import type { PrintScope, PrintReconcile, PrintFleetHealth, PrintIncident, PrintOperation } from "../inspection-types";
 export interface SystemApi {
+  printHealth(q: PrintScope): Promise<PrintFleetHealth>;
+  printIncidents(q: PrintScope & { status?: string; page?: number; size?: number }): Promise<Page<PrintIncident>>;
+  printOperation(operationNo: string, q: PrintScope): Promise<PrintOperation>;
+  reconcilePrint(v: PrintReconcile, idempotencyKey: string): Promise<PrintOperation>;
   // ── 测试号固定验证码白名单（TDD-测试号固定验证码）—— **已接真后端** `/ops/test-phones/**`
   //
   // 四个方法都返回**整份列表**而不是改动的那一条：这一页的每个动作都会改变

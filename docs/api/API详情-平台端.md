@@ -2213,6 +2213,19 @@ _无字段_
 | `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
 
 
+#### GET `/ops/points/accounts`
+
+pointsAccounts
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/points/adjustment-review`
 
 reviewPointsAdjustment
@@ -3030,6 +3043,19 @@ pointsStats
 类型：`object`
 
 
+#### GET `/ops/points/stats-period`
+
+pointsPeriodStats
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### POST `/ops/points/stats-rebuild`
 
 rebuildPointsStats
@@ -3121,6 +3147,36 @@ _无字段_
 | `action` | `string` | 是 | 请求执行的业务动作 |
 | `typeCode` | `string` | 是 | 积分类型唯一编码 |
 | `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/transactions`
+
+pointsTransactions
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/points/transactions/{voucherNo}`
+
+pointsTransaction
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `voucherNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### POST `/ops/points/type-state`
@@ -10748,6 +10804,69 @@ _无字段_
 类型：[`MediaStoreUsage`](#mediastoreusage)\[\]
 
 
+#### GET `/ops/print/health`
+
+printHealth
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/print/incidents`
+
+printIncidents
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | `object`\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
+
+
+#### GET `/ops/print/operations/{no}`
+
+printOperation
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `no` | path | `string` | 是 | 该资源的业务单号 |
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/print/reconciliations`
+
+reconcilePrint
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/rule-texts`
 
 getRuleTexts
@@ -12423,8 +12542,30 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 | `aggregateId` | `string` | 是 | Identifier of the event aggregate that produced this synchronization. |
 | `eventType` | `string` | 是 | Event type emitted by the inventory or order lifecycle. |
 | `source` | `string` | 是 | System that requested or handled the synchronization. |
-| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | Delivery state of the synchronization event. |
-| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | Outbox implementation that persisted the event. |
+| `status` | [`InventoryTraceStatus`](#inventorytracestatus) | 是 | Delivery state of the synchronization event. |
+| `outboxMode` | [`InventoryOutboxMode`](#inventoryoutboxmode) | 是 | Outbox implementation that persisted the event. |
+
+### InventoryOutboxMode
+
+Persisted event transport implementation.
+
+枚举取值：
+
+- `UNIFIED`
+- `LEGACY`
+
+### InventoryTraceStatus
+
+Inventory synchronization event delivery states.
+
+枚举取值：
+
+- `COMPLETED`
+- `PENDING`
+- `FAILED`
+- `WARNING`
+- `SKIPPED`
+- `ARCHIVED`
 
 ### InvoiceRequest
 

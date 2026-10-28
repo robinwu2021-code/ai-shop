@@ -15,7 +15,8 @@
 <path class="ar" d="M580 610 L580 208 L100 208 L100 193" marker-end="url(#a)"/>
 <path class="ar" d="M148 726 L148 208 L100 208 L100 193" marker-end="url(#a)"/>
 <path class="ar" d="M340 726 L340 220 L100 220 L100 193" marker-end="url(#a)"/>
-<path class="ar" d="M532 726 L532 232 L100 232 L100 193" marker-end="url(#a)"/>
+<path class="ar" d="M340 726 L340 232 L580 232 L580 193" marker-end="url(#a)"/>
+<path class="ar" d="M532 726 L532 208 L100 208 L100 193" marker-end="url(#a)"/>
 <rect x="31" y="30" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="50" text-anchor="middle" font-size="13">pmt_coupon</text>
 <text class="s" x="100" y="65" text-anchor="middle">券模板：权益 × 门槛 ×…</text>
@@ -108,4 +109,5 @@
 <text class="l" x="340" y="204" text-anchor="middle">activity_no</text>
 <text class="l" x="124" y="204" text-anchor="middle">activity_no</text>
 <text class="l" x="220" y="216" text-anchor="middle">activity_no</text>
-<text class="l" x="316" y="228" text-anchor="middle">activity_no</text></svg>
+<text class="l" x="460" y="228" text-anchor="middle">tier_no</text>
+<text class="l" x="316" y="204" text-anchor="middle">activity_no</text></svg>

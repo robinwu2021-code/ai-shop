@@ -53,8 +53,7 @@ public class PrintActorFactory {
         if (user.realm() != Realm.OPERATOR
                 || !Objects.equals(user.tenantNo(), tenant)
                 || entity == null
-                || store == null
-                || !merchants.storesOwned(tenant, entity, Set.of(store)))
+                || store == null)
             throw new PrintFailure("print.forbidden");
         var scope = user.dataScope();
         boolean allowed =
@@ -66,7 +65,9 @@ public class PrintActorFactory {
                                                         ScopeDim.MERCHANT.equals(r.dim())
                                                                 && r.refs() != null
                                                                 && r.refs().contains(entity)));
-        if (!allowed) throw new PrintFailure("print.forbidden");
+        // Authorize the caller before reading cross-scope ownership facts.
+        if (!allowed || !merchants.storesOwned(tenant, entity, Set.of(store)))
+            throw new PrintFailure("print.forbidden");
         var permissions = new HashSet<String>();
         permissions.add("ops:print:read");
         permissions.add("biz:print:resolve");

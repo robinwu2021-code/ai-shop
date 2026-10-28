@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="2418" viewBox="0 0 1320 2418" role="img" aria-labelledby="title desc">
+<title id="title">M1 全子单退款与消费者结清流程</title>
+<desc id="desc">M1 全子单退款与消费者结清流程。每行是一条有向关系；同名框代表同一对象或状态，箭头上的文字表示分支条件。申请全子单退款 → 完整数量和金额合法？（校验）；完整数量和金额合法？ → 拒绝，保留原状态（否）；完整数量和金额合法？ → 商家审批或既有合法例外（是）；商家审批或既有合法例外 → 退货退款？（判定）；退货退款？ → WAIT_RETURN 等待寄回（是）；WAIT_RETURN 等待寄回 → RETURNING 等待商家收妥（寄回）；RETURNING 等待商家收妥 → REFUNDING 冻结原退款执行（收妥）；退货退款？ → 货物在途？（否）；货物在途？ → WAIT_RECEIPT 等待确认（是）；WAIT_RECEIPT 等待确认 → REFUNDING 冻结原退款执行（商家明确确认）；货物在途？ → REFUNDING 冻结原退款执行（否）；REFUNDING 冻结原退款执行 → 实际应退现金大于零？（判定）；实际应退现金大于零？ → 按原指令执行或查询现金退款（是）；按原指令执行或查询现金退款 → REFUNDING 冻结原退款执行（未知或失败）；按原指令执行或查询现金退款 → 持久化资金成功与业务退款账（核验成功）；实际应退现金大于零？ → 核验既有积分或零现金完成凭据（否）；核验既有积分或零现金完成凭据 → 持久化资金成功与业务退款账（核验完成）；持久化资金成功与业务退款账 → 同事务保存权益义务与独立库存任务（持久化）；同事务保存权益义务与独立库存任务 → 应退消费者权益已结清？（判定）；应退消费者权益已结清？ → 保持 REFUNDING，仅恢复原权益（否）；保持 REFUNDING，仅恢复原权益 → 应退消费者权益已结清？（重新核验）；应退消费者权益已结清？ → A13 REFUND_SUCCEEDED（是，非零现金）；应退消费者权益已结清？ → A22 BENEFITS_SETTLED（是，零现金）；A13 REFUND_SUCCEEDED → 售后 REFUNDED，重新判定子单终态（结清）；A22 BENEFITS_SETTLED → 售后 REFUNDED，重新判定子单终态（结清）；同事务保存权益义务与独立库存任务 → 独立库存恢复，不阻断消费者结清（独立任务）</desc>
+<defs><marker id="arrow" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
+<rect width="100%" height="100%" fill="#f8fafc"/>
+<text x="30" y="42" font-size="26" font-family="Arial, sans-serif" fill="#0f172a">M1 全子单退款与消费者结清流程</text>
+<text x="30" y="74" font-size="16" font-family="Arial, sans-serif" fill="#475569">逐条展开有向关系；同名框是同一对象或状态。分支与恢复回路按箭头条件读取。</text>
+<text x="16" y="139" font-size="13" fill="#64748b">01</text>
+<rect x="48" y="106" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="133" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">申请全子单退款</text>
+<rect x="818" y="106" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="133" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">完整数量和金额合法？</text>
+<path d="M 504 148 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="118" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">校验</text>
+<text x="16" y="227" font-size="13" fill="#64748b">02</text>
+<rect x="48" y="194" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="221" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">完整数量和金额合法？</text>
+<rect x="818" y="194" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="221" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">拒绝，保留原状态</text>
+<path d="M 504 236 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="206" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">否</text>
+<text x="16" y="315" font-size="13" fill="#64748b">03</text>
+<rect x="48" y="282" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="309" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">完整数量和金额合法？</text>
+<rect x="818" y="282" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="309" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">商家审批或既有合法例外</text>
+<path d="M 504 324 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="294" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">是</text>
+<text x="16" y="403" font-size="13" fill="#64748b">04</text>
+<rect x="48" y="370" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="397" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">商家审批或既有合法例外</text>
+<rect x="818" y="370" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="397" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">退货退款？</text>
+<path d="M 504 412 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="382" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">判定</text>
+<text x="16" y="491" font-size="13" fill="#64748b">05</text>
+<rect x="48" y="458" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="485" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">退货退款？</text>
+<rect x="818" y="458" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="485" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">WAIT_RETURN 等待寄回</text>
+<path d="M 504 500 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="470" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">是</text>
+<text x="16" y="579" font-size="13" fill="#64748b">06</text>
+<rect x="48" y="546" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="573" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">WAIT_RETURN 等待寄回</text>
+<rect x="818" y="546" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="573" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">RETURNING 等待商家收妥</text>
+<path d="M 504 588 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="558" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">寄回</text>
+<text x="16" y="667" font-size="13" fill="#64748b">07</text>
+<rect x="48" y="634" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="661" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">RETURNING 等待商家收妥</text>
+<rect x="818" y="634" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="661" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">REFUNDING 冻结原退款执行</text>
+<path d="M 504 676 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="646" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">收妥</text>
+<text x="16" y="755" font-size="13" fill="#64748b">08</text>
+<rect x="48" y="722" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="749" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">退货退款？</text>
+<rect x="818" y="722" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="749" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">货物在途？</text>
+<path d="M 504 764 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="734" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">否</text>
+<text x="16" y="843" font-size="13" fill="#64748b">09</text>
+<rect x="48" y="810" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="837" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">货物在途？</text>
+<rect x="818" y="810" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="837" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">WAIT_RECEIPT 等待确认</text>
+<path d="M 504 852 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="822" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">是</text>
+<text x="16" y="931" font-size="13" fill="#64748b">10</text>
+<rect x="48" y="898" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="925" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">WAIT_RECEIPT 等待确认</text>
+<rect x="818" y="898" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="925" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">REFUNDING 冻结原退款执行</text>
+<path d="M 504 940 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="910" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">商家明确确认</text>
+<text x="16" y="1019" font-size="13" fill="#64748b">11</text>
+<rect x="48" y="986" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1013" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">货物在途？</text>
+<rect x="818" y="986" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1013" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">REFUNDING 冻结原退款执行</text>
+<path d="M 504 1028 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="998" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">否</text>
+<text x="16" y="1107" font-size="13" fill="#64748b">12</text>
+<rect x="48" y="1074" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1101" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">REFUNDING 冻结原退款执行</text>
+<rect x="818" y="1074" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1101" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">实际应退现金大于零？</text>
+<path d="M 504 1116 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1086" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">判定</text>
+<text x="16" y="1195" font-size="13" fill="#64748b">13</text>
+<rect x="48" y="1162" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1189" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">实际应退现金大于零？</text>
+<rect x="818" y="1162" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1189" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">按原指令执行或查询现金退款</text>
+<path d="M 504 1204 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1174" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">是</text>
+<text x="16" y="1283" font-size="13" fill="#64748b">14</text>
+<rect x="48" y="1250" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1277" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">按原指令执行或查询现金退款</text>
+<rect x="818" y="1250" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1277" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">REFUNDING 冻结原退款执行</text>
+<path d="M 504 1292 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1262" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">未知或失败</text>
+<text x="16" y="1371" font-size="13" fill="#64748b">15</text>
+<rect x="48" y="1338" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1365" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">按原指令执行或查询现金退款</text>
+<rect x="818" y="1338" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1365" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">持久化资金成功与业务退款账</text>
+<path d="M 504 1380 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1350" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">核验成功</text>
+<text x="16" y="1459" font-size="13" fill="#64748b">16</text>
+<rect x="48" y="1426" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1453" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">实际应退现金大于零？</text>
+<rect x="818" y="1426" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1453" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">核验既有积分或零现金完成凭据</text>
+<path d="M 504 1468 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1438" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">否</text>
+<text x="16" y="1547" font-size="13" fill="#64748b">17</text>
+<rect x="48" y="1514" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1541" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">核验既有积分或零现金完成凭据</text>
+<rect x="818" y="1514" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1541" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">持久化资金成功与业务退款账</text>
+<path d="M 504 1556 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1526" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">核验完成</text>
+<text x="16" y="1635" font-size="13" fill="#64748b">18</text>
+<rect x="48" y="1602" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1629" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">持久化资金成功与业务退款账</text>
+<rect x="818" y="1602" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1629" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">同事务保存权益义务与独立库存任务</text>
+<path d="M 504 1644 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1614" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">持久化</text>
+<text x="16" y="1723" font-size="13" fill="#64748b">19</text>
+<rect x="48" y="1690" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1717" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">同事务保存权益义务与独立库存任务</text>
+<rect x="818" y="1690" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1717" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">应退消费者权益已结清？</text>
+<path d="M 504 1732 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1702" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">判定</text>
+<text x="16" y="1811" font-size="13" fill="#64748b">20</text>
+<rect x="48" y="1778" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1805" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">应退消费者权益已结清？</text>
+<rect x="818" y="1778" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1805" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">保持 REFUNDING，仅恢复原权益</text>
+<path d="M 504 1820 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1790" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">否</text>
+<text x="16" y="1899" font-size="13" fill="#64748b">21</text>
+<rect x="48" y="1866" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1893" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">保持 REFUNDING，仅恢复原权益</text>
+<rect x="818" y="1866" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1893" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">应退消费者权益已结清？</text>
+<path d="M 504 1908 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1878" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">重新核验</text>
+<text x="16" y="1987" font-size="13" fill="#64748b">22</text>
+<rect x="48" y="1954" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1981" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">应退消费者权益已结清？</text>
+<rect x="818" y="1954" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1981" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">A13 REFUND_SUCCEEDED</text>
+<path d="M 504 1996 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1966" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">是，非零现金</text>
+<text x="16" y="2075" font-size="13" fill="#64748b">23</text>
+<rect x="48" y="2042" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="2069" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">应退消费者权益已结清？</text>
+<rect x="818" y="2042" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="2069" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">A22 BENEFITS_SETTLED</text>
+<path d="M 504 2084 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="2054" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">是，零现金</text>
+<text x="16" y="2163" font-size="13" fill="#64748b">24</text>
+<rect x="48" y="2130" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="2157" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">A13 REFUND_SUCCEEDED</text>
+<rect x="818" y="2130" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="2157" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">售后 REFUNDED，重新判定子单终态</text>
+<path d="M 504 2172 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="2142" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">结清</text>
+<text x="16" y="2251" font-size="13" fill="#64748b">25</text>
+<rect x="48" y="2218" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="2245" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">A22 BENEFITS_SETTLED</text>
+<rect x="818" y="2218" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="2245" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">售后 REFUNDED，重新判定子单终态</text>
+<path d="M 504 2260 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="2230" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">结清</text>
+<text x="16" y="2339" font-size="13" fill="#64748b">26</text>
+<rect x="48" y="2306" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="2333" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">同事务保存权益义务与独立库存任务</text>
+<rect x="818" y="2306" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="2333" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">独立库存恢复，不阻断消费者结清</text>
+<path d="M 504 2348 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="2318" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">独立任务</text>
+</svg>

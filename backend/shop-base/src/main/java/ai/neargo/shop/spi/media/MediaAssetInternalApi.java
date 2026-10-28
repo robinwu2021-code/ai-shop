@@ -1,5 +1,6 @@
 package ai.neargo.shop.spi.media;
 
+import jakarta.validation.Valid;
 import ai.neargo.shop.spi.media.MediaAssetQueryPort.AssetFact;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +15,7 @@ public interface MediaAssetInternalApi {
     String BATCH_PATH = "/internal/media/assets/batch";
 
     @PostExchange(BATCH_PATH)
-    List<AssetFact> lookupBatch(@RequestBody BatchLookup request);
+    List<AssetFact> lookupBatch(@Valid @RequestBody BatchLookup request);
 
     record BatchLookup(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
             @NotNull @Size(min=1, max=20) List<@NotBlank @Size(max=512) String> assetKeys) {

@@ -1,3 +1,4 @@
+import type { InventoryTraceStatus, InventoryOutboxMode } from "@shared/types/inventory";
 import type { AfterSale, Order } from "@shared/types";
 
 export type MerchantOrderActionKind = "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
@@ -67,9 +68,9 @@ export interface MerchantInventoryTrace {
     /** System that requested or handled the synchronization. */
     source: string;
     /** Delivery state of the synchronization event. */
-    status: "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+    status: InventoryTraceStatus;
     /** Outbox implementation that persisted the event. */
-    outboxMode: "UNIFIED" | "LEGACY";
+    outboxMode: InventoryOutboxMode;
   }>;
   /** Physical stock reservations associated with this order. */
   reservations: Array<{

@@ -114,6 +114,21 @@ const NO_ENTITY_YET: Record<string, string> = {
    */
 };
 
+/** Resolve mapped superclass fields, rather than assuming every entity extends BaseEntity. */
+function inheritedFields(file: string, seen = new Set<string>()): string[] {
+  if (seen.has(file) || !existsSync(file)) return [];
+  seen.add(file);
+  const src = readFileSync(file, "utf8");
+  const fields = [...src.matchAll(/private\s+[\w.]+(?:<[^>]*>)?\s+(\w+)\s*;/g)].map((m) => m[1]!);
+  const parent = src.match(/class\s+\w+\s+extends\s+(\w+)/)?.[1];
+  if (!parent) return fields;
+  const imported = src.match(new RegExp(`import\\s+([\\w.]+\\.${parent})\\s*;`))?.[1];
+  const parentFile = imported
+    ? join(file.slice(0, file.indexOf("/src/main/java/") + 15), imported.replaceAll(".", "/") + ".java")
+    : join(file, "..", parent + ".java");
+  return [...fields, ...inheritedFields(parentFile, seen)];
+}
+
 /** 收集 backend 下所有 `@TableName("xxx")` 的实体，键是表名 */
 function scanEntities(dir: string, out = new Map<string, { file: string; fields: Set<string> }>()) {
   for (const e of readdirSync(dir)) {
@@ -136,6 +151,10 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
           return column ? camel(column) : m[2]!;
         }),
       );
+      const superclass = src.match(/class\s+\w+\s+extends\s+(\w+)/)?.[1];
+      if (superclass) {
+        for (const field of inheritedFields(join(p, "..", superclass + ".java"))) fields.add(field);
+      }
       /*
        * 同一张表可能有两个实体：过渡期老实体只改了表名、新实体在新模块里（TDD-物流模块 批 1：
        * FulShipment 与 LgsWaybill 都映射 lgs_waybill）。这条检查要回答的是「这一列有没有人读得到」，
@@ -155,6 +174,79 @@ const schema: Map<string, { cols: { name: string }[] }> = existsSync(BACKEND)
   : new Map();
 const entities = existsSync(BACKEND) ? scanEntities(BACKEND) : new Map();
 
+/** SQL adapters are mappings too: require their real table binding and every business column. */
+const SQL_PERSISTENCE: Record<string, string> = {
+  prd_stock_sync_operation: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+  prd_stock_alignment_batch: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+  prd_stock_alignment_line: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+  ord_refund_coupon_scope: "shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+  ord_refund_obligation: "shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+  inv_event_consumed: "shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/TransactionalOutboxHandler.java",
+  ...Object.fromEntries(["sys", "inv"].flatMap((prefix) =>
+    ["stream", "delivery", "operation"].map((suffix) => [
+      `${prefix}_outbox_${suffix}`,
+      "shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    ]))),
+};
+
+const withoutJavaComments = (src: string) => src.replace(
+  /"""[\s\S]*?"""|"(?:\\.|[^"\\])*"|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+  (token) => token.startsWith('"') ? token : " ",
+);
+
+/** Read the first Java call argument, respecting quotes and nested calls. */
+function firstArgument(src: string, start: number): string {
+  let depth = 0;
+  let quoted = false;
+  for (let i = start; i < src.length; i++) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === "\\") i++;
+      else if (ch === '"') quoted = false;
+    } else if (ch === '"') quoted = true;
+    else if (ch === "(") depth++;
+    else if (ch === ")") {
+      if (!depth) return src.slice(start, i);
+      depth--;
+    } else if (ch === "," && !depth) return src.slice(start, i);
+  }
+  return "";
+}
+
+/** Expand string concatenation only; SQL parameters and mapper arguments are never part of SQL. */
+function sqlForTable(src: string, table: string): string[] {
+  const clean = withoutJavaComments(src);
+  const variables = new Map<string, string>();
+  const prefix = table.match(/^(sys|inv)_outbox_/);
+  if (prefix && clean.includes(`("${prefix[1]}")`)) variables.set("source.prefix", prefix[1]!);
+  if (table === "inv_event_consumed" && clean.includes('"inv_event_consumed".equals(inbox)'))
+    variables.set("inbox", table);
+  const expand = (expression: string): string => [...expression.matchAll(/"(?:\\.|[^"\\])*"|\b[a-zA-Z_]\w*(?:\.\w+)*\b/g)]
+    .map((m) => m[0].startsWith('"') ? m[0].slice(1, -1) : variables.get(m[0]) ?? " ").join("");
+  for (const match of clean.matchAll(/(?:String\s+|this\.)(\w+)\s*=\s*([^;]+);/g)) {
+    variables.set(match[1]!, expand(match[2]!));
+  }
+  const sql: string[] = [];
+  for (const match of clean.matchAll(/(?:jdbc\.\w+|@(Select|Insert|Update|Delete))\s*\(/g)) {
+    const expression = firstArgument(clean, match.index! + match[0].length);
+    const text = expand(expression);
+    if (!/^\s*(SELECT|INSERT|UPDATE|DELETE)\b/i.test(text)) continue;
+    if (!new RegExp(`(?:FROM|INTO|UPDATE)\\s+${table}\\b`, "i").test(text)) continue;
+    sql.push(text);
+  }
+  return sql;
+}
+
+function mappedSqlColumns(src: string, table: string): Set<string> {
+  // SQL string values and comments do not prove a column is mapped.
+  const sql = sqlForTable(src, table).join("\n").replace(/'(?:''|\\.|[^'])*'|--[^\n]*|\/\*[\s\S]*?\*\//g, " ");
+  return new Set([...sql.matchAll(/\b[a-z][a-z0-9_]*\b/g)].map((m) => m[0]));
+}
+
+function hasSqlTableBinding(src: string, table: string): boolean {
+  return sqlForTable(src, table).length > 0;
+}
+
 /** 库里的业务列（去掉 BaseEntity 那八列），转成 camelCase */
 const businessCols = (table: string) =>
   (schema.get(table)?.cols ?? [])
@@ -166,6 +258,11 @@ describe("Java 实体与库表对齐", () => {
     const fields = entities.get("trd_shipping_upload")?.fields;
     expect(fields?.has("sourceSnapshot")).toBe(true);
     expect(fields?.has("sourceSnapshotJson")).toBe(false);
+  });
+
+  it("继承的打印租户归属与修订字段也必须参与对齐", () => {
+    expect(entities.get("prn_agent")?.fields.has("entityNo")).toBe(true);
+    expect(entities.get("prn_agent")?.fields.has("revision")).toBe(true);
   });
 
   it("解析到了实体与表 —— 一个都没有多半是路径或注解写法变了", () => {
@@ -253,7 +350,7 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
     const IGNORE = new RegExp("^(flyway_schema_history|sys_idempotent|sys_outbox|shedlock"
       + "|(usr|mch|ops)_(session|login_log))$");
     const naked = [...schema.keys()]
-      .filter((t) => !IGNORE.test(t) && !entities.has(t) && !(t in NO_ENTITY_YET));
+      .filter((t) => !IGNORE.test(t) && !entities.has(t) && !(t in NO_ENTITY_YET) && !(t in SQL_PERSISTENCE));
     expect(
       naked,
       "这些表没有 Java 实体，也没登记原因：\n  " +
@@ -261,6 +358,33 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
         "\n→ 要么补实体，要么登记进 NO_ENTITY_YET 并写清何时补。" +
         "\n  留着不管的后果：这张表只能靠手写 SQL 访问，而没人知道它已经建好了。",
     ).toEqual([]);
+  });
+
+  it("SQL persistence mappings must bind their table and cover every business column", () => {
+    const missing: string[] = [];
+    for (const [table, file] of Object.entries(SQL_PERSISTENCE)) {
+      const src = readFileSync(join(BACKEND, file), "utf8");
+      expect(schema.has(table), `Stale SQL mapping: ${table}`).toBe(true);
+      expect(hasSqlTableBinding(src, table), `No real SQL table binding: ${table} in ${file}`).toBe(true);
+      const mapped = mappedSqlColumns(src, table);
+      for (const col of schema.get(table)?.cols ?? []) {
+        if (!AUDIT.has(col.name) && !mapped.has(col.name)) missing.push(`${table}.${col.name} in ${file}`);
+      }
+    }
+    expect(missing, "SQL mapping misses business columns: " + missing.join(", ")).toEqual([]);
+  });
+
+  it("SQL coverage rejects missing bindings, missing columns and prose-only mentions", () => {
+    const src = 'jdbc.query("SELECT real_column FROM probe", mapper);'
+      + ' // missing_column\n String message = "missing_column";';
+    expect(hasSqlTableBinding(src, "probe")).toBe(true);
+    expect(hasSqlTableBinding(src, "unbound")).toBe(false);
+    expect(hasSqlTableBinding('String error = "Missing FROM probe";', "probe")).toBe(false);
+    expect(mappedSqlColumns('jdbc.query("SELECT real_column FROM probe WHERE id=?", mapper, "missing_column");', "probe").has("missing_column")).toBe(false);
+    expect(mappedSqlColumns(src + 'jdbc.query("SELECT missing_column FROM unrelatedtable", mapper);', "probe").has("missing_column")).toBe(false);
+    expect(mappedSqlColumns(src, "probe").has("real_column")).toBe(true);
+    expect(mappedSqlColumns(src, "probe").has("missing_column")).toBe(false);
+    expect(mappedSqlColumns('/* jdbc.query("SELECT fake FROM probe"); */', "probe").has("fake")).toBe(false);
   });
 
   it("登记的「欠着」确实还欠着 —— 补完要删登记", () => {

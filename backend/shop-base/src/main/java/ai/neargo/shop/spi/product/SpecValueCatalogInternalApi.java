@@ -1,5 +1,6 @@
 package ai.neargo.shop.spi.product;
 
+import jakarta.validation.Valid;
 import ai.neargo.shop.spi.product.SpecValueCatalogQueryPort.SpecValueFact;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +15,7 @@ public interface SpecValueCatalogInternalApi {
     String BATCH_PATH = "/internal/product/catalog/spec-values/batch";
 
     @PostExchange(BATCH_PATH)
-    List<SpecValueFact> lookupBatch(@RequestBody BatchLookup request);
+    List<SpecValueFact> lookupBatch(@Valid @RequestBody BatchLookup request);
 
     record BatchLookup(@NotBlank @Size(max=32) String entityNo,
             @NotNull @Size(min=1, max=256) List<@NotBlank @Size(max=64) String> valueNos) {

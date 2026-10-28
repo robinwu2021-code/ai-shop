@@ -9,6 +9,10 @@ import type {
 } from "@/lib/types";
 
 export const financeHttp: FinanceApi = {
+  pointsAccounts: (q) => client.get("/ops/points/accounts", q),
+  pointsTransactions: (q) => client.get("/ops/points/transactions", q),
+  pointsTransaction: (typeCode, voucherNo) => client.get(`/ops/points/transactions/${encodeURIComponent(voucherNo)}`, { typeCode }),
+  pointsPeriodStats: (q) => client.get("/ops/points/stats-period", q),
   pointsAdjustments: (q) => client.get("/ops/points/adjustments", q),
   submitPointsAdjustment: (v) => client.post("/ops/points/adjustments", v),
   reviewPointsAdjustment: (v) => client.post("/ops/points/adjustment-review", v),

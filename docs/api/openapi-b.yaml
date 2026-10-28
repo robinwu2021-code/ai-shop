@@ -688,6 +688,53 @@ components:
         - "name"
       additionalProperties: false
       description: "一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。"
+    InventoryState:
+      type: "string"
+      enum:
+        - "UNMANAGED"
+        - "INITIALIZING"
+        - "MAPPED"
+      description: "Inventory wire value domain."
+    InventoryAccountingMode:
+      type: "string"
+      const: "PAYMENT_DEDUCT"
+      description: "Physical inventory is currently deducted on payment (InventoryOverviewQuery.render)."
+    StockSyncOperationStatus:
+      type: "string"
+      enum:
+        - "PROCESSING"
+        - "WAITING"
+        - "FAILED"
+        - "BLOCKED"
+        - "COMPLETED"
+      description: "Inventory wire value domain."
+    StockAlignmentBatchStatus:
+      type: "string"
+      enum:
+        - "PREVIEW"
+        - "PROCESSING"
+        - "PARTIAL"
+        - "BLOCKED"
+        - "COMPLETED"
+        - "STALE"
+        - "EXPIRED"
+      description: "Inventory wire value domain."
+    InventoryTraceStatus:
+      type: "string"
+      enum:
+        - "COMPLETED"
+        - "PENDING"
+        - "FAILED"
+        - "WARNING"
+        - "SKIPPED"
+        - "ARCHIVED"
+      description: "Inventory wire value domain."
+    InventoryOutboxMode:
+      type: "string"
+      enum:
+        - "UNIFIED"
+        - "LEGACY"
+      description: "Inventory wire value domain."
     StockOverview:
       type: "object"
       properties:
@@ -703,18 +750,11 @@ components:
             - "null"
           description: "Physical stock unit; null when the SKU has no configured unit."
         inventoryState:
-          type: "string"
-          enum:
-            - "UNMANAGED"
-            - "INITIALIZING"
-            - "MAPPED"
+          "$ref": "#/components/schemas/InventoryState"
           description: "Inventory onboarding state: unmanaged, initializing or mapped."
         accountingMode:
-          type: "string"
-          enum:
-            - "PAYMENT_DEDUCT"
-            - "HANDOFF_DEDUCT"
-          description: "Point at which physical inventory is deducted: payment or handoff."
+          "$ref": "#/components/schemas/InventoryAccountingMode"
+          description: "Physical inventory deduction point; the current service deducts on payment."
         onHand:
           type:
             - "number"
@@ -1591,13 +1631,7 @@ components:
           type: "string"
           description: "Business reason recorded for the synchronization."
         status:
-          type: "string"
-          enum:
-            - "PROCESSING"
-            - "WAITING"
-            - "FAILED"
-            - "BLOCKED"
-            - "COMPLETED"
+          "$ref": "#/components/schemas/StockSyncOperationStatus"
           description: "Current processing state of the operation."
         result:
           anyOf:
@@ -1722,15 +1756,7 @@ components:
             - "null"
           description: "Expiry time in milliseconds; null when the preview has no expiry."
         status:
-          type: "string"
-          enum:
-            - "PREVIEW"
-            - "PROCESSING"
-            - "PARTIAL"
-            - "BLOCKED"
-            - "COMPLETED"
-            - "STALE"
-            - "EXPIRED"
+          "$ref": "#/components/schemas/StockAlignmentBatchStatus"
           description: "Current preview or execution state of the batch."
         completed:
           type: "number"
@@ -12989,20 +13015,10 @@ components:
                 type: "string"
                 description: "System that requested or handled the synchronization."
               status:
-                type: "string"
-                enum:
-                  - "COMPLETED"
-                  - "PENDING"
-                  - "FAILED"
-                  - "WARNING"
-                  - "SKIPPED"
-                  - "ARCHIVED"
+                "$ref": "#/components/schemas/InventoryTraceStatus"
                 description: "Delivery state of the synchronization event."
               outboxMode:
-                type: "string"
-                enum:
-                  - "UNIFIED"
-                  - "LEGACY"
+                "$ref": "#/components/schemas/InventoryOutboxMode"
                 description: "Outbox implementation that persisted the event."
             required:
               - "aggregateId"

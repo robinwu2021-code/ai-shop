@@ -1,5 +1,6 @@
 package ai.neargo.shop.spi.product;
 
+import jakarta.validation.Valid;
 import ai.neargo.shop.spi.product.DishOfferQueryPort.Offer;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +15,7 @@ public interface DishOfferInternalApi {
     String BATCH_PATH = "/internal/product/dish-offers/batch";
 
     @PostExchange(BATCH_PATH)
-    List<Offer> lookupBatch(@RequestBody BatchLookup request);
+    List<Offer> lookupBatch(@Valid @RequestBody BatchLookup request);
 
     record BatchLookup(@NotBlank @Size(max=32) String entityNo, @NotBlank @Size(max=32) String storeNo,
             @NotNull @Size(min=1,max=100) List<@NotBlank @Size(max=32) String> skuNos) {
