@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.service.impl.ServiceSourceObservation;
+import ai.neargo.shop.beauty.service.impl.ServiceExecutionFenceCoordinator;
+import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
+import ai.neargo.shop.beauty.service.ManualExecutionSourceIT;
+import javax.sql.DataSource;
 import ai.neargo.shop.spi.trade.CheckoutPort;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -108,7 +112,7 @@ class ServiceSourceObservationIT extends BeautyExecutionFixture {
                                             context.getBeanProvider(CheckoutPort.class),
                                             context.getBean(PlatformTransactionManager.class),
                                             new ObjectMapper(),
-                                            Clock.systemUTC());
+                                            Clock.systemUTC(), coordinator(context));
                             var result = service.observe(canonical, "ACTOR");
                             assertThat(result.ready())
                                     .as("complete owner facts permit observed local allocation")
@@ -132,7 +136,44 @@ class ServiceSourceObservationIT extends BeautyExecutionFixture {
                 context.getBeanProvider(CheckoutPort.class),
                 context.getBean(PlatformTransactionManager.class),
                 new ObjectMapper(),
-                Clock.systemUTC());
+                Clock.systemUTC(), coordinator(context));
+    }
+
+    private ServiceExecutionFenceCoordinator coordinator(ApplicationContext context) {
+        return new ServiceExecutionFenceCoordinator(
+                new ServiceExecutionSchemaVerifier(context.getBean(DataSource.class)),
+                context.getBean(BeautyMappers.ServiceExecutionFenceMapper.class),
+                context.getBean(BeautyMappers.SourceObservationMapper.class),
+                context.getBean(BeautyMappers.SourceAllocationGuardMapper.class),
+                context.getBean(BeautyMappers.WorkOrderMapper.class),
+                context.getBean(BeautyMappers.ServiceTaskMapper.class),
+                context.getBean(BeautyMappers.ServiceSubmissionMapper.class),
+                context.getBean(BeautyMappers.TradeBindingMapper.class), new ObjectMapper(), Clock.systemUTC());
+    }
+
+    @Test
+    void contradictoryManualLinesSuspendOriginalIntent() {
+        new ManualExecutionSourceIT().observationScenario("CONTRADICTION");
+    }
+
+    @Test
+    void refreshEpochAloneDoesNotSuspendOriginal() {
+        new ManualExecutionSourceIT().observationScenario("UNCHANGED");
+    }
+
+    @Test
+    void unknownOwnerResultRetainsPendingWithoutSuspension() {
+        new ManualExecutionSourceIT().observationScenario("UNKNOWN");
+    }
+
+    @Test
+    void oldCompletionCannotEraseDurableSuspension() {
+        new ManualExecutionSourceIT().staleCompletionScenario();
+    }
+
+    @Test
+    void coordinatorCasFailureRollsBackCompletedObservation() {
+        new ManualExecutionSourceIT().observationScenario("CAS_FAIL");
     }
 
     private CheckoutPort.CheckoutSourceFacts unknown(long revision, String hash) {

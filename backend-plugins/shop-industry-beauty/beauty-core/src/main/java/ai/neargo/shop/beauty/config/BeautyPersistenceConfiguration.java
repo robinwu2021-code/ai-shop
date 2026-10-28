@@ -31,6 +31,7 @@ public class BeautyPersistenceConfiguration {
     BeautySchemaReady beautySchemaReady(@Qualifier("dataSource") DataSource source,
             @Value("${shop.beauty.migration.mode:validate}") String mode) {
         new BeautySchemaValidator().initialize(source, mode);
+        // Highest installed migration may be10; this token proves only the unchanged V1-V9 base.
         return new BeautySchemaReady("9");
     }
 
@@ -40,6 +41,7 @@ public class BeautyPersistenceConfiguration {
             @Qualifier("dataSource") DataSource source,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             BeautySchemaReady schema) {
+        // Execution capability is rechecked lazily by its local verifier; primary identities remain mandatory.
         if (!"9".equals(schema.version())
                 || factory.getConfiguration().getEnvironment().getDataSource() != source
                 || !(manager instanceof DataSourceTransactionManager primary)

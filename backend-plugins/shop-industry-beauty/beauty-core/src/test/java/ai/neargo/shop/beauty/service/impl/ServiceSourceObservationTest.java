@@ -32,7 +32,7 @@ class ServiceSourceObservationTest {
     @Test
     void manualProjectionUsesItsOwnTicketAndTime() throws Exception {
         var json = JsonMapper.builder().build();
-        var observation = new ServiceSourceObservation(null, null, null, json, Clock.systemUTC());
+        var observation = new ServiceSourceObservation(null, null, null, json, Clock.systemUTC(), mock(ServiceExecutionFenceCoordinator.class));
         var row = new BtySourceObservation();
         Instant financialTime = Instant.parse("2026-01-01T00:00:00Z");
         Instant manualTime = financialTime.plusSeconds(20);
@@ -67,7 +67,7 @@ class ServiceSourceObservationTest {
     void unavailableLegacyPlaceholderHasNoManualTicketOrProjection() {
         var observation =
                 new ServiceSourceObservation(
-                        null, null, null, JsonMapper.builder().build(), Clock.systemUTC());
+                        null, null, null, JsonMapper.builder().build(), Clock.systemUTC(), mock(ServiceExecutionFenceCoordinator.class));
         var legacy = new BtySourceObservation();
         legacy.setAdmissionKind("LEGACY_FUNDED");
         legacy.setState("UNKNOWN");
@@ -87,7 +87,7 @@ class ServiceSourceObservationTest {
         row.setObservationEpoch(8L);
         var binding =
                 new ServiceSourceBinding(
-                        null, null, null, null, null, null, null, null, Clock.systemUTC());
+                        null, null, null, null, null, null, null, null, Clock.systemUTC(), mock(ServiceExecutionFenceCoordinator.class));
         var observed = new ServiceSourceObservation.Observed(row, null, -1);
         assertThat(binding.bind(null, null, observed, "A").reason())
                 .isEqualTo("SOURCE_IDENTITY_MISMATCH");
@@ -102,7 +102,7 @@ class ServiceSourceObservationTest {
             when(manager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
             var observation =
                     new ServiceSourceObservation(
-                            mapper, null, manager, JsonMapper.builder().build(), Clock.systemUTC());
+                            mapper, null, manager, JsonMapper.builder().build(), Clock.systemUTC(), mock(ServiceExecutionFenceCoordinator.class));
             var row = new BtySourceObservation();
             row.setTenantNo("MAIN");
             row.setEntityNo("E");

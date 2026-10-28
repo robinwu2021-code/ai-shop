@@ -75,6 +75,18 @@ class BeautyPersistenceWiringTest {
     }
 
     @Test
+    void baseNineReadinessRetainsPrimaryIdentityGuard() {
+        runner(false, false).withPropertyValues("shop.beauty.enabled=true").run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context.getBean("beautySqlSessionTemplate", SqlSessionTemplate.class)
+                    .getSqlSessionFactory()).isSameAs(context.getBean("sqlSessionFactory"));
+        });
+        runner(true, false).withPropertyValues("shop.beauty.enabled=true")
+                .run(context -> assertThat(context).hasFailed());
+        // Synthetic token9 proves only primary identity wiring; native Flyway cases prove readiness separately.
+    }
+
+    @Test
     void rejectsPaymentOrInventoryFactory() {
         runner(true, false).withPropertyValues("shop.beauty.enabled=true")
                 .run(context -> assertThat(context).hasFailed());

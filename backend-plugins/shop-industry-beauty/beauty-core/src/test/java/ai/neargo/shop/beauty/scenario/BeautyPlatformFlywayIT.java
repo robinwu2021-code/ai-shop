@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.beauty.config.BeautyPersistenceAutoConfiguration;
 import ai.neargo.shop.beauty.config.BeautySchemaReady;
+import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
+import javax.sql.DataSource;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import org.flywaydb.core.Flyway;
@@ -59,4 +61,25 @@ class BeautyPlatformFlywayIT {
                     .isEqualTo(1);
         });
     }
+    @Test
+    void knownV10StatesPreservePrimaryPlatformFlyway() throws Exception {
+        for (int state = 0; state < 3; state++) {
+            database();
+            if (state == 0) fixture.baseNine();
+            else fixture.initialize("migrate");
+            if (state == 2) sql.execute("DROP TRIGGER trg_bsef_no_delete");
+            final int expected = state;
+            runner().withPropertyValues("shop.beauty.enabled=true").run(context -> {
+                assertThat(context).hasNotFailed().hasSingleBean(Flyway.class);
+                assertThat(context.getBean(BeautySchemaReady.class).version()).isEqualTo("9");
+                var primary = context.getBean("dataSource", DataSource.class);
+                assertThat(context.getBean(Flyway.class).getConfiguration().getDataSource()).isSameAs(primary);
+                var installation = new ServiceExecutionSchemaVerifier(primary).installation();
+                assertThat(installation).isEqualTo(expected == 0 ? ServiceExecutionSchemaVerifier.Installation.ABSENT
+                        : expected == 1 ? ServiceExecutionSchemaVerifier.Installation.INSTALLED
+                                : ServiceExecutionSchemaVerifier.Installation.CORRUPT);
+            });
+        }
+    }
+
 }

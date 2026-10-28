@@ -4,9 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 import ai.neargo.shop.beauty.dto.SourceBillVO;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
+import ai.neargo.shop.beauty.entity.BtySourceObservation;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.trade.CheckoutPort;
 import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
@@ -219,4 +225,29 @@ class WorkOrderBillServiceImplTest {
                 null,
                 declared);
     }
+    /** Call order only; the native source tests prove the durable pending/suspension distinction. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void billReadRequestsRefreshBeforeOwnerRead() throws Exception {
+        var mapper = JsonMapper.builder().build();
+        var db = new AppointmentPersistence(null, null, null, null, null, null, null, null, null, null, mapper, null);
+        var observations = mock(ServiceSourceObservation.class);
+        ObjectProvider<CheckoutPort> checkout = mock(ObjectProvider.class);
+        ObjectProvider<ManualServiceAdmissionPort> manual = mock(ObjectProvider.class);
+        var canonical = new ServiceSourceObservation.ManualCanonical("E", "S",
+                new CustomerParty("USER", "U", null, null), "OP", "ORDER", "SOURCE");
+        var known = new BtySourceObservation(); known.setAdmissionKind("MANUAL_OFFLINE");
+        when(observations.manualKnown(eq("E"), eq("S"), any(), any())).thenReturn(canonical);
+        when(observations.manualHistory(canonical)).thenReturn(known);
+        var bill = new WorkOrderBillServiceImpl(db, null, null, null, null, null, null, checkout,
+                observations, null, Clock.systemUTC(), manual);
+        assertThat(reader(bill, List.of(intent(3))).complete()).isFalse();
+        var order = inOrder(observations, manual);
+        order.verify(observations).manualKnown(eq("E"), eq("S"), any(), any());
+        order.verify(observations).manualHistory(canonical);
+        order.verify(observations).invalidateManual(canonical, "A");
+        order.verify(manual).getIfAvailable();
+        verifyNoInteractions(checkout);
+    }
+
 }

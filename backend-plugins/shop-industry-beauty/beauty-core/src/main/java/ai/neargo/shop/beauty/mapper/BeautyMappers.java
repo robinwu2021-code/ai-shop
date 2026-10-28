@@ -21,6 +21,7 @@ import ai.neargo.shop.beauty.entity.BtyServiceRequirement;
 import ai.neargo.shop.beauty.entity.BtyServiceStep;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
+import ai.neargo.shop.beauty.entity.BtyServiceExecutionFence;
 import ai.neargo.shop.beauty.entity.BtySourceAllocationGuard;
 import ai.neargo.shop.beauty.entity.BtySourceObservation;
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
@@ -762,6 +763,33 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
 
     /** 提交与恢复意图；外部权威结果由业务Service验证，不持锁调用外部。 */
     public interface ServiceSubmissionMapper extends BaseMapper<BtyServiceSubmission> {
+        /** START has its own discriminator and CAS; legacy schema2/3 recovery never consumes it. */
+        @Update("""
+                UPDATE bty_service_submission SET status=#{status},failure_code=#{reason},next_retry_at=#{retryAt},
+                  version=version+1,updated_at=#{now},updated_by=#{actor}
+                WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
+                  AND submission_no=#{submissionNo} AND version=#{expectedVersion} AND deleted=0
+                  AND action='START' AND payload_hash=#{payloadHash}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.schema'))='START_MANUAL_V1'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.intent.binding.executionNo'))=#{executionNo}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.bindingHash'))=#{bindingHash}
+                  AND status IN ('EXECUTION_PENDING','EXECUTION_PREPARED','EXECUTION_SUSPENDED')
+                """)
+        int completeExecutionOriginal(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo, @Param("expectedVersion") long expectedVersion,
+                @Param("executionNo") String executionNo, @Param("bindingHash") String bindingHash,
+                @Param("payloadHash") String payloadHash, @Param("status") String status,
+                @Param("reason") String reason, @Param("retryAt") LocalDateTime retryAt,
+                @Param("now") LocalDateTime now, @Param("actor") String actor);
+
+        /** A completed contradiction suspends the exact START in the observation transaction. */
+        default int suspendExecutionOriginal(String entityNo, String storeNo, String submissionNo,
+                long expectedVersion, String executionNo, String bindingHash, String payloadHash,
+                String reason, LocalDateTime now, String actor) {
+            return completeExecutionOriginal(entityNo, storeNo, submissionNo, expectedVersion, executionNo,
+                    bindingHash, payloadHash, "EXECUTION_SUSPENDED", reason, now, now, actor);
+        }
+
         /** Keyset traversal stays inside one read-only RR manifest up to its captured maximum. */
         @Select("""
                 SELECT COALESCE(MAX(s.id),0) FROM bty_service_submission s JOIN bty_work_order w
@@ -1458,5 +1486,96 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                 @Param("row") BtySourceObservation row,
                 @Param("expectedVersion") long expectedVersion);
     }
+
+    /** Permanent originals are discovered only after the canonical source observation is locked. */
+    public interface ServiceExecutionFenceMapper extends BaseMapper<BtyServiceExecutionFence> {
+        @Select("""
+                SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND store_no=#{storeNo} AND source_operation_no=#{operationNo} AND source_no=#{sourceNo}
+                ORDER BY execution_no
+                """)
+        List<BtyServiceExecutionFence> findSourceCoordinates(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("operationNo") String operationNo,
+                @Param("sourceNo") String sourceNo);
+
+        @Select("""
+                SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND store_no=#{storeNo} AND execution_no=#{executionNo} FOR UPDATE
+                """)
+        BtyServiceExecutionFence lockOriginal(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("executionNo") String executionNo);
+
+        @Select("""
+                SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND store_no=#{storeNo} AND task_no=#{taskNo}
+                """)
+        BtyServiceExecutionFence findTask(@Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo, @Param("taskNo") String taskNo);
+
+        @Select("""
+                SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN'
+                  AND source_line_no=#{sourceLineNo} ORDER BY unit_ordinal
+                """)
+        List<BtyServiceExecutionFence> allLineHistory(@Param("sourceLineNo") String sourceLineNo);
+
+        @Select("""
+                SELECT COUNT(*) FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
+                  AND store_no=#{storeNo} AND work_order_no=#{workOrderNo}
+                  AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED','SUSPEND_REQUESTED')
+                """)
+        int activeForWorkOrder(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo);
+
+        @Update("""
+                UPDATE bty_service_execution_fence SET intent_state='SUSPEND_REQUESTED',
+                  source_fence_revision=source_fence_revision+1,version=version+1,
+                  suspension_intent_revision=#{row.suspensionIntentRevision},
+                  suspension_manual_epoch=#{row.suspensionManualEpoch},
+                  suspension_observation_version=#{row.suspensionObservationVersion},
+                  suspension_observed_revision=#{row.suspensionObservedRevision},
+                  suspension_observed_hash=#{row.suspensionObservedHash},suspension_reason=#{row.suspensionReason},
+                  suspension_proof_hash=#{row.suspensionProofHash},next_retry_at=#{row.nextRetryAt},
+                  updated_at=#{row.updatedAt},updated_by=#{row.updatedBy}
+                WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
+                  AND fence_no=#{row.fenceNo} AND execution_no=#{row.executionNo}
+                  AND binding_hash=#{row.bindingHash} AND payload_hash=#{row.payloadHash}
+                  AND source_intent_hash=#{row.sourceIntentHash} AND version=#{expectedVersion}
+                  AND source_fence_revision=#{expectedIntentRevision} AND suspension_intent_revision IS NULL
+                  AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED') AND deleted=0
+                """)
+        int suspendOriginal(@Param("row") BtyServiceExecutionFence row,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedIntentRevision") long expectedIntentRevision);
+
+        @Update("""
+                UPDATE bty_service_execution_fence SET observation_epoch=observation_epoch+1,version=version+1,
+                  next_retry_at=#{retryAt},updated_at=#{now},updated_by=#{actor}
+                WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
+                  AND execution_no=#{row.executionNo} AND binding_hash=#{row.bindingHash}
+                  AND source_intent_hash=#{row.sourceIntentHash} AND payload_hash=#{row.payloadHash}
+                  AND source_fence_revision=#{row.sourceFenceRevision} AND version=#{row.version}
+                  AND observation_epoch=#{row.observationEpoch} AND deleted=0
+                """)
+        int claimExecutionObservation(@Param("row") BtyServiceExecutionFence row,
+                @Param("retryAt") LocalDateTime retryAt, @Param("now") LocalDateTime now,
+                @Param("actor") String actor);
+
+        @Update("""
+                UPDATE bty_service_execution_fence SET observed_grant_no=#{row.observedGrantNo},
+                  observed_grant_revision=#{row.observedGrantRevision},observed_grant_state=#{row.observedGrantState},
+                  intent_state=#{row.intentState},next_retry_at=#{row.nextRetryAt},version=version+1,
+                  updated_at=#{row.updatedAt},updated_by=#{row.updatedBy}
+                WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
+                  AND execution_no=#{row.executionNo} AND binding_hash=#{row.bindingHash}
+                  AND source_intent_hash=#{row.sourceIntentHash} AND payload_hash=#{row.payloadHash}
+                  AND version=#{expectedVersion} AND source_fence_revision=#{expectedIntentRevision}
+                  AND observation_epoch=#{expectedEpoch} AND deleted=0
+                """)
+        int applyExecutionObservation(@Param("row") BtyServiceExecutionFence row,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedIntentRevision") long expectedIntentRevision,
+                @Param("expectedEpoch") long expectedEpoch);
+    }
+
 
 }

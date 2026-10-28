@@ -1,5 +1,14 @@
 package ai.neargo.shop.beauty.config;
 
+import ai.neargo.shop.beauty.policy.ServiceExecutionAccess;
+import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
+import ai.neargo.shop.beauty.port.ServiceExecutionSourcePortImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceExecutionFenceCoordinator;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskExecutionServiceImpl;
+import ai.neargo.shop.beauty.service.ServiceTaskExecutionService;
+import ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionPort;
+import javax.sql.DataSource;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
 import ai.neargo.shop.beauty.policy.AppointmentAccess;
 import ai.neargo.shop.beauty.policy.ReceptionIdentity;
@@ -33,14 +42,55 @@ import java.time.Clock;
 @ConditionalOnBeautyEnabled
 public class BeautySourceConfiguration {
     @Bean
+    ServiceExecutionSchemaVerifier serviceExecutionSchemaVerifier(@Qualifier("dataSource") DataSource source) {
+        return new ServiceExecutionSchemaVerifier(source);
+    }
+
+    @Bean
+    ServiceExecutionAccess serviceExecutionAccess(ObjectProvider<PersonnelOperatorFactsPort> personnel,
+            @Qualifier("beautyReceptionClock") Clock clock) {
+        return new ServiceExecutionAccess(personnel, clock);
+    }
+
+    @Bean
+    ServiceExecutionFenceCoordinator serviceExecutionFenceCoordinator(ServiceExecutionSchemaVerifier schema,
+            BeautyMappers.ServiceExecutionFenceMapper fences, BeautyMappers.SourceObservationMapper observations,
+            BeautyMappers.SourceAllocationGuardMapper guards, BeautyMappers.WorkOrderMapper orders,
+            BeautyMappers.ServiceTaskMapper tasks, BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.TradeBindingMapper bindings, ObjectMapper json,
+            @Qualifier("beautyReceptionClock") Clock clock) {
+        return new ServiceExecutionFenceCoordinator(schema, fences, observations, guards, orders, tasks,
+                submissions, bindings, json, clock);
+    }
+
+    @Bean
+    ServiceTaskExecutionServiceImpl serviceTaskExecutionServiceImpl(AppointmentPersistence db,
+            ServiceSubmissionQuery query, ServiceExecutionAccess access, ServiceExecutionSchemaVerifier schema,
+            BeautyMappers.SourceObservationMapper observations, BeautyMappers.SourceAllocationGuardMapper guards,
+            BeautyMappers.WorkOrderMapper orders, BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.TradeBindingMapper bindings, BeautyMappers.ServiceExecutionFenceMapper fences,
+            BeautyMappers.ServiceSubmissionMapper submissions, BeautyMappers.GuestClaimReceiptMapper claims,
+            ObjectProvider<ServiceExecutionPort> owner,
+            @Qualifier("beautyReceptionClock") Clock clock) {
+        return new ServiceTaskExecutionServiceImpl(db, query, access, schema, observations, guards, orders,
+                tasks, bindings, fences, submissions, claims, owner, clock);
+    }
+
+    @Bean
+    ServiceExecutionSourcePortImpl serviceExecutionSourcePort(ServiceTaskExecutionService service) {
+        return new ServiceExecutionSourcePortImpl(service);
+    }
+
+    @Bean
     ServiceSourceObservation serviceSourceObservation(
             BeautyMappers.SourceObservationMapper rows,
             ObjectProvider<CheckoutPort> checkout,
             ObjectProvider<ManualServiceAdmissionPort> manual,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectMapper json,
-            @Qualifier("beautyReceptionClock") Clock clock) {
-        return new ServiceSourceObservation(rows, checkout, manual, manager, json, clock);
+            @Qualifier("beautyReceptionClock") Clock clock,
+            ServiceExecutionFenceCoordinator executionFences) {
+        return new ServiceSourceObservation(rows, checkout, manual, manager, json, clock, executionFences);
     }
 
     @Bean
@@ -76,9 +126,10 @@ public class BeautySourceConfiguration {
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ServiceSubmissionMapper submissions,
             BeautyMappers.TradeBindingMapper bindings,
-            @Qualifier("beautyReceptionClock") Clock clock) {
+            @Qualifier("beautyReceptionClock") Clock clock,
+            ServiceExecutionFenceCoordinator executionFences) {
         return new ServiceSourceBinding(
-                db, query, observations, guards, orders, tasks, submissions, bindings, clock);
+                db, query, observations, guards, orders, tasks, submissions, bindings, clock, executionFences);
     }
 
     @Bean

@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.config;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -13,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Map;
+import tools.jackson.databind.json.JsonMapper;
 
 import javax.sql.DataSource;
 
@@ -55,6 +58,22 @@ class BeautySchemaValidatorTest {
         assertThatThrownBy(() -> inspect(changed))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("trigger differs");
+    }
+
+    @Test
+    void baseManifestHas28TablesAndV10IsOneExtension() throws Exception {
+        var method = BeautySchemaValidator.class.getDeclaredMethod("manifest");
+        method.setAccessible(true);
+        var base = (Map<?, ?>) method.invoke(null);
+        assertThat(base).hasSize(28);
+        assertThat(base.containsKey("bty_service_execution_fence")).isFalse();
+        try (var input = getClass().getResourceAsStream("/META-INF/shop/beauty-service-execution-fence-schema.json")) {
+            var contract = JsonMapper.builder().build().readTree(input);
+            assertThat(contract.path("platformVersion").asInt()).isEqualTo(10);
+            assertThat(contract.path("tables").size()).isOne();
+            assertThat(contract.path("tables").get(0).path("name").asString())
+                    .isEqualTo("bty_service_execution_fence");
+        }
     }
 
     private static String frozenBody() throws Exception {

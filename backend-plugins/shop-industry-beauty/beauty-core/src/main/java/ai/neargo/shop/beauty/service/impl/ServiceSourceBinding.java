@@ -35,6 +35,7 @@ public final class ServiceSourceBinding {
     private final BeautyMappers.ServiceSubmissionMapper submissions;
     private final BeautyMappers.TradeBindingMapper bindings;
     private final Clock clock;
+    private final ServiceExecutionFenceCoordinator executionFences;
 
     public ServiceSourceBinding(
             AppointmentPersistence db,
@@ -45,7 +46,8 @@ public final class ServiceSourceBinding {
             BeautyMappers.ServiceTaskMapper tasks,
             BeautyMappers.ServiceSubmissionMapper submissions,
             BeautyMappers.TradeBindingMapper bindings,
-            Clock clock) {
+            Clock clock,
+            ServiceExecutionFenceCoordinator executionFences) {
         this.db = db;
         this.query = query;
         this.observations = observations;
@@ -55,6 +57,16 @@ public final class ServiceSourceBinding {
         this.submissions = submissions;
         this.bindings = bindings;
         this.clock = clock;
+        this.executionFences = Objects.requireNonNull(executionFences);
+    }
+
+    /** Scope preparation shares source-first roots before the existing aggregate lock. */
+    public void beforeScopeMutationLocked(String entity, String store, String order) {
+        executionFences.beforeScopeMutationLocked(entity, store, order);
+    }
+
+    public void requireTaskMutableLocked(String entity, String store, String task) {
+        executionFences.requireTaskMutableLocked(entity, store, task);
     }
 
     public record Result(BtyServiceSubmission submission, String reason) {}
@@ -367,6 +379,7 @@ public final class ServiceSourceBinding {
                                             IdempotencyScope.requestHash(
                                                     row.getExecutionSnapshot())),
                     "TASK_CHANGED");
+            executionFences.requireTaskMutableLocked(entity, store, row.getTaskNo());
             lockedTasks.add(row);
         }
         var submission = submissions.selectScopedForUpdate(entity, store, intent.getSubmissionNo());

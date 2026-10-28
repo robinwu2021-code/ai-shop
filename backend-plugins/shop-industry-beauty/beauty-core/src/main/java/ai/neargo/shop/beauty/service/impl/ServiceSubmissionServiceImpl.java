@@ -354,6 +354,7 @@ public final class ServiceSubmissionServiceImpl implements ServiceSubmissionServ
                     db.tx(
                             () -> {
                                 if (preparedScope != null) {
+                                    bindingService.beforeScopeMutationLocked(entity, store, workOrder);
                                     preparation.verifyLocked(preparedScope);
                                 }
                                 var locked = orders.selectScopedForUpdate(entity, store, workOrder);

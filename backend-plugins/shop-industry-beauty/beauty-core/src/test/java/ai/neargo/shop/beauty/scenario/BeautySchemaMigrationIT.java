@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ai.neargo.shop.beauty.config.BeautySchemaValidator;
+import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
 import com.mysql.cj.jdbc.MysqlDataSource;
 
 import org.flywaydb.core.Flyway;
@@ -83,7 +85,7 @@ class BeautySchemaMigrationIT {
         initialize("validate");
         initialize("migrate");
         assertEquals(
-                29,
+                30,
                 count(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE"
                             + " table_schema=DATABASE()"));
@@ -92,6 +94,99 @@ class BeautySchemaMigrationIT {
                 count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='1' AND success=1"));
         assertEquals(0, count("SELECT COUNT(*) FROM information_schema.tables "
                 + "WHERE table_schema=DATABASE() AND table_name='flyway_schema_history'"));
+    }
+
+    /** Test-only target9 constructs the historical deployed base; production never targets a partial sequence. */
+    void baseNine() {
+        Flyway.configure().dataSource(source).locations("classpath:db/industry/beauty")
+                .table("bty_flyway_history").target("9").placeholderReplacement(false).load().migrate();
+    }
+
+    @Test
+    void v9WithoutV10RemainsBaseReady() throws Exception {
+        baseNine();
+        assertEquals(0, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='10'"));
+        initialize("validate");
+        assertEquals(ServiceExecutionSchemaVerifier.Installation.ABSENT,
+                new ServiceExecutionSchemaVerifier(source).installation());
+        assertEquals(28, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
+                + " AND table_name LIKE 'bty_%' AND table_name<>'bty_flyway_history'"));
+    }
+
+    @Test
+    void pendingKnownV10DoesNotMigrateDuringValidation() throws Exception {
+        baseNine();
+        initialize("validate");
+        assertEquals(0, count("SELECT COUNT(*) FROM bty_flyway_history WHERE version='10'"));
+        assertEquals(0, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
+                + " AND table_name='bty_service_execution_fence'"));
+    }
+
+    @Test
+    void installedV10PreservesBaseNineReadiness() throws Exception {
+        initialize("migrate");
+        initialize("validate");
+        assertEquals(ServiceExecutionSchemaVerifier.Installation.INSTALLED,
+                new ServiceExecutionSchemaVerifier(source).installation());
+        assertEquals(29, count("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()"
+                + " AND table_name LIKE 'bty_%' AND table_name<>'bty_flyway_history'"));
+    }
+
+    @Test
+    void knownV10DamageIsolatedFromIntactBase() throws Exception {
+        for (String damage : new String[] {
+                "UPDATE bty_flyway_history SET checksum=123 WHERE version='10'",
+                "UPDATE bty_flyway_history SET success=0 WHERE version='10'",
+                "DROP TABLE bty_service_execution_fence",
+                "ALTER TABLE bty_service_execution_fence DROP INDEX uk_bsef_task",
+                "ALTER TABLE bty_service_execution_fence DROP CHECK ck_bsef_unit",
+                "DROP TRIGGER trg_bsef_immutable",
+                "ALTER TABLE bty_service_execution_fence MODIFY binding_json LONGTEXT CHARACTER SET utf8mb4"
+                        + " COLLATE utf8mb4_unicode_ci NOT NULL"}) {
+            isolatedDatabase();
+            initialize("migrate");
+            execute(damage);
+            initialize("validate");
+            assertEquals(ServiceExecutionSchemaVerifier.Installation.CORRUPT,
+                    new ServiceExecutionSchemaVerifier(source).installation(), damage);
+            assertThrows(RuntimeException.class, () -> initialize("migrate"), damage);
+        }
+    }
+
+    @Test
+    void partialUntrackedKnownFenceIsCorruptWithoutBlockingBase() throws Exception {
+        baseNine();
+        execute("CREATE TABLE bty_service_execution_fence(id BIGINT)");
+        initialize("validate");
+        assertEquals(ServiceExecutionSchemaVerifier.Installation.CORRUPT,
+                new ServiceExecutionSchemaVerifier(source).installation());
+    }
+
+    @Test
+    void baseDamageAndUnknownExtensionsStillFail() throws Exception {
+        for (String damage : new String[] {
+                "UPDATE bty_flyway_history SET checksum=123 WHERE version='9'",
+                "DELETE FROM bty_flyway_history WHERE version='8'",
+                "ALTER TABLE bty_work_order DROP COLUMN scope_frozen",
+                "DROP TRIGGER trg_bty_source_observation_domain_guard",
+                "CREATE TABLE bty_unknown_execution(id BIGINT)",
+                "UPDATE bty_flyway_history SET version='11' WHERE version='10'",
+                "UPDATE bty_flyway_history SET version=NULL WHERE version='10'"}) {
+            isolatedDatabase();
+            initialize("migrate");
+            execute(damage);
+            assertThrows(RuntimeException.class, () -> initialize("validate"), damage);
+        }
+    }
+
+    @Test
+    void absentAndUntrackedExtensionRequireActualMarkerSemantics() throws Exception {
+        assertEquals(ServiceExecutionSchemaVerifier.Installation.ABSENT,
+                new ServiceExecutionSchemaVerifier(source).installation());
+        execute("CREATE TABLE bty_service_execution_fence(id BIGINT)");
+        assertEquals(ServiceExecutionSchemaVerifier.Installation.CORRUPT,
+                new ServiceExecutionSchemaVerifier(source).installation());
+        assertThrows(RuntimeException.class, () -> initialize("validate"));
     }
 
     @Test

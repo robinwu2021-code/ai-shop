@@ -42,24 +42,27 @@ public final class ServiceSourceObservation {
     private final TransactionTemplate writes;
     private final ObjectMapper json;
     private final Clock clock;
+    private final ServiceExecutionFenceCoordinator executionFences;
 
     public ServiceSourceObservation(
             BeautyMappers.SourceObservationMapper mapper,
             ObjectProvider<CheckoutPort> checkout,
             PlatformTransactionManager manager,
             ObjectMapper json,
-            Clock clock) {
+            Clock clock,
+            ServiceExecutionFenceCoordinator executionFences) {
         this.mapper = mapper;
         this.checkout = checkout;
         this.json = json;
         this.clock = clock;
+        this.executionFences = Objects.requireNonNull(executionFences);
         writes = new TransactionTemplate(manager);
         writes.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         writes.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
 
     /**
-     * Existing direct construction remains compatible; production wiring supplies the actual manual
+     * Both direct construction paths require the local coordinator; production wiring supplies the actual manual
      * owner.
      */
     public ServiceSourceObservation(
@@ -68,8 +71,9 @@ public final class ServiceSourceObservation {
             ObjectProvider<ManualServiceAdmissionPort> manual,
             PlatformTransactionManager manager,
             ObjectMapper json,
-            Clock clock) {
-        this(mapper, checkout, manager, json, clock);
+            Clock clock,
+            ServiceExecutionFenceCoordinator executionFences) {
+        this(mapper, checkout, manager, json, clock, executionFences);
         this.manual = manual;
     }
 
@@ -680,17 +684,14 @@ public final class ServiceSourceObservation {
 
     public BtySourceObservation invalidateManual(ManualCanonical source, String actor) {
         outsideTransaction();
-        long ticket = claimManual(source, actor);
-        return tx(
-                () -> {
-                    var row = mapper.selectCanonicalForUpdate(source.entityNo(), source.sourceNo());
-                    manualIdentity(source, row);
-                    if (Objects.equals(row.getManualEpoch(), ticket)) {
-                        row.setManualFailureCode("SOURCE_UNAVAILABLE");
-                        persistManual(row, actor);
-                    }
-                    return row;
-                });
+        return tx(() -> {
+            long ticket = claimManualLocked(source, actor);
+            var row = mapper.selectCanonicalForUpdate(source.entityNo(), source.sourceNo());
+            manualIdentity(source, row);
+            if (!Objects.equals(row.getManualEpoch(), ticket)) throw BizException.of(ErrorCode.CONFLICT);
+            // Freshness only: no durable contradiction or coordinator hook is minted by a read claim.
+            return row;
+        });
     }
 
     private long claimManual(ManualCanonical source, String actor) {
@@ -890,13 +891,22 @@ public final class ServiceSourceObservation {
                 || !Objects.equals(row.getManualEpoch(), ticket)) {
             return new ManualObserved(row, null, ticket);
         }
+        if (facts == null || "UNKNOWN".equals(facts.admissionState())) {
+            // UNKNOWN may omit canonical detail or a current revision; neither is a contrary owner receipt.
+            row.setManualAdmissionState("UNKNOWN");
+            row.setManualState("UNKNOWN");
+            row.setManualFailureCode("SOURCE_OWNER_UNKNOWN");
+            row.setManualObservedAt(now());
+            persistManual(row, actor, facts);
+            return new ManualObserved(row, null, ticket);
+        }
         try {
             validManual(source, facts);
         } catch (RuntimeException invalid) {
             row.setManualState("BLOCKED");
             row.setManualFailureCode("SOURCE_CONTRACT_INVALID");
             row.setManualObservedAt(now());
-            persistManual(row, actor);
+            persistManual(row, actor, facts);
             return new ManualObserved(row, null, ticket);
         }
         Long highest = row.getManualRevision();
@@ -910,7 +920,7 @@ public final class ServiceSourceObservation {
             row.setManualFailureCode(
                     conflict ? "SOURCE_HASH_CONFLICT" : "SOURCE_REVISION_REGRESSION");
             row.setManualObservedAt(now());
-            persistManual(row, actor);
+            persistManual(row, actor, facts);
             return new ManualObserved(row, null, ticket);
         }
         if (revision > 0) {
@@ -923,7 +933,7 @@ public final class ServiceSourceObservation {
         if (!"ADMITTED".equals(facts.admissionState())) {
             row.setManualState("UNKNOWN");
             row.setManualFailureCode("SOURCE_OWNER_" + facts.admissionState());
-            persistManual(row, actor);
+            persistManual(row, actor, facts);
             return new ManualObserved(row, facts, ticket);
         }
         var quantities = manualQuantityLines(facts);
@@ -966,7 +976,7 @@ public final class ServiceSourceObservation {
             if (!same) {
                 row.setManualState("BLOCKED");
                 row.setManualFailureCode("SOURCE_LINE_MISMATCH");
-                persistManual(row, actor);
+                persistManual(row, actor, facts);
                 return new ManualObserved(row, null, ticket);
             }
         }
@@ -976,11 +986,11 @@ public final class ServiceSourceObservation {
         row.setManualVerifiedAt(LocalDateTime.ofInstant(facts.observedAt(), ZoneOffset.UTC));
         row.setManualState("READY");
         row.setManualFailureCode(null);
-        persistManual(row, actor);
+        persistManual(row, actor, facts);
         return new ManualObserved(row, facts, ticket);
     }
 
-    private void persistManual(BtySourceObservation row, String actor) {
+    private void persistManual(BtySourceObservation row, String actor, ManualSourceFacts facts) {
         row.setUpdatedAt(now());
         row.setUpdatedBy(actor);
         long version = row.getVersion();
@@ -988,6 +998,7 @@ public final class ServiceSourceObservation {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         row.setVersion(Math.addExact(version, 1));
+        executionFences.onManualCompletionLocked(row, facts, actor);
     }
 
     public SourceObservationVO manualProjection(BtySourceObservation row, boolean current) {
