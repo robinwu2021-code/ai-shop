@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.api.callback;
 
+import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 import ai.neargo.shop.pay.api.guard.callback.CallbackGuard;
 import ai.neargo.shop.spi.pay.PayCallbackPort;
 import ai.neargo.shop.spi.pay.PayCallbackPort.Kind;
@@ -13,7 +15,6 @@ import ai.neargo.shop.spi.trade.OrderRepairPort;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,8 +33,11 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>地址：新地址 {@code /pay/callback/{channel}/{pay|refund}/{收款商户号}}，旧地址别名 {@code /{channel}}、
  * {@code /{channel}/refund}（CN 渠道后台改完登记地址、30 天无流量后删）。
+ *
+ * <p>装在哪：本进程挂了渠道回调入口就装（内嵌 = {@code shop-app}；独立 = {@code pay-svc}，开发计划 M7.1）。
+ * 回调由 nginx 只转给其中一个进程（M7.5）。
  */
-@Profile("api")
+@ConditionalOnGuardEntry(PortalFace.CALLBACK)
 @RestController
 @RequestMapping("/pay/callback")
 public class ChannelPayCallbackController {

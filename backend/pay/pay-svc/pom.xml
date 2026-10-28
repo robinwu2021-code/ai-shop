@@ -49,6 +49,18 @@
             <artifactId>pay-guard</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 对外入口的 controller（开放 API、POS 终端、渠道回调、收银台；开发计划 M7.1 / D1）：独立形态下由这个进程承接 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>pay-portal</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 密钥模块：接入方 AppSecret / EncryptKey、终端设备密钥、渠道密钥都在支付库的 sec_* 表里，主密钥注入这个进程 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>secret-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- 通道适配。独立形态下回调验签与向通道查单都在这个进程里做 -->
         <dependency>
             <groupId>ai.neargo.shop</groupId>
