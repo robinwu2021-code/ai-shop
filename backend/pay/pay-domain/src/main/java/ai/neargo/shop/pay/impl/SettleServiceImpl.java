@@ -1,5 +1,9 @@
 package ai.neargo.shop.pay.impl;
 
+import ai.neargo.shop.pay.service.RefundExecutionService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+
 import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.pay.SettleService;
@@ -706,38 +710,12 @@ public class SettleServiceImpl implements SettleService {
      * 它是「这笔退款发生过」的唯一记录，也是对账唯一能扫到的对象。
      * 回滚掉之后，一笔可能已经发到通道的退款在我方一点痕迹都没有。
      */
+    @Autowired
+    @Lazy
+    private RefundExecutionService refundExecutions;
+
     private void sendRefundToChannel(String refundNo) {
-        if (!paymentLedger.claimRefundDispatch(refundNo)) {
-            return;
-        }
-        var ticket = paymentLedger.refundTicket(refundNo);
-        if (ticket.isEmpty()) {
-            paymentLedger.markRefundRejected(refundNo,
-                    "取不到原收款在通道侧的坐标");
-            return;
-        }
-        var t = ticket.get();
-        if (!channels.supports(t.payChannel())) {
-            // 通道未接入**不可重试** —— 重试一万次它也不会自己接上
-            paymentLedger.markRefundRejected(refundNo,
-                    "支付通道未接入：" + t.payChannel());
-            return;
-        }
-        /*
-         * 通道交易号优先，我方单号兜底：**退的是原来那一笔**，
-         * 而我方单号在重试时会带后缀。
-         */
-        var ctx = new ai.neargo.shop.pay.channel.PayGateway.TxContext(
-                null, t.originTradeNo(), t.originOutTradeNo(), t.originTotalMinor());
-        try {
-            var r = channels.refund(t.payChannel(), ctx, t.amountMinor(), t.outRefundNo(), t.reason());
-            if (!r.success() && r.definitiveRejection())
-                paymentLedger.markRefundRejected(refundNo, r.message());
-            else paymentLedger.markRefundSent(refundNo, r.success(), !r.success(), r.providerNo(), r.message());
-        } catch (RuntimeException e) {
-            paymentLedger.markRefundSent(refundNo, false, true, null, "退款发送结果未知，等待原单回查");
-            log.warn("[settle] 退款结果未知 paymentNo={} exception={}", refundNo, e.getClass().getSimpleName());
-        }
+        refundExecutions.dispatchPrepared(refundNo);
     }
 
     // ---------------------------------------------------------------- 查询

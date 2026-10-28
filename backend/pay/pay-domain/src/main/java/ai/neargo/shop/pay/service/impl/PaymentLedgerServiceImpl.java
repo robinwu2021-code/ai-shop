@@ -1,6 +1,9 @@
 package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.shop.pay.acquiring.dto.ChannelOutcome;
+import ai.neargo.shop.pay.acquiring.service.RefundService;
+import ai.neargo.shop.pay.acquiring.service.RefundOutcomeService;
+import ai.neargo.shop.spi.settle.RefundRequest;
 import ai.neargo.shop.pay.acquiring.service.PaymentOutcomeService;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -150,6 +153,19 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Autowired(required = false)
     void setPayOrders(ObjectProvider<PaymentService> payOrders) {
         this.payOrders = payOrders;
+    }
+
+    private ObjectProvider<RefundService> refundOrders;
+    private ObjectProvider<RefundOutcomeService> refundOutcomes;
+
+    @Autowired
+    void setRefundOrders(ObjectProvider<RefundService> refundOrders) {
+        this.refundOrders = refundOrders;
+    }
+
+    @Autowired
+    void setRefundOutcomes(ObjectProvider<RefundOutcomeService> refundOutcomes) {
+        this.refundOutcomes = refundOutcomes;
     }
 
     @Override
@@ -306,6 +322,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
          */
         r.setStatus(StlPayment.PENDING);
         r.setOutTradeNo(origin.getOutTradeNo() + "-R" + (times + 1));
+        // Keep the source's original channel instruction; governance must not allocate a second refund number.
+        r.setRefundExecutionNo(r.getOutTradeNo());
         r.setOrderNo(orderNo);
         r.setSubOrderNo(subOrderNo);
         r.setAfterSaleNo(afterSaleNo);
@@ -320,6 +338,11 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         r.setRefundRequestJson(json.writeValueAsString(new RefundTicket(origin.getPayChannel(), origin.getTradeNo(),
                 origin.getOutTradeNo(), r.getOutTradeNo(), nz(origin.getAmountMinor()), amountMinor, reason)));
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(r));
+        if (refundOrders != null) {
+            refundOrders.ifAvailable(service -> service.attachExecution(origin, r,
+                    new RefundRequest(r.getRefundExecutionNo(), afterSaleNo, subOrderNo, origin.getPaymentNo(),
+                            amountMinor, origin.getCurrency(), reason)));
+        }
         log.info("[payment-ledger] 退款流水 {} 已落（原收款 {}，{} 分）",
                 r.getPaymentNo(), origin.getOutTradeNo(), amountMinor);
         return r.getPaymentNo();
@@ -335,6 +358,10 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         if (refund == null) {
             throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
         }
+        // Historical rows without an execution identity are query-only; never adopt them for a new send.
+        if (refund.getRefundExecutionNo() == null) return false;
+        RefundService governance = refundOrders == null ? null : refundOrders.getIfAvailable();
+        if (governance != null && !governance.dispatchAllowed(refund.getRefundExecutionNo())) return false;
         if (java.util.Set.of("PROCESSING","MANUAL_REQUIRED","LATE_SUCCESS","TERMINAL_FAILED")
                 .contains(refund.getRefundQueryState()==null?"":refund.getRefundQueryState())) return false;
         if (!StlPayment.PENDING.equals(refund.getStatus()) || refund.getRefundDispatchAt() != null) {
@@ -459,6 +486,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         patch.setRefundVerifiedAt(now);
         // Do not overwrite trade_no: its original acceptance value participates in a cross-direction unique key.
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        if (refundOutcomes != null && refund.getRefundExecutionNo() != null) {
+            refundOutcomes.ifAvailable(service -> service.succeeded(refund.getRefundExecutionNo()));
+        }
     }
 
     @Override

@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.shop.pay.acquiring.service.RefundOutcomeService;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
@@ -29,6 +30,18 @@ public class RefundPaymentStore {
     public RefundPaymentStore(PaymentMapper payments, RefundCapacityLedger capacity) {
         this.capacity = capacity;
         this.payments = payments;
+    }
+
+    private ObjectProvider<PaymentLedgerService> cashLedger;
+
+    @Autowired
+    void setCashLedger(ObjectProvider<PaymentLedgerService> cashLedger) {
+        this.cashLedger = cashLedger;
+    }
+
+    public StlPayment byPaymentNo(String no) {
+        return DataScopeContext.executeWithoutScope(() -> payments.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                .eq(StlPayment::getDirection, StlPayment.REFUND).eq(StlPayment::getPaymentNo, no)));
     }
 
     public StlPayment byExecution(String no) {
@@ -101,11 +114,26 @@ public class RefundPaymentStore {
         if (row == null) {
             return new RefundDispatchResult(null, null, DispatchStatus.FAILED, "REFUND_NOT_FOUND", false, null);
         }
+        // A missing execution number alone also occurs on generic historical refunds.
+        // Only the cash source protocol owns verified_* evidence and an independent acceptance reference.
+        boolean legacyCash = row.getRefundRequestJson() != null || (row.getRefundExecutionNo() == null
+                && row.getAfterSaleNo() != null && row.getSubOrderNo() != null);
         if (provider == null || provider.isBlank() || !Objects.equals(row.getPayChannel(), channel)
                 || !Objects.equals(row.getCurrency(), currency) || !Objects.equals(row.getAmountMinor(), amount)
-                || (row.getTradeNo() != null && !Objects.equals(row.getTradeNo(), provider))) {
+                || (!legacyCash && row.getTradeNo() != null && !Objects.equals(row.getTradeNo(), provider))
+                || (legacyCash && row.getRefundVerifiedAt() != null
+                        && !Objects.equals(row.getRefundVerifiedProviderNo(), provider))) {
             return new RefundDispatchResult(row.getRefundExecutionNo(), row.getPaymentNo(), DispatchStatus.FAILED,
                     "REFUND_RECEIPT_MISMATCH", false, null);
+        }
+        if (legacyCash) {
+            cashLedger.getObject().markRefundSettled(row.getPaymentNo(), provider, amount);
+            StlPayment confirmed = byPaymentNo(row.getPaymentNo());
+            // This source binds cash evidence directly; it has no basic trade refund execution to project.
+            return new RefundDispatchResult(null, row.getPaymentNo(),
+                    StlPayment.SUCCESS.equals(confirmed.getStatus()) ? DispatchStatus.SUCCEEDED : DispatchStatus.UNKNOWN,
+                    StlPayment.SUCCESS.equals(confirmed.getStatus()) ? null : "REFUND_LATE_SUCCESS_FROZEN",
+                    false, confirmed.getSucceededAt());
         }
         if (!capacity.consume(row, provider, amount))
             return new RefundDispatchResult(row.getRefundExecutionNo(), row.getPaymentNo(),

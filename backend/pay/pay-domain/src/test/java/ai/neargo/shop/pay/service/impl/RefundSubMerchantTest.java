@@ -47,6 +47,7 @@ class RefundSubMerchantTest {
         when(store.prepare(any())).thenReturn(refund);
         when(store.claim("RF-1")).thenReturn(true);
         when(store.original("PY-1")).thenReturn(origin);
+        when(channels.supports("WECHAT")).thenReturn(true);
         when(channels.supportsRefundCurrency("WECHAT", "CNY")).thenReturn(true);
         when(channels.refund(eq("WECHAT"), any(), anyLong(), anyString(), any())).thenReturn(PayGateway.Result.ok("WX-REFUND-1"));
         var service = new RefundExecutionServiceImpl(store, channels, mock(UnsplitRefundAdjustment.class),

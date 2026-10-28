@@ -11,6 +11,10 @@ public interface RefundExecutionService {
     boolean reverseUnsplit(SplitReversal request);
     boolean reverseUnsplit(SplitReversal request, boolean zeroLiability);
     RefundDispatchResult request(RefundRequest request);
+
+    /** Dispatch a committed legacy cash intent through the common review gate and channel sender.
+     * The original refund number and durable one-time marker remain owned by that intent. */
+    void dispatchPrepared(String refundPaymentNo);
     RefundDispatchResult query(String executionNo);
     RefundDispatchResult query(RefundRequest request);
 

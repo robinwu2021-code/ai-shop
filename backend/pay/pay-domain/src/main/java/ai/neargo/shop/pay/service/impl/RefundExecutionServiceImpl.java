@@ -115,10 +115,29 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
         if (row.getAmountMinor() == 0) {
             return store.completeZero(row.getRefundExecutionNo());
         }
+        return sendClaimed(row, request.reason());
+    }
+
+    @Override
+    public void dispatchPrepared(String refundPaymentNo) {
+        StlPayment row = store.byPaymentNo(refundPaymentNo);
+        if (row == null || row.getRefundExecutionNo() == null) return;
+        var ticket = ledger.refundTicket(refundPaymentNo);
+        if (ticket.isEmpty() || !ledger.claimRefundDispatch(refundPaymentNo)) return;
+        RefundService governance = refundOrderProvider == null ? null : refundOrderProvider.getIfAvailable();
+        if (governance != null) governance.dispatched(row.getRefundExecutionNo());
+        sendClaimed(row, ticket.get().reason());
+    }
+
+    private RefundDispatchResult sendClaimed(StlPayment row, String reason) {
         StlPayment origin = store.original(row.getOriginPaymentNo());
         try {
             if (origin == null) {
                 return failed(row, "ORIGIN_PAYMENT_MISSING");
+            }
+            // No channel request has been made after this claim, so absence is a proven unsent rejection.
+            if (!channels.supports(row.getPayChannel())) {
+                return failed(row, "REFUND_CHANNEL_UNAVAILABLE");
             }
             if (!channels.supportsRefundCurrency(row.getPayChannel(), row.getCurrency())) {
                 return failed(row, "REFUND_CURRENCY_UNSUPPORTED");
@@ -126,7 +145,7 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             var ctx = new PayGateway.TxContext(subMerchantOf(origin), origin.getTradeNo(),
                     origin.getOutTradeNo(), origin.getAmountMinor(), row.getCurrency());
             PayGateway.Result sent = channels.refund(row.getPayChannel(), ctx, row.getAmountMinor(), row.getOutTradeNo(),
-                    request.reason());
+                    reason);
             if (sent == null || (!sent.success() && sent.retryable())) {
                 return unknown(row, "REFUND_SEND_UNKNOWN");
             }

@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -152,6 +153,17 @@ class RefundDispatchBoundaryTest {
         duplicate.setOutTradeNo("DUP-" + no);
         assertThatThrownBy(() -> DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(duplicate)))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void uninstalled_channel_is_a_definitive_unsent_rejection_for_source_recovery() {
+        Fixture f = paidOrderWithBill("UNINSTALLED");
+        String no = settleService.prepareRefund(f.subOrderNo, "AS-" + f.subOrderNo, 1000, "refund");
+        settleService.dispatchRefund(no);
+        assertThat(refundRow(no).getStatus()).isEqualTo(StlPayment.FAILED);
+        assertThat(ledger.refundEvidence(no).safety().terminalVerified()).isTrue();
+        assertThat(refundRow(no).getRefundCapacityState()).isEqualTo("RESERVED");
+        verify(testChannel, never()).refund(any(), anyLong(), anyString(), anyString());
     }
 
     // ---------------------------------------------------------------- 夹具

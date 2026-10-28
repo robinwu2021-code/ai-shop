@@ -1,6 +1,9 @@
 package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.pay.acquiring.service.RefundOutcomeService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entity.StlPayment;
@@ -21,6 +24,13 @@ public class RefundCapacityLedger {
     private final PaymentMapper payments;
     private final ObjectMapper json = new ObjectMapper();
     public RefundCapacityLedger(PaymentMapper payments) { this.payments = payments; }
+
+    private ObjectProvider<RefundOutcomeService> refundOutcomes;
+
+    @Autowired
+    void setRefundOutcomes(ObjectProvider<RefundOutcomeService> refundOutcomes) {
+        this.refundOutcomes = refundOutcomes;
+    }
 
     /** Caller has already locked the original receipt; all allocations serialize on that row. */
     public void check(StlPayment origin, long amount) {
@@ -135,6 +145,10 @@ public class RefundCapacityLedger {
                 p.setErrCode("REFUND_TERMINAL_CLOSED");
             }
         });
+        if (terminal && refundOutcomes != null && row.getRefundExecutionNo() != null) {
+            String executionNo = row.getRefundExecutionNo();
+            refundOutcomes.ifAvailable(service -> service.failed(executionNo, "REFUND_TERMINAL_CLOSED"));
+        }
     }
 
     /** A gateway's definitive, non-retryable rejection, never a timeout or thrown exception. */
