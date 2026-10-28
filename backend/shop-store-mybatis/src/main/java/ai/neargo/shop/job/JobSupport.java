@@ -1,6 +1,7 @@
 package ai.neargo.shop.job;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.spi.pay.CallSources;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -69,7 +70,8 @@ public class JobSupport {
         long started = System.nanoTime();
         LocalDateTime at = LocalDateTime.now();
         try {
-            String detail = body.get();
+            // 任务体里调支付，来源记成这个任务（CallSources.JOB，开发计划 M2.7）
+            String detail = CallSources.asJob(jobName, body);
             record(jobName, at, ms(started), SysJobRun.OK, detail, null);
             if (detail != null) {
                 log.info("[job] {} —— {}", jobName, detail);

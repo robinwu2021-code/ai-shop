@@ -8,6 +8,7 @@ import ai.neargo.job.api.JobResult;
 import ai.neargo.job.api.JobStatus;
 import ai.neargo.job.api.TriggerType;
 import ai.neargo.shop.job.JobHandlerRegistry;
+import ai.neargo.shop.spi.pay.CallSources;
 import net.javacrumbs.shedlock.core.LockConfiguration;
 import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.slf4j.Logger;
@@ -157,7 +158,9 @@ public class JobHandlerEndpoint {
         LockingTaskExecutor.TaskResult<JobResult> res;
         try {
             res = locks.executeWithLock(
-                    (LockingTaskExecutor.TaskWithResult<JobResult>) () -> handler.run(in),
+                    // 任务体里调支付，来源记成这个任务（CallSources.JOB，开发计划 M2.7）
+                    (LockingTaskExecutor.TaskWithResult<JobResult>) () -> CallSources.asJob(handlerName,
+                            () -> handler.run(in)),
                     new LockConfiguration(Instant.now(), handlerName, lockAtMost, Duration.ZERO));
         } catch (RuntimeException e) {
             throw e;
