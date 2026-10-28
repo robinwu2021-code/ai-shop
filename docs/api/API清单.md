@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1084 个接口**：后端已实现 919（85%）· 前端在调 994
+**合计 1095 个接口**：后端已实现 930（85%）· 前端在调 1002
 
 ---
 
@@ -1135,7 +1135,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **491** 个接口 ｜ 后端已实现 **423**（86%）｜ 前端在调 **403**
+共 **502** 个接口 ｜ 后端已实现 **434**（86%）｜ 前端在调 **411**
 
 ### aftersale（5）
 
@@ -1592,10 +1592,14 @@
 | POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ⬜ |
 | POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ⬜ |
 
-### payops（10）
+### payops（21）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/payments/apps` | payOpsApps | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/payments/apps/{appNo}/credentials` | payOpsAppCredentials | — | `数组` | — | ✅ | ⬜ |
+| POST | `/ops/payments/apps/{appNo}/credentials/{kind}/{version}/revoke` | 吊销即时生效：下一次用这一版签的请求就 401 */ | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/payments/apps/{appNo}/grants` | payOpsAppGrants | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/payments/exceptions` | payOpsExceptions | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/payments/exceptions/{id}/ignore` | payOpsIgnoreException | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/payments/exceptions/{id}/refund` | 原路退回那一笔多收的钱（不碰已关支付单的余额） */ | — | `object` | — | ✅ | ✅ |
@@ -1603,9 +1607,16 @@
 | POST | `/ops/payments/notifies/{id}/resend` | payOpsResendNotify | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/payments/orders` | payOpsOrders | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/payments/orders/{no}` | payOpsOrder | — | `object` | — | ⬜ | ⬜ |
+| GET | `/ops/payments/platform-keys` | payOpsPlatformKeys | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/payments/platform-keys/{keyId}/versions` | payOpsPlatformKeyVersions | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/payments/platform-keys/{keyId}/versions/{version}/enable` | 两人：启用人不能是录入人（后端 70088） */ | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/payments/platform-keys/{keyId}/versions/{version}/revoke` | payOpsRevokePlatformKey | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/payments/qr-codes` | payOpsQrCodes | — | `数组` | — | ✅ | ✅ |
 | PUT | `/ops/payments/qr-codes/{qrCode}/disabled` | payOpsDisableQrCode | — | `object` | — | ✅ | ⬜ |
 | GET | `/ops/payments/refunds` | payOpsRefunds | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/payments/refunds/{no}/review` | 两人复核：同一人不能通过两次 | — | `object` | — | ⬜ | ⬜ |
+| GET | `/ops/payments/request-logs` | payOpsRequestLogs | — | `数组` | — | ✅ | ✅ |
+| GET | `/ops/payments/request-logs/{id}` | payOpsRequestLog | — | `object` | — | ✅ | ✅ |
 
 ### print（4）
 

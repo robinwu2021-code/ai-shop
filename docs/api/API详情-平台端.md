@@ -8718,6 +8718,72 @@ _无字段_
 
 ### payops
 
+#### GET `/ops/payments/apps`
+
+payOpsApps
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/ops/payments/apps/{appNo}/credentials`
+
+payOpsAppCredentials
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `appNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/ops/payments/apps/{appNo}/credentials/{kind}/{version}/revoke`
+
+吊销即时生效：下一次用这一版签的请求就 401 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `appNo` | path | `string` | 是 | — |
+| `kind` | path | `string` | 是 | — |
+| `version` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/payments/apps/{appNo}/grants`
+
+payOpsAppGrants
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `appNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
 #### GET `/ops/payments/exceptions`
 
 payOpsExceptions
@@ -8825,6 +8891,85 @@ payOpsOrder
 类型：`object`
 
 
+#### GET `/ops/payments/platform-keys`
+
+payOpsPlatformKeys
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/ops/payments/platform-keys/{keyId}/versions`
+
+payOpsPlatformKeyVersions
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `keyId` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/ops/payments/platform-keys/{keyId}/versions/{version}/enable`
+
+两人：启用人不能是录入人（后端 70088） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `keyId` | path | `string` | 是 | — |
+| `version` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/payments/platform-keys/{keyId}/versions/{version}/revoke`
+
+payOpsRevokePlatformKey
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `keyId` | path | `string` | 是 | — |
+| `version` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/payments/qr-codes`
+
+payOpsQrCodes
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
 #### PUT `/ops/payments/qr-codes/{qrCode}/disabled`
 
 payOpsDisableQrCode
@@ -8866,6 +9011,36 @@ payOpsRefunds
 | `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/payments/request-logs`
+
+payOpsRequestLogs
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/ops/payments/request-logs/{id}`
+
+payOpsRequestLog
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
 
 **出参**（`data`）
 

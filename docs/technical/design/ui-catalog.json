@@ -1892,7 +1892,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 152,
+      "count": 156,
       "domains": [
         {
           "name": "经营看板",
@@ -3194,6 +3194,58 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:3000/pay-ops/notifies"
+            },
+            {
+              "app": "ops-web",
+              "route": "/pay-ops/qr-codes",
+              "title": "静态收款码",
+              "domain": "结算与资金",
+              "group": "支付运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/pay-ops/qr-codes"
+            },
+            {
+              "app": "ops-web",
+              "route": "/pay-ops/apps",
+              "title": "接入方与授权",
+              "domain": "结算与资金",
+              "group": "支付运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/pay-ops/apps"
+            },
+            {
+              "app": "ops-web",
+              "route": "/pay-ops/request-logs",
+              "title": "请求记录",
+              "domain": "结算与资金",
+              "group": "支付运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/pay-ops/request-logs"
+            },
+            {
+              "app": "ops-web",
+              "route": "/pay-ops/platform-keys",
+              "title": "平台证书与密钥",
+              "domain": "结算与资金",
+              "group": "支付运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/pay-ops/platform-keys"
             }
           ]
         },
@@ -3968,5 +4020,5 @@
       ]
     }
   ],
-  "total": 317
+  "total": 321
 }

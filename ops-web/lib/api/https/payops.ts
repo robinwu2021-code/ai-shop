@@ -16,4 +16,17 @@ export const payOpsHttp: PayOpsApi = {
   payOpsRefundException: (id) => client.post(`/ops/payments/exceptions/${id}/refund`),
   payOpsIgnoreException: (id, note) => client.post(`/ops/payments/exceptions/${id}/ignore`, { note }),
   payOpsDisableQrCode: (qrCode) => client.put(`/ops/payments/qr-codes/${enc(qrCode)}/disabled`),
+  payOpsQrCodes: (q) => client.get("/ops/payments/qr-codes", q),
+  payOpsApps: () => client.get("/ops/payments/apps"),
+  payOpsAppGrants: (appNo) => client.get(`/ops/payments/apps/${enc(appNo)}/grants`),
+  payOpsAppCredentials: (appNo) => client.get(`/ops/payments/apps/${enc(appNo)}/credentials`),
+  payOpsRevokeAppCredential: (appNo, kind, version, reason) =>
+    client.post(`/ops/payments/apps/${enc(appNo)}/credentials/${enc(kind)}/${version}/revoke`, { reason }),
+  payOpsRequestLogs: (q) => client.get("/ops/payments/request-logs", q),
+  payOpsRequestLog: (id) => client.get(`/ops/payments/request-logs/${id}`),
+  payOpsPlatformKeys: () => client.get("/ops/payments/platform-keys"),
+  payOpsPlatformKeyVersions: (keyId) => client.get(`/ops/payments/platform-keys/${keyId}/versions`),
+  payOpsEnablePlatformKey: (keyId, version) => client.post(`/ops/payments/platform-keys/${keyId}/versions/${version}/enable`),
+  payOpsRevokePlatformKey: (keyId, version, reason) =>
+    client.post(`/ops/payments/platform-keys/${keyId}/versions/${version}/revoke`, { reason }),
 };

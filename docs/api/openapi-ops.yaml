@@ -26738,6 +26738,389 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/payments/qr-codes":
+    get:
+      operationId: "payOpsQrCodes"
+      summary: "payOpsQrCodes"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payments/apps":
+    get:
+      operationId: "payOpsApps"
+      summary: "payOpsApps"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payments/apps/{appNo}/grants":
+    get:
+      operationId: "payOpsAppGrants"
+      summary: "payOpsAppGrants"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "appNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payments/apps/{appNo}/credentials":
+    get:
+      operationId: "payOpsAppCredentials"
+      summary: "payOpsAppCredentials"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "appNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payments/apps/{appNo}/credentials/{kind}/{version}/revoke":
+    post:
+      operationId: "payOpsRevokeAppCredential"
+      summary: "吊销即时生效：下一次用这一版签的请求就 401 */"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "appNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "kind"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "version"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/payments/request-logs":
+    get:
+      operationId: "payOpsRequestLogs"
+      summary: "payOpsRequestLogs"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payments/request-logs/{id}":
+    get:
+      operationId: "payOpsRequestLog"
+      summary: "payOpsRequestLog"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payments/platform-keys":
+    get:
+      operationId: "payOpsPlatformKeys"
+      summary: "payOpsPlatformKeys"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payments/platform-keys/{keyId}/versions":
+    get:
+      operationId: "payOpsPlatformKeyVersions"
+      summary: "payOpsPlatformKeyVersions"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "keyId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/payments/platform-keys/{keyId}/versions/{version}/enable":
+    post:
+      operationId: "payOpsEnablePlatformKey"
+      summary: "两人：启用人不能是录入人（后端 70088） */"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "keyId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "version"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/payments/platform-keys/{keyId}/versions/{version}/revoke":
+    post:
+      operationId: "payOpsRevokePlatformKey"
+      summary: "payOpsRevokePlatformKey"
+      tags:
+        - "payops"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                    nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "keyId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "version"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/print/health":
     get:
       operationId: "printHealth"

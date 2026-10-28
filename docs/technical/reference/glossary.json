@@ -52024,6 +52024,46 @@
     },
     {
       "host": "Perms",
+      "name": "PAY_APP_MANAGE",
+      "type": "String",
+      "value": "\"pay:app:manage\"",
+      "zh": "支付运营 · 接入方与密钥（开发计划 M5b，pay-guard TDD §2.8.3）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APP_CREDENTIAL_REVOKE",
+      "type": "String",
+      "value": "\"pay:app-credential:revoke\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "SEC_KEY_VIEW",
+      "type": "String",
+      "value": "\"sec:key:view\"",
+      "zh": "平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，sec_key 中非接入方的那些）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "SEC_KEY_WRITE",
+      "type": "String",
+      "value": "\"sec:key:write\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "SEC_KEY_ENABLE",
+      "type": "String",
+      "value": "\"sec:key:enable\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
       "name": "FINANCE_INVOICE_READ",
       "type": "String",
       "value": "\"finance:invoice:read\"",
