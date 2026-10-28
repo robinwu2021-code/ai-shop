@@ -161,6 +161,18 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 - commerce-channel.RemoteMediaPublicSourcePort及CommerceMediaClientAutoConfiguration供各行业共用，单次PLATFORM typed调用，校验完整事实/范围/期限/摘要，404/409等保持原状态，无目标回退。shop.commerce.media-client.enabled默认关闭，本地原owner优先，不隐式启用CIM/发布任务或真实渠道。
 - 验证：先观察原捕获缺能力RED及direct过滤器改坏回执RED→完成全部代码与专项源码→统一编译→集中H2原归属/状态/元数据/事务/变化、稳定URL/超期/缺图/严格HTTP/令牌/本地优先及旧媒体回归→一次守卫消融及一次独立只读复核→相关修复复测→干净打包/设计对账/本地精确提交。完整FOOD目录/媒体与原餐牌依赖绑定仍在下一步，不宣称已经发布菜单。
 
+### L3 S2B2B2c-1 餐牌渠道连接核验计划（2026-10-28）
+
+本批落实AC03/AC15的目录来源准入子集，沿既有PRD和ADR-042；不代表完整目录适配完成。
+
+- 新增可选`food-commerce`桥接jar，只依赖food-api、commerce-api与Spring装配/事务边界；通用commerce五模块不反向依赖餐饮。新增`food-commerce-embedded`构建profile，组合原food-embedded、commerce-embedded用于集成宿主；food-server可单独选此profile并复用原COMMERCE内部客户端。默认零售/餐饮构建不引入桥接。
+- `food.commerce.dto.FoodCatalogBindingContracts.Query`含原MENU/CURRENT查询、原连接查询、bindingNo；输入不接受成功标志、URL或价格。Facts返回原两份证明、绑定、CHANNEL/DELIVERY语境及两份证明最短有效期；它只证明身份关系，不证明pricePolicyRef的定价授权、库存或接单资格，不注册完整ChannelCatalogSourcePort。
+- `food.commerce.service.FoodCatalogBindingService.capture`与`service.impl.FoodCatalogBindingServiceImpl.capture`执行原餐牌CURRENT读取→原连接授权读取→再次CURRENT读取，调用期间不允许外层事务。校验完整原证明/摘要/范围/期限，比较两次原发布内容与资源；不得缓存或以历史修订替代当前修订。
+- 精确匹配原binding的menu/store、ACTIVE、provider=providerCode、channelAccountRef=externalAccountRef、externalStoreRef；保持大小写和原编号，不用CIM内部accountNo尝试回退、不截断128位外部编号迎合旧64位字段。旧绑定不满足新核验则明确冲突，需原业务重新确认；本批不迁移、不改写旧绑定。连接必须FOOD/LOCAL/INSTANT；绑定须唯一对应CHANNEL/DELIVERY语境，保留原pricePolicyRef但不把它当已核准价格。
+- 默认关闭`shop.food.commerce.binding.enabled`；还需shop.food.enabled与原两个Service及ObjectMapper。自动装配在原food owner/web、commerce owner/client和Boot Jackson之后，本地或独立客户端均调用相同Service合同，缺任何依赖不装配，不伪造成功。可由宿主提供显式自定义Service替换。
+- 文件：新模块pom、Contracts、Service/Impl、AutoConfiguration及imports、专项测试/夹具；修改backend/shop-app/food-server的profile及food聚合pom，更新ADR、结构化设计用途/限制和生成清单。本批无新表、Mapper、迁移、公开或内部HTTP端点、任务、真实网关、支付或前端。
+- 验收：FoodCatalogBindingServiceTest覆盖成功与期限、跨范围/历史输入、平台/账号/门店不匹配、错误owner/履约、缺失绑定/语境、伪造/过期事实、读取中变化、原错误保持及外层事务禁止；FoodCatalogBindingWiringTest覆盖默认关闭、缺依赖、启用及自定义优先，并检查依赖隔离。先完成全部业务/测试源码，再编译集成与独立形态，集中专项、一次守卫消融、一位全批只读review，修复只相关复测，精确提交。本次不启动真实平台、不部署；完整目录、时段交集、选择可行性、非CNY维护和S3仍按后续计划。
+
 ### 明确的事务和并发
 
 - 原请求journal区分PLATFORM/ENTITY/STORE，平台配置不伪造经营主体。账号授权operation允许尚无connection，按ACCOUNT/CONNECTION非空规范键去重。原请求journal与本域配置写入在本地事务；同键异payload或不兼容操作者冲突。
@@ -288,9 +300,11 @@ S1子集验收：AC03/AC05对应MenuSourceVerificationTest的8项（原scope/EXP
 
 前轮只验证文档生成、引用及结构一致性，不把设计守卫当业务验收。当前已新增Java子集，按每个AC登记真实源码/用例/执行范围及必要消融，不回填虚假绿灯。
 
+S2B2B2c-1子集验收：AC03由FoodCatalogBindingServiceTest核验原冻结文档、精确外部身份及当前来源二次读取，AC15由FoodCatalogBindingWiringTest核验默认关闭、缺来源不装配、自定义优先、默认宿主依赖隔离及真实Boot Jackson装配。新增15项加既有CommerceArchitectureTest两项，累计17个唯一受影响专项通过；不与重复复测次数相加。移除原发布内容比较后变化专项真实失败，恢复后全模块专项通过。独立复核发现JSON装配顺序缺陷，真实Boot测试先RED（缺服务），补afterName后新模块15项全部GREEN。默认零售干净test-compile48.064秒、集成/独立test-compile约63秒；最终打包证据见交付附记。此处为原API组合与真实Spring装配，不宣称生产数据库并发、独立进程或真实渠道联验。
+
 ## §6 对账二 设计到实现
 
-全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、13个业务Service（含内部只读授权事实）与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。该内核已集成发布；新增S1原FOOD内部核验、S2A共享基准价/税来源与S2B1餐牌价格投影尚未推送或发布。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
+全量目标保留70个API、31张候选表。当前实现进度以结构化真源implementation子集为准：五模块、累计29个基础/授权/目录/映射/任务/回调路由、17张迁移表、13个业务Service（含内部只读授权事实）与本域journal、身份和持久化远端发布阻断策略。公开请求严格拒绝主体/凭据与未知字段；Service另校验、列表按数据库分页。该内核已集成发布；新增S1原FOOD内部核验、S2A共享基准价/税来源、S2B1餐牌价格投影及后续授权/日历/媒体已随4ef107f4a推送；不据此声明部署。通用授权和目录同步内核已交付；真实来源/授权/外部适配器、MANAGED发布映射、外部订单导入、履约、售后、资金证据仍待后续闭环。不能将整个AC01、AC02或AC15标为已全部通过。
 
 ## L4 官方资料及待核验
 
@@ -498,6 +512,7 @@ S0现状review、S1原FOOD来源证明、S2A共享基准价/税来源及S2B1餐�
 - [x] S2B2B1 原连接/CATALOG授权事实：原平台/账号/连接当前修订、有效授权与身份核验，支持本地/独立调用。
 - [x] S2B2B2a 原营业日历来源：原门店营业时间、营业日切点、未来策略时间线和日期例外，支持本地/独立调用。
 - [x] S2B2B2b 共享原公开媒体来源：原台账完整归属及元数据、稳定HTTPS和短期回执，通用远程读取与规范URL保护。
+- [x] S2B2B2c-1 原餐牌渠道绑定核验：可选food-commerce桥接，精确匹配原平台/外部账号/门店，CURRENT双读、最短期限及默认关闭装配；仅身份关系，不授予价格政策或完整发布资格。
 - [ ] S2B2B 原行业完整目录适配：复用S1/S2A/S2B1原来源及价格事实，接原连接授权和餐牌渠道语境、时段与例外、展示与可信媒体，交付ChannelCatalogSourcePort.Document及原来源校验提供方；补齐独立worker客户端和非CNY覆盖价的原owner策略。原配置或币种/税依据缺失保持不可发布；原库存未知保持UNKNOWN，不回填0，不在目录捕获时预占。
 - [ ] S3 事件桥接：复用原OutboxEnvelope、事件号及CommerceRecoveryService.onPublished；消费前核对源系统、schemaVersion、aggregate和原门店/餐牌/修订。事件只是重读提示，不直接信任事件中的价格或把旧修订写成最新。重复沿原eventNo查回；乱序重新解析当前生效修订；未来生效应在到期核验，不能消费后丢失后续唤醒。新增路由须按模块是否装配条件化，禁用commerce时原发布继续成功。
 - [ ] S4 集成验证：批量完成代码与测试源码，再编译food+commerce集成宿主及独立server；只运行受影响专项。覆盖跨主体/门店、菜单内同SKU不同销售条目、REPLACE空配料、套餐依赖修订、hash篡改、未来/取消/过期发布、缺币种/税/价格回执、事件重复/乱序/重试、模块关闭。最后一次独立review并处理问题，随后白名单提交。
@@ -795,3 +810,13 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 最终验证：相同food-embedded/commerce-embedded Profile下，shop-app、food-server、commerce-server干净`clean package -DskipTests`成功（约62秒，包含测试源码编译）。集中34个唯一相关Java专项通过（新增15/原媒体14/架构装配5）；守卫消融恢复并完成最终构建后，仅复验新增15项，9.071秒，全部通过、0失败0跳过，不把重复执行与34简单相加。10项设计专项、25个生成器及git diff --check通过。一次独立只读复核无Critical/Important/Minor发现，无二次复核；临时移除原元数据比较使变化专项真实失败，恢复后绿灯。不代表真实云存储下载、生产MySQL并发或实际跨进程上线验收，未重跑或放宽原厨房SSE无关失败规则。
 
 本批仅本地白名单提交，不推送、部署或启用真实外卖渠道。下一步S2B2B2c：核对原餐牌渠道绑定，将原来源/价格/连接授权/营业日历/媒体组合为完整FOOD目录；还需处理原owner非CNY覆盖价策略和组合选择的有效性，随后进入S3可靠事件桥接。共享媒体来源已经具备，不将其冒充完整FOOD目录或真实平台菜单已同步。
+
+### S2B2B2c-1 餐牌渠道绑定核验交付（2026-10-28）
+
+本批20个文件：food-commerce新模块9个（pom、Contracts、Service/Impl、AutoConfiguration/imports、夹具与两个专项类），4份原构建pom、ADR/TDD、结构化设计及3份生成清单、依赖生成清单。与§2逐项对齐，无新增表、HTTP路由、Mapper、任务、支付或前端。桥接只保留原证据，不保存可编辑绑定副本，不注册完整目录提供方。
+
+输入是原MENU/CURRENT查询、原连接修订查询和bindingNo；输出为原餐牌证明、原连接授权、精确绑定及CHANNEL/DELIVERY语境、最短有效期。外部账号只匹配externalAccountRef，不回退accountNo，不截断原编号。原pricePolicyRef仍只是引用，完整价格政策授权和时段交集不得跳过。
+
+验证：默认零售clean test-compile成功48.064秒；最终集成宿主、food-server、commerce-server在三个显式profile下干净clean package -DskipTests成功约61秒，包含测试源码编译。17个唯一受影响Java专项通过（新模块15、原架构2）；打包后仅复验新模块15项，2.348秒，零失败零跳过。设计专项10项、25个生成器及git diff --check通过。原发布比较守卫消融真实RED，恢复后GREEN；一次独立复核的JSON装配顺序Important以真实Boot测试RED、修复、全模块GREEN关闭，无二次复核或遗留Minor。
+
+本轮按用户要求整批编码编译后测试，以守卫消融补充验证。可选模块需显式启用；身份不明确的旧绑定会冲突，需原业务确认；短期事实不提供分布式原子快照或即时撤权保证，最终发送前仍须重验。当前为源码组合和真实Spring装配验收，不代表生产并发、独立进程或真实平台联验。本批只本地提交，未推送部署。完整FOOD目录、价格政策、时段交集和选择可行性、非CNY维护及S3事件桥接继续保留，不启用Keeta。
