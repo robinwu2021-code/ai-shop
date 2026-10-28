@@ -30,15 +30,21 @@ public final class MenuSelectionFeasibilityPolicy {
     public record GroupResult(String configKind, String configNo, String groupNo,
             SelectionFeasibility.Result result) { }
 
-    /** A proof is not a price or sale authorization; callers must reject every status other than PROVEN. */
-    public record Report(List<GroupResult> groups, Instant validUntil) {
-        public Report { groups = List.copyOf(groups); }
+    /** Count allowances belong to the whole item; bundle counts are checked separately for each main SKU. */
+    public record ItemResult(String menuItemNo, String mainSkuNo, String selectionKind,
+            SelectionFeasibility.Status status, Integer minimumSelections, Integer maxForcedMinSelections) { }
+
+    /** A proof is not a price or sale authorization; every group AND bound item must be PROVEN. */
+    public record Report(List<GroupResult> groups, List<ItemResult> items, Instant validUntil) {
+        public Report { groups = List.copyOf(groups); items = List.copyOf(items); }
         public boolean proven() {
-            return groups.stream().allMatch(g -> g.result().status() == SelectionFeasibility.Status.PROVEN);
+            return groups.stream().allMatch(g -> g.result().status() == SelectionFeasibility.Status.PROVEN)
+                    && items.stream().allMatch(i -> i.status() == SelectionFeasibility.Status.PROVEN);
         }
     }
 
     private record Key(String kind, String number) { }
+    private record BoundItem(String itemNo, List<String> groups, List<String> bundleSkus) { }
 
     /** Reuse one budget across all menus; receipt validity is rechecked after the potentially expensive search. */
     public static Report prove(Proof proof, Clock clock, ObjectMapper json, SelectionFeasibility.Budget budget) {
@@ -52,19 +58,22 @@ public final class MenuSelectionFeasibilityPolicy {
         for (var d : captured.dependencies())
             if (dependencies.put(new Key(d.configKind(), d.configNo()), d) != null) throw conflict();
         var needed = new TreeSet<Key>(Comparator.comparing(Key::kind).thenComparing(Key::number));
+        var boundItems = new ArrayList<BoundItem>();
         for (var item : MenuPublicationDocuments.items(captured)) {
             var options = captured.itemOptions().stream().filter(o -> item.menuItemNo().equals(o.menuItemNo()))
                     .findFirst().orElseThrow(MenuSelectionFeasibilityPolicy::conflict);
             for (String group : options.optionGroupNos()) needed.add(new Key("OPTION_GROUP", group));
             boolean bundle = captured.dishes().stream()
                     .anyMatch(d -> item.goodsNo().equals(d.goodsNo()) && "BUNDLE".equals(d.dishKind()));
+            List<String> skus = List.of();
             if (bundle) {
-                var skus = "EXPLICIT".equals(item.skuScope()) ? item.skuNos()
+                skus = "EXPLICIT".equals(item.skuScope()) ? item.skuNos()
                         : body.goodsFacts().stream().filter(g -> item.goodsNo().equals(g.goodsNo()))
                                 .findFirst().orElseThrow(MenuSelectionFeasibilityPolicy::conflict)
                                 .skus().stream().map(s -> s.skuNo()).toList();
                 skus.forEach(sku -> needed.add(new Key("BUNDLE", sku)));
             }
+            boundItems.add(new BoundItem(item.menuItemNo(), options.optionGroupNos(), skus));
         }
         var results = new ArrayList<GroupResult>();
         for (var key : needed) {
@@ -96,7 +105,33 @@ public final class MenuSelectionFeasibilityPolicy {
             }
         }
         MenuSourcePolicy.validateProof(json, proof.query(), proof, clock.instant().atOffset(ZoneOffset.UTC));
-        return new Report(results, proof.validUntil().toInstant());
+        var byDefinition = new HashMap<Key, List<SelectionFeasibility.Result>>();
+        for (var result : results)
+            byDefinition.computeIfAbsent(new Key(result.configKind(), result.configNo()), k -> new ArrayList<>())
+                    .add(result.result());
+        var items = new ArrayList<ItemResult>();
+        for (var item : boundItems) {
+            var options = new ArrayList<SelectionFeasibility.Result>();
+            item.groups().forEach(group -> options.addAll(byDefinition.get(new Key("OPTION_GROUP", group))));
+            items.add(compose(item.itemNo(), null, "OPTION", options));
+            for (String sku : item.bundleSkus())
+                items.add(compose(item.itemNo(), sku, "BUNDLE", byDefinition.get(new Key("BUNDLE", sku))));
+        }
+        return new Report(results, items, proof.validUntil().toInstant());
+    }
+
+    private static ItemResult compose(String item, String sku, String kind,
+            List<SelectionFeasibility.Result> groups) {
+        for (var group : groups) if (group.status() != SelectionFeasibility.Status.PROVEN)
+            return new ItemResult(item, sku, kind, group.status(), null, null);
+        int minimum = groups.stream().mapToInt(SelectionFeasibility.Result::minimumSelections).sum();
+        int worst = minimum;
+        for (var group : groups)
+            worst = Math.max(worst, minimum - group.minimumSelections() + group.maxForcedMinSelections());
+        var status = minimum > CartInputPolicy.MAX_SELECTIONS ? SelectionFeasibility.Status.IMPOSSIBLE
+                : worst > CartInputPolicy.MAX_SELECTIONS ? SelectionFeasibility.Status.UNREACHABLE
+                : SelectionFeasibility.Status.PROVEN;
+        return new ItemResult(item, sku, kind, status, minimum, worst);
     }
 
     private static BizException conflict() { return BizException.of(ErrorCode.CONFLICT); }

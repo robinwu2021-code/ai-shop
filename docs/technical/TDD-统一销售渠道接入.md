@@ -1372,7 +1372,7 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 
 - 最终独立只读复核：本批无可执行Important或新增Minor，不重复复核；既有图片批次顺序P3保持独立待办。复核不代替执行方测试，不覆盖真实平台、生产并发及部署时钟。业务提交58642e6a0；本批仅本地提交，未推送、部署或开启渠道。下一批B2按本节已确认方案组装完整菜项/配料/套餐/媒体/价格及时间证据，并补原选择可行性；C传输接线和S3可靠通知随后执行。
 
-### B2.1 原选择组合可行性交付（2026-10-28，本地，最终复核中）
+### B2.1 原选择组合可行性交付（2026-10-28，本地）
 
 本批落实§2 B2.1。原OptionSelectionPolicy/OptionPublicationPolicy/BundleDefinitionPolicy同FQN迁入food-api，原入口与定义JSON不变；原选项发布仍只要求一个合法组合，渠道prove额外证明每个max>0选项能出现在至少一个组合。共用SelectionFeasibility搜索核以六位精确BigInteger求区间交，正选择至少一个微量单位，容量与CartInputPolicy原999999上限求交；依赖传播、互斥排除及强制项沿原规则。原搜索把正量无限趋零或忽略下单上限的存在性误判得到修正，不新增“默认值必须满足组最低量”的规则。
 
@@ -1396,3 +1396,8 @@ MenuSelectionFeasibilityPolicy只读取原CURRENT/MENU Proof并在搜索前后�
 - 原B1已合并远端支付提交并正常推送至2bcb7661a，远端ls-remote已核验；本批B2.1以该合并提交为BASE。未改支付、前端、表/迁移、端点或运行开关；B2.2完整目录投影、C传输接线及S3可靠通知仍待后续。
 
 - 默认量修复后集成shop-app及独立food-server/commerce-server重新编译package PASS32.072s（不重复测试）；设计10项、生成25项、SQL可移植性与diff守卫通过。最终独立复核结论随后补记。
+
+- 独立只读复核发现一项Important：原购物车每行配料选择总数最多100，逐组有解会误放行两组各51必选项，也可能放行基础100但某分支需要101的菜项。两个真实用例均RED（原Report.proven为true）；一轮修复后原相关107项全部GREEN19.523s，不重复复核，无新增Minor。
+- 修复采用同一精确搜索核：对已证明有解的组，按选择项数量上限二分求最少项数m；再求强制任一展示选项的最少项数，取最大w。所有搜索仍共同消耗原组/目录预算，预算不足为UNPROVEN。组结果新增minimumSelections/maxForcedMinSelections；只有完整PROVEN时才给出精确计数，不把首个贪心解误当最优。
+- 菜项按原绑定组合独立组：base=Σm，worst=max(base,max(base−m_g+w_g))。base>100为IMPOSSIBLE；base≤100且worst>100为UNREACHABLE；否则PROVEN。Report新增按menuItemNo/mainSkuNo/selectionKind的ItemResult，proven必须同时满足组与菜项。套餐按每个实际主SKU分别组合，配料与套餐沿原CartInputPolicy分开计数，不跨菜项合并；MAX_SELECTIONS统一复用原购物车常量。
+- 验收：MenuSelectionFeasibilityTest.independentGroupsCannotHideAnItemThatNeeds102CartSelections、eachVisibleBranchMustRemainReachableWithinTheSharedItemCountLimit同时直接调用原CartInputPolicy；minimumCountsUseTheBestCapacityRatherThanTheFirstGreedyWitness验证非贪心最优；原180个穷举对照同步验证m/w。审查修复后最终26项直接相关/架构专项通过，集成及两个独立服务package PASS38.315s；本批共111个唯一检查通过，0失败/跳过，不累加重复复测。最终源码仅做import排序/行宽整理，业务与验证一致。

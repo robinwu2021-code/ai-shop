@@ -18,6 +18,7 @@ import ai.neargo.shop.food.policy.SelectionFeasibility;
 import ai.neargo.shop.food.policy.SelectionFeasibility.Status;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import org.junit.jupiter.api.Test;
@@ -139,6 +140,8 @@ class FoodCatalogSelectionFeasibilityTest {
             int min = random.nextInt(9), max = min + random.nextInt(9 - min);
             boolean any = false;
             boolean[] reachable = new boolean[4];
+            int minimum = 5;
+            int[] forcedMinimum = new int[4]; Arrays.fill(forcedMinimum, 5);
             for (int code = 0; code < 81; code++) {
                 int bits = code, total = 0;
                 int[] amounts = new int[4];
@@ -148,13 +151,22 @@ class FoodCatalogSelectionFeasibilityTest {
                         && amounts[Integer.parseInt(set.get(1).substring(1))] > 0);
                 if (!valid) continue;
                 any = true;
-                for (int i = 0; i < 4; i++) reachable[i] |= amounts[i] > 0;
+                int count = (int) Arrays.stream(amounts).filter(a -> a > 0).count();
+                minimum = Math.min(minimum, count);
+                for (int i = 0; i < 4; i++) {
+                    reachable[i] |= amounts[i] > 0;
+                    if (amounts[i] > 0) forcedMinimum[i] = Math.min(forcedMinimum[i], count);
+                }
             }
             Status expected = !any ? Status.IMPOSSIBLE : Status.PROVEN;
             if (any) for (boolean found : reachable) if (!found) expected = Status.UNREACHABLE;
             var actual = OptionPublicationPolicy.prove(BigDecimal.valueOf(min, 6), BigDecimal.valueOf(max, 6),
                     config, SelectionFeasibility.Budget.catalog());
             assertThat(actual.status()).as("sample %s", sample).isEqualTo(expected);
+            if (expected == Status.PROVEN) {
+                assertThat(actual.minimumSelections()).isEqualTo(minimum);
+                assertThat(actual.maxForcedMinSelections()).isEqualTo(Arrays.stream(forcedMinimum).max().orElseThrow());
+            }
         }
     }
 
@@ -182,6 +194,14 @@ class FoodCatalogSelectionFeasibilityTest {
                         q("0"), q("1000000"), 0)));
         assertThatThrownBy(() -> BundleDefinitionPolicy.prove(bundle, SelectionFeasibility.Budget.catalog()))
                 .isInstanceOf(BizException.class);
+    }
+
+    @Test void minimumCountsUseTheBestCapacityRatherThanTheFirstGreedyWitness() {
+        var config = input(List.of(item("A", "0", "1"), item("B", "0", "3")), rules(List.of(), List.of()));
+        var result = prove("3", "3", config);
+        assertThat(result.status()).isEqualTo(Status.PROVEN);
+        assertThat(result.minimumSelections()).isEqualTo(1);
+        assertThat(result.maxForcedMinSelections()).isEqualTo(2);
     }
 
     static ReplaceBundleDefinitionReq bundle(String min, String max, String itemMin, String itemMax, String units) {

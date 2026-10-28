@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
@@ -18,8 +19,13 @@ public final class SelectionFeasibility {
     /** Proven absence and exhausted search have different business meanings and must never be conflated. */
     public enum Status { PROVEN, IMPOSSIBLE, UNREACHABLE, UNPROVEN }
 
-    /** The first unreachable business key is diagnostic; exhaustion is never reported as impossibility. */
-    public record Result(Status status, List<String> unreachableItemNos, long visitedNodes) {
+    /**
+     * The two counts are proven minima for composing independent groups under a line-wide count limit.
+     * maxForcedMinSelections is the largest minimum when any one visible choice is forced.
+     * Counts are absent unless all choices were proven; the first unreachable key is diagnostic.
+     */
+    public record Result(Status status, List<String> unreachableItemNos, long visitedNodes,
+            Integer minimumSelections, Integer maxForcedMinSelections) {
         public Result { unreachableItemNos = List.copyOf(unreachableItemNos); }
     }
 
@@ -48,24 +54,27 @@ public final class SelectionFeasibility {
         var solver = new Solver(min, max, choices, rules, budget);
         long before = budget.used;
         try {
-            var witness = solver.search(new BitSet(), new BitSet());
+            var witness = solver.search(new BitSet(), new BitSet(), CartInputPolicy.MAX_SELECTIONS);
             if (witness == null) return result(Status.IMPOSSIBLE, List.of(), budget, before);
-            if (everyChoice) for (int i = 0; i < choices.size(); i++) {
-                if (solver.upper[i].signum() == 0 || witness.get(i)) continue;
+            if (!everyChoice) return result(Status.PROVEN, List.of(), budget, before);
+            var minimumWitness = solver.minimize(new BitSet(), witness);
+            int minimum = minimumWitness.cardinality(), worst = minimum;
+            for (int i = 0; i < choices.size(); i++) {
+                if (solver.upper[i].signum() == 0 || minimumWitness.get(i)) continue;
                 var forced = new BitSet(); forced.set(i);
-                var reachable = solver.search(forced, new BitSet());
+                var reachable = solver.search(forced, new BitSet(), CartInputPolicy.MAX_SELECTIONS);
                 if (reachable == null)
                     return result(Status.UNREACHABLE, List.of(choices.get(i).id()), budget, before);
-                witness.or(reachable);
+                worst = Math.max(worst, solver.minimize(forced, reachable).cardinality());
             }
-            return result(Status.PROVEN, List.of(), budget, before);
+            return new Result(Status.PROVEN, List.of(), budget.used - before, minimum, worst);
         } catch (Exhausted limit) {
             return result(Status.UNPROVEN, List.of(), budget, before);
         }
     }
 
     private static Result result(Status status, List<String> ids, Budget budget, long before) {
-        return new Result(status, ids, budget.used - before);
+        return new Result(status, ids, budget.used - before, null, null);
     }
 
     private static BigInteger units(BigDecimal value) { return value.movePointRight(6).toBigIntegerExact(); }
@@ -103,7 +112,18 @@ public final class SelectionFeasibility {
             }
         }
 
-        BitSet search(BitSet selected, BitSet excluded) {
+        BitSet minimize(BitSet forced, BitSet witness) {
+            int low = forced.cardinality(), high = witness.cardinality();
+            while (low < high) {
+                int middle = low + (high - low) / 2;
+                var candidate = search((BitSet) forced.clone(), new BitSet(), middle);
+                if (candidate == null) low = middle + 1;
+                else { witness = candidate; high = candidate.cardinality(); }
+            }
+            return witness;
+        }
+
+        BitSet search(BitSet selected, BitSet excluded, int countLimit) {
             if (visited >= GROUP_LIMIT || budget.used >= budget.limit) throw new Exhausted();
             visited++; budget.used++;
             selected.or(required);
@@ -114,7 +134,7 @@ public final class SelectionFeasibility {
                     selected.or(dependencies.get(i));
                 changed = count != selected.cardinality();
             } while (changed);
-            if (selected.intersects(excluded)) return null;
+            if (selected.intersects(excluded) || selected.cardinality() > countLimit) return null;
             for (var set : mutex) {
                 var picked = (BitSet) selected.clone(); picked.and(set);
                 if (picked.cardinality() > 1) return null;
@@ -122,14 +142,19 @@ public final class SelectionFeasibility {
                     var blocked = (BitSet) set.clone(); blocked.andNot(picked); excluded.or(blocked);
                 }
             }
-            BigInteger lo = BigInteger.ZERO, hi = BigInteger.ZERO, possible = BigInteger.ZERO;
+            BigInteger lo = BigInteger.ZERO, hi = BigInteger.ZERO;
+            var optional = new ArrayList<BigInteger>();
             for (int i = 0; i < upper.length; i++) {
-                if (!excluded.get(i)) possible = possible.add(upper[i]);
+                if (!selected.get(i) && !excluded.get(i)) optional.add(upper[i]);
                 if (selected.get(i)) {
                     if (lower[i].compareTo(upper[i]) > 0) return null;
                     lo = lo.add(lower[i]); hi = hi.add(upper[i]);
                 }
             }
+            optional.sort(Comparator.reverseOrder());
+            BigInteger possible = hi;
+            for (int i = 0; i < Math.min(optional.size(), countLimit - selected.cardinality()); i++)
+                possible = possible.add(optional.get(i));
             if (lo.compareTo(maximum) > 0 || possible.compareTo(minimum) < 0) return null;
             if (lo.max(minimum).compareTo(hi.min(maximum)) <= 0) return selected;
             int next = -1;
@@ -137,10 +162,10 @@ public final class SelectionFeasibility {
                     && upper[i].signum() > 0) { next = i; break; }
             if (next < 0) return null;
             var include = (BitSet) selected.clone(); include.set(next);
-            var found = search(include, (BitSet) excluded.clone());
+            var found = search(include, (BitSet) excluded.clone(), countLimit);
             if (found != null) return found;
             var omit = (BitSet) excluded.clone(); omit.set(next);
-            return search((BitSet) selected.clone(), omit);
+            return search((BitSet) selected.clone(), omit, countLimit);
         }
     }
 }
