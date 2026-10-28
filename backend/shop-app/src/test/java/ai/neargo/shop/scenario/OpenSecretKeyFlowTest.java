@@ -41,7 +41,10 @@ import org.springframework.web.context.WebApplicationContext;
         "shop.secret.master-keys[0].alias=test-pay-mk-1",
         "shop.secret.master-keys[0].namespace=PAY",
         "shop.secret.master-keys[0].material=dGVzdC1vbmx5LW1hc3Rlci1rZXktMDEyMzQ1Njc4OSE=",
-        "shop.secret.master-keys[0].active=true"})
+        "shop.secret.master-keys[0].active=true",
+        // 试点接入方的密钥今天在部署配置里（M3.10 要把它导进密钥模块）：整串带前缀的 AppSecret 与 EncryptKey
+        "shop.pay.open.apps.APP-IMPORT-1.hmac-secret=sk_test_Imp0rtSecretAbCdEfGh0123456789",
+        "shop.pay.open.apps.APP-IMPORT-1.encrypt-key=Imp0rtEncryptKey0123456789abcdef"})
 @ActiveProfiles("test")
 class OpenSecretKeyFlowTest {
 
@@ -56,6 +59,8 @@ class OpenSecretKeyFlowTest {
     @Autowired private ai.neargo.shop.spi.settle.SettlePort settle;
     @Autowired private ai.neargo.shop.pay.notify.service.BizNotifyService notifier;
     @Autowired private tools.jackson.databind.ObjectMapper json;
+    @Autowired private ai.neargo.shop.pay.secret.OpenKeyImport keyImport;
+    @Autowired private ai.neargo.shop.pay.openapp.AppFieldCipher cipher;
 
     private MockMvc mvc;
     private String appNo;
@@ -242,6 +247,48 @@ class OpenSecretKeyFlowTest {
                 .as("nonce 每次新生成").isNotEqualTo(json.readTree(hooks.get(1).body()).get("resource").get("nonce").asString());
         assertThat(jdbc.queryForObject("SELECT status FROM pay_biz_notify WHERE id=?", String.class, n.get("id")))
                 .isEqualTo("DELIVERED");
+    }
+
+    @Test
+    @DisplayName("★★★ 试点密钥导入（M3.10）：上传人导入并验证 → 同一人不能启用（两人规则）→ 另一人启用后，接入方照旧用原来那串 AppSecret 签的请求过得去；重复导入不加版本；报告里没有密钥")
+    void importConfigKeysWithTwoPeople() throws Exception {
+        jdbc.update("DELETE FROM pay_app WHERE app_no='APP-IMPORT-1'");
+        jdbc.update("INSERT INTO pay_app (app_no, name, owner_type, status, scopes, rate_limit_qps,"
+                + " daily_refund_limit_minor, sandbox, created_at, updated_at) VALUES ('APP-IMPORT-1', '导入', 'PARTNER',"
+                + " 'ACTIVE', 'pay:read', 1000, 0, 1, NOW(), NOW())");
+        IssuedCredential configSecret = new IssuedCredential(null, 0, "sk_test_Imp0rtSecretAbCdEfGh0123456789", null);
+        String saved = appNo;
+        appNo = "APP-IMPORT-1";
+        try {
+            assertThat(getOrder(configSecret, null, null, rid()).getStatus()).as("导入前：密钥模块里没有").isEqualTo(401);
+
+            java.util.List<String> uploaded = keyImport.upload(java.util.List.of("APP-IMPORT-1"), "ops-alice");
+            assertThat(String.join("\n", uploaded)).contains("AppSecret").contains("EncryptKey").contains("VERIFIED")
+                    .doesNotContain("Imp0rtSecret").doesNotContain("Imp0rtEncryptKey");
+            assertThat(getOrder(configSecret, null, null, rid()).getStatus()).as("还没启用").isEqualTo(401);
+
+            assertThat(String.join("\n", keyImport.upload(java.util.List.of("APP-IMPORT-1"), "ops-alice")))
+                    .as("重复导入不加版本").contains("already");
+            assertThat(String.join("\n", keyImport.enable(java.util.List.of("APP-IMPORT-1"), "ops-alice")))
+                    .as("上传人自己不能启用").contains("two-person");
+            assertThat(getOrder(configSecret, null, null, rid()).getStatus()).isEqualTo(401);
+
+            String enabled = String.join("\n", keyImport.enable(java.util.List.of("APP-IMPORT-1"), "ops-bob"));
+            assertThat(enabled).contains("ACTIVE");
+            assertThat(getOrder(configSecret, null, null, rid()).getStatus()).as("启用后：原来那串照样能用")
+                    .isNotEqualTo(401);
+            long appId = jdbc.queryForObject("SELECT id FROM pay_app WHERE app_no='APP-IMPORT-1'", Long.class);
+            ai.neargo.shop.pay.openapp.entity.PayApp app = new ai.neargo.shop.pay.openapp.entity.PayApp();
+            app.setId(appId);
+            app.setAppNo("APP-IMPORT-1");
+            app.setOwnerType("PARTNER");
+            var encrypted = cipher.encrypt(app, null, "x".getBytes(java.nio.charset.StandardCharsets.UTF_8), new byte[0]);
+            assertThat(encrypted).as("EncryptKey 也进了密钥模块").isPresent();
+            assertThat(String.join("\n", keyImport.status(java.util.List.of("APP-IMPORT-1"))))
+                    .contains("v1").contains("ACTIVE").doesNotContain("Imp0rt");
+        } finally {
+            appNo = saved;
+        }
     }
 
     private Integer loggedVersion(String requestId) {

@@ -278,6 +278,21 @@ public class DefaultKeyRegistry implements KeyRegistry {
         return requireVersion(ref).getFingerprint();
     }
 
+    @Override
+    public List<VersionInfo> versions(long keyId) {
+        requireKey(keyId);
+        return db.versions().selectList(Wrappers.<SecKeyVersion>lambdaQuery().eq(SecKeyVersion::getSecKeyId, keyId)
+                        .orderByAsc(SecKeyVersion::getVersionIndex)).stream()
+                .map(v -> new VersionInfo(new KeyVersionRef(keyId, v.getVersionIndex()), v.getStatus(), v.getEnteredBy(),
+                        v.getFingerprint(), v.getExternalKeyId()))
+                .toList();
+    }
+
+    @Override
+    public String fingerprintOfMaterial(byte[] material) {
+        return EnvelopeCipher.symmetricFingerprint(material);
+    }
+
     private record Inserted(KeyVersionRef ref, SecKeyVersion row) {
     }
 

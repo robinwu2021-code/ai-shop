@@ -634,6 +634,7 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M3.6 | **过渡**：接入方还没有 EncryptKey 时体照旧带明文 `data`（推送内容本就只有掩码）；有了就只发 `resource` | 试点接入方还没发 EncryptKey，一刀切就收不到推送 |
 | M3.6 | **对外行为变化**：推送签名由「与请求同构」（METHOD / PATH / 查询 / 体哈希）改为 P2（`Timestamp\nNonce\nhex(SHA256(体))`，与响应签名同一规则），多了 `X-Key-Serial`（密钥模块来源时）与 `stateVersion` 字段；`eventType` 仍是现有的 `PAYMENT_SUCCEEDED` 等（未改成 API 清单的 `payment.succeeded`） | API 清单 §3 定的是 P2；事件名是现有契约，改名另发版本。试点接入方的验签代码要跟着改 |
 | M3.9 | 新建 `docs/api/openapi-pay-open.yaml`（I5 原本该建、没有建）：手写，v1.1；与代码的一致性由 `OpenPayContractTest` 守（路由一一对应、`x-sensitive` = 守卫字段清单、鉴权与签名头、错误码码值、推送信封、P1–P4 向量）。错误码用数字（与全仓一致），`eventType` 用现有枚举名 | 契约是交给接入方的那一份，手写最容易与实现走散；按「对得上就绿」的闸门守着，不再另靠人工核对 |
+| M3.10 | 代码只做「工具 + 手册」：一次性启动动作 `PayOpenKeyImportRunner`（upload / enable / status，两人规则由密钥模块强制，按指纹判重）+ 运维手册 `支付服务-开放API密钥迁入密钥模块-运维手册.md`；`KeyRegistry` 加 `versions(keyId)` 与 `fingerprintOfMaterial`。各环境的导入、切 `key-source=secret`、轮换演练由运维按手册执行（用户 2026-10-28 定） | 真实密钥与各环境部署配置不在仓库里；开发者控制台（接入方自助发密钥）还没有，轮换演练也走同一个导入动作 |
 
 ---
 

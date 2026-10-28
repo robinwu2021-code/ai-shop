@@ -221,5 +221,15 @@ class SecretAppSignaturesTest {
         public String fingerprintOf(KeyVersionRef ref) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public List<VersionInfo> versions(long keyId) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public String fingerprintOfMaterial(byte[] material) {
+            throw new UnsupportedOperationException();
+        }
     }
 }

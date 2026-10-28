@@ -76,6 +76,16 @@ public interface KeyRegistry {
     /** 指纹：唯一可回显的密钥信息 */
     String fingerprintOf(KeyVersionRef ref);
 
+    /** 一把密钥的全部版本（不含材料），按版本号升序：运维看状态、导入前判重用（开发计划 M3.10） */
+    List<VersionInfo> versions(long keyId);
+
+    /** 材料的指纹（与登记版本时同一算法），不落库、不记日志：导入前判重用（开发计划 M3.10） */
+    String fingerprintOfMaterial(byte[] material);
+
+    /** 一个版本的元数据：没有任何材料 */
+    record VersionInfo(KeyVersionRef ref, String status, String enteredBy, String fingerprint, String externalKeyId) {
+    }
+
     /**
      * 登记一把密钥所需。
      *
