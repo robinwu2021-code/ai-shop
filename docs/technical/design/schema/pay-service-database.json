@@ -2290,6 +2290,54 @@
           "sqlType": "DATETIME(3) NOT NULL",
           "meaning": "收到时间",
           "meaningEn": "Received at"
+        },
+        {
+          "name": "source_service",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "调用方服务名（spring.application.name）；内部调用取不到记 UNKNOWN",
+          "meaningEn": "Caller service name (spring.application.name); UNKNOWN when absent"
+        },
+        {
+          "name": "source_module",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "调用方业务线：MALL / FOOD / RETAIL / BEAUTY / STORED_VALUE …",
+          "meaningEn": "Caller business line"
+        },
+        {
+          "name": "source_instance",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "调用方实例：主机名或 pod 名",
+          "meaningEn": "Caller instance (host or pod)"
+        },
+        {
+          "name": "source_ip",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "调用方自报的服务器 IP；client_ip 仍是支付实际看到的对端 IP（内嵌形态为空）",
+          "meaningEn": "Caller-reported server IP; client_ip stays the peer seen by payment"
+        },
+        {
+          "name": "origin_api",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "触发这次调用的上游接口或任务名，如 POST /mp/orders/{orderNo}/pay",
+          "meaningEn": "Upstream API or job that triggered the call"
+        },
+        {
+          "name": "origin_client",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "上游请求来源端：认证链端码 APP_C / APP_BIZ / WEB_OPS / H5 / PARTNER；JOB / OUTBOX / UNKNOWN",
+          "meaningEn": "Upstream client code"
+        },
+        {
+          "name": "origin_ip",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "上游请求的终端用户 IP（经可信代理头）",
+          "meaningEn": "End-user IP of the upstream request (trusted proxy header)"
+        },
+        {
+          "name": "origin_ua_digest",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "上游请求 User-Agent 的 SHA-256",
+          "meaningEn": "SHA-256 of the upstream User-Agent"
         }
       ],
       "uniqueKeys": [],
@@ -2312,12 +2360,17 @@
         [
           "outcome",
           "received_at"
+        ],
+        [
+          "source_service",
+          "received_at"
         ]
       ],
       "checks": [],
       "notes": [
         "鉴权失败的请求也记（outcome=REJECTED_AUTH，只记脱敏后的头部与指纹），用于发现撞库与重放",
-        "查询类请求同样记录；量大时按月归档"
+        "查询类请求同样记录；量大时按月归档",
+        "内部调用（entry=INTERNAL_PORT / INTERNAL_HTTP）的来源 8 列由调用参数 CallSource 带进来，只留痕不鉴权（V13，ADR-045 G9）"
       ],
       "titleZh": "请求记录",
       "titleEn": "API Request Log",

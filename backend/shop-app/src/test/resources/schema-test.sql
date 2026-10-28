@@ -10790,6 +10790,14 @@ CREATE TABLE IF NOT EXISTS pay_api_request_log
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    source_service VARCHAR(64) NULL,
+    source_module VARCHAR(24) NULL,
+    source_instance VARCHAR(128) NULL,
+    source_ip VARCHAR(64) NULL,
+    origin_api VARCHAR(128) NULL,
+    origin_client VARCHAR(24) NULL,
+    origin_ip VARCHAR(64) NULL,
+    origin_ua_digest CHAR(64) NULL,
     PRIMARY KEY (id)
 );
 

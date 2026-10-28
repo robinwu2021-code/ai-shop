@@ -603,6 +603,8 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M2.1 | 只挂了进程内任务执行器（`InProcessJobConfig`）与 Outbox 分发器；直接 `@Scheduled` 的方法未绑定，来源端记 `UNKNOWN` | 63 个 `@Scheduled` 类不逐个改；补偿查单若走 `@Scheduled`，M2.7 抽样前再在调度器上加 `TaskDecorator` |
 | M2.2 | 两个命令的 `source` 标 `@JsonIgnore`：<b>不进</b> `/internal/pay/v1` 的请求体 | 请求体的契约不变（新旧版本混部时 `pay-svc` 不会遇到认不出的字段）；来源只走 `X-Call-Source` 头（M2.3），接收方以头为准、不会两处对不上 |
 | M2.3 | `CallSourceClientInterceptor` 只补 `X-Call-Source`（已有则不覆盖），<b>不自动带</b> `X-Internal-Caller` | 调用方码的含义随接收方而变（支付侧是 `pay_app.app_no` 的 MALL / FOOD），由各远程实现显式给；`PaymentInternalApi` 四个方法加显式的来源头参数，`RemotePaymentPort` 用命令里的那份（任务显式传的来源不被线程上下文顶掉） |
+| M2.5 | 先于 M2.4 做 | 记录器要写的列得先有 |
+| M2.5 | 迁移号仍用 V16，但 V13–V15 尚无人占用 | 支付迁移的 Flyway 默认不许乱序（`outOfOrder=false`）：V16 先合入、之后再来 V13 会启动失败。**合入 codex 前按 `db/pay/README.md`「先合先占」改成当时的下一个号**，同步改开发计划 §0.2 与本系列文档 |
 
 ---
 

@@ -46,4 +46,20 @@ public class PayApiRequestLog extends PayBaseEntity {
     private String outcome;
     private Integer elapsedMs;
     private LocalDateTime receivedAt;
+
+    // ---- 内部调用的来源（V13；CallSource，只留痕 —— ADR-045 G9）。外部入口为空
+
+    /** 调用方服务名；取不到记 UNKNOWN */
+    private String sourceService;
+    /** 调用方业务线：MALL / FOOD … */
+    private String sourceModule;
+    private String sourceInstance;
+    /** 调用方自报的服务器 IP（{@code clientIp} 是支付实际看到的对端） */
+    private String sourceIp;
+    /** 触发这次调用的上游接口或任务名 */
+    private String originApi;
+    /** 上游请求来源端：APP_C / APP_BIZ / WEB_OPS / H5 / PARTNER / JOB / OUTBOX / UNKNOWN */
+    private String originClient;
+    private String originIp;
+    private String originUaDigest;
 }
