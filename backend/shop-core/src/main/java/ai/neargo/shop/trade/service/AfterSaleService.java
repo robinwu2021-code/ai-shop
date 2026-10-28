@@ -101,6 +101,10 @@ public interface AfterSaleService {
     AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
                         Long refundMinor, String refundMode);
 
+    /** Authenticated B entry supplies the person separately from merchant ownership for refund review isolation. */
+    AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
+                        Long refundMinor, String refundMode, String operatorNo);
+
     /** 驳回。{@code remark} 必填 —— 用户要据此决定是否申诉。 */
     AfterSaleVO reject(String merchantNo, String afterSaleNo, String remark);
 
@@ -118,6 +122,13 @@ public interface AfterSaleService {
         return confirmReturn(merchantNo, afterSaleNo, false);
     }
 
+    /** The employee receiving returned goods is the cash refund decision maker. */
+    AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, boolean restockApproved, String operatorNo);
+
+    /** Keep the authenticated receiver when V2 records item-level receipt evidence. */
+    AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, String receiptNo,
+                             List<ReturnReceiveLine> lines, String operatorNo);
+
     record ReturnReceiveLine(Long itemId, Integer receivedQty, String quality) { }
 
     /**
@@ -125,6 +136,9 @@ public interface AfterSaleService {
      * 签收后系统只提醒，<b>不自动退</b>；商家也可以不等签收直接确认。
      */
     AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo);
+
+    /** Bind the refund decision to the authenticated person, independent of merchant/store scope. */
+    AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo, String reason, String operatorNo);
 
     /** In-transit exception needs the merchant's explicit reason; signed goods need no reason. */
     default AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo, String reason) {

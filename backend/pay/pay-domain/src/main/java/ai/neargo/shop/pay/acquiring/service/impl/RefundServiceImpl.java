@@ -129,9 +129,11 @@ public class RefundServiceImpl implements RefundService {
             return;
         }
         PayOrder order = DataScopeContext.executeWithoutScope(() -> orders.selectById(origin.getPayOrderId()));
-        // 现有售后路径：操作员没有一路传进支付（偏差 6），记售后单号以便追溯
+        // The source supplies its immutable decision maker; historical callers remain explicitly unattributed.
+        String requestedBy = request.requestedBy() == null || request.requestedBy().isBlank()
+                ? "AFTER_SALE:" + request.afterSaleNo() : request.requestedBy();
         PayRefund pr = open(order.getId(), request.executionNo(), request.afterSaleNo(), request.amountMinor(),
-                request.reason(), "AFTER_SALE:" + request.afterSaleNo(), "BIZ", order.getPayAppId());
+                request.reason(), requestedBy, "BIZ", order.getPayAppId());
         PayRefund link = new PayRefund();
         link.setId(pr.getId());
         link.setStlPaymentId(refundRow.getId());

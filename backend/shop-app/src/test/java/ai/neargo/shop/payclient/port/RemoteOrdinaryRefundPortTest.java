@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 class RemoteOrdinaryRefundPortTest {
     private final PayInternalApi api = mock(PayInternalApi.class);
     private final RemoteOrdinaryRefundPort port = new RemoteOrdinaryRefundPort(api);
-    private final RefundRequest frozen = new RefundRequest("RF1", "AS1", "S1", "P1", 50, "USD", "return");
+    private final RefundRequest frozen = new RefundRequest(
+            "RF1", "AS1", "S1", "P1", 50, "USD", "return", "STAFF-ORIGINAL");
     private final OrdinaryRefundPort.Execution command = new OrdinaryRefundPort.Execution("O1", "U1", "O1-2", frozen);
     private final RefundDispatchResult unknown = new RefundDispatchResult("RF1", "RP1",
             RefundDispatchResult.DispatchStatus.UNKNOWN, "REFUND_QUERY_UNKNOWN", true, null);
@@ -27,6 +28,14 @@ class RemoteOrdinaryRefundPortTest {
         assertThat(port.query(command)).isEqualTo(expected);
         verify(api, times(1)).ordinaryRefundRequest(command);
         verify(api, times(1)).ordinaryRefundQuery(command);
+    }
+
+    @Test
+    void echoLosingTheOriginalApplicantIsRejected() {
+        var missing = new RefundRequest("RF1", "AS1", "S1", "P1", 50, "USD", "return");
+        var oldEcho = new OrdinaryRefundPort.Execution("O1", "U1", "O1-2", missing);
+        when(api.ordinaryRefundQuery(command)).thenReturn(new OrdinaryRefundPort.Receipt(oldEcho, unknown));
+        assertThatThrownBy(() -> port.query(command)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test

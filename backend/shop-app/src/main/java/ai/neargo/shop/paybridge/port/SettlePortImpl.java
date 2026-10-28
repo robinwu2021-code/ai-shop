@@ -208,6 +208,12 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
+    public String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason,
+                                String requestedBy) {
+        return settleService.prepareRefund(subOrderNo, afterSaleNo, amountMinor, reason, requestedBy);
+    }
+
+    @Override
     public String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
         return settleService.prepareRefund(subOrderNo, afterSaleNo, amountMinor, reason);
     }

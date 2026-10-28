@@ -630,6 +630,12 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
+        return prepareRefund(subOrderNo, afterSaleNo, amountMinor, reason, null);
+    }
+
+    @Override
+    public String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason,
+                                String requestedBy) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("PAY_REFUND_PREPARE_IN_TRANSACTION");
         }
@@ -638,7 +644,7 @@ public class SettleServiceImpl implements SettleService {
         if (bill == null) {
             throw new IllegalArgumentException("PAY_REFUND_BILL_UNKNOWN");
         }
-        String no = paymentLedger.refund(bill.getOrderNo(), subOrderNo, afterSaleNo, amountMinor, reason);
+        String no = paymentLedger.refund(bill.getOrderNo(), subOrderNo, afterSaleNo, amountMinor, reason, requestedBy);
         if (no == null) {
             throw new IllegalArgumentException("PAY_REFUND_ORIGINAL_PAYMENT_UNKNOWN");
         }

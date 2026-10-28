@@ -17,6 +17,8 @@ import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.order.refund.service.RefundFinancialOwnerService;
+import ai.neargo.shop.trade.order.refund.service.RefundRequesterService;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.Objects;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
@@ -39,6 +41,13 @@ public class RefundFinancialOwnerServiceImpl implements RefundFinancialOwnerServ
             ObjectProvider<OrdinaryRefundPort> refunds, SettlePort legacy) {
         this.sources = sources; this.cases = cases; this.children = children;
         this.payments = payments; this.refunds = refunds; this.legacy = legacy;
+    }
+
+    private RefundRequesterService requesters;
+
+    @Autowired
+    void setRequesters(RefundRequesterService requesters) {
+        this.requesters = requesters;
     }
 
     @Override
@@ -122,12 +131,13 @@ public class RefundFinancialOwnerServiceImpl implements RefundFinancialOwnerServ
         return source;
     }
 
-    private static OrdinaryRefundPort.Execution command(OrdRefundExecution row, OrdIndustryOrderSource source) {
+    private OrdinaryRefundPort.Execution command(OrdRefundExecution row, OrdIndustryOrderSource source) {
         return new OrdinaryRefundPort.Execution(row.getOrderNo(), source.getBuyerNo(), source.getPaymentOutTradeNo(), requestOf(row));
     }
-    private static RefundRequest requestOf(OrdRefundExecution row) {
+    private RefundRequest requestOf(OrdRefundExecution row) {
         return new RefundRequest(row.getExecutionNo(), row.getAfterSaleNo(), row.getSubOrderNo(), row.getOriginPaymentNo(),
-                row.getAmountMinor(), row.getCurrency(), row.getReason());
+                row.getAmountMinor(), row.getCurrency(), row.getReason(),
+                requesters == null ? null : requesters.requestedBy(row.getAfterSaleNo()));
     }
     private static BizException conflict() { return BizException.of(ErrorCode.CONFLICT); }
 }

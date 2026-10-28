@@ -10,7 +10,6 @@ import ai.neargo.shop.trade.order.refund.service.PointsRefundResourceService;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
 import ai.neargo.shop.trade.order.refund.service.RefundableQuery;
 import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Isolation;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionService;
 import ai.neargo.shop.trade.order.refund.policy.LineShares;
@@ -49,6 +48,8 @@ import ai.neargo.shop.trade.order.refund.port.AfterSaleLineStore;
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.refund.service.RefundRequesterService;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Value;
@@ -99,6 +100,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final AfterSaleMapper afterSaleMapper;
     private final StoreOrderMapper subOrderMapper;
     private final OrderStatusLogMapper statusLogMapper;
+    @Autowired
+    private RefundRequesterService refundRequesters;
     private final SettlePort settlePort;
     private final OutboxEventBus eventBus;
     private final ObjectMapper json;
@@ -713,6 +716,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
                                Long refundMinor, String refundMode) {
+        return approve(merchantNo, afterSaleNo, remark, refundMinor, refundMode, merchantNo);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
+                              Long refundMinor, String refundMode, String operatorNo) {
+        requireRefundOperator(operatorNo);
         if (OrdAfterSale.REFUND_MODE_POINTS.equals(refundMode)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -745,7 +756,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
         if (OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
             // 退货退款：同意 ≠ 立刻退钱，要等收到货。这里只推进到「等待寄回」（V403 起独立状态 WAIT_RETURN）
-            transit(as, AfterSaleEvent.APPROVE, Actor.MERCHANT, merchantNo, "商家已同意，待买家寄回",
+            transit(as, AfterSaleEvent.APPROVE, Actor.MERCHANT, operatorNo, "商家已同意，待买家寄回",
                     AfterSaleContext.builder().returnRefund(true).build());
             /*
              * **待寄回这条有时限**：不寄会被 AfterSaleTimeoutJob 自动关单。
@@ -763,14 +774,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          */
         if (OrdAfterSale.REFUND_ONLY.equals(as.getType())
                 && (stage == FulfillStage.SHIPPED || stage == FulfillStage.LABELED)) {
-            transit(as, AfterSaleEvent.APPROVE, Actor.MERCHANT, merchantNo,
+            transit(as, AfterSaleEvent.APPROVE, Actor.MERCHANT, operatorNo,
                     stage == FulfillStage.LABELED
                             ? "商家已同意，已出单待核实货物仍在店或签收后确认退款"
                             : "商家已同意，货在途——签收后由商家确认退款",
                     AfterSaleContext.builder().inTransit(true).build());
             return detailOf(as);
         }
-        doRefund(as, "商家同意退款", AfterSaleEvent.APPROVE, Actor.MERCHANT, merchantNo);
+        doRefund(as, "商家同意退款", AfterSaleEvent.APPROVE, Actor.MERCHANT, operatorNo);
         return detailOf(as);
     }
 
@@ -798,19 +809,35 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, boolean restockApproved) {
-        return confirmReturnInternal(merchantNo, afterSaleNo, null, null, restockApproved);
+        return confirmReturnInternal(merchantNo, afterSaleNo, null, null, restockApproved, merchantNo);
     }
 
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, String receiptNo,
                                      List<AfterSaleService.ReturnReceiveLine> receivedLines) {
-        return confirmReturnInternal(merchantNo, afterSaleNo, receiptNo, receivedLines, false);
+        return confirmReturnInternal(merchantNo, afterSaleNo, receiptNo, receivedLines, false, merchantNo);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, boolean restockApproved,
+                                    String operatorNo) {
+        requireRefundOperator(operatorNo);
+        return confirmReturnInternal(merchantNo, afterSaleNo, null, null, restockApproved, operatorNo);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, String receiptNo,
+                                    List<AfterSaleService.ReturnReceiveLine> receivedLines, String operatorNo) {
+        requireRefundOperator(operatorNo);
+        return confirmReturnInternal(merchantNo, afterSaleNo, receiptNo, receivedLines, false, operatorNo);
     }
 
     private AfterSaleVO confirmReturnInternal(String merchantNo, String afterSaleNo, String receiptNo,
                                                List<AfterSaleService.ReturnReceiveLine> receivedLines,
-                                               boolean legacyRestockApproved) {
+                                               boolean legacyRestockApproved, String operatorNo) {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
         if (!OrdAfterSale.RETURNING.equals(as.getStatus())) {
             // A retry after the platform transaction committed is a read, never a second receipt.
@@ -833,7 +860,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             as.setReturnReceivedAt(System.currentTimeMillis());
             as.setRestockApproved(restockApproved);
         }
-        doRefund(as, "商家已收到退货", AfterSaleEvent.RETURN_RECEIVED, Actor.MERCHANT, merchantNo);
+        doRefund(as, "商家已收到退货", AfterSaleEvent.RETURN_RECEIVED, Actor.MERCHANT, operatorNo);
         return detailOf(as);
     }
 
@@ -881,6 +908,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo, String reason) {
+        return confirmRefund(merchantNo, afterSaleNo, reason, merchantNo);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo, String reason, String operatorNo) {
+        requireRefundOperator(operatorNo);
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
         if (reason != null && reason.length() > 200) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -893,7 +927,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
         String label = needsException ? "商家核实货物后例外确认退款：" + reason.trim() : "商家确认退款";
         if (needsException) as.setMerchantRemark(reason.trim());
-        doRefund(as, label, AfterSaleEvent.CONFIRM_REFUND, Actor.MERCHANT, merchantNo);
+        doRefund(as, label, AfterSaleEvent.CONFIRM_REFUND, Actor.MERCHANT, operatorNo);
         return detailOf(as);
     }
 
@@ -1249,10 +1283,23 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 as.getRefundedAt(),null,progress.version(),progress.closureStatus(),progress.cashStatus(),progress.benefitsStatus());
     }
 
+    private static void requireRefundOperator(String operatorNo) {
+        if (operatorNo == null || operatorNo.isBlank()) throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
     private void appendLog(String subOrderNo, String status, String label,
                            String operatorType, String operatorNo) {
+        appendLog(subOrderNo, status, label, operatorType, operatorNo, null);
+    }
+
+    private void appendLog(String subOrderNo, String status, String label,
+                           String operatorType, String operatorNo, String afterSaleNo) {
         OrdStatusLog log = new OrdStatusLog();
         log.setSubOrderNo(subOrderNo);
+        if (afterSaleNo != null) {
+            log.setAggregateType("AFTER_SALE");
+            log.setAggregateNo(afterSaleNo);
+        }
         log.setStatus(status);
         log.setLabel(label);
         log.setOperatorType(operatorType);
@@ -1632,7 +1679,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             retryRows.create(afterSaleNo, retried.getAfterSaleNo(), operatorNo, reason.trim());
             appendLog(sub.getSubOrderNo(), OrdAfterSale.REFUNDING,
                     "运营重新发起退款（原售后 " + afterSaleNo + "）：" + reason.trim(),
-                    OrdStatusLog.BY_PLATFORM, operatorNo);
+                    OrdStatusLog.BY_PLATFORM, operatorNo, retried.getAfterSaleNo());
             return retried.getAfterSaleNo();
         })));
         return opsDetailOf(refundAfterSale(next, false));
@@ -1719,7 +1766,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
         String paymentNo=execution.cashPaymentNo();
         if(paymentNo==null) {
-            paymentNo=settlePort.prepareRefund(plan.subOrderNo(),afterSaleNo,intent.netCashMinor(),"售后退款");
+            paymentNo=settlePort.prepareRefund(plan.subOrderNo(),afterSaleNo,intent.netCashMinor(),"售后退款",
+                    refundRequesters == null ? null : refundRequesters.requestedBy(afterSaleNo));
             var evidence=settlePort.refundEvidence(paymentNo);
             refundExecutions.bindCash(afterSaleNo,paymentNo,intent.netCashMinor(),evidence);
             settlePort.dispatchRefund(paymentNo);

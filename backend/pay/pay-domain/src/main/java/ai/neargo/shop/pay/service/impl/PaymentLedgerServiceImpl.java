@@ -282,6 +282,13 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional(value="payTxManager", isolation=Isolation.READ_COMMITTED)
     public String refund(String orderNo, String subOrderNo, String afterSaleNo,
                          long amountMinor, String reason) {
+        return refund(orderNo, subOrderNo, afterSaleNo, amountMinor, reason, null);
+    }
+
+    @Override
+    @Transactional(value="payTxManager", isolation=Isolation.READ_COMMITTED)
+    public String refund(String orderNo, String subOrderNo, String afterSaleNo,
+                         long amountMinor, String reason, String requestedBy) {
         if (amountMinor <= 0 || afterSaleNo == null || afterSaleNo.isBlank()) {
             throw new IllegalArgumentException("PAY_REFUND_INPUT_INVALID");
         }
@@ -341,7 +348,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         if (refundOrders != null) {
             refundOrders.ifAvailable(service -> service.attachExecution(origin, r,
                     new RefundRequest(r.getRefundExecutionNo(), afterSaleNo, subOrderNo, origin.getPaymentNo(),
-                            amountMinor, origin.getCurrency(), reason)));
+                            amountMinor, origin.getCurrency(), reason, requestedBy)));
         }
         log.info("[payment-ledger] 退款流水 {} 已落（原收款 {}，{} 分）",
                 r.getPaymentNo(), origin.getOutTradeNo(), amountMinor);

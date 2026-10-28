@@ -264,6 +264,12 @@ public interface SettlePort {
     /** Persist the cash intent without sending. Bind it to source preparation before dispatch. */
     String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
 
+    /** Preserve the original source decision maker across asynchronous cash preparation. */
+    default String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason,
+                                 String requestedBy) {
+        return prepareRefund(subOrderNo, afterSaleNo, amountMinor, reason);
+    }
+
     /** Dispatch a committed intent outside any transaction, at most once; unknown results require reconciliation. */
     void dispatchRefund(String paymentNo);
 

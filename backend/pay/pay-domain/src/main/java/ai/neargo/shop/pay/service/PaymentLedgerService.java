@@ -119,6 +119,10 @@ public interface PaymentLedgerService {
     String refund(String orderNo, String subOrderNo, String afterSaleNo,
                   long amountMinor, String reason);
 
+    /** Keep the source applicant separate from the job preparing the cash intent for review isolation. */
+    String refund(String orderNo, String subOrderNo, String afterSaleNo,
+                  long amountMinor, String reason, String requestedBy);
+
     /**
      * 一笔退款要发给通道时的坐标。
      *

@@ -307,6 +307,9 @@ class AfterSaleRefundExecutionTest {
                 .afterSaleNo()).isEqualTo(retry.afterSaleNo());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_points_refund_retry WHERE old_after_sale_no=?",
                 Long.class, f.as())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT operator_no FROM ord_status_log WHERE aggregate_type='AFTER_SALE'"
+                + " AND aggregate_no=? AND status='REFUNDING'", String.class, retry.afterSaleNo()))
+                .isEqualTo("OPS-1");
     }
 
     @Test void cash_failure_without_collection_reaches_operator_queue_after_pay_abort() {
@@ -335,6 +338,9 @@ class AfterSaleRefundExecutionTest {
         assertThat(retried.afterSaleNo()).isNotEqualTo(f.as());
         assertThat(executions.inspect(retried.afterSaleNo()).plan())
                 .isEqualTo(executions.inspect(f.as()).plan());
+        assertThat(jdbc.queryForObject("SELECT operator_no FROM ord_status_log WHERE aggregate_type='AFTER_SALE'"
+                + " AND aggregate_no=? AND status='REFUNDING'", String.class, retried.afterSaleNo()))
+                .isEqualTo("OPS-1");
     }
 
     @Test void unknown_cash_refund_keeps_original_ticket_and_waits_for_verified_result() {

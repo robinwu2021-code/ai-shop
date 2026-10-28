@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.api.biz;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.trade.dto.AfterSaleVO;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.MerchantOrderService;
@@ -114,7 +115,7 @@ public class BizAfterSaleController {
         return afterSaleService.approve(merchantFor(afterSaleNo), afterSaleNo,
                 req == null ? null : req.remark(),
                 req == null ? null : req.refundMinor(),
-                req == null ? null : req.refundMode());
+                req == null ? null : req.refundMode(), SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
@@ -131,10 +132,12 @@ public class BizAfterSaleController {
         if (request != null && request.lines() != null) {
             return afterSaleService.confirmReturn(merchantNo, afterSaleNo,
                     request.receiptNo(), request.lines().stream().map(line ->
-                            new AfterSaleService.ReturnReceiveLine(line.itemId(), line.receivedQty(), line.quality())).toList());
+                            new AfterSaleService.ReturnReceiveLine(line.itemId(), line.receivedQty(), line.quality()))
+                            .toList(),
+                    SecurityUtils.currentUserNo());
         }
         return afterSaleService.confirmReturn(merchantNo, afterSaleNo,
-                request != null && Boolean.TRUE.equals(request.restockApproved()));
+                request != null && Boolean.TRUE.equals(request.restockApproved()), SecurityUtils.currentUserNo());
     }
 
     /** 在途仅退款：签收后（或商家判断不必等）由商家确认退款。系统不再自动退（TDD-订单状态机 AC8） */
@@ -143,7 +146,7 @@ public class BizAfterSaleController {
     public AfterSaleVO confirmRefund(@PathVariable String afterSaleNo,
                                      @RequestBody(required = false) ConfirmRefundReq req) {
         return afterSaleService.confirmRefund(merchantFor(afterSaleNo), afterSaleNo,
-                req == null ? null : req.reason());
+                req == null ? null : req.reason(), SecurityUtils.currentUserNo());
     }
 
     public record ConfirmRefundReq(String reason) { }

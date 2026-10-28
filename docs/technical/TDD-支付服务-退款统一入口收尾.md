@@ -18,6 +18,7 @@
 旧售后 prepareRefund 创建 PENDING 现金行并冻结请求，dispatchRefund 独立发送，绕过 pay_refund 与复核。积分补偿协议依赖原 paymentNo、outRefundNo 和 refund_verified_*，不能替换原指令。
 新统一执行器已有复核、发送权和结果投影。复用它，保留旧行的 PENDING+refund_dispatch_at 一次发送协议。历史缺 pay_order 的收款保留兼容，不伪造支付单；历史缺执行号的退款不自动收编或重发。新建现金退款执行号取原 outRefundNo，不改渠道号。
 本批不含线下凭证、复核规则管理界面、来源操作员贯通（现存协议只冻结 AFTER_SALE 来源），不宣称 E07 全部完成。
+后续批次：来源操作员贯通已继续实施，见[退款申请人贯通](./TDD-支付服务-退款申请人贯通.md)；历史未知人员证据仍不推测补齐。
 
 ## §2 实施计划
 

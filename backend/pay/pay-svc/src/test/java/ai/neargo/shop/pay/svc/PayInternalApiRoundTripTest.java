@@ -238,7 +238,7 @@ class PayInternalApiRoundTripTest {
         var original = new OrdinaryPaymentPort.Attempt("P-RF", "O-RF-2", "O-RF", "U-RF", "E-RF",
                 "WECHAT", "TX-RF", 120L, "USD", "SUCCESS", "DOC-RF");
         when(paymentLedger.ordinaryPayment("O-RF-2")).thenReturn(original);
-        var frozen = new RefundRequest("RF1", "AS1", "S1", "P-RF", 50, "USD", "return");
+        var frozen = new RefundRequest("RF1", "AS1", "S1", "P-RF", 50, "USD", "return", "STAFF-ORIGINAL");
         var command = new OrdinaryRefundPort.Execution("O-RF", "U-RF", "O-RF-2", frozen);
         var outcome = new RefundDispatchResult("RF1", "REFUND-P1",
                 RefundDispatchResult.DispatchStatus.UNKNOWN,
