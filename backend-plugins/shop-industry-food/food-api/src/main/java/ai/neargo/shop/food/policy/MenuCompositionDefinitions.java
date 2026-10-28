@@ -27,13 +27,22 @@ public final class MenuCompositionDefinitions {
 
     /** Live write context chooses currency before accepting caller price labels. */
     public static MenuCompositionVO normalizeForCurrency(ReplaceMenuCompositionReq req, String currency) {
+        return normalizeForCurrency(commandDefinition(req), currency);
+    }
+
+    /** Completed command replay uses canonical structure without consulting today's original market. */
+    public static MenuCompositionVO normalizeStructure(ReplaceMenuCompositionReq req) {
+        return normalizeStructure(commandDefinition(req));
+    }
+
+    private static MenuCompositionVO commandDefinition(ReplaceMenuCompositionReq req) {
         require(
                 req != null
                         && "COMPOSITION".equals(req.section())
                         && req.version() != null
                         && req.version() >= 0
                         && req.version() < Long.MAX_VALUE);
-        return normalizeForCurrency(new MenuCompositionVO(req.categories()), currency);
+        return new MenuCompositionVO(req.categories());
     }
 
     public static MenuCompositionVO normalize(MenuCompositionVO definition) {

@@ -1233,4 +1233,11 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 - 守卫消融：仅移除事务 beforeCommit 的 requireFresh 后，过期/outbox用例失败（预期异常未抛，11.363s）；源码恢复，集中专项该用例通过。已有失败均定位为测试夹具缺依赖或正常市场变化错误语义，未添加任何CN回退。
 - 生成设计10项、25个生成器、SQL方言与diff检查通过。后续构建、最终审查及本地提交信息继续记录；当前不推送或部署。
 
-- 集成 shop-app、独立 food-server/commerce-server 的 clean package PASS，约77秒，包含全部受影响源码和测试源码重新编译；不是线上部署验收。三处对账共24个文件：15个原生产类、3个新增上下文类、5个场景测试（含1个新类）与本TDD，无表/迁移/POM改动。
+- 集成 shop-app、独立 food-server/commerce-server 的 clean package PASS，约77秒，包含全部受影响源码和测试源码重新编译；不是线上部署验收。三处对账共25个文件：15个原生产类、3个新增上下文类、6个场景测试（含1个新类）与本TDD，无表/迁移/POM改动。
+
+- 最终独立只读审查仅发现1项P2：餐牌组成修改在查询已完成幂等结果前依赖实时市场，导致已提交的AED请求在owner离线或改币后无法重放。执行方先用 MenuServiceTest.completedForeignCompositionReplaysWhileOriginalMarketIsOffline / completedForeignCompositionReplaysAfterOriginalMarketCurrencyChanges 真实复现两项RED（8.935s），再修正为纯normalizeStructure(ReplaceMenuCompositionReq)→原canonical指纹→完成回执优先→新请求才核对实时市场。原actor/payload冲突语义及新请求币种校验保留。
+- 审查边界明确：原生数据库/时钟/线上/真实提供方未联验；v3/来源分派/订单支付准入后续；原无销售SKU配料的发布准入未扩张；选项组市场中立GoodsSummary可见性批读不选择SKU，因此保持原合同；审查仅只读源码和执行方证据，不冒充独立复跑。无新增待延后minor，上批图片排序P3仍在后续清单。
+
+- 单次修复后，菜单维护/组成、原发布/来源/价格、币种及旧字节兼容、5项相关架构合计86/86通过（23.434s，0失败/异常/跳过）；包含离线和改币重放正向对照、同键异actor/异payload拒绝，以及新请求仍失败的保护。不二次review，不重复无关业务测试。初轮161项通过和4项原生DB条件跳过仍按原范围记录，不把重复复测累计成新增通过数。
+
+- 修复后集成宿主和独立服务 package PASS30.786s，包含最终生产修改；设计10项、25个生成器、SQL方言和diff检查再次通过。最终改动共25文件，两个本地提交；无新迁移、POM或前端改动，不推送、部署或开启生产开关。

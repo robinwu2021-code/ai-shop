@@ -240,13 +240,14 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
     public MenuCompositionResultVO replaceComposition(String entity, String store, String number, String actor,
             ReplaceMenuCompositionReq req, String key) {
         context(entity, store, actor, key); MenuDefinitionPolicy.key(number);
-        var currency = currencies.open(entity, store);
-        var definition = MenuCompositionDefinitions.normalizeForCurrency(req, currency.currency());
+        var canonical = MenuCompositionDefinitions.normalizeStructure(req);
         String scope = FoodCommandFingerprint.scope("REPLACE_MENU_COMPOSITION", entity, store);
         String hash = FoodCommandFingerprint.hash("menu-composition:v1", number, req.version().toString(),
-                json.writeValueAsString(definition));
+                json.writeValueAsString(canonical));
         var replay = read.execute(tx -> idem.findCompleted(key, scope, actor, hash, MenuCompositionResultVO.class));
         if (replay.isPresent()) return replay.get();
+        var currency = currencies.open(entity, store);
+        var definition = MenuCompositionDefinitions.normalizeForCurrency(canonical, currency.currency());
         var previous = read.execute(tx -> {
             head(entity, store, number, false);
             return currency.managed() ? composition.readStructure(entity, number) : composition.read(entity, number);
