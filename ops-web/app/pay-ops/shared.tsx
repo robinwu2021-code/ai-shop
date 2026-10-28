@@ -1,5 +1,5 @@
 "use client";
-// 支付运营四页共用的小件：双语短句、状态徽章。页面正文按运营端惯例中英两份（usePointsText 同一种写法）。
+// 支付运营各页共用的小件：双语短句、状态徽章。页面正文按运营端惯例中英两份（usePointsText 同一种写法）。
 import { useI18n } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 
@@ -15,6 +15,10 @@ const TONES: Record<string, Tone> = {
   PARTIALLY_REFUNDED: "info", REFUNDED: "info", DISPATCHED: "info", AUTO_REFUNDING: "info",
   PENDING_REVIEW: "warning", PENDING_SECOND_REVIEW: "warning", OPEN: "warning", FAILED: "danger", GIVEN_UP: "danger",
   REJECTED: "danger", CLOSED: "muted", IGNORED: "muted", CREATED: "default", AWAITING_PAYMENT: "default", PENDING: "default",
+  // 接入与密钥（M5b）
+  ACTIVE: "success", ACCEPTED: "success", ROTATING: "info", VERIFIED: "info", DRAFT: "default", DUPLICATE: "muted",
+  RETIRED: "muted", REVOKED: "danger", DISABLED: "muted", SUSPENDED: "warning", EXPIRED: "muted",
+  REJECTED_AUTH: "danger", REJECTED_PARAM: "warning", REJECTED_FORBIDDEN: "danger", ERROR: "danger",
 };
 
 const NAMES: Record<string, [string, string]> = {
@@ -26,6 +30,11 @@ const NAMES: Record<string, [string, string]> = {
   DELIVERED: ["已送达", "Delivered"], GIVEN_UP: ["已放弃", "Given up"], OPEN: ["待处置", "Open"],
   AUTO_REFUNDING: ["原路退回中", "Refunding"], RESOLVED: ["已处置", "Resolved"], IGNORED: ["无需处置", "Ignored"],
   SUCCESS: ["成功", "Success"], INIT: ["待发起", "Init"],
+  ACTIVE: ["生效中", "Active"], ROTATING: ["轮换重叠期", "Rotating"], VERIFIED: ["已验证待启用", "Verified"],
+  DRAFT: ["已录入", "Draft"], RETIRED: ["已退役", "Retired"], REVOKED: ["已吊销", "Revoked"], DISABLED: ["已停用", "Disabled"],
+  SUSPENDED: ["已暂停", "Suspended"], EXPIRED: ["已过期", "Expired"], ACCEPTED: ["通过", "Accepted"],
+  REJECTED_AUTH: ["鉴权失败", "Auth rejected"], REJECTED_PARAM: ["参数不对", "Bad request"],
+  REJECTED_FORBIDDEN: ["无权", "Forbidden"], DUPLICATE: ["重复", "Duplicate"], ERROR: ["出错", "Error"],
 };
 
 export function StatusBadge({ status }: { status: string }) {

@@ -123,4 +123,8 @@ public class PayOrder extends PayBaseEntity {
 
     /** 关单时间 */
     private LocalDateTime closedAt;
+    /** 付款人敏感信息的封存 sec_secret_blob.id（V15；开放 API 建单传入时） */
+    private Long payerBlobId;
+    /** 付款人敏感信息的掩码 JSON（V15）；查询只回它 */
+    private String payerMasked;
 }

@@ -13,13 +13,15 @@
 
     <artifactId>pay-modules</artifactId>
     <packaging>pom</packaging>
-    <description>支付域四个模块的聚合 pom（目录分组，不是第二个父工程）</description>
+    <description>支付域五个模块的聚合 pom（目录分组，不是第二个父工程）</description>
 
     <!-- 只列模块，不放属性与依赖管理 —— 理由同 job/pom.xml -->
     <modules>
         <!-- 支付通道适配。2026-09-01 从 shop-channel 拆出 —— 通道是支付域的核心能力 -->
         <module>pay-channel</module>
         <module>pay-domain</module>
+        <!-- 接入守卫：每个入口一个过滤器（ADR-045）。pay-portal 与 pay-svc 都依赖它 -->
+        <module>pay-guard</module>
         <!-- 独立部署形态（形态 B）。今天装得起来但不接流量 —— 见 PayApplication 的类注释 -->
         <module>pay-svc</module>
         <!-- 接入层：面向人与第三方的 controller 与鉴权（ADR-044）。今天内嵌进 shop-app，I5 起可独立成进程 -->

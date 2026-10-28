@@ -10790,6 +10790,16 @@ CREATE TABLE IF NOT EXISTS pay_api_request_log
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    source_service VARCHAR(64) NULL,
+    source_module VARCHAR(24) NULL,
+    source_instance VARCHAR(128) NULL,
+    source_ip VARCHAR(64) NULL,
+    origin_api VARCHAR(128) NULL,
+    origin_client VARCHAR(24) NULL,
+    origin_ip VARCHAR(64) NULL,
+    origin_ua_digest CHAR(64) NULL,
+    sign_key_version INT NULL,
+    encrypt_serial VARCHAR(64) NULL,
     PRIMARY KEY (id)
 );
 
@@ -10939,6 +10949,8 @@ CREATE TABLE IF NOT EXISTS pay_biz_notify
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    enc_key_version INT NULL,
+    sign_key_version INT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_biz_notify_1 UNIQUE (target_type,pay_app_id,event_key)
 );
@@ -11032,6 +11044,7 @@ CREATE TABLE IF NOT EXISTS pay_app
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    sign_type VARCHAR(16) NOT NULL DEFAULT 'HMAC',
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_app_1 UNIQUE (app_no)
 );
@@ -11081,6 +11094,8 @@ CREATE TABLE IF NOT EXISTS pay_order
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    payer_blob_id BIGINT NULL,
+    payer_masked VARCHAR(255) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_order_1 UNIQUE (pay_order_no),
     CONSTRAINT uk_pay_order_2 UNIQUE (pay_app_id,out_order_no),
@@ -11119,6 +11134,8 @@ CREATE TABLE IF NOT EXISTS pay_refund
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    refund_account_blob_id BIGINT NULL,
+    refund_account_masked VARCHAR(255) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_refund_1 UNIQUE (pay_refund_no),
     CONSTRAINT uk_pay_refund_2 UNIQUE (pay_app_id,out_refund_no),
@@ -11533,6 +11550,76 @@ CREATE TABLE IF NOT EXISTS pay_qr_code
     deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_qr_code_1 UNIQUE (qr_code)
+);
+
+CREATE TABLE IF NOT EXISTS pay_terminal
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    terminal_sn VARCHAR(64) NOT NULL,
+    store_id BIGINT NOT NULL,
+    pay_merchant_id BIGINT NOT NULL,
+    model VARCHAR(64) NOT NULL,
+    reader_kit VARCHAR(64) NULL,
+    app_version VARCHAR(32) NULL,
+    status VARCHAR(24) NOT NULL,
+    activation_code_sha256 CHAR(64) NULL,
+    activation_expire_at DATETIME(3) NULL,
+    device_fingerprint VARCHAR(128) NULL,
+    sec_key_id BIGINT NULL,
+    daily_refund_limit_minor BIGINT NOT NULL DEFAULT 0,
+    last_seen_at DATETIME(3) NULL,
+    activated_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_terminal_1 UNIQUE (terminal_sn)
+);
+
+CREATE TABLE IF NOT EXISTS pay_manager_code
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    store_id BIGINT NOT NULL,
+    manager_account_id BIGINT NOT NULL,
+    code_hash VARCHAR(128) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    failed_attempts INT NOT NULL DEFAULT 0,
+    locked_until DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_manager_code_1 UNIQUE (store_id,manager_account_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_terminal_batch
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_terminal_id BIGINT NOT NULL,
+    biz_date DATE NOT NULL,
+    currency CHAR(3) NOT NULL,
+    reported_count INT NOT NULL,
+    reported_minor BIGINT NOT NULL,
+    reported_void_count INT NOT NULL DEFAULT 0,
+    reported_void_minor BIGINT NOT NULL DEFAULT 0,
+    server_count INT NULL,
+    server_minor BIGINT NULL,
+    status VARCHAR(24) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_terminal_batch_1 UNIQUE (pay_terminal_id,biz_date)
 );
 
 CREATE TABLE IF NOT EXISTS sec_master_key
@@ -17297,6 +17384,22 @@ INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updat
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_03','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_03' AND end_code='OPS');
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_04','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_04' AND end_code='OPS');
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','ACT__PAY_REFUND_REVIEW','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='ACT__PAY_REFUND_REVIEW' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_05','OPS_PAY','接入方与授权','接入','/pay-ops/apps','pay:app:manage','pay:app:manage','IMPLEMENTED',1,'P-12.1','MENU',90,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_06','OPS_PAY','请求记录','记录','/pay-ops/request-logs','pay:log:view','pay:log:view','IMPLEMENTED',1,'P-12.1','MENU',100,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_07','OPS_PAY','静态收款码','支付单','/pay-ops/qr-codes','pay:qr:manage','pay:qr:manage','IMPLEMENTED',1,'P-12.1','MENU',110,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('OPS_PAY_08','OPS_PAY','平台证书与密钥','密钥','/pay-ops/platform-keys','sec:key:view','sec:key:view','IMPLEMENTED',1,'P-12.1','MENU',120,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_APP_CREDENTIAL_REVOKE','OPS_PAY','吊销接入方密钥','接入',NULL,'pay:app-credential:revoke','pay:app-credential:revoke','IMPLEMENTED',1,NULL,'ACTION',130,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__SEC_KEY_WRITE','OPS_PAY','吊销平台密钥版本','密钥',NULL,'sec:key:write','sec:key:write','IMPLEMENTED',1,NULL,'ACTION',140,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__SEC_KEY_ENABLE','OPS_PAY','启用平台密钥版本（两人）','密钥',NULL,'sec:key:enable','sec:key:enable','IMPLEMENTED',1,NULL,'ACTION',150,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+UPDATE sys_function_point SET ui_ready=1, updated_at=NOW() WHERE point_code='ACT__PAY_QR_MANAGE';
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_05','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_05' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_06','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_06' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_07','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_07' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','OPS_PAY_08','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='OPS_PAY_08' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_APP_CREDENTIAL_REVOKE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_APP_CREDENTIAL_REVOKE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__SEC_KEY_WRITE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__SEC_KEY_WRITE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__SEC_KEY_ENABLE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__SEC_KEY_ENABLE' AND end_code='OPS');
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_06','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_06' AND end_code='OPS');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

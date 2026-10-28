@@ -29322,12 +29322,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/pay/collection":
+  "/biz/payment/collection":
     post:
       operationId: "mPayCollect"
       summary: "代客收款（动态码）"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29350,12 +29350,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/pay/refund":
+  "/biz/payment/refund":
     get:
       operationId: "mPayRefunds"
       summary: "本店最近退款"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29384,7 +29384,7 @@ paths:
       operationId: "mPayRefund"
       summary: "发起原路退款"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29407,12 +29407,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/pay/statement":
+  "/biz/payment/statement":
     get:
       operationId: "mPayStatement"
       summary: "本店收款日流水"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29435,12 +29435,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/pay/qr-code":
+  "/biz/payment/qr-code":
     get:
       operationId: "mPayQrCodes"
       summary: "本店收款码"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29469,7 +29469,7 @@ paths:
       operationId: "mPayCreateQrCode"
       summary: "生成收款码"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29492,12 +29492,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/pay/qr-code/{qrCode}/disabled":
+  "/biz/payment/qr-code/{qrCode}/disabled":
     put:
       operationId: "mPayDisableQrCode"
       summary: "停用收款码"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29521,12 +29521,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/pay/app-grant":
+  "/biz/payment/app-grant":
     get:
       operationId: "mPayAppGrants"
       summary: "已授权的第三方"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29555,7 +29555,7 @@ paths:
       operationId: "mPayGrantApp"
       summary: "授权第三方"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []
@@ -29578,12 +29578,12 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/pay/app-grant/{id}":
+  "/biz/payment/app-grant/{id}":
     delete:
       operationId: "mPayRevokeGrant"
       summary: "撤销第三方授权"
       tags:
-        - "pay"
+        - "payment"
       security:
         - bearerAuth: []
       parameters: []

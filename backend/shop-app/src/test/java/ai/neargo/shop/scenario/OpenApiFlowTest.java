@@ -5,6 +5,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.acquiring.backfill.PayIntegrity;
 import ai.neargo.shop.pay.acquiring.service.PayExceptionService;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
@@ -72,14 +73,14 @@ class OpenApiFlowTest {
     @Autowired private PayIntegrity integrity;
 
     /** 接入方的 webhook 接收端：真起一个 HTTP 服务，不打桩发送器 —— 签名、头、超时都走真的 */
-    private record Hook(Map<String, String> headers, String path, String body) {
+    record Hook(Map<String, String> headers, String path, String body) {
     }
 
-    private static final List<Hook> HOOKS = new CopyOnWriteArrayList<>();
-    private static final AtomicBoolean HOOK_FAILS = new AtomicBoolean(false);
+    static final List<Hook> HOOKS = new CopyOnWriteArrayList<>();
+    static final AtomicBoolean HOOK_FAILS = new AtomicBoolean(false);
     private static HttpServer hookServer;
 
-    private static synchronized String hookUrl() throws Exception {
+    static synchronized String hookUrl() throws Exception {
         if (hookServer == null) {
             hookServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             hookServer.createContext("/hook", ex -> {
@@ -110,13 +111,25 @@ class OpenApiFlowTest {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         app(APP1, "pay:create,pay:read,pay:refund", 5_000);
         app(APP2, "pay:create,pay:read", 0);
+        TestStore store = storeWithTestRoute(jdbc, bindings);
+        storeNo = store.storeNo();
+        storeId = store.storeId();
+        grant(APP1, storeId, "COLLECT,REFUND,READ");
+        grant(APP2, storeId, "COLLECT,READ");
+    }
+
+    /** 一家能收款的门店：主体 → 门店 → 平台服务商号 → 子商户（TEST 渠道，产品已开）→ 绑定。别的开放 API 场景也用它 */
+    record TestStore(String storeNo, Long storeId) {
+    }
+
+    static TestStore storeWithTestRoute(JdbcTemplate jdbc, PayMerchantBindingService bindings) {
         String e = "E-OA-" + id();
         jdbc.update("INSERT INTO mch_entity (entity_no, name, market, funds_mode, created_at, updated_at)"
                 + " VALUES (?, ?, 'CN', 'AGGREGATED', NOW(), NOW())", e, "开放 " + e);
-        storeNo = "S-OA-" + id();
+        String storeNo = "S-OA-" + id();
         jdbc.update("INSERT INTO mch_store (entity_no, store_no, name, is_default, created_at, updated_at)"
                 + " VALUES (?, ?, ?, 1, NOW(), NOW())", e, storeNo, "开放门店 " + storeNo);
-        storeId = jdbc.queryForObject("SELECT id FROM mch_store WHERE store_no=?", Long.class, storeNo);
+        Long storeId = jdbc.queryForObject("SELECT id FROM mch_store WHERE store_no=?", Long.class, storeNo);
         String pm = "PM-OA-" + id();
         // 子商户必须挂在平台服务商号下（ck_pay_merchant_3）：先建平台号，再建门店的子商户
         jdbc.update("INSERT INTO pay_merchant (pay_merchant_no, owner_type, store_id, pay_channel, market, currency,"
@@ -135,8 +148,7 @@ class OpenApiFlowTest {
                 + " quota_limit_minor, quota_used_minor, created_at, updated_at) SELECT ?, id, 'OPEN', 'OPS', 0, 0,"
                 + " NOW(), NOW() FROM pay_channel_product WHERE product_code='TEST_ONLINE'", merchantId);
         bindings.bind(storeId, "TEST", merchantId, "OP-OA");
-        grant(APP1, storeId, "COLLECT,REFUND,READ");
-        grant(APP2, storeId, "COLLECT,READ");
+        return new TestStore(storeNo, storeId);
     }
 
     private void app(String appNo, String scopes, long dailyRefund) {
@@ -229,6 +241,94 @@ class OpenApiFlowTest {
         assertThat(conflict.getStatus()).isEqualTo(409);
     }
 
+    private int code(MockHttpServletResponse r) throws Exception {
+        return json.readTree(r.getContentAsString()).get("code").asInt();
+    }
+
+    @Test
+    @DisplayName("★★★ 错误码细分（M3.7；API 清单 §1.3）：时间窗外、nonce 重放各有自己的码；签名错、AppId 不存在仍是统一的 401 —— 不给探测器递线索")
+    void authFailureCodes() throws Exception {
+        String body = createBody("OUT-" + id(), 100);
+        Signed stale = new Signed(APP1, SECRET1, System.currentTimeMillis() - 10 * 60_000L, "stale-" + id());
+        MockHttpServletResponse late = call("POST", "/open/pay/v1/orders", Map.of(), body, stale, null);
+        assertThat(late.getStatus()).isEqualTo(401);
+        assertThat(code(late)).isEqualTo(ErrorCode.PAY_OPEN_TIMESTAMP_EXPIRED.code());
+
+        Signed once = fresh(APP1, SECRET1);
+        assertThat(call("POST", "/open/pay/v1/orders", Map.of(), createBody("OUT-" + id(), 100), once, null).getStatus())
+                .isEqualTo(200);
+        MockHttpServletResponse replay = call("POST", "/open/pay/v1/orders", Map.of(), createBody("OUT-" + id(), 100),
+                once, null);
+        assertThat(replay.getStatus()).isEqualTo(401);
+        assertThat(code(replay)).isEqualTo(ErrorCode.PAY_OPEN_REPLAYED.code());
+
+        for (MockHttpServletResponse r : List.of(
+                call("POST", "/open/pay/v1/orders", Map.of(), body, fresh(APP1, SECRET1), "AAAA"),
+                call("POST", "/open/pay/v1/orders", Map.of(), body, fresh("APP-NOBODY", SECRET1), null))) {
+            assertThat(r.getStatus()).isEqualTo(401);
+            assertThat(code(r)).isEqualTo(ErrorCode.UNAUTHORIZED.code());
+        }
+    }
+
+    /** 接入方验响应签名的做法（API 清单 §1.2，独立实现）：HMAC(Timestamp\nNonce\nhex(SHA256(响应体))) */
+    private static boolean responseSignedWith(String secret, MockHttpServletResponse r) throws Exception {
+        String ts = r.getHeader("X-Timestamp");
+        String nonce = r.getHeader("X-Nonce");
+        String sig = r.getHeader("X-Signature");
+        if (ts == null || nonce == null || sig == null) {
+            return false;
+        }
+        String bodyHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(r.getContentAsByteArray()));
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        return Base64.getEncoder().encodeToString(mac.doFinal((ts + "\n" + nonce + "\n" + bodyHash)
+                .getBytes(StandardCharsets.UTF_8))).equals(sig);
+    }
+
+    @Test
+    @DisplayName("★★★ 响应签名（M3.4；API 清单 §1.2）：成功的响应、该接入方的 401 都签，接入方用自己的 AppSecret 验得过；AppId 不存在的 401 不签")
+    void responsesAreSigned() throws Exception {
+        String no = create(APP1, SECRET1, "OUT-" + id(), 500).get("payOrderNo").asString();
+        MockHttpServletResponse ok = call("GET", "/open/pay/v1/orders/" + no, Map.of(), "", fresh(APP1, SECRET1), null);
+        assertThat(ok.getStatus()).isEqualTo(200);
+        assertThat(responseSignedWith(SECRET1, ok)).as("成功响应").isTrue();
+        assertThat(responseSignedWith(SECRET2, ok)).as("别家的密钥验不过").isFalse();
+
+        MockHttpServletResponse denied = call("GET", "/open/pay/v1/orders/" + no, Map.of(), "", fresh(APP1, SECRET1), "AAAA");
+        assertThat(denied.getStatus()).isEqualTo(401);
+        assertThat(responseSignedWith(SECRET1, denied)).as("该接入方的 401 也签").isTrue();
+
+        MockHttpServletResponse nobody = call("GET", "/open/pay/v1/orders/" + no, Map.of(), "", fresh("APP-NOBODY", SECRET1),
+                null);
+        assertThat(nobody.getStatus()).isEqualTo(401);
+        assertThat(nobody.getHeader("X-Signature")).as("没有可用的密钥就不签").isNull();
+    }
+
+    @Test
+    @DisplayName("★★★ scope 在守卫里判（M3.3）：没有 pay:refund 的接入方调退款 → 403 FORBIDDEN、记 REJECTED_FORBIDDEN；请求体都不解析（坏 JSON 也是 403 不是 400）")
+    void missingScopeIsRejectedInTheGuard() throws Exception {
+        int before = countLog("REJECTED_FORBIDDEN");
+        MockHttpServletResponse r = call("POST", "/open/pay/v1/orders/PYO-ANY/refunds", Map.of(), "{not json",
+                fresh(APP2, SECRET2), null);
+
+        assertThat(r.getStatus()).isEqualTo(403);
+        assertThat(code(r)).isEqualTo(ErrorCode.FORBIDDEN.code());
+        assertThat(countLog("REJECTED_FORBIDDEN") - before).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("★★★ 来源 IP 不在接入方白名单：403 FORBIDDEN（不是 401）、不进业务（M3.7；API 清单 §1.3）")
+    void ipWhitelistIsForbidden() throws Exception {
+        jdbc.update("UPDATE pay_app SET ip_whitelist='10.9.9.9' WHERE app_no=?", APP2);
+        try {
+            MockHttpServletResponse r = call("GET", "/open/pay/v1/orders/PYO-NOPE", Map.of(), "", fresh(APP2, SECRET2), null);
+            assertThat(r.getStatus()).isEqualTo(403);
+            assertThat(code(r)).isEqualTo(ErrorCode.FORBIDDEN.code());
+        } finally {
+            jdbc.update("UPDATE pay_app SET ip_whitelist=NULL WHERE app_no=?", APP2);
+        }
+    }
+
     @Test
     @DisplayName("★★★ 鉴权失败一律在业务之前挡下：没签名 / 签错 / 时间窗外 / nonce 重放 / 不认识的 app → 401，记 REJECTED_AUTH，不建单")
     void authFailuresNeverReachBusiness() throws Exception {
@@ -316,6 +416,17 @@ class OpenApiFlowTest {
                 "{\"outRefundNo\":\"RF-" + id() + "\",\"amountMinor\":4500,\"reason\":\"超额\"}", fresh(APP1, SECRET1), null);
         assertThat(overLimit.getStatus()).as("日限额 5000，已退 1000，再退 4500 超").isIn(400, 409, 422);
 
+        // 上面那笔也超了这一单的可退余额（3000）—— 单靠它分不出是哪条规则挡的。另起一单，余额够、只有日限额不够
+        String big = create(APP1, SECRET1, "OUT-" + id(), 4500).get("payOrderNo").asString();
+        JsonNode bigStarted = ok(call("POST", "/open/pay/v1/orders/" + big + "/pay", Map.of(),
+                "{\"payMethod\":\"TEST_PAY\"}", fresh(APP1, SECRET1), null));
+        settle.settlePayment(new SettlePort.PaymentSettled(bigStarted.get("outTradeNo").asString(), "TEST",
+                "T-" + id(), 4500, System.currentTimeMillis()));
+        MockHttpServletResponse dailyOnly = call("POST", "/open/pay/v1/orders/" + big + "/refunds", Map.of(),
+                "{\"outRefundNo\":\"RF-" + id() + "\",\"amountMinor\":4500,\"reason\":\"整单\"}", fresh(APP1, SECRET1), null);
+        assertThat(json.readTree(dailyOnly.getContentAsString()).get("code").asInt())
+                .as("余额够（4500），日限额不够（已退 1000 + 4500 > 5000）").isEqualTo(ErrorCode.PAY_APP_REFUND_LIMIT.code());
+
         MockHttpServletResponse noScope = call("POST", "/open/pay/v1/orders/" + no + "/refunds", Map.of(),
                 "{\"outRefundNo\":\"RF-" + id() + "\",\"amountMinor\":100,\"reason\":\"x\"}", fresh(APP2, SECRET2), null);
         assertThat(noScope.getStatus()).isIn(403, 404);
@@ -351,7 +462,7 @@ class OpenApiFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ webhook：支付成功同事务落一条答复记录；投递是带签名的 POST（与请求同构），2xx 即送达、每次投递一行")
+    @DisplayName("★★★ webhook：支付成功同事务落一条答复记录；投递是带签名的 POST（P2，与响应签名同一规则，M3.6），2xx 即送达、每次投递一行")
     void webhookOnSuccessIsSignedAndDelivered() throws Exception {
         jdbc.update("UPDATE pay_app SET webhook_url=? WHERE app_no=?", hookUrl(), APP1);
         HOOK_FAILS.set(false);
@@ -365,9 +476,13 @@ class OpenApiFlowTest {
 
         Hook h = HOOKS.stream().filter(x -> x.body().contains(no)).findFirst().orElseThrow();
         assertThat(h.headers().get("X-App-Id")).isEqualTo(APP1);
-        String expected = sign(SECRET1, "POST", "/hook", Map.of(), APP1, Long.parseLong(h.headers().get("X-Timestamp")),
-                h.headers().get("X-Nonce"), h.body());
-        assertThat(h.headers().get("X-Signature")).as("接入方用自己的密钥按同一规则能验过").isEqualTo(expected);
+        String bodyHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(h.body().getBytes(StandardCharsets.UTF_8)));
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(SECRET1.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        String expected = Base64.getEncoder().encodeToString(mac.doFinal((h.headers().get("X-Timestamp") + "\n"
+                + h.headers().get("X-Nonce") + "\n" + bodyHash).getBytes(StandardCharsets.UTF_8)));
+        assertThat(h.headers().get("X-Signature")).as("接入方用自己的密钥按 P2 能验过").isEqualTo(expected);
         JsonNode body = json.readTree(h.body());
         assertThat(body.get("eventType").asString()).isEqualTo("PAYMENT_SUCCEEDED");
         assertThat(body.get("eventId").asString()).isEqualTo(n.get("event_key"));

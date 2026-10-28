@@ -73,7 +73,7 @@ class SecretNeverLoggedTest {
         var issued = f.registry.generate(keyId, 32, "ops-a", "rotate");
         f.registry.markVerified(issued.ref(), "e", "ops-a");
         f.registry.enable(issued.ref(), "ops-b", null);
-        f.registry.verificationMaterials(keyId);
+        f.registry.verificationVersions(keyId).forEach(f.registry::materialOf);
         f.registry.materialOf(r1);
         catching(thrown, () -> f.vault.open(SecretNamespace.LOGISTICS, ref));
         String mkB = f.addMasterKey("pay-sandbox-b", SecretNamespace.PAY, true);

@@ -37,6 +37,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -121,8 +122,9 @@ class ChannelPayCallbackFlowTest {
         ledger.open(new SettlePort.PaymentOpen("OT-CB-1", "U-CB-1", null, CH, 1990, "callback test"));
     }
 
+    /** 走真实的安全链：验签在渠道回调守卫里（开发计划 M4），不经链就到不了 controller */
     private MockMvc mvc() {
-        return MockMvcBuilders.webAppContextSetup(context).build();
+        return MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
     private void callback(String body, String expectBody) throws Exception {

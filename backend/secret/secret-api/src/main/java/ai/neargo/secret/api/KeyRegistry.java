@@ -60,17 +60,43 @@ public interface KeyRegistry {
      */
     byte[] materialOf(KeyVersionRef ref);
 
-    /** 验入站签名可接受的材料：ACTIVE 加上仍在重叠期内的 ROTATING（表结构说明 §3.3 轮换表） */
-    List<byte[]> verificationMaterials(long keyId);
-
-    /** 同上，但只给版本引用（ACTIVE 在前）：交 {@link KeyVault} 运算，材料不离开密钥模块 —— L5 也能验签 */
+    /**
+     * 验入站签名可接受的版本：ACTIVE 加上仍在重叠期内的 ROTATING（表结构说明 §3.3 轮换表），ACTIVE 在前。
+     * 只给版本引用，交 {@link KeyVault} 运算，材料不离开密钥模块 —— L5 也能验签（原返回材料的
+     * {@code verificationMaterials} 随 {@code SecretAppKeyResolver} 一起删除，开发计划 M3.1 / 类清单 Q-C2）
+     */
     List<KeyVersionRef> verificationVersions(long keyId);
 
     /** 按 KeySerial（{@code external_key_id}）找版本：请求头 {@code X-Key-Serial} / {@code X-Encrypt-Serial} 用 */
     Optional<KeyVersionRef> findVersion(long keyId, String externalKeyId);
 
+    /** 反查：版本的 KeySerial（响应头 {@code X-Key-Serial} 用，开发计划 M3.4）；没有登记序列号为空 */
+    Optional<String> serialOf(KeyVersionRef ref);
+
     /** 指纹：唯一可回显的密钥信息 */
     String fingerprintOf(KeyVersionRef ref);
+
+    /** 一把密钥的全部版本（不含材料），按版本号升序：运维看状态、导入前判重用（开发计划 M3.10） */
+    List<VersionInfo> versions(long keyId);
+
+    /** 材料的指纹（与登记版本时同一算法），不落库、不记日志：导入前判重用（开发计划 M3.10） */
+    String fingerprintOfMaterial(byte[] material);
+
+    /** 一个版本的元数据：没有任何材料 */
+    /**
+     * 运营查看（开发计划 M5b.3）：一个命名空间下、当前进程环境里的全部密钥 —— 只有元数据，没有任何材料。
+     * 默认实现不支持；只有密钥模块自己的实现能列。
+     */
+    default List<KeySummary> keys(SecretNamespace namespace) {
+        throw new UnsupportedOperationException("listing keys needs the secret module's registry");
+    }
+
+    /** 一把密钥给人看的那几样：归属、用途、名称、对端、状态、当前版本、到期 */
+    record KeySummary(KeyInfo info, String name, String counterparty) {
+    }
+
+    record VersionInfo(KeyVersionRef ref, String status, String enteredBy, String fingerprint, String externalKeyId) {
+    }
 
     /**
      * 登记一把密钥所需。

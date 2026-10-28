@@ -46,6 +46,11 @@
 #     **留着是给线上旧版小程序的**：新版还没过审上架，旧版点「参团」要看到升级提示，
 #     删了就变成 404。新版小程序全量之后删掉后端这个端点与本行
 #     （连带 MpEndpointAuthTest 名单、M6cGroupFlowTest.legacyJoinAsksToUpgrade）。
+#
+# 2026-10-28 加 10 条，**有意保留、有删除时点**（支付接入守卫 M5a.5）：
+#   · /biz/pay/**  商家端支付改走业务服务 /biz/payment/**，新版 b-app 不再调旧路径；
+#     **留着是给线上旧版小程序的**（与上面拼团同一个理由）。开发计划 M5a.6 过渡一个版本后
+#     删 pay-portal api.biz.* 与这 10 行。
 b-app GET /biz/inventory/export
 b-app GET /biz/settle/bills/*
 b-app POST /biz/geo/geocode
@@ -73,3 +78,13 @@ c-app POST /mp/ticket
 c-app POST /mp/user/token/refresh
 b-app GET /biz/store/*/stock-reconcile/*
 b-app POST /biz/store/*/stock-reconcile
+b-app DELETE /biz/pay/app-grant/*
+b-app GET /biz/pay/app-grant
+b-app GET /biz/pay/qr-code
+b-app GET /biz/pay/refund
+b-app GET /biz/pay/statement
+b-app POST /biz/pay/app-grant
+b-app POST /biz/pay/collection
+b-app POST /biz/pay/qr-code
+b-app POST /biz/pay/refund
+b-app PUT /biz/pay/qr-code/*/disabled

@@ -102,6 +102,14 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     "/pay-ops/exceptions",
     "/pay-ops/refunds",
     "/pay-ops/notifies",
+    /*
+     * 支付运营 · 接入与密钥（2026-10-28，开发计划 M5b，V591）：静态收款码 pay:qr:manage、接入方与授权 pay:app:manage、
+     * 请求记录 pay:log:view、平台证书与密钥 sec:key:view。超管四条都多；财务只多「请求记录」（持 pay:log:view）。
+     */
+    "/pay-ops/qr-codes",
+    "/pay-ops/apps",
+    "/pay-ops/request-logs",
+    "/pay-ops/platform-keys",
     // 建平台自营商家（2026-09-16）。只有超管看得见：merchant:selfop:create
     // 不在任何角色的码表里，所以它只会在 SUPER_ADMIN 那一行上出现。
     "/merchants?tab=self-operated",

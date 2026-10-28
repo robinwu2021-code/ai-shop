@@ -546,7 +546,7 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:PayOrderStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["CREATED", "AWAITING_PAYMENT", "SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"],
     note: "支付单状态（pay_order.status，支付运营端 /pay-ops/v1，TDD-支付服务-I5接入层 S9）。与后端 PayOrderStatus 逐字一致。" },
   { decl: "b-app:PayStatementKind", dom: "finance", shape: "CLASS", verdict: "OK", words: ["PAYMENT", "REFUND"],
-    note: "商家端收款日流水的行类型（/biz/pay/statement，TDD-支付服务-I5接入层 S8）。与后端 PayStatementService.Item.kind 逐字一致。" },
+    note: "商家端收款日流水的行类型（/biz/payment/statement，TDD-支付服务-I5接入层 S8）。与后端 PayStatementService.Item.kind 逐字一致。" },
   { decl: "b-app:PayQrKind", dom: "finance", shape: "CLASS", verdict: "OK", words: ["STORE", "TABLE"],
     note: "静态收款码的种类：门店码 / 桌台码（pay_qr_code.kind）。" },
   { decl: "b-app:PayQrStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["DISABLED"],

@@ -34,6 +34,9 @@ public class InternalHttp {
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
 
+    /** 每个内部客户端都挂、排在最前：来源头（ADR-045 G9） */
+    static final List<ClientHttpRequestInterceptor> DEFAULT_INTERCEPTORS = List.of(new CallSourceClientInterceptor());
+
     private final ServiceLocator locator;
     private final String token;
     private final ObjectProvider<InternalServiceInterceptor> perService;
@@ -64,7 +67,7 @@ public class InternalHttp {
      * 如餐饮独立服务的签名凭证 {@code X-Food-Scope}。
      */
     public <T> T client(String service, Class<T> api, Duration readTimeout, ClientHttpRequestInterceptor... extra) {
-        List<ClientHttpRequestInterceptor> all = new ArrayList<>();
+        List<ClientHttpRequestInterceptor> all = new ArrayList<>(DEFAULT_INTERCEPTORS);
         if (perService != null) {
             perService.orderedStream().filter(i -> service.equals(i.service()))
                     .forEach(i -> all.add(i.interceptor()));

@@ -50,7 +50,7 @@ class KeyRotationTest {
         f.registry.markVerified(v1, "PAY:pay_api_request_log:1", "ops-alice");
         f.registry.enable(v1, "ops-bob", "PAY:pay_approval:1");
         assertThat(f.registry.current(keyId)).isEqualTo(v1);
-        assertThat(f.registry.verificationMaterials(keyId)).containsExactly(V1);
+        assertThat(verifiable(f, keyId)).containsExactly(V1);
 
         KeyVersionRef v2 = upload(f, keyId, V2, "ops-alice");
         f.registry.markVerified(v2, "PAY:pay_api_request_log:2", "ops-alice");
@@ -60,11 +60,11 @@ class KeyRotationTest {
         assertThat(f.registry.current(keyId)).isEqualTo(v2);
         assertThat(versionRow(f, v1).getStatus()).isEqualTo("ROTATING");
         assertThat(versionRow(f, v1).getOverlapUntil()).isNotNull();
-        assertThat(f.registry.verificationMaterials(keyId)).as("重叠期两把都能验").containsExactly(V2, V1);
+        assertThat(verifiable(f, keyId)).as("重叠期两把都能验").containsExactly(V2, V1);
         assertThat(f.registry.find(APP_3, KeyPurpose.INBOUND_HMAC).orElseThrow().currentVersion()).isEqualTo(2);
 
         f.clock.advance(Duration.ofDays(8));   // 默认策略重叠期 7 天
-        assertThat(f.registry.verificationMaterials(keyId)).as("过了重叠期，任务还没跑也不再接受").containsExactly(V2);
+        assertThat(verifiable(f, keyId)).as("过了重叠期，任务还没跑也不再接受").containsExactly(V2);
         var summary = f.lifecycle.runOnce();
 
         assertThat(summary.retired()).isEqualTo(1);
@@ -107,7 +107,7 @@ class KeyRotationTest {
         assertThatThrownBy(() -> f.registry.materialOf(v1)).isInstanceOfSatisfying(SecretException.class,
                 e -> assertThat(e.reason()).isEqualTo(SecretException.Reason.VERSION_UNUSABLE));
         assertThatThrownBy(() -> f.registry.current(keyId)).isInstanceOf(SecretException.class);
-        assertThat(f.registry.verificationMaterials(keyId)).isEmpty();
+        assertThat(verifiable(f, keyId)).isEmpty();
         SecKeyVersion row = versionRow(f, v1);
         assertThat(row.getRevokedBy()).isEqualTo("ops-carol");
         assertThat(row.getActiveKey()).isNull();
@@ -136,7 +136,7 @@ class KeyRotationTest {
         assertThat(key.getStatus()).isEqualTo("EXPIRED");
         assertThatThrownBy(() -> f.registry.current(keyId)).isInstanceOfSatisfying(SecretException.class,
                 e -> assertThat(e.reason()).isEqualTo(SecretException.Reason.KEY_UNUSABLE));
-        assertThat(f.registry.verificationMaterials(keyId)).isEmpty();
+        assertThat(verifiable(f, keyId)).isEmpty();
     }
 
     @Test
@@ -185,5 +185,10 @@ class KeyRotationTest {
         return f.store.mapper(SecretMappers.KeyEventMapper.class).selectList(Wrappers.<SecKeyEvent>lambdaQuery()
                         .eq(SecKeyEvent::getSecKeyId, keyId).orderByAsc(SecKeyEvent::getId))
                 .stream().map(SecKeyEvent::getEventType).toList();
+    }
+
+    /** 可验签版本的材料（ACTIVE 在前）—— 经 verificationVersions + materialOf，与签名运算拿到的是同一组版本 */
+    private static java.util.List<byte[]> verifiable(SecretFixture f, long keyId) {
+        return f.registry.verificationVersions(keyId).stream().map(f.registry::materialOf).toList();
     }
 }

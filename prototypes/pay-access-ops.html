@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>支付运营 · 接入与密钥</title>
+<!-- 真源在仓库 prototypes/pay-access-ops.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">运营端 · 界面原型 · 2026-10-28</div>
+  <h1>支付运营：接入与密钥</h1>
+  <p class="sub">开发计划 M5b 的四页：接入方与授权（含接入方密钥）、请求记录、静态收款码、平台证书与密钥。都挂在「结算与资金 › 支付运营」组；密钥一律只给指纹，明文不出现。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 04</span><h2>四页</h2></div>
+  <div class="grid">
+
+    <figure id="s01" class="wide">
+      <div class="desk"><div class="side"><b>结算与资金</b><span>支付单</span><span>退款复核</span><span>业务通知</span><span>静态收款码</span><span class="on">接入方与授权</span><span>请求记录</span><span>平台证书与密钥</span></div>
+        <div class="main"><div class="hdr"><b>接入方与授权 › APP-PARTNER-01</b><span class="chip ok">生效中</span></div>
+          <div class="note">点一行开抽屉：上半是接入方密钥（只看指纹与序列号），下半是授权它的门店。</div>
+          <table><thead><tr><th>类型</th><th>版本</th><th>序列号</th><th>指纹</th><th>状态</th><th>操作</th></tr></thead><tbody>
+            <tr><td>签名密钥 AppSecret</td><td>v1</td><td>S20261001AB12</td><td>3f9a1c0e</td><td>轮换重叠期</td><td class="act">吊销</td></tr>
+            <tr><td>签名密钥 AppSecret</td><td>v2</td><td>S20261027CD34</td><td>b71d22c4</td><td>生效中</td><td class="act">吊销</td></tr>
+            <tr><td>字段加密 EncryptKey</td><td>v1</td><td>E20261027EF56</td><td>0e55a9f1</td><td>生效中</td><td class="act">吊销</td></tr>
+          </tbody></table>
+          <div class="group"><div class="frow"><span class="k">授权门店</span><span class="v num">中山店 · COLLECT, READ</span></div></div>
+        </div></div>
+      <figcaption class="cap"><b>01 接入方与授权</b>接入方列表 + 抽屉（密钥 / 授权门店）。</figcaption>
+      <p class="why">吊销要写原因、单独一个码（pay:app-credential:revoke）：吊了对方整条业务线立即调不通。验收：吊销后下一次签名请求 401。</p>
+    </figure>
+
+    <figure id="s02" class="wide">
+      <div class="desk"><div class="side"><b>结算与资金</b><span>支付单</span><span>业务通知</span><span>接入方与授权</span><span class="on">请求记录</span><span>平台证书与密钥</span></div>
+        <div class="main"><div class="hdr"><b>请求记录</b><span class="chip">入口：全部 · 结果：全部</span></div>
+          <table><thead><tr><th>时间</th><th>入口</th><th>接口</th><th>调用方</th><th>来源服务</th><th>结果</th></tr></thead><tbody>
+            <tr><td>10-28 16:01</td><td>INTERNAL_HTTP</td><td>GET /internal/pay/v1/ops/orders</td><td>MALL</td><td>shop/payclient</td><td>通过</td></tr>
+            <tr><td>10-28 16:00</td><td>OPEN_API</td><td>POST /open/pay/v1/orders</td><td>APP-PARTNER-01</td><td>—</td><td>鉴权失败</td></tr>
+          </tbody></table>
+          <div class="note">一个查询框：T… 按追踪号、大写编号按接入方、其余按来源服务。详情抽屉给来源实例、发起端与脱敏后的报文。</div>
+        </div></div>
+      <figcaption class="cap"><b>02 请求记录</b>按入口、结果、追踪号查；同一追踪号串起业务服务与支付两边。</figcaption>
+      <p class="why">报文是写入时就脱敏过的，这里原样给，不在展示层再判一次。</p>
+    </figure>
+
+    <figure id="s03" class="wide">
+      <div class="desk"><div class="side"><b>结算与资金</b><span>支付单</span><span class="on">静态收款码</span><span>接入方与授权</span></div>
+        <div class="main"><div class="hdr"><b>静态收款码</b><span class="chip">生效中</span></div>
+          <table><thead><tr><th>码值</th><th>门店</th><th>类型</th><th>单笔上限</th><th>日上限</th><th>操作</th></tr></thead><tbody>
+            <tr><td>Q7KX2M9PA</td><td>1</td><td>桌码 A3</td><td>¥500.00</td><td>¥2,000.00</td><td class="act">风控停用</td></tr>
+          </tbody></table>
+        </div></div>
+      <figcaption class="cap"><b>03 静态收款码</b>全部门店的码；停用后顾客扫不到。</figcaption>
+      <p class="why">生成在商家端；运营只看与停用（pay:qr:manage）。</p>
+    </figure>
+
+    <figure id="s04" class="wide">
+      <div class="desk"><div class="side"><b>结算与资金</b><span>请求记录</span><span class="on">平台证书与密钥</span></div>
+        <div class="main"><div class="hdr"><b>平台证书与密钥 › 微信平台证书</b><span class="chip ok">生效中</span></div>
+          <table><thead><tr><th>版本</th><th>序列号</th><th>指纹</th><th>录入人</th><th>状态</th><th>操作</th></tr></thead><tbody>
+            <tr><td>v1</td><td>5157F3A1</td><td>9c1e40aa</td><td>OPS-A</td><td>生效中</td><td class="act">吊销</td></tr>
+            <tr><td>v2</td><td>6A20C9D4</td><td>41d0b7e2</td><td>OPS-ADMIN</td><td>已验证待启用</td><td class="act">启用 · 吊销</td></tr>
+          </tbody></table>
+          <div class="note">启用要两个人：录入人自己点「启用」会被拒（启用人不能是录入人）。</div>
+        </div></div>
+      <figcaption class="cap"><b>04 平台证书与密钥</b>接入方以外的密钥：渠道平台证书、收款商户调渠道的密钥…</figcaption>
+      <p class="why">看 / 吊销 / 启用三个码分开（sec:key:view / write / enable）；接入方的密钥只在 01 页动。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>真源：prototypes/pay-access-ops.html · 登记：prototypes/registry.json · 设计：docs/technical/TDD-支付服务-接入守卫模块pay-guard.md §2.8</footer>
+</div>
+</html>

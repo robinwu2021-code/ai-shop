@@ -7421,9 +7421,9 @@ _无字段_
 | `size` | `integer` | 是 | — |
 
 
-### pay
+### payment
 
-#### GET `/biz/pay/app-grant`
+#### GET `/biz/payment/app-grant`
 
 已授权的第三方　🔒
 
@@ -7434,7 +7434,7 @@ _无字段_
 类型：[`PayAppGrant`](#payappgrant)\[\]
 
 
-#### POST `/biz/pay/app-grant`
+#### POST `/biz/payment/app-grant`
 
 授权第三方　🔒
 
@@ -7454,7 +7454,7 @@ _无字段_
 | `grantedAt` | `number,null` | 是 | 授权时间（UTC 毫秒） |
 
 
-#### DELETE `/biz/pay/app-grant/{id}`
+#### DELETE `/biz/payment/app-grant/{id}`
 
 撤销第三方授权　🔒
 
@@ -7465,7 +7465,7 @@ _无字段_
 类型：`any`
 
 
-#### POST `/biz/pay/collection`
+#### POST `/biz/payment/collection`
 
 代客收款（动态码）　🔒
 
@@ -7483,7 +7483,7 @@ _无字段_
 | `checkoutUrl` | `string` | 是 | 顾客扫的收银台链接 —— 页面据此画二维码 |
 
 
-#### GET `/biz/pay/qr-code`
+#### GET `/biz/payment/qr-code`
 
 本店收款码　🔒
 
@@ -7494,7 +7494,7 @@ _无字段_
 类型：[`PayQrCode`](#payqrcode)\[\]
 
 
-#### POST `/biz/pay/qr-code`
+#### POST `/biz/payment/qr-code`
 
 生成收款码　🔒
 
@@ -7516,7 +7516,7 @@ _无字段_
 | `url` | `string` | 是 | 顾客扫的链接 |
 
 
-#### PUT `/biz/pay/qr-code/{qrCode}/disabled`
+#### PUT `/biz/payment/qr-code/{qrCode}/disabled`
 
 停用收款码　🔒
 
@@ -7527,7 +7527,7 @@ _无字段_
 类型：`any`
 
 
-#### GET `/biz/pay/refund`
+#### GET `/biz/payment/refund`
 
 本店最近退款　🔒
 
@@ -7538,7 +7538,7 @@ _无字段_
 类型：[`PayRefundItem`](#payrefunditem)\[\]
 
 
-#### POST `/biz/pay/refund`
+#### POST `/biz/payment/refund`
 
 发起原路退款　🔒
 
@@ -7561,7 +7561,7 @@ _无字段_
 | `succeededAt` | `number,null` | 是 | 退成时间（UTC 毫秒）；未退成为空 |
 
 
-#### GET `/biz/pay/statement`
+#### GET `/biz/payment/statement`
 
 本店收款日流水　🔒
 

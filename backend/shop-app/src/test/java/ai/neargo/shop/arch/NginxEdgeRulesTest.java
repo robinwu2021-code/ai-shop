@@ -107,4 +107,21 @@ class NginxEdgeRulesTest {
         }
         assertThat(bad).isEmpty();
     }
+
+    @Test
+    @DisplayName("★★ 支付独立切换件（M7.5）：四个直连入口转 8083、转发头覆写、不碰 /internal 与运营 / 商家 / 小程序；平时没有任何 server 引用它")
+    void payStandaloneCutoverSnippet() throws IOException {
+        Path snippet = DIR.resolve("pay-standalone.locations.example");
+        String body = withoutComments(Files.readString(snippet));
+        List<String[]> locs = locations(body);
+        assertThat(locs.stream().map(l -> l[0].trim()).toList())
+                .containsExactly("^~ /open/pay/", "^~ /terminal/pay/", "^~ /pay/callback/", "^~ /checkout/v1/");
+        assertThat(locs).allSatisfy(l -> assertThat(l[1]).contains("proxy_pass http://127.0.0.1:8083;")
+                .contains("X-Forwarded-For   $remote_addr").doesNotContain("$proxy_add_x_forwarded_for"));
+        assertThat(body).doesNotContain("/internal").doesNotContain("/ops").doesNotContain("/biz").doesNotContain("/mp/");
+        for (Path p : confs()) {
+            assertThat(Files.readString(p)).as("%s 已经 include 了切换件 —— 切换要按 M7.7 演练后手工做", p.getFileName())
+                    .doesNotContain("pay-standalone.locations");
+        }
+    }
 }

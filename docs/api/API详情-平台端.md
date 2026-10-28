@@ -8718,7 +8718,73 @@ _无字段_
 
 ### payops
 
-#### GET `/pay-ops/v1/exceptions`
+#### GET `/ops/payments/apps`
+
+payOpsApps
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/ops/payments/apps/{appNo}/credentials`
+
+payOpsAppCredentials
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `appNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/ops/payments/apps/{appNo}/credentials/{kind}/{version}/revoke`
+
+吊销即时生效：下一次用这一版签的请求就 401 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `appNo` | path | `string` | 是 | — |
+| `kind` | path | `string` | 是 | — |
+| `version` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/payments/apps/{appNo}/grants`
+
+payOpsAppGrants
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `appNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/ops/payments/exceptions`
 
 payOpsExceptions
 
@@ -8731,7 +8797,7 @@ payOpsExceptions
 类型：`object`\[\]
 
 
-#### POST `/pay-ops/v1/exceptions/{id}/ignore`
+#### POST `/ops/payments/exceptions/{id}/ignore`
 
 payOpsIgnoreException
 
@@ -8748,7 +8814,7 @@ _无字段_
 类型：`object`
 
 
-#### POST `/pay-ops/v1/exceptions/{id}/refund`
+#### POST `/ops/payments/exceptions/{id}/refund`
 
 原路退回那一笔多收的钱（不碰已关支付单的余额） */
 
@@ -8765,7 +8831,7 @@ _无字段_
 类型：`object`
 
 
-#### GET `/pay-ops/v1/notifies`
+#### GET `/ops/payments/notifies`
 
 payOpsNotifies
 
@@ -8778,7 +8844,7 @@ payOpsNotifies
 类型：`object`\[\]
 
 
-#### POST `/pay-ops/v1/notifies/{id}/resend`
+#### POST `/ops/payments/notifies/{id}/resend`
 
 payOpsResendNotify
 
@@ -8795,7 +8861,7 @@ _无字段_
 类型：`object`
 
 
-#### GET `/pay-ops/v1/orders`
+#### GET `/ops/payments/orders`
 
 payOpsOrders
 
@@ -8808,7 +8874,7 @@ payOpsOrders
 类型：`object`\[\]
 
 
-#### GET `/pay-ops/v1/orders/{no}`
+#### GET `/ops/payments/orders/{no}`
 
 payOpsOrder
 
@@ -8825,7 +8891,86 @@ payOpsOrder
 类型：`object`
 
 
-#### PUT `/pay-ops/v1/qr-codes/{qrCode}/disabled`
+#### GET `/ops/payments/platform-keys`
+
+payOpsPlatformKeys
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/ops/payments/platform-keys/{keyId}/versions`
+
+payOpsPlatformKeyVersions
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `keyId` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### POST `/ops/payments/platform-keys/{keyId}/versions/{version}/enable`
+
+两人：启用人不能是录入人（后端 70088） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `keyId` | path | `string` | 是 | — |
+| `version` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/payments/platform-keys/{keyId}/versions/{version}/revoke`
+
+payOpsRevokePlatformKey
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `keyId` | path | `string` | 是 | — |
+| `version` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/payments/qr-codes`
+
+payOpsQrCodes
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### PUT `/ops/payments/qr-codes/{qrCode}/disabled`
 
 payOpsDisableQrCode
 
@@ -8842,7 +8987,7 @@ _无字段_
 类型：`object`
 
 
-#### GET `/pay-ops/v1/refunds`
+#### GET `/ops/payments/refunds`
 
 payOpsRefunds
 
@@ -8855,7 +9000,7 @@ payOpsRefunds
 类型：`object`\[\]
 
 
-#### POST `/pay-ops/v1/refunds/{no}/review`
+#### POST `/ops/payments/refunds/{no}/review`
 
 两人复核：同一人不能通过两次
 
@@ -8866,6 +9011,36 @@ payOpsRefunds
 | `no` | path | `string` | 是 | 该资源的业务单号 |
 
 _无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/payments/request-logs`
+
+payOpsRequestLogs
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`\[\]
+
+
+#### GET `/ops/payments/request-logs/{id}`
+
+payOpsRequestLog
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `id` | path | `string` | 是 | — |
 
 **出参**（`data`）
 

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import ai.neargo.shop.pay.api.guard.PortalFace;
 
 /**
  * 接入层 controller 的落点与前缀（TDD-支付服务-I0地基 AC3；ADR-044 §2-3）。

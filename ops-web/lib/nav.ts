@@ -380,7 +380,7 @@ export const NAV: NavSection[] = [
 
   // ── P-12 结算与资金 ─────────────────────────────────────────────────────
   {
-    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance", "pay"], href: "/finance", match: ["/finance", "/pay-ops/orders", "/pay-ops/exceptions", "/pay-ops/refunds", "/pay-ops/notifies"],
+    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance", "pay", "sec"], href: "/finance", match: ["/finance", "/pay-ops/orders", "/pay-ops/exceptions", "/pay-ops/refunds", "/pay-ops/notifies", "/pay-ops/qr-codes", "/pay-ops/apps", "/pay-ops/request-logs", "/pay-ops/platform-keys"],
     children: [
       // 分账指令/重试/报备状态都是结算单**行上的动作与列**，不单独成页
       { href: "/finance", label: "结算单与分账", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
@@ -424,6 +424,11 @@ export const NAV: NavSection[] = [
       { href: "/pay-ops/exceptions", label: "支付异常", perm: "pay:order:view", group: "支付运营", matrix: "P-12.1", ready: true },
       { href: "/pay-ops/refunds", label: "退款复核", perm: "pay:refund:view", group: "支付运营", matrix: "P-12.1", ready: true },
       { href: "/pay-ops/notifies", label: "业务通知", perm: "pay:log:view", group: "支付运营", matrix: "P-12.1", ready: true },
+      // 接入与密钥（开发计划 M5b）：同在「支付运营」组；路由沿用 /pay-ops/*（迁 /pay/* 另做，见 pay-guard TDD §7 M5a.4）
+      { href: "/pay-ops/qr-codes", label: "静态收款码", perm: "pay:qr:manage", group: "支付运营", matrix: "P-12.1", ready: true },
+      { href: "/pay-ops/apps", label: "接入方与授权", perm: "pay:app:manage", group: "支付运营", matrix: "P-12.1", ready: true },
+      { href: "/pay-ops/request-logs", label: "请求记录", perm: "pay:log:view", group: "支付运营", matrix: "P-12.1", ready: true },
+      { href: "/pay-ops/platform-keys", label: "平台证书与密钥", perm: "sec:key:view", group: "支付运营", matrix: "P-12.1", ready: true },
     ],
   },
 

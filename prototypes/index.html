@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">43 份有效稿子，其中页面稿 32 份、共 379 屏；3 份作废。
+  <p class="sub">44 份有效稿子，其中页面稿 33 份、共 383 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -337,6 +337,16 @@
   <p class="pcard__sum">顾客完全不受信的收银台：动态码 / 托管收银台看单、选方式、看结果；静态码输金额；失效统一一屏；阿拉伯语 RTL。六屏。</p>
   <div class="screens"><a class="scr" href="pay-checkout-h5.html#s01" title="s01 付款">s01</a><a class="scr" href="pay-checkout-h5.html#s02" title="s02 跳转渠道">s02</a><a class="scr" href="pay-checkout-h5.html#s03" title="s03 付款结果">s03</a><a class="scr" href="pay-checkout-h5.html#s04" title="s04 静态码输金额">s04</a><a class="scr" href="pay-checkout-h5.html#s05" title="s05 链接失效">s05</a><a class="scr" href="pay-checkout-h5.html#s06" title="s06 阿拉伯语">s06</a></div>
   <div class="pcard__links"><a href="pay-checkout-h5.html">本地稿</a> <a href="../docs/technical/TDD-支付服务-I5接入层.md">TDD · I5 接入层 S7</a> <a href="../docs/technical/支付服务-安全规范.md">安全规范 §2.5</a></div>
+
+</article><article class="pcard" id="pay-access-ops">
+  <div class="pcard__hd">
+    <b>支付运营：接入与密钥</b>
+    <span class="chip ok">已落地</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 运营端 · 2026-10-28 · 4 屏</div>
+  <p class="pcard__sum">4屏。接入方与授权（密钥只看指纹、吊销即时生效）、请求记录（含内部调用来源）、静态收款码、平台证书与密钥（启用两人）。</p>
+  <div class="screens"><a class="scr" href="pay-access-ops.html#s01" title="s01 接入方与授权">s01</a><a class="scr" href="pay-access-ops.html#s02" title="s02 请求记录">s02</a><a class="scr" href="pay-access-ops.html#s03" title="s03 静态收款码">s03</a><a class="scr" href="pay-access-ops.html#s04" title="s04 平台证书与密钥">s04</a></div>
+  <div class="pcard__links"><a href="pay-access-ops.html">本地稿</a> <a href="../docs/technical/TDD-支付服务-接入守卫模块pay-guard.md">pay-guard TDD §2.8</a> <a href="../docs/technical/开发计划-支付接入守卫与独立部署.md">开发计划 M5b</a></div>
 
 </article>
   </div>

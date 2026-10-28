@@ -1,4 +1,4 @@
-// 覆盖范围：支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9 · F50 F51 F53 F57）。
+// 覆盖范围：支付运营端（TDD-支付服务-I5接入层 S9 · F50 F51 F53 F57；开发计划 M5b 接入与密钥）。
 // 金额一律最小单位；时间一律 UTC 毫秒。运营**只复核不发起**退款。
 
 export type PayOrderStatus = "CREATED" | "AWAITING_PAYMENT" | "SUCCEEDED" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CLOSED";
@@ -102,6 +102,113 @@ export interface PayOpsOrderDetail {
 export type PayOpsOrderQ = { status?: string; payOrderNo?: string; outOrderNo?: string; storeId?: number; bizType?: string;
   page?: number; size?: number };
 
+// ---- 接入与密钥（开发计划 M5b）：密钥只有指纹 / 序列号 / 状态，明文不出现 ----
+
+export interface PayOpsAppRow {
+  appNo: string;
+  name: string;
+  /** PARTNER / INTERNAL */
+  ownerType: string;
+  status: string;
+  scopes: string | null;
+  sandbox: boolean;
+  signType: string | null;
+  webhookUrl: string | null;
+  rateLimitQps: number | null;
+  dailyRefundLimitMinor: number | null;
+  activeGrants: number;
+}
+
+export interface PayOpsGrantRow {
+  storeId: number | null;
+  actions: string | null;
+  status: string;
+  grantedBy: string | null;
+  grantedAt: number | null;
+  revokedAt: number | null;
+}
+
+export interface PayOpsCredentialRow {
+  /** APP_SECRET / ENCRYPT_KEY */
+  kind: string;
+  version: number;
+  /** DRAFT / VERIFIED / ACTIVE / ROTATING / RETIRED / REVOKED */
+  status: string;
+  fingerprint: string;
+  serial: string | null;
+  enteredBy: string | null;
+}
+
+export interface PayOpsRequestLogRow {
+  id: number;
+  traceId: string;
+  /** OPEN_API / TERMINAL_API / INTERNAL_HTTP / BIZ_API / OPS_API / CHECKOUT / CALLBACK … */
+  entry: string;
+  api: string;
+  payAction: string | null;
+  appNo: string | null;
+  operatorNo: string | null;
+  sourceService: string | null;
+  sourceModule: string | null;
+  sourceInstance: string | null;
+  sourceIp: string | null;
+  originClient: string | null;
+  originApi: string | null;
+  clientIp: string | null;
+  httpStatus: number | null;
+  resultCode: string | null;
+  /** ACCEPTED / REJECTED_AUTH / REJECTED_PARAM / REJECTED_FORBIDDEN / DUPLICATE / ERROR */
+  outcome: string;
+  elapsedMs: number | null;
+  signKeyVersion: number | null;
+  receivedAt: number | null;
+}
+
+/** 写入时就已脱敏的报文，原样给 */
+export interface PayOpsRequestLogDetail {
+  row: PayOpsRequestLogRow;
+  requestMasked: string | null;
+  responseMasked: string | null;
+}
+
+export interface PayOpsQrRow {
+  qrCode: string;
+  storeId: number | null;
+  /** STORE / TABLE */
+  kind: string;
+  tableRef: string | null;
+  currency: string;
+  singleLimitMinor: number;
+  dailyLimitMinor: number;
+  status: string;
+  createdByType: string | null;
+  createdAt: number | null;
+}
+
+export interface PayOpsPlatformKeyRow {
+  keyId: number;
+  ownerType: string;
+  ownerId: number;
+  direction: string;
+  usage: string;
+  name: string;
+  counterparty: string | null;
+  status: string;
+  currentVersion: number;
+  expiresAt: number | null;
+}
+
+export interface PayOpsKeyVersionRow {
+  version: number;
+  status: string;
+  fingerprint: string;
+  serial: string | null;
+  enteredBy: string | null;
+}
+
+export type PayOpsRequestLogQ = { entry?: string; appNo?: string; sourceService?: string; traceId?: string; outcome?: string;
+  fromMs?: number; toMs?: number; page?: number; size?: number };
+
 export interface PayOpsApi {
   payOpsOrders(q?: PayOpsOrderQ): Promise<PayOpsOrderRow[]>;
   payOpsOrder(payOrderNo: string): Promise<PayOpsOrderDetail>;
@@ -115,4 +222,17 @@ export interface PayOpsApi {
   payOpsRefundException(id: number): Promise<void>;
   payOpsIgnoreException(id: number, note: string): Promise<void>;
   payOpsDisableQrCode(qrCode: string): Promise<void>;
+  payOpsQrCodes(q?: { storeId?: number; status?: string; page?: number; size?: number }): Promise<PayOpsQrRow[]>;
+  payOpsApps(): Promise<PayOpsAppRow[]>;
+  payOpsAppGrants(appNo: string): Promise<PayOpsGrantRow[]>;
+  payOpsAppCredentials(appNo: string): Promise<PayOpsCredentialRow[]>;
+  /** 吊销即时生效：下一次用这一版签的请求就 401 */
+  payOpsRevokeAppCredential(appNo: string, kind: string, version: number, reason: string): Promise<void>;
+  payOpsRequestLogs(q?: PayOpsRequestLogQ): Promise<PayOpsRequestLogRow[]>;
+  payOpsRequestLog(id: number): Promise<PayOpsRequestLogDetail>;
+  payOpsPlatformKeys(): Promise<PayOpsPlatformKeyRow[]>;
+  payOpsPlatformKeyVersions(keyId: number): Promise<PayOpsKeyVersionRow[]>;
+  /** 两人：启用人不能是录入人（后端 70088） */
+  payOpsEnablePlatformKey(keyId: number, version: number): Promise<void>;
+  payOpsRevokePlatformKey(keyId: number, version: number, reason: string): Promise<void>;
 }

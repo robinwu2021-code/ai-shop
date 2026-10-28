@@ -1,5 +1,6 @@
 package ai.neargo.shop.config.obs;
 
+import ai.neargo.shop.spi.pay.CallSource;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -87,6 +88,11 @@ public class ApiAccessLogFilter extends OncePerRequestFilter {
             chain.doFilter(req, resp);
         } finally {
             long ms = (System.nanoTime() - t0) / 1_000_000;
+            // 内部调用沿用上游的追踪号：两边的日志按一个号对上（M2.6）
+            if (req.getAttribute(InternalCallFilter.SOURCE_ATTRIBUTE) instanceof CallSource src
+                    && src.traceId() != null && !src.traceId().isBlank()) {
+                rid = src.traceId();
+            }
             String line = line(req, resp, ms, rid);
             if (accessLog) {
                 ACCESS.info("{}", line);
@@ -121,6 +127,17 @@ public class ApiAccessLogFilter extends OncePerRequestFilter {
          * 排查价值远低于泄露风险，而慢日志是会被 grep、会被贴进聊天框的东西。
          */
         appendIfPresent(sb, " store=", req.getHeader("X-Store-No"));
+        /*
+         * 内部调用的来源（M2.6）：调用方、来源服务与实例、上游接口与来源端 —— 同上，只带号与接口名，
+         * 终端用户 IP 与操作人不进这一行（它们在支付侧的请求记录里，那张表有权限管着）。
+         */
+        if (req.getAttribute(InternalCallFilter.SOURCE_ATTRIBUTE) instanceof CallSource src) {
+            appendIfPresent(sb, " caller=", (String) req.getAttribute(InternalCallFilter.CALLER_ATTRIBUTE));
+            sb.append(" src=").append(src.service()).append(src.instance() == null ? "" : "@" + src.instance());
+            if (src.originApi() != null) {
+                sb.append(" origin=").append(src.originClient()).append(':').append(src.originApi().replace(' ', '_'));
+            }
+        }
         return sb.toString();
     }
 

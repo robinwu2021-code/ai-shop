@@ -13,6 +13,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import ai.neargo.shop.pay.api.guard.core.PortalRequests;
 
 /**
  * 开放 API 与收银台的错误响应（安全规范 §5.2）：真 HTTP 状态 + {@code {code, message, requestId}}，三语文案；

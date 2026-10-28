@@ -31623,6 +31623,12 @@
           "ar": "غير مسموح بتنفيذ عملية الدفع هذه"
         },
         {
+          "key": "err.pay.key_service_unavailable",
+          "zh-CN": "密钥服务暂不可用，请稍后重试",
+          "en": "The key service is temporarily unavailable; please retry later",
+          "ar": "خدمة المفاتيح غير متاحة مؤقتًا؛ يرجى إعادة المحاولة لاحقًا"
+        },
+        {
           "key": "err.pay.onboarding_inflight",
           "zh-CN": "这家门店在该渠道已有一张审核中的进件，请等它出结果后再提交",
           "en": "This store already has an onboarding under review for this channel. Wait for its result before submitting again",
@@ -31633,6 +31639,30 @@
           "zh-CN": "进件单当前状态不能这样操作：{0}",
           "en": "This onboarding cannot do that in its current state: {0}",
           "ar": "لا يمكن تنفيذ هذا الإجراء على طلب الانضمام في حالته الحالية: {0}"
+        },
+        {
+          "key": "err.pay.open_field_decrypt_failed",
+          "zh-CN": "加密字段无法解密，请检查加密密钥与参数",
+          "en": "An encrypted field could not be decrypted; check the encryption key and parameters",
+          "ar": "تعذر فك تشفير حقل مشفر؛ تحقق من مفتاح التشفير والمعلمات"
+        },
+        {
+          "key": "err.pay.open_field_encrypt_required",
+          "zh-CN": "敏感字段须加密后传入",
+          "en": "Sensitive fields must be encrypted",
+          "ar": "يجب تشفير الحقول الحساسة"
+        },
+        {
+          "key": "err.pay.open_replayed",
+          "zh-CN": "请求已处理过，请换一个 nonce 再发",
+          "en": "This request was already processed; send it again with a new nonce",
+          "ar": "تمت معالجة هذا الطلب مسبقًا؛ أرسله مرة أخرى باستخدام nonce جديد"
+        },
+        {
+          "key": "err.pay.open_timestamp_expired",
+          "zh-CN": "请求时间戳超出允许范围，请校准时钟后重试",
+          "en": "The request timestamp is outside the allowed window; sync your clock and retry",
+          "ar": "الطابع الزمني للطلب خارج النطاق المسموح؛ اضبط ساعتك وأعد المحاولة"
         },
         {
           "key": "err.pay.order_conflict",
@@ -33637,6 +33667,13 @@
       "package": "ai.neargo.shop.pay.ledger.entity"
     },
     {
+      "table": "pay_manager_code",
+      "class": "PayManagerCode",
+      "zh": "pay_manager_code（db/pay V16 · pay-guard 开发计划 M6.1）：店长授权码：终端撤销 / 退款的授权，由商家端设置，只存哈希。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.terminal.entity"
+    },
+    {
       "table": "pay_merchant",
       "class": "PayMerchant",
       "zh": "pay_merchant（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款商户 = 渠道中的商户。",
@@ -33733,6 +33770,20 @@
       "zh": "支付域自己的设置（V285）。",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.entity"
+    },
+    {
+      "table": "pay_terminal",
+      "class": "PayTerminal",
+      "zh": "pay_terminal（db/pay V16 · pay-guard 开发计划 M6.1）：刷卡机终端（自研 App）：绑定收款商户与门店。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.terminal.entity"
+    },
+    {
+      "table": "pay_terminal_batch",
+      "class": "PayTerminalBatch",
+      "zh": "pay_terminal_batch（db/pay V16 · pay-guard 开发计划 M6.1）：终端日结：终端上报与服务端汇总比对。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.terminal.entity"
     },
     {
       "table": "pmt_activity",
@@ -36020,6 +36071,13 @@
         "module": "pay/pay-domain"
       },
       {
+        "host": "TerminalServiceImpl",
+        "name": "OWNER_TYPE",
+        "value": "TERMINAL",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
         "host": "PdfFontBundle",
         "name": "VERSION",
         "value": "NOTO_SC_V1",
@@ -37340,6 +37398,34 @@
         "name": "APNS",
         "value": "APNS",
         "zh": "Apple Push Notification service（iOS 直连）。",
+        "module": "shop-base"
+      },
+      {
+        "host": "CallSources",
+        "name": "UNKNOWN",
+        "value": "UNKNOWN",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "CallSources",
+        "name": "JOB",
+        "value": "JOB",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "CallSources",
+        "name": "OUTBOX",
+        "value": "OUTBOX",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "CallSources",
+        "name": "SYSTEM",
+        "value": "SYSTEM",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -42767,6 +42853,20 @@
         "module": "shop-base"
       },
       {
+        "name": "AuthFailure",
+        "values": [
+          "REQUEST",
+          "APP",
+          "ENV",
+          "IP",
+          "TIMESTAMP",
+          "SIGNATURE",
+          "REPLAYED"
+        ],
+        "zh": "失败的种类（类清单 §3 AuthFailure。",
+        "module": "pay/pay-guard"
+      },
+      {
         "name": "AuthorizationState",
         "values": [
           "UNKNOWN",
@@ -43332,6 +43432,11 @@
           "PAY_APP_REFUND_LIMIT",
           "PAY_CHECKOUT_EXPIRED",
           "PAY_CHECKOUT_LIMIT",
+          "PAY_OPEN_TIMESTAMP_EXPIRED",
+          "PAY_OPEN_REPLAYED",
+          "PAY_OPEN_FIELD_ENCRYPT_REQUIRED",
+          "PAY_OPEN_FIELD_DECRYPT_FAILED",
+          "PAY_KEY_SERVICE_UNAVAILABLE",
           "EXPRESS_CHANNEL_OFF",
           "EXPRESS_PICKUP_EXISTS",
           "EXPRESS_SENDER_INCOMPLETE",
@@ -44377,14 +44482,16 @@
       {
         "name": "PortalFace",
         "values": [
+          "INTERNAL",
           "OPS",
           "OPEN",
           "TERMINAL",
           "BIZ",
-          "CHECKOUT"
+          "CHECKOUT",
+          "CALLBACK"
         ],
-        "zh": "支付接入层的五个入口：每个入口一个子包、一个 URL 前缀、一套鉴权（ADR-044 §2-3）。",
-        "module": "pay/pay-portal"
+        "zh": "支付接入层的入口：每个入口一个 URL 前缀、一套鉴权（ADR-044 §2-3、ADR-045）。",
+        "module": "pay/pay-guard"
       },
       {
         "name": "PreviewReason",
@@ -50581,15 +50688,15 @@
       "type": "String",
       "value": "\"ai.neargo.shop.pay.api\"",
       "zh": "所有入口共用的包根",
-      "module": "pay/pay-portal"
+      "module": "pay/pay-guard"
     },
     {
-      "host": "PortalAuthFilter",
-      "name": "FAILURE",
+      "host": "CallbackGuard",
+      "name": "VERIFIED_ATTRIBUTE",
       "type": "String",
-      "value": "PortalAuthFilter.class.getName() + \".failure\"",
-      "zh": "鉴权器写进请求属性的失败原因（只进记录）",
-      "module": "pay/pay-portal"
+      "value": "CallbackGuard.class.getName() + \".verified\"",
+      "zh": "controller 读这个属性拿验签结果（Verified）。",
+      "module": "pay/pay-guard"
     },
     {
       "host": "CachedBodyRequest",
@@ -50597,7 +50704,7 @@
       "type": "int",
       "value": "1 << 20",
       "zh": "",
-      "module": "pay/pay-portal"
+      "module": "pay/pay-guard"
     },
     {
       "host": "PortalRequests",
@@ -50605,7 +50712,7 @@
       "type": "String",
       "value": "PortalRequests.class.getName() + \".requestId\"",
       "zh": "",
-      "module": "pay/pay-portal"
+      "module": "pay/pay-guard"
     },
     {
       "host": "PortalRequests",
@@ -50613,7 +50720,7 @@
       "type": "String",
       "value": "PortalRequests.class.getName() + \".principal\"",
       "zh": "",
-      "module": "pay/pay-portal"
+      "module": "pay/pay-guard"
     },
     {
       "host": "PortalRequests",
@@ -50621,7 +50728,15 @@
       "type": "String",
       "value": "PortalRequests.class.getName() + \".resultCode\"",
       "zh": "",
-      "module": "pay/pay-portal"
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "PortalRequests",
+      "name": "SIGN_KEY_VERSION",
+      "type": "String",
+      "value": "PortalRequests.class.getName() + \".signKeyVersion\"",
+      "zh": "开放 API 验签命中的密钥版本（Integer。",
+      "module": "pay/pay-guard"
     },
     {
       "host": "PortalRequests",
@@ -50629,7 +50744,55 @@
       "type": "String",
       "value": "\"Idempotency-Key\"",
       "zh": "",
-      "module": "pay/pay-portal"
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "SensitiveFieldDecryptor",
+      "name": "FIELDS",
+      "type": "Map<String, List<String>>",
+      "value": "Map.of( \"CREATE_ONLINE\", List.of(\"payer.phone\", \"payer.email\", \"payer.name\"), \"REQUEST_REFUND\", List.of(\"refundAccount.bankCode\", \"refundAccount.accountNo\", \"refundAccount.accountName\"))",
+      "zh": "动作 → 该动作请求体里的敏感字段路径（JSON 点路径，camelCase。",
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "InternalGuard",
+      "name": "CALLER_ATTRIBUTE",
+      "type": "String",
+      "value": "InternalGuard.class.getName() + \".caller\"",
+      "zh": "端点读这个属性拿调用方码（只放行它自己的业务类型）。",
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "InternalGuard",
+      "name": "SOURCE_ATTRIBUTE",
+      "type": "String",
+      "value": "InternalGuard.class.getName() + \".source\"",
+      "zh": "解出来的来源（CallSource）。",
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "InternalGuard",
+      "name": "DEFAULT_ALLOWED_IPS",
+      "type": "String",
+      "value": "\"127.0.0.1/32,::1/128\"",
+      "zh": "来源 IP 白名单的默认值：本机回环（IPv4 与 IPv6）",
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "TerminalGuard",
+      "name": "ACTIVATION_PATH",
+      "type": "String",
+      "value": "PortalFace.TERMINAL.prefix() + \"/activation\"",
+      "zh": "",
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "TerminalAuthServiceImpl",
+      "name": "WINDOW",
+      "type": "Duration",
+      "value": "Duration.ofMinutes(5)",
+      "zh": "",
+      "module": "pay/pay-guard"
     },
     {
       "host": "PortalResponse",
@@ -50638,14 +50801,6 @@
       "value": "0",
       "zh": "",
       "module": "pay/pay-portal"
-    },
-    {
-      "host": "InternalCallerFilter",
-      "name": "ATTRIBUTE",
-      "type": "String",
-      "value": "InternalCallerFilter.class.getName() + \".caller\"",
-      "zh": "端点读这个属性拿调用方码。",
-      "module": "pay/pay-svc"
     },
     {
       "host": "KeyPurpose",
@@ -50733,6 +50888,22 @@
       "type": "SessionProfile",
       "value": "new SessionProfile( \"operator\", \"ops_session\", \"ops_login_log\", \"otk_\", TTL, Duration.ofSeconds(60), Duration.ofSeconds(30), Duration.ofSeconds(5), Duration.ofHours(1), false, 730)",
       "zh": "运营端：登录稀少、审计要求最高，日志同步写，保留两年。",
+      "module": "shop-app"
+    },
+    {
+      "host": "InternalCallFilter",
+      "name": "CALLER_ATTRIBUTE",
+      "type": "String",
+      "value": "InternalCallFilter.class.getName() + \".caller\"",
+      "zh": "",
+      "module": "shop-app"
+    },
+    {
+      "host": "InternalCallFilter",
+      "name": "SOURCE_ATTRIBUTE",
+      "type": "String",
+      "value": "InternalCallFilter.class.getName() + \".source\"",
+      "zh": "",
       "module": "shop-app"
     },
     {
@@ -51093,6 +51264,38 @@
       "type": "String",
       "value": "\"/internal/core/entitlement/events/receive\"",
       "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "CallSourceCodec",
+      "name": "MAX_HEADER",
+      "type": "int",
+      "value": "4096",
+      "zh": "头的上限：Tomcat 默认整个头区 8KB，这里只占一半",
+      "module": "shop-base"
+    },
+    {
+      "host": "InternalHeaders",
+      "name": "CALLER",
+      "type": "String",
+      "value": "\"X-Internal-Caller\"",
+      "zh": "调用方码：MALL / FOOD（支付侧按 pay_app.app_no 取 id）或服务码 SHOP_APP / PAY_SVC …",
+      "module": "shop-base"
+    },
+    {
+      "host": "InternalHeaders",
+      "name": "CREDENTIAL",
+      "type": "String",
+      "value": "\"X-Internal-Credential\"",
+      "zh": "调用方凭据（服务端只存 SHA-256）。",
+      "module": "shop-base"
+    },
+    {
+      "host": "InternalHeaders",
+      "name": "CALL_SOURCE",
+      "type": "String",
+      "value": "\"X-Call-Source\"",
+      "zh": "CallSource，经 CallSourceCodec 编码",
       "module": "shop-base"
     },
     {
@@ -51868,6 +52071,46 @@
       "name": "PAY_QR_MANAGE",
       "type": "String",
       "value": "\"pay:qr:manage\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APP_MANAGE",
+      "type": "String",
+      "value": "\"pay:app:manage\"",
+      "zh": "支付运营 · 接入方与密钥（开发计划 M5b，pay-guard TDD §2.8.3）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "PAY_APP_CREDENTIAL_REVOKE",
+      "type": "String",
+      "value": "\"pay:app-credential:revoke\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "SEC_KEY_VIEW",
+      "type": "String",
+      "value": "\"sec:key:view\"",
+      "zh": "平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，sec_key 中非接入方的那些）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "SEC_KEY_WRITE",
+      "type": "String",
+      "value": "\"sec:key:write\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "SEC_KEY_ENABLE",
+      "type": "String",
+      "value": "\"sec:key:enable\"",
       "zh": "",
       "module": "shop-base-auth"
     },

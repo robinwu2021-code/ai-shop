@@ -233,17 +233,16 @@ public class DefaultKeyRegistry implements KeyRegistry {
     }
 
     @Override
-    public List<byte[]> verificationMaterials(long keyId) {
-        List<byte[]> out = new ArrayList<>();
-        for (SecKeyVersion v : verifiableRows(keyId)) {
-            out.add(secretOf(new KeyVersionRef(keyId, v.getVersionIndex()), v));
-        }
-        return out;
+    public List<KeyVersionRef> verificationVersions(long keyId) {
+        return verifiableRows(keyId).stream().map(v -> new KeyVersionRef(keyId, v.getVersionIndex())).toList();
     }
 
     @Override
-    public List<KeyVersionRef> verificationVersions(long keyId) {
-        return verifiableRows(keyId).stream().map(v -> new KeyVersionRef(keyId, v.getVersionIndex())).toList();
+    public Optional<String> serialOf(KeyVersionRef ref) {
+        requireKey(ref.keyId());
+        return Optional.ofNullable(db.versions().selectOne(Wrappers.<SecKeyVersion>lambdaQuery()
+                        .eq(SecKeyVersion::getSecKeyId, ref.keyId()).eq(SecKeyVersion::getVersionIndex, ref.versionIndex())))
+                .map(SecKeyVersion::getExternalKeyId).filter(s -> !s.isBlank());
     }
 
     @Override
@@ -277,6 +276,32 @@ public class DefaultKeyRegistry implements KeyRegistry {
     @Override
     public String fingerprintOf(KeyVersionRef ref) {
         return requireVersion(ref).getFingerprint();
+    }
+
+    @Override
+    public List<KeySummary> keys(SecretNamespace namespace) {
+        return db.keys().selectList(Wrappers.<SecKey>lambdaQuery().eq(SecKey::getNamespace, namespace.name())
+                        .eq(SecKey::getEnv, settings.requireEnv()).orderByAsc(SecKey::getOwnerType).orderByAsc(SecKey::getId))
+                .stream()
+                .map(k -> new KeySummary(new KeyInfo(k.getId(), new KeyOwner(namespace, k.getOwnerType(), k.getOwnerId()),
+                        new KeyPurpose(KeyPurpose.Direction.valueOf(k.getDirection()), KeyPurpose.Usage.valueOf(k.getKeyUsage())),
+                        k.getStatus(), k.getCurrentVersion(), k.getExpiresAt()), k.getName(), k.getCounterparty()))
+                .toList();
+    }
+
+    @Override
+    public List<VersionInfo> versions(long keyId) {
+        requireKey(keyId);
+        return db.versions().selectList(Wrappers.<SecKeyVersion>lambdaQuery().eq(SecKeyVersion::getSecKeyId, keyId)
+                        .orderByAsc(SecKeyVersion::getVersionIndex)).stream()
+                .map(v -> new VersionInfo(new KeyVersionRef(keyId, v.getVersionIndex()), v.getStatus(), v.getEnteredBy(),
+                        v.getFingerprint(), v.getExternalKeyId()))
+                .toList();
+    }
+
+    @Override
+    public String fingerprintOfMaterial(byte[] material) {
+        return EnvelopeCipher.symmetricFingerprint(material);
     }
 
     private record Inserted(KeyVersionRef ref, SecKeyVersion row) {

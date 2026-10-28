@@ -443,6 +443,22 @@ export const RULES = [
   // 支付对账差异（并发会话 2026-08-12 新增）。**这条是守卫抓出来的** ——
   // 它们刚落进 settle:manage，矩阵当场报 FINANCE「多出来 4 条」。
   // 处理差异会改账，与只读覆盖率分开
+  // 支付运营（开发计划 M5a.2：原 /pay-ops/v1 迁到业务服务）。码一开始就是细的，登记表照抄注解
+  ["GET", /^\/ops\/payments\/(orders|exceptions)(\/[^/]+)?$/, "pay:order:view"],
+  ["POST", /^\/ops\/payments\/exceptions\/[^/]+\/(refund|ignore)$/, "pay:order:manage"],
+  ["GET", /^\/ops\/payments\/refunds$/, "pay:refund:view"],
+  ["POST", /^\/ops\/payments\/refunds\/[^/]+\/review$/, "pay:refund:review"],
+  ["GET", /^\/ops\/payments\/notifies$/, "pay:log:view"],
+  ["POST", /^\/ops\/payments\/notifies\/[^/]+\/resend$/, "pay:notify:resend"],
+  ["PUT", /^\/ops\/payments\/qr-codes\/[^/]+\/disabled$/, "pay:qr:manage"],
+  // M5b：接入与密钥。看接入方 / 授权 / 密钥指纹一档，吊销单列；平台密钥看 / 吊销 / 启用三档
+  ["GET", /^\/ops\/payments\/qr-codes$/, "pay:qr:manage"],
+  ["GET", /^\/ops\/payments\/apps(\/[^/]+\/(grants|credentials))?$/, "pay:app:manage"],
+  ["POST", /^\/ops\/payments\/apps\/[^/]+\/credentials\/[^/]+\/[^/]+\/revoke$/, "pay:app-credential:revoke"],
+  ["GET", /^\/ops\/payments\/request-logs(\/[^/]+)?$/, "pay:log:view"],
+  ["GET", /^\/ops\/payments\/platform-keys(\/[^/]+\/versions)?$/, "sec:key:view"],
+  ["POST", /^\/ops\/payments\/platform-keys\/[^/]+\/versions\/[^/]+\/enable$/, "sec:key:enable"],
+  ["POST", /^\/ops\/payments\/platform-keys\/[^/]+\/versions\/[^/]+\/revoke$/, "sec:key:write"],
   ["GET", /^\/ops\/payments\/recon/, "finance:recon:read"],
   ["*", /^\/ops\/payments\/recon/, "finance:recon:resolve"],
   ["GET", /^\/ops\/settle\/fee-rules/, "finance:rate:read"],

@@ -12,8 +12,8 @@ import ai.neargo.shop.auth.ConsumerTokenAuthFilter;
 import ai.neargo.shop.auth.MerchantTokenAuthFilter;
 import ai.neargo.shop.auth.OperatorTokenAuthFilter;
 import ai.neargo.shop.auth.RequestMetaFilter;
-import ai.neargo.shop.pay.api.PortalFace;
-import ai.neargo.shop.pay.api.auth.PortalAuthFilters;
+import ai.neargo.shop.pay.api.guard.PortalFace;
+import ai.neargo.shop.pay.api.guard.core.GuardFilters;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import ai.neargo.shop.auth.TokenStore;
@@ -165,7 +165,7 @@ public class SecurityConfig {
     @Order(1)
     SecurityFilterChain merchantChain(HttpSecurity http, TokenStore tokenStore,
                                       ObjectProvider<BizIdentityResolver> resolver,
-                                      PortalAuthFilters portalFilters) throws Exception {
+                                      GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher("/biz/**")
                 .cors(c -> c.configurationSource(corsSource()))
@@ -200,7 +200,7 @@ public class SecurityConfig {
                         MerchantTokenAuthFilter.class)
                 // 商家端支付（/biz/pay/**，ADR-044 BIZ 面）：复用上面认好的商家会话，接入层只做请求记录与「必须是商家令牌」。
                 // 其它 /biz 路径它不碰（过滤器按入口前缀自判）
-                .addFilterAfter(portalFilters.forFace(PortalFace.BIZ), BizContextFilter.class)
+                .addFilterAfter(portalFilters.forEntry(PortalFace.BIZ), BizContextFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();
     }
@@ -274,16 +274,20 @@ public class SecurityConfig {
      * 渠道回调（安全规范 §2.4 / §5.1，G11）：此前 {@code /pay/callback/**} 不匹配任何链，安全全靠 controller 自己。
      * 现在给它一条显式的链：无会话、不认 Bearer、放行到 controller（可信靠验签 + 主动查单）；**不开 CORS**（服务端对服务端）；
      * 用 {@link ai.neargo.shop.auth.RequestMetaFilter} 设可信来源 IP（{@code ClientMeta}），回调记录里的 IP 不再取客户端自报的头。
+     * 验签在链上的渠道回调守卫里（开发计划 M4），controller 只回查与入账。
      */
     @Bean
     @Profile({"api", "ops"})
     @Order(5)
-    SecurityFilterChain channelCallbackChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain channelCallbackChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher("/pay/callback/**")
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new ai.neargo.shop.auth.RequestMetaFilter("CHANNEL"),
+                        org.springframework.security.web.context.SecurityContextHolderFilter.class)
+                // 渠道回调守卫（开发计划 M4）：先落原文 → 验签 → 核对收款商户，不过回 FAIL、不进 controller
+                .addFilterBefore(portalFilters.forEntry(PortalFace.CALLBACK),
                         org.springframework.security.web.context.SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();
@@ -297,13 +301,32 @@ public class SecurityConfig {
     @Bean
     @Profile({"api", "ops"})
     @Order(6)
-    SecurityFilterChain openPayChain(HttpSecurity http, PortalAuthFilters portalFilters) throws Exception {
+    SecurityFilterChain openPayChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher(PortalFace.OPEN.prefix() + "/**")
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new RequestMetaFilter("PARTNER"), SecurityContextHolderFilter.class)
-                .addFilterBefore(portalFilters.forFace(PortalFace.OPEN), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forEntry(PortalFace.OPEN), SecurityContextHolderFilter.class)
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
+                .build();
+    }
+
+    /**
+     * POS 终端（pay-guard TDD §2.2 C；开发计划 M6.2）：{@code /terminal/pay/**} 只认终端号 + 设备密钥签名，由接入守卫的
+     * {@code TerminalGuard} 认人（激活接口除外：凭一次性激活码）—— 认不出就 401、不进 controller，并写请求记录。
+     * 与开放 API 同形：无会话、不开 CORS（设备对服务端），Spring Security 这一层全放行。
+     */
+    @Bean
+    @Profile({"api", "ops"})
+    @Order(9)
+    SecurityFilterChain terminalPayChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
+        return http
+                .securityMatcher(PortalFace.TERMINAL.prefix() + "/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(new RequestMetaFilter("POS"), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forEntry(PortalFace.TERMINAL), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();
     }
@@ -316,7 +339,7 @@ public class SecurityConfig {
     @Bean
     @Profile({"api", "ops"})
     @Order(7)
-    SecurityFilterChain checkoutChain(HttpSecurity http, PortalAuthFilters portalFilters) throws Exception {
+    SecurityFilterChain checkoutChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher(PortalFace.CHECKOUT.prefix() + "/**")
                 .csrf(csrf -> csrf.disable())
@@ -324,7 +347,7 @@ public class SecurityConfig {
                 .headers(h -> h.frameOptions(f -> f.deny())
                         .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
                 .addFilterBefore(new RequestMetaFilter("H5"), SecurityContextHolderFilter.class)
-                .addFilterBefore(portalFilters.forFace(PortalFace.CHECKOUT), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forEntry(PortalFace.CHECKOUT), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();
     }
@@ -338,7 +361,7 @@ public class SecurityConfig {
     @Order(8)
     SecurityFilterChain payOpsChain(HttpSecurity http, TokenStore tokenStore,
                                     ObjectProvider<ai.neargo.shop.auth.LiveIdentityResolver> identityResolver,
-                                    PortalAuthFilters portalFilters) throws Exception {
+                                    GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher(PortalFace.OPS.prefix() + "/**")
                 .cors(c -> c.configurationSource(corsSource()))
@@ -349,7 +372,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .addFilterBefore(new OperatorTokenAuthFilter(tokenStore, identityResolver),
                         UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(portalFilters.forFace(PortalFace.OPS), OperatorTokenAuthFilter.class)
+                .addFilterAfter(portalFilters.forEntry(PortalFace.OPS), OperatorTokenAuthFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();
     }

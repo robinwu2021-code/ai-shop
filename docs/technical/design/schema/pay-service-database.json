@@ -1187,6 +1187,18 @@
           "sqlType": "DATETIME(3) NULL",
           "meaning": "关单时间",
           "meaningEn": "Closed at"
+        },
+        {
+          "name": "payer_blob_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "付款人敏感信息（手机 / 邮箱 / 姓名，开放 API 建单传入）封存在 sec_secret_blob.id；没传为空（V15）",
+          "meaningEn": "Sealed payer details (sec_secret_blob.id)"
+        },
+        {
+          "name": "payer_masked",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "付款人敏感信息的掩码 JSON；查询只回它（V15）",
+          "meaningEn": "Masked payer details (JSON)"
         }
       ],
       "uniqueKeys": [
@@ -1366,6 +1378,18 @@
           "sqlType": "DATETIME(3) NULL",
           "meaning": "成功时间",
           "meaningEn": "Succeeded at"
+        },
+        {
+          "name": "refund_account_blob_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "线下退款收款账号（银行代码 / 账号 / 户名）封存在 sec_secret_blob.id；没传为空（V15）",
+          "meaningEn": "Sealed offline-refund account (sec_secret_blob.id)"
+        },
+        {
+          "name": "refund_account_masked",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "收款账号的掩码 JSON；查询只回它（V15）",
+          "meaningEn": "Masked refund account (JSON)"
         }
       ],
       "uniqueKeys": [
@@ -2290,6 +2314,66 @@
           "sqlType": "DATETIME(3) NOT NULL",
           "meaning": "收到时间",
           "meaningEn": "Received at"
+        },
+        {
+          "name": "source_service",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "调用方服务名（spring.application.name）；内部调用取不到记 UNKNOWN",
+          "meaningEn": "Caller service name (spring.application.name); UNKNOWN when absent"
+        },
+        {
+          "name": "source_module",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "调用方业务线：MALL / FOOD / RETAIL / BEAUTY / STORED_VALUE …",
+          "meaningEn": "Caller business line"
+        },
+        {
+          "name": "source_instance",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "调用方实例：主机名或 pod 名",
+          "meaningEn": "Caller instance (host or pod)"
+        },
+        {
+          "name": "source_ip",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "调用方自报的服务器 IP；client_ip 仍是支付实际看到的对端 IP（内嵌形态为空）",
+          "meaningEn": "Caller-reported server IP; client_ip stays the peer seen by payment"
+        },
+        {
+          "name": "origin_api",
+          "sqlType": "VARCHAR(128) NULL",
+          "meaning": "触发这次调用的上游接口或任务名，如 POST /mp/orders/{orderNo}/pay",
+          "meaningEn": "Upstream API or job that triggered the call"
+        },
+        {
+          "name": "origin_client",
+          "sqlType": "VARCHAR(24) NULL",
+          "meaning": "上游请求来源端：认证链端码 APP_C / APP_BIZ / WEB_OPS / H5 / PARTNER；JOB / OUTBOX / UNKNOWN",
+          "meaningEn": "Upstream client code"
+        },
+        {
+          "name": "origin_ip",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "上游请求的终端用户 IP（经可信代理头）",
+          "meaningEn": "End-user IP of the upstream request (trusted proxy header)"
+        },
+        {
+          "name": "origin_ua_digest",
+          "sqlType": "CHAR(64) NULL",
+          "meaning": "上游请求 User-Agent 的 SHA-256",
+          "meaningEn": "SHA-256 of the upstream User-Agent"
+        },
+        {
+          "name": "sign_key_version",
+          "sqlType": "INT NULL",
+          "meaning": "验签命中的密钥版本；未通过为空。统计「还有谁在用旧版本」靠它（V14）",
+          "meaningEn": "Key version that verified the signature; null when rejected"
+        },
+        {
+          "name": "encrypt_serial",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "请求头 X-Encrypt-Serial（有加密字段时，V14）",
+          "meaningEn": "Request header X-Encrypt-Serial (when encrypted fields are present)"
         }
       ],
       "uniqueKeys": [],
@@ -2312,12 +2396,17 @@
         [
           "outcome",
           "received_at"
+        ],
+        [
+          "source_service",
+          "received_at"
         ]
       ],
       "checks": [],
       "notes": [
         "鉴权失败的请求也记（outcome=REJECTED_AUTH，只记脱敏后的头部与指纹），用于发现撞库与重放",
-        "查询类请求同样记录；量大时按月归档"
+        "查询类请求同样记录；量大时按月归档",
+        "内部调用（entry=INTERNAL_PORT / INTERNAL_HTTP）的来源 8 列由调用参数 CallSource 带进来，只留痕不鉴权（V13，ADR-045 G9）"
       ],
       "titleZh": "请求记录",
       "titleEn": "API Request Log",
@@ -3045,6 +3134,18 @@
           "sqlType": "DATETIME(3) NULL",
           "meaning": "放弃时间（≥ 24h 仍失败）",
           "meaningEn": "Given up at (still failing after ≥ 24h)"
+        },
+        {
+          "name": "enc_key_version",
+          "sqlType": "INT NULL",
+          "meaning": "WEBHOOK：加密 resource 用的 EncryptKey 版本（sec_key_version.version_index）；重推一律用它（V14）",
+          "meaningEn": "WEBHOOK: EncryptKey version used for resource; retries reuse it"
+        },
+        {
+          "name": "sign_key_version",
+          "sqlType": "INT NULL",
+          "meaning": "WEBHOOK：签名用的密钥版本（HMAC 为 AppSecret，RSA 为平台签名密钥）；重推一律用它（V14）",
+          "meaningEn": "WEBHOOK: signing key version; retries reuse it"
         }
       ],
       "uniqueKeys": [
@@ -3408,6 +3509,12 @@
           "sqlType": "TINYINT(1) NOT NULL DEFAULT 0",
           "meaning": "沙箱 app（路由到 TEST 渠道）",
           "meaningEn": "Sandbox app (routed to TEST channel)"
+        },
+        {
+          "name": "sign_type",
+          "sqlType": "VARCHAR(16) NOT NULL DEFAULT 'HMAC'",
+          "meaning": "签名方案：HMAC 基础方案（AppSecret）/ RSA 增强方案（接入方私钥 + 平台证书）；一个 app 只能一种（V14）",
+          "meaningEn": "Signing scheme: HMAC (AppSecret) or RSA (partner private key + platform certificate); one per app"
         }
       ],
       "uniqueKeys": [

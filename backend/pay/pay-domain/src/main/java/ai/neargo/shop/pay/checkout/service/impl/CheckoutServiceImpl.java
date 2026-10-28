@@ -7,12 +7,12 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.acquiring.dto.CreatePaymentCmd;
 import ai.neargo.shop.pay.acquiring.entity.PayOrder;
+import ai.neargo.shop.pay.acquiring.port.InternalCallers;
 import ai.neargo.shop.pay.acquiring.route.RouteSelectionPolicy;
 import ai.neargo.shop.pay.acquiring.service.PaymentService;
 import ai.neargo.shop.pay.acquiring.service.PaymentService.StartPaymentCmd;
 import ai.neargo.shop.pay.acquiring.service.PaymentService.StartPaymentResult;
 import ai.neargo.shop.pay.acquiring.statemachine.PayOrderStatus;
-import ai.neargo.shop.pay.channel.api.CallerType;
 import ai.neargo.shop.pay.checkout.entity.PayCheckoutSession;
 import ai.neargo.shop.pay.checkout.entity.PayQrCode;
 import ai.neargo.shop.pay.checkout.service.CheckoutService;
@@ -35,7 +35,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.List;
-import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -113,8 +112,7 @@ public class CheckoutServiceImpl implements CheckoutService {
         if (paid(o)) {
             throw BizException.of(ErrorCode.PAY_CHECKOUT_EXPIRED);
         }
-        PayCaller caller = new PayCaller(CallerType.CHECKOUT, checkoutApp().getId(), Set.of(o.getStoreId()), null, null,
-                null);
+        PayCaller caller = InternalCallers.checkoutVisitor(checkoutApp().getId(), o.getStoreId());
         StartPaymentResult r = payments.start(caller, o.getPayOrderNo(), new StartPaymentCmd(payMethod, payerOpenId,
                 payerAppId));
         if ("OPEN".equals(s.getStatus())) {
@@ -169,8 +167,7 @@ public class CheckoutServiceImpl implements CheckoutService {
             // 码的币种与门店市场对不上是配置错，不是顾客的错；不建单
             throw new IllegalStateException("静态码 " + c.getId() + " 的币种与门店市场不符");
         }
-        PayCaller caller = new PayCaller(CallerType.CHECKOUT, checkoutApp().getId(), Set.of(store.storeId()), null, null,
-                null);
+        PayCaller caller = InternalCallers.checkoutVisitor(checkoutApp().getId(), store.storeId());
         PayOrder o = payments.create(caller, new CreatePaymentCmd(QR_BIZ_TYPE, c.getQrCode(), BizKey.next("QRO"),
                 store.storeId(), store.storeName(), store.entityName(), store.market(), amountMinor, c.getCurrency(),
                 store.storeName(), "ONLINE", Instant.now().plus(ttl), store.fundsPath()));

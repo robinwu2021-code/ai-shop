@@ -1,7 +1,8 @@
 // 覆盖范围：支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。
 //
 // 规则落在 mock 层：两人复核（同一人不能通过两次）、已处置的异常不能再动 —— 与后端同一套。
-import type { PayOpsApi, PayOpsExceptionRow, PayOpsNotifyRow, PayOpsOrderRow, PayOpsRefundRow } from "../contracts/payops";
+import type { PayOpsApi, PayOpsAppRow, PayOpsCredentialRow, PayOpsExceptionRow, PayOpsKeyVersionRow, PayOpsNotifyRow,
+  PayOpsOrderRow, PayOpsPlatformKeyRow, PayOpsQrRow, PayOpsRefundRow, PayOpsRequestLogRow } from "../contracts/payops";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
@@ -31,6 +32,52 @@ const exceptions: PayOpsExceptionRow[] = [
     resolution: null, note: null, handledBy: null, createdAt: now - 1_800_000 },
 ];
 const ME = "OPS-ADMIN";
+
+// ---- 接入与密钥（M5b）：规则同后端 —— 吊销即生效、启用人 ≠ 录入人、只给指纹 ----
+const apps: PayOpsAppRow[] = [
+  { appNo: "APP-PARTNER-01", name: "试点接入方甲", ownerType: "PARTNER", status: "ACTIVE", scopes: "pay:create,pay:read",
+    sandbox: false, signType: "HMAC", webhookUrl: "https://partner.example.com/hook", rateLimitQps: 50,
+    dailyRefundLimitMinor: 500000, activeGrants: 2 },
+  { appNo: "MALL", name: "商城", ownerType: "INTERNAL", status: "ACTIVE", scopes: null, sandbox: false, signType: null,
+    webhookUrl: null, rateLimitQps: null, dailyRefundLimitMinor: null, activeGrants: 0 },
+];
+const credentials: Record<string, PayOpsCredentialRow[]> = {
+  "APP-PARTNER-01": [
+    { kind: "APP_SECRET", version: 1, status: "ROTATING", fingerprint: "3f9a1c0e", serial: "S20261001AB12", enteredBy: "OPS-A" },
+    { kind: "APP_SECRET", version: 2, status: "ACTIVE", fingerprint: "b71d22c4", serial: "S20261027CD34", enteredBy: "OPS-A" },
+    { kind: "ENCRYPT_KEY", version: 1, status: "ACTIVE", fingerprint: "0e55a9f1", serial: "E20261027EF56", enteredBy: "OPS-A" },
+  ],
+};
+const requestLogs: PayOpsRequestLogRow[] = [
+  { id: 2, traceId: "T20261028A1", entry: "INTERNAL_HTTP", api: "GET /internal/pay/v1/ops/orders", payAction: "QUERY",
+    appNo: "MALL", operatorNo: "OPS-ADMIN", sourceService: "shop", sourceModule: "payclient", sourceInstance: "shop-1",
+    sourceIp: "127.0.0.1", originClient: "OPS_WEB", originApi: "GET /ops/payments/orders", clientIp: null, httpStatus: 200,
+    resultCode: null, outcome: "ACCEPTED", elapsedMs: 12, signKeyVersion: null, receivedAt: now - 60_000 },
+  { id: 1, traceId: "T20261028A0", entry: "OPEN_API", api: "POST /open/pay/v1/orders", payAction: "CREATE_ONLINE",
+    appNo: "APP-PARTNER-01", operatorNo: null, sourceService: null, sourceModule: null, sourceInstance: null, sourceIp: null,
+    originClient: null, originApi: null, clientIp: "203.0.113.7", httpStatus: 401, resultCode: "UNAUTHORIZED",
+    outcome: "REJECTED_AUTH", elapsedMs: 3, signKeyVersion: null, receivedAt: now - 120_000 },
+];
+const qrCodes: PayOpsQrRow[] = [
+  { qrCode: "Q7KX2M9PA", storeId: 1, kind: "TABLE", tableRef: "A3", currency: "CNY", singleLimitMinor: 50000,
+    dailyLimitMinor: 200000, status: "ACTIVE", createdByType: "BIZ", createdAt: now - 86_400_000 },
+];
+const platformKeys: PayOpsPlatformKeyRow[] = [
+  { keyId: 11, ownerType: "CHANNEL_PLATFORM", ownerId: 1, direction: "COUNTERPARTY_VERIFY", usage: "VERIFY", name: "微信平台证书",
+    counterparty: "WECHAT", status: "ACTIVE", currentVersion: 1, expiresAt: now + 200 * 86_400_000 },
+];
+const keyVersions: Record<number, PayOpsKeyVersionRow[]> = {
+  11: [
+    { version: 1, status: "ACTIVE", fingerprint: "9c1e40aa", serial: "5157F3A1", enteredBy: "OPS-A" },
+    { version: 2, status: "VERIFIED", fingerprint: "41d0b7e2", serial: "6A20C9D4", enteredBy: ME },
+  ],
+};
+
+function keyVersion(keyId: number, version: number) {
+  const v = keyVersions[keyId]?.find((x) => x.version === version);
+  if (!v) notFound("密钥版本", "Key version", `${keyId}/${version}`);
+  return v;
+}
 
 const strip = ({ reviewers: _r, ...row }: PayOpsRefundRow & { reviewers: string[] }): PayOpsRefundRow => row;
 
@@ -97,4 +144,40 @@ export const payOpsMock: PayOpsApi = {
     return wait(undefined);
   },
   payOpsDisableQrCode: () => wait(undefined),
+  payOpsQrCodes: (q) => wait(qrCodes.filter((c) => (!q?.storeId || c.storeId === q.storeId) && (!q?.status || c.status === q.status))),
+  payOpsApps: () => wait(apps),
+  payOpsAppGrants: (appNo) => wait(appNo === "APP-PARTNER-01"
+    ? [{ storeId: 1, actions: "COLLECT,READ", status: "ACTIVE", grantedBy: "M-OP-1", grantedAt: now - 5 * 86_400_000, revokedAt: null }]
+    : []),
+  payOpsAppCredentials: (appNo) => wait(credentials[appNo] ?? []),
+  payOpsRevokeAppCredential: (appNo, kind, version, reason) => {
+    const c = (credentials[appNo] ?? []).find((x) => x.kind === kind && x.version === version);
+    if (!c) notFound("接入方密钥", "App credential", `${appNo}/${kind}/${version}`);
+    if (!reason.trim()) fail("请写吊销原因", "A reason is required");
+    c.status = "REVOKED";
+    return wait(undefined);
+  },
+  payOpsRequestLogs: (q) => wait(requestLogs.filter((r) => (!q?.entry || r.entry === q.entry)
+    && (!q?.traceId || r.traceId === q.traceId) && (!q?.appNo || r.appNo === q.appNo)
+    && (!q?.sourceService || r.sourceService === q.sourceService) && (!q?.outcome || r.outcome === q.outcome))),
+  payOpsRequestLog: (id) => {
+    const row = requestLogs.find((r) => r.id === id);
+    if (!row) notFound("请求记录", "Request log", String(id));
+    return wait({ row, requestMasked: '{"payer":{"phone":"138****0000"}}', responseMasked: '{"code":0}' });
+  },
+  payOpsPlatformKeys: () => wait(platformKeys),
+  payOpsPlatformKeyVersions: (keyId) => wait(keyVersions[keyId] ?? []),
+  payOpsEnablePlatformKey: (keyId, version) => {
+    const v = keyVersion(keyId, version);
+    if (v.enteredBy === ME) fail("启用人不能是录入人（两人控制）", "The enabler must differ from the uploader");
+    if (v.status !== "VERIFIED") fail(`版本 ${version} 未验证，不能启用`, `Version ${version} is not verified`);
+    for (const x of keyVersions[keyId]) if (x.status === "ACTIVE") x.status = "ROTATING";
+    v.status = "ACTIVE";
+    return wait(undefined);
+  },
+  payOpsRevokePlatformKey: (keyId, version, reason) => {
+    if (!reason.trim()) fail("请写吊销原因", "A reason is required");
+    keyVersion(keyId, version).status = "REVOKED";
+    return wait(undefined);
+  },
 };

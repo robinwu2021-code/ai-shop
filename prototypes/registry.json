@@ -3352,6 +3352,54 @@
      "label": "安全规范 §2.5"
     }
    ]
+  },
+  {
+   "slug": "pay-access-ops",
+   "file": "pay-access-ops.html",
+   "title": "支付运营：接入与密钥",
+   "kind": "pages",
+   "clients": [
+    "ops-web"
+   ],
+   "status": "已落地",
+   "date": "2026-10-28",
+   "summary": "4屏。接入方与授权（密钥只看指纹、吊销即时生效）、请求记录（含内部调用来源）、静态收款码、平台证书与密钥（启用两人）。",
+   "docs": [
+    {
+     "label": "pay-guard TDD §2.8",
+     "path": "docs/technical/TDD-支付服务-接入守卫模块pay-guard.md"
+    },
+    {
+     "label": "开发计划 M5b",
+     "path": "docs/technical/开发计划-支付接入守卫与独立部署.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "接入方与授权",
+     "client": "ops-web",
+     "route": "/pay-ops/apps"
+    },
+    {
+     "id": "s02",
+     "title": "请求记录",
+     "client": "ops-web",
+     "route": "/pay-ops/request-logs"
+    },
+    {
+     "id": "s03",
+     "title": "静态收款码",
+     "client": "ops-web",
+     "route": "/pay-ops/qr-codes"
+    },
+    {
+     "id": "s04",
+     "title": "平台证书与密钥",
+     "client": "ops-web",
+     "route": "/pay-ops/platform-keys"
+    }
+   ]
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"

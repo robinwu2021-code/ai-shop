@@ -1,18 +1,32 @@
-// 覆盖范围：支付运营端（/pay-ops/v1，TDD-支付服务-I5接入层 S9）。
+// 覆盖范围：支付运营（开发计划 M5a：走业务服务 /ops/payments/**，与其它运营端同一套运营会话与权限码；
+// 原先直连支付的 /pay-ops/v1 过渡一个版本后删）。
 import { client } from "../http-client";
 import type { PayOpsApi } from "../contracts/payops";
 
 const enc = encodeURIComponent;
 
 export const payOpsHttp: PayOpsApi = {
-  payOpsOrders: (q) => client.get("/pay-ops/v1/orders", q),
-  payOpsOrder: (no) => client.get(`/pay-ops/v1/orders/${enc(no)}`),
-  payOpsRefunds: (q) => client.get("/pay-ops/v1/refunds", q),
-  payOpsReviewRefund: (no, v) => client.post(`/pay-ops/v1/refunds/${enc(no)}/review`, v),
-  payOpsNotifies: (q) => client.get("/pay-ops/v1/notifies", q),
-  payOpsResendNotify: (id) => client.post(`/pay-ops/v1/notifies/${id}/resend`),
-  payOpsExceptions: (q) => client.get("/pay-ops/v1/exceptions", q),
-  payOpsRefundException: (id) => client.post(`/pay-ops/v1/exceptions/${id}/refund`),
-  payOpsIgnoreException: (id, note) => client.post(`/pay-ops/v1/exceptions/${id}/ignore`, { note }),
-  payOpsDisableQrCode: (qrCode) => client.put(`/pay-ops/v1/qr-codes/${enc(qrCode)}/disabled`),
+  payOpsOrders: (q) => client.get("/ops/payments/orders", q),
+  payOpsOrder: (no) => client.get(`/ops/payments/orders/${enc(no)}`),
+  payOpsRefunds: (q) => client.get("/ops/payments/refunds", q),
+  payOpsReviewRefund: (no, v) => client.post(`/ops/payments/refunds/${enc(no)}/review`, v),
+  payOpsNotifies: (q) => client.get("/ops/payments/notifies", q),
+  payOpsResendNotify: (id) => client.post(`/ops/payments/notifies/${id}/resend`),
+  payOpsExceptions: (q) => client.get("/ops/payments/exceptions", q),
+  payOpsRefundException: (id) => client.post(`/ops/payments/exceptions/${id}/refund`),
+  payOpsIgnoreException: (id, note) => client.post(`/ops/payments/exceptions/${id}/ignore`, { note }),
+  payOpsDisableQrCode: (qrCode) => client.put(`/ops/payments/qr-codes/${enc(qrCode)}/disabled`),
+  payOpsQrCodes: (q) => client.get("/ops/payments/qr-codes", q),
+  payOpsApps: () => client.get("/ops/payments/apps"),
+  payOpsAppGrants: (appNo) => client.get(`/ops/payments/apps/${enc(appNo)}/grants`),
+  payOpsAppCredentials: (appNo) => client.get(`/ops/payments/apps/${enc(appNo)}/credentials`),
+  payOpsRevokeAppCredential: (appNo, kind, version, reason) =>
+    client.post(`/ops/payments/apps/${enc(appNo)}/credentials/${enc(kind)}/${version}/revoke`, { reason }),
+  payOpsRequestLogs: (q) => client.get("/ops/payments/request-logs", q),
+  payOpsRequestLog: (id) => client.get(`/ops/payments/request-logs/${id}`),
+  payOpsPlatformKeys: () => client.get("/ops/payments/platform-keys"),
+  payOpsPlatformKeyVersions: (keyId) => client.get(`/ops/payments/platform-keys/${keyId}/versions`),
+  payOpsEnablePlatformKey: (keyId, version) => client.post(`/ops/payments/platform-keys/${keyId}/versions/${version}/enable`),
+  payOpsRevokePlatformKey: (keyId, version, reason) =>
+    client.post(`/ops/payments/platform-keys/${keyId}/versions/${version}/revoke`, { reason }),
 };

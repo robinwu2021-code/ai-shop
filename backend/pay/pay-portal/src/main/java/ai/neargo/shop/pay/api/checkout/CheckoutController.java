@@ -3,7 +3,7 @@ package ai.neargo.shop.pay.api.checkout;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.acquiring.service.PaymentService.StartPaymentResult;
-import ai.neargo.shop.pay.api.common.PortalRequests;
+import ai.neargo.shop.pay.api.guard.core.PortalRequests;
 import ai.neargo.shop.pay.api.common.PortalResponse;
 import ai.neargo.shop.pay.checkout.service.CheckoutService;
 import ai.neargo.shop.pay.checkout.service.CheckoutService.CodeView;

@@ -149,4 +149,9 @@ export const POINT_CODES: Record<string, string> = {
   "/pay-ops/exceptions": "OPS_FINANCE__PAY_EXCEPTIONS",
   "/pay-ops/refunds": "OPS_FINANCE__PAY_REFUNDS",
   "/pay-ops/notifies": "OPS_FINANCE__PAY_NOTIFIES",
+  // 接入与密钥（开发计划 M5b）：同上，手工冻结（gen-perm-seed --emit-point-codes 会重算全表，不能用它补）
+  "/pay-ops/qr-codes": "OPS_FINANCE__PAY_QR_CODES",
+  "/pay-ops/apps": "OPS_FINANCE__PAY_APPS",
+  "/pay-ops/request-logs": "OPS_FINANCE__PAY_REQUEST_LOGS",
+  "/pay-ops/platform-keys": "OPS_FINANCE__PAY_PLATFORM_KEYS",
 };

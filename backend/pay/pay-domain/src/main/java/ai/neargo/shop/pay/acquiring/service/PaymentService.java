@@ -25,6 +25,12 @@ public interface PaymentService {
     /** 按内部 app 与调用方单号取（不做调用方判定）；没有为空 */
     PayOrder findByOutOrderNo(Long appId, String outOrderNo);
 
+    /**
+     * 查单补账（pay-guard 开发计划 M6.4）：对未结束的交易尝试逐个向渠道查单，查到已付就按结果入口入账；不关单。
+     * 终端拿到「结果不明」（{@code UNKNOWN}）后必须先调它 —— 「终端已扣、我方未知」靠这一步补上。返回查后的支付单。
+     */
+    PayOrder refresh(PayCaller caller, String payOrderNo);
+
     /** 关单（关前必查单）。返回关单后的支付单（查到已付则是 SUCCEEDED） */
     PayOrder close(PayCaller caller, String payOrderNo, String reason);
 

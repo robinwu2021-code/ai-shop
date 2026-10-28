@@ -5,14 +5,16 @@ import static ai.neargo.shop.pay.api.open.OpenPaymentController.ok;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.acquiring.dto.RefundRequestCmd;
+import ai.neargo.shop.pay.acquiring.entity.PayRefund;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
-import ai.neargo.shop.pay.api.auth.PortalPrincipal;
+import ai.neargo.shop.pay.openapp.OpenSensitiveData;
 import ai.neargo.shop.pay.api.common.PortalResponse;
 import ai.neargo.shop.pay.api.open.OpenViews.RefundReq;
 import ai.neargo.shop.pay.api.open.OpenViews.RefundView;
-import ai.neargo.shop.pay.openapp.entity.PayApp;
-import ai.neargo.shop.pay.openapp.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.web.CallerGrant;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,30 +33,34 @@ public class OpenRefundController {
 
     private final AppAuthService apps;
     private final RefundService refunds;
+    private final OpenSensitiveData sensitive;
 
-    public OpenRefundController(AppAuthService apps, RefundService refunds) {
+    public OpenRefundController(AppAuthService apps, RefundService refunds, OpenSensitiveData sensitive) {
+        this.sensitive = sensitive;
         this.apps = apps;
         this.refunds = refunds;
     }
 
     @PostMapping("/orders/{payOrderNo}/refunds")
-    public PortalResponse<RefundView> request(PortalPrincipal who, @PathVariable String payOrderNo,
-                                              @RequestBody RefundReq req, HttpServletRequest http) {
-        PayApp app = apps.requireActive(who.subjectId());
-        apps.requireScope(app, "pay:refund");
+    public PortalResponse<RefundView> request(@PathVariable String payOrderNo, @RequestBody RefundReq req,
+                                              @CallerGrant(grant = "REFUND") PayCaller caller,
+                                              HttpServletRequest http) {
         if (blank(req.outRefundNo()) || req.outRefundNo().length() > 64 || req.amountMinor() == null
                 || req.amountMinor() <= 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        apps.checkDailyRefund(app, req.amountMinor());
-        return ok(RefundView.of(refunds.request(apps.callerFor(app, "REFUND"), new RefundRequestCmd(payOrderNo,
-                req.outRefundNo(), req.outRefundNo(), req.amountMinor(), req.reason()))), http);
+        apps.checkDailyRefund(caller.callerId(), req.amountMinor());
+        PayRefund r = refunds.request(caller, new RefundRequestCmd(payOrderNo, req.outRefundNo(), req.outRefundNo(),
+                req.amountMinor(), req.reason()));
+        // 线下退款收款账号（守卫已解成明文）立即封存（M3.5）
+        sensitive.sealRefundAccount(r, req.refundAccount());
+        return ok(RefundView.of(r), http);
     }
 
     @GetMapping("/refunds/{payRefundNo}")
-    public PortalResponse<RefundView> get(PortalPrincipal who, @PathVariable String payRefundNo, HttpServletRequest http) {
-        PayApp app = apps.requireActive(who.subjectId());
-        apps.requireScope(app, "pay:read");
-        return ok(RefundView.of(refunds.query(apps.callerFor(app, "READ"), payRefundNo)), http);
+    public PortalResponse<RefundView> get(@PathVariable String payRefundNo,
+                                          @CallerGrant(grant = "READ") PayCaller caller,
+                                          HttpServletRequest http) {
+        return ok(RefundView.of(refunds.query(caller, payRefundNo)), http);
     }
 }
