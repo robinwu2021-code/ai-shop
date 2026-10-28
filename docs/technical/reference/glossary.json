@@ -36071,7 +36071,7 @@
         "module": "pay/pay-domain"
       },
       {
-        "host": "TerminalService",
+        "host": "TerminalServiceImpl",
         "name": "OWNER_TYPE",
         "value": "TERMINAL",
         "zh": "",
@@ -50783,6 +50783,14 @@
       "name": "ACTIVATION_PATH",
       "type": "String",
       "value": "PortalFace.TERMINAL.prefix() + \"/activation\"",
+      "zh": "",
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "TerminalAuthServiceImpl",
+      "name": "WINDOW",
+      "type": "Duration",
+      "value": "Duration.ofMinutes(5)",
       "zh": "",
       "module": "pay/pay-guard"
     },
