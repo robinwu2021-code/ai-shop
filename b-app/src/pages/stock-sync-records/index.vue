@@ -63,6 +63,5 @@ onShow(async () => { await merchant.ensureStores(); await load(); });
 </template>
 
 <style scoped>
-.intro { display: block; padding: 0 8rpx 16rpx; }
 .detail { display: block; padding-top: 12rpx; overflow-wrap: anywhere; }
 </style>

@@ -240,50 +240,6 @@
   },
   "blocks": [
     {
-      "class": ".sh-actions",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "flex-wrap": "wrap",
-        "align-items": "stretch",
-        "gap": "16rpx"
-      },
-      "px": {
-        "display": "flex",
-        "flex-wrap": "wrap",
-        "align-items": "stretch",
-        "gap": "8px"
-      },
-      "usage": {
-        "b-app": 9,
-        "c-app": 0
-      }
-    },
-    {
-      "class": ".sh-stack",
-      "group": "其它",
-      "when": "—",
-      "avoid": "—",
-      "decl": {
-        "display": "flex",
-        "flex-direction": "column",
-        "gap": "20rpx",
-        "min-width": "0"
-      },
-      "px": {
-        "display": "flex",
-        "flex-direction": "column",
-        "gap": "10px",
-        "min-width": "0"
-      },
-      "usage": {
-        "b-app": 23,
-        "c-app": 0
-      }
-    },
-    {
       "class": ".sh-muted",
       "group": "字阶",
       "when": "次要文字。**字号走密度变量**，B 端自动降到 24rpx",
@@ -1432,6 +1388,28 @@
       }
     },
     {
+      "class": ".sh-actions",
+      "group": "行与列",
+      "when": "排列同组操作，等宽并允许换行",
+      "avoid": "单独操作无需动作组",
+      "decl": {
+        "display": "flex",
+        "flex-wrap": "wrap",
+        "align-items": "stretch",
+        "gap": "16rpx"
+      },
+      "px": {
+        "display": "flex",
+        "flex-wrap": "wrap",
+        "align-items": "stretch",
+        "gap": "8px"
+      },
+      "usage": {
+        "b-app": 9,
+        "c-app": 0
+      }
+    },
+    {
       "class": ".sh-center",
       "group": "行与列",
       "when": "内容摆正中间的方块",
@@ -1665,6 +1643,28 @@
       "usage": {
         "b-app": 7,
         "c-app": 4
+      }
+    },
+    {
+      "class": ".sh-stack",
+      "group": "行与列",
+      "when": "纵向排列表单和卡片内容，由容器统一控制间距",
+      "avoid": "子项不再叠加纵向边距",
+      "decl": {
+        "display": "flex",
+        "flex-direction": "column",
+        "gap": "20rpx",
+        "min-width": "0"
+      },
+      "px": {
+        "display": "flex",
+        "flex-direction": "column",
+        "gap": "10px",
+        "min-width": "0"
+      },
+      "usage": {
+        "b-app": 23,
+        "c-app": 0
       }
     },
     {
@@ -5254,8 +5254,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 13,
-      "localSelectors": 2,
-      "localCssLines": 2,
+      "localSelectors": 1,
+      "localCssLines": 1,
       "rolled": []
     },
     {
