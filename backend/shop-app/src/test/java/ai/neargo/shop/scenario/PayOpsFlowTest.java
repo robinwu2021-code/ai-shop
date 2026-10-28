@@ -86,11 +86,10 @@ class PayOpsFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 没有运营令牌一律 401，且留痕（入口 OPS_API、鉴权失败）")
-    void unauthenticatedIsRejectedAndLogged() throws Exception {
-        assertThat(call(null, get("/pay-ops/v1/orders")).getStatus()).isEqualTo(401);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_api_request_log WHERE entry='OPS_API'"
-                + " AND outcome='REJECTED_AUTH'", Long.class)).isPositive();
+    @DisplayName("★★★ 没有运营令牌一律 401（M5a：支付运营走业务服务的运营链，与其它运营端同一套账号体系）")
+    void unauthenticatedIsRejected() throws Exception {
+        assertThat(call(null, get("/ops/payments/orders")).getStatus()).isEqualTo(401);
+        assertThat(call(null, post("/ops/payments/refunds/PYR-X/review").content("{}")).getStatus()).isEqualTo(401);
     }
 
     @Test
@@ -98,13 +97,13 @@ class PayOpsFlowTest {
     void orderTimeline() throws Exception {
         String po = paidOrder();
         String token = admin();
-        JsonNode list = data(call(token, get("/pay-ops/v1/orders").param("payOrderNo", po)));
+        JsonNode list = data(call(token, get("/ops/payments/orders").param("payOrderNo", po)));
         assertThat(list.size()).isEqualTo(1);
         assertThat(list.get(0).get("status").asString()).isEqualTo("SUCCEEDED");
-        JsonNode d = data(call(token, get("/pay-ops/v1/orders/" + po)));
+        JsonNode d = data(call(token, get("/ops/payments/orders/" + po)));
         assertThat(d.get("attempts").size()).isPositive();
         assertThat(d.get("vouchers").toString()).contains("PAY_SUCCEEDED");
-        assertThat(code(call(token, get("/pay-ops/v1/orders/PYO-NOPE")))).isNotZero();
+        assertThat(code(call(token, get("/ops/payments/orders/PYO-NOPE")))).isNotZero();
     }
 
     @Test
@@ -116,13 +115,13 @@ class PayOpsFlowTest {
                 "七天无理由", "OP-1"));
         assertThat(pending.status()).isEqualTo("PENDING_REVIEW");
         String token = admin();
-        assertThat(data(call(token, get("/pay-ops/v1/refunds").param("status", "PENDING_REVIEW"))).toString())
+        assertThat(data(call(token, get("/ops/payments/refunds").param("status", "PENDING_REVIEW"))).toString())
                 .contains(pending.payRefundNo());
 
-        JsonNode first = data(call(token, post("/pay-ops/v1/refunds/" + pending.payRefundNo() + "/review")
+        JsonNode first = data(call(token, post("/ops/payments/refunds/" + pending.payRefundNo() + "/review")
                 .content("{\"approve\":true}")));
         assertThat(first.get("status").asString()).isEqualTo("PENDING_SECOND_REVIEW");
-        assertThat(code(call(token, post("/pay-ops/v1/refunds/" + pending.payRefundNo() + "/review")
+        assertThat(code(call(token, post("/ops/payments/refunds/" + pending.payRefundNo() + "/review")
                 .content("{\"approve\":true}")))).as("两人复核：同一个人不能通过两次").isNotZero();
     }
 
@@ -138,9 +137,9 @@ class PayOpsFlowTest {
         Long id = jdbc.queryForObject("SELECT id FROM pay_biz_notify WHERE event_key=?", Long.class,
                 "PAYMENT_SUCCEEDED|O" + orderId + "|ops");
         String token = admin();
-        assertThat(data(call(token, get("/pay-ops/v1/notifies").param("status", "GIVEN_UP"))).toString())
+        assertThat(data(call(token, get("/ops/payments/notifies").param("status", "GIVEN_UP"))).toString())
                 .contains(String.valueOf(id));
-        data(call(token, post("/pay-ops/v1/notifies/" + id + "/resend")));
+        data(call(token, post("/ops/payments/notifies/" + id + "/resend")));
         assertThat(jdbc.queryForObject("SELECT trigger_type FROM pay_biz_notify_attempt WHERE pay_biz_notify_id=?"
                 + " ORDER BY attempt DESC LIMIT 1", String.class, id)).isEqualTo("MANUAL");
         assertThat(jdbc.queryForObject("SELECT triggered_by FROM pay_biz_notify_attempt WHERE pay_biz_notify_id=?"
@@ -159,9 +158,9 @@ class PayOpsFlowTest {
         Long excId = jdbc.queryForObject("SELECT id FROM pay_exception WHERE pay_order_id=? AND kind='AMOUNT_MISMATCH'",
                 Long.class, orderId);
         String token = admin();
-        assertThat(data(call(token, get("/pay-ops/v1/exceptions").param("status", "OPEN"))).toString())
+        assertThat(data(call(token, get("/ops/payments/exceptions").param("status", "OPEN"))).toString())
                 .contains(po);
-        data(call(token, post("/pay-ops/v1/exceptions/" + excId + "/ignore").content("{\"note\":\"线下已退\"}")));
+        data(call(token, post("/ops/payments/exceptions/" + excId + "/ignore").content("{\"note\":\"线下已退\"}")));
         assertThat(jdbc.queryForObject("SELECT status FROM pay_exception WHERE id=?", String.class, excId))
                 .isEqualTo("IGNORED");
 
@@ -170,7 +169,7 @@ class PayOpsFlowTest {
         jdbc.update("INSERT INTO pay_qr_code (qr_code, store_id, kind, currency, single_limit_minor, daily_limit_minor,"
                 + " status, created_by_type, created_at, updated_at) VALUES (?, ?, 'STORE', 'CNY', 100, 1000, 'ACTIVE',"
                 + " 'BIZ', NOW(), NOW())", qr, store);
-        data(call(token, put("/pay-ops/v1/qr-codes/" + qr + "/disabled")));
+        data(call(token, put("/ops/payments/qr-codes/" + qr + "/disabled")));
         assertThat(jdbc.queryForObject("SELECT status FROM pay_qr_code WHERE qr_code=?", String.class, qr))
                 .isEqualTo("DISABLED");
     }

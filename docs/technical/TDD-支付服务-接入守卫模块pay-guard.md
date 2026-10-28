@@ -639,6 +639,7 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M4.2 | `PayCallbackPort` 拆成 `verify`（落原文 → 验签 → 取单号 → 核对收款商户）与 `confirm`（回查 → 比对金额 → 识别重复），`accept` 保留为两段连跑的默认实现 | `CallbackTemplateTest` 6 条原样通过 |
 | M4.3 | **无需改动**：微信回调的 ±5 分钟时间窗、按 `Wechatpay-Serial` 选证书、新旧并存早已实现并有 `CallbackFreshnessAndRotationTest` | — |
 | M4.4 | 回调 controller 迁到 `pay-portal` `api.callback`，订单投影改经 `OrderRepairPort#markPaid`（与原 `OrderService#markPaid` 同一实现）—— 支付模块不依赖交易域；回调地址不变 | 复核 §4.2 原排给渠道线，本次一并做了 |
+| M5a.1–3 | 计划的 5 个 `OpsPay*AppService` 合成一个 `OpsPaymentAppService`（内嵌 / 远程两实现），逻辑放在支付域 `ops.PayOpsFacade`，内嵌与 `pay-svc` 内部端点共用；`shop-app` 的 `/ops/payments/**` 一个 controller 承接 10 个端点（权限码与原 `/pay-ops/v1` 逐个对应）；内部端点在 `/internal/pay/v1/ops/**`（经 M2 的内部入口守卫识别与留痕），写操作带操作人；数据范围参数未加 | 5 个服务各两三个方法、同一组依赖，拆开只多样板；运营查询本就是平台全量（不按主体圈），数据范围参数等真有收窄需求再加 |
 
 ---
 
