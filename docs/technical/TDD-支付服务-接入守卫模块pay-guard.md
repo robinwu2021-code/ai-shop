@@ -6,7 +6,7 @@
 [TDD-支付服务-开放API加解密与密钥分发](./TDD-支付服务-开放API加解密与密钥分发.md) v2.2（签名 / 加密参数 P1–P8）·
 [开放API加解密-类清单](./TDD-支付服务-开放API加解密-类清单.md) §9（K1-DB 已实现：`KeyVault`、`PartnerKeyService`，分支 `claude/key-store-db` `ed7d5aed6`）·
 `支付服务-安全规范.md` §2（A1–A8 各端鉴权规范）· ADR-044（`pay-portal`）
-创建：2026-10-27 · 最后更新：2026-10-27
+创建：2026-10-27 · 最后更新：2026-10-28（§7 实施记录）
 基线代码：`codex/ai-shop-codex`（W5 密钥模块、I5 接入层、K1-DB 都已合入）
 **代码结构、逐类代码清单、数据库设计**：[接入守卫模块pay-guard-代码与数据库](./TDD-支付服务-接入守卫模块pay-guard-代码与数据库.md)（与本篇 §3 冲突时以那份为准）
 
@@ -170,9 +170,9 @@ public record CallSource(
         String serverIp,      // 调用方服务所在机器的 IP（自报）
         String traceId,       // 上游追踪号：沿用调用方请求的 X-Request-Id，支付不另起
         String originApi,     // 触发这次调用的上游接口，如 POST /mp/orders/{orderNo}/pay；任务触发填任务名
-        String originClient,  // 上游请求的来源端：MINI_PROGRAM / H5 / BIZ_APP / OPS_WEB / POS / JOB
+        String originClient,  // 上游请求的来源端：沿用认证链端码 APP_C / APP_BIZ / WEB_OPS / H5 / PARTNER；JOB / OUTBOX / UNKNOWN
         String originIp,      // 上游请求的终端用户 IP（ClientMeta.clientIp，经可信代理头）
-        String originUserAgent, // 上游请求的 User-Agent（只存摘要）
+        String originUaDigest, // 上游请求 User-Agent 的 SHA-256（原文不出调用方进程）
         String operatorNo,    // 操作人：商家员工号 / 运营员工号 / 顾客账号；任务为 SYSTEM
         String invokedAt) {   // 调用方发起时间（ISO-8601）
 }
@@ -180,7 +180,8 @@ public record CallSource(
 /** 统一封装：调用方一行 CallSources.current() 即得；进程内与 HTTP 两种形态拿到的是同一份 */
 public final class CallSources {
     public static CallSource current() { … }          // 读 RequestContextHolder / MDC 追踪号 / 任务上下文 + 本进程静态信息
-    public static CallSource job(String jobName) { … } // 定时任务、Outbox 消费者等没有上游请求的场景
+    public static <T> T asJob(String jobName, Supplier<T> body) { … }       // 定时任务（进程内执行器绑定）
+    public static <T> T asOutbox(String eventType, Supplier<T> body) { … }  // Outbox 消费（分发器绑定）
 }
 ```
 
@@ -584,6 +585,22 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | S3 | 管线形态 | A 每个入口一个独立过滤器、各写一遍 · B 一个 `GuardFilter` + 每入口一个 `EntryGuard` | **B**：今天的 `PortalAuthFilter` 已是这个形状 |
 | S4 | 运营端 | — | **已定（用户，2026-10-27）**：平台账号体系，支付不另设规则 |
 | S5 | 内部调用来源怎么传 | A 调用方手填参数 · B 参数里带 `CallSource`，由 `CallSources.current()` 统一生成 · C 支付侧从线程上下文自己读 | **B**：按用户「统一在调用参数封装」；A 会漏填、各填各的；C 在独立形态（跨进程）拿不到 |
+
+---
+
+## §7 实施记录与偏差
+
+代码在分支 `claude/pay-guard-m1`，按[开发计划](./开发计划-支付接入守卫与独立部署.md)的任务号一条一个提交。
+
+| 任务 | 与本篇的偏差 | 原因 |
+|---|---|---|
+| M1.5 | 商家端 controller 不经参数拿 `PayCaller`，仍由 `BizPayContext.caller(storeId)` 换 | 参数解析在 `@PreAuthorize` 之前；商家调用方要按请求里的门店圈，门店须先过门店校验。M5a 商家端改走业务服务时一并去掉 |
+| M2.1 | `CallSource.originUserAgent` → `originUaDigest` | 字段只装摘要，名字照实说；与 V16 列 `origin_ua_digest` 同名 |
+| M2.1 | `CallSources.job(name)` → `asJob(name, body)` + `asOutbox(eventType, body)`，另有 `bind(Origin)` | 来源要在一段执行期间有效（任务体里任意深处调支付都取得到），返回一个值做不到；Outbox 单列来源端 `OUTBOX`，M2.7 的抽样只针对 `JOB` |
+| M2.1 | `originClient` 沿用认证链已有端码（`APP_C` / `APP_BIZ` / `WEB_OPS` / `H5` / `PARTNER`），不另起 `MINI_PROGRAM` 等 | 端码全仓一套，访问日志、登录日志已在用；另起一套就要维护映射 |
+| M2.1 | `CallSources.current()` 不填 `module` | 调用方进程不知道这次是哪条业务线；由支付侧按业务类型补（`CallSource#withModuleIfAbsent`，M2.4） |
+| M2.1 | HTTP 来源由 MVC 拦截器 `CallSourceInterceptor`（`shop-base-auth`）绑定，不在 `CallSources` 里读 `RequestContextHolder` | `shop-base` 没有 Servlet（模块注释的约束）；拦截器处认证链已跑完、路由模板已匹配，IP 只经 `ClientMeta` |
+| M2.1 | 只挂了进程内任务执行器（`InProcessJobConfig`）与 Outbox 分发器；直接 `@Scheduled` 的方法未绑定，来源端记 `UNKNOWN` | 63 个 `@Scheduled` 类不逐个改；补偿查单若走 `@Scheduled`，M2.7 抽样前再在调度器上加 `TaskDecorator` |
 
 ---
 
