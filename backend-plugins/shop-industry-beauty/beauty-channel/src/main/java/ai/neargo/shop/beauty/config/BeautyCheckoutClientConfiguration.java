@@ -1,6 +1,9 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.port.RemoteCheckoutPort;
+import ai.neargo.shop.beauty.port.RemoteServiceExecutionPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionInternalApi;
 import ai.neargo.shop.beauty.port.RemoteManualServiceAdmissionPort;
 import ai.neargo.shop.spi.trade.CheckoutInternalApi;
 import ai.neargo.shop.spi.trade.CheckoutPort;
@@ -44,5 +47,14 @@ public class BeautyCheckoutClientConfiguration {
                         ManualServiceAdmissionInternalApi.class,
                         Duration.ofSeconds(5)),
                 new InternalBindings(token));
+    }
+
+    /** Standalone beauty consumes the same real Core quantity owner, without local grant persistence. */
+    @Bean
+    @ConditionalOnMissingBean(ServiceExecutionPort.class)
+    ServiceExecutionPort beautyRemoteServiceExecutionPort(InternalHttp http,
+            @Value("${shop.services.internal-token:}") String token) {
+        return new RemoteServiceExecutionPort(http.client(ServiceName.PLATFORM,
+                ServiceExecutionInternalApi.class, Duration.ofSeconds(5)), new InternalBindings(token));
     }
 }

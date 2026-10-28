@@ -3,6 +3,9 @@ package ai.neargo.shop.trade.mapper;
 import ai.neargo.shop.trade.entity.OrdManualServiceAdmission;
 import ai.neargo.shop.trade.entity.OrdManualServiceAdmissionAction;
 import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.entity.OrdCheckoutLine;
+import ai.neargo.shop.trade.entity.OrdCheckoutOperation;
+import ai.neargo.shop.trade.service.ServiceExecutionService.ExecutionCoordinates;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -15,6 +18,37 @@ import java.util.List;
 
 /** Every original receipt lookup is scoped; absence is serialized by the existing order root. */
 public interface ManualAdmissionMapper extends BaseMapper<OrdManualServiceAdmission> {
+    /** Include deleted or duplicate source facts so return routing cannot silently fall back to legacy retail. */
+    @Select("SELECT * FROM ord_manual_service_admission WHERE tenant_no='MAIN' AND order_no=#{order} ORDER BY id")
+    List<OrdManualServiceAdmission> stockReturnOriginal(@Param("order") String order);
+
+    /** A saved tracked creation intent forbids guessing a missing/nonmanual original owner after a config switch. */
+    @Select("SELECT COUNT(*) FROM ord_create_intent WHERE tenant_no='MAIN' AND pay_no=#{order}"
+            + " AND reservation_operation_no IS NOT NULL")
+    int trackedStockReturnIntent(@Param("order") String order);
+
+    /** Caller already holds this operation after canonical quantity roots; no second source observation is created. */
+    @Select("""
+            SELECT * FROM ord_checkout_operation WHERE tenant_no='MAIN' AND deleted=0 AND caller='BEAUTY'
+              AND operation_no=#{coordinates.sourceOperationNo} AND order_no=#{coordinates.orderNo}
+              AND sub_order_no=#{coordinates.subOrderNo} AND entity_no=#{coordinates.scope.entityNo}
+              AND store_no=#{coordinates.scope.storeNo}
+            """)
+    OrdCheckoutOperation executionOperation(@Param("coordinates") ExecutionCoordinates coordinates);
+
+    /** Existing source-line roots serialize absence before any permanent execution rows can be accepted. */
+    @Select("""
+            SELECT l.* FROM ord_checkout_line l
+            WHERE l.tenant_no='MAIN' AND l.caller='BEAUTY' AND l.operation_no=#{coordinates.sourceOperationNo}
+              AND l.order_no=#{coordinates.orderNo} AND l.sub_order_no=#{coordinates.subOrderNo} AND l.deleted=0
+              AND EXISTS (SELECT 1 FROM ord_checkout_operation o
+                WHERE o.tenant_no=l.tenant_no AND o.caller=l.caller AND o.operation_no=l.operation_no
+                  AND o.entity_no=#{coordinates.scope.entityNo} AND o.store_no=#{coordinates.scope.storeNo}
+                  AND o.order_no=l.order_no AND o.sub_order_no=l.sub_order_no AND o.deleted=0)
+            ORDER BY l.source_line_no FOR UPDATE
+            """)
+    List<OrdCheckoutLine> lockExecutionSourceLines(@Param("coordinates") ExecutionCoordinates coordinates);
+
     @Select(
             "SELECT * FROM ord_manual_service_admission WHERE tenant_no='MAIN' AND"
                     + " entity_no=#{entity} AND store_no=#{store} AND order_no=#{order} AND deleted=0"

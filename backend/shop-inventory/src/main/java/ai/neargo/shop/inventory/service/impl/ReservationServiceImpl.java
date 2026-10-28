@@ -25,7 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** 预留协议实现。 */
 @ConditionalOnInventory
@@ -221,17 +224,15 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional(transactionManager = "invTransactionManager")
     public String issueByFulfillmentRef(String fulfillmentRef, String operator) {
         if (fulfillmentRef == null || fulfillmentRef.isBlank()) throw BizException.of(ErrorCode.BAD_REQUEST);
-        List<InvReservationLine> matching = lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
-                .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef).orderByAsc(InvReservationLine::getReservationId)
-                .orderByAsc(InvReservationLine::getLineNo).last("FOR UPDATE"));
+        var locked = lockFulfillment(fulfillmentRef);
+        List<InvReservationLine> matching = locked.lines();
         String firstOutbound = matching.stream().map(InvReservationLine::getOutboundNo).filter(java.util.Objects::nonNull)
                 .findFirst().orElse(null);
         for (InvReservationLine line : matching) {
             int issuedQty = line.getIssuedQty() == null ? 0 : line.getIssuedQty();
             int releasedQty = line.getReleasedQty() == null ? 0 : line.getReleasedQty();
             if (issuedQty + releasedQty >= line.getQty()) continue;
-            InvReservation head = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
-                    .eq(InvReservation::getReservationId, line.getReservationId()).last("FOR UPDATE"));
+            InvReservation head = locked.heads().get(line.getReservationId());
             if (head == null || !(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
                     || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus()))) continue;
             int remaining = line.getQty() - issuedQty - releasedQty;
@@ -272,15 +273,12 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void releaseAllocatedByFulfillmentRef(String fulfillmentRef) {
-        List<InvReservationLine> matching = lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
-                .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef).orderByAsc(InvReservationLine::getReservationId)
-                .orderByAsc(InvReservationLine::getLineNo).last("FOR UPDATE"));
-        java.util.Map<String, List<InvReservationLine>> byReservation = matching.stream()
-                .collect(java.util.stream.Collectors.groupingBy(InvReservationLine::getReservationId));
-        for (var entry : byReservation.entrySet()) {
-            InvReservation head = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
-                    .eq(InvReservation::getReservationId, entry.getKey()).last("FOR UPDATE"));
-            if (head != null) releaseAllocatedLines(head, entry.getValue());
+        var locked = lockFulfillment(fulfillmentRef);
+        List<InvReservationLine> matching = locked.lines();
+        for (InvReservation head : locked.heads().values()) {
+            var requested = matching.stream()
+                    .filter(line -> head.getReservationId().equals(line.getReservationId())).toList();
+            if (!requested.isEmpty()) releaseAllocatedLines(head, requested);
         }
     }
 
@@ -394,14 +392,12 @@ public class ReservationServiceImpl implements ReservationService {
         List<InvReservation> candidates = resMapper.selectList(Wrappers.<InvReservation>lambdaQuery()
                 .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
                 .lt(InvReservation::getExpiresAt, now)
-                .select(InvReservation::getReservationId)
+                .select(InvReservation::getOwnerId, InvReservation::getReservationId)
                 .last("LIMIT " + Math.min(limit, EXPIRE_BATCH_MAX)));
         int expired = 0;
-        for (InvReservation candidate : candidates) {
-            // The initial query is only a candidate scan. Re-read under the reservation row
-            // lock because payment may have changed HELD to ALLOCATED in the meantime.
-            InvReservation current = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
-                    .eq(InvReservation::getReservationId, candidate.getReservationId()).last("FOR UPDATE"));
+        // Lock the entire selected batch before any lines: an original observer may span
+        // several of these heads. Payment can change HELD while the candidate scan waits.
+        for (InvReservation current : lockHeads(candidates)) {
             if (current == null || !InvEnums.ReservationStatus.HELD.equals(current.getStatus())
                     || current.getExpiresAt() == null || !current.getExpiresAt().isBefore(now)) continue;
             unholdAll(current, InvEnums.ReservationStatus.EXPIRED);
@@ -447,10 +443,58 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private List<InvReservationLine> linesOf(String reservationId) {
-        return lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
-                .eq(InvReservationLine::getReservationId, reservationId)
-                .orderByAsc(InvReservationLine::getLineNo));
+        // Every caller already owns this head. Use a current read after waiting for it,
+        // rather than a repeatable-read snapshot established during discovery.
+        return lineMapper.lockOriginal(reservationId);
     }
+
+    /** Lock current identities in canonical HEAD order, preserving native reference equality. */
+    private LockedFulfillment lockFulfillment(String fulfillmentRef) {
+        var heads = new LinkedHashMap<String, InvReservation>();
+        // The head-driving current join can lock each matching line after its OWN head,
+        // before the next head. All heads advance monotonically; posting starts only once
+        // the whole scan finishes. A plain discovery read could omit newly committed roots.
+        for (InvReservation head : resMapper.lockByFulfillment(fulfillmentRef)) {
+            heads.putIfAbsent(head.getReservationId(), head);
+        }
+        var matching = new ArrayList<InvReservationLine>();
+        for (InvReservation head : heads.values()) {
+            // Keep the original SQL collation semantics; Java equality would silently drop
+            // e.g. a case-variant fulfillment reference that the native database matches.
+            matching.addAll(lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
+                    .eq(InvReservationLine::getOwnerId, head.getOwnerId())
+                    .eq(InvReservationLine::getReservationId, head.getReservationId())
+                    .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef)
+                    .orderByAsc(InvReservationLine::getLineNo).last("FOR UPDATE")));
+        }
+        // Preserve the existing issue/outbound selection order after acquiring canonical locks.
+        matching.sort(Comparator.comparing(InvReservationLine::getReservationId)
+                .thenComparing(InvReservationLine::getLineNo));
+        return new LockedFulfillment(heads, matching);
+    }
+
+    private List<InvReservation> lockHeads(List<InvReservation> candidates) {
+        var keys = candidates.stream()
+                .map(head -> new ReservationKey(head.getOwnerId(), head.getReservationId()))
+                .distinct()
+                .sorted(Comparator.comparing(ReservationKey::ownerId).thenComparing(ReservationKey::reservationId))
+                .toList();
+        var locked = new ArrayList<InvReservation>();
+        for (var key : keys) {
+            // Point lookups through the existing unique owner/reservation index avoid relying
+            // on the optimizer's filesort/scan order to establish the cross-head lock order.
+            var head = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
+                    .eq(InvReservation::getOwnerId, key.ownerId())
+                    .eq(InvReservation::getReservationId, key.reservationId()).last("FOR UPDATE"));
+            if (head != null) locked.add(head);
+        }
+        return locked;
+    }
+
+    private record ReservationKey(String ownerId, String reservationId) {}
+
+    private record LockedFulfillment(
+            Map<String, InvReservation> heads, List<InvReservationLine> lines) {}
 
     private static String sourceManifest(List<Line> lines, int lifecycle) {
         if (lines == null
@@ -543,9 +587,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     /** 按单号反查（订单号平台内全局唯一）。 */
     private List<InvReservation> allByRef(String externalRef) {
-        return resMapper.selectList(Wrappers.<InvReservation>lambdaQuery()
-                .eq(InvReservation::getExternalRef, externalRef).orderByAsc(InvReservation::getOwnerId)
-                .last("FOR UPDATE"));
+        return resMapper.lockOriginal(externalRef);
     }
 
     private InvReservation find(String ownerId, String externalRef) {

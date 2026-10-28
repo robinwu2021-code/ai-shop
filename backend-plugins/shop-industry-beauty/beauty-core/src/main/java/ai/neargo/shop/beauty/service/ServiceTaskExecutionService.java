@@ -19,5 +19,8 @@ public interface ServiceTaskExecutionService {
     StartIntent inspect(StartIntentLookup request);
     StartIntent inspectOriginal(StartIntentLookup request);
 
+    /** Recover only persisted originals, without freezing a new intent or restoring an employee identity. */
+    int recoverPending(int limit);
+
     record ExecutionPreparation(ExecutionBinding binding, Grant grant, String pendingReason) {}
 }

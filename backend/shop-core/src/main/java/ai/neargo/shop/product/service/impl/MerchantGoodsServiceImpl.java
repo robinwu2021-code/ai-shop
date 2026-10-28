@@ -3,6 +3,10 @@ package ai.neargo.shop.product.service.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.product.entity.PrdStockLock;
+import ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper;
+import ai.neargo.shop.product.policy.ExecutionStockRetentionGuard;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -178,6 +182,15 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         this.goodsService = goodsService;
         this.revisions = revisions;
         this.json = json;
+    }
+
+    private StockLockMapper originalStockRoots;
+    private ExecutionStockRetentionGuard retentionGuard;
+
+    @Autowired
+    public void setRetentionPolicy(StockLockMapper roots, ExecutionStockRetentionGuard guard) {
+        this.originalStockRoots = roots;
+        this.retentionGuard = guard;
     }
 
     // ---------------------------------------------------------------- 查询
@@ -1576,6 +1589,9 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         List<PrdSku> existing = DataScopeContext.executeWithoutScope(() ->
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                         .eq(PrdSku::getGoodsNo, goodsNo)));
+        // Finish complete original-root/link preflight before the first existing accounting mutation in this batch.
+        preflightRetirement(merchantNo, goodsNo, existing, skus);
+        Map<String, Integer> stockChanges = new LinkedHashMap<>();
         Map<String, PrdSku> byNo = new LinkedHashMap<>();
         for (PrdSku s : existing) {
             byNo.put(s.getSkuNo() + "@" + s.getMarket(), s);
@@ -1655,7 +1671,7 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 row.setOptionValueNos(writeJson(valueNos(sku.optionValues(), valueNoByDim)));
                 row.setSpec(String.join(" · ", sku.optionValues() == null ? List.of() : sku.optionValues()));
                 row.setPrice(e.getValue());
-                row.setStock(sku.stock());
+                if (fresh) row.setStock(sku.stock());
                 /*
                  * 划线价与标称重量：**不传 = 不改**，与商品级那几段同一条规矩。
                  * 两列此前都是「有列、有契约、没有写入路径」——
@@ -1695,11 +1711,18 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 row.setMerchantSkuCode(blankToNull(sku.merchantSkuCode(), row.getMerchantSkuCode()));
                 row.setSaleUnit(blankToNull(sku.saleUnit(), row.getSaleUnit()));
                 PrdSku toSave = row;
-                DataScopeContext.executeWithoutScope(() ->
-                        fresh ? skuMapper.insert(toSave) : skuMapper.updateById(toSave));
+                int changed = DataScopeContext.executeWithoutScope(() ->
+                        fresh ? skuMapper.insert(toSave) : skuMapper.updateCatalogMetadata(toSave));
+                if (changed != 1) throw BizException.of(ErrorCode.CONFLICT);
+                if (!fresh) toSave.setVersion(Math.addExact(toSave.getVersion(), 1));
+                stockChanges.put(skuNo, sku.stock());
                 saved.add(toSave);
                 kept.add(key);
             }
+        }
+
+        for (var change : stockChanges.entrySet()) {
+            stockPort.setOnHand(change.getKey(), null, change.getValue(), "OTHER");
         }
 
         /*
@@ -1738,7 +1761,10 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
             if (keptSkuNos.contains(skuNo)) {
                 continue;
             }
-            DataScopeContext.executeWithoutScope(() -> skuMapper.deleteById(e.getValue().getId()));
+            var removal = e.getValue();
+            int changed = DataScopeContext.executeWithoutScope(() -> skuMapper.retireUnencumbered(
+                    removal.getId(), merchantNo, goodsNo, removal.getVersion()));
+            if (changed != 1) throw BizException.of(ErrorCode.CONFLICT);
             if (retired.add(skuNo)) {
                 events.publish(new ai.neargo.shop.spi.product.ProductEvents.SkuRetired(
                         skuNo, merchantNo, goodsNo, replacedBy));
@@ -1747,6 +1773,40 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
         ensureStoreStockRows(merchantNo, keptSkuNos);
         // groups 已写在 goods 上，这里只用于生成 spec 文案，不再单独落库
         return saved;
+    }
+
+    /** Complete removal roots -> retention links -> accounting identities, before any batch balance writes. */
+    private void preflightRetirement(String entity, String goodsNo, List<PrdSku> existing, List<Sku> submitted) {
+        Set<String> submittedNos = submitted.stream().map(Sku::skuNo)
+                .filter(no -> no != null && !no.isBlank()).collect(java.util.stream.Collectors.toSet());
+        List<String> removals = existing.stream().map(PrdSku::getSkuNo).filter(no -> !submittedNos.contains(no))
+                .distinct().sorted().toList();
+        if (removals.isEmpty()) return;
+        DataScopeContext.executeWithoutScope(() -> {
+            var roots = originalStockRoots.lockSkuOriginalsCurrent(removals);
+            retentionGuard.checkLocked(roots);
+            if (roots.stream().anyMatch(row -> PrdStockLock.LOCKED.equals(row.getStatus())
+                    || PrdStockLock.ALLOCATED.equals(row.getStatus()))) throw BizException.of(ErrorCode.CONFLICT);
+            var current = skuMapper.lockGoodsSkusCurrent(goodsNo).stream()
+                    .filter(row -> Integer.valueOf(0).equals(row.getDeleted())).toList();
+            Set<String> actualRemoved = current.stream().map(PrdSku::getSkuNo)
+                    .filter(no -> !submittedNos.contains(no)).collect(java.util.stream.Collectors.toSet());
+            if (!actualRemoved.equals(Set.copyOf(removals))) throw BizException.of(ErrorCode.CONFLICT);
+            for (var row : current) {
+                if (!actualRemoved.contains(row.getSkuNo())) continue;
+                if (!entity.equals(row.getEntityNo()) || (row.getLockedStock() != null && row.getLockedStock(
+                    ) != 0) || (row.getSoldCount() != null && row.getSoldCount() != 0)) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+            }
+            for (String sku : removals) {
+                var stores = storeStockMapper.lockSkuStoresCurrent(sku);
+                if (stores.stream().anyMatch(row -> !entity.equals(row.getEntityNo())
+                        || (row.getLockedStock() != null && row.getLockedStock() != 0))) throw BizException.of(
+                            ErrorCode.CONFLICT);
+            }
+            return null;
+        });
     }
 
     /** 一件商品最多几个规格组合。3×4×3=36 是端上摸得到的上界，留三倍余量 */
@@ -2000,7 +2060,8 @@ public class MerchantGoodsServiceImpl implements MerchantGoodsService {
                 sku.setOptionValues(writeJson(newValues));
                 sku.setSpec(String.join(" · ", newValues));
                 PrdSku row = sku;
-                DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
+                int changed = DataScopeContext.executeWithoutScope(() -> skuMapper.updateCatalogMetadata(row));
+                if (changed != 1) throw BizException.of(ErrorCode.CONFLICT);
             }
         }
     }

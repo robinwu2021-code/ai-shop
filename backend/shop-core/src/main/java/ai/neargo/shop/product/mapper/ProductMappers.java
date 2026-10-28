@@ -1,6 +1,8 @@
 package ai.neargo.shop.product.mapper;
 
 import ai.neargo.shop.product.entity.PrdCategory;
+import ai.neargo.shop.product.entity.PrdExecutionRetention;
+import org.apache.ibatis.annotations.Insert;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.entity.PrdSpecTemplate;
@@ -167,6 +169,35 @@ public final class ProductMappers {
 
     public interface SkuMapper extends BaseMapper<PrdSku> {
 
+        /** Current complete accounting identities, including every market and retired identity. */
+        @Select("SELECT * FROM prd_sku WHERE tenant_no='MAIN' AND sku_no=#{skuNo} ORDER BY id FOR UPDATE")
+        List<PrdSku> lockSkuCurrent(@Param("skuNo") String skuNo);
+
+        @Select("SELECT * FROM prd_sku WHERE tenant_no='MAIN' AND goods_no=#{goodsNo} ORDER BY id FOR UPDATE")
+        List<PrdSku> lockGoodsSkusCurrent(@Param("goodsNo") String goodsNo);
+
+        /** Explicit metadata whitelist preserves live counters and intentional nullable clearing. */
+        @Update("""
+                UPDATE prd_sku SET option_values=#{row.optionValues}, option_value_nos=#{row.optionValueNos},
+                    spec=#{row.spec}, price=#{row.price}, origin_price=#{row.originPrice}, cost_price=#{row.costPrice},
+                    nominal_gram=#{row.nominalGram}, barcode=#{row.barcode}, merchant_sku_code=#{row.merchantSkuCode},
+                    sale_unit=#{row.saleUnit}, version=version+1
+                WHERE tenant_no='MAIN' AND id=#{row.id} AND entity_no=#{row.entityNo} AND sku_no=#{row.skuNo}
+                    AND goods_no=#{row.goodsNo} AND market=#{row.market} AND deleted=0 AND version=#{row.version}
+                    AND version < 9223372036854775807
+                """)
+        int updateCatalogMetadata(@Param("row") PrdSku row);
+
+        /** Accounting retirement cannot race a reserve into deleting its release/restore pool. */
+        @Update("""
+                UPDATE prd_sku SET deleted=1, version=version+1 WHERE tenant_no='MAIN' AND id=#{id}
+                    AND entity_no=#{entity} AND goods_no=#{goods} AND deleted=0 AND version=#{version}
+                    AND COALESCE(locked_stock,0)=0 AND COALESCE(sold_count,0)=0
+                    AND version < 9223372036854775807
+                """)
+        int retireUnencumbered(@Param("id") long id, @Param("entity") String entity,
+                @Param("goods") String goods, @Param("version") long version);
+
         /**
          * 原子锁定：**条件写在 WHERE 里**，靠影响行数判断成功与否。
          * 先查后改在并发下必然超卖（两个请求都查到「还有 1 件」），这是唯一正确的写法。
@@ -215,21 +246,22 @@ public final class ProductMappers {
          */
         @Update("""
                 UPDATE prd_sku SET stock = #{stock}, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0
+                WHERE sku_no = #{skuNo} AND deleted = 0 AND #{stock} >= 0
+                  AND #{stock} >= COALESCE(locked_stock, 0)
                 """)
         int setStock(@Param("skuNo") String skuNo, @Param("stock") int stock);
 
         /** 写回，主体级库存那一档（没有按店库存行、主体只有一家店时）。口径同 StoreStockMapper#syncSellable */
         @Update("""
                 UPDATE prd_sku SET stock = #{target} + locked_stock, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0
+                WHERE sku_no = #{skuNo} AND deleted = 0 AND #{target} >= 0
                 """)
         int syncSellable(@Param("skuNo") String skuNo, @Param("target") int target);
 
         /** 手动规则的写回，主体级那一档：只降不升 */
         @Update("""
                 UPDATE prd_sku SET stock = #{cap} + locked_stock, version = version + 1
-                WHERE sku_no = #{skuNo} AND deleted = 0 AND stock - locked_stock > #{cap}
+                WHERE sku_no = #{skuNo} AND deleted = 0 AND #{cap} >= 0 AND stock - locked_stock > #{cap}
                 """)
         int capSellable(@Param("skuNo") String skuNo, @Param("cap") int cap);
 
@@ -279,6 +311,8 @@ public final class ProductMappers {
      * 一个泛化的 updateStock(table, key...) 读起来永远要先想「这次走的是哪张表」。
      */
     public interface StoreStockMapper extends BaseMapper<PrdStoreStock> {
+        @Select("SELECT * FROM prd_store_stock WHERE tenant_no='MAIN' AND sku_no=#{skuNo} ORDER BY id FOR UPDATE")
+        List<PrdStoreStock> lockSkuStoresCurrent(@Param("skuNo") String skuNo);
 
         @Update("""
                 UPDATE prd_store_stock SET locked_stock = locked_stock + #{qty}, version = version + 1
@@ -315,8 +349,9 @@ public final class ProductMappers {
 
         /** 手改门店库存：设成这个数，`locked_stock` 不动（同主体级那条） */
         @Update("""
-                UPDATE prd_store_stock SET stock = #{stock}
-                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                UPDATE prd_store_stock SET stock = #{stock}, version = version + 1
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND #{stock} >= 0
+                  AND #{stock} >= COALESCE(locked_stock, 0)
                 """)
         int setStock(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                      @Param("stock") int stock);
@@ -328,7 +363,7 @@ public final class ProductMappers {
          */
         @Update("""
                 UPDATE prd_store_stock SET stock = #{target} + locked_stock, version = version + 1
-                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
+                WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0 AND #{target} >= 0
                 """)
         int syncSellable(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                          @Param("target") int target);
@@ -337,7 +372,7 @@ public final class ProductMappers {
         @Update("""
                 UPDATE prd_store_stock SET stock = #{cap} + locked_stock, version = version + 1
                 WHERE store_no = #{storeNo} AND sku_no = #{skuNo} AND deleted = 0
-                  AND stock - locked_stock > #{cap}
+                  AND #{cap} >= 0 AND stock - locked_stock > #{cap}
                 """)
         int capSellable(@Param("storeNo") String storeNo, @Param("skuNo") String skuNo,
                         @Param("cap") int cap);
@@ -366,8 +401,96 @@ public final class ProductMappers {
          */
         @Select(
                 "SELECT * FROM prd_stock_lock WHERE tenant_no='MAIN' AND lock_no=#{order} "
-                        + "AND deleted=0 ORDER BY id FOR UPDATE")
+                        + "ORDER BY id FOR UPDATE")
         List<PrdStockLock> lockOriginal(@Param("order") String order);
+
+        /** Native current matching set preserves SQL collation and inherited RR semantics without discovery gaps. */
+        @Select("SELECT * FROM prd_stock_lock WHERE tenant_no='MAIN' AND fulfillment_ref=#{ref} "
+                + "ORDER BY id FOR UPDATE")
+        List<PrdStockLock> lockFulfillmentCurrent(@Param("ref") String ref);
+
+        /** Primary physical scan establishes one current complete removal-root set in original-row-id order. */
+        @Select("""
+                <script>SELECT * FROM prd_stock_lock FORCE INDEX (PRIMARY) WHERE tenant_no='MAIN' AND sku_no IN
+                <foreach collection="skus" item="sku" open="(" separator="," close=")">#{sku}</foreach>
+                ORDER BY id FOR UPDATE</script>
+                """)
+        List<PrdStockLock> lockSkuOriginalsCurrent(@Param("skus") List<String> skus);
+
+        /** Frozen tracked identity permits source-aware legacy-return routing without balance locks. */
+        @Select("SELECT COUNT(*) FROM prd_stock_lock WHERE tenant_no='MAIN' AND lock_no=#{order} "
+                + "AND source_manifest_hash IS NOT NULL")
+        int trackedOriginal(@Param("order") String order);
+
+    }
+
+    /** Links are queried under existing stock roots; deleted identity conflicts are never hidden. */
+    public interface ExecutionRetentionMapper extends BaseMapper<PrdExecutionRetention> {
+        @Select("""
+                SELECT * FROM prd_execution_retention WHERE tenant_no='MAIN' AND retention_no=#{retentionNo}
+                ORDER BY original_row_id FOR UPDATE
+                """)
+        List<PrdExecutionRetention> findExactOriginalSet(@Param("retentionNo") String retentionNo);
+
+        @Select("""
+                <script>SELECT * FROM prd_execution_retention WHERE tenant_no='MAIN' AND original_row_id IN
+                <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+                ORDER BY original_row_id,retention_no FOR UPDATE</script>
+                """)
+        List<PrdExecutionRetention> lockOriginalLinks(@Param("ids") List<Long> ids);
+
+        @Insert("""
+                INSERT INTO prd_execution_retention (
+                    tenant_no, created_at, created_by, updated_at,
+                    updated_by, version, deleted, entity_no,
+                    store_no, retention_no, execution_no, unit_no,
+                    grant_no, attempt_no, reference_schema, reference_json,
+                    reference_hash, original_binding_bytes_hash, prepared_grant_revision, original_row_id,
+                    original_lock_no, stock_original_json, original_hash, original_manifest_hash,
+                    confirmation_operation_no, source_confirmation_no, original_row_version, original_disposition,
+                    original_row_json, owner_set_hash, owner_set_count, request_hash,
+                    resource_command_no, resource_command_hash, plan_hash, creator_namespace_hash,
+                    creator_personnel_hash, accepted_authority_json, accepted_authority_hash, state,
+                    issue_observation_json, issue_observation_hash, no_effect_seal_json, no_effect_seal_no,
+                    no_effect_seal_revision, no_effect_seal_hash
+                ) VALUES (
+                    #{row.tenantNo}, #{row.createdAt}, #{row.createdBy}, #{row.updatedAt},
+                    #{row.updatedBy}, #{row.version}, #{row.deleted}, #{row.entityNo},
+                    #{row.storeNo}, #{row.retentionNo}, #{row.executionNo}, #{row.unitNo},
+                    #{row.grantNo}, #{row.attemptNo}, #{row.referenceSchema}, #{row.referenceJson},
+                    #{row.referenceHash}, #{row.originalBindingBytesHash}, #{row.preparedGrantRevision}, \
+                #{row.originalRowId},
+                    #{row.originalLockNo}, #{row.stockOriginalJson}, #{row.originalHash}, #{row.originalManifestHash},
+                    #{row.confirmationOperationNo}, #{row.sourceConfirmationNo}, #{row.originalRowVersion}, \
+                #{row.originalDisposition},
+                    #{row.originalRowJson}, #{row.ownerSetHash}, #{row.ownerSetCount}, #{row.requestHash},
+                    #{row.resourceCommandNo}, #{row.resourceCommandHash}, #{row.planHash}, #{row.creatorNamespaceHash},
+                    #{row.creatorPersonnelHash}, #{row.acceptedAuthorityJson}, #{row.acceptedAuthorityHash}, \
+                #{row.state},
+                    #{row.issueObservationJson}, #{row.issueObservationHash}, #{row.noEffectSealJson}, \
+                #{row.noEffectSealNo},
+                    #{row.noEffectSealRevision}, #{row.noEffectSealHash}
+                )
+                """)
+        int insertRetained(@Param("row") PrdExecutionRetention row);
+
+        /** Immutable issue observation changes only the link revision and never its RETAINED protection state. */
+        @Update("""
+                UPDATE prd_execution_retention SET issue_observation_json=#{observation}, \
+                issue_observation_hash=#{hash},
+                    version=version+1, updated_at=CURRENT_TIMESTAMP(3)
+                WHERE tenant_no=#{row.tenantNo} AND id=#{row.id} AND entity_no=#{row.entityNo} AND \
+                store_no=#{row.storeNo}
+                    AND execution_no=#{row.executionNo} AND original_row_id=#{row.originalRowId}
+                    AND retention_no=#{row.retentionNo} AND reference_hash=#{row.referenceHash}
+                    AND original_hash=#{row.originalHash} AND request_hash=#{row.requestHash}
+                    AND confirmation_operation_no=#{row.confirmationOperationNo}
+                    AND version=#{row.version} AND version < 9223372036854775807 AND deleted=0
+                    AND state='RETAINED' AND issue_observation_hash IS NULL AND issue_observation_json IS NULL
+                """)
+        int recordIssuedObservation(@Param("row") PrdExecutionRetention row,
+                @Param("observation") String observation, @Param("hash") String hash);
+
     }
 
     public interface CategoryMapper extends BaseMapper<PrdCategory> {

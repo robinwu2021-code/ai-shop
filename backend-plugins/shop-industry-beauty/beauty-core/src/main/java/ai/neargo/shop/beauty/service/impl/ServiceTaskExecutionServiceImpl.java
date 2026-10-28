@@ -374,6 +374,44 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         return new Locked(observation, fence, start);
     }
 
+    @Override
+    public int recoverPending(int limit) {
+        DelegatedIdentityContext.outside();
+        if (limit < 1 || limit > 100) throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (schema.installation() == ServiceExecutionSchemaVerifier.Installation.ABSENT) return 0;
+        schema.requireAvailable();
+        var pending = db.read(() -> fences.pendingExecutions(now(), null, 0, limit));
+        if (pending.isEmpty()) return 0;
+        var provider = owner.getIfAvailable();
+        if (provider == null) throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
+        int examined = 0;
+        for (var candidate : pending) {
+            var binding = db.json.treeToValue(db.json.readTree(candidate.getBindingJson()).get("binding"),
+                    ExecutionBinding.class);
+            require(candidate.getBindingHash().equals(ServiceExecutionContract.bindingHash(binding))
+                    && candidate.getBindingJson().equals(ServiceExecutionContract.bindingJson(binding)));
+            Locked claimed = db.tx(() -> {
+                var locked = lock(binding);
+                var row = locked.fence();
+                if (!row.getVersion().equals(candidate.getVersion()) || "REJECTED".equals(row.getIntentState())
+                        || row.getNextRetryAt() != null && row.getNextRetryAt().isAfter(now())) return null;
+                require(fences.claimExecutionObservation(row, now().plusSeconds(30), now(), "EXECUTION_RECOVERY") == 1);
+                row.setVersion(Math.addExact(row.getVersion(), 1));
+                row.setObservationEpoch(Math.addExact(row.getObservationEpoch(), 1));
+                return locked;
+            });
+            if (claimed == null) continue;
+            try {
+                var grant = provider.queryOriginal(new ExecutionLookup(binding));
+                apply(claimed, grant, "EXECUTION_RECOVERY");
+            } catch (RuntimeException unavailable) {
+                // Lease and immutable original remain durable; no prepare/start/release or saved identity replay.
+            }
+            examined++;
+        }
+        return examined;
+    }
+
     private Locked claim(StartIntentLookup request, String actor) {
         return db.tx(() -> {
             var locked = lock(request.binding());
@@ -420,7 +458,8 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                     row.getSuspensionIntentRevision() != null ? "EXECUTION_SUSPENDED"
                             : prepared ? "EXECUTION_PREPARED" : "EXECUTION_PENDING",
                     grant.reasonCode(), row.getNextRetryAt(), now(), actor) == 1);
-            return new ExecutionPreparation(binding, grant, prepared ? null : "SOURCE_UNKNOWN");
+            return new ExecutionPreparation(binding, grant, row.getSuspensionIntentRevision() != null
+                    ? "SOURCE_SUSPENDED" : prepared ? null : "SOURCE_UNKNOWN");
         });
     }
 

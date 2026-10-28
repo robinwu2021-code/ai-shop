@@ -28,6 +28,8 @@ import ai.neargo.shop.beauty.service.impl.ServiceTaskExecutionServiceImpl;
 import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import org.springframework.security.core.context.SecurityContextHolder;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.idem.IdempotencyScope;
 import ai.neargo.shop.spi.personnel.PersonnelOperatorFactsPort;
@@ -189,6 +191,36 @@ public class ManualExecutionSourceIT {
     private FreezeStart start(String key) { return new FreezeStart(SCOPE, "WO", "TASK", 0, 1, 1, key); }
     private StartIntent freeze(Harness h) { return human("100", "MCH", () -> h.service().freeze(start("START"))); }
     private int count(String table) { return sql.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class); }
+
+    @Test
+    void backgroundRecoveryQueriesOnlyOriginalAndRetainsUnknownWithoutSavedEmployee() {
+        var queries = new AtomicInteger();
+        var before = SecurityContextHolder.getContext().getAuthentication();
+        var owner = (ServiceExecutionPort) Proxy.newProxyInstance(ServiceExecutionPort.class.getClassLoader(),
+                new Class<?>[] {ServiceExecutionPort.class}, (proxy, method, args) -> {
+                    assertThat(method.getName()).isEqualTo("queryOriginal");
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                    assertThat(SecurityContextHolder.getContext()
+                            .getAuthentication()).isSameAs(before);
+                    queries.incrementAndGet();
+                    throw BizException.of(ErrorCode.NOT_FOUND);
+                });
+        runner().withBean(ServiceExecutionPort.class, () -> owner).run(c -> {
+            var h = harness(c);
+            var original = freeze(h);
+            assertThat(h.service().recoverPending(100)).isOne();
+            assertThat(queries).hasValue(1);
+            assertThat(h.service().recoverPending(100)).isZero();
+            assertThat(queries).hasValue(1);
+            var retained = h.service().inspectOriginal(new StartIntentLookup(original.binding()));
+            assertThat(retained.binding()).isEqualTo(original.binding());
+            assertThat(count("bty_service_execution_fence")).isOne();
+            assertThat(sql.queryForObject("SELECT status FROM bty_service_task WHERE task_no='TASK'", String.class))
+                    .isEqualTo("PENDING");
+            assertThat(sql.queryForObject("SELECT observed_grant_no FROM bty_service_execution_fence", String.class))
+                    .isNull();
+        });
+    }
 
     @Test
     void freezeCommitsBeforeCoreIo() {

@@ -149,10 +149,32 @@ public final class InventoryMappers {
 
     // ── 预留 ──────────────────────────────────────────────────────────────
     public interface ReservationMapper extends BaseMapper<InvReservation> {
+        // This index is the canonical physical HEAD lock order. ORDER BY alone can
+        // filesort after locking in primary-key scan order. Keep this a current read:
+        // plain discovery could omit heads created after a caller's earlier RR snapshot.
+        @Select(
+                value = "SELECT * FROM inv_reservation FORCE INDEX (uk_reservation)"
+                    + " WHERE external_ref=#{order} ORDER BY owner_id,reservation_id FOR UPDATE",
+                databaseId = "MySQL")
         @Select(
                 "SELECT * FROM inv_reservation WHERE external_ref=#{order} ORDER BY"
                     + " owner_id,reservation_id FOR UPDATE")
         List<InvReservation> lockOriginal(@Param("order") String order);
+
+        // Current locking join: immutable identity discovery must not inherit an older RR
+        // read view. Drive canonical HEAD order, taking each LINE only after its own HEAD.
+        // Complete this scan before any stock/progress mutation; do not add DISTINCT.
+        @Select(
+                value = "SELECT r.* FROM inv_reservation r FORCE INDEX (uk_reservation)"
+                    + " STRAIGHT_JOIN inv_reservation_line l FORCE INDEX (uk_res_line)"
+                    + " ON l.reservation_id=r.reservation_id AND l.owner_id=r.owner_id"
+                    + " WHERE l.fulfillment_ref=#{fulfillment} ORDER BY r.owner_id,r.reservation_id FOR UPDATE",
+                databaseId = "MySQL")
+        @Select(
+                "SELECT r.* FROM inv_reservation r JOIN inv_reservation_line l"
+                    + " ON l.reservation_id=r.reservation_id AND l.owner_id=r.owner_id"
+                    + " WHERE l.fulfillment_ref=#{fulfillment} ORDER BY r.owner_id,r.reservation_id FOR UPDATE")
+        List<InvReservation> lockByFulfillment(@Param("fulfillment") String fulfillment);
     }
 
     public interface ReservationLineMapper extends BaseMapper<InvReservationLine> {

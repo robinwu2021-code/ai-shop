@@ -12,15 +12,18 @@ import ai.neargo.shop.product.port.StockPortImpl;
 import ai.neargo.shop.spi.product.InvManagedPort;
 import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
 import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.spi.product.OriginalStockReturnPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -60,6 +63,13 @@ import java.util.List;
 @ConditionalOnInventory
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
 public class DualWriteStockPort implements StockPort, ReservationOwner {
+    private ObjectProvider<OriginalStockReturnPort> originalReturns;
+
+    @Autowired
+    public void setOriginalReturns(ObjectProvider<OriginalStockReturnPort> originalReturns) {
+        this.originalReturns = originalReturns;
+    }
+
     @Override
     public String stockAuthority() {
         return "DUAL";
@@ -211,6 +221,14 @@ public class DualWriteStockPort implements StockPort, ReservationOwner {
     public void releaseAllocated(String fulfillmentRef, String orderNo) {
         platform.releaseAllocated(fulfillmentRef);
         publish(new MirrorEvent(InvMirrorEvent.RELEASE_ALLOCATED, fulfillmentRef, List.of(), orderNo));
+    }
+
+    @Override
+    @Transactional
+    public RestoreResult restore(String restoreNo, String originalOrderNo, List<StockPort.SkuQty> items) {
+        var router = originalReturns.getIfAvailable();
+        if (router == null) throw new IllegalStateException("FROZEN_RETURN_AUTHORITY_UNAVAILABLE");
+        return router.restore(restoreNo, originalOrderNo, items);
     }
 
     @Override

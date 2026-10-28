@@ -67,7 +67,10 @@ import ai.neargo.shop.spi.marketing.CounterCampaignContract;
 import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
 import ai.neargo.shop.trade.policy.CheckoutAccessPolicy;
 import ai.neargo.shop.trade.policy.CheckoutAccessPolicy.CashierActor;
+import ai.neargo.shop.trade.service.impl.ManualExecutionSourceReader.Facts;
 import ai.neargo.shop.trade.service.CheckoutService;
+import ai.neargo.shop.trade.service.ServiceExecutionService.ExecutionCoordinates;
+import ai.neargo.shop.spi.trade.ServiceExecutionPort.ExecutionScope;
 import ai.neargo.shop.trade.service.ManualServiceAdmissionService;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -118,6 +121,8 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
     private final OrderStatusLogMapper logs;
     private final StockDispositionPort stock;
     private final ObjectMapper json;
+    private final ManualExecutionSourceReader sourceReader;
+    private final ServiceExecutionFenceCoordinator executionFences;
     private final CheckoutClock clock;
     private final OutboxEventBus events;
     private final TransactionTemplate writes;
@@ -142,8 +147,10 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
             ObjectMapper json,
             CheckoutClock clock,
             OutboxEventBus events,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            ServiceExecutionFenceCoordinator executionFences) {
         this.checkout = checkout;
+        this.executionFences = executionFences;
         this.access = access;
         this.merchants = merchants;
         this.operations = operations;
@@ -159,6 +166,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         this.logs = logs;
         this.stock = stock;
         this.json = json;
+        this.sourceReader = new ManualExecutionSourceReader(json, quotes, confirmations, mappings, items, declarations);
         this.clock = clock;
         this.events = events;
         writes = new TransactionTemplate(manager);
@@ -679,6 +687,8 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                         }
                                         return false;
                                     }
+                                    executionFences.beforeAdmissionChangeLocked(coordinates(current),
+                                            "SOURCE_REVISION_CONFLICT");
                                     long expected = current.getVersion();
                                     current.setPhase(phase);
                                     current.setStockOutcome(actual.outcome().name());
@@ -707,6 +717,7 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
     private OrdManualServiceAdmission lockOriginal(OrdManualServiceAdmission observed) {
         var parent = declarations.lockParent(observed.getOrderNo());
         var subs = declarations.lockChildren(observed.getOrderNo());
+        executionFences.lockBeforeAdmissionLocked(coordinates(observed));
         var op = operations.lock(observed.getCaller(), observed.getOperationNo());
         var current =
                 declarations.lockByOrder(
@@ -731,7 +742,13 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         return current;
     }
 
+    private static ExecutionCoordinates coordinates(OrdManualServiceAdmission row) {
+        return new ExecutionCoordinates(new ExecutionScope("MAIN", row.getEntityNo(), row.getStoreNo()),
+                row.getCaller(), row.getOperationNo(), row.getOrderNo(), row.getSubOrderNo());
+    }
+
     private boolean suspendModeConflict(OrdManualServiceAdmission current) {
+        executionFences.beforeAdmissionChangeLocked(coordinates(current), "SOURCE_SUSPENDED");
         long expected = current.getVersion();
         current.setPhase("SUSPENDED");
         current.setReasonCode("SOURCE_MODE_CONFLICT");
@@ -804,315 +821,20 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                 op.getCustomerKind(), op.getBuyerNo(), op.getGuestNo(), op.getIdentityRevision());
     }
 
-    private void requireDeclarationParty(
-            OrdCheckoutOperation op, OrdManualServiceAdmission declaration) {
-        if (!party(op)
-                        .equals(
-                                new CustomerParty(
-                                        declaration.getCustomerKind(),
-                                        declaration.getBuyerNo(),
-                                        declaration.getGuestNo(),
-                                        declaration.getIdentityRevision()))
-                || !op.getCaller().equals(declaration.getCaller())
-                || !op.getOperationNo().equals(declaration.getOperationNo())
-                || !Objects.equals(op.getOrderNo(), declaration.getOrderNo())
-                || !Objects.equals(op.getSubOrderNo(), declaration.getSubOrderNo())
-                || !op.getEntityNo().equals(declaration.getEntityNo())
-                || !op.getStoreNo().equals(declaration.getStoreNo())) {
-            throw conflict();
-        }
+    private void requireDeclarationParty(OrdCheckoutOperation op, OrdManualServiceAdmission declaration) {
+        sourceReader.requireParty(op, declaration);
     }
 
     private Facts facts(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child) {
-        if (parent == null
-                || child == null
-                || !"CREATED".equals(op.getPhase())
-                || !"MANUAL_OFFLINE".equals(op.getAdmissionKind())
-                || !"MANUAL_OFFLINE".equals(parent.getAdmissionKind())
-                || !"MANUAL_OFFLINE".equals(child.getAdmissionKind())
-                || !Objects.equals(parent.getOrderNo(), child.getOrderNo())
-                || !party(op)
-                        .equals(
-                                new CustomerParty(
-                                        parent.getCustomerKind(),
-                                        parent.getUserNo(),
-                                        parent.getGuestNo(),
-                                        parent.getIdentityRevision()))
-                || !party(op)
-                        .equals(
-                                new CustomerParty(
-                                        child.getCustomerKind(),
-                                        child.getUserNo(),
-                                        child.getGuestNo(),
-                                        child.getIdentityRevision()))
-                || "MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())
-                        && (!op.getEntityNo().equals(parent.getEntityNo())
-                                || !op.getStoreNo().equals(parent.getStoreNo())
-                                || !op.getCaller().equals(parent.getCaller())
-                                || !op.getOperationNo().equals(parent.getOperationNo())
-                                || !op.getCaller().equals(child.getCaller()))
-                || !op.getEntityNo().equals(child.getEntityNo())
-                || !op.getStoreNo().equals(child.getStoreNo())
-                || !op.getOperationNo().equals(child.getSourceOperationNo())
-                || !OrdSubOrder.SERVICE_EXECUTION.equals(child.getFulfillmentAuthority())
-                || !"STORE_VERIFY".equals(child.getFulfillment())
-                || parent.getPayChannel() != null
-                || parent.getPayTradeNo() != null
-                || Boolean.TRUE.equals(parent.getPointsIntegrated())
-                || child.getGroupNo() != null
-                || child.getPeriodNo() != null
-                || nz(child.getPointsDeductMinor()) != 0
-                || nz(child.getDiscountPlatform()) != 0
-                || declarations.afterSaleConflicts(child.getSubOrderNo()) != 0
-                || declarations.financialConflicts(parent.getOrderNo()) != 0
-                || !mappings.refundWork(child.getSubOrderNo()).isEmpty()) {
-            throw conflict();
-        }
-        var quote = quotes.find(op.getCurrentQuoteNo());
-        if (quote == null || !"CONSUMED".equals(quote.getStatus())) {
-            throw conflict();
-        }
-        CheckoutEconomicSnapshot economics;
-        try {
-            if ("MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())) {
-                economics = new CounterEconomicCodec(json).readQuote(quote.getPricingJson());
-            } else {
-                var raw = json.readTree(quote.getPricingJson());
-                if (raw.has("schema") || raw.has("economic") || raw.has("promotions")
-                        || raw.has("counterActivitySeal")) {
-                    throw conflict();
-                }
-                economics = json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class);
-            }
-        } catch (RuntimeException invalid) {
-            throw conflict();
-        }
-        if (!Objects.equals(op.getBuyerNo(), economics.buyerNo())
-                || !op.getEntityNo().equals(economics.entityNo())
-                || !op.getStoreNo().equals(economics.storeNo())) {
-            throw conflict();
-        }
-        var sourceLines =
-                mappings.selectList(
-                        Wrappers.<OrdCheckoutLine>lambdaQuery()
-                                .eq(OrdCheckoutLine::getTenantNo, "MAIN")
-                                .eq(OrdCheckoutLine::getCaller, op.getCaller())
-                                .eq(OrdCheckoutLine::getOperationNo, op.getOperationNo())
-                                .orderByAsc(OrdCheckoutLine::getOrderItemId));
-        var originalItems =
-                items.selectList(
-                        Wrappers.<OrdItem>lambdaQuery()
-                                .eq(OrdItem::getTenantNo, "MAIN")
-                                .eq(OrdItem::getSubOrderNo, child.getSubOrderNo())
-                                .orderByAsc(OrdItem::getId));
-        requireAdmissionEconomics(op, parent, child, quote, economics, sourceLines, originalItems);
-        if (sourceLines.isEmpty()
-                || sourceLines.size() != originalItems.size()
-                || economics.lines().size() != sourceLines.size()
-                || economics.dueMinor() <= 0
-                || !Objects.equals(parent.getPayAmount(), economics.dueMinor())
-                || !Objects.equals(child.getPayAmount(), economics.dueMinor())) {
-            throw conflict();
-        }
-        for (var line : sourceLines) {
-            var item =
-                    originalItems.stream()
-                            .filter(value -> value.getId().equals(line.getOrderItemId()))
-                            .findFirst()
-                            .orElseThrow(this::conflict);
-            var priced =
-                    economics.lines().stream()
-                            .filter(value -> value.clientLineRef().equals(line.getClientLineRef()))
-                            .findFirst()
-                            .orElseThrow(this::conflict);
-            if (!child.getSubOrderNo().equals(line.getSubOrderNo())
-                    || !"COUNT".equals(line.getUom())
-                    || !line.getSkuNo().equals(item.getSkuNo())
-                    || !line.getGoodsNo().equals(item.getGoodsNo())
-                    || !Objects.equals(line.getQuantity(), item.getQty())
-                    || line.getQuantity() != priced.quantity()
-                    || !line.getSkuNo().equals(priced.skuNo())
-                    || !Objects.equals(item.getPrice(), priced.unitPriceMinor())
-                    || !Objects.equals(item.getAmount(), priced.grossMinor())
-                    || !Objects.equals(item.getPaidShareMinor(), priced.dueMinor())
-                    || Boolean.TRUE.equals(item.getIsGift())
-                    || nz(item.getRefundedMinor()) != 0
-                    || nz(item.getRefundedQty()) != 0) {
-                throw conflict();
-            }
-        }
-        return new Facts(op, parent, child, quote, sourceLines, originalItems);
+        return sourceReader.load(op, parent, child);
     }
 
     /** Only original consumed counter authority admits its frozen merchant-funded allocation. */
-    private void requireAdmissionEconomics(OrdCheckoutOperation op, OrdOrder parent, OrdSubOrder child,
-            OrdCheckoutQuote quote, CheckoutEconomicSnapshot economics, List<OrdCheckoutLine> sourceLines,
-            List<OrdItem> originalItems) {
-        boolean counter = "MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority());
-        if (!counter && !"CONSUMER_SESSION".equals(op.getPurchaseAuthority())) {
-            throw conflict();
-        }
-        if (!counter || economics.counterActivitySeal() == null) {
-            if (economics.counterActivitySeal() != null || economics.discountMinor() != 0
-                    || economics.platformMinor() != 0 || economics.merchantMinor() != 0
-                    || economics.freightMinor() != 0 || economics.dueMinor() != economics.goodsMinor()
-                    || !CampaignPort.Discount.none().equals(economics.activity())
-                    || !CouponPort.Allocation.none().equals(economics.coupon())
-                    || nz(child.getDiscountMerchant()) != 0) {
-                throw conflict();
-            }
-            if (counter) {
-                var prepared = json.readValue(op.getCommandJson(), PreparedCommand.class);
-                var codec = new CounterEconomicCodec(json);
-                if (!codec.legacyZero(economics, prepared.command())) {
-                    throw conflict();
-                }
-                codec.requireQuoteHash(party(op), prepared.lines(), economics, quote.getQuoteHash());
-            }
-            return;
-        }
-        try {
-            for (var row : List.of(op, parent, child, quote)) {
-                alive(row);
-            }
-            sourceLines.forEach(this::alive);
-            originalItems.forEach(this::alive);
-            var prepared = json.readValue(op.getCommandJson(), PreparedCommand.class);
-            var command = prepared.command();
-            if (command.couponNo() != null || command.usePoints() != null && command.usePoints() != 0
-                    || command.grouped() || command.appointmentAt() != null || command.appointmentSlotNo() != null
-                    || !"STORE_VERIFY".equals(command.fulfillment()) || !"OFFLINE".equals(command.payMode())
-                    || command.pickupNo() != null || command.addressId() != null
-                    || command.items() == null || command.items().size() != economics.lines().size()) {
-                throw conflict();
-            }
-            for (int index = 0; index < command.items().size(); index++) {
-                var requested = command.items().get(index);
-                var priced = economics.lines().get(index);
-                if (!requested.skuNo().equals(priced.skuNo()) || requested.qty() != priced.quantity()
-                        || requested.goodsNo() != null && !requested.goodsNo().equals(priced.goodsNo())) {
-                    throw conflict();
-                }
-            }
-            var codec = new CounterEconomicCodec(json);
-            codec.requireQuoteHash(party(op), prepared.lines(), economics, quote.getQuoteHash());
-            var seal = economics.counterActivitySeal();
-            CounterCampaignContract.requireSelection(json, seal, party(op), seal.groups(),
-                    prepared.command().activityChoices(), economics.activity());
-            var evidence = economics.evidence();
-            if (!op.getOrderNo().equals(parent.getOrderNo()) || !op.getSubOrderNo().equals(child.getSubOrderNo())
-                    || !op.getCurrentQuoteNo().equals(quote.getQuoteNo())
-                    || !op.getCaller().equals(quote.getCaller())
-                    || !op.getOperationNo().equals(quote.getOperationNo())
-                    || !"MAIN".equals(evidence.tenantNo()) || evidence.scopeRevision() != op.getScopeRevision()
-                    || !op.getScopeHash().equals(evidence.scopeHash())
-                    || !"CNY".equals(economics.currency()) || !"CNY".equals(parent.getCurrency())
-                    || !"OFFLINE".equals(economics.payMode())
-                    || !"STORE_VERIFY".equals(economics.fulfillment())
-                    || !OrdSubOrder.SERVICE_EXECUTION.equals(economics.fulfillmentAuthority())) {
-                throw conflict();
-            }
-            OrdCheckoutConfirmation consent = confirmations.selectOne(
-                    Wrappers.<OrdCheckoutConfirmation>lambdaQuery()
-                            .eq(OrdCheckoutConfirmation::getTenantNo, "MAIN")
-                            .eq(OrdCheckoutConfirmation::getConfirmationNo, op.getConfirmationNo())
-                            .eq(OrdCheckoutConfirmation::getDeleted, 0));
-            if (consent == null) {
-                throw conflict();
-            }
-            alive(consent);
-            if (!"CONSUMED".equals(consent.getStatus())
-                    || !"ORDINARY_SERVICE_PURCHASE".equals(consent.getPurpose())
-                    || !"MANUAL_OFFLINE".equals(consent.getAdmissionKind())
-                    || !op.getPurchaseAuthority().equals(consent.getPurchaseAuthority())
-                    || !op.getCaller().equals(consent.getCaller())
-                    || !op.getOperationNo().equals(consent.getOperationNo())
-                    || !op.getEntityNo().equals(consent.getEntityNo())
-                    || !op.getStoreNo().equals(consent.getStoreNo())
-                    || !party(op).equals(new CustomerParty(consent.getCustomerKind(), consent.getBuyerNo(),
-                            consent.getGuestNo(), consent.getIdentityRevision()))
-                    || op.getAuthorityNamespaceHash() == null
-                    || !op.getAuthorityNamespaceHash().equals(consent.getAuthorityNamespaceHash())
-                    || !quote.getQuoteNo().equals(consent.getQuoteNo())
-                    || !quote.getRevision().equals(consent.getQuoteRevision())
-                    || !quote.getQuoteHash().equals(consent.getQuoteHash())
-                    || !parent.getOrderNo().equals(consent.getOrderNo())
-                    || !Long.valueOf(economics.dueMinor()).equals(consent.getAmountMinor())
-                    || !"CNY".equals(consent.getCurrency()) || consent.getAcceptedAt() == null
-                    || consent.getConfirmedAt() == null || consent.getConsumedAt() == null
-                    || !"MERCHANT".equals(consent.getActorRealm())
-                    || !List.of("MCH", "USR").contains(consent.getActorKind())
-                    || consent.getActorNo() == null || consent.getActorNo().isBlank()
-                    || consent.getAccountNo() == null || consent.getAccountNo().isBlank()) {
-                throw conflict();
-            }
-            long gross = economics.goodsMinor();
-            long discount = economics.discountMinor();
-            if (discount < 0 || discount >= gross || economics.dueMinor() <= 0
-                    || Math.subtractExact(gross, discount) != economics.dueMinor()
-                    || economics.freightMinor() != 0 || economics.platformMinor() != 0
-                    || economics.merchantMinor() != discount
-                    || !CouponPort.Allocation.none().equals(economics.coupon())
-                    || !Long.valueOf(gross).equals(parent.getGoodsAmount())
-                    || !Long.valueOf(gross).equals(child.getGoodsAmount())
-                    || !Long.valueOf(0).equals(parent.getFreightAmount())
-                    || !Long.valueOf(0).equals(child.getFreightAmount())
-                    || !Long.valueOf(discount).equals(parent.getDiscountAmount())
-                    || !Long.valueOf(discount).equals(child.getDiscountAmount())
-                    || !Long.valueOf(discount).equals(child.getDiscountMerchant())
-                    || !Long.valueOf(0).equals(child.getDiscountPlatform())) {
-                throw conflict();
-            }
-            var ids = new HashSet<Long>();
-            var refs = new HashSet<String>();
-            long lineGross = 0;
-            long lineDue = 0;
-            long itemGross = 0;
-            long itemDue = 0;
-            for (var source : sourceLines) {
-                if (!ids.add(source.getOrderItemId()) || !refs.add(source.getClientLineRef())
-                        || !op.getCaller().equals(source.getCaller())
-                        || !op.getOperationNo().equals(source.getOperationNo())) {
-                    throw conflict();
-                }
-                var priced = economics.lines().stream()
-                        .filter(l -> l.clientLineRef().equals(source.getClientLineRef()))
-                        .findFirst().orElseThrow(this::conflict);
-                if (!priced.goodsNo().equals(source.getGoodsNo())) {
-                    throw conflict();
-                }
-                lineGross = Math.addExact(lineGross, priced.grossMinor());
-                lineDue = Math.addExact(lineDue, priced.dueMinor());
-            }
-            var itemIds = new HashSet<Long>();
-            for (var item : originalItems) {
-                if (!itemIds.add(item.getId())) {
-                    throw conflict();
-                }
-                itemGross = Math.addExact(itemGross, item.getAmount());
-                itemDue = Math.addExact(itemDue, item.getPaidShareMinor());
-            }
-            if (lineGross != gross || itemGross != gross || lineDue != economics.dueMinor()
-                    || itemDue != economics.dueMinor() || Math.subtractExact(lineGross, lineDue) != discount
-                    || Math.subtractExact(itemGross, itemDue) != discount) {
-                throw conflict();
-            }
-        } catch (RuntimeException invalid) {
-            throw conflict();
-        }
-    }
+
 
     /** Same-key declarations and source observations must still agree with the consumed original sale. */
     private void requireDeclarationEconomics(OrdManualServiceAdmission declaration, Facts facts) {
-        requireDeclarationParty(facts.op(), declaration);
-        if ("MERCHANT_RECORDED_IN_PERSON".equals(facts.op().getPurchaseAuthority())
-                && new CounterEconomicCodec(json).readQuote(facts.quote().getPricingJson())
-                        .counterActivitySeal() != null
-                && (!Objects.equals(declaration.getQuoteHash(), facts.quote().getQuoteHash())
-                        || !Objects.equals(declaration.getDeclaredMinor(), facts.parent().getPayAmount())
-                        || !Objects.equals(declaration.getCurrency(), facts.parent().getCurrency()))) {
-            throw conflict();
-        }
+        sourceReader.requireDeclaration(declaration, facts);
     }
 
     private void alive(BaseEntity row) {
@@ -1215,50 +937,8 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
                                             .eq(OrdItem::getTenantNo, "MAIN")
                                             .eq(OrdItem::getSubOrderNo, op.getSubOrderNo()))
                             : snapshot.items();
-            var mappingVersions =
-                    sourceRows.stream()
-                            .sorted(
-                                    Comparator.comparing(OrdCheckoutLine::getSourceLineNo)
-                                            .thenComparing(OrdCheckoutLine::getId))
-                            .map(
-                                    line ->
-                                            new MappingRevision(
-                                                    line.getSourceLineNo(),
-                                                    line.getId(),
-                                                    line.getVersion()))
-                            .toList();
-            var itemVersions =
-                    originalItems.stream()
-                            .sorted(Comparator.comparing(OrdItem::getId))
-                            .map(item -> new ItemRevision(item.getId(), item.getVersion()))
-                            .toList();
-            String observed =
-                    CheckoutDigests.hash(
-                            json,
-                            Arrays.asList(
-                                    "MANUAL_SOURCE_V1",
-                                    op.getOperationNo(),
-                                    op.getBuyerNo(),
-                                    op.getOrderNo(),
-                                    op.getSubOrderNo(),
-                                    parent == null ? 0 : parent.getVersion(),
-                                    child == null ? 0 : child.getVersion(),
-                                    declaration == null ? 0 : declaration.getAdmissionRevision(),
-                                    mappingVersions,
-                                    itemVersions,
-                                    state,
-                                    lines));
-            if ("MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())) {
-                observed =
-                        CheckoutDigests.hash(
-                                json,
-                                Arrays.asList(
-                                        "MANUAL_COUNTER_SOURCE_V1",
-                                        party(op),
-                                        op.getConfirmationNo(),
-                                        op.getAuthorityNamespaceHash(),
-                                        observed));
-            }
+            String observed = sourceReader.sourceHash(op, parent, child, declaration, sourceRows,
+                    originalItems, state, lines);
             if (!Objects.equals(hash, observed)) {
                 op.setManualObservationHash(observed);
                 op.setManualObservationRevision(Math.addExact(revision, 1));
@@ -1532,15 +1212,6 @@ public class ManualServiceAdmissionServiceImpl implements ManualServiceAdmission
         }
     }
 
-    private record Facts(
-            OrdCheckoutOperation op,
-            OrdOrder parent,
-            OrdSubOrder child,
-            OrdCheckoutQuote quote,
-            List<OrdCheckoutLine> lines,
-            List<OrdItem> items) {}
 
-    private record MappingRevision(String sourceLineNo, Long id, Long revision) {}
 
-    private record ItemRevision(Long id, Long revision) {}
 }

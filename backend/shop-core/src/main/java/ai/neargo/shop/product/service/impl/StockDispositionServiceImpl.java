@@ -1,6 +1,7 @@
 package ai.neargo.shop.product.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.product.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -25,6 +26,7 @@ import ai.neargo.shop.spi.product.StockPort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +56,13 @@ public class StockDispositionServiceImpl implements StockDispositionService {
         this.json = json;
     }
 
+    private ExecutionStockRetentionGuard retentionGuard;
+
+    @Autowired
+    public void setRetentionGuard(ExecutionStockRetentionGuard retentionGuard) {
+        this.retentionGuard = retentionGuard;
+    }
+
     @Override
     @Transactional
     public ReleaseView releaseOriginal(ReservationLookup request) {
@@ -61,6 +70,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
                 () -> {
                     var original = request.original();
                     var rows = locks.lockOriginal(original.orderNo());
+                    retentionGuard.checkLocked(rows);
                     String invalid = invalid(original, rows);
                     boolean held =
                             invalid == null
@@ -217,6 +227,7 @@ public class StockDispositionServiceImpl implements StockDispositionService {
                 () -> {
                     var original = command.original();
                     var rows = locks.lockOriginal(original.orderNo());
+                    retentionGuard.checkLocked(rows);
                     String invalid = invalid(original, rows);
                     if (invalid != null) {
                         return disposition(
@@ -343,14 +354,10 @@ public class StockDispositionServiceImpl implements StockDispositionService {
                     || row.getFulfillmentRef() == null) {
                 return "STOCK_MANIFEST_CONFLICT";
             }
-            var sku =
-                    skus.selectOne(
-                            Wrappers.<PrdSku>lambdaQuery()
-                                    .eq(PrdSku::getSkuNo, row.getSkuNo())
-                                    .last("LIMIT 1"));
-            if (sku == null || !original.entityNo().equals(sku.getEntityNo())) {
-                return "STOCK_OWNER_CONFLICT";
-            }
+            var identities = skus.lockSkuCurrent(row.getSkuNo());
+            if (identities.isEmpty() || identities.stream().anyMatch(sku ->
+                    !Integer.valueOf(0).equals(sku.getDeleted()) || !original.tenantNo().equals(sku.getTenantNo())
+                    || !original.entityNo().equals(sku.getEntityNo()))) return "STOCK_OWNER_CONFLICT";
             actual.add(
                     new StockPort.SkuQty(
                             row.getSkuNo(),

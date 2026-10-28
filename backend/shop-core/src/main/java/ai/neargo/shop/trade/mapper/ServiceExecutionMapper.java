@@ -123,7 +123,8 @@ public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> 
     /** Claim advances a persisted epoch/CAS before owner IO so late workers cannot overwrite newer observations. */
     @Update("""
             UPDATE ord_service_execution SET observation_epoch=observation_epoch+1, next_retry_at=#{leaseUntil},
-              reason_code='SOURCE_UNKNOWN', updated_at=CURRENT_TIMESTAMP(3), version=version+1
+              reason_code=CASE WHEN state IN ('SUSPEND_REQUESTED','STARTED_SUSPENDED')
+                THEN reason_code ELSE 'SOURCE_UNKNOWN' END, updated_at=CURRENT_TIMESTAMP(3), version=version+1
             WHERE tenant_no='MAIN' AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
               AND execution_no=#{executionNo} AND version=#{expectedVersion} AND observation_epoch=#{expectedEpoch}
               AND state IN ('PREPARED','SUSPEND_REQUESTED','STARTED','STARTED_SUSPENDED','RELEASING')
@@ -172,6 +173,13 @@ public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> 
     /** Unit state, not attempt count, defines the disjoint quantity buckets; zero rows returns no facts. */
     @Mapper
     interface UnitMapper extends BaseMapper<OrdServiceExecutionUnit> {
+        /** Permanent association reads do not hide deleted identities. */
+        @Select("""
+                SELECT * FROM ord_service_execution_unit WHERE tenant_no='MAIN'
+                  AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo} AND unit_no=#{unitNo}
+                """)
+        OrdServiceExecutionUnit findUnit(@Param("scope") ExecutionScope scope, @Param("unitNo") String unitNo);
+
         /** Terminal/deleted filters are deliberately absent: original ownership is permanent. */
         @Select("""
                 SELECT * FROM ord_service_execution_unit WHERE tenant_no='MAIN' AND caller='BEAUTY'
@@ -247,6 +255,16 @@ public interface ServiceExecutionMapper extends BaseMapper<OrdServiceExecution> 
     /** Action association is append-only; only its still-empty result tuple may be finalized once. */
     @Mapper
     interface ActionMapper extends BaseMapper<OrdServiceExecutionAction> {
+        /** Compare prior committed source causes without replacing the immutable original fence revision. */
+        @Select("""
+                SELECT * FROM ord_service_execution_action WHERE tenant_no='MAIN'
+                  AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND execution_no=#{executionNo} AND kind='SOURCE_SUSPEND'
+                ORDER BY id DESC LIMIT 1
+                """)
+        OrdServiceExecutionAction latestSuspension(@Param("scope") ExecutionScope scope,
+                @Param("executionNo") String executionNo);
+
         /** Exact original action identity protects both key replay and changed-hash conflict handling. */
         @Select("""
                 SELECT * FROM ord_service_execution_action WHERE tenant_no='MAIN'

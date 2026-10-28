@@ -1489,6 +1489,23 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
 
     /** Permanent originals are discovered only after the canonical source observation is locked. */
     public interface ServiceExecutionFenceMapper extends BaseMapper<BtyServiceExecutionFence> {
+        /** Due-time/id ordering plus durable claim leases prevent one unavailable original starving later rows. */
+        @Select("""
+                SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND deleted=0
+                  AND #{limit} BETWEEN 1 AND 100
+                  AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED','SUSPEND_REQUESTED')
+                  AND (observed_grant_state IS NULL OR observed_grant_state NOT IN ('RELEASED','FULFILLED'))
+                  AND (next_retry_at IS NULL OR next_retry_at<=#{now})
+                  AND (#{afterId}=0 OR
+                    (#{afterRetryAt} IS NULL AND (next_retry_at IS NOT NULL OR id>#{afterId})) OR
+                    (#{afterRetryAt} IS NOT NULL AND (next_retry_at>#{afterRetryAt} OR
+                      (next_retry_at=#{afterRetryAt} AND id>#{afterId}))))
+                ORDER BY next_retry_at,id LIMIT #{limit}
+                """)
+        List<BtyServiceExecutionFence> pendingExecutions(@Param("now") LocalDateTime now,
+                @Param("afterRetryAt") LocalDateTime afterRetryAt, @Param("afterId") long afterId,
+                @Param("limit") int limit);
+
         @Select("""
                 SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND source_operation_no=#{operationNo} AND source_no=#{sourceNo}

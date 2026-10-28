@@ -1,0 +1,525 @@
+{
+  "schemaVersion": 1,
+  "owner": "shop-core/primary",
+  "platformVersion": 545,
+  "migration": "backend/shop-app/src/main/resources/db/migration/V545__execution_stock_retention.sql",
+  "resource": "backend/shop-core/src/main/resources/META-INF/shop/execution-stock-retention-schema.json",
+  "ownerIdentity": [
+    {
+      "table": "prd_stock_lock",
+      "column": "tenant_no",
+      "role": "TENANT",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "prd_stock_lock",
+      "column": "source_store_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    }
+  ],
+  "tables": [
+    {
+      "name": "prd_execution_retention",
+      "tag": "esr",
+      "engine": "InnoDB",
+      "comment": "Permanent protection of an existing execution stock original",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "retention_no",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "grant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "attempt_no",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "reference_schema",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "reference_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "reference_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "original_binding_bytes_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "prepared_grant_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "original_row_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "original_lock_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "stock_original_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "original_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "original_manifest_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "confirmation_operation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_confirmation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "original_row_version",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "original_disposition",
+          "type": "varchar(16)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "original_row_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "owner_set_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "owner_set_count",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "creator_namespace_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "creator_personnel_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "accepted_authority_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "accepted_authority_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "state",
+          "type": "varchar(24)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "issue_observation_json",
+          "type": "longtext",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "issue_observation_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        },
+        {
+          "name": "no_effect_seal_json",
+          "type": "longtext",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "no_effect_seal_no",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "no_effect_seal_revision",
+          "type": "bigint",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "no_effect_seal_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_esr_original": [
+          "tenant_no",
+          "retention_no",
+          "original_row_id"
+        ],
+        "uk_esr_execution": [
+          "tenant_no",
+          "execution_no",
+          "original_row_id"
+        ]
+      },
+      "indexes": {
+        "idx_esr_guard": [
+          "tenant_no",
+          "original_row_id",
+          "state"
+        ]
+      },
+      "checks": {
+        "ck_esr_base": "tenant_no='MAIN' AND version>=0 AND deleted=0",
+        "ck_esr_scope": "CHAR_LENGTH(entity_no)>0 AND CHAR_LENGTH(store_no)>0",
+        "ck_esr_revision": "attempt_no>0 AND prepared_grant_revision>0 AND original_row_id>0 AND original_row_version>=0 AND owner_set_count>0",
+        "ck_esr_state": "state IN ('RETAINED','RELEASED_NO_EFFECT') AND original_disposition IN ('ALLOCATED','CONFIRMED')",
+        "ck_esr_schema": "reference_schema='SERVICE_EXECUTION_REFERENCE_V1'",
+        "ck_esr_hashes": "retention_no REGEXP '^[0-9a-f]{64}$' AND reference_hash REGEXP '^[0-9a-f]{64}$' AND original_binding_bytes_hash REGEXP '^[0-9a-f]{64}$' AND original_hash REGEXP '^[0-9a-f]{64}$' AND original_manifest_hash REGEXP '^[0-9a-f]{64}$' AND owner_set_hash REGEXP '^[0-9a-f]{64}$' AND request_hash REGEXP '^[0-9a-f]{64}$' AND resource_command_hash REGEXP '^[0-9a-f]{64}$' AND plan_hash REGEXP '^[0-9a-f]{64}$' AND creator_namespace_hash REGEXP '^[0-9a-f]{64}$' AND creator_personnel_hash REGEXP '^[0-9a-f]{64}$' AND accepted_authority_hash REGEXP '^[0-9a-f]{64}$' AND (issue_observation_hash IS NULL OR issue_observation_hash REGEXP '^[0-9a-f]{64}$') AND (no_effect_seal_hash IS NULL OR no_effect_seal_hash REGEXP '^[0-9a-f]{64}$')",
+        "ck_esr_json": "JSON_VALID(reference_json) AND JSON_VALID(stock_original_json) AND JSON_VALID(original_row_json) AND JSON_VALID(accepted_authority_json) AND (issue_observation_json IS NULL OR JSON_VALID(issue_observation_json)) AND (no_effect_seal_json IS NULL OR JSON_VALID(no_effect_seal_json))",
+        "ck_esr_issue": "(issue_observation_json IS NULL AND issue_observation_hash IS NULL) OR (issue_observation_json IS NOT NULL AND issue_observation_hash IS NOT NULL)",
+        "ck_esr_seal": "(state='RETAINED' AND no_effect_seal_json IS NULL AND no_effect_seal_no IS NULL AND no_effect_seal_revision IS NULL AND no_effect_seal_hash IS NULL) OR (state='RELEASED_NO_EFFECT' AND no_effect_seal_json IS NOT NULL AND no_effect_seal_no IS NOT NULL AND no_effect_seal_revision>0 AND no_effect_seal_hash IS NOT NULL)"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "entity_no",
+        "store_no",
+        "retention_no",
+        "execution_no",
+        "unit_no",
+        "grant_no",
+        "attempt_no",
+        "reference_schema",
+        "reference_json",
+        "reference_hash",
+        "original_binding_bytes_hash",
+        "prepared_grant_revision",
+        "original_row_id",
+        "original_lock_no",
+        "stock_original_json",
+        "original_hash",
+        "original_manifest_hash",
+        "confirmation_operation_no",
+        "source_confirmation_no",
+        "original_row_version",
+        "original_disposition",
+        "original_row_json",
+        "owner_set_hash",
+        "owner_set_count",
+        "request_hash",
+        "resource_command_no",
+        "resource_command_hash",
+        "plan_hash",
+        "creator_namespace_hash",
+        "creator_personnel_hash",
+        "accepted_authority_json",
+        "accepted_authority_hash"
+      ]
+    }
+  ]
+}

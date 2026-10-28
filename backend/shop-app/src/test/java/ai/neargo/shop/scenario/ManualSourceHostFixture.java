@@ -25,6 +25,7 @@ import ai.neargo.shop.spi.member.CustomerIdentityPort;
 import ai.neargo.shop.spi.member.GuestRegistrationPort;
 import ai.neargo.shop.spi.product.ServiceCatalogFactsPort;
 import ai.neargo.shop.spi.product.StockDispositionPort;
+import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
 import ai.neargo.shop.spi.security.DelegatedIdentity;
@@ -130,7 +131,11 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
         actualOrigins();
         origin(
                 inventoryCommands,
-                Class.forName("ai.neargo.shop.invbridge.port.InventoryStockPort"));
+                Class.forName(switch (((ReservationOwner) inventoryCommands).stockAuthority()) {
+                    case "PLATFORM" -> "ai.neargo.shop.product.port.StockPortImpl";
+                    case "DUAL" -> "ai.neargo.shop.invbridge.port.DualWriteStockPort";
+                    default -> "ai.neargo.shop.invbridge.port.InventoryStockPort";
+                }));
         origin(
                 inventoryAcl,
                 Class.forName("ai.neargo.shop.inventory.service.impl.InventoryAclServiceImpl"));
@@ -321,6 +326,12 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
             String workOrder,
             ManualServiceAdmissionPort.CounterCustomerRef selector,
             String suffix) {
+        return admittedCounter(workOrder, selector, suffix, 1);
+    }
+    protected ManualOriginal admittedCounter(
+            String workOrder,
+            ManualServiceAdmissionPort.CounterCustomerRef selector,
+            String suffix, int quantity) {
         origin(manual, ManualServiceAdmissionPortImpl.class);
         origin(manualOwner, ManualServiceAdmissionServiceImpl.class);
         origin(checkoutOwner, CheckoutServiceImpl.class);
@@ -355,12 +366,12 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
                                                 scopeHash,
                                                 List.of(
                                                         new CheckoutPort.CheckoutLineReq(
-                                                                "service-line", sku, 1)),
+                                                                "service-line", sku, quantity)),
                                                 null,
                                                 Map.of(),
                                                 null)));
         assertThat(quote.purchaseAuthority()).isEqualTo("MERCHANT_RECORDED_IN_PERSON");
-        assertThat(quote.quote().dueMinor()).isEqualTo(101);
+        assertThat(quote.quote().dueMinor()).isEqualTo(101L * quantity);
         var accepted =
                 asMerchant(
                         () ->
@@ -400,12 +411,12 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
                                                 "receipt-" + created.orderNo(),
                                                 revision,
                                                 ManualServiceAdmissionPort.ManualMethod.CASH,
-                                                101,
+                                                101L * quantity,
                                                 "CNY",
                                                 testClock.instant().truncatedTo(ChronoUnit.MILLIS),
                                                 null)));
         assertThat(receipt.admissionState()).isEqualTo("ADMITTED");
-        assertThat(receipt.declaredMinor()).isEqualTo(101);
+        assertThat(receipt.declaredMinor()).isEqualTo(101L * quantity);
         assertThat(receipt.receiptProvenance()).isEqualTo("MANUAL_DECLARATION");
         var source =
                 asMerchant(
@@ -426,8 +437,8 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
         assertThat(line.clientLineRef()).isEqualTo("service-line");
         assertThat(line.goodsNo()).isEqualTo(goods);
         assertThat(line.skuNo()).isEqualTo(sku);
-        assertThat(line.orderedQuantity()).isOne();
-        assertThat(line.availableQuantity()).isOne();
+        assertThat(line.orderedQuantity()).isEqualTo(quantity);
+        assertThat(line.availableQuantity()).isEqualTo(quantity);
         assertThat(line.uom()).isEqualTo("COUNT");
         assertThat(
                         jdbc.queryForObject(
@@ -435,20 +446,21 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
                                         + " i.id=m.order_item_id AND i.sub_order_no=m.sub_order_no"
                                         + " WHERE m.operation_no=? AND m.sub_order_no=? AND"
                                         + " m.source_line_no=? AND m.goods_no=? AND m.sku_no=? AND"
-                                        + " m.quantity=1 AND i.qty=1",
+                                        + " m.quantity=? AND i.qty=?",
                                 Integer.class,
                                 operation.operationNo(),
                                 created.subOrderNo(),
                                 line.sourceLineNo(),
                                 goods,
-                                sku))
+                                sku, quantity, quantity))
                 .isOne();
         var declaration =
                 jdbc.queryForMap(
                         "SELECT stock_authority,stock_manifest_hash,stock_state"
                                 + " FROM ord_manual_service_admission WHERE order_no=?",
                         created.orderNo());
-        assertThat(declaration).containsEntry("stock_authority", "INVENTORY");
+        assertThat(declaration).containsEntry("stock_authority", ((
+            ReservationOwner) inventoryCommands).stockAuthority());
         assertThat(declaration.get("stock_state")).isIn("ALLOCATED", "CONSUMED");
         assertThat(
                         jdbc.queryForObject(
@@ -474,6 +486,13 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
         } catch (SQLException failure) {
             throw new IllegalStateException(failure);
         }
+        if (!"INVENTORY".equals(((ReservationOwner) inventoryCommands).stockAuthority())) {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM prd_stock_lock WHERE tenant_no='MAIN' AND lock_no=?"
+                    + " AND source_manifest_hash=? AND sku_no=? AND source_store_no=? AND qty=?"
+                    + " AND status IN ('ALLOCATED','CONFIRMED') AND confirmation_operation_no IS NOT NULL",
+                    Integer.class, created.orderNo(), declaration.get("stock_manifest_hash"), sku, store,
+                        quantity)).isOne();
+        } else {
         assertThat(
                         inventory.queryForObject(
                                 "SELECT COUNT(*) FROM inv_reservation r JOIN inv_reservation_line l"
@@ -481,19 +500,21 @@ abstract class ManualSourceHostFixture extends CheckoutFlowFixture {
                                     + " l.reservation_id=r.reservation_id WHERE r.external_ref=?"
                                     + " AND r.source_manifest_hash=? AND r.status IN"
                                     + " ('COMMITTED','ALLOCATED') AND l.source_sku_no=? AND"
-                                    + " l.source_store_no=? AND l.qty=1 AND l.issued_qty IN (0,1)"
+                                    + " l.source_store_no=? AND l.qty=? AND l.issued_qty IN (0,?)"
                                     + " AND l.released_qty=0",
                                 Integer.class,
                                 created.orderNo(),
                                 declaration.get("stock_manifest_hash"),
                                 sku,
-                                store))
+                                store, quantity, quantity))
                 .isOne();
         System.out.println(
                 "TASK67_INVENTORY_ORIGINAL "
                         + created.orderNo()
                         + " "
                         + inventoryDataSource.getClass().getName());
+
+        }
 
         return new ManualOriginal(workOrder, source);
     }

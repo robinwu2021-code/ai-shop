@@ -9,8 +9,10 @@ import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.service.StockCountService;
 import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
 import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.spi.product.OriginalStockReturnPort;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -49,6 +51,13 @@ import java.util.Map;
 @Primary
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "INVENTORY")
 public class InventoryStockPort implements StockPort, ReservationOwner {
+    private ObjectProvider<OriginalStockReturnPort> originalReturns;
+
+    @Autowired
+    public void setOriginalReturns(ObjectProvider<OriginalStockReturnPort> originalReturns) {
+        this.originalReturns = originalReturns;
+    }
+
     @Override
     public String stockAuthority() {
         return "INVENTORY";
@@ -142,6 +151,13 @@ public class InventoryStockPort implements StockPort, ReservationOwner {
     @Override
     public void releaseAllocated(String fulfillmentRef) {
         reservations.releaseAllocatedByFulfillmentRef(fulfillmentRef);
+    }
+
+    @Override
+    public RestoreResult restore(String restoreNo, String originalOrderNo, List<SkuQty> items) {
+        var router = originalReturns.getIfAvailable();
+        if (router == null) throw new IllegalStateException("FROZEN_RETURN_AUTHORITY_UNAVAILABLE");
+        return router.restore(restoreNo, originalOrderNo, items);
     }
 
     @Override

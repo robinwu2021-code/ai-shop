@@ -1,6 +1,9 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.policy.ServiceExecutionAccess;
+import ai.neargo.shop.beauty.job.ServiceExecutionRecoveryJob;
+import ai.neargo.job.api.JobDeclaration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import ai.neargo.shop.beauty.policy.ServiceExecutionSchemaVerifier;
 import ai.neargo.shop.beauty.port.ServiceExecutionSourcePortImpl;
 import ai.neargo.shop.beauty.service.impl.ServiceExecutionFenceCoordinator;
@@ -28,6 +31,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import tools.jackson.databind.ObjectMapper;
@@ -42,7 +46,7 @@ import java.time.Clock;
 @ConditionalOnBeautyEnabled
 public class BeautySourceConfiguration {
     @Bean
-    ServiceExecutionSchemaVerifier serviceExecutionSchemaVerifier(@Qualifier("dataSource") DataSource source) {
+    ServiceExecutionSchemaVerifier beautyServiceExecutionSchemaVerifier(@Qualifier("dataSource") DataSource source) {
         return new ServiceExecutionSchemaVerifier(source);
     }
 
@@ -190,5 +194,21 @@ public class BeautySourceConfiguration {
                 manager,
                 clock,
                 manual);
+    }
+
+    @Bean(name = "beautyServiceExecutionRecoveryJob")
+    @Profile("api")
+    @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
+    ServiceExecutionRecoveryJob beautyServiceExecutionRecoveryJob(ServiceTaskExecutionService service) {
+        return new ServiceExecutionRecoveryJob(service);
+    }
+
+    @Bean(name = "beautyServiceExecutionRecoveryDeclaration")
+    @Profile("api")
+    @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
+    JobDeclaration beautyServiceExecutionRecoveryDeclaration() {
+        return new JobDeclaration("beauty-service-execution-recovery", "美业执行凭证恢复",
+                "核对原数量授权，不重放员工操作", "beauty-core",
+                "0 * * * * *", true, 120, 120, true, true);
     }
 }
