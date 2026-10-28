@@ -7,7 +7,8 @@ import java.util.List;
 /** 完整门店替换的获准协议适配器；结果必须绑定原动作和代次，无默认成功实现。 */
 public interface ChannelCatalogGateway extends CommerceGateway {
     /**
-     * Version two must be explicitly supported in full; older adapters cannot silently flatten new
+     * Versions two/three require full support; v3 includes absolute expiry and every time/tax constraint.
+     * Older adapters cannot silently flatten new
      * rules.
      */
     default boolean supportsDocumentSchema(int schemaVersion) {

@@ -39,12 +39,15 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 import javax.sql.DataSource;
 
 class CatalogSynchronizationTest {
     static class Source implements ChannelCatalogSourcePort, ChannelSourceValidationPort {
         boolean detailed;
+        long evidenceTtlSeconds = 600;
+        UnaryOperator<Document> documentTransform;
         boolean stale;
         boolean outage;
         boolean negativePrice;
@@ -66,7 +69,7 @@ class CatalogSynchronizationTest {
                     request.sourceRef(),
                     request.sourceRevision(),
                     (hashChanged ? "b" : "a").repeat(64),
-                    Instant.now().plusSeconds(600),
+                    Instant.now().plusSeconds(evidenceTtlSeconds),
                     "OWNER_RECEIPT",
                     legacyOfferProof ? null : request.salesOfferRef());
         }
@@ -113,7 +116,8 @@ class CatalogSynchronizationTest {
                             List.of(),
                             Instant.now().plusSeconds(600),
                             "CATALOG_RECEIPT");
-            return detailed ? CatalogDetailsPolicyTest.fromLegacy(document) : document;
+            var result = detailed ? CatalogDetailsPolicyTest.fromLegacy(document) : document;
+            return documentTransform == null ? result : documentTransform.apply(result);
         }
 
         private Price price(long amount) {
@@ -127,10 +131,11 @@ class CatalogSynchronizationTest {
         Outcome next = Outcome.SUBMITTED;
         boolean terminal;
         boolean detailedSupported;
+        boolean availabilitySupported;
         Publication lastPublication;
 
         public boolean supportsDocumentSchema(int schema) {
-            return schema == 1 || schema == 2 && detailedSupported;
+            return schema == 1 || schema == 2 && detailedSupported || schema == 3 && availabilitySupported;
         }
 
         boolean timeout;

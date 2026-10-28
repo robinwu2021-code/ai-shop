@@ -14,13 +14,30 @@ public final class MenuSchedulePolicy {
     public static boolean acceptsAt(MenuScheduleVO rules, String status, String hours,
             StoreOperationPolicyResultVO policy, Instant at, ServiceCalendarPolicy.DayRule day) {
         if (!ServiceCalendarPolicy.acceptsAt(status, hours, policy, at, day)) return false;
-        try {
-            var normalized = MenuScheduleDefinitions.normalize(rules);
-            var local = at.atZone(ZoneId.of(policy.timezone())).toLocalDateTime();
-            return anchored(normalized, local.toLocalDate(), local)
-                    || anchored(normalized, local.toLocalDate().minusDays(1), local);
-        } catch (RuntimeException invalid) { return false; }
+        try { return acceptsMenuAt(prepare(rules), policy.timezone(), at); }
+        catch (RuntimeException invalid) { return false; }
     }
+
+    /** Preparation validates once; compilers must not repeatedly normalize the same original rule at every boundary. */
+    public static Prepared prepare(MenuScheduleVO rules) {
+        return new Prepared(MenuScheduleDefinitions.normalize(rules));
+    }
+
+    /** The original store policy timezone remains authoritative even when the menu carries its own timezone field. */
+    public static boolean acceptsMenuAt(Prepared prepared, String timezone, Instant at) {
+        var local = at.atZone(ZoneId.of(timezone)).toLocalDateTime();
+        return anchored(prepared.rules(), local.toLocalDate(), local)
+                || anchored(prepared.rules(), local.toLocalDate().minusDays(1), local);
+    }
+
+    /** Only the owning prepare entry can create the validated rule handle. */
+    public static final class Prepared {
+        private final MenuScheduleVO rules;
+        private Prepared(MenuScheduleVO rules) { this.rules = rules; }
+        /** Boundary discovery reads the exact normalized rules used by the original decision. */
+        public MenuScheduleVO rules() { return rules; }
+    }
+
     private static boolean anchored(MenuScheduleVO rules, LocalDate anchor, LocalDateTime at) {
         if (rules.validFrom() != null && anchor.isBefore(LocalDate.parse(rules.validFrom()))
                 || rules.validTo() != null && anchor.isAfter(LocalDate.parse(rules.validTo()))) return false;

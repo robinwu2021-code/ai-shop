@@ -86,23 +86,25 @@ public final class CatalogPriceSourceFacts {
     }
 
     public static MerchantTaxSnapshot taxSnapshot(Request request, TaxFact tax) {
-        require(
-                tax != null
-                        && tax.source() != null
-                        && tax.managedVersion() != null
-                        && tax.sourceVersion() != null
-                        && tax.rateBp() != null
-                        && tax.priceTaxMode() != null);
-        return new MerchantTaxSnapshot(
-                "MAIN",
-                request.entityNo(),
-                request.storeNo(),
-                tax.managedVersion(),
-                Source.valueOf(tax.source()),
-                tax.ownerNo(),
-                tax.sourceVersion(),
-                tax.rateBp(),
-                PriceTaxMode.valueOf(tax.priceTaxMode()),
+        validateTax(tax);
+        return taxDefinition(request.entityNo(), request.storeNo(), tax);
+    }
+
+    /** Scope-only readers reuse the original definition checks without fabricating a SKU or a price request. */
+    public static MerchantTaxSnapshot taxSnapshotForScope(MarketScope scope, TaxFact tax) {
+        validateMarketScope(scope);
+        validateTax(tax);
+        return taxDefinition(scope.entityNo(), scope.storeNo(), tax);
+    }
+
+    private static void validateTax(TaxFact tax) {
+        require(tax != null && tax.source() != null && tax.managedVersion() != null
+                && tax.sourceVersion() != null && tax.rateBp() != null && tax.priceTaxMode() != null);
+    }
+
+    private static MerchantTaxSnapshot taxDefinition(String entity, String store, TaxFact tax) {
+        return new MerchantTaxSnapshot("MAIN", entity, store, tax.managedVersion(), Source.valueOf(tax.source()),
+                tax.ownerNo(), tax.sourceVersion(), tax.rateBp(), PriceTaxMode.valueOf(tax.priceTaxMode()),
                 tax.contentHash());
     }
 

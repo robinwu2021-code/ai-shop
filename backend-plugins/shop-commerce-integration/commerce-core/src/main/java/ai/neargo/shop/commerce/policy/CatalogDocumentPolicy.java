@@ -76,7 +76,7 @@ public final class CatalogDocumentPolicy {
         text(d.receiptNo());
         require(expected.equals(d.sources()));
         int schema = version(d);
-        if (schema == 2) {
+        if (schema == 2 || schema == 3) {
             require(
                     d.sections() != null
                             && d.sections().isEmpty()
@@ -85,6 +85,10 @@ public final class CatalogDocumentPolicy {
                             && d.schedules() != null
                             && d.schedules().isEmpty());
             CatalogDetailsPolicy.validate(d);
+            if (schema == 3) {
+                CatalogAvailabilityPolicy.validate(d, Instant.now());
+                CatalogTaxBasisPolicy.validate(d);
+            }
             String payload = json.writeValueAsString(d);
             require(payload.getBytes(StandardCharsets.UTF_8).length <= 4 * 1024 * 1024);
             return json.readValue(payload, Document.class);
@@ -187,6 +191,14 @@ public final class CatalogDocumentPolicy {
         return json.readValue(payload, Document.class);
     }
 
+    /** The original preview additionally binds new tax evidence to its trusted merchant/store context. */
+    public static Document freeze(Document document, List<ValidatedSource> expected, ObjectMapper json,
+            String entity, String store) {
+        var frozen = freeze(document, expected, json);
+        CatalogTaxBasisPolicy.requireScope(frozen, entity, store);
+        return frozen;
+    }
+
     private static void visit(
             String ref,
             Map<String, List<String>> edges,
@@ -208,17 +220,19 @@ public final class CatalogDocumentPolicy {
     public static int version(Document document) {
         require(document != null);
         int schema = document.schemaVersion() == null ? 1 : document.schemaVersion();
-        require(schema == 1 || schema == 2);
+        require(schema == 1 || schema == 2 || schema == 3);
+        require(schema == 3 || document.availability() == null && document.taxBases() == null);
         return schema;
     }
 
     public static long itemCount(Document document) {
-        return version(document) == 2
+        return version(document) >= 2
                 ? document.details().offers().size()
                 : document.offers().size();
     }
 
     public static String hash(Document d, ObjectMapper json) {
+        if (version(d) == 3) return CatalogV3Policy.hash(d, json);
         if (version(d) == 2)
             return ChannelIdentity.hash(
                     json.writeValueAsString(

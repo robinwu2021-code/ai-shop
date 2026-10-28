@@ -46,7 +46,18 @@ public interface ChannelCatalogSourcePort {
             @JsonInclude(JsonInclude.Include.NON_NULL)
                     @JsonDeserialize(using = CommerceIntegerDeserializer.class)
                     Integer schemaVersion,
-            @JsonInclude(JsonInclude.Include.NON_NULL) ChannelCatalogDetails details) {
+            @JsonInclude(JsonInclude.Include.NON_NULL) ChannelCatalogDetails details,
+            @JsonInclude(JsonInclude.Include.NON_NULL) CatalogAvailability availability,
+            @JsonInclude(JsonInclude.Include.NON_NULL) List<CatalogTaxBasis> taxBases) {
+        public Document { taxBases = taxBases == null ? null : List.copyOf(taxBases); }
+
+        /** Version-two callers retain the exact serialized shape and cannot implicitly opt into version three. */
+        public Document(Owner owner, String currency, List<ValidatedSource> sources, List<Section> sections,
+                List<Offer> offers, List<Schedule> schedules, Instant validUntil, String receiptNo,
+                Integer schemaVersion, ChannelCatalogDetails details) {
+            this(owner, currency, sources, sections, offers, schedules, validUntil, receiptNo,
+                    schemaVersion, details, null, null);
+        }
         /** Original callers and persisted payloads retain their version-one shape and hashing. */
         public Document(
                 Owner owner,

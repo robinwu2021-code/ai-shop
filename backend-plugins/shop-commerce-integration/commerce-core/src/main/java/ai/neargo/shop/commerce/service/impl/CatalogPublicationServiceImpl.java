@@ -55,7 +55,7 @@ public final class CatalogPublicationServiceImpl implements CatalogPublicationSe
                                             before.connection().getActiveRevisionNo(),
                                             proofs)),
                             proofs,
-                            db.json);
+                            db.json, e, store);
         } catch (RuntimeException failure) {
             throw BizException.of(ErrorCode.CONFLICT);
         }

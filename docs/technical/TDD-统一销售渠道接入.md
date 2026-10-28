@@ -239,6 +239,28 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 
 窗口滚动沿原唯一CommerceRecoveryJob和cim_sync_policy.next_check_at，最迟horizonEnd前24小时重捕获；不新增每渠道cron。具体接线归S3，未完成前默认不启用自动发布。真实Gateway若不能保证窗口外关闭/有限有效期，不得声明支持v3；人工补发或定时任务在线不是过期保护的替代品。
 
+#### L3 B1 执行计划：v3时间与税依据（2026-10-28）
+
+承接用户“继续”，先交付可独立验收的v3合同、冻结校验及真实原时间编译；B2再组装完整菜项/选择可行性，C接HTTP/worker，S3接通知与窗口滚动。已在用户消息中先输出本批目的、任务、方法和验证。沿既定增量v3方案，不重新确认已选方向。
+
+| 顺序 | 文件/对象 | 实现及验收 |
+| --- | --- | --- |
+| 1 | commerce-api spi.commerce.CatalogAvailability、CatalogTaxBasis；commerce.dto.CommerceInstantDeserializer | 窗口/来源/半开区间；税依据保留原entity/store/Market/TaxFact；新时间字段严格字符串及未知字段拒绝 |
+| 2 | 原ChannelCatalogSourcePort.Document | 末尾追加仅非null序列化availability/taxBases；原8及10参数构造器保留；原1/2格式不得混入新元数据 |
+| 3 | commerce-core policy.CatalogAvailabilityPolicy、CatalogTaxBasisPolicy、CatalogV3Policy | 来源窗口精确覆盖、UTC7天/4096段/边界与有序校验；每个主价/配料价/套餐价的taxBasisRef唯一可解释，统一原scope/market/currency/scale；新3稳定摘要排除刷新回执且排序确定 |
+| 4 | 原CatalogDocumentPolicy、CatalogPublicationServiceImpl、ChannelCatalogGateway | freeze/version/hash/itemCount接纳3；原preview增加税scope与实际调用e/store核对；旧Gateway默认仍仅1，3必须显式完整支持有效期和全部规则，不降级 |
+| 5 | shop-base原OpenHours、CatalogPriceSourceFacts | 只增纯边界读取boundaryTimes及税taxSnapshotForScope(MarketScope,TaxFact)入口，复用原语法/税hash校验；不重写营业判定、不虚构SKU、不增加税计算 |
+| 6 | 原MenuSchedulePolicy移入food-api，同FQN；原StoreCalendarSourcePolicy | 原acceptsAt语义/签名不变；新增prepare与纯已校验判定，避免每个分段重复解析和摘要；旧owner入口仍完整校验证据 |
+| 7 | food-commerce policy.FoodCatalogAvailabilityPolicy.compile(Proof,expectedCalendarQuery,Facts,Clock,ObjectMapper) | 仅原CURRENT/MENU；原餐牌与原日历scope一致；固定捕获日UTC起7天；按原规则边界和全部合法offset、DST跳变、未来政策生效点求交集并合并，返回availability及最短证据期限 |
+| 8 | commerce-core与food-commerce专项、原模块直接回归 | 原编译产物1/2 JSON/hash golden；合法3及各类拒绝、稳定hash、税引用/scope；跨夜切点、双时段、例外、未来时区、DST overlap/gap均与原owner逐边界一致 |
+| 9 | 本TDD、设计真源和生成清单、执行台账 | 执行记录三处对账；一次守卫消融、一次最终独立只读review，重要问题一轮复现修复 |
+
+输入输出与限制：compile接收完整原菜单Proof、显式期望日历Query与原Facts，调用原MenuSourcePolicy/StoreCalendarSourcePolicy校验；不把任意客户端周循环当原事实。输出Compiled(availability,validUntil)，horizon与证据TTL分离。每来源最多4096个有效区间、候选边界最多200000个，超限整份拒绝，不截断；原hours未知或策略未覆盖窗起点拒绝。原日历查询必须覆盖UTC窗两侧各2个日期。每个Zone的所有有效offset和gap/transition均纳入候选，段首仅调用原纯规则；不引入第二套业务判定或分钟轮询。
+
+旧原税/营业helper只增纯读取，合法旧行为与声明签名不变。新TaxBasis显式带原主体/门店并调用原税定义校验；泛型冻结证明同一文档税scope一致，实际preview再绑定调用方e/store。新3窗口必须是UTC午夜起固定7天，冻结允许最多30秒跨UTC日期的捕获/接纳差，防止近午夜合法捕获被误拒；任意旧窗或前移窗拒绝。短期proof/Doc TTL继续最多30秒，最终再次按Clock核验，不以未来营业窗口延长授权。
+
+按用户节奏：先整批生产及测试源码→统一test-compile→集中相关测试（不全仓）→消融RED并恢复GREEN→因MenuSchedulePolicy模块移动执行clean package→一次独立只读review→重要问题一轮定向修复→精确本地提交。无新表/迁移/公开API/定时任务/真实平台，无FOOD完整catalog provider装配或生产开关开启。单独完成B1不能标记B2完整目录、C链路或S3通知已完成。
+
 #### L3 3. 目录组装与完整性校验
 
 | 原对象 | 目录投影 | 要求 |
@@ -1306,3 +1328,29 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 - 最终独立只读review对 b048b12df..0236cf872 未发现可执行的P0至P3问题，无新增延后minor、无重要计划偏差；审查未独立运行Maven，验收证据来自执行方。
 - 复核边界决定：完整目录v3/捕获预览发送/事件桥仍按B/C/S3；真实RETAIL提供方及远程CIM来源客户端待后续；生产数据库并发、部署配置和真实渠道行为未联验。紧凑Validation回执是受信owner答复，不是密码学签名，也不能据缩减字段重建完整原文。原CatalogPersistence与映射重试层已有异常翻译保持，不能把本批provider原错误透传解读为已改造全部外层API错误。上批图片排序P3仍单独跟踪。
 - 第一项推送已独立核对远端为 b048b12df6b9250c6661d2a10f2da2551e978b7d；本批A2.3业务提交0236cf872仅本地，审查/验收记录随后提交。本批不部署、不开启默认关闭配置；工作区继续供下一批使用。
+
+
+### B1 v3时间/税合同及原规则编译交付（2026-10-28，本地，最终复核中）
+
+本批落实 §2 B1：新CatalogAvailability/SourceWindow/UtcWindow、CatalogTaxBasis及严格Instant字段；Document仅新3输出两个新增字段，原8/10参数构造仍保留。新3冻结核验来源、UTC午夜7天窗、最多30秒证据/跨日接纳差、合并有序区间、每个价格的原税依据、统一scope/市场/币种精度；原preview再绑定实际调用主体/门店。显式空目录允许空税依据，不凭空制造0税；仍校验币种及预览scope。
+
+| AC/规则 | 实际实现 | 验收方法 |
+| --- | --- | --- |
+| 原1/2 JSON/hash兼容 | Document旧构造器、CatalogDocumentPolicy旧分支 | CatalogV3LegacyCompatibilityTest.priorCompiledArtifactVersionOneAndTwoBytesAndHashesAreUnchanged，基线先由002dbfd旧编译类生成 |
+| 新3字段/有序有限窗口/真实税引用 | CatalogAvailabilityPolicy、CatalogTaxBasisPolicy | CatalogV3PolicyTest：合法3、错scope/缺税/孤立税、丢来源/重叠/未合并/乱序/越界、关闭空区间、旧窗/移位/TTL超限、午夜差、空目录 |
+| 稳定摘要 | CatalogV3Policy；原1/2算法不动 | stableHashIgnoresEvidenceRefreshAndCollectionOrderButTracksWindowsAndTax；twoSourceCollectionsCanBeReorderedWithoutLosingPerSourceWindowsOrPrices |
+| 原scope与网关版本门禁 | CatalogPublicationServiceImpl调用新freeze重载；原supportsDocumentSchema | CatalogV3AdmissionTest三个真实Mapper/恢复器用例：错店税无快照；v2网关拒绝3；显式3网关收完整窗口税依据，submit只排队 |
+| 原规则迁移/纯准备 | 原MenuSchedulePolicy移API；StoreCalendarSourcePolicy.prepare/policyAt | 原MenuSchedulePolicyTest、MenuScheduleServiceTest、StoreCalendarSourceServiceTest、ServiceCalendarPolicyTest/ServiceCalendarServiceTest |
+| 正常/跨夜/例外/双时段 | FoodCatalogAvailabilityPolicy.compile | FoodCatalogAvailabilityTest前三项及futureCutoverPolicyCanCloseAnExceptionAtItsExactEffectiveInstant |
+| DST所有offset与gap | 同编译器，ZoneRules边界与原判定求交 | dstOverlapIncludesBothOffsetsAndGapNeverShiftsTheOriginalBusinessRule；completelyClosedSourceRetainsAnEmptyWindowList |
+| 未来时区、原精度 | 同编译器按原policy时间线 | futureTimezoneAndNanosecondPolicyBoundaryUseStoreClockNotMenuTimezone，另按原owner在边界及间隔1379秒探针验证同义（采样仅在测试） |
+| scope/未知hours/不足覆盖/期限耗尽 | 原证明校验，编译后再次核验 | wrongScopeUnknownHoursAndInsufficientDateCoverageFailRatherThanOpenPermanently；evidenceThatExpiresDuringCompilationCannotBeReturnedAsFresh |
+| 共享helper旧行为 | OpenHours.boundaryTimes；CatalogPriceSourceFacts.taxSnapshotForScope | OpenHoursAtTest、CatalogPriceSourceFactsTest、TaxSettingDefinitionTest；新税方法单独命名，避免旧null参数调用变成重载歧义 |
+
+执行证据：
+
+- 整批test-compile62s，补齐税helper独立命名及真实多来源排序用例后统一test-compile68s；首轮集中111项中110通过、1原生DB条件跳过，25.571s。没有全仓回归。
+- 消融仅将DST合法offset集合截成第一个，重叠测试实际漏掉2026-11-01T06:15Z至06:45Z第二段，真实RED1（4.868s）；自动恢复原文件，后续所有正向时间用例GREEN。
+- 共享helper变更后默认零售test-compile PASS18.540s；集成shop-app、独立food-server/commerce-server clean package PASS约62s。核验food-api jar包含唯一MenuSchedulePolicy.class，food-core jar和target/classes均无残留。清理后集中113项中112通过/1原生条件跳过，22.553s。
+- 新增显式3网关正向用例初次误以为submit会直接发送而失败；查原SyncRunServiceImpl确认submit仅QUEUED，修正测试先断言0发送，再调用原recoverDue，三项相关通过5.635s。未修改生产派发语义；本批共114个唯一检查中113通过/1原生条件跳过，不累加重复复测。
+- 原价/税/原source receipt是可信owner答复而非密码学签名；本纯编译器不增加公开输入端点，B2仍必须从原服务获取并在捕获后重核。7天窗口不承诺未来价格或营业配置不会变化，S3通知仍后置。当前只有合同及可单独调用的时间编译器，无完整FOOD目录提供方/HTTP接线/真实平台启用。
