@@ -787,20 +787,20 @@
 | POST | `/biz/order/{orderNo}/waybill` | 更正运单 | — | `Order` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/worklist` | 按优先级分页的订单待办 | — | `object` | 🔒 | ✅ | ✅ |
 
-### pay（10）
+### payment（10）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/pay/app-grant` | 已授权的第三方 | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/biz/pay/app-grant` | 授权第三方 | — | `PayAppGrant` | 🔒 | ✅ | ✅ |
-| DELETE | `/biz/pay/app-grant/{id}` | 撤销第三方授权 | — | — | 🔒 | ✅ | ⬜ |
-| POST | `/biz/pay/collection` | 代客收款（动态码） | — | `PayCollectResult` | 🔒 | ✅ | ✅ |
-| GET | `/biz/pay/qr-code` | 本店收款码 | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/biz/pay/qr-code` | 生成收款码 | — | `PayQrCode` | 🔒 | ✅ | ✅ |
-| PUT | `/biz/pay/qr-code/{qrCode}/disabled` | 停用收款码 | — | — | 🔒 | ✅ | ✅ |
-| GET | `/biz/pay/refund` | 本店最近退款 | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/biz/pay/refund` | 发起原路退款 | — | `PayRefundItem` | 🔒 | ✅ | ✅ |
-| GET | `/biz/pay/statement` | 本店收款日流水 | — | `PayDailyStatement` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/app-grant` | 已授权的第三方 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/payment/app-grant` | 授权第三方 | — | `PayAppGrant` | 🔒 | ✅ | ✅ |
+| DELETE | `/biz/payment/app-grant/{id}` | 撤销第三方授权 | — | — | 🔒 | ✅ | ⬜ |
+| POST | `/biz/payment/collection` | 代客收款（动态码） | — | `PayCollectResult` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/qr-code` | 本店收款码 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/payment/qr-code` | 生成收款码 | — | `PayQrCode` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/payment/qr-code/{qrCode}/disabled` | 停用收款码 | — | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/refund` | 本店最近退款 | — | `数组` | 🔒 | ✅ | ✅ |
+| POST | `/biz/payment/refund` | 发起原路退款 | — | `PayRefundItem` | 🔒 | ✅ | ✅ |
+| GET | `/biz/payment/statement` | 本店收款日流水 | — | `PayDailyStatement` | 🔒 | ✅ | ✅ |
 
 ### payout-account（2）
 

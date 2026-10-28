@@ -582,6 +582,14 @@ class BizEndpointPermTest {
         put("/biz/pay/qr-code/{qrCode}/disabled", BizPerms.PAY_QR);
         put("/biz/pay/app-grant", BizPerms.PAY_APP_GRANT);
         put("/biz/pay/app-grant/{id}", BizPerms.PAY_APP_GRANT);
+        // M5a.5：同一组能力改走业务服务 /biz/payment（旧 /biz/pay 过渡一个版本后删），码逐个对应
+        put("/biz/payment/collection", BizPerms.PAY_COLLECT);
+        put("/biz/payment/refund", BizPerms.PAY_REFUND);
+        put("/biz/payment/statement", BizPerms.PAY_STATEMENT);
+        put("/biz/payment/qr-code", BizPerms.PAY_QR);
+        put("/biz/payment/qr-code/{qrCode}/disabled", BizPerms.PAY_QR);
+        put("/biz/payment/app-grant", BizPerms.PAY_APP_GRANT);
+        put("/biz/payment/app-grant/{id}", BizPerms.PAY_APP_GRANT);
         put("/biz/settle/bills", BizPerms.FINANCE);
         put("/biz/settle/income", BizPerms.FINANCE);
         put("/biz/settle/daily-flow", BizPerms.FINANCE);

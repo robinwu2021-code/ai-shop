@@ -31,6 +31,9 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * 商家端支付（TDD-支付服务-I5接入层 S8，F40 F42 F43 F44 F45）：代客收款 → 顾客经收银台付 → 本店流水 → 发起退款；
  * 本店静态码；授权第三方。商家只对自己的门店、自己的钱。
+ *
+ * <p>开发计划 M5a.5：走业务服务的 {@code /biz/payment/**}（经 {@code payclient}）；旧的 {@code /biz/pay} 过渡一个版本后删（M5a.6），
+ * 过渡期两边同源，由 {@link #legacyPathsStillServeTheSameDuringTransition} 钉住。
  */
 // 支付服务 I1–I5 的场景共用一个 H2 库与上下文（见 TDD-支付服务-I3 偏差 15）
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:pay-i3;MODE=MySQL;"
@@ -44,6 +47,7 @@ class BizPayFlowTest {
     @Autowired private ai.neargo.shop.common.OtpStore otpStore;
     @Autowired private PayMerchantBindingService bindings;
     @Autowired private SettlePort settle;
+    @Autowired private ai.neargo.shop.auth.TokenStore tokens;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
@@ -136,10 +140,33 @@ class BizPayFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 新路径 /biz/payment 同样认商家会话：没有令牌 401，门店头指向没授权的店 → 按自己的默认店处理，看不到那家的东西")
+    void newPathsNeedMerchantSessionAndStore() throws Exception {
+        assertThat(call(null, null, post("/biz/payment/collection")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"amountMinor\":100}")).getStatus()).isEqualTo(401);
+        assertThat(call(null, null, get("/biz/payment/statement")).getStatus()).isEqualTo(401);
+        Shop s = shop();
+        Shop other = shop();
+        String theirs = data(send(other, post("/biz/payment/qr-code"), "{\"kind\":\"TABLE\",\"tableRef\":\"B1\",\"singleLimitMinor\":5000,\"dailyLimitMinor\":20000}")).get("qrCode").asString();
+        assertThat(data(call(other.token(), other.storeNo(), get("/biz/payment/qr-code"))).toString()).contains(theirs);
+        assertThat(data(call(s.token(), other.storeNo(), get("/biz/payment/qr-code"))).toString()).doesNotContain(theirs);
+    }
+
+    @Test
+    @DisplayName("★★ 过渡期（到 M5a.6）旧路径 /biz/pay 仍可用，与新路径看到的是同一份数据")
+    void legacyPathsStillServeTheSameDuringTransition() throws Exception {
+        Shop s = shop();
+        String no = data(send(s, post("/biz/payment/collection"), "{\"amountMinor\":300}")).get("payOrderNo").asString();
+        assertThat(data(call(s.token(), s.storeNo(), get("/biz/pay/statement"))).toString())
+                .isEqualTo(data(call(s.token(), s.storeNo(), get("/biz/payment/statement"))).toString());
+        assertThat(no).isNotBlank();
+    }
+
+    @Test
     @DisplayName("★★★ 代客收款 → 顾客经收银台付 → 本店流水见到 → 商家发起退款（操作员记在退款单上）")
     void collectPayStatementRefund() throws Exception {
         Shop s = shop();
-        JsonNode issued = data(send(s, post("/biz/pay/collection"),
+        JsonNode issued = data(send(s, post("/biz/payment/collection"),
                 "{\"amountMinor\":2600,\"subject\":\"代客收款\",\"expireMinutes\":10}"));
         String no = issued.get("payOrderNo").asString();
         String token = issued.get("token").asString();
@@ -156,21 +183,22 @@ class BizPayFlowTest {
         settle.settlePayment(new SettlePort.PaymentSettled(started.get("outTradeNo").asString(), "TEST", "T-" + id(),
                 2600, System.currentTimeMillis()));
 
-        JsonNode day = data(call(s.token(), s.storeNo(), get("/biz/pay/statement")
+        JsonNode day = data(call(s.token(), s.storeNo(), get("/biz/payment/statement")
                 .param("day", LocalDate.now(java.time.ZoneId.of("Asia/Shanghai")).toString())));
         assertThat(day.get("paidCount").asInt()).isEqualTo(1);
         assertThat(day.get("paidMinor").asLong()).isEqualTo(2600);
         assertThat(day.get("items").toString()).contains(no);
 
-        JsonNode refund = data(send(s, post("/biz/pay/refund"),
+        JsonNode refund = data(send(s, post("/biz/payment/refund"),
                 "{\"payOrderNo\":\"" + no + "\",\"amountMinor\":600,\"reason\":\"少收一件\"}"));
         assertThat(refund.get("payRefundNo").asString()).isNotBlank();
-        assertThat(data(call(s.token(), s.storeNo(), get("/biz/pay/refund"))).toString())
+        assertThat(data(call(s.token(), s.storeNo(), get("/biz/payment/refund"))).toString())
                 .contains(refund.get("payRefundNo").asString());
         Map<String, Object> pr = jdbc.queryForMap("SELECT * FROM pay_refund WHERE pay_refund_no=?",
                 refund.get("payRefundNo").asString());
         assertThat(pr.get("source_type")).isEqualTo("BIZ");
-        assertThat((String) pr.get("requested_by")).as("退款单记得是哪个商家账号发起的").isNotBlank();
+        assertThat((String) pr.get("requested_by")).as("退款单记得是哪个商家账号发起的（就是登录的那个）")
+                .isEqualTo(tokens.get(s.token()).orElseThrow().user().userNo());
     }
 
     @Test
@@ -178,7 +206,7 @@ class BizPayFlowTest {
     void cannotTouchAnotherShop() throws Exception {
         Shop a = shop();
         Shop b = shop();
-        JsonNode issued = data(send(a, post("/biz/pay/collection"), "{\"amountMinor\":500}"));
+        JsonNode issued = data(send(a, post("/biz/payment/collection"), "{\"amountMinor\":500}"));
         String no = issued.get("payOrderNo").asString();
         // 先让 A 的单真的付成 —— 没付的单本来就不进任何人的流水，那样断言「B 看不到」什么也没证明
         JsonNode started = json.readTree(mvc().perform(post("/checkout/v1/sessions/" + issued.get("token").asString() + "/pay")
@@ -186,28 +214,28 @@ class BizPayFlowTest {
                 .getContentAsString()).get("data");
         settle.settlePayment(new SettlePort.PaymentSettled(started.get("outTradeNo").asString(), "TEST", "T-" + id(),
                 500, System.currentTimeMillis()));
-        assertThat(data(call(a.token(), a.storeNo(), get("/biz/pay/statement"))).toString()).contains(no);
-        int rejected = code(send(b, post("/biz/pay/refund"), "{\"payOrderNo\":\"" + no + "\",\"amountMinor\":100}"));
+        assertThat(data(call(a.token(), a.storeNo(), get("/biz/payment/statement"))).toString()).contains(no);
+        int rejected = code(send(b, post("/biz/payment/refund"), "{\"payOrderNo\":\"" + no + "\",\"amountMinor\":100}"));
         assertThat(rejected).as("别家的单").isNotZero();
-        assertThat(data(call(b.token(), b.storeNo(), get("/biz/pay/statement"))).toString()).doesNotContain(no);
+        assertThat(data(call(b.token(), b.storeNo(), get("/biz/payment/statement"))).toString()).doesNotContain(no);
     }
 
     @Test
     @DisplayName("★★★ 本店静态码：生成（码值随机）→ 顾客能扫 → 停用后扫不到")
     void staticCodes() throws Exception {
         Shop s = shop();
-        JsonNode qr = data(send(s, post("/biz/pay/qr-code"),
+        JsonNode qr = data(send(s, post("/biz/payment/qr-code"),
                 "{\"kind\":\"TABLE\",\"tableRef\":\"A3\",\"singleLimitMinor\":5000,\"dailyLimitMinor\":20000}"));
         String code = qr.get("qrCode").asString();
         assertThat(code).hasSizeGreaterThanOrEqualTo(22);
-        assertThat(data(call(s.token(), s.storeNo(), get("/biz/pay/qr-code"))).toString()).contains(code);
+        assertThat(data(call(s.token(), s.storeNo(), get("/biz/payment/qr-code"))).toString()).contains(code);
         assertThat(mvc().perform(get("/checkout/v1/codes/" + code)).andReturn().getResponse().getStatus()).isEqualTo(200);
 
-        data(call(s.token(), s.storeNo(), put("/biz/pay/qr-code/" + code + "/disabled")));
+        data(call(s.token(), s.storeNo(), put("/biz/payment/qr-code/" + code + "/disabled")));
         assertThat(mvc().perform(get("/checkout/v1/codes/" + code)).andReturn().getResponse().getStatus()).isEqualTo(404);
 
         Shop other = shop();
-        assertThat(code(call(other.token(), other.storeNo(), put("/biz/pay/qr-code/" + code + "/disabled"))))
+        assertThat(code(call(other.token(), other.storeNo(), put("/biz/payment/qr-code/" + code + "/disabled"))))
                 .as("别家的码停不了").isNotZero();
     }
 
@@ -219,13 +247,13 @@ class BizPayFlowTest {
         jdbc.update("INSERT INTO pay_app (app_no, name, owner_type, status, scopes, rate_limit_qps,"
                 + " daily_refund_limit_minor, sandbox, created_at, updated_at) VALUES (?, '试点', 'PARTNER', 'ACTIVE',"
                 + " 'pay:create,pay:read', 100, 0, 1, NOW(), NOW())", appNo);
-        JsonNode g = data(send(s, post("/biz/pay/app-grant"), "{\"appNo\":\"" + appNo + "\",\"actions\":[\"COLLECT\",\"READ\"]}"));
+        JsonNode g = data(send(s, post("/biz/payment/app-grant"), "{\"appNo\":\"" + appNo + "\",\"actions\":[\"COLLECT\",\"READ\"]}"));
         assertThat(g.get("actions").toString()).contains("COLLECT");
-        assertThat(data(call(s.token(), s.storeNo(), get("/biz/pay/app-grant"))).toString()).contains(appNo);
-        data(call(s.token(), s.storeNo(), delete("/biz/pay/app-grant/" + g.get("id").asLong())));
+        assertThat(data(call(s.token(), s.storeNo(), get("/biz/payment/app-grant"))).toString()).contains(appNo);
+        data(call(s.token(), s.storeNo(), delete("/biz/payment/app-grant/" + g.get("id").asLong())));
         assertThat(jdbc.queryForObject("SELECT status FROM pay_app_grant WHERE id=?", String.class, g.get("id").asLong()))
                 .isEqualTo("REVOKED");
-        assertThat(code(send(s, post("/biz/pay/app-grant"), "{\"appNo\":\"MALL\",\"actions\":[\"COLLECT\"]}")))
+        assertThat(code(send(s, post("/biz/payment/app-grant"), "{\"appNo\":\"MALL\",\"actions\":[\"COLLECT\"]}")))
                 .as("内部接入方不能被商家授权").isNotZero();
     }
 }
