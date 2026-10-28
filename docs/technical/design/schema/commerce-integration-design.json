@@ -3400,7 +3400,7 @@
       "package": "ai.neargo.shop.spi.commerce",
       "owner": "FOOD/RETAIL",
       "methods": "owner()->Owner；capture(CaptureCommand)->Document；v1保留原Section/Offer/Sku等嵌套record和无版本JSON；v2(schemaVersion=2)使用唯一ChannelCatalogDetails，含按Variant选项/套餐、精确数量、选择规则和日期例外，不混写旧集合；原FOOD日历来源StoreCalendarSourceService.capture(Query(entityNo/storeNo/fromDate/toDate))->Facts，内部POST /internal/food/store-calendar-sources/capture；共享原媒体spi.media.MediaPublicSourcePort.capture(Request(entityNo/storeNo/assetKeys))->Facts；内部POST /internal/media/public-sources/capture",
-      "purpose": "完整目录、原价格/税/库存依据及依赖；v2无损保留餐饮和零售语义，UNKNOWN库存不伪造数量；不授予渠道重算价格权限；日历来源保留原门店营业时间、营业日切点、策略生效时间线和日期例外；限定31个营业日/256次策略变更；判定只约束日历，不替代最终订单准入。完整目录/媒体适配仍待后续。；原公开GOODS图片完整批次最多20项，稳定HTTPS由原MediaStore生成，元数据未知保留null，不上传/下载/签私有URL；通用channel客户端显式media-client.enabled开启且本地owner优先。 原餐牌/连接身份组合由可选food-commerce桥接模块的FoodCatalogBindingService.capture提供；精确绑定外部账号及门店、当前餐牌双读核验，仅证明绑定身份，不授予pricePolicyRef定价权限，也不注册完整目录提供方。",
+      "purpose": "完整目录、原价格/税/库存依据及依赖；v2无损保留餐饮和零售语义，UNKNOWN库存不伪造数量；不授予渠道重算价格权限；日历来源保留原门店营业时间、营业日切点、策略生效时间线和日期例外；限定31个营业日/256次策略变更；判定只约束日历，不替代最终订单准入。完整目录/媒体适配仍待后续。；原公开GOODS图片完整批次最多20项，稳定HTTPS由原MediaStore生成，元数据未知保留null，不上传/下载/签私有URL；通用channel客户端显式media-client.enabled开启且本地owner优先。 原餐牌/连接身份组合由可选food-commerce桥接模块的FoodCatalogBindingService.capture提供；精确绑定外部账号及门店、当前餐牌双读核验，仅证明绑定身份，不授予pricePolicyRef定价权限，也不注册完整目录提供方。 A1新增FoodCatalogPricePolicyService.capture，仅接受MENU_PUBLISHED_PRICES_V1策略，复用原PriceLine并保留价税/市场证据；原MenuChannelAuthorityPort适配核对原绑定和共享CatalogPriceSourcePort.market(MarketScope)事实，配置不依赖CURRENT发布或虚构SKU。price-policy.enabled默认关闭；原核心市场POST /internal/product/catalog-price-sources/market不输出价格或税。",
       "ac": "AC03"
     },
     {
@@ -3472,7 +3472,7 @@
       "package": "ai.neargo.shop.spi.commerce",
       "owner": "可信平台授权/查询适配器",
       "methods": "verify(Identity)->Proof(VERIFIED/UNKNOWN/UNSUPPORTED, identity, receiptRef, verifiedAt, validUntil)；已实现只读ChannelCatalogAuthorityService.capture(Query(entityNo/storeNo/connectionNo/revisionNo))->Facts，内部POST /internal/commerce/catalog-authorities/capture",
-      "purpose": "事务外核验远端门店真实归属，本地事务锁账号/协议并复核冻结身份及有效期；无实现拒绝认领，不提供默认成功；S2B2B1读取原ACTIVE平台/账号/连接、VERIFIED档案及CATALOG授权，以RR读取/事务外verify/RR重读冻结30秒事实，不输出密钥；commerce-channel显式authority-client.enabled选择COMMERCE typed远程，默认关闭且本地owner优先。此合同不代替餐牌/价格/日历/媒体准入。",
+      "purpose": "事务外核验远端门店真实归属，本地事务锁账号/协议并复核冻结身份及有效期；无实现拒绝认领，不提供默认成功；S2B2B1读取原ACTIVE平台/账号/连接、VERIFIED档案及CATALOG授权，以RR读取/事务外verify/RR重读冻结30秒事实，不输出密钥；commerce-channel显式authority-client.enabled选择COMMERCE typed远程，默认关闭且本地owner优先。此合同不代替餐牌/价格/日历/媒体准入。 A1增量：ChannelCatalogAuthorityService.resolve(IdentityQuery(entityNo/storeNo/providerCode/externalAccountRef/externalStoreRef))沿原Mapper唯一匹配FOOD/LOCAL/INSTANT当前连接，捕获前后复查歧义；内部POST /internal/commerce/catalog-authorities/resolve与原typed客户端保持同合同，无激活副作用。",
       "ac": "AC02"
     },
     {
@@ -3796,7 +3796,7 @@
       "COM-029",
       "COM-030"
     ],
-    "limitations": "B端仍仅主体属主；累计29个基础/授权/目录/任务路由，17张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。目录授权事实只读内部端点及独立客户端已编码；完整渠道业务的独立模式客户端、订单导入、履约售后、资金对账及真实平台仍未开放。基础内核已集成部署；新增原FOOD来源/价格、目录v2、授权/日历/媒体已推送，未据此声明部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 资源映射公共写入仅IMPORTED草稿，核验由默认关闭的唯一Job调用；MANAGED代码分配/发布证明、真实资源查询网关尚未开放。历史解析内核已实现，不代表原订单导入已就绪。 目录v2合同/冻结/稳定摘要/版本派发门禁已实现，原连接授权/日历/媒体来源已分别编码，原FOOD完整目录尚未组装。 S2B2B1仅原连接/CATALOG授权事实，未装配完整FOOD目录；不新增公开路由和业务表。 S2B2B2a原营业日历来源已编码，保留未来策略与营业日例外，无新公开API或表；完整FOOD目录组装尚未完成。 S2B2B2b共享原公开媒体事实已编码，无新公开API或表；本地相对URL保持不可外发，完整FOOD目录/餐牌图片依赖绑定仍待下一步。 S2B2B2c-1新增可选food-commerce绑定核验，默认shop.food.commerce.binding.enabled=false；完整目录组装、原价格政策核准、事件桥接及真实渠道仍未完成。",
+    "limitations": "B端仍仅主体属主；累计29个基础/授权/目录/任务路由，17张迁移业务表。目录仅支持一个连接一个STORE完整范围，同行业聚合餐牌。默认无原行业目录/来源/授权/真实网关提供方；无连接激活接口，不能直接对Keeta等发布。目录自动策略与唯一恢复Job默认关闭；onAvailability和自动远端取消未开放。同步恢复只查原目录动作，不恢复C0 OAuth过期/UNKNOWN。目录授权事实只读内部端点及独立客户端已编码；完整渠道业务的独立模式客户端、订单导入、履约售后、资金对账及真实平台仍未开放。基础内核已集成部署；新增原FOOD来源/价格、目录v2、授权/日历/媒体已推送，未据此声明部署。 定时核验仅针对选定来源修订及本地发送，不自动发现source head或读取远端菜单漂移；原来源须投递可信发布通知。 资源映射公共写入仅IMPORTED草稿，核验由默认关闭的唯一Job调用；MANAGED代码分配/发布证明、真实资源查询网关尚未开放。历史解析内核已实现，不代表原订单导入已就绪。 目录v2合同/冻结/稳定摘要/版本派发门禁已实现，原连接授权/日历/媒体来源已分别编码，原FOOD完整目录尚未组装。 S2B2B1仅原连接/CATALOG授权事实，未装配完整FOOD目录；不新增公开路由和业务表。 S2B2B2a原营业日历来源已编码，保留未来策略与营业日例外，无新公开API或表；完整FOOD目录组装尚未完成。 S2B2B2b共享原公开媒体事实已编码，无新公开API或表；本地相对URL保持不可外发，完整FOOD目录/餐牌图片依赖绑定仍待下一步。 S2B2B2c-1新增可选food-commerce绑定核验，默认shop.food.commerce.binding.enabled=false；完整目录组装、原价格政策核准、事件桥接及真实渠道仍未完成。 A1仅连接解析、无SKU门店市场事实、原写前授权与政策证据，不新增表或公开路由；封面解析、非CNY维护、来源分派及完整v3捕获尚未完成。",
     "tests": "累计79个唯一受影响Java专项通过；复核及关联修复后仅复测35项。资源归属消融红灯、恢复绿灯；一项独立复核Important与原连接owner历史解析回归均RED→GREEN。原生隔离MySQL V1-V4十七表及约束通过；最终宿主/server编译打包、设计10/文档8/SQL守卫见TDD。不等同真实来源/供应商、生产JDBC并发和完整认证链验收。 本批目录v2另有48个相关专项及5个架构/装配专项通过；历史79项不与本批简单相加。统一编译/干净打包和消融记录见原TDD。 S2B2B1新增原授权读取/真实HTTP/令牌和独立关闭测试，具体集中回归及构建证据见TDD。",
     "migrations": [
       "commerce-core/src/main/resources/db/commerce/V1__commerce_draft_resources.sql",

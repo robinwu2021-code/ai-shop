@@ -9,6 +9,8 @@ import ai.neargo.shop.common.pricing.PriceTaxMode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Facts;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Market;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort.MarketFacts;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort.MarketScope;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Price;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Request;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.TaxFact;
@@ -31,6 +33,30 @@ public final class CatalogPriceSourceFacts {
     public static final String PURPOSE = "CATALOG_BASE";
 
     private CatalogPriceSourceFacts() {}
+
+    public static void validateMarketScope(MarketScope scope) {
+        if (scope == null || !DishOfferFacts.validKey(scope.entityNo())
+                || !DishOfferFacts.validKey(scope.storeNo())) throw BizException.of(ErrorCode.BAD_REQUEST);
+    }
+
+    public static MarketFacts sealMarket(MarketFacts f) {
+        var unsigned = new MarketFacts(f.schemaVersion(), f.purpose(), f.scope(), f.market(),
+                f.verifiedAt(), f.validUntil(), null);
+        return new MarketFacts(f.schemaVersion(), f.purpose(), f.scope(), f.market(),
+                f.verifiedAt(), f.validUntil(), PricingSnapshotHash.of(unsigned));
+    }
+
+    /** A typed descriptor does not replace the original scope, lifetime and integrity checks. */
+    public static void validateMarketFacts(MarketScope scope, MarketFacts f, Instant now) {
+        validateMarketScope(scope);
+        require(f != null && f.schemaVersion() == 1 && "CATALOG_MARKET".equals(f.purpose())
+                && scope.equals(f.scope()) && now != null);
+        validateMarket(f.market());
+        require(f.verifiedAt() != null && f.validUntil() != null && !f.verifiedAt().isAfter(now)
+                && f.validUntil().isAfter(now) && f.validUntil().isAfter(f.verifiedAt())
+                && !f.validUntil().isAfter(f.verifiedAt().plusSeconds(30))
+                && sealMarket(f).receiptNo().equals(f.receiptNo()));
+    }
 
     public static void validateRequest(Request request) {
         if (request == null

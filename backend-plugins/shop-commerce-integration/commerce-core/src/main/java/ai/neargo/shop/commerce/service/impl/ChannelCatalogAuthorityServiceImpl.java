@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Account;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Connection;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Facts;
+import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityQuery;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Grant;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityEvidence;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Profile;
@@ -27,6 +28,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -54,6 +56,36 @@ public final class ChannelCatalogAuthorityServiceImpl implements ChannelCatalogA
         read = new TransactionTemplate(manager);
         read.setReadOnly(true);
         read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+    }
+
+    @Override
+    public Facts resolve(IdentityQuery query) {
+        ChannelCatalogAuthorityPolicy.validateIdentityQuery(query);
+        require(!TransactionSynchronizationManager.isActualTransactionActive());
+        var started = clock.instant();
+        var before = candidates(query);
+        if (before.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+        require(before.size() == 1);
+        var facts = capture(before.getFirst());
+        require(before.equals(candidates(query)));
+        var until = started.plusSeconds(30);
+        if (facts.validUntil().isBefore(until)) until = facts.validUntil();
+        var result = ChannelCatalogAuthorityPolicy.seal(new Facts(
+                facts.schemaVersion(), facts.purpose(), facts.query(), facts.provider(), facts.profile(),
+                facts.account(), facts.connection(), facts.grant(), facts.identity(), facts.verifiedAt(), until, null));
+        try {
+            ChannelCatalogAuthorityPolicy.validateResolved(query, result, clock.instant());
+        } catch (IllegalStateException invalid) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return result;
+    }
+
+    private List<Query> candidates(IdentityQuery q) {
+        return DataScopeContext.executeWithoutScope(() -> read.execute(tx ->
+                data.connections.findFoodCatalogCandidates(q).stream()
+                        .map(c -> new Query(q.entityNo(), q.storeNo(), c.getConnectionNo(), c.getActiveRevisionNo()))
+                        .toList()));
     }
 
     @Override

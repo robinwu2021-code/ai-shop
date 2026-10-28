@@ -1,6 +1,7 @@
 package ai.neargo.shop.commerce.policy;
 
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Facts;
+import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityQuery;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Query;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -14,6 +15,28 @@ import java.util.Set;
 /** Short-lived original authority evidence is checked on both sides of a trusted transport. */
 public final class ChannelCatalogAuthorityPolicy {
     private ChannelCatalogAuthorityPolicy() {}
+
+    public static void validateIdentityQuery(IdentityQuery q) {
+        if (q == null || !text(q.entityNo(), 32) || !text(q.storeNo(), 32)
+                || !text(q.providerCode(), 32) || !text(q.externalAccountRef(), 128)
+                || !text(q.externalStoreRef(), 128)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    /** Verify the resolved original connection belongs to the exact requested external identity. */
+    public static void validateResolved(IdentityQuery q, Facts f, Instant now) {
+        validateIdentityQuery(q);
+        require(f != null && f.query() != null);
+        validate(f.query(), f, now);
+        require(q.entityNo().equals(f.query().entityNo()) && q.storeNo().equals(f.query().storeNo())
+                && q.providerCode().equals(f.provider().providerCode())
+                && q.externalAccountRef().equals(f.account().externalAccountRef())
+                && q.externalStoreRef().equals(f.connection().externalStoreRef())
+                && "FOOD".equals(f.connection().sourceOwner())
+                && "LOCAL".equals(f.connection().catalogAuthority())
+                && "INSTANT".equals(f.connection().fulfillmentProfile()));
+    }
 
     public static void validateQuery(Query query) {
         if (query == null

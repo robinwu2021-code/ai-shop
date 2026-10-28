@@ -1,1 +1,2 @@
 ai.neargo.shop.food.commerce.config.FoodCatalogBindingAutoConfiguration
+ai.neargo.shop.food.commerce.config.FoodCatalogPricePolicyAutoConfiguration

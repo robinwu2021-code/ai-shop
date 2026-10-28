@@ -1,6 +1,7 @@
 package ai.neargo.shop.commerce.api.internal;
 
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Query;
+import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityQuery;
 import ai.neargo.shop.commerce.policy.ChannelCatalogAuthorityPolicy;
 import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
 import ai.neargo.shop.common.BizException;
@@ -34,6 +35,16 @@ public class InternalChannelCatalogAuthorityController {
             @Value("${shop.services.internal-token:}") String token) {
         this.source = source;
         this.token = token;
+    }
+
+    @PostMapping(ChannelCatalogAuthorityInternalApi.RESOLVE_PATH)
+    public ResponseEntity<?> resolve(
+            @RequestBody(required = false) IdentityQuery request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> {
+            ChannelCatalogAuthorityPolicy.validateIdentityQuery(request);
+            return source.resolve(request);
+        });
     }
 
     @PostMapping(ChannelCatalogAuthorityInternalApi.CAPTURE_PATH)

@@ -21,6 +21,34 @@ public interface CatalogPriceSourcePort {
         throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
     }
 
+    /** Market checks must work before a menu has any published SKU; older owners reject explicitly. */
+    default MarketFacts market(MarketScope scope) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
+
+    record MarketScope(
+            @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String entityNo,
+            @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String storeNo) {
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw new IllegalArgumentException("Unknown catalog market scope field");
+        }
+    }
+
+    record MarketFacts(
+            @JsonDeserialize(using = CatalogRevisionDeserializer.class) long schemaVersion,
+            @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String purpose,
+            MarketScope scope,
+            Market market,
+            Instant verifiedAt,
+            Instant validUntil,
+            @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String receiptNo) {
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw new IllegalArgumentException("Unknown catalog market fact field");
+        }
+    }
+
     record Request(
             @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String entityNo,
             @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String storeNo,

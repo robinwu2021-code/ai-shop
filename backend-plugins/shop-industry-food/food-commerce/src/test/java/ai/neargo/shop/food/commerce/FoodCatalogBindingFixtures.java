@@ -61,13 +61,18 @@ final class FoodCatalogBindingFixtures {
     }
 
     MenuSourceContracts.Proof menu(String name, MenuChannelBindingVO binding, boolean channel, int ttl) {
+        return menu(name, binding, channel, ttl, "POLICY");
+    }
+
+    MenuSourceContracts.Proof menu(
+            String name, MenuChannelBindingVO binding, boolean channel, int ttl, String pricePolicy) {
         var config = new MenuConfigResultVO(
                 new MenuVO("M", "S", name, "TIME", "UTC", 0, null, "DRAFT", 0L, 0L),
                 new MenuScheduleVO(null, null, List.of(), List.of()),
                 new MenuCompositionVO(List.of(new MenuCategoryInput("CAT", "Category", 0,
                         List.of(new MenuItemInput("ITEM", "G", 0, true, "EXPLICIT", List.of("SKU"),
                                 "REPLACE", List.of(), List.of()))))),
-                List.of(channel ? new MenuContextInput("CHANNEL", "DELIVERY", "B", "POLICY")
+                List.of(channel ? new MenuContextInput("CHANNEL", "DELIVERY", "B", pricePolicy)
                         : new MenuContextInput("POS", "DINE_IN", null, null)));
         var snapshot = new MenuPublicationSnapshot(4, "MENU", "M", 0,
                 new Captured("E", "S", config,

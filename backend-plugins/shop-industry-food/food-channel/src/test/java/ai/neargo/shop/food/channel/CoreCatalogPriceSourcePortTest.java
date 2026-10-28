@@ -18,6 +18,8 @@ import ai.neargo.shop.spi.product.CatalogPriceSourceInternalApi;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Facts;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Market;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort.MarketScope;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort.MarketFacts;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Price;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Request;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.TaxFact;
@@ -97,6 +99,46 @@ class CoreCatalogPriceSourcePortTest {
                 at,
                 f.validUntil(),
                 CatalogPriceSourceFacts.receipt(f));
+    }
+
+    @Test
+    void marketOnlyReadsUseActualAuthenticatedHttpAndValidateExactEvidence() throws Exception {
+        var scope = new MarketScope("E", "S");
+        var now = Instant.now();
+        var facts = CatalogPriceSourceFacts.sealMarket(new MarketFacts(1, "CATALOG_MARKET", scope,
+                new Market("AE", "AED", 2), now, now.plusSeconds(30), null));
+        var json = JsonMapper.builder().findAndAddModules().build();
+        var response = new AtomicReference<>(json.writeValueAsString(facts));
+        var calls = new AtomicInteger();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext(CatalogPriceSourceInternalApi.MARKET_PATH, exchange -> {
+            calls.incrementAndGet();
+            assertThat(exchange.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).isEqualTo("wire");
+            var body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            assertThat(body).contains("\"entityNo\":\"E\"").doesNotContain("skuNos", "market", "currency");
+            var bytes = response.get().getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes); exchange.close();
+        });
+        server.start();
+        try {
+            new ApplicationContextRunner().withUserConfiguration(FoodOfferClientConfiguration.class)
+                    .withPropertyValues("shop.food.enabled=true", "shop.services.internal-token=wire",
+                            "shop.services.targets.PLATFORM=http://127.0.0.1:" + server.getAddress().getPort())
+                    .run(c -> {
+                        var source = c.getBean(CatalogPriceSourcePort.class);
+                        assertThat(source.market(scope)).isEqualTo(facts);
+                        response.set(json.writeValueAsString(facts)
+                                .replace("\"currencyScale\":2", "\"currencyScale\":\"2\""));
+                        assertThatThrownBy(() -> source.market(scope)).isInstanceOf(RuntimeException.class);
+                        response.set(json.writeValueAsString(CatalogPriceSourceFacts.sealMarket(
+                                new MarketFacts(1, "CATALOG_MARKET", new MarketScope("OTHER", "S"), facts.market(),
+                                        facts.verifiedAt(), facts.validUntil(), null))));
+                        assertThatThrownBy(() -> source.market(scope)).isInstanceOf(RuntimeException.class);
+                    });
+            assertThat(calls).hasValue(3);
+        } finally { server.stop(0); }
     }
 
     @Test

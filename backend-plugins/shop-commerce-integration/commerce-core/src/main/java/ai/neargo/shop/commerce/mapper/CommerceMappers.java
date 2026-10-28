@@ -1,6 +1,9 @@
 package ai.neargo.shop.commerce.mapper;
 
 import ai.neargo.shop.commerce.entity.CimAccount;
+import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityQuery;
+
+import java.util.List;
 import ai.neargo.shop.commerce.entity.CimAuthorizationRevision;
 import ai.neargo.shop.commerce.entity.CimCatalogScope;
 import ai.neargo.shop.commerce.entity.CimCatalogSnapshot;
@@ -34,7 +37,26 @@ public final class CommerceMappers {
 
     public interface AccountMapper extends BaseMapper<CimAccount> {}
 
-    public interface StoreConnectionMapper extends BaseMapper<CimStoreConnection> {}
+    public interface StoreConnectionMapper extends BaseMapper<CimStoreConnection> {
+        /** Two complete matches are enough to reject ambiguity without choosing an arbitrary profile. */
+        @Select("""
+                SELECT c.connection_no, c.active_revision_no
+                FROM cim_store_connection c
+                JOIN cim_account a ON a.tenant_no=c.tenant_no AND a.account_no=c.account_no
+                    AND a.entity_no=c.entity_no AND a.profile_no=c.profile_no AND a.deleted=0
+                JOIN cim_product_profile p ON p.tenant_no=c.tenant_no AND p.profile_no=c.profile_no AND p.deleted=0
+                JOIN cim_provider v ON v.tenant_no=c.tenant_no AND v.provider_no=p.provider_no AND v.deleted=0
+                JOIN cim_connection_revision r ON r.tenant_no=c.tenant_no AND r.revision_no=c.active_revision_no
+                    AND r.connection_no=c.connection_no AND r.entity_no=c.entity_no AND r.deleted=0
+                WHERE c.tenant_no='MAIN' AND c.entity_no=#{q.entityNo} AND c.store_no=#{q.storeNo}
+                    AND c.external_store_ref=#{q.externalStoreRef} AND a.external_account_ref=#{q.externalAccountRef}
+                    AND v.provider_code=#{q.providerCode} AND c.deleted=0 AND c.status='ACTIVE'
+                    AND a.status='ACTIVE' AND p.status='VERIFIED' AND v.status='ACTIVE'
+                    AND r.source_owner='FOOD' AND r.catalog_authority='LOCAL' AND r.fulfillment_profile='INSTANT'
+                LIMIT 2
+                """)
+        List<CimStoreConnection> findFoodCatalogCandidates(@Param("q") IdentityQuery query);
+    }
 
     public interface ConnectionRevisionMapper extends BaseMapper<CimConnectionRevision> {}
 

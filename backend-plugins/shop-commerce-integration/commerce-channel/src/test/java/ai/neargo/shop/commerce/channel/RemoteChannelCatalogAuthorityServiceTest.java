@@ -14,6 +14,7 @@ import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityEvid
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Profile;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Provider;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Query;
+import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityQuery;
 import ai.neargo.shop.commerce.policy.ChannelCatalogAuthorityPolicy;
 import ai.neargo.shop.commerce.policy.ChannelIdentity;
 import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
@@ -94,6 +95,46 @@ class RemoteChannelCatalogAuthorityServiceTest {
                         NOW,
                         NOW.plusSeconds(30),
                         null));
+    }
+
+    @Test
+    void resolutionUsesActualAuthenticatedHttpAndRejectsForeignIdentityFacts() throws Exception {
+        var q = new IdentityQuery("E", "S", "TEST", "REMOTE_ACCOUNT", "REMOTE_STORE");
+        var response = new AtomicReference<>(json.writeValueAsString(facts()));
+        var calls = new AtomicInteger();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext(ChannelCatalogAuthorityInternalApi.RESOLVE_PATH, exchange -> {
+            calls.incrementAndGet();
+            assertThat(exchange.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).isEqualTo("wire");
+            var body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            assertThat(body).contains("\"externalAccountRef\":\"REMOTE_ACCOUNT\"")
+                    .doesNotContain("connectionNo", "credential", "market");
+            byte[] bytes = response.get().getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes); exchange.close();
+        });
+        server.start();
+        try {
+            new ApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(CommerceAuthorityClientAutoConfiguration.class))
+                    .withPropertyValues("shop.commerce.authority-client.enabled=true",
+                            "shop.services.internal-token=wire", "shop.services.targets.COMMERCE=http://127.0.0.1:"
+                                    + server.getAddress().getPort())
+                    .run(c -> {
+                        var source = new RemoteChannelCatalogAuthorityService(
+                                c.getBean(ChannelCatalogAuthorityInternalApi.class), CLOCK);
+                        assertThat(source.resolve(q).query()).isEqualTo(QUERY);
+                        var original = facts();
+                        var wrong = ChannelCatalogAuthorityPolicy.seal(new Facts(1, original.purpose(),
+                                original.query(), new Provider("P", "FOREIGN", 0L), original.profile(),
+                                original.account(), original.connection(), original.grant(), original.identity(),
+                                original.verifiedAt(), original.validUntil(), null));
+                        response.set(json.writeValueAsString(wrong));
+                        assertThatThrownBy(() -> source.resolve(q)).isInstanceOf(IllegalStateException.class);
+                    });
+            assertThat(calls).hasValue(2);
+        } finally { server.stop(0); }
     }
 
     @Test

@@ -24,6 +24,33 @@ class InternalCatalogPriceSourceApiTest {
     static final String BODY = "{\"entityNo\":\"E\",\"storeNo\":\"S\",\"skuNos\":[\"SKU\"]}";
 
     @Test
+    void marketRequiresOnlyOriginalScopeAndCannotAcceptMarketOrCurrencyFromCaller() throws Exception {
+        var calls = new AtomicInteger();
+        var source = new CatalogPriceSourcePort() {
+            @Override public MarketFacts market(MarketScope scope) {
+                calls.incrementAndGet();
+                return new MarketFacts(1, "CATALOG_MARKET", scope,
+                        new Market("AE", "AED", 2), null, null, "fixture");
+            }
+        };
+        var mvc = MockMvcBuilders.standaloneSetup(new InternalCatalogPriceSourceController(source, "wire"))
+                .setControllerAdvice(new GlobalExceptionHandler(), new ApiResponseWrapper()).build();
+        mvc.perform(post(CatalogPriceSourceInternalApi.MARKET_PATH).contentType("application/json").content("{"))
+                .andExpect(status().isUnauthorized());
+        for (String bad : List.of("{}", "{\"entityNo\":1,\"storeNo\":\"S\"}",
+                "{\"entityNo\":\"E\",\"storeNo\":\"S\",\"market\":\"AE\"}")) {
+            mvc.perform(post(CatalogPriceSourceInternalApi.MARKET_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
+                    .contentType("application/json").content(bad)).andExpect(status().isBadRequest());
+        }
+        assertThat(calls).hasValue(0);
+        mvc.perform(post(CatalogPriceSourceInternalApi.MARKET_PATH).header(InternalHttp.TOKEN_HEADER, "wire")
+                .contentType("application/json").content("{\"entityNo\":\"E\",\"storeNo\":\"S\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.market.currency").value("AED"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+        assertThat(calls).hasValue(1);
+    }
+
+    @Test
     void tokenPrecedesParsingAndCallersCannotSupplyPriceCurrencyTaxOrExtraFields()
             throws Exception {
         var calls = new AtomicInteger();
