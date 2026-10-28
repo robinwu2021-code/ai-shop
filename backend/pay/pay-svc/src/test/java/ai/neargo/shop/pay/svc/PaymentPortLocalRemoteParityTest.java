@@ -19,6 +19,10 @@ import ai.neargo.shop.pay.channel.api.CallerType;
 import ai.neargo.shop.pay.client.PaymentInternalApi;
 import ai.neargo.shop.pay.client.PaymentInternalPaths;
 import ai.neargo.shop.pay.client.port.RemotePaymentPort;
+import ai.neargo.shop.spi.pay.CallSource;
+import ai.neargo.shop.spi.pay.CallSourceCodec;
+import ai.neargo.shop.spi.pay.CallSources;
+import ai.neargo.shop.spi.pay.InternalHeaders;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.shop.spi.pay.PaymentPort.InternalCreatePaymentCmd;
 import ai.neargo.shop.spi.pay.PaymentPort.InternalRefundCmd;
@@ -26,18 +30,29 @@ import ai.neargo.shop.svc.ConfigServiceLocator;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCallException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * AC9：内嵌（{@link PaymentPortImpl}）与独立（{@link RemotePaymentPort} → pay-svc）对同一输入结果一致；
@@ -50,6 +65,7 @@ import org.springframework.web.client.RestClient;
                 "shop.pay.internal-callers.MALL=623d559372a2199cd8b42b3c19735280947a3fc2803be679db7e86c9815ce2c9",
                 "shop.pay.internal-callers.FOOD=95e0791892cd9343d8207f8a2e0c15127df7a524e4bef31ad02ee8064c46d2e4"})
 @ActiveProfiles("svctest")
+@Import(PaymentPortLocalRemoteParityTest.SeeHeaders.class)
 @DisplayName("AC9 · PaymentPortLocalRemoteParityTest")
 class PaymentPortLocalRemoteParityTest {
 
@@ -144,6 +160,54 @@ class PaymentPortLocalRemoteParityTest {
         assertThatThrownBy(() -> new RemotePaymentPort(api(), Map.of("MALL", "wrong"), ServiceName.PAY)
                 .createPayment(create())).isInstanceOf(ServiceCallException.class)
                 .extracting(e -> ((ServiceCallException) e).statusCode()).isEqualTo(401);
+    }
+
+    /** 服务端实际收到的来源头与请求体（M2.4 之前 pay-svc 还不读它，这里先在边界上看） */
+    record Seen(String source, String body) {
+    }
+
+    static final List<Seen> SEEN = new CopyOnWriteArrayList<>();
+
+    @TestConfiguration
+    static class SeeHeaders {
+        @Bean
+        OncePerRequestFilter seeCallSource() {
+            return new OncePerRequestFilter() {
+                @Override
+                protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+                        throws ServletException, IOException {
+                    var cached = new org.springframework.web.util.ContentCachingRequestWrapper(req, 1 << 16);
+                    try {
+                        chain.doFilter(cached, res);
+                    } finally {
+                        SEEN.add(new Seen(req.getHeader(InternalHeaders.CALL_SOURCE),
+                                new String(cached.getContentAsByteArray(), java.nio.charset.StandardCharsets.UTF_8)));
+                    }
+                }
+            };
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 来源过边界（M2.3）：命令里的来源编进 X-Call-Source 头、不进请求体；查单 / 关单显式传的来源原样到达")
+    void sourceTravelsInTheHeader() {
+        when(paymentService.create(any(), any())).thenReturn(order());
+        when(paymentService.find("PYO-1")).thenReturn(order());
+        when(paymentService.query(any(), anyString())).thenReturn(order());
+        SEEN.clear();
+        try (var ignored = CallSources.bind(CallSources.Origin.http("req-parity-1", "POST /mp/orders/{orderNo}/pay",
+                "APP_C", "223.104.1.1", null, "U-1"))) {
+            remote.createPayment(create());
+        }
+        CallSource job = CallSources.asJob("pay-order-compensation", CallSources::current);
+        remote.queryPayment(PaymentPort.MALL_ORDER, "PYO-1", job);
+
+        assertThat(SEEN).hasSize(2);
+        CallSource created = CallSourceCodec.decode(SEEN.get(0).source()).orElseThrow();
+        assertThat(created.traceId()).isEqualTo("req-parity-1");
+        assertThat(created.originApi()).isEqualTo("POST /mp/orders/{orderNo}/pay");
+        assertThat(SEEN.get(0).body()).contains("\"outOrderNo\":\"O1\"").doesNotContain("source");
+        assertThat(CallSourceCodec.decode(SEEN.get(1).source())).contains(job);
     }
 
     private static int status(RestClient rest, String caller, String credential, String body) {

@@ -5,6 +5,8 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.client.PaymentInternalApi;
 import ai.neargo.shop.pay.client.PortResult;
 import ai.neargo.shop.spi.pay.CallSource;
+import ai.neargo.shop.spi.pay.CallSourceCodec;
+import ai.neargo.shop.spi.pay.CallSources;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.svc.client.ServiceCalls;
 import java.util.Map;
@@ -33,31 +35,37 @@ public class RemotePaymentPort implements PaymentPort {
     @Override
     public PaymentHandle createPayment(InternalCreatePaymentCmd cmd) {
         String app = appOf(cmd.bizType());
-        return unwrap(() -> api.createPayment(app, credential(app), cmd));
+        return unwrap(() -> api.createPayment(app, credential(app), header(cmd.source()), cmd));
     }
 
     @Override
     public PaymentHandle queryPayment(String bizType, String payOrderNo, CallSource source) {
         String app = appOf(bizType);
-        return unwrap(() -> api.queryPayment(app, credential(app), new PaymentInternalApi.Query(bizType, payOrderNo)));
+        return unwrap(() -> api.queryPayment(app, credential(app), header(source),
+                new PaymentInternalApi.Query(bizType, payOrderNo)));
     }
 
     @Override
     public PaymentHandle closePayment(String bizType, String outOrderNo, String reason, CallSource source) {
         String app = appOf(bizType);
-        return unwrap(() -> api.closePayment(app, credential(app),
+        return unwrap(() -> api.closePayment(app, credential(app), header(source),
                 new PaymentInternalApi.Close(bizType, outOrderNo, reason)));
     }
 
     @Override
     public RefundHandle requestRefund(InternalRefundCmd cmd) {
         String app = appOf(cmd.bizType());
-        return unwrap(() -> api.requestRefund(app, credential(app), cmd));
+        return unwrap(() -> api.requestRefund(app, credential(app), header(cmd.source()), cmd));
     }
 
     /** 业务类型 → 内部 app 码（与 pay-domain {@code PaymentPortImpl#appOf} 同一张表） */
     public static String appOf(String bizType) {
         return PaymentPort.FOOD_CHECK.equals(bizType) ? "FOOD" : "MALL";
+    }
+
+    /** 命令里带的来源编成头（来源不进请求体）；万一为空取当前上下文 */
+    private static String header(CallSource source) {
+        return CallSourceCodec.encode(source != null ? source : CallSources.current());
     }
 
     private String credential(String app) {
