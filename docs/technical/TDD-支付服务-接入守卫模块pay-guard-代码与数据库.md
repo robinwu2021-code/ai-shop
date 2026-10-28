@@ -168,6 +168,8 @@ backend/pay/pay-guard/
 | `shop.pay.guard.nonce-ttl-seconds` | 300 | nonce 有效期 |
 | `shop.pay.guard.internal.verify-credential` | `false` | 内部调用暂不校验（用户 2026-10-27 定） |
 | `shop.pay.guard.internal.record-port-calls` | `true` | 内嵌调用写记录 |
+| `shop.pay.guard.internal.job-sample-rate` | `0.1` | 任务来源的成功查单按此比例写记录（M2.7） |
+| `shop.pay.guard.internal.allowed-ips` | `127.0.0.1/32,::1/128` | 内部入口来源 IP 白名单，只认 TCP 对端；配空 = 不限；拆机部署配内网网段（M2.8，用户 2026-10-28 加） |
 | `shop.pay.open.key-source` | `config` | 沿用：`secret` 时验签密钥取 `sec_key` |
 
 ---

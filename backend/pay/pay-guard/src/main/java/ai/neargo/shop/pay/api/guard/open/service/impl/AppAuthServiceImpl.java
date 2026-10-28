@@ -14,9 +14,9 @@ import ai.neargo.shop.pay.openapp.NonceStore;
 import ai.neargo.shop.pay.openapp.SignatureCanonicalizer;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
 import ai.neargo.shop.pay.openapp.entity.PayAppGrant;
+import ai.neargo.shop.pay.api.guard.core.IpAllowList;
 import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
@@ -178,45 +178,9 @@ public class AppAuthServiceImpl implements AppAuthService {
         }
     }
 
-    /** 白名单为空 = 不限；支持单个 IP 与 IPv4 CIDR */
+    /** 白名单为空 = 不限；单个 IP 或网段（与内部入口共用 {@link IpAllowList}） */
     static boolean ipAllowed(String whitelist, String ip) {
-        if (whitelist == null || whitelist.isBlank()) {
-            return true;
-        }
-        if (ip == null) {
-            return false;
-        }
-        for (String entry : whitelist.split(",")) {
-            String e = entry.trim();
-            if (e.isEmpty()) {
-                continue;
-            }
-            if (e.contains("/") ? inCidr(ip, e) : e.equals(ip)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean inCidr(String ip, String cidr) {
-        try {
-            String[] p = cidr.split("/");
-            byte[] net = InetAddress.getByName(p[0]).getAddress();
-            byte[] addr = InetAddress.getByName(ip).getAddress();
-            if (net.length != addr.length) {
-                return false;
-            }
-            int bits = Integer.parseInt(p[1]);
-            for (int i = 0; i < net.length && bits > 0; i++, bits -= 8) {
-                int mask = bits >= 8 ? 0xff : (0xff << (8 - bits)) & 0xff;
-                if ((net[i] & mask) != (addr[i] & mask)) {
-                    return false;
-                }
-            }
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        return IpAllowList.allows(whitelist, ip);
     }
 
     private static boolean blank(String s) {

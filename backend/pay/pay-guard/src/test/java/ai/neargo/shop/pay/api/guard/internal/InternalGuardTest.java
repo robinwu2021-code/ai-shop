@@ -35,8 +35,14 @@ class InternalGuardTest {
 
     private final List<PayApiRequestLog> rows = new ArrayList<>();
 
+    /** 不限来源 IP（只验识别与凭据开关） */
     private GuardFilter filter(boolean verify) {
-        return new GuardFilter(PortalFace.INTERNAL, new InternalGuard(REGISTRY, verify), new RequestLogWriter(rows::add));
+        return filter(verify, "");
+    }
+
+    private GuardFilter filter(boolean verify, String allowedIps) {
+        return new GuardFilter(PortalFace.INTERNAL, new InternalGuard(REGISTRY, verify, allowedIps),
+                new RequestLogWriter(rows::add));
     }
 
     private static MockHttpServletRequest request(String caller, String credential, String source) {
@@ -127,5 +133,49 @@ class InternalGuardTest {
         filter(true).doFilter(request("MALL", "mall-secret", null), ok, new Endpoint());
         assertThat(ok.getStatus()).isEqualTo(200);
         assertThat(rows.get(1).getOutcome()).isEqualTo("REJECTED_AUTH");
+    }
+
+    @Test
+    @DisplayName("★★★ IP 白名单（M2.8）：对端在名单外 → 403、不进端点、记 REJECTED_FORBIDDEN；伪造代理头没用，只认 TCP 对端")
+    void allowListUsesThePeerAddress() throws Exception {
+        MockHttpServletRequest inside = request("MALL", null, null);
+        inside.setRemoteAddr("10.0.1.12");
+        MockHttpServletResponse ok = new MockHttpServletResponse();
+        filter(false, "10.0.0.0/8").doFilter(inside, ok, new Endpoint());
+        assertThat(ok.getStatus()).isEqualTo(200);
+
+        MockHttpServletRequest outside = request("MALL", null, CallSourceCodec.encode(SOURCE));
+        outside.setRemoteAddr("203.0.113.9");
+        outside.addHeader("X-Real-IP", "10.0.0.5");
+        Endpoint endpoint = new Endpoint();
+        MockHttpServletResponse denied = new MockHttpServletResponse();
+        filter(false, "10.0.0.0/8").doFilter(outside, denied, endpoint);
+
+        assertThat(denied.getStatus()).isEqualTo(403);
+        assertThat(endpoint.caller).isNull();
+        assertThat(rows.get(1).getOutcome()).isEqualTo("REJECTED_FORBIDDEN");
+        assertThat(rows.get(1).getResponseMasked()).contains("203.0.113.9");
+    }
+
+    @Test
+    @DisplayName("★★★ 默认名单只有本机回环（今天 pay-svc 与 shop-app 同机）；两种 IPv6 回环写法都认；名单配空 = 不限")
+    void defaultIsLoopbackOnly() throws Exception {
+        assertThat(InternalGuard.DEFAULT_ALLOWED_IPS).isEqualTo("127.0.0.1/32,::1/128");
+        for (String peer : java.util.List.of("127.0.0.1", "0:0:0:0:0:0:0:1")) {
+            MockHttpServletRequest r = request("MALL", null, null);
+            r.setRemoteAddr(peer);
+            MockHttpServletResponse resp = new MockHttpServletResponse();
+            filter(false, InternalGuard.DEFAULT_ALLOWED_IPS).doFilter(r, resp, new Endpoint());
+            assertThat(resp.getStatus()).as(peer).isEqualTo(200);
+        }
+        MockHttpServletRequest lan = request("MALL", null, null);
+        lan.setRemoteAddr("10.0.1.12");
+        MockHttpServletResponse denied = new MockHttpServletResponse();
+        filter(false, InternalGuard.DEFAULT_ALLOWED_IPS).doFilter(lan, denied, new Endpoint());
+        assertThat(denied.getStatus()).isEqualTo(403);
+
+        MockHttpServletResponse open = new MockHttpServletResponse();
+        filter(false, "").doFilter(lan, open, new Endpoint());
+        assertThat(open.getStatus()).isEqualTo(200);
     }
 }

@@ -1,9 +1,11 @@
 package ai.neargo.shop.pay.api.guard.internal;
 
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
 import ai.neargo.shop.pay.api.guard.PortalFace;
 import ai.neargo.shop.pay.api.guard.core.EntryGuard;
 import ai.neargo.shop.pay.api.guard.core.GuardResult;
+import ai.neargo.shop.pay.api.guard.core.IpAllowList;
 import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 import ai.neargo.shop.spi.pay.CallSource;
 import ai.neargo.shop.spi.pay.CallSourceCodec;
@@ -20,7 +22,9 @@ import org.springframework.stereotype.Component;
  * 管线 ⑫ 把来源写进请求记录；缺失或损坏照样放行、记 {@code UNKNOWN}。
  *
  * <p>原 {@code InternalCallerFilter} 的「调用方码 + 凭据」校验保留为开关 {@code shop.pay.guard.internal.verify-credential}，
- * <b>默认关</b>（用户 2026-10-27 定）。关着时内部入口唯一的边界是网络隔离（nginx {@code deny /internal/}、内网端口）。
+ * <b>默认关</b>（用户 2026-10-27 定）。关着时内部入口的边界是网络隔离（nginx {@code deny /internal/}、内网端口）
+ * 加来源 IP 白名单 {@code shop.pay.guard.internal.allowed-ips}（开发计划 M2.8，用户 2026-10-28 加）：只认 TCP 对端地址，
+ * 不读任何代理头；默认只放本机回环（今天 {@code pay-svc} 与 {@code shop-app} 同机），拆机部署时配成内网网段，配空 = 不限。
  */
 @ConditionalOnGuardEntry(PortalFace.INTERNAL)
 @Component
@@ -31,13 +35,19 @@ public class InternalGuard implements EntryGuard {
     /** 解出来的来源（{@link CallSource}）；记录器读它 */
     public static final String SOURCE_ATTRIBUTE = InternalGuard.class.getName() + ".source";
 
+    /** 来源 IP 白名单的默认值：本机回环（IPv4 与 IPv6） */
+    public static final String DEFAULT_ALLOWED_IPS = "127.0.0.1/32,::1/128";
+
     private final InternalCallerRegistry callers;
     private final boolean verifyCredential;
+    private final String allowedIps;
 
     public InternalGuard(InternalCallerRegistry callers,
-                         @Value("${shop.pay.guard.internal.verify-credential:false}") boolean verifyCredential) {
+                         @Value("${shop.pay.guard.internal.verify-credential:false}") boolean verifyCredential,
+                         @Value("${shop.pay.guard.internal.allowed-ips:" + DEFAULT_ALLOWED_IPS + "}") String allowedIps) {
         this.callers = callers;
         this.verifyCredential = verifyCredential;
+        this.allowedIps = allowedIps;
     }
 
     @Override
@@ -47,6 +57,11 @@ public class InternalGuard implements EntryGuard {
 
     @Override
     public GuardResult authenticate(HttpServletRequest request) {
+        // 白名单只认 TCP 对端：内部调用不经 nginx，任何代理头都是调用方自己写的
+        String peer = request.getRemoteAddr();
+        if (!IpAllowList.allows(allowedIps, peer)) {
+            return new GuardResult(null, 403, ErrorCode.FORBIDDEN, "REJECTED_FORBIDDEN", "IP_NOT_ALLOWED " + peer);
+        }
         String header = request.getHeader(InternalHeaders.CALLER);
         String caller = header == null || header.isBlank() ? CallSources.UNKNOWN : header.trim();
         if (verifyCredential && callers.resolve(header, request.getHeader(InternalHeaders.CREDENTIAL)).isEmpty()) {

@@ -31,6 +31,9 @@ shop:
     # 接入守卫按入口装配（ADR-045）：这个进程今天只承接内部调用。对外入口随独立部署切换（开发计划 M7）再加
     guard:
       entries: INTERNAL
+      internal:
+        # 内部入口来源 IP 白名单（开发计划 M2.8）：只认 TCP 对端。今天与 shop-app 同机，只放本机；拆机部署时配内网网段
+        allowed-ips: ${PAY_INTERNAL_ALLOWED_IPS:127.0.0.1/32,::1/128}
     report-facts:
       enabled: ${PAY_REPORT_FACTS_ENABLED:true}
     entitlement:

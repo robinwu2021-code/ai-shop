@@ -200,10 +200,13 @@ public final class CallSources {
 | 独立（`pay-svc`） | 远程实现 `RemotePaymentPort` 把 `CallSource` 序列化进请求头 `X-Call-Source`（Base64URL 的 JSON）；`X-Internal-Caller` 继续带调用方码 | `InternalGuard` 解析头 → 放进请求属性 → 管线 ⑫ 写记录；另记服务端**实际看到的**对端 IP | `INTERNAL_HTTP` |
 
 **4）不做的事**：不验凭证、不判路径授权、不抢 nonce、不拒绝任何来源（解析不出 `CallSource` 也放行，记录里标 `source_service = UNKNOWN`）。
+**唯一的拒绝**（M2.8，用户 2026-10-28 加）：TCP 对端不在来源 IP 白名单 `internal.allowed-ips`（默认本机回环）→ 403。白名单判的是「从哪台机器来」，不是「是谁」，与上面的不验身份不冲突。
 **现有 `InternalCallerFilter` 的凭据校验**：搬进 `InternalGuard` 后保留为开关 `shop.pay.guard.internal.verify-credential`，**默认 `false`**（G9）；以后要恢复校验只改配置。
 
 > **边界**（写下来，免得被误读成「内部接口是安全的」）：内部入口此后的唯一防线是网络隔离 —— nginx 对所有 server `deny /internal/`（安全规范 §4.2）、`pay-svc` 只监听内网。
 > 内嵌形态没有这个问题（不经 HTTP）；独立形态上线前要再评估是否打开 `verify-credential`（Q2）。
+> **部署事实（用户 2026-10-28 确认）**：对外只有 nginx；`pay-svc` 的 8083 不对外暴露（进程监听 0.0.0.0，靠云上入站规则挡住）。
+> 拆机部署或改安全组时要重新确认这一条。
 
 #### B · 外部 API `OpenApiGuard`
 
@@ -273,7 +276,7 @@ public final class CallSources {
 | **目标（v4）** | **`pay-svc`** 装 `pay-guard` + `pay-portal`，挂五个入口：外部 API、POS、渠道回调、收银台、内部（`shop.pay.guard.entries=OPEN,TERMINAL,CALLBACK,CHECKOUT,INTERNAL`）。**`shop-app`** 不装 `pay-guard`；它的三条终端链（顾客 / 商家 / 运营）不变，另加一条 `/internal/shop/v1` 链挂 `InternalCallFilter` |
 | **将来：网关独立成服务** | 新进程 `pay-gateway` = `pay-guard` + `pay-portal`，挂外部 API、POS、渠道回调、收银台四个入口，经 `/internal/pay/v1` 调 `pay-svc`；`pay-svc` 只剩 `InternalGuard` + 支付核心。同一个 jar、换装配 |
 | **过渡：内嵌**（今天，切换前保持） | 支付整体在 `shop-app` 里（`shop.pay.deployment` 默认内嵌） |
-| 配置 | `shop.pay.guard.entries` · `clock-skew-seconds`（300）· `nonce-ttl-seconds`（300）· `internal.verify-credential`（默认 `false`）· `internal.record-port-calls`（默认 `true`） |
+| 配置 | `shop.pay.guard.entries` · `clock-skew-seconds`（300）· `nonce-ttl-seconds`（300）· `internal.verify-credential`（默认 `false`）· `internal.record-port-calls`（默认 `true`）· `internal.job-sample-rate`（0.1）· `internal.allowed-ips`（默认本机回环） |
 
 ### 2.7 部署与调用链路（v4，按实际部署的两个服务）
 
@@ -345,7 +348,7 @@ public final class CallSources {
 | 3 | 解 `X-Call-Source` → `CallSource`（服务、业务线、实例、自报 IP、追踪号、上游接口、来源端、终端用户 IP、UA 摘要、操作人）；缺失或损坏**照样放行**，记 `UNKNOWN` |
 | 4 | 追踪号接力：`trace_id` 沿用 `CallSource.traceId`，并写进本进程的 MDC，日志能按一个号串起两边 |
 | 5 | 放行 |
-| 6 | 结束时写记录：支付侧写 `pay_api_request_log`（`entry=INTERNAL_HTTP`，V16 的来源列）；业务侧写 `shop-app` 现有的接口访问日志（`ApiAccessLogFilter`）并带上同样的来源字段 |
+| 6 | 结束时写记录：支付侧写 `pay_api_request_log`（`entry=INTERNAL_HTTP`，V13 的来源列）；业务侧写 `shop-app` 现有的接口访问日志（`ApiAccessLogFilter`）并带上同样的来源字段 |
 | 开关 | `verify-credential`（默认 `false`）：打开后恢复今天 `InternalCallerFilter` 的「调用方码 + 凭据哈希」校验，不改代码 |
 | 网络 | 唯一防线是网络隔离：nginx 所有 server `deny /internal/`，两个服务的内部端口只对内网 |
 
@@ -524,7 +527,7 @@ ops-web/
 
 ### 3.3 数据库
 
-**`pay_api_request_log` 加列**（`db/pay` **V16**；V13 / V14 已排给 W6 对账、V15 给终端，开放 API 加解密另走 V17 —— 开发计划 §0.2）：
+**`pay_api_request_log` 加列**（`db/pay` **V13**；`db/pay` 号须从 1 连续、先合先占，W6 对账、终端、开放 API 加解密合入时取下一个空号 —— 开发计划 §0.2）：
 
 | 列 | 类型 | 说明 |
 |---|---|---|
@@ -595,20 +598,26 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | 任务 | 与本篇的偏差 | 原因 |
 |---|---|---|
 | M1.5 | 商家端 controller 不经参数拿 `PayCaller`，仍由 `BizPayContext.caller(storeId)` 换 | 参数解析在 `@PreAuthorize` 之前；商家调用方要按请求里的门店圈，门店须先过门店校验。M5a 商家端改走业务服务时一并去掉 |
-| M2.1 | `CallSource.originUserAgent` → `originUaDigest` | 字段只装摘要，名字照实说；与 V16 列 `origin_ua_digest` 同名 |
+| M2.1 | `CallSource.originUserAgent` → `originUaDigest` | 字段只装摘要，名字照实说；与 V13 列 `origin_ua_digest` 同名 |
 | M2.1 | `CallSources.job(name)` → `asJob(name, body)` + `asOutbox(eventType, body)`，另有 `bind(Origin)` | 来源要在一段执行期间有效（任务体里任意深处调支付都取得到），返回一个值做不到；Outbox 单列来源端 `OUTBOX`，M2.7 的抽样只针对 `JOB` |
 | M2.1 | `originClient` 沿用认证链已有端码（`APP_C` / `APP_BIZ` / `WEB_OPS` / `H5` / `PARTNER`），不另起 `MINI_PROGRAM` 等 | 端码全仓一套，访问日志、登录日志已在用；另起一套就要维护映射 |
 | M2.1 | `CallSources.current()` 不填 `module` | 调用方进程不知道这次是哪条业务线；由支付侧按业务类型补（`CallSource#withModuleIfAbsent`，M2.4） |
 | M2.1 | HTTP 来源由 MVC 拦截器 `CallSourceInterceptor`（`shop-base-auth`）绑定，不在 `CallSources` 里读 `RequestContextHolder` | `shop-base` 没有 Servlet（模块注释的约束）；拦截器处认证链已跑完、路由模板已匹配，IP 只经 `ClientMeta` |
-| M2.1 | 只挂了进程内任务执行器（`InProcessJobConfig`）与 Outbox 分发器；直接 `@Scheduled` 的方法未绑定，来源端记 `UNKNOWN` | 63 个 `@Scheduled` 类不逐个改；补偿查单若走 `@Scheduled`，M2.7 抽样前再在调度器上加 `TaskDecorator` |
+| M2.1 | 任务来源只在三个执行入口绑定：进程内执行器 `InProcessJobConfig`、独立调度器回调 `JobHandlerEndpoint`、`@Scheduled` 入口共用的 `JobSupport#run`（后两处 M2.7 补）；Outbox 在分发器绑定 | 不逐个改任务类；没走这三处的 `@Scheduled`（少数几个不经 `JobSupport` 的）来源端记 `UNKNOWN` |
 | M2.2 | 两个命令的 `source` 标 `@JsonIgnore`：<b>不进</b> `/internal/pay/v1` 的请求体 | 请求体的契约不变（新旧版本混部时 `pay-svc` 不会遇到认不出的字段）；来源只走 `X-Call-Source` 头（M2.3），接收方以头为准、不会两处对不上 |
 | M2.3 | `CallSourceClientInterceptor` 只补 `X-Call-Source`（已有则不覆盖），<b>不自动带</b> `X-Internal-Caller` | 调用方码的含义随接收方而变（支付侧是 `pay_app.app_no` 的 MALL / FOOD），由各远程实现显式给；`PaymentInternalApi` 四个方法加显式的来源头参数，`RemotePaymentPort` 用命令里的那份（任务显式传的来源不被线程上下文顶掉） |
 | M2.5 | 先于 M2.4 做 | 记录器要写的列得先有 |
+| M2.5 | 迁移号由计划的 V16 改为 **V13** | `db/pay` 号必须从 1 连续（`PayMigrationTest#realLocationIsVersionedFromOne`，全量闸门实测拦下 V16），Flyway 也不许乱序 —— 号无法预留，先合先占；开发计划 §0.2 与本系列文档已同步，W6 / 终端 / 开放 API 加解密合入时取下一个空号 |
 | M2.4 | `RecordingPaymentPort` 不是 `@Primary` bean，而是 `shop-app` 装配内嵌 `PaymentPortImpl` 时直接包上（`OrdinaryPaymentRouting`，开关 `record-port-calls`）；类放在 `guard.internal.port` | 容器里只有一个 `PaymentPort`，不靠 `@Primary` 消歧；`ArchitectureTest` 要求 Port 实现在 `..port..` 包 |
 | M2.4 | `InternalCallRecorder#record(Call, body, payOrderIdOf)`：一次调用的业务信息收成一个 `Call` | 原签名的 `PayAction` + `InternalCallMeta` 两个参数合一；结果码：成功 `OK`、业务拒绝取错误码（outcome `REJECTED_PARAM`，与 HTTP 入口 4xx 同一结局）、未预期异常取类名（`ERROR`） |
-| M2.4 | 追踪号接力只落在记录上（`trace_id` = 来源的追踪号），没写 MDC | 全仓没有用 MDC 的日志格式；`pay-svc` 再往下调业务服务时的接力随 M2.6 的 `InternalCallFilter` 一起做 |
+| M2.4 | 追踪号接力只落在记录上（`trace_id` = 来源的追踪号），没写 MDC | 全仓没有用 MDC 的日志格式；业务服务一侧的接力在 M2.6 做了；独立形态 `pay-svc` 收到内部调用后再调业务服务时的接力还没做（`EntryGuard` 没有包住 controller 的钩子），留到 M7 切换前 |
 | M2.4 | 原 `InternalCallerFilter` 删除，内部入口改走统一管线 `GuardFilter` + `InternalGuard`，由 `InternalGuardConfig` 注册到容器 | `pay-svc` 没有 Spring Security 链；`verify-credential=true` 时回绝的那一行没有来源列（凭据不对就不解来源头） |
-| M2.5 | 迁移号仍用 V16，但 V13–V15 尚无人占用 | 支付迁移的 Flyway 默认不许乱序（`outOfOrder=false`）：V16 先合入、之后再来 V13 会启动失败。**合入 codex 前按 `db/pay/README.md`「先合先占」改成当时的下一个号**，同步改开发计划 §0.2 与本系列文档 |
+| M2.6 | `InternalCallFilter` 挂在业务服务整个 `/internal/**`，不新开 `/internal/shop/v1` 安全链 | 代码里没有 `/internal/shop/v1`：业务服务的 29 个内部端点分在 `/internal/core`、`/internal/trade`、`/internal/job` 等前缀下，各自校验令牌，不经 Spring Security；过滤器全局注册（与 `ApiAccessLogFilter` 同法），只识别与接力、不拒绝、不碰原有令牌校验 |
+| M2.6 | 访问行只加 `caller=` · `src=服务@实例` · `origin=来源端:上游接口`，`rid` 沿用来源的追踪号；<b>不记</b>终端用户 IP 与操作人 | 慢日志会被 grep、贴进聊天框（`ApiAccessLogFilter` 的约束）；这两项在支付侧请求记录里，那张表有权限管着 |
+| M2.6 | 追踪号接力：`InternalCallFilter` 处理期间把收到的来源绑成 `CallSources` 的来源；`CallSourceInterceptor` 排除 `/internal/**` | 否则拦截器会用本次请求自己的信息把接力来的那份顶掉 |
+| M2.7 | 抽样只对内嵌形态的 `INTERNAL_PORT`；独立形态 `INTERNAL_HTTP` 的任务查单仍全记 | 生产是内嵌形态；独立形态在 M7 切换前按实际量再定，届时在 `RequestLogWriter` 加同一条规则 |
+| M2.7 | 只抽「任务来源的<b>成功</b>查单」：失败的查单、建单关单退款、Outbox 与请求来源的查单全记 | 出错的那次正是排障要看的 |
+| M2.8 | <b>新增</b>（开发计划原无此项）：内部入口来源 IP 白名单 `allowed-ips`，默认本机回环，拒绝回 403、记 `REJECTED_FORBIDDEN` | 用户 2026-10-28 加，补「不验凭据」之外的一道边界。只认 TCP 对端（内部调用不经 nginx，代理头都是调用方自己写的）；IP 判定从开放 API 的 `AppAuthServiceImpl#ipAllowed` 抽成 `IpAllowList` 两处共用，顺带让单个 IPv6 地址按字节比（`::1` = `0:0:0:0:0:0:0:1`） |
 
 ---
 
