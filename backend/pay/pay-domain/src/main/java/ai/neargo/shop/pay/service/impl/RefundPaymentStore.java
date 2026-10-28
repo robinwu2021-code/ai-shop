@@ -165,6 +165,7 @@ public class RefundPaymentStore {
         row.setStatus(StlPayment.INIT);
         row.setRefundExecutionNo(request.executionNo());
         row.setOriginPaymentNo(origin.getPaymentNo());
+        row.setPayOrderId(origin.getPayOrderId());
         row.setRefundCapacityState("RESERVED");
         row.setOutTradeNo(request.executionNo());
         row.setOrderNo(origin.getOrderNo());

@@ -107,3 +107,5 @@ mvn -o -f backend/pom.xml -pl shop-app -am test -Dsurefire.failIfNoSpecifiedTest
  .../technical/支付服务-完成度复核与剩余开发计划.md |   4 +-
  25 files changed, 566 insertions(+), 32 deletions(-)
 ```
+
+后续批次（2026-10-29）：[历史支付回填安全收尾](./TDD-支付服务-历史支付回填安全收尾.md)已补默认只读预检、证据校验与受保护执行；新退款继承原支付单关联，已有真实退款单可在双向证明后仅补链。生产回填、人工阻断处理和全库验收未执行，不补造历史人员。

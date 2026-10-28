@@ -105,9 +105,10 @@
 - SPI 调整：`PaymentPort#queryPayment(bizType, payOrderNo)` —— 独立形态要知道以谁的身份查；内嵌实现对别的调用方的单返回空。
 
 ### S9 · 回填与校验
-- `acquiring.backfill.PayOrderBackfill` / impl：`pendingOrderNos`（还没挂支付单的收款尝试所属订单号，分批）· `backfill(orderNo, bizType, 门店身份, 资金路径)`：一订单一事务，建支付单（状态由尝试推出：有成功 → SUCCEEDED / 部分退款 / 已退；有未终态 → AWAITING_PAYMENT；否则 CLOSED；实收、已退按尝试算）、挂上该订单号下全部尝试（含退款行）；**B7 流水期初**按冻结的资金路径回放收款与已退两张凭证，幂等键带 `BACKFILL`，不与实时记账撞。已挂的不再动（可重复跑）。
-- `acquiring.backfill.PayIntegrity` / impl：Q5 `unlinkedAttempts(since)` · Q7 `unbalancedVouchers()`。
-- shop-app `paybridge.PayOrderBackfillJob`（只手动触发）：支付域读不到交易表，订单门店（首个子单）与归属（有行业来源绑定 = 餐饮）在这里查好交过去；解析不出门店的单跳过并报失败（人工看）。
+- 2026-10-29 安全收尾见[历史支付回填安全收尾](./TDD-支付服务-历史支付回填安全收尾.md)。`inspect` 默认只读；只有明确历史事实才创建支付单，一单一事务锁内复核。资金路径来自原冻结字段或快照，渠道取唯一成功尝试；重复收款、在途/未补偿退款、来源或租户冲突阻断，原交易号和现金证据不改。
+- B7 仅新建支付单时记期初，历史退款引用 PAY_ORDER，不补虚构退款申请。已有实时单不重放余额；已有真实退款单双向证明的缺链仅 LINKS_ONLY 修复。
+- `PayOrderBackfillJob` 默认 dry-run，唯一门店、来源与原买家需证明；人工 MANUAL 且 `apply=true` 才写，批次有上限/游标和逐单日志。当前配置与名称不能冒充历史快照，已删或未知来源转人工。
+- `PayIntegrity` 提供 Q5/Q7 与净额核验。既有3条夹具仅验证本批有证据的记录，不代表全库回填完成。生产执行、人工冲突处理及全库对账仍未完成。
 
 ## §5 对账三 · 实现 → 需求（测试）
 

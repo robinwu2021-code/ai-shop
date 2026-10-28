@@ -341,6 +341,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         r.setAmountMinor(amountMinor);
         r.setErrMsg(reason);
         r.setOriginPaymentNo(origin.getPaymentNo());
+        r.setPayOrderId(origin.getPayOrderId());
         r.setRefundCapacityState("RESERVED");
         r.setRefundRequestJson(json.writeValueAsString(new RefundTicket(origin.getPayChannel(), origin.getTradeNo(),
                 origin.getOutTradeNo(), r.getOutTradeNo(), nz(origin.getAmountMinor()), amountMinor, reason)));

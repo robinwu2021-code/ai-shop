@@ -46,6 +46,7 @@ class PayOrderBackfillFlowTest {
         } else {
             ledger.close(no, "超时");
         }
+        jdbc.update("UPDATE stl_payment SET funds_path='AGGREGATED' WHERE order_no=?", no);
         return no;
     }
 
@@ -74,6 +75,7 @@ class PayOrderBackfillFlowTest {
     @DisplayName("★★ 只关了的存量单：支付单 CLOSED、不记流水")
     void closedLegacyOrder() {
         String no = legacy(false);
+        jdbc.update("UPDATE stl_payment SET funds_path='DIRECT' WHERE order_no=?", no);
         Long id = backfill.backfill(no, PaymentPort.MALL_ORDER, store(), "门店", "主体", "CN", "DIRECT");
         assertThat(jdbc.queryForObject("SELECT status FROM pay_order WHERE id=?", String.class, id)).isEqualTo("CLOSED");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ledger_entry WHERE pay_order_id=?", Integer.class, id))
@@ -83,7 +85,7 @@ class PayOrderBackfillFlowTest {
     @Test
     @DisplayName("★★★ 完成标准：回填后 Q5（未挂支付单的尝试）= 0、Q7（借贷不平的凭证）= 0")
     void completionChecks() {
-        LocalDateTime start = LocalDateTime.now().minusMinutes(1);
+        LocalDateTime start = LocalDateTime.now();
         String a = legacy(true);
         String b = legacy(false);
         backfill.backfill(a, PaymentPort.MALL_ORDER, store(), "门店", "主体", "CN", "AGGREGATED");
@@ -91,9 +93,6 @@ class PayOrderBackfillFlowTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE direction='PAY' AND pay_order_id IS NULL"
                 + " AND out_trade_no IN (?, ?)", Integer.class, a, b)).isZero();
         assertThat(integrity.unbalancedVouchers()).isZero();
-        for (String pending : backfill.pendingOrderNos(10_000)) {
-            backfill.backfill(pending, PaymentPort.MALL_ORDER, store(), "门店", "主体", "CN", "AGGREGATED");
-        }
-        assertThat(integrity.unlinkedAttempts(start)).as("全部回填后 Q5 = 0").isZero();
+        assertThat(integrity.unlinkedAttempts(start)).as("本批有冻结证据的记录回填后 Q5 = 0").isZero();
     }
 }

@@ -45195,6 +45195,17 @@
       {
         "name": "Status",
         "values": [
+          "READY",
+          "LINKS_ONLY",
+          "ALREADY_LINKED",
+          "BLOCKED"
+        ],
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "name": "Status",
+        "values": [
           "DRAFT",
           "ACTIVE",
           "DRAINING",

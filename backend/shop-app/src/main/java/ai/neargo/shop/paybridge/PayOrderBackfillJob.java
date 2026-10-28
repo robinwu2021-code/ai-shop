@@ -4,11 +4,16 @@ import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
+import ai.neargo.job.api.TriggerType;
 import ai.neargo.shop.pay.acquiring.backfill.PayOrderBackfill;
+import ai.neargo.shop.pay.acquiring.backfill.PayOrderBackfill.Assessment;
+import ai.neargo.shop.pay.acquiring.backfill.PayOrderBackfill.Status;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,19 +22,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/**
- * 回填 B6 / B7 的调度壳（TDD-支付服务-I3支付单退款流水 S9）：<b>只手动触发</b>，上线后跑到「没有待回填」为止。
- * 支付域读不到交易表，订单属于商城还是餐饮、门店是哪家在这里查好交过去。
- */
+/** Manual B6/B7 inspection is read-only unless apply=true; ambiguous identities stay in the review report. */
 @Component
 @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 public class PayOrderBackfillJob implements JobHandler {
-
     private static final Logger log = LoggerFactory.getLogger(PayOrderBackfillJob.class);
-
     @Value("${shop.job.pay-order-backfill.batch:500}")
-    private int batch;
-
+    private int batch = 500;
     private final PayOrderBackfill backfill;
     private final MerchantQueryPort merchants;
     private final JdbcTemplate jdbc;
@@ -41,48 +40,141 @@ public class PayOrderBackfillJob implements JobHandler {
     }
 
     @Override
-    public String name() {
-        return "pay-order-backfill";
-    }
+    public String name() { return "pay-order-backfill"; }
 
     @Bean
     public JobDeclaration payOrderBackfillDeclaration() {
-        return new JobDeclaration("pay-order-backfill", "支付单回填（B6 / B7）",
-                "把 I3 之前的收款尝试按订单号归到支付单下，并按资金路径回放流水期初。幂等，可重复跑；只手动触发",
+        return new JobDeclaration(name(), "支付单回填（B6 / B7）",
+                "默认只读预检；apply=true显式写入，limit限制批量、afterOrderNo续扫；冲突保留人工处理",
                 "shop-app", "0 0 4 1 1 ?", false, 3600, 3600, true, true);
     }
 
     @Override
     public JobResult run(JobInvocation invocation) {
-        int done = 0;
-        int skipped = 0;
-        List<String> orderNos = backfill.pendingOrderNos(batch);
-        for (String orderNo : orderNos) {
-            if (backfillOne(orderNo)) {
-                done++;
-            } else {
-                skipped++;
+        String mode = param(invocation, "apply", "false").trim();
+        String after = param(invocation, "afterOrderNo", "").trim();
+        int limit;
+        try {
+            if (!List.of("true", "false").contains(mode) || after.length() > 64) {
+                return JobResult.failed("回填参数无效", "PAY_BACKFILL_INVALID_PARAMETERS");
+            }
+            limit = Integer.parseInt(param(invocation, "limit", String.valueOf(batch)));
+            if (limit < 1 || limit > 1000) return JobResult.failed("批量必须为1–1000", "PAY_BACKFILL_INVALID_PARAMETERS");
+        } catch (NumberFormatException invalid) {
+            return JobResult.failed("批量必须为整数", "PAY_BACKFILL_INVALID_PARAMETERS");
+        }
+        boolean apply = "true".equals(mode);
+        if (apply && (invocation == null || invocation.type() != TriggerType.MANUAL)) {
+            return JobResult.failed("写入只能由人工确认触发", "PAY_BACKFILL_MANUAL_APPLY_REQUIRED");
+        }
+        List<String> candidates = backfill.pendingOrderNos(after, limit);
+        int ready = 0;
+        int already = 0;
+        int applied = 0;
+        int blocked = 0;
+        List<String> problems = new ArrayList<>();
+        List<String> decisions = new ArrayList<>();
+        for (String order : candidates) {
+            try {
+                Source source = source(order);
+                var store = source.store();
+                Assessment facts = backfill.inspect(order, source.bizType(), store.storeId(), store.storeName(),
+                        store.entityName(), store.market(), null);
+                require(facts.status() != Status.BLOCKED, facts.reason());
+                require(Objects.equals(facts.userNo(), source.userNo()), "SOURCE_BUYER_CONFLICT");
+                require(facts.storeNos().isEmpty() || facts.storeNos().equals(List.of(store.storeNo())),
+                        "SOURCE_STORE_CONFLICT");
+                require(facts.merchantNos().isEmpty() || facts.merchantNos().equals(List.of(store.entityNo())),
+                        "SOURCE_ENTITY_CONFLICT");
+                require(source.outTradeNos().isEmpty() || source.outTradeNos().equals(List.of(facts.outTradeNo())),
+                        "SOURCE_PAYMENT_CONFLICT");
+                if (decisions.size() < 10) decisions.add(order + ":" + facts.status());
+                log.info("[pay-order-backfill] runId={} order={} decision={} storeId={} currency={} paid={} refunded={}"
+                                + " fundsPath={} target={}", invocation == null ? "LOCAL" : invocation.runId(), order,
+                        facts.status(), store.storeId(), facts.currency(), facts.paidMinor(), facts.refundedMinor(),
+                        facts.fundsPath(), facts.payOrderId());
+                if (facts.status() == Status.ALREADY_LINKED) {
+                    already++;
+                    continue;
+                }
+                ready++;
+                if (apply) {
+                    // Current display names do not establish names at the time of a historical transaction.
+                    backfill.backfill(order, source.bizType(), store.storeId(), null, null,
+                            store.market(), facts.fundsPath());
+                    applied++;
+                }
+            } catch (RuntimeException failure) {
+                blocked++;
+                String reason = failure instanceof Review ? failure.getMessage()
+                        : failure instanceof IllegalStateException && failure.getMessage() != null
+                        && failure.getMessage().startsWith("PAY_BACKFILL_") ? failure.getMessage()
+                        : "INSPECTION_FAILED:" + failure.getClass().getSimpleName();
+                if (problems.size() < 10) problems.add(order + ":" + reason);
+                log.warn("[pay-order-backfill] runId={} order={} apply={} blocked={}",
+                        invocation == null ? "LOCAL" : invocation.runId(), order, apply, reason);
             }
         }
-        String detail = "回填 %d 单｜解析不出门店跳过 %d 单（本批 %d）".formatted(done, skipped, orderNos.size());
-        return skipped > 0 ? JobResult.failed(detail, "跳过的要人工看：子单没有门店或门店已删") : JobResult.ok(detail);
+        String cursor = candidates.isEmpty() ? after : candidates.get(candidates.size() - 1);
+        String summary = "%s｜检查%d 可执行%d 已关联%d 已写入%d 阻断%d｜nextCursor=%s more=%s｜".formatted(
+                apply ? "apply" : "dry-run", candidates.size(), ready, already, applied, blocked, cursor,
+                candidates.size() == limit);
+        String examples = "decisions=" + String.join(",", decisions) + " blocked=" + String.join(",", problems);
+        // job_log.detail is VARCHAR(500). Preserve the complete cursor before clipping examples.
+        String suffix = "…完整明细见本次运行日志";
+        int available = 500 - summary.length();
+        String detail = summary + (examples.length() <= available ? examples
+                : examples.substring(0, available - suffix.length()) + suffix);
+        return blocked > 0 ? JobResult.failed(detail, "PAY_BACKFILL_REVIEW_REQUIRED") : JobResult.ok(detail);
     }
 
-    /** 订单的门店 = 首个子单的门店；行业单（餐饮）有来源绑定行 */
-    boolean backfillOne(String orderNo) {
-        List<String> stores = jdbc.queryForList("SELECT store_no FROM ord_sub_order WHERE order_no=? ORDER BY sub_order_no",
-                String.class, orderNo);
-        var store = stores.isEmpty() ? Optional.<MerchantQueryPort.PayStore>empty()
-                : merchants.payStoreOf(stores.get(0));
-        if (store.isEmpty()) {
-            log.warn("[pay-order-backfill] 订单 {} 解析不出门店，跳过", orderNo);
-            return false;
-        }
-        Integer industry = jdbc.queryForObject("SELECT COUNT(*) FROM ord_industry_order_source WHERE order_no=?",
-                Integer.class, orderNo);
-        var s = store.get();
-        backfill.backfill(orderNo, industry != null && industry > 0 ? PaymentPort.FOOD_CHECK : PaymentPort.MALL_ORDER,
-                s.storeId(), s.storeName(), s.entityName(), s.market(), s.fundsPath());
-        return true;
+    private Source source(String orderNo) {
+        List<Map<String, Object>> children = jdbc.queryForList(
+                "SELECT sub_order_no,store_no,entity_no,user_no,tenant_no,"
+                + " CASE WHEN deleted=0 THEN 1 ELSE 0 END source_active"
+                + " FROM ord_sub_order WHERE order_no=? ORDER BY sub_order_no", orderNo);
+        require(!children.isEmpty(), "SOURCE_ORDER_REQUIRED");
+        require(children.stream().allMatch(c -> ((Number) c.get("source_active")).intValue() == 1),
+                "SOURCE_ORDER_DELETED");
+        require(children.stream().allMatch(c -> "MAIN".equals(c.get("tenant_no"))), "SOURCE_TENANT_UNSUPPORTED");
+        String storeNo = only(children, "store_no", "SOURCE_STORE_AMBIGUOUS");
+        String entityNo = only(children, "entity_no", "SOURCE_ENTITY_AMBIGUOUS");
+        String userNo = only(children, "user_no", "SOURCE_BUYER_AMBIGUOUS");
+        var store = merchants.payStoreOf(storeNo).orElseThrow(() -> new Review("SOURCE_STORE_REQUIRED"));
+        require(Objects.equals(store.storeNo(), storeNo) && Objects.equals(store.entityNo(), entityNo)
+                && store.storeId() != null && text(store.market()), "SOURCE_ENTITY_CONFLICT");
+        List<Map<String, Object>> bindings = jdbc.queryForList("SELECT sub_order_no,store_no,entity_no,buyer_no,"
+                + "source_system,status,payment_out_trade_no,tenant_no,"
+                + " CASE WHEN deleted=0 THEN 1 ELSE 0 END source_active FROM ord_industry_order_source"
+                + " WHERE order_no=?", orderNo);
+        if (bindings.isEmpty()) return new Source(PaymentPort.MALL_ORDER, store, userNo, List.of());
+        require(bindings.stream().allMatch(b -> ((Number) b.get("source_active")).intValue() == 1),
+                "SOURCE_BINDING_DELETED");
+        require(bindings.stream().allMatch(b -> "FOOD".equals(b.get("source_system"))),
+                "SOURCE_BUSINESS_UNKNOWN");
+        require(bindings.stream().allMatch(b -> "BOUND".equals(b.get("status"))
+                && "MAIN".equals(b.get("tenant_no")) && storeNo.equals(b.get("store_no"))
+                && entityNo.equals(b.get("entity_no")) && userNo.equals(b.get("buyer_no"))), "SOURCE_BINDING_CONFLICT");
+        List<String> expected = children.stream().map(c -> field(c, "sub_order_no")).distinct().sorted().toList();
+        List<String> actual = bindings.stream().map(b -> field(b, "sub_order_no")).distinct().sorted().toList();
+        require(expected.equals(actual) && bindings.size() == expected.size(), "SOURCE_BINDING_CONFLICT");
+        String reference = only(bindings, "payment_out_trade_no", "SOURCE_PAYMENT_REQUIRED");
+        return new Source(PaymentPort.FOOD_CHECK, store, userNo, List.of(reference));
+    }
+
+    private static String only(List<Map<String, Object>> rows, String column, String reason) {
+        List<String> values = rows.stream().map(r -> field(r, column)).distinct().toList();
+        require(values.size() == 1 && text(values.get(0)), reason);
+        return values.get(0);
+    }
+    private static String field(Map<String, Object> row, String column) { return (String) row.get(column); }
+    private static boolean text(String value) { return value != null && !value.isBlank(); }
+    private static String param(JobInvocation invocation, String key, String fallback) {
+        return invocation == null ? fallback : invocation.param(key, fallback);
+    }
+    private static void require(boolean condition, String reason) { if (!condition) throw new Review(reason); }
+    private record Source(String bizType, MerchantQueryPort.PayStore store, String userNo, List<String> outTradeNos) { }
+    private static class Review extends RuntimeException {
+        Review(String reason) { super(reason); }
     }
 }

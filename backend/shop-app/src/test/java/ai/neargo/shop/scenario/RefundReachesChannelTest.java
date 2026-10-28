@@ -113,7 +113,8 @@ class RefundReachesChannelTest {
                 .as("留 PENDING 的话，对账轴回查会得到「通道没有这笔」——"
                         + "而那正是它用来安全关单的判据，一笔该退的钱会被静默关掉")
                 .isEqualTo(StlPayment.FAILED);
-        assertThat(row.getErrMsg()).contains("通道未接入");
+        assertThat(row.getErrCode()).isEqualTo("REFUND_CHANNEL_UNAVAILABLE");
+        assertThat(row.getErrMsg()).isEqualTo("试");
     }
 
     @Test
