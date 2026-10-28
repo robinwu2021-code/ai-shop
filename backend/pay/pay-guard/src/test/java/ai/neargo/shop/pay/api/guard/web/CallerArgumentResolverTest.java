@@ -51,6 +51,11 @@ class CallerArgumentResolverTest {
         }
 
         @Override
+        public java.util.Optional<PayApp> findApp(String appNo) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public PayApp requireActive(String appNo) {
             calls.add("requireActive:" + appNo);
             PayApp a = new PayApp();

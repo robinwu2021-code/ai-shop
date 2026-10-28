@@ -140,6 +140,7 @@ class SecretAppSignaturesTest {
         AppSigner.Signature s = signatures.sign(app("PARTNER"), data).orElseThrow();
 
         assertThat(s.keyVersion()).isEqualTo(2);
+        assertThat(s.keySerial()).as("响应头 X-Key-Serial 用（M3.4）").isEqualTo("S2");
         assertThat(s.base64()).isEqualTo(Base64.getEncoder().encodeToString(hmac(V2_MATERIAL, data)));
         assertThat(signatures.verify(app("PARTNER"), null, "push-body", s.base64())).isPresent();
     }
@@ -169,6 +170,11 @@ class SecretAppSignaturesTest {
         @Override
         public KeyVersionRef current(long keyId) {
             return V2;
+        }
+
+        @Override
+        public Optional<String> serialOf(KeyVersionRef ref) {
+            return serials.entrySet().stream().filter(e -> e.getValue().equals(ref)).map(Map.Entry::getKey).findFirst();
         }
 
         @Override

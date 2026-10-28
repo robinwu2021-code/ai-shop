@@ -70,6 +70,9 @@ public interface KeyRegistry {
     /** 按 KeySerial（{@code external_key_id}）找版本：请求头 {@code X-Key-Serial} / {@code X-Encrypt-Serial} 用 */
     Optional<KeyVersionRef> findVersion(long keyId, String externalKeyId);
 
+    /** 反查：版本的 KeySerial（响应头 {@code X-Key-Serial} 用，开发计划 M3.4）；没有登记序列号为空 */
+    Optional<String> serialOf(KeyVersionRef ref);
+
     /** 指纹：唯一可回显的密钥信息 */
     String fingerprintOf(KeyVersionRef ref);
 

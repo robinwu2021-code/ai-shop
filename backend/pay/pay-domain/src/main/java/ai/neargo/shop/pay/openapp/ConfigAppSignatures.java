@@ -53,7 +53,7 @@ public class ConfigAppSignatures implements AppSignatureVerifier, AppSigner {
         // 只用当前那把：只配了 next（轮换配到一半）时不签，宁可推送失败重试，也不拿接入方还没换上的新密钥签
         String current = current(app.getAppNo());
         return current == null ? Optional.empty()
-                : Optional.of(new Signature(Base64.getEncoder().encodeToString(hmac(current, data)), null));
+                : Optional.of(new Signature(Base64.getEncoder().encodeToString(hmac(current, data)), null, null));
     }
 
     private String current(String appNo) {

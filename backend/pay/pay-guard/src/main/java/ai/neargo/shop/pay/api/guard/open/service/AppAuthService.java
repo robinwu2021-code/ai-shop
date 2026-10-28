@@ -4,6 +4,7 @@ import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 开放 API 的接入方鉴权与授权（安全规范 §2.3；TDD-支付服务-I5接入层 S3）。<b>纯数据校验，不读会话</b>，两种部署形态通用。
@@ -62,6 +63,9 @@ public interface AppAuthService {
 
     /** 按 AppId 取启用中的接入方；不存在或停用 → 未授权 */
     PayApp requireActive(String appNo);
+
+    /** 按 AppId 找接入方（不论状态）：响应签名用 —— 回绝的响应也要用该 AppId 的密钥签（M3.4） */
+    Optional<PayApp> findApp(String appNo);
 
     /**
      * 这个接入方做某个门店动作时的调用方：门店范围 = 授权里含该动作（COLLECT / REFUND / READ）的门店。

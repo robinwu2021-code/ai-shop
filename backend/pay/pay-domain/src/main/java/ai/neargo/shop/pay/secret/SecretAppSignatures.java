@@ -68,7 +68,8 @@ public class SecretAppSignatures implements AppSignatureVerifier, AppSigner {
     public Optional<Signature> sign(PayApp app, byte[] data) {
         try {
             return keyIdOf(app).map(keys::current)
-                    .map(ref -> new Signature(Base64.getEncoder().encodeToString(vault.mac(ref, data)), ref.versionIndex()));
+                    .map(ref -> new Signature(Base64.getEncoder().encodeToString(vault.mac(ref, data)), ref.versionIndex(),
+                            keys.serialOf(ref).orElse(null)));
         } catch (RuntimeException e) {
             return Optional.empty();
         }

@@ -6,7 +6,9 @@ import ai.neargo.shop.pay.api.guard.PortalFace;
 import ai.neargo.shop.pay.api.guard.core.CachedBodyRequest;
 import ai.neargo.shop.pay.openapp.SignatureCanonicalizer;
 import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.sign.ResponseSigner;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,9 +33,11 @@ public class OpenSignatureAuthenticator implements EntryGuard {
     private static final Logger log = LoggerFactory.getLogger(OpenSignatureAuthenticator.class);
 
     private final AppAuthService auth;
+    private final ResponseSigner responses;
 
-    public OpenSignatureAuthenticator(AppAuthService auth) {
+    public OpenSignatureAuthenticator(AppAuthService auth, ResponseSigner responses) {
         this.auth = auth;
+        this.responses = responses;
     }
 
     @Override
@@ -62,6 +66,23 @@ public class OpenSignatureAuthenticator implements EntryGuard {
                     "SCOPE_MISSING " + (scope == null ? "(unknown action)" : scope));
         }
         return GuardResult.ok(new PortalPrincipal(PortalFace.OPEN, "APP", result.app().getAppNo(), null, Set.of()));
+    }
+
+    /** ⑪ 每个响应都签（API 清单 §1.2），含 401 / 403 */
+    @Override
+    public boolean signsResponses() {
+        return true;
+    }
+
+    /** 用 AppId 对应的密钥签；回绝时按请求头的 AppId 找 —— 找不到或没有可用密钥就不签 */
+    @Override
+    public void signResponse(HttpServletRequest request, HttpServletResponse response, byte[] body, PortalPrincipal who) {
+        String appNo = who != null ? who.subjectId() : request.getHeader("X-App-Id");
+        if (appNo == null || appNo.isBlank()) {
+            return;
+        }
+        auth.findApp(appNo.trim()).flatMap(app -> responses.sign(app, body))
+                .ifPresent(headers -> headers.forEach(response::setHeader));
     }
 
     /**

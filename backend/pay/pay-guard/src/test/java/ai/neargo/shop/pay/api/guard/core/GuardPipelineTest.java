@@ -53,7 +53,8 @@ class GuardPipelineTest {
         }
 
         @Override
-        public void signResponse(HttpServletResponse response, byte[] body, PortalPrincipal who) {
+        public void signResponse(HttpServletRequest request, HttpServletResponse response, byte[] body,
+                                 PortalPrincipal who) {
             calls.add("sign");
             signedBody = body;
             response.setHeader("X-Signature", "sig");
@@ -173,6 +174,21 @@ class GuardPipelineTest {
         new GuardFilter(PortalFace.OPEN, plain, new RequestLogWriter(recorder))
                 .doFilter(post("/open/pay/v1/orders", "{}"), new MockHttpServletResponse(), new Controller());
         assertThat(plain.calls).doesNotContain("sign");
+    }
+
+    @Test
+    @DisplayName("★★★ 要签名的入口：认不出（401）的错误体也签（API 清单 §1.2），签的就是发出去的那个错误体")
+    void signingEntrySignsRejections() throws Exception {
+        guard.result = GuardResult.unauthorized("签名不符");
+        guard.signs = true;
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+        filter.doFilter(post("/open/pay/v1/orders", "{}"), resp, new Controller());
+
+        assertThat(resp.getStatus()).isEqualTo(401);
+        assertThat(guard.calls).containsExactly("authenticate", "sign");
+        assertThat(new String(guard.signedBody, StandardCharsets.UTF_8)).isEqualTo(resp.getContentAsString())
+                .contains("\"requestId\"");
+        assertThat(resp.getHeader("X-Signature")).isEqualTo("sig");
     }
 
     @Test

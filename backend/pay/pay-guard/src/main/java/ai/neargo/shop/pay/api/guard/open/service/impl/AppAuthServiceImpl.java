@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
@@ -149,6 +150,11 @@ public class AppAuthServiceImpl implements AppAuthService {
             throw BizException.of(ErrorCode.UNAUTHORIZED);
         }
         checkDailyRefund(app, amountMinor);
+    }
+
+    @Override
+    public Optional<PayApp> findApp(String appNo) {
+        return Optional.ofNullable(find(appNo));
     }
 
     private PayApp find(String appNo) {

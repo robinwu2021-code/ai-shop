@@ -238,6 +238,14 @@ public class DefaultKeyRegistry implements KeyRegistry {
     }
 
     @Override
+    public Optional<String> serialOf(KeyVersionRef ref) {
+        requireKey(ref.keyId());
+        return Optional.ofNullable(db.versions().selectOne(Wrappers.<SecKeyVersion>lambdaQuery()
+                        .eq(SecKeyVersion::getSecKeyId, ref.keyId()).eq(SecKeyVersion::getVersionIndex, ref.versionIndex())))
+                .map(SecKeyVersion::getExternalKeyId).filter(s -> !s.isBlank());
+    }
+
+    @Override
     public Optional<KeyVersionRef> findVersion(long keyId, String externalKeyId) {
         if (externalKeyId == null || externalKeyId.isBlank()) {
             return Optional.empty();

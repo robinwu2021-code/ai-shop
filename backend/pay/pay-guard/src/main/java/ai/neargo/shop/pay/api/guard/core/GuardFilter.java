@@ -62,7 +62,15 @@ public class GuardFilter extends OncePerRequestFilter {
         // ③–⑧ 认人（按入口）
         GuardResult result = guard.authenticate(req);
         if (!result.ok()) {
-            GuardErrors.write(resp, result.status(), result.code(), requestId);
+            if (guard.signsResponses()) {
+                // 要签名的入口，回绝也签（API 清单 §1.2）：错误体先写进缓存，签完再发
+                ContentCachingResponseWrapper rejected = new ContentCachingResponseWrapper(resp);
+                GuardErrors.write(rejected, result.status(), result.code(), requestId);
+                guard.signResponse(req, rejected, rejected.getContentAsByteArray(), null);
+                rejected.copyBodyToResponse();
+            } else {
+                GuardErrors.write(resp, result.status(), result.code(), requestId);
+            }
             log.write(face, req, null, requestId, started, result.status(), result.code().name(), result.outcome(),
                     req.body(), String.valueOf(result.reason()));
             return;
@@ -79,7 +87,7 @@ public class GuardFilter extends OncePerRequestFilter {
         try {
             chain.doFilter(req, signing != null ? signing : resp);
             if (signing != null) {
-                guard.signResponse(signing, signing.getContentAsByteArray(), who);
+                guard.signResponse(req, signing, signing.getContentAsByteArray(), who);
                 signing.copyBodyToResponse();
             }
         } finally {

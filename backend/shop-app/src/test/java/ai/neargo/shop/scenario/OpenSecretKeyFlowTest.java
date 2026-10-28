@@ -144,6 +144,8 @@ class OpenSecretKeyFlowTest {
         String pinnedRight = rid();
         assertThat(getOrder(v1, v1.keySerial(), null, pinnedRight).getStatus()).isNotEqualTo(401);
         assertThat(loggedVersion(pinnedRight)).isEqualTo(1);
+        MockHttpServletResponse signed = getOrder(v2, null, null, rid());
+        assertThat(signed.getHeader("X-Key-Serial")).as("响应用当前版本签，并说出是哪一版（M3.4）").isEqualTo(v2.keySerial());
         String pinnedWrong = rid();
         assertThat(getOrder(v1, v2.keySerial(), null, pinnedWrong).getStatus()).as("指了 v2 却用 v1 签").isEqualTo(401);
         assertThat(loggedVersion(pinnedWrong)).as("没通过就不记版本").isNull();

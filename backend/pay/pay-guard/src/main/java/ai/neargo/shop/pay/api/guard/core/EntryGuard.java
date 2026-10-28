@@ -36,7 +36,8 @@ public interface EntryGuard {
      * 管线 ⑪：给响应加签名头。在响应体写回调用方<b>之前</b>调用。
      *
      * @param body 完整响应体
+     * @param who  认出的调用方；回绝时为空（据请求头找调用方，开发计划 M3.4）
      */
-    default void signResponse(HttpServletResponse response, byte[] body, PortalPrincipal who) {
+    default void signResponse(HttpServletRequest request, HttpServletResponse response, byte[] body, PortalPrincipal who) {
     }
 }

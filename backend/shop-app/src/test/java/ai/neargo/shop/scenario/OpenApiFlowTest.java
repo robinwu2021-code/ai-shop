@@ -259,6 +259,40 @@ class OpenApiFlowTest {
         }
     }
 
+    /** 接入方验响应签名的做法（API 清单 §1.2，独立实现）：HMAC(Timestamp\nNonce\nhex(SHA256(响应体))) */
+    private static boolean responseSignedWith(String secret, MockHttpServletResponse r) throws Exception {
+        String ts = r.getHeader("X-Timestamp");
+        String nonce = r.getHeader("X-Nonce");
+        String sig = r.getHeader("X-Signature");
+        if (ts == null || nonce == null || sig == null) {
+            return false;
+        }
+        String bodyHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(r.getContentAsByteArray()));
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        return Base64.getEncoder().encodeToString(mac.doFinal((ts + "\n" + nonce + "\n" + bodyHash)
+                .getBytes(StandardCharsets.UTF_8))).equals(sig);
+    }
+
+    @Test
+    @DisplayName("★★★ 响应签名（M3.4；API 清单 §1.2）：成功的响应、该接入方的 401 都签，接入方用自己的 AppSecret 验得过；AppId 不存在的 401 不签")
+    void responsesAreSigned() throws Exception {
+        String no = create(APP1, SECRET1, "OUT-" + id(), 500).get("payOrderNo").asString();
+        MockHttpServletResponse ok = call("GET", "/open/pay/v1/orders/" + no, Map.of(), "", fresh(APP1, SECRET1), null);
+        assertThat(ok.getStatus()).isEqualTo(200);
+        assertThat(responseSignedWith(SECRET1, ok)).as("成功响应").isTrue();
+        assertThat(responseSignedWith(SECRET2, ok)).as("别家的密钥验不过").isFalse();
+
+        MockHttpServletResponse denied = call("GET", "/open/pay/v1/orders/" + no, Map.of(), "", fresh(APP1, SECRET1), "AAAA");
+        assertThat(denied.getStatus()).isEqualTo(401);
+        assertThat(responseSignedWith(SECRET1, denied)).as("该接入方的 401 也签").isTrue();
+
+        MockHttpServletResponse nobody = call("GET", "/open/pay/v1/orders/" + no, Map.of(), "", fresh("APP-NOBODY", SECRET1),
+                null);
+        assertThat(nobody.getStatus()).isEqualTo(401);
+        assertThat(nobody.getHeader("X-Signature")).as("没有可用的密钥就不签").isNull();
+    }
+
     @Test
     @DisplayName("★★★ scope 在守卫里判（M3.3）：没有 pay:refund 的接入方调退款 → 403 FORBIDDEN、记 REJECTED_FORBIDDEN；请求体都不解析（坏 JSON 也是 403 不是 400）")
     void missingScopeIsRejectedInTheGuard() throws Exception {
