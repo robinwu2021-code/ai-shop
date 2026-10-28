@@ -4,6 +4,9 @@ import ai.neargo.shop.auth.ClientMeta;
 import ai.neargo.shop.pay.access.entity.PayApiRequestLog;
 import ai.neargo.shop.pay.access.service.ApiRequestRecorder;
 import ai.neargo.shop.pay.api.guard.PortalFace;
+import ai.neargo.shop.pay.api.guard.internal.InternalGuard;
+import ai.neargo.shop.spi.pay.CallSource;
+import ai.neargo.shop.spi.pay.CallSources;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -38,7 +41,8 @@ public class RequestLogWriter {
         r.setApi(cut(req.getMethod() + " " + maskPath(face, path), 128));
         r.setPayAction(PortalActions.of(face, req.getMethod(), path));
         r.setSourceType(sourceOf(face));
-        r.setAppNo(face == PortalFace.OPEN ? cut(who != null ? who.subjectId() : req.getHeader("X-App-Id"), 64) : null);
+        r.setAppNo(face == PortalFace.OPEN ? cut(who != null ? who.subjectId() : req.getHeader("X-App-Id"), 64)
+                : face == PortalFace.INTERNAL && who != null ? cut(who.subjectId(), 64) : null);
         r.setClientType(face == PortalFace.OPEN ? "SERVER" : face == PortalFace.CHECKOUT ? "H5" : "SERVER");
         r.setClientIp(ClientMeta.clientIp(req));
         r.setUserAgentDigest(digest(req.getHeader("User-Agent")));
@@ -51,7 +55,31 @@ public class RequestLogWriter {
         r.setOutcome(outcome);
         r.setElapsedMs((int) (System.currentTimeMillis() - startedMillis));
         r.setReceivedAt(LocalDateTime.now(ZoneOffset.UTC));
+        if (req.getAttribute(InternalGuard.SOURCE_ATTRIBUTE) instanceof CallSource source) {
+            applySource(r, source);
+        }
         recorder.record(r);
+    }
+
+    /**
+     * 内部调用的来源落到记录上（V13 的 8 列 + 操作人；ADR-045 G9）。追踪号沿用来源的 —— 一个号串起调用方与支付两边；
+     * 操作人只在记录还没有时取来源的（退款命令里的商家操作员优先）。
+     */
+    public static void applySource(PayApiRequestLog r, CallSource s) {
+        if (s.traceId() != null && !s.traceId().isBlank()) {
+            r.setTraceId(cut(s.traceId(), 64));
+        }
+        r.setSourceService(cut(s.service() == null ? CallSources.UNKNOWN : s.service(), 64));
+        r.setSourceModule(cut(s.module(), 24));
+        r.setSourceInstance(cut(s.instance(), 128));
+        r.setSourceIp(cut(s.serverIp(), 64));
+        r.setOriginApi(cut(s.originApi(), 128));
+        r.setOriginClient(cut(s.originClient(), 24));
+        r.setOriginIp(cut(s.originIp(), 64));
+        r.setOriginUaDigest(cut(s.originUaDigest(), 64));
+        if (r.getOperatorNo() == null) {
+            r.setOperatorNo(cut(s.operatorNo(), 64));
+        }
     }
 
     /**

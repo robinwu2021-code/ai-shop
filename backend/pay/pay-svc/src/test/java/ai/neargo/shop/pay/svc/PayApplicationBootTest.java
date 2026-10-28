@@ -126,12 +126,10 @@ class PayApplicationBootTest {
          * pay-guard 是 shop-app 与 pay-svc 共用的一个 jar（ADR-045），而这个进程扫描整个 ai.neargo.shop.pay。
          * 不按入口装配的话，开放 API 的鉴权器与它要的接入方服务会被一起扫进来 —— 进程能起来，但多了一套它不该有的入口。
          */
-        assertThat(ctx.getBeanNamesForType(ai.neargo.shop.pay.api.guard.internal.InternalCallerFilter.class))
-                .as("内部调用过滤器没装上 —— /internal/pay/v1 就没人识别调用方了")
-                .hasSize(1);
-        assertThat(ctx.getBeansOfType(ai.neargo.shop.pay.api.guard.core.EntryGuard.class))
-                .as("对外入口的鉴权器进了支付服务进程")
-                .isEmpty();
+        assertThat(ctx.getBeansOfType(ai.neargo.shop.pay.api.guard.core.EntryGuard.class).values())
+                .as("只该有内部入口的守卫：没装上 /internal/pay/v1 就没人识别调用方；多了就是对外入口进了支付服务进程")
+                .singleElement().isInstanceOf(ai.neargo.shop.pay.api.guard.internal.InternalGuard.class);
+        assertThat(ctx.containsBean("internalGuardFilter")).as("内部入口的管线没挂到容器上").isTrue();
         assertThat(ctx.getBeanNamesForType(ai.neargo.shop.pay.api.guard.open.service.AppAuthService.class))
                 .as("开放 API 的接入方鉴权服务进了支付服务进程")
                 .isEmpty();

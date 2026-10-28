@@ -29,7 +29,6 @@ import ai.neargo.shop.spi.pay.PaymentPort.InternalRefundCmd;
 import ai.neargo.shop.svc.ConfigServiceLocator;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
-import ai.neargo.svc.client.ServiceCallException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -149,17 +148,22 @@ class PaymentPortLocalRemoteParityTest {
     }
 
     @Test
-    @DisplayName("★★★ 餐饮的凭据调商城的退款 → 403；凭据不对 / 没带 → 401（原因不回给调用方）")
+    @DisplayName("★★★ 餐饮调商城的退款 → 403；凭据不对 / 没带：内部调用只识别不校验（G9，M2.4），照样进端点")
     void callerAuthorization() {
         var rest = RestClient.create("http://127.0.0.1:" + port);
         String body = "{\"bizType\":\"MALL_ORDER\",\"payOrderNo\":\"PYO-1\",\"outRefundNo\":\"RF-9\",\"amountMinor\":1,"
                 + "\"reason\":\"x\",\"operatorNo\":\"OP-1\"}";
         assertThat(status(rest, "FOOD", "food-secret", body)).isEqualTo(403);
-        assertThat(status(rest, "MALL", "wrong", body)).isEqualTo(401);
-        assertThat(status(rest, null, null, body)).isEqualTo(401);
-        assertThatThrownBy(() -> new RemotePaymentPort(api(), Map.of("MALL", "wrong"), ServiceName.PAY)
-                .createPayment(create())).isInstanceOf(ServiceCallException.class)
-                .extracting(e -> ((ServiceCallException) e).statusCode()).isEqualTo(401);
+        when(paymentService.find("PYO-1")).thenReturn(order());
+        PayRefund r = new PayRefund();
+        r.setPayRefundNo("PYR-9");
+        r.setStatus("DISPATCHED");
+        when(refundService.request(any(), any())).thenReturn(r);
+        assertThat(status(rest, "MALL", "wrong", body)).as("凭据错不再 401：verify-credential 默认关").isEqualTo(200);
+        assertThat(status(rest, null, null, body)).as("没带调用方码：记 UNKNOWN，端点按业务类型拒").isEqualTo(403);
+        when(paymentService.create(any(), any())).thenReturn(order());
+        assertThat(new RemotePaymentPort(api(), Map.of("MALL", "wrong"), ServiceName.PAY).createPayment(create()))
+                .isNotNull();
     }
 
     /** 服务端实际收到的来源头与请求体（M2.4 之前 pay-svc 还不读它，这里先在边界上看） */

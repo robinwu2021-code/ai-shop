@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.pay.access.entity.PayApiRequestLog;
 import ai.neargo.shop.pay.access.service.ApiRequestRecorder;
+import ai.neargo.shop.spi.pay.CallSources;
+import ai.neargo.shop.spi.pay.PaymentPort;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -35,6 +37,7 @@ class PayRequestLogSourceColumnsTest {
     @Autowired private ApiRequestRecorder recorder;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper json;
+    @Autowired private PaymentPort payments;
 
     @Test
     @DisplayName("★★★ 一行内部调用记录：8 个来源列经实体写入、原样读回")
@@ -66,6 +69,24 @@ class PayRequestLogSourceColumnsTest {
                 .containsEntry("source_instance", "api-01").containsEntry("source_ip", "10.0.1.12")
                 .containsEntry("origin_api", "POST /mp/orders/{orderNo}/pay").containsEntry("origin_client", "APP_C")
                 .containsEntry("origin_ip", "223.104.1.1").containsEntry("origin_ua_digest", "ab".repeat(32));
+    }
+
+    @Test
+    @DisplayName("★★★ 内嵌形态真跑一次：业务服务调 PaymentPort（查一张不存在的单），请求记录里多一行 INTERNAL_PORT，来源是那个请求（M2.4）")
+    void embeddedPortCallIsRecorded() {
+        String trace = "req-" + UUID.randomUUID().toString().substring(0, 12);
+        try (var ignored = CallSources.bind(CallSources.Origin.http(trace, "GET /mp/orders/{orderNo}", "APP_C",
+                "223.104.1.1", null, "U-77"))) {
+            assertThat(payments.queryPayment(PaymentPort.MALL_ORDER, "PYO-NOPE")).isNull();
+        }
+
+        Map<String, Object> row = jdbc.queryForMap("SELECT entry, api, pay_action, app_no, source_service, source_module,"
+                + " origin_api, origin_client, operator_no, outcome FROM pay_api_request_log WHERE trace_id=?", trace);
+        assertThat(row).containsEntry("entry", "INTERNAL_PORT").containsEntry("api", "PaymentPort#queryPayment")
+                .containsEntry("pay_action", "QUERY").containsEntry("app_no", "MALL")
+                .containsEntry("source_service", "shop-app").containsEntry("source_module", "MALL")
+                .containsEntry("origin_api", "GET /mp/orders/{orderNo}").containsEntry("origin_client", "APP_C")
+                .containsEntry("operator_no", "U-77").containsEntry("outcome", "ACCEPTED");
     }
 
     @Test

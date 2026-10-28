@@ -20,11 +20,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import ai.neargo.shop.pay.api.guard.internal.InternalCallerFilter;
+import ai.neargo.shop.pay.api.guard.internal.InternalGuard;
 
 /**
  * 支付单内部端点（开发计划 §3.1 独立形态；TDD-支付服务-I3支付单退款流水 S8）：建单、查单、关单、退款 → 与内嵌同一个
- * {@link PaymentPortImpl}。调用方已由 {@link InternalCallerFilter} 认出；这里只放行<b>它自己的业务类型</b> ——
+ * {@link PaymentPortImpl}。调用方由 {@link InternalGuard} 识别（只识别、不校验 —— ADR-045 G9）；这里只放行<b>它自己的业务类型</b> ——
  * 餐饮调不了商城的退款（403）。业务拒绝走 {@link PortResult}，不经全局响应包装。
  */
 @RestController
@@ -57,7 +57,7 @@ public class InternalPaymentEndpoint {
     }
 
     private static <T> ResponseEntity<?> own(HttpServletRequest request, String bizType, Supplier<T> call) {
-        Object caller = request.getAttribute(InternalCallerFilter.ATTRIBUTE);
+        Object caller = request.getAttribute(InternalGuard.CALLER_ATTRIBUTE);
         if (caller == null || !Objects.equals(caller, RemotePaymentPort.appOf(bizType))) {
             return ResponseEntity.status(403).build();
         }

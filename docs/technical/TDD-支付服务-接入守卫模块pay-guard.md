@@ -604,6 +604,10 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M2.2 | 两个命令的 `source` 标 `@JsonIgnore`：<b>不进</b> `/internal/pay/v1` 的请求体 | 请求体的契约不变（新旧版本混部时 `pay-svc` 不会遇到认不出的字段）；来源只走 `X-Call-Source` 头（M2.3），接收方以头为准、不会两处对不上 |
 | M2.3 | `CallSourceClientInterceptor` 只补 `X-Call-Source`（已有则不覆盖），<b>不自动带</b> `X-Internal-Caller` | 调用方码的含义随接收方而变（支付侧是 `pay_app.app_no` 的 MALL / FOOD），由各远程实现显式给；`PaymentInternalApi` 四个方法加显式的来源头参数，`RemotePaymentPort` 用命令里的那份（任务显式传的来源不被线程上下文顶掉） |
 | M2.5 | 先于 M2.4 做 | 记录器要写的列得先有 |
+| M2.4 | `RecordingPaymentPort` 不是 `@Primary` bean，而是 `shop-app` 装配内嵌 `PaymentPortImpl` 时直接包上（`OrdinaryPaymentRouting`，开关 `record-port-calls`）；类放在 `guard.internal.port` | 容器里只有一个 `PaymentPort`，不靠 `@Primary` 消歧；`ArchitectureTest` 要求 Port 实现在 `..port..` 包 |
+| M2.4 | `InternalCallRecorder#record(Call, body, payOrderIdOf)`：一次调用的业务信息收成一个 `Call` | 原签名的 `PayAction` + `InternalCallMeta` 两个参数合一；结果码：成功 `OK`、业务拒绝取错误码（outcome `REJECTED_PARAM`，与 HTTP 入口 4xx 同一结局）、未预期异常取类名（`ERROR`） |
+| M2.4 | 追踪号接力只落在记录上（`trace_id` = 来源的追踪号），没写 MDC | 全仓没有用 MDC 的日志格式；`pay-svc` 再往下调业务服务时的接力随 M2.6 的 `InternalCallFilter` 一起做 |
+| M2.4 | 原 `InternalCallerFilter` 删除，内部入口改走统一管线 `GuardFilter` + `InternalGuard`，由 `InternalGuardConfig` 注册到容器 | `pay-svc` 没有 Spring Security 链；`verify-credential=true` 时回绝的那一行没有来源列（凭据不对就不解来源头） |
 | M2.5 | 迁移号仍用 V16，但 V13–V15 尚无人占用 | 支付迁移的 Flyway 默认不许乱序（`outOfOrder=false`）：V16 先合入、之后再来 V13 会启动失败。**合入 codex 前按 `db/pay/README.md`「先合先占」改成当时的下一个号**，同步改开发计划 §0.2 与本系列文档 |
 
 ---
