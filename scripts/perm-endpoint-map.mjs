@@ -443,6 +443,14 @@ export const RULES = [
   // 支付对账差异（并发会话 2026-08-12 新增）。**这条是守卫抓出来的** ——
   // 它们刚落进 settle:manage，矩阵当场报 FINANCE「多出来 4 条」。
   // 处理差异会改账，与只读覆盖率分开
+  // 支付运营（开发计划 M5a.2：原 /pay-ops/v1 迁到业务服务）。码一开始就是细的，登记表照抄注解
+  ["GET", /^\/ops\/payments\/(orders|exceptions)(\/[^/]+)?$/, "pay:order:view"],
+  ["POST", /^\/ops\/payments\/exceptions\/[^/]+\/(refund|ignore)$/, "pay:order:manage"],
+  ["GET", /^\/ops\/payments\/refunds$/, "pay:refund:view"],
+  ["POST", /^\/ops\/payments\/refunds\/[^/]+\/review$/, "pay:refund:review"],
+  ["GET", /^\/ops\/payments\/notifies$/, "pay:log:view"],
+  ["POST", /^\/ops\/payments\/notifies\/[^/]+\/resend$/, "pay:notify:resend"],
+  ["PUT", /^\/ops\/payments\/qr-codes\/[^/]+\/disabled$/, "pay:qr:manage"],
   ["GET", /^\/ops\/payments\/recon/, "finance:recon:read"],
   ["*", /^\/ops\/payments\/recon/, "finance:recon:resolve"],
   ["GET", /^\/ops\/settle\/fee-rules/, "finance:rate:read"],
