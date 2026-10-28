@@ -86,4 +86,25 @@ public class ConfigAppSignaturesTest {
         assertThat(s.base64()).isEqualTo(P1);
         assertThat(withSecrets(null, null).sign(app(), toSign.getBytes(StandardCharsets.UTF_8))).isEmpty();
     }
+
+    /** API 清单 §7 的 EncryptKey 与 P3 向量 */
+    public static final String ENCRYPT_KEY = "Pa7Ve2Ky9Wq4Zm6Tn3Lr8Hs5Dc1Fb0Gx";
+    public static final String P3_CIPHER = "obLD1OX2BxgpOktc59/SAi1E7uW27KsqhePcgjLC58SwEbcblEo=";
+    public static final String P3_AAD = APP + "|refundAccount.accountNo";
+
+    @Test
+    @DisplayName("★★★ P3 向量（M3.5）：EncryptKey 的 UTF-8 字节作 AES-256-GCM 密钥，AAD = AppId|字段路径，解出 8123004567；字段路径不对解不开")
+    void p3Vector() {
+        MockEnvironment env = new MockEnvironment();
+        env.setProperty("shop.pay.open.apps." + APP + ".encrypt-key", ENCRYPT_KEY);
+        ConfigAppSignatures keys = new ConfigAppSignatures(env);
+        byte[] packed = java.util.Base64.getDecoder().decode(P3_CIPHER);
+
+        assertThat(keys.decrypt(app(), null, packed, P3_AAD.getBytes(StandardCharsets.UTF_8)))
+                .hasValueSatisfying(b -> assertThat(new String(b, StandardCharsets.UTF_8)).isEqualTo("8123004567"));
+        assertThat(keys.decrypt(app(), null, packed, (APP + "|refundAccount.accountName").getBytes(StandardCharsets.UTF_8)))
+                .isEmpty();
+        assertThat(withSecrets(SECRET, null).decrypt(app(), null, packed, P3_AAD.getBytes(StandardCharsets.UTF_8)))
+                .as("没配 EncryptKey").isEmpty();
+    }
 }

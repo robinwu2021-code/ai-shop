@@ -1187,6 +1187,18 @@
           "sqlType": "DATETIME(3) NULL",
           "meaning": "关单时间",
           "meaningEn": "Closed at"
+        },
+        {
+          "name": "payer_blob_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "付款人敏感信息（手机 / 邮箱 / 姓名，开放 API 建单传入）封存在 sec_secret_blob.id；没传为空（V15）",
+          "meaningEn": "Sealed payer details (sec_secret_blob.id)"
+        },
+        {
+          "name": "payer_masked",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "付款人敏感信息的掩码 JSON；查询只回它（V15）",
+          "meaningEn": "Masked payer details (JSON)"
         }
       ],
       "uniqueKeys": [
@@ -1366,6 +1378,18 @@
           "sqlType": "DATETIME(3) NULL",
           "meaning": "成功时间",
           "meaningEn": "Succeeded at"
+        },
+        {
+          "name": "refund_account_blob_id",
+          "sqlType": "BIGINT NULL",
+          "meaning": "线下退款收款账号（银行代码 / 账号 / 户名）封存在 sec_secret_blob.id；没传为空（V15）",
+          "meaningEn": "Sealed offline-refund account (sec_secret_blob.id)"
+        },
+        {
+          "name": "refund_account_masked",
+          "sqlType": "VARCHAR(255) NULL",
+          "meaning": "收款账号的掩码 JSON；查询只回它（V15）",
+          "meaningEn": "Masked refund account (JSON)"
         }
       ],
       "uniqueKeys": [

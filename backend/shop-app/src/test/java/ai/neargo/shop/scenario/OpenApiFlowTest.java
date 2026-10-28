@@ -111,13 +111,25 @@ class OpenApiFlowTest {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         app(APP1, "pay:create,pay:read,pay:refund", 5_000);
         app(APP2, "pay:create,pay:read", 0);
+        TestStore store = storeWithTestRoute(jdbc, bindings);
+        storeNo = store.storeNo();
+        storeId = store.storeId();
+        grant(APP1, storeId, "COLLECT,REFUND,READ");
+        grant(APP2, storeId, "COLLECT,READ");
+    }
+
+    /** 一家能收款的门店：主体 → 门店 → 平台服务商号 → 子商户（TEST 渠道，产品已开）→ 绑定。别的开放 API 场景也用它 */
+    record TestStore(String storeNo, Long storeId) {
+    }
+
+    static TestStore storeWithTestRoute(JdbcTemplate jdbc, PayMerchantBindingService bindings) {
         String e = "E-OA-" + id();
         jdbc.update("INSERT INTO mch_entity (entity_no, name, market, funds_mode, created_at, updated_at)"
                 + " VALUES (?, ?, 'CN', 'AGGREGATED', NOW(), NOW())", e, "开放 " + e);
-        storeNo = "S-OA-" + id();
+        String storeNo = "S-OA-" + id();
         jdbc.update("INSERT INTO mch_store (entity_no, store_no, name, is_default, created_at, updated_at)"
                 + " VALUES (?, ?, ?, 1, NOW(), NOW())", e, storeNo, "开放门店 " + storeNo);
-        storeId = jdbc.queryForObject("SELECT id FROM mch_store WHERE store_no=?", Long.class, storeNo);
+        Long storeId = jdbc.queryForObject("SELECT id FROM mch_store WHERE store_no=?", Long.class, storeNo);
         String pm = "PM-OA-" + id();
         // 子商户必须挂在平台服务商号下（ck_pay_merchant_3）：先建平台号，再建门店的子商户
         jdbc.update("INSERT INTO pay_merchant (pay_merchant_no, owner_type, store_id, pay_channel, market, currency,"
@@ -136,8 +148,7 @@ class OpenApiFlowTest {
                 + " quota_limit_minor, quota_used_minor, created_at, updated_at) SELECT ?, id, 'OPEN', 'OPS', 0, 0,"
                 + " NOW(), NOW() FROM pay_channel_product WHERE product_code='TEST_ONLINE'", merchantId);
         bindings.bind(storeId, "TEST", merchantId, "OP-OA");
-        grant(APP1, storeId, "COLLECT,REFUND,READ");
-        grant(APP2, storeId, "COLLECT,READ");
+        return new TestStore(storeNo, storeId);
     }
 
     private void app(String appNo, String scopes, long dailyRefund) {

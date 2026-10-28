@@ -81,4 +81,8 @@ public class PayRefund extends PayBaseEntity {
 
     /** 成功时间 */
     private LocalDateTime succeededAt;
+    /** 线下退款收款账号的封存 sec_secret_blob.id（V15） */
+    private Long refundAccountBlobId;
+    /** 收款账号的掩码 JSON（V15）；查询只回它 */
+    private String refundAccountMasked;
 }

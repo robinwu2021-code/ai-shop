@@ -62,23 +62,17 @@ public class GuardFilter extends OncePerRequestFilter {
         // ③–⑧ 认人（按入口）
         GuardResult result = guard.authenticate(req);
         if (!result.ok()) {
-            if (guard.signsResponses()) {
-                // 要签名的入口，回绝也签（API 清单 §1.2）：错误体先写进缓存，签完再发
-                ContentCachingResponseWrapper rejected = new ContentCachingResponseWrapper(resp);
-                GuardErrors.write(rejected, result.status(), result.code(), requestId);
-                guard.signResponse(req, rejected, rejected.getContentAsByteArray(), null);
-                rejected.copyBodyToResponse();
-            } else {
-                GuardErrors.write(resp, result.status(), result.code(), requestId);
-            }
-            log.write(face, req, null, requestId, started, result.status(), result.code().name(), result.outcome(),
-                    req.body(), String.valueOf(result.reason()));
+            reject(req, resp, result, null, requestId, started);
             return;
         }
         PortalPrincipal who = result.principal();
 
-        // ⑨ 敏感字段解密
-        guard.decryptSensitiveFields(req, who);
+        // ⑨ 敏感字段解密：明文、解不开都在这里回绝，不进 controller（M3.5）
+        GuardResult decrypt = guard.decryptSensitiveFields(req, who);
+        if (decrypt != null) {
+            reject(req, resp, decrypt, who, requestId, started);
+            return;
+        }
         // ⑩ 认出的调用方放进请求属性（controller 经参数拿到它）
         req.setAttribute(PortalRequests.PRINCIPAL, who);
 
@@ -98,5 +92,20 @@ public class GuardFilter extends OncePerRequestFilter {
                     code == null ? (status < 400 ? "OK" : "HTTP_" + status) : code.toString(),
                     RequestLogWriter.outcomeOf(status), req.body(), null);
         }
+    }
+
+    /** 回绝：统一错误体；要签名的入口回绝也签（API 清单 §1.2）—— 错误体先写进缓存，签完再发；写一行请求记录 */
+    private void reject(CachedBodyRequest req, HttpServletResponse resp, GuardResult result, PortalPrincipal who,
+                        String requestId, long started) throws IOException {
+        if (guard.signsResponses()) {
+            ContentCachingResponseWrapper rejected = new ContentCachingResponseWrapper(resp);
+            GuardErrors.write(rejected, result.status(), result.code(), requestId);
+            guard.signResponse(req, rejected, rejected.getContentAsByteArray(), who);
+            rejected.copyBodyToResponse();
+        } else {
+            GuardErrors.write(resp, result.status(), result.code(), requestId);
+        }
+        log.write(face, req, who, requestId, started, result.status(), result.code().name(), result.outcome(),
+                req.body(), String.valueOf(result.reason()));
     }
 }

@@ -51,6 +51,8 @@ class OpenSecretKeyFlowTest {
     @Autowired private AppSigner signer;
     @Autowired private PartnerKeyService partnerKeys;
     @Autowired private KeyRegistry registry;
+    @Autowired private ai.neargo.shop.pay.merchant.service.PayMerchantBindingService bindings;
+    @Autowired private ai.neargo.secret.api.SecretVault vault;
 
     private MockMvc mvc;
     private String appNo;
@@ -66,9 +68,17 @@ class OpenSecretKeyFlowTest {
 
     /** 发一版 AppSecret 并走完「验证 → 另一人启用」（两人规则） */
     private IssuedCredential issueAndEnable() {
-        IssuedCredential c = partnerKeys.issueAppSecret(appNo, "ops-alice");
+        return enable(partnerKeys.issueAppSecret(appNo, "ops-alice"), KeyPurpose.INBOUND_HMAC);
+    }
+
+    /** 发一版 EncryptKey（敏感字段加密，M3.5）并启用 */
+    private IssuedCredential issueEncryptKeyAndEnable() {
+        return enable(partnerKeys.issueEncryptKey(appNo, "ops-alice"), KeyPurpose.PARTNER_DATA);
+    }
+
+    private IssuedCredential enable(IssuedCredential c, KeyPurpose purpose) {
         long appId = jdbc.queryForObject("SELECT id FROM pay_app WHERE app_no=?", Long.class, appNo);
-        long keyId = registry.find(new KeyOwner(SecretNamespace.PAY, "PARTNER_APP", appId), KeyPurpose.INBOUND_HMAC)
+        long keyId = registry.find(new KeyOwner(SecretNamespace.PAY, "PARTNER_APP", appId), purpose)
                 .orElseThrow().keyId();
         KeyVersionRef ref = new KeyVersionRef(keyId, c.version());
         registry.markVerified(ref, "test", "ops-alice");
@@ -94,6 +104,84 @@ class OpenSecretKeyFlowTest {
             b.header("X-Encrypt-Serial", encryptSerial);
         }
         return mvc.perform(b).andReturn().getResponse();
+    }
+
+    /** 接入方的做法（P3，独立实现）：AES-256-GCM，密钥 = EncryptKey 的 UTF-8 字节，AAD = AppId|字段路径，值 = Base64(IV‖密文‖Tag) */
+    private String encryptField(IssuedCredential encryptKey, String fieldPath, String plaintext) throws Exception {
+        byte[] iv = new byte[12];
+        new java.security.SecureRandom().nextBytes(iv);
+        javax.crypto.Cipher c = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding");
+        c.init(javax.crypto.Cipher.ENCRYPT_MODE, new javax.crypto.spec.SecretKeySpec(
+                encryptKey.secret().getBytes(java.nio.charset.StandardCharsets.UTF_8), "AES"),
+                new javax.crypto.spec.GCMParameterSpec(128, iv));
+        c.updateAAD((appNo + "|" + fieldPath).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        byte[] ct = c.doFinal(plaintext.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        byte[] packed = new byte[iv.length + ct.length];
+        System.arraycopy(iv, 0, packed, 0, iv.length);
+        System.arraycopy(ct, 0, packed, iv.length, ct.length);
+        return java.util.Base64.getEncoder().encodeToString(packed);
+    }
+
+    private MockHttpServletResponse call(String method, String path, String body, IssuedCredential signWith,
+                                         String encryptSerial) throws Exception {
+        long ts = System.currentTimeMillis();
+        String nonce = UUID.randomUUID().toString().replace("-", "");
+        String sig = OpenApiFlowTest.sign(signWith.secret().substring("sk_test_".length()), method, path, Map.of(), appNo,
+                ts, nonce, body);
+        MockHttpServletRequestBuilder b = ("GET".equals(method) ? get(path)
+                : org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(path))
+                .contentType(MediaType.APPLICATION_JSON).content(body).header("X-App-Id", appNo)
+                .header("X-Timestamp", String.valueOf(ts)).header("X-Nonce", nonce).header("X-Signature", sig);
+        if (encryptSerial != null) {
+            b.header("X-Encrypt-Serial", encryptSerial);
+        }
+        return mvc.perform(b).andReturn().getResponse();
+    }
+
+    @Test
+    @DisplayName("★★★ 敏感字段（M3.5）：付款人手机号按 P3 加密传入 → 守卫解开 → 封存进密钥模块，支付单只存 blob 与掩码；查单只回掩码；传明文 400")
+    void sensitivePayerIsSealedAndMasked() throws Exception {
+        jdbc.update("UPDATE pay_app SET scopes='pay:create,pay:read' WHERE app_no=?", appNo);
+        OpenApiFlowTest.TestStore store = OpenApiFlowTest.storeWithTestRoute(jdbc, bindings);
+        jdbc.update("INSERT INTO pay_app_grant (pay_app_id, store_id, actions, status, granted_by, granted_at, created_at,"
+                + " updated_at) SELECT id, ?, 'COLLECT,READ', 'ACTIVE', 'U-SK', NOW(), NOW(), NOW() FROM pay_app WHERE app_no=?",
+                store.storeId(), appNo);
+        IssuedCredential secret = issueAndEnable();
+        IssuedCredential encryptKey = issueEncryptKeyAndEnable();
+        String out = "OUT-SK-" + UUID.randomUUID().toString().substring(0, 8);
+        String body = "{\"outOrderNo\":\"" + out + "\",\"storeRef\":\"" + store.storeNo()
+                + "\",\"amountMinor\":1990,\"currency\":\"CNY\",\"subject\":\"敏感字段\",\"payer\":{\"phone\":\""
+                + encryptField(encryptKey, "payer.phone", "13800005678") + "\",\"name\":\""
+                + encryptField(encryptKey, "payer.name", "王小明") + "\"}}";
+
+        MockHttpServletResponse created = call("POST", "/open/pay/v1/orders", body, secret, encryptKey.keySerial());
+
+        assertThat(created.getStatus()).as(created.getContentAsString()).isEqualTo(200);
+        Map<String, Object> row = jdbc.queryForMap("SELECT pay_order_no, payer_blob_id, payer_masked FROM pay_order"
+                + " WHERE out_order_no=?", out);
+        assertThat(row.get("payer_blob_id")).isNotNull();
+        assertThat((String) row.get("payer_masked")).contains("1380****5678").doesNotContain("13800005678");
+        String sealed = new String(vault.open(SecretNamespace.PAY,
+                new ai.neargo.secret.api.SecretRef(((Number) row.get("payer_blob_id")).longValue())),
+                java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(sealed).as("密钥模块里封存的是明文 JSON").contains("13800005678");
+
+        assertThat(jdbc.queryForList("SELECT request_masked FROM pay_api_request_log WHERE app_no=? AND request_masked IS NOT NULL",
+                String.class, appNo)).as("请求记录记的是原始（加密的）请求体，明文不落日志").isNotEmpty()
+                .noneMatch(m -> m.contains("13800005678") || m.contains("王小明"));
+
+        MockHttpServletResponse queried = call("GET", "/open/pay/v1/orders/" + row.get("pay_order_no"), "", secret, null);
+        assertThat(queried.getStatus()).isEqualTo(200);
+        assertThat(queried.getContentAsString()).contains("1380****5678").contains("王**").doesNotContain("13800005678")
+                .doesNotContain("王小明");
+
+        String plain = body.replace(out, out + "-P").replaceAll("\"phone\":\"[^\"]+\"", "\"phone\":\"13800005678\"");
+        MockHttpServletResponse rejected = call("POST", "/open/pay/v1/orders", plain, secret, encryptKey.keySerial());
+        assertThat(rejected.getStatus()).isEqualTo(400);
+        assertThat(rejected.getContentAsString()).contains(String.valueOf(
+                ai.neargo.shop.common.ErrorCode.PAY_OPEN_FIELD_ENCRYPT_REQUIRED.code()));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_order WHERE out_order_no=?", Integer.class, out + "-P"))
+                .isZero();
     }
 
     private Integer loggedVersion(String requestId) {

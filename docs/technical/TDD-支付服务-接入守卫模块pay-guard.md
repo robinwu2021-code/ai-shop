@@ -627,6 +627,9 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M3.2 | 没有新建 `OpenApiGuard` / `SignedHeaders`：`X-Key-Serial` 由现有 `OpenSignatureAuthenticator` 读进 `SignedRequest`，命中版本经请求属性交给 `RequestLogWriter` 写 `sign_key_version`；`X-Encrypt-Serial` 原样记 `encrypt_serial` | 现有守卫已是 `EntryGuard`（M1.4），多一个头不值得拆类。验收用真密钥模块跑（`OpenSecretKeyFlowTest`：发密钥 → 两人启用 → 轮换重叠期两版都能验 → 指定版本只认那一版） |
 | M3.3 | 只把 **scope** 挪进守卫（`AppScopes`，按动作要 scope，认不出的动作一律 403）；`pay_app_grant` 门店授权仍在参数解析器（`callerFor`），`@CallerGrant` 去掉 `scope` 只留 `grant`，`AppAuthService#requireScope` 删除 | 门店在请求体里（建单的 `storeRef`），守卫不解析请求体就判不了门店；scope 只看动作，放守卫正好。**对外行为变化**：缺 scope 的错误码由 `PAY_FORBIDDEN`（70082）变为 `FORBIDDEN`（10403），且坏请求体也先回 403 |
 | M3.4 | `ResponseSigner` 放 `guard.sign`，签名经 `AppSigner`（与推送同一个出站签名口）；`EntryGuard#signResponse` 加 `request` 参数、管线回绝路径也签；`KeyRegistry` 加 `serialOf(ref)`（响应头 `X-Key-Serial`），`AppAuthService` 加 `findApp` | 回绝时没有认出的调用方，要按请求头的 AppId 找密钥；序列号原先只能正查（`findVersion`），响应头要反查。**对外行为变化**：开放 API 每个响应（含该 AppId 的 401 / 403）多了 `X-Timestamp` · `X-Nonce` · `X-Signature`（密钥模块来源时另有 `X-Key-Serial`）；第一版带头不强制验 |
+| M3.5 | **用户 2026-10-28 定：封存落库**。新迁移 **V15**：`pay_order.payer_blob_id / payer_masked`、`pay_refund.refund_account_blob_id / refund_account_masked` —— 一组字段一个封存（明文 JSON 经 `SecretVault` 进 `sec_secret_blob`，归属 `PAY_ORDER_PAYER` / `PAY_REFUND_ACCOUNT` + 单 id），一列掩码 JSON | 设计只写了「业务表只存 blob id 与掩码」，没定表与列；一组一个封存比每字段两列少一半列，查询直接回掩码 JSON |
+| M3.5 | 解密在守卫 ⑨（`SensitiveFieldDecryptor`，`EntryGuard#decryptSensitiveFields` 改为可回绝）；`CachedBodyRequest` 给 controller 的是解密后的请求体，请求记录与验签仍用原始请求体；EncryptKey 与签名同一个密钥来源（`ConfigAppSignatures` / `SecretAppSignatures` 同时实现 `AppFieldCipher`） | 明文只活在一次请求里、不进日志。只做基础方案（AES-256-GCM）；增强方案 RSA-OAEP 随 `sign_type=RSA` 再做 |
+| M3.5 | 密钥模块不可用（环境未配、主密钥不可用）时带了敏感字段的请求回 `PAY_KEY_SERVICE_UNAVAILABLE`，不存明文；端到端只验了付款人（建单），退款收款账号走同一套代码、由单测覆盖解密 | 线下退款（ATM / 超商）的渠道流程还没有，没法端到端跑退款 |
 
 ---
 

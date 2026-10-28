@@ -6,7 +6,9 @@ import ai.neargo.shop.pay.api.guard.PortalFace;
 import ai.neargo.shop.pay.api.guard.core.CachedBodyRequest;
 import ai.neargo.shop.pay.openapp.SignatureCanonicalizer;
 import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.crypto.SensitiveFieldDecryptor;
 import ai.neargo.shop.pay.api.guard.sign.ResponseSigner;
+import ai.neargo.shop.pay.openapp.entity.PayApp;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
@@ -34,10 +36,12 @@ public class OpenSignatureAuthenticator implements EntryGuard {
 
     private final AppAuthService auth;
     private final ResponseSigner responses;
+    private final SensitiveFieldDecryptor fields;
 
-    public OpenSignatureAuthenticator(AppAuthService auth, ResponseSigner responses) {
+    public OpenSignatureAuthenticator(AppAuthService auth, ResponseSigner responses, SensitiveFieldDecryptor fields) {
         this.auth = auth;
         this.responses = responses;
+        this.fields = fields;
     }
 
     @Override
@@ -66,6 +70,29 @@ public class OpenSignatureAuthenticator implements EntryGuard {
                     "SCOPE_MISSING " + (scope == null ? "(unknown action)" : scope));
         }
         return GuardResult.ok(new PortalPrincipal(PortalFace.OPEN, "APP", result.app().getAppNo(), null, Set.of()));
+    }
+
+    /** ⑨ x-sensitive 字段在这里解成明文，controller 读到的是解密后的请求体；请求记录仍记原始的（M3.5） */
+    @Override
+    public GuardResult decryptSensitiveFields(HttpServletRequest request, PortalPrincipal who) {
+        if (!(request instanceof CachedBodyRequest cached)) {
+            return null;
+        }
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        String action = PortalActions.of(PortalFace.OPEN, request.getMethod(), path);
+        if (!SensitiveFieldDecryptor.FIELDS.containsKey(action)) {
+            return null;
+        }
+        PayApp app = auth.findApp(who.subjectId()).orElse(null);
+        if (app == null) {
+            return null;
+        }
+        SensitiveFieldDecryptor.Outcome o = fields.decrypt(app, action, request.getHeader("X-Encrypt-Serial"), cached.body());
+        if (o.rejection() != null) {
+            return o.rejection();
+        }
+        cached.replaceBody(o.body());
+        return null;
     }
 
     /** ⑪ 每个响应都签（API 清单 §1.2），含 401 / 403 */

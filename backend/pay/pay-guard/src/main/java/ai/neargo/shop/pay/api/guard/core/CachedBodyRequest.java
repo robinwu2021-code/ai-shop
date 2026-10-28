@@ -18,6 +18,8 @@ public final class CachedBodyRequest extends HttpServletRequestWrapper {
     public static final int MAX_BODY = 1 << 20;
 
     private final byte[] body;
+    /** 交给 controller 的请求体：⑨ 解密后替换；没替换就是原始那份 */
+    private byte[] effective;
 
     public CachedBodyRequest(HttpServletRequest req) throws IOException {
         super(req);
@@ -26,15 +28,32 @@ public final class CachedBodyRequest extends HttpServletRequestWrapper {
             throw new IOException("请求体超过 " + MAX_BODY + " 字节");
         }
         this.body = b;
+        this.effective = b;
     }
 
+    /** 原始请求体（验签、请求记录用 —— 记录里不出现解密后的明文） */
     public byte[] body() {
         return body;
     }
 
+    /** ⑨ 敏感字段解密后，controller 读到的是这一份（开发计划 M3.5） */
+    public void replaceBody(byte[] decrypted) {
+        this.effective = decrypted;
+    }
+
+    @Override
+    public int getContentLength() {
+        return effective.length;
+    }
+
+    @Override
+    public long getContentLengthLong() {
+        return effective.length;
+    }
+
     @Override
     public ServletInputStream getInputStream() {
-        ByteArrayInputStream in = new ByteArrayInputStream(body);
+        ByteArrayInputStream in = new ByteArrayInputStream(effective);
         return new ServletInputStream() {
             @Override
             public boolean isFinished() {

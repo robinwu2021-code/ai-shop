@@ -43,8 +43,9 @@ class GuardPipelineTest {
         }
 
         @Override
-        public void decryptSensitiveFields(HttpServletRequest request, PortalPrincipal who) {
+        public GuardResult decryptSensitiveFields(HttpServletRequest request, PortalPrincipal who) {
             calls.add("decrypt");
+            return null;
         }
 
         @Override

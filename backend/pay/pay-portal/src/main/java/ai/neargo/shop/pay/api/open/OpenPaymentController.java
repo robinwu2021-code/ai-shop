@@ -18,6 +18,7 @@ import ai.neargo.shop.pay.api.open.OpenViews.StartReq;
 import ai.neargo.shop.pay.checkout.service.CheckoutService;
 import ai.neargo.shop.pay.checkout.service.CheckoutService.Issued;
 import ai.neargo.shop.pay.merchant.MerchantDefaults;
+import ai.neargo.shop.pay.openapp.OpenSensitiveData;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService.StoreRef;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,10 +49,13 @@ public class OpenPaymentController {
     private final PayMerchantBindingService stores;
     private final String checkoutBase;
     private final CheckoutService checkout;
+    private final OpenSensitiveData sensitive;
 
     public OpenPaymentController(PaymentService payments, PayMerchantBindingService stores,
-                                 @Value("${shop.pay.checkout.base-url:}") String checkoutBase, CheckoutService checkout) {
+                                 @Value("${shop.pay.checkout.base-url:}") String checkoutBase, CheckoutService checkout,
+                                 OpenSensitiveData sensitive) {
         this.checkout = checkout;
+        this.sensitive = sensitive;
         this.payments = payments;
         this.stores = stores;
         this.checkoutBase = checkoutBase;
@@ -79,6 +83,8 @@ public class OpenPaymentController {
                 blank(req.bizNo()) ? req.outOrderNo() : req.bizNo(), req.outOrderNo(),
                 store.storeId(), store.storeName(), store.entityName(), market, req.amountMinor(), req.currency(),
                 req.subject(), "ONLINE", Instant.now().plus(minutes, ChronoUnit.MINUTES), store.fundsPath()));
+        // 付款人敏感信息（守卫已解成明文）立即封存，单上只留 blob 与掩码（M3.5）
+        sensitive.sealPayer(o, req.payer());
         // 托管收银台（F32）：每次建单（含幂等重放）都签一张新令牌 —— 明文不落库，旧的到期自然失效
         Issued issued = checkout.issue(o);
         return ok(OrderView.of(o, checkoutBase + "/checkout/" + o.getPayOrderNo() + "?t=" + issued.token()), http);

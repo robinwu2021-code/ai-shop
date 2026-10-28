@@ -23,8 +23,9 @@ public interface EntryGuard {
      */
     GuardResult authenticate(HttpServletRequest request);
 
-    /** 管线 ⑨：敏感字段解密（明文只活在本次请求）。默认不解密 */
-    default void decryptSensitiveFields(HttpServletRequest request, PortalPrincipal who) {
+    /** 管线 ⑨：敏感字段解密（明文只活在本次请求）。默认不解密；回绝时返回结果（明文、解不开 → 400），放行返回 null */
+    default GuardResult decryptSensitiveFields(HttpServletRequest request, PortalPrincipal who) {
+        return null;
     }
 
     /** 管线 ⑪ 的开关：返回 true 时管线缓存响应体并调 {@link #signResponse}；默认不签，响应不被包装 */

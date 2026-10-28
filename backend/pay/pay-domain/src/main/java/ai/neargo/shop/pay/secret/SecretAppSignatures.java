@@ -6,6 +6,7 @@ import ai.neargo.secret.api.KeyRegistry;
 import ai.neargo.secret.api.KeyVault;
 import ai.neargo.secret.api.KeyVersionRef;
 import ai.neargo.secret.api.SecretNamespace;
+import ai.neargo.shop.pay.openapp.AppFieldCipher;
 import ai.neargo.shop.pay.openapp.AppSignatureVerifier;
 import ai.neargo.shop.pay.openapp.AppSigner;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
@@ -27,7 +28,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConditionalOnProperty(name = "shop.pay.open.key-source", havingValue = "secret")
-public class SecretAppSignatures implements AppSignatureVerifier, AppSigner {
+public class SecretAppSignatures implements AppSignatureVerifier, AppSigner, AppFieldCipher {
 
     private final KeyRegistry keys;
     private final KeyVault vault;
@@ -48,10 +49,7 @@ public class SecretAppSignatures implements AppSignatureVerifier, AppSigner {
             if (keyId.isEmpty()) {
                 return Optional.empty();
             }
-            List<KeyVersionRef> acceptable = keys.verificationVersions(keyId.get());
-            List<KeyVersionRef> candidates = keySerial == null || keySerial.isBlank() ? acceptable
-                    : keys.findVersion(keyId.get(), keySerial.trim()).filter(acceptable::contains).map(List::of)
-                            .orElse(List.of());
+            List<KeyVersionRef> candidates = candidates(keyId.get(), keySerial);
             byte[] data = toSign.getBytes(StandardCharsets.UTF_8);
             for (KeyVersionRef ref : candidates) {
                 if (MessageDigest.isEqual(vault.mac(ref, data), given)) {
@@ -75,9 +73,40 @@ public class SecretAppSignatures implements AppSignatureVerifier, AppSigner {
         }
     }
 
+    /** EncryptKey（{@code PARTNER_DATA}）经 {@link KeyVault#decrypt}：带 X-Encrypt-Serial 只用那一版，否则逐把试可用的版本 */
+    @Override
+    public Optional<byte[]> decrypt(PayApp app, String encryptSerial, byte[] packed, byte[] aad) {
+        try {
+            Optional<Long> keyId = keyIdOf(app, KeyPurpose.PARTNER_DATA);
+            if (keyId.isEmpty()) {
+                return Optional.empty();
+            }
+            for (KeyVersionRef ref : candidates(keyId.get(), encryptSerial)) {
+                try {
+                    return Optional.of(vault.decrypt(ref, packed, aad));
+                } catch (RuntimeException wrongVersionOrTampered) {
+                    // 换下一版；都不对就是解不开
+                }
+            }
+            return Optional.empty();
+        } catch (RuntimeException e) {
+            return Optional.empty();
+        }
+    }
+
+    private List<KeyVersionRef> candidates(long keyId, String serial) {
+        List<KeyVersionRef> acceptable = keys.verificationVersions(keyId);
+        return serial == null || serial.isBlank() ? acceptable
+                : keys.findVersion(keyId, serial.trim()).filter(acceptable::contains).map(List::of).orElse(List.of());
+    }
+
     private Optional<Long> keyIdOf(PayApp app) {
+        return keyIdOf(app, KeyPurpose.INBOUND_HMAC);
+    }
+
+    private Optional<Long> keyIdOf(PayApp app, KeyPurpose purpose) {
         KeyOwner owner = new KeyOwner(SecretNamespace.PAY, ownerTypeOf(app), app.getId());
-        return keys.find(owner, KeyPurpose.INBOUND_HMAC).map(KeyRegistry.KeyInfo::keyId);
+        return keys.find(owner, purpose).map(KeyRegistry.KeyInfo::keyId);
     }
 
     /** {@code pay_app.owner_type}（PARTNER / INTERNAL）→ {@code sec_key.owner_type}（表结构说明 §3.1） */

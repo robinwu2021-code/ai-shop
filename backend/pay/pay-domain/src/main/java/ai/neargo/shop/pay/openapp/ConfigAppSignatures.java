@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import javax.crypto.Cipher;
 import javax.crypto.Mac;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.env.Environment;
@@ -19,10 +21,11 @@ import org.springframework.stereotype.Component;
  * {@code shop.pay.open.key-source=secret} 时由 {@code SecretAppSignatures} 取代（开发计划 M3.10 切换）。
  *
  * <p>配置里可以写带前缀的整串 AppSecret（运维照接入方拿到的那串贴），HMAC 只用前缀之后那段（API 清单 §7 P1）。
+ * 敏感字段的 EncryptKey 在 {@code .encrypt-key}（轮换期另配 {@code .encrypt-key-next}；M3.5）。
  */
 @Component
 @ConditionalOnProperty(name = "shop.pay.open.key-source", havingValue = "config", matchIfMissing = true)
-public class ConfigAppSignatures implements AppSignatureVerifier, AppSigner {
+public class ConfigAppSignatures implements AppSignatureVerifier, AppSigner, AppFieldCipher {
 
     /** AppSecret 的展示前缀（PartnerKeyService 发密钥时加，不参与 HMAC） */
     static final List<String> DISPLAY_PREFIXES = List.of("sk_live_", "sk_test_");
@@ -54,6 +57,29 @@ public class ConfigAppSignatures implements AppSignatureVerifier, AppSigner {
         String current = current(app.getAppNo());
         return current == null ? Optional.empty()
                 : Optional.of(new Signature(Base64.getEncoder().encodeToString(hmac(current, data)), null, null));
+    }
+
+    @Override
+    public Optional<byte[]> decrypt(PayApp app, String encryptSerial, byte[] packed, byte[] aad) {
+        if (packed == null || packed.length < 12 + 16) {
+            return Optional.empty();
+        }
+        for (String suffix : List.of("encrypt-key", "encrypt-key-next")) {
+            String k = env.getProperty("shop.pay.open.apps." + app.getAppNo() + "." + suffix);
+            if (k == null || k.isBlank()) {
+                continue;
+            }
+            try {
+                Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+                c.init(Cipher.DECRYPT_MODE, new SecretKeySpec(k.trim().getBytes(StandardCharsets.UTF_8), "AES"),
+                        new GCMParameterSpec(128, packed, 0, 12));
+                c.updateAAD(aad);
+                return Optional.of(c.doFinal(packed, 12, packed.length - 12));
+            } catch (Exception wrongKeyOrTampered) {
+                // 换下一把；都不对就是解不开，不分哪一步
+            }
+        }
+        return Optional.empty();
     }
 
     private String current(String appNo) {

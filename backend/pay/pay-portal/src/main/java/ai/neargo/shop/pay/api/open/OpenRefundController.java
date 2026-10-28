@@ -7,7 +7,9 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.acquiring.dto.RefundRequestCmd;
+import ai.neargo.shop.pay.acquiring.entity.PayRefund;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
+import ai.neargo.shop.pay.openapp.OpenSensitiveData;
 import ai.neargo.shop.pay.api.common.PortalResponse;
 import ai.neargo.shop.pay.api.open.OpenViews.RefundReq;
 import ai.neargo.shop.pay.api.open.OpenViews.RefundView;
@@ -31,8 +33,10 @@ public class OpenRefundController {
 
     private final AppAuthService apps;
     private final RefundService refunds;
+    private final OpenSensitiveData sensitive;
 
-    public OpenRefundController(AppAuthService apps, RefundService refunds) {
+    public OpenRefundController(AppAuthService apps, RefundService refunds, OpenSensitiveData sensitive) {
+        this.sensitive = sensitive;
         this.apps = apps;
         this.refunds = refunds;
     }
@@ -46,8 +50,11 @@ public class OpenRefundController {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         apps.checkDailyRefund(caller.callerId(), req.amountMinor());
-        return ok(RefundView.of(refunds.request(caller, new RefundRequestCmd(payOrderNo,
-                req.outRefundNo(), req.outRefundNo(), req.amountMinor(), req.reason()))), http);
+        PayRefund r = refunds.request(caller, new RefundRequestCmd(payOrderNo, req.outRefundNo(), req.outRefundNo(),
+                req.amountMinor(), req.reason()));
+        // 线下退款收款账号（守卫已解成明文）立即封存（M3.5）
+        sensitive.sealRefundAccount(r, req.refundAccount());
+        return ok(RefundView.of(r), http);
     }
 
     @GetMapping("/refunds/{payRefundNo}")
