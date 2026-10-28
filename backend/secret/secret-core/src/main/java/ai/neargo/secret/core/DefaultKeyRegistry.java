@@ -279,6 +279,17 @@ public class DefaultKeyRegistry implements KeyRegistry {
     }
 
     @Override
+    public List<KeySummary> keys(SecretNamespace namespace) {
+        return db.keys().selectList(Wrappers.<SecKey>lambdaQuery().eq(SecKey::getNamespace, namespace.name())
+                        .eq(SecKey::getEnv, settings.requireEnv()).orderByAsc(SecKey::getOwnerType).orderByAsc(SecKey::getId))
+                .stream()
+                .map(k -> new KeySummary(new KeyInfo(k.getId(), new KeyOwner(namespace, k.getOwnerType(), k.getOwnerId()),
+                        new KeyPurpose(KeyPurpose.Direction.valueOf(k.getDirection()), KeyPurpose.Usage.valueOf(k.getKeyUsage())),
+                        k.getStatus(), k.getCurrentVersion(), k.getExpiresAt()), k.getName(), k.getCounterparty()))
+                .toList();
+    }
+
+    @Override
     public List<VersionInfo> versions(long keyId) {
         requireKey(keyId);
         return db.versions().selectList(Wrappers.<SecKeyVersion>lambdaQuery().eq(SecKeyVersion::getSecKeyId, keyId)

@@ -5,6 +5,8 @@ import ai.neargo.shop.pay.acquiring.service.PayOpsQueryService.OrderFilter;
 import ai.neargo.shop.pay.client.PayOpsInternalApi;
 import ai.neargo.shop.pay.client.PayOpsInternalApi.OperatorReq;
 import ai.neargo.shop.pay.client.PortResult;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.RequestLogFilter;
 import ai.neargo.shop.pay.ops.PayOpsFacade;
 import java.util.Arrays;
 import java.util.function.Supplier;
@@ -24,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalPayOpsEndpoint {
 
     private final PayOpsFacade ops;
+    private final PayAccessOpsFacade access;
 
-    public InternalPayOpsEndpoint(PayOpsFacade ops) {
+    public InternalPayOpsEndpoint(PayOpsFacade ops, PayAccessOpsFacade access) {
         this.ops = ops;
+        this.access = access;
     }
 
     @GetMapping(PayOpsInternalApi.PREFIX + "/orders")
@@ -89,6 +93,79 @@ public class InternalPayOpsEndpoint {
     public PortResult<?> disableQrCode(@PathVariable String qrCode, @RequestBody OperatorReq req) {
         return run(() -> {
             ops.disableQrCode(qrCode, req.operatorNo());
+            return null;
+        });
+    }
+
+    // ---- 接入与密钥（M5b） ----
+
+    @GetMapping(PayOpsInternalApi.PREFIX + "/apps")
+    public PortResult<?> apps() {
+        return run(access::apps);
+    }
+
+    @GetMapping(PayOpsInternalApi.PREFIX + "/apps/{appNo}/grants")
+    public PortResult<?> appGrants(@PathVariable String appNo) {
+        return run(() -> access.grants(appNo));
+    }
+
+    @GetMapping(PayOpsInternalApi.PREFIX + "/apps/{appNo}/credentials")
+    public PortResult<?> credentials(@PathVariable String appNo) {
+        return run(() -> access.credentials(appNo));
+    }
+
+    @PostMapping(PayOpsInternalApi.PREFIX + "/apps/{appNo}/credentials/{kind}/{version}/revoke")
+    public PortResult<?> revokeCredential(@PathVariable String appNo, @PathVariable String kind, @PathVariable int version,
+                                          @RequestBody OperatorReq req) {
+        return run(() -> {
+            access.revokeCredential(appNo, kind, version, req.reason(), req.operatorNo());
+            return null;
+        });
+    }
+
+    @GetMapping(PayOpsInternalApi.PREFIX + "/request-logs")
+    public PortResult<?> requestLogs(@RequestParam(required = false) String entry, @RequestParam(required = false) String appNo,
+                                     @RequestParam(required = false) String sourceService,
+                                     @RequestParam(required = false) String traceId,
+                                     @RequestParam(required = false) String outcome, @RequestParam(required = false) Long fromMs,
+                                     @RequestParam(required = false) Long toMs, @RequestParam int page, @RequestParam int size) {
+        return run(() -> access.requestLogs(new RequestLogFilter(entry, appNo, sourceService, traceId, outcome, fromMs, toMs),
+                page, size));
+    }
+
+    @GetMapping(PayOpsInternalApi.PREFIX + "/request-logs/{id}")
+    public PortResult<?> requestLog(@PathVariable Long id) {
+        return run(() -> access.requestLog(id));
+    }
+
+    @GetMapping(PayOpsInternalApi.PREFIX + "/qr-codes")
+    public PortResult<?> qrCodes(@RequestParam(required = false) Long storeId, @RequestParam(required = false) String status,
+                                 @RequestParam int page, @RequestParam int size) {
+        return run(() -> access.qrCodes(storeId, status, page, size));
+    }
+
+    @GetMapping(PayOpsInternalApi.PREFIX + "/platform-keys")
+    public PortResult<?> platformKeys() {
+        return run(access::platformKeys);
+    }
+
+    @GetMapping(PayOpsInternalApi.PREFIX + "/platform-keys/{keyId}/versions")
+    public PortResult<?> platformKeyVersions(@PathVariable long keyId) {
+        return run(() -> access.platformKeyVersions(keyId));
+    }
+
+    @PostMapping(PayOpsInternalApi.PREFIX + "/platform-keys/{keyId}/versions/{version}/enable")
+    public PortResult<?> enablePlatformKey(@PathVariable long keyId, @PathVariable int version, @RequestBody OperatorReq req) {
+        return run(() -> {
+            access.enablePlatformKey(keyId, version, req.operatorNo());
+            return null;
+        });
+    }
+
+    @PostMapping(PayOpsInternalApi.PREFIX + "/platform-keys/{keyId}/versions/{version}/revoke")
+    public PortResult<?> revokePlatformKey(@PathVariable long keyId, @PathVariable int version, @RequestBody OperatorReq req) {
+        return run(() -> {
+            access.revokePlatformKey(keyId, version, req.reason(), req.operatorNo());
             return null;
         });
     }

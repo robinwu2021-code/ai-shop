@@ -172,6 +172,19 @@ public final class Perms {
     public static final String PAY_LOG_VIEW = "pay:log:view";
     public static final String PAY_NOTIFY_RESEND = "pay:notify:resend";
     public static final String PAY_QR_MANAGE = "pay:qr:manage";
+    /**
+     * 支付运营 · 接入方与密钥（开发计划 M5b，pay-guard TDD §2.8.3）。看接入方与授权、看密钥指纹是一档；
+     * 吊销接入方密钥单列 —— 吊了接入方立即调不通，影响面是对方整条业务线。
+     */
+    public static final String PAY_APP_MANAGE = "pay:app:manage";
+    public static final String PAY_APP_CREDENTIAL_REVOKE = "pay:app-credential:revoke";
+    /**
+     * 平台证书与密钥（渠道平台证书、收款商户调渠道的密钥…，{@code sec_key} 中非接入方的那些）。
+     * 看 / 吊销 / 启用三档分开：启用另由密钥模块强制「启用人 ≠ 录入人」，授给一个人也启用不了自己录的版本。
+     */
+    public static final String SEC_KEY_VIEW = "sec:key:view";
+    public static final String SEC_KEY_WRITE = "sec:key:write";
+    public static final String SEC_KEY_ENABLE = "sec:key:enable";
 
     public static final String FINANCE_INVOICE_READ = "finance:invoice:read";
 

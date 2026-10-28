@@ -7,6 +7,15 @@ import ai.neargo.shop.pay.acquiring.service.PayOpsQueryService.OrderDetail;
 import ai.neargo.shop.pay.acquiring.service.PayOpsQueryService.OrderFilter;
 import ai.neargo.shop.pay.acquiring.service.PayOpsQueryService.OrderRow;
 import ai.neargo.shop.pay.acquiring.service.PayOpsQueryService.RefundRow;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.AppRow;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.CredentialRow;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.GrantRow;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.KeyVersionRow;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.PlatformKeyRow;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.QrRow;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.RequestLogDetail;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.RequestLogFilter;
+import ai.neargo.shop.pay.ops.PayAccessOpsFacade.RequestLogRow;
 import ai.neargo.shop.payclient.OpsPaymentAppService;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
@@ -107,5 +116,92 @@ public class OpsPaymentController {
     @PreAuthorize("@perm.can('" + Perms.PAY_QR_MANAGE + "')")
     public void disableQrCode(@PathVariable String qrCode) {
         app.disableQrCode(qrCode);
+    }
+
+    // ---- 接入方与授权、接入方密钥（M5b.1）：只看指纹，明文不出现 ----
+
+    public record RevokeReq(String reason) {
+    }
+
+    @GetMapping("/ops/payments/apps")
+    @PreAuthorize("@perm.can('" + Perms.PAY_APP_MANAGE + "')")
+    public List<AppRow> apps() {
+        return app.apps();
+    }
+
+    @GetMapping("/ops/payments/apps/{appNo}/grants")
+    @PreAuthorize("@perm.can('" + Perms.PAY_APP_MANAGE + "')")
+    public List<GrantRow> appGrants(@PathVariable String appNo) {
+        return app.appGrants(appNo);
+    }
+
+    @GetMapping("/ops/payments/apps/{appNo}/credentials")
+    @PreAuthorize("@perm.can('" + Perms.PAY_APP_MANAGE + "')")
+    public List<CredentialRow> credentials(@PathVariable String appNo) {
+        return app.credentials(appNo);
+    }
+
+    @PostMapping("/ops/payments/apps/{appNo}/credentials/{kind}/{version}/revoke")
+    @PreAuthorize("@perm.can('" + Perms.PAY_APP_CREDENTIAL_REVOKE + "')")
+    public void revokeCredential(@PathVariable String appNo, @PathVariable String kind, @PathVariable int version,
+                                 @RequestBody RevokeReq req) {
+        app.revokeCredential(appNo, kind, version, req.reason());
+    }
+
+    // ---- 请求记录（M5b.2）：含内部调用来源，按追踪号串两边 ----
+
+    @GetMapping("/ops/payments/request-logs")
+    @PreAuthorize("@perm.can('" + Perms.PAY_LOG_VIEW + "')")
+    public List<RequestLogRow> requestLogs(@RequestParam(required = false) String entry,
+                                           @RequestParam(required = false) String appNo,
+                                           @RequestParam(required = false) String sourceService,
+                                           @RequestParam(required = false) String traceId,
+                                           @RequestParam(required = false) String outcome,
+                                           @RequestParam(required = false) Long fromMs,
+                                           @RequestParam(required = false) Long toMs,
+                                           @RequestParam(defaultValue = "1") int page,
+                                           @RequestParam(defaultValue = "20") int size) {
+        return app.requestLogs(new RequestLogFilter(entry, appNo, sourceService, traceId, outcome, fromMs, toMs), page, size);
+    }
+
+    @GetMapping("/ops/payments/request-logs/{id}")
+    @PreAuthorize("@perm.can('" + Perms.PAY_LOG_VIEW + "')")
+    public RequestLogDetail requestLog(@PathVariable Long id) {
+        return app.requestLog(id);
+    }
+
+    // ---- 静态收款码（M5b.4）：列表；停用见上 ----
+
+    @GetMapping("/ops/payments/qr-codes")
+    @PreAuthorize("@perm.can('" + Perms.PAY_QR_MANAGE + "')")
+    public List<QrRow> qrCodes(@RequestParam(required = false) Long storeId, @RequestParam(required = false) String status,
+                               @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) {
+        return app.qrCodes(storeId, status, page, size);
+    }
+
+    // ---- 平台证书与密钥（M5b.3）：启用两人（密钥模块强制） ----
+
+    @GetMapping("/ops/payments/platform-keys")
+    @PreAuthorize("@perm.can('" + Perms.SEC_KEY_VIEW + "')")
+    public List<PlatformKeyRow> platformKeys() {
+        return app.platformKeys();
+    }
+
+    @GetMapping("/ops/payments/platform-keys/{keyId}/versions")
+    @PreAuthorize("@perm.can('" + Perms.SEC_KEY_VIEW + "')")
+    public List<KeyVersionRow> platformKeyVersions(@PathVariable long keyId) {
+        return app.platformKeyVersions(keyId);
+    }
+
+    @PostMapping("/ops/payments/platform-keys/{keyId}/versions/{version}/enable")
+    @PreAuthorize("@perm.can('" + Perms.SEC_KEY_ENABLE + "')")
+    public void enablePlatformKey(@PathVariable long keyId, @PathVariable int version) {
+        app.enablePlatformKey(keyId, version);
+    }
+
+    @PostMapping("/ops/payments/platform-keys/{keyId}/versions/{version}/revoke")
+    @PreAuthorize("@perm.can('" + Perms.SEC_KEY_WRITE + "')")
+    public void revokePlatformKey(@PathVariable long keyId, @PathVariable int version, @RequestBody RevokeReq req) {
+        app.revokePlatformKey(keyId, version, req.reason());
     }
 }

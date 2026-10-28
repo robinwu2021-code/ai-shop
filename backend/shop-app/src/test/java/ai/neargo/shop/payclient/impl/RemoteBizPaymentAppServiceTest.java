@@ -14,6 +14,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PayBizInternalApi.RefundReq;
 import ai.neargo.shop.pay.client.PortResult;
+import ai.neargo.shop.spi.platform.AuditLogPort;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +27,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 class RemoteBizPaymentAppServiceTest {
 
     private final PayBizInternalApi api = mock(PayBizInternalApi.class);
-    private final RemoteBizPaymentAppService remote = new RemoteBizPaymentAppService(api);
+    private final AuditLogPort audit = mock(AuditLogPort.class);
+    private final RemoteBizPaymentAppService remote = new RemoteBizPaymentAppService(api, audit);
 
     @BeforeEach
     void loginAsMerchant() {
@@ -40,7 +42,7 @@ class RemoteBizPaymentAppServiceTest {
     }
 
     @Test
-    @DisplayName("★★★ 每个调用带上当前商家账号与当前门店")
+    @DisplayName("★★★ 每个调用带上当前商家账号与当前门店；做成了才留痕")
     void operatorAndStoreAreCarried() {
         when(api.disableQrCode("S-1", "QR-1", "MCH-A")).thenReturn(PortResult.ok(null));
         when(api.refunds("S-1", "MCH-A")).thenReturn(PortResult.ok(List.of()));
@@ -50,15 +52,17 @@ class RemoteBizPaymentAppServiceTest {
 
         verify(api).disableQrCode("S-1", "QR-1", "MCH-A");
         verify(api).refunds("S-1", "MCH-A");
+        verify(audit).record("BIZ_PAY_QR_DISABLE", "S-1/QR-1", "停用收款码");
     }
 
     @Test
-    @DisplayName("★★★ 支付的业务拒绝还原成同一个错误码（b-app 看到的与内嵌形态一致）")
+    @DisplayName("★★★ 支付的业务拒绝还原成同一个错误码（b-app 看到的与内嵌形态一致）；没做成的不留痕")
     void rejectionBecomesBizException() {
         when(api.requestRefund(eq("S-1"), any())).thenReturn(PortResult.rejected("PAY_FORBIDDEN", List.of()));
 
         assertThatThrownBy(() -> remote.requestRefund("S-1", "PYO-1", 100L, null, null))
                 .isInstanceOfSatisfying(BizException.class, e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.PAY_FORBIDDEN));
         verify(api).requestRefund("S-1", new RefundReq("MCH-A", "PYO-1", 100L, null, null));
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 }

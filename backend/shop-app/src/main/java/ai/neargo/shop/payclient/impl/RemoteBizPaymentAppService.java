@@ -7,14 +7,15 @@ import ai.neargo.shop.pay.acquiring.service.PayStatementService.DailyStatement;
 import ai.neargo.shop.pay.biz.PayBizFacade.CollectView;
 import ai.neargo.shop.pay.biz.PayBizFacade.QrView;
 import ai.neargo.shop.pay.biz.PayBizFacade.RefundView;
-import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PayBizInternalApi.CollectReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.GrantReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.QrReq;
 import ai.neargo.shop.pay.client.PayBizInternalApi.RefundReq;
+import ai.neargo.shop.pay.client.PayBizInternalApi;
 import ai.neargo.shop.pay.client.PortResult;
 import ai.neargo.shop.pay.openapp.service.AppGrantService.GrantView;
 import ai.neargo.shop.payclient.BizPaymentAppService;
+import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.ServiceCalls;
@@ -22,6 +23,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -36,63 +38,84 @@ public class RemoteBizPaymentAppService implements BizPaymentAppService {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
 
     private final PayBizInternalApi pay;
+    private final AuditLogPort auditLogPort;
 
-    public RemoteBizPaymentAppService(InternalHttp http) {
-        this(http.client(ServiceName.PAY, PayBizInternalApi.class, READ_TIMEOUT));
+    @Autowired
+    public RemoteBizPaymentAppService(InternalHttp http, AuditLogPort auditLogPort) {
+        this(http.client(ServiceName.PAY, PayBizInternalApi.class, READ_TIMEOUT), auditLogPort);
     }
 
-    RemoteBizPaymentAppService(PayBizInternalApi pay) {
+    RemoteBizPaymentAppService(PayBizInternalApi pay, AuditLogPort auditLogPort) {
         this.pay = pay;
+        this.auditLogPort = auditLogPort;
     }
 
     @Override
     public List<GrantView> grants(String storeNo) {
-        return unwrap(() -> pay.grants(storeNo, operator()));
+        List<GrantView> result = unwrap(() -> pay.grants(storeNo, operator()));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "已授权的第三方");
+        return result;
     }
 
     @Override
     public GrantView grant(String storeNo, String appNo, Set<String> actions) {
-        return unwrap(() -> pay.grant(storeNo, new GrantReq(operator(), appNo, actions)));
+        GrantView result = unwrap(() -> pay.grant(storeNo, new GrantReq(operator(), appNo, actions)));
+        auditLogPort.record("BIZ_PAY_APP_GRANT", storeNo + "/" + appNo, String.valueOf(actions), true);
+        return result;
     }
 
     @Override
     public void revokeGrant(String storeNo, Long id) {
         unwrap(() -> pay.revokeGrant(storeNo, id, operator()));
+        auditLogPort.record("BIZ_PAY_APP_GRANT_REVOKE", storeNo + "/" + id, "撤销授权", true);
     }
 
     @Override
     public CollectView collect(String storeNo, Long amountMinor, String subject, Integer expireMinutes) {
-        return unwrap(() -> pay.collect(storeNo, new CollectReq(operator(), amountMinor, subject, expireMinutes)));
+        CollectView result = unwrap(() -> pay.collect(storeNo, new CollectReq(operator(), amountMinor, subject, expireMinutes)));
+        auditLogPort.record("BIZ_PAY_COLLECT", storeNo, "代客收款 " + amountMinor);
+        return result;
     }
 
     @Override
     public List<QrView> qrCodes(String storeNo) {
-        return unwrap(() -> pay.qrCodes(storeNo, operator()));
+        List<QrView> result = unwrap(() -> pay.qrCodes(storeNo, operator()));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款码");
+        return result;
     }
 
     @Override
     public QrView createQrCode(String storeNo, String kind, String tableRef, Long singleLimitMinor, Long dailyLimitMinor) {
-        return unwrap(() -> pay.createQrCode(storeNo, new QrReq(operator(), kind, tableRef, singleLimitMinor, dailyLimitMinor)));
+        QrView result = unwrap(() -> pay.createQrCode(storeNo, new QrReq(operator(), kind, tableRef, singleLimitMinor, dailyLimitMinor)));
+        auditLogPort.record("BIZ_PAY_QR_CREATE", storeNo, kind + (tableRef == null ? "" : " " + tableRef));
+        return result;
     }
 
     @Override
     public void disableQrCode(String storeNo, String qrCode) {
         unwrap(() -> pay.disableQrCode(storeNo, qrCode, operator()));
+        auditLogPort.record("BIZ_PAY_QR_DISABLE", storeNo + "/" + qrCode, "停用收款码");
     }
 
     @Override
     public RefundView requestRefund(String storeNo, String payOrderNo, Long amountMinor, String reason, String outRefundNo) {
-        return unwrap(() -> pay.requestRefund(storeNo, new RefundReq(operator(), payOrderNo, amountMinor, reason, outRefundNo)));
+        RefundView result = unwrap(() -> pay.requestRefund(storeNo, new RefundReq(operator(), payOrderNo, amountMinor, reason, outRefundNo)));
+        auditLogPort.record("BIZ_PAY_REFUND", storeNo + "/" + payOrderNo, "原路退款 " + amountMinor, true);
+        return result;
     }
 
     @Override
     public List<RefundView> refunds(String storeNo) {
-        return unwrap(() -> pay.refunds(storeNo, operator()));
+        List<RefundView> result = unwrap(() -> pay.refunds(storeNo, operator()));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "最近退款");
+        return result;
     }
 
     @Override
     public DailyStatement statement(String storeNo, String day) {
-        return unwrap(() -> pay.statement(storeNo, operator(), day));
+        DailyStatement result = unwrap(() -> pay.statement(storeNo, operator(), day));
+        auditLogPort.record("BIZ_PAY_VIEW", storeNo, "收款日流水 " + (day == null ? "今天" : day));
+        return result;
     }
 
     private static String operator() {

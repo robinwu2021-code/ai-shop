@@ -14,6 +14,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.client.PayOpsInternalApi;
 import ai.neargo.shop.pay.client.PayOpsInternalApi.OperatorReq;
 import ai.neargo.shop.pay.client.PortResult;
+import ai.neargo.shop.spi.platform.AuditLogPort;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +27,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 class RemoteOpsPaymentAppServiceTest {
 
     private final PayOpsInternalApi api = mock(PayOpsInternalApi.class);
-    private final RemoteOpsPaymentAppService remote = new RemoteOpsPaymentAppService(api);
+    private final AuditLogPort audit = mock(AuditLogPort.class);
+    private final RemoteOpsPaymentAppService remote = new RemoteOpsPaymentAppService(api, audit);
 
     @BeforeEach
     void loginAsOperator() {

@@ -83,6 +83,18 @@ public interface KeyRegistry {
     String fingerprintOfMaterial(byte[] material);
 
     /** 一个版本的元数据：没有任何材料 */
+    /**
+     * 运营查看（开发计划 M5b.3）：一个命名空间下、当前进程环境里的全部密钥 —— 只有元数据，没有任何材料。
+     * 默认实现不支持；只有密钥模块自己的实现能列。
+     */
+    default List<KeySummary> keys(SecretNamespace namespace) {
+        throw new UnsupportedOperationException("listing keys needs the secret module's registry");
+    }
+
+    /** 一把密钥给人看的那几样：归属、用途、名称、对端、状态、当前版本、到期 */
+    record KeySummary(KeyInfo info, String name, String counterparty) {
+    }
+
     record VersionInfo(KeyVersionRef ref, String status, String enteredBy, String fingerprint, String externalKeyId) {
     }
 

@@ -3,6 +3,7 @@ package ai.neargo.shop.scenario;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import ai.neargo.secret.api.KeyOwner;
 import ai.neargo.secret.api.KeyPurpose;
@@ -61,6 +62,8 @@ class OpenSecretKeyFlowTest {
     @Autowired private tools.jackson.databind.ObjectMapper json;
     @Autowired private ai.neargo.shop.pay.secret.OpenKeyImport keyImport;
     @Autowired private ai.neargo.shop.pay.openapp.AppFieldCipher cipher;
+    @Autowired private ai.neargo.shop.pay.ops.PayAccessOpsFacade access;
+    @Autowired private ai.neargo.shop.auth.TokenStore tokens;
 
     private MockMvc mvc;
     private String appNo;
@@ -344,5 +347,56 @@ class OpenSecretKeyFlowTest {
         String pinnedWrong = rid();
         assertThat(getOrder(v1, v2.keySerial(), null, pinnedWrong).getStatus()).as("指了 v2 却用 v1 签").isEqualTo(401);
         assertThat(loggedVersion(pinnedWrong)).as("没通过就不记版本").isNull();
+    }
+
+    /** 运营端调用（平台会话；M5b 的页面都经 /ops/payments） */
+    private MockHttpServletResponse ops(MockHttpServletRequestBuilder b, String token) throws Exception {
+        return mvc.perform(b.header("Authorization", "Bearer " + token)).andReturn().getResponse();
+    }
+
+    @Test
+    @DisplayName("★★★ M5b.1 运营看接入方密钥只有指纹与序列号（明文不出现）；吊销后下一次签名请求 401")
+    void opsRevokesAnAppCredential() throws Exception {
+        IssuedCredential v1 = issueAndEnable();
+        assertThat(getOrder(v1, null, null, rid()).getStatus()).isNotEqualTo(401);
+        String admin = ai.neargo.shop.support.TestLogin.admin(mvc, json);
+
+        String listed = ops(get("/ops/payments/apps/" + appNo + "/credentials"), admin).getContentAsString();
+        assertThat(listed).contains("APP_SECRET").contains(v1.keySerial())
+                .doesNotContain(v1.secret().substring("sk_test_".length()));
+        assertThat(ops(post("/ops/payments/apps/" + appNo + "/credentials/APP_SECRET/1/revoke")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"泄露\"}"), admin).getContentAsString())
+                .contains("\"code\":0");
+
+        assertThat(getOrder(v1, null, null, rid()).getStatus()).as("吊销即时生效").isEqualTo(401);
+        assertThat(access.credentials(appNo)).singleElement().satisfies(c -> assertThat(c.status()).isEqualTo("REVOKED"));
+    }
+
+    @Test
+    @DisplayName("★★★ M5b.3 平台密钥：启用人 = 录入人被拦（PAY_APPROVAL_SAME_PERSON）；换一个人能启用；接入方的密钥不在这一页")
+    void platformKeyEnableNeedsTwoPeople() throws Exception {
+        issueAndEnable();
+        String admin = ai.neargo.shop.support.TestLogin.admin(mvc, json);
+        String adminNo = tokens.get(admin).orElseThrow().user().userNo();
+        long keyId = registry.register(new ai.neargo.secret.api.KeyRegistry.NewKey(
+                new KeyOwner(SecretNamespace.PAY, "CHANNEL_PLATFORM", System.nanoTime() % 1_000_000),
+                KeyPurpose.COUNTERPARTY_VERIFY, "微信平台证书", "WECHAT", "RSA_SHA256", "CERTIFICATE", adminNo));
+        KeyVersionRef v = registry.addVersion(keyId, new ai.neargo.secret.api.KeyRegistry.NewVersion(null,
+                "-----BEGIN CERTIFICATE-----", "UPLOADED", "SN-" + keyId, null, null, adminNo));
+        registry.markVerified(v, "test", adminNo);
+
+        String keys = ops(get("/ops/payments/platform-keys"), admin).getContentAsString();
+        assertThat(keys).contains("\"keyId\":" + keyId).doesNotContain(appNo).doesNotContain("PARTNER_APP");
+        String self = ops(post("/ops/payments/platform-keys/" + keyId + "/versions/1/enable"), admin).getContentAsString();
+        assertThat(self).contains("\"code\":" + ai.neargo.shop.common.ErrorCode.PAY_APPROVAL_SAME_PERSON.code());
+
+        access.enablePlatformKey(keyId, 1, "ops-bob");
+        assertThat(access.platformKeyVersions(keyId)).singleElement().satisfies(x -> assertThat(x.status()).isEqualTo("ACTIVE"));
+        long appKeyId = registry.find(new KeyOwner(SecretNamespace.PAY, "PARTNER_APP",
+                jdbc.queryForObject("SELECT id FROM pay_app WHERE app_no=?", Long.class, appNo)), KeyPurpose.INBOUND_HMAC)
+                .orElseThrow().keyId();
+        assertThat(ops(post("/ops/payments/platform-keys/" + appKeyId + "/versions/1/revoke")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"x\"}"), admin).getContentAsString())
+                .as("接入方的密钥不能从平台密钥页吊销").contains("\"code\":" + ai.neargo.shop.common.ErrorCode.NOT_FOUND.code());
     }
 }
