@@ -394,8 +394,10 @@ export default {
     cityLevel: "城市级示意，非实时位置",
     callCourier: "拨打快递员电话",
     unfold: "展开全部 {n} 条",
-    fold: "收起",
+
     at: "{t}",
+
+    fold: "收起",
   },
   common: {
     loadFailed: "没能加载出来",
@@ -422,6 +424,29 @@ export default {
     // 店员看到「没有操作权限」只会去找店主要，而那个开关设计上就不存在
     noPermTitle: "无访问权限",
     noPermHint: "当前角色没有此页面的权限。如需使用，请联系店主调整角色。",
+
+    clear: "清除",
+    itemCount: "{n} 件",
+
+    edit: "编辑",
+    rename: "重命名",
+    enable: "启用",
+    disable: "停用",
+    collapse: "收起",
+    more: "更多",
+    choose: "请选择",
+    optional: "选填",
+    next: "下一步",
+    previous: "上一步",
+    name: "名称",
+    status: "状态",
+    phone: "手机号",
+    copy: "复制",
+    loadMore: "加载更多",
+    unsaved: "有修改未保存",
+
+    rules: "规则说明",
+    statisticsBasis: "统计口径",
   },
   tab: {
     home: "工作台",
@@ -468,7 +493,7 @@ export default {
     otpSent: "验证码已发送",
     title: "商家登录",
     hint: "登录即注册；店员使用店主添加时登记的手机号登录。",
-    phone: "手机号",
+
     phonePh: "请输入 11 位手机号",
     code: "验证码",
     codePh: "请输入 6 位验证码",
@@ -490,7 +515,7 @@ export default {
 
   apply: {
     title: "入驻申请",
-    hint: "个人可先开店经营。经营稳定后，平台可代办个体工商户，一并解决收款额度与税务。",
+    hint: "个人主体可先开店；后续可联系平台咨询个体工商户代办。",
     titleMore: "再加一张证照",
     sec1: "① 店铺信息",
     sec2: "② 经营范围",
@@ -509,19 +534,19 @@ export default {
     // 原文「收款走微信零钱」是错的 —— 那是分账接收方形态，不是商户结算账户。
     // 但正确表述待核（见 商户类型定义 §6.8① / 待确认 #7），**先撤掉不实的断言**，
     // 不用另一个未经核实的说法替换它。
-    subjectHint: "个人主体免营业执照，结算账户在收款进件时填写；持有营业执照可选个体户或企业",
+    subjectHint: "个人主体免营业执照；持证请选择个体户或企业。收款账户在收款进件时填写。",
     contact: "联系人",
     phone: "手机号",
     category: "主营类目",
     categoryPh: "如 粮油副食 / 生鲜 / 家政",
-    categoryHint: "填写日常说法即可。可上架的类目由平台审核确定，通过后在「经营资质」中查看。",
+    categoryHint: "填写日常经营品类；审核后的可售类目在「经营资质」中查看。",
     desc: "一句话介绍",
     asPickup: "本店同时作为自提点",
     asPickupHint: "承接邻居到店自提。使用自有门店，平台不收履约服务费，并可带来到店客流。",
     industry: "行业",
     industryHint: "行业决定能否以个人经营者进件，以及是否需要营业执照",
     microBlocked: "该行业不支持个人经营者，请选个体户或企业",
-    scopeHint: "决定商品的可见范围。范围过大会产生无法配送的订单，过小则整片小区都搜索不到本店。",
+    scopeHint: "商品仅在所选范围可见，请按实际配送能力设置。",
     licenses: "资质照片",
     noLicenseNeeded: "所选主体类型无需营业执照，平台仍需核验真实身份。",
     licenseRequired: "需要上传营业执照",
@@ -544,7 +569,7 @@ export default {
     rejectFallback: "资料未通过审核，请补充后重新提交",
     rejectedHint: "以下为上次提交的资料。修改被驳回的项目后重新提交即可，无需重填。",
     onBehalfTitle: "这份资料由平台运营人员代为提交",
-    onBehalfHint: "你名下已经有一张待审的入驻申请，是运营在线下替你录入的。资料你可以在下面逐项核对并修改；不是你本人的话，请联系平台。",
+    onBehalfHint: "平台已代填申请，请核对资料；非本人申请请联系平台。",
     agreementAsk: "还差一步：请你本人确认《商家服务协议》",
     agreementWhy: "运营不能代你同意这份协议，所以这一勾只能由你自己点。",
     agreementAccept: "我已阅读并同意",
@@ -568,18 +593,16 @@ export default {
     },
     noticeNone: "未发布",
     noticeUntil: "{s}到期",
-    scopeEntry: "经营范围",
+
     entriesTitle: "常用功能",
     noticeEntry: "店铺公告",
-    catalogEntry: "经营类目",
-    specsEntry: "商品规格",
-    skuIdentityEntry: "商品编码",
+
     notMerchant: "还没有开店",
     notMerchantHint: "填一张表就能开张，个人主体免资质",
     quickStart: "先把店开起来",
     goApplyWithLicense: "有营业执照？直接走入驻",
     quickStartTitle: "店铺名称",
-    quickStartBody: "填写店名即可开店。营业执照可稍后在「去入驻」中补交；补齐前店铺对顾客不可见，但商品、经营范围与员工均可先行配置。",
+    quickStartBody: "填写店名即可配置商品、经营范围与员工；补齐资质前店铺对顾客不可见。",
     quickStartPh: "如 张记粮油",
     /*
      * 进销存那张卡。**原来它是九宫格里的一格，数字是「缺货 + 滞销」** ——
@@ -587,8 +610,7 @@ export default {
      * 待办里看不见，而库存里其实有几十上百个 SKU。现在是独立一张卡。
      */
     inv: {
-      title: "进销存",
-      all: "全部",
+
       onSale: "在售",
       shortage: "缺货",
       stale: "滞销",
@@ -602,22 +624,20 @@ export default {
     rating: "评分",
     visits7d: "近 7 天到访 {uv} 人 · {pv} 次",
     ownedTraffic: "自带客流",
-    storeEntry: "店铺设置",
-    notifyEntry: "通知设置",
-    shipEntry: "发货设置",
+
     blocker: { license: "还不能开张营业", payment: "还不能收款", scope: "顾客尚不可见", payoutAccount: "货款还打不出去", agreement: "还差你确认一份协议" },
     blockerHint: {
-      license: "补交营业执照后店铺才对顾客可见。已录入的商品全部保留，审核通过后立即上架。",
+      license: "补交营业执照并通过审核后，店铺才对顾客可见；已录商品保留。",
       payment: "收款进件未完成。商品可上架，但顾客无法付款。",
       // 「一个都没选」对只写了排除项的人是假话（他选了，只是全是排除）——
       // 说「一个纳入的地方都没有」才两种情形都对得上
-      scope: "经营范围里没有一个纳入的地方（只有排除也算），货对谁都不可见",
+      scope: "请添加至少一个经营区域，让顾客看到商品。",
       // 不说「否则不能经营」——当前实现只提示不拦截，说重了就是吓唬人
-      payoutAccount: "货款按账期打到你的收款账户，现在还没有一张可用的。单子照常成交，钱先记着。",
-      agreement: "你的资料由平台运营人员代为提交，《商家服务协议》需要你本人确认。生意照做不受影响。",
+      payoutAccount: "请设置收款账户。订单可正常成交，货款保留待按账期结算。",
+      agreement: "资料由平台代提交，请本人确认《商家服务协议》；当前经营不受影响。",
     },
     blockerGo: "去处理",
-    marketingEntry: "营销",
+
     laterBatch: "该功能在后续批次交付",
   },
 
@@ -655,6 +675,7 @@ export default {
       copiedToClipboard: "已复制到剪贴板。建议在电脑上打开本页。",
     },
     mySpecs: {
+    buildOwnPropValue: "新建可选值",
       title: "商品规格",
     tabDims: "销售规格",
     tabProps: "商品参数",
@@ -679,9 +700,9 @@ export default {
       add: "添加",
       valsLead: "点击 ✕ 移除档位，长按拖动调整顺序。规格名称在列表中点击修改。",
       noMorePropValue: "该参数下的平台可选值已全部启用",
-      addPropValuePh: "请输入可选值",
+
       addPropValueHint: "平台未收录的可选值可在此新建；新建后归属该参数，顾客筛选不受影响。",
-      buildOwnPropValue: "新建可选值",
+
       valueMerged: "平台已存在「{name}」，已直接引用",
       save: "保存", cancel: "取消", reset: "恢复平台默认",
       addableHere: "可加回",
@@ -693,8 +714,7 @@ export default {
       rename: "重命名",
       addValue: "添加档位",
       addDim: "添加规格",
-      addProp: "添加参数",
-      collapse: "收起",
+
       quotaShort: "已建 {used}/{max}",
       own: "本店",
       noValueYet: "未设置档位",
@@ -703,12 +723,11 @@ export default {
     },
   qual: {
     title: "经营资质",
-    intro: "上架被拒多数不是商品本身的问题，而是该类目需要尚未提交的资质。提交后由平台核验，通过即可上架。",
     mine: "已传的证",
     emptyMine: "还没传过任何证件",
     unlocked: "已经能卖的类目",
     notGranted: "还没授权的类目",
-    notGrantedHint: "这几类现在也能上架，传证只是为了把资质补齐；平台核过之后这一栏会变成「已经能卖的类目」。",
+    notGrantedHint: "目前可售，资质待补；核验通过后归入已开通类目。",
     locked: "还不能卖的类目",
     lockedHint: "需平台人工核验后开通，提交后不会立即解锁。",
     waiting: "等平台核",
@@ -719,9 +738,9 @@ export default {
     prefilled: "已按证照填好{f}，请核对",
     fieldNumber: "证件编号",
     fieldExpire: "有效期至",
-    expireHint: "长期有效就留空。填了的话到期前 30 天这一页会标出来，过期后新商品上不了架。",
+    expireHint: "长期有效可留空。到期前30天提醒；过期后新商品无法上架。",
     fieldPhoto: "证件照片",
-    submit: "提交",
+
     submitHint: "提交后由平台核验，通常 1 个工作日内完成。",
     submitted: "已提交，等平台核验",
     typeLicense: "营业执照",
@@ -797,9 +816,9 @@ export default {
     saleModeHint: "仅在活动进行中可购买",
     saleActivityOnlyIdle: "仅活动 · 未在活动中",
     stockByInvTitle: "库存改在进销存里",
-    stockByInvHint: "这家店的库存以进销存为准，这一页只是展示。进货开进货单，数对不上开盘点单。",
+    stockByInvHint: "库存由进销存管理：补货请开进货单，数量差异请盘点。",
     stockByInvGo: "去盘点",
-    stockInvHint: "进销存记着 {n}（{where}）。这里改的是商城显示的数，两本账各记各的",
+    stockInvHint: "实物库存 {n}（{where}）；此处仅调整商城数量。",
     stockInvNowhere: "各库位都是 0",
     stockInvNone: "这件货在进销存里还没建账",
     /**
@@ -833,17 +852,17 @@ export default {
     durationPick: "选择时长",
     durationOther: "其他（手动填）",
     durationPh: "多少分钟",
-    verifyStorePick: "选择门店",
+
     verifyStoreHint: "只能选本主体的门店",
     limitPerUser: "每人限购",
     limitPerUserHint: "按顾客累计计算，不含已取消与已退款",
     title: "商品",
-    add: "新建商品",
+
     statusDRAFT: "草稿",
     submit: "提交审核",
     submitted: "已提交，等待平台审核",
     detail: "图文详情",
-    detailPh: "选填",
+
     saveDraft: "保存草稿",
     saveAndSubmit: "保存并提交",
     statusON_SALE: "在售",
@@ -856,7 +875,7 @@ export default {
     offSale: "下架",
     offSaleConfirmTitle: "把这件商品下架？",
     offSaleConfirmHint: "下架后 {store} 的顾客看不到、也买不了它。随时可以再上架。",
-    edit: "编辑",
+
     empty: "暂无商品",
     // ---- 双版本发布（V279）：在售编辑落草稿、线上照卖，发布时原子换版
     hasDraftRow: "有未发布修改 · 查看差异",
@@ -896,7 +915,7 @@ export default {
     publishIntro: "本次发布将改变以下内容",
     publishNoChange: "草稿与线上一致，发布不会改变任何内容",
     publishBlocked: "以下规格档已停用或已合并，请回编辑页调整后再发布",
-    publishStale: "线上商品在你保存之后有过变动。下方差异以此刻线上为基准，核对后可继续发布，或放弃草稿以线上为准",
+    publishStale: "线上已有更新。请核对下方差异后发布，或放弃草稿以线上为准。",
     publishStaleBy: "线上那一版由 {s} 发布",
     publishOverwrites: "发布会覆盖掉这些",
     publishOverwritesHint: "别人在你保存之后改的，不在你这一版里",
@@ -922,7 +941,7 @@ export default {
     multiSkuStock: "多规格商品请在编辑页按规格修改",
     stockInvalid: "库存须为 0 或正整数",
     share: "分享",
-    more: "更多",
+
     shareTitle: "分享「{s}」",
     langZh: "中",
     langEn: "EN",
@@ -938,7 +957,7 @@ export default {
     channelsFailed: "配送方式读取失败，已显示全部",
     fulfillmentRejected: "这条送货方式本店没有开通",
     fulfillmentRejectedHint: "本店已关闭这条配送方式。去开通，或改选其他方式",
-    optional: "选填",
+
     detailBody: "正文",
     setCover: "设为主图",
     coverBadge: "主图",
@@ -972,11 +991,11 @@ export default {
     disableParamDone: "已关掉「{k}」",
     disableParamFail: "没能关掉，稍后再试",
     thisCategory: "这个类目",
-    save: "保存",
+
     moreOther: "更多 ({n})",
-    moreFold: "收起",
+
     manageSpecs: "管理规格与参数",
-    specFold: "收起",
+
     skuCost: "{s} = {n} 个规格",
     // 点选比手输多的那样东西是规格编码 —— 没有它这一档参与不了跨店聚合
     // 「先看后挑」那一屏。顺序即建议顺序：类目配好的 → 通用 → 自建
@@ -1006,10 +1025,7 @@ export default {
     fulfillmentClosedWarn: "这件商品原来的送货方式本店已关闭，顾客将无法下单",
     toStoreScope: "去开启",
     fieldCost: "成本价",
-    fieldBarcode: "条码",
-    fieldSkuCode: "货号",
-    fieldUnit: "单位",
-    secCode: "商品编码",
+
     unitPh: "如 件 / 斤 / kg",
     extShow: "条码与货号",
     costPrice: "成本价（仅本店可见）",
@@ -1041,7 +1057,7 @@ export default {
     applyAll: "统一填入",
     fromPriceShort: "顾客看到 ¥{s} 起",
     fieldPrice: "售价",
-    fieldOrigin: "划线价",
+
     fieldGram: "标称重量",
     invOnHand: "进销存 {n}",
     invView: "查看",
@@ -1054,8 +1070,24 @@ export default {
     restrictedTitle: "设置限购地区",
     restrictedHint: "勾中的省不发货，下单时按收货地址拦截",
     restrictedClear: "恢复全国",
-    restrictedDone: "完成",
+
     unitPiece: "件",
+
+    "save": "保存",
+    "restrictedDone": "完成",
+    "edit": "编辑",
+    "moreFold": "收起",
+    "specFold": "收起",
+    "more": "更多",
+    "detailPh": "选填",
+    "optional": "选填",
+    "add": "新建商品",
+    fieldOrigin: "划线价",
+    "secCode": "商品编码",
+    fieldBarcode: "条码",
+    fieldSkuCode: "货号",
+    fieldUnit: "单位",
+    "verifyStorePick": "选择门店",
   },
 
   order: {
@@ -1079,7 +1111,7 @@ export default {
     changeFulfillmentConfirm: "配送方式将更新并通知买家，订单金额与运费不变。确认修改？",
     changeFulfillmentAction: "确认修改",
     changeFulfillmentDone: "配送方式已更新",
-    tabAll: "全部",
+
     tabToShip: "待发货", tabToReceive: "待收款", statusWAIT_OFFLINE_PAY: "待当面收款",
     tabShipped: "已发货",
     tabToVerify: "待核销",
@@ -1108,7 +1140,6 @@ export default {
     waybillIncomplete: "请填写快递公司、新运单号和更正原因",
     waybillUnchanged: "新运单与当前运单相同",
     trace: "物流轨迹",
-
 
     syncPending: "同步中",
     shippedSyncing: "已发货，物流同步中",
@@ -1153,12 +1184,7 @@ export default {
 
     expressSandbox: "测试",
 
-
     expressWeight: "重量",
-
-
-
-
 
     expressCancel: "取消取件",
     expressCancelAsk: "取消这次取件？",
@@ -1248,7 +1274,6 @@ export default {
 
   },
 
-
   points: {
     typeStatus: "积分状态",
     typeStateActive: "生效中",
@@ -1331,7 +1356,7 @@ export default {
     statementDisputeReason: "异议原因（必填）",
     statementConfirm: "确认本修订",
     statementDispute: "提出异议",
-    statementMore: "加载更多",
+
     statementChecked: "已核对本修订账单",
     statementConfirmHint: "确认当前修订后将进入待兑付流程，请核对积分数量和账期。",
     statementDisputeHint: "提交后本修订停止自动确认，等待运营核查。",
@@ -1346,31 +1371,16 @@ export default {
     accountBuckets: "账户分桶",
     emptyAccount: "当前门店在此类型下暂无账本记录",
     balanceAfter: "变动后余额",
-    loadMore: "加载更多",
 
     title: "积分",
-
-
-
-
-
-
-
-
-
 
     records: "查看积分流水",
 
     recordsTitle: "门店积分流水",
 
-
     recordsEmpty: "暂无积分流水",
 
-
-
-
   },
-
 
   schedule: {
 
@@ -1390,7 +1400,7 @@ export default {
 
     open: "开出时段",
 
-    capacityHint: "名额指该时段可同时接单的数量。开出后只能停约、不能修改名额：调小会使已预约的订单变为超卖，且系统不会报错。如需调整，请停用旧时段并新开一个。",
+    capacityHint: "每时段可同时接单数。开出后不可修改；调整需停用旧时段并新开。",
 
     list: "已开时段",
 
@@ -1412,7 +1422,6 @@ export default {
 
   },
 
-
   verify: {
     tabPickup: "取货核销",
     tabCoupon: "券核销",
@@ -1424,7 +1433,7 @@ export default {
     couponValid: "有效期",
     couponUntil: "至 {d}",
     couponIrreversible: "核销后不能撤销",
-    couponCancel: "取消",
+
     couponRedeemOnce: "核销一次",
     couponRedeem: "核销",
     couponConfirmTitle: "核销「{title}」",
@@ -1515,13 +1524,13 @@ export default {
   },
   payment: {
     storeTitle: "按门店单独收款",
-    storeHint: "不单独开就是合并结算，这家店的钱走主体默认收款号；单独开之后打进它自己的账户。",
+    storeHint: "合并结算使用主体默认收款账户；单独结算使用本店账户。",
     storeShared: "走主体默认号",
     storeOwn: "{ch} · 独立收款号",
     storeOpen: "为这家店单独开通",
     storeOpening: "开通中…",
     storeOpened: "已提交，等通道开户",
-    rejectNoReason: "已驳回，但通道没有说明原因。请联系平台客服协助查询 —— 先别重复提交同一份资料。",
+    rejectNoReason: "通道未提供驳回原因，请联系平台查询，暂勿重复提交。",
     title: "收款设置",
     hint: "开店与收款是两件事：店开了，还要通道批过才能收到钱",
     ok: "可以收款",
@@ -1567,10 +1576,10 @@ export default {
     title: "经营类目",
     adjust: "调整经营类目",
     empty: "还没有经营类目", emptyTip: "先添加经营类目，再建商品",
-    invLabel: "接入进销存",
+
     rename: "改显示名",
     needCert: "需资质",
-    goodsCount: "{n} 件",
+
     inUse: "该类目下仍有商品，请先移至其他类目",
     notAuthorized: "缺少经营这一类的资质，去「经营资质」里补齐后再添加",
   },
@@ -1578,9 +1587,8 @@ export default {
     viewEntity: "查看主体",
     underEntity: "挂在哪张证照下",
     quotaOnThatEntity: "门店额度按所选证照计算，保存时校验。",
-    underEntityHint: "门店额度按证照计算：挂在哪张证照下，即占用该证照的额度。创建后暂不支持改挂。",
+    underEntityHint: "占用所选证照的门店额度，创建后暂不能更换证照。",
 
-    qualEntry: "经营资质",
     title: "门店管理",
     default: "默认",
     currentTag: "当前经营",
@@ -1603,11 +1611,10 @@ export default {
     // placeholder 只说字段名 —— 举例子的话，一打字例子就消失，而那正是最需要它的时候
     slugPh: "门店代码",
     slugInvalid: "3-32 位小写字母、数字或连字符，首尾不能是连字符",
-    payment: "收款账户",
+
     payDefault: "主体默认账户",
-    rename: "重命名", setDefault: "设为默认",
-    disable: "停用",
-    enable: "启用",
+     setDefault: "设为默认",
+
     add: "＋ 新建门店",
     quotaHint: "门店数量受当前套餐额度限制，超出额度将无法创建",
     // 平台因欠费压下的只读，与「已停用」（店主自己关的）分开 —— 两者下一步完全不同
@@ -1615,8 +1622,7 @@ export default {
     planSuspendedAct: "去看套餐",
     name: "门店名",
     namePh: "如 文三路店",
-    address: "门店地址",
-    addressPh: "如 3 号楼 2 单元",
+
     needName: "请先填门店名",
   },
   staff: {
@@ -1642,7 +1648,7 @@ export default {
     roleTip: "角色决定「权限范围」。平台预置六个改不了，可以复制一份改成自己的。",
     builtin: "平台预置",
     builtinHint: "平台预置角色不可修改，可使用「复制为自定义角色」创建副本",
-    copyRole: "复制",
+
     copyOf: "{name}（副本）",
     newRole: "+ 新建角色",
     roleAll: "全部权限",
@@ -1662,11 +1668,10 @@ export default {
     logs: "变更记录",
     logsEmpty: "还没有变更记录",
     grantHint: "再点一次当前角色即可收回这家店的授权",
-    disable: "停用",
-    enable: "启用",
+
     add: "＋ 加员工",
     addHint: "只要手机号。不用设密码，也不用他先注册成消费者",
-    phone: "手机号",
+
     needPhone: "请填 11 位手机号",
   },
   geo: {
@@ -1722,7 +1727,7 @@ export default {
     test: "发一条测试消息",
     testSent: "已发出，去群里看看",
     testFailed: "没发出去，检查地址是否还有效",
-    saved: "已保存",
+
     adminOnly: "仅店主可以改通知设置",
   },
   shipSetting: {
@@ -1736,8 +1741,7 @@ export default {
     carrier: "默认快递",
     weight: "默认重量",
     weightRange: "重量要在 0.1 到 30 公斤之间",
-    unsaved: "有修改未保存",
-    saved: "已保存",
+
     adminOnly: "仅店主可修改发货设置",
     template: "运费模板",
     tplFirst: "首重",
@@ -1760,12 +1764,12 @@ export default {
     offMore: "…等 {n} 件",
     pickup: {
       title: "取货点",
-      lead: "顾客在这些点取货。范围内的常驻点可以直接挑；没有的自建一个，运营核实后生效。",
+      lead: "可选择范围内自提点；新建自提点经核实后生效。",
       mine: "本店自建",
       nearby: "范围内的自提点",
       empty: "范围内没有自提点", emptyTip: "先自建一个",
       buildEntry: "＋ 自建一个取货点",
-      buildHint: "填写门牌上的正式名称与地址，并在地图上标注位置。没有坐标的自提点，顾客无法通过定位找到。",
+      buildHint: "请填写正式名称、地址，并标注地图位置，便于顾客查找。",
       namePh: "请输入取货点名称",
       addressPh: "请输入详细地址",
       hoursPh: "选填，如 08:00–20:00",
@@ -1822,7 +1826,7 @@ export default {
     polygonPointFailed: "取不到当前位置，稍等一下再点",
     unlimitedArea: "全平台不限",
     unlimitedHint: "打开后，全平台的买家都能看到本店",
-    unlimitedIdle: "「全平台不限」只对快递和自送生效 —— 本店当前只开了自提，这一条暂时不起作用",
+    unlimitedIdle: "本店仅开通自提，全平台范围设置暂不生效。",
     polygonArea: "配送范围（{n} 个顶点）",
     polygonAreaBroken: "配送范围（数据异常，请重画）",
     text: {
@@ -1907,7 +1911,7 @@ export default {
     saveRate: "保存费率",
     collapse: "收起",
     offConfirmTitle: "关闭「{s}」",
-    offConfirmBody: "只勾了这一路的在售商品，关掉后顾客下不了单。商品不会被自动改动，关掉后请到「商品」里补选其他送货方式。",
+    offConfirmBody: "关闭后，仅使用此方式的商品将无法下单。商品设置保留，请另选送货方式。",
     offKeep: "先不关",
     offAnyway: "仍然关掉",
     unsaved: "有修改未保存",
@@ -1927,7 +1931,7 @@ export default {
     fulfillFailed: "保存失败，请重试",
     reach: "送货方式",
     reachDesc: {
-      PICKUP: "送至自提点，由顾客自行领取；超出配送的自提点范围则无法送达。适用于社区菜摊、理发店等。",
+      PICKUP: "送到自提点，顾客自取；仅配送至范围内的自提点。",
       ONSITE: "上门服务或自己配送。能做多大范围，下面按区、街道框",
       SHIPPING: "走快递，没有配送半径。虚拟商品、卡券、百货",
     },
@@ -2032,7 +2036,6 @@ export default {
     impactReturn: "整单退款，将同时退回用户的{what}",
     impactCoupon: "券「{name}」",
 
-
     agreeReturn: "同意退货",
     buyerReason: "顾客理由：",
     rejectedHint: "已驳回，等待顾客确认或申请平台介入。",
@@ -2072,6 +2075,14 @@ export default {
     agreed: "已同意，退款原路退回",
     rejected: "已驳回",
     hint: "驳回后订单仍处于售后中，顾客可申请平台介入。理由填写清楚可减少一轮沟通。",
+
+    receiptAllRequired: "请收齐本单退货后确认整单退款",
+    receiptTitle: "退货验收",
+    requestedQty: "申请 {n} 件",
+    receivedQty: "实收件数",
+    saleable: "可再次销售",
+    unsaleable: "不可销售／隔离",
+    quarantineHint: "不可销售的退货计入隔离库存，不增加可售库存。",
   },
   reviews: {
     dimGoods: "商品",
@@ -2145,7 +2156,7 @@ export default {
     settleValue: "随订单结算",
     goods: "商品",
     goodsN: "已选 {n} 件",
-    pick: "请选择",
+
     quota: "份数",
     quotaPh: "份",
     maxMerchant: "最多承担",
@@ -2156,7 +2167,7 @@ export default {
     submit: "提交报名",
     resubmit: "重新提交",
     withdraw: "撤回报名",
-    cancel: "取消",
+
     submitted: "已提交",
     needGoods: "请选择商品",
     needQuota: "请填写份数",
@@ -2200,7 +2211,7 @@ export default {
     goods: "商品",
     pickup: "自提点",
     anyPickup: "不限",
-    pick: "请选择",
+
     byRule: "按活动规则",
     rule: "成团",
     ruleValue: "{n} 人 · {p}",
@@ -2208,13 +2219,13 @@ export default {
     deadlineValue: "开团后 {h} 小时",
     noActivity: "暂无进行中的拼团活动",
     noActivityTip: "请先在「活动」中新建拼团",
-    cancel: "取消",
+
     submit: "开团",
   },
   statement: {
     title: "对账单",
     periodLabel: "账期",
-    allPeriods: "全部",
+
     voucherHint: "每一行带费率与凭证号，可与银行流水逐笔勾对。",
     net: "实得合计",
     gross: "货款",
@@ -2222,7 +2233,7 @@ export default {
     freightCost: "快递费",
     commission: "佣金",
     serviceFee: "履约费",
-    billCount: "结算单",
+
     billCountValue: "{n} 笔",
     export: "导出 CSV",
     exportHint: "手机上存不了盘时会复制到剪贴板 —— 粘到电脑上另存即可。",
@@ -2239,7 +2250,7 @@ export default {
     csvSettleNo: "结算单号",
     csvOrderNo: "订单号",
     csvRate: "佣金率",
-    csvStatus: "状态",
+
     csvVoucher: "凭证号",
   },
   invoice: {
@@ -2255,7 +2266,7 @@ export default {
     titleBlock: "开票抬头",
     titleHint: "照着这些信息开票。开错抬头要退回重开，一来一回半个月。",
     titleMissing: "平台还没配开票信息", titleMissingTip: "现在开出来的抬头一定是错的，先联系客服",
-    copy: "复制",
+
     f_companyName: "公司全称",
     f_taxNo: "税号",
     f_address: "地址",
@@ -2264,10 +2275,10 @@ export default {
     submitBlock: "提交发票",
     numberPlaceholder: "发票号码",
     titleNamePlaceholder: "开票方名称", titleNameHint: "必须与主体名一致",
-    submit: "提交",
+
     submitting: "提交中…",
     submitted: "已提交，等待平台核验",
-    blockNoTitle: "平台还没配开票信息",
+
     blockNoNumber: "请填发票号码",
     blockNoTitleName: "请填开票方名称",
     mineBlock: "我提交的票",
@@ -2283,7 +2294,7 @@ export default {
     frozen: "理赔冻结中",
     required: "本档位要求",
     short: "还差 {n}",
-    shortHint: "补足之前，收款限额会一直压着 —— 超限的订单会付款失败，而买家看到的只是「支付失败」。",
+    shortHint: "保证金额度不足时，超限订单可能付款失败，请及时补足。",
     enough: "已达标",
     enoughHint: "限额按本档位放开。理赔冻结会占用可用额，冻结期间可能重新变成不达标。",
     limitTitle: "当前收款限额",
@@ -2313,7 +2324,7 @@ export default {
     number: "银行账号",
     bank: "开户银行",
     branch: "开户支行",
-    submit: "提交",
+
     submitting: "提交中…",
     submitted: "已提交，等待审核",
     records: "提交记录",
@@ -2378,7 +2389,7 @@ export default {
     pendingHint: "⚠️ 费率与履约服务费口径待平台公示，当前为占位值；退款订单已从应结中扣回。",
   },
   stats: {
-    compareEntry: "跨店对比",
+
     title: "经营数据",
     today: "今日",
     month: "本月",
@@ -2402,7 +2413,7 @@ export default {
     toStock: "待备货",
     legacyNote: "没记门店的历史订单不计入任何一行，所以各店之和可能小于店铺总数。",
     rating: "本店铺评分",
-    ratingScope: "主体口径 · 全部门店合计 {n} 条评价。评价目前挂在店铺上，还没有按门店拆分。",
+    ratingScope: "主体合计 {n} 条评价，暂不按门店拆分。",
     noRating: "暂无评价",
     lastDays: "近 {n} 天",
     gmv: "销售额",
@@ -2411,7 +2422,7 @@ export default {
     storeRating: "门店评分",
     outOfStock: "缺货规格",
     repeatBasis: "{b} 位顾客中有 {r} 位复购",
-    oosNote: "缺货只数已按门店单独设过库存的规格；没设过分店库存的走店铺总量，不算这家店缺货。",
+    oosNote: "缺货仅统计已单设门店库存的规格，共用库存不计入。",
     best: "销售额最高",
     noStores: "尚无已授权的门店，请联系店主授权",
     failed: "数据没取到",
@@ -2429,18 +2440,13 @@ export default {
     },
   },
   marketing: {
-    members: "会员",
-    reachTasks: "发出去的",
-    platform: "平台活动",
+
     enrollable: "{n} 可报名",
     title: "营销",
     monthDiscount: "本月让利",
     monthOrders: "带来订单",
     activities: "活动",
-    coupons: "优惠券",
-    periods: "集单",
-    groups: "团",
-    quotes: "求团报价",
+
     running: "{n} 进行中",
     issuing: "{n} 在发",
     periodToday: "今日 {n} 份 · {t} 截单",
@@ -2458,7 +2464,7 @@ export default {
     tagsOf: "会员标签",
     tagFull: "每人最多 {n} 个标签",
     tagCount: "已选 {n} 个，最多 {m} 个",
-    saveTags: "保存",
+
     title: "会员详情",
     joined: "{s} 加入",
     firstStore: "首次进店：{s}",
@@ -2472,18 +2478,19 @@ export default {
   },
   memberAdd: {
     title: "添加会员",
-    phone: "手机号",
+
     phonePh: "请输入 11 位手机号",
     remark: "备注",
-    remarkPh: "选填",
+
     tags: "标签",
     saved: "已添加",
     savedLead: "已记为线索，顾客注册后自动转正",
-    leadHint: "顾客尚未注册平台账号时，此条记为「线索」：不会收到任何消息；顾客注册后自动认领，此处填写的备注与标签均会保留。",
+    leadHint: "未注册顾客记为线索，不接收消息；注册后自动认领，备注与标签保留。",
   },
+  activityCreate: { title: '新建活动' },
   activities: {
     title: "活动",
-    new: "新建活动",
+
     empty: "暂无活动", emptyTip: "发布后顾客下单自动生效",
     tab: { live: "进行中", pending: "未开始", paused: "已暂停", ended: "已结束" },
     status: { live: "进行中", idle: "不在时段", pending: "未开始", paused: "已暂停", uncapped: "未设上限" },
@@ -2534,18 +2541,17 @@ export default {
     quotaPh: "不填即不限",
     editable: "可改",
     lockedNote: "进行中只能改结束时间和上限；改规则请结束后另建",
-    cancel: "取消",
-    save: "保存",
+
     title: "新建活动",
     titleEdit: "编辑活动",
     stepFill: "填写",
     stepConfirm: "确认",
     progress: "{i} / 2",
-    name: "名称",
+
     namePh: "活动名称",
     play: "玩法",
     playPick: "选择玩法",
-    pickPh: "请选择",
+
     schedule: "时间",
     scheduleType: { ONE_OFF: "一次", ALWAYS_ON: "长期", RECURRING: "每周" },
     start: "开始",
@@ -2585,8 +2591,7 @@ export default {
     exposure: "最多让利",
     exposureUnknown: "按份数封顶",
     conflict: "与「{name}」商品重叠，同一单只享更优惠的一个",
-    prev: "上一步",
-    next: "下一步",
+
     publish: "发布",
     saved: "已发布",
     need: {
@@ -2607,7 +2612,7 @@ export default {
     unlimited: "不限",
     periodsAll: "全部期",
     openGroups: "已开的团",
-    edit: "编辑",
+
   },
   plays: {
     name: {
@@ -2673,19 +2678,19 @@ export default {
     status: { ACTIVE: "在发", LOW: "快发完", PAUSED: "已停", ENDED: "已结束" },
     empty: "暂无优惠券",
     emptyTip: "新建后可选择人群发放",
-    new: "新建券",
+
   },
   coupon: {
     title: "券详情",
     received: "已领",
     used: "已用",
     spent: "已支出",
-    status: "状态",
+
     type: "类型",
     threshold: "门槛",
     validity: "有效期",
     quantity: "数量",
-    issues: "发放记录",
+
     issuesN: "{n} 次",
     pause: "停发",
     resume: "恢复发放",
@@ -2701,7 +2706,7 @@ export default {
     stepFill: "填写",
     stepConfirm: "确认",
     progress: "{i} / 2",
-    name: "名称",
+
     namePh: "顾客可见",
     kind: "类型",
     kindDesc: {
@@ -2737,10 +2742,7 @@ export default {
     perUser: "每人",
     maxSpend: "最多支出",
     unlimited: "不限量",
-    cancel: "取消",
-    next: "下一步",
-    back: "上一步",
-    save: "保存",
+
     needTitle: "请填写名称",
     needValue: "请填写面额",
     needCap: "折扣券需填写封顶",
@@ -2764,7 +2766,7 @@ export default {
     to: "发给",
     preset: { ALL: "全部会员", NEW: "新客", LOYAL: "熟客", SLEEPING: "沉睡会员" },
     maxSpend: "最多支出",
-    cancel: "取消",
+
     confirmTitle: "发给「{name}」",
     confirmBody: "向 {n} 人各发放一张「{title}」，发出后不可撤回",
   },
@@ -2812,7 +2814,7 @@ export default {
     scene: { NOTICE: "店铺公告", WAKEUP: "唤回", COUPON: "发券通知" },
     sceneHint: {
       NOTICE: "上新、调整营业时间这类。同一个人 3 天内最多收到一条",
-      WAKEUP: "召回长期未到店的顾客。同一顾客 14 天内最多收到一条，过于频繁会被屏蔽。",
+      WAKEUP: "召回长期未到店的顾客；同一顾客14天内最多1条。",
       COUPON: "告诉他券到账了。同一个人 7 天内最多收到一条",
     },
     toWhom: "接收人群",
@@ -2830,11 +2832,11 @@ export default {
     pushSplit: "其中 {m} 人会收到手机推送，其余在小程序的消息列表里看到",
     content: "消息内容",
     titlePh: "请输入标题",
-    bodyPh: "选填",
+
     sendN: "发给 {n} 人",
     sendNone: "没有人可发",
     confirmTitle: "发给 {n} 个人",
-    confirmBody: "消息发出去撤不回来。频次限制会挡住最近收到过的人，所以这个数可能比人群小。",
+    confirmBody: "发送后不可撤回；近期已接收消息的顾客可能因频次限制被排除。",
     confirmBtn: "确认发送",
     doneTitle: "已发出 {n} 条",
     doneSplit: "推送到手机 {m} 条，其余进了小程序的消息列表",
@@ -2843,7 +2845,7 @@ export default {
   },
   reachTasks: {
     title: "发出去的",
-    tab: { ALL: "全部", MSG: "消息", COUPON: "券" },
+    tab: {  MSG: "消息", COUPON: "券" },
     msgMeta: "{s} · {a} · {d}",
     msgLine: "{s} 发出 · {o} 进店 · {r} 成单",
     couponMeta: "发券 · {a} · {d}",
@@ -2892,8 +2894,7 @@ export default {
     cover: "覆盖 {n} 人",
     matched: "命中 {n} 人 · 能收到 {m}",
     none: "请选择",
-    cancel: "取消",
-    ok: "确定",
+
     gone: "已删除",
   },
   batchTag: {
@@ -2907,15 +2908,14 @@ export default {
     willRemove: "其中 {a} 人本来就没有，实际去掉 {n} 人",
     full: "{n} 人标签已满 10 个，跳过",
     done: "已改 {n} 人",
-    cancel: "取消",
+
   },
   memberTag: {
     title: "标签详情",
     members: "人",
     thisMonth: "本月新增",
     used: "处在用",
-    name: "名称",
-    status: "状态",
+
     active: "使用中",
     usedIn: "用在哪",
     activity: "活动 · {name}",
@@ -2947,30 +2947,30 @@ export default {
     sendTo: "发给他们",
   },
   memberSegments: {
-    reachHint: "「可收到」比命中人数少，是因为线索会员（手录的号）和关掉消息的人进不了受众",
+    reachHint: "可触达人数不含线索会员和关闭消息的顾客。",
     title: "人群",
     empty: "还没有人群", emptyTip: "在会员列表里筛出一批人，点「另存为人群」",
     count: "{n} 人",
     countedAt: "算于 {t}",
     allMembers: "全部会员",
     recount: "重算",
-    rename: "改名",
+
     remove: "删除",
     removeTitle: "删除「{name}」",
     removeBody: "引用这个人群的活动会失去受众，需要重新选一批人。",
-    ruleHint: "人群保存的是筛选条件而非固定名单。符合条件的顾客每天都在变化，发券时会重新计算。",
+    ruleHint: "人群按条件动态变化，发券时重新计算。",
   },
   memberSettings: {
     title: "会员设置",
-    entry: "会员设置",
+
     scope: "会员统计口径",
     entity: "按主体",
     entityHint: "在任何一家店买过，就是这个主体的会员。多数商家用这个",
     store: "按门店",
-    storeHint: "各门店独立计算。在其他门店消费过的顾客，在本店仍计为新客；适用于门店距离较远的情况。",
+    storeHint: "各门店独立计算新老客，其他门店的消费不计入。",
     confirmTitle: "修改「新客」口径",
-    confirmStore: "改为按门店统计后，在其他门店消费过的顾客在本店仍计为新客，四层人数与活动受众将同步变化。可随时切回，数据不受影响。",
-    confirmEntity: "改回按主体后，只要在任何一家店买过就算老客。随时可以再切成按门店，一个数都不少。",
+    confirmStore: "改为门店独立统计，四层人数与活动受众将重新计算。可切回，数据保留。",
+    confirmEntity: "任一门店消费过即计为老客。可切回门店统计，数据保留。",
     reversible: "两种口径的数据始终并行计算，切换仅改变展示，不影响数据，可随时切回。",
     autoJoin: "支付成功自动入会",
     autoJoinHint: "关掉之后只剩手工录入和本人主动加入。已经在会员里的人不受影响",
@@ -2980,7 +2980,7 @@ export default {
     ruleLoyal: "近 90 天 ≥ {n} 单",
     ruleRegular: "近 90 天 {a}–{b} 单",
     ruleNew: "近 90 天 0–{n} 单",
-    sleepFirst: "口径由平台统一设定，每天凌晨重算。先判沉睡：下单再多，超过 {n} 天没来也算沉睡",
+    sleepFirst: "每日重算，优先判定沉睡：超过 {n} 天未消费即计入。",
   },
   memberTags: {
     disableTitle: "停用「{a}」？",
@@ -2988,17 +2988,16 @@ export default {
     mergeActivities: "引用它的 {n} 个活动会一起改为目标标签",
     title: "标签",
     system: "系统标签",
-    systemHint: "按公开口径每日自动计算，不可改名、不可手动标记。修改后会导致各门店对同一标签理解不一致。",
+    systemHint: "系统每日计算，不可改名或手动标记。",
     mine: "我的标签",
     new: "新建",
     newTitle: "新建标签",
     newPh: "请输入标签名称",
     empty: "还没有标签",
     count: "{n} 人",
-    rename: "改名",
+
     merge: "合并",
-    disable: "停用",
-    enable: "启用",
+
     disabled: "已停用",
     mergeInto: "并入哪个标签",
     mergeNoTarget: "没有可以合并进去的标签",
@@ -3049,7 +3048,7 @@ export default {
     title: "套餐",
     // me 页那一行的副标题**带数字**：「成长版 · 门店 2/3」——
     // 只写档位名的话，他要点进来才知道自己满没满，而满没满正是他要看的
-    meCell: "套餐",
+
     meSub: "{name} · 门店 {used}/{quota}",
     statusACTIVE: "生效中",
     statusGRACE: "即将到期",
@@ -3077,7 +3076,7 @@ export default {
     trialFailed: "开通失败，请稍后再试",
     contactBtn: "升级 / 续费",
     contactTitle: "升级 / 续费",
-    contactBody: "目前由平台人工开通：联系对接人或客服说明需升级的档位，开通后额度立即生效，无需重新登录。",
+    contactBody: "请联系平台开通档位。开通后额度生效，无需重新登录。",
     failed: "套餐信息加载失败",
     // 建店被额度挡住时的弹窗（步骤 4.2）。**当场给出路**，不是只说一句「额度不足」
     blockedTitle: "门店额度已用完",
@@ -3107,7 +3106,7 @@ export default {
     license: "营业执照",
     licenseEmpty: "还没交",
     licenseWhy: "交上执照并通过审核后，这张证照下的店才能被顾客看到。",
-    payment: "收款账户",
+
     payReady: "已开通，可收款",
     payNotReady: "还没开通",
     quals: "其它资质证件",
@@ -3122,8 +3121,7 @@ export default {
   },
   storePick: {
     title: "选择门店",
-    switch: "切换",
-    manage: "管理",
+
     heading: "选择要管理的门店",
     hint: "工作台、订单、商品与送货方式均按所选门店显示。",
     default: "默认店",
@@ -3140,9 +3138,10 @@ export default {
     title: "账号",
   },
   me: {
+    messages: "消息", appearance: "外观与语言", stats: "经营数据",
     loggedOut: "已退出登录",
     account: "登录账号",
-    accountEntry: "账号",
+
     username: "用户名",
     usernameUnset: "未设置",
     usernamePh: "起个名字，1–20 字",
@@ -3153,14 +3152,13 @@ export default {
     passwordSaved: "密码已保存",
     passwordTooShort: "密码至少 6 位",
     store: "我的店铺",
-    messages: "消息",
-    appearance: "外观与语言",
+
     appearanceValue: "配色 · 明暗 · 语言",
     payment: "收款设置",
     staff: "员工",
     income: "收入",
     settle: "结算",
-    stats: "经营数据",
+
     help: "商家帮助",
     version: "版本",
     logout: "退出登录",
@@ -3206,6 +3204,18 @@ export default {
     "biz:store": "店铺装修与配送规则",
     "biz:store:admin": "建店、停用、挂收款号、管员工",
     "biz:finance": "结算账单与收款进件",
+    "pay:sv:recharge:create": "办理与取消未实收储值",
+    "pay:sv:recharge:receive": "核验储值实收",
+    "pay:sv:recharge:read": "查看储值办理进度",
+    "pay:sv:account:read": "查看顾客储值可用余额",
+    "pay:sv:consume:create": "使用储值核销服务",
+    "pay:ent:use": "核销权益",
+    "pay:ent:issue": "定向发放权益",
+    "pay:ent:read": "查看权益与核销记录",
+    "pay:ent:template:read": "查看权益模板",
+    "pay:ent:template:write": "编辑权益模板",
+    "pay:ent:template:publish": "发布与停用权益模板",
+    "pay:ent:issue:manage": "管理权益发行规则",
   },
   fulfillmentLabel: {
     NEIGHBOR_PICKUP: "社区自提",
@@ -3227,8 +3237,7 @@ export default {
   stockSync: {
     section: "线上库存同步",
     state: { NOT_ALIGNED: "未对齐", ALIGNED: "已对齐，未开启", SYNCING: "同步中" },
-    status: "状态",
-    align: "期初对齐",
+
     switchLabel: "同步到线上",
     hint: "开启后，进货、盘点、报损完成时，线上库存按下方规则自动更新。",
     needAlign: "请先完成期初对齐",
@@ -3240,6 +3249,28 @@ export default {
     rule: { ALL: "全部可售", RESERVE: "给门店留 {n} 件", RATIO: "放出 {n}%", CAP: "最多放 {n} 件", MANUAL: "手动 {n} 件", INHERIT: "跟随本店默认" },
     ruleOpt: { ALL: "全部可售", RESERVE: "给门店留几件", RATIO: "按比例放出", CAP: "最多放几件", MANUAL: "手动设置", INHERIT: "跟随上一级" },
     param: { RESERVE: "给门店留几件", RATIO: "放出百分之几（1–100）", CAP: "最多放几件", MANUAL: "线上放几件" },
+
+    recordsTitle: "库存同步记录",
+    recordsEmpty: "暂无库存同步记录",
+    operationNo: "操作号：{no}",
+    operationStatus: {
+      PROCESSING: "处理中",
+      WAITING: "等待同步",
+      FAILED: "需处理",
+      BLOCKED: "暂不可同步",
+      COMPLETED: "已完成",
+      UNKNOWN: "待核实"
+    },
+    noResult: "尚无结果",
+    notApplied: "未执行，请查看处理状态",
+    appliedQty: "线上数量 {before} → {after}",
+    unchangedQty: "无需调整，线上数量 {n}",
+
+    skip: {
+      NO_SKU: "未找到对应规格，请核对商品。",
+      ENTITY_MULTI_STORE: "请先为此规格设置独立门店库存。",
+      DONE_BEFORE: "此操作已处理，未重复调整库存。"
+    },
   },
   stockAlign: {
     title: "期初对齐",
@@ -3257,6 +3288,31 @@ export default {
     confirmCountHint: "实存保持不变，以盘点结果为准。",
     done: "已对齐",
     empty: "没有接入进销存的商品",
+
+    blockedFirst: "请先处理阻断项，再重新预览",
+    previewTitle: "对齐预览",
+    resultTitle: "批次处理结果",
+    modeMall: "以线上库存为准",
+    modeCount: "按已实地盘点",
+    batchSummary: "{completed} 项完成 · {blocked} 项阻断 · {waiting} 项等待",
+    confirmBatch: "确认对齐",
+    continueBatch: "继续处理未完成项",
+    diagnostic: "诊断码：{code}",
+    lineStatus: {
+      PREVIEW: "待确认",
+      PENDING: "待处理",
+      PROCESSING: "处理中",
+      WAITING: "等待处理",
+      COMPLETED: "已完成",
+      DONE: "已完成",
+      ALIGNED: "已对齐",
+      SKIPPED: "未执行",
+      BLOCKED: "已阻断",
+      FAILED: "处理失败",
+      STALE: "数据已变更",
+      EXPIRED: "已过期",
+      UNKNOWN: "待核实"
+    },
   },
   stockSettings: {
     title: "库存设置",
@@ -3265,7 +3321,7 @@ export default {
     defaultOff: "{n} 件商品 · 默认不接入",
     sharedHint: "各门店通用。服务类默认不接入。",
     goodsHint: "单个商品可在编辑商品中单独设置。",
-    empty: "还没有经营类目",
+
     confirmTitle: "「{name}」不再接入进销存？",
     confirmStocked: "{list} 仍有库存。断开后记录保留，可随时重新接入。",
     confirmOk: "断开",
@@ -3304,11 +3360,11 @@ export default {
     // 「更多」展开的那段菜单：低频的六个入口收在这里，**只有名字**。
     // 分组标题与每条一句的说明都去掉了（2026-09-17 商家定的）——
     // 这六个名字是这一行通用的说法，给每条配一句解释反而像在教人认字
-    more: "更多",
+
     // 用不了的时候就地说清楚原因，别只给一个灰名字 —— 灰着看上去像坏了
     entryBlocked: { transfer: "要两个放货的地方，现在只有 {n} 个" },
     goAddLocation: "去添加",
-    tabAll: "全部",
+
     tabReserved: "有预留",
     available: "可用",
     soldOut: "已售罄",
@@ -3342,6 +3398,8 @@ export default {
       EXPIRED: "过期",
       GIFT: "赠送",
       OTHER: "其他",
+
+
     },
   },
   stockDetail: {
@@ -3364,7 +3422,7 @@ export default {
     reasonLabel: "差异原因",
     // 「盘这一件」而不是「调整数量」：它开的就是一张盘点单，
     // 叫「调整」的话商家以为是直接改个数，回头在单据里看到盘点单会莫名其妙
-    adjust: "盘这一件",
+
     adjustTitle: "盘这一件",
     adjustHintDialog: "账面 {n}。填实际点到的数量，差异由系统算。确定后生成一张盘点单",
     adjustHint: "盘这一件会生成一张盘点单；点出来与账面不一样时，会再问一次原因",
@@ -3373,18 +3431,18 @@ export default {
     // 安全库存：低于它这件货就进「缺货」。
     // **0 要显示成「不预警」不是「0」** —— 默认全 0 是有意的取值（猜错的预警比没有
     // 预警更烦），显示成 0 的话商家以为是个没设好的数，会去改它。
-    safety: "安全库存",
+
     safetyOff: "不预警",
     safetyTitle: "安全库存",
     safetyHint: "低于这个数，这件货会进「缺货」。填 0 表示不预警",
     safetyLocHint: "只对「{name}」生效；留空则跟随上面的 {n}",
     safetyFollow: "跟随默认",
-    safetyBadNumber: "填一个不小于 0 的整数",
+
   },
   stockCross: {
     title: "跨店库存",
     tabShortage: "有店缺货",
-    tabAll: "全部",
+
     hint: "一件货一行，右边是全部门店的可用合计。点开看它在每家店还剩多少。",
     shortageN: "{n} 家店缺货",
     openDetail: "看流水 / 改数",
@@ -3411,8 +3469,8 @@ export default {
     counting: "进行中",
     lockedAt: "账面数已于 {at} 锁定",
     cutoffHint: "盘点期间该库位的实物出入库会暂缓；订单仍可支付并保留库存占用，盘点完成后再继续履约。",
-    overdueHint: "这张盘点单已超过 24 小时。请完成并过账，或确认后作废以恢复该库位的实物出入库。",
-    unfilled: "还有 {n} 件未录入实盘数；全部录入后才能过账，实盘为 0 也请填写 0。",
+    overdueHint: "盘点已超24小时。请过账或确认作废，以恢复本库位实物出入库。",
+    unfilled: "还有 {n} 件未录入实盘数；实盘为0也须填写，录齐后才能过账。",
     submitRemaining: "还差 {n} 件",
     // 作废这张单。**是「一个库位只许开一张」那道闸之后才需要的** ——
     // 在那之前开错一张不管它就是了，闸立起来之后错单会把这个库位的盘点挡死
@@ -3587,9 +3645,9 @@ export default {
     totalQty: "合计",
     inTransit: "在途",
     conserveHint: "在途商品仍计入合计",
-    ship: "确认发出",
+
     shipped: "已发出 {no}",
-    receive: "确认收货",
+
     receiveTitle: "确认收货",
     receiveBody: "{n} 件入到「{to}」。收货后在途清零。",
     received: "已收货",
@@ -3603,7 +3661,7 @@ export default {
     purchased: "进",
     sold: "销（线上 + 线下）",
     lost: "损（报损 + 盘亏）",
-    scopeHint: "只统计接入进销存的商品，按当前门店。线下卖出只计件数，不计销售额 —— 与经营报表的销售额不是同一个口径。",
+    scopeHint: "仅统计当前门店接入进销存的商品。线下卖出只计件数、不计销售额，与经营报表口径不同。",
     // **写全括号里那几类**：它是一个兜底桶（退货入 / 盘盈 / 领用 / 调拨 / 期初 / 其它），
     // 只写一个「调」的话，搬运当月商家会看到「调 +290」而问「我什么时候调了 290 件」——
     // 那 290 是老账搬进来的期初，不是调拨。2026-08-28 线上截图就是这一幕。
@@ -3642,19 +3700,16 @@ export default {
     // 「建为 XX」而不是「新建供应商」：商家刚打完那个名字，
     // 按钮上出现同一个名字，他不用再确认一次自己要建的是谁
     createAs: "建为「{name}」",
-    empty: "还没有供应商", emptyTip: "输入名称就能建一个",
+     emptyTip: "输入名称就能建一个",
   },
   suppliers: {
     title: "供应商",
     intro: "进货单指向这里的档案。改了名，历史单据仍显示当时那个名字。",
     empty: "还没有供应商", emptyTip: "记进货时输入名称就能建",
-    add: "新建供应商",
+
     addTitle: "新建供应商",
     addPh: "如 老周粮油",
-    rename: "改名",
-    renameTitle: "改名",
-    archive: "停用",
-    restore: "启用",
+
     archived: "已停用",
     platform: "平台档案",
     // 说清楚为什么改不动，而不是让他点了没反应

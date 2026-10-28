@@ -159,7 +159,7 @@ onLoad((q) => {
           <text class="txt-body sh-muted cell__k">{{ $t("platformApply.goods") }}</text>
           <view class="sh-row">
             <text class="txt-body" :class="{ 'sh-muted': !picked.length }">
-              {{ picked.length ? $t("platformApply.goodsN", { n: picked.length }) : $t("platformApply.pick") }}
+              {{ picked.length ? $t("platformApply.goodsN", { n: picked.length }) : $t("common.choose") }}
             </text>
             <sh-icon v-if="editable" name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
@@ -189,7 +189,7 @@ onLoad((q) => {
         <view class="sh-row bar">
           <view v-if="status === 'SUBMITTED'" class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': busy }"
                 @tap="withdraw">{{ $t("platformApply.withdraw") }}</view>
-          <view v-else class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("platformApply.cancel") }}</view>
+          <view v-else class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("common.cancel") }}</view>
           <view class="sh-btn bar__main" :class="{ 'is-disabled': busy }" @tap="submit">
             {{ status === "SUBMITTED" ? $t("platformApply.resubmit") : $t("platformApply.submit") }}
           </view>

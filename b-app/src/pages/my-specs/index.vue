@@ -258,7 +258,7 @@ function dropValue(code: string) {
  */
 const valueWord = computed(() => t(tab.value === "dims" ? "mySpecs.addValue" : "mySpecs.addPropValue"));
 const ownValueWord = computed(() =>
-  t(tab.value === "dims" ? "mySpecs.buildOwnValue" : "mySpecs.buildOwnPropValue"));
+  t(tab.value === "dims" ? "mySpecs.buildOwnValue" : "goods.paramFillOwn"));
 /*
  * 例子也得跟着换。参数栏里挂着「比如你这袋是 750g」，说的是重量分档 ——
  * 而他正在给「产地」加一个值。**举错例子比不举例更糟**：他会照着例子理解
@@ -272,7 +272,7 @@ const buildOwnPhWord = computed(() =>
 const noMoreValueWord = computed(() =>
   t(tab.value === "dims" ? "mySpecs.noMoreValue" : "mySpecs.noMorePropValue"));
 const valuePhWord = computed(() =>
-  t(tab.value === "dims" ? "mySpecs.addValuePh" : "mySpecs.addPropValuePh"));
+  t(tab.value === "dims" ? "mySpecs.addValuePh" : "goods.paramFillPh"));
 const valueHintWord = computed(() =>
   t(tab.value === "dims" ? "mySpecs.addValueHint" : "mySpecs.addPropValueHint"));
 
@@ -508,9 +508,9 @@ function closeSheet() {
 
 /** 标题：改哪一条就写哪一条的名字，加规格那一步写「加规格」 */
 const sheetTitle = computed(() => {
-  if (sheetStep.value === "rename") return t("mySpecs.rename");
+  if (sheetStep.value === "rename") return t("common.rename");
   if (sheetStep.value === "values") return draft.value.platformName || draft.value.label;
-  return t(tab.value === "dims" ? "mySpecs.addDim" : "mySpecs.addProp");
+  return t(tab.value === "dims" ? "mySpecs.addDim" : "goods.addParam");
 });
 
 /*
@@ -712,7 +712,7 @@ onShow(() => void load());
       <sh-tabs
         :items="[
           { key: 'dims', label: String($t('mySpecs.tabDims')) },
-          { key: 'props', label: String($t('mySpecs.tabProps')) },
+          { key: 'props', label: String($t('goods.params')) },
         ]"
         :active="tab"
         @change="(k: string) => { tab = k as 'dims' | 'props'; void loadAddable(); }"
@@ -728,8 +728,8 @@ onShow(() => void load());
         -->
         <sh-add
           flat
-          :text="String($t(tab === 'dims' ? 'mySpecs.addDim' : 'mySpecs.addProp'))"
-          :active-text="String($t('mySpecs.collapse'))"
+          :text="String($t(tab === 'dims' ? 'mySpecs.addDim' : 'goods.addParam'))"
+          :active-text="String($t('common.collapse'))"
           :active="picking === g.categoryNo"
           @tap="togglePick(g)"
         ></sh-add>
@@ -865,7 +865,7 @@ onShow(() => void load());
         </view>
         <view v-if="pickRest.length && pickCat.length" class="picker__more">
           <text class="sh-link" @tap="showRest = !showRest">
-            {{ showRest ? $t("mySpecs.restHide") : $t("mySpecs.restShow", { n: pickRest.length }) }}
+            {{ showRest ? $t("common.collapse") : $t("mySpecs.restShow", { n: pickRest.length }) }}
           </text>
         </view>
         <text v-if="!pickable.length" class="txt-caption sh-muted picker__empty">
@@ -891,7 +891,7 @@ onShow(() => void load());
               @confirm="confirmBuild(pickingCat)"
             />
             <text class="sh-btn sh-btn--sm" @tap="confirmBuild(pickingCat)">
-              {{ $t("mySpecs.save") }}
+              {{ $t("common.save") }}
             </text>
           </view>
           <text class="txt-caption sh-muted picker__own-s">{{ $t("mySpecs.buildOwnCost") }}</text>
@@ -960,9 +960,9 @@ onShow(() => void load());
 
         <view class="edit__acts">
           <view class="sh-btn sh-btn--soft edit__btn" @tap="closeSheet">
-            {{ $t("mySpecs.cancel") }}
+            {{ $t("common.cancel") }}
           </view>
-          <view class="sh-btn edit__btn" @tap="saveDim(editingCat)">{{ $t("mySpecs.save") }}</view>
+          <view class="sh-btn edit__btn" @tap="saveDim(editingCat)">{{ $t("common.save") }}</view>
         </view>
       </template>
 
@@ -976,9 +976,9 @@ onShow(() => void load());
         <text class="txt-caption sh-muted edit__tip">{{ $t("mySpecs.renameTip") }}</text>
         <view class="edit__acts">
           <view class="sh-btn sh-btn--soft edit__btn" @tap="closeSheet">
-            {{ $t("mySpecs.cancel") }}
+            {{ $t("common.cancel") }}
           </view>
-          <view class="sh-btn edit__btn" @tap="saveRename">{{ $t("mySpecs.save") }}</view>
+          <view class="sh-btn edit__btn" @tap="saveRename">{{ $t("common.save") }}</view>
         </view>
       </template>
 
@@ -1115,7 +1115,7 @@ onShow(() => void load());
 /* 自建的标出来 —— 它不参与跨店比价，而那是看不见的差别 */
 .spec__own {
   margin-inline-start: 8rpx;
-  padding: 2rpx 8rpx;
+  padding: 4rpx 8rpx;
   border-radius: 16rpx;
   background: var(--sh-faint);
   /* 20 不在字阶上；24 是最小的一档 */

@@ -69,14 +69,14 @@ onShow(async () => {
         </view>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.coupons)">
-        <text class="txt-body">{{ $t("marketing.coupons") }}</text>
+        <text class="txt-body">{{ $t("coupons.title") }}</text>
         <view class="sh-row">
           <text v-if="sum" class="sh-muted sh-num">{{ $t("marketing.issuing", { n: sum.couponIssuing }) }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.periods)">
-        <text class="txt-body">{{ $t("marketing.periods") }}</text>
+        <text class="txt-body">{{ $t("periods.title") }}</text>
         <view class="sh-row">
           <text v-if="sum && sum.periodsShort" class="sh-chip sh-chip--warning">
             {{ $t("marketing.periodsShort", { n: sum.periodsShort }) }}
@@ -89,7 +89,7 @@ onShow(async () => {
         </view>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.groups)">
-        <text class="txt-body">{{ $t("marketing.groups") }}</text>
+        <text class="txt-body">{{ $t("groups.title") }}</text>
         <view class="sh-row">
           <text v-if="sum && sum.groupsShort" class="sh-chip sh-chip--warning">
             {{ $t("marketing.groupsShort", { n: sum.groupsShort }) }}
@@ -103,19 +103,19 @@ onShow(async () => {
         会员是 biz:customer，营销页是 biz:campaign：没有会员权限的人不显示这一行，免得点进去是「无权访问」。
       -->
       <view v-if="merchant.can('biz:customer')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.customers)">
-        <text class="txt-body">{{ $t("marketing.members") }}</text>
+        <text class="txt-body">{{ $t("members.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!-- 发出去的（原型 s01 加的一行 → m19）：消息与券的效果回看 -->
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.reachTasks)">
-        <text class="txt-body">{{ $t("marketing.reachTasks") }}</text>
+        <text class="txt-body">{{ $t("reachTasks.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
 
     <view class="sh-cells">
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.platformActivities)">
-        <text class="txt-body">{{ $t("marketing.platform") }}</text>
+        <text class="txt-body">{{ $t("platformActs.title") }}</text>
         <view class="sh-row">
           <text v-if="sum && sum.enrollable" class="txt-body sh-muted sh-num">
             {{ $t("marketing.enrollable", { n: sum.enrollable }) }}
@@ -124,7 +124,7 @@ onShow(async () => {
         </view>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.quotes)">
-        <text class="txt-body">{{ $t("marketing.quotes") }}</text>
+        <text class="txt-body">{{ $t("quotes.title") }}</text>
         <view class="sh-row">
           <text v-if="sum && sum.quotesPending" class="sh-chip sh-chip--warning">
             {{ $t("marketing.quotesPending", { n: sum.quotesPending }) }}

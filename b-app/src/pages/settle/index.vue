@@ -222,7 +222,7 @@ onShow(() => {
     </view>
 
     <view v-if="!dayMode" class="sh-card" @tap="go('/pages/points/index')">
-      <text class="txt-title">{{ $t("points.storeLedger") }}</text>
+      <view class="sh-card__head"><text class="txt-title">{{ $t("points.storeLedger") }}</text></view>
       <text class="sh-muted">{{ $t("points.storeLedgerHint") }}</text>
     </view>
 

@@ -219,7 +219,7 @@ async function doLogin(method: LoginMethod) {
       </view>
 
       <view class="field">
-        <text class="field__label">{{ $t("login.phone") }}</text>
+        <text class="field__label">{{ $t("common.phone") }}</text>
         <input
           v-model="phone"
           class="field__input sh-num"
@@ -360,9 +360,6 @@ async function doLogin(method: LoginMethod) {
  * 实测原来是 18 / 22 / 8rpx —— 主按钮几乎贴着验证码那一格，
  * 而字段之间反而更松；没有节奏，看着就是「不协调」。
  */
-.field + .field {
-  margin-top: 32rpx;
-}
 /*
  * 主按钮与最后一格之间要**明显大于字段间距**：字段之间是「同一件事的下一格」，
  * 而这里是「填完了，去执行」—— 间距相同的话，按钮读起来像是第三个输入框。

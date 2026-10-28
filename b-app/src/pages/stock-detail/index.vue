@@ -184,7 +184,7 @@ async function editSafety(loc?: { locationId: string; locationName: string; safe
   } else {
     qty = Number(input);
     if (!Number.isInteger(qty) || qty < 0) {
-      uni.showToast({ title: String(t("stockDetail.safetyBadNumber")), icon: "none" });
+      uni.showToast({ title: String(t("stockDetail.adjustBadNumber")), icon: "none" });
       return;
     }
   }
@@ -296,7 +296,7 @@ onShow(load);
       -->
       <view class="sh-block">
         <view class="blk">
-          <sh-kv between :label="String($t('stockDetail.safety'))" @tap="editSafety()">
+          <sh-kv between :label="String($t('stockDetail.safetyTitle'))" @tap="editSafety()">
             <text class="sh-link sh-num">{{ safetyText(detail.safetyStock) }}</text>
           </sh-kv>
           <text class="sh-hint">{{ $t("stockDetail.safetyHint") }}</text>
@@ -336,7 +336,7 @@ onShow(load);
             <text class="txt-strong led__title">{{ $t(`stock.reason.${r.reasonCode}`) }}</text>
             <view class="led__meta">
               <!-- 单号用链接色：这一行可点，而「可点」在密排的流水里得看得出来 -->
-              <text class="sh-link sh-num led__doc" :title="r.docNo">{{ r.docNo }}</text>
+              <text class="sh-link sh-num sh-fill led__doc" :title="r.docNo">{{ r.docNo }}</text>
               <text class="sh-muted led__operator">{{ r.operator || "—" }}</text>
             </view>
             <text class="txt-caption sh-num">{{ at(r.occurredAt) }}</text>
@@ -362,7 +362,7 @@ onShow(load);
       -->
       <!-- 说明跟着按钮走：原来它在「差异原因」那张卡里，卡撤了它不能跟着没 -->
       <text class="sh-hint">{{ $t("stockDetail.adjustHint") }}</text>
-      <view class="sh-btn" @tap="adjust">{{ $t("stockDetail.adjust") }}</view>
+      <view class="sh-btn" @tap="adjust">{{ $t("stockDetail.adjustTitle") }}</view>
     </template>
   </sh-scaffold>
 </template>

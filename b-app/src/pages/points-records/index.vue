@@ -69,7 +69,7 @@ function openOrder(no: string) {
       <text class="txt-caption sh-muted">{{ $t("points.balanceAfter") }}: {{ entry.afterPoints }}</text>
     </view>
     <view v-if="page.hasMore" class="sh-btn sh-btn--muted sh-mt-sm" @tap="load(true)">
-      {{ $t("points.loadMore") }}
+      {{ $t("common.loadMore") }}
     </view>
   </sh-scaffold>
 </template>

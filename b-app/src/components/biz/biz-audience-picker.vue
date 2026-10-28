@@ -202,8 +202,8 @@ function confirmPick() {
         <text v-if="skipLine" class="txt-caption sh-muted sum__skip">{{ skipLine }}</text>
       </view>
       <view class="sh-row bar">
-        <view class="sh-btn sh-btn--muted sh-fill" @tap="emit('close')">{{ $t("audience.cancel") }}</view>
-        <view class="sh-btn bar__main" :class="{ 'is-disabled': !canConfirm }" @tap="confirmPick">{{ $t("audience.ok") }}</view>
+        <view class="sh-btn sh-btn--muted sh-fill" @tap="emit('close')">{{ $t("common.cancel") }}</view>
+        <view class="sh-btn bar__main" :class="{ 'is-disabled': !canConfirm }" @tap="confirmPick">{{ $t("common.confirm") }}</view>
       </view>
     </template>
   </sh-sheet>

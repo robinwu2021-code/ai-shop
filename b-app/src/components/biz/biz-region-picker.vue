@@ -1221,7 +1221,7 @@ function close() {
     <template #head>
       <view v-if="chosen.length" class="sh-row sheet__sel" @tap="chosenOpen = !chosenOpen">
           <text class="txt-sub txt-primary sheet__selT">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
-          <text class="txt-caption txt-quiet sheet__selM">{{ chosenOpen ? $t("store.picker.collapse") : $t("store.picker.expand") }}</text>
+          <text class="txt-caption txt-quiet sheet__selM">{{ chosenOpen ? $t("common.collapse") : $t("store.picker.expand") }}</text>
       </view>
       <text v-else class="txt-sub txt-quiet sheet__count">{{ $t("store.picker.selected", { n: areas.length }) }}</text>
     </template>
@@ -1251,7 +1251,7 @@ function close() {
         class="tabs"
         :items="[
           { key: 'REGION', label: String($t('store.picker.tabRegion')) },
-          { key: 'SEARCH', label: String($t('store.picker.tabSearch')) },
+          { key: 'SEARCH', label: String($t('common.search')) },
         ]"
         :active="tab"
         @change="tab = $event as Tab"

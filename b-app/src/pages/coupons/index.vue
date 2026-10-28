@@ -94,7 +94,7 @@ onShow(() => {
     ></sh-empty>
 
     <sh-actionbar>
-      <view class="sh-btn" @tap="go(ROUTES.couponEdit)">{{ $t("coupons.new") }}</view>
+      <view class="sh-btn" @tap="go(ROUTES.couponEdit)">{{ $t("couponEdit.title") }}</view>
     </sh-actionbar>
   </sh-scaffold>
 </template>

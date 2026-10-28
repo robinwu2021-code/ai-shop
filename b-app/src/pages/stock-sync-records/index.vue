@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import type { StockSyncOperationRecord } from "@shared/types";
 
+const { t, te } = useI18n();
 const merchant = useMerchantStore();
 const records = ref<StockSyncOperationRecord[]>([]);
 const loading = ref(false);
@@ -29,30 +31,33 @@ async function load() {
   }
 }
 
-const statusText: Record<StockSyncOperationRecord["status"], string> = {
-  PROCESSING: "处理中", WAITING: "等待同步", FAILED: "需处理", BLOCKED: "暂不可同步", COMPLETED: "已完成",
-};
+function statusText(status: string): string {
+  const key = `stockSync.operationStatus.${status}`;
+  return String(t(te(key) ? key : "stockSync.operationStatus.UNKNOWN"));
+}
 function resultText(record: StockSyncOperationRecord): string {
   const r = record.result;
-  if (!r) return "尚无结果";
-  if (r.skipped) return `未执行：${r.skipped}`;
-  return r.applied ? `线上数量 ${r.before} → ${r.after}` : `无需调整，线上数量 ${r.after}`;
+  if (!r) return String(t("stockSync.noResult"));
+  if (r.skipped) {
+    const key = `stockSync.skip.${r.skipped}`;
+    return String(t(te(key) ? key : "stockSync.notApplied"));
+  }
+  return r.applied ? String(t("stockSync.appliedQty", { before: r.before, after: r.after })) : String(t("stockSync.unchangedQty", { n: r.after }));
 }
 onShow(async () => { await merchant.ensureStores(); await load(); });
 </script>
 
 <template>
-  <sh-scaffold title="库存同步记录" :denied="!merchant.can('biz:stock')" :failed="failed" @retry="load">
-    <text class="txt-caption sh-muted intro">记录本店库存同步操作及处理结果。</text>
-    <sh-empty v-if="!records.length" :pending="loading" text="暂无库存同步记录"></sh-empty>
+  <sh-scaffold title-key="stockSync.recordsTitle" :denied="!merchant.can('biz:stock')" :failed="failed" @retry="load">
+    <sh-empty v-if="!records.length" :pending="loading" :text="String($t('stockSync.recordsEmpty'))"></sh-empty>
     <view v-for="record in records" :key="record.operationNo" class="sh-card sh-mb-sm">
       <view class="sh-row sh-row--between">
         <text class="txt-strong">{{ record.skuNo }}</text>
-        <text class="txt-caption" :class="record.status === 'COMPLETED' ? 'sh-muted' : 'is-warning'">{{ statusText[record.status] }}</text>
+        <text class="txt-caption" :class="record.status === 'COMPLETED' ? 'sh-muted' : 'is-warning'">{{ statusText(record.status) }}</text>
       </view>
       <view class="txt-caption sh-muted detail">{{ resultText(record) }}</view>
       <view class="txt-caption sh-muted detail">{{ record.reason }} · {{ record.updatedAt }}</view>
-      <view v-if="record.documentNo" class="txt-caption sh-muted detail">操作号：{{ record.documentNo }}</view>
+      <view v-if="record.documentNo" class="txt-caption sh-muted detail">{{ $t("stockSync.operationNo", { no: record.documentNo }) }}</view>
     </view>
   </sh-scaffold>
 </template>

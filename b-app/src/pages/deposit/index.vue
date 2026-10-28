@@ -40,7 +40,7 @@
     </view>
 
     <view class="sh-card">
-      <text class="txt-strong">{{ t("deposit.txnTitle") }}</text>
+      <view class="sh-card__head"><text class="txt-strong">{{ t("deposit.txnTitle") }}</text></view>
       <sh-empty v-if="!txns.length" :pending="!loaded" :failed="failed" @retry="load" bare :text="String(t('deposit.txnEmpty'))"></sh-empty>
       <!-- 行距与分隔线归 .sh-row--divided（线画在相邻的后一行上，不用判首行） -->
       <view v-for="x in txns" :key="x.txnNo" class="sh-row--divided">

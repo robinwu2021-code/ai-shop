@@ -74,7 +74,7 @@ const settled = ref(false);
 
 const TABS = computed(() => [
   { key: "todo", label: `${t("stock.tabTodo")} ${todoCount.value}` },
-  { key: "all", label: String(t("stock.tabAll")) },
+  { key: "all", label: String(t("common.all")) },
   { key: "reserved", label: String(t("stock.tabReserved")) },
 ]);
 
@@ -472,7 +472,7 @@ onShow(() => {
           <view
             v-if="entries.more.length"
             class="sh-btn sh-btn--md sh-btn--muted sh-center act act--more"
-            :aria-label="$t('stock.more')"
+            :aria-label="$t('common.more')"
             @tap="moreOpen = !moreOpen"
           >
             <sh-icon

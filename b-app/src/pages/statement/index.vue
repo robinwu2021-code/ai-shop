@@ -2,7 +2,7 @@
   <sh-scaffold title-key="statement.title" :denied="!merchant.can('biz:finance')">
     <view class="sh-card">
       <sh-section :title="String(t('statement.periodLabel'))">
-        <sh-go :text="period || String(t('statement.allPeriods'))" @tap="pickPeriod"></sh-go>
+        <sh-go :text="period || String(t('common.all'))" @tap="pickPeriod"></sh-go>
       </sh-section>
       <text class="sh-hint txt-quiet">{{ t("statement.voucherHint") }}</text>
     </view>
@@ -31,7 +31,7 @@
         <sh-kv between :label="String(t('statement.freightCost'))">
           <text class="txt-sub sh-num is-danger">-{{ money(data?.freightCostMinor ?? 0) }}</text>
         </sh-kv>
-        <sh-kv between :label="String(t('statement.billCount'))">
+        <sh-kv between :label="String(t('settle.title'))">
           <text class="txt-sub sh-num">{{ t("statement.billCountValue", { n: data?.billCount ?? 0 }) }}</text>
         </sh-kv>
       </view>
@@ -48,7 +48,7 @@
     </view>
 
     <view class="sh-card">
-      <text class="txt-strong">{{ t("statement.linesTitle") }}</text>
+      <view class="sh-card__head"><text class="txt-strong">{{ t("statement.linesTitle") }}</text></view>
       <sh-empty v-if="!lines.length" :pending="!loaded" :failed="failed" @retry="load" bare :text="String(t('statement.empty'))"></sh-empty>
       <view v-for="l in lines" :key="l.settleNo" class="sh-row--divided">
         <text v-if="l.documentNo" class="txt-caption sh-num">{{ l.documentNo }}</text>
@@ -122,7 +122,7 @@ function pct(bp: number) {
  */
 const MONTHS = 12;
 async function pickPeriod() {
-  const opts = [t("statement.allPeriods")];
+  const opts = [t("common.all")];
   const now = new Date();
   for (let i = 0; i < MONTHS; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -151,7 +151,7 @@ function exportCsv() {
     t("statement.csvSettleNo"), t("statement.csvOrderNo"), t("statement.gross"),
     t("statement.csvRate"), t("statement.commission"), t("statement.serviceFee"),
     t("statement.freightIncome"), t("statement.freightCost"),
-    t("statement.net"), t("statement.csvStatus"), t("statement.csvVoucher"),
+    t("statement.net"), t("common.status"), t("statement.csvVoucher"),
   ].join(",");
   const rows = lines.value.map((l) => [
     l.documentNo ?? "", l.orderNo,

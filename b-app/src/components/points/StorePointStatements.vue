@@ -103,15 +103,15 @@ function stateLabel(state: string) {
 function date(at: number) { return new Date(at).toLocaleDateString(); }
 </script>
 <template>
-  <view class="sh-card sh-mt-sm">
+  <view class="sh-card sh-mt-sm sh-stack">
     <view class="txt-title">{{ t("points.statements") }}</view>
-    <view v-if="typeName" class="sh-muted sh-mt-xs">{{ typeName }}</view>
-    <view v-if="failed" class="sh-muted sh-mt-sm">
+    <view v-if="typeName" class="sh-muted">{{ typeName }}</view>
+    <view v-if="failed" class="sh-muted sh-stack">
       <text>{{ t("points.statementFailed") }}</text>
       <view class="sh-btn sh-btn--muted" @click="load()">{{ t("points.statementRefresh") }}</view>
     </view>
-    <view v-if="!loading && !failed && !rows.length" class="sh-muted sh-mt-xs">{{ t("points.noStatements") }}</view>
-    <view v-for="row in rows" :key="row.statementNo" class="sh-mt-sm">
+    <view v-if="!loading && !failed && !rows.length" class="sh-muted">{{ t("points.noStatements") }}</view>
+    <view v-for="row in rows" :key="row.statementNo" class="sh-stack">
       <text>{{ row.statementNo }} · {{ date(row.fromMillis) }} — {{ date(row.toMillis) }}</text>
       <view>{{ t("points.statementRevision") }} {{ row.revision }} · {{ row.points }} {{ t("points.pointsUnit") }} · {{ stateLabel(row.state) }}</view>
       <view v-for="revision in row.revisions" :key="revision.number" class="sh-muted">
@@ -121,22 +121,24 @@ function date(at: number) { return new Date(at).toLocaleDateString(); }
       <view v-for="revision in row.revisions" :key="`detail-${revision.number}`" class="sh-muted" @click="showLines(row, revision.number)">
         {{ t("points.statementDetails") }} · {{ t("points.statementRevision") }} {{ revision.number }}
       </view>
-      <view v-if="details[row.statementNo]">
+      <view v-if="details[row.statementNo]" class="sh-stack">
         <text>{{ t("points.statementRevision") }} {{ details[row.statementNo]?.revision }}</text>
         <view v-for="(line, index) in details[row.statementNo]?.rows" :key="index">
           {{ t("points.statementSourceOrder") }} {{ line.orderNo || line.subOrderNo }} · {{ line.points }} {{ t("points.pointsUnit") }}
         </view>
         <view v-if="details[row.statementNo]?.failed">{{ t("points.statementFailed") }}</view>
         <view v-if="details[row.statementNo]?.hasMore && !details[row.statementNo]?.loading" class="sh-btn sh-btn--muted"
-          @click="showLines(row, details[row.statementNo]?.revision ?? row.revision, true)">{{ t("points.statementMore") }}</view>
+          @click="showLines(row, details[row.statementNo]?.revision ?? row.revision, true)">{{ t("common.loadMore") }}</view>
       </view>
       <view v-if="row.disputeReason">{{ row.disputeReason }}</view>
       <template v-if="row.state === 'DRAFT'">
-        <textarea v-model="reasons[row.statementNo]" :placeholder="t('points.statementDisputeReason')" maxlength="500" />
+        <view class="field"><text class="field__label">{{ t("points.statementDisputeReason") }}</text><textarea class="field__area" v-model="reasons[row.statementNo]" maxlength="500" /></view>
+        <view class="sh-actions">
         <view data-test="confirm" class="sh-btn" :class="{ 'is-disabled': busy }" @click="decide(row, false)">{{ t("points.statementConfirm") }}</view>
         <view data-test="dispute" class="sh-btn sh-btn--muted" :class="{ 'is-disabled': busy }" @click="decide(row, true)">{{ t("points.statementDispute") }}</view>
+        </view>
       </template>
     </view>
-    <view v-if="hasMore && !loading" class="sh-btn sh-btn--muted" @click="load(true)">{{ t("points.statementMore") }}</view>
+    <view v-if="hasMore && !loading" class="sh-btn sh-btn--muted" @click="load(true)">{{ t("common.loadMore") }}</view>
   </view>
 </template>

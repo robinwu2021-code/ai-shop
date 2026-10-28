@@ -320,7 +320,7 @@ onShow(load);
           <!-- 写在按钮上方就说「不可撤销」：确认框里再写一遍已经晚了半步 -->
           <text class="txt-caption sh-notice sh-notice--warning err">{{ $t("verify.couponIrreversible") }}</text>
           <view class="sh-row peek__bar">
-            <view class="sh-btn sh-btn--muted sh-fill" @tap="couponView = null">{{ $t("verify.couponCancel") }}</view>
+            <view class="sh-btn sh-btn--muted sh-fill" @tap="couponView = null">{{ $t("common.cancel") }}</view>
             <view class="sh-btn peek__main" :class="{ 'is-disabled': busy }" @tap="redeemCoupon">
               {{ couponView.timesTotal > 1 ? $t("verify.couponRedeemOnce") : $t("verify.couponRedeem") }}
             </view>
@@ -467,7 +467,7 @@ onShow(load);
     >
       <view class="sh-fill">
         <text class="txt-title row-item__code sh-num">{{ o.verifyCode }}</text>
-        <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
+        <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ $t("common.itemCount", { n: o.items.length }) }}</text>
       </view>
       <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verify(o.verifyCode)">{{ $t("verify.doIt") }}</text>
     </view>

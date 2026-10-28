@@ -62,7 +62,7 @@ async function create() {
 }
 
 async function rename(tg: MemberTag) {
-  const name = ((await prompt({ title: String(t("memberTags.rename")), value: tg.name })) ?? "").trim();
+  const name = ((await prompt({ title: String(t("common.rename")), value: tg.name })) ?? "").trim();
   if (!name || name === tg.name) return;
   run(() => api.mEditMemberTag(tg.tagNo, { name }));
 }
@@ -153,10 +153,10 @@ onShow(load);
           </text>
         </view>
         <view class="acts">
-          <text class="sh-link" @tap="rename(tg)">{{ $t("memberTags.rename") }}</text>
+          <text class="sh-link" @tap="rename(tg)">{{ $t("common.rename") }}</text>
           <text class="sh-link" @tap="merge(tg)">{{ $t("memberTags.merge") }}</text>
           <text class="sh-link" @tap="toggleEnabled(tg)">
-            {{ tg.status === "ACTIVE" ? $t("memberTags.disable") : $t("memberTags.enable") }}
+            {{ tg.status === "ACTIVE" ? $t("common.disable") : $t("common.enable") }}
           </text>
         </view>
       </view>

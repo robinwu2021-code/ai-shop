@@ -200,11 +200,10 @@ onShow(() => void load());
 
 <template>
   <sh-scaffold title-key="qual.title" :denied="!merchant.can('biz:store')">
-    <text class="txt-caption sh-muted intro">{{ $t("qual.intro") }}</text>
 
     <!-- 已传的证 -->
-    <view class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("qual.mine") }}</text>
+    <view class="sh-card">
+      <view class="sh-card__head"><text class="txt-title">{{ $t("qual.mine") }}</text></view>
       <sh-empty v-if="!data?.items.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("qual.emptyMine")'></sh-empty>
       <view v-for="q in data?.items ?? []" :key="q.qualNo" class="sh-row sh-row--divided row">
         <view class="sh-fill">
@@ -225,8 +224,8 @@ onShow(() => void load());
     </view>
 
     <!-- 已解锁 -->
-    <view v-if="unlocked.length" class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("qual.unlocked") }}</text>
+    <view v-if="unlocked.length" class="sh-card">
+      <view class="sh-card__head"><text class="txt-title">{{ $t("qual.unlocked") }}</text></view>
       <view class="cats sh-wrap">
         <text v-for="c in unlocked" :key="c.code" class="sh-chip sh-chip--primary">
           {{ (c.categoryNames ?? []).length ? (c.categoryNames ?? []).join("、") : c.name }}
@@ -238,13 +237,13 @@ onShow(() => void load());
       还不能卖的：这一段是这一页存在的理由。
       对每一类说清「要哪张证」与「现在轮到谁动」—— 传过了是等平台核，没传是去传。
     -->
-    <view v-if="locked.length" class="sh-card sh-mt-sm">
+    <view v-if="locked.length" class="sh-card">
       <!--
         闸门关着的时候这一段的**语气要跟着变**：它此刻描述的不是「卖不了」，
         而是「还没授权」。照旧说「还不能卖」是在制造一个不存在的障碍 ——
         商家会以为要先等平台核完才能上架，而他其实现在就能上。
       -->
-      <text class="txt-title">{{ $t(merchant.categoryGateEnforced ? "qual.locked" : "qual.notGranted") }}</text>
+      <view class="sh-card__head"><text class="txt-title">{{ $t(merchant.categoryGateEnforced ? "qual.locked" : "qual.notGranted") }}</text></view>
       <view v-for="c in locked" :key="c.code" class="lock sh-row">
         <view class="sh-fill">
           <text class="txt-sub lock__cats">
@@ -253,7 +252,7 @@ onShow(() => void load());
           <text class="txt-caption sh-muted">{{ c.requiredQualification }}</text>
         </view>
         <text v-if="submitted(c)" class="txt-caption lock__wait">{{ $t("qual.waiting") }}</text>
-        <text v-else class="sh-btn sh-btn--sm sh-btn--soft" @tap="startAdd((c.qualType ?? 'OTHER') as QualificationType)">
+        <text v-else class="sh-btn sh-btn--sm sh-btn--soft qualification-upload" @tap="startAdd((c.qualType ?? 'OTHER') as QualificationType)">
           {{ $t("qual.goUpload") }}
         </text>
       </view>
@@ -263,33 +262,36 @@ onShow(() => void load());
     </view>
 
     <!-- 上传表单 -->
-    <view v-if="form" class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("qual.add") }}</text>
-      <sh-kv :label="String($t('qual.fieldName'))">
-        <input maxlength="64" v-model="form.qualName" class="txt-body field__input sh-fill" />
-      </sh-kv>
-      <sh-kv :label="String($t('qual.fieldNumber'))">
-        <input maxlength="64" v-model="form.qualNumber" class="txt-body field__input sh-fill" />
-      </sh-kv>
-      <sh-kv :label="String($t('qual.fieldExpire'))">
-        <input maxlength="10" v-model="form.expireAt" class="txt-body field__input sh-fill" placeholder="2027-12-31" />
-      </sh-kv>
-      <text class="sh-muted sh-hint">{{ $t("qual.expireHint") }}</text>
-      <view class="kv kv--top">
-        <text class="kv__k">{{ $t("qual.fieldPhoto") }}</text>
+    <view v-if="form" class="sh-card">
+      <view class="sh-card__head"><text class="txt-title">{{ $t("qual.add") }}</text></view>
+      <view class="field">
+        <label for="qualification-name" class="field__label">{{ $t('qual.fieldName') }}</label>
+        <input id="qualification-name" maxlength="64" v-model="form.qualName" class="field__input" />
+      </view>
+      <view class="field">
+        <label for="qualification-number" class="field__label">{{ $t('qual.fieldNumber') }}</label>
+        <input id="qualification-number" maxlength="64" v-model="form.qualNumber" class="field__input" />
+      </view>
+      <view class="field">
+        <label for="qualification-expiry" class="field__label">{{ $t('qual.fieldExpire') }}</label>
+        <input id="qualification-expiry" maxlength="10" v-model="form.expireAt" class="field__input" placeholder="2027-12-31" />
+        <text class="sh-hint">{{ $t("qual.expireHint") }}</text>
+      </view>
+      <view class="field">
+        <text class="field__label">{{ $t("qual.fieldPhoto") }}</text>
         <sh-uploader
           :list="form.imageUrl ? [form.imageUrl] : []"
           :max="1"
-          :w="160"
-          :h="112"
+          :width="160"
+          :height="112"
           :uploading="uploading"
           @add="pickPhoto"
           @tap-item="pickPhoto"
         ></sh-uploader>
       </view>
       <view class="acts">
-        <view class="sh-btn sh-btn--muted" @tap="form = null">{{ $t("common.cancel") }}</view>
-        <view class="sh-btn" @tap="submit">{{ $t("qual.submit") }}</view>
+        <view class="sh-btn sh-btn--muted sh-fill" @tap="form = null">{{ $t("common.cancel") }}</view>
+        <view class="sh-btn sh-fill" @tap="submit">{{ $t("common.submit") }}</view>
       </view>
       <text class="sh-muted sh-hint">{{ $t("qual.submitHint") }}</text>
     </view>
@@ -297,11 +299,6 @@ onShow(() => void load());
 </template>
 
 <style scoped>
-.intro {
-  display: block;
-  padding: 0 8rpx 8rpx;
-}
-
 .row__name {
   display: block;
 }
@@ -311,10 +308,10 @@ onShow(() => void load());
 }
 /* 过期与撤销：与「没传」是同一个后果，用危险色而不是灰 */
 .adds {
-  margin-top: 20rpx;
+  margin-top: 16rpx;
 }
 .cats {
-  margin-top: 12rpx;
+  margin-top: 16rpx;
 }
 .lock {
   padding: 16rpx 0;
@@ -331,21 +328,12 @@ onShow(() => void load());
   flex: none;
 }
 
-.kv--top {
-  align-items: flex-start;
-}
-.field__input {
-  height: 76rpx;
-  padding: 0 20rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-}
 .acts {
   display: flex;
   gap: 16rpx;
   margin-top: 24rpx;
 }
-.acts .sh-btn {
-  flex: 1;
+.qualification-upload {
+  flex: none;
 }
 </style>

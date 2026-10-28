@@ -43,7 +43,7 @@ describe("B 端账号二级页", () => {
     expect(me).not.toContain('$t("me.account")');
     expect(me).not.toContain('$t("me.password")');
     // 换成一行入口
-    expect(me).toContain('$t("me.accountEntry")');
+    expect(me).toContain('$t("account.title")');
     expect(me).toContain("go(ROUTES.account)");
   });
 
@@ -77,7 +77,7 @@ describe("B 端账号二级页", () => {
   });
 
   it("★★ AC4 未登录不出账号入口", () => {
-    const i = me.indexOf('$t("me.accountEntry")');
+    const i = me.indexOf('$t("account.title")');
     expect(i).toBeGreaterThan(-1);
     // 入口所在的那一块要挂在 isLogin 之下
     expect(me.slice(Math.max(0, i - 600), i)).toContain('v-if="merchant.isLogin"');

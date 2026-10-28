@@ -1014,6 +1014,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-scaffold > biz-address-form,
 .sh-scaffold > biz-coupon-strip,
 .sh-scaffold > biz-place-bar,
+.sh-scaffold > biz-rule-help,
 .sh-scaffold > biz-store-tag,
 .sh-scaffold > biz-goods-card,
 .sh-scaffold > biz-group-card,
@@ -1054,6 +1055,7 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-scaffold > biz-address-form:first-child,
 .sh-scaffold > biz-coupon-strip:first-child,
 .sh-scaffold > biz-place-bar:first-child,
+.sh-scaffold > biz-rule-help:first-child,
 .sh-scaffold > biz-store-tag:first-child,
 .sh-scaffold > biz-goods-card:first-child,
 .sh-scaffold > biz-group-card:first-child,
@@ -1224,6 +1226,38 @@ uni-page-wrapper[style*="--window-bottom"] {
   display: flex;
   align-items: center;
   gap: 16rpx;
+}
+
+/* Explicit composition layouts. A group owns its spacing; field/hint margins
+   are reset only when they are direct children of an opted-in stack. */
+.sh-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  min-width: 0;
+}
+.sh-stack > .field,
+.sh-stack > .sh-hint {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+/* uni-button has auto inline margins; reset them so a stacked primary action
+   stretches like the view-based button rather than shrinking to its label. */
+.sh-stack > .sh-btn {
+  align-self: stretch;
+  margin: 0;
+}
+.sh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 16rpx;
+}
+.sh-actions > .sh-btn {
+  flex: 1 1 200rpx;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 /*
  * 换行横排：一排装不下就折到下一行。标签组、筛选 chip 组、一排动作按钮。

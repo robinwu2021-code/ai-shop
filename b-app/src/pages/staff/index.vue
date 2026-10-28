@@ -137,7 +137,7 @@ onShow(load);
     <!-- ══════════ 员工 ══════════ -->
     <template v-if="tab === 'staff'">
       <view class="bar sh-row">
-        <input maxlength="32" v-model="keyword" class="field__input" :placeholder="$t('staff.search')" />
+        <input maxlength="32" v-model="keyword" class="field__input staff-search" :placeholder="$t('staff.search')" />
         <text
           class="sh-chip"
           :class="{ 'sh-chip--primary': activeOnly }"
@@ -176,7 +176,7 @@ onShow(load);
         <text class="txt-title">{{ $t("staff.add") }}</text>
         <text class="sh-hint">{{ $t("staff.addHint") }}</text>
         <view class="field">
-          <text class="field__label">{{ $t("staff.phone") }}</text>
+          <text class="field__label">{{ $t("common.phone") }}</text>
           <input v-model="form.phone" class="field__input" type="number" maxlength="11" />
         </view>
         <view class="field">
@@ -203,7 +203,7 @@ onShow(load);
           </text>
         </view>
         <!-- 预置角色改不了，但可以「以它为起点」建一个自己的 -->
-        <text v-if="r.builtin" class="sh-link" @tap="copyRole(r)">{{ $t("staff.copyRole") }}</text>
+        <text v-if="r.builtin" class="sh-link" @tap="copyRole(r)">{{ $t("common.copy") }}</text>
         <sh-icon v-else @tap="openRole(r)" name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
 
@@ -230,7 +230,7 @@ onShow(load);
 
 <style scoped>
 
-.bar .field__input {
+.staff-search {
   flex: 1;
 }
 .tip {
@@ -248,9 +248,6 @@ onShow(load);
 
 
 
-.field {
-  margin-top: 20rpx;
-}
 .save {
   margin-top: 28rpx;
 }

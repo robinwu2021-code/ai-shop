@@ -590,7 +590,7 @@ onLoad((q) => {
 
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted">{{ $t("activityEdit.name") }}</text>
+          <text class="txt-body sh-muted">{{ $t("common.name") }}</text>
           <view class="sh-row">
             <text class="txt-body">{{ current.name }}</text>
             <text class="sh-chip" :class="{ 'sh-chip--success': current.status === 'RUNNING' }">
@@ -630,7 +630,7 @@ onLoad((q) => {
       <sh-actionbar v-if="current.status !== 'ENDED'">
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--soft sh-fill" :class="{ 'is-disabled': busy }" @tap="edit">
-            {{ $t("activityEdit.edit") }}
+            {{ $t("common.edit") }}
           </view>
           <view class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': busy }"
                 @tap="setStatus(current.status === 'RUNNING' ? 'PAUSED' : 'RUNNING')">
@@ -648,7 +648,7 @@ onLoad((q) => {
     <template v-else-if="locked && current">
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted">{{ $t("activityEdit.name") }}</text>
+          <text class="txt-body sh-muted">{{ $t("common.name") }}</text>
           <text class="txt-body">{{ current.name }}</text>
         </view>
         <view class="sh-cell sh-row sh-row--between">
@@ -690,8 +690,8 @@ onLoad((q) => {
 
       <sh-actionbar>
         <view class="sh-row bar">
-          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.cancel") }}</view>
-          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="saveLocked">{{ $t("activityEdit.save") }}</view>
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("common.cancel") }}</view>
+          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="saveLocked">{{ $t("common.save") }}</view>
         </view>
       </sh-actionbar>
     </template>
@@ -704,14 +704,14 @@ onLoad((q) => {
 
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.name") }}</text>
+          <text class="txt-body sh-muted cell__k">{{ $t("common.name") }}</text>
           <input v-model="form.name" maxlength="64" class="txt-body cell__input" :placeholder="$t('activityEdit.namePh')" />
         </view>
         <view class="sh-cell sh-row sh-row--between" @tap="showPlay = true">
           <text class="txt-body sh-muted cell__k">{{ $t("activityEdit.play") }}</text>
           <view class="sh-row">
             <text class="txt-body" :class="{ 'sh-muted': !play }">
-              {{ play ? $t(`plays.name.${play.key}`) : $t("activityEdit.pickPh") }}
+              {{ play ? $t(`plays.name.${play.key}`) : $t("common.choose") }}
             </text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
@@ -915,8 +915,8 @@ onLoad((q) => {
 
       <sh-actionbar>
         <view class="sh-row bar">
-          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.prev") }}</view>
-          <view class="sh-btn bar__main" @tap="next">{{ $t("activityEdit.next") }}</view>
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("common.previous") }}</view>
+          <view class="sh-btn bar__main" @tap="next">{{ $t("common.next") }}</view>
         </view>
       </sh-actionbar>
     </template>
@@ -929,7 +929,7 @@ onLoad((q) => {
       </view>
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted">{{ $t("activityEdit.name") }}</text>
+          <text class="txt-body sh-muted">{{ $t("common.name") }}</text>
           <text class="txt-body">{{ form.name }}</text>
         </view>
         <view class="sh-cell sh-row sh-row--between">
@@ -975,7 +975,7 @@ onLoad((q) => {
 
       <sh-actionbar>
         <view class="sh-row bar">
-          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("activityEdit.prev") }}</view>
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("common.previous") }}</view>
           <view class="sh-btn bar__main" :class="{ 'is-disabled': saving || cover === 0 }" @tap="cover !== 0 && publish()">
             {{ $t("activityEdit.publish") }}
           </view>

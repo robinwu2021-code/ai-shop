@@ -433,7 +433,7 @@ onShow(load);
 
       <!-- 收货：单据详情一屏放不下时，这枚在最下面，而它是收货人唯一要点的东西 -->
       <sh-actionbar v-if="doc.status === 'SHIPPED'" :pad="180">
-        <view class="sh-btn" @tap="receive">{{ $t("transfer.receive") }}</view>
+        <view class="sh-btn" @tap="receive">{{ $t("transfer.receiveTitle") }}</view>
       </sh-actionbar>
 
       <!--
@@ -539,7 +539,7 @@ onShow(load);
       <!-- 主动作贴底：调拨单的行数没有上限 -->
       <sh-actionbar :pad="180">
         <view class="sh-btn" :class="{ 'sh-btn--muted': !lines.length || busy }" @tap="openShip">
-          {{ $t("transfer.ship") }}
+          {{ $t("transfer.shipConfirm") }}
         </view>
       </sh-actionbar>
 

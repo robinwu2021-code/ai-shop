@@ -359,7 +359,7 @@ async function refresh() {
         <text class="sh-hint">{{ $t("payment.licensesHint") }}</text>
         <sh-uploader
           :list="licenses"
-          :w="160"
+          :width="160"
           :uploading="uploading"
           @add="addLicense"
         ></sh-uploader>
@@ -455,9 +455,6 @@ async function refresh() {
 .miss__i {
   display: block;
   margin-top: 8rpx;
-}
-.field {
-  margin-top: 20rpx;
 }
 
 .submit {

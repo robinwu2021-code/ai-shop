@@ -160,7 +160,7 @@ onShow(load);
           :class="staff.status === 'ACTIVE' ? 'sh-btn--danger' : 'sh-btn--soft'"
           @tap="toggleStatus"
         >
-          {{ staff.status === "ACTIVE" ? $t("staff.disable") : $t("staff.enable") }}
+          {{ staff.status === "ACTIVE" ? $t("common.disable") : $t("common.enable") }}
         </view>
       </view>
     </template>

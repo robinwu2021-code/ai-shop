@@ -141,7 +141,7 @@ async function confirmReturn(r: Row) {
   if (!items.length || lines.length !== items.length
       || lines.some((line, i) => !Number.isInteger(line.receivedQty)
         || line.receivedQty !== items[i]?.requestedQty)) {
-    uni.showToast({ title: "当前退款按整单处理，请确认本单退货商品均已收齐", icon: "none" });
+    uni.showToast({ title: String(t("afterSale.receiptAllRequired")), icon: "none" });
     return;
   }
   await runRefund(() => api.mConfirmReturn(r.as.afterSaleNo, {
@@ -318,19 +318,19 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
 
       <view v-else-if="asStatus(r) === 'RETURNING'">
         <view class="return-inspection sh-mt-sm">
-          <text class="txt-strong">退货验收（按实收件数与质检结果入库）</text>
+          <text class="txt-strong">{{ $t("afterSale.receiptTitle") }}</text>
           <view v-for="item in (r.as.returnItems ?? [])" :key="item.itemId" class="return-inspection__item">
-            <view class="sh-row sh-row--between"><text>{{ item.title }}</text><text class="sh-muted">申请 {{ item.requestedQty }} 件</text></view>
+            <view class="sh-row sh-row--between"><text>{{ item.title }}</text><text class="sh-muted">{{ $t("afterSale.requestedQty", { n: item.requestedQty }) }}</text></view>
             <view class="sh-row sh-row--between sh-mt-xs">
-              <text>实收件数</text>
+              <text>{{ $t("afterSale.receivedQty") }}</text>
               <sh-stepper :model-value="receiptQty[`${r.as.afterSaleNo}:${item.itemId}`] ?? 0" :min="0" :max="item.requestedQty" :disabled="busy" @update:model-value="receiptQty[`${r.as.afterSaleNo}:${item.itemId}`] = $event" />
             </view>
             <view class="sh-row sh-mt-xs return-inspection__qualities">
-              <sh-option :selected="(receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] ?? 'UNSALEABLE') === 'SALEABLE'" :disabled="busy" @tap="receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] = 'SALEABLE'">可再次销售</sh-option>
-              <sh-option :selected="(receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] ?? 'UNSALEABLE') === 'UNSALEABLE'" :disabled="busy" @tap="receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] = 'UNSALEABLE'">不可销售/隔离</sh-option>
+              <sh-option :selected="(receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] ?? 'UNSALEABLE') === 'SALEABLE'" :disabled="busy" @tap="receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] = 'SALEABLE'">{{ $t("afterSale.saleable") }}</sh-option>
+              <sh-option :selected="(receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] ?? 'UNSALEABLE') === 'UNSALEABLE'" :disabled="busy" @tap="receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] = 'UNSALEABLE'">{{ $t("afterSale.unsaleable") }}</sh-option>
             </view>
           </view>
-          <text class="sh-muted">不可销售的退货只进入隔离库存，不会增加可售库存。</text>
+          <text class="sh-muted">{{ $t("afterSale.quarantineHint") }}</text>
         </view>
         <view class="btns sh-row">
         <view class="express sh-fill">

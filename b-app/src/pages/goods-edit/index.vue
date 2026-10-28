@@ -2099,7 +2099,7 @@ async function save(thenSubmit = false) {
       识别结果**不进这张卡**，开在弹框里（见下面的「参数块」弹框）—— 卡只管输入。
     -->
     <view class="sh-card quick">
-      <text class="txt-title sec__h">{{ $t("goods.quickEntry") }}</text>
+      <view class="sh-card__head"><text class="txt-title sec__h">{{ $t("goods.quickEntry") }}</text></view>
       <textarea
         v-model="parseInput"
         class="field__area field__area--grow"
@@ -2270,7 +2270,7 @@ async function save(thenSubmit = false) {
         -->
         <view class="field__head">
           <text class="txt-strong field__label">{{ $t("goods.subtitle") }}</text>
-          <text class="sh-muted">{{ $t("goods.optional") }}</text>
+          <text class="sh-muted">{{ $t("common.optional") }}</text>
         </view>
         <view class="fieldrow sh-row">
           <input maxlength="64" v-model="subtitle[lang]" class="field__input sh-fill" />
@@ -2346,7 +2346,7 @@ async function save(thenSubmit = false) {
         <textarea
           v-model="detail"
           class="field__area field__area--grow"
-          :placeholder="$t('goods.detailPh')"
+          :placeholder="$t('common.optional')"
           :maxlength="2000"
           auto-height
         />
@@ -2585,12 +2585,14 @@ async function save(thenSubmit = false) {
       <!-- 生鲜段：形态由类目带出，所以选完类目这一段自动出现 -->
       <view v-if="SHOW_FRESH_FIELDS && isFresh" class="field">
         <text class="txt-strong field__label">{{ $t("goods.freshSection") }}</text>
-        <sh-kv :label="String($t('goods.cutoffAt'))">
-          <input maxlength="16" v-model="fresh.cutoffAt" class="field__input" placeholder="2026-08-22T18:00" />
-        </sh-kv>
-        <sh-kv :label="String($t('goods.arrivalDesc'))">
-          <input maxlength="255" v-model="fresh.arrivalDesc" class="field__input" />
-        </sh-kv>
+        <view class="field">
+          <label for="goods-cutoffAt" class="field__label">{{ $t('goods.cutoffAt') }}</label>
+          <input id="goods-cutoffAt" maxlength="16" v-model="fresh.cutoffAt" class="field__input" placeholder="2026-08-22T18:00" />
+        </view>
+        <view class="field">
+          <label for="goods-arrivalDesc" class="field__label">{{ $t('goods.arrivalDesc') }}</label>
+          <input id="goods-arrivalDesc" maxlength="255" v-model="fresh.arrivalDesc" class="field__input" />
+        </view>
         <!--
           **产地这一格搬走了。** 它与规格库里的 `SD_ORIGIN`（usage_type=PROP）
           是两套东西：商家在一处填了，另一处还是空的，而筛选读的是哪一处他不知道。
@@ -2626,7 +2628,7 @@ async function save(thenSubmit = false) {
         </sh-kv>
         <sh-kv :label="String($t('goods.verifyStore'))" divided>
           <text class="sh-fill svc__v" :class="{ 'sh-muted': !service.storeName }" @tap="pickVerifyStore">
-            {{ service.storeName || $t("goods.verifyStorePick") }}
+            {{ service.storeName || $t("storePick.title") }}
           </text>
         </sh-kv>
       </view>
@@ -2634,17 +2636,12 @@ async function save(thenSubmit = false) {
     </view>
 
     <!-- 标准品搜索弹层。搜不到时给的是「直接自建」而不是一句「没找到」 -->
-    <view v-if="showStd" class="cat-mask" @tap="showStd = false">
-      <view class="cat-sheet" @tap.stop>
-        <view class="cat-sheet__bar sh-row sh-row--between">
-          <text class="txt-bold">{{ $t("goods.pickStd") }}</text>
-          <sh-icon-btn name="close" @tap="showStd = false"></sh-icon-btn>
-        </view>
+    <sh-sheet :visible="showStd" :title="String($t('goods.pickStd'))" flush @close="showStd = false">
         <view class="std-search sh-row">
           <input
             maxlength="32"
             v-model="stdKeyword"
-            class="field__input"
+            class="field__input std-search__input"
             :placeholder="$t('goods.stdSearchPh')"
             @confirm="searchStd"
           />
@@ -2664,8 +2661,7 @@ async function save(thenSubmit = false) {
           <text>{{ t.title }}</text>
           <text class="sh-muted">{{ t.categoryName || "" }}</text>
         </view>
-      </view>
-    </view>
+    </sh-sheet>
 
     <!-- 类目选择弹层：一次只显示一层，选到叶子自动收起 -->
     <!-- 规格组 -->
@@ -2724,7 +2720,7 @@ async function save(thenSubmit = false) {
           v-if="moreOther.length"
           class="txt-caption sh-link"
           @tap="showUniversalDims = !showUniversalDims"
-        >{{ showUniversalDims ? $t("goods.moreFold") : $t("goods.moreOther", { n: moreOther.length }) }}</text>
+        >{{ showUniversalDims ? $t("common.collapse") : $t("goods.moreOther", { n: moreOther.length }) }}</text>
       </view>
 
       <!--
@@ -2921,7 +2917,7 @@ async function save(thenSubmit = false) {
           :placeholder="$t('goods.addParamPh')"
           @confirm="confirmAddParam"
         />
-        <text class="sh-btn sh-btn--sm" @tap="confirmAddParam">{{ $t("goods.save") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="confirmAddParam">{{ $t("common.save") }}</text>
       </view>
     </sh-sheet>
 
@@ -2970,7 +2966,7 @@ async function save(thenSubmit = false) {
           :placeholder="$t('goods.paramFillPh')"
           @confirm="confirmParamValue"
         />
-        <text class="sh-btn sh-btn--sm" @tap="confirmParamValue">{{ $t("goods.save") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="confirmParamValue">{{ $t("common.save") }}</text>
       </view>
     </sh-sheet>
 
@@ -3076,7 +3072,7 @@ async function save(thenSubmit = false) {
             :class="{ 'is-danger': belowCost(rows[0]!) }"
             type="digit"
           />
-          <text v-if="rows[0]!.costMajor.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'cost')">清除</text>
+          <text v-if="rows[0]!.costMajor.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'cost')">{{ $t("common.clear") }}</text>
         </view>
         <text v-if="belowCost(rows[0]!)" class="txt-caption pr__warn">{{ $t("goods.belowCost") }}</text>
         <view class="pr sh-row">
@@ -3089,13 +3085,13 @@ async function save(thenSubmit = false) {
             :class="{ 'is-danger': badOrigin(rows[0]!) }"
             type="digit"
           />
-          <text v-if="rows[0]!.originMajor.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'origin')">清除</text>
+          <text v-if="rows[0]!.originMajor.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'origin')">{{ $t("common.clear") }}</text>
         </view>
         <view v-if="(SHOW_FRESH_FIELDS && isFresh) || shipsByExpress" class="pr sh-row">
           <text class="txt-sub pr__k sh-fill">{{ $t("goods.nominalGram") }}</text>
           <text class="txt-sub pr__cur">g</text>
           <input maxlength="6" v-model="rows[0]!.nominalGram" class="txt-body pr__v sh-num" type="number" />
-          <text v-if="rows[0]!.nominalGram.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'gram')">清除</text>
+          <text v-if="rows[0]!.nominalGram.trim()" class="txt-caption txt-quiet pr__clear sh-hit" @tap="clearPrice(rows[0]!, 'gram')">{{ $t("common.clear") }}</text>
         </view>
         <!-- 快递运费预估（§8 AC20）：买家寄基础价地区付多少；偏远加收与满额包邮见「发货设置」里的运费模板 -->
         <text v-if="shipsByExpress && freightOne" class="txt-caption sh-muted freight__est">
@@ -3147,7 +3143,7 @@ async function save(thenSubmit = false) {
             v-if="priceField !== 'price' && curPriceVal(r).trim()"
             class="txt-caption txt-quiet pr__clear sh-hit"
             @tap="clearPrice(r, priceField as 'cost' | 'origin' | 'gram')"
-          >清除</text>
+          >{{ $t("common.clear") }}</text>
         </view>
         <!-- 逐行看毛利在 8 行的表上没人看得过来，汇成一句 -->
         <text v-if="avgMargin !== null" class="txt-caption pr__margin">
@@ -3395,7 +3391,7 @@ async function save(thenSubmit = false) {
       </sh-kv>
       <view class="build sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="undoParse">{{ $t("goods.parseUndo") }}</text>
-        <text class="sh-btn sh-btn--sm" @tap="reviewOpen = false">{{ $t("goods.restrictedDone") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="reviewOpen = false">{{ $t("common.done") }}</text>
       </view>
     </sh-sheet>
 
@@ -3416,7 +3412,7 @@ async function save(thenSubmit = false) {
       </view>
       <view class="build sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--muted" @tap="restrictedRegions = []">{{ $t("goods.restrictedClear") }}</text>
-        <text class="sh-btn sh-btn--sm" @tap="restrictedSheet = false">{{ $t("goods.restrictedDone") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="restrictedSheet = false">{{ $t("common.done") }}</text>
       </view>
     </sh-sheet>
 
@@ -3430,12 +3426,12 @@ async function save(thenSubmit = false) {
       这件货身上有值时也自动展开（见 externalOn）。
     -->
     <view class="sh-card sh-mt-sm">
-      <sh-section :title="String($t('goods.secCode'))">
+      <sh-section :title="String($t('skuIdentity.title'))">
         <text
           v-if="externalOn"
           class="sh-link sh-link--quiet"
           @tap="rememberExternal(false)"
-        >{{ $t("goods.specFold") }}</text>
+        >{{ $t("common.collapse") }}</text>
       </sh-section>
       <view v-if="!externalOn" class="askspec sh-row" @tap="rememberExternal(true)">
         <text class="txt-strong sh-muted askspec__t">{{ $t("goods.extShow") }}</text>
@@ -3530,7 +3526,7 @@ async function save(thenSubmit = false) {
   给足点击面积比省地方重要。
 */
 .askspec {
-  padding: 16rpx 0 2rpx;
+  padding: 16rpx 0 4rpx;
 }
 
 .askspec__t {
@@ -3772,7 +3768,7 @@ async function save(thenSubmit = false) {
 .std-search {
   padding: 16rpx 24rpx;
 }
-.std-search .field__input {
+.std-search__input {
   flex: 1;
   margin-top: 0;
 }
@@ -3952,10 +3948,6 @@ async function save(thenSubmit = false) {
 .imgs__head { justify-content: flex-start; gap: 16rpx; }
 /* 手势说明：跟在那一组图下面，与计数同一档灰 */
 .imgs__tip { display: block; margin-top: 12rpx; }
-.kv .field__input {
-  flex: 1;
-  margin-top: 0;
-}
 .mini {
   text-align: center;
 }
@@ -4000,31 +3992,6 @@ async function save(thenSubmit = false) {
   background: var(--sh-faint);
   color: var(--sh-ink);
 }
-.cat-mask {
-  position: fixed;
-  inset: 0;
-  background: var(--sh-scrim);
-  /* 它是一层弹层，就该站在弹层那一档上 —— 原来的 20 比 sh-actionbar(40) 还低，
-     这一页正好有贴底通栏，遮罩盖不住它 */
-  z-index: var(--sh-z-sheet);
-}
-.cat-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 70vh;
-  overflow-y: auto;
-  background: var(--sh-surface);
-  /* 底部弹层用 xl 档（44rpx），与 sh-theme-sheet 一致。
-     同上：var(--sh-radius) 不存在，此前这张品类弹层是**直角**的 */
-  border-radius: 44rpx 44rpx 0 0;
-}
-.cat-sheet__bar {
-  padding: 24rpx;
-  border-bottom: var(--sh-hairline);
-}
-
 .cat-sheet__row {
   padding: 28rpx 24rpx;
   border-bottom: var(--sh-hairline);

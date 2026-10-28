@@ -79,7 +79,7 @@ function countedAt(ts?: number | null) {
 }
 
 async function rename(sg: MemberSegment) {
-  const input = await prompt({ title: String(t("memberSegments.rename")), value: sg.name });
+  const input = await prompt({ title: String(t("common.rename")), value: sg.name });
   const name = (input ?? "").trim();
   if (!name || name === sg.name) return;
   run(() => api.mSaveMemberSegment({
@@ -130,13 +130,12 @@ onShow(load);
       </text>
       <view class="acts">
         <text class="sh-link" @tap="recount(sg)">{{ $t("memberSegments.recount") }}</text>
-        <text class="sh-link" @tap="rename(sg)">{{ $t("memberSegments.rename") }}</text>
+        <text class="sh-link" @tap="rename(sg)">{{ $t("common.rename") }}</text>
         <text class="sh-link" @tap="remove(sg)">{{ $t("memberSegments.remove") }}</text>
       </view>
     </view>
 
-    <text class="sh-hint sh-mt-md">{{ $t("memberSegments.ruleHint") }}</text>
-    <text class="sh-hint sh-mt-md">{{ $t("memberSegments.reachHint") }}</text>
+    <biz-rule-help :title="String($t('common.statisticsBasis'))" :texts="[String($t('memberSegments.ruleHint')), String($t('memberSegments.reachHint'))]"></biz-rule-help>
   </sh-scaffold>
 </template>
 

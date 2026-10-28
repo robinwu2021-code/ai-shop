@@ -945,7 +945,7 @@ onShow(() => {
             v-if="moreOf(g).length > 1"
             class="sh-btn sh-btn--sm sh-hit sh-btn--muted"
             @tap="openMore(g)"
-          >{{ $t("goods.more") }}</text>
+          >{{ $t("common.more") }}</text>
           <text
             v-else-if="soleMoreOf(g)"
             class="sh-btn sh-btn--sm sh-hit sh-btn--muted"
@@ -972,7 +972,7 @@ onShow(() => {
     -->
     <sh-fab
       v-if="merchant.can('biz:goods')"
-      :text="`＋ ${$t('goods.add')}`"
+      :text="`＋ ${$t('goods.createTitle')}`"
       @tap="edit()"
     ></sh-fab>
 

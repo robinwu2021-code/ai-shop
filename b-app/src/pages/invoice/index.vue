@@ -28,7 +28,7 @@
 
     <view class="sh-card">
       <sh-section :title="String(t('invoice.titleBlock'))">
-        <sh-go :text="String(t('invoice.copy'))" @tap="copyTitle"></sh-go>
+        <sh-go :text="String(t('common.copy'))" @tap="copyTitle"></sh-go>
       </sh-section>
       <text class="sh-hint txt-quiet">{{ t("invoice.titleHint") }}</text>
       <view v-if="titleReady" class="sh-mt-sm">
@@ -64,13 +64,13 @@
         :class="{ 'is-disabled': !canSubmit || submitting }"
         @tap="submit"
       >
-        {{ submitting ? t("invoice.submitting") : t("invoice.submit") }}
+        {{ submitting ? t("invoice.submitting") : t("common.submit") }}
       </view>
       <text v-if="blockReason" class="sh-hint is-warning">{{ blockReason }}</text>
     </view>
 
     <view class="sh-card">
-      <text class="txt-strong">{{ t("invoice.mineBlock") }}</text>
+      <view class="sh-card__head"><text class="txt-strong">{{ t("invoice.mineBlock") }}</text></view>
       <sh-empty v-if="!mine.length" :pending="!loaded" :failed="failed" @retry="load" bare :text="String(t('invoice.mineEmpty'))"></sh-empty>
       <view v-for="inv in mine" :key="inv.invoiceNo" class="sh-row--divided">
         <view class="sh-row sh-row--between">
@@ -135,7 +135,7 @@ const canSubmit = computed(() =>
 
 /** 按钮为什么点不了 —— 三种原因他该做的事完全不同 */
 const blockReason = computed(() => {
-  if (!titleReady.value) return t("invoice.blockNoTitle");
+  if (!titleReady.value) return t("invoice.titleMissing");
   if (!invoiceNumber.value.trim()) return t("invoice.blockNoNumber");
   if (!titleName.value.trim()) return t("invoice.blockNoTitleName");
   return "";

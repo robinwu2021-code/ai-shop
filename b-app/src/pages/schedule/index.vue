@@ -137,7 +137,7 @@ onShow(() => {
       而这两件事该做的动作完全相反。
     -->
     <view class="sh-card sh-mt-sm">
-      <text class="txt-title">{{ $t("schedule.list") }}</text>
+      <view class="sh-card__head"><text class="txt-title">{{ $t("schedule.list") }}</text></view>
       <!-- 两行裸 `text` 换成 `sh-empty`：三种态（还不知道 / 没取到 / 确定没有）
            归它一个件管，也就顺带有了那颗重试按钮 -->
       <sh-empty
