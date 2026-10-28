@@ -342,9 +342,9 @@ A-C按依赖顺序完成业务与测试源码，统一编译后一次集中受�
 - 不新增表、迁移、公开路由、支付/订单/库存逻辑；内部新增resolve和market两路。先整批业务及测试源码，再统一集成/独立编译，集中专项，一次独立只读复核及守卫消融，修复仅相关复测，本地精确提交；不推送部署或启用真实网关。
 - 拟定验收：ChannelCatalogAuthorityResolveTest、原授权服务/HTTP/客户端专项；CatalogMarketSourceTest及原价格/CORE内部/FOOD客户端专项；FoodChannelPricePolicyTest、MenuChannelAuthorityPortTest、FoodCatalogPricePolicyWiringTest与原绑定15项，覆盖精确身份、歧义/跨范围、变化/期限、默认关闭、无CURRENT配置、市场不符及伪回执。
 
-#### L3 A2 详细设计与代码对照复核（2026-10-28，A2.1及A2.2a已实现，其余待实施）
+#### L3 A2 详细设计与代码对照复核（2026-10-28，A2.1、A2.2a及A2.2b1已实现，其余待实施）
 
-**L1 任务目的。** A1已完成精确渠道身份、原市场及价格政策事实；A2补齐完整目录所需的原图片身份、真实市场商品/SKU及覆盖价、行业来源核验。A2完成仍不等于可以发送完整菜单：目录组装/v3在B，端到端接线在C，自动发布事件在S3。本节保留A2完整设计；原封面身份A2.1及真实市场元数据A2.2a已实施并单独验收；原FOOD维护/发布schema6及owner分派仍待实施。
+**L1 任务目的。** A1已完成精确渠道身份、原市场及价格政策事实；A2补齐完整目录所需的原图片身份、真实市场商品/SKU及覆盖价、行业来源核验。A2完成仍不等于可以发送完整菜单：目录组装/v3在B，端到端接线在C，自动发布事件在S3。本节保留A2完整设计；原封面身份A2.1及真实市场元数据A2.2a已实施并单独验收；纯币种规则与schema6历史格式A2.2b1已补齐；原FOOD业务写入、发布接线及owner分派仍待实施。
 
 **L2 复核结论。** 原方向可用，但以下设计缺口必须补齐后再编码；它们不是本轮已复现的新A1生产缺陷。
 
@@ -411,6 +411,8 @@ b. 维护时与历史时采用不同上下文：
 - 对MENU本身，新市场发布还须具备A1核验的CHANNEL/原价格政策语境；本地未声明支持的非CN销售保持关闭。原依赖资源没有餐牌语境，不能以CHANNEL存在作为它们的身份核验前置。创建顺序可以是原菜品/配料/套餐→原发布→餐牌/绑定/语境→组成→餐牌发布。
 - 必改调用链包括DishServiceImpl（菜品维护）、ModifierServiceImpl/ModifierPublicationSource、OptionGroupServiceImpl及其SKU依赖、BundleServiceImpl/BundlePublicationSource、RecipeServiceImpl/RecipePublicationSource，以及ConfigRevisionServiceImpl共用的SKU收集循环。只扩展其原身份与发布解释，不增加库存扣减、制作或资金能力。
 - 未覆盖SKU仍按原基准价；配料/套餐按原PriceLine策略，不新增汇率、加价率或优惠。金额单位来自原currencyScale：例如JPY无小数、KWD三位，不一律按两位解释；界面换币标签不得触发自动金额迁移。
+
+**A2.2b1实施批次（2026-10-28）。** schema6专用PublicationJsonPolicy从原mapper重建严格读器，复用已严格实例、不使用全局缓存或修改原mapper；拒绝DTO嵌套未知字段及String/Boolean/Integer标量强转，保留精确数量字符串。ADDON事实集合须对应自身可选销售SKU，COMBO有根销售SKU时须携带其事实，同时保留原子项事实及免费无SKU能力。 在A2.2a真实市场事实合同之上，本批实现纯币种规则与自包含冻结格式：MenuPricePolicy新增normalizeStructure/normalizeForCurrency；旧normalize和price仍按CNY，显式阻止覆盖价与nativePrice币种混用。MenuCompositionDefinitions新增结构/币种入口供新格式使用，旧normalize保持CNY。新增PublicationMarketContext及PublicationMarketPolicy，从已验证的原市场证明生成稳定scope/market/currency/scale摘要和审计回执；历史校验不访问实时owner或检查旧证明期限。四类原Snapshot增加仅非null输出的marketContext并保留旧构造器；schema6按MENU/MODIFIER/OPTION_GROUP/BUNDLE/RECIPE分派，STATION仅5。新6的SKU/原商品scope匹配冻结context，MENU全部依赖及RECIPE内嵌选项组要求同市场/币种/精度和scope；不按schema6一个数字猜类型。旧1至5须无非null市场上下文，原字节和hash不变。验收覆盖五kind新6、跨市场/无context/错误kind拒绝、历史不依赖现时效、旧冻结字节/hash及非CNY本地计价阻断。此批仅纯文档/币种合同，不装配新开关、不切换原业务写入口或CURRENT价格捕获；ConfigRevisionService/原独立资源写入/重发布/来源策略须下一批一起接线后才声明可发布新6，不把本批纯格式支持冒充完整非CN维护和发布能力。
 
 c. 发布版本与兼容：
 
@@ -611,6 +613,8 @@ A1子集验收：AC03由FoodChannelPricePolicyTest的7项、MenuChannelAuthority
 A2.1子集验收：AC03由MediaReferenceQueryPortTest#resolvesOnlyOriginalExportsAndExplicitAliasesToSameIdentity、#arbitraryHostsSignedEncodedPrivateAndAmbiguousReferencesAreRejected、CatalogImageQueryTest#differentFrozenAssetCannotBeReplacedByTheCurrentCover、#onlyActuallyAbsentOriginalCoverCanBecomeNone及#originalGoodsChangesDuringMediaVerificationAreRejected验证原封面身份和变化；CatalogImageFactsTest验证严格codec、范围、顺序、版本、期限和摘要。AC15由InternalCatalogImagesApiTest、CoreCatalogImagesTest#standaloneCapabilityUsesActualTypedHttpWithOriginalTokenAndUnchangedReferences、LazyCatalogImagesTest及MediaReferenceQueryPortTest#normalSpringWiringRetainsOptionalOwnersAndUsesOnlyConfiguredAliases、#internalImageFactsRemainOutsideThePublicMediaRewriteRegistration覆盖。新增27项GREEN38.293s；直接相关30项亦通过，累计57个唯一专项。移除商品RR重读守卫后变化检测真实RED1，恢复后本批27项全部GREEN。此为原Mapper/H2、原token的MockMvc及本机真实typed HTTP，不代表生产并发或真实外卖供应商验收。最终打包和review证据另附。
 
 A2.2a子集验收：AC03由CatalogMarketGoodsTest#actualMarketSelectsMetadataWithoutTaxPriceInventoryOrCnFallback、#originalMarketChangeBetweenMetadataReadsIsRejected、#metadataSkuAndParentVersionChangesAreDetectedOutsideTransactions、#pausedStoresCanReadManagementMetadataAndUnsellableGoodsRemainReadable及#boundedExpansionIsCompleteSortedAndRestoresCallerScope验证原市场/元数据/事务边界。CatalogMarketFactsTest验证原币种精度（AED/TWD/JPY/KWD）、严格嵌套codec、原版本、期限、范围及回执；不是实际金额试算。AC15由InternalCatalogMarketApiTest、CoreCatalogMarketTest#standaloneBothCapabilitiesUseActualTypedPlatformHttpAndOriginalToken、LazyCatalogMarketTest及CatalogMarketGoodsTest#normalSpringWiringResolvesOriginalMarketLazilyAndPropagatesItsOutage验证令牌、原始协议、真实typed HTTP、旧能力兼容及默认可选装配。新增25项GREEN46.862s，另48项直接相关回归通过；累计73个唯一专项。实际市场比较守卫消融后市场变化用例真实RED1，恢复后25项全部GREEN；最终打包/架构及review另附。测试为H2/原Mapper、MockMvc及本机真实HTTP，不代表生产并发、外送平台或FOOD非CN发布已就绪。
+
+A2.2b1子集验收：AC03由MenuCurrencyPolicyTest（结构/币种分离、整数最小单位、CNY不混币）、PublicationMarketContextTest（新建原证明范围/时效、历史独立、稳定上下文及严格codec）、PublicationCurrencyDocumentsTest（五kind新6、同币种跨市场依赖拒绝、配方嵌套组及字典双轴归属）覆盖；AC15兼容子集由PublicationCurrencyCompatibilityTest覆盖。旧1至5共六种kind的字节/hash基线在源码首次编译前取自aa48f6575的已编译旧类，运行捕获器显式确认旧类没有marketContext访问器。新增22项GREEN6.128s；旧直接相关84项中83通过、1项nativeConcurrentPublicationsHaveOneWinner因未配置FOOD_TEST_DISPOSABLE跳过，不伪称原生DB联验。冻结市场比较守卫消融使同币种跨市场菜单依赖测试真实RED1，恢复后22项全部GREEN。当前累计105个唯一用例通过、1个条件跳过，最终架构及打包证据另附。此为纯文档/规则和旧发布计价回归，不代表原业务已能创建或发布非CN资源。
 
 ## §6 对账二 设计到实现
 
@@ -1178,3 +1182,16 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 
 - 最终构建：默认零售clean test-compile PASS52.034s，集成宿主/独立food-server/独立commerce-server clean package PASS约69秒；review修复后同受影响产物编译重打包PASS22.964s。最终打包后新增26项及5项相关架构检查共31/31 GREEN16.973s，0失败/异常/跳过；加先前48项直接相关专项为79个唯一Java检查，不累加重复执行。一次原市场守卫消融及一次review回归均有RED→GREEN证据；无二次review或新增延后minor。
 - 设计10项、25个生成器一致性、SQL方言和diff检查均通过。日志/private/tmp/food-market-a22a-*，真实范围记录于台账；仅本地精确20文件提交，无推送、部署或真实供应商启用。代码、原DTO和原架构兼容验证与§2实施清单相符，唯一review重要问题已在本批修复；后续仍是原FOOD非CN资源维护/发布及schema6。
+
+### A2.2b1 币种规则与冻结市场格式交付（2026-10-28，本地）
+
+- MenuPricePolicy新增纯normalizeStructure/normalizeForCurrency及priceForCurrency，保留旧CNY入口并阻断nativePrice混币；原菜单组成结构有相应新纯入口。没有汇率、金额换标签、按两位自动缩放或浮点金额计算。
+- PublicationMarketContext/PublicationMarketPolicy从已核验的原市场事实及调用方期望scope冻结市场、币种、精度、稳定hash与原审计回执；历史不调用活owner或复用旧TTL授权。原SKU及字典值/维度双轴范围在新6中复核。
+- PublicationSnapshot、BundlePublicationSnapshot、RecipePublicationSnapshot、MenuPublicationSnapshot新增非null才输出的marketContext并保留旧构造器；旧1至5六kind真实字节和hash不变。PublicationDocuments、MenuPublicationDocuments及RecipePublicationDocuments按kind+schema解释新6；MENU仅CHANNEL/DELIVERY，依赖及配方内嵌选项组须同scope/market/currency/scale。工位仍只5。
+- 当前仅格式/纯规则，不新增Service装配、业务开关、HTTP API、表或迁移，不切换原ConfigRevisionService、原维护服务、CURRENT来源或实时价格读取；本地实际交易的CNY限制保留。下一批须统一完成原写入/发布/重发布/来源接线后才能声明业务可用。
+- 对账文件为上述DTO/Policy、4个新专项类、两个测试夹具与上一提交产物捕获的golden资源，以及本TDD和生成设计说明。初轮唯一失败为测试误把原市场证据IllegalArgumentException预期成IllegalStateException，纠正测试保留原错误语义；没有为凑绿更改原owner行为。
+
+- 最终独立只读review发现2项P2：新6 BUNDLE嵌套未知字段及未注解SKU字段强转仍可通过；MODIFIER未核对引用销售SKU与事实集合。执行方新增三个反例均真实RED（未知字段、匹配引用下数字标识强转、缺销售SKU事实），不是仅依赖review探针结论。单次修复以schema6局部严格mapper和配料事实完整性约束关闭问题；增加免费ADDON/组合子项事实正向对照。新增26项GREEN8.334s；无二次review或新增延后minor。
+- 最终构建：集成宿主、独立food-server及独立commerce-server clean package PASS约78秒；两项修复后同受影响产物重新编译打包PASS约61秒。打包后新增26项及5项相关架构检查31/31 GREEN14.349s，0失败/异常/跳过；加此前直接相关83项通过，累计114项唯一检查通过。另有1项原生数据库并发用例条件跳过，未计入通过数、不累加重复复测。旧六kind真实字节/hash基线仍全部通过。
+- 复核范围决定：原业务维护/发布、CURRENT与价格来源接线、A2.3/v3/真实供应商、生产时钟/并发/原生数据库联验均后续实施；历史回执只作解释/审计，不作永久授权。上批图片多商品顺序P3继续留待后续。最终测试/构建是执行方证据；review只读源码和已编译类探针，不冒充部署或原生DB验收。
+- 设计10项、25个生成器、SQL方言和diff检查通过。所有改动局限food-api的DTO/Policy、专项及golden、设计真源和生成说明；不新增表/迁移/公开API/业务开关，不推送、部署或启用非CN业务路径。最终提交范围及真实SHA在执行台账记录。

@@ -32,6 +32,21 @@ public final class MenuCompositionDefinitions {
     }
 
     public static MenuCompositionVO normalize(MenuCompositionVO definition) {
+        return normalizeForCurrency(definition, "CNY");
+    }
+
+    /** Structural parsing alone grants no authority to maintain or publish a foreign-currency menu. */
+    public static MenuCompositionVO normalizeStructure(MenuCompositionVO definition) {
+        return normalizeDefinition(definition, null);
+    }
+
+    /** Frozen or live server context supplies the expected currency; caller labels cannot select it. */
+    public static MenuCompositionVO normalizeForCurrency(MenuCompositionVO definition, String currency) {
+        MenuPricePolicy.normalizeForCurrency(null, currency);
+        return normalizeDefinition(definition, currency);
+    }
+
+    private static MenuCompositionVO normalizeDefinition(MenuCompositionVO definition, String currency) {
         require(
                 definition != null
                         && definition.categories() != null
@@ -106,7 +121,8 @@ public final class MenuCompositionDefinitions {
                                 item.skuRecipes().stream()
                                         .sorted(Comparator.comparing(MenuSkuRecipeInput::skuNo))
                                         .toList(),
-                                MenuPricePolicy.normalize(item.skuPrices())));
+                                currency == null ? MenuPricePolicy.normalizeStructure(item.skuPrices())
+                                        : MenuPricePolicy.normalizeForCurrency(item.skuPrices(), currency)));
             }
             categories.add(
                     new MenuCategoryInput(

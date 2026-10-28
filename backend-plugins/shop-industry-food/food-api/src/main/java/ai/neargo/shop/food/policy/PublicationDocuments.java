@@ -4,6 +4,7 @@ import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
 import ai.neargo.shop.food.dto.StationPublicationSnapshot;
 import ai.neargo.shop.food.dto.BundlePublicationSnapshot;
 import ai.neargo.shop.food.dto.PublicationSnapshot;
+import ai.neargo.shop.food.dto.PublicationMarketContext;
 import ai.neargo.shop.food.dto.RecipePublicationSnapshot;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -66,29 +67,57 @@ public final class PublicationDocuments {
             Object schema = envelope.get("contentSchema");
             if (!(schema instanceof Integer version) || !Objects.equals(kind, envelope.get("configKind"))
                     || !Objects.equals(number, envelope.get("configNo"))) throw malformed();
-            if (version == 1 && Set.of("MODIFIER", "OPTION_GROUP").contains(kind)) {
-                var body = json.readValue(document, PublicationSnapshot.class);
+            if (version == 6) {
+                validateVersionNumbers(envelope);
+                json = PublicationJsonPolicy.strict(json);
+            }
+            if ((version == 1 || version == 6) && Set.of("MODIFIER", "OPTION_GROUP").contains(kind)) {
+                PublicationSnapshot body = version == 6 ? json.readerFor(PublicationSnapshot.class)
+                        .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).readValue(document)
+                        : json.readValue(document, PublicationSnapshot.class);
+                PublicationMarketPolicy.validateSchema(version, 1, body.marketContext());
+                if (version == 6) {
+                    Object source = envelope.get("sourceVersion");
+                    if (!(source instanceof Integer || source instanceof Long)
+                            || ((Number) source).longValue() < 0) throw malformed();
+                    Object definition = envelope.get("MODIFIER".equals(kind) ? "modifier" : "optionGroup");
+                    if (!(definition instanceof Map<?, ?> fields)
+                            || !fields.containsKey("MODIFIER".equals(kind) ? "version" : "revision")) throw malformed();
+                    exactQuantities(envelope);
+                    PublicationMarketPolicy.validateSkuFacts(body.marketContext(), body.skuFacts());
+                    PublicationMarketPolicy.validateSpecFacts(body.marketContext(), body.specFacts());
+                    if ("MODIFIER".equals(kind)) {
+                        if (body.modifier() == null || body.modifier().data() == null
+                                || !number.equals(body.modifier().configNo())
+                                || body.sourceVersion() != body.modifier().version()) throw malformed();
+                        validateModifierSkuFacts(body);
+                    } else if (body.optionGroup() == null || body.optionGroup().data() == null
+                            || !number.equals(body.optionGroup().configNo())
+                            || body.sourceVersion() != body.optionGroup().revision()) throw malformed();
+                }
                 if (body.sourceVersion() < 0 || "MODIFIER".equals(kind)
                         && (body.modifier() == null || body.optionGroup() != null)
                         || "OPTION_GROUP".equals(kind) && (body.optionGroup() == null || body.modifier() != null)) {
                     throw malformed();
                 }
-                return 1;
+                return version;
             }
-            if (version == 4 && "MENU".equals(kind)) {
+            if ((version == 4 || version == 6) && "MENU".equals(kind)) {
                 return MenuPublicationDocuments.validate(json, number, document);
             }
             if (version == 5 && "STATION".equals(kind)) {
                 StationPublicationDocuments.validate(json, number, document);
                 return 5;
             }
-            if (version == 3 && "RECIPE".equals(kind)) {
+            if ((version == 3 || version == 6) && "RECIPE".equals(kind)) {
                 RecipePublicationDocuments.validate(json, number, document);
-                return 3;
+                return version;
             }
-            if (version != 2 || !"BUNDLE".equals(kind)) throw malformed();
+            if ((version != 2 && version != 6) || !"BUNDLE".equals(kind)) throw malformed();
             exactQuantities(envelope);
             var body = json.readValue(document, BundlePublicationSnapshot.class);
+            PublicationMarketPolicy.validateSchema(version, 2, body.marketContext());
+            if (version == 6) PublicationMarketPolicy.validateSkuFacts(body.marketContext(), body.skuFacts());
             var bundle = body.bundle();
             if (bundle == null || !number.equals(bundle.configNo()) || body.sourceVersion() != bundle.version()
                     || bundle.data() == null || bundle.data().configVersion() < 0
@@ -105,15 +134,53 @@ public final class PublicationDocuments {
                         || !key(fact.storeNo()) || fact.version() < 0 || !actual.add(fact.skuNo())) throw malformed();
             }
             if (!actual.equals(expected)) throw malformed();
-            return 2;
+            return version;
         } catch (RuntimeException failure) {
             throw new IllegalStateException("Invalid frozen configuration document", failure);
         }
     }
+    /** Kind dispatch, not a global schema number, selects the correct immutable original document type. */
+    public static PublicationMarketContext marketContext(ObjectMapper json, String kind, String document) {
+        Map<?, ?> envelope = json.readValue(document, Map.class);
+        if (envelope == null || !Objects.equals(kind, envelope.get("configKind"))) throw malformed();
+        return switch (kind) {
+            case "MENU" -> json.readValue(document, MenuPublicationSnapshot.class).marketContext();
+            case "MODIFIER", "OPTION_GROUP" -> json.readValue(document, PublicationSnapshot.class).marketContext();
+            case "BUNDLE" -> json.readValue(document, BundlePublicationSnapshot.class).marketContext();
+            case "RECIPE" -> json.readValue(document, RecipePublicationSnapshot.class).marketContext();
+            default -> throw malformed();
+        };
+    }
+
+    private static void validateModifierSkuFacts(PublicationSnapshot body) {
+        var modifier = body.modifier();
+        var data = modifier.data();
+        if (!Set.of("ADDON", "COMBO").contains(modifier.kind())
+                || "ADDON".equals(modifier.kind()) != data.components().isEmpty()) throw malformed();
+        var actual = new HashSet<String>();
+        body.skuFacts().forEach(fact -> actual.add(fact.skuNo()));
+        String sales = data.salesSkuNo();
+        if (sales != null && (!key(sales) || !actual.contains(sales))) throw malformed();
+        if ("ADDON".equals(modifier.kind())
+                && !actual.equals(sales == null ? Set.of() : Set.of(sales))) throw malformed();
+    }
+
+    private static void validateVersionNumbers(Object value) {
+        if (value instanceof Map<?, ?> map) map.forEach((key, item) -> {
+            if (Set.of("contentSchema", "schemaVersion", "currencyScale", "sourceVersion", "version", "revision",
+                    "configVersion", "valueVersion", "dimVersion").contains(key)) {
+                if (!(item instanceof Integer || item instanceof Long) || ((Number) item).longValue() < 0) {
+                    throw malformed();
+                }
+            } else validateVersionNumbers(item);
+        });
+        else if (value instanceof List<?> list) list.forEach(PublicationDocuments::validateVersionNumbers);
+    }
+
     private static void exactQuantities(Object value) {
         if (value instanceof Map<?,?> map) {
             map.forEach((key, item) -> {
-                if (Set.of("minQty", "maxQty", "defaultQty", "unitsPerPick").contains(key)) {
+                if (Set.of("minQty", "maxQty", "defaultQty", "unitsPerPick", "quantity").contains(key)) {
                     if (!(item instanceof String text) || text.length() > 24
                             || !text.matches("[0-9]+(?:\\.[0-9]+)?")) throw malformed();
                     var decimal = new BigDecimal(text);
