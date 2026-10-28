@@ -15,6 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -105,9 +106,12 @@ public final class UnifiedOutboxFacade {
         if (maintenance) { throw new IllegalStateException("Outbox source is under maintenance"); }
         store(source).requireSourceTransaction();
         String eventNo = BizKey.next(BizKey.EVENT);
+        // Native PLATFORM V471 and Inventory V10 persist DATETIME(0). Choose representable time before first identity.
+        // Supplied accept/forward envelopes retain their exact existing timestamp and fingerprint inputs.
+        Instant occurredAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         OutboxEnvelope envelope = new OutboxEnvelope(eventNo, source, eventNo, event.aggregateType(),
                 event.aggregateId(), event.eventType(), options.schemaVersion(), options.streamKey(), 0,
-                json.writeValueAsString(event), Instant.now());
+                json.writeValueAsString(event), occurredAt);
         Map<String, Boolean> targets = targets(source, event.eventType());
         boolean archive = archiveOnly.contains(source + ":" + event.eventType());
         if (archive && !targets.isEmpty()) { throw new IllegalStateException("Archive route conflicts with consumers"); }

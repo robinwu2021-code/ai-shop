@@ -117,7 +117,7 @@ public interface InventoryExecutionStockRetentionPort {
                     && "RETAINED".equals(state) && List.of("ALLOCATED", "CONSUMED").contains(disposition)
                     && ownerSetHash.equals(InventoryExecutionStockRetentionContract.ownerSetHash(heads, lines,
                             outbounds))
-                    && proofHash.equals(ExecutionEvidenceContract.digest("INVENTORY_EXECUTION_PROOF_V1", this,
+                    && proofHash.equals(ExecutionEvidenceContract.digest(InventoryExecutionStockRetentionContract.proofDomain(component), this,
                             "proofHash")));
         }
     }

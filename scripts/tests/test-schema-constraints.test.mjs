@@ -256,7 +256,7 @@ test('primary H2 projection retains legacy tables and marketing fence but cannot
             assert.match(schema, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}\\b`));
         }
         for (const table of ['ord_service_execution_unit', 'ord_service_execution',
-            'ord_service_execution_action', 'prd_execution_retention']) {
+            'ord_service_execution_action', 'prd_execution_retention', 'prd_execution_retention_route']) {
             assert.doesNotMatch(schema, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}\\b`));
         }
         assert.match(schema, /Native capability absent:/);

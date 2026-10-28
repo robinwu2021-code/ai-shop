@@ -30,6 +30,8 @@
 
 -- Native capability absent: backend/shop-app/src/main/resources/db/migration/V545__execution_stock_retention.sql | prd_execution_retention
 
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V546__execution_retention_route.sql | prd_execution_retention_route
+
 CREATE TABLE IF NOT EXISTS cmt_community
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,

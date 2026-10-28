@@ -1,0 +1,593 @@
+{
+  "schemaVersion": 1,
+  "owner": "shop-app/invbridge",
+  "platformVersion": 546,
+  "migration": "backend/shop-app/src/main/resources/db/migration/V546__execution_retention_route.sql",
+  "resource": "backend/shop-app/src/main/resources/META-INF/shop/execution-retention-route-schema.json",
+  "ownerIdentity": [
+    {
+      "table": "prd_stock_lock",
+      "column": "tenant_no",
+      "role": "TENANT",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "prd_stock_lock",
+      "column": "source_store_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    }
+  ],
+  "tables": [
+    {
+      "name": "prd_execution_retention_route",
+      "tag": "esrr",
+      "engine": "InnoDB",
+      "comment": "Immutable accepted execution retention route and evidence",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "grant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "attempt_no",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "prepared_grant_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "route_no",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "route_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "retention_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "reference_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "parent_original_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "parent_manifest_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "stock_confirmation_operation_no",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_evidence_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "component_roster_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "accepted_intent_no",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "accepted_intent_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "original_human_authority_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "route_schema",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "reference_schema",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "frozen_authority",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_confirmation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "component_roster_count",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "route_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "reference_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "parent_original_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_evidence_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "component_roster_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "accepted_intent_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "original_human_authority_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "mirror_original_json",
+          "type": "longtext",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "mirror_original_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "state",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "observation_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "observations_json",
+          "type": "longtext",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "observations_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_esrr_route": [
+          "tenant_no",
+          "route_no"
+        ],
+        "uk_esrr_retention": [
+          "tenant_no",
+          "retention_no"
+        ],
+        "uk_esrr_execution": [
+          "tenant_no",
+          "entity_no",
+          "execution_no",
+          "parent_original_hash"
+        ],
+        "uk_esrr_intent": [
+          "tenant_no",
+          "accepted_intent_no"
+        ]
+      },
+      "indexes": {
+        "idx_esrr_due": [
+          "next_retry_at",
+          "id"
+        ]
+      },
+      "checks": {
+        "ck_esrr_base": "deleted=0 AND version>=0 AND revision>=0 AND observation_epoch>=0 AND revision<9223372036854775807 AND observation_epoch<9223372036854775807 AND attempt_no>0 AND prepared_grant_revision>0 AND component_roster_count BETWEEN 1 AND 2",
+        "ck_esrr_state": "state IN ('RETAIN_PENDING','RETAINED','CONFLICT','RELEASE_PENDING','RELEASED_NO_EFFECT')",
+        "ck_esrr_authority": "frozen_authority IN ('PLATFORM','INVENTORY','DUAL')",
+        "ck_esrr_mirror": "(mirror_original_json IS NULL AND mirror_original_hash IS NULL) OR (mirror_original_json IS NOT NULL AND mirror_original_hash IS NOT NULL AND JSON_VALID(mirror_original_json))",
+        "ck_esrr_observation": "(observations_json IS NULL AND observations_hash IS NULL) OR (observations_json IS NOT NULL AND observations_hash IS NOT NULL AND JSON_VALID(observations_json))",
+        "ck_esrr_route_no": "route_no REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_route_hash": "route_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_request_hash": "request_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_reference_hash": "reference_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_parent_original_hash": "parent_original_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_parent_manifest_hash": "parent_manifest_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_stock_confirmation_operation_no": "stock_confirmation_operation_no REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_source_evidence_hash": "source_evidence_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_component_roster_hash": "component_roster_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_accepted_intent_no": "accepted_intent_no REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_accepted_intent_hash": "accepted_intent_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_original_human_authority_hash": "original_human_authority_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_resource_command_hash": "resource_command_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_plan_hash": "plan_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_route_json": "JSON_VALID(route_json)",
+        "ck_esrr_reference_json": "JSON_VALID(reference_json)",
+        "ck_esrr_parent_original_json": "JSON_VALID(parent_original_json)",
+        "ck_esrr_source_evidence_json": "JSON_VALID(source_evidence_json)",
+        "ck_esrr_component_roster_json": "JSON_VALID(component_roster_json)",
+        "ck_esrr_accepted_intent_json": "JSON_VALID(accepted_intent_json)",
+        "ck_esrr_original_human_authority_json": "JSON_VALID(original_human_authority_json)",
+        "ck_esrr_mirror_original_hash": "mirror_original_hash IS NULL OR mirror_original_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_esrr_observations_hash": "observations_hash IS NULL OR observations_hash REGEXP '^[a-f0-9]{64}$'"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "entity_no",
+        "store_no",
+        "execution_no",
+        "unit_no",
+        "grant_no",
+        "attempt_no",
+        "prepared_grant_revision",
+        "route_no",
+        "route_hash",
+        "retention_no",
+        "request_hash",
+        "reference_hash",
+        "parent_original_hash",
+        "parent_manifest_hash",
+        "stock_confirmation_operation_no",
+        "source_evidence_hash",
+        "component_roster_hash",
+        "accepted_intent_no",
+        "accepted_intent_hash",
+        "original_human_authority_hash",
+        "resource_command_hash",
+        "plan_hash",
+        "route_schema",
+        "reference_schema",
+        "frozen_authority",
+        "source_confirmation_no",
+        "resource_command_no",
+        "component_roster_count",
+        "route_json",
+        "reference_json",
+        "parent_original_json",
+        "source_evidence_json",
+        "component_roster_json",
+        "accepted_intent_json",
+        "original_human_authority_json",
+        "mirror_original_json",
+        "mirror_original_hash",
+        "created_at",
+        "created_by",
+        "deleted"
+      ]
+    }
+  ]
+}

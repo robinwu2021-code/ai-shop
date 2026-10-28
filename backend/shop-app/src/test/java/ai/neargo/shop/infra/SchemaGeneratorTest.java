@@ -203,6 +203,11 @@ class SchemaGeneratorTest {
                     source, "flyway_schema_history", null);
             var retention = new ai.neargo.shop.product.policy.ExecutionStockRetentionSchemaVerifier(
                     source, "flyway_schema_history", null);
+            var route = new ai.neargo.shop.invbridge.policy.ExecutionRetentionRouteSchemaVerifier(
+                    source, "flyway_schema_history", null);
+            assertThat(route.installation()).isEqualTo(
+                    ai.neargo.shop.invbridge.policy.ExecutionRetentionRouteSchemaVerifier.Installation.ABSENT);
+            assertThatThrownBy(route::requireAvailable).isInstanceOf(ai.neargo.shop.common.BizException.class);
             assertThat(execution.installation()).isEqualTo(
                     ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier.Installation.ABSENT);
             assertThat(retention.installation()).isEqualTo(

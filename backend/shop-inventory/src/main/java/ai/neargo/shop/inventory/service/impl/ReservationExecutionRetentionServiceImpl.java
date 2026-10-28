@@ -27,6 +27,12 @@ import ai.neargo.shop.inventory.mapper.ReturnReceiptMapper;
 import ai.neargo.shop.inventory.policy.ExecutionStockRetentionSchemaVerifier;
 import ai.neargo.shop.inventory.service.ReservationExecutionRetentionService;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionContract;
+import ai.neargo.shop.spi.product.ExecutionStockMirrorEvidencePort;
+import ai.neargo.shop.spi.product.ExecutionStockMirrorEvidencePort.MirrorOriginalProof;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort.AcceptedComponentLookup;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort.AcceptedComponentAuthority;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionAggregateContract.ComponentKind;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionPort.Outcome;
 import ai.neargo.shop.spi.product.InventoryExecutionStockRetentionContract;
 import ai.neargo.shop.spi.product.InventoryExecutionStockRetentionPort.AcceptedRetention;
@@ -95,6 +101,26 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
     private final ObjectProvider<ServiceExecutionEvidencePort> evidence;
     private final ObjectMapper json;
     private final TransactionTemplate writes;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ExecutionStockMirrorEvidencePort> mirrors;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ExecutionStockRetentionIntentPort> intents;
+
+    private record Provenance(String json, String hash, String actorNo) { }
+
+    private Provenance human(CurrentActor actor) {
+        return new Provenance(json.writeValueAsString(actor), actor.authorityHash(), actor.actorNo());
+    }
+
+    private MirrorOriginalProof mirror(ComponentDescriptor component) {
+        if (component.proofMode() == ProofMode.NATIVE_CONFIRMATION) return null;
+        var provider = mirrors.getIfAvailable();
+        if (provider == null) throw new MirrorUnavailable();
+        var proof = provider.queryOriginal(new ComponentLookup(component));
+        if (proof == null) throw new MirrorUnavailable();
+        InventoryExecutionStockRetentionContract.validateMirrorBinding(component, proof);
+        return proof;
+    }
 
     public ReservationExecutionRetentionServiceImpl(ReservationMapper heads, ReservationLineMapper lines,
             OwnerMapper owners, BalanceMapper balances, OutboundOrderMapper outbound, OutboundLineMapper outboundLines,
@@ -132,6 +158,14 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
         if (provider == null) {
             return receipt(component, Outcome.UNAVAILABLE, "EXECUTION_EVIDENCE_UNAVAILABLE", null);
         }
+        MirrorOriginalProof mirror;
+        try {
+            mirror = mirror(component);
+        } catch (MirrorUnavailable failure) {
+            return receipt(component, Outcome.PENDING, "MIRROR_AUTHORITY_PROVIDER_UNAVAILABLE", null);
+        } catch (OriginalConflict failure) {
+            return receipt(component, Outcome.PENDING, failure.getMessage(), null);
+        }
         var lookup = new ExecutionEvidenceLookup(component.original().reference());
         var original = provider.queryOriginalEvidence(lookup);
         if (original == null || original.outcome() != EvidenceOutcome.PROVEN) {
@@ -147,14 +181,16 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
         var current = DelegatedIdentityContext.current();
         require(current.actorNo().equals(actor.actorNo()) && current.tenantNo().equals(actor.scope().tenantNo()));
         try {
-            return tx(() -> retainLocked(component, original, actor));
+            return tx(() -> retainLocked(component, original, human(actor), mirror));
         } catch (DuplicateKeyException collision) {
             // Losing insertion transaction has rolled back completely before exact-original current observation.
             var winner = queryOriginalComponent(new ComponentLookup(component));
             return winner.outcome() == Outcome.UNKNOWN
                     ? receipt(component, Outcome.CONFLICT, "PERMANENT_EXECUTION_ASSOCIATION", null) : winner;
+        } catch (MirrorUnavailable failure) {
+            return receipt(component, Outcome.PENDING, "MIRROR_AUTHORITY_PROVIDER_UNAVAILABLE", null);
         } catch (OriginalConflict failure) {
-            return receipt(component, Outcome.CONFLICT, failure.getMessage(), null);
+            return failure(component, failure);
         }
     }
 
@@ -166,20 +202,23 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
             return unavailable;
         }
         try {
-            return tx(() -> observeLocked(request.component()));
+            var mirror = mirror(request.component());
+            return tx(() -> observeLocked(request.component(), mirror));
+        } catch (MirrorUnavailable failure) {
+            return receipt(request.component(), Outcome.PENDING, "MIRROR_AUTHORITY_PROVIDER_UNAVAILABLE", null);
         } catch (OriginalConflict failure) {
-            return receipt(request.component(), Outcome.CONFLICT, failure.getMessage(), null);
+            return failure(request.component(), failure);
         }
     }
 
     private ComponentReceipt retainLocked(ComponentDescriptor component, ExecutionOriginalEvidence original,
-            CurrentActor actor) {
+            Provenance actor, MirrorOriginalProof mirror) {
         var snapshot = lock(component);
         var prior = claims.lockComponent(component.componentNo());
         var existing = links.lockComponent(component.componentNo());
         var facts = prove(component, snapshot);
         if (prior != null) {
-            return ownerReceipt(component, facts, prior, existing);
+            return ownerReceipt(component, facts, prior, existing, mirror);
         }
         check(existing.isEmpty(), "ORPHAN_COMPONENT_LINKS");
         // Permanent execution association is checked across all existing links, including terminal ones.
@@ -190,7 +229,7 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
             }
         }
         var claim = new InvExecutionRetentionClaim();
-        fillClaim(claim, component, original, actor, facts);
+        fillClaim(claim, component, original, actor, facts, mirror);
         require(claims.insert(claim) == 1);
         for (int i = 0; i < facts.lines().size(); i++) {
             var line = facts.lines().get(i);
@@ -216,17 +255,17 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
             require(links.insert(link) == 1);
         }
         return ownerReceipt(component, facts, claims.lockComponent(component.componentNo()),
-                links.lockComponent(component.componentNo()));
+                links.lockComponent(component.componentNo()), mirror);
     }
 
-    private ComponentReceipt observeLocked(ComponentDescriptor component) {
+    private ComponentReceipt observeLocked(ComponentDescriptor component, MirrorOriginalProof mirror) {
         var snapshot = lock(component);
         var claim = claims.lockComponent(component.componentNo());
         var retained = links.lockComponent(component.componentNo());
         if (claim == null && retained.isEmpty()) {
             return receipt(component, Outcome.UNKNOWN, "COMPONENT_UNKNOWN", null);
         }
-        return ownerReceipt(component, prove(component, snapshot), claim, retained);
+        return ownerReceipt(component, prove(component, snapshot), claim, retained, mirror);
     }
 
     private Snapshot lock(ComponentDescriptor component) {
@@ -268,7 +307,11 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
             check(owner != null && original.entityNo().equals(owner.getExternalRef())
                     && original.orderNo().equals(head.getExternalRef())
                     && Objects.equals(original.lifecycleVersion(), head.getLifecycleVersion())
-                    && component.original().confirmationOperationNo().equals(head.getConfirmationOperationNo())
+                    && (component.proofMode() == ProofMode.NATIVE_CONFIRMATION
+                            ? component.original().confirmationOperationNo().equals(head.getConfirmationOperationNo())
+                            : head.getConfirmationOperationNo() == null
+                                || component.original().confirmationOperationNo()
+                                    .equals(head.getConfirmationOperationNo()))
                     && head.getDispositionRevision() != null && head.getDispositionRevision() > 0,
                     "NATIVE_HEAD_CONFIRMATION_CONFLICT");
             var ownLines = snapshot.lines().stream().filter(line -> head.getReservationId()
@@ -400,18 +443,27 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
     }
 
     private ComponentReceipt ownerReceipt(ComponentDescriptor component, Facts facts, InvExecutionRetentionClaim claim,
-            List<InvExecutionRetention> retained) {
+            List<InvExecutionRetention> retained, MirrorOriginalProof mirror) {
         check(claim != null && retained.size() == facts.lines().size(), "PERMANENT_COMPONENT_COVERAGE");
         String ownerSet = InventoryExecutionStockRetentionContract.ownerSetHash(facts.heads(), facts.lines(),
                 facts.outbounds());
         check("RETAINED".equals(claim.getState()) && claim.getClaimRevision() != null && claim.getClaimRevision() >= 0
-                && commonMatches(claim, component) && ownerSet.equals(claim.getOwnerSetHash())
+                && commonMatches(claim, component, mirror) && ownerSet.equals(claim.getOwnerSetHash())
                 && Objects.equals(claim.getOwnerSetCount(), facts.lines().size())
                 && json.writeValueAsString(facts).equals(claim.getOwnerSetJson()),
                 "PERMANENT_COMPONENT_CONFLICT");
-        var authority = json.readValue(claim.getAcceptedAuthorityJson(), CurrentActor.class);
-        authority.validate(component.original().reference());
-        check(authority.authorityHash().equals(claim.getAcceptedAuthorityHash()), "ACCEPTED_AUTHORITY_CONFLICT");
+        var acceptedJson = json.readTree(claim.getAcceptedAuthorityJson());
+        if ("EXECUTION_STOCK_ACCEPTED_COMPONENT_AUTHORITY_V2".equals(acceptedJson.path("schema").asString())) {
+            var authority = json.readValue(claim.getAcceptedAuthorityJson(), AcceptedComponentAuthority.class);
+            authority.validate(new AcceptedComponentLookup(component.original(), authority.target().acceptedIntentNo(),
+                    authority.target().acceptedIntentHash(), ComponentKind.INVENTORY, component.componentNo(),
+                    component.componentHash()));
+            check(authority.authorityHash().equals(claim.getAcceptedAuthorityHash()), "ACCEPTED_AUTHORITY_CONFLICT");
+        } else {
+            var authority = json.readValue(claim.getAcceptedAuthorityJson(), CurrentActor.class);
+            authority.validate(component.original().reference());
+            check(authority.authorityHash().equals(claim.getAcceptedAuthorityHash()), "ACCEPTED_AUTHORITY_CONFLICT");
+        }
         if (claim.getIssueObservationHash() != null || claim.getIssueObservationJson() != null) {
             check("CONSUMED".equals(facts.disposition()) && claim.getIssueObservationHash() != null
                     && claim.getIssueObservationHash().equals(InventoryExecutionStockRetentionContract
@@ -436,7 +488,7 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
                     && line.fulfillmentRef().equals(link.getFulfillmentRef())
                     && Objects.equals(line.originalQty(), link.getOriginalQty())
                     && Objects.equals(head.lifecycleVersion(), link.getLifecycleVersion())
-                    && head.confirmationOperationNo().equals(link.getNativeConfirmationOperationNo())
+                    && Objects.equals(head.confirmationOperationNo(), link.getNativeConfirmationOperationNo())
                     && Objects.equals(head.dispositionRevision(), link.getRetainedDispositionRevision())
                     && facts.disposition().equals(link.getRetainedDisposition())
                     && json.writeValueAsString(List.of(head, line)).equals(link.getOriginalRowJson()),
@@ -451,7 +503,7 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
                 proof.returnClaims(),
                 proof.disposition(), proof.state(),
                 proof.revision(), proof.issueObservationHash(), ExecutionEvidenceContract.digest(
-                        "INVENTORY_EXECUTION_PROOF_V1", proof, "proofHash"));
+                        InventoryExecutionStockRetentionContract.proofDomain(component), proof, "proofHash"));
         proof.validate();
         return receipt(component, Outcome.RETAINED, null, proof);
     }
@@ -465,8 +517,9 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
             return unavailable;
         }
         try {
+            var mirror = mirror(component);
             return tx(() -> {
-                var current = observeLocked(component);
+                var current = observeLocked(component, mirror);
                 if (current.outcome() != Outcome.RETAINED) {
                     return current;
                 }
@@ -494,10 +547,12 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
                                 && observation.equals(link.getIssueObservationJson()), "ISSUE_OBSERVATION_CONFLICT");
                     }
                 }
-                return observeLocked(component);
+                return observeLocked(component, mirror);
             });
+        } catch (MirrorUnavailable failure) {
+            return receipt(component, Outcome.PENDING, "MIRROR_AUTHORITY_PROVIDER_UNAVAILABLE", null);
         } catch (OriginalConflict failure) {
-            return receipt(component, Outcome.CONFLICT, failure.getMessage(), null);
+            return failure(component, failure);
         }
     }
 
@@ -511,16 +566,53 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
     @Override
     public ComponentReceipt continueAcceptedRetention(AcceptedRetention request) {
         outside();
-        // B2b must prove actual HOST saved route/intent authority; no replay of accepted HUMAN provenance.
-        return receipt(request.lookup().component(), Outcome.UNAVAILABLE, "HOST_ACCEPTED_INTENT_UNAVAILABLE", null);
+        var component = request.lookup().component();
+        var unavailable = unavailable(component);
+        if (unavailable != null) return unavailable;
+        var authorityProvider = intents.getIfAvailable();
+        var sourceProvider = evidence.getIfAvailable();
+        if (authorityProvider == null || sourceProvider == null) {
+            return receipt(component, Outcome.UNAVAILABLE, "HOST_ACCEPTED_INTENT_UNAVAILABLE", null);
+        }
+        var target = new AcceptedComponentLookup(component.original(), request.acceptedIntentNo(),
+                request.acceptedIntentHash(), ComponentKind.INVENTORY, component.componentNo(),
+                        component.componentHash());
+        var authority = authorityProvider.queryAcceptedComponent(target);
+        if (authority == null) return receipt(component, Outcome.UNAVAILABLE, "HOST_ACCEPTED_INTENT_UNAVAILABLE", null);
+        if (authority.outcome() != Outcome.RETAINED) {
+            return receipt(component, authority.outcome(), authority.reason(), null);
+        }
+        authority.validate(target);
+        try {
+            var mirror = mirror(component);
+            var original = sourceProvider.queryOriginalEvidence(new ExecutionEvidenceLookup(
+                    component.original().reference()));
+            if (original == null || original.outcome() != EvidenceOutcome.PROVEN || !compatible(component, original)) {
+                return receipt(component, Outcome.PENDING, "EXECUTION_ORIGINAL_UNPROVEN", null);
+            }
+            original.validate();
+            var provenance = new Provenance(json.writeValueAsString(authority), authority.authorityHash(),
+                    "SYSTEM:RETENTION");
+            return tx(() -> retainLocked(component, original, provenance, mirror));
+        } catch (DuplicateKeyException collision) {
+            var winner = queryOriginalComponent(new ComponentLookup(component));
+            return winner.outcome() == Outcome.UNKNOWN
+                    ? receipt(component, Outcome.CONFLICT, "PERMANENT_EXECUTION_ASSOCIATION", null) : winner;
+        } catch (MirrorUnavailable failure) {
+            return receipt(component, Outcome.PENDING, "MIRROR_AUTHORITY_PROVIDER_UNAVAILABLE", null);
+        } catch (OriginalConflict failure) {
+            return failure(component, failure);
+        }
+    }
+
+    private ComponentReceipt failure(ComponentDescriptor component, OriginalConflict failure) {
+        var outcome = component.proofMode() == ProofMode.DUAL_MIRROR
+                && "STOCK_ORIGINAL_MISSING".equals(failure.getMessage()) ? Outcome.PENDING : Outcome.CONFLICT;
+        return receipt(component, outcome, failure.getMessage(), null);
     }
 
     private ComponentReceipt unavailable(ComponentDescriptor component) {
         component.validate();
-        if (component.proofMode() != ProofMode.NATIVE_CONFIRMATION
-                || !"INVENTORY".equals(component.original().stockOriginal().authority())) {
-            return receipt(component, Outcome.UNAVAILABLE, "MIRROR_AUTHORITY_PROVIDER_UNAVAILABLE", null);
-        }
         if (schema.installation() != ExecutionStockRetentionSchemaVerifier.Installation.INSTALLED) {
             return receipt(component, Outcome.UNAVAILABLE, "INVENTORY_RETENTION_SCHEMA_UNAVAILABLE", null);
         }
@@ -542,7 +634,7 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
     }
 
     private void fillClaim(InvExecutionRetentionClaim claim, ComponentDescriptor component,
-            ExecutionOriginalEvidence original, CurrentActor actor, Facts facts) {
+            ExecutionOriginalEvidence original, Provenance actor, Facts facts, MirrorOriginalProof mirror) {
         var lookup = component.original();
         var ref = lookup.reference();
         claim.setRetentionNo(lookup.retentionNo());
@@ -569,8 +661,12 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
         claim.setSourceConfirmationNo(component.sourceConfirmationNo());
         claim.setExternalStockConfirmationOperationNo(lookup.confirmationOperationNo());
         claim.setAcceptedEvidenceHash(original.proofHash());
-        claim.setAcceptedAuthorityJson(json.writeValueAsString(actor));
-        claim.setAcceptedAuthorityHash(actor.authorityHash());
+        claim.setAcceptedAuthorityJson(actor.json());
+        if (mirror != null) {
+            claim.setMirrorProofJson(json.writeValueAsString(mirror));
+            claim.setMirrorProofHash(mirror.proofHash());
+        }
+        claim.setAcceptedAuthorityHash(actor.hash());
         claim.setResourceCommandNo(ref.plannedResourceCommandNo());
         claim.setResourceCommandHash(ref.plannedResourceCommandHash());
         claim.setPlanHash(ref.planHash());
@@ -586,7 +682,8 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
         claim.setUpdatedBy(actor.actorNo());
     }
 
-    private boolean commonMatches(InvExecutionRetentionClaim claim, ComponentDescriptor component) {
+    private boolean commonMatches(InvExecutionRetentionClaim claim, ComponentDescriptor component,
+            MirrorOriginalProof mirror) {
         var lookup = component.original();
         var ref = lookup.reference();
         return lookup.retentionNo().equals(claim.getRetentionNo())
@@ -612,7 +709,9 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
                 && component.proofMode().name().equals(claim.getProofMode())
                 && component.sourceConfirmationNo().equals(claim.getSourceConfirmationNo())
                 && lookup.confirmationOperationNo().equals(claim.getExternalStockConfirmationOperationNo())
-                && claim.getMirrorProofJson() == null && claim.getMirrorProofHash() == null
+                && (mirror == null ? claim.getMirrorProofJson() == null && claim.getMirrorProofHash() == null
+                        : json.writeValueAsString(mirror).equals(claim.getMirrorProofJson())
+                                && mirror.proofHash().equals(claim.getMirrorProofHash()))
                 && ref.plannedResourceCommandNo().equals(claim.getResourceCommandNo())
                 && ref.plannedResourceCommandHash().equals(claim.getResourceCommandHash())
                 && ref.planHash().equals(claim.getPlanHash())
@@ -736,6 +835,8 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
         }
     }
 
+    private static final class MirrorUnavailable extends RuntimeException { }
+
     private static final class OriginalConflict extends RuntimeException {
         private OriginalConflict(String reason) {
             super(reason);
@@ -754,12 +855,12 @@ public final class ReservationExecutionRetentionServiceImpl implements Reservati
 
     private static ComponentReceipt receipt(ComponentDescriptor component, Outcome outcome, String reason,
             InventoryProof proof) {
-        var receipt = new ComponentReceipt("INVENTORY_EXECUTION_RETENTION_RECEIPT_V1", component.componentNo(),
+        var receipt = new ComponentReceipt(InventoryExecutionStockRetentionContract.receiptSchema(component),
+                component.componentNo(),
                 component.componentHash(), component.original().reference().referenceHash(),
                 component.original().requestHash(), outcome, reason, proof, Instant.now(), null);
         return new ComponentReceipt(receipt.schema(), receipt.componentNo(), receipt.componentHash(),
                 receipt.referenceHash(), receipt.requestHash(), receipt.outcome(), receipt.reason(), receipt.proof(),
-                receipt.observedAt(), ExecutionEvidenceContract.digest("INVENTORY_EXECUTION_RETENTION_RECEIPT_V1",
-                        receipt, "receiptHash"));
+                receipt.observedAt(), ExecutionEvidenceContract.digest(receipt.schema(), receipt, "receiptHash"));
     }
 }

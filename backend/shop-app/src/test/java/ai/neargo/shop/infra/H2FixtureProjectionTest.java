@@ -18,16 +18,18 @@ class H2FixtureProjectionTest {
         var policy = H2FixtureProjection.load(root, source);
         assertThat(policy.nativeTables().keySet()).containsExactlyInAnyOrder(
                 "ord_service_execution_unit", "ord_service_execution", "ord_service_execution_action",
-                "prd_execution_retention");
+                "prd_execution_retention", "prd_execution_retention_route");
         var nativeSchema = new LinkedHashMap<String, java.util.Set<String>>();
         nativeSchema.putAll(SchemaDdl.createColumns(Files.readString(source.resolve(
                 "V544__manual_service_execution_authority.sql"))));
         nativeSchema.putAll(SchemaDdl.createColumns(Files.readString(source.resolve(
                 "V545__execution_stock_retention.sql"))));
+        nativeSchema.putAll(SchemaDdl.createColumns(Files.readString(source.resolve(
+                "V546__execution_retention_route.sql"))));
         var corrupt = new LinkedHashMap<>(nativeSchema);
         corrupt.put("ord_service_execution", java.util.Set.of("id"));
         assertThatThrownBy(() -> policy.applyTo(corrupt)).isInstanceOf(IllegalStateException.class);
-        assertThat(corrupt).hasSize(4);
+        assertThat(corrupt).hasSize(5);
         policy.applyTo(nativeSchema);
         assertThat(nativeSchema).isEmpty();
     }

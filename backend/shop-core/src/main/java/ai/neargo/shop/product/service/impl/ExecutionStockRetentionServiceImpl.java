@@ -13,6 +13,12 @@ import ai.neargo.shop.product.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.product.policy.ExecutionStockRetentionSchemaVerifier;
 import ai.neargo.shop.product.service.ExecutionStockRetentionService;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionContract;
+import ai.neargo.shop.spi.product.PlatformExecutionStockRetentionComponent;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort.AcceptedComponentLookup;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionIntentPort.AcceptedComponentAuthority;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionAggregateContract;
+import ai.neargo.shop.spi.product.ExecutionStockRetentionAggregateContract.ComponentKind;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionPort.AcknowledgeIssued;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionPort.Outcome;
 import ai.neargo.shop.spi.product.ExecutionStockRetentionPort.OwnerProof;
@@ -52,7 +58,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Pins complete existing PLATFORM originals; no owner IO under stock locks and no second quantity ledger. */
 @Service
-public final class ExecutionStockRetentionServiceImpl implements ExecutionStockRetentionService {
+public final class ExecutionStockRetentionServiceImpl implements ExecutionStockRetentionService,
+        PlatformExecutionStockRetentionComponent {
     private final StockLockMapper stocks;
     private final ExecutionRetentionMapper links;
     private final StockRestoreMapper claims;
@@ -62,6 +69,24 @@ public final class ExecutionStockRetentionServiceImpl implements ExecutionStockR
     private final ObjectProvider<ServiceExecutionEvidencePort> evidence;
     private final ObjectMapper json;
     private final TransactionTemplate writes;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ExecutionStockRetentionIntentPort> intents;
+
+    private record Provenance(String json, String hash, String actorNo, String namespaceHash,
+            String personnelHash) { }
+
+    private Provenance human(CurrentActor actor) {
+        return new Provenance(json.writeValueAsString(actor), actor.authorityHash(), actor.actorNo(),
+                actor.namespaceHash(), ExecutionEvidenceContract.hash("EXECUTION_RETAIN_PERSONNEL_V1",
+                        actor.personnel()));
+    }
+
+    private Provenance accepted(AcceptedComponentAuthority authority) {
+        var human = authority.route().originalHumanAuthority();
+        return new Provenance(json.writeValueAsString(authority), authority.authorityHash(), "SYSTEM:RETENTION",
+                human.namespaceHash(), ExecutionEvidenceContract.hash("EXECUTION_RETAIN_PERSONNEL_V1",
+                        human.personnel()));
+    }
 
     public ExecutionStockRetentionServiceImpl(StockLockMapper stocks, ExecutionRetentionMapper links,
             StockRestoreMapper claims, SkuMapper skus, ExecutionStockRetentionGuard guard,
@@ -100,14 +125,14 @@ public final class ExecutionStockRetentionServiceImpl implements ExecutionStockR
         var identity = DelegatedIdentityContext.current();
         require(actor.actorNo().equals(identity.actorNo()) && actor.scope().tenantNo().equals(identity.tenantNo()));
         try {
-            return tx(() -> retainLocked(lookup, original, actor));
+            return tx(() -> retainLocked(lookup, original, human(actor)));
         } catch (DuplicateKeyException collision) {
             // The failed insert transaction has rolled back in full before an exact current reread.
             return tx(() -> observeLocked(lookup));
         }
     }
 
-    private Receipt retainLocked(RetentionLookup lookup, ExecutionOriginalEvidence evidence, CurrentActor actor) {
+    private Receipt retainLocked(RetentionLookup lookup, ExecutionOriginalEvidence evidence, Provenance actor) {
         var rows = stocks.lockOriginal(lookup.stockOriginal().orderNo());
         var allLinks = guard.lockedLinks(rows);
         if (allLinks.stream().anyMatch(link -> !Integer.valueOf(0).equals(link.getDeleted())
@@ -162,10 +187,9 @@ public final class ExecutionStockRetentionServiceImpl implements ExecutionStockR
             link.setResourceCommandHash(ref.plannedResourceCommandHash());
             link.setPlanHash(ref.planHash());
             link.setCreatorNamespaceHash(actor.namespaceHash());
-            link.setCreatorPersonnelHash(ExecutionEvidenceContract.hash("EXECUTION_RETAIN_PERSONNEL_V1",
-                actor.personnel()));
-            link.setAcceptedAuthorityJson(json.writeValueAsString(actor));
-            link.setAcceptedAuthorityHash(actor.authorityHash());
+            link.setCreatorPersonnelHash(actor.personnelHash());
+            link.setAcceptedAuthorityJson(actor.json());
+            link.setAcceptedAuthorityHash(actor.hash());
             link.setState("RETAINED");
             link.setDeleted(0);
             link.setVersion(0L);
@@ -329,28 +353,161 @@ public final class ExecutionStockRetentionServiceImpl implements ExecutionStockR
         var lookup = request.lookup();
         if (!platform(lookup)) return receipt(lookup, Outcome.UNAVAILABLE, "STOCK_AUTHORITY_UNAVAILABLE", List.of());
         if (!installed()) return receipt(lookup, Outcome.UNAVAILABLE, "RETENTION_SCHEMA_UNAVAILABLE", List.of());
-        return tx(() -> {
-            var current = observeLocked(lookup);
-            if (current.outcome() != Outcome.RETAINED) return current;
-            var owner = current.owners().getFirst();
-            if (owner.rows().stream().anyMatch(row -> !"CONSUMED".equals(row.disposition()))) {
-                return receipt(lookup, Outcome.PENDING, "ORIGINAL_NOT_CONSUMED", List.of());
+        return tx(() -> acknowledgeLocked(request));
+    }
+
+    private Receipt acknowledgeLocked(AcknowledgeIssued request) {
+        var lookup = request.lookup();
+        var current = observeLocked(lookup);
+        if (current.outcome() != Outcome.RETAINED) return current;
+        var owner = current.owners().getFirst();
+        if (owner.rows().stream().anyMatch(row -> !"CONSUMED".equals(row.disposition()))) {
+            return receipt(lookup, Outcome.PENDING, "ORIGINAL_NOT_CONSUMED", List.of());
+        }
+        String issueObservationHash = ExecutionStockRetentionContract.issueObservationHash(lookup, owner.rows());
+        if (!request.expectedIssueObservationHash().equals(issueObservationHash)) {
+            return receipt(lookup, Outcome.CONFLICT, "ISSUE_OBSERVATION_CONFLICT", List.of());
+        }
+        String observation = json.writeValueAsString(List.of(lookup,
+            ExecutionStockRetentionContract.issueRows(owner.rows())));
+        var exact = links.findExactOriginalSet(lookup.retentionNo());
+        for (var link : exact) {
+            if (link.getIssueObservationHash() != null || link.getIssueObservationJson() != null) {
+                require(issueObservationHash.equals(link.getIssueObservationHash())
+                        && observation.equals(link.getIssueObservationJson()));
+            } else require(links.recordIssuedObservation(link, observation, issueObservationHash) == 1);
+        }
+        return observeLocked(lookup);
+    }
+
+    @Override
+    public PlatformExecutionStockRetentionComponent.ComponentReceipt retainComponent(
+            PlatformExecutionStockRetentionComponent.ComponentRetain request) {
+        outside();
+        var component = request.component();
+        component.validate();
+        var lookup = component.original();
+        if (!installed()) return componentReceipt(component, Outcome.UNAVAILABLE, "RETENTION_SCHEMA_UNAVAILABLE");
+        var provider = evidence.getIfAvailable();
+        if (provider == null) return componentReceipt(component, Outcome.UNAVAILABLE, "EXECUTION_EVIDENCE_UNAVAILABLE");
+        var original = provider.queryOriginalEvidence(new ExecutionEvidenceLookup(lookup.reference()));
+        if (!ExecutionStockRetentionAggregateContract.compatible(lookup, original)
+                || !component.sourceConfirmationNo().equals(original.facts().confirmationNo())) {
+            return componentReceipt(component, Outcome.PENDING, "EXECUTION_ORIGINAL_UNPROVEN");
+        }
+        // Last external call before this HUMAN owner mutation is actual current SELF, including DUAL.
+        var actor = provider.authorizeCurrent(new ExecutionEvidenceLookup(lookup.reference()));
+        actor.validate(lookup.reference());
+        var current = DelegatedIdentityContext.current();
+        require(actor.actorNo().equals(current.actorNo()) && actor.scope().tenantNo().equals(current.tenantNo()));
+        return retainComponentLocked(component, original, human(actor));
+    }
+
+    @Override
+    public PlatformExecutionStockRetentionComponent.ComponentReceipt continueAcceptedRetention(
+            PlatformExecutionStockRetentionComponent.AcceptedRetention request) {
+        outside();
+        var component = request.lookup().component();
+        component.validate();
+        if (!installed()) return componentReceipt(component, Outcome.UNAVAILABLE, "RETENTION_SCHEMA_UNAVAILABLE");
+        var authorityProvider = intents.getIfAvailable();
+        var sourceProvider = evidence.getIfAvailable();
+        if (authorityProvider == null || sourceProvider == null) {
+            return componentReceipt(component, Outcome.UNAVAILABLE, "HOST_ACCEPTED_INTENT_UNAVAILABLE");
+        }
+        var target = new AcceptedComponentLookup(component.original(), request.acceptedIntentNo(),
+                request.acceptedIntentHash(), ComponentKind.PLATFORM, component.componentNo(),
+                        component.componentHash());
+        var authority = authorityProvider.queryAcceptedComponent(target);
+        if (authority == null) return componentReceipt(component, Outcome.UNAVAILABLE,
+                "HOST_ACCEPTED_INTENT_UNAVAILABLE");
+        if (authority.outcome() != Outcome.RETAINED) {
+            return componentReceipt(component, authority.outcome(), authority.reason());
+        }
+        authority.validate(target);
+        var original = sourceProvider.queryOriginalEvidence(
+                new ExecutionEvidenceLookup(component.original().reference()));
+        if (!ExecutionStockRetentionAggregateContract.compatible(component.original(), original)
+                || !component.sourceConfirmationNo().equals(original.facts().confirmationNo())) {
+            return componentReceipt(component, Outcome.PENDING, "EXECUTION_ORIGINAL_UNPROVEN");
+        }
+        return retainComponentLocked(component, original, accepted(authority));
+    }
+
+    private PlatformExecutionStockRetentionComponent.ComponentReceipt retainComponentLocked(
+            PlatformExecutionStockRetentionComponent.ComponentDescriptor component, ExecutionOriginalEvidence original,
+            Provenance provenance) {
+        Receipt result;
+        try {
+            result = tx(() -> retainLocked(component.original(), original, provenance));
+        } catch (DuplicateKeyException collision) {
+            result = tx(() -> observeLocked(component.original()));
+        }
+        return bound(component, result);
+    }
+
+    @Override
+    public PlatformExecutionStockRetentionComponent.ComponentReceipt queryOriginalComponent(
+            PlatformExecutionStockRetentionComponent.ComponentLookup request) {
+        outside();
+        var component = request.component();
+        component.validate();
+        if (!installed()) return componentReceipt(component, Outcome.UNAVAILABLE, "RETENTION_SCHEMA_UNAVAILABLE");
+        return bound(component, tx(() -> observeLocked(component.original())));
+    }
+
+    @Override
+    public PlatformExecutionStockRetentionComponent.ComponentReceipt acknowledgeIssuedComponent(
+            PlatformExecutionStockRetentionComponent.ComponentIssued request) {
+        outside();
+        var component = request.lookup().component();
+        component.validate();
+        if (!installed()) return componentReceipt(component, Outcome.UNAVAILABLE, "RETENTION_SCHEMA_UNAVAILABLE");
+        return bound(component, tx(() -> acknowledgeLocked(new AcknowledgeIssued(component.original(),
+                request.expectedIssueObservationHash()))));
+    }
+
+    @Override
+    public PlatformExecutionStockRetentionComponent.ComponentReceipt releaseComponent(
+            PlatformExecutionStockRetentionComponent.ComponentRelease request) {
+        outside();
+        request.lookup().component().validate();
+        return componentReceipt(request.lookup().component(), Outcome.PENDING, "RESOURCE_SEAL_PROVIDER_UNAVAILABLE");
+    }
+
+    private PlatformExecutionStockRetentionComponent.ComponentReceipt bound(
+            PlatformExecutionStockRetentionComponent.ComponentDescriptor component, Receipt result) {
+        if (result.outcome() == Outcome.RETAINED) {
+            // Exact persisted parent and source confirmation, including an adopted pre-existing V1 PLATFORM pin.
+            var exact = DataScopeContext.executeWithoutScope(() -> links.findExactOriginalSet(
+                    component.original().retentionNo()));
+            if (exact.isEmpty() || exact.stream().anyMatch(link -> !component.sourceConfirmationNo()
+                    .equals(link.getSourceConfirmationNo()))) {
+                return componentReceipt(component, Outcome.CONFLICT, "SOURCE_CONFIRMATION_CONFLICT");
             }
-            String issueObservationHash = ExecutionStockRetentionContract.issueObservationHash(lookup, owner.rows());
-            if (!request.expectedIssueObservationHash().equals(issueObservationHash)) {
-                return receipt(lookup, Outcome.CONFLICT, "ISSUE_OBSERVATION_CONFLICT", List.of());
+            var first = exact.getFirst();
+            var payload = json.readTree(first.getAcceptedAuthorityJson());
+            if ("EXECUTION_STOCK_ACCEPTED_COMPONENT_AUTHORITY_V2".equals(payload.path("schema").asString())) {
+                var authority = json.readValue(first.getAcceptedAuthorityJson(), AcceptedComponentAuthority.class);
+                authority.validate(new AcceptedComponentLookup(component.original(),
+                        authority.target().acceptedIntentNo(), authority.target().acceptedIntentHash(),
+                        ComponentKind.PLATFORM, component.componentNo(), component.componentHash()));
+                require(authority.authorityHash().equals(first.getAcceptedAuthorityHash()));
+            } else {
+                var human = json.readValue(first.getAcceptedAuthorityJson(), CurrentActor.class);
+                human.validate(component.original().reference());
+                require(human.authorityHash().equals(first.getAcceptedAuthorityHash()));
             }
-            String observation = json.writeValueAsString(List.of(lookup,
-                ExecutionStockRetentionContract.issueRows(owner.rows())));
-            var exact = links.findExactOriginalSet(lookup.retentionNo());
-            for (var link : exact) {
-                if (link.getIssueObservationHash() != null || link.getIssueObservationJson() != null) {
-                    require(issueObservationHash.equals(link.getIssueObservationHash())
-                            && observation.equals(link.getIssueObservationJson()));
-                } else require(links.recordIssuedObservation(link, observation, issueObservationHash) == 1);
-            }
-            return observeLocked(lookup);
-        });
+        }
+        var value = PlatformExecutionStockRetentionComponent.receipt(component, result);
+        value.validate();
+        return value;
+    }
+
+    private PlatformExecutionStockRetentionComponent.ComponentReceipt componentReceipt(
+            PlatformExecutionStockRetentionComponent.ComponentDescriptor component, Outcome outcome, String reason) {
+        return PlatformExecutionStockRetentionComponent.receipt(component,
+                receipt(component.original(), outcome, reason, List.of()));
     }
 
     private boolean installed() {

@@ -9,6 +9,14 @@ import java.util.List;
 
 /** Pins existing original owner rows without issuing, returning, or introducing another quantity ledger. */
 public interface ExecutionStockRetentionPort {
+    ExecutionStockRetentionAggregateContract.AggregateReceiptV2 retainV2(RetainExecutionStock request);
+    ExecutionStockRetentionAggregateContract.AggregateReceiptV2 queryOriginalV2(RetentionLookup request);
+    ExecutionStockRetentionAggregateContract.AggregateReceiptV2 releaseAfterNoEffectV2(ReleaseAfterNoEffect request);
+    ExecutionStockRetentionAggregateContract.AggregateReceiptV2 acknowledgeIssuedV2(
+            ExecutionStockRetentionAggregateContract.AggregateIssuedV2 request);
+    ExecutionStockRetentionAggregateContract.AggregateReceiptV2 continueAcceptedRetentionV2(
+            ExecutionStockRetentionAggregateContract.AcceptedRouteLookup request);
+
     Receipt retain(RetainExecutionStock request);
     Receipt queryOriginal(RetentionLookup request);
     Receipt releaseAfterNoEffect(ReleaseAfterNoEffect request);

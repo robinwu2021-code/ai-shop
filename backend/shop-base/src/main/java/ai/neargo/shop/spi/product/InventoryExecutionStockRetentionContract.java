@@ -29,22 +29,81 @@ public final class InventoryExecutionStockRetentionContract {
 
     public static void validate(ComponentDescriptor value) {
         var original = value.original();
+        ExecutionEvidenceContract.hashValue(value.componentNo());
+        ExecutionEvidenceContract.hashValue(value.componentHash());
         ExecutionStockRetentionContract.validate(original.reference(), original.stockOriginal(),
                 original.confirmationOperationNo(), original.retentionNo(), original.requestHash());
         ExecutionEvidenceContract.reference(value.sourceConfirmationNo(), 64);
-        ExecutionEvidenceContract.require("INVENTORY_EXECUTION_COMPONENT_V1".equals(value.schema())
-                && value.proofMode() != null && !value.expectedNeeds().isEmpty()
+        boolean nativeV1 = "INVENTORY_EXECUTION_COMPONENT_V1".equals(value.schema());
+        ExecutionEvidenceContract.require(!value.expectedNeeds().isEmpty()
                 && original.stockOriginal().manifestHash().equals(value.parentManifestHash())
                 && StockDispositionContract.manifestHash(value.expectedNeeds()).equals(value.componentManifestHash())
-                && value.componentHash().equals(ExecutionEvidenceContract.digest(
-                        "INVENTORY_EXECUTION_COMPONENT_V1",
-                        value, "componentHash")));
-        if (value.proofMode() == ProofMode.NATIVE_CONFIRMATION) {
-            ExecutionEvidenceContract.require("INVENTORY".equals(original.stockOriginal().authority())
+                && value.componentHash().equals(ExecutionEvidenceContract.digest(value.schema(), value,
+                        "componentHash")));
+        if (nativeV1) {
+            ExecutionEvidenceContract.require(value.proofMode() == ProofMode.NATIVE_CONFIRMATION
+                    && "INVENTORY".equals(original.stockOriginal().authority())
                     && original.stockOriginal().needs().equals(value.expectedNeeds())
                     && value.componentNo().equals(ExecutionEvidenceContract.hash("INVENTORY_EXECUTION_COMPONENT_NO_V1",
                             List.of(original, value.proofMode(), value.sourceConfirmationNo()))));
+        } else {
+            ExecutionEvidenceContract.require("INVENTORY_EXECUTION_DUAL_COMPONENT_V2".equals(value.schema())
+                    && value.proofMode() == ProofMode.DUAL_MIRROR
+                    && "DUAL".equals(original.stockOriginal().authority()));
+            for (var need : value.expectedNeeds()) {
+                ExecutionEvidenceContract.require(original.stockOriginal().needs().stream().anyMatch(parent ->
+                        parent.skuNo().equals(need.skuNo())
+                        && java.util.Objects.equals(parent.sourceStoreNo(), need.sourceStoreNo())
+                        && parent.fulfillmentRef().equals(need.fulfillmentRef())
+                                && parent.quantity() >= need.quantity()));
+            }
+            ExecutionEvidenceContract.require(value.expectedNeeds().equals(StockDispositionContract.needs(
+                    value.expectedNeeds().stream().map(n -> new StockPort.SkuQty(n.skuNo(), n.quantity(),
+                            n.sourceStoreNo(), n.fulfillmentRef(),
+                                original.stockOriginal().lifecycleVersion())).toList())));
         }
+    }
+
+    public static ComponentDescriptor dualComponent(RetentionLookup original, String sourceConfirmationNo,
+            ExecutionStockMirrorEvidencePort.MirrorOriginalProof proof) {
+        proof.validate();
+        ExecutionEvidenceContract.require(original.equals(proof.original()) && !proof.expectedNeeds().isEmpty()
+                && sourceConfirmationNo.equals(proof.sourceConfirmationNo()));
+        String number = ExecutionEvidenceContract.hash("INVENTORY_EXECUTION_DUAL_COMPONENT_NO_V2",
+                List.of(original, sourceConfirmationNo, proof.proofHash()));
+        var value = new ComponentDescriptor("INVENTORY_EXECUTION_DUAL_COMPONENT_V2", number, original,
+                ProofMode.DUAL_MIRROR, proof.expectedNeeds(), original.stockOriginal().manifestHash(),
+                StockDispositionContract.manifestHash(proof.expectedNeeds()), sourceConfirmationNo, null);
+        return new ComponentDescriptor(value.schema(), number, original, value.proofMode(), value.expectedNeeds(),
+                value.parentManifestHash(), value.componentManifestHash(), sourceConfirmationNo,
+                ExecutionEvidenceContract.digest(value.schema(), value, "componentHash"));
+    }
+
+    public static void validateMirrorBinding(ComponentDescriptor component,
+            ExecutionStockMirrorEvidencePort.MirrorOriginalProof proof) {
+        component.validate();
+        ExecutionEvidenceContract.require(proof != null);
+        proof.validate();
+        ExecutionEvidenceContract.require(component.proofMode() == ProofMode.DUAL_MIRROR
+                && component.equals(dualComponent(component.original(), component.sourceConfirmationNo(), proof)));
+    }
+
+    public static String proofDomain(ComponentDescriptor component) {
+        component.validate();
+        return switch (component.schema()) {
+            case "INVENTORY_EXECUTION_COMPONENT_V1" -> "INVENTORY_EXECUTION_PROOF_V1";
+            case "INVENTORY_EXECUTION_DUAL_COMPONENT_V2" -> "INVENTORY_EXECUTION_DUAL_PROOF_V2";
+            default -> throw new IllegalArgumentException("unsupported Inventory component schema");
+        };
+    }
+
+    public static String receiptSchema(ComponentDescriptor component) {
+        component.validate();
+        return switch (component.schema()) {
+            case "INVENTORY_EXECUTION_COMPONENT_V1" -> "INVENTORY_EXECUTION_RETENTION_RECEIPT_V1";
+            case "INVENTORY_EXECUTION_DUAL_COMPONENT_V2" -> "INVENTORY_EXECUTION_DUAL_RETENTION_RECEIPT_V2";
+            default -> throw new IllegalArgumentException("unsupported Inventory component schema");
+        };
     }
 
     public static String ownerSetHash(List<HeadProof> heads, List<LineProof> lines, List<OutboundProof> outbounds) {

@@ -271,13 +271,13 @@ class NativeInventoryExecutionStockRetentionIT extends ManualSourceHostFixture {
     }
 
     @Test
-    void machineObservationAndMissingSealDoNotPinOrReleaseAndHostAggregateRemainsStaged() {
+    void machineObservationWithoutAcceptedIntentDoesNotPinAndV1HostAggregateRemainsPlatformOnly() {
         var lookup = prepared();
         assertThat(retention.queryOriginalComponent(lookup).outcome())
                 .isEqualTo(ExecutionStockRetentionPort.Outcome.UNKNOWN);
         assertThat(retention.continueAcceptedRetention(new InventoryExecutionStockRetentionPort.AcceptedRetention(
                 lookup, "no-real-router", "0".repeat(64))).outcome())
-                .isEqualTo(ExecutionStockRetentionPort.Outcome.UNAVAILABLE);
+                .isEqualTo(ExecutionStockRetentionPort.Outcome.UNKNOWN);
         var proof = retain(lookup).proof();
         var ref = lookup.component().original().reference();
         var seal = new ExecutionStockRetentionPort.ResourceSealLookup(ref, ref.plannedResourceCommandNo(),
@@ -682,7 +682,7 @@ class NativeInventoryExecutionStockRetentionIT extends ManualSourceHostFixture {
     }
 
     @Test
-    void validlyHashedUnsupportedDualDescriptorCallsTheActualNativeServiceWithoutAnyMutation() {
+    void underspecifiedDualEnumCannotEnterTheNativeV1SchemaOrReachAnyNativeMutation() {
         var lookup = prepared();
         var parent = lookup.component().original().stockOriginal();
         var dualOriginal = new StockDispositionPort.Original(parent.tenantNo(), parent.entityNo(), parent.orderNo(),
@@ -698,11 +698,12 @@ class NativeInventoryExecutionStockRetentionIT extends ManualSourceHostFixture {
                 descriptor.componentNo(), descriptor.original(), descriptor.proofMode(), descriptor.expectedNeeds(),
                 descriptor.parentManifestHash(), descriptor.componentManifestHash(), descriptor.sourceConfirmationNo(),
                 ExecutionEvidenceContract.digest("INVENTORY_EXECUTION_COMPONENT_V1", descriptor, "componentHash"));
-        descriptor.validate();
+        var rejected = descriptor;
         var before = ownerStockState(sourceOrder(lookup));
-        var receipt = retention.retainComponent(new InventoryExecutionStockRetentionPort.ComponentRetain(descriptor));
-        assertThat(receipt.outcome()).isEqualTo(ExecutionStockRetentionPort.Outcome.UNAVAILABLE);
-        assertThat(receipt.proof()).isNull();
+        assertThatThrownBy(rejected::validate).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> retention.retainComponent(
+                new InventoryExecutionStockRetentionPort.ComponentRetain(rejected)))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThat(ownerStockState(sourceOrder(lookup))).isEqualTo(before);
         assertNoNativePins(lookup);
     }
@@ -1282,4 +1283,61 @@ class NativeInventoryExecutionStockRetentionIT extends ManualSourceHostFixture {
 
     private record Flow(ManualOriginal original, FreezeStart request, PersonnelVO person) {
     }
+    @Test
+    void unknownAcceptedIntentCannotMintTheFirstNativeClaim() {
+        var lookup = prepared();
+        var result = retention.continueAcceptedRetention(new InventoryExecutionStockRetentionPort.AcceptedRetention(
+                lookup, "UNKNOWN_INTENT", "a".repeat(64)));
+        assertThat(result.outcome()).isIn(ExecutionStockRetentionPort.Outcome.UNKNOWN,
+                ExecutionStockRetentionPort.Outcome.UNAVAILABLE);
+        assertThat(inv().queryForObject("SELECT COUNT(*) FROM inv_execution_retention_claim WHERE component_no=?",
+                Integer.class, lookup.component().componentNo())).isZero();
+    }
+
+    @Autowired ExecutionStockRetentionPort aggregateRetention;
+    @Autowired ai.neargo.shop.invbridge.mapper.ExecutionRetentionRouteMapper retentionRoutes;
+
+    @Test
+    void nativeAggregateUsesRealNativeProofAndQueryDoesNotAcceptAnIntent() {
+        var component = prepared().component();
+        var original = component.original();
+        var unknown = aggregateRetention.queryOriginalV2(original);
+        assertThat(unknown.outcome()).isEqualTo(ExecutionStockRetentionPort.Outcome.UNKNOWN);
+        assertThat(retentionRoutes.find(original.reference().scope().tenantNo(), unknown.routeNo())).isNull();
+        var retained = current(() -> aggregateRetention.retainV2(new ExecutionStockRetentionPort.RetainExecutionStock(
+                original.reference(), original.stockOriginal(), original.confirmationOperationNo(),
+                original.retentionNo(), original.requestHash())));
+        assertThat(retained.outcome()).isEqualTo(ExecutionStockRetentionPort.Outcome.RETAINED);
+        assertThat(retained.canStart()).isFalse();
+        assertThat(retained.components()).hasSize(1);
+        assertThat(retained.components().getFirst().platform()).isNull();
+        assertThat(retained.components().getFirst().inventory().proof().lines()).isNotEmpty();
+        var row = retentionRoutes.find(original.reference().scope().tenantNo(), retained.routeNo());
+        long epoch = row.getObservationEpoch();
+        assertThat(aggregateRetention.queryOriginalV2(original).outcome())
+                .isEqualTo(ExecutionStockRetentionPort.Outcome.RETAINED);
+        assertThat(retentionRoutes.find(original.reference().scope().tenantNo(), retained.routeNo())
+                .getObservationEpoch()).isEqualTo(epoch);
+    }
+
+    @Test
+    void acceptedRouteCanContinueWithoutReplayingHumanAndWrongIntentCannotReplaceItsPins() {
+        var original = prepared().component().original();
+        var request = new ExecutionStockRetentionPort.RetainExecutionStock(original.reference(),
+                original.stockOriginal(), original.confirmationOperationNo(), original.retentionNo(),
+                original.requestHash());
+        var retained = current(() -> aggregateRetention.retainV2(request));
+        var row = retentionRoutes.find(original.reference().scope().tenantNo(), retained.routeNo());
+        var wrong = aggregateRetention.continueAcceptedRetentionV2(
+                new ai.neargo.shop.spi.product.ExecutionStockRetentionAggregateContract.AcceptedRouteLookup(
+                        row.getRouteNo(), row.getRouteHash(), row.getAcceptedIntentNo(), "f".repeat(64), original));
+        assertThat(wrong.outcome()).isEqualTo(ExecutionStockRetentionPort.Outcome.CONFLICT);
+        var continued = aggregateRetention.continueAcceptedRetentionV2(
+                new ai.neargo.shop.spi.product.ExecutionStockRetentionAggregateContract.AcceptedRouteLookup(
+                        row.getRouteNo(), row.getRouteHash(), row.getAcceptedIntentNo(), row.getAcceptedIntentHash(),
+                        original));
+        assertThat(continued.outcome()).isEqualTo(ExecutionStockRetentionPort.Outcome.RETAINED);
+        assertThat(continued.canStart()).isFalse();
+    }
+
 }

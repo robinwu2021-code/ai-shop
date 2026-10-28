@@ -61,6 +61,20 @@
         "inv_execution_retention_claim"
       ],
       "retainedStatementHashes": []
+    },
+    {
+      "migration": "backend/shop-app/src/main/resources/db/migration/V546__execution_retention_route.sql",
+      "sourceSha256": "d01896fa7cc345a3ab83f1404679859224f641547365c33b5bdfd06e7b35ddae",
+      "descriptor": "backend/shop-app/src/main/resources/META-INF/shop/execution-retention-route-schema.json",
+      "descriptorSha256": "f87bf22317683b6feb8e6807976ac8bc301fb47a807a139e1c6741b9eb577572",
+      "datasource": "PRIMARY",
+      "mode": "NATIVE_OWNER_ABSENT",
+      "capability": "execution-stock-retention-route",
+      "guardClass": "ai.neargo.shop.invbridge.policy.ExecutionRetentionRouteSchemaVerifier",
+      "absentTables": [
+        "prd_execution_retention_route"
+      ],
+      "retainedStatementHashes": []
     }
   ]
 }
