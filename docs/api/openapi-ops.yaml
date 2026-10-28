@@ -26400,7 +26400,7 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/pay-ops/v1/orders":
+  "/ops/payments/orders":
     get:
       operationId: "payOpsOrders"
       summary: "payOpsOrders"
@@ -26428,7 +26428,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/pay-ops/v1/orders/{no}":
+  "/ops/payments/orders/{no}":
     get:
       operationId: "payOpsOrder"
       summary: "payOpsOrder"
@@ -26460,7 +26460,7 @@ paths:
           schema:
             type: "string"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/pay-ops/v1/refunds":
+  "/ops/payments/refunds":
     get:
       operationId: "payOpsRefunds"
       summary: "payOpsRefunds"
@@ -26488,7 +26488,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/pay-ops/v1/refunds/{no}/review":
+  "/ops/payments/refunds/{no}/review":
     post:
       operationId: "payOpsReviewRefund"
       summary: "两人复核：同一人不能通过两次"
@@ -26526,7 +26526,7 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/pay-ops/v1/notifies":
+  "/ops/payments/notifies":
     get:
       operationId: "payOpsNotifies"
       summary: "payOpsNotifies"
@@ -26554,7 +26554,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/pay-ops/v1/notifies/{id}/resend":
+  "/ops/payments/notifies/{id}/resend":
     post:
       operationId: "payOpsResendNotify"
       summary: "payOpsResendNotify"
@@ -26593,7 +26593,7 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/pay-ops/v1/exceptions":
+  "/ops/payments/exceptions":
     get:
       operationId: "payOpsExceptions"
       summary: "payOpsExceptions"
@@ -26621,7 +26621,7 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/pay-ops/v1/exceptions/{id}/refund":
+  "/ops/payments/exceptions/{id}/refund":
     post:
       operationId: "payOpsRefundException"
       summary: "原路退回那一笔多收的钱（不碰已关支付单的余额） */"
@@ -26660,7 +26660,7 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/pay-ops/v1/exceptions/{id}/ignore":
+  "/ops/payments/exceptions/{id}/ignore":
     post:
       operationId: "payOpsIgnoreException"
       summary: "payOpsIgnoreException"
@@ -26699,7 +26699,7 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
-  "/pay-ops/v1/qr-codes/{qrCode}/disabled":
+  "/ops/payments/qr-codes/{qrCode}/disabled":
     put:
       operationId: "payOpsDisableQrCode"
       summary: "payOpsDisableQrCode"
