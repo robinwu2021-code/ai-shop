@@ -610,7 +610,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     mySpecs: {
       title: "Product options",
     tabDims: "Variants",
-    tabProps: "Details",
+
       removeTitle: "Drop this spec?",
       removeConfirm: "“{name}” and the options you kept under it will be removed from this category. Existing products are unaffected.",
       buildOwnDim: "New spec",
@@ -620,7 +620,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
       pickHintProps: "Available platform parameters",
       noMoreDim: "All specs for this category are in use",
     restShow: "Other platform specs ({n})",
-    restHide: "Hide the others",
+
       pickHint: "Available platform specs",
       addValueHint: "e.g. the platform has 500g and 1kg, but your bag is 750g. It lands on the same axis, so comparison still works.",
       addValuePh: "Enter the value name, e.g. 750g", valueMerged: "The platform already has “{name}” — using it",
@@ -632,16 +632,16 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
       noMorePropValue: "All platform values for this parameter are already in use",
 
       addPropValueHint: "e.g. the platform has Local and Domestic, but yours is from Yunnan. It lands on the same axis, so filtering still works.",
-      buildOwnPropValue: "New value",
-      save: "Save",
-      cancel: "Cancel", reset: "Reset to platform",
+
+
+       reset: "Reset to platform",
       addableHere: "Add back",
       catAllRemoved: "All removed",
       catAllRemovedProps: "All removed",
       catNoDims: "No specs yet",
       catNoProps: "No parameters yet",
       noShelf: "No store categories yet. Add some in “Store categories”.",
-      rename: "Rename",
+
       addValue: "Add option",
       addDim: "Add spec",
 
@@ -975,21 +975,21 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
 
     unitPiece: "pcs",
 
-    "save": "Save",
-    "restrictedDone": "Done",
-    "edit": "Edit",
-    "moreFold": "Less",
-    "specFold": "Collapse",
-    "more": "More",
-    "detailPh": "Optional",
-    "optional": "Optional",
-    "add": "New product",
+
+
+
+
+
+
+
+
+
     fieldOrigin: "List price",
-    "secCode": "Codes",
+
     fieldBarcode: "Barcode",
     fieldSkuCode: "SKU code",
     fieldUnit: "Unit",
-    "verifyStorePick": "Pick a store",
+
   },
 
   order: {
@@ -2874,6 +2874,7 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     title: "Account",
   },
   me: {
+    switchStore: "Switch store",
     account: "Account",
 
     username: "Username",
@@ -2885,12 +2886,12 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     passwordUnset: "Set up",
     passwordSaved: "Password saved",
     passwordTooShort: "At least 6 characters",
-    store: "My shop", messages: "Messages",
-    appearance: "Appearance & language", appearanceValue: "Colour · Light/dark · Language",
-    payment: "Payouts",
-    staff: "Staff",
-    income: "Income",
-    settle: "Settlement", stats: "Business data", help: "Merchant help", logout: "Sign out",
+    store: "My shop",
+     appearanceValue: "Colour · Light/dark · Language",
+
+
+
+    settle: "Settlement",  help: "Merchant help", logout: "Sign out",
     version: "Version",
     notLogin: "Not signed in", notLoginHint: "Sign in to manage the shop",
     loggedOut: "Signed out",

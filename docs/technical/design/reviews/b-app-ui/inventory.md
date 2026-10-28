@@ -23,12 +23,12 @@
 | pages | 126 |
 | registeredRoutes | 119 |
 | components | 50 |
-| localeKeys | 3627 |
-| catalogEntries | 3627 |
+| localeKeys | 3605 |
+| catalogEntries | 3605 |
 | references | 3287 |
 | dynamicReferences | 356 |
-| duplicateGroups | 347 |
-| duplicateKeys | 924 |
+| duplicateGroups | 335 |
+| duplicateKeys | 889 |
 | literalCandidates | 1 |
 | longCopyCandidates | 17 |
 | layoutCandidates | 19 |
@@ -346,7 +346,6 @@
 | 审核中 | apply.statusAPPLYING、goods.statusPENDING、payment.status.APPLYING、store.noticeAuditing、store.pickup.stPENDING、entities.stReviewing、me.statusAPPLYING | — | 否 |
 | 已完成 | management.state.COMPLETED、order.statusCOMPLETED、order.tabDone、points.refundCOMPLETED、stockSync.operationStatus.COMPLETED、stockAlign.lineStatus.COMPLETED、stockAlign.lineStatus.DONE | — | 否 |
 | 草稿 | svGov.states.DRAFT、issuer.states.DRAFT、management.state.DRAFT、goods.statusDRAFT、points.typeStateDraft、stockDocs.status.DRAFT、transfer.status.DRAFT | — | 是 |
-| 收起 | trace.fold、common.collapse、mySpecs.restHide、goods.moreFold、goods.specFold、store.picker.collapse、store.collapse | common.collapse | 否 |
 | 营业执照 | apply.qualBUSINESS_LICENSE、qual.typeLicense、payment.missing.licenses、payment.licenses、entities.title、entityDetail.license | — | 否 |
 | {n} 笔 | bizPay.flow.count、income.batchBills、income.dailyBills、income.inFlightHint、statement.billCountValue、invoice.billCountValue | — | 否 |
 | 待处理 | management.state.CHECKED、printCenter.status.PENDING、printCenter.status.OPEN、periods.tab.SHORT、message.tab.pending、stockAlign.lineStatus.PENDING | — | 否 |
@@ -365,7 +364,6 @@
 | 核销 | storedValue.redemption、points.directionREDEEM、verify.couponRedeem、verify.submit、verify.doIt | — | 否 |
 | {n} 人 | stores.staffValue、activityEdit.coverN、couponIssues.people、memberSegments.count、memberTags.count | — | 否 |
 | 全部 | svFinance.states.ALL、svGov.states.ALL、storedValue.all、common.all、message.tab.all | common.all | 是 |
-| 保存 | svGov.save、management.save、common.save、mySpecs.save、goods.save | common.save | 是 |
 | 人群 | activityEdit.audience、couponSend.audience、audience.activityTitle、memberSegments.title | — | 否 |
 | 使用中 | bizPay.qr.st_ACTIVE、payoutAccount.current、payoutAccount.status.ACTIVE、memberTag.active | — | 否 |
 | 删除 | common.delete、apply.qualRemove、goods.removeParam、memberSegments.remove | common.delete | 否 |
@@ -374,27 +372,23 @@
 | 店铺公告 | home.noticeEntry、store.announcement、store.noticeTitle、reach.scene.NOTICE | — | 否 |
 | 已启用 | issuer.states.ACTIVE、management.state.ACTIVE、storedValue.active、printCenter.status.ACTIVE | — | 否 |
 | 请选择 | management.choose、storedValue.select、common.choose、audience.none | common.choose | 否 |
-| 编辑 | management.edit、common.edit、goods.edit、store.edit | common.edit | 是 |
-| 员工 | management.staff、staff.title、staff.tab.staff、me.staff | — | 否 |
 | 可用 {n} | offlineSale.availableN、stockOut.availableN、transfer.availableN、transfer.qtyHint | — | 否 |
 | 发放 | points.directionEARN、coupon.send、couponEdit.groupIssue、couponSend.title | — | 否 |
 | 添加商品 | purchase.addItem、offlineSale.addItem、stockOut.addItem、transfer.addItem | — | 否 |
 | 长期 | store.ttl.forever、activities.always、activityEdit.scheduleType.ALWAYS_ON、couponText.validNone | — | 否 |
-| 取消 | storedValue.cancel、printCenter.action.CANCEL、common.cancel、mySpecs.cancel | common.cancel | 否 |
 | 已过期 | storedValue.consumeState.EXPIRED、qual.expired、plan.statusEXPIRED、stockAlign.lineStatus.EXPIRED | — | 否 |
 | 已到账 | storedValue.credited、income.received、points.earningAVAILABLE、settle.statusSPLIT_CONFIRMED | — | 否 |
-| 完成 | storedValue.finish、common.done、goods.restrictedDone、couponIssues.done | common.done | 是 |
 | 门店 | storedValue.store、settle.store、memberSegment.store、locations.kind.STORE | — | 否 |
 | 确认收款 | svFinance.receipt、svFinance.eventTypes.RECEIPT、svFinance.operation.receipt、order.offlinePay | — | 否 |
 | 加载更多 | svGov.more、management.more、storedValue.more、common.loadMore | common.loadMore | 是 |
 | 订单 | tab.orders、home.orders、order.title、stats.orders | — | 是 |
+| 收起 | trace.fold、common.collapse、store.picker.collapse、store.collapse | common.collapse | 否 |
 | 有效期 | verify.couponValid、store.noticeTtl、coupon.validity、couponEdit.groupValidity | — | 否 |
 | 所有人 | activityEdit.audienceOpt.ALL、audience.everyone、audience.coverAll | — | 是 |
 | 元 | activityEdit.comboPh.CUT、couponEdit.facePh、couponEdit.capPh | — | 是 |
 | 退款 | bizPay.flow.refunded、bizPay.flow.refund、bizPay.flow.refundRow | — | 否 |
 | 停用 | bizPay.qr.disable、common.disable、staff.dangerTitle | common.disable | 否 |
 | 已退款 | bizPay.refundStatus.SUCCEEDED、order.statusREFUNDED、afterSale.status.REFUNDED | — | 否 |
-| 选填 | common.optional、goods.detailPh、goods.optional | common.optional | 是 |
 | 手机号 | common.phone、apply.phone、notifySetting.phonePlaceholder | common.phone | 否 |
 | {n} 张 | couponSend.leftN、couponText.total、entityDetail.qualsCount | — | 否 |
 | 全部会员 | couponSend.preset.ALL、audience.allMembers、memberSegments.allMembers | — | 是 |
@@ -409,7 +403,9 @@
 | 滞销 | home.inv.stale、stock.statStale、stockReport.slow | — | 否 |
 | 请输入 11 位手机号 | login.phonePh、login.phoneInvalid、memberAdd.phonePh | — | 否 |
 | 确认 | management.confirm、activityEdit.stepConfirm、couponEdit.stepConfirm | — | 否 |
+| 编辑 | management.edit、common.edit、store.edit | common.edit | 是 |
 | 搜索 | management.search、common.search、store.picker.tabSearch | common.search | 是 |
+| 员工 | management.staff、staff.title、staff.tab.staff | — | 否 |
 | 标签 | memberDetail.tags、memberAdd.tags、memberTags.title | — | 是 |
 | 金额 | order.amount、activityEdit.comboType.AMOUNT、period.amount | — | 否 |
 | 已发货 | order.statusSHIPPED、order.tabShipped、order.shipped | — | 是 |
@@ -424,7 +420,6 @@
 | 待核实 | points.statementStateUnknown、stockSync.operationStatus.UNKNOWN、stockAlign.lineStatus.UNKNOWN | — | 否 |
 | 填一个大于 0 的整数 | purchase.qtyBad、offlineSale.qtyBad、stockOut.qtyBad | — | 是 |
 | 合计 | purchase.total、offlineSale.totalQty、transfer.totalQty | — | 是 |
-| 消息 | reachTasks.tab.MSG、me.messages、message.title | — | 是 |
 | 收单中 | settle.batchStatusDRAFT、periods.tab.OPEN、periods.status.OPEN | — | 否 |
 | 供应商 | stock.entry.suppliers、purchase.supplier、suppliers.title | — | 否 |
 | 退供应商 | stock.reason.RETURN_SUPPLIER、stockDocs.label.RETURN_SUPPLIER、stockOut.purpose.RETURN_SUPPLIER | — | 是 |
@@ -433,7 +428,9 @@
 | 作废这张单 | stockCheck.voidDoc、stockDocs.voidAction、transfer.void | — | 否 |
 | 送货方式 | store.fulfillCard、store.fulfillTitle、store.reach | — | 是 |
 | 经营范围 | store.scopeTitle、store.text.ph、store.scope | — | 否 |
+| 取消 | storedValue.cancel、printCenter.action.CANCEL、common.cancel | common.cancel | 否 |
 | 当前门店 | storedValue.currentStore、settle.scopeCurrent、storePick.current | — | 否 |
+| 完成 | storedValue.finish、common.done、couponIssues.done | common.done | 是 |
 | 时间 | storedValue.time、platformApply.time、activityEdit.schedule | — | 否 |
 | 提出争议 | svFinance.dispute、svFinance.eventTypes.DISPUTE、svFinance.operation.dispute | — | 否 |
 | 其他 | svFinance.methods.OTHER、stock.reason.OTHER、stockDocs.label.OTHER | — | 是 |
@@ -443,6 +440,7 @@
 | 撤销付款登记 | svFinance.void、svFinance.operation.void、management.permission.sv_settlement_payment_void | — | 否 |
 | 赠送 | svGov.give、stock.reason.GIFT、stockDocs.label.GIFT | — | 否 |
 | 移除 | svGov.remove、issuer.remove、common.remove | common.remove | 是 |
+| 保存 | svGov.save、management.save、common.save | common.save | 是 |
 | 已保存 | svGov.saved、storedValue.saved、common.saved | common.saved | 是 |
 | 已发布 | svGov.states.ACTIVE、store.noticeSaved、activityEdit.saved | — | 否 |
 | 待发布 | svGov.states.PREPARING、svGov.states.PAY_READY、goods.revStatusDRAFT | — | 否 |
@@ -478,8 +476,6 @@
 | 退款金额 | bizPay.refund.amount、afterSale.refundAmount | — | 否 |
 | 待平台复核 | bizPay.refundStatus.PENDING_REVIEW、bizPay.refundStatus.PENDING_SECOND_REVIEW | — | 是 |
 | 已提交 | bizPay.refundStatus.REQUESTED、platformApply.submitted | — | 是 |
-| 更多 | common.more、goods.more | common.more | 是 |
-| 重命名 | common.rename、mySpecs.rename | common.rename | 否 |
 | 有修改未保存 | common.unsaved、store.unsaved | common.unsaved | 否 |
 | 数量 | coupon.quantity、couponEdit.total | — | 是 |
 | 门槛 | coupon.threshold、couponEdit.min | — | 是 |
@@ -501,7 +497,6 @@
 | 待补执照 | entities.stPending、storePick.entityPending | — | 是 |
 | 未开通 | goods.channelOff、payment.notOpened | — | 否 |
 | 全选 | goods.confirmAll、stockCheck.pickAll | — | 是 |
-| 新建商品 | goods.createTitle、goods.add | — | 是 |
 | 运费模板 | goods.freightTpl、shipSetting.template | — | 否 |
 | 上门服务 | goods.fulfillmentType.APPOINTMENT、fulfillmentLabel.APPOINTMENT | — | 是 |
 | 到店核销 | goods.fulfillmentType.STORE_VERIFY、fulfillmentLabel.STORE_VERIFY | — | 是 |
@@ -518,7 +513,6 @@
 | 去添加 | goods.toStoreCategories、stock.goAddLocation | — | 否 |
 | 去开启 | goods.toStoreScope、geo.goSettings | — | 否 |
 | 件 | goods.unitPiece、stock.uom.PIECE | — | 否 |
-| 选择门店 | goods.verifyStorePick、storePick.title | — | 否 |
 | 散团 | group.dissolve、group.dissolveTitle | — | 否 |
 | 自提点 | group.pickup、groupOpen.pickup | — | 是 |
 | 截止 | groupOpen.deadline、couponEdit.until | — | 否 |
@@ -532,7 +526,6 @@
 | 今日 | home.today、stats.today | — | 是 |
 | 已发起，等通道确认 | income.inFlight、settle.statusSPLIT | — | 是 |
 | 本月 | income.rangeThisMonth、stats.month | — | 是 |
-| 收入 | income.title、me.income | — | 是 |
 | 账户已冻结 | issuer.blockers.ACCOUNT_FROZEN、points.accountFrozen | — | 是 |
 | 暂无储值账户 | issuer.blockers.NO_ACCOUNT、storedValue.noWallet | — | 是 |
 | 品牌储值尚未开通 | issuer.brandNotReady、issuer.blockers.BRAND_EXECUTION_DISABLED | — | 是 |
@@ -556,9 +549,7 @@
 | 用在哪 | memberTag.usedIn、memberSegment.usedIn | — | 是 |
 | 系统 | message.tab.SYSTEM、locations.kind.TRANSIT | — | 是 |
 | 添加 | mySpecs.add、store.addArea | — | 是 |
-| 新建可选值 | mySpecs.buildOwnPropValue、goods.paramFillOwn | — | 是 |
 | 已全部移除 | mySpecs.catAllRemoved、mySpecs.catAllRemovedProps | — | 是 |
-| 商品参数 | mySpecs.tabProps、goods.params | — | 否 |
 | 企业微信群 | notifySetting.channel.WEBHOOK、notifySetting.wecom | — | 是 |
 | 群机器人地址 | notifySetting.wecomAddr、notifySetting.wecomPlaceholder | — | 是 |
 | 可用 {n}，不可超出 | offlineSale.qtyHint、stockOut.qtyHint | — | 否 |
@@ -569,7 +560,6 @@
 | 平台补贴 | order.funderPlatform、platformApply.platformPer | — | 否 |
 | 订单号 | order.no、statement.csvOrderNo | — | 否 |
 | 可以收款 | payment.ok、payment.status.ACTIVE | — | 是 |
-| 收款设置 | payment.title、me.payment | — | 是 |
 | {q} / {m} 份 | periods.quotaOf、period.shortHead | — | 是 |
 | 已成 | periods.tab.CONFIRMED、periods.status.CONFIRMED | — | 是 |
 | 按商品 | picking.byGoods、period.byGoods | — | 是 |
@@ -595,19 +585,18 @@
 | 发消息 | reach.entry、members.act.reach | — | 否 |
 | {n} 单 · {m} | reachTask.hero、members.stat | — | 是 |
 | 存为人群 | reachTask.saveTitle、members.act.segment | — | 否 |
+| 消息 | reachTasks.tab.MSG、message.title | — | 是 |
 | 天 | schedule.dayUnit、couponEdit.daysPh | — | 否 |
 | 看全部 | settle.dayClear、stockDocs.showAll | — | 是 |
 | 全部门店 | settle.scopeAll、members.allStores | — | 否 |
 | 条码 | skuIdentity.barcode、goods.fieldBarcode | — | 是 |
 | 货号 | skuIdentity.code、goods.fieldSkuCode | — | 否 |
 | 导出 CSV | skuIdentity.export、statement.export | — | 是 |
-| 商品编码 | skuIdentity.title、goods.secCode | — | 否 |
 | 单位 | skuIdentity.unit、goods.fieldUnit | — | 是 |
 | 角色 | staff.tab.roles、staff.roleDetailTitle | — | 否 |
 | 快递费 | statement.freightCost、settle.freightCost | — | 是 |
 | 运费 | statement.freightIncome、settle.freightIncome | — | 是 |
 | 货款 | statement.gross、settle.gross | — | 是 |
-| 经营数据 | stats.title、me.stats | — | 是 |
 | 可用 | stock.available、stockDetail.available | — | 是 |
 | 跨店库存 | stock.entry.cross、stockCross.title | — | 否 |
 | 单据 | stock.entry.docs、stockDocs.title | — | 是 |
@@ -682,7 +671,6 @@
 | 开始日期 | svGov.startDate、storedValue.start | — | 否 |
 | 待审批 | svGov.states.PENDING、svGov.states.PENDING_APPROVAL | — | 是 |
 | 已停发 | svGov.states.STOPPED、issuer.states.ISSUE_STOPPED | — | 是 |
-| 外观与语言 | theme.title、me.appearance | — | 是 |
 | 至 {d} | verify.couponUntil、couponText.validUntil | — | 否 |
 
 ## 直写中文候选

@@ -675,10 +675,10 @@ export default {
       copiedToClipboard: "已复制到剪贴板。建议在电脑上打开本页。",
     },
     mySpecs: {
-    buildOwnPropValue: "新建可选值",
+
       title: "商品规格",
     tabDims: "销售规格",
-    tabProps: "商品参数",
+
       removeTitle: "移除该规格",
       // 说清连带后果：他对这个规格做过的档位取舍会一起没
       removeConfirm: "「{name}」及其在本类目下的档位设置将一并移除。已发布商品不受影响。",
@@ -689,7 +689,7 @@ export default {
       pickHintProps: "平台可选参数",
       noMoreDim: "本类目的平台规格已全部启用",
     restShow: "其他平台规格（{n}）",
-    restHide: "收起",
+
       pickHint: "平台可选规格",
       // 说清它落在哪：不是本店的私有字符串，而是挂在同一个平台规格下
       addValueHint: "平台未收录的档位可在此新建；新建后仍归属该规格，跨店比价不受影响。",
@@ -704,14 +704,14 @@ export default {
       addPropValueHint: "平台未收录的可选值可在此新建；新建后归属该参数，顾客筛选不受影响。",
 
       valueMerged: "平台已存在「{name}」，已直接引用",
-      save: "保存", cancel: "取消", reset: "恢复平台默认",
+        reset: "恢复平台默认",
       addableHere: "可加回",
       catAllRemoved: "已全部移除",
       catAllRemovedProps: "已全部移除",
       catNoDims: "暂无规格",
       catNoProps: "暂无参数",
       noShelf: "尚未设置经营类目。在「经营类目」中添加后，此处将列出对应的可用规格。",
-      rename: "重命名",
+
       addValue: "添加档位",
       addDim: "添加规格",
 
@@ -1073,21 +1073,21 @@ export default {
 
     unitPiece: "件",
 
-    "save": "保存",
-    "restrictedDone": "完成",
-    "edit": "编辑",
-    "moreFold": "收起",
-    "specFold": "收起",
-    "more": "更多",
-    "detailPh": "选填",
-    "optional": "选填",
-    "add": "新建商品",
+
+
+
+
+
+
+
+
+
     fieldOrigin: "划线价",
-    "secCode": "商品编码",
+
     fieldBarcode: "条码",
     fieldSkuCode: "货号",
     fieldUnit: "单位",
-    "verifyStorePick": "选择门店",
+
   },
 
   order: {
@@ -3138,7 +3138,8 @@ export default {
     title: "账号",
   },
   me: {
-    messages: "消息", appearance: "外观与语言", stats: "经营数据",
+    switchStore: "切换门店",
+
     loggedOut: "已退出登录",
     account: "登录账号",
 
@@ -3154,9 +3155,9 @@ export default {
     store: "我的店铺",
 
     appearanceValue: "配色 · 明暗 · 语言",
-    payment: "收款设置",
-    staff: "员工",
-    income: "收入",
+
+
+
     settle: "结算",
 
     help: "商家帮助",

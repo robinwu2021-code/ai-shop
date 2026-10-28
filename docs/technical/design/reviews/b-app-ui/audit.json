@@ -10,12 +10,12 @@
     "pages": 126,
     "registeredRoutes": 119,
     "components": 50,
-    "localeKeys": 3627,
-    "catalogEntries": 3627,
+    "localeKeys": 3605,
+    "catalogEntries": 3605,
     "references": 3287,
     "dynamicReferences": 356,
-    "duplicateGroups": 347,
-    "duplicateKeys": 924,
+    "duplicateGroups": 335,
+    "duplicateKeys": 889,
     "literalCandidates": 1,
     "longCopyCandidates": 17,
     "layoutCandidates": 19
@@ -1957,20 +1957,6 @@
       "sameInAllLanguages": true
     },
     {
-      "text": "收起",
-      "keys": [
-        "trace.fold",
-        "common.collapse",
-        "mySpecs.restHide",
-        "goods.moreFold",
-        "goods.specFold",
-        "store.picker.collapse",
-        "store.collapse"
-      ],
-      "canonicalCandidate": "common.collapse",
-      "sameInAllLanguages": false
-    },
-    {
       "text": "营业执照",
       "keys": [
         "apply.qualBUSINESS_LICENSE",
@@ -2194,18 +2180,6 @@
       "sameInAllLanguages": true
     },
     {
-      "text": "保存",
-      "keys": [
-        "svGov.save",
-        "management.save",
-        "common.save",
-        "mySpecs.save",
-        "goods.save"
-      ],
-      "canonicalCandidate": "common.save",
-      "sameInAllLanguages": true
-    },
-    {
       "text": "人群",
       "keys": [
         "activityEdit.audience",
@@ -2294,28 +2268,6 @@
       "sameInAllLanguages": false
     },
     {
-      "text": "编辑",
-      "keys": [
-        "management.edit",
-        "common.edit",
-        "goods.edit",
-        "store.edit"
-      ],
-      "canonicalCandidate": "common.edit",
-      "sameInAllLanguages": true
-    },
-    {
-      "text": "员工",
-      "keys": [
-        "management.staff",
-        "staff.title",
-        "staff.tab.staff",
-        "me.staff"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": false
-    },
-    {
       "text": "可用 {n}",
       "keys": [
         "offlineSale.availableN",
@@ -2360,17 +2312,6 @@
       "sameInAllLanguages": false
     },
     {
-      "text": "取消",
-      "keys": [
-        "storedValue.cancel",
-        "printCenter.action.CANCEL",
-        "common.cancel",
-        "mySpecs.cancel"
-      ],
-      "canonicalCandidate": "common.cancel",
-      "sameInAllLanguages": false
-    },
-    {
       "text": "已过期",
       "keys": [
         "storedValue.consumeState.EXPIRED",
@@ -2391,17 +2332,6 @@
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": false
-    },
-    {
-      "text": "完成",
-      "keys": [
-        "storedValue.finish",
-        "common.done",
-        "goods.restrictedDone",
-        "couponIssues.done"
-      ],
-      "canonicalCandidate": "common.done",
-      "sameInAllLanguages": true
     },
     {
       "text": "门店",
@@ -2446,6 +2376,17 @@
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": true
+    },
+    {
+      "text": "收起",
+      "keys": [
+        "trace.fold",
+        "common.collapse",
+        "store.picker.collapse",
+        "store.collapse"
+      ],
+      "canonicalCandidate": "common.collapse",
+      "sameInAllLanguages": false
     },
     {
       "text": "有效期",
@@ -2507,16 +2448,6 @@
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": false
-    },
-    {
-      "text": "选填",
-      "keys": [
-        "common.optional",
-        "goods.detailPh",
-        "goods.optional"
-      ],
-      "canonicalCandidate": "common.optional",
-      "sameInAllLanguages": true
     },
     {
       "text": "手机号",
@@ -2659,6 +2590,16 @@
       "sameInAllLanguages": false
     },
     {
+      "text": "编辑",
+      "keys": [
+        "management.edit",
+        "common.edit",
+        "store.edit"
+      ],
+      "canonicalCandidate": "common.edit",
+      "sameInAllLanguages": true
+    },
+    {
       "text": "搜索",
       "keys": [
         "management.search",
@@ -2667,6 +2608,16 @@
       ],
       "canonicalCandidate": "common.search",
       "sameInAllLanguages": true
+    },
+    {
+      "text": "员工",
+      "keys": [
+        "management.staff",
+        "staff.title",
+        "staff.tab.staff"
+      ],
+      "canonicalCandidate": null,
+      "sameInAllLanguages": false
     },
     {
       "text": "标签",
@@ -2809,16 +2760,6 @@
       "sameInAllLanguages": true
     },
     {
-      "text": "消息",
-      "keys": [
-        "reachTasks.tab.MSG",
-        "me.messages",
-        "message.title"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": true
-    },
-    {
       "text": "收单中",
       "keys": [
         "settle.batchStatusDRAFT",
@@ -2899,6 +2840,16 @@
       "sameInAllLanguages": false
     },
     {
+      "text": "取消",
+      "keys": [
+        "storedValue.cancel",
+        "printCenter.action.CANCEL",
+        "common.cancel"
+      ],
+      "canonicalCandidate": "common.cancel",
+      "sameInAllLanguages": false
+    },
+    {
       "text": "当前门店",
       "keys": [
         "storedValue.currentStore",
@@ -2907,6 +2858,16 @@
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": false
+    },
+    {
+      "text": "完成",
+      "keys": [
+        "storedValue.finish",
+        "common.done",
+        "couponIssues.done"
+      ],
+      "canonicalCandidate": "common.done",
+      "sameInAllLanguages": true
     },
     {
       "text": "时间",
@@ -2996,6 +2957,16 @@
         "common.remove"
       ],
       "canonicalCandidate": "common.remove",
+      "sameInAllLanguages": true
+    },
+    {
+      "text": "保存",
+      "keys": [
+        "svGov.save",
+        "management.save",
+        "common.save"
+      ],
+      "canonicalCandidate": "common.save",
       "sameInAllLanguages": true
     },
     {
@@ -3318,24 +3289,6 @@
       "sameInAllLanguages": true
     },
     {
-      "text": "更多",
-      "keys": [
-        "common.more",
-        "goods.more"
-      ],
-      "canonicalCandidate": "common.more",
-      "sameInAllLanguages": true
-    },
-    {
-      "text": "重命名",
-      "keys": [
-        "common.rename",
-        "mySpecs.rename"
-      ],
-      "canonicalCandidate": "common.rename",
-      "sameInAllLanguages": false
-    },
-    {
       "text": "有修改未保存",
       "keys": [
         "common.unsaved",
@@ -3525,15 +3478,6 @@
       "sameInAllLanguages": true
     },
     {
-      "text": "新建商品",
-      "keys": [
-        "goods.createTitle",
-        "goods.add"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": true
-    },
-    {
       "text": "运费模板",
       "keys": [
         "goods.freightTpl",
@@ -3678,15 +3622,6 @@
       "sameInAllLanguages": false
     },
     {
-      "text": "选择门店",
-      "keys": [
-        "goods.verifyStorePick",
-        "storePick.title"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": false
-    },
-    {
       "text": "散团",
       "keys": [
         "group.dissolve",
@@ -3799,15 +3734,6 @@
       "keys": [
         "income.rangeThisMonth",
         "stats.month"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": true
-    },
-    {
-      "text": "收入",
-      "keys": [
-        "income.title",
-        "me.income"
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": true
@@ -4020,15 +3946,6 @@
       "sameInAllLanguages": true
     },
     {
-      "text": "新建可选值",
-      "keys": [
-        "mySpecs.buildOwnPropValue",
-        "goods.paramFillOwn"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": true
-    },
-    {
       "text": "已全部移除",
       "keys": [
         "mySpecs.catAllRemoved",
@@ -4036,15 +3953,6 @@
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": true
-    },
-    {
-      "text": "商品参数",
-      "keys": [
-        "mySpecs.tabProps",
-        "goods.params"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": false
     },
     {
       "text": "企业微信群",
@@ -4132,15 +4040,6 @@
       "keys": [
         "payment.ok",
         "payment.status.ACTIVE"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": true
-    },
-    {
-      "text": "收款设置",
-      "keys": [
-        "payment.title",
-        "me.payment"
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": true
@@ -4371,6 +4270,15 @@
       "sameInAllLanguages": false
     },
     {
+      "text": "消息",
+      "keys": [
+        "reachTasks.tab.MSG",
+        "message.title"
+      ],
+      "canonicalCandidate": null,
+      "sameInAllLanguages": true
+    },
+    {
       "text": "天",
       "keys": [
         "schedule.dayUnit",
@@ -4425,15 +4333,6 @@
       "sameInAllLanguages": true
     },
     {
-      "text": "商品编码",
-      "keys": [
-        "skuIdentity.title",
-        "goods.secCode"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": false
-    },
-    {
       "text": "单位",
       "keys": [
         "skuIdentity.unit",
@@ -4474,15 +4373,6 @@
       "keys": [
         "statement.gross",
         "settle.gross"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": true
-    },
-    {
-      "text": "经营数据",
-      "keys": [
-        "stats.title",
-        "me.stats"
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": true
@@ -5149,15 +5039,6 @@
       "keys": [
         "svGov.states.STOPPED",
         "issuer.states.ISSUE_STOPPED"
-      ],
-      "canonicalCandidate": null,
-      "sameInAllLanguages": true
-    },
-    {
-      "text": "外观与语言",
-      "keys": [
-        "theme.title",
-        "me.appearance"
       ],
       "canonicalCandidate": null,
       "sameInAllLanguages": true

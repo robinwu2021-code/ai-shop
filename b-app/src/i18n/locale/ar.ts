@@ -611,7 +611,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     mySpecs: {
       title: "مواصفات المنتجات",
     tabDims: "الخيارات",
-    tabProps: "التفاصيل",
+
       removeTitle: "إزالة المواصفة",
       removeConfirm: "ستُزال «{name}» والخيارات التي أبقيتها تحتها من هذه الفئة. المنتجات الحالية لن تتأثر.",
       buildOwnDim: "مواصفة جديدة",
@@ -621,7 +621,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
       pickHintProps: "خصائص المنصة المتاحة",
       noMoreDim: "كل مواصفات هذه الفئة مستخدمة",
     restShow: "مواصفات المنصة الأخرى ({n})",
-    restHide: "إخفاء البقية",
+
       pickHint: "مواصفات المنصة المتاحة",
       addValueHint: "مثلًا لدى المنصة 500g و1kg، وكيسك 750g. سيقع على المحور نفسه فتبقى المقارنة صالحة.",
       addValuePh: "أدخل اسم القيمة، مثال: 750g", valueMerged: "لدى المنصة «{name}» بالفعل؛ سنستخدمها",
@@ -633,16 +633,16 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
       noMorePropValue: "جميع قيم المنصة لهذه الخاصية مُفعّلة بالفعل",
 
       addPropValueHint: "مثلًا لدى المنصة «محلي» و«وطني»، وبضاعتك من يوننان. ستقع على المحور نفسه فتبقى التصفية صالحة.",
-      buildOwnPropValue: "قيمة جديدة",
-      save: "حفظ",
-      cancel: "إلغاء", reset: "استعادة الافتراضي",
+
+
+       reset: "استعادة الافتراضي",
       addableHere: "إعادة الإضافة",
       catAllRemoved: "أُزيلت كلها",
       catAllRemovedProps: "أُزيلت كلها",
       catNoDims: "لا مواصفات بعد",
       catNoProps: "لا خصائص بعد",
       noShelf: "لا توجد فئات للمتجر بعد. أضفها من «فئات المتجر».",
-      rename: "إعادة تسمية",
+
       addValue: "إضافة خيار",
       addDim: "إضافة مواصفة",
 
@@ -976,21 +976,21 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
 
     unitPiece: "قطعة",
 
-    "save": "حفظ",
-    "restrictedDone": "تم",
-    "edit": "تعديل",
-    "moreFold": "أقل",
-    "specFold": "طي",
-    "more": "المزيد",
-    "detailPh": "اختياري",
-    "optional": "اختياري",
-    "add": "منتج جديد",
+
+
+
+
+
+
+
+
+
     fieldOrigin: "قبل الخصم",
-    "secCode": "الرموز",
+
     fieldBarcode: "الباركود",
     fieldSkuCode: "رمز الصنف",
     fieldUnit: "الوحدة",
-    "verifyStorePick": "اختر متجراً",
+
   },
 
   order: {
@@ -2873,6 +2873,7 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     title: "الحساب",
   },
   me: {
+    switchStore: "تبديل المتجر",
     account: "الحساب",
 
     username: "اسم المستخدم",
@@ -2884,12 +2885,12 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     passwordUnset: "تعيين",
     passwordSaved: "تم حفظ كلمة المرور",
     passwordTooShort: "6 أحرف على الأقل",
-    store: "متجري", messages: "الرسائل",
-    appearance: "المظهر واللغة", appearanceValue: "الألوان · فاتح/داكن · اللغة",
-    payment: "إعدادات التحصيل",
-    staff: "الموظفون",
-    income: "الدخل",
-    settle: "كشف التسوية", stats: "بيانات الأعمال", help: "مساعدة التجار", logout: "تسجيل الخروج",
+    store: "متجري",
+     appearanceValue: "الألوان · فاتح/داكن · اللغة",
+
+
+
+    settle: "كشف التسوية",  help: "مساعدة التجار", logout: "تسجيل الخروج",
     version: "الإصدار",
     notLogin: "غير مسجّل", notLoginHint: "سجّل الدخول لإدارة متجرك",
     loggedOut: "تم تسجيل الخروج",
