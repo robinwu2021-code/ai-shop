@@ -176,12 +176,12 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
     }
 
     private void restore(String ref, JsonNode p) {
-        List<ReservationService.Line> lines = lines(p);
-        if (lines.isEmpty()) {
-            return;
+        JsonNode items = p.get("items");
+        if (items == null || !items.isArray() || items.isEmpty() || originalRestores == null) {
+            throw new IllegalStateException("STOCK_RETURN_SOURCE_UNAVAILABLE");
         }
-        String owner = requireOwner(first(p));
-        reservations.restore(owner, ref, lines, "MIRROR");
+        var original = json.readValue(json.writeValueAsString(items), new TypeReference<List<SkuQty>>() { });
+        originalRestores.restoreLegacy(ref, original);
     }
 
     /**

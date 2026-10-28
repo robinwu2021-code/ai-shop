@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.service.impl;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.shop.inventory.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvItem;
@@ -34,16 +35,18 @@ public class OutboundServiceImpl implements OutboundService {
     private final SupplierMapper supplierMapper;
     private final StockPostingService posting;
     private final InventoryMutationGuard mutationGuard;
+    private final ExecutionStockRetentionGuard retention;
 
     public OutboundServiceImpl(OutboundOrderMapper orderMapper, OutboundLineMapper lineMapper,
                                ItemMapper itemMapper, SupplierMapper supplierMapper, StockPostingService posting,
-                               InventoryMutationGuard mutationGuard) {
+                               InventoryMutationGuard mutationGuard, ExecutionStockRetentionGuard retention) {
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
         this.itemMapper = itemMapper;
         this.supplierMapper = supplierMapper;
         this.posting = posting;
         this.mutationGuard = mutationGuard;
+        this.retention = retention;
     }
 
     @Override
@@ -97,7 +100,10 @@ public class OutboundServiceImpl implements OutboundService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void voidOrder(String ownerId, String outboundNo, String operator) {
-        InvOutboundOrder head = mine(ownerId, outboundNo);
+        InvOutboundOrder head = retention.lockReversibleOutbound(ownerId, outboundNo);
+        if (head == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
         if (InvEnums.DocStatus.VOIDED.equals(head.getStatus())) {
             return;
         }

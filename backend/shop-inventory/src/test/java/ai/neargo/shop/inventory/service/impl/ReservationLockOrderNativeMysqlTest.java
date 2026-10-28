@@ -1,8 +1,12 @@
 package ai.neargo.shop.inventory.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import ai.neargo.shop.inventory.config.InventoryDataSourceConfig;
-import ai.neargo.shop.inventory.mapper.InventoryMappers;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.BalanceMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ExecutionRetentionClaimMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ExecutionRetentionMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.InboundLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.InboundOrderMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
@@ -17,13 +21,26 @@ import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.SupplierMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers;
+import ai.neargo.shop.inventory.mapper.RefundRestoreMapper;
+import ai.neargo.shop.inventory.mapper.ReturnReceiptMapper;
+import ai.neargo.shop.inventory.policy.ExecutionStockRetentionGuard;
+import ai.neargo.shop.inventory.policy.ExecutionStockRetentionSchemaVerifier;
 import ai.neargo.shop.spi.product.StockDispositionContract;
 import ai.neargo.shop.spi.product.StockDispositionPort.CurrentState;
 import ai.neargo.shop.spi.product.StockDispositionPort.Lookup;
 import ai.neargo.shop.spi.product.StockDispositionPort.Need;
 import ai.neargo.shop.spi.product.StockDispositionPort.Original;
 import ai.neargo.shop.spi.product.StockDispositionPort.ReservationLookup;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.plugin.Interceptor;
@@ -37,26 +54,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-
 import tools.jackson.databind.ObjectMapper;
-
-import javax.sql.DataSource;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Opt-in native regression against an externally provisioned inventory V14 database.
@@ -72,6 +77,9 @@ class ReservationLockOrderNativeMysqlTest {
     private TransactionTemplate tx;
     private ReservationServiceImpl reservations;
     private ReservationDispositionServiceImpl dispositions;
+    private StockPostingServiceImpl posting;
+    private OutboundServiceImpl outbound;
+    private ExecutionStockRetentionGuard retention;
     private final LockSchedule schedule = new LockSchedule();
     private final String id = "c04" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
     private final List<String> seededOwners = new ArrayList<>();
@@ -98,18 +106,25 @@ class ReservationLockOrderNativeMysqlTest {
         tx.setIsolationLevelName("ISOLATION_REPEATABLE_READ");
         tx.setTimeout(15);
         var balances = mapper(BalanceMapper.class);
-        var posting = new StockPostingServiceImpl(balances, mapper(LedgerMapper.class), mapper(OutboxMapper.class));
+        retention = new ExecutionStockRetentionGuard(mapper(ExecutionRetentionMapper.class),
+                mapper(ExecutionRetentionClaimMapper.class), new ExecutionStockRetentionSchemaVerifier(
+                        context.getBean("invDataSource", DataSource.class), "inv_flyway_history", null),
+                mapper(ReservationMapper.class), mapper(ReservationLineMapper.class), mapper(OutboundOrderMapper.class),
+                mapper(RefundRestoreMapper.class), mapper(ReturnReceiptMapper.class));
+        posting = new StockPostingServiceImpl(balances, mapper(LedgerMapper.class), mapper(OutboxMapper.class),
+                retention);
         var guard = new InventoryMutationGuard(mapper(StockCountMapper.class), mapper(StockCountLineMapper.class),
                 mapper(LocationMapper.class));
-        var outbound = new OutboundServiceImpl(mapper(OutboundOrderMapper.class), mapper(OutboundLineMapper.class),
-                mapper(ItemMapper.class), mapper(SupplierMapper.class), posting, guard);
+        outbound = new OutboundServiceImpl(mapper(OutboundOrderMapper.class), mapper(OutboundLineMapper.class),
+                mapper(ItemMapper.class), mapper(SupplierMapper.class), posting, guard, retention);
         var inbound = new InboundServiceImpl(mapper(InboundOrderMapper.class), mapper(InboundLineMapper.class),
                 mapper(ItemMapper.class), posting, guard);
         reservations = new ReservationServiceImpl(mapper(ReservationMapper.class), mapper(ReservationLineMapper.class),
-                balances, outbound, inbound);
+                balances, outbound, inbound, retention);
         dispositions = new ReservationDispositionServiceImpl(mapper(ReservationMapper.class),
                 mapper(ReservationLineMapper.class), mapper(OwnerMapper.class), balances,
-                mapper(OutboundOrderMapper.class), mapper(OutboundLineMapper.class), reservations, new ObjectMapper());
+                mapper(OutboundOrderMapper.class), mapper(OutboundLineMapper.class), reservations,
+                new ObjectMapper(), retention);
     }
 
     @AfterEach
@@ -237,6 +252,117 @@ class ReservationLockOrderNativeMysqlTest {
         assertTerminal("RELEASED", 1, 0, 1, 0);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"REVERSE", "VOID"})
+    void reversalAndVoidTakeAllCurrentReservationRootsAndLinesBeforeAnyOutboundLock(String action) {
+        seed("ALLOCATED", true);
+        String document = tx.execute(status -> reservations.issueByFulfillmentRef(id, "C04_TEST"));
+        var trace = new ArrayList<String>();
+        schedule.trace.set(trace);
+        try {
+            tx.executeWithoutResult(status -> {
+                if ("VOID".equals(action)) {
+                    outbound.voidOrder(id, document, "C04_TEST");
+                } else {
+                    posting.reverse(id, document, "OUT", "C04_TEST");
+                }
+            });
+        } finally {
+            schedule.trace.remove();
+        }
+        int firstOutboundLock = -1;
+        int lastSourceLineLock = -1;
+        for (int i = 0; i < trace.size(); i++) {
+            String sql = trace.get(i);
+            if (sql.contains("INV_OUTBOUND_ORDER") && sql.contains("FOR UPDATE") && firstOutboundLock < 0) {
+                firstOutboundLock = i;
+            }
+            if (sql.contains("FROM INV_RESERVATION_LINE") && sql.contains("FOR UPDATE")) {
+                lastSourceLineLock = i;
+            }
+        }
+        assertThat(firstOutboundLock).isGreaterThan(lastSourceLineLock);
+        assertThat(lastSourceLineLock).isGreaterThanOrEqualTo(0);
+        assertThat(trace).noneMatch(sql -> sql.contains("JOIN INV_OUTBOUND_ORDER") && sql.contains("FOR UPDATE"));
+    }
+
+    @Test
+    void validatedOutboundHandleAvoidsNestedRootScansButExpiresAtTheInventoryTransactionBoundary() {
+        seed("ALLOCATED", true);
+        String document = tx.execute(status -> reservations.issueByFulfillmentRef(id, "C04_TEST"));
+        var trace = new ArrayList<String>();
+        schedule.trace.set(trace);
+        try {
+            tx.executeWithoutResult(status -> {
+                assertThat(retention.lockReversibleOutbound(id, document)).isNotNull();
+                assertThat(retention.lockReversibleOutbound(id, document)).isNotNull();
+            });
+            tx.executeWithoutResult(status -> assertThat(retention.lockReversibleOutbound(id, document)).isNotNull());
+        } finally {
+            schedule.trace.remove();
+        }
+        assertThat(trace.stream().filter(sql -> sql.contains("FROM INV_RESERVATION ")
+                && sql.contains("FOR UPDATE")).count()).isEqualTo(2);
+        assertThat(trace.stream().filter(sql -> sql.contains("FROM INV_OUTBOUND_ORDER ")
+                && sql.contains("FOR UPDATE")).count()).isEqualTo(2);
+        assertThatThrownBy(() -> retention.lockReversibleOutbound(id, document))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void transactionBoundHandleCannotBeReinterpretedByMutatingItsReturnedAssociation() {
+        seed("ALLOCATED", true);
+        String document = tx.execute(status -> reservations.issueByFulfillmentRef(id, "C04_TEST"));
+        tx.executeWithoutResult(status -> {
+            var locked = retention.lockReversibleOutbound(id, document);
+            locked.setSourceRef(id + "different");
+            assertThatThrownBy(() -> retention.lockReversibleOutbound(id, document))
+                    .isInstanceOf(RuntimeException.class);
+        });
+        assertThat(jdbc.queryForObject("SELECT source_ref FROM inv_outbound_order WHERE outbound_no=?",
+                String.class, document)).isEqualTo(id);
+    }
+
+    @Test
+    void inheritedRepeatableReadMissingOutboundDiscoveryCannotReverseALaterCommittedSale() {
+        seed("ALLOCATED", true);
+        tx.executeWithoutResult(status -> {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM inv_outbound_order WHERE source_ref=?",
+                    Long.class, id)).isZero();
+            String document;
+            try (var worker = Executors.newSingleThreadExecutor()) {
+                document = worker.submit(() -> tx.execute(ignored -> reservations.issueByFulfillmentRef(id,
+                        "C04_TEST"))).get(10, TimeUnit.SECONDS);
+            } catch (Exception failure) {
+                throw new AssertionError(failure);
+            }
+            assertThatThrownBy(() -> posting.reverse(id, document, "OUT", "C04_TEST"))
+                    .isInstanceOf(RuntimeException.class);
+        });
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM inv_ledger WHERE owner_id=? AND doc_no LIKE '%-R'",
+                Long.class, id)).isZero();
+    }
+
+    @Test
+    void inheritedRepeatableReadStaleAssociationAbortsBeforeAnyReverseEffect() {
+        seed("ALLOCATED", true);
+        String document = tx.execute(status -> reservations.issueByFulfillmentRef(id, "C04_TEST"));
+        tx.executeWithoutResult(status -> {
+            assertThat(jdbc.queryForObject("SELECT source_ref FROM inv_outbound_order WHERE outbound_no=?",
+                    String.class, document)).isEqualTo(id);
+            try (var worker = Executors.newSingleThreadExecutor()) {
+                worker.submit(() -> jdbc.update("UPDATE inv_outbound_order SET source_ref=? WHERE outbound_no=?",
+                        id + "changed", document)).get(10, TimeUnit.SECONDS);
+            } catch (Exception failure) {
+                throw new AssertionError(failure);
+            }
+            assertThatThrownBy(() -> posting.reverse(id, document, "OUT", "C04_TEST"))
+                    .isInstanceOf(RuntimeException.class);
+        });
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM inv_ledger WHERE owner_id=? AND doc_no=?",
+                Long.class, id, document + "-R")).isZero();
+    }
+
     private void assertFulfillmentAfterEarlierSnapshot(boolean issue) {
         tx.executeWithoutResult(status -> {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM inv_reservation_line WHERE fulfillment_ref=?",
@@ -337,6 +463,7 @@ class ReservationLockOrderNativeMysqlTest {
             MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class}))
     static final class LockSchedule implements Interceptor {
         private final ThreadLocal<String> role = new ThreadLocal<>();
+        private final ThreadLocal<List<String>> trace = new ThreadLocal<>();
         private final CountDownLatch observerHasHeads = new CountDownLatch(1);
         private final CountDownLatch writerWantsHead = new CountDownLatch(1);
         private volatile long observerConnection;
@@ -347,6 +474,9 @@ class ReservationLockOrderNativeMysqlTest {
             var statement = (MappedStatement) invocation.getArgs()[0];
             String sql = statement.getBoundSql(invocation.getArgs()[1]).getSql()
                     .replaceAll("\\s+", " ").toUpperCase(Locale.ROOT);
+            if (trace.get() != null) {
+                trace.get().add(sql);
+            }
             boolean headLock = sql.contains("FROM INV_RESERVATION ") && sql.contains("FOR UPDATE");
             if (headLock && "writer".equals(role.get())) writerWantsHead.countDown();
             Object result = invocation.proceed();

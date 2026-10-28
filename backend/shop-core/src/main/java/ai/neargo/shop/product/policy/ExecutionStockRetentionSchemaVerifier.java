@@ -436,7 +436,10 @@ public final class ExecutionStockRetentionSchemaVerifier {
             String value = input.get(at++);
             require(!List.of(")", ",", "and", "or").contains(value));
             if (take("(")) {
-                return value + "(" + String.join(",", arguments()) + ")";
+                var args = arguments();
+                // Only the no-flags two-argument native spelling is equivalent to the REGEXP operator.
+                String function = "regexp_like".equals(value) && args.size() == 2 ? "regexp" : value;
+                return function + "(" + String.join(",", args) + ")";
             }
             return value;
         }

@@ -2,6 +2,7 @@ package ai.neargo.shop.inventory.service.impl;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.entity.InvRefundRestore;
+import ai.neargo.shop.inventory.mapper.ReturnReceiptMapper;
 import ai.neargo.shop.inventory.mapper.RefundRestoreMapper;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.OriginalReservationRestoreService;
@@ -10,6 +11,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
+import ai.neargo.shop.spi.product.StockPort.SkuQty;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -24,12 +27,14 @@ public class OriginalReservationRestoreServiceImpl implements OriginalReservatio
     private final OriginalReservationSource source;
     private final RefundRestoreMapper claims;
     private final InboundService inbound;
+    private final ReturnReceiptMapper returns;
 
     public OriginalReservationRestoreServiceImpl(OriginalReservationSource source, RefundRestoreMapper claims,
-                                                 InboundService inbound) {
+                                                 InboundService inbound, ReturnReceiptMapper returns) {
         this.source = source;
         this.claims = claims;
         this.inbound = inbound;
+        this.returns = returns;
     }
 
     @Override
@@ -37,13 +42,28 @@ public class OriginalReservationRestoreServiceImpl implements OriginalReservatio
     public void restore(String purpose, String originalRef, List<ItemQty> items) {
         Map<String, Integer> needed = quantities(purpose, originalRef, items);
         List<Source> rows = source.lock(originalRef);
+        restoreLocked(purpose, rows, needed);
+    }
+
+    private void restoreLocked(String purpose, List<Source> rows, Map<String, Integer> needed) {
         if (replayed(purpose, rows, needed)) {
             return;
         }
         List<Long> ids = rows.stream().map(row -> row.line().getId()).toList();
         Map<Long, Integer> used = new HashMap<>();
-        claims.selectList(Wrappers.<InvRefundRestore>lambdaQuery().in(InvRefundRestore::getOriginalLineId, ids))
-                .forEach(claim -> used.merge(claim.getOriginalLineId(), claim.getQty(), Math::addExact));
+        claims.lockByOriginalLines(ids).forEach(claim -> {
+            if (claim.getQty() == null || claim.getQty() <= 0) {
+                throw conflict();
+            }
+            used.merge(claim.getOriginalLineId(), claim.getQty(), Math::addExact);
+        });
+        returns.lockByOriginalLines(ids).forEach(claim -> {
+            if (claim.getQty() == null || claim.getQty() <= 0) {
+                throw conflict();
+            }
+            used.merge(claim.getOriginalLineId(), claim.getQty(), Math::addExact);
+        });
+        var planned = new ArrayList<RestoreLine>();
         for (Source row : rows) {
             int wanted = needed.getOrDefault(row.line().getItemId(), 0);
             int available = row.restorableQty() - used.getOrDefault(row.line().getId(), 0);
@@ -52,13 +72,19 @@ public class OriginalReservationRestoreServiceImpl implements OriginalReservatio
             }
             int quantity = Math.min(wanted, available);
             if (quantity > 0) {
-                post(purpose, row, quantity);
+                planned.add(new RestoreLine(row, quantity));
                 needed.put(row.line().getItemId(), wanted - quantity);
             }
         }
         if (needed.values().stream().anyMatch(qty -> qty != 0)) {
             throw conflict();
         }
+        for (var line : planned) {
+            post(purpose, line.source(), line.quantity());
+        }
+    }
+
+    private record RestoreLine(Source source, int quantity) {
     }
 
     @Override
@@ -68,9 +94,58 @@ public class OriginalReservationRestoreServiceImpl implements OriginalReservatio
         return replayed(purpose, source.lock(originalRef), needed);
     }
 
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", isolation = Isolation.READ_COMMITTED)
+    public void restoreSourceSkus(String purpose, String originalRef, List<SkuQty> items) {
+        var rows = source.lock(originalRef);
+        var needed = quantities(purpose, originalRef, frozenItems(rows, items));
+        restoreLocked(purpose, rows, needed);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", isolation = Isolation.READ_COMMITTED)
+    public boolean completedSourceSkus(String purpose, String originalRef, List<SkuQty> items) {
+        var rows = source.lock(originalRef);
+        return replayed(purpose, rows, quantities(purpose, originalRef, frozenItems(rows, items)));
+    }
+
+    private List<ItemQty> frozenItems(List<Source> rows, List<SkuQty> requested) {
+        if (requested == null || requested.isEmpty()) {
+            throw conflict();
+        }
+        var result = new ArrayList<ItemQty>();
+        var itemSources = new HashMap<String, String>();
+        for (var item : requested) {
+            var matches = rows.stream().map(Source::line)
+                    .filter(line -> item.skuNo().equals(line.getSourceSkuNo())
+                            && (item.storeNo() == null || item.storeNo().equals(line.getSourceStoreNo()))
+                            && (item.fulfillmentRef() == null
+                                    || item.fulfillmentRef().equals(line.getFulfillmentRef())))
+                    .toList();
+            var identities = matches.stream().map(line -> line.getItemId()).distinct().toList();
+            if (identities.size() != 1 || item.qty() <= 0) {
+                throw conflict();
+            }
+            String identity = identities.getFirst();
+            String previous = itemSources.putIfAbsent(identity, item.skuNo());
+            // Ambiguous historical many-SKU-to-one-item mappings need an explicit original tuple protocol.
+            if (previous != null && !previous.equals(item.skuNo()) || rows.stream().map(Source::line)
+                    .anyMatch(line -> identity.equals(line.getItemId())
+                            && (!item.skuNo().equals(line.getSourceSkuNo())
+                                    || item.storeNo() != null && !item.storeNo().equals(line.getSourceStoreNo())
+                                    || item.fulfillmentRef() != null
+                                            && !item.fulfillmentRef().equals(line.getFulfillmentRef())))) {
+                throw conflict();
+            }
+            result.add(new ItemQty(identity, item.qty()));
+        }
+        return result;
+    }
+
     private boolean replayed(String purpose, List<Source> rows, Map<String, Integer> needed) {
         List<InvRefundRestore> old = claims.selectList(Wrappers.<InvRefundRestore>lambdaQuery()
-                .eq(InvRefundRestore::getPurposeNo, purpose));
+                .eq(InvRefundRestore::getPurposeNo, purpose).orderByAsc(InvRefundRestore::getOriginalLineId)
+                .last("FOR UPDATE"));
         if (old.isEmpty()) {
             return false;
         }

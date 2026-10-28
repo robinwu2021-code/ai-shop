@@ -165,8 +165,7 @@ public class InventoryStockPort implements StockPort, ReservationOwner {
         if (items == null || items.isEmpty()) {
             return;
         }
-        String owner = acl.ownerOfSku(items.get(0).skuNo());
-        reservations.restore(owner, restoreNo, toLines(owner, items), "SYSTEM");
+        originalRestores.restoreLegacy(restoreNo, items);
     }
 
     @Override

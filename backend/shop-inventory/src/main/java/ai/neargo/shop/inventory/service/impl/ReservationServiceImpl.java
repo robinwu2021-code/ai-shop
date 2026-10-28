@@ -12,6 +12,7 @@ import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationMapper;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.inventory.support.InvKeys;
 import ai.neargo.shop.spi.product.StockDispositionContract;
@@ -60,15 +61,17 @@ public class ReservationServiceImpl implements ReservationService {
     private final BalanceMapper balanceMapper;
     private final OutboundService outbound;
     private final InboundService inbound;
+    private final ExecutionStockRetentionGuard retention;
 
     public ReservationServiceImpl(ReservationMapper resMapper, ReservationLineMapper lineMapper,
                                   BalanceMapper balanceMapper, OutboundService outbound,
-                                  InboundService inbound) {
+                                  InboundService inbound, ExecutionStockRetentionGuard retention) {
         this.resMapper = resMapper;
         this.lineMapper = lineMapper;
         this.balanceMapper = balanceMapper;
         this.outbound = outbound;
         this.inbound = inbound;
+        this.retention = retention;
     }
 
     @Override
@@ -82,6 +85,7 @@ public class ReservationServiceImpl implements ReservationService {
     public String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds, int lifecycleVersion) {
         if (lifecycleVersion != 1 && lifecycleVersion != 2) throw BizException.of(ErrorCode.BAD_REQUEST);
         String sourceManifest = sourceManifest(lines, lifecycleVersion);
+        var sourceHeads = resMapper.lockOriginal(externalRef);
         InvReservation exists = find(ownerId, externalRef);
         if (exists != null) {
             if (InvEnums.ReservationStatus.RELEASED.equals(exists.getStatus())
@@ -98,6 +102,7 @@ public class ReservationServiceImpl implements ReservationService {
             // Return the exact complete frozen original, never reserve twice or adopt today's ACL.
             return exists.getReservationId();
         }
+        retention.requireUnretained(sourceHeads);
         if (lines == null || lines.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -167,6 +172,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String commit(String ownerId, String externalRef, String operator) {
+        fencedByRef(externalRef);
         InvReservation head = require(ownerId, externalRef);
         if (InvEnums.ReservationStatus.COMMITTED.equals(head.getStatus())) {
             return head.getOutboundNo();   // 幂等：重复 commit 返回原出库单
@@ -204,7 +210,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void allocatePaidByRef(String externalRef) {
-        for (InvReservation head : allByRef(externalRef)) {
+        for (InvReservation head : fencedByRef(externalRef)) {
             if (Integer.valueOf(2).equals(head.getLifecycleVersion())
                     && InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
                 if (head.getSourceManifestHash() != null) {
@@ -225,6 +231,7 @@ public class ReservationServiceImpl implements ReservationService {
     public String issueByFulfillmentRef(String fulfillmentRef, String operator) {
         if (fulfillmentRef == null || fulfillmentRef.isBlank()) throw BizException.of(ErrorCode.BAD_REQUEST);
         var locked = lockFulfillment(fulfillmentRef);
+        retention.requireUnretained(new ArrayList<>(locked.heads().values()));
         List<InvReservationLine> matching = locked.lines();
         String firstOutbound = matching.stream().map(InvReservationLine::getOutboundNo).filter(java.util.Objects::nonNull)
                 .findFirst().orElse(null);
@@ -265,7 +272,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void releaseAllocatedByRef(String externalRef) {
-        for (InvReservation head : allByRef(externalRef)) {
+        for (InvReservation head : fencedByRef(externalRef)) {
             releaseAllocatedLines(head, linesOf(head.getReservationId()));
         }
     }
@@ -274,6 +281,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional(transactionManager = "invTransactionManager")
     public void releaseAllocatedByFulfillmentRef(String fulfillmentRef) {
         var locked = lockFulfillment(fulfillmentRef);
+        retention.requireUnretained(new ArrayList<>(locked.heads().values()));
         List<InvReservationLine> matching = locked.lines();
         for (InvReservation head : locked.heads().values()) {
             var requested = matching.stream()
@@ -283,6 +291,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private void releaseAllocatedLines(InvReservation head, List<InvReservationLine> requested) {
+        retention.requireUnretained(List.of(head));
         if (!(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
                 || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus()))) return;
         for (InvReservationLine line : requested) {
@@ -319,6 +328,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void release(String ownerId, String externalRef) {
+        fencedByRef(externalRef);
         InvReservation head = find(ownerId, externalRef);
         // 只作用于 HELD：重复释放不会把预留减两次（超时任务与用户取消会撞车）
         if (head == null || !InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
@@ -330,7 +340,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void releaseByRef(String externalRef) {
-        for (InvReservation head : allByRef(externalRef)) {
+        for (InvReservation head : fencedByRef(externalRef)) {
             release(head.getOwnerId(), externalRef);
         }
     }
@@ -338,6 +348,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void cancelByRef(String ownerId, String externalRef) {
+        fencedByRef(externalRef);
         InvReservation head = find(ownerId, externalRef);
         if (head != null) {
             if (InvEnums.ReservationStatus.COMMITTED.equals(head.getStatus())) {
@@ -360,7 +371,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional(transactionManager = "invTransactionManager")
     public String commitByRef(String externalRef, String operator) {
         String firstOutbound = null;
-        for (InvReservation head : allByRef(externalRef)) {
+        for (InvReservation head : fencedByRef(externalRef)) {
             String outboundNo = commit(head.getOwnerId(), externalRef, operator);
             if (firstOutbound == null) {
                 firstOutbound = outboundNo;
@@ -372,17 +383,8 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String restore(String ownerId, String afterSaleNo, List<Line> lines, String operator) {
-        if (lines == null || lines.isEmpty()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        List<InboundService.Line> inLines = new ArrayList<>();
-        for (Line l : lines) {
-            inLines.add(new InboundService.Line(l.itemId(), l.qty(), null, null));
-        }
-        return inbound.postDirectly(new InboundService.Draft(
-                ownerId, lines.get(0).locationId(), InvEnums.InboundSource.RETURN, afterSaleNo,
-                // 系统自开的退货入库：没有供应商，supplierNo / supplierName 都是 null
-                null, null, LocalDateTime.now(), null, inLines), operator);
+        // A source-less call cannot prove that this is an untracked legacy original.
+        throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE, "STOCK_RETURN_SOURCE_UNAVAILABLE");
     }
 
     @Override
@@ -397,7 +399,9 @@ public class ReservationServiceImpl implements ReservationService {
         int expired = 0;
         // Lock the entire selected batch before any lines: an original observer may span
         // several of these heads. Payment can change HELD while the candidate scan waits.
-        for (InvReservation current : lockHeads(candidates)) {
+        var locked = lockHeads(candidates);
+        retention.requireUnretained(locked);
+        for (InvReservation current : locked) {
             if (current == null || !InvEnums.ReservationStatus.HELD.equals(current.getStatus())
                     || current.getExpiresAt() == null || !current.getExpiresAt().isBefore(now)) continue;
             unholdAll(current, InvEnums.ReservationStatus.EXPIRED);
@@ -416,6 +420,7 @@ public class ReservationServiceImpl implements ReservationService {
     // ────────────────────────────────────────────────────────────────────
 
     private void unholdAll(InvReservation head, String toStatus) {
+        retention.requireUnretained(List.of(head));
         if (!InvEnums.ReservationStatus.HELD.equals(head.getStatus())) return;
         var originalLines = linesOf(head.getReservationId());
         if (originalLines.isEmpty()) throw BizException.of(ErrorCode.CONFLICT);
@@ -586,8 +591,10 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     /** 按单号反查（订单号平台内全局唯一）。 */
-    private List<InvReservation> allByRef(String externalRef) {
-        return resMapper.lockOriginal(externalRef);
+    private List<InvReservation> fencedByRef(String externalRef) {
+        var original = resMapper.lockOriginal(externalRef);
+        retention.requireUnretained(original);
+        return original;
     }
 
     private InvReservation find(String ownerId, String externalRef) {
@@ -597,6 +604,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private InvReservation require(String ownerId, String externalRef) {
+        fencedByRef(externalRef);
         InvReservation head = find(ownerId, externalRef);
         if (head == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);

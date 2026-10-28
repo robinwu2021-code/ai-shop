@@ -1,6 +1,8 @@
 package ai.neargo.shop.inventory.mapper;
 
 import ai.neargo.shop.inventory.entity.InvDailySnapshot;
+import ai.neargo.shop.inventory.entity.InvExecutionRetention;
+import ai.neargo.shop.inventory.entity.InvExecutionRetentionClaim;
 import ai.neargo.shop.inventory.entity.InvInboundLine;
 import ai.neargo.shop.inventory.entity.InvInboundOrder;
 import ai.neargo.shop.inventory.entity.InvItem;
@@ -83,6 +85,7 @@ public final class InventoryMappers {
                    SET on_hand = on_hand + #{delta}, last_moved_at = NOW(), version = version + 1
                  WHERE owner_id = #{ownerId} AND item_id = #{itemId} AND location_id = #{locationId}
                    AND on_hand + #{delta} >= 0
+                   AND (#{delta} >= 0 OR on_hand + #{delta} >= reserved)
                 """)
         int applyDelta(@Param("ownerId") String ownerId, @Param("itemId") String itemId,
                        @Param("locationId") String locationId, @Param("delta") int delta);
@@ -175,6 +178,7 @@ public final class InventoryMappers {
                     + " ON l.reservation_id=r.reservation_id AND l.owner_id=r.owner_id"
                     + " WHERE l.fulfillment_ref=#{fulfillment} ORDER BY r.owner_id,r.reservation_id FOR UPDATE")
         List<InvReservation> lockByFulfillment(@Param("fulfillment") String fulfillment);
+
     }
 
     public interface ReservationLineMapper extends BaseMapper<InvReservationLine> {
@@ -182,6 +186,44 @@ public final class InventoryMappers {
                 "SELECT * FROM inv_reservation_line WHERE reservation_id=#{reservation} ORDER BY"
                     + " line_no FOR UPDATE")
         List<InvReservationLine> lockOriginal(@Param("reservation") String reservation);
+    }
+
+    /** Current permanent links, including terminal rows, serialize with their real reservation parents. */
+    public interface ExecutionRetentionMapper extends BaseMapper<InvExecutionRetention> {
+        @Select("SELECT * FROM inv_execution_retention WHERE owner_id=#{owner} AND reservation_id=#{reservation}"
+                + " ORDER BY original_line_id,id FOR UPDATE")
+        List<InvExecutionRetention> lockReservation(@Param("owner") String owner,
+                @Param("reservation") String reservation);
+
+        @Select("SELECT * FROM inv_execution_retention WHERE component_no=#{component}"
+                + " ORDER BY owner_id,reservation_id,original_line_id,id FOR UPDATE")
+        List<InvExecutionRetention> lockComponent(@Param("component") String component);
+
+        @Update("UPDATE inv_execution_retention SET issue_observation_json=#{observation},"
+                + " issue_observation_hash=#{hash},retention_revision=retention_revision+1,updated_at=UTC_TIMESTAMP(3)"
+                + " WHERE id=#{row.id} AND component_no=#{row.componentNo} AND request_hash=#{row.requestHash}"
+                + " AND reference_hash=#{row.referenceHash} AND owner_id=#{row.ownerId}"
+                + " AND reservation_id=#{row.reservationId} AND original_line_id=#{row.originalLineId}"
+                + " AND state='RETAINED' AND retention_revision=#{row.retentionRevision}"
+                + " AND retention_revision<9223372036854775807 AND issue_observation_hash IS NULL"
+                + " AND issue_observation_json IS NULL")
+        int recordIssued(@Param("row") InvExecutionRetention row, @Param("observation") String observation,
+                @Param("hash") String hash);
+    }
+
+    /** Header permanently serializes an absent-claim seal against delayed first line insertion. */
+    public interface ExecutionRetentionClaimMapper extends BaseMapper<InvExecutionRetentionClaim> {
+        @Select("SELECT * FROM inv_execution_retention_claim WHERE component_no=#{component} FOR UPDATE")
+        InvExecutionRetentionClaim lockComponent(@Param("component") String component);
+
+        @Update("UPDATE inv_execution_retention_claim SET issue_observation_json=#{observation},"
+                + " issue_observation_hash=#{hash},claim_revision=claim_revision+1,updated_at=UTC_TIMESTAMP(3)"
+                + " WHERE id=#{row.id} AND component_no=#{row.componentNo} AND request_hash=#{row.requestHash}"
+                + " AND reference_hash=#{row.referenceHash} AND claim_revision=#{row.claimRevision}"
+                + " AND state='RETAINED' AND claim_revision<9223372036854775807"
+                + " AND issue_observation_json IS NULL AND issue_observation_hash IS NULL")
+        int recordIssued(@Param("row") InvExecutionRetentionClaim row, @Param("observation") String observation,
+                @Param("hash") String hash);
     }
 
     // ── 单据 ──────────────────────────────────────────────────────────────
@@ -192,6 +234,10 @@ public final class InventoryMappers {
     }
 
     public interface OutboundOrderMapper extends BaseMapper<InvOutboundOrder> {
+        // Deliberately nonlocking discovery. An inherited RR snapshot may be stale or missing;
+        // reverse/void must abort on unknown or changed association after current source-root locks.
+        @Select("SELECT * FROM inv_outbound_order WHERE owner_id=#{owner} AND outbound_no=#{document}")
+        InvOutboundOrder findReversalCandidate(@Param("owner") String owner, @Param("document") String document);
     }
 
     public interface OutboundLineMapper extends BaseMapper<InvOutboundLine> {

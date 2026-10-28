@@ -17,6 +17,7 @@ import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationMapper;
 import ai.neargo.shop.inventory.service.ReservationDispositionService;
 import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.spi.product.StockDispositionContract;
 import ai.neargo.shop.spi.product.StockDispositionPort.Confirmation;
 import ai.neargo.shop.spi.product.StockDispositionPort.CurrentState;
@@ -63,6 +64,7 @@ public class ReservationDispositionServiceImpl implements ReservationDisposition
     private final OutboundLineMapper outboundLines;
     private final ReservationService reservations;
     private final ObjectMapper json;
+    private final ExecutionStockRetentionGuard retention;
 
     public ReservationDispositionServiceImpl(
             ReservationMapper heads,
@@ -72,7 +74,7 @@ public class ReservationDispositionServiceImpl implements ReservationDisposition
             OutboundOrderMapper outbound,
             OutboundLineMapper outboundLines,
             ReservationService reservations,
-            ObjectMapper json) {
+            ObjectMapper json, ExecutionStockRetentionGuard retention) {
         this.heads = heads;
         this.lines = lines;
         this.owners = owners;
@@ -81,6 +83,7 @@ public class ReservationDispositionServiceImpl implements ReservationDisposition
         this.outboundLines = outboundLines;
         this.reservations = reservations;
         this.json = json;
+        this.retention = retention;
     }
 
     @Override
@@ -88,6 +91,7 @@ public class ReservationDispositionServiceImpl implements ReservationDisposition
     public ReleaseView releaseOriginal(ReservationLookup request) {
         var original = request.original();
         var snapshot = load(original);
+        retention.requireUnretained(snapshot.heads());
         String invalid = invalid(original, snapshot);
         var before = snapshot;
         boolean held =
@@ -232,6 +236,7 @@ public class ReservationDispositionServiceImpl implements ReservationDisposition
         if (before.outcome() != Outcome.PENDING) {
             return before;
         }
+        retention.requireUnretained(snapshot.heads());
         for (var head : snapshot.heads()) {
             if (head.getConfirmationOperationNo() == null) {
                 if (!"HELD".equals(head.getStatus())) {
