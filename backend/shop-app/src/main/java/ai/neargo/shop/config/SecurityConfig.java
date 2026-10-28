@@ -13,7 +13,7 @@ import ai.neargo.shop.auth.MerchantTokenAuthFilter;
 import ai.neargo.shop.auth.OperatorTokenAuthFilter;
 import ai.neargo.shop.auth.RequestMetaFilter;
 import ai.neargo.shop.pay.api.guard.PortalFace;
-import ai.neargo.shop.pay.api.guard.core.PortalAuthFilters;
+import ai.neargo.shop.pay.api.guard.core.GuardFilters;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import ai.neargo.shop.auth.TokenStore;
@@ -165,7 +165,7 @@ public class SecurityConfig {
     @Order(1)
     SecurityFilterChain merchantChain(HttpSecurity http, TokenStore tokenStore,
                                       ObjectProvider<BizIdentityResolver> resolver,
-                                      PortalAuthFilters portalFilters) throws Exception {
+                                      GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher("/biz/**")
                 .cors(c -> c.configurationSource(corsSource()))
@@ -200,7 +200,7 @@ public class SecurityConfig {
                         MerchantTokenAuthFilter.class)
                 // 商家端支付（/biz/pay/**，ADR-044 BIZ 面）：复用上面认好的商家会话，接入层只做请求记录与「必须是商家令牌」。
                 // 其它 /biz 路径它不碰（过滤器按入口前缀自判）
-                .addFilterAfter(portalFilters.forFace(PortalFace.BIZ), BizContextFilter.class)
+                .addFilterAfter(portalFilters.forEntry(PortalFace.BIZ), BizContextFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();
     }
@@ -297,13 +297,13 @@ public class SecurityConfig {
     @Bean
     @Profile({"api", "ops"})
     @Order(6)
-    SecurityFilterChain openPayChain(HttpSecurity http, PortalAuthFilters portalFilters) throws Exception {
+    SecurityFilterChain openPayChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher(PortalFace.OPEN.prefix() + "/**")
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new RequestMetaFilter("PARTNER"), SecurityContextHolderFilter.class)
-                .addFilterBefore(portalFilters.forFace(PortalFace.OPEN), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forEntry(PortalFace.OPEN), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();
     }
@@ -316,7 +316,7 @@ public class SecurityConfig {
     @Bean
     @Profile({"api", "ops"})
     @Order(7)
-    SecurityFilterChain checkoutChain(HttpSecurity http, PortalAuthFilters portalFilters) throws Exception {
+    SecurityFilterChain checkoutChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher(PortalFace.CHECKOUT.prefix() + "/**")
                 .csrf(csrf -> csrf.disable())
@@ -324,7 +324,7 @@ public class SecurityConfig {
                 .headers(h -> h.frameOptions(f -> f.deny())
                         .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
                 .addFilterBefore(new RequestMetaFilter("H5"), SecurityContextHolderFilter.class)
-                .addFilterBefore(portalFilters.forFace(PortalFace.CHECKOUT), SecurityContextHolderFilter.class)
+                .addFilterBefore(portalFilters.forEntry(PortalFace.CHECKOUT), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();
     }
@@ -338,7 +338,7 @@ public class SecurityConfig {
     @Order(8)
     SecurityFilterChain payOpsChain(HttpSecurity http, TokenStore tokenStore,
                                     ObjectProvider<ai.neargo.shop.auth.LiveIdentityResolver> identityResolver,
-                                    PortalAuthFilters portalFilters) throws Exception {
+                                    GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher(PortalFace.OPS.prefix() + "/**")
                 .cors(c -> c.configurationSource(corsSource()))
@@ -349,7 +349,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .addFilterBefore(new OperatorTokenAuthFilter(tokenStore, identityResolver),
                         UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(portalFilters.forFace(PortalFace.OPS), OperatorTokenAuthFilter.class)
+                .addFilterAfter(portalFilters.forEntry(PortalFace.OPS), OperatorTokenAuthFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();
     }

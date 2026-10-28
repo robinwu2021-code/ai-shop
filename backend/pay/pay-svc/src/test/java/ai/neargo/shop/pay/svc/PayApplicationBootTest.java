@@ -129,7 +129,7 @@ class PayApplicationBootTest {
         assertThat(ctx.getBeanNamesForType(ai.neargo.shop.pay.api.guard.internal.InternalCallerFilter.class))
                 .as("内部调用过滤器没装上 —— /internal/pay/v1 就没人识别调用方了")
                 .hasSize(1);
-        assertThat(ctx.getBeansOfType(ai.neargo.shop.pay.api.guard.core.PortalAuthenticator.class))
+        assertThat(ctx.getBeansOfType(ai.neargo.shop.pay.api.guard.core.EntryGuard.class))
                 .as("对外入口的鉴权器进了支付服务进程")
                 .isEmpty();
         assertThat(ctx.getBeanNamesForType(ai.neargo.shop.pay.api.guard.open.service.AppAuthService.class))

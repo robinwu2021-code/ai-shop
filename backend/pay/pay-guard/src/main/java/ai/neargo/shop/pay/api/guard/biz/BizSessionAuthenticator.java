@@ -8,8 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Component;
-import ai.neargo.shop.pay.api.guard.core.PortalAuthFilter;
-import ai.neargo.shop.pay.api.guard.core.PortalAuthenticator;
+import ai.neargo.shop.pay.api.guard.core.EntryGuard;
+import ai.neargo.shop.pay.api.guard.core.GuardResult;
 import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
 
@@ -19,20 +19,18 @@ import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
  */
 @ConditionalOnGuardEntry(PortalFace.BIZ)
 @Component
-public class BizSessionAuthenticator implements PortalAuthenticator {
+public class BizSessionAuthenticator implements EntryGuard {
 
     @Override
-    public PortalFace face() {
+    public PortalFace entry() {
         return PortalFace.BIZ;
     }
 
     @Override
-    public Optional<PortalPrincipal> authenticate(HttpServletRequest request) {
+    public GuardResult authenticate(HttpServletRequest request) {
         Optional<LoginUser> who = SecurityUtils.currentUser().filter(u -> u.realm() == Realm.MERCHANT);
-        if (who.isEmpty()) {
-            request.setAttribute(PortalAuthFilter.FAILURE, "NO_MERCHANT_SESSION");
-        }
-        return who.map(u -> new PortalPrincipal(PortalFace.BIZ, "MCH_ACCOUNT", u.userNo(), null,
-                u.perms() == null ? Set.of() : Set.copyOf(u.perms())));
+        return who.map(u -> GuardResult.ok(new PortalPrincipal(PortalFace.BIZ, "MCH_ACCOUNT", u.userNo(), null,
+                        u.perms() == null ? Set.of() : Set.copyOf(u.perms()))))
+                .orElseGet(() -> GuardResult.unauthorized("NO_MERCHANT_SESSION"));
     }
 }

@@ -3,10 +3,10 @@ package ai.neargo.shop.pay.api.guard.checkout;
 import ai.neargo.shop.auth.ClientMeta;
 import ai.neargo.shop.pay.api.guard.PortalFace;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Component;
-import ai.neargo.shop.pay.api.guard.core.PortalAuthenticator;
+import ai.neargo.shop.pay.api.guard.core.EntryGuard;
+import ai.neargo.shop.pay.api.guard.core.GuardResult;
 import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
 
@@ -16,16 +16,16 @@ import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
  */
 @ConditionalOnGuardEntry(PortalFace.CHECKOUT)
 @Component
-public class CheckoutVisitorAuthenticator implements PortalAuthenticator {
+public class CheckoutVisitorAuthenticator implements EntryGuard {
 
     @Override
-    public PortalFace face() {
+    public PortalFace entry() {
         return PortalFace.CHECKOUT;
     }
 
     @Override
-    public Optional<PortalPrincipal> authenticate(HttpServletRequest request) {
+    public GuardResult authenticate(HttpServletRequest request) {
         String ip = ClientMeta.clientIp(request);
-        return Optional.of(new PortalPrincipal(PortalFace.CHECKOUT, "VISITOR", ip == null ? "unknown" : ip, null, Set.of()));
+        return GuardResult.ok(new PortalPrincipal(PortalFace.CHECKOUT, "VISITOR", ip == null ? "unknown" : ip, null, Set.of()));
     }
 }
