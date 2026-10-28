@@ -46,6 +46,10 @@ public class PayApiRequestLog extends PayBaseEntity {
     private String outcome;
     private Integer elapsedMs;
     private LocalDateTime receivedAt;
+    /** 验签命中的密钥版本；未通过为空（V14）。统计「还有谁在用旧版本」靠它 */
+    private Integer signKeyVersion;
+    /** 请求头 X-Encrypt-Serial（有加密字段时，V14） */
+    private String encryptSerial;
 
     // ---- 内部调用的来源（V13；CallSource，只留痕 —— ADR-045 G9）。外部入口为空
 

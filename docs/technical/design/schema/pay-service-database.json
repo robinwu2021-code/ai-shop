@@ -2338,6 +2338,18 @@
           "sqlType": "CHAR(64) NULL",
           "meaning": "上游请求 User-Agent 的 SHA-256",
           "meaningEn": "SHA-256 of the upstream User-Agent"
+        },
+        {
+          "name": "sign_key_version",
+          "sqlType": "INT NULL",
+          "meaning": "验签命中的密钥版本；未通过为空。统计「还有谁在用旧版本」靠它（V14）",
+          "meaningEn": "Key version that verified the signature; null when rejected"
+        },
+        {
+          "name": "encrypt_serial",
+          "sqlType": "VARCHAR(64) NULL",
+          "meaning": "请求头 X-Encrypt-Serial（有加密字段时，V14）",
+          "meaningEn": "Request header X-Encrypt-Serial (when encrypted fields are present)"
         }
       ],
       "uniqueKeys": [],
@@ -3098,6 +3110,18 @@
           "sqlType": "DATETIME(3) NULL",
           "meaning": "放弃时间（≥ 24h 仍失败）",
           "meaningEn": "Given up at (still failing after ≥ 24h)"
+        },
+        {
+          "name": "enc_key_version",
+          "sqlType": "INT NULL",
+          "meaning": "WEBHOOK：加密 resource 用的 EncryptKey 版本（sec_key_version.version_index）；重推一律用它（V14）",
+          "meaningEn": "WEBHOOK: EncryptKey version used for resource; retries reuse it"
+        },
+        {
+          "name": "sign_key_version",
+          "sqlType": "INT NULL",
+          "meaning": "WEBHOOK：签名用的密钥版本（HMAC 为 AppSecret，RSA 为平台签名密钥）；重推一律用它（V14）",
+          "meaningEn": "WEBHOOK: signing key version; retries reuse it"
         }
       ],
       "uniqueKeys": [
@@ -3461,6 +3485,12 @@
           "sqlType": "TINYINT(1) NOT NULL DEFAULT 0",
           "meaning": "沙箱 app（路由到 TEST 渠道）",
           "meaningEn": "Sandbox app (routed to TEST channel)"
+        },
+        {
+          "name": "sign_type",
+          "sqlType": "VARCHAR(16) NOT NULL DEFAULT 'HMAC'",
+          "meaning": "签名方案：HMAC 基础方案（AppSecret）/ RSA 增强方案（接入方私钥 + 平台证书）；一个 app 只能一种（V14）",
+          "meaningEn": "Signing scheme: HMAC (AppSecret) or RSA (partner private key + platform certificate); one per app"
         }
       ],
       "uniqueKeys": [

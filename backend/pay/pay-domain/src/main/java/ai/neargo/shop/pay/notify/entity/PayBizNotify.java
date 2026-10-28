@@ -35,4 +35,9 @@ public class PayBizNotify extends PayBaseEntity {
     private LocalDateTime nextAt;
     private LocalDateTime deliveredAt;
     private LocalDateTime givenUpAt;
+
+    /** WEBHOOK：首投时冻结的 EncryptKey 版本，重推一律用它（V14；M3.6） */
+    private Integer encKeyVersion;
+    /** WEBHOOK：首投时冻结的签名密钥版本，重推一律用它（V14；M3.6） */
+    private Integer signKeyVersion;
 }

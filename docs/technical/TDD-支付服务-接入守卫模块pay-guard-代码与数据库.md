@@ -270,7 +270,7 @@ backend/pay/pay-guard/
 |---|---|---|
 | **V13** `pay_request_log_call_source` | `pay_api_request_log` 加 8 列 + 1 个索引：内部调用来源 | G3 |
 | **V15** `pay_terminal` | 新表 `pay_terminal` · `pay_manager_code` · `pay_terminal_batch` | G5 |
-| （另） | 开放 API 加解密的 `pay_app.sign_type`、`pay_biz_notify` 冻结密钥版本、`pay_api_request_log.sign_key_version / encrypt_serial`；开发者控制台三张表 —— 见[开放API加解密-数据库设计](./TDD-支付服务-开放API加解密-数据库设计.md) §4，**迁移号从那份的 V12 顺延为 V17**（V12 已被 `pay_channel_market_explicit` 占用，V13 / V14 归 W6 对账） | G4 |
+| （另） | 开放 API 加解密的 `pay_app.sign_type`、`pay_biz_notify` 冻结密钥版本、`pay_api_request_log.sign_key_version / encrypt_serial`；开发者控制台三张表 —— 见[开放API加解密-数据库设计](./TDD-支付服务-开放API加解密-数据库设计.md) §4，**加列部分已落为 V14**（开发计划 M3.8；`db/pay` 号须连续、先合先占），控制台三张表随控制台另出 | G4 |
 
 ### 3.1 V13 · 请求记录加来源
 

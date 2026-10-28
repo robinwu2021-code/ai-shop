@@ -47,4 +47,7 @@ public class PayApp extends PayBaseEntity {
 
     /** 沙箱 app（路由到 TEST 渠道） */
     private Boolean sandbox;
+
+    /** 签名方案：HMAC（AppSecret）/ RSA（接入方私钥 + 平台证书）；一个 app 只能一种（V14） */
+    private String signType;
 }

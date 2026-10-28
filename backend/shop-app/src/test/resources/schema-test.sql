@@ -10798,6 +10798,8 @@ CREATE TABLE IF NOT EXISTS pay_api_request_log
     origin_client VARCHAR(24) NULL,
     origin_ip VARCHAR(64) NULL,
     origin_ua_digest CHAR(64) NULL,
+    sign_key_version INT NULL,
+    encrypt_serial VARCHAR(64) NULL,
     PRIMARY KEY (id)
 );
 
@@ -10947,6 +10949,8 @@ CREATE TABLE IF NOT EXISTS pay_biz_notify
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    enc_key_version INT NULL,
+    sign_key_version INT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_biz_notify_1 UNIQUE (target_type,pay_app_id,event_key)
 );
@@ -11040,6 +11044,7 @@ CREATE TABLE IF NOT EXISTS pay_app
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    sign_type VARCHAR(16) NOT NULL DEFAULT 'HMAC',
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_app_1 UNIQUE (app_no)
 );

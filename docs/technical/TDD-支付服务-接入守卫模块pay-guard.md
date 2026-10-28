@@ -623,6 +623,7 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M3.7 | 新增 5 个码（按 API 清单 §1.3，开发计划写的是 4 个）：`PAY_OPEN_TIMESTAMP_EXPIRED` 70095 · `PAY_OPEN_REPLAYED` 70096 · `PAY_OPEN_FIELD_ENCRYPT_REQUIRED` 70097 · `PAY_OPEN_FIELD_DECRYPT_FAILED` 70098 · `PAY_KEY_SERVICE_UNAVAILABLE` 70099；本次接上前两个，字段加密两个随 M3.5、密钥服务随 L5 | API 清单是后定的那份 |
 | M3.7 | 响应体里的 `code` 仍是数字（与全仓一致），不是 API 清单写的字符串 `AUTH_FAILED` 等；时间窗外不回服务器时间，沙箱也不回细分原因与待签串 | 数字码是现有对外契约，换字符串要发新版契约（M3.9 一并定）；沙箱诊断信息另做 |
 | M3.7 | **对外行为变化**：来源 IP 不在接入方白名单由 401 改为 **403**（`FORBIDDEN`，记 `REJECTED_FORBIDDEN`） | API 清单 §1.3：IP 是接入方配置问题，不是认证失败；试点接入方需知会 |
+| M3.8 | 迁移号 **V14**（原排 V17）；只落加列（`pay_app.sign_type`、`pay_biz_notify` 两个冻结版本、`pay_api_request_log.sign_key_version / encrypt_serial`），开发者控制台三张表不在本次 | `db/pay` 号须连续、先合先占；控制台三张表随控制台另出（待确认 Q3）。列也写回了 `pay-service-database.json`（同 V13 的做法） |
 
 ---
 

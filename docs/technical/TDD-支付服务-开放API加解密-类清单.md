@@ -207,7 +207,7 @@ public interface KeyVault {
 | K1 | secret V2 + `StorageTier` / `SecretFormat` / `KeyVault` + `RoutingKeyVault` + L1 / L2 后端 + `KeyTierPolicy` + `MaterialCache` | W5 分支合入 |
 | K2 | `AppSignatureVerifier` 替换 `AppKeyResolver`；错误码细分；`X-Key-Serial` | K1 |
 | K3 | 响应签名、字段解密、`/certificates`（基础方案返回空）、`/ping` | K2 |
-| K4 | pay V17 / V18 + 开发者控制台后端（激活、登录、生成 / 重置 / 作废） | K1；TDD Q2 定位置 |
+| K4 | pay 控制台三张表（加列已在 V14）+ 开发者控制台后端（激活、登录、生成 / 重置 / 作废） | K1；TDD Q2 定位置 |
 | K5 | 推送信封（随 I5 webhook 投递） | K3 · I5 |
 | K6 | L3 KMS 主密钥实现、L4 外部服务、L5 远程运算 + 平台密钥对 + 增强方案 | Q-C1 |
 
