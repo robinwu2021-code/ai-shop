@@ -23,15 +23,15 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 
 /**
- * controller 经参数拿 {@link PayCaller}（开发计划 M1.5）：由守卫认出的调用方换成支付域的调用方，
- * 各入口的换法与原先 controller 里手写的一模一样（开放 API：启用 → scope → 授权门店；运营：运营操作员）。
+ * controller 经参数拿 {@link PayCaller}（开发计划 M1.5）：由守卫认出的调用方换成支付域的调用方
+ * （开放 API：启用 → 授权门店，scope 守卫已判 —— M3.3；运营：运营操作员）。
  */
 class CallerArgumentResolverTest {
 
     /** 几种参数写法 */
     @SuppressWarnings("unused")
     static class Endpoints {
-        void create(@CallerGrant(scope = "pay:create", grant = "COLLECT") PayCaller caller) {
+        void create(@CallerGrant(grant = "COLLECT") PayCaller caller) {
         }
 
         void unannotated(PayCaller caller) {
@@ -57,11 +57,6 @@ class CallerArgumentResolverTest {
             a.setId(7L);
             a.setAppNo(appNo);
             return a;
-        }
-
-        @Override
-        public void requireScope(PayApp app, String scope) {
-            calls.add("requireScope:" + scope);
         }
 
         @Override
@@ -105,13 +100,13 @@ class CallerArgumentResolverTest {
     }
 
     @Test
-    @DisplayName("★★★ 开放 API：按注解的 scope 与授权动作换成调用方，顺序与原 controller 一致（启用 → scope → 授权门店）")
+    @DisplayName("★★★ 开放 API：按注解的授权动作换成调用方（启用 → 授权门店）；scope 不在这里判（守卫已判，M3.3）")
     void openUsesDeclaredScopeAndGrant() throws Exception {
         PortalPrincipal app = new PortalPrincipal(PortalFace.OPEN, "APP", "APP7", null, Set.of());
 
         Object caller = resolver.resolveArgument(param("create", PayCaller.class), null, requestAs(app), null);
 
-        assertThat(apps.calls).containsExactly("requireActive:APP7", "requireScope:pay:create", "callerFor:COLLECT");
+        assertThat(apps.calls).containsExactly("requireActive:APP7", "callerFor:COLLECT");
         assertThat(caller).isInstanceOfSatisfying(PayCaller.class, c -> {
             assertThat(c.type()).isEqualTo(CallerType.PARTNER);
             assertThat(c.callerId()).isEqualTo(7L);

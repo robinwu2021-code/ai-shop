@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import ai.neargo.shop.pay.api.guard.core.EntryGuard;
 import ai.neargo.shop.pay.api.guard.core.GuardResult;
+import ai.neargo.shop.pay.api.guard.core.PortalActions;
 import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 import ai.neargo.shop.pay.api.guard.core.PortalRequests;
 import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
@@ -54,6 +55,12 @@ public class OpenSignatureAuthenticator implements EntryGuard {
         }
         // 命中的密钥版本记进请求记录（⑫），统计「还有谁在用旧版本」靠它（M3.2）
         request.setAttribute(PortalRequests.SIGN_KEY_VERSION, result.keyVersion());
+        // ⑧ scope：按动作要 scope，缺了就在这里 403，不进 controller、不解析请求体（M3.3）；认不出的动作一律拒
+        String scope = AppScopes.requiredFor(PortalActions.of(PortalFace.OPEN, request.getMethod(), path));
+        if (scope == null || !AppScopes.granted(result.app(), scope)) {
+            return new GuardResult(null, 403, ErrorCode.FORBIDDEN, "REJECTED_FORBIDDEN",
+                    "SCOPE_MISSING " + (scope == null ? "(unknown action)" : scope));
+        }
         return GuardResult.ok(new PortalPrincipal(PortalFace.OPEN, "APP", result.app().getAppNo(), null, Set.of()));
     }
 

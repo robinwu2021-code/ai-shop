@@ -16,7 +16,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 /**
  * controller 经参数拿 {@link PayCaller}（ADR-045 §2-1；开发计划 M1.5）：守卫认出的 {@link PortalPrincipal} 在这里换成支付域的调用方。
  * <ul>
- *   <li>开放 API：参数上的 {@link CallerGrant} 给出 scope 与授权动作 —— 启用 → scope → 授权门店；</li>
+ *   <li>开放 API：参数上的 {@link CallerGrant} 给出授权动作 —— 启用 → 授权门店（scope 守卫已判，M3.3）；</li>
  *   <li>运营端：运营操作员（平台身份、不按门店圈），权限码判在端点的 {@code @perm.can}。</li>
  * </ul>
  * 商家端不经这里：它的调用方要按请求里的门店圈，门店要先过 {@code @PreAuthorize} 的门店校验，而参数解析在判权之前。
@@ -56,11 +56,10 @@ public class CallerArgumentResolver implements HandlerMethodArgumentResolver {
     private PayCaller open(PortalPrincipal who, MethodParameter parameter) {
         CallerGrant grant = parameter.getParameterAnnotation(CallerGrant.class);
         if (grant == null) {
-            throw new IllegalStateException("开放 API 的 PayCaller 参数要写 @CallerGrant(scope, grant)：" + parameter.getMethod());
+            throw new IllegalStateException("开放 API 的 PayCaller 参数要写 @CallerGrant(grant)：" + parameter.getMethod());
         }
         AppAuthService service = apps.getObject();
         PayApp app = service.requireActive(who.subjectId());
-        service.requireScope(app, grant.scope());
         return service.callerFor(app, grant.grant());
     }
 }

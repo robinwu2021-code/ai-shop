@@ -114,15 +114,6 @@ public class AppAuthServiceImpl implements AppAuthService {
     }
 
     @Override
-    public void requireScope(PayApp app, String scope) {
-        Set<String> scopes = Arrays.stream(app.getScopes() == null ? new String[0] : app.getScopes().split(","))
-                .map(String::trim).collect(Collectors.toSet());
-        if (!scopes.contains(scope)) {
-            throw BizException.of(ErrorCode.PAY_FORBIDDEN);
-        }
-    }
-
-    @Override
     public PayCaller callerFor(PayApp app, String grantAction) {
         Set<Long> stores = DataScopeContext.executeWithoutScope(() -> grants.selectList(
                         Wrappers.<PayAppGrant>lambdaQuery().eq(PayAppGrant::getPayAppId, app.getId())

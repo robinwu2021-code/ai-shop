@@ -59,7 +59,7 @@ public class OpenPaymentController {
 
     @PostMapping
     public PortalResponse<OrderView> create(@RequestBody CreateOrderReq req,
-                                            @CallerGrant(scope = "pay:create", grant = "COLLECT") PayCaller caller,
+                                            @CallerGrant(grant = "COLLECT") PayCaller caller,
                                             HttpServletRequest http) {
         if (blank(req.outOrderNo()) || req.outOrderNo().length() > 64 || blank(req.storeRef()) || req.amountMinor() == null
                 || req.amountMinor() <= 0 || blank(req.currency()) || blank(req.subject())) {
@@ -86,14 +86,14 @@ public class OpenPaymentController {
 
     @GetMapping("/{payOrderNo}")
     public PortalResponse<OrderView> get(@PathVariable String payOrderNo,
-                                         @CallerGrant(scope = "pay:read", grant = "READ") PayCaller caller,
+                                         @CallerGrant(grant = "READ") PayCaller caller,
                                          HttpServletRequest http) {
         return ok(OrderView.of(payments.query(caller, payOrderNo), null), http);
     }
 
     @GetMapping
     public PortalResponse<OrderView> byOutOrderNo(@RequestParam String outOrderNo,
-                                                  @CallerGrant(scope = "pay:read", grant = "READ") PayCaller caller,
+                                                  @CallerGrant(grant = "READ") PayCaller caller,
                                                   HttpServletRequest http) {
         PayOrder o = payments.findByOutOrderNo(caller.callerId(), outOrderNo);
         if (o == null) {
@@ -104,7 +104,7 @@ public class OpenPaymentController {
 
     @PostMapping("/{payOrderNo}/pay")
     public PortalResponse<StartPaymentResult> start(@PathVariable String payOrderNo, @RequestBody StartReq req,
-                                                    @CallerGrant(scope = "pay:create", grant = "COLLECT") PayCaller caller,
+                                                    @CallerGrant(grant = "COLLECT") PayCaller caller,
                                                     HttpServletRequest http) {
         if (blank(req.payMethod())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -115,7 +115,7 @@ public class OpenPaymentController {
 
     @PostMapping("/{payOrderNo}/close")
     public PortalResponse<OrderView> close(@PathVariable String payOrderNo, @RequestBody(required = false) CloseReq req,
-                                           @CallerGrant(scope = "pay:create", grant = "COLLECT") PayCaller caller,
+                                           @CallerGrant(grant = "COLLECT") PayCaller caller,
                                            HttpServletRequest http) {
         String reason = req == null || blank(req.reason()) ? "PARTNER_CLOSE" : req.reason();
         return ok(OrderView.of(payments.close(caller, payOrderNo, reason), null), http);

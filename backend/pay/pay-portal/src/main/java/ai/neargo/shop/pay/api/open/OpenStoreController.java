@@ -37,7 +37,7 @@ public class OpenStoreController {
     @GetMapping("/stores/{storeRef}/pay-methods")
     public PortalResponse<List<PayMethodView>> payMethods(@PathVariable String storeRef,
                                                           @RequestParam(required = false) String market,
-                                                          @CallerGrant(scope = "pay:read", grant = "READ") PayCaller caller,
+                                                          @CallerGrant(grant = "READ") PayCaller caller,
                                                           HttpServletRequest http) {
         StoreRef store = stores.storeByNo(storeRef)
                 .filter(s -> caller.storeScope().contains(s.storeId()))

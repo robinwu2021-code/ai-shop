@@ -625,6 +625,7 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M3.7 | **对外行为变化**：来源 IP 不在接入方白名单由 401 改为 **403**（`FORBIDDEN`，记 `REJECTED_FORBIDDEN`） | API 清单 §1.3：IP 是接入方配置问题，不是认证失败；试点接入方需知会 |
 | M3.8 | 迁移号 **V14**（原排 V17）；只落加列（`pay_app.sign_type`、`pay_biz_notify` 两个冻结版本、`pay_api_request_log.sign_key_version / encrypt_serial`），开发者控制台三张表不在本次 | `db/pay` 号须连续、先合先占；控制台三张表随控制台另出（待确认 Q3）。列也写回了 `pay-service-database.json`（同 V13 的做法） |
 | M3.2 | 没有新建 `OpenApiGuard` / `SignedHeaders`：`X-Key-Serial` 由现有 `OpenSignatureAuthenticator` 读进 `SignedRequest`，命中版本经请求属性交给 `RequestLogWriter` 写 `sign_key_version`；`X-Encrypt-Serial` 原样记 `encrypt_serial` | 现有守卫已是 `EntryGuard`（M1.4），多一个头不值得拆类。验收用真密钥模块跑（`OpenSecretKeyFlowTest`：发密钥 → 两人启用 → 轮换重叠期两版都能验 → 指定版本只认那一版） |
+| M3.3 | 只把 **scope** 挪进守卫（`AppScopes`，按动作要 scope，认不出的动作一律 403）；`pay_app_grant` 门店授权仍在参数解析器（`callerFor`），`@CallerGrant` 去掉 `scope` 只留 `grant`，`AppAuthService#requireScope` 删除 | 门店在请求体里（建单的 `storeRef`），守卫不解析请求体就判不了门店；scope 只看动作，放守卫正好。**对外行为变化**：缺 scope 的错误码由 `PAY_FORBIDDEN`（70082）变为 `FORBIDDEN`（10403），且坏请求体也先回 403 |
 
 ---
 

@@ -39,7 +39,7 @@ public class OpenRefundController {
 
     @PostMapping("/orders/{payOrderNo}/refunds")
     public PortalResponse<RefundView> request(@PathVariable String payOrderNo, @RequestBody RefundReq req,
-                                              @CallerGrant(scope = "pay:refund", grant = "REFUND") PayCaller caller,
+                                              @CallerGrant(grant = "REFUND") PayCaller caller,
                                               HttpServletRequest http) {
         if (blank(req.outRefundNo()) || req.outRefundNo().length() > 64 || req.amountMinor() == null
                 || req.amountMinor() <= 0) {
@@ -52,7 +52,7 @@ public class OpenRefundController {
 
     @GetMapping("/refunds/{payRefundNo}")
     public PortalResponse<RefundView> get(@PathVariable String payRefundNo,
-                                          @CallerGrant(scope = "pay:read", grant = "READ") PayCaller caller,
+                                          @CallerGrant(grant = "READ") PayCaller caller,
                                           HttpServletRequest http) {
         return ok(RefundView.of(refunds.query(caller, payRefundNo)), http);
     }

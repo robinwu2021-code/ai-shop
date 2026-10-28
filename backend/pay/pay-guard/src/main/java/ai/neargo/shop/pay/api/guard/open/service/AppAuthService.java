@@ -63,9 +63,6 @@ public interface AppAuthService {
     /** 按 AppId 取启用中的接入方；不存在或停用 → 未授权 */
     PayApp requireActive(String appNo);
 
-    /** scope 不含 → {@code PAY_FORBIDDEN} */
-    void requireScope(PayApp app, String scope);
-
     /**
      * 这个接入方做某个门店动作时的调用方：门店范围 = 授权里含该动作（COLLECT / REFUND / READ）的门店。
      * 代谁操作记 {@code APP:{appNo}} —— 退款要有操作人（I3），接入方代商户发起时操作人就是它。

@@ -260,6 +260,18 @@ class OpenApiFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ scope 在守卫里判（M3.3）：没有 pay:refund 的接入方调退款 → 403 FORBIDDEN、记 REJECTED_FORBIDDEN；请求体都不解析（坏 JSON 也是 403 不是 400）")
+    void missingScopeIsRejectedInTheGuard() throws Exception {
+        int before = countLog("REJECTED_FORBIDDEN");
+        MockHttpServletResponse r = call("POST", "/open/pay/v1/orders/PYO-ANY/refunds", Map.of(), "{not json",
+                fresh(APP2, SECRET2), null);
+
+        assertThat(r.getStatus()).isEqualTo(403);
+        assertThat(code(r)).isEqualTo(ErrorCode.FORBIDDEN.code());
+        assertThat(countLog("REJECTED_FORBIDDEN") - before).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("★★★ 来源 IP 不在接入方白名单：403 FORBIDDEN（不是 401）、不进业务（M3.7；API 清单 §1.3）")
     void ipWhitelistIsForbidden() throws Exception {
         jdbc.update("UPDATE pay_app SET ip_whitelist='10.9.9.9' WHERE app_no=?", APP2);
