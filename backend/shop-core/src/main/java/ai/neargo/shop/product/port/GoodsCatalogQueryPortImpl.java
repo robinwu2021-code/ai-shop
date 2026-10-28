@@ -8,6 +8,22 @@ import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.spi.product.CatalogImageContracts;
+import ai.neargo.shop.spi.product.CatalogImageFacts;
+import ai.neargo.shop.spi.media.MediaReferenceQueryPort;
+import ai.neargo.shop.spi.media.MediaReferenceFacts;
+import ai.neargo.shop.common.pricing.PricingSnapshotHash;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.function.Supplier;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.List;
 import java.util.HashSet;
@@ -21,9 +37,92 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     private final GoodsMapper goods;
     private final SkuMapper skus;
 
+    private final Supplier<MediaReferenceQueryPort> media;
+    private final TransactionTemplate read;
+    private final Clock clock;
+
+    /** Legacy metadata construction remains supported without inventing image capability. */
     public GoodsCatalogQueryPortImpl(GoodsMapper goods, SkuMapper skus) {
+        this(goods, skus, () -> null, null, Clock.systemUTC());
+    }
+
+    /** Lazy media lookup avoids a product-to-adapter dependency and preserves optional owners. */
+    @Autowired
+    public GoodsCatalogQueryPortImpl(GoodsMapper goods, SkuMapper skus,
+            ObjectProvider<MediaReferenceQueryPort> media,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this(goods, skus, media::getIfAvailable, manager, Clock.systemUTC());
+    }
+
+    /** Independent clock and RR boundaries keep external owner reads outside database locks. */
+    public GoodsCatalogQueryPortImpl(GoodsMapper goods, SkuMapper skus, Supplier<MediaReferenceQueryPort> media,
+            PlatformTransactionManager manager, Clock clock) {
         this.goods = goods;
         this.skus = skus;
+        this.media = media;
+        this.clock = clock;
+        read = manager == null ? null : new TransactionTemplate(manager);
+        if (read != null) {
+            read.setReadOnly(true);
+            read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        }
+    }
+
+    @Override
+    public CatalogImageContracts.Facts resolveCatalogImages(CatalogImageContracts.Query query) {
+        CatalogImageFacts.validateQuery(query);
+        imageRequire(read != null && !TransactionSynchronizationManager.isActualTransactionActive());
+        Instant started = clock.instant();
+        Instant until = started.plusSeconds(30);
+        var before = imageRows(query);
+        var items = new ArrayList<CatalogImageContracts.Item>();
+        for (int i = 0; i < before.size(); i++) {
+            var row = before.get(i);
+            var expected = query.expectations().get(i);
+            String ref = row.cover();
+            if (ref == null || ref.isEmpty()) {
+                imageRequire("NONE".equals(expected.expectedCoverKind()));
+                items.add(new CatalogImageContracts.Item(row.goodsNo(), "NONE", PricingSnapshotHash.of(""),
+                        null, row.version(), null, null));
+            } else {
+                imageRequire("REFERENCE".equals(expected.expectedCoverKind()));
+                var resolver = media.get();
+                if (resolver == null) throw BizException.of(ErrorCode.NOT_FOUND);
+                var currentQuery = new MediaReferenceQueryPort.Query(query.entityNo(), query.storeNo(), ref);
+                var current = resolver.resolve(currentQuery);
+                var expectedQuery = new MediaReferenceQueryPort.Query(query.entityNo(), query.storeNo(),
+                        expected.expectedCoverRef());
+                var frozen = ref.equals(expected.expectedCoverRef()) ? current : resolver.resolve(expectedQuery);
+                try {
+                    MediaReferenceFacts.validate(currentQuery, current, clock.instant());
+                    MediaReferenceFacts.validate(expectedQuery, frozen, clock.instant());
+                } catch (IllegalStateException invalid) { throw BizException.of(ErrorCode.CONFLICT); }
+                imageRequire(current.assetKey().equals(frozen.assetKey())
+                        && current.assetIdentityHash().equals(frozen.assetIdentityHash()));
+                until = minimum(until, minimum(current.validUntil(), frozen.validUntil()));
+                items.add(new CatalogImageContracts.Item(row.goodsNo(), "REFERENCE", PricingSnapshotHash.of(ref),
+                        current.assetKey(), row.version(), current.assetIdentityHash(), current.receiptNo()));
+            }
+        }
+        imageRequire(before.equals(imageRows(query)));
+        var facts = CatalogImageFacts.seal(new CatalogImageContracts.Facts(1, "CATALOG_IMAGE_IDENTITY", query,
+                items, clock.instant(), until, null));
+        try { CatalogImageFacts.validate(query, facts, clock.instant()); }
+        catch (IllegalStateException invalid) { throw BizException.of(ErrorCode.CONFLICT); }
+        return facts;
+    }
+
+    private List<GoodsSummary> imageRows(CatalogImageContracts.Query query) {
+        var numbers = query.expectations().stream().map(CatalogImageContracts.Expectation::goodsNo).toList();
+        var rows = read.execute(tx -> getGoodsBatch(query.entityNo(), query.storeNo(), numbers));
+        if (rows == null || rows.size() != numbers.size()) throw BizException.of(ErrorCode.NOT_FOUND);
+        return numbers.stream().map(number -> rows.stream().filter(row -> number.equals(row.goodsNo()))
+                .findFirst().orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND))).toList();
+    }
+
+    private static Instant minimum(Instant a, Instant b) { return a.isBefore(b) ? a : b; }
+    private static void imageRequire(boolean valid) {
+        if (!valid) throw BizException.of(ErrorCode.CONFLICT);
     }
 
     @Override

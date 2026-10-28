@@ -4,6 +4,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.product.GoodsCatalogInternalApi;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
+import ai.neargo.shop.spi.product.CatalogImageContracts;
+import ai.neargo.shop.spi.product.CatalogImageFacts;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.InternalServiceResponses;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +31,16 @@ public class InternalGoodsCatalogEndpoint {
         this.catalog = catalog;
         this.token = token;
         this.validator = validator;
+    }
+
+    /** Service-token authentication precedes strict original cover expectation validation. */
+    @PostMapping(GoodsCatalogInternalApi.IMAGES_PATH)
+    public ResponseEntity<?> resolveImages(@RequestBody(required = false) CatalogImageContracts.Query query,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> {
+            CatalogImageFacts.validateQuery(query);
+            return catalog.resolveCatalogImages(query);
+        });
     }
 
     @PostMapping(GoodsCatalogInternalApi.SKU_PATH)

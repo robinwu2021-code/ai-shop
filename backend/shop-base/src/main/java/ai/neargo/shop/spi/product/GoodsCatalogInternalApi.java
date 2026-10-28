@@ -11,6 +11,12 @@ import org.springframework.web.service.annotation.PostExchange;
 
 /** Shared product metadata wire contract, with no restaurant runtime dependency. */
 public interface GoodsCatalogInternalApi {
+    String IMAGES_PATH = "/internal/product/catalog-images/resolve";
+
+    /** Strict original cover identity travels without public-response rewriting. */
+    @PostExchange(IMAGES_PATH)
+    CatalogImageContracts.Facts resolveImages(@RequestBody CatalogImageContracts.Query query);
+
     String SKU_PATH = "/internal/product/catalog/goods/sku";
     @PostExchange(SKU_PATH)
     GoodsCatalogQueryPort.SkuIdentityFact lookupSku(@RequestBody SkuLookup request);

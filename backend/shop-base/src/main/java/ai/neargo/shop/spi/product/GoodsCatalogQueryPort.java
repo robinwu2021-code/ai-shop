@@ -20,6 +20,11 @@ public interface GoodsCatalogQueryPort {
     record SkuIdentityFact(String skuNo, String goodsNo, String entityNo, String storeNo,
             @JsonDeserialize(using=CatalogRevisionDeserializer.class) long version) { }
 
+    /** Original cover proof is optional on older owners; never treat its absence as no image. */
+    default CatalogImageContracts.Facts resolveCatalogImages(CatalogImageContracts.Query query) {
+        throw new UnsupportedOperationException("Catalog image identity lookup is unavailable");
+    }
+
     GoodsFact getGoods(String entityNo, String storeNo, String goodsNo);
 
     record GoodsFact(String goodsNo, String entityNo, String storeNo, String title, String cover,
