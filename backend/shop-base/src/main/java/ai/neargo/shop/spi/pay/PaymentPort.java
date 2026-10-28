@@ -25,8 +25,9 @@ public interface PaymentPort {
     }
 
     /**
-     * 关单（S7）：<b>关前必查单</b>。渠道说已付 → 不关、按结果入口入账（返回 SUCCEEDED）；没付 / 没有这笔 / 查不通 →
-     * 关支付单与未终态的尝试（之后到账走 LATE_PAYMENT）。调用方应在自己的事务<b>提交之后</b>调：订单关单回滚而支付单已关，
+     * 关单（S7）：<b>关前必查单</b>。渠道说已付 → 不关、按结果入口入账（返回 SUCCEEDED）；
+     * 未付时取得渠道关闭证明后再关闭；结果未知保留关闭意图与当前状态。
+     * 调用方应在自己的事务<b>提交之后</b>调：订单关单回滚而支付单已关，
      * 下一次付款会被当成关单后到账。按调用方单号定位（交易域手里是订单号）；没有支付单返回 {@code null}。
      */
     PaymentHandle closePayment(String bizType, String outOrderNo, String reason, CallSource source);
@@ -34,6 +35,20 @@ public interface PaymentPort {
     /** 同上，来源取当前上下文（{@link CallSources#current()}）—— 现有调用方不改 */
     default PaymentHandle closePayment(String bizType, String outOrderNo, String reason) {
         return closePayment(bizType, outOrderNo, reason, CallSources.current());
+    }
+
+    /**
+     * 业务已经终止后的取消通知，必须在业务事务提交后调用。先持久化取消意图，再查/关渠道，
+     * 之后到账属于迟到支付；不同于普通 closePayment 查到已付时照常入账。
+     * 旧实现显式拒绝，不能静默降级到丢失取消语义的普通关单。
+     */
+    default PaymentHandle cancelPayment(String bizType, String outOrderNo, String reason, CallSource source) {
+        throw new UnsupportedOperationException("BUSINESS_CANCELLATION_NOT_SUPPORTED");
+    }
+
+    /** 业务已终止的取消通知，来源取当前可信调用上下文。 */
+    default PaymentHandle cancelPayment(String bizType, String outOrderNo, String reason) {
+        return cancelPayment(bizType, outOrderNo, reason, CallSources.current());
     }
 
     /**

@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.channel.platform;
 
 import ai.neargo.shop.pay.channel.PayGateway;
+import ai.neargo.shop.pay.channel.TestPayGateway;
 import ai.neargo.shop.pay.channel.api.AccessMode;
 import ai.neargo.shop.pay.channel.api.ChannelAccountContext;
 import ai.neargo.shop.pay.channel.api.ChannelOperation;
@@ -58,7 +59,12 @@ public final class InProcessChannel implements OnlinePayCapability, TransactionC
 
     @Override
     public Set<ChannelOperation> transactionOperations() {
-        return EnumSet.of(ChannelOperation.QUERY, ChannelOperation.REFUND, ChannelOperation.REFUND_QUERY);
+        Set<ChannelOperation> operations = EnumSet.of(ChannelOperation.QUERY, ChannelOperation.REFUND,
+                ChannelOperation.REFUND_QUERY);
+        if (bank instanceof TestPayGateway) {
+            operations.add(ChannelOperation.CLOSE);
+        }
+        return operations;
     }
 
     @Override
@@ -93,14 +99,20 @@ public final class InProcessChannel implements OnlinePayCapability, TransactionC
             return new ChannelResult.Failed(PayErrorCode.TRADE_NOT_FOUND, null, "渠道没有这笔", false);
         }
         if (!r.paid()) {
-            return new ChannelResult.Pending(PayInstruction.none(), r.tradeNo());
+            String state = bank instanceof TestPayGateway test && test.isClosed(c.outTradeNo()) ? "CLOSED" : null;
+            return new ChannelResult.Pending(PayInstruction.none(), r.tradeNo(), state);
         }
         return new ChannelResult.Succeeded(r.tradeNo(), money(r, inv.account()), null, Map.of());
     }
 
     @Override
     public ChannelResult close(Invocation inv, CloseCommand c) {
-        return ChannelCapability.unsupported(ChannelOperation.CLOSE);
+        if (!(bank instanceof TestPayGateway test)) {
+            return ChannelCapability.unsupported(ChannelOperation.CLOSE);
+        }
+        inv.markSent();
+        return test.closeOrder(c.outTradeNo()) ? new ChannelResult.Succeeded(null, null, null, Map.of())
+                : new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED, null, "渠道订单已付，不能关闭", false);
     }
 
     @Override

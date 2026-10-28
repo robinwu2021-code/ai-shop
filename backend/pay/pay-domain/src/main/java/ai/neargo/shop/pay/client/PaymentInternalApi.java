@@ -32,6 +32,12 @@ public interface PaymentInternalApi {
                                            @RequestHeader(InternalHeaders.CALL_SOURCE) String source,
                                            @RequestBody Close close);
 
+    @PostExchange(PaymentInternalPaths.PAYMENT_CANCEL)
+    PortResult<PaymentHandle> cancelPayment(@RequestHeader(PaymentInternalPaths.CALLER) String caller,
+                                           @RequestHeader(PaymentInternalPaths.CREDENTIAL) String credential,
+                                           @RequestHeader(InternalHeaders.CALL_SOURCE) String source,
+                                           @RequestBody Close close);
+
     @PostExchange(PaymentInternalPaths.REFUNDS)
     PortResult<RefundHandle> requestRefund(@RequestHeader(PaymentInternalPaths.CALLER) String caller,
                                            @RequestHeader(PaymentInternalPaths.CREDENTIAL) String credential,

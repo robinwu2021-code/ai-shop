@@ -11096,6 +11096,7 @@ CREATE TABLE IF NOT EXISTS pay_order
     deleted TINYINT NOT NULL DEFAULT 0,
     payer_blob_id BIGINT NULL,
     payer_masked VARCHAR(255) NULL,
+    close_requested_at DATETIME(3) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pay_order_1 UNIQUE (pay_order_no),
     CONSTRAINT uk_pay_order_2 UNIQUE (pay_app_id,out_order_no),

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -127,6 +129,17 @@ class PaymentPortLocalRemoteParityTest {
         var cmd = new InternalRefundCmd(PaymentPort.MALL_ORDER, "PYO-1", "RF-1", "AS-1", 500, "七天", "OP-1");
         assertThat(remote.requestRefund(cmd)).isEqualTo(local.requestRefund(cmd))
                 .extracting(PaymentPort.RefundHandle::status).isEqualTo("DISPATCHED");
+    }
+
+    @Test
+    void businessCancellationKeepsItsMeaningAcrossHttp() {
+        PayOrder current = order();
+        current.setStatus("AWAITING_PAYMENT");
+        when(paymentService.findByOutOrderNo(1L, "O1")).thenReturn(current);
+        when(paymentService.cancel(any(), anyString(), anyString())).thenReturn(current);
+        assertThat(remote.cancelPayment(PaymentPort.MALL_ORDER, "O1", "business closed"))
+                .isEqualTo(local.cancelPayment(PaymentPort.MALL_ORDER, "O1", "business closed"));
+        verify(paymentService, never()).close(any(), anyString(), anyString());
     }
 
     @Test

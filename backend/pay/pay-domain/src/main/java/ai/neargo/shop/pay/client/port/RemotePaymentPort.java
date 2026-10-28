@@ -53,6 +53,13 @@ public class RemotePaymentPort implements PaymentPort {
     }
 
     @Override
+    public PaymentHandle cancelPayment(String bizType, String outOrderNo, String reason, CallSource source) {
+        String app = appOf(bizType);
+        return unwrap(() -> api.cancelPayment(app, credential(app), header(source),
+                new PaymentInternalApi.Close(bizType, outOrderNo, reason)));
+    }
+
+    @Override
     public RefundHandle requestRefund(InternalRefundCmd cmd) {
         String app = appOf(cmd.bizType());
         return unwrap(() -> api.requestRefund(app, credential(app), header(cmd.source()), cmd));

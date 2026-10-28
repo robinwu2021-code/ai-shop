@@ -12,10 +12,13 @@ import ai.neargo.shop.pay.acquiring.route.RouteSelectionPolicy;
 import ai.neargo.shop.pay.mapper.checkout.CheckoutMappers.PayCheckoutSessionMapper;
 import ai.neargo.shop.pay.notify.service.BizNotifyService;
 import ai.neargo.shop.pay.channel.api.CallerType;
+import ai.neargo.shop.pay.channel.api.ChannelResult;
+import ai.neargo.shop.pay.channel.api.PayErrorCode;
 import ai.neargo.shop.pay.client.PayOrdinaryPaymentRequests;
 import ai.neargo.shop.pay.service.OrdinaryPaymentInitiationService;
 import ai.neargo.shop.pay.acquiring.entity.PayOrder;
 import ai.neargo.shop.pay.acquiring.service.PaymentService;
+import ai.neargo.shop.pay.acquiring.service.PaymentAttemptCloseService;
 import ai.neargo.shop.pay.acquiring.statemachine.PayOrderEvent;
 import ai.neargo.shop.pay.acquiring.statemachine.PayOrderStateMachine;
 import ai.neargo.shop.pay.acquiring.statemachine.PayOrderStatus;
@@ -31,6 +34,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 import java.util.Objects;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.pay.PayQueryPort;
@@ -58,12 +63,15 @@ public class PaymentServiceImpl implements PaymentService {
     private final BizNotifyService notifier;
     private final PayCheckoutSessionMapper checkoutSessions;
     private final OrdinaryPaymentInitiationService initiation;
+    private final PaymentAttemptCloseService channelClose;
 
     public PaymentServiceImpl(CallerPolicy policy, PayOrderMapper orders, PaymentMapper attempts,
                               @Qualifier("payTxManager") PlatformTransactionManager payTxManager,
                               @Lazy PayQueryPort channels, @Lazy PaymentLedgerService ledger,
                               RouteSelectionPolicy routes, @Lazy OrdinaryPaymentInitiationService initiation,
-                              BizNotifyService notifier, PayCheckoutSessionMapper checkoutSessions) {
+                              BizNotifyService notifier, PayCheckoutSessionMapper checkoutSessions,
+                              PaymentAttemptCloseService channelClose) {
+        this.channelClose = channelClose;
         this.notifier = notifier;
         this.checkoutSessions = checkoutSessions;
         this.routes = routes;
@@ -164,6 +172,9 @@ public class PaymentServiceImpl implements PaymentService {
         if (status != PayOrderStatus.CREATED && status != PayOrderStatus.AWAITING_PAYMENT) {
             throw BizException.of(ErrorCode.PAY_ORDER_STATE, status.name());
         }
+        if (o.getCloseRequestedAt() != null) {
+            throw BizException.of(ErrorCode.PAY_ORDER_STATE, "CLOSE_REQUESTED");
+        }
         if (o.getExpireAt() != null && o.getExpireAt().isBefore(LocalDateTime.now(ZoneOffset.UTC))) {
             throw BizException.of(ErrorCode.PAY_ORDER_STATE, "EXPIRED");
         }
@@ -218,7 +229,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (PayOrderStatus.valueOf(o.getStatus()).terminal()) {
             return o;
         }
-        settleIfPaid(openAttempts(o.getId()));
+        settleIfPaid(caller, o, openAttempts(o.getId()));
         return find(payOrderNo);
     }
 
@@ -230,16 +241,62 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     /** 逐个查单，第一笔查到已付的按结果入口入账（渠道调用在事务外）；有入账返回 true */
-    private boolean settleIfPaid(List<StlPayment> open) {
+    private boolean settleIfPaid(PayCaller caller, PayOrder order, List<StlPayment> open) {
         for (StlPayment a : open) {
-            PayQueryPort.Result r = channels.query(a.getPayChannel(), a.getOutTradeNo());
+            PayQueryPort.Result r = queryAttempt(caller, order, a);
             if (r != null && r.ok() && r.found() && r.paid() && r.tradeNo() != null) {
-                ledger.settle(new SettlePort.PaymentSettled(a.getOutTradeNo(), a.getPayChannel(), r.tradeNo(),
-                        r.amountMinor(), System.currentTimeMillis(), r.currency() == null ? a.getCurrency() : r.currency()));
+                applyPaidAttempt(a, r);
                 return true;
             }
         }
         return false;
+    }
+
+    private PayQueryPort.Result queryAttempt(PayCaller caller, PayOrder order, StlPayment attempt) {
+        // 存量行尚无冻结商户身份，沿用原查单口；有快照的交易禁止退回默认商户。
+        if (attempt.getPayMerchantId() == null) {
+            return channels.query(attempt.getPayChannel(), attempt.getOutTradeNo());
+        }
+        ChannelResult result = channelClose.query(caller, order, attempt);
+        if (result instanceof ChannelResult.Succeeded paid && paid.channelAmount() != null) {
+            return new PayQueryPort.Result(true, true, true, paid.channelAmount().minor(),
+                    paid.channelTradeNo(), paid.channelAmount().currency());
+        }
+        if (result instanceof ChannelResult.Pending pending) {
+            return new PayQueryPort.Result(true, false, true, 0, pending.channelTradeNo());
+        }
+        return new PayQueryPort.Result(result instanceof ChannelResult.Failed f
+                && f.code() == PayErrorCode.TRADE_NOT_FOUND, false, false, 0, null);
+    }
+
+    private void applyPaidAttempt(StlPayment attempt, PayQueryPort.Result receipt) {
+        ledger.settle(new SettlePort.PaymentSettled(attempt.getOutTradeNo(), attempt.getPayChannel(), receipt.tradeNo(),
+                receipt.amountMinor(), System.currentTimeMillis(),
+                receipt.currency() == null ? attempt.getCurrency() : receipt.currency()));
+    }
+
+    @Override
+    public PayOrder cancel(PayCaller caller, String payOrderNo, String reason) {
+        PayOrder order = query(caller, payOrderNo);
+        policy.check(caller, PayAction.CLOSE, order.getStoreId());
+        rememberCloseIntent(order.getId());
+        return close(caller, payOrderNo, reason);
+    }
+
+    /** 与支付成功入口争用同一行锁：只有未终态支付单接受新的取消意图。 */
+    private PayOrder rememberCloseIntent(Long orderId) {
+        return tx.execute(s -> {
+            PayOrder locked = orders.lockById(orderId);
+            if (PayOrderStateMachine.allows(PayOrderStatus.valueOf(locked.getStatus()), PayOrderEvent.CLOSED)
+                    && locked.getCloseRequestedAt() == null) {
+                PayOrder patch = new PayOrder();
+                patch.setId(orderId);
+                patch.setCloseRequestedAt(LocalDateTime.now(ZoneOffset.UTC));
+                DataScopeContext.executeWithoutScope(() -> orders.updateById(patch));
+                locked.setCloseRequestedAt(patch.getCloseRequestedAt());
+            }
+            return locked;
+        });
     }
 
     @Override
@@ -250,14 +307,43 @@ public class PaymentServiceImpl implements PaymentService {
             return o;
         }
         List<StlPayment> open = openAttempts(o.getId());
-        // 关前必查单（R18），渠道调用在事务外：查到已付就按结果入口入账，不关
-        if (settleIfPaid(open)) {
+        // 关前必查单：已付按原入口入账；任一查询不明都不能据以关闭。
+        boolean unknown = false;
+        List<StlPayment> awaitingClose = new ArrayList<>();
+        for (StlPayment a : open) {
+            PayQueryPort.Result r = queryAttempt(caller, o, a);
+            if (r == null || !r.ok()) {
+                unknown = true;
+            } else if (r.found() && r.paid()) {
+                if (r.tradeNo() != null && !r.tradeNo().isBlank()) {
+                    applyPaidAttempt(a, r);
+                    return find(payOrderNo);
+                }
+                unknown = true;
+            } else {
+                // 查无此单也要真实关单：TEST会写关闭标记，真实渠道拿不到关闭证明则保留原状态。
+                awaitingClose.add(a);
+            }
+        }
+        // 普通关单只有查到已付才保持原成功路径；其余请求都留下不可撤销的关闭意图。
+        if (PayOrderStatus.valueOf(rememberCloseIntent(o.getId()).getStatus()).terminal() || unknown) {
             return find(payOrderNo);
+        }
+        for (StlPayment a : awaitingClose) {
+            if (!channelClose.close(caller, o, a)) {
+                settleIfPaid(caller, o, open);
+                return find(payOrderNo);
+            }
         }
         tx.executeWithoutResult(s -> {
             PayOrder locked = orders.lockById(o.getId());
             PayOrderStatus from = PayOrderStatus.valueOf(locked.getStatus());
             if (!PayOrderStateMachine.allows(from, PayOrderEvent.CLOSED)) {
+                return;
+            }
+            // 渠道调用期间可能另开尝试。持有支付单锁重查，未确认的尝试不能随支付单一起被关闭。
+            var checkedIds = open.stream().map(StlPayment::getId).collect(Collectors.toSet());
+            if (openAttempts(o.getId()).stream().anyMatch(a -> !checkedIds.contains(a.getId()))) {
                 return;
             }
             for (StlPayment a : open) {
@@ -291,6 +377,10 @@ public class PaymentServiceImpl implements PaymentService {
             return;
         }
         PayOrder o = orders.lockById(found.getId());
+        if (o.getCloseRequestedAt() != null
+                || !PayOrderStateMachine.allows(PayOrderStatus.valueOf(o.getStatus()), PayOrderEvent.ATTEMPT_OPENED)) {
+            throw BizException.of(ErrorCode.PAY_ORDER_STATE, o.getStatus());
+        }
         StlPayment link = new StlPayment();
         link.setId(stlPaymentId);
         link.setPayOrderId(o.getId());

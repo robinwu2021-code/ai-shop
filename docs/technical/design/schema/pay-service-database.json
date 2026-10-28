@@ -1183,6 +1183,12 @@
           "meaningEn": "Succeeded at"
         },
         {
+          "name": "close_requested_at",
+          "sqlType": "DATETIME(3) NULL",
+          "meaning": "不可撤销的关闭意图；渠道结果未知时保留并识别迟到支付（V17）",
+          "meaningEn": "Durable close request; distinct from confirmed channel closure (V17)"
+        },
+        {
           "name": "closed_at",
           "sqlType": "DATETIME(3) NULL",
           "meaning": "关单时间",

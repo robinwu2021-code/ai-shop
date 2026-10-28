@@ -51,6 +51,11 @@ public class InternalPaymentEndpoint {
         return own(request, c.bizType(), () -> payments.closePayment(c.bizType(), c.outOrderNo(), c.reason()));
     }
 
+    @PostMapping(PaymentInternalPaths.PAYMENT_CANCEL)
+    public ResponseEntity<?> cancel(@RequestBody PaymentInternalApi.Close c, HttpServletRequest request) {
+        return own(request, c.bizType(), () -> payments.cancelPayment(c.bizType(), c.outOrderNo(), c.reason()));
+    }
+
     @PostMapping(PaymentInternalPaths.REFUNDS)
     public ResponseEntity<?> refund(@RequestBody InternalRefundCmd cmd, HttpServletRequest request) {
         return own(request, cmd.bizType(), () -> payments.requestRefund(cmd));

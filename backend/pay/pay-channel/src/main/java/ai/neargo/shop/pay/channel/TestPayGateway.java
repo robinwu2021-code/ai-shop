@@ -62,7 +62,7 @@ public class TestPayGateway implements PayGateway {
      */
     private final Map<String, Order> orders = new ConcurrentHashMap<>();
 
-    private record Order(long amountMinor, String tradeNo, boolean paid) {
+    private record Order(long amountMinor, String tradeNo, boolean paid, boolean closed) {
     }
 
     /**
@@ -95,6 +95,9 @@ public class TestPayGateway implements PayGateway {
             return PrepayResult.fail("金额必须大于 0");
         }
         String tradeNo = placeOrder(cmd.outTradeNo(), cmd.amountMinor());
+        if (tradeNo == null) {
+            return PrepayResult.fail("渠道订单已关闭");
+        }
         return PrepayResult.ok(Map.of(
                 "prepayId", "test_" + cmd.outTradeNo(),
                 "outTradeNo", cmd.outTradeNo(),
@@ -109,7 +112,14 @@ public class TestPayGateway implements PayGateway {
      */
     public String placeOrder(String outTradeNo, long amountMinor) {
         String tradeNo = "TESTTX-" + outTradeNo;
-        orders.put(outTradeNo, new Order(amountMinor, tradeNo, false));
+        Order stored = orders.compute(outTradeNo, (no, existing) -> existing == null
+                ? new Order(amountMinor, tradeNo, false, false) : existing);
+        if (stored.closed()) {
+            return null;
+        }
+        if (stored.amountMinor() != amountMinor) {
+            throw new IllegalArgumentException("相同渠道单号的金额不能改变");
+        }
         log.info("[test-channel] 下单 outTradeNo={} amount={} → tradeNo={}",
                 outTradeNo, amountMinor, tradeNo);
         return tradeNo;
@@ -121,15 +131,23 @@ public class TestPayGateway implements PayGateway {
      * @return false 表示这笔单通道这边没有 —— <b>如实返回，不假装成功</b>
      */
     public boolean markPaid(String outTradeNo) {
+        Order o = orders.computeIfPresent(outTradeNo, (no, existing) -> existing.closed() ? existing
+                : new Order(existing.amountMinor(), existing.tradeNo(), true, false));
+        return o != null && o.paid() && !o.closed();
+    }
+
+    /** 与付款在同一订单键上原子竞争；已付不关、已关可重放，未知单号留下关闭标记防止晚到下单。 */
+    public boolean closeOrder(String outTradeNo) {
+        Order o = orders.compute(outTradeNo, (no, existing) -> existing == null
+                ? new Order(0, null, false, true) : existing.paid() ? existing
+                : new Order(existing.amountMinor(), existing.tradeNo(), false, true));
+        return o.closed();
+    }
+
+    /** 供能力处理器在查询回执上保留渠道关闭状态。 */
+    public boolean isClosed(String outTradeNo) {
         Order o = orders.get(outTradeNo);
-        if (o == null) {
-            log.warn("[test-channel] 要标记已付的单 {} 通道这边没有 —— 没下过单就回调，链路有问题",
-                    outTradeNo);
-            return false;
-        }
-        orders.put(outTradeNo, new Order(o.amountMinor(), o.tradeNo(), true));
-        log.info("[test-channel] 标记已付 outTradeNo={}", outTradeNo);
-        return true;
+        return o != null && o.closed();
     }
 
     @Override

@@ -36,6 +36,7 @@ import java.util.function.Predicate;
 public final class AlipayChannel implements TransactionCapability, SplitCapability {
 
     static final String TRADE_QUERY = "alipay.trade.query";
+    static final String TRADE_CLOSE = "alipay.trade.close";
     static final String REFUND = "alipay.trade.refund";
     static final String ORDER_SETTLE = "alipay.trade.order.settle";
     /** 营销补差 = 反向的分账（trans_out 平台 → trans_in 二级商户）—— 推断，未经文档确认 */
@@ -66,7 +67,7 @@ public final class AlipayChannel implements TransactionCapability, SplitCapabili
 
     @Override
     public Set<ChannelOperation> transactionOperations() {
-        return EnumSet.of(ChannelOperation.QUERY, ChannelOperation.REFUND);
+        return EnumSet.of(ChannelOperation.QUERY, ChannelOperation.CLOSE, ChannelOperation.REFUND);
     }
 
     @Override
@@ -104,7 +105,13 @@ public final class AlipayChannel implements TransactionCapability, SplitCapabili
 
     @Override
     public ChannelResult close(Invocation inv, CloseCommand command) {
-        return ChannelCapability.unsupported(ChannelOperation.CLOSE);
+        Map<String, Object> response = client.call(inv, TRADE_CLOSE, Map.of("out_trade_no", command.outTradeNo()));
+        if (OK.equals(String.valueOf(response.get("code")))
+                && command.outTradeNo().equals(response.get("out_trade_no"))) {
+            return new ChannelResult.Succeeded(idOf(response), null, null, Map.of());
+        }
+        // 非成功、缺件或状态冲突均不能证明已关；调用方按原交易查回，不编造关闭事实。
+        return new ChannelResult.Unknown("CLOSE_UNPROVEN: " + failure(TRADE_CLOSE, response));
     }
 
     /** 多次退款<b>必须传不同的 {@code out_request_no}</b>（我方退款单号已保证唯一） */

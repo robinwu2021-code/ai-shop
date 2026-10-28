@@ -45,6 +45,13 @@ public class RecordingPaymentPort implements PaymentPort {
     }
 
     @Override
+    public PaymentHandle cancelPayment(String bizType, String outOrderNo, String reason, CallSource source) {
+        return recorder.record(new Call("PaymentPort#cancelPayment", PayAction.CLOSE.name(), app(bizType), bizType, outOrderNo, null,
+                null, null, null, sourceOf(source)),
+                () -> delegate.cancelPayment(bizType, outOrderNo, reason, source), PaymentHandle::payOrderId);
+    }
+
+    @Override
     public RefundHandle requestRefund(InternalRefundCmd c) {
         return recorder.record(new Call("PaymentPort#requestRefund", PayAction.REQUEST_REFUND.name(), app(c.bizType()), c.bizType(),
                 c.outRefundNo(), null, c.amountMinor(), null, c.operatorNo(), sourceOf(c.source())),

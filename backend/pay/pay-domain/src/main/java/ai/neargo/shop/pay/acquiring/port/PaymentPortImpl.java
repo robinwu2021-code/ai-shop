@@ -68,6 +68,16 @@ public class PaymentPortImpl implements PaymentPort {
     }
 
     @Override
+    public PaymentHandle cancelPayment(String bizType, String outOrderNo, String reason, CallSource source) {
+        if (!enabled) {
+            return null;
+        }
+        PayOrder order = payments.findByOutOrderNo(callers.appId(appOf(bizType)), outOrderNo);
+        return order == null ? null : handle(payments.cancel(callers.system(appOf(bizType), order.getStoreId()),
+                order.getPayOrderNo(), reason));
+    }
+
+    @Override
     public RefundHandle requestRefund(InternalRefundCmd c) {
         if (!enabled) {
             return null;

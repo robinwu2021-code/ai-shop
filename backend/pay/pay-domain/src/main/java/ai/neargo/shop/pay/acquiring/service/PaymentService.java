@@ -31,8 +31,14 @@ public interface PaymentService {
      */
     PayOrder refresh(PayCaller caller, String payOrderNo);
 
-    /** 关单（关前必查单）。返回关单后的支付单（查到已付则是 SUCCEEDED） */
+    /**
+     * 关前查单、关闭渠道尝试后再关本地单；已付走原入账路径。
+     * 查询或关单结果不明时返回当前状态，调用方不能把 HTTP 成功当成已关闭。
+     */
     PayOrder close(PayCaller caller, String payOrderNo, String reason);
+
+    /** 业务已终止：先记录持久取消意图，再处理渠道；后续到账不再当正常支付。 */
+    PayOrder cancel(PayCaller caller, String payOrderNo, String reason);
 
     /**
      * 通道尝试开出时挂到支付单上：写 {@code stl_payment.pay_order_id} 与市场，支付单进入 AWAITING_PAYMENT。

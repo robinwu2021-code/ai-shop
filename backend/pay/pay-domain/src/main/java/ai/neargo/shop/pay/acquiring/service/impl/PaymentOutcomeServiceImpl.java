@@ -60,8 +60,8 @@ public class PaymentOutcomeServiceImpl implements PaymentOutcomeService {
             return false;
         }
         PayOrderStatus status = PayOrderStatus.valueOf(o.getStatus());
-        if (status == PayOrderStatus.CLOSED) {
-            // 关单后到账（R18）：钱是真的到了，但这张单已经对调用方说过「关了」—— 不能悄悄改回成功
+        if (status == PayOrderStatus.CLOSED || o.getCloseRequestedAt() != null) {
+            // 业务已终止或已接受关闭意图：钱是真的到了，也必须进异常退款，不能悄悄记正常成功。
             return exception(LATE_PAYMENT, o, outcome);
         }
         if (status == PayOrderStatus.SUCCEEDED || status == PayOrderStatus.PARTIALLY_REFUNDED

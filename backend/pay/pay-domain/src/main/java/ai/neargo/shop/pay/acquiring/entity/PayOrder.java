@@ -118,6 +118,9 @@ public class PayOrder extends PayBaseEntity {
     /** 支付截止 */
     private LocalDateTime expireAt;
 
+    /** 关闭请求已接受；渠道结果未知时仍保留，阻止重开并把后续到账交异常退款（V17）。 */
+    private LocalDateTime closeRequestedAt;
+
     /** 成功时间 */
     private LocalDateTime succeededAt;
 

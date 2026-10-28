@@ -50556,6 +50556,14 @@
     },
     {
       "host": "PaymentInternalPaths",
+      "name": "PAYMENT_CANCEL",
+      "type": "String",
+      "value": "\"/internal/pay/v1/payments/cancel\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PaymentInternalPaths",
       "name": "PAYMENT_CLOSE",
       "type": "String",
       "value": "\"/internal/pay/v1/payments/close\"",

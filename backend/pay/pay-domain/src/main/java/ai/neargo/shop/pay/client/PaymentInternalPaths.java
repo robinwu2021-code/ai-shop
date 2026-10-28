@@ -9,6 +9,7 @@ public final class PaymentInternalPaths {
     public static final String PREFIX = "/internal/pay/v1";
     public static final String PAYMENTS = PREFIX + "/payments";
     public static final String PAYMENT_QUERY = PREFIX + "/payments/query";
+    public static final String PAYMENT_CANCEL = PREFIX + "/payments/cancel";
     public static final String PAYMENT_CLOSE = PREFIX + "/payments/close";
     public static final String REFUNDS = PREFIX + "/refunds";
 

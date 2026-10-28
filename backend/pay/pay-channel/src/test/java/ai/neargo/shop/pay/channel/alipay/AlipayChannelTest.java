@@ -12,6 +12,7 @@ import ai.neargo.shop.pay.channel.api.InvocationMeta;
 import ai.neargo.shop.pay.channel.api.Money;
 import ai.neargo.shop.pay.channel.api.SourceInfo;
 import ai.neargo.shop.pay.channel.api.command.SplitCommand;
+import ai.neargo.shop.pay.channel.api.command.CloseCommand;
 import ai.neargo.shop.pay.channel.capability.ChannelCapabilityRegistry;
 import ai.neargo.shop.pay.channel.context.ChannelContextFactory;
 import ai.neargo.shop.pay.channel.context.ChannelRoute;
@@ -62,6 +63,21 @@ class AlipayChannelTest {
     private final KeyPair app = rsa();
     private final KeyPair alipay = rsa();
     private final FakeAlipay peer = new FakeAlipay();
+
+    @Test
+    void closeUsesSignedChannelProtocolAndRejectsBusinessErrors() {
+        bridge("PLATFORM");
+        CloseCommand command = new CloseCommand(new InvocationMeta("TRACE-CLOSE", 1L, 2L, null, 3L,
+                SourceInfo.system("CLOSE", "OUT-1")), "OUT-1");
+        peer.script = method -> Map.of("code", "10000", "trade_no", "TX-1", "out_trade_no", "OUT-1");
+        ChannelResult result = gateway.execute(context(), command);
+        assertThat(result).isInstanceOf(ChannelResult.Succeeded.class);
+        Map<String, String> request = form(peer.last().body());
+        assertThat(request).containsEntry("method", "alipay.trade.close");
+        assertThat(request.get("biz_content")).contains("\"out_trade_no\":\"OUT-1\"");
+        peer.script = method -> Map.of("code", "40004", "sub_code", "ACQ.TRADE_STATUS_ERROR");
+        assertThat(gateway.execute(context(), command)).isNotInstanceOf(ChannelResult.Succeeded.class);
+    }
 
     @Test
     @DisplayName("★★★ 请求按 RSA2 签名：去掉 sign 与空值、按键排序拼串（sign_type 参与签名，与验回调不同）；用应用公钥验得过")

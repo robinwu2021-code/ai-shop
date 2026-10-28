@@ -3005,7 +3005,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             String orderNo = order.getOrderNo();
             String bizType = industryOwned(order) ? PaymentPort.FOOD_CHECK : PaymentPort.MALL_ORDER;
             AfterCommit.run("关支付单 orderNo=" + orderNo,
-                    () -> paymentPort.closePayment(bizType, orderNo, reason));
+                    () -> paymentPort.cancelPayment(bizType, orderNo, reason));
         }
         return true;
     }
