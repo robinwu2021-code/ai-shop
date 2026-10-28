@@ -5,6 +5,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.acquiring.backfill.PayIntegrity;
 import ai.neargo.shop.pay.acquiring.service.PayExceptionService;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
@@ -315,6 +316,17 @@ class OpenApiFlowTest {
         MockHttpServletResponse overLimit = call("POST", "/open/pay/v1/orders/" + no + "/refunds", Map.of(),
                 "{\"outRefundNo\":\"RF-" + id() + "\",\"amountMinor\":4500,\"reason\":\"超额\"}", fresh(APP1, SECRET1), null);
         assertThat(overLimit.getStatus()).as("日限额 5000，已退 1000，再退 4500 超").isIn(400, 409, 422);
+
+        // 上面那笔也超了这一单的可退余额（3000）—— 单靠它分不出是哪条规则挡的。另起一单，余额够、只有日限额不够
+        String big = create(APP1, SECRET1, "OUT-" + id(), 4500).get("payOrderNo").asString();
+        JsonNode bigStarted = ok(call("POST", "/open/pay/v1/orders/" + big + "/pay", Map.of(),
+                "{\"payMethod\":\"TEST_PAY\"}", fresh(APP1, SECRET1), null));
+        settle.settlePayment(new SettlePort.PaymentSettled(bigStarted.get("outTradeNo").asString(), "TEST",
+                "T-" + id(), 4500, System.currentTimeMillis()));
+        MockHttpServletResponse dailyOnly = call("POST", "/open/pay/v1/orders/" + big + "/refunds", Map.of(),
+                "{\"outRefundNo\":\"RF-" + id() + "\",\"amountMinor\":4500,\"reason\":\"整单\"}", fresh(APP1, SECRET1), null);
+        assertThat(json.readTree(dailyOnly.getContentAsString()).get("code").asInt())
+                .as("余额够（4500），日限额不够（已退 1000 + 4500 > 5000）").isEqualTo(ErrorCode.PAY_APP_REFUND_LIMIT.code());
 
         MockHttpServletResponse noScope = call("POST", "/open/pay/v1/orders/" + no + "/refunds", Map.of(),
                 "{\"outRefundNo\":\"RF-" + id() + "\",\"amountMinor\":100,\"reason\":\"x\"}", fresh(APP2, SECRET2), null);

@@ -40,4 +40,7 @@ public interface AppAuthService {
 
     /** 当日（UTC）该接入方已退 + 本笔 > {@code daily_refund_limit_minor} → {@code PAY_APP_REFUND_LIMIT}；限额 0 = 不允许退款 */
     void checkDailyRefund(PayApp app, long amountMinor);
+
+    /** 同上，按 {@code pay_app.id}（即开放 API 调用方的 {@code callerId}）现查接入方 —— controller 手里只有 {@code PayCaller} */
+    void checkDailyRefund(Long payAppId, long amountMinor);
 }

@@ -6,13 +6,11 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.acquiring.route.RouteSelectionPolicy;
-import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 import ai.neargo.shop.pay.api.common.PortalResponse;
 import ai.neargo.shop.pay.api.open.OpenViews.PayMethodView;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService;
 import ai.neargo.shop.pay.merchant.service.PayMerchantBindingService.StoreRef;
-import ai.neargo.shop.pay.openapp.entity.PayApp;
-import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.web.CallerGrant;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,23 +26,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/open/pay/v1")
 public class OpenStoreController {
 
-    private final AppAuthService apps;
     private final PayMerchantBindingService stores;
     private final RouteSelectionPolicy routes;
 
-    public OpenStoreController(AppAuthService apps, PayMerchantBindingService stores, RouteSelectionPolicy routes) {
-        this.apps = apps;
+    public OpenStoreController(PayMerchantBindingService stores, RouteSelectionPolicy routes) {
         this.stores = stores;
         this.routes = routes;
     }
 
     @GetMapping("/stores/{storeRef}/pay-methods")
-    public PortalResponse<List<PayMethodView>> payMethods(PortalPrincipal who, @PathVariable String storeRef,
+    public PortalResponse<List<PayMethodView>> payMethods(@PathVariable String storeRef,
                                                           @RequestParam(required = false) String market,
+                                                          @CallerGrant(scope = "pay:read", grant = "READ") PayCaller caller,
                                                           HttpServletRequest http) {
-        PayApp app = apps.requireActive(who.subjectId());
-        apps.requireScope(app, "pay:read");
-        PayCaller caller = apps.callerFor(app, "READ");
         StoreRef store = stores.storeByNo(storeRef)
                 .filter(s -> caller.storeScope().contains(s.storeId()))
                 .orElseThrow(() -> BizException.of(ErrorCode.PAY_FORBIDDEN));

@@ -1,8 +1,7 @@
 package ai.neargo.shop.pay.api.ops;
 
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.pay.acquiring.port.InternalCallers;
+import ai.neargo.shop.pay.access.PayCaller;
 import ai.neargo.shop.pay.checkout.service.QrCodeService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,16 +17,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class PayOpsQrCodeController {
 
     private final QrCodeService codes;
-    private final InternalCallers callers;
 
-    public PayOpsQrCodeController(QrCodeService codes, InternalCallers callers) {
+    public PayOpsQrCodeController(QrCodeService codes) {
         this.codes = codes;
-        this.callers = callers;
     }
 
     @PreAuthorize("@perm.can('" + Perms.PAY_QR_MANAGE + "')")
     @PutMapping("/{qrCode}/disabled")
-    public void disable(@PathVariable String qrCode) {
-        codes.disable(callers.opsOperator(SecurityUtils.currentUserNo()), qrCode);
+    public void disable(@PathVariable String qrCode, PayCaller caller) {
+        codes.disable(caller, qrCode);
     }
 }

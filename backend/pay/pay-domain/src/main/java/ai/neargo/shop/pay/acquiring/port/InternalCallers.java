@@ -59,6 +59,15 @@ public class InternalCallers {
         return new PayCaller(CallerType.OPS, 0L, Set.of(), operatorNo, null, null);
     }
 
+    /**
+     * 托管收银台与静态码上的顾客（{@code CHECKOUT}）：没有账号，身份是收银台接入方本身，门店圈到这一单的门店。
+     * 收银台令牌 / 码由 {@code CheckoutService} 验过才走到这里；接入方是否启用也由它每次现查（停用即刻生效），
+     * 所以这里只拼身份、不查库。
+     */
+    public static PayCaller checkoutVisitor(Long checkoutAppId, Long storeId) {
+        return new PayCaller(CallerType.CHECKOUT, checkoutAppId, Set.of(storeId), null, null, null);
+    }
+
     public Long appId(String appCode) {
         return ids.computeIfAbsent(appCode, code -> {
             PayApp app = DataScopeContext.executeWithoutScope(() -> apps.selectOne(Wrappers.<PayApp>lambdaQuery()

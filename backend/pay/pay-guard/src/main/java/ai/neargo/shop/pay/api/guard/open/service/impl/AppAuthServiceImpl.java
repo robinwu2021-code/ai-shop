@@ -153,6 +153,15 @@ public class AppAuthServiceImpl implements AppAuthService {
         }
     }
 
+    @Override
+    public void checkDailyRefund(Long payAppId, long amountMinor) {
+        PayApp app = payAppId == null ? null : DataScopeContext.executeWithoutScope(() -> apps.selectById(payAppId));
+        if (app == null) {
+            throw BizException.of(ErrorCode.UNAUTHORIZED);
+        }
+        checkDailyRefund(app, amountMinor);
+    }
+
     private PayApp find(String appNo) {
         return appNo == null ? null : DataScopeContext.executeWithoutScope(() -> apps.selectOne(
                 Wrappers.<PayApp>lambdaQuery().eq(PayApp::getAppNo, appNo).last("LIMIT 1")));
