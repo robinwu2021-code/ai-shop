@@ -1,1 +1,2 @@
 ai.neargo.shop.commerce.config.CommerceCoreAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceSourceValidationAutoConfiguration

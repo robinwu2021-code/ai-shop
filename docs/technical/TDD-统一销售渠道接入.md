@@ -344,7 +344,7 @@ A-C按依赖顺序完成业务与测试源码，统一编译后一次集中受�
 
 #### L3 A2 详细设计与代码对照复核（2026-10-28，A2.1、A2.2a及A2.2b1已实现，其余待实施）
 
-**L1 任务目的。** A1已完成精确渠道身份、原市场及价格政策事实；A2补齐完整目录所需的原图片身份、真实市场商品/SKU及覆盖价、行业来源核验。A2完成仍不等于可以发送完整菜单：目录组装/v3在B，端到端接线在C，自动发布事件在S3。本节保留A2完整设计；原封面身份A2.1及真实市场元数据A2.2a已实施并单独验收；纯币种规则与schema6历史格式A2.2b1已补齐；原FOOD业务写入、发布接线及owner分派仍待实施。
+**L1 任务目的。** A1已完成精确渠道身份、原市场及价格政策事实；A2补齐完整目录所需的原图片身份、真实市场商品/SKU及覆盖价、行业来源核验。A2完成仍不等于可以发送完整菜单：目录组装/v3在B，端到端接线在C，自动发布事件在S3。本节保留A2完整设计；原封面身份A2.1及真实市场元数据A2.2a已实施并单独验收；纯币种规则与schema6历史格式A2.2b1已补齐；原FOOD业务写入、发布接线已由A2.2b2交付，owner分派按A2.3继续。
 
 **L2 复核结论。** 原方向可用，但以下设计缺口必须补齐后再编码；它们不是本轮已复现的新A1生产缺陷。
 
@@ -452,6 +452,44 @@ c. 发布版本与兼容：
 6. FOOD provider配置显式默认false；不要求CIM核心也在FOOD进程中，独立FOOD可只提供其owner能力。通用CIM worker客户端和完整capture仍在C接线，不把A2提供方冒充完整目录Port。
 
 提供方配置须声明在通用registry配置之前；不能仅以类型ConditionalOnBean依赖偶然加载顺序。CatalogPersistence等仍持ObjectProvider/延迟引用，注册表装配不得强迫构造跨域发布环。关闭FOOD/bridge或CIM仍保持原业务默认路径。
+
+**A2.3 执行批次：行业来源统一分派（2026-10-28，代码与专项已验证，最终复核中）。**
+
+本批沿已确认的 A2 设计，承接已交付的 A2.2b2 原 FOOD 多市场维护/发布，不重新设计商品或订单。先推送已完成提交，再执行以下任务。完整目录 v3 为 B 批，捕获/预览/发送接线为 C 批；A2.3 不能单独声明外送菜单已可同步。备选方案中，CIM 核心直接依赖餐饮会破坏行业隔离；多个同类型 Port 靠 Spring 选主会掩盖错误装配，均不采用。沿已确认的“唯一通用 Port + 行业 Provider”方案。
+
+| 顺序 | 精确文件（相对模块 src/main/java） | 输入与输出/实现 |
+| --- | --- | --- |
+| 1 | commerce-api/ai/neargo/shop/spi/commerce/ChannelSourceValidationProvider.java | owner(): Owner；validate(Source): Validation；不得继承旧 Port，否则 Provider 也被发现为旧 Port，引起混合装配误判 |
+| 2 | commerce-core/ai/neargo/shop/commerce/port/ChannelSourceValidationPortImpl.java | 构造 Provider 列表、Clock；不可变 owner 映射；validate 只按 owner 路由；重复/null owner 拒绝 |
+| 3 | commerce-core/ai/neargo/shop/commerce/config/CommerceSourceValidationAutoConfiguration.java | 排在行业提供方之后、CommerceCoreAutoConfiguration之前；有提供方才注册 Port，无数据库依赖；检查所有旧 Port 与新提供方混合 |
+| 4 | food-commerce/ai/neargo/shop/food/commerce/port/FoodSourceValidationProviderImpl.java | ObjectProvider/Supplier 原 ConfigRevisionService、ObjectMapper、Clock；只 FOOD/MENU；原当前版本与 CURRENT 证明核验 |
+| 5 | food-commerce/ai/neargo/shop/food/commerce/config/FoodSourceValidationAutoConfiguration.java | food.enabled=true 且 shop.food.commerce.source-validation.enabled=true；默认关闭；原餐牌服务和 mapper 可用时才贡献提供方 |
+| 6 | 两模块 META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports | 明确发现与顺序；通用核心只引用行业配置类名，不引入 food-api/core 的依赖 |
+| 7 | 各模块 src/test/java 中专项 | ChannelSourceValidationRegistryTest、SourceValidationWiringTest、FoodSourceValidationTest、FoodSourceValidationWiringTest |
+| 8 | 本 TDD、生成设计清单及执行台账 | 三处对账、真实编译/验收/消融/一次独立只读审查结果 |
+
+Source 保留 entityNo/storeNo/owner/kind/sourceRef/sourceRevision/salesOfferRef，旧六参数构造和 Validation 原字段不变。通用输入按原业务编号边界校验；FOOD/MENU 的菜单与修订编号按原32位合同验证。首批 salesOfferRef 必须为空；SKU/OPTION/OFFER 等不因独立身份合法就被授予 MENU 来源资格。
+
+具体流程：
+
+1. 通用入口先校验输入，再按 owner 选择唯一 Provider。缺行业返回 UNSUPPORTED；不回退其他行业、不兜底成功、不调用外部渠道网关。
+2. FOOD 提供方在本地事务外调用原 resolveRevision(entity,store,MENU,menu,now)，复核返回的主体/门店/原文、kind、摘要及生效口径。能够确认当前修订与请求不同才返回 STALE。
+3. 同修订调用原 verifyMenuResource 的 CURRENT Query，使用 MenuSourcePolicy.validateProof 重新校验完整证明。schema4/6由原解析器解释；新6的实时市场核验由原服务负责，提供方不复制市场规则。
+4. VALID 精确返回 canonicalRef/revision/contentHash/validUntil/ownerReceiptNo。通用入口核对请求身份、非空原摘要/回执、未过期且最长30秒；不能延长原证明期限。远程 Validation 是可信 owner 答复，摘要不是签名，不宣称可从缩减字段重建原快照。
+5. 原404/403、网络故障和无法确认版本变化的 CONFLICT 保留原语义；不把所有异常当 STALE/UNSUPPORTED，也不缓存成功。无价格、税、库存或订单查询副作用。
+
+启动矩阵：无 Provider 不注册默认 Port；FOOD/RETAIL 各一个共存；同 owner 两个、本地与远程同 owner、旧自定义 Port 与新 Provider 混合均启动失败；只有旧 Port 时保持原行为。提供方构造不读取原业务，原服务延迟到调用时解析，防止发布/目录服务循环。独立 FOOD 可以只贡献其原能力，不要求启用 CIM 数据库；独立 CIM 的远程提供方客户端仍在 C 批，当前不假装已具备跨进程完整捕获能力。
+
+存储/API/任务：复用 cim_catalog_source 及原短时 Validation，复用现有消费 Port；本批不加表、迁移、公开 Controller、定时任务或实际平台适配。后续完整捕获仍须复核原证明；证明既不是永久销售权限，也不是资金或履约授权。
+
+执行与验收：
+
+- 先整批完成生产及测试源码，统一 test-compile，再集中执行四类专项与直接相关原目录/映射/装配回归。预期全部通过；默认关闭、无原 owner 与旧 Port 场景必须覆盖。遵从用户批量编码后编译测试的节奏，不先执行全仓回归。
+- 输入反例覆盖跨主体/门店、非法/未知 kind、带 salesOfferRef 的 MENU；输出反例覆盖错原编号/修订/hash、过期/超期、伪造或错范围证明。测试原错误透传、明确旧修订 STALE 与真正未知故障的区分。
+- 装配覆盖无 Provider、双行业、重复行业、旧实现单独/混合、默认关闭、FOOD 独立且无 CIM 数据源；确认配置发现顺序，防止仅凭 ConditionalOnBean 偶然可用。
+- 对明确的一条期限或行业守卫做消融：移除后对应测试必须失败；恢复后专项通过。一次独立只读 review，重要问题一轮修复，以失败复现和相关绿测闭环。
+- 编译验证集成宿主、独立 FOOD 和独立 CIM；无 POM/共享依赖改动时不重复无关默认零售全仓测试。规范检查包括相关架构、生成设计10项、25个生成器、SQL/diff。
+- 精确提交本批文件和文档；不自动开启生产开关、不部署。B 批接完整 v3 目录及时间交集，C 批接捕获/预览/发送，S3接自动滚动重发布；真实 Keeta 等仍需后续获准合同和环境。
 
 **L3 4. 文件与方法落实清单（已实施子集见A2.1/A2.2a，其余待实施）。**
 
@@ -1241,3 +1279,26 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 - 单次修复后，菜单维护/组成、原发布/来源/价格、币种及旧字节兼容、5项相关架构合计86/86通过（23.434s，0失败/异常/跳过）；包含离线和改币重放正向对照、同键异actor/异payload拒绝，以及新请求仍失败的保护。不二次review，不重复无关业务测试。初轮161项通过和4项原生DB条件跳过仍按原范围记录，不把重复复测累计成新增通过数。
 
 - 修复后集成宿主和独立服务 package PASS30.786s，包含最终生产修改；设计10项、25个生成器、SQL方言和diff检查再次通过。最终改动共25文件，两个本地提交；无新迁移、POM或前端改动，不推送、部署或开启生产开关。
+
+
+### A2.3 行业来源分派交付（2026-10-28，本地）
+
+按 §2 完整计划落地新 Provider SPI、commerce-core 唯一行业路由与装配、food-commerce 原餐牌提供方及默认关闭装配；两个原自动配置发现文件追加注册。原 Source/Validation 记录和构造器不变，无表/迁移/公开API/POM变化，不将 Provider 继承为旧 Port。
+
+| AC/规则 | 实现 | 验收方法 |
+| --- | --- | --- |
+| 同行业唯一、缺行业不回退 | ChannelSourceValidationPortImpl 构造/validate | ChannelSourceValidationRegistryTest.routesBothIndustriesAndNeverFallsBackForAMissingOwner；rejectsDuplicateAndMissingOwnersAtConstruction |
+| 校验输入、原成功身份及期限 | 同 Port.validate | rejectsMalformedInputsBeforeCallingOwner；rejectsWrongIdentityMissingReceiptAndExpiredOrExtendedSuccess；preservesOwnerErrorsAndNonSuccessWithoutCachingThemAsSuccess |
+| 无提供方不造Port、旧实现兼容、混合失败 | CommerceSourceValidationAutoConfiguration 两个Bean | SourceValidationWiringTest 四项，含双行业/无数据库装配与重复、混合启动失败 |
+| 当前原餐牌与scope，旧修订明确STALE | FoodSourceValidationProviderImpl.validate | FoodSourceValidationTest.validatesOriginalMenuAndPreservesOriginalDeadlineHashAndReceipt；explicitDifferentCurrentRevisionIsStaleWithoutGrantingAnyProof |
+| 4/6原格式与受限kind | 同 Provider | acceptsMarketSchemaSixWithoutReinterpretingFrozenCurrency；unsupportedKindsAndSalesOfferCannotMasqueradeAsMenu |
+| 非法输入/过期/错范围/原异常不降级 | 同 Provider | malformedScopeAndOverlongMenuIdentityFailBeforeOriginalRead；expiredAndWrongScopeOriginalProofsAreNotAccepted；notFoundPermissionTransportAndUnconfirmedConflictRetainOriginalMeaning |
+| 两次原读取必须相同内容 | 原resolveRevision后CURRENT完整证明 | changingOriginalContentAtTheSameRevisionCannotMixHashAndReceipt |
+| 明确默认关闭、独立FOOD无CIM数据库 | FoodSourceValidationAutoConfiguration | FoodSourceValidationWiringTest 两项 |
+
+整批 test-compile PASS24.269s。首轮唯一错误为异常透传用例用Mockito.when重设已抛异常的桩，第二次设桩触发旧异常；改为doThrow，未改原业务错误处理。集中专项62/62通过19.388s（0失败/异常/跳过），含新增18项、原绑定与目录/映射回归及3项相关架构。
+
+消融仅删除通用路由的过期下界判断，rejectsWrongIdentityMissingReceiptAndExpiredOrExtendedSuccess 真实失败（应抛异常未抛，3.812s），随后自动恢复原文件。真实零售提供方、跨进程CIM来源客户端、完整目录v3/发送、生产数据库和实际平台不在本批验收范围。
+
+- 守卫恢复后的完整定向62/62再次通过36.537s；受影响集成/独立服务 package PASS22.573s。另补1项SourceValidationWiringTest.enablingBeanOverrideCannotSilentlyReplaceANamedLegacyPort，确认允许Bean覆盖时，同名旧Port混合仍会启动失败；此用例现有实现直接通过，无生产修改，日志虽以override-red命名但不是红灯证据。本批共63个唯一检查通过，不累加重复复测。
+- 设计真源新增Provider合同，生成接口/代码/数据库说明同步；未新增表/API。设计10项、25个生成器、SQL/diff通过；最终只读复核待记录。
