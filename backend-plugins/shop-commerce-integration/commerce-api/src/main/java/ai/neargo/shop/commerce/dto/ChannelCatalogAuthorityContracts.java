@@ -13,6 +13,17 @@ import java.time.Instant;
 public final class ChannelCatalogAuthorityContracts {
     private ChannelCatalogAuthorityContracts() {}
 
+    /** Exact external identity is resolved by its original owner, never guessed by the caller. */
+    public record IdentityQuery(
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String entityNo,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String storeNo,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String providerCode,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String externalAccountRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String externalStoreRef) {
+        @JsonAnySetter
+        public void rejectUnknown(String field, Object value) { throw unknown(); }
+    }
+
     public record Query(
             @JsonDeserialize(using = CommerceTextDeserializer.class) String entityNo,
             @JsonDeserialize(using = CommerceTextDeserializer.class) String storeNo,

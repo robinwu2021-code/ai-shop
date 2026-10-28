@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.policy.CatalogCurrencySession;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -41,6 +43,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Owns editable serving composition, while original product services retain SKU and financial authority. */
 public class ModifierServiceImpl implements ModifierService {
+    private final CatalogCurrencyService currencies;
     private final ModifierMapper heads;
     private final ModifierComponentMapper components;
     private final ActionLogMapper actions;
@@ -54,6 +57,16 @@ public class ModifierServiceImpl implements ModifierService {
     public ModifierServiceImpl(ModifierMapper heads, ModifierComponentMapper components, ActionLogMapper actions,
             IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog) {
+        this(heads, components, actions, idem, publisher, json, manager, catalog, (entity, store) ->
+                CatalogCurrencySession.legacy(catalog, entity, store));
+    }
+
+    /** Currency-aware wiring keeps legacy construction and original command semantics available. */
+    public ModifierServiceImpl(ModifierMapper heads, ModifierComponentMapper components, ActionLogMapper actions,
+            IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            PlatformTransactionManager manager, GoodsCatalogQueryPort catalog,
+            CatalogCurrencyService currencies) {
+        this.currencies = currencies;
         this.heads = heads;
         this.components = components;
         this.actions = actions;
@@ -73,11 +86,14 @@ public class ModifierServiceImpl implements ModifierService {
             CreateModifierReq input, String key) {
         context(entity, store, actor, key);
         var req = normalize(input);
-        sku(entity, store, req.salesSkuNo());
+        var currency = currencies.open(entity, store);
+        sku(entity, store, req.salesSkuNo(), currency);
+        currency.refresh();
         String scope = FoodCommandFingerprint.scope("CREATE_MODIFIER", entity, store);
         String hash = FoodCommandFingerprint.hash("create-modifier:v1", json.writeValueAsString(req));
         try {
             return write.execute(tx -> idem.execute(key, scope, actor, hash, CreateModifierResultVO.class, () -> {
+                currency.guardTransaction();
                 validateMembers(entity, req);
                 var row = new FnbModifier();
                 row.setEntityNo(entity);
@@ -106,12 +122,15 @@ public class ModifierServiceImpl implements ModifierService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         var req = normalize(new CreateModifierReq(input.name(), input.kind(), input.salesSkuNo(), input.components()));
-        sku(entity, store, req.salesSkuNo());
+        var currency = currencies.open(entity, store);
+        sku(entity, store, req.salesSkuNo(), currency);
+        currency.refresh();
         String scope = FoodCommandFingerprint.scope("UPDATE_MODIFIER", entity, store);
         String hash = FoodCommandFingerprint.hash("update-modifier:v1", number, input.version().toString(),
                 json.writeValueAsString(req));
         try {
             return write.execute(tx -> idem.execute(key, scope, actor, hash, ModifierMutationVO.class, () -> {
+                currency.guardTransaction();
                 var row = heads.selectOne(Wrappers.<FnbModifier>lambdaQuery().eq(FnbModifier::getEntityNo, entity)
                         .eq(FnbModifier::getModifierNo, number).last("FOR UPDATE"));
                 if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
@@ -175,9 +194,9 @@ public class ModifierServiceImpl implements ModifierService {
         }
     }
 
-    private void sku(String entity, String store, String number) {
+    private void sku(String entity, String store, String number, CatalogCurrencySession currency) {
         if (number == null) return;
-        var fact = catalog.getSku(entity, store, number);
+        var fact = currency.sku(number);
         if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
                 || !number.equals(fact.skuNo()) || fact.goodsNo() == null || fact.goodsNo().isBlank()
                 || fact.goodsNo().length() > 32 || !fact.goodsNo().equals(fact.goodsNo().trim())

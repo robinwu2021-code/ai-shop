@@ -80,6 +80,25 @@ class BundleServiceTest extends FoodWriteGuardFixture {
         return new ReplaceBundleDefinitionReq(v, List.of(group("G1", "1", "1", null)),
                 List.of(choice("C1", "G1", "SIDE", "INCLUDED", "1", "1", "1")));
     }
+    @Test void foreignBundleValidatesRootBaseAndChoicesBeforeAtomicDefinitionWrite() {
+        run((c, f) -> {
+            var source = new CatalogCurrencyBusinessTest.Sources();
+            var service = new BundleServiceImpl(c.getBean(BundleMapper.class), c.getBean(BundleGroupMapper.class),
+                    c.getBean(BundleChoiceMapper.class), c.getBean(ActionLogMapper.class),
+                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
+                    source.currencies);
+            service.createBundle("E", "A", "actor", new CreateBundleReq("MEAL"), "foreign-create");
+            var result = service.replaceDefinition("E", "A", "MEAL", "actor", fixed(0), "foreign-definition");
+            assertThat(result.version()).isEqualTo(1);
+            assertThat(service.getBundle("E", "A", "MEAL").config().data().choices()).hasSize(1);
+            source.corrupt = true;
+            assertThatThrownBy(() -> service.replaceDefinition("E", "A", "MEAL", "actor", fixed(1), "corrupt"))
+                    .isInstanceOf(BizException.class);
+            assertThat(f.sql().queryForObject("SELECT version FROM fnb_bundle", Long.class)).isEqualTo(1);
+        });
+    }
+
     @Test void fixedAndSelectableDefinitionsReadRealChildrenAndReplayWithoutDuplicates() {
         run((c,f) -> {
             var s = c.getBean(BundleService.class);

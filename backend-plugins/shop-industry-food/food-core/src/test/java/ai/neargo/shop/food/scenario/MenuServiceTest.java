@@ -9,6 +9,12 @@ import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreateMenuReq;
 import ai.neargo.shop.food.dto.ListMenusQuery;
+import ai.neargo.shop.food.dto.MenuCategoryInput;
+import ai.neargo.shop.food.dto.MenuItemInput;
+import ai.neargo.shop.food.dto.MenuSkuPriceInput;
+import ai.neargo.shop.food.dto.ReplaceMenuCompositionReq;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Market;
+import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import ai.neargo.shop.food.dto.UpdateMenuReq;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.MenuContextMapper;
@@ -52,7 +58,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Exercises actual working rows, native V1 shape, original idempotency and atomic outbox. */
 class MenuServiceTest extends FoodWriteGuardFixture {
-    record Menus(Fixture fixture, MenuService service, AtomicBoolean fail, SqlSessionTemplate template) { }
+    record Menus(Fixture fixture, MenuService service, AtomicBoolean fail, SqlSessionTemplate template,
+            AssertableApplicationContext context) { }
     void run(Consumer<Menus> action) {
         runner().withBean(FoodDataScopeRegistration.class, FoodDataScopeRegistration::new)
                 .withUserConfiguration(StorePolicyPublicationTest.Publication.class).run(c -> {
@@ -148,9 +155,59 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                             template.getMapper(MenuItemOptionGroupMapper.class), catalog),
                     template.getMapper(MenuContextMapper.class), template.getMapper(MenuChannelBindingMapper.class),
                     () -> null);
-            action.accept(new Menus(f, service, fail, template));
+            action.accept(new Menus(f, service, fail, template, c));
         });
     }
+    @Test void completedForeignCompositionReplaysWhileOriginalMarketIsOffline() {
+        foreignCompositionReplay(true);
+    }
+
+    @Test void completedForeignCompositionReplaysAfterOriginalMarketCurrencyChanges() {
+        foreignCompositionReplay(false);
+    }
+
+    private void foreignCompositionReplay(boolean offline) {
+        run(m -> {
+            var c = m.context();
+            var t = m.template();
+            var source = new CatalogCurrencyBusinessTest.Sources();
+            var service = new MenuServiceImpl(t.getMapper(MenuMapper.class), t.getMapper(MenuStoreMapper.class),
+                    t.getMapper(StorePolicyMapper.class), c.getBean(ActionLogMapper.class),
+                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class),
+                    Clock.fixed(Instant.parse("2026-10-21T12:00:00Z"), ZoneOffset.UTC),
+                    t.getMapper(MenuScheduleMapper.class), t.getMapper(MenuExceptionMapper.class),
+                    new MenuCompositionSource(t.getMapper(MenuCategoryMapper.class), t.getMapper(MenuItemMapper.class),
+                            t.getMapper(MenuItemSkuMapper.class), t.getMapper(MenuItemOptionGroupMapper.class),
+                            source.goods), t.getMapper(MenuContextMapper.class),
+                    t.getMapper(MenuChannelBindingMapper.class),
+                    () -> null, source.currencies);
+            var number = service.createMenu("E", "A", "actor", input("Foreign menu"), "create-foreign").configNo();
+            var item = new MenuItemInput(null, "G", 0, true, "EXPLICIT", List.of("SKU"), "REPLACE", List.of(),
+                    List.of(), List.of(new MenuSkuPriceInput("SKU", 1250L, "AED")));
+            var request = new ReplaceMenuCompositionReq("COMPOSITION", 0L,
+                    List.of(new MenuCategoryInput(null, "Drinks", 0, List.of(item))));
+            var first = service.replaceComposition("E", "A", number, "actor", request, "foreign-definition");
+            var tables = List.of("fnb_menu_item", "fnb_action_log", "sys_outbox", "sys_idempotent");
+            var counts = tables.stream().map(table -> m.fixture().sql()
+                    .queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).toList();
+            if (offline) source.offline = true;
+            else source.market = new Market("TW", "TWD", 2);
+            assertThat(service.replaceComposition("E", "A", number, "actor", request, "foreign-definition"))
+                    .isEqualTo(first);
+            assertThat(tables.stream().map(table -> m.fixture().sql()
+                    .queryForObject("SELECT COUNT(*) FROM " + table, Integer.class)).toList()).isEqualTo(counts);
+            code(() -> service.replaceComposition("E", "A", number, "another", request, "foreign-definition"),
+                    ErrorCode.NOT_FOUND);
+            var changed = new ReplaceMenuCompositionReq("COMPOSITION", 0L,
+                    List.of(new MenuCategoryInput(null, "Other drinks", 0, List.of(item))));
+            code(() -> service.replaceComposition("E", "A", number, "actor", changed, "foreign-definition"),
+                    ErrorCode.CONFLICT);
+            assertThatThrownBy(() -> service.replaceComposition("E", "A", number, "actor", request, "fresh"))
+                    .isInstanceOf(RuntimeException.class);
+        });
+    }
+
     @Test void restrictedScopePaginatesBoundMenusWithTheSameFilteredTotal() {
         run(m -> {
             for (int n = 0; n < 3; n++) m.service().createMenu("E", "A", "actor", input("餐牌" + n), "menu-" + n);

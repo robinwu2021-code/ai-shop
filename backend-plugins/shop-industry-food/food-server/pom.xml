@@ -51,6 +51,21 @@
             <scope>runtime</scope>
         </dependency>
     </dependencies>
+    <profiles>
+        <profile>
+            <id>food-commerce-embedded</id>
+            <dependencies>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId><artifactId>food-commerce</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId><artifactId>commerce-channel</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
     <build>
         <plugins>
             <plugin>

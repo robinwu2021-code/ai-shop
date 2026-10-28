@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Lazy;
 
 import java.time.Duration;
+import java.time.Clock;
 
 /**
  * Explicit opt-in permits a source worker to read authority without installing the CIM database
@@ -42,6 +43,6 @@ public class CommerceAuthorityClientAutoConfiguration {
     @Bean
     ChannelCatalogAuthorityService remoteChannelCatalogAuthorityService(
             ObjectProvider<ChannelCatalogAuthorityInternalApi> api) {
-        return new RemoteChannelCatalogAuthorityService(query -> api.getObject().capture(query));
+        return new RemoteChannelCatalogAuthorityService(api::getObject, Clock.systemUTC());
     }
 }

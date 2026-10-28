@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.policy.CatalogCurrencySession;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -44,6 +46,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Original SKUs remain authoritative; only editable serving composition lives in the food primary schema. */
 public class BundleServiceImpl implements BundleService {
+    private final CatalogCurrencyService currencies;
     private final BundleMapper heads;
     private final BundleGroupMapper groups;
     private final BundleChoiceMapper choices;
@@ -58,6 +61,16 @@ public class BundleServiceImpl implements BundleService {
     public BundleServiceImpl(BundleMapper heads, BundleGroupMapper groups, BundleChoiceMapper choices,
             ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, GoodsCatalogQueryPort catalog) {
+        this(heads, groups, choices, actions, idem, publisher, json, manager, catalog, (entity, store) ->
+                CatalogCurrencySession.legacy(catalog, entity, store));
+    }
+
+    /** Currency-aware wiring keeps legacy construction and original command semantics available. */
+    public BundleServiceImpl(BundleMapper heads, BundleGroupMapper groups, BundleChoiceMapper choices,
+            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            PlatformTransactionManager manager, GoodsCatalogQueryPort catalog,
+            CatalogCurrencyService currencies) {
+        this.currencies = currencies;
         this.heads = heads; this.groups = groups; this.choices = choices; this.actions = actions;
         this.idem = idem; this.publisher = publisher; this.json = json; this.catalog = catalog;
         write = new TransactionTemplate(manager);
@@ -78,9 +91,12 @@ public class BundleServiceImpl implements BundleService {
         String hash = FoodCommandFingerprint.hash("create-bundle:v1", req.skuNo());
         var replay = completed(key, scope, actor, hash, CreateBundleResultVO.class);
         if (replay.isPresent()) return replay.get();
-        sku(entity, store, req.skuNo());
+        var currency = currencies.open(entity, store);
+        sku(entity, store, req.skuNo(), currency);
+        currency.refresh();
         try {
             return write.execute(tx -> idem.execute(key, scope, actor, hash, CreateBundleResultVO.class, () -> {
+                currency.guardTransaction();
                 if (!choices.selectList(Wrappers.<FnbBundleChoice>lambdaQuery()
                         .eq(FnbBundleChoice::getEntityNo, entity).eq(FnbBundleChoice::getSkuNo, req.skuNo())
                         .last("FOR UPDATE")).isEmpty()
@@ -112,9 +128,12 @@ public class BundleServiceImpl implements BundleService {
         var skus = new HashSet<String>(); skus.add(number);
         req.choices().forEach(c -> skus.add(c.skuNo()));
         req.groups().forEach(g -> { if (g.baseSkuNo() != null) skus.add(g.baseSkuNo()); });
-        for (var sku : skus.stream().sorted().toList()) sku(entity, store, sku);
+        var currency = currencies.open(entity, store);
+        for (var sku : skus.stream().sorted().toList()) sku(entity, store, sku, currency);
+        currency.refresh();
         try {
             return write.execute(tx -> idem.execute(key, scope, actor, hash, BundleMutationVO.class, () -> {
+                currency.guardTransaction();
                 var row = head(entity, number, true);
                 if (!req.version().equals(row.getVersion()) || row.getVersion() == Long.MAX_VALUE
                         || row.getConfigVersion() == null || row.getConfigVersion() == Long.MAX_VALUE
@@ -224,8 +243,8 @@ public class BundleServiceImpl implements BundleService {
                         c.getMaxQty(), c.getSortNo())).toList()));
     }
 
-    private void sku(String entity, String store, String number) {
-        var fact = catalog.getSku(entity, store, number);
+    private void sku(String entity, String store, String number, CatalogCurrencySession currency) {
+        var fact = currency.sku(number);
         if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
                 || !number.equals(fact.skuNo()) || fact.goodsNo() == null || fact.goodsNo().isBlank()
                 || fact.goodsNo().length() > 32 || !fact.goodsNo().equals(fact.goodsNo().trim()) || fact.version() < 0) {

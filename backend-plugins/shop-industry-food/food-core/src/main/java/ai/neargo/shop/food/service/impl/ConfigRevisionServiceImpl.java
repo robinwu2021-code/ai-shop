@@ -1,5 +1,9 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.dto.PublicationMarketContext;
+import ai.neargo.shop.food.policy.PublicationMarketPolicy;
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.policy.CatalogCurrencySession;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -93,6 +97,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Append-only publication facts are resolved by store/time, never by the editable entity-shared pointer. */
 public class ConfigRevisionServiceImpl implements ConfigRevisionService {
+    private final CatalogCurrencyService currencies;
     private final ConfigRevisionMapper revisions;
     private final ModifierMapper modifiers;
     private final ModifierComponentMapper components;
@@ -170,6 +175,21 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             Clock clock, BundlePublicationSource bundles, RecipePublicationSource recipes,
             MaterialCatalogQueryPort materials, MenuPublicationSource menus, StationPublicationSource stations,
             Supplier<MenuChannelAuthorityPort> channelAuthority, MenuChannelBindingMapper channelBindings) {
+        this(revisions, modifiers, components, groups, items, actions, idem, publisher, json, manager,
+                goods, specs, clock, bundles, recipes, materials, menus, stations, channelAuthority,
+                channelBindings, (entity, store) -> CatalogCurrencySession.legacy(goods, entity, store));
+    }
+
+    /** Currency-aware wiring keeps legacy construction and original command semantics available. */
+    public ConfigRevisionServiceImpl(ConfigRevisionMapper revisions, ModifierMapper modifiers,
+            ModifierComponentMapper components, OptionGroupMapper groups, OptionGroupItemMapper items,
+            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            PlatformTransactionManager manager, GoodsCatalogQueryPort goods, SpecValueCatalogQueryPort specs,
+            Clock clock, BundlePublicationSource bundles, RecipePublicationSource recipes,
+            MaterialCatalogQueryPort materials, MenuPublicationSource menus, StationPublicationSource stations,
+            Supplier<MenuChannelAuthorityPort> channelAuthority, MenuChannelBindingMapper channelBindings,
+            CatalogCurrencyService currencies) {
+        this.currencies = currencies;
         this.channelBindings = channelBindings;
         this.menus = menus; this.stations = stations; this.channelAuthority = channelAuthority;
         this.recipes = recipes; this.materials = materials;
@@ -238,12 +258,16 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         var completed = read.execute(tx -> idem.findCompleted(
                 key, endpoint, actor, fingerprint, PublishConfigResultVO.class));
         if (completed.isPresent()) return completed.get();
+        var currency = currencies.open(entity, store);
+        if ("STATION".equals(kind) && currency.foreignMarket()) {
+            throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+        }
         // Capture and all original remote reads finish before starting the local write transaction.
         var preliminary = read.execute(tx -> capture(entity, store, kind, number, effective, false));
         var fullGoods = new ArrayList<GoodsFact>();
         if (preliminary.menu() != null) {
             for (String goodsNo : menus.goodsNos(preliminary.menu())) {
-                var fact = goods.getGoods(entity, store, goodsNo);
+                var fact = currency.goods(goodsNo);
                 if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
                         || !goodsNo.equals(fact.goodsNo()) || fact.version() < 0 || fact.skus() == null
                         || fact.skus().isEmpty() || fact.skus().size() > 100) {
@@ -254,6 +278,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         }
         var candidate = preliminary.menu() == null ? preliminary
                 : read.execute(tx -> capture(entity, store, kind, number, effective, false, fullGoods));
+        read.execute(tx -> { validateCurrencyDependencies(entity, currency, candidate); return null; });
         var requestedSkus = new TreeSet<>(candidate.skuNos());
         if (candidate.menu() != null) for (var item : MenuPublicationDocuments.items(candidate.menu())) {
             if ("ALL".equals(item.skuScope())) fullGoods.stream().filter(g -> g.goodsNo().equals(item.goodsNo()))
@@ -262,7 +287,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         if (requestedSkus.size() > 1000) throw bad();
         var skuFacts = new ArrayList<SkuIdentityFact>();
         for (String sku : requestedSkus) {
-            var fact = goods.getSku(entity, store, sku);
+            var fact = currency.sku(sku);
             if (fact == null || !entity.equals(fact.entityNo()) || !store.equals(fact.storeNo())
                     || !sku.equals(fact.skuNo()) || !validKey(fact.goodsNo(), 32) || fact.version() < 0) {
                 throw new IllegalStateException("Invalid original SKU identity");
@@ -279,33 +304,41 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             recipes.validateAuthorities(entity, candidate.recipe(), skuFacts, materialFacts);
         }
         if (candidate.menu() != null) revalidateMenuAuthorities(entity, store, candidate.menu());
+        currency.refresh();
+        final PublicationMarketContext marketContext = currency.frozen();
         try {
             var transaction = Set.of("BUNDLE", "RECIPE", "MENU", "STATION").contains(kind) ? bundleWrite : write;
             return transaction.execute(tx -> idem.execute(key, endpoint, actor, fingerprint,
                     PublishConfigResultVO.class, () -> {
+                currency.guardTransaction();
                 if (requested.isBefore(now.minusMinutes(5))) throw bad();
                 var locked = capture(entity, store, kind, number, effective, true, fullGoods);
                 if (locked.version() != req.version() || locked.version() == Long.MAX_VALUE
                         || !json.writeValueAsString(candidate).equals(json.writeValueAsString(locked))) {
                     throw BizException.of(ErrorCode.CONFLICT);
                 }
+                currency.requireFresh();
                 boolean bundle = "BUNDLE".equals(kind);
                 boolean recipe = "RECIPE".equals(kind);
                 boolean menu = "MENU".equals(kind), station = "STATION".equals(kind);
                 String document = menu ? PublicationDocuments.freeze(json, new MenuPublicationSnapshot(
-                        4, kind, number, locked.version(), locked.menu(), skuFacts, fullGoods, approval))
+                        marketContext == null ? 4 : 6, kind, number, locked.version(), locked.menu(), skuFacts,
+                        fullGoods, approval, marketContext))
                         : station ? PublicationDocuments.freeze(json, new StationPublicationSnapshot(
                                 5, kind, number, locked.version(), entity, store, locked.station().definition(),
                                 locked.station().routes().stream().map(r -> new StationPublicationSnapshot.Route(
                                         r.skuNo(), r.taskRole(), r.routeVersion())).toList(), skuFacts, approval))
                         : recipe ? PublicationDocuments.freeze(json,
-                        recipes.document(locked.recipe(), skuFacts, materialFacts, approval))
+                        recipes.document(locked.recipe(), skuFacts, materialFacts, approval, marketContext))
                         : bundle ? PublicationDocuments.freeze(json,
                                 new BundlePublicationSnapshot(
-                        2, kind, number, locked.version(), locked.bundle(), skuFacts, approval))
-                        : PublicationDocuments.freeze(json, new PublicationSnapshot(1, kind, number, locked.version(),
+                        marketContext == null ? 2 : 6, kind, number, locked.version(), locked.bundle(), skuFacts,
+                        approval, marketContext))
+                        : PublicationDocuments.freeze(json, new PublicationSnapshot(
+                        marketContext == null ? 1 : 6, kind, number, locked.version(),
                         locked.modifier(), locked.optionGroup(), locked.dependencies(), skuFacts,
-                        specFacts.stream().sorted(Comparator.comparing(SpecValueFact::valueNo)).toList(), approval));
+                        specFacts.stream().sorted(Comparator.comparing(SpecValueFact::valueNo)).toList(),
+                        approval, marketContext));
                 if (document.getBytes(StandardCharsets.UTF_8).length > 1_048_576) throw bad();
                 if (recipe) RecipePublicationDocuments.scope(
                         RecipePublicationDocuments.validate(json, number, document), entity, store);
@@ -316,7 +349,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                 var row = new FnbConfigRevision();
                 row.setEntityNo(entity); row.setCreatedBy(actor); row.setRevisionNo(BizKey.next("FREV"));
                 row.setConfigKind(kind); row.setConfigNo(number); row.setRevision(sequence);
-                row.setContentSchema(menu ? 4 : station ? 5 : recipe ? 3 : bundle ? 2 : 1);
+                row.setContentSchema(marketContext != null ? 6 : menu ? 4 : station ? 5 : recipe ? 3 : bundle ? 2 : 1);
                 row.setDefinitionSnapshot(document); row.setContentHash(hash(document));
                 row.setEffectiveAt(effective.toLocalDateTime()); row.setScopeStoreNos(json.writeValueAsString(List.of(store)));
                 row.setStatus(effective.isAfter(now) ? "SCHEDULED" : "EFFECTIVE");
@@ -372,10 +405,16 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                 || requested.isBefore(now.minusMinutes(5))) throw bad();
         var effective = requested.isAfter(now) ? requested : now;
         read.execute(tx -> currentVersion(entity, store, source.getConfigKind(), source.getConfigNo(), false));
-        revalidateHistorical(entity, store, source, new HashSet<>());
+        var currency = currencies.open(entity, store);
+        currency.requireFrozen(source.getContentSchema() == 6
+                ? PublicationDocuments.marketContext(json, source.getConfigKind(), source.getDefinitionSnapshot())
+                : null);
+        revalidateHistorical(entity, store, source, new HashSet<>(), currency);
+        currency.refresh();
         try {
             return bundleWrite.execute(tx -> idem.execute(key, endpoint, actor, fingerprint,
                     PublishConfigResultVO.class, () -> {
+                currency.guardTransaction();
                 var original = revisions.findRevision(entity, sourceNo);
                 if (original == null || !source.getContentHash().equals(original.getContentHash())
                         || !source.getDefinitionSnapshot().equals(original.getDefinitionSnapshot())
@@ -483,20 +522,24 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         }
     }
 
-    private void revalidateHistorical(String entity, String store, FnbConfigRevision row, Set<String> visited) {
+    private void revalidateHistorical(String entity, String store, FnbConfigRevision row, Set<String> visited,
+            CatalogCurrencySession currency) {
         if (visited.size() > 1000) throw bad();
         if (!visited.add(row.getRevisionNo())) return;
         validateFrozen(row);
+        currency.requireFrozen(row.getContentSchema() == 6
+                ? PublicationDocuments.marketContext(json, row.getConfigKind(), row.getDefinitionSnapshot())
+                    : null);
         var tree = json.readTree(row.getDefinitionSnapshot());
         List<SkuIdentityFact> identities = json.readValue(tree.get("skuFacts").toString(),
                 json.getTypeFactory().constructCollectionType(List.class, SkuIdentityFact.class));
         for (var expected : identities) {
-            var current = goods.getSku(entity, store, expected.skuNo());
+            var current = currency.sku(expected.skuNo());
             if (current == null || !entity.equals(current.entityNo()) || !store.equals(current.storeNo())
                     || !expected.skuNo().equals(current.skuNo()) || !expected.goodsNo().equals(current.goodsNo())) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            var product = goods.getGoods(entity, store, current.goodsNo());
+            var product = currency.goods(current.goodsNo());
             if (product == null || !entity.equals(product.entityNo()) || !store.equals(product.storeNo())
                     || !current.goodsNo().equals(product.goodsNo()) || !product.baseOnSale()
                     || !"APPROVED".equals(product.auditStatus()) || product.skus().stream()
@@ -504,7 +547,8 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
         }
-        if (row.getContentSchema() == 1) {
+        if ((row.getContentSchema() == 1 || row.getContentSchema() == 6)
+                && Set.of("MODIFIER", "OPTION_GROUP").contains(row.getConfigKind())) {
             var body = json.readValue(row.getDefinitionSnapshot(), PublicationSnapshot.class);
             var refs = body.specFacts().stream().map(SpecValueFact::valueNo).sorted().toList();
             if (!refs.isEmpty()) validateSpecs(entity, refs, specs.getValues(entity, refs));
@@ -515,16 +559,16 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                                 !ref.configNo().equals(child.getConfigNo())
                         || ref.revision() != child.getRevision() || !inStore(child, store)
                         || "CANCELLED".equals(child.getStatus())) throw BizException.of(ErrorCode.CONFLICT);
-                revalidateHistorical(entity, store, child, visited);
+                revalidateHistorical(entity, store, child, visited, currency);
             }
-        } else if (row.getContentSchema() == 4) {
+        } else if ("MENU".equals(row.getConfigKind())) {
             var captured = json.readValue(row.getDefinitionSnapshot(), MenuPublicationSnapshot.class).menu();
             read.execute(tx -> {
                 revalidateHistoricalMenuLocal(entity, store, captured, false);
                 return null;
             });
             revalidateMenuAuthorities(entity, store, captured);
-        } else if (row.getContentSchema() == 3) {
+        } else if ("RECIPE".equals(row.getConfigKind())) {
             revalidateRecipeMaterials(entity, RecipePublicationDocuments.validate(json, row.getConfigNo(),
                     row.getDefinitionSnapshot()));
         }
@@ -579,6 +623,26 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         }
         for (var fact : body.materialFacts()) if (!fact.definitionHash().equals(
                 facts.get(fact.itemId()).definitionHash())) throw BizException.of(ErrorCode.CONFLICT);
+    }
+
+    private void validateCurrencyDependencies(String entity, CatalogCurrencySession currency, Candidate candidate) {
+        for (var ref : candidate.dependencies()) {
+            var row = revisions.findRevision(entity, ref.revisionNo());
+            if (row == null || !ref.configKind().equals(row.getConfigKind())
+                    || !ref.configNo().equals(row.getConfigNo()) || ref.revision() != row.getRevision()
+                    || !ref.contentHash().equals(row.getContentHash())) throw BizException.of(ErrorCode.CONFLICT);
+            validateFrozen(row);
+            currency.requireFrozen(row.getContentSchema() == 6
+                    ? PublicationDocuments.marketContext(json, row.getConfigKind(), row.getDefinitionSnapshot())
+                    : null);
+        }
+        if (candidate.menu() != null) for (var ref : candidate.menu().dependencies()) {
+            currency.requireFrozen(ref.contentSchema() == 6
+                    ? PublicationDocuments.marketContext(json, ref.configKind(), ref.definitionSnapshot()) : null);
+        }
+        if (candidate.recipe() != null) for (var group : candidate.recipe().groups()) {
+            currency.requireFrozen(group.definition().marketContext());
+        }
     }
 
     private record Candidate(long version, ModifierConfigVO modifier, OptionGroupConfigVO optionGroup,
@@ -730,6 +794,26 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     @Override
     public Proof verifyMenuResource(Query query) {
+        var first = verifyMenuResourceLocal(query);
+        if (query.mode() == Mode.HISTORICAL) return first;
+        var currency = currencies.open(query.entityNo(), query.storeNo());
+        var body = json.readValue(first.publication().definitionSnapshot(), MenuPublicationSnapshot.class);
+        currency.requireFrozen(body.marketContext());
+        if (!currency.managed()) return first;
+        currency.refresh();
+        var confirmed = verifyMenuResourceLocal(query);
+        if (!first.publication().equals(confirmed.publication())) throw BizException.of(ErrorCode.CONFLICT);
+        var deadline = currency.validUntil().atOffset(ZoneOffset.UTC);
+        var until = confirmed.validUntil().isBefore(deadline) ? confirmed.validUntil() : deadline;
+        var unsigned = new Proof(1, query, confirmed.publication(), confirmed.resource(),
+                confirmed.verifiedAt(), until, null);
+        var result = new Proof(1, query, unsigned.publication(), unsigned.resource(), unsigned.verifiedAt(),
+                until, MenuSourcePolicy.receipt(json, unsigned));
+        MenuSourcePolicy.validateProof(json, query, result, now());
+        return result;
+    }
+
+    private Proof verifyMenuResourceLocal(Query query) {
         MenuSourcePolicy.validateQuery(query);
         scope(query.entityNo(), query.storeNo());
         return read.execute(
@@ -821,9 +905,12 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
 
     private PublicationSnapshot frozen(FnbConfigRevision row) {
         validateFrozen(row);
-        if (row.getContentSchema() != 1) throw new IllegalStateException("Expected schema-one dependency");
+        if ((row.getContentSchema() != 1 && row.getContentSchema() != 6)
+                || !Set.of("MODIFIER", "OPTION_GROUP").contains(row.getConfigKind())) {
+            throw new IllegalStateException("Expected common definition dependency");
+        }
         var snapshot = json.readValue(row.getDefinitionSnapshot(), PublicationSnapshot.class);
-        if (snapshot.contentSchema() != 1 || !row.getConfigKind().equals(snapshot.configKind())
+        if (snapshot.contentSchema() != row.getContentSchema() || !row.getConfigKind().equals(snapshot.configKind())
                 || !row.getConfigNo().equals(snapshot.configNo())) throw new IllegalStateException("Invalid frozen identity");
         return snapshot;
     }
@@ -833,6 +920,14 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                 || PublicationDocuments.validate(json, row.getConfigKind(), row.getConfigNo(),
                 row.getDefinitionSnapshot()) != row.getContentSchema()) {
             throw new IllegalStateException("Invalid frozen configuration document");
+        }
+        if (row.getContentSchema() == 6) {
+            var context = PublicationDocuments.marketContext(json, row.getConfigKind(), row.getDefinitionSnapshot());
+            PublicationMarketPolicy.validate(context);
+            List<String> stores = json.readValue(row.getScopeStoreNos(),
+                    json.getTypeFactory().constructCollectionType(List.class, String.class));
+            if (!row.getEntityNo().equals(context.entityNo()) || !stores.equals(List.of(context.storeNo())))
+                throw bad();
         }
         if ("MENU".equals(row.getConfigKind())) {
             var body = json.readValue(row.getDefinitionSnapshot(), MenuPublicationSnapshot.class);
@@ -873,11 +968,11 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                             binding.bindingNo(), c.pricePolicyRef()))) throw BizException.of(ErrorCode.CONFLICT);
         }
         for (var dependency : captured.dependencies()) {
-            if (dependency.contentSchema() == 1) {
+            if (Set.of("MODIFIER", "OPTION_GROUP").contains(dependency.configKind())) {
                 var body = json.readValue(dependency.definitionSnapshot(), PublicationSnapshot.class);
                 var refs = body.specFacts().stream().map(SpecValueFact::valueNo).sorted().toList();
                 if (!refs.isEmpty()) validateSpecs(entity, refs, specs.getValues(entity, refs));
-            } else if (dependency.contentSchema() == 3) {
+            } else if ("RECIPE".equals(dependency.configKind())) {
                 var body = RecipePublicationDocuments.validate(json, dependency.configNo(),
                         dependency.definitionSnapshot());
                 var refs = body.materialFacts().stream().map(MaterialFact::itemId).sorted().toList();

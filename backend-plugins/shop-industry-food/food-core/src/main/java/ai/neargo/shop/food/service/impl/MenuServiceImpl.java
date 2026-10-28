@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.policy.CatalogCurrencySession;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -72,6 +74,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Single-store editing cannot silently mutate shared menus or reinterpret their published snapshots. */
 public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess {
+    private final CatalogCurrencyService currencies;
     private final MenuContextMapper contexts;
     private final MenuChannelBindingMapper channels;
     private final Supplier<MenuChannelAuthorityPort> channelAuthority;
@@ -94,6 +97,19 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
             PlatformTransactionManager manager, Clock clock, MenuScheduleMapper weeks,
             MenuExceptionMapper exceptions, MenuCompositionSource composition, MenuContextMapper contexts,
             MenuChannelBindingMapper channels, Supplier<MenuChannelAuthorityPort> channelAuthority) {
+        this(heads, bindings, policies, actions, idem, publisher, json, manager, clock, weeks, exceptions,
+                composition, contexts, channels, channelAuthority, (entity, store) ->
+                composition.legacySession(entity, store));
+    }
+
+    /** Currency-aware wiring keeps legacy construction and original command semantics available. */
+    public MenuServiceImpl(MenuMapper heads, MenuStoreMapper bindings, StorePolicyMapper policies,
+            ActionLogMapper actions, IdempotencyService idem, OutboxPublisher publisher, ObjectMapper json,
+            PlatformTransactionManager manager, Clock clock, MenuScheduleMapper weeks,
+            MenuExceptionMapper exceptions, MenuCompositionSource composition, MenuContextMapper contexts,
+            MenuChannelBindingMapper channels, Supplier<MenuChannelAuthorityPort> channelAuthority,
+            CatalogCurrencyService currencies) {
+        this.currencies = currencies;
         this.contexts = contexts; this.channels = channels; this.channelAuthority = channelAuthority;
         this.composition = composition;
         this.weeks = weeks; this.exceptions = exceptions;
@@ -224,23 +240,28 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
     public MenuCompositionResultVO replaceComposition(String entity, String store, String number, String actor,
             ReplaceMenuCompositionReq req, String key) {
         context(entity, store, actor, key); MenuDefinitionPolicy.key(number);
-        var definition = MenuCompositionDefinitions.normalize(req);
+        var canonical = MenuCompositionDefinitions.normalizeStructure(req);
         String scope = FoodCommandFingerprint.scope("REPLACE_MENU_COMPOSITION", entity, store);
         String hash = FoodCommandFingerprint.hash("menu-composition:v1", number, req.version().toString(),
-                json.writeValueAsString(definition));
+                json.writeValueAsString(canonical));
         var replay = read.execute(tx -> idem.findCompleted(key, scope, actor, hash, MenuCompositionResultVO.class));
         if (replay.isPresent()) return replay.get();
+        var currency = currencies.open(entity, store);
+        var definition = MenuCompositionDefinitions.normalizeForCurrency(canonical, currency.currency());
         var previous = read.execute(tx -> {
             head(entity, store, number, false);
-            return composition.read(entity, number);
+            return currency.managed() ? composition.readStructure(entity, number) : composition.read(entity, number);
         });
-        var facts = composition.facts(entity, store, definition);
+        var facts = composition.facts(entity, store, definition, currency);
+        currency.refresh();
         try {
             return write.execute(tx -> idem.execute(key, scope, actor, hash, MenuCompositionResultVO.class, () -> {
+                currency.guardTransaction();
                 var row = head(entity, store, number, true);
                 editable(entity, store, row, req.version()); timezone(entity, store, row.getTimezone());
                 var before = view(row, store);
-                var locked = composition.read(entity, number);
+                var locked = currency.managed() ? composition.readStructure(entity, number)
+                        : composition.read(entity, number);
                 if (!previous.equals(locked)) throw BizException.of(ErrorCode.CONFLICT);
                 var result = composition.replace(entity, store, number, definition, locked, facts);
                 if (heads.update(null, Wrappers.<FnbMenu>lambdaUpdate().eq(FnbMenu::getEntityNo, entity)
@@ -441,7 +462,8 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
         }
         var row = head(entity, store, number, lock);
         if (lock) editable(entity, store, row, row.getVersion());
-        return new MenuConfigResultVO(view(row, store), schedule(entity, number), composition.read(entity, number),
+        return new MenuConfigResultVO(view(row, store), schedule(entity, number),
+                composition.readStructure(entity, number),
                 contextDefinition(entity, number));
     }
 
@@ -479,9 +501,12 @@ public class MenuServiceImpl implements MenuService, MenuWorkingDefinitionAccess
     @Override
     public MenuConfigResultVO getMenu(String entity, String store, String number) {
         queryContext(entity, store); MenuDefinitionPolicy.key(number);
-        return read.execute(tx -> new MenuConfigResultVO(
-                view(head(entity, store, number, false), store), schedule(entity, number),
-                composition.read(entity, number), contextDefinition(entity, number)));
+        var currency = currencies.open(entity, store);
+        return read.execute(tx -> {
+            currency.requireFresh();
+            return new MenuConfigResultVO(view(head(entity, store, number, false), store), schedule(entity, number),
+                    composition.read(entity, number, currency.currency()), contextDefinition(entity, number));
+        });
     }
 
     @Override

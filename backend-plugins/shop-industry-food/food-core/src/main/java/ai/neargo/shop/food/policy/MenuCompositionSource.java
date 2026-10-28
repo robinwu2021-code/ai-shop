@@ -55,7 +55,17 @@ public final class MenuCompositionSource {
         this.goods = goods;
     }
 
+    /** Old callers retain legacy identity reads; live currency-aware commands pass their own session. */
+    public CatalogCurrencySession legacySession(String entity, String store) {
+        return CatalogCurrencySession.legacy(goods, entity, store);
+    }
+
     public Map<String, GoodsFact> facts(String entity, String store, MenuCompositionVO definition) {
+        return facts(entity, store, definition, legacySession(entity, store));
+    }
+
+    public Map<String, GoodsFact> facts(String entity, String store, MenuCompositionVO definition,
+            CatalogCurrencySession currency) {
         var result = new HashMap<String, GoodsFact>();
         for (var number :
                 definition.categories().stream()
@@ -64,7 +74,7 @@ public final class MenuCompositionSource {
                         .distinct()
                         .sorted()
                         .toList()) {
-            var fact = goods.getGoods(entity, store, number);
+            var fact = currency.goods(number);
             if (fact == null
                     || !entity.equals(fact.entityNo())
                     || !store.equals(fact.storeNo())
@@ -84,10 +94,10 @@ public final class MenuCompositionSource {
         }
         for (var category : definition.categories())
             for (var item : category.items()) {
-                var prices = MenuPricePolicy.normalize(item.skuPrices());
+                var prices = MenuPricePolicy.normalizeForCurrency(item.skuPrices(), currency.currency());
                 if (prices != null)
                     for (var price : prices) {
-                        var sku = goods.getSku(entity, store, price.skuNo());
+                        var sku = currency.sku(price.skuNo());
                         if (sku == null
                                 || !entity.equals(sku.entityNo())
                                 || !store.equals(sku.storeNo())
@@ -98,6 +108,15 @@ public final class MenuCompositionSource {
     }
 
     public MenuCompositionVO read(String entity, String number) {
+        return read(entity, number, "CNY");
+    }
+
+    /** Only structural interpretation is allowed during an owning publication transaction. */
+    public MenuCompositionVO readStructure(String entity, String number) {
+        return read(entity, number, null);
+    }
+
+    public MenuCompositionVO read(String entity, String number, String currency) {
         var categoryRows =
                 categories.selectList(
                         Wrappers.<FnbMenuCategory>lambdaQuery()
@@ -211,7 +230,8 @@ public final class MenuCompositionSource {
                                                         .toList()))
                         .toList();
         try {
-            return MenuCompositionDefinitions.normalize(new MenuCompositionVO(output));
+            return currency == null ? MenuCompositionDefinitions.normalizeStructure(new MenuCompositionVO(output))
+                    : MenuCompositionDefinitions.normalizeForCurrency(new MenuCompositionVO(output), currency);
         } catch (RuntimeException invalid) {
             throw new IllegalStateException("Invalid stored menu composition", invalid);
         }

@@ -15,6 +15,7 @@ import ai.neargo.shop.commerce.config.CommerceInternalAutoConfiguration;
 import ai.neargo.shop.commerce.config.CommerceWebAutoConfiguration;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Facts;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.Query;
+import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityQuery;
 import ai.neargo.shop.commerce.server.config.CommerceInternalSecurityConfiguration;
 import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
 import ai.neargo.shop.common.BizException;
@@ -47,6 +48,30 @@ class InternalChannelCatalogAuthorityApiTest {
                             "shop.services.internal-token=wire");
     static final String BODY =
             "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"connectionNo\":\"M\",\"revisionNo\":\"R1\"}";
+
+    @Test
+    void resolveRequiresTokenStrictScopeAndPreservesOriginalDenial() {
+        runner.run(c -> {
+            var source = c.getBean(ChannelCatalogAuthorityService.class);
+            var mvc = MockMvcBuilders.webAppContextSetup(c).addFilters(c.getBean(FilterChainProxy.class)).build();
+            String body = "{\"entityNo\":\"E\",\"storeNo\":\"S\",\"providerCode\":\"TEST\","
+                    + "\"externalAccountRef\":\"REMOTE_ACCOUNT\",\"externalStoreRef\":\"REMOTE_STORE\"}";
+            mvc.perform(post(ChannelCatalogAuthorityInternalApi.RESOLVE_PATH)
+                    .contentType(MediaType.APPLICATION_JSON).content("{")).andExpect(status().isUnauthorized());
+            for (String bad : List.of("{}", body.replace("\"E\"", "1"),
+                    body.substring(0, body.length()-1) + ",\"connectionNo\":\"INJECTED\"}")) {
+                mvc.perform(post(ChannelCatalogAuthorityInternalApi.RESOLVE_PATH)
+                        .header(InternalHttp.TOKEN_HEADER, "wire").contentType(MediaType.APPLICATION_JSON).content(bad))
+                        .andExpect(status().isBadRequest());
+            }
+            verifyNoInteractions(source);
+            var q = new IdentityQuery("E", "S", "TEST", "REMOTE_ACCOUNT", "REMOTE_STORE");
+            doThrow(BizException.of(ErrorCode.FORBIDDEN)).when(source).resolve(q);
+            mvc.perform(post(ChannelCatalogAuthorityInternalApi.RESOLVE_PATH)
+                    .header(InternalHttp.TOKEN_HEADER, "wire").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isForbidden());
+        });
+    }
 
     @Test
     void tokenAuthenticationPrecedesParsingAndCallersCannotInjectPricesOrForeignFacts() {

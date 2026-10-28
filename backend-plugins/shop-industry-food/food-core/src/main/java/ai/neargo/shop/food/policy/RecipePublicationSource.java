@@ -8,6 +8,7 @@ import ai.neargo.shop.food.dto.RecipeAdjustmentVO;
 import ai.neargo.shop.food.dto.RecipeLineVO;
 import ai.neargo.shop.food.dto.RecipeOptionGroupSnapshot;
 import ai.neargo.shop.food.dto.RecipePublicationSnapshot;
+import ai.neargo.shop.food.dto.PublicationMarketContext;
 import ai.neargo.shop.food.dto.RecipeVO;
 import ai.neargo.shop.food.entity.FnbConfigRevision;
 import ai.neargo.shop.food.entity.FnbDishOptionGroup;
@@ -105,12 +106,13 @@ public final class RecipePublicationSource {
                 if (group == null || !List.of("DRAFT", "ACTIVE").contains(group.getStatus())) throw bad();
                 var frozen = selected.apply(item.getGroupNo());
                 if (frozen == null) throw bad();
-                if (frozen.getContentSchema() != 1 || !"OPTION_GROUP".equals(frozen.getConfigKind())
+                if ((frozen.getContentSchema() != 1 && frozen.getContentSchema() != 6)
+                        || !"OPTION_GROUP".equals(frozen.getConfigKind())
                         || !entity.equals(frozen.getEntityNo()) || !item.getGroupNo().equals(frozen.getConfigNo())
                         || !PublicationDocuments.hash(json, frozen.getDefinitionSnapshot())
                                 .equals(frozen.getContentHash())
                         || PublicationDocuments.validate(json, "OPTION_GROUP", item.getGroupNo(),
-                                frozen.getDefinitionSnapshot()) != 1) throw bad();
+                                frozen.getDefinitionSnapshot()) != frozen.getContentSchema()) throw bad();
                 var definition = json.readValue(frozen.getDefinitionSnapshot(), PublicationSnapshot.class);
                 dependency = new Group(group.getVersion(), group.getStatus(),
                         new Dependency(frozen.getRevisionNo(), "OPTION_GROUP", item.getGroupNo(),
@@ -154,10 +156,18 @@ public final class RecipePublicationSource {
 
     public RecipePublicationSnapshot document(Captured captured, List<SkuIdentityFact> skus,
             List<MaterialFact> materials, String approval) {
-        return new RecipePublicationSnapshot(3, "RECIPE", captured.recipe().recipeNo(), captured.recipe().version(),
+        return document(captured, skus, materials, approval, null);
+    }
+
+    /** The owning publisher supplies the already-qualified market; no external lookup runs during capture. */
+    public RecipePublicationSnapshot document(Captured captured, List<SkuIdentityFact> skus,
+            List<MaterialFact> materials, String approval, PublicationMarketContext context) {
+        return new RecipePublicationSnapshot(context == null ? 3 : 6, "RECIPE", captured.recipe().recipeNo(),
+                captured.recipe().version(),
                 captured.recipe(), skus, materials.stream().sorted(Comparator.comparing(MaterialFact::itemId))
                         .toList(), captured.groups().stream().map(g -> new RecipeOptionGroupSnapshot(
-                                skus.getFirst().goodsNo(), g.publication(), g.definition())).toList(), approval);
+                                skus.getFirst().goodsNo(), g.publication(), g.definition())).toList(),
+                approval, context);
     }
 
     public long currentVersion(String entity, String store, String number, boolean lock) {

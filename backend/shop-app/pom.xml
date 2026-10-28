@@ -280,6 +280,16 @@
 
     <profiles>
         <profile>
+            <id>food-commerce-embedded</id>
+            <dependencies>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId><artifactId>food-commerce</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
             <id>commerce-embedded</id>
             <dependencies>
                 <dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-core</artifactId>

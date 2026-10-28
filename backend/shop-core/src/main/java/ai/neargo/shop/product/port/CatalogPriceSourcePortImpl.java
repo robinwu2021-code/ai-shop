@@ -104,6 +104,20 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
     }
 
     @Override
+    public MarketFacts market(MarketScope scope) {
+        CatalogPriceSourceFacts.validateMarketScope(scope);
+        if (TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Catalog market capture requires an outside transaction");
+        var at = clock.instant();
+        var first = storeMarket(scope, false);
+        if (!first.equals(storeMarket(scope, false))) throw BizException.of(ErrorCode.CONFLICT);
+        var result = CatalogPriceSourceFacts.sealMarket(new MarketFacts(
+                1, "CATALOG_MARKET", scope, first.market(), at, at.plusSeconds(30), null));
+        CatalogPriceSourceFacts.validateMarketFacts(scope, result, clock.instant());
+        return result;
+    }
+
+    @Override
     public Facts capture(Request request) {
         CatalogPriceSourceFacts.validateRequest(request);
         if (TransactionSynchronizationManager.isActualTransactionActive())
@@ -141,13 +155,14 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
         return captured;
     }
 
-    private Context context(Request q) {
+    private StoreMarket storeMarket(MarketScope q, boolean activeRequired) {
         var cards = stores.cards(List.of(q.storeNo()));
         var card = cards == null ? null : cards.get(q.storeNo());
         if (card == null
                 || !q.storeNo().equals(card.storeNo())
                 || !q.entityNo().equals(card.entityNo())
-                || !card.active()) throw BizException.of(ErrorCode.FORBIDDEN);
+                || !(card.active() || !activeRequired && StoreDirectoryPort.STORE_READONLY.equals(card.status())))
+            throw BizException.of(ErrorCode.FORBIDDEN);
         String marketCode = merchants.marketOf(q.entityNo());
         if (marketCode == null || !marketCode.matches("[A-Z]{2}")) throw unsupported();
         var market = markets.find(marketCode).orElseThrow(CatalogPriceSourcePortImpl::unsupported);
@@ -158,6 +173,11 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
         } catch (IllegalArgumentException invalid) {
             throw unsupported();
         }
+        return new StoreMarket(q, card.status(), descriptor);
+    }
+
+    private Context context(Request q) {
+        var descriptor = storeMarket(new MarketScope(q.entityNo(), q.storeNo()), true).market();
         var tax = taxes.resolve(new PricingTaxSettingPort.Scope("MAIN", q.entityNo(), q.storeNo()));
         if (tax == null
                 || !"MAIN".equals(tax.tenantNo())
@@ -279,6 +299,8 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
             throw new IllegalStateException("Missing or invalid original row version");
         return version;
     }
+
+    private record StoreMarket(MarketScope scope, String status, Market market) {}
 
     private record Context(Market market, MerchantTaxSnapshot tax) {}
 

@@ -31,6 +31,27 @@ public class CoreCatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
     }
 
     @Override
+    public MarketFacts market(MarketScope scope) {
+        CatalogPriceSourceFacts.validateMarketScope(scope);
+        try {
+            var result = ServiceCalls.call(ServiceName.PLATFORM, () -> api.get().market(scope));
+            CatalogPriceSourceFacts.validateMarketFacts(scope, result, clock.instant());
+            return result;
+        } catch (ServiceCallException failure) {
+            var code = switch (failure.statusCode()) {
+                case 400 -> ErrorCode.BAD_REQUEST;
+                case 403 -> ErrorCode.FORBIDDEN;
+                case 404 -> ErrorCode.NOT_FOUND;
+                case 409 -> ErrorCode.CONFLICT;
+                case 501, 503 -> ErrorCode.PRICING_OWNER_UNSUPPORTED;
+                default -> null;
+            };
+            if (code != null) throw BizException.of(code);
+            throw failure;
+        }
+    }
+
+    @Override
     public Facts capture(Request request) {
         CatalogPriceSourceFacts.validateRequest(request);
         try {

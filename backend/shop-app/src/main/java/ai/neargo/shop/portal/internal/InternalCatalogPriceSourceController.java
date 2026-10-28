@@ -6,6 +6,7 @@ import ai.neargo.shop.spi.product.CatalogPriceSourceFacts;
 import ai.neargo.shop.spi.product.CatalogPriceSourceInternalApi;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
 import ai.neargo.shop.spi.product.CatalogPriceSourcePort.Request;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort.MarketScope;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.InternalServiceResponses;
 
@@ -34,6 +35,16 @@ public class InternalCatalogPriceSourceController {
             @Value("${shop.services.internal-token:}") String token) {
         this.source = source;
         this.token = token;
+    }
+
+    @PostMapping(CatalogPriceSourceInternalApi.MARKET_PATH)
+    public ResponseEntity<?> market(
+            @RequestBody(required = false) MarketScope request,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> {
+            CatalogPriceSourceFacts.validateMarketScope(request);
+            return source.market(request);
+        });
     }
 
     @PostMapping(CatalogPriceSourceInternalApi.CAPTURE_PATH)

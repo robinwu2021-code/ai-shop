@@ -16,6 +16,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Projects frozen original identities; no mutable inheritance, price, stock or order qualification
@@ -58,8 +59,9 @@ public final class MenuSourcePolicy {
                 || !"EFFECTIVE".equals(meta.status())
                 || !PublicationDocuments.hash(json, source.definitionSnapshot())
                         .equals(meta.contentHash())
-                || MenuPublicationDocuments.validate(json, q.menuNo(), source.definitionSnapshot())
-                        != 4) throw malformed();
+                || !Set.of(4, 6).contains(
+                        MenuPublicationDocuments.validate(json, q.menuNo(), source.definitionSnapshot())))
+            throw malformed();
         var body = json.readValue(source.definitionSnapshot(), MenuPublicationSnapshot.class);
         if (!q.entityNo().equals(body.menu().entityNo())
                 || !q.storeNo().equals(body.menu().storeNo())) throw malformed();

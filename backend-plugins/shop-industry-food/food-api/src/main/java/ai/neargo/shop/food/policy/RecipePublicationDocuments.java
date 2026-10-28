@@ -52,6 +52,7 @@ public final class RecipePublicationDocuments {
     public static RecipePublicationSnapshot validate(
             ObjectMapper json, String number, String document) {
         Map<?, ?> envelope = json.readValue(document, Map.class);
+        if (Integer.valueOf(6).equals(envelope.get("contentSchema"))) json = PublicationJsonPolicy.strict(json);
         require(envelope.get("recipe") instanceof Map<?, ?>);
         Map<?, ?> recipeFields = (Map<?, ?>) envelope.get("recipe");
         require(
@@ -65,7 +66,7 @@ public final class RecipePublicationDocuments {
                         .readValue(document);
         var r = body.recipe();
         require(
-                body.contentSchema() == 3
+                (body.contentSchema() == 3 || body.contentSchema() == 6)
                         && "RECIPE".equals(body.configKind())
                         && number.equals(body.configNo())
                         && r != null
@@ -86,6 +87,11 @@ public final class RecipePublicationDocuments {
                         && r.adjustments().size() <= 100
                         && body.skuFacts().size() == 1
                         && body.optionGroups().size() <= 100);
+        PublicationMarketPolicy.validateSchema(body.contentSchema(), 3, body.marketContext());
+        if (body.contentSchema() == 6) {
+            PublicationMarketPolicy.validateSkuFacts(body.marketContext(), body.skuFacts());
+            require(body.marketContext().storeNo().equals(r.storeNo()));
+        }
         var sku = body.skuFacts().getFirst();
         require(
                 sku != null
@@ -140,7 +146,7 @@ public final class RecipePublicationDocuments {
                             && key(dep.revisionNo(), 32)
                             && dep.revision() > 0
                             && groupNos.add(dep.configNo())
-                            && snapshot.contentSchema() == 1
+                            && snapshot.contentSchema() == (body.contentSchema() == 6 ? 6 : 1)
                             && "OPTION_GROUP".equals(snapshot.configKind())
                             && dep.configNo().equals(snapshot.configNo())
                             && snapshot.optionGroup() != null
@@ -150,6 +156,12 @@ public final class RecipePublicationDocuments {
                             && PublicationDocuments.hash(
                                             json, PublicationDocuments.freeze(json, snapshot))
                                     .equals(dep.contentHash()));
+            if (body.contentSchema() == 6) {
+                PublicationMarketPolicy.requireSame(body.marketContext(), snapshot.marketContext());
+                PublicationMarketPolicy.validateSkuFacts(snapshot.marketContext(), snapshot.skuFacts());
+                require(PublicationDocuments.validate(json, "OPTION_GROUP", snapshot.configNo(),
+                        PublicationDocuments.freeze(json, snapshot)) == 6);
+            } else require(snapshot.marketContext() == null);
             for (OptionGroupConfigVO.Item item : snapshot.optionGroup().data().items()) {
                 require(
                         key(item.optionItemNo(), 32)
@@ -228,7 +240,8 @@ public final class RecipePublicationDocuments {
                                             && number.compareTo(
                                                             new BigDecimal("999999999999.999999"))
                                                     <= 0);
-                        } else if (Set.of("version", "revision", "configVersion", "sourceVersion")
+                        } else if (Set.of("version", "revision", "configVersion", "sourceVersion",
+                                        "contentSchema", "schemaVersion", "currencyScale")
                                 .contains(field)) {
                             require(
                                     (item instanceof Integer || item instanceof Long)

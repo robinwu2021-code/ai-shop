@@ -2,6 +2,7 @@ package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
@@ -57,6 +58,23 @@ class DishServiceTest extends FoodWriteGuardFixture {
         return new SaveDishReq("SINGLE", 60,
                 new DishPresentation(name, List.of(), List.of(), List.of("热饮"), List.of("含奶")),
                 new MeasurementPolicy("EA", "COUNT", 0, null), version);
+    }
+
+    @Test void foreignDishSaveAndReadUseOriginalMarketGoodsAndKeepPresentation() {
+        runner().withUserConfiguration(StorePolicyPublicationTest.Publication.class, Dishes.class).run(c -> {
+            var f = fixture(c);
+            var source = new CatalogCurrencyBusinessTest.Sources();
+            var service = new DishServiceImpl(c.getBean(DishMapper.class), c.getBean(ActionLogMapper.class),
+                    c.getBean(IdempotencyService.class), c.getBean("foodOutboxPublisher", OutboxPublisher.class),
+                    c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class), source.goods,
+                    mock(DishOptionGroupMapper.class), c.getBean(OptionGroupMapper.class),
+                    c.getBean(OptionGroupItemMapper.class), (entity, store, keys) -> List.of(), source.currencies);
+            var saved = service.saveDish("E", "A", "G", "actor", req(null, "Tea"), "foreign-save");
+            assertThat(service.getDish("E", "A", "G").dish()).isEqualTo(saved.dish());
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_dish", Integer.class)).isOne();
+            source.offline = true;
+            assertThatThrownBy(() -> service.getDish("E", "A", "G")).isInstanceOf(IllegalStateException.class);
+        });
     }
 
     @Test void savesVerifiedDishMediaWithoutChangingOriginalGoodsCover() {

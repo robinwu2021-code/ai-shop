@@ -59,17 +59,28 @@ public final class MenuPublicationDocuments {
 
     public static int validate(ObjectMapper json, String number, String document) {
         try {
-            validateIntegers(json.readValue(document, Map.class));
+            Map<?, ?> envelope = json.readValue(document, Map.class);
+            validateIntegers(envelope);
+            if (Integer.valueOf(6).equals(envelope.get("contentSchema"))) json = PublicationJsonPolicy.strict(json);
             var body = json.readValue(document, MenuPublicationSnapshot.class);
             require(
-                    body.contentSchema() == 4
+                    (body.contentSchema() == 4 || body.contentSchema() == 6)
                             && "MENU".equals(body.configKind())
                             && number.equals(body.configNo()));
+            PublicationMarketPolicy.validateSchema(body.contentSchema(), 4, body.marketContext());
             var c = body.menu();
-            validateCaptured(c);
+            String currency = body.contentSchema() == 6 ? body.marketContext().currency() : "CNY";
+            validateCapturedForCurrency(c, currency);
+            if (body.contentSchema() == 6) {
+                require(c.entityNo().equals(body.marketContext().entityNo())
+                        && c.storeNo().equals(body.marketContext().storeNo()));
+                PublicationMarketPolicy.validateSkuFacts(body.marketContext(), body.skuFacts());
+                require(c.definition().contexts().stream().allMatch(ctx -> "CHANNEL".equals(ctx.orderSource())
+                        && "DELIVERY".equals(ctx.fulfillment())));
+            }
             for (var category : c.definition().composition().categories())
                 for (var item : category.items()) {
-                    var prices = MenuPricePolicy.normalize(item.skuPrices());
+                    var prices = MenuPricePolicy.normalizeForCurrency(item.skuPrices(), currency);
                     if (prices != null)
                         for (var price : prices)
                             require(
@@ -159,6 +170,11 @@ public final class MenuPublicationDocuments {
                 require(
                         PublicationDocuments.hash(json, dep.definitionSnapshot())
                                 .equals(dep.contentHash()));
+                if (body.contentSchema() == 6) {
+                    require(dep.contentSchema() == 6);
+                    PublicationMarketPolicy.requireSame(body.marketContext(),
+                            PublicationDocuments.marketContext(json, dep.configKind(), dep.definitionSnapshot()));
+                } else require(dep.contentSchema() != 6);
                 validateDependencyScope(json, c, dep);
                 if ("RECIPE".equals(dep.configKind()) && recipeSkus.containsKey(dep.configNo())) {
                     var recipe =
@@ -191,7 +207,8 @@ public final class MenuPublicationDocuments {
                         }
                 }
             for (var dep : c.dependencies())
-                if (dep.contentSchema() == 1) {
+                if ((dep.contentSchema() == 1 || dep.contentSchema() == 6)
+                        && Set.of("MODIFIER", "OPTION_GROUP").contains(dep.configKind())) {
                     var frozen =
                             json.readValue(dep.definitionSnapshot(), PublicationSnapshot.class);
                     for (var ref : frozen.dependencies()) {
@@ -203,13 +220,28 @@ public final class MenuPublicationDocuments {
                                         && target.contentHash().equals(ref.contentHash()));
                     }
                 }
-            return 4;
+            return body.contentSchema();
         } catch (RuntimeException failure) {
             throw new IllegalStateException("Invalid frozen menu document", failure);
         }
     }
 
     public static void validateCaptured(Captured c) {
+        validateCapturedForCurrency(c, "CNY");
+    }
+
+    /** Historical frozen currency is supplied explicitly, without reading current owner configuration. */
+    public static void validateCapturedForCurrency(Captured c, String currency) {
+        MenuPricePolicy.normalizeForCurrency(null, currency);
+        validateCapturedDefinition(c, currency);
+    }
+
+    /** Local capture may read structure under locks; its caller supplies original market qualification later. */
+    public static void validateCapturedStructure(Captured c) {
+        validateCapturedDefinition(c, null);
+    }
+
+    private static void validateCapturedDefinition(Captured c, String currency) {
         require(
                 c != null
                         && key(c.entityNo())
@@ -222,7 +254,8 @@ public final class MenuPublicationDocuments {
                         && c.definition().schedule().exceptions() != null
                         && c.definition().contexts() != null
                         && !c.definition().contexts().isEmpty());
-        MenuCompositionDefinitions.normalize(c.definition().composition());
+        if (currency == null) MenuCompositionDefinitions.normalizeStructure(c.definition().composition());
+        else MenuCompositionDefinitions.normalizeForCurrency(c.definition().composition(), currency);
         MenuContextDefinitions.normalize(c.definition().contexts());
         MenuScheduleDefinitions.normalize(c.definition().schedule());
         require(
@@ -295,19 +328,28 @@ public final class MenuPublicationDocuments {
     }
 
     private static void validateDependencyScope(ObjectMapper json, Captured c, Dependency dep) {
-        List<SkuIdentityFact> facts;
-        if (dep.contentSchema() == 1)
-            facts = json.readValue(dep.definitionSnapshot(), PublicationSnapshot.class).skuFacts();
-        else if (dep.contentSchema() == 2)
-            facts =
-                    json.readValue(dep.definitionSnapshot(), BundlePublicationSnapshot.class)
-                            .skuFacts();
-        else
-            facts =
-                    json.readValue(dep.definitionSnapshot(), RecipePublicationSnapshot.class)
-                            .skuFacts();
-        for (var fact : facts)
+        for (var fact : dependencyFacts(json, dep)) {
             require(c.entityNo().equals(fact.entityNo()) && c.storeNo().equals(fact.storeNo()));
+        }
+    }
+
+    private static List<SkuIdentityFact> dependencyFacts(ObjectMapper json, Dependency dep) {
+        int schema = dep.contentSchema();
+        return switch (dep.configKind()) {
+            case "MODIFIER", "OPTION_GROUP" -> {
+                require(schema == 1 || schema == 6);
+                yield json.readValue(dep.definitionSnapshot(), PublicationSnapshot.class).skuFacts();
+            }
+            case "BUNDLE" -> {
+                require(schema == 2 || schema == 6);
+                yield json.readValue(dep.definitionSnapshot(), BundlePublicationSnapshot.class).skuFacts();
+            }
+            case "RECIPE" -> {
+                require(schema == 3 || schema == 6);
+                yield json.readValue(dep.definitionSnapshot(), RecipePublicationSnapshot.class).skuFacts();
+            }
+            default -> throw new IllegalStateException("Invalid menu dependency kind");
+        };
     }
 
     public static List<MenuItemInput> items(Captured c) {
@@ -325,23 +367,7 @@ public final class MenuPublicationDocuments {
 
     public static Set<String> dependencySkus(ObjectMapper json, Captured c) {
         var result = new TreeSet<String>();
-        for (var dep : c.dependencies()) {
-            List<SkuIdentityFact> facts;
-            if (dep.contentSchema() == 1)
-                facts =
-                        json.readValue(dep.definitionSnapshot(), PublicationSnapshot.class)
-                                .skuFacts();
-            else if (dep.contentSchema() == 2)
-                facts =
-                        json.readValue(dep.definitionSnapshot(), BundlePublicationSnapshot.class)
-                                .skuFacts();
-            else if (dep.contentSchema() == 3)
-                facts =
-                        json.readValue(dep.definitionSnapshot(), RecipePublicationSnapshot.class)
-                                .skuFacts();
-            else throw new IllegalStateException("Invalid menu dependency schema");
-            facts.forEach(f -> result.add(f.skuNo()));
-        }
+        for (var dep : c.dependencies()) dependencyFacts(json, dep).forEach(f -> result.add(f.skuNo()));
         return result;
     }
 

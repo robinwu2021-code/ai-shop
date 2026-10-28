@@ -11,6 +11,23 @@ import org.springframework.web.service.annotation.PostExchange;
 
 /** Shared product metadata wire contract, with no restaurant runtime dependency. */
 public interface GoodsCatalogInternalApi {
+    String MARKET_GOODS_PATH = "/internal/product/catalog/goods/market-lookup";
+    String MARKET_SKU_PATH = "/internal/product/catalog/goods/market-sku";
+
+    /** Actual market is original evidence, never a caller-selected query filter. */
+    @PostExchange(MARKET_GOODS_PATH)
+    CatalogMarketContracts.GoodsFacts lookupMarketGoods(@RequestBody CatalogMarketContracts.GoodsQuery query);
+
+    /** Original SKU and parent versions remain scoped to the original store and actual market. */
+    @PostExchange(MARKET_SKU_PATH)
+    CatalogMarketContracts.SkuFacts lookupMarketSku(@RequestBody CatalogMarketContracts.SkuQuery query);
+
+    String IMAGES_PATH = "/internal/product/catalog-images/resolve";
+
+    /** Strict original cover identity travels without public-response rewriting. */
+    @PostExchange(IMAGES_PATH)
+    CatalogImageContracts.Facts resolveImages(@RequestBody CatalogImageContracts.Query query);
+
     String SKU_PATH = "/internal/product/catalog/goods/sku";
     @PostExchange(SKU_PATH)
     GoodsCatalogQueryPort.SkuIdentityFact lookupSku(@RequestBody SkuLookup request);

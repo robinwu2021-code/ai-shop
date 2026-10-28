@@ -1,11 +1,13 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.service.impl.CatalogCurrencyServiceImpl;
+import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.service.StoreCalendarSourceService;
 import ai.neargo.shop.food.service.impl.StoreCalendarSourceServiceImpl;
 import ai.neargo.shop.food.service.MenuCatalogPriceService;
 import ai.neargo.shop.food.service.impl.MenuCatalogPriceServiceImpl;
-import ai.neargo.shop.spi.product.CatalogPriceSourcePort;
 import ai.neargo.shop.food.port.LazyGoodsCatalogQueryPortImpl;
 import ai.neargo.shop.food.port.LazyMaterialCatalogQueryPortImpl;
 import ai.neargo.shop.food.port.LazyGoodsMetadataQueryPortImpl;
@@ -163,6 +165,16 @@ import tools.jackson.databind.ObjectMapper;
 public class FoodAutoConfiguration {
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(CatalogCurrencyService.class)
+    CatalogCurrencyService catalogCurrencyService(ObjectProvider<GoodsCatalogQueryPort> goods,
+            ObjectProvider<CatalogPriceSourcePort> markets,
+            @Value("${shop.food.commerce.catalog-currency.enabled:false}") boolean enabled) {
+        return new CatalogCurrencyServiceImpl(new LazyGoodsCatalogQueryPortImpl(goods), markets::getIfAvailable,
+                enabled, Clock.systemUTC());
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(StoreCalendarSourceService.class)
     StoreCalendarSourceService storeCalendarSourceService(
             StorePolicyMapper policies, ServiceCalendarMapper calendars,
@@ -202,7 +214,8 @@ public class FoodAutoConfiguration {
             MenuChannelBindingMapper channelBindings, StationMapper stationHeads, SkuStationMapper stationRoutes,
             ObjectProvider<MenuChannelAuthorityPort> channelAuthority,
             @Value("${shop.food.menu-publication-enabled:false}") boolean menuPublicationEnabled,
-            @Value("${shop.food.station-publication-enabled:false}") boolean stationPublicationEnabled) {
+            @Value("${shop.food.station-publication-enabled:false}") boolean stationPublicationEnabled,
+            CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(goods);
         return new ConfigRevisionServiceImpl(revisions, modifiers, components, groups, items, actions, idem,
                 publisher, json, manager, catalog, (entity, numbers) -> specs.getObject().getValues(entity, numbers),
@@ -226,7 +239,7 @@ public class FoodAutoConfiguration {
                 }, dishes, recipeBindings, groups, bundles, recipeHeads, channelBindings, json) : null,
                 stationPublicationEnabled
                         ? new StationPublicationSource(stationHeads, stationRoutes, () -> true) : null,
-                channelAuthority::getIfAvailable, channelBindings);
+                channelAuthority::getIfAvailable, channelBindings, currencies);
     }
 
     @Bean
@@ -289,10 +302,12 @@ public class FoodAutoConfiguration {
             ObjectProvider<MenuChannelAuthorityPort> channelAuthority,
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
-            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            @Qualifier("transactionManager") PlatformTransactionManager manager,
+            CatalogCurrencyService currencies) {
         return new MenuServiceImpl(heads, bindings, policies, actions, idem, publisher, json, manager,
                 Clock.systemUTC(), weeks, exceptions, new MenuCompositionSource(categories, items, skus, itemGroups,
-                        new LazyGoodsMetadataQueryPortImpl(goods)), contexts, channels, channelAuthority::getIfAvailable);
+                        new LazyGoodsMetadataQueryPortImpl(goods)), contexts, channels,
+                channelAuthority::getIfAvailable, currencies);
     }
 
     @Bean
@@ -302,11 +317,12 @@ public class FoodAutoConfiguration {
             RecipeAdjustmentMapper adjustments, OptionGroupItemMapper optionItems, OptionGroupMapper optionGroups,
             IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> catalogs, ObjectProvider<MaterialCatalogQueryPort> materials) {
+            ObjectProvider<GoodsCatalogQueryPort> catalogs, ObjectProvider<MaterialCatalogQueryPort> materials,
+            CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
         return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,
                 new LazyMaterialCatalogQueryPortImpl(materials),
-                adjustments, optionItems, optionGroups);
+                adjustments, optionItems, optionGroups, currencies);
     }
 
     @Bean
@@ -316,9 +332,11 @@ public class FoodAutoConfiguration {
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> catalogs) {
+            ObjectProvider<GoodsCatalogQueryPort> catalogs,
+            CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
-        return new BundleServiceImpl(heads, groups, choices, actions, idem, publisher, json, manager, catalog);
+        return new BundleServiceImpl(heads, groups, choices, actions, idem, publisher, json, manager,
+                catalog, currencies);
     }
 
     @Bean
@@ -328,9 +346,10 @@ public class FoodAutoConfiguration {
             ActionLogMapper actions, IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> catalogs) {
+            ObjectProvider<GoodsCatalogQueryPort> catalogs,
+            CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
-        return new ModifierServiceImpl(heads, components, actions, idem, publisher, json, manager, catalog);
+        return new ModifierServiceImpl(heads, components, actions, idem, publisher, json, manager, catalog, currencies);
     }
 
     @Bean
@@ -341,11 +360,12 @@ public class FoodAutoConfiguration {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager, DishMapper dishes,
             DishOptionGroupMapper bindings, ModifierMapper modifiers, ObjectProvider<GoodsCatalogQueryPort> catalogs,
-            ObjectProvider<SpecValueCatalogQueryPort> specs) {
+            ObjectProvider<SpecValueCatalogQueryPort> specs,
+            CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(catalogs);
         return new OptionGroupServiceImpl(groups, items, actions, idem, publisher, json, manager,
                 dishes, bindings, modifiers, catalog,
-                (entity, numbers) -> specs.getObject().getValues(entity, numbers));
+                (entity, numbers) -> specs.getObject().getValues(entity, numbers), currencies);
     }
 
     @Bean
@@ -355,11 +375,12 @@ public class FoodAutoConfiguration {
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<GoodsCatalogQueryPort> catalogs, DishOptionGroupMapper bindings,
-            OptionGroupMapper groups, OptionGroupItemMapper items, ObjectProvider<MediaAssetQueryPort> media) {
+            OptionGroupMapper groups, OptionGroupItemMapper items, ObjectProvider<MediaAssetQueryPort> media,
+            CatalogCurrencyService currencies) {
         // Resolve on invocation so optional food-off/remote-client assembly never substitutes catalog facts.
         GoodsCatalogQueryPort catalog = new LazyGoodsMetadataQueryPortImpl(catalogs);
         return new DishServiceImpl(dishes, actions, idem, publisher, json, manager, catalog, bindings, groups, items,
-                (entity, store, keys) -> media.getObject().getAssets(entity, store, keys));
+                (entity, store, keys) -> media.getObject().getAssets(entity, store, keys), currencies);
     }
 
     @Bean
