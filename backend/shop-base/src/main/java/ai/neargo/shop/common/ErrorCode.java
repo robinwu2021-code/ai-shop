@@ -985,6 +985,21 @@ public enum ErrorCode {
     PAY_CHECKOUT_EXPIRED(70093, "err.pay.checkout_expired"),
     /** 静态码超单笔上限或单码日累计上限 */
     PAY_CHECKOUT_LIMIT(70094, "err.pay.checkout_limit"),
+    /*
+     * 开放 API 的细分错误（TDD-支付服务-开放API加解密-API清单 §1.3；开发计划 M3.7）。
+     * 只细分「接入方自己能改」的：时钟、重放、字段加密。签名错、AppId 不存在、环境不符仍是统一的 UNAUTHORIZED ——
+     * 细到「哪一步不对」就成了探测器。
+     */
+    /** 时间戳在 ±300 秒窗口外：对方时钟偏了 */
+    PAY_OPEN_TIMESTAMP_EXPIRED(70095, "err.pay.open_timestamp_expired"),
+    /** nonce 在窗口内用过：重放，或调用方重试时没换 nonce */
+    PAY_OPEN_REPLAYED(70096, "err.pay.open_replayed"),
+    /** 标了 x-sensitive 的字段传了明文 */
+    PAY_OPEN_FIELD_ENCRYPT_REQUIRED(70097, "err.pay.open_field_encrypt_required"),
+    /** 加密字段解不开（版本不认识 / 标签不符 / OAEP 参数错 —— 不分哪一步） */
+    PAY_OPEN_FIELD_DECRYPT_FAILED(70098, "err.pay.open_field_decrypt_failed"),
+    /** 外部密钥服务（KMS / HSM）不可用 */
+    PAY_KEY_SERVICE_UNAVAILABLE(70099, "err.pay.key_service_unavailable"),
 
     /*
      * 快递代下单（TDD-快递100商家寄件）。

@@ -620,6 +620,9 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M2.8 | <b>新增</b>（开发计划原无此项）：内部入口来源 IP 白名单 `allowed-ips`，默认本机回环，拒绝回 403、记 `REJECTED_FORBIDDEN` | 用户 2026-10-28 加，补「不验凭据」之外的一道边界。只认 TCP 对端（内部调用不经 nginx，代理头都是调用方自己写的）；IP 判定从开放 API 的 `AppAuthServiceImpl#ipAllowed` 抽成 `IpAllowList` 两处共用，顺带让单个 IPv6 地址按字节比（`::1` = `0:0:0:0:0:0:0:1`） |
 | M3.1 | 类清单的 `ConfigAppSignatureVerifier` / `SecretAppSignatureVerifier` 落成 `ConfigAppSignatures` / `SecretAppSignatures`，各自同时实现验签 `AppSignatureVerifier` 与新增的出站签名 `AppSigner`；按 `key-source` 二选一装配（不再靠 `@Primary`） | 推送（`BizNotifyServiceImpl`）原先也从 `AppKeyResolver` 取材料自己签，删掉解析器就得有出站签名的接口；同一个密钥来源、两个方向，放一个类里不会一边切了另一边没切。放在 `pay-domain`（`openapp` / `secret`），因为推送在 `pay-domain` |
 | M3.1 | 只做 HMAC；`pay_app.sign_type` 的 RSA / ECDSA 分支未做 | `sign_type` 列随加解密迁移（M3.8）才有；现有接入方全是 HMAC |
+| M3.7 | 新增 5 个码（按 API 清单 §1.3，开发计划写的是 4 个）：`PAY_OPEN_TIMESTAMP_EXPIRED` 70095 · `PAY_OPEN_REPLAYED` 70096 · `PAY_OPEN_FIELD_ENCRYPT_REQUIRED` 70097 · `PAY_OPEN_FIELD_DECRYPT_FAILED` 70098 · `PAY_KEY_SERVICE_UNAVAILABLE` 70099；本次接上前两个，字段加密两个随 M3.5、密钥服务随 L5 | API 清单是后定的那份 |
+| M3.7 | 响应体里的 `code` 仍是数字（与全仓一致），不是 API 清单写的字符串 `AUTH_FAILED` 等；时间窗外不回服务器时间，沙箱也不回细分原因与待签串 | 数字码是现有对外契约，换字符串要发新版契约（M3.9 一并定）；沙箱诊断信息另做 |
+| M3.7 | **对外行为变化**：来源 IP 不在接入方白名单由 401 改为 **403**（`FORBIDDEN`，记 `REJECTED_FORBIDDEN`） | API 清单 §1.3：IP 是接入方配置问题，不是认证失败；试点接入方需知会 |
 
 ---
 

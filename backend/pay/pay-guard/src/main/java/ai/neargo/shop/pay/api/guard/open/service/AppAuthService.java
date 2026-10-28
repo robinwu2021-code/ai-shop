@@ -15,11 +15,43 @@ public interface AppAuthService {
                          Map<String, List<String>> query, String bodySha256Hex, String clientIp) {
     }
 
-    /** @param failure 失败原因（只进日志与请求记录，<b>不回给调用方</b>）；成功为空 */
-    record Result(PayApp app, String failure) {
+    /**
+     * 失败的种类（类清单 §3 {@code AuthFailure}；开发计划 M3.7）：守卫据此回错误码。
+     * 只有 {@link #TIMESTAMP} / {@link #REPLAYED} / {@link #IP} 对外可分 —— 其余统一 401，不给探测器递线索。
+     */
+    enum AuthFailure {
+        /** 开放 API 未开启、缺签名头、nonce 格式不对 */
+        REQUEST,
+        /** AppId 不存在或停用 */
+        APP,
+        /** 沙箱 app 打生产、生产 app 打沙箱 */
+        ENV,
+        /** 来源 IP 不在接入方白名单 */
+        IP,
+        /** 时间戳不是毫秒数或在窗口外 */
+        TIMESTAMP,
+        /** 签名不符（含密钥已吊销） */
+        SIGNATURE,
+        /** nonce 重放 */
+        REPLAYED
+    }
+
+    /**
+     * @param kind    失败种类；成功为空
+     * @param failure 失败原因（只进日志与请求记录，<b>不回给调用方</b>）；成功为空
+     */
+    record Result(PayApp app, AuthFailure kind, String failure) {
+
+        public static Result ok(PayApp app) {
+            return new Result(app, null, null);
+        }
+
+        public static Result failed(AuthFailure kind, String failure) {
+            return new Result(null, kind, failure);
+        }
 
         public boolean ok() {
-            return app != null && failure == null;
+            return app != null && kind == null;
         }
     }
 

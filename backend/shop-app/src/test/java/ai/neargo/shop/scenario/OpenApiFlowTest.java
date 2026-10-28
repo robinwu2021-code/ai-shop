@@ -230,6 +230,48 @@ class OpenApiFlowTest {
         assertThat(conflict.getStatus()).isEqualTo(409);
     }
 
+    private int code(MockHttpServletResponse r) throws Exception {
+        return json.readTree(r.getContentAsString()).get("code").asInt();
+    }
+
+    @Test
+    @DisplayName("★★★ 错误码细分（M3.7；API 清单 §1.3）：时间窗外、nonce 重放各有自己的码；签名错、AppId 不存在仍是统一的 401 —— 不给探测器递线索")
+    void authFailureCodes() throws Exception {
+        String body = createBody("OUT-" + id(), 100);
+        Signed stale = new Signed(APP1, SECRET1, System.currentTimeMillis() - 10 * 60_000L, "stale-" + id());
+        MockHttpServletResponse late = call("POST", "/open/pay/v1/orders", Map.of(), body, stale, null);
+        assertThat(late.getStatus()).isEqualTo(401);
+        assertThat(code(late)).isEqualTo(ErrorCode.PAY_OPEN_TIMESTAMP_EXPIRED.code());
+
+        Signed once = fresh(APP1, SECRET1);
+        assertThat(call("POST", "/open/pay/v1/orders", Map.of(), createBody("OUT-" + id(), 100), once, null).getStatus())
+                .isEqualTo(200);
+        MockHttpServletResponse replay = call("POST", "/open/pay/v1/orders", Map.of(), createBody("OUT-" + id(), 100),
+                once, null);
+        assertThat(replay.getStatus()).isEqualTo(401);
+        assertThat(code(replay)).isEqualTo(ErrorCode.PAY_OPEN_REPLAYED.code());
+
+        for (MockHttpServletResponse r : List.of(
+                call("POST", "/open/pay/v1/orders", Map.of(), body, fresh(APP1, SECRET1), "AAAA"),
+                call("POST", "/open/pay/v1/orders", Map.of(), body, fresh("APP-NOBODY", SECRET1), null))) {
+            assertThat(r.getStatus()).isEqualTo(401);
+            assertThat(code(r)).isEqualTo(ErrorCode.UNAUTHORIZED.code());
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 来源 IP 不在接入方白名单：403 FORBIDDEN（不是 401）、不进业务（M3.7；API 清单 §1.3）")
+    void ipWhitelistIsForbidden() throws Exception {
+        jdbc.update("UPDATE pay_app SET ip_whitelist='10.9.9.9' WHERE app_no=?", APP2);
+        try {
+            MockHttpServletResponse r = call("GET", "/open/pay/v1/orders/PYO-NOPE", Map.of(), "", fresh(APP2, SECRET2), null);
+            assertThat(r.getStatus()).isEqualTo(403);
+            assertThat(code(r)).isEqualTo(ErrorCode.FORBIDDEN.code());
+        } finally {
+            jdbc.update("UPDATE pay_app SET ip_whitelist=NULL WHERE app_no=?", APP2);
+        }
+    }
+
     @Test
     @DisplayName("★★★ 鉴权失败一律在业务之前挡下：没签名 / 签错 / 时间窗外 / nonce 重放 / 不认识的 app → 401，记 REJECTED_AUTH，不建单")
     void authFailuresNeverReachBusiness() throws Exception {

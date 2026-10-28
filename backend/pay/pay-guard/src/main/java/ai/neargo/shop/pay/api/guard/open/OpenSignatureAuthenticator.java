@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.api.guard.open;
 
 import ai.neargo.shop.auth.ClientMeta;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.api.guard.PortalFace;
 import ai.neargo.shop.pay.api.guard.core.CachedBodyRequest;
 import ai.neargo.shop.pay.openapp.SignatureCanonicalizer;
@@ -48,8 +49,22 @@ public class OpenSignatureAuthenticator implements EntryGuard {
                 request.getMethod(), path, query, SignatureCanonicalizer.sha256Hex(body), ClientMeta.clientIp(request)));
         if (!result.ok()) {
             log.info("[open-api] 鉴权失败 app={} path={}：{}", request.getHeader("X-App-Id"), path, result.failure());
-            return GuardResult.unauthorized(result.failure());
+            return rejected(result);
         }
         return GuardResult.ok(new PortalPrincipal(PortalFace.OPEN, "APP", result.app().getAppNo(), null, Set.of()));
+    }
+
+    /**
+     * 失败种类 → 状态与错误码（API 清单 §1.3；开发计划 M3.7）：时钟偏了、nonce 重放、IP 不在白名单是接入方自己能改的，
+     * 各给自己的码；其余（签名错、AppId 不存在、环境不符、缺头）统一 401 —— 原因只进记录。
+     */
+    static GuardResult rejected(AppAuthService.Result result) {
+        return switch (result.kind()) {
+            case TIMESTAMP -> new GuardResult(null, 401, ErrorCode.PAY_OPEN_TIMESTAMP_EXPIRED, "REJECTED_AUTH",
+                    result.failure());
+            case REPLAYED -> new GuardResult(null, 401, ErrorCode.PAY_OPEN_REPLAYED, "REJECTED_AUTH", result.failure());
+            case IP -> new GuardResult(null, 403, ErrorCode.FORBIDDEN, "REJECTED_FORBIDDEN", result.failure());
+            default -> GuardResult.unauthorized(result.failure());
+        };
     }
 }

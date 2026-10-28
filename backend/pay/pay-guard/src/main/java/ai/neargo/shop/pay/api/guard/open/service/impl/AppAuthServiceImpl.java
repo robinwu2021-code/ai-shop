@@ -16,6 +16,7 @@ import ai.neargo.shop.pay.openapp.entity.PayApp;
 import ai.neargo.shop.pay.openapp.entity.PayAppGrant;
 import ai.neargo.shop.pay.api.guard.core.IpAllowList;
 import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.open.service.AppAuthService.AuthFailure;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -60,46 +61,46 @@ public class AppAuthServiceImpl implements AppAuthService {
     @Override
     public Result authenticate(SignedRequest r) {
         if (!enabled) {
-            return new Result(null, "开放 API 未开启（shop.pay.open.enabled）");
+            return Result.failed(AuthFailure.REQUEST, "开放 API 未开启（shop.pay.open.enabled）");
         }
         if (blank(r.appNo()) || blank(r.timestamp()) || blank(r.nonce()) || blank(r.signature())) {
-            return new Result(null, "缺签名头");
+            return Result.failed(AuthFailure.REQUEST, "缺签名头");
         }
         PayApp app = find(r.appNo());
         if (app == null || !"ACTIVE".equals(app.getStatus())) {
-            return new Result(null, "接入方不存在或未启用");
+            return Result.failed(AuthFailure.APP, "接入方不存在或未启用");
         }
         // 沙箱 app 只能打沙箱环境，生产 app 只能打生产环境 —— 两套密钥、两个域名（安全规范 §2.3）
         if (Boolean.TRUE.equals(app.getSandbox()) != sandboxEnvironment) {
-            return new Result(null, "接入方环境与本环境不符");
+            return Result.failed(AuthFailure.ENV, "接入方环境与本环境不符");
         }
         if (!ipAllowed(app.getIpWhitelist(), r.clientIp())) {
-            return new Result(null, "来源 IP 不在白名单：" + r.clientIp());
+            return Result.failed(AuthFailure.IP, "来源 IP 不在白名单：" + r.clientIp());
         }
         long ts;
         try {
             ts = Long.parseLong(r.timestamp().trim());
         } catch (NumberFormatException e) {
-            return new Result(null, "时间戳不是毫秒数");
+            return Result.failed(AuthFailure.TIMESTAMP, "时间戳不是毫秒数");
         }
         long skew = Math.abs(System.currentTimeMillis() - ts);
         if (skew > WINDOW.toMillis()) {
-            return new Result(null, "时间窗外（偏差 " + skew / 1000 + " 秒）");
+            return Result.failed(AuthFailure.TIMESTAMP, "时间窗外（偏差 " + skew / 1000 + " 秒）");
         }
         if (r.nonce().length() < 8 || r.nonce().length() > 64) {
-            return new Result(null, "nonce 长度应为 8–64");
+            return Result.failed(AuthFailure.REQUEST, "nonce 长度应为 8–64");
         }
         String toSign = SignatureCanonicalizer.stringToSign(r.method(), r.path(), r.query(), r.appNo(), r.timestamp().trim(),
                 r.nonce(), r.bodySha256Hex());
         // 验签交 AppSignatureVerifier（部署配置或密钥模块 KeyVault，常量时间比较；开发计划 M3.1）；X-Key-Serial 在 M3.2 接上
         if (signatures.verify(app, null, toSign, r.signature()).isEmpty()) {
-            return new Result(null, "签名不符");
+            return Result.failed(AuthFailure.SIGNATURE, "签名不符");
         }
         // nonce 放在验签之后抢占：不让没签对的请求往表里写东西（安全规范 §5.4；TDD 偏差）
         if (!nonces.claim("APP", app.getId(), r.nonce(), WINDOW)) {
-            return new Result(null, "nonce 重放");
+            return Result.failed(AuthFailure.REPLAYED, "nonce 重放");
         }
-        return new Result(app, null);
+        return Result.ok(app);
     }
 
     @Override
