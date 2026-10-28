@@ -73,14 +73,14 @@ class OpenApiFlowTest {
     @Autowired private PayIntegrity integrity;
 
     /** 接入方的 webhook 接收端：真起一个 HTTP 服务，不打桩发送器 —— 签名、头、超时都走真的 */
-    private record Hook(Map<String, String> headers, String path, String body) {
+    record Hook(Map<String, String> headers, String path, String body) {
     }
 
-    private static final List<Hook> HOOKS = new CopyOnWriteArrayList<>();
-    private static final AtomicBoolean HOOK_FAILS = new AtomicBoolean(false);
+    static final List<Hook> HOOKS = new CopyOnWriteArrayList<>();
+    static final AtomicBoolean HOOK_FAILS = new AtomicBoolean(false);
     private static HttpServer hookServer;
 
-    private static synchronized String hookUrl() throws Exception {
+    static synchronized String hookUrl() throws Exception {
         if (hookServer == null) {
             hookServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
             hookServer.createContext("/hook", ex -> {
@@ -462,7 +462,7 @@ class OpenApiFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ webhook：支付成功同事务落一条答复记录；投递是带签名的 POST（与请求同构），2xx 即送达、每次投递一行")
+    @DisplayName("★★★ webhook：支付成功同事务落一条答复记录；投递是带签名的 POST（P2，与响应签名同一规则，M3.6），2xx 即送达、每次投递一行")
     void webhookOnSuccessIsSignedAndDelivered() throws Exception {
         jdbc.update("UPDATE pay_app SET webhook_url=? WHERE app_no=?", hookUrl(), APP1);
         HOOK_FAILS.set(false);
@@ -476,9 +476,13 @@ class OpenApiFlowTest {
 
         Hook h = HOOKS.stream().filter(x -> x.body().contains(no)).findFirst().orElseThrow();
         assertThat(h.headers().get("X-App-Id")).isEqualTo(APP1);
-        String expected = sign(SECRET1, "POST", "/hook", Map.of(), APP1, Long.parseLong(h.headers().get("X-Timestamp")),
-                h.headers().get("X-Nonce"), h.body());
-        assertThat(h.headers().get("X-Signature")).as("接入方用自己的密钥按同一规则能验过").isEqualTo(expected);
+        String bodyHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(h.body().getBytes(StandardCharsets.UTF_8)));
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(SECRET1.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        String expected = Base64.getEncoder().encodeToString(mac.doFinal((h.headers().get("X-Timestamp") + "\n"
+                + h.headers().get("X-Nonce") + "\n" + bodyHash).getBytes(StandardCharsets.UTF_8)));
+        assertThat(h.headers().get("X-Signature")).as("接入方用自己的密钥按 P2 能验过").isEqualTo(expected);
         JsonNode body = json.readTree(h.body());
         assertThat(body.get("eventType").asString()).isEqualTo("PAYMENT_SUCCEEDED");
         assertThat(body.get("eventId").asString()).isEqualTo(n.get("event_key"));

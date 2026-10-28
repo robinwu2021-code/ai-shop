@@ -63,9 +63,9 @@ public class SecretAppSignatures implements AppSignatureVerifier, AppSigner, App
     }
 
     @Override
-    public Optional<Signature> sign(PayApp app, byte[] data) {
+    public Optional<Signature> sign(PayApp app, Integer version, byte[] data) {
         try {
-            return keyIdOf(app).map(keys::current)
+            return keyIdOf(app).map(keyId -> version == null ? keys.current(keyId) : new KeyVersionRef(keyId, version))
                     .map(ref -> new Signature(Base64.getEncoder().encodeToString(vault.mac(ref, data)), ref.versionIndex(),
                             keys.serialOf(ref).orElse(null)));
         } catch (RuntimeException e) {
@@ -89,6 +89,19 @@ public class SecretAppSignatures implements AppSignatureVerifier, AppSigner, App
                 }
             }
             return Optional.empty();
+        } catch (RuntimeException e) {
+            return Optional.empty();
+        }
+    }
+
+    /** EncryptKey（PARTNER_DATA）加密给接入方：指定版本或当前版本；KeyVault 随机 IV，输出 IV ‖ 密文 ‖ Tag */
+    @Override
+    public Optional<Encrypted> encrypt(PayApp app, Integer version, byte[] plaintext, byte[] aad) {
+        try {
+            return keyIdOf(app, KeyPurpose.PARTNER_DATA)
+                    .map(keyId -> version == null ? keys.current(keyId) : new KeyVersionRef(keyId, version))
+                    .map(ref -> new Encrypted(vault.encrypt(ref, plaintext, aad), ref.versionIndex(),
+                            keys.serialOf(ref).orElse(null)));
         } catch (RuntimeException e) {
             return Optional.empty();
         }

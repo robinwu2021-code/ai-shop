@@ -53,6 +53,9 @@ class OpenSecretKeyFlowTest {
     @Autowired private KeyRegistry registry;
     @Autowired private ai.neargo.shop.pay.merchant.service.PayMerchantBindingService bindings;
     @Autowired private ai.neargo.secret.api.SecretVault vault;
+    @Autowired private ai.neargo.shop.spi.settle.SettlePort settle;
+    @Autowired private ai.neargo.shop.pay.notify.service.BizNotifyService notifier;
+    @Autowired private tools.jackson.databind.ObjectMapper json;
 
     private MockMvc mvc;
     private String appNo;
@@ -182,6 +185,63 @@ class OpenSecretKeyFlowTest {
                 ai.neargo.shop.common.ErrorCode.PAY_OPEN_FIELD_ENCRYPT_REQUIRED.code()));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_order WHERE out_order_no=?", Integer.class, out + "-P"))
                 .isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 推送（M3.6）：resource 用 EncryptKey 加密、签名用 AppSecret；首投冻结两个版本 —— 轮换密钥后重推仍用旧版本，nonce 每次都新")
+    void webhookUsesFrozenVersionsAcrossRotation() throws Exception {
+        jdbc.update("UPDATE pay_app SET scopes='pay:create,pay:read', webhook_url=? WHERE app_no=?",
+                OpenApiFlowTest.hookUrl(), appNo);
+        OpenApiFlowTest.TestStore store = OpenApiFlowTest.storeWithTestRoute(jdbc, bindings);
+        jdbc.update("INSERT INTO pay_app_grant (pay_app_id, store_id, actions, status, granted_by, granted_at, created_at,"
+                + " updated_at) SELECT id, ?, 'COLLECT,READ', 'ACTIVE', 'U-SK', NOW(), NOW(), NOW() FROM pay_app WHERE app_no=?",
+                store.storeId(), appNo);
+        IssuedCredential v1 = issueAndEnable();
+        IssuedCredential e1 = issueEncryptKeyAndEnable();
+        String out = "OUT-WH-" + UUID.randomUUID().toString().substring(0, 8);
+        MockHttpServletResponse created = call("POST", "/open/pay/v1/orders", "{\"outOrderNo\":\"" + out
+                + "\",\"storeRef\":\"" + store.storeNo() + "\",\"amountMinor\":800,\"currency\":\"CNY\",\"subject\":\"推送\"}",
+                v1, null);
+        String no = json.readTree(created.getContentAsString()).get("data").get("payOrderNo").asString();
+        MockHttpServletResponse started = call("POST", "/open/pay/v1/orders/" + no + "/pay", "{\"payMethod\":\"TEST_PAY\"}",
+                v1, null);
+        settle.settlePayment(new ai.neargo.shop.spi.settle.SettlePort.PaymentSettled(
+                json.readTree(started.getContentAsString()).get("data").get("outTradeNo").asString(), "TEST",
+                "T-" + UUID.randomUUID(), 800, System.currentTimeMillis()));
+        Map<String, Object> n = jdbc.queryForMap("SELECT n.id, n.event_key FROM pay_biz_notify n JOIN pay_order o"
+                + " ON o.id=n.pay_order_id WHERE o.pay_order_no=? AND n.event_type='PAYMENT_SUCCEEDED'", no);
+        String eventKey = (String) n.get("event_key");
+
+        OpenApiFlowTest.HOOK_FAILS.set(true);
+        try {
+            notifier.deliverDue(java.time.Instant.now(), 100);
+        } finally {
+            OpenApiFlowTest.HOOK_FAILS.set(false);
+        }
+        assertThat(jdbc.queryForMap("SELECT enc_key_version, sign_key_version FROM pay_biz_notify WHERE id=?", n.get("id")))
+                .as("首投就冻结").containsEntry("enc_key_version", 1).containsEntry("sign_key_version", 1);
+
+        issueAndEnable();
+        issueEncryptKeyAndEnable();
+        notifier.deliverDue(java.time.Instant.now().plus(java.time.Duration.ofHours(1)), 100);
+
+        var hooks = OpenApiFlowTest.HOOKS.stream().filter(h -> eventKey.equals(h.headers().get("X-Event-Id"))).toList();
+        assertThat(hooks).as("失败一次、重推一次").hasSize(2);
+        for (var h : hooks) {
+            assertThat(h.headers().get("X-Key-Serial")).as("轮换后重推仍用冻结的 AppSecret v1").isEqualTo(v1.keySerial());
+            assertThat(h.headers().get("X-Signature")).isEqualTo(ai.neargo.shop.pay.notify.WebhookEnvelopesTestSupport
+                    .signature(v1.secret().substring("sk_test_".length()), h.headers().get("X-Timestamp"),
+                            h.headers().get("X-Nonce"), h.body()));
+            var resource = json.readTree(h.body()).get("resource");
+            assertThat(resource.get("keySerial").asString()).as("用冻结的 EncryptKey v1 加密").isEqualTo(e1.keySerial());
+            assertThat(json.readTree(ai.neargo.shop.pay.notify.WebhookEnvelopesTestSupport.decrypt(e1.secret(), resource))
+                    .get("payOrderNo").asString()).isEqualTo(no);
+            assertThat(h.body()).doesNotContain(no);
+        }
+        assertThat(json.readTree(hooks.get(0).body()).get("resource").get("nonce").asString())
+                .as("nonce 每次新生成").isNotEqualTo(json.readTree(hooks.get(1).body()).get("resource").get("nonce").asString());
+        assertThat(jdbc.queryForObject("SELECT status FROM pay_biz_notify WHERE id=?", String.class, n.get("id")))
+                .isEqualTo("DELIVERED");
     }
 
     private Integer loggedVersion(String requestId) {

@@ -9,8 +9,15 @@ import java.util.Optional;
  */
 public interface AppSigner {
 
-    /** 接入方没有可用密钥（未发、已吊销、密钥服务不可用）时为空 */
-    Optional<Signature> sign(PayApp app, byte[] data);
+    /** 用当前版本签；接入方没有可用密钥（未发、已吊销、密钥服务不可用）时为空 */
+    default Optional<Signature> sign(PayApp app, byte[] data) {
+        return sign(app, null, data);
+    }
+
+    /**
+     * @param version 指定版本（推送重推用首投时冻结的版本，M3.6）；为空 = 当前版本。部署配置里的密钥没有版本，忽略
+     */
+    Optional<Signature> sign(PayApp app, Integer version, byte[] data);
 
     /**
      * @param keyVersion 签名用的密钥版本；部署配置里的密钥没有版本，为空

@@ -30,6 +30,8 @@ public class ConfigAppSignatures implements AppSignatureVerifier, AppSigner, App
     /** AppSecret 的展示前缀（PartnerKeyService 发密钥时加，不参与 HMAC） */
     static final List<String> DISPLAY_PREFIXES = List.of("sk_live_", "sk_test_");
 
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+
     private final Environment env;
 
     public ConfigAppSignatures(Environment env) {
@@ -52,7 +54,7 @@ public class ConfigAppSignatures implements AppSignatureVerifier, AppSigner, App
     }
 
     @Override
-    public Optional<Signature> sign(PayApp app, byte[] data) {
+    public Optional<Signature> sign(PayApp app, Integer version, byte[] data) {
         // 只用当前那把：只配了 next（轮换配到一半）时不签，宁可推送失败重试，也不拿接入方还没换上的新密钥签
         String current = current(app.getAppNo());
         return current == null ? Optional.empty()
@@ -80,6 +82,29 @@ public class ConfigAppSignatures implements AppSignatureVerifier, AppSigner, App
             }
         }
         return Optional.empty();
+    }
+
+    @Override
+    public Optional<Encrypted> encrypt(PayApp app, Integer version, byte[] plaintext, byte[] aad) {
+        String k = env.getProperty("shop.pay.open.apps." + app.getAppNo() + ".encrypt-key");
+        if (k == null || k.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            byte[] iv = new byte[12];
+            RANDOM.nextBytes(iv);
+            Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+            c.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(k.trim().getBytes(StandardCharsets.UTF_8), "AES"),
+                    new GCMParameterSpec(128, iv));
+            c.updateAAD(aad);
+            byte[] ct = c.doFinal(plaintext);
+            byte[] packed = new byte[iv.length + ct.length];
+            System.arraycopy(iv, 0, packed, 0, iv.length);
+            System.arraycopy(ct, 0, packed, iv.length, ct.length);
+            return Optional.of(new Encrypted(packed, null, null));
+        } catch (Exception e) {
+            throw new IllegalStateException("AES-GCM unavailable or EncryptKey is not 32 bytes", e);
+        }
     }
 
     private String current(String appNo) {

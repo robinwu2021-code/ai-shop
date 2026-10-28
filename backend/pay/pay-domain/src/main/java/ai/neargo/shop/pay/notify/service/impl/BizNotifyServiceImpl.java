@@ -12,12 +12,9 @@ import ai.neargo.shop.pay.notify.WebhookTargets;
 import ai.neargo.shop.pay.notify.entity.PayBizNotify;
 import ai.neargo.shop.pay.notify.entity.PayBizNotifyAttempt;
 import ai.neargo.shop.pay.notify.service.BizNotifyService;
-import ai.neargo.shop.pay.openapp.AppSigner;
-import ai.neargo.shop.pay.openapp.SignatureCanonicalizer;
+import ai.neargo.shop.pay.notify.WebhookEnvelopes;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -51,21 +48,21 @@ public class BizNotifyServiceImpl implements BizNotifyService {
     private final PayBizNotifyMapper notifies;
     private final PayBizNotifyAttemptMapper attempts;
     private final PayAppMapper apps;
-    private final AppSigner signer;
+    private final WebhookEnvelopes envelopes;
     private final WebhookSender sender;
     private final Duration timeout;
     private final Duration giveUpAfter;
     private final boolean allowInsecure;
 
     public BizNotifyServiceImpl(PayBizNotifyMapper notifies, PayBizNotifyAttemptMapper attempts, PayAppMapper apps,
-                                AppSigner signer, WebhookSender sender,
+                                WebhookEnvelopes envelopes, WebhookSender sender,
                                 @Value("${shop.pay.notify.webhook.timeout:PT5S}") Duration timeout,
                                 @Value("${shop.pay.notify.webhook.give-up-after:PT24H}") Duration giveUpAfter,
                                 @Value("${shop.pay.notify.webhook.allow-insecure-targets:false}") boolean allowInsecure) {
         this.notifies = notifies;
         this.attempts = attempts;
         this.apps = apps;
-        this.signer = signer;
+        this.envelopes = envelopes;
         this.sender = sender;
         this.timeout = timeout;
         this.giveUpAfter = giveUpAfter;
@@ -203,11 +200,18 @@ public class BizNotifyServiceImpl implements BizNotifyService {
         Integer http = null;
         String response;
         String outcome;
+        WebhookEnvelopes.Envelope envelope = null;
         try {
             if (!WebhookTargets.acceptable(n.getTargetUrl(), allowInsecure)) {
                 throw new IllegalStateException("目标地址此刻解析到不允许的地址");
             }
-            WebhookSender.Response r = sender.post(n.getTargetUrl(), headers(n), n.getPayloadMasked(), timeout);
+            // 体与头（M3.6）：resource 按 P4 加密、签名按 P2；重推用首投冻结的密钥版本，nonce 每次新生成
+            PayApp app = DataScopeContext.executeWithoutScope(() -> apps.selectById(n.getPayAppId()));
+            envelope = app == null ? null : envelopes.build(n, app).orElse(null);
+            if (envelope == null) {
+                throw new IllegalStateException("接入方没有可用的签名密钥");
+            }
+            WebhookSender.Response r = sender.post(n.getTargetUrl(), envelope.headers(), envelope.body(), timeout);
             http = r.status();
             response = r.body();
             outcome = r.status() >= 200 && r.status() < 300 ? "DELIVERED" : "REJECTED";
@@ -234,6 +238,13 @@ public class BizNotifyServiceImpl implements BizNotifyService {
         PayBizNotify patch = new PayBizNotify();
         patch.setId(n.getId());
         patch.setAttempts(attempt);
+        // 首投把用到的密钥版本冻结下来：之后的重推（含运营手动重推）一律用它，接入方轮换密钥不影响旧事件
+        if (envelope != null && n.getEncKeyVersion() == null && envelope.encKeyVersion() != null) {
+            patch.setEncKeyVersion(envelope.encKeyVersion());
+        }
+        if (envelope != null && n.getSignKeyVersion() == null && envelope.signKeyVersion() != null) {
+            patch.setSignKeyVersion(envelope.signKeyVersion());
+        }
         if ("DELIVERED".equals(outcome)) {
             patch.setStatus("DELIVERED");
             patch.setDeliveredAt(now);
@@ -250,32 +261,6 @@ public class BizNotifyServiceImpl implements BizNotifyService {
 
     static long backoffSeconds(int attempt) {
         return Math.min(MAX_BACKOFF_SECONDS, FIRST_BACKOFF_SECONDS << Math.min(attempt - 1, 20));
-    }
-
-    /** 与入站请求同一套头与待签串（安全规范 §2.3）：METHOD=POST，PATH 为目标地址的 path，用接入方当前密钥签 */
-    private Map<String, String> headers(PayBizNotify n) throws Exception {
-        PayApp app = DataScopeContext.executeWithoutScope(() -> apps.selectById(n.getPayAppId()));
-        if (app == null) {
-            throw new IllegalStateException("接入方没有可用的签名密钥");
-        }
-        URI u = URI.create(n.getTargetUrl());
-        String ts = String.valueOf(System.currentTimeMillis());
-        String nonce = UUID.randomUUID().toString().replace("-", "");
-        byte[] body = n.getPayloadMasked().getBytes(StandardCharsets.UTF_8);
-        String toSign = SignatureCanonicalizer.stringToSign("POST", u.getRawPath() == null || u.getRawPath().isEmpty()
-                        ? "/" : u.getRawPath(), SignatureCanonicalizer.parseQuery(u.getRawQuery()), app.getAppNo(), ts, nonce,
-                SignatureCanonicalizer.sha256Hex(body));
-        // 用接入方当前那版密钥签（AppSigner：配置或密钥模块，开发计划 M3.1）
-        AppSigner.Signature signature = signer.sign(app, toSign.getBytes(StandardCharsets.UTF_8))
-                .orElseThrow(() -> new IllegalStateException("接入方没有可用的签名密钥"));
-        Map<String, String> h = new LinkedHashMap<>();
-        h.put("Content-Type", "application/json; charset=UTF-8");
-        h.put("X-App-Id", app.getAppNo());
-        h.put("X-Timestamp", ts);
-        h.put("X-Nonce", nonce);
-        h.put("X-Signature", signature.base64());
-        h.put("X-Event-Id", n.getEventKey());
-        return h;
     }
 
     private static Long epoch(LocalDateTime t) {

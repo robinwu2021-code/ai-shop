@@ -15,4 +15,20 @@ public interface AppFieldCipher {
      * @return 明文；版本不认识、标签不符、没有可用密钥 —— 一律为空（不分哪一步）
      */
     Optional<byte[]> decrypt(PayApp app, String encryptSerial, byte[] packed, byte[] aad);
+
+    /**
+     * 平台加密给接入方（推送 resource，P4；M3.6）：IV 每次随机。
+     *
+     * @param version 指定 EncryptKey 版本（重推用冻结的版本）；为空 = 当前版本
+     * @return 接入方没有 EncryptKey 时为空
+     */
+    Optional<Encrypted> encrypt(PayApp app, Integer version, byte[] plaintext, byte[] aad);
+
+    /**
+     * @param packed     {@code IV(12) ‖ 密文 ‖ Tag(16)}
+     * @param keyVersion EncryptKey 版本；部署配置里的密钥为空
+     * @param keySerial  该版本的 KeySerial；没有为空
+     */
+    record Encrypted(byte[] packed, Integer keyVersion, String keySerial) {
+    }
 }
