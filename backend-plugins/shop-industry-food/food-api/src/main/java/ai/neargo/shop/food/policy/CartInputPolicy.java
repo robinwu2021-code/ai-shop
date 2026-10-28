@@ -15,6 +15,9 @@ import java.util.HashSet;
 public final class CartInputPolicy {
     private CartInputPolicy() {}
 
+    /** Owner quantity ceiling is shared with selection proofs so catalogs cannot offer an unorderable amount. */
+    public static final BigDecimal MAX_SELECTION_QUANTITY = new BigDecimal("999999");
+
     public static void key(String value) {
         require(MaterialCatalogFacts.validKey(value, 32));
     }
@@ -78,7 +81,7 @@ public final class CartInputPolicy {
                 value != null
                         && value.signum() > 0
                         && value.stripTrailingZeros().scale() <= 6
-                        && value.compareTo(new BigDecimal("999999")) <= 0);
+                        && value.compareTo(MAX_SELECTION_QUANTITY) <= 0);
     }
 
     private static void require(boolean value) {

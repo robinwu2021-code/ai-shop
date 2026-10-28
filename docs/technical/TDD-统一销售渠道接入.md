@@ -261,6 +261,21 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 
 按用户节奏：先整批生产及测试源码→统一test-compile→集中相关测试（不全仓）→消融RED并恢复GREEN→因MenuSchedulePolicy模块移动执行clean package→一次独立只读review→重要问题一轮定向修复→精确本地提交。无新表/迁移/公开API/定时任务/真实平台，无FOOD完整catalog provider装配或生产开关开启。单独完成B1不能标记B2完整目录、C链路或S3通知已完成。
 
+#### L3 B2.1 执行计划：原选择可行性（2026-10-28）
+
+沿B阶段已确认方案先落地owner纯选择证明，随后B2.2投影完整目录。原OptionPublicationPolicy只证存在组合、搜索超限混为BAD_REQUEST；不复制到bridge。原下单CartInputPolicy实际上允许配料与套餐选择数量均为正、最多六位小数且每项不超过999999；原方案“套餐按整数”与代码不符，本批沿实际原合同，不擅自改下单语义。unitsPerPick是原料/价格倍率，不计入组选择数量求和。
+
+| 顺序 | 文件/对象 | 实施与验收 |
+| --- | --- | --- |
+| 1 | food-api SelectionFeasibility（Result/Status/Budget）及原CartInputPolicy | 结果PROVEN/IMPOSSIBLE/UNREACHABLE/UNPROVEN分开；组预算100000、整批1000000，明确耗尽不当无解；共享原选择数量上限 |
+| 2 | 原OptionSelectionPolicy、OptionPublicationPolicy移food-api，同FQN | 原normalize/validate入口保留；新prove先原normalize再原默认值规则，六位精确BigInteger、依赖闭包/互斥传播、确定性搜索，证明整体及每个max>0选项可达；validate保持原“只证存在”的发布语义，新目录证明严格各项可达 |
+| 3 | 原BundleDefinitionPolicy移food-api，同FQN | 原normalize签名语义保留；新prove复用原校验及同一搜索核，不造金额或库存；每组证明每个成员可选，原unitsPerPick独立 |
+| 4 | food-api MenuSelectionFeasibilityPolicy | 接CURRENT/MENU Proof与Clock/ObjectMapper/shared Budget；前后原证据重验；仅原冻结启用itemOptions及可售SKU对应Bundle依赖；返回按typed kind/configNo的结果，严格拒绝缺失/重复依赖；一次调用共享目录预算，调用方多餐牌继续复用同Budget |
+| 5 | 原food-core专项及新FoodCatalogSelectionFeasibilityTest | 微量数量、强制项、依赖/互斥死分支、无解、默认补选、超限、输入排序、原下单上限/套餐小数、CURRENT证明scope/期限、整批预算；小规模穷举对照精确结果 |
+| 6 | 本TDD/结构化真源/生成清单/台账 | 整批测试与代码→统一编译→集中相关专项→守卫消融RED/GREEN→clean package校验同FQN仅API→一次独立只读review→重要问题一轮定向修复→本地提交 |
+
+原维护/发布normalize与validate入口不增强为强制“所有分支可达”；存在性算法统一使用精确数量网格并遵守原下单单项上限，修正旧算法把多个正数量视为可无限趋零或允许超过下单上限的误判，避免把目录能力扩展变成未授权的原管理行为变更；新prove为完整渠道目录准入使用。搜索结果不是授权/价格/库存凭据，不注册完整目录provider，不启用真实平台。不增新表/迁移/端点/配置。B2.2完整图组装、C跨进程调用及S3事件仍待后续；本批单独交付不标B2全完成。
+
 #### L3 3. 目录组装与完整性校验
 
 | 原对象 | 目录投影 | 要求 |
@@ -284,7 +299,7 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 组合可行性在原FOOD owner补充，不在通用渠道内核重新定义餐饮规则：
 
 - 先沿原校验检查数量范围、默认值、互斥、依赖无环；再证明至少存在一个合法组合，且每个max>0的可展示选项都有可达的合法组合。
-- 以选项是否选择为布尔分支，要求项/依赖闭包/互斥传播后，检查原数量上下界及组总量。选项最多6位小数转BigInteger精确单位，套餐份数按原整数约束，不用double或把小料取整。
+- 以选项是否选择为布尔分支，要求项/依赖闭包/互斥传播后，检查原数量上下界及组总量。选项最多6位小数转BigInteger精确单位，套餐选择数量沿原CartInputPolicy最多六位小数，不用double或把小料取整。
 - 默认值沿原规则校验，可低于组最低量，仍允许顾客补选；不新增“默认值必须直接成单”的要求。
 - 使用确定性的有界搜索/剪枝，不引入任意脚本或通用规则平台。建议每组10万搜索节点、全目录100万节点；超限返回UNPROVEN并阻止发布，不声称规则无解、不放行猜测。该限制是实施建议，可按性能证据调整，不能改变判定语义。
 
@@ -1356,3 +1371,28 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 - 原价/税/原source receipt是可信owner答复而非密码学签名；本纯编译器不增加公开输入端点，B2仍必须从原服务获取并在捕获后重核。7天窗口不承诺未来价格或营业配置不会变化，S3通知仍后置。当前只有合同及可单独调用的时间编译器，无完整FOOD目录提供方/HTTP接线/真实平台启用。
 
 - 最终独立只读复核：本批无可执行Important或新增Minor，不重复复核；既有图片批次顺序P3保持独立待办。复核不代替执行方测试，不覆盖真实平台、生产并发及部署时钟。业务提交58642e6a0；本批仅本地提交，未推送、部署或开启渠道。下一批B2按本节已确认方案组装完整菜项/配料/套餐/媒体/价格及时间证据，并补原选择可行性；C传输接线和S3可靠通知随后执行。
+
+### B2.1 原选择组合可行性交付（2026-10-28，本地，最终复核中）
+
+本批落实§2 B2.1。原OptionSelectionPolicy/OptionPublicationPolicy/BundleDefinitionPolicy同FQN迁入food-api，原入口与定义JSON不变；原选项发布仍只要求一个合法组合，渠道prove额外证明每个max>0选项能出现在至少一个组合。共用SelectionFeasibility搜索核以六位精确BigInteger求区间交，正选择至少一个微量单位，容量与CartInputPolicy原999999上限求交；依赖传播、互斥排除及强制项沿原规则。原搜索把正量无限趋零或忽略下单上限的存在性误判得到修正，不新增“默认值必须满足组最低量”的规则。
+
+| AC/规则 | 实现/验收 |
+| --- | --- |
+| 精确数量/默认补选/整体与每项可达 | FoodCatalogSelectionFeasibilityTest.defaultsCanWaitForCustomerSelectionAndEveryAlternativeRemainsReachable、multiplePositiveMicroSelectionsNeedOneExactUnitEach、mandatoryAndDependentChoicesCanMakeAnOtherwiseVisibleOptionDead |
+| 依赖/互斥/严格输入 | transitiveDependenciesAndOverlappingMutexAreEvaluatedTogether、ownerInputValidationRemainsStrictWithoutTurningMalformedRulesIntoNoSolution、zeroCapacityOptionsDoNotNeedASelectionButCannotBeDependenciesOfReachableOptions |
+| 有界与确定性 | catalogBudgetIsSharedAndExhaustionIsNotImpossible、aSingleHardGroupCannotConsumeTheWholeCatalogBudget、sortingAndEquivalentDecimalsDoNotChangeOutcomeOrBudget；每组10万、整个capture100万节点，超限UNPROVEN，非IMPOSSIBLE |
+| 原下单一致/套餐 | optionCapacitiesCannotExceedTheOriginalCheckoutCeiling、bundleFractionsRemainOwnerQuantitiesAndMultipliersAreNotGroupTotals；CartLinePolicyTest.selectionProofMatchesTheOriginalCartForPositiveMicroDependencies直接调用原购物车验证微量依赖 |
+| 独立结果对照 | smallExactProblemsMatchIndependentEnumeration：180个固定种子小规模问题，每个81个原数量组合独立穷举，验证结果而非复写搜索 |
+| 原冻结餐牌 | MenuSelectionFeasibilityTest：读取原绑定组、死分支、套餐主SKU、跨菜单共享预算、旧schema自洽但错组编号、回执/处理中到期、HISTORICAL及串scope拒绝、简单无配料菜单 |
+| 默认数量 | nonzeroDefaultsMustBeAcceptedByTheOriginalCartQuantityBoundary：非零默认量必须通过原CartInputPolicy；只在新渠道证明入口补此条件，不改变原维护normalize合同 |
+
+MenuSelectionFeasibilityPolicy只读取原CURRENT/MENU Proof并在搜索前后复验；按typed kind/configNo读取原冻结启用菜项的选项组和套餐主SKU依赖，一组多菜项引用只求解一次，跨餐牌由调用方复用同一个Budget。Report保留原组键、四态、实际节点数和原短期截止时间；proven=false不得发布。未证明是返回的明确失败状态，不当成功或推断配置无解。畸形原规则/缺失错身份仍按原错误关闭。该纯能力不授予价格/库存/渠道授权，不替代最终下单校验及完整目录二次读取。
+
+执行证据：
+
+- 已完成代码与测试源码后统一集成/独立test-compile PASS66s。首轮直接相关106项全部通过19.183s；清理后加原购物车正面对照共107项全部通过，集成shop-app、food-server、commerce-server clean package PASS84s。确认三个移动FQN仅存在food-api jar，food-core jar及target/classes均无残留。
+- 正量下界消融把max(min,1微量单位)改成min，对应微量依赖测试实际由UNREACHABLE错为PROVEN，RED1（9.869s）；自动恢复后干净集中验证通过。
+- 核对默认量时新增超过原999999下单上限的复现测试，实际RED1（缺预期异常）；只在新prove入口复用原CartInputPolicy.quantity，修复后选择/原购物车/冻结餐牌直接相关32项全部通过15.073s。本批108个唯一检查全部通过，不累计重复复测；没有后端全仓回归。
+- 原B1已合并远端支付提交并正常推送至2bcb7661a，远端ls-remote已核验；本批B2.1以该合并提交为BASE。未改支付、前端、表/迁移、端点或运行开关；B2.2完整目录投影、C传输接线及S3可靠通知仍待后续。
+
+- 默认量修复后集成shop-app及独立food-server/commerce-server重新编译package PASS32.072s（不重复测试）；设计10项、生成25项、SQL可移植性与diff守卫通过。最终独立复核结论随后补记。

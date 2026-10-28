@@ -5,8 +5,11 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.BundleChoiceInput;
 import ai.neargo.shop.food.dto.BundleGroupInput;
 import ai.neargo.shop.food.dto.ReplaceBundleDefinitionReq;
+import ai.neargo.shop.food.dto.SelectionRules;
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.List;
@@ -60,6 +63,23 @@ public final class BundleDefinitionPolicy {
                     || max.compareTo(g.minQty()) < 0) bad();
         }
         return new ReplaceBundleDefinitionReq(input.version(), groups, choices);
+    }
+
+    /** Per-pick multipliers stay separate: only original choice quantities contribute to group totals. */
+    public static Map<String, SelectionFeasibility.Result> prove(ReplaceBundleDefinitionReq input,
+            SelectionFeasibility.Budget budget) {
+        var normalized = normalize(input);
+        if (budget == null || normalized.groups().isEmpty()) bad();
+        for (var choice : normalized.choices())
+            if (choice.defaultQty().signum() > 0) CartInputPolicy.quantity(choice.defaultQty());
+        var result = new LinkedHashMap<String, SelectionFeasibility.Result>();
+        for (var group : normalized.groups()) {
+            var choices = normalized.choices().stream().filter(c -> group.groupNo().equals(c.groupNo()))
+                    .map(c -> new SelectionFeasibility.Choice(c.choiceNo(), c.minQty(), c.maxQty())).toList();
+            result.put(group.groupNo(), SelectionFeasibility.prove(group.minQty(), group.maxQty(), choices,
+                    new SelectionRules(List.of(), List.of()), budget, true));
+        }
+        return Collections.unmodifiableMap(result);
     }
 
     public static void identifier(String value) {
