@@ -633,6 +633,7 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M3.6 | 没有新建 `WebhookEnvelopeFactory` / `OpenResourceCipher`：体与头由 `notify.WebhookEnvelopes` 组装，加密经 `AppFieldCipher#encrypt`、签名经 `AppSigner#sign(app, version, …)` —— 与开放 API 同一个密钥来源；首投把两个版本写进 `pay_biz_notify`（V14 列），之后的重推（含运营手动）一律用它 | 推送与请求解密、响应签名用的是同一把 EncryptKey / AppSecret，不另起一套 |
 | M3.6 | **过渡**：接入方还没有 EncryptKey 时体照旧带明文 `data`（推送内容本就只有掩码）；有了就只发 `resource` | 试点接入方还没发 EncryptKey，一刀切就收不到推送 |
 | M3.6 | **对外行为变化**：推送签名由「与请求同构」（METHOD / PATH / 查询 / 体哈希）改为 P2（`Timestamp\nNonce\nhex(SHA256(体))`，与响应签名同一规则），多了 `X-Key-Serial`（密钥模块来源时）与 `stateVersion` 字段；`eventType` 仍是现有的 `PAYMENT_SUCCEEDED` 等（未改成 API 清单的 `payment.succeeded`） | API 清单 §3 定的是 P2；事件名是现有契约，改名另发版本。试点接入方的验签代码要跟着改 |
+| M3.9 | 新建 `docs/api/openapi-pay-open.yaml`（I5 原本该建、没有建）：手写，v1.1；与代码的一致性由 `OpenPayContractTest` 守（路由一一对应、`x-sensitive` = 守卫字段清单、鉴权与签名头、错误码码值、推送信封、P1–P4 向量）。错误码用数字（与全仓一致），`eventType` 用现有枚举名 | 契约是交给接入方的那一份，手写最容易与实现走散；按「对得上就绿」的闸门守着，不再另靠人工核对 |
 
 ---
 
