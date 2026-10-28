@@ -334,3 +334,35 @@ test('refreshed source hashes cannot hide changed declared trigger body bytes', 
         });
     }), error => String(error.stderr).includes('changed trigger definition trg_seu_immutable'));
 });
+
+
+test('lexer preserves exact escaped and doubled quoted token bytes', () => {
+    const tokens = [
+        "'escaped \\'; delimiter; remains data'",
+        "'paired \\\\\\\\ slash; remains data'",
+        "'even \\\\'",
+        "'odd \\\\\\'; inside'",
+        "\"doubled \"\"quote;\"\" value\"",
+        "\"escaped \\\"; delimiter; remains data\"",
+        "'it''s; doubled quote'",
+        "`tick``;identifier`"
+    ];
+    const statement = `INSERT INTO probe VALUES (${tokens.join(', ')})`;
+    assert.deepEqual(migrationStatements(statement + '; SELECT 1;'), [statement, 'SELECT 1']);
+});
+
+test('DELIMITER-looking lines inside multiline values remain literal bytes', () => {
+    const statement = "INSERT INTO probe VALUES ('line one;\nDELIMITER $$\nline three;')";
+    assert.deepEqual(migrationStatements(statement + '; SELECT 2;'), [statement, 'SELECT 2']);
+});
+
+test('invalid delimiter directives fail and comments cannot join SQL tokens', () => {
+    for (const directive of ['DELIMITER', 'DELIMITER $$ extra', "DELIMITER 'quoted'",
+        'DELIMITER 12345678901234567', 'DELIMITER # comment hides the token']) {
+        assert.throws(() => migrationStatements(directive + '\nSELECT 1;'));
+    }
+    const statements = migrationStatements('SELECT/* comment */1; SELECT 2# comment\n+3;');
+    assert.equal(statements.length, 2);
+    assert.match(statements[0], /^SELECT\s+1$/);
+    assert.match(statements[1], /^SELECT 2\s+\+3$/);
+});
