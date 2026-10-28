@@ -6,6 +6,9 @@ import ai.neargo.shop.spi.product.GoodsCatalogInternalApi;
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import ai.neargo.shop.spi.product.CatalogImageContracts;
 import ai.neargo.shop.spi.product.CatalogImageFacts;
+import ai.neargo.shop.spi.product.CatalogMarketContracts;
+import ai.neargo.shop.spi.product.CatalogMarketFacts;
+import java.util.function.Consumer;
 import java.time.Instant;
 import ai.neargo.shop.svc.ServiceName;
 import ai.neargo.svc.client.CallOutcome;
@@ -21,6 +24,44 @@ public class CoreGoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
     private final Supplier<GoodsCatalogInternalApi> api;
 
     public CoreGoodsCatalogQueryPortImpl(Supplier<GoodsCatalogInternalApi> api) { this.api = api; }
+
+    @Override
+    public CatalogMarketContracts.GoodsFacts getCatalogGoods(CatalogMarketContracts.GoodsQuery query) {
+        CatalogMarketFacts.validateQuery(query);
+        return marketCall(() -> api.get().lookupMarketGoods(query),
+                f -> CatalogMarketFacts.validate(query, f, Instant.now()));
+    }
+
+    @Override
+    public CatalogMarketContracts.SkuFacts getCatalogSku(CatalogMarketContracts.SkuQuery query) {
+        CatalogMarketFacts.validateQuery(query);
+        return marketCall(() -> api.get().lookupMarketSku(query),
+                f -> CatalogMarketFacts.validate(query, f, Instant.now()));
+    }
+
+    private <T> T marketCall(Supplier<T> operation, Consumer<T> validation) {
+        try {
+            return ServiceCalls.call(ServiceName.PLATFORM, () -> {
+                T facts = operation.get();
+                try { validation.accept(facts); }
+                catch (IllegalArgumentException | IllegalStateException invalid) {
+                    throw new ServiceCallException(CallOutcome.REMOTE_ERROR, ServiceName.PLATFORM, 0,
+                            "Invalid original market metadata response");
+                }
+                return facts;
+            });
+        } catch (ServiceCallException failure) {
+            ErrorCode code = switch (failure.statusCode()) {
+                case 400 -> ErrorCode.BAD_REQUEST;
+                case 403 -> ErrorCode.FORBIDDEN;
+                case 404 -> ErrorCode.NOT_FOUND;
+                case 409 -> ErrorCode.CONFLICT;
+                default -> null;
+            };
+            if (code != null) throw BizException.of(code);
+            throw failure;
+        }
+    }
 
     @Override
     public CatalogImageContracts.Facts resolveCatalogImages(CatalogImageContracts.Query query) {

@@ -342,9 +342,9 @@ A-C按依赖顺序完成业务与测试源码，统一编译后一次集中受�
 - 不新增表、迁移、公开路由、支付/订单/库存逻辑；内部新增resolve和market两路。先整批业务及测试源码，再统一集成/独立编译，集中专项，一次独立只读复核及守卫消融，修复仅相关复测，本地精确提交；不推送部署或启用真实网关。
 - 拟定验收：ChannelCatalogAuthorityResolveTest、原授权服务/HTTP/客户端专项；CatalogMarketSourceTest及原价格/CORE内部/FOOD客户端专项；FoodChannelPricePolicyTest、MenuChannelAuthorityPortTest、FoodCatalogPricePolicyWiringTest与原绑定15项，覆盖精确身份、歧义/跨范围、变化/期限、默认关闭、无CURRENT配置、市场不符及伪回执。
 
-#### L3 A2 详细设计与代码对照复核（2026-10-28，A2.1已实现，其余待实施）
+#### L3 A2 详细设计与代码对照复核（2026-10-28，A2.1及A2.2a已实现，其余待实施）
 
-**L1 任务目的。** A1已完成精确渠道身份、原市场及价格政策事实；A2补齐完整目录所需的原图片身份、真实市场商品/SKU及覆盖价、行业来源核验。A2完成仍不等于可以发送完整菜单：目录组装/v3在B，端到端接线在C，自动发布事件在S3。本节保留A2完整设计；原封面身份A2.1已实施并单独验收，真实市场/schema6及owner分派仍待实施。
+**L1 任务目的。** A1已完成精确渠道身份、原市场及价格政策事实；A2补齐完整目录所需的原图片身份、真实市场商品/SKU及覆盖价、行业来源核验。A2完成仍不等于可以发送完整菜单：目录组装/v3在B，端到端接线在C，自动发布事件在S3。本节保留A2完整设计；原封面身份A2.1及真实市场元数据A2.2a已实施并单独验收；原FOOD维护/发布schema6及owner分派仍待实施。
 
 **L2 复核结论。** 原方向可用，但以下设计缺口必须补齐后再编码；它们不是本轮已复现的新A1生产缺陷。
 
@@ -399,6 +399,8 @@ a. 先补原商品元数据，不能绕过原商品owner：
 
 新内部方法沿原GoodsCatalogInternalApi，原InternalGoodsCatalogController接只读方法；CoreGoodsCatalogQueryPortImpl和LazyGoodsCatalogQueryPortImpl都必须完整转发和校验。新合同先贯通再改原FOOD调用，不能只在food-commerce投影层临时读表或拼SKU。
 
+**A2.2a实施批次（2026-10-28）。** 先贯通原商品真实市场只读合同：CatalogMarketContracts.GoodsQuery/SkuQuery携带entity/store/业务编号及可选expectedMarket（仅断言），GoodsFacts/SkuFacts带原CatalogPriceSourcePort.market完整证明、原GoodsFact/SkuIdentityFact、版本、最长30秒期限及回执。SKU附原归属商品版本；商品SKU展开最多256，查询第257条即拒绝而非截断。只在新字段上使用严格嵌套codec，旧GoodsFact/旧CN transport不改。原owner按“事务外原市场→RR元数据→事务外原市场→RR元数据重读”确认上下文和对象未变；原市场缺失、断言不符、跨范围、归档、失活和证据过期均失败，不调用原计价capture/税/库存。管理允许READONLY，沿A1原市场口径。新增原内部POST /internal/product/catalog/goods/market-lookup和/market-sku，复用令牌、raw响应和PLATFORM目标；food-channel及food-core延迟转发完整实现。原2参数及图片构造方式保留，新增自动注入仅延迟取得原市场owner。验收为CatalogMarketFactsTest、CatalogMarketGoodsTest、InternalCatalogMarketApiTest、CoreCatalogMarketTest、LazyCatalogMarketTest及直接相关原方法回归。此批不改原FOOD发布/覆盖价路径，不启用catalog-currency开关；schema6、独立依赖维护、币种归一和来源分派继续按本节后续计划实施。
+
 b. 维护时与历史时采用不同上下文：
 
 - normalizeStructure(prices)：纯函数校验币种格式、金额非负/JSON安全、重复SKU、数量上限、排序；不访问DB/网络。
@@ -447,7 +449,7 @@ c. 发布版本与兼容：
 
 提供方配置须声明在通用registry配置之前；不能仅以类型ConditionalOnBean依赖偶然加载顺序。CatalogPersistence等仍持ObjectProvider/延迟引用，注册表装配不得强迫构造跨域发布环。关闭FOOD/bridge或CIM仍保持原业务默认路径。
 
-**L3 4. 文件与方法落实清单（全部待实施）。**
+**L3 4. 文件与方法落实清单（已实施子集见A2.1/A2.2a，其余待实施）。**
 
 | 模块 | 范围 |
 | --- | --- |
@@ -607,6 +609,8 @@ S2B2B2c-1子集验收：AC03由FoodCatalogBindingServiceTest核验原冻结文�
 A1子集验收：AC03由FoodChannelPricePolicyTest的7项、MenuChannelAuthorityPortTest的4项、ChannelCatalogAuthorityResolveTest的5项和CatalogMarketSourceTest的5项覆盖；AC15由FoodCatalogPricePolicyWiringTest的2项、两端新增HTTP方法及原令牌/客户端/架构回归覆盖。累计76个唯一受影响Java专项通过（新增27、相关49），不累加重复复测次数。连接复查守卫消融使期间新增匹配连接专项真实RED，恢复后GREEN。独立复核1项Important：暂停营业管理被市场读误拦，新增真实原owner回归先RED FORBIDDEN，再分离市场读与实际取价的状态要求；相关19项GREEN。此处是H2原Mapper、原API组合及本地真实HTTP/令牌链，不代表生产JDBC并发或真实外卖联验。最终构建和交付记录另附。
 
 A2.1子集验收：AC03由MediaReferenceQueryPortTest#resolvesOnlyOriginalExportsAndExplicitAliasesToSameIdentity、#arbitraryHostsSignedEncodedPrivateAndAmbiguousReferencesAreRejected、CatalogImageQueryTest#differentFrozenAssetCannotBeReplacedByTheCurrentCover、#onlyActuallyAbsentOriginalCoverCanBecomeNone及#originalGoodsChangesDuringMediaVerificationAreRejected验证原封面身份和变化；CatalogImageFactsTest验证严格codec、范围、顺序、版本、期限和摘要。AC15由InternalCatalogImagesApiTest、CoreCatalogImagesTest#standaloneCapabilityUsesActualTypedHttpWithOriginalTokenAndUnchangedReferences、LazyCatalogImagesTest及MediaReferenceQueryPortTest#normalSpringWiringRetainsOptionalOwnersAndUsesOnlyConfiguredAliases、#internalImageFactsRemainOutsideThePublicMediaRewriteRegistration覆盖。新增27项GREEN38.293s；直接相关30项亦通过，累计57个唯一专项。移除商品RR重读守卫后变化检测真实RED1，恢复后本批27项全部GREEN。此为原Mapper/H2、原token的MockMvc及本机真实typed HTTP，不代表生产并发或真实外卖供应商验收。最终打包和review证据另附。
+
+A2.2a子集验收：AC03由CatalogMarketGoodsTest#actualMarketSelectsMetadataWithoutTaxPriceInventoryOrCnFallback、#originalMarketChangeBetweenMetadataReadsIsRejected、#metadataSkuAndParentVersionChangesAreDetectedOutsideTransactions、#pausedStoresCanReadManagementMetadataAndUnsellableGoodsRemainReadable及#boundedExpansionIsCompleteSortedAndRestoresCallerScope验证原市场/元数据/事务边界。CatalogMarketFactsTest验证原币种精度（AED/TWD/JPY/KWD）、严格嵌套codec、原版本、期限、范围及回执；不是实际金额试算。AC15由InternalCatalogMarketApiTest、CoreCatalogMarketTest#standaloneBothCapabilitiesUseActualTypedPlatformHttpAndOriginalToken、LazyCatalogMarketTest及CatalogMarketGoodsTest#normalSpringWiringResolvesOriginalMarketLazilyAndPropagatesItsOutage验证令牌、原始协议、真实typed HTTP、旧能力兼容及默认可选装配。新增25项GREEN46.862s，另48项直接相关回归通过；累计73个唯一专项。实际市场比较守卫消融后市场变化用例真实RED1，恢复后25项全部GREEN；最终打包/架构及review另附。测试为H2/原Mapper、MockMvc及本机真实HTTP，不代表生产并发、外送平台或FOOD非CN发布已就绪。
 
 ## §6 对账二 设计到实现
 
@@ -1160,3 +1164,17 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 - 一次独立只读review无Critical/Important。保留1项P3测试补充：CatalogImageQueryTest尚缺全部成功、且请求顺序与库排序相反的多商品批次用例；生产代码保留按请求重排并在最终Facts核验顺序，本批不另扩修复。后续验收待办明确保留此项。
 - review边界决定：生产JDBC并发/时钟同步/部署配置、真实CDN可用性及图片内容版本留后续联验；当前是短期原身份事实，不是永久发布资格、实时撤销或图片内容版本。干净打包由执行方证据补齐；已提交A1及剩余A2/B/C不纳入本批review，不冒充整个外送接入完成。
 - 提交仅含本批24个代码/测试/文档文件，沿原规范新增一个SPI及一个内部只读方法；无新数据表或Flyway修改。当前只本地提交，不推送或部署；后续任务台账继续保留。
+
+### A2.2a 真实市场原商品元数据交付（2026-10-28，本地）
+
+- shop-base新增CatalogMarketContracts/CatalogMarketFacts；沿GoodsCatalogQueryPort及GoodsCatalogInternalApi新增两种只读方法。返回仍为原GoodsFact/SkuIdentityFact，通过新字段上的严格codec避免改变旧CN JSON；完整绑定原市场证明、商品/SKU版本、范围、最短有效期与回执。
+- shop-core原GoodsCatalogQueryPortImpl复用A1的CatalogPriceSourcePort.market，实际市场前后核验与两次RR元数据读取，SKU展开最多256且不截断，无CN降级、税/价/库存查询。原2参数、图片4/5参数构造保持，新增Spring自动注入以可选原owner提供方延迟解析。
+- shop-app原InternalGoodsCatalogEndpoint新增market-lookup/market-sku，服务令牌先于校验、原始JSON与原错误状态保留；food-channel提供PLATFORM的真实typed HTTP及返回校验，food-core延迟转发完整支持。新增5个专项类与既有直接相关回归，清单和§2 A2.2a相符；无新增表、迁移或公开渠道API。
+- 本批仅贯通实际市场读取；原FOOD服务仍走原路径，catalog-currency开关尚未启用。非CN原依赖维护、币种校验、schema6、行业来源分派、完整目录/v3和真实供应商联验仍按后续计划推进。
+
+- 最终只读review确认1项P2：商品SKU展开依赖SQL的宽松字符串比较，未取回原entity/goods/market逐值核对。已核对原V1 prd_sku的utf8mb4_uca1400_ai_ci；新增CatalogMarketGoodsTest#sqlEquivalentButNonExactSkuOwnershipCannotEnterMarketGoodsEvidence，在H2 VARCHAR_IGNORECASE先证明SQL确实匹配，再要求拒绝非精确归属，修复前RED1。单次修复补三列及精确equals后，原商品市场12项GREEN17.665s；不改旧方法/原表排序规则，不二次review。
+- 本批新增专项现为26项，直接相关48项已先前通过；最终产物/架构证据随后登记。H2回归覆盖大小写不敏感的原Mapper匹配，不冒充真实生产MariaDB排序规则或并发联验；精确equals守卫同时拒绝非相同原字符串。
+- 复核边界决定：生产时钟/并发/部署、真实供应商及CDN、原FOOD消费者和schema6仍在后续联验/开发；事实摘要不构成永久发布授权，也不保证实时撤销或消除ABA。当前专项不是穷尽所有畸形输入组合的声明；上批图片多项顺序P3待办保持后置。
+
+- 最终构建：默认零售clean test-compile PASS52.034s，集成宿主/独立food-server/独立commerce-server clean package PASS约69秒；review修复后同受影响产物编译重打包PASS22.964s。最终打包后新增26项及5项相关架构检查共31/31 GREEN16.973s，0失败/异常/跳过；加先前48项直接相关专项为79个唯一Java检查，不累加重复执行。一次原市场守卫消融及一次review回归均有RED→GREEN证据；无二次review或新增延后minor。
+- 设计10项、25个生成器一致性、SQL方言和diff检查均通过。日志/private/tmp/food-market-a22a-*，真实范围记录于台账；仅本地精确20文件提交，无推送、部署或真实供应商启用。代码、原DTO和原架构兼容验证与§2实施清单相符，唯一review重要问题已在本批修复；后续仍是原FOOD非CN资源维护/发布及schema6。

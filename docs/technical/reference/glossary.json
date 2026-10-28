@@ -51096,6 +51096,14 @@
       "module": "shop-base"
     },
     {
+      "host": "CatalogMarketFacts",
+      "name": "MAX_SKUS",
+      "type": "int",
+      "value": "256",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
       "host": "ActivityParticipationInternal",
       "name": "BASE",
       "type": "String",

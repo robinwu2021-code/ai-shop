@@ -2,6 +2,7 @@ package ai.neargo.shop.food.port;
 
 import ai.neargo.shop.spi.product.GoodsCatalogQueryPort;
 import ai.neargo.shop.spi.product.CatalogImageContracts;
+import ai.neargo.shop.spi.product.CatalogMarketContracts;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 
@@ -11,6 +12,16 @@ public final class LazyGoodsCatalogQueryPortImpl implements GoodsCatalogQueryPor
 
     public LazyGoodsCatalogQueryPortImpl(ObjectProvider<GoodsCatalogQueryPort> provider) {
         this.provider = provider;
+    }
+
+    @Override
+    public CatalogMarketContracts.GoodsFacts getCatalogGoods(CatalogMarketContracts.GoodsQuery query) {
+        return provider.getObject().getCatalogGoods(query);
+    }
+
+    @Override
+    public CatalogMarketContracts.SkuFacts getCatalogSku(CatalogMarketContracts.SkuQuery query) {
+        return provider.getObject().getCatalogSku(query);
     }
 
     @Override
