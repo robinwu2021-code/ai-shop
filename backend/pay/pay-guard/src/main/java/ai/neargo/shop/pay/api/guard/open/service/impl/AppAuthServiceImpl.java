@@ -92,15 +92,16 @@ public class AppAuthServiceImpl implements AppAuthService {
         }
         String toSign = SignatureCanonicalizer.stringToSign(r.method(), r.path(), r.query(), r.appNo(), r.timestamp().trim(),
                 r.nonce(), r.bodySha256Hex());
-        // 验签交 AppSignatureVerifier（部署配置或密钥模块 KeyVault，常量时间比较；开发计划 M3.1）；X-Key-Serial 在 M3.2 接上
-        if (signatures.verify(app, null, toSign, r.signature()).isEmpty()) {
+        // 验签交 AppSignatureVerifier（部署配置或密钥模块 KeyVault，常量时间比较；M3.1）；带了 X-Key-Serial 只认那一版（M3.2）
+        var verified = signatures.verify(app, r.keySerial(), toSign, r.signature());
+        if (verified.isEmpty()) {
             return Result.failed(AuthFailure.SIGNATURE, "签名不符");
         }
         // nonce 放在验签之后抢占：不让没签对的请求往表里写东西（安全规范 §5.4；TDD 偏差）
         if (!nonces.claim("APP", app.getId(), r.nonce(), WINDOW)) {
             return Result.failed(AuthFailure.REPLAYED, "nonce 重放");
         }
-        return Result.ok(app);
+        return Result.ok(app, verified.get().keyVersion());
     }
 
     @Override

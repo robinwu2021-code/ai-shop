@@ -10,6 +10,8 @@ public final class PortalRequests {
     public static final String REQUEST_ID = PortalRequests.class.getName() + ".requestId";
     public static final String PRINCIPAL = PortalRequests.class.getName() + ".principal";
     public static final String RESULT_CODE = PortalRequests.class.getName() + ".resultCode";
+    /** 开放 API 验签命中的密钥版本（Integer；部署配置里的密钥为空） */
+    public static final String SIGN_KEY_VERSION = PortalRequests.class.getName() + ".signKeyVersion";
     public static final String IDEMPOTENCY_KEY = "Idempotency-Key";
 
     private PortalRequests() {

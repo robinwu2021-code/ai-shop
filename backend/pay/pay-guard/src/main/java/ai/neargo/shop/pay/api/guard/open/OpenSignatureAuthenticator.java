@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import ai.neargo.shop.pay.api.guard.core.EntryGuard;
 import ai.neargo.shop.pay.api.guard.core.GuardResult;
 import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
+import ai.neargo.shop.pay.api.guard.core.PortalRequests;
 import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
 
 /**
@@ -46,11 +47,13 @@ public class OpenSignatureAuthenticator implements EntryGuard {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         var result = auth.authenticate(new AppAuthService.SignedRequest(request.getHeader("X-App-Id"),
                 request.getHeader("X-Timestamp"), request.getHeader("X-Nonce"), request.getHeader("X-Signature"),
-                request.getMethod(), path, query, SignatureCanonicalizer.sha256Hex(body), ClientMeta.clientIp(request)));
+                request.getHeader("X-Key-Serial"), request.getMethod(), path, query, SignatureCanonicalizer.sha256Hex(body), ClientMeta.clientIp(request)));
         if (!result.ok()) {
             log.info("[open-api] 鉴权失败 app={} path={}：{}", request.getHeader("X-App-Id"), path, result.failure());
             return rejected(result);
         }
+        // 命中的密钥版本记进请求记录（⑫），统计「还有谁在用旧版本」靠它（M3.2）
+        request.setAttribute(PortalRequests.SIGN_KEY_VERSION, result.keyVersion());
         return GuardResult.ok(new PortalPrincipal(PortalFace.OPEN, "APP", result.app().getAppNo(), null, Set.of()));
     }
 

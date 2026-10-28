@@ -11,8 +11,9 @@ import java.util.Map;
 public interface AppAuthService {
 
     /** 一次签名请求的全部输入（体只给哈希：过滤器已缓存原始字节并算好） */
-    record SignedRequest(String appNo, String timestamp, String nonce, String signature, String method, String path,
-                         Map<String, List<String>> query, String bodySha256Hex, String clientIp) {
+    /** @param keySerial 请求头 {@code X-Key-Serial}（推荐带）：指定签名用的密钥版本；不带则逐把试（开发计划 M3.2） */
+    record SignedRequest(String appNo, String timestamp, String nonce, String signature, String keySerial, String method,
+                         String path, Map<String, List<String>> query, String bodySha256Hex, String clientIp) {
     }
 
     /**
@@ -38,16 +39,17 @@ public interface AppAuthService {
 
     /**
      * @param kind    失败种类；成功为空
-     * @param failure 失败原因（只进日志与请求记录，<b>不回给调用方</b>）；成功为空
+     * @param failure    失败原因（只进日志与请求记录，<b>不回给调用方</b>）；成功为空
+     * @param keyVersion 验签命中的密钥版本（{@code pay_api_request_log.sign_key_version}）；部署配置里的密钥没有版本，为空
      */
-    record Result(PayApp app, AuthFailure kind, String failure) {
+    record Result(PayApp app, AuthFailure kind, String failure, Integer keyVersion) {
 
-        public static Result ok(PayApp app) {
-            return new Result(app, null, null);
+        public static Result ok(PayApp app, Integer keyVersion) {
+            return new Result(app, null, null, keyVersion);
         }
 
         public static Result failed(AuthFailure kind, String failure) {
-            return new Result(null, kind, failure);
+            return new Result(null, kind, failure, null);
         }
 
         public boolean ok() {

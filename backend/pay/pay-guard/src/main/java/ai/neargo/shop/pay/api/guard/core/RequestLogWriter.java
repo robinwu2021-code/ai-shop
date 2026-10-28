@@ -55,6 +55,11 @@ public class RequestLogWriter {
         r.setOutcome(outcome);
         r.setElapsedMs((int) (System.currentTimeMillis() - startedMillis));
         r.setReceivedAt(LocalDateTime.now(ZoneOffset.UTC));
+        if (face == PortalFace.OPEN) {
+            // 验签命中的版本（只在通过时有）与加密序列号（开发计划 M3.2；V14 的两列）
+            r.setSignKeyVersion(req.getAttribute(PortalRequests.SIGN_KEY_VERSION) instanceof Integer v ? v : null);
+            r.setEncryptSerial(cut(req.getHeader("X-Encrypt-Serial"), 64));
+        }
         if (req.getAttribute(InternalGuard.SOURCE_ATTRIBUTE) instanceof CallSource source) {
             applySource(r, source);
         }
