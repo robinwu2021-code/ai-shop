@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "purpose": "H2_TEST_PROJECTION_V1",
+  "entries": [
+    {
+      "migration": "backend/shop-app/src/main/resources/db/migration/V543__counter_campaign_owner_fence.sql",
+      "sourceSha256": "7151507414413188096b2bed9cebbea21bfb46e5ab5eab9636b5458b432f39bf",
+      "descriptor": "backend/shop-core/src/main/resources/schema/counter-campaign-owner-fence-descriptor.json",
+      "descriptorSha256": "194d705c2b44d3ff0dde762df970d0a1216a8a9b00de263091fd07490901228d",
+      "datasource": "PRIMARY",
+      "mode": "PROJECT_WITH_NATIVE_TRIGGERS",
+      "capability": "counter-campaign-fence",
+      "guardClass": "ai.neargo.shop.marketing.campaign.CounterCampaignFence",
+      "absentTables": [],
+      "retainedStatementHashes": [
+        "75473d1c77ae6546496054e32e0988291cebb518ca760ca17db942bef05715a0",
+        "68e21624b112179f47f89466d56e4c91bf09f295238622bcdbb7c262275a43b1"
+      ]
+    },
+    {
+      "migration": "backend/shop-app/src/main/resources/db/migration/V544__manual_service_execution_authority.sql",
+      "sourceSha256": "daac4b0956de310676f8795d41ba34e412c66179549445dd76f1cdf740643fc1",
+      "descriptor": "backend/shop-core/src/main/resources/META-INF/shop/manual-service-execution-schema.json",
+      "descriptorSha256": "42ad3a0b965391cd06afd434a6f6e90d359aef2812b6776ccc0ef7293f58443e",
+      "datasource": "PRIMARY",
+      "mode": "NATIVE_OWNER_ABSENT",
+      "capability": "manual-service-execution",
+      "guardClass": "ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier",
+      "absentTables": [
+        "ord_service_execution",
+        "ord_service_execution_action",
+        "ord_service_execution_unit"
+      ],
+      "retainedStatementHashes": []
+    },
+    {
+      "migration": "backend/shop-app/src/main/resources/db/migration/V545__execution_stock_retention.sql",
+      "sourceSha256": "a0674ee3859ea27e400d63753983b7f7fd7bc4d533aba5d08abb62e7e596e155",
+      "descriptor": "backend/shop-core/src/main/resources/META-INF/shop/execution-stock-retention-schema.json",
+      "descriptorSha256": "bc6563bef5026a6c2ec4b824bd0b88b2ebe82f2f350528f5e5e8df027a6a3d4d",
+      "datasource": "PRIMARY",
+      "mode": "NATIVE_OWNER_ABSENT",
+      "capability": "platform-execution-stock-retention",
+      "guardClass": "ai.neargo.shop.product.policy.ExecutionStockRetentionSchemaVerifier",
+      "absentTables": [
+        "prd_execution_retention"
+      ],
+      "retainedStatementHashes": []
+    },
+    {
+      "migration": "backend/shop-inventory/src/main/resources/db/inventory/V15__execution_stock_retention.sql",
+      "sourceSha256": "3725630fc006ad0b15afa55c44054522e16c84cdfba629108e1affb59ecb7ab0",
+      "descriptor": "backend/shop-inventory/src/main/resources/META-INF/shop/inventory-execution-retention-schema.json",
+      "descriptorSha256": "d178310851257301e21a1e1c6d084041d918297796a5ae4047574e596ed1ddf9",
+      "datasource": "INVENTORY",
+      "mode": "NATIVE_OWNER_ABSENT",
+      "capability": "inventory-execution-stock-retention",
+      "guardClass": "ai.neargo.shop.inventory.policy.ExecutionStockRetentionSchemaVerifier",
+      "absentTables": [
+        "inv_execution_retention",
+        "inv_execution_retention_claim"
+      ],
+      "retainedStatementHashes": []
+    }
+  ]
+}

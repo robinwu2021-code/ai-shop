@@ -22,13 +22,17 @@
 import pathlib
 import re
 import sys
+import hashlib
+import json
+from typing import NamedTuple
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 MIGRATION_DIR = ROOT / "backend/shop-app/src/main/resources/db/migration"
 OUT = ROOT / "backend/shop-app/src/test/resources/schema-test.sql"
 
 HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql 得到。
--- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
+-- Legacy/shared H2 projection; exact native omissions are descriptor/hash-bound below.
+-- Native installation/conformance is verified only on the actual supported server.
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
 -- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
@@ -62,26 +66,216 @@ def _h2_generated_column(col: str) -> str:
     return col
 
 
+def _sql_code_mask(sql, quoted=" "):
+    """Mask literal/identifier bytes so type rewrites cannot change user values."""
+    out = list(sql)
+    quote = None
+    i = 0
+    while i < len(sql):
+        char = sql[i]
+        if quote is not None:
+            out[i] = quoted
+            if char == "\\" and i + 1 < len(sql):
+                out[i + 1] = quoted
+                i += 2
+                continue
+            if char == quote:
+                if i + 1 < len(sql) and sql[i + 1] == quote:
+                    out[i + 1] = quoted
+                    i += 2
+                    continue
+                quote = None
+        elif char in "'\"`":
+            quote = char
+            out[i] = quoted
+        i += 1
+    return "".join(out)
+
+
+
+def _trim_sql_line_ends(sql):
+    # Only code/comment padding may be trimmed; multiline quoted value bytes survive.
+    mask = _sql_code_mask(sql, quoted="\0")
+    parts = []
+    cursor = 0
+    for match in re.finditer(r"[ \t]+(?=\r?$)", mask, re.M):
+        parts.append(sql[cursor:match.start()])
+        cursor = match.end()
+    parts.append(sql[cursor:])
+    return "".join(parts)
+
+
 def _h2_type(col: str) -> str:
-    """列类型的 H2 兼容映射。
-
-    **JSON → TEXT**：H2 的 JSON 列经 MyBatis 映射成 String 时读回来是**空串**，
-    于是「存下去了、字段全没了」，而代码与 SQL 各自看都正常。
-    本库其余 JSON 串（title_i18n / spec_groups / featured / out_of_range）
-    在建表时本来就写的 TEXT，只有 prd_spec_template.options 用了 JSON ——
-    它让平台规格模板（E27）在测试里从来跑不通。
-
-    **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
-    这一条已经被覆盖过三次。生产库仍是 JSON，那边没有这个问题。
-    """
-    col = re.sub(r"(?<![\w])JSON(?![\w])",
-                 lambda match: "JSON" if re.search(r"\bIS\s+$", col[:match.start()], re.I) else "TEXT",
-                 col, flags=re.I)
-    # H2 uses standard predicates/extraction; native MySQL remains the constraint authority.
-    col = re.sub(r"\bJSON_VALID\(\s*([A-Za-z_]\w*)\s*\)", r"(\1 IS JSON)", col, flags=re.I)
-    col = re.sub(r"\bMICROSECOND\(\s*([A-Za-z_]\w*)\s*\)",
-                 r"EXTRACT(MICROSECOND FROM \1)", col, flags=re.I)
+    # JSON is a column type only here; a DEFAULT 'JSON' is not a type token.
+    col = re.sub(
+        r"^(\s*(?!(?:CONSTRAINT|CHECK|PRIMARY|UNIQUE|FOREIGN|KEY|INDEX)\b)\w+\s+)JSON\b",
+        r"\1TEXT", col, flags=re.I)
+    replacements = []
+    mask = _sql_code_mask(col)
+    simple = r"([A-Za-z_]\w*)"
+    for match in re.finditer(r"\bJSON_VALID\(\s*" + simple + r"\s*\)", mask, re.I):
+        replacements.append((match.start(), match.end(), f"({match.group(1)} IS JSON)"))
+    for match in re.finditer(r"\bMICROSECOND\(\s*" + simple + r"\s*\)", mask, re.I):
+        replacements.append((match.start(), match.end(), f"EXTRACT(MICROSECOND FROM {match.group(1)})"))
+    for match in re.finditer(r"\bJSON_TYPE\(\s*" + simple + r"\s*\)", mask, re.I):
+        comparison = re.match(r"\s*=\s*'OBJECT'", col[match.end():], re.I)
+        if comparison is not None:
+            replacements.append((match.start(), match.end() + comparison.end(),
+                                 f"({match.group(1)} IS JSON OBJECT)"))
+    for first, last, replacement in sorted(replacements, reverse=True):
+        col = col[:first] + replacement + col[last:]
+    if re.search(r"\bJSON_[A-Za-z_]+\s*\(", _sql_code_mask(col), re.I):
+        raise ValueError("Unsupported JSON function in retained H2 DDL: " + col)
     return _h2_generated_column(col)
+
+
+class MigrationProjection(NamedTuple):
+    entry: dict
+    descriptor: dict
+
+
+def _policy_require(condition, reason):
+    if not condition:
+        raise ValueError("Invalid H2 fixture projection: " + reason)
+
+
+def _json_unique(pairs):
+    result = {}
+    for key, value in pairs:
+        _policy_require(key not in result, "duplicate JSON key " + key)
+        result[key] = value
+    return result
+
+
+def _read_policy_json(path):
+    return json.loads(path.read_text(), object_pairs_hook=_json_unique)
+
+
+def _source_path(root, value):
+    _policy_require(isinstance(value, str) and value, "relative path required")
+    path = pathlib.PurePosixPath(value)
+    _policy_require(not path.is_absolute() and ".." not in path.parts, "unsafe relative path")
+    resolved = (root / value).resolve()
+    _policy_require(root == resolved or root in resolved.parents, "path leaves source root")
+    _policy_require(resolved.is_file(), "missing artifact " + value)
+    return resolved
+
+
+def load_projection_policy(src_dir, *, root=None, policy_path=None):
+    """Load only the exact producer dataset; temporary snippets gain no exclusions."""
+    root = ROOT.resolve() if root is None else pathlib.Path(root).resolve()
+    src_dir = pathlib.Path(src_dir).resolve()
+    try:
+        relative = src_dir.relative_to(root).as_posix()
+    except ValueError:
+        return {}
+    datasets = {
+        "backend/shop-app/src/main/resources/db/migration": "PRIMARY",
+        "backend/shop-inventory/src/main/resources/db/inventory": "INVENTORY",
+    }
+    if relative not in datasets:
+        return {}
+    policy_path = root / "backend/scripts/h2-fixture-policy.json" if policy_path is None else pathlib.Path(policy_path)
+    policy = _read_policy_json(policy_path)
+    _policy_require(isinstance(policy, dict) and set(policy) == {"schemaVersion", "purpose", "entries"},
+                    "policy envelope")
+    _policy_require(type(policy["schemaVersion"]) is int and policy["schemaVersion"] == 1
+                    and policy["purpose"] == "H2_TEST_PROJECTION_V1", "policy version/purpose")
+    _policy_require(isinstance(policy["entries"], list), "entries must be a list")
+    required = {"migration", "sourceSha256", "descriptor", "descriptorSha256", "datasource", "mode",
+                "capability", "guardClass", "absentTables", "retainedStatementHashes"}
+    selected = {}
+    for entry in policy["entries"]:
+        _policy_require(isinstance(entry, dict) and set(entry) == required, "entry fields")
+        migration_name = pathlib.PurePosixPath(entry["migration"])
+        if migration_name.parent.as_posix() != relative:
+            continue
+        _policy_require(entry["datasource"] == datasets[relative], "wrong datasource")
+        migration = _source_path(root, entry["migration"])
+        descriptor_path = _source_path(root, entry["descriptor"])
+        _policy_require(migration.parent == src_dir and migration not in selected, "duplicate/mismatched source")
+        for field, path in [("sourceSha256", migration), ("descriptorSha256", descriptor_path)]:
+            _policy_require(isinstance(entry[field], str) and re.fullmatch(r"[a-f0-9]{64}", entry[field]),
+                            "invalid " + field)
+            _policy_require(hashlib.sha256(path.read_bytes()).hexdigest() == entry[field], "changed " + field)
+        _policy_require(entry["mode"] in {"PROJECT_WITH_NATIVE_TRIGGERS", "NATIVE_OWNER_ABSENT"}, "unknown mode")
+        _policy_require(isinstance(entry["capability"], str) and entry["capability"], "missing capability")
+        _policy_require(isinstance(entry["guardClass"], str)
+                        and re.fullmatch(r"(?:[A-Za-z_]\w*\.)+[A-Za-z_]\w*", entry["guardClass"]), "guard class")
+        _policy_require(isinstance(entry["absentTables"], list)
+                        and len(set(entry["absentTables"])) == len(entry["absentTables"]), "duplicate table")
+        for name in entry["absentTables"]:
+            _policy_require(isinstance(name, str) and re.fullmatch(r"[a-z_]\w*", name), "table name")
+        _policy_require(isinstance(entry["retainedStatementHashes"], list)
+                        and all(isinstance(value, str) and re.fullmatch(r"[a-f0-9]{64}", value)
+                                for value in entry["retainedStatementHashes"]), "retained statement hashes")
+        descriptor = _read_policy_json(descriptor_path)
+        _policy_require(descriptor.get("schemaVersion") == 1, "descriptor version")
+        if "migrationSha256" in descriptor:
+            _policy_require(descriptor["migrationSha256"] == entry["sourceSha256"], "descriptor source hash")
+        if "migrationScript" in descriptor:
+            _policy_require(descriptor["migrationScript"] == migration.name, "descriptor source identity")
+        version_field = "platformVersion" if entry["datasource"] == "PRIMARY" else "inventoryVersion"
+        if version_field in descriptor:
+            version = re.fullmatch(r"V(\d+)__.+\.sql", migration.name)
+            _policy_require(version is not None and descriptor[version_field] == int(version.group(1)),
+                            "descriptor migration version")
+        selected[migration] = MigrationProjection(entry, descriptor)
+    return selected
+
+
+def project_migration(path, policies):
+    """Validate every declared omission before returning any projected statements."""
+    path = pathlib.Path(path).resolve()
+    statements = list(sql_statements(path.read_text()))
+    projection = policies.get(path)
+    if projection is None:
+        return statements
+    entry, descriptor = projection
+    tables = descriptor.get("tables", [descriptor.get("table")])
+    _policy_require(isinstance(tables, list) and tables and all(isinstance(table, dict) for table in tables),
+                    "descriptor table set")
+    names = [table.get("name") for table in tables]
+    _policy_require(all(isinstance(name, str) for name in names) and len(set(names)) == len(names),
+                    "descriptor table identities")
+    absent = entry["mode"] == "NATIVE_OWNER_ABSENT"
+    _policy_require(set(entry["absentTables"]) == (set(names) if absent else set()), "table omission set")
+    trigger_specs = descriptor.get("triggers")
+    _policy_require(isinstance(trigger_specs, list) and trigger_specs, "descriptor trigger set")
+    expected = {trigger["name"]: trigger for trigger in trigger_specs}
+    _policy_require(len(expected) == len(trigger_specs), "duplicate descriptor trigger")
+    seen_tables = []
+    seen_triggers = set()
+    kept = []
+    for statement in statements:
+        trigger = re.fullmatch(
+            r"CREATE\s+TRIGGER\s+(\w+)\s+(BEFORE|AFTER)\s+(INSERT|UPDATE|DELETE)\s+ON\s+(\w+)"
+            r"\s+FOR\s+EACH\s+ROW\s+(.*)", statement, re.I | re.S)
+        if trigger is not None:
+            name, timing, event, table, body = trigger.groups()
+            _policy_require(name in expected and name not in seen_triggers, "unlisted/duplicate trigger " + name)
+            spec = expected[name]
+            _policy_require(table == spec["table"] and timing.upper() == spec["timing"]
+                            and event.upper() == spec["event"] and body.strip() == spec["body"].strip(),
+                            "changed trigger definition " + name)
+            seen_triggers.add(name)
+            continue
+        create = re.match(r"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)\s*\(", statement, re.I)
+        if create is not None:
+            _policy_require(create.group(1) in names, "undeclared table")
+            seen_tables.append(create.group(1))
+            if not absent:
+                kept.append(statement)
+            continue
+        _policy_require(not absent, "non-CREATE statement in native-owner migration")
+        _policy_require(any(re.match(r"INSERT(?:\s+IGNORE)?\s+INTO\s+" + re.escape(name) + r"\b",
+                                     statement, re.I) for name in names), "unlisted projected statement")
+        kept.append(statement)
+    _policy_require(len(seen_tables) == len(names) and set(seen_tables) == set(names), "incomplete table set")
+    _policy_require(seen_triggers == set(expected), "incomplete trigger set")
+    hashes = [hashlib.sha256(statement.encode()).hexdigest() for statement in kept]
+    _policy_require(hashes == entry["retainedStatementHashes"], "changed retained statements")
+    return kept
 
 
 def main():
@@ -98,13 +292,19 @@ def main():
     altered = set()  # 被 ALTER 加过列的表 —— 只有它们的种子要钉列名
     renames = {}  # 旧表名 -> 新表名（ALTER ... RENAME TO）。种子里的旧名要按它回填
 
+    policies = load_projection_policy(src_dir)
+    consumed = set()
+
     # **按版本号数字排序**，不是字典序。字典序把 V15 排在 V2 前面，
     # 于是 V15 的 ALTER 在建表之前重放 —— alter_table() 里 tables.get() 拿到 None
     # 就直接 return，**不报错、不提示**，产出一份缺列的 schema。
     # 缺的列只有等某个测试恰好用到它才会暴露，而多数测试用不到。
     for f in sorted(src_dir.glob("V*.sql"),
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
-        replay(f.read_text(), tables, order, seeds, renames, altered)
+        replay_statements(project_migration(f, policies), tables, order, seeds, renames, altered)
+        if f.resolve() in policies:
+            consumed.add(f.resolve())
+    _policy_require(consumed == set(policies), "unused declared projection")
 
     # MySQL scopes index names to a table; H2 scopes named constraints to the schema.
     # Rename only collisions in the generated fixture, preserving production migrations.
@@ -116,13 +316,21 @@ def main():
                 key = match.group(1).lower()
                 constraint_names[key] = constraint_names.get(key, 0) + 1
     out = [HEADER]
+    for policy in policies.values():
+        entry = policy.entry
+        if entry["mode"] == "NATIVE_OWNER_ABSENT":
+            out.append("-- Native capability absent: " + entry["migration"] + " | "
+                       + ",".join(entry["absentTables"]) + "\n")
+        else:
+            out.append("-- Native trigger projection: " + entry["migration"] + " | "
+                       + ",".join(trigger["name"] for trigger in policy.descriptor["triggers"]) + "\n")
     for name in order:
         cols = []
         for col in tables[name]:
             match = re.match(r"(\s*CONSTRAINT\s+)(\w+)\b", col, re.I)
             if match and constraint_names[match.group(2).lower()] > 1:
                 col = col[:match.start(2)] + name + "_" + col[match.start(2):]
-            cols.append(_h2_type(col))
+            cols.append(_trim_sql_line_ends(_h2_type(col)))
         out.append(f"CREATE TABLE IF NOT EXISTS {name}\n(\n"
                    + ",\n".join(cols) + "\n);\n")
     if seeds:
@@ -147,7 +355,7 @@ def main():
             # H2 2.4 在 MODE=MySQL 下认这个关键字（实测：重复插入 update count=0，
             # 且**保留原值不覆盖**，所以测试中途改过的数据不会被重放冲掉）。
             stmt = re.sub(r"^INSERT\s+INTO\b", "INSERT IGNORE INTO", stmt, count=1, flags=re.I)
-            fixed.append(stmt)
+            fixed.append(_trim_sql_line_ends(stmt))
         out.append("-- 种子数据\n" + "\n".join(fixed) + "\n")
     out_path.write_text("\n".join(out))
     try:
@@ -325,8 +533,12 @@ def _pin_columns(stmt, tables, altered):
 
 
 def replay(sql, tables, order, seeds, renames, altered):
-    # Lex first: quoted semicolons and whole native compound bodies are not boundaries.
-    for stmt in sql_statements(sql):
+    replay_statements(sql_statements(sql), tables, order, seeds, renames, altered)
+
+
+def replay_statements(statements, tables, order, seeds, renames, altered):
+    # Keep already lexed native bodies whole; never re-split projected statements.
+    for stmt in statements:
         if not stmt:
             continue
         low = stmt.lower()

@@ -72,8 +72,45 @@ class SchemaGeneratorTest {
                         + "重新生成一次（python3 backend/scripts/gen-test-schema.py），不要手改产物", table)
                 .containsExactlyInAnyOrderElementsOf(columns));
 
+        var projection = H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(module),
+                module.resolve("src/main/resources/db/migration"));
+        assertThat(gen.keySet()).doesNotContainAnyElementsOf(projection.nativeTables().keySet());
         assertH2CanLoad(generated);
         Files.deleteIfExists(generated);
+    }
+
+    @Test
+    void inventoryGeneratorPreservesLegacySchemaWithoutNativeInstallation() throws Exception {
+        Path module = Path.of("").toAbsolutePath();
+        Path root = H2FixtureProjection.repositoryRoot(module);
+        Path script = root.resolve("backend/scripts/gen-test-schema.py");
+        Path migrations = root.resolve("backend/shop-inventory/src/main/resources/db/inventory");
+        Path committed = module.resolve("src/test/resources/db/inventory-h2/V1__inventory_baseline.sql");
+        Path generated = Files.createTempFile("inventory-schema-gen", ".sql");
+        try {
+            assertThat(runGenerator(script, generated, migrations)).isZero();
+            var expected = parse(committed);
+            var actual = parse(generated);
+            assertThat(actual).isEqualTo(expected);
+            var projection = H2FixtureProjection.load(root, migrations);
+            assertThat(projection.nativeTables().keySet()).containsExactlyInAnyOrder(
+                    "inv_execution_retention_claim", "inv_execution_retention");
+            assertThat(actual.keySet()).doesNotContainAnyElementsOf(projection.nativeTables().keySet());
+            assertThat(actual).containsKeys("inv_reservation", "inv_reservation_line", "inv_stock_balance",
+                    "inv_outbound_order", "inv_ledger", "inv_refund_restore", "inv_return_receipt");
+            String url = "jdbc:h2:mem:inventory_projection_" + System.nanoTime() + ";MODE=MySQL";
+            try (var connection = java.sql.DriverManager.getConnection(url, "sa", "")) {
+                org.h2.tools.RunScript.execute(connection,
+                        Files.newBufferedReader(generated, StandardCharsets.UTF_8));
+                var datasource = new org.springframework.jdbc.datasource.SingleConnectionDataSource(connection, true);
+                var verifier = new ai.neargo.shop.inventory.policy.ExecutionStockRetentionSchemaVerifier(datasource);
+                assertThat(verifier.installation()).isEqualTo(
+                        ai.neargo.shop.inventory.policy.ExecutionStockRetentionSchemaVerifier.Installation.ABSENT);
+                assertThatThrownBy(verifier::requireAvailable).isInstanceOf(ai.neargo.shop.common.BizException.class);
+            }
+        } finally {
+            Files.deleteIfExists(generated);
+        }
     }
 
     @Test
@@ -117,7 +154,15 @@ class SchemaGeneratorTest {
     }
 
     private int runGenerator(Path script, Path out) throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder("python3", script.toString(), out.toString());
+        return runGenerator(script, out, null);
+    }
+
+    private int runGenerator(Path script, Path out, Path migrations) throws IOException, InterruptedException {
+        var command = new java.util.ArrayList<>(List.of("python3", script.toString(), out.toString()));
+        if (migrations != null) {
+            command.add(migrations.toString());
+        }
+        ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(true);
         Process p;
         try {
@@ -153,6 +198,17 @@ class SchemaGeneratorTest {
         String url = "jdbc:h2:mem:schemagen_" + System.nanoTime() + ";MODE=MySQL";
         try (var conn = java.sql.DriverManager.getConnection(url, "sa", "")) {
             org.h2.tools.RunScript.execute(conn, Files.newBufferedReader(sql, StandardCharsets.UTF_8));
+            var source = new org.springframework.jdbc.datasource.SingleConnectionDataSource(conn, true);
+            var execution = new ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier(
+                    source, "flyway_schema_history", null);
+            var retention = new ai.neargo.shop.product.policy.ExecutionStockRetentionSchemaVerifier(
+                    source, "flyway_schema_history", null);
+            assertThat(execution.installation()).isEqualTo(
+                    ai.neargo.shop.trade.policy.ServiceExecutionSchemaVerifier.Installation.ABSENT);
+            assertThat(retention.installation()).isEqualTo(
+                    ai.neargo.shop.product.policy.ExecutionStockRetentionSchemaVerifier.Installation.ABSENT);
+            assertThatThrownBy(execution::requireAvailable).isInstanceOf(ai.neargo.shop.common.BizException.class);
+            assertThatThrownBy(retention::requireAvailable).isInstanceOf(ai.neargo.shop.common.BizException.class);
         } catch (Exception e) {
             throw new AssertionError(
                     "生成的 schema 在 H2 上建不起来 —— 真跑的时候症状会是「Spring 上下文起不来」，"

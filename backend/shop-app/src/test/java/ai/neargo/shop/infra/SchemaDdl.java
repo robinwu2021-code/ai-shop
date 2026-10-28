@@ -10,7 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Shared test-only CREATE reader so both schema guards compare actual definitions, not lines. */
-final class SchemaDdl {
+public final class SchemaDdl {
     private static final Pattern TABLE =
             Pattern.compile(
                     "\\bCREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?`?(\\w+)`?(?!\\w)",
@@ -36,6 +36,10 @@ final class SchemaDdl {
                     "SPATIAL");
 
     private SchemaDdl() {}
+
+    public static String codeText(String sql) {
+        return sqlText(sql).code();
+    }
 
     static Map<String, Set<String>> createColumns(String sql) {
         SqlText text = sqlText(sql);
