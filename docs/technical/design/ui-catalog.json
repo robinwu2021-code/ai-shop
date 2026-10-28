@@ -6,6 +6,22 @@
       "count": 120,
       "domains": [
         {
+          "name": "工作台",
+          "pages": [
+            {
+              "app": "b-app",
+              "route": "/pages/home/index",
+              "title": "工作台",
+              "domain": "工作台",
+              "tab": true,
+              "status": "已实现",
+              "proto": "s01",
+              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
+              "preview": "http://localhost:5175/#/pages/home/index"
+            }
+          ]
+        },
+        {
           "name": "其它",
           "pages": [
             {
@@ -579,22 +595,6 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/stored-value-activity-edit/index"
-            }
-          ]
-        },
-        {
-          "name": "工作台",
-          "pages": [
-            {
-              "app": "b-app",
-              "route": "/pages/home/index",
-              "title": "工作台",
-              "domain": "工作台",
-              "tab": true,
-              "status": "已实现",
-              "proto": "s01",
-              "protoUrl": "https://claude.ai/code/artifact/ea3b41e2-06e9-4040-907f-3003087a693c",
-              "preview": "http://localhost:5175/#/pages/home/index"
             }
           ]
         },
