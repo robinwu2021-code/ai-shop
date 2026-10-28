@@ -25,7 +25,7 @@
 | components | 50 |
 | localeKeys | 3627 |
 | catalogEntries | 3627 |
-| references | 3285 |
+| references | 3287 |
 | dynamicReferences | 356 |
 | duplicateGroups | 347 |
 | duplicateKeys | 924 |
@@ -104,7 +104,7 @@
 | platform-activity-apply/index.vue | 是 | sh-scaffold ×1、sh-icon ×2、sh-actionbar ×1、sh-sheet ×1、sh-empty ×1 | 37 | 0 | 0 |
 | points/index.vue | 是 | sh-scaffold ×1、sh-empty ×1、StorePointStatements ×1 | 17 | 0 | 0 |
 | points-records/index.vue | 是 | sh-scaffold ×1、sh-empty ×1 | 6 | 0 | 0 |
-| print-center/index.vue | 是 | sh-scaffold ×1 | 45 | 0 | 0 |
+| print-center/index.vue | 是 | sh-scaffold ×1 | 47 | 0 | 0 |
 | print-devices/index.vue | 是 | sh-scaffold ×1 | 39 | 0 | 0 |
 | print-templates/index.vue | 是 | sh-scaffold ×1、sh-check ×2 | 19 | 0 | 0 |
 | purchase-edit/index.vue | 是 | sh-scaffold ×1、sh-kv ×2、sh-add ×1、sh-icon ×1、sh-actionbar ×1、biz-item-picker ×1、biz-supplier-picker ×1 | 19 | 0 | 0 |
@@ -227,7 +227,7 @@
 | --- | --- | --- |
 | view | 125 | 1806 |
 | text | 125 | 2063 |
-| button | 6 | 46 |
+| button | 6 | 47 |
 | picker | 12 | 25 |
 | input | 41 | 150 |
 | textarea | 10 | 13 |
@@ -248,19 +248,19 @@
 | field__head | 1 | 5 |
 | field__input | 37 | 99 |
 | field__label | 27 | 84 |
-| sh-actions | 5 | 7 |
+| sh-actions | 6 | 8 |
 | sh-badge-count | 1 | 1 |
 | sh-block | 4 | 10 |
 | sh-block__body | 1 | 1 |
 | sh-block__head | 0 | 0 |
 | sh-block__head--tabs | 0 | 0 |
-| sh-btn | 94 | 314 |
+| sh-btn | 94 | 315 |
 | sh-btn--danger | 10 | 10 |
 | sh-btn--danger-solid | 1 | 1 |
 | sh-btn--md | 1 | 2 |
 | sh-btn--muted | 28 | 51 |
-| sh-btn--sm | 17 | 90 |
-| sh-btn--soft | 41 | 111 |
+| sh-btn--sm | 17 | 91 |
+| sh-btn--soft | 41 | 112 |
 | sh-card | 114 | 363 |
 | sh-card__head | 20 | 40 |
 | sh-cell | 34 | 204 |
@@ -302,7 +302,7 @@
 | sh-root | 0 | 0 |
 | sh-row | 120 | 656 |
 | sh-row--baseline | 21 | 32 |
-| sh-row--between | 103 | 394 |
+| sh-row--between | 103 | 393 |
 | sh-row--divided | 10 | 27 |
 | sh-row--top | 1 | 1 |
 | sh-scaffold | 0 | 0 |
@@ -312,7 +312,7 @@
 | sh-seg--fill | 1 | 2 |
 | sh-seg--off | 0 | 0 |
 | sh-seg--on | 0 | 0 |
-| sh-stack | 7 | 16 |
+| sh-stack | 7 | 19 |
 | sh-void | 2 | 3 |
 | sh-was | 0 | 0 |
 | sh-wrap | 25 | 47 |
@@ -327,7 +327,7 @@
 | txt-price | 18 | 26 |
 | txt-primary | 13 | 16 |
 | txt-quiet | 16 | 47 |
-| txt-strong | 77 | 180 |
+| txt-strong | 77 | 179 |
 | txt-sub | 42 | 123 |
 | txt-title | 57 | 136 |
 

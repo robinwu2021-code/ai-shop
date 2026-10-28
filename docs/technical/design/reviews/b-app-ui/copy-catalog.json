@@ -14752,12 +14752,6 @@
         "file": "b-app/src/pages/print-center/index.vue",
         "line": 93,
         "kind": "title-key"
-      },
-      {
-        "key": "printCenter.title",
-        "file": "b-app/src/pages/print-center/index.vue",
-        "line": 97,
-        "kind": "call"
       }
     ]
   },
@@ -19417,6 +19411,12 @@
     "references": [
       {
         "key": "common.loadFailed",
+        "file": "b-app/src/pages/print-center/index.vue",
+        "line": 113,
+        "kind": "call"
+      },
+      {
+        "key": "common.loadFailed",
         "file": "packages/ui/src/components/sh-empty.vue",
         "line": 86,
         "kind": "call"
@@ -20222,6 +20222,12 @@
       {
         "key": "common.retry",
         "file": "b-app/src/pages/plan/index.vue",
+        "line": 113,
+        "kind": "call"
+      },
+      {
+        "key": "common.retry",
+        "file": "b-app/src/pages/print-center/index.vue",
         "line": 113,
         "kind": "call"
       },
@@ -21069,6 +21075,12 @@
         "key": "common.choose",
         "file": "b-app/src/pages/platform-activity-apply/index.vue",
         "line": 162,
+        "kind": "call"
+      },
+      {
+        "key": "common.choose",
+        "file": "b-app/src/pages/print-center/index.vue",
+        "line": 31,
         "kind": "call"
       }
     ]

@@ -22,13 +22,13 @@ const selectedScene = ref('ORDER_PAID'), fixture = ref<typeof SIMULATION_FIXTURE
 const selectedFactNo=ref(''),selectedFactRevision=ref('');
 const selectedFact=computed(()=>summary.value?.sourceFacts.find(f=>f.scene===selectedScene.value&&(!selectedFactNo.value||(f.factNo===selectedFactNo.value&&f.bizRevision===selectedFactRevision.value))));
 function selectFact(fact:FactRef|undefined){selectedFactNo.value=fact?.factNo||'';selectedFactRevision.value=fact?.bizRevision||'';if(fact)selectedScene.value=fact.scene;}
-const busy = ref(false), loading = ref(false), error = ref(''), latestOperation = ref<PrintOperation|null>(null), page = ref(1), total = ref(0);
+const busy = ref(false), loading = ref(false), listFailed = ref(false), sceneFailed = ref(false), error = ref(''), latestOperation = ref<PrintOperation|null>(null), page = ref(1), total = ref(0);
 let epoch = 0, scopeGeneration = 0, timer:ReturnType<typeof setInterval>|undefined;
 const tabs = computed(() => [
  { key:'jobs',permission:'read' },{ key:'requests',permission:'read' },{ key:'simulations',permission:'simulate' },{ key:'exports',permission:'export' },{ key:'incidents',permission:'resolve' },
 ].filter(x=>merchant.can('biz:print:'+x.permission)));
 const sceneNames = computed(()=>scenes.value.map(s=>s.title));
-const selectedTitle = computed(()=>scenes.value.find(s=>s.scene===selectedScene.value)?.title || selectedScene.value);
+const selectedTitle = computed(()=>scenes.value.find(s=>s.scene===selectedScene.value)?.title || String(t('common.choose')));
 const canRead = computed(()=>merchant.can('biz:print:read')||merchant.can('biz:print:simulate')||merchant.can('biz:print:export'));
 function textError(value:unknown){return value instanceof Error?value.message:String(t('printCenter.failed'));}
 async function load(clearError=true){
@@ -38,16 +38,16 @@ async function load(clearError=true){
   const query={storeNo,page:page.value,size:20};
   const result=tab.value==='jobs'?await callPrint<PrintPage<PrintJob>>('J06',{...query,orderNo:orderNo.value||undefined}):tab.value==='requests'?await callPrint<PrintPage<PrintRequest>>('J01',{...query,orderNo:orderNo.value||undefined}):tab.value==='simulations'?await callPrint<PrintPage<Simulation>>('S02',query):tab.value==='exports'?await callPrint<PrintPage<ExportView>>('E02',query):await callPrint<PrintPage<Incident>>('M02',query);
   if(current!==epoch || storeNo!==merchant.storeNo)return;
-  total.value=result.total;
+  listFailed.value=false;total.value=result.total;
   if(tab.value==='jobs')jobs.value=result.records as PrintJob[];else if(tab.value==='requests')requests.value=result.records as PrintRequest[];else if(tab.value==='simulations')simulations.value=result.records as Simulation[];else if(tab.value==='exports')exports.value=result.records as ExportView[];else incidents.value=result.records as Incident[];
   if(orderNo.value && merchant.can('biz:print:read') && (merchant.can('biz:order:view')||merchant.can('biz:aftersale')||(merchant.can('pay:sv:recharge:read')&&merchant.can('pay:sv:account:read')))){const value=await callPrint<PrintSummary>('J11',{storeNo},{orderNo:orderNo.value});if(current===epoch&&storeNo===merchant.storeNo){summary.value=value;if(!selectedFact.value||!selectedFactNo.value)selectFact(value.sourceFacts.find(f=>f.scene===selectedScene.value)||value.sourceFacts[0]);}}
- }catch(e){if(current===epoch)error.value=textError(e);}finally{if(current===epoch)loading.value=false;}
+ }catch(e){if(current===epoch)listFailed.value=true;}finally{if(current===epoch)loading.value=false;}
 }
 async function initialize(){
  if(USE_MOCK)return;
  await merchant.ensureScope();
  if(!tabs.value.some(x=>x.key===tab.value))tab.value=tabs.value[0]?.key||'jobs';
- if(merchant.can('biz:print:read')){try{scenes.value=await callPrint<Scene[]>('C01',{storeNo:merchant.storeNo});}catch(e){error.value=textError(e);}}
+ if(merchant.can('biz:print:read')){try{scenes.value=await callPrint<Scene[]>('C01',{storeNo:merchant.storeNo});sceneFailed.value=false;}catch(e){scenes.value=[];sceneFailed.value=true;}}
  await load();
 }
 async function run(action:()=>Promise<PrintOperation>):Promise<boolean>{if(busy.value)return false;busy.value=true;error.value='';const store=merchant.storeNo,generation=scopeGeneration;const current=()=>store===merchant.storeNo&&generation===scopeGeneration;try{const op=await action();if(!current())return false;latestOperation.value=op;await load();return current();}catch(e){if(current())error.value=textError(e);return false;}finally{busy.value=false;}}
@@ -93,8 +93,8 @@ onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
  <sh-scaffold title-key="printCenter.title" :denied="!canRead">
   <view v-if="USE_MOCK" class="sh-card sh-stack">{{ t('printCenter.mockHint') }}</view>
   <template v-else>
-   <view class="sh-card">
-    <view class="sh-row sh-row--between"><text class="txt-strong">{{ t('printCenter.title') }}</text><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" :disabled="loading" @tap="load()">{{ t('printCenter.refresh') }}</button></view>
+   <view class="sh-card sh-stack">
+    <view class="sh-row print-toolbar"><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" :disabled="loading" @tap="initialize">{{ t('printCenter.refresh') }}</button></view>
     <view v-if="orderNo" class="sh-muted">{{ t('printCenter.order') }} {{ orderNo }}</view>
     <view v-if="summary" class="print-summary">
      <text>{{ t('printCenter.status.'+summary.generationState) }}</text>
@@ -104,13 +104,13 @@ onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
     </view>
     <view class="sh-row print-nav"><button class="sh-btn sh-btn--soft sh-btn--sm" v-if="merchant.can('biz:print:device')" size="mini" @tap="navigate(ROUTES.printDevices)">{{ t('printCenter.devices') }}</button><button class="sh-btn sh-btn--soft sh-btn--sm" v-if="merchant.can('biz:print:config')" size="mini" @tap="navigate(ROUTES.printTemplates)">{{ t('printCenter.templates') }}</button></view>
    </view>
-   <view v-if="merchant.can('biz:print:simulate')" class="sh-card">
+   <view v-if="merchant.can('biz:print:simulate')" class="sh-card sh-stack">
     <text class="txt-strong">{{ t('printCenter.simulate') }}</text><text class="sh-muted print-hint">{{ t('printCenter.simulationHint') }}</text>
     <picker data-test="simulation-scene" :range="sceneNames" @change="changeScene"><view class="sh-cell">{{ selectedTitle }} ▾</view></picker>
     <picker :range="SIMULATION_FIXTURES.map(x=>String(t('printCenter.fixture.'+x)))" @change="fixtureChanged"><view class="sh-cell">{{ t('printCenter.fixture.'+fixture) }} ▾</view></picker>
-    <view class="sh-row"><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" :class="width===58?'print-selected':''" @tap="width=58">58mm</button><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" :class="width===80?'print-selected':''" @tap="width=80">80mm</button><button class="sh-btn sh-btn--sm" size="mini" :disabled="busy" @tap="simulate">{{ t('printCenter.runSimulation') }}</button></view>
+    <view class="sh-row sh-actions"><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" :class="width===58?'print-selected':''" @tap="width=58">58mm</button><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" :class="width===80?'print-selected':''" @tap="width=80">80mm</button><button class="sh-btn sh-btn--sm" size="mini" :disabled="busy||!scenes.length" @tap="simulate">{{ t('printCenter.runSimulation') }}</button></view>
    </view>
-   <view v-if="error" class="sh-card print-error" role="alert">{{ error }}</view>
+   <view v-if="error||listFailed||sceneFailed" class="sh-card print-error sh-stack" role="alert"><text>{{ error || t('common.loadFailed') }}</text><button v-if="listFailed||sceneFailed" class="sh-btn sh-btn--soft sh-btn--sm" :disabled="loading" @tap="initialize">{{ t('common.retry') }}</button></view>
    <view v-if="latestOperation" class="sh-card sh-muted">{{ t('printCenter.operation') }} {{ latestOperation.operationNo }} · {{ t('printCenter.status.'+latestOperation.status) }}<text class="sh-muted print-hint">{{ t('printCenter.operationHint') }}</text></view>
    <view class="sh-row print-tabs"><button class="sh-btn sh-btn--soft sh-btn--sm" v-for="item in tabs" :key="item.key" size="mini" :class="tab===item.key?'print-selected':''" @tap="tab=item.key">{{ t('printCenter.tabs.'+item.key) }}</button></view>
    <template v-if="tab==='jobs'">
@@ -122,7 +122,7 @@ onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
      <text v-if="job.resolutionStatus==='RESOLVED'" class="sh-muted print-hint">{{ t('printCenter.replacedHint') }}</text>
      <view class="sh-row print-actions"><button class="sh-btn sh-btn--soft sh-btn--sm" v-for="action in printJobActions(job,merchant.can)" :key="action" size="mini" :disabled="busy" @tap="jobAction(job,action)">{{ t('printCenter.action.'+action) }}</button><button class="sh-btn sh-btn--soft sh-btn--sm" v-if="merchant.can('biz:print:export')" size="mini" :disabled="busy" @tap="exportSource('JOB',job.jobNo,job.revision)">{{ t('printCenter.exportPdf') }}</button></view>
     </view>
-    <view v-if="!jobs.length&&!loading" class="sh-card sh-muted">{{ t('printCenter.empty') }}</view>
+    <view v-if="!jobs.length&&!loading&&!listFailed" class="sh-card sh-muted">{{ t('printCenter.empty') }}</view>
    </template>
    <template v-if="tab==='requests'"><view v-for="item in requests" :key="item.requestNo" class="sh-card"><text>{{ item.requestNo }} · {{ t('printCenter.status.'+item.status) }}</text><text v-if="item.blockCode" class="print-hint print-error">{{ t('printCenter.blockedHint') }} {{ item.blockCode }}</text><button class="sh-btn sh-btn--soft sh-btn--sm" v-if="merchant.can('biz:print:resolve')&&['PENDING','BLOCKED'].includes(item.status)" size="mini" :disabled="busy" @tap="run(()=>commands.run('J04',{expectedRevision:item.revision,reason:'CONFIGURATION_FIXED'},{requestNo:item.requestNo}))">{{ t('printCenter.retryGeneration') }}</button></view></template>
    <template v-if="tab==='simulations'"><view v-for="item in simulations" :key="item.simulationNo" class="sh-card sh-stack"><text class="txt-strong">{{ t(simulationOutcomeLabel(item.status)) }}</text><text class="sh-muted print-hint">{{ item.simulationNo }} · {{ t('printCenter.fixture.'+item.fixtureCode) }}</text><text class="sh-muted print-hint">{{ t('printCenter.simulationHint') }}</text><button class="sh-btn sh-btn--soft sh-btn--sm" size="mini" @tap="showSimulation(item)">{{ t('printCenter.simulationDetails') }}</button><button class="sh-btn sh-btn--soft sh-btn--sm" v-if="merchant.can('biz:print:export')" size="mini" :disabled="busy" @tap="exportSource('SIMULATION',item.simulationNo,item.revision)">{{ t('printCenter.exportPdf') }}</button></view></template>
@@ -134,7 +134,7 @@ onPullDownRefresh(async()=>{await load();uni.stopPullDownRefresh();});
  </sh-scaffold>
 </template>
 <style scoped>
-.print-receipt text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12rpx}.print-hint{display:block;color:var(--sh-sub);overflow-wrap:anywhere}.print-error{color:var(--sh-danger)}.print-summary{display:flex;flex-direction:column;gap:12rpx;margin-top:16rpx}.print-nav,.print-tabs,.print-actions{flex-wrap:wrap;gap:12rpx}.print-nav,.print-tabs{margin-top:16rpx}.print-tabs{padding:12rpx}.print-pager{justify-content:space-between;margin:24rpx}.print-actions button,.print-nav button{margin:0}
+.print-toolbar{justify-content:flex-end}.print-receipt text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12rpx}.print-hint{display:block;color:var(--sh-sub);overflow-wrap:anywhere}.print-error{color:var(--sh-danger)}.print-summary{display:flex;flex-direction:column;gap:12rpx}.print-nav,.print-tabs,.print-actions{flex-wrap:wrap;gap:12rpx}.print-tabs{margin-top:16rpx}.print-tabs{padding:12rpx}.print-pager{justify-content:space-between;margin:24rpx}.print-actions button,.print-nav button{margin:0}
 </style>
 
 <style scoped>.print-selected{background:var(--sh-primary);color:var(--sh-on-primary);}</style>

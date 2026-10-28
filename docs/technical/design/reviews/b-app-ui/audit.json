@@ -12,7 +12,7 @@
     "components": 50,
     "localeKeys": 3627,
     "catalogEntries": 3627,
-    "references": 3285,
+    "references": 3287,
     "dynamicReferences": 356,
     "duplicateGroups": 347,
     "duplicateKeys": 924,
@@ -5586,12 +5586,6 @@
     },
     {
       "file": "b-app/src/pages/print-center/index.vue",
-      "line": 108,
-      "rule": "card-heading-spacing",
-      "detail": "Review title/content separation; prefer sh-card__head or a stack."
-    },
-    {
-      "file": "b-app/src/pages/print-center/index.vue",
       "line": 130,
       "rule": "card-heading-spacing",
       "detail": "Review title/content separation; prefer sh-card__head or a stack."
@@ -5683,7 +5677,7 @@
     {
       "name": "button",
       "pageCount": 6,
-      "instances": 46
+      "instances": 47
     },
     {
       "name": "picker",
@@ -5754,8 +5748,8 @@
     },
     {
       "name": "sh-actions",
-      "pageCount": 5,
-      "instances": 7
+      "pageCount": 6,
+      "instances": 8
     },
     {
       "name": "sh-badge-count",
@@ -5785,7 +5779,7 @@
     {
       "name": "sh-btn",
       "pageCount": 94,
-      "instances": 314
+      "instances": 315
     },
     {
       "name": "sh-btn--danger",
@@ -5810,12 +5804,12 @@
     {
       "name": "sh-btn--sm",
       "pageCount": 17,
-      "instances": 90
+      "instances": 91
     },
     {
       "name": "sh-btn--soft",
       "pageCount": 41,
-      "instances": 111
+      "instances": 112
     },
     {
       "name": "sh-card",
@@ -6025,7 +6019,7 @@
     {
       "name": "sh-row--between",
       "pageCount": 103,
-      "instances": 394
+      "instances": 393
     },
     {
       "name": "sh-row--divided",
@@ -6075,7 +6069,7 @@
     {
       "name": "sh-stack",
       "pageCount": 7,
-      "instances": 16
+      "instances": 19
     },
     {
       "name": "sh-void",
@@ -6150,7 +6144,7 @@
     {
       "name": "txt-strong",
       "pageCount": 77,
-      "instances": 180
+      "instances": 179
     },
     {
       "name": "txt-sub",
@@ -9380,27 +9374,29 @@
         "sh-scaffold": 1,
         "view": 24,
         "template": 6,
+        "button": 18,
         "text": 28,
-        "button": 17,
         "picker": 3,
         "input": 1
       },
       "classes": {
         "sh-card": 13,
-        "sh-stack": 3,
+        "sh-stack": 6,
         "sh-row": 7,
-        "sh-row--between": 2,
-        "txt-strong": 5,
-        "sh-btn": 17,
-        "sh-btn--soft": 16,
-        "sh-btn--sm": 17,
+        "print-toolbar": 1,
+        "sh-btn": 18,
+        "sh-btn--soft": 17,
+        "sh-btn--sm": 18,
         "sh-muted": 10,
         "print-summary": 1,
         "sh-cell": 3,
         "print-nav": 1,
+        "txt-strong": 4,
         "print-hint": 9,
+        "sh-actions": 1,
         "print-error": 3,
         "print-tabs": 1,
+        "sh-row--between": 1,
         "print-actions": 1,
         "print-receipt": 1,
         "print-pager": 1
@@ -9410,7 +9406,7 @@
       "lines": 141,
       "cssNonblankLines": 2,
       "registered": true,
-      "referenceCount": 45,
+      "referenceCount": 47,
       "literalCount": 0,
       "layoutCandidateCount": 0
     },

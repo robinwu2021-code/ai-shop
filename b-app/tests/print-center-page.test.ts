@@ -96,3 +96,17 @@ it.each(['success','failure'])('discards an old %s after an A to B to A store ro
  expect(w.text()).not.toContain('OLD-SUCCESS');expect(w.text()).not.toContain('stale A failure');
  expect(w.get('.print-tabs .print-selected').text()).toBe('printCenter.tabs.jobs');expect(m.call).not.toHaveBeenCalled();
 });
+it('shows a localized retry state without exposing scene codes when print data fails',async()=>{
+ m.call.mockRejectedValue(new Error('响应格式不符合契约'));
+ const w=await render();
+ expect(w.text()).not.toContain('ORDER_PAID');
+ expect(w.text()).not.toContain('响应格式不符合契约');
+ expect(w.text()).not.toContain('printCenter.empty');
+ expect(w.get('[role="alert"]').text()).toContain('common.loadFailed');
+ expect(button(w,'common.retry')).toBeDefined();
+ expect(button(w,'printCenter.runSimulation').attributes('disabled')).toBeDefined();
+ m.call.mockImplementation(async(id:string)=>id==='C01'?[{scene:'ORDER_PAID',title:'Order receipt',sourceAvailable:true}]:{records:[],total:0,page:1,size:20});
+ await button(w,'common.retry').trigger('tap');await flushPromises();
+ expect(w.text()).toContain('Order receipt');
+ expect(w.find('[role="alert"]').exists()).toBe(false);
+});
