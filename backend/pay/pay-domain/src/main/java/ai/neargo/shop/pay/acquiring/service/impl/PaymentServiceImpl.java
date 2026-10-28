@@ -212,24 +212,47 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    public PayOrder refresh(PayCaller caller, String payOrderNo) {
+        PayOrder o = query(caller, payOrderNo);
+        policy.check(caller, PayAction.QUERY, o.getStoreId());
+        if (PayOrderStatus.valueOf(o.getStatus()).terminal()) {
+            return o;
+        }
+        settleIfPaid(openAttempts(o.getId()));
+        return find(payOrderNo);
+    }
+
+    private List<StlPayment> openAttempts(Long payOrderId) {
+        return DataScopeContext.executeWithoutScope(() -> attempts.selectList(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getPayOrderId, payOrderId)
+                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        .notIn(StlPayment::getStatus, StlPayment.SUCCESS, StlPayment.CLOSED, StlPayment.FAILED)));
+    }
+
+    /** 逐个查单，第一笔查到已付的按结果入口入账（渠道调用在事务外）；有入账返回 true */
+    private boolean settleIfPaid(List<StlPayment> open) {
+        for (StlPayment a : open) {
+            PayQueryPort.Result r = channels.query(a.getPayChannel(), a.getOutTradeNo());
+            if (r != null && r.ok() && r.found() && r.paid() && r.tradeNo() != null) {
+                ledger.settle(new SettlePort.PaymentSettled(a.getOutTradeNo(), a.getPayChannel(), r.tradeNo(),
+                        r.amountMinor(), System.currentTimeMillis(), r.currency() == null ? a.getCurrency() : r.currency()));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public PayOrder close(PayCaller caller, String payOrderNo, String reason) {
         PayOrder o = query(caller, payOrderNo);
         policy.check(caller, PayAction.CLOSE, o.getStoreId());
         if (PayOrderStatus.valueOf(o.getStatus()).terminal()) {
             return o;
         }
-        List<StlPayment> open = DataScopeContext.executeWithoutScope(() -> attempts.selectList(
-                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getPayOrderId, o.getId())
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .notIn(StlPayment::getStatus, StlPayment.SUCCESS, StlPayment.CLOSED, StlPayment.FAILED)));
+        List<StlPayment> open = openAttempts(o.getId());
         // 关前必查单（R18），渠道调用在事务外：查到已付就按结果入口入账，不关
-        for (StlPayment a : open) {
-            PayQueryPort.Result r = channels.query(a.getPayChannel(), a.getOutTradeNo());
-            if (r != null && r.ok() && r.found() && r.paid() && r.tradeNo() != null) {
-                ledger.settle(new SettlePort.PaymentSettled(a.getOutTradeNo(), a.getPayChannel(), r.tradeNo(),
-                        r.amountMinor(), System.currentTimeMillis(), r.currency() == null ? a.getCurrency() : r.currency()));
-                return find(payOrderNo);
-            }
+        if (settleIfPaid(open)) {
+            return find(payOrderNo);
         }
         tx.executeWithoutResult(s -> {
             PayOrder locked = orders.lockById(o.getId());

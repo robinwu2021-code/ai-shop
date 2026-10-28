@@ -33667,6 +33667,13 @@
       "package": "ai.neargo.shop.pay.ledger.entity"
     },
     {
+      "table": "pay_manager_code",
+      "class": "PayManagerCode",
+      "zh": "pay_manager_code（db/pay V16 · pay-guard 开发计划 M6.1）：店长授权码：终端撤销 / 退款的授权，由商家端设置，只存哈希。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.terminal.entity"
+    },
+    {
       "table": "pay_merchant",
       "class": "PayMerchant",
       "zh": "pay_merchant（db/pay V10 · TDD-支付服务-I4进件与收款商户 S1）：收款商户 = 渠道中的商户。",
@@ -33763,6 +33770,20 @@
       "zh": "支付域自己的设置（V285）。",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.entity"
+    },
+    {
+      "table": "pay_terminal",
+      "class": "PayTerminal",
+      "zh": "pay_terminal（db/pay V16 · pay-guard 开发计划 M6.1）：刷卡机终端（自研 App）：绑定收款商户与门店。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.terminal.entity"
+    },
+    {
+      "table": "pay_terminal_batch",
+      "class": "PayTerminalBatch",
+      "zh": "pay_terminal_batch（db/pay V16 · pay-guard 开发计划 M6.1）：终端日结：终端上报与服务端汇总比对。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.terminal.entity"
     },
     {
       "table": "pmt_activity",
@@ -36046,6 +36067,13 @@
         "host": "SettlementRefundBasis",
         "name": "NEEDS_REVIEW",
         "value": "NEEDS_REVIEW",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "TerminalService",
+        "name": "OWNER_TYPE",
+        "value": "TERMINAL",
         "zh": "",
         "module": "pay/pay-domain"
       },
@@ -50748,6 +50776,14 @@
       "type": "String",
       "value": "\"127.0.0.1/32,::1/128\"",
       "zh": "来源 IP 白名单的默认值：本机回环（IPv4 与 IPv6）",
+      "module": "pay/pay-guard"
+    },
+    {
+      "host": "TerminalGuard",
+      "name": "ACTIVATION_PATH",
+      "type": "String",
+      "value": "PortalFace.TERMINAL.prefix() + \"/activation\"",
+      "zh": "",
       "module": "pay/pay-guard"
     },
     {

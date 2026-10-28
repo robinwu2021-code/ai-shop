@@ -9,7 +9,9 @@ import java.util.regex.Pattern;
 final class PortalMasking {
 
     private static final Pattern SENSITIVE = Pattern.compile(
-            "(\"(?:[A-Za-z]*(?:secret|password|token|sign|key|card|cvv|pin|idNumber|account|mobile|phone|email|openId))\"\\s*:\\s*)"
+            "(\"(?:[A-Za-z]*(?:secret|password|token|sign|key|card|cvv|pin|idNumber|account|mobile|phone|email|openId"
+                    // POS 终端（M6）：读卡套件密文整段脱敏（PCI 边界）；付款码、店长授权码、激活码都是一次性凭证
+                    + "|cardData|authCode|managerCode|activationCode))\"\\s*:\\s*)"
                     + "(\"(?:[^\"\\\\]|\\\\.)*\"|-?\\d+)", Pattern.CASE_INSENSITIVE);
 
     private PortalMasking() {

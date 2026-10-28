@@ -11552,6 +11552,76 @@ CREATE TABLE IF NOT EXISTS pay_qr_code
     CONSTRAINT uk_pay_qr_code_1 UNIQUE (qr_code)
 );
 
+CREATE TABLE IF NOT EXISTS pay_terminal
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    terminal_sn VARCHAR(64) NOT NULL,
+    store_id BIGINT NOT NULL,
+    pay_merchant_id BIGINT NOT NULL,
+    model VARCHAR(64) NOT NULL,
+    reader_kit VARCHAR(64) NULL,
+    app_version VARCHAR(32) NULL,
+    status VARCHAR(24) NOT NULL,
+    activation_code_sha256 CHAR(64) NULL,
+    activation_expire_at DATETIME(3) NULL,
+    device_fingerprint VARCHAR(128) NULL,
+    sec_key_id BIGINT NULL,
+    daily_refund_limit_minor BIGINT NOT NULL DEFAULT 0,
+    last_seen_at DATETIME(3) NULL,
+    activated_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_terminal_1 UNIQUE (terminal_sn)
+);
+
+CREATE TABLE IF NOT EXISTS pay_manager_code
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    store_id BIGINT NOT NULL,
+    manager_account_id BIGINT NOT NULL,
+    code_hash VARCHAR(128) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    failed_attempts INT NOT NULL DEFAULT 0,
+    locked_until DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_manager_code_1 UNIQUE (store_id,manager_account_id)
+);
+
+CREATE TABLE IF NOT EXISTS pay_terminal_batch
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_terminal_id BIGINT NOT NULL,
+    biz_date DATE NOT NULL,
+    currency CHAR(3) NOT NULL,
+    reported_count INT NOT NULL,
+    reported_minor BIGINT NOT NULL,
+    reported_void_count INT NOT NULL DEFAULT 0,
+    reported_void_minor BIGINT NOT NULL DEFAULT 0,
+    server_count INT NULL,
+    server_minor BIGINT NULL,
+    status VARCHAR(24) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_terminal_batch_1 UNIQUE (pay_terminal_id,biz_date)
+);
+
 CREATE TABLE IF NOT EXISTS sec_master_key
 (
     id BIGINT NOT NULL AUTO_INCREMENT,

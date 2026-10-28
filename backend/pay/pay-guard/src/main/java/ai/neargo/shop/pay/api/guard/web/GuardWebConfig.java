@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.api.guard.web;
 
 import ai.neargo.shop.pay.acquiring.port.InternalCallers;
 import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.terminal.TerminalAuthService;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
@@ -17,14 +18,17 @@ public class GuardWebConfig implements WebMvcConfigurer {
 
     private final ObjectProvider<AppAuthService> apps;
     private final InternalCallers callers;
+    private final ObjectProvider<TerminalAuthService> terminals;
 
-    public GuardWebConfig(ObjectProvider<AppAuthService> apps, InternalCallers callers) {
+    public GuardWebConfig(ObjectProvider<AppAuthService> apps, InternalCallers callers,
+                          ObjectProvider<TerminalAuthService> terminals) {
         this.apps = apps;
         this.callers = callers;
+        this.terminals = terminals;
     }
 
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-        resolvers.add(new CallerArgumentResolver(apps, callers));
+        resolvers.add(new CallerArgumentResolver(apps, callers, terminals));
     }
 }

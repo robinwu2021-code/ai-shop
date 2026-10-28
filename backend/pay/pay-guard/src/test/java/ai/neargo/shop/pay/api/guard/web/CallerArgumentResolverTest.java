@@ -83,7 +83,8 @@ class CallerArgumentResolverTest {
 
     private final RecordingApps apps = new RecordingApps();
     private final CallerArgumentResolver resolver = new CallerArgumentResolver(providerOf(apps),
-            new InternalCallers(null));
+            new InternalCallers(null), new org.springframework.beans.factory.support.StaticListableBeanFactory()
+                    .getBeanProvider(ai.neargo.shop.pay.api.guard.terminal.TerminalAuthService.class));
 
     private static org.springframework.beans.factory.ObjectProvider<AppAuthService> providerOf(AppAuthService apps) {
         DefaultListableBeanFactory beans = new DefaultListableBeanFactory();

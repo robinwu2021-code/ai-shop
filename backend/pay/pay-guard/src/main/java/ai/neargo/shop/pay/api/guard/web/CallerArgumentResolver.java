@@ -5,6 +5,7 @@ import ai.neargo.shop.pay.acquiring.port.InternalCallers;
 import ai.neargo.shop.pay.api.guard.core.PortalPrincipal;
 import ai.neargo.shop.pay.api.guard.core.PortalRequests;
 import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
+import ai.neargo.shop.pay.api.guard.terminal.TerminalAuthService;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.MethodParameter;
@@ -28,10 +29,13 @@ public class CallerArgumentResolver implements HandlerMethodArgumentResolver {
 
     private final ObjectProvider<AppAuthService> apps;
     private final InternalCallers callers;
+    private final ObjectProvider<TerminalAuthService> terminals;
 
-    public CallerArgumentResolver(ObjectProvider<AppAuthService> apps, InternalCallers callers) {
+    public CallerArgumentResolver(ObjectProvider<AppAuthService> apps, InternalCallers callers,
+                                  ObjectProvider<TerminalAuthService> terminals) {
         this.apps = apps;
         this.callers = callers;
+        this.terminals = terminals;
     }
 
     @Override
@@ -49,6 +53,9 @@ public class CallerArgumentResolver implements HandlerMethodArgumentResolver {
         return switch (who.face()) {
             case OPEN -> open(who, parameter);
             case OPS -> callers.opsOperator(who.subjectId());
+            // 终端：门店圈到绑定的那一家；收银员取自 X-Operator（M6.2）
+            case TERMINAL -> terminals.getObject().callerFor(who.subjectId(),
+                    web.getHeader("X-Operator"));
             default -> throw new IllegalStateException("入口 " + who.face() + " 不经参数给 PayCaller：" + parameter.getMethod());
         };
     }
