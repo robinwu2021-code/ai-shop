@@ -8718,7 +8718,7 @@ _无字段_
 
 ### payops
 
-#### GET `/pay-ops/v1/exceptions`
+#### GET `/ops/payments/exceptions`
 
 payOpsExceptions
 
@@ -8731,7 +8731,7 @@ payOpsExceptions
 类型：`object`\[\]
 
 
-#### POST `/pay-ops/v1/exceptions/{id}/ignore`
+#### POST `/ops/payments/exceptions/{id}/ignore`
 
 payOpsIgnoreException
 
@@ -8748,7 +8748,7 @@ _无字段_
 类型：`object`
 
 
-#### POST `/pay-ops/v1/exceptions/{id}/refund`
+#### POST `/ops/payments/exceptions/{id}/refund`
 
 原路退回那一笔多收的钱（不碰已关支付单的余额） */
 
@@ -8765,7 +8765,7 @@ _无字段_
 类型：`object`
 
 
-#### GET `/pay-ops/v1/notifies`
+#### GET `/ops/payments/notifies`
 
 payOpsNotifies
 
@@ -8778,7 +8778,7 @@ payOpsNotifies
 类型：`object`\[\]
 
 
-#### POST `/pay-ops/v1/notifies/{id}/resend`
+#### POST `/ops/payments/notifies/{id}/resend`
 
 payOpsResendNotify
 
@@ -8795,7 +8795,7 @@ _无字段_
 类型：`object`
 
 
-#### GET `/pay-ops/v1/orders`
+#### GET `/ops/payments/orders`
 
 payOpsOrders
 
@@ -8808,7 +8808,7 @@ payOpsOrders
 类型：`object`\[\]
 
 
-#### GET `/pay-ops/v1/orders/{no}`
+#### GET `/ops/payments/orders/{no}`
 
 payOpsOrder
 
@@ -8825,7 +8825,7 @@ payOpsOrder
 类型：`object`
 
 
-#### PUT `/pay-ops/v1/qr-codes/{qrCode}/disabled`
+#### PUT `/ops/payments/qr-codes/{qrCode}/disabled`
 
 payOpsDisableQrCode
 
@@ -8842,7 +8842,7 @@ _无字段_
 类型：`object`
 
 
-#### GET `/pay-ops/v1/refunds`
+#### GET `/ops/payments/refunds`
 
 payOpsRefunds
 
@@ -8855,7 +8855,7 @@ payOpsRefunds
 类型：`object`\[\]
 
 
-#### POST `/pay-ops/v1/refunds/{no}/review`
+#### POST `/ops/payments/refunds/{no}/review`
 
 两人复核：同一人不能通过两次
 
