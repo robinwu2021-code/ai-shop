@@ -1,5 +1,7 @@
 package ai.neargo.shop.spi.pay;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * 内部系统（商城、餐饮）调支付的唯一入口（开发计划 §3.1；TDD-支付服务-I3支付单退款流水）。
  *
@@ -15,14 +17,24 @@ public interface PaymentPort {
     PaymentHandle createPayment(InternalCreatePaymentCmd cmd);
 
     /** 按支付单号查；查无此单返回 {@code null}。{@code bizType} 决定以哪个内部调用方的身份查（独立形态按它授权） */
-    PaymentHandle queryPayment(String bizType, String payOrderNo);
+    PaymentHandle queryPayment(String bizType, String payOrderNo, CallSource source);
+
+    /** 同上，来源取当前上下文（{@link CallSources#current()}）—— 现有调用方不改 */
+    default PaymentHandle queryPayment(String bizType, String payOrderNo) {
+        return queryPayment(bizType, payOrderNo, CallSources.current());
+    }
 
     /**
      * 关单（S7）：<b>关前必查单</b>。渠道说已付 → 不关、按结果入口入账（返回 SUCCEEDED）；没付 / 没有这笔 / 查不通 →
      * 关支付单与未终态的尝试（之后到账走 LATE_PAYMENT）。调用方应在自己的事务<b>提交之后</b>调：订单关单回滚而支付单已关，
      * 下一次付款会被当成关单后到账。按调用方单号定位（交易域手里是订单号）；没有支付单返回 {@code null}。
      */
-    PaymentHandle closePayment(String bizType, String outOrderNo, String reason);
+    PaymentHandle closePayment(String bizType, String outOrderNo, String reason, CallSource source);
+
+    /** 同上，来源取当前上下文（{@link CallSources#current()}）—— 现有调用方不改 */
+    default PaymentHandle closePayment(String bizType, String outOrderNo, String reason) {
+        return closePayment(bizType, outOrderNo, reason, CallSources.current());
+    }
 
     /**
      * 退款（S6）。<b>必须带商家操作员</b>：内部系统不能以系统身份退款 —— 商城售后、餐饮 POS 的退款按钮背后是商户操作员。
@@ -36,10 +48,19 @@ public interface PaymentPort {
      * @param storeId    {@code mch_store.id}：调用方用 {@code MerchantQueryPort#payStoreOf} 解析
      * @param expireAt   支付截止（epoch 毫秒）
      * @param fundsPath  主体的资金路径（DIRECT / AGGREGATED），冻结进支付单，记流水按它分录
+     * @param source     调用来源（只留痕，ADR-045 G9）；<b>不进 HTTP 请求体</b>，独立形态走 {@link InternalHeaders#CALL_SOURCE} 头
      */
     record InternalCreatePaymentCmd(String bizType, String bizNo, String outOrderNo, Long storeId, String storeName,
                                     String entityName, String market, long amountMinor, String currency,
-                                    String subject, long expireAt, String fundsPath) {
+                                    String subject, long expireAt, String fundsPath, @JsonIgnore CallSource source) {
+
+        /** 现有调用方用的构造器：来源取当前上下文 */
+        public InternalCreatePaymentCmd(String bizType, String bizNo, String outOrderNo, Long storeId, String storeName,
+                                        String entityName, String market, long amountMinor, String currency,
+                                        String subject, long expireAt, String fundsPath) {
+            this(bizType, bizNo, outOrderNo, storeId, storeName, entityName, market, amountMinor, currency, subject,
+                    expireAt, fundsPath, CallSources.current());
+        }
     }
 
     record PaymentHandle(Long payOrderId, String payOrderNo, String status) {
@@ -49,9 +70,16 @@ public interface PaymentPort {
      * @param outRefundNo 调用方退款单号（幂等）
      * @param bizRefundNo 业务售后单号（字符串，取代合成的 {@code AS-{subOrderNo}}，R21）
      * @param operatorNo  商家操作员，必填
+     * @param source      调用来源（只留痕）；不进 HTTP 请求体，同 {@link InternalCreatePaymentCmd#source()}
      */
     record InternalRefundCmd(String bizType, String payOrderNo, String outRefundNo, String bizRefundNo, long amountMinor,
-                             String reason, String operatorNo) {
+                             String reason, String operatorNo, @JsonIgnore CallSource source) {
+
+        /** 现有调用方用的构造器：来源取当前上下文 */
+        public InternalRefundCmd(String bizType, String payOrderNo, String outRefundNo, String bizRefundNo,
+                                 long amountMinor, String reason, String operatorNo) {
+            this(bizType, payOrderNo, outRefundNo, bizRefundNo, amountMinor, reason, operatorNo, CallSources.current());
+        }
     }
 
     /** @param status 退款单状态：PENDING_REVIEW / DISPATCHED / SUCCEEDED / FAILED / REJECTED … */

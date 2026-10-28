@@ -8,6 +8,7 @@ import ai.neargo.shop.pay.acquiring.entity.PayRefund;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
 import ai.neargo.shop.pay.acquiring.entity.PayOrder;
 import ai.neargo.shop.pay.acquiring.service.PaymentService;
+import ai.neargo.shop.spi.pay.CallSource;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import java.time.Instant;
 
@@ -42,7 +43,7 @@ public class PaymentPortImpl implements PaymentPort {
     }
 
     @Override
-    public PaymentHandle queryPayment(String bizType, String payOrderNo) {
+    public PaymentHandle queryPayment(String bizType, String payOrderNo, CallSource source) {
         if (!enabled) {
             return null;
         }
@@ -55,7 +56,7 @@ public class PaymentPortImpl implements PaymentPort {
     }
 
     @Override
-    public PaymentHandle closePayment(String bizType, String outOrderNo, String reason) {
+    public PaymentHandle closePayment(String bizType, String outOrderNo, String reason, CallSource source) {
         if (!enabled) {
             return null;
         }

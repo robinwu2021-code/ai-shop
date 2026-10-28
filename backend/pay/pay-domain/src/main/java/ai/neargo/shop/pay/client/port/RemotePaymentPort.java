@@ -4,6 +4,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.client.PaymentInternalApi;
 import ai.neargo.shop.pay.client.PortResult;
+import ai.neargo.shop.spi.pay.CallSource;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.svc.client.ServiceCalls;
 import java.util.Map;
@@ -36,13 +37,13 @@ public class RemotePaymentPort implements PaymentPort {
     }
 
     @Override
-    public PaymentHandle queryPayment(String bizType, String payOrderNo) {
+    public PaymentHandle queryPayment(String bizType, String payOrderNo, CallSource source) {
         String app = appOf(bizType);
         return unwrap(() -> api.queryPayment(app, credential(app), new PaymentInternalApi.Query(bizType, payOrderNo)));
     }
 
     @Override
-    public PaymentHandle closePayment(String bizType, String outOrderNo, String reason) {
+    public PaymentHandle closePayment(String bizType, String outOrderNo, String reason, CallSource source) {
         String app = appOf(bizType);
         return unwrap(() -> api.closePayment(app, credential(app),
                 new PaymentInternalApi.Close(bizType, outOrderNo, reason)));

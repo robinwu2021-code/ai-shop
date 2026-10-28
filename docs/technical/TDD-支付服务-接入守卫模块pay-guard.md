@@ -601,6 +601,7 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M2.1 | `CallSources.current()` 不填 `module` | 调用方进程不知道这次是哪条业务线；由支付侧按业务类型补（`CallSource#withModuleIfAbsent`，M2.4） |
 | M2.1 | HTTP 来源由 MVC 拦截器 `CallSourceInterceptor`（`shop-base-auth`）绑定，不在 `CallSources` 里读 `RequestContextHolder` | `shop-base` 没有 Servlet（模块注释的约束）；拦截器处认证链已跑完、路由模板已匹配，IP 只经 `ClientMeta` |
 | M2.1 | 只挂了进程内任务执行器（`InProcessJobConfig`）与 Outbox 分发器；直接 `@Scheduled` 的方法未绑定，来源端记 `UNKNOWN` | 63 个 `@Scheduled` 类不逐个改；补偿查单若走 `@Scheduled`，M2.7 抽样前再在调度器上加 `TaskDecorator` |
+| M2.2 | 两个命令的 `source` 标 `@JsonIgnore`：<b>不进</b> `/internal/pay/v1` 的请求体 | 请求体的契约不变（新旧版本混部时 `pay-svc` 不会遇到认不出的字段）；来源只走 `X-Call-Source` 头（M2.3），接收方以头为准、不会两处对不上 |
 
 ---
 
