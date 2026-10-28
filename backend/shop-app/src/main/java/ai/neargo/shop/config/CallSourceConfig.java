@@ -20,6 +20,7 @@ public class CallSourceConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new CallSourceInterceptor());
+        // 内部调用的来源由 InternalCallFilter 从上游接力（M2.6），这里不能拿本次请求自己的信息顶掉
+        registry.addInterceptor(new CallSourceInterceptor()).excludePathPatterns("/internal/**");
     }
 }
