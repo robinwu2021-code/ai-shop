@@ -618,6 +618,8 @@ v1 的「运营端 step-up」「内部调用签名」两片取消（G9 / G10）�
 | M2.7 | 抽样只对内嵌形态的 `INTERNAL_PORT`；独立形态 `INTERNAL_HTTP` 的任务查单仍全记 | 生产是内嵌形态；独立形态在 M7 切换前按实际量再定，届时在 `RequestLogWriter` 加同一条规则 |
 | M2.7 | 只抽「任务来源的<b>成功</b>查单」：失败的查单、建单关单退款、Outbox 与请求来源的查单全记 | 出错的那次正是排障要看的 |
 | M2.8 | <b>新增</b>（开发计划原无此项）：内部入口来源 IP 白名单 `allowed-ips`，默认本机回环，拒绝回 403、记 `REJECTED_FORBIDDEN` | 用户 2026-10-28 加，补「不验凭据」之外的一道边界。只认 TCP 对端（内部调用不经 nginx，代理头都是调用方自己写的）；IP 判定从开放 API 的 `AppAuthServiceImpl#ipAllowed` 抽成 `IpAllowList` 两处共用，顺带让单个 IPv6 地址按字节比（`::1` = `0:0:0:0:0:0:0:1`） |
+| M3.1 | 类清单的 `ConfigAppSignatureVerifier` / `SecretAppSignatureVerifier` 落成 `ConfigAppSignatures` / `SecretAppSignatures`，各自同时实现验签 `AppSignatureVerifier` 与新增的出站签名 `AppSigner`；按 `key-source` 二选一装配（不再靠 `@Primary`） | 推送（`BizNotifyServiceImpl`）原先也从 `AppKeyResolver` 取材料自己签，删掉解析器就得有出站签名的接口；同一个密钥来源、两个方向，放一个类里不会一边切了另一边没切。放在 `pay-domain`（`openapp` / `secret`），因为推送在 `pay-domain` |
+| M3.1 | 只做 HMAC；`pay_app.sign_type` 的 RSA / ECDSA 分支未做 | `sign_type` 列随加解密迁移（M3.8）才有；现有接入方全是 HMAC |
 
 ---
 

@@ -9,7 +9,7 @@ import ai.neargo.shop.pay.channel.api.CallerType;
 import ai.neargo.shop.pay.mapper.acquiring.AcquiringMappers.PayRefundMapper;
 import ai.neargo.shop.pay.mapper.openapp.OpenAppMappers.PayAppGrantMapper;
 import ai.neargo.shop.pay.mapper.openapp.OpenAppMappers.PayAppMapper;
-import ai.neargo.shop.pay.openapp.AppKeyResolver;
+import ai.neargo.shop.pay.openapp.AppSignatureVerifier;
 import ai.neargo.shop.pay.openapp.NonceStore;
 import ai.neargo.shop.pay.openapp.SignatureCanonicalizer;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
@@ -17,18 +17,13 @@ import ai.neargo.shop.pay.openapp.entity.PayAppGrant;
 import ai.neargo.shop.pay.api.guard.core.IpAllowList;
 import ai.neargo.shop.pay.api.guard.open.service.AppAuthService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ai.neargo.shop.pay.api.guard.ConditionalOnGuardEntry;
@@ -44,18 +39,19 @@ public class AppAuthServiceImpl implements AppAuthService {
     private final PayAppMapper apps;
     private final PayAppGrantMapper grants;
     private final PayRefundMapper refunds;
-    private final AppKeyResolver keys;
+    private final AppSignatureVerifier signatures;
     private final NonceStore nonces;
     private final boolean enabled;
     private final boolean sandboxEnvironment;
 
-    public AppAuthServiceImpl(PayAppMapper apps, PayAppGrantMapper grants, PayRefundMapper refunds, AppKeyResolver keys,
+    public AppAuthServiceImpl(PayAppMapper apps, PayAppGrantMapper grants, PayRefundMapper refunds,
+                              AppSignatureVerifier signatures,
                               NonceStore nonces, @Value("${shop.pay.open.enabled:false}") boolean enabled,
                               @Value("${shop.pay.open.environment:production}") String environment) {
         this.apps = apps;
         this.grants = grants;
         this.refunds = refunds;
-        this.keys = keys;
+        this.signatures = signatures;
         this.nonces = nonces;
         this.enabled = enabled;
         this.sandboxEnvironment = "sandbox".equals(environment);
@@ -95,8 +91,8 @@ public class AppAuthServiceImpl implements AppAuthService {
         }
         String toSign = SignatureCanonicalizer.stringToSign(r.method(), r.path(), r.query(), r.appNo(), r.timestamp().trim(),
                 r.nonce(), r.bodySha256Hex());
-        boolean signed = keys.hmacSecretsOf(r.appNo()).stream().anyMatch(secret -> matches(secret, toSign, r.signature()));
-        if (!signed) {
+        // 验签交 AppSignatureVerifier（部署配置或密钥模块 KeyVault，常量时间比较；开发计划 M3.1）；X-Key-Serial 在 M3.2 接上
+        if (signatures.verify(app, null, toSign, r.signature()).isEmpty()) {
             return new Result(null, "签名不符");
         }
         // nonce 放在验签之后抢占：不让没签对的请求往表里写东西（安全规范 §5.4；TDD 偏差）
@@ -165,17 +161,6 @@ public class AppAuthServiceImpl implements AppAuthService {
     private PayApp find(String appNo) {
         return appNo == null ? null : DataScopeContext.executeWithoutScope(() -> apps.selectOne(
                 Wrappers.<PayApp>lambdaQuery().eq(PayApp::getAppNo, appNo).last("LIMIT 1")));
-    }
-
-    private static boolean matches(String secret, String toSign, String signature) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            byte[] expected = Base64.getEncoder().encode(mac.doFinal(toSign.getBytes(StandardCharsets.UTF_8)));
-            return MessageDigest.isEqual(expected, signature.trim().getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     /** 白名单为空 = 不限；单个 IP 或网段（与内部入口共用 {@link IpAllowList}） */

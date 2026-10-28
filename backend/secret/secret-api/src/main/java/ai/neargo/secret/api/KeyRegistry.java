@@ -60,10 +60,11 @@ public interface KeyRegistry {
      */
     byte[] materialOf(KeyVersionRef ref);
 
-    /** 验入站签名可接受的材料：ACTIVE 加上仍在重叠期内的 ROTATING（表结构说明 §3.3 轮换表） */
-    List<byte[]> verificationMaterials(long keyId);
-
-    /** 同上，但只给版本引用（ACTIVE 在前）：交 {@link KeyVault} 运算，材料不离开密钥模块 —— L5 也能验签 */
+    /**
+     * 验入站签名可接受的版本：ACTIVE 加上仍在重叠期内的 ROTATING（表结构说明 §3.3 轮换表），ACTIVE 在前。
+     * 只给版本引用，交 {@link KeyVault} 运算，材料不离开密钥模块 —— L5 也能验签（原返回材料的
+     * {@code verificationMaterials} 随 {@code SecretAppKeyResolver} 一起删除，开发计划 M3.1 / 类清单 Q-C2）
+     */
     List<KeyVersionRef> verificationVersions(long keyId);
 
     /** 按 KeySerial（{@code external_key_id}）找版本：请求头 {@code X-Key-Serial} / {@code X-Encrypt-Serial} 用 */

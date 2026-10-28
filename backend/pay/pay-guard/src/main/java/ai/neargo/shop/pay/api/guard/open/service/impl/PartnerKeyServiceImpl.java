@@ -27,7 +27,7 @@ import ai.neargo.shop.pay.api.guard.PortalFace;
 @Service
 public class PartnerKeyServiceImpl implements PartnerKeyService {
 
-    /** {@code sec_key.owner_type}：与 {@code SecretAppKeyResolver} 取验签密钥用的是同一个归属 */
+    /** {@code sec_key.owner_type}：与 {@code SecretAppSignatures} 验签用的是同一个归属 */
     static final String OWNER_TYPE = "PARTNER_APP";
 
     private final PayAppMapper apps;

@@ -233,15 +233,6 @@ public class DefaultKeyRegistry implements KeyRegistry {
     }
 
     @Override
-    public List<byte[]> verificationMaterials(long keyId) {
-        List<byte[]> out = new ArrayList<>();
-        for (SecKeyVersion v : verifiableRows(keyId)) {
-            out.add(secretOf(new KeyVersionRef(keyId, v.getVersionIndex()), v));
-        }
-        return out;
-    }
-
-    @Override
     public List<KeyVersionRef> verificationVersions(long keyId) {
         return verifiableRows(keyId).stream().map(v -> new KeyVersionRef(keyId, v.getVersionIndex())).toList();
     }

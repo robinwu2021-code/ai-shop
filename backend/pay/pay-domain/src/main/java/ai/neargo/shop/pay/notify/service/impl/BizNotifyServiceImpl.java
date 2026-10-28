@@ -12,7 +12,7 @@ import ai.neargo.shop.pay.notify.WebhookTargets;
 import ai.neargo.shop.pay.notify.entity.PayBizNotify;
 import ai.neargo.shop.pay.notify.entity.PayBizNotifyAttempt;
 import ai.neargo.shop.pay.notify.service.BizNotifyService;
-import ai.neargo.shop.pay.openapp.AppKeyResolver;
+import ai.neargo.shop.pay.openapp.AppSigner;
 import ai.neargo.shop.pay.openapp.SignatureCanonicalizer;
 import ai.neargo.shop.pay.openapp.entity.PayApp;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -23,13 +23,10 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,21 +51,21 @@ public class BizNotifyServiceImpl implements BizNotifyService {
     private final PayBizNotifyMapper notifies;
     private final PayBizNotifyAttemptMapper attempts;
     private final PayAppMapper apps;
-    private final AppKeyResolver keys;
+    private final AppSigner signer;
     private final WebhookSender sender;
     private final Duration timeout;
     private final Duration giveUpAfter;
     private final boolean allowInsecure;
 
     public BizNotifyServiceImpl(PayBizNotifyMapper notifies, PayBizNotifyAttemptMapper attempts, PayAppMapper apps,
-                                AppKeyResolver keys, WebhookSender sender,
+                                AppSigner signer, WebhookSender sender,
                                 @Value("${shop.pay.notify.webhook.timeout:PT5S}") Duration timeout,
                                 @Value("${shop.pay.notify.webhook.give-up-after:PT24H}") Duration giveUpAfter,
                                 @Value("${shop.pay.notify.webhook.allow-insecure-targets:false}") boolean allowInsecure) {
         this.notifies = notifies;
         this.attempts = attempts;
         this.apps = apps;
-        this.keys = keys;
+        this.signer = signer;
         this.sender = sender;
         this.timeout = timeout;
         this.giveUpAfter = giveUpAfter;
@@ -258,8 +255,7 @@ public class BizNotifyServiceImpl implements BizNotifyService {
     /** 与入站请求同一套头与待签串（安全规范 §2.3）：METHOD=POST，PATH 为目标地址的 path，用接入方当前密钥签 */
     private Map<String, String> headers(PayBizNotify n) throws Exception {
         PayApp app = DataScopeContext.executeWithoutScope(() -> apps.selectById(n.getPayAppId()));
-        List<String> secrets = app == null ? List.of() : keys.hmacSecretsOf(app.getAppNo());
-        if (secrets.isEmpty()) {
+        if (app == null) {
             throw new IllegalStateException("接入方没有可用的签名密钥");
         }
         URI u = URI.create(n.getTargetUrl());
@@ -269,14 +265,15 @@ public class BizNotifyServiceImpl implements BizNotifyService {
         String toSign = SignatureCanonicalizer.stringToSign("POST", u.getRawPath() == null || u.getRawPath().isEmpty()
                         ? "/" : u.getRawPath(), SignatureCanonicalizer.parseQuery(u.getRawQuery()), app.getAppNo(), ts, nonce,
                 SignatureCanonicalizer.sha256Hex(body));
-        Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(secrets.get(0).getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        // 用接入方当前那版密钥签（AppSigner：配置或密钥模块，开发计划 M3.1）
+        AppSigner.Signature signature = signer.sign(app, toSign.getBytes(StandardCharsets.UTF_8))
+                .orElseThrow(() -> new IllegalStateException("接入方没有可用的签名密钥"));
         Map<String, String> h = new LinkedHashMap<>();
         h.put("Content-Type", "application/json; charset=UTF-8");
         h.put("X-App-Id", app.getAppNo());
         h.put("X-Timestamp", ts);
         h.put("X-Nonce", nonce);
-        h.put("X-Signature", Base64.getEncoder().encodeToString(mac.doFinal(toSign.getBytes(StandardCharsets.UTF_8))));
+        h.put("X-Signature", signature.base64());
         h.put("X-Event-Id", n.getEventKey());
         return h;
     }

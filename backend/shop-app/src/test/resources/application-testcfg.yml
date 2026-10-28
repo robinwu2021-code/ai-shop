@@ -56,7 +56,7 @@ shop:
       webhook:
         # 测试的接收端是本机 http 服务；生产只许 https 公网地址（安全规范 §2.3）
         allow-insecure-targets: true
-    # 开放 API（TDD-支付服务-I5接入层）：测试打开，两个沙箱接入方的 HMAC 密钥（ConfigAppKeyResolver 过渡期读这里）。
+    # 开放 API（TDD-支付服务-I5接入层）：测试打开，两个沙箱接入方的 HMAC 密钥（ConfigAppSignatures 过渡期读这里）。
     # 生产没有任何默认值：密钥只经部署注入，密钥模块就绪后改由 secret 模块给
     open:
       enabled: true
