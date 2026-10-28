@@ -39,3 +39,9 @@
 
 ⚠️ `expires 1y` 与 `add_header Cache-Control` **不要并用**：会发出两个 Cache-Control 头，
 客户端取哪一个不确定。用一条 `add_header ... always` 就够。
+
+## 支付独立部署切换件（2026-10-28，pay-guard 开发计划 M7.5）
+
+`pay-standalone.locations.example` **未生效**（不以 `.conf` 结尾、没有 server 引用它）。它把直接调支付的四类入口
+（`/open/pay/` 开放 API、`/terminal/pay/` POS、`/pay/callback/` 渠道回调、`/checkout/v1/` 收银台）转给 `pay-svc`（8083）。
+切换的前提、步骤与回滚写在文件头；`NginxEdgeRulesTest#payStandaloneCutoverSnippet` 守着它的形状，并拦「有人提前 include 了它」。
