@@ -159,34 +159,119 @@ def main():
 
 
 def strip_comments(sql):
-    """剥掉 `--` 行注释，**必须在按分号切分之前做**。
+    """Remove SQL comments without altering quoted bytes or joining SQL tokens.
 
-    此前是先切后剥，于是**注释里出现一个分号就会把语句切碎** ——
-    V91 的注释里写了一段含分号的正则，生成器当场报「不认识的语句：\\n]*)」，
-    而那个报错既不指向 V91，也看不出跟注释有关。
-
-    要认引号：种子数据的 remark 里可能出现 `--`（中文破折号 `——` 是另一个码位，
-    不会误伤，但英文场景会）。在字符串字面量内部的 `--` 不是注释。
+    Native executable comments need an explicit dialect policy; treating them as
+    ordinary comments could silently discard schema or seed changes.
     """
     out = []
-    for line in sql.splitlines():
-        in_str = False
-        cut = None
-        i = 0
-        while i < len(line):
-            c = line[i]
-            if c == "'":
-                # SQL 的转义是叠写两个单引号，跳过即可
-                if in_str and i + 1 < len(line) and line[i + 1] == "'":
+    quote = None
+    quote_start = 0
+    i = 0
+    while i < len(sql):
+        char = sql[i]
+        if quote is not None:
+            out.append(char)
+            if char == "\\" and i + 1 < len(sql):
+                out.append(sql[i + 1])
+                i += 2
+                continue
+            if char == quote:
+                if i + 1 < len(sql) and sql[i + 1] == quote:
+                    out.append(sql[i + 1])
                     i += 2
                     continue
-                in_str = not in_str
-            elif not in_str and c == "-" and i + 1 < len(line) and line[i + 1] == "-":
-                cut = i
-                break
+                quote = None
             i += 1
-        out.append(line[:cut] if cut is not None else line)
-    return "\n".join(out)
+            continue
+        if char in "'\"`":
+            quote = char
+            quote_start = i
+            out.append(char)
+            i += 1
+            continue
+        dash_comment = sql.startswith("--", i) and (
+            i + 2 == len(sql) or sql[i + 2].isspace()
+        )
+        if dash_comment or char == "#":
+            end = sql.find("\n", i)
+            if end < 0:
+                end = len(sql)
+            out.append(" " * (end - i))
+            i = end
+            continue
+        if sql.startswith("/*", i):
+            if sql.startswith("/*!", i):
+                raise ValueError("Executable MySQL comments need an explicit native fixture policy")
+            end = sql.find("*/", i + 2)
+            if end < 0:
+                line = sql.count("\n", 0, i) + 1
+                raise ValueError(f"Unterminated SQL block comment at line {line}")
+            comment = sql[i:end + 2]
+            out.append("".join(char if char in "\r\n" else " " for char in comment))
+            i = end + 2
+            continue
+        out.append(char)
+        i += 1
+    if quote is not None:
+        line = sql.count("\n", 0, quote_start) + 1
+        raise ValueError(f"Unterminated SQL quoted value or identifier at line {line}")
+    return "".join(out)
+
+
+def sql_statements(sql):
+    """Yield complete client-delimited SQL, preserving literal and trigger bodies.
+
+    DELIMITER is a client directive, not a SQL statement. A compound statement
+    reaches replay as one item; unsupported native semantics still fail there.
+    """
+    text = strip_comments(sql)
+    delimiter = ";"
+    quote = None
+    pending = []
+    for line_number, line in enumerate(text.splitlines(keepends=True), 1):
+        if quote is None and re.match(r"(?i:DELIMITER)\b", line.lstrip()):
+            directive = re.fullmatch(r"(?i:DELIMITER)[ \t]+(\S+)", line.strip())
+            if directive is None or "".join(pending).strip():
+                raise ValueError(f"Invalid DELIMITER directive at line {line_number}")
+            candidate = directive.group(1)
+            if len(candidate) > 16 or any(char in "'\"`#\\" for char in candidate):
+                raise ValueError(f"Unsupported DELIMITER token at line {line_number}")
+            delimiter = candidate
+            pending.clear()
+            continue
+        i = 0
+        while i < len(line):
+            char = line[i]
+            if quote is None and line.startswith(delimiter, i):
+                statement = "".join(pending).strip()
+                if statement:
+                    yield statement
+                pending.clear()
+                i += len(delimiter)
+                continue
+            pending.append(char)
+            if quote is not None:
+                if char == "\\" and i + 1 < len(line):
+                    pending.append(line[i + 1])
+                    i += 2
+                    continue
+                if char == quote:
+                    if i + 1 < len(line) and line[i + 1] == quote:
+                        pending.append(line[i + 1])
+                        i += 2
+                        continue
+                    quote = None
+            elif char in "'\"`":
+                quote = char
+            i += 1
+    remaining = "".join(pending).strip()
+    if quote is not None:
+        raise ValueError("Unterminated SQL quoted value or identifier")
+    if remaining:
+        if delimiter != ";":
+            raise ValueError("Unterminated custom-delimited SQL statement")
+        yield remaining
 
 
 def _column_names(cols):
@@ -240,8 +325,8 @@ def _pin_columns(stmt, tables, altered):
 
 
 def replay(sql, tables, order, seeds, renames, altered):
-    # 逐语句切分（本项目的迁移脚本里没有存储过程，分号切分是安全的）
-    for stmt in [s.strip() for s in strip_comments(sql).split(";") if s.strip()]:
+    # Lex first: quoted semicolons and whole native compound bodies are not boundaries.
+    for stmt in sql_statements(sql):
         if not stmt:
             continue
         low = stmt.lower()
