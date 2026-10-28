@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -69,7 +70,7 @@ public final class MenuPublicationSource {
         if(definition==null || !MenuDefinitionPolicy.valid(definition.config(),store)
                 || !number.equals(definition.config().menuNo()) || "DISABLED".equals(definition.config().status())
                 || definition.schedule()==null || definition.contexts()==null || definition.contexts().isEmpty()) bad();
-        MenuCompositionDefinitions.normalize(definition.composition());
+        MenuCompositionDefinitions.normalizeStructure(definition.composition());
         MenuContextDefinitions.normalize(definition.contexts());
         var items=definition.composition().categories().stream().flatMap(c -> c.items().stream())
                 .filter(i -> Boolean.TRUE.equals(i.enabled())).toList();
@@ -142,7 +143,7 @@ public final class MenuPublicationSource {
         options.sort(Comparator.comparing(ItemOptions::menuItemNo));
         var captured=new Captured(entity,store,definition,frozenDishes,options,List.copyOf(dependencies.values()),
                 List.copyOf(selectedBindings.values()));
-        try { MenuPublicationDocuments.validateCaptured(captured); }
+        try { MenuPublicationDocuments.validateCapturedStructure(captured); }
         catch(RuntimeException invalid) { bad(); }
         return captured;
     }
@@ -164,7 +165,7 @@ public final class MenuPublicationSource {
         if(existing!=null) { if(!existing.equals(dep)) bad(); return; }
         if(result.size()>=1000 || !path.add(key)) bad();
         result.put(key,dep);
-        if(schema==1) {
+        if((schema==1 || schema==6) && Set.of("MODIFIER", "OPTION_GROUP").contains(kind)) {
             var frozen=json.readValue(row.getDefinitionSnapshot(),PublicationSnapshot.class);
             for(var ref:frozen.dependencies()) {
                 var child=byRevision==null?selected.apply(ref.configKind(),ref.configNo())

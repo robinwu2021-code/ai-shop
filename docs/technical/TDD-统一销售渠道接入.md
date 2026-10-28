@@ -414,6 +414,8 @@ b. 维护时与历史时采用不同上下文：
 
 **A2.2b1实施批次（2026-10-28）。** schema6专用PublicationJsonPolicy从原mapper重建严格读器，复用已严格实例、不使用全局缓存或修改原mapper；拒绝DTO嵌套未知字段及String/Boolean/Integer标量强转，保留精确数量字符串。ADDON事实集合须对应自身可选销售SKU，COMBO有根销售SKU时须携带其事实，同时保留原子项事实及免费无SKU能力。 在A2.2a真实市场事实合同之上，本批实现纯币种规则与自包含冻结格式：MenuPricePolicy新增normalizeStructure/normalizeForCurrency；旧normalize和price仍按CNY，显式阻止覆盖价与nativePrice币种混用。MenuCompositionDefinitions新增结构/币种入口供新格式使用，旧normalize保持CNY。新增PublicationMarketContext及PublicationMarketPolicy，从已验证的原市场证明生成稳定scope/market/currency/scale摘要和审计回执；历史校验不访问实时owner或检查旧证明期限。四类原Snapshot增加仅非null输出的marketContext并保留旧构造器；schema6按MENU/MODIFIER/OPTION_GROUP/BUNDLE/RECIPE分派，STATION仅5。新6的SKU/原商品scope匹配冻结context，MENU全部依赖及RECIPE内嵌选项组要求同市场/币种/精度和scope；不按schema6一个数字猜类型。旧1至5须无非null市场上下文，原字节和hash不变。验收覆盖五kind新6、跨市场/无context/错误kind拒绝、历史不依赖现时效、旧冻结字节/hash及非CNY本地计价阻断。此批仅纯文档/币种合同，不装配新开关、不切换原业务写入口或CURRENT价格捕获；ConfigRevisionService/原独立资源写入/重发布/来源策略须下一批一起接线后才声明可发布新6，不把本批纯格式支持冒充完整非CN维护和发布能力。
 
+**A2.2b2 实施批次（2026-10-28）。** 统一接入原业务：新增CatalogCurrencyService/service.impl和每次操作独立的CatalogCurrencySession，默认shop.food.commerce.catalog-currency.enabled=false；无ThreadLocal/全局可变上下文。关闭时不查询新market合同且沿旧CN商品/SKU方法；开启时先在事务外取得原市场，实际CN仍走旧身份路径，实际非CN走A2.2a原getCatalogGoods/getCatalogSku并验证scope/market/currency/scale及最短30秒期限。菜品、配料、套餐、配方和菜单组成维护在原本地事务前读原owner，再复核市场；事务内只核对已捕获证据期限，不做远程调用。保留旧构造器、版本/幂等/日志/发件箱与独立库存口径。菜单本地读取先捕获市场；内部发布捕获仅解析结构并由发布者给币种资格，避免锁内网络。发布与重发布统一使用当前原商品身份，非CN冻结新6、父子依赖必须同上下文；MENU非CN只CHANNEL/DELIVERY并重新核验原A1绑定与价格政策，STATION非CN保持拒绝。历史读取只验证原文/范围，不查询现时owner；重发布必须重新取得当前市场并匹配原冻结口径，不自动重写旧文或金额。CURRENT来源允许4/6且新6再次检查实时原市场；原菜单价格读取支持4/6并核对新6与实时原商品税/价的市场语境，旧本地CNY计价限制保持。新增开关仅在原food模块装配，集成与独立模式仍复用同一Port/原服务令牌，不新增业务表、付款/库存扣减或真实供应商接线。代码及测试先整批编写编译再集中专项；一次市场/期限守卫消融，一次只读最终review。
+
 c. 发布版本与兼容：
 
 - 建议预留市场上下文发布格式content_schema=6（实施前核对最新占用），由configKind+schema共同判别：支持MENU、MODIFIER、OPTION_GROUP、BUNDLE、RECIPE的非CN只读身份/发布；STATION仍只用5，不在本批扩展。6不是旧数字分支可随意共用，所有kind必须有明确的类型化解析器。此编号属于fnb_config_revision，与后续cim_catalog_snapshot目录schemaVersion=3无关。
@@ -1195,3 +1197,40 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 - 最终构建：集成宿主、独立food-server及独立commerce-server clean package PASS约78秒；两项修复后同受影响产物重新编译打包PASS约61秒。打包后新增26项及5项相关架构检查31/31 GREEN14.349s，0失败/异常/跳过；加此前直接相关83项通过，累计114项唯一检查通过。另有1项原生数据库并发用例条件跳过，未计入通过数、不累加重复复测。旧六kind真实字节/hash基线仍全部通过。
 - 复核范围决定：原业务维护/发布、CURRENT与价格来源接线、A2.3/v3/真实供应商、生产时钟/并发/原生数据库联验均后续实施；历史回执只作解释/审计，不作永久授权。上批图片多商品顺序P3继续留待后续。最终测试/构建是执行方证据；review只读源码和已编译类探针，不冒充部署或原生DB验收。
 - 设计10项、25个生成器、SQL方言和diff检查通过。所有改动局限food-api的DTO/Policy、专项及golden、设计真源和生成说明；不新增表/迁移/公开API/业务开关，不推送、部署或启用非CN业务路径。最终提交范围及真实SHA在执行台账记录。
+
+
+### A2.2b2 原 FOOD 多市场业务接线（2026-10-28，本地）
+
+本批将 A2.2a 的原商品市场事实与 A2.2b1 的币种规则接入现有业务服务。新增配置 `shop.food.commerce.catalog-currency.enabled=false`，默认关闭；启用后实际市场由原 entity/store 决定，不由终端币种或餐牌标签决定。没有餐牌时也可独立维护菜品、配料、组合配料、选项组、套餐及配方。实际 CN 保持旧商品读取和旧发布格式；非 CN 使用原市场商品/SKU 合同，不回退 CN，不换汇或自动缩放金额。
+
+#### 实现与验收对账
+
+| 需求/设计落点 | 实际类与方法 | 定向验收 |
+| --- | --- | --- |
+| 独立原市场与最短期限 | CatalogCurrencyServiceImpl.open；CatalogCurrencySession.goods/sku/refresh/guardTransaction | CatalogCurrencyBusinessTest.disabledSelectionNeverResolvesMarketOwnerAndCnKeepsOriginalSkuMethod；marketRefreshAndDependencyContextCannotSilentlySwitchCurrency |
+| 原配料及组合维护、发布 | ModifierServiceImpl.createModifier/updateModifier；ConfigRevisionServiceImpl.publish | standaloneForeignAddonAndComboPublishWithoutAnExistingMenuAndHistorySurvivesOwnerOutage；corruptForeignIdentityFailsBeforeWritingAnything |
+| 菜品扩展和详情 | DishServiceImpl.saveDish/getDish | DishServiceTest.foreignDishSaveAndReadUseOriginalMarketGoodsAndKeepPresentation |
+| 套餐根、基准及可选销售 SKU | BundleServiceImpl.createBundle/replaceDefinition | BundleServiceTest.foreignBundleValidatesRootBaseAndChoicesBeforeAtomicDefinitionWrite |
+| 配方与原独立库存材料 | RecipeServiceImpl.createRecipe/replaceDefinition；RecipePublicationSource.document | RecipeServiceTest.foreignRecipeKeepsIndependentMaterialAuthorityWhileUsingMarketAwareSaleSku；RecipePublicationServiceTest |
+| 选项与餐牌价格、组成 | OptionGroupServiceImpl.createOptionGroup/replaceOptionGroupItems；MenuServiceImpl.replaceComposition/getMenu；MenuCompositionSource | OptionGroupServiceTest；MenuCompositionServiceTest；MenuCurrencyPolicyTest |
+| 父子依赖和冻结解释一致 | ConfigRevisionServiceImpl.validateCurrencyDependencies；MenuPublicationSource；RecipePublicationSource | foreignParentCannotBorrowAnImplicitCnDependency；PublicationCurrencyDocumentsTest |
+| 重发布不改历史字节 | ConfigRevisionServiceImpl.republishRevision/revalidateHistorical | marketChangeBlocksRepublishWithoutChangingOriginalBytesOrAppendCount；ConfigRevisionServiceTest |
+| CURRENT 重核原市场、历史独立读取 | ConfigRevisionServiceImpl.verifyMenuResource；MenuSourcePolicy.project | currentMenuRequalifiesMarketWhileHistoricalReadNeedsNoOwner；foreignCurrentContextCannotReinterpretLegacyCnMenu |
+| 真实原销售价格与冻结市场一致 | MenuCatalogPricePolicy.compose；原 MenuCatalogPriceServiceImpl.capture | MenuCatalogPriceServiceTest.foreignMenuUsesNativePriceAndRejectsRepricedDifferentMarket |
+| 证据过期不得提交 | CatalogCurrencySession.guardTransaction 注册本事务 beforeCommit 检查 | expiryDuringOutboxWorkRollsBackBusinessAuditIdempotencyAndOutbox，移除该守卫后真实失败 |
+| 旧合同与部署兼容 | FoodAutoConfiguration；全部旧构造器保留 | FoodConditionalWiringTest；FoodPersistenceWiringTest；PublicationCurrencyCompatibilityTest |
+
+#### 调用与兼容边界
+
+- 所有原市场和商品读取在本地事务之外进行；每次操作显式持有自己的短时 Session。事务内只验证已捕获的最短期限，并在提交前再核对，确保等待锁、幂等和 outbox 工作期间过期时整体回滚。它不是跨服务原子快照，也不能保证市场变更的瞬时撤销。
+- 新非 CN 发布使用 schema6；父子必须同主体、门店、市场、币种及精度，不能借用隐式 CN 旧依赖。MENU 新6仅渠道外送；工位非 CN 仍拒绝。原 CN/关闭路径保留1至5，不重写旧字节或 hash。
+- CURRENT先确认本地版本，事务外取得并复核实际市场，再确认原版本未变；回执期限不超过原市场证明。HISTORICAL/getRevision/resolveRevision 不读取实时 owner。新6在关闭开关后仍可审计，当前使用须具备已开启的真实市场资格。
+- 重发布重核原商品、库存材料、依赖、渠道绑定和价格政策；保存的原文与金额不变。市场变化返回业务冲突，需要显式重新维护及发布，不能自动重贴币种。
+- 不新增 HTTP 端点、业务表或迁移；原来源/原菜单计价端点扩展接纳新6。集成宿主和独立服务均使用同一原 Port，独立模式继续走已有令牌及原目标服务。原订单本地 CNY 计价限制保留。
+- 此批仅业务接线；完整对外目录/v3、行业来源分派及真实供应商联调仍属后续。Keeta保持规划状态，不启用真实同步、支付、生产配置或部署。
+
+- 执行证据：集成及独立模块 test-compile PASS33.829s；集中专项165项中161通过、4项原生DB条件跳过（未计入通过），0失败/异常，48.962s。范围含原菜品服务回归、4类新6币种规则/真实旧字节golden、装配条件与5项相关架构；未执行全仓回归。
+- 守卫消融：仅移除事务 beforeCommit 的 requireFresh 后，过期/outbox用例失败（预期异常未抛，11.363s）；源码恢复，集中专项该用例通过。已有失败均定位为测试夹具缺依赖或正常市场变化错误语义，未添加任何CN回退。
+- 生成设计10项、25个生成器、SQL方言与diff检查通过。后续构建、最终审查及本地提交信息继续记录；当前不推送或部署。
+
+- 集成 shop-app、独立 food-server/commerce-server 的 clean package PASS，约77秒，包含全部受影响源码和测试源码重新编译；不是线上部署验收。三处对账共24个文件：15个原生产类、3个新增上下文类、5个场景测试（含1个新类）与本TDD，无表/迁移/POM改动。

@@ -456,6 +456,15 @@ class MenuCatalogPriceServiceTest {
                 0);
     }
 
+    @Test void foreignMenuUsesNativePriceAndRejectsRepricedDifferentMarket() {
+        var sources = new CatalogCurrencyBusinessTest.Sources();
+        var document = CatalogCurrencyBusinessTest.foreignMenu(json, sources);
+        wire(document, base());
+        assertThat(service().capture(query).prices()).isNotEmpty();
+        wire(document, base(Map.of("S1", 1250L, "S2", 800L), "TW", "TWD"));
+        assertThatThrownBy(() -> service().capture(query)).isInstanceOf(RuntimeException.class);
+    }
+
     @Test
     void originalMarketAndDistinctItemPricesAreComposedWithoutLegacyCnQuotes() {
         when(revisions.verifyMenuResource(sourceQuery()))

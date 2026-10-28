@@ -83,6 +83,15 @@ public final class MenuCatalogPricePolicy {
         var body =
                 json.readValue(
                         proof.publication().definitionSnapshot(), MenuPublicationSnapshot.class);
+        if (body.contentSchema() == 6) {
+            var context = body.marketContext();
+            PublicationMarketPolicy.validate(context);
+            if (!context.entityNo().equals(products.request().entityNo())
+                    || !context.storeNo().equals(products.request().storeNo())
+                    || !context.market().equals(products.market().market())
+                    || !context.currency().equals(products.market().currency())
+                    || !Objects.equals(context.currencyScale(), products.market().currencyScale())) throw unsupported();
+        }
         var ownership = new HashMap<String, String>();
         body.skuFacts().forEach(f -> ownership.put(f.skuNo(), f.goodsNo()));
         var prices = new HashMap<String, Price>();

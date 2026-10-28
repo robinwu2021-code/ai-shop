@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.policy.CatalogCurrencySession;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -59,6 +61,7 @@ import java.util.Optional;
  * conversions.
  */
 public class RecipeServiceImpl implements RecipeService {
+    private final CatalogCurrencyService currencies;
     private final RecipeMapper heads;
     private final RecipeLineMapper lines;
     private final ActionLogMapper actions;
@@ -86,6 +89,27 @@ public class RecipeServiceImpl implements RecipeService {
             RecipeAdjustmentMapper adjustments,
             OptionGroupItemMapper optionItems,
             OptionGroupMapper optionGroups) {
+        this(heads, lines, actions, idem, publisher, json, manager, catalog, materials, adjustments,
+                optionItems, optionGroups, (entity, store) -> CatalogCurrencySession.legacy(catalog, entity,
+                store));
+    }
+
+    /** Currency-aware wiring keeps legacy construction and original command semantics available. */
+    public RecipeServiceImpl(
+            RecipeMapper heads,
+            RecipeLineMapper lines,
+            ActionLogMapper actions,
+            IdempotencyService idem,
+            OutboxPublisher publisher,
+            ObjectMapper json,
+            PlatformTransactionManager manager,
+            GoodsCatalogQueryPort catalog,
+            MaterialCatalogQueryPort materials,
+            RecipeAdjustmentMapper adjustments,
+            OptionGroupItemMapper optionItems,
+            OptionGroupMapper optionGroups,
+            CatalogCurrencyService currencies) {
+        this.currencies = currencies;
         this.heads = heads;
         this.lines = lines;
         this.actions = actions;
@@ -113,8 +137,10 @@ public class RecipeServiceImpl implements RecipeService {
         String hash = FoodCommandFingerprint.hash("create-recipe:v1", json.writeValueAsString(req));
         var replay = completed(key, scope, actor, hash);
         if (replay.isPresent()) return replay.get();
-        sku(entity, store, req.skuNo());
+        var currency = currencies.open(entity, store);
+        sku(entity, store, req.skuNo(), currency);
         yieldUnit(entity, store, req.skuNo(), req.yieldUnit());
+        currency.refresh();
         try {
             return write.execute(
                     tx ->
@@ -125,6 +151,7 @@ public class RecipeServiceImpl implements RecipeService {
                                     hash,
                                     RecipeResultVO.class,
                                     () -> {
+                                        currency.guardTransaction();
                                         var row = new FnbRecipe();
                                         row.setEntityNo(entity);
                                         row.setStoreNo(store);
@@ -171,9 +198,11 @@ public class RecipeServiceImpl implements RecipeService {
         var replay = completed(key, scope, actor, hash);
         if (replay.isPresent()) return replay.get();
         var original = read.execute(tx -> head(entity, store, number, false));
-        sku(entity, store, original.getSkuNo());
+        var currency = currencies.open(entity, store);
+        sku(entity, store, original.getSkuNo(), currency);
         yieldUnit(entity, store, original.getSkuNo(), req.yieldUnit());
         var facts = facts(entity, req);
+        currency.refresh();
         try {
             return write.execute(
                     tx ->
@@ -184,6 +213,7 @@ public class RecipeServiceImpl implements RecipeService {
                                     hash,
                                     RecipeResultVO.class,
                                     () -> {
+                                        currency.guardTransaction();
                                         var row = head(entity, store, number, true);
                                         if (!req.version().equals(row.getVersion())
                                                 || row.getVersion() == Long.MAX_VALUE
@@ -495,8 +525,8 @@ public class RecipeServiceImpl implements RecipeService {
                         .toList());
     }
 
-    private void sku(String entity, String store, String number) {
-        var fact = catalog.getSku(entity, store, number);
+    private void sku(String entity, String store, String number, CatalogCurrencySession currency) {
+        var fact = currency.sku(number);
         if (fact == null
                 || !entity.equals(fact.entityNo())
                 || !store.equals(fact.storeNo())

@@ -1,5 +1,7 @@
 package ai.neargo.shop.food.service.impl;
 
+import ai.neargo.shop.food.service.CatalogCurrencyService;
+import ai.neargo.shop.food.policy.CatalogCurrencySession;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -52,6 +54,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Reuses V1 shared group tables and the platform's atomic command infrastructure. */
 public class OptionGroupServiceImpl implements OptionGroupService {
+    private final CatalogCurrencyService currencies;
     private final DishMapper dishes;
     private final DishOptionGroupMapper bindings;
     private final ModifierMapper modifiers;
@@ -70,6 +73,17 @@ public class OptionGroupServiceImpl implements OptionGroupService {
             IdempotencyService idempotency, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, DishMapper dishes, DishOptionGroupMapper bindings,
             ModifierMapper modifiers, GoodsCatalogQueryPort catalog, SpecValueCatalogQueryPort specs) {
+        this(groups, items, actions, idempotency, publisher, json, manager, dishes, bindings, modifiers,
+                catalog, specs, (entity, store) -> CatalogCurrencySession.legacy(catalog, entity, store));
+    }
+
+    /** Currency-aware wiring keeps legacy construction and original command semantics available. */
+    public OptionGroupServiceImpl(OptionGroupMapper groups, OptionGroupItemMapper items, ActionLogMapper actions,
+            IdempotencyService idempotency, OutboxPublisher publisher, ObjectMapper json,
+            PlatformTransactionManager manager, DishMapper dishes, DishOptionGroupMapper bindings,
+            ModifierMapper modifiers, GoodsCatalogQueryPort catalog, SpecValueCatalogQueryPort specs,
+            CatalogCurrencyService currencies) {
+        this.currencies = currencies;
         this.dishes = dishes;
         this.bindings = bindings;
         this.modifiers = modifiers;
@@ -134,11 +148,16 @@ public class OptionGroupServiceImpl implements OptionGroupService {
             }
         }
         if (!permitted.containsAll(requested)) throw BizException.of(ErrorCode.FORBIDDEN);
+        var currency = currencies.open(entity, store);
+        currency.refresh();
         String scope = FoodCommandFingerprint.scope("REPLACE_OPTION_ITEMS", entity, store);
         String hash = FoodCommandFingerprint.hash("replace-options:v1", group, json.writeValueAsString(req));
         try {
             return writeTransaction.execute(status -> idempotency.execute(key, scope, actor, hash,
-                    OptionGroupMutationVO.class, () -> replace(entity, store, group, actor, key, req, permitted)));
+                    OptionGroupMutationVO.class, () -> {
+                        currency.guardTransaction();
+                        return replace(entity, store, group, actor, key, req, permitted);
+                    }));
         } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
@@ -254,11 +273,16 @@ public class OptionGroupServiceImpl implements OptionGroupService {
         var normalized = new CreateOptionGroupReq(req.name().trim(), quantity(req.minQty()), quantity(req.maxQty()));
         if (normalized.minQty().compareTo(normalized.maxQty()) > 0) throw BizException.of(ErrorCode.BAD_REQUEST);
         noOuterTransaction();
+        var currency = currencies.open(entity, store);
+        currency.refresh();
         String scope = FoodCommandFingerprint.scope("CREATE_OPTION_GROUP", entity, store);
         String hash = FoodCommandFingerprint.hash("create-option-group:v1", json.writeValueAsString(normalized));
         try {
             return writeTransaction.execute(status -> idempotency.execute(key, scope, actor, hash,
-                    CreateOptionGroupResultVO.class, () -> create(entity, store, actor, key, normalized)));
+                    CreateOptionGroupResultVO.class, () -> {
+                        currency.guardTransaction();
+                        return create(entity, store, actor, key, normalized);
+                    }));
         } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
             throw BizException.of(ErrorCode.CONFLICT);
         }

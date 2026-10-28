@@ -22,13 +22,18 @@ public final class MenuCompositionDefinitions {
     private MenuCompositionDefinitions() {}
 
     public static MenuCompositionVO normalize(ReplaceMenuCompositionReq req) {
+        return normalizeForCurrency(req, "CNY");
+    }
+
+    /** Live write context chooses currency before accepting caller price labels. */
+    public static MenuCompositionVO normalizeForCurrency(ReplaceMenuCompositionReq req, String currency) {
         require(
                 req != null
                         && "COMPOSITION".equals(req.section())
                         && req.version() != null
                         && req.version() >= 0
                         && req.version() < Long.MAX_VALUE);
-        return normalize(new MenuCompositionVO(req.categories()));
+        return normalizeForCurrency(new MenuCompositionVO(req.categories()), currency);
     }
 
     public static MenuCompositionVO normalize(MenuCompositionVO definition) {

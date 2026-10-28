@@ -232,6 +232,16 @@ public final class MenuPublicationDocuments {
 
     /** Historical frozen currency is supplied explicitly, without reading current owner configuration. */
     public static void validateCapturedForCurrency(Captured c, String currency) {
+        MenuPricePolicy.normalizeForCurrency(null, currency);
+        validateCapturedDefinition(c, currency);
+    }
+
+    /** Local capture may read structure under locks; its caller supplies original market qualification later. */
+    public static void validateCapturedStructure(Captured c) {
+        validateCapturedDefinition(c, null);
+    }
+
+    private static void validateCapturedDefinition(Captured c, String currency) {
         require(
                 c != null
                         && key(c.entityNo())
@@ -244,7 +254,8 @@ public final class MenuPublicationDocuments {
                         && c.definition().schedule().exceptions() != null
                         && c.definition().contexts() != null
                         && !c.definition().contexts().isEmpty());
-        MenuCompositionDefinitions.normalizeForCurrency(c.definition().composition(), currency);
+        if (currency == null) MenuCompositionDefinitions.normalizeStructure(c.definition().composition());
+        else MenuCompositionDefinitions.normalizeForCurrency(c.definition().composition(), currency);
         MenuContextDefinitions.normalize(c.definition().contexts());
         MenuScheduleDefinitions.normalize(c.definition().schedule());
         require(

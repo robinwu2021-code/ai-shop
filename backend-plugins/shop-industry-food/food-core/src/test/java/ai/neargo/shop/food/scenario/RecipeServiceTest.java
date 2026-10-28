@@ -111,6 +111,34 @@ class RecipeServiceTest extends FoodWriteGuardFixture {
                 e -> assertThat(e.errorCode()).isEqualTo(code));
     }
 
+    @Test void foreignRecipeKeepsIndependentMaterialAuthorityWhileUsingMarketAwareSaleSku() {
+        run((c, f) -> {
+            var source = new CatalogCurrencyBusinessTest.Sources();
+            MaterialCatalogQueryPort materials = (entity, ids) -> List.of(
+                    new MaterialCatalogQueryPort.MaterialFact("MILK", entity, "Milk", "KG", 1, "OWN",
+                            "BASE_ONLY", "INTEGER_ONLY",
+                            MaterialCatalogFacts.definitionHash("MILK", entity, "Milk", "KG", 1, "OWN")));
+            var service = new RecipeServiceImpl(c.getBean(RecipeMapper.class), c.getBean(RecipeLineMapper.class),
+                    c.getBean(ActionLogMapper.class), c.getBean(IdempotencyService.class),
+                    c.getBean("foodOutboxPublisher", OutboxPublisher.class), c.getBean(ObjectMapper.class),
+                    c.getBean(PlatformTransactionManager.class), source.goods, materials,
+                    c.getBean(RecipeAdjustmentMapper.class), c.getBean(OptionGroupItemMapper.class),
+                    c.getBean(OptionGroupMapper.class), source.currencies);
+            var recipe = service.createRecipe("E", "A", "actor", create("TEA", "DEFAULT"), "foreign-create")
+                    .recipe();
+            var updated = service.replaceDefinition("E", "A", recipe.recipeNo(), "actor",
+                    definition(0, line(null, "MILK", "0.125", "KG")), "foreign-edit").recipe();
+            assertThat(updated.lines()).hasSize(1);
+            assertThat(updated.lines().getFirst().materialDefinitionHash()).isEqualTo(
+                    MaterialCatalogFacts.definitionHash("MILK", "E", "Milk", "KG", 1, "OWN"));
+            source.corrupt = true;
+            assertThatThrownBy(() -> service.replaceDefinition("E", "A", recipe.recipeNo(), "actor",
+                    definition(1, line(null, "MILK", "0.25", "KG")), "corrupt"))
+                    .isInstanceOf(BizException.class);
+            assertThat(f.sql().queryForObject("SELECT version FROM fnb_recipe", Long.class)).isEqualTo(1);
+        });
+    }
+
     @Test void createsAndEditsExactBaseUnitLinesWithGeneratedIdentitiesAndRepeatedMaterials() {
         run((c, f) -> {
             var s = c.getBean(RecipeService.class);
