@@ -274,16 +274,20 @@ public class SecurityConfig {
      * 渠道回调（安全规范 §2.4 / §5.1，G11）：此前 {@code /pay/callback/**} 不匹配任何链，安全全靠 controller 自己。
      * 现在给它一条显式的链：无会话、不认 Bearer、放行到 controller（可信靠验签 + 主动查单）；**不开 CORS**（服务端对服务端）；
      * 用 {@link ai.neargo.shop.auth.RequestMetaFilter} 设可信来源 IP（{@code ClientMeta}），回调记录里的 IP 不再取客户端自报的头。
+     * 验签在链上的渠道回调守卫里（开发计划 M4），controller 只回查与入账。
      */
     @Bean
     @Profile({"api", "ops"})
     @Order(5)
-    SecurityFilterChain channelCallbackChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain channelCallbackChain(HttpSecurity http, GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher("/pay/callback/**")
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new ai.neargo.shop.auth.RequestMetaFilter("CHANNEL"),
+                        org.springframework.security.web.context.SecurityContextHolderFilter.class)
+                // 渠道回调守卫（开发计划 M4）：先落原文 → 验签 → 核对收款商户，不过回 FAIL、不进 controller
+                .addFilterBefore(portalFilters.forEntry(PortalFace.CALLBACK),
                         org.springframework.security.web.context.SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(reg -> reg.anyRequest().permitAll())
                 .build();

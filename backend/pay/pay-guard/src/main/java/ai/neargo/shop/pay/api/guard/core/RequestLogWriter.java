@@ -127,6 +127,7 @@ public class RequestLogWriter {
             case BIZ -> "BIZ_API";
             case OPS -> "OPS_API";
             case CHECKOUT -> "CHECKOUT";
+            case CALLBACK -> "CALLBACK";
         };
     }
 
@@ -138,6 +139,7 @@ public class RequestLogWriter {
             case BIZ -> "BIZ";
             case OPS -> "OPS";
             case CHECKOUT -> "CHECKOUT";
+            case CALLBACK -> "CHANNEL";
         };
     }
 

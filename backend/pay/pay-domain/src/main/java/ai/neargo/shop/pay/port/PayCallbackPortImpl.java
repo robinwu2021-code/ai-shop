@@ -13,8 +13,13 @@ public class PayCallbackPortImpl implements PayCallbackPort {
     }
 
     @Override
-    public Verdict accept(Envelope envelope) {
-        return template.accept(envelope);
+    public Verified verify(Envelope envelope) {
+        return template.verify(envelope);
+    }
+
+    @Override
+    public Verdict confirm(Verified verified) {
+        return template.confirm(verified);
     }
 
     @Override

@@ -13,6 +13,7 @@ import ai.neargo.shop.spi.pay.PayCallbackPort.Kind;
 import ai.neargo.shop.spi.pay.PayCallbackPort.Outcome;
 import ai.neargo.shop.spi.pay.PayCallbackPort.RouteStyle;
 import ai.neargo.shop.spi.pay.PayCallbackPort.Verdict;
+import ai.neargo.shop.spi.pay.PayCallbackPort.Verified;
 import ai.neargo.shop.spi.pay.PayQueryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.List;
@@ -64,13 +65,24 @@ public final class CallbackTemplate {
         return verifiers.keySet();
     }
 
+    /** 两段连着跑：验签前段 → 回查与核对（守卫上线前的接法） */
     public Verdict accept(Envelope env) {
+        Verified v = verify(env);
+        return v.rejection() != null ? v.rejection() : confirm(v);
+    }
+
+    /**
+     * 验签前段（开发计划 M4.2，渠道回调守卫在 controller 之前跑）：先落原文 → 验签 → 取商户单号 → 核对路径里的收款商户。
+     * 不回查、不判重复 —— 这些要渠道查询，留给 {@link #confirm}。
+     */
+    public Verified verify(Envelope env) {
         ChannelCallbackVerifier v = verifiers.get(env.payChannel());
         if (v == null) {
             // 没接这个通道就当没这个端点；不落记录 —— 通道名来自路径，落库就多一条往任意通道名灌报文的路
             log.warn("[callback] 未知通道 {}", env.payChannel());
-            return new Verdict(null, Outcome.REJECT, "UNKNOWN_CHANNEL", env.kind(), env.payChannel(), null, null,
-                    "FAIL", "FAIL", null, null);
+            Verdict unknown = new Verdict(null, Outcome.REJECT, "UNKNOWN_CHANNEL", env.kind(), env.payChannel(), null,
+                    null, "FAIL", "FAIL", null, null);
+            return new Verified(env, null, null, null, null, "FAIL", "FAIL", unknown);
         }
         String sha = CallbackLogRecorder.sha256(env.rawBody());
         Long id = callbacks.received(env.payChannel(), env.kind().name(), env.pathRef(), env.routeStyle().name(),
@@ -81,7 +93,7 @@ public final class CallbackTemplate {
         Map<String, Object> payload = v.verify(env.headers(), env.rawBody());
         if (payload == null) {
             // 验签失败不透露原因 —— 这个端点公网可达，回原因等于免费给个调试器
-            return reject(c, "FAILED", "验签失败", null, null, null);
+            return rejected(c, reject(c, "FAILED", "验签失败", null, null, null));
         }
         callbacks.update(id, r -> {
             r.setVerifyResult("PASSED");
@@ -90,7 +102,7 @@ public final class CallbackTemplate {
         String field = env.kind() == Kind.PAY ? "out_trade_no" : "out_refund_no";
         Object outNo = payload.get(field);
         if (outNo == null) {
-            return reject(c, null, "报文缺 " + field, null, payload, null);
+            return rejected(c, reject(c, null, "报文缺 " + field, null, payload, null));
         }
         String no = String.valueOf(outNo);
         StlPayment row = row(env.kind(), no);
@@ -99,8 +111,22 @@ public final class CallbackTemplate {
                 && !row.getPayMerchantNo().equals(env.pathRef())) {
             log.error("[callback] {} 路径里的收款商户 {} 与这笔的 {} 不符：{}", env.payChannel(), env.pathRef(),
                     row.getPayMerchantNo(), no);
-            return reject(c, "MERCHANT_MISMATCH", "路径里的收款商户与这笔交易的不符", no, payload, null);
+            return rejected(c, reject(c, "MERCHANT_MISMATCH", "路径里的收款商户与这笔交易的不符", no, payload, null));
         }
+        return new Verified(env, c.logNo, c.msgNo, payload, no, v.ackOk(), v.ackFail(), null);
+    }
+
+    /** 验签之后（开发计划 M4.2，controller 调）：回查 → 核对金额 → 识别重复；通过的由调用方入账并 {@link #handled} */
+    public Verdict confirm(Verified verified) {
+        Envelope env = verified.envelope();
+        ChannelCallbackVerifier v = verifiers.get(env.payChannel());
+        Ctx c = new Ctx(verified.logNo(), verified.legacyMessageNo(), env, v);
+        Long id = c.logNo == null ? null : Long.valueOf(c.logNo);
+        String sha = CallbackLogRecorder.sha256(env.rawBody());
+        String msgNo = c.msgNo;
+        Map<String, Object> payload = verified.payload();
+        String no = verified.outNo();
+        StlPayment row = row(env.kind(), no);
 
         PayQueryPort.Result r = env.kind() == Kind.PAY ? channels.query(env.payChannel(), no)
                 : channels.queryRefund(env.payChannel(), no);
@@ -181,6 +207,11 @@ public final class CallbackTemplate {
         legacySettle(c, StlChannelMessage.REJECTED, reason, outNo, payload);
         return new Verdict(c.logNo, Outcome.REJECT, reason, c.env.kind(), c.env.payChannel(), outNo, r,
                 c.verifier.ackOk(), c.verifier.ackFail(), payload, c.msgNo);
+    }
+
+    private static Verified rejected(Ctx c, Verdict rejection) {
+        return new Verified(c.env, c.logNo, c.msgNo, rejection.payload(), rejection.outNo(), c.verifier.ackOk(),
+                c.verifier.ackFail(), rejection);
     }
 
     private void legacySettle(Ctx c, String outcome, String reason, String outNo, Map<String, ?> payload) {

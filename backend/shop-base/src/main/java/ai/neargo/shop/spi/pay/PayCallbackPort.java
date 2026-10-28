@@ -49,7 +49,26 @@ public interface PayCallbackPort {
         }
     }
 
-    Verdict accept(Envelope envelope);
+    /**
+     * 验签前段（开发计划 M4：渠道回调守卫在 controller 之前跑）：先落原文、验签、取出商户单号、核对路径里的收款商户。
+     * 不回查、不判重复、不入账。
+     *
+     * @param rejection 前段就拒（未知通道、验签失败、缺单号、收款商户不符）时的结局；为空即通过
+     */
+    record Verified(Envelope envelope, String logNo, String legacyMessageNo, Map<String, Object> payload, String outNo,
+                    String ackOk, String ackFail, Verdict rejection) {
+    }
+
+    Verified verify(Envelope envelope);
+
+    /** 验签之后（controller）：回查、核对金额、识别重复；之后由调用方入账并 {@link #handled} */
+    Verdict confirm(Verified verified);
+
+    /** 两段连着跑（守卫上线前的接法；测试与旧调用方用） */
+    default Verdict accept(Envelope envelope) {
+        Verified v = verify(envelope);
+        return v.rejection() != null ? v.rejection() : confirm(v);
+    }
 
     /**
      * 调用方入账之后回写。

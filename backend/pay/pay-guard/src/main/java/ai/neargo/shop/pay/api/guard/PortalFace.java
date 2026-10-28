@@ -27,7 +27,9 @@ public enum PortalFace {
     /** 商家端：商家会话 + 商家内权限码 */
     BIZ("biz", "/biz/pay"),
     /** 扫码收银 H5：一次性收银令牌 / 码号，可选 C 端登录 */
-    CHECKOUT("checkout", "/checkout/v1");
+    CHECKOUT("checkout", "/checkout/v1"),
+    /** 渠道回调：先落原文 → 按渠道验签 → 核对收款商户（开发计划 M4）；回绝按渠道格式回，不写请求记录（有回调记录） */
+    CALLBACK("callback", "/pay/callback");
 
     /** 所有入口共用的包根 */
     public static final String API_PACKAGE = "ai.neargo.shop.pay.api";

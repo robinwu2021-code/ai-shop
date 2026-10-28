@@ -85,19 +85,26 @@ public class GuardFilter extends OncePerRequestFilter {
                 signing.copyBodyToResponse();
             }
         } finally {
-            // ⑫ 留痕
-            int status = resp.getStatus();
-            Object code = req.getAttribute(PortalRequests.RESULT_CODE);
-            log.write(face, req, who, requestId, started, status,
-                    code == null ? (status < 400 ? "OK" : "HTTP_" + status) : code.toString(),
-                    RequestLogWriter.outcomeOf(status), req.body(), null);
+            // ⑫ 留痕（自带记录的入口除外）
+            if (guard.recordsRequests()) {
+                int status = resp.getStatus();
+                Object code = req.getAttribute(PortalRequests.RESULT_CODE);
+                log.write(face, req, who, requestId, started, status,
+                        code == null ? (status < 400 ? "OK" : "HTTP_" + status) : code.toString(),
+                        RequestLogWriter.outcomeOf(status), req.body(), null);
+            }
         }
     }
 
     /** 回绝：统一错误体；要签名的入口回绝也签（API 清单 §1.2）—— 错误体先写进缓存，签完再发；写一行请求记录 */
     private void reject(CachedBodyRequest req, HttpServletResponse resp, GuardResult result, PortalPrincipal who,
                         String requestId, long started) throws IOException {
-        if (guard.signsResponses()) {
+        if (result.rawBody() != null) {
+            // 按对方协议回（渠道回调回 FAIL，渠道据此重推）
+            resp.setStatus(result.status());
+            resp.setContentType("text/plain;charset=UTF-8");
+            resp.getWriter().write(result.rawBody());
+        } else if (guard.signsResponses()) {
             ContentCachingResponseWrapper rejected = new ContentCachingResponseWrapper(resp);
             GuardErrors.write(rejected, result.status(), result.code(), requestId);
             guard.signResponse(req, rejected, rejected.getContentAsByteArray(), who);
@@ -105,7 +112,9 @@ public class GuardFilter extends OncePerRequestFilter {
         } else {
             GuardErrors.write(resp, result.status(), result.code(), requestId);
         }
-        log.write(face, req, who, requestId, started, result.status(), result.code().name(), result.outcome(),
-                req.body(), String.valueOf(result.reason()));
+        if (guard.recordsRequests()) {
+            log.write(face, req, who, requestId, started, result.status(), result.code().name(), result.outcome(),
+                    req.body(), String.valueOf(result.reason()));
+        }
     }
 }

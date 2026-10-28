@@ -28,6 +28,11 @@ public interface EntryGuard {
         return null;
     }
 
+    /** 管线 ⑫ 的开关：自带记录的入口（渠道回调有 pay_callback_log）不写 pay_api_request_log */
+    default boolean recordsRequests() {
+        return true;
+    }
+
     /** 管线 ⑪ 的开关：返回 true 时管线缓存响应体并调 {@link #signResponse}；默认不签，响应不被包装 */
     default boolean signsResponses() {
         return false;
