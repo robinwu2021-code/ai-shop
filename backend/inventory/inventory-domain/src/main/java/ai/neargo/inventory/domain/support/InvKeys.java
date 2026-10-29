@@ -45,6 +45,10 @@ public final class InvKeys {
     public static final String SERIAL = "SN";
     /** 在库周期 */
     public static final String EPISODE = "EPI";
+    /** 出库池记录 */
+    public static final String DISPATCH = "DSP";
+    /** 领取批次 */
+    public static final String CLAIM = "CLM";
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

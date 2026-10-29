@@ -3,6 +3,7 @@ package ai.neargo.inventory.svc.api;
 import ai.neargo.inventory.api.profile.BusinessProfile;
 import ai.neargo.inventory.api.profile.Capability;
 import ai.neargo.inventory.domain.service.BusinessProfileService;
+import ai.neargo.inventory.domain.service.EventFeedService;
 import ai.neargo.inventory.domain.service.ServicePlatformService;
 import ai.neargo.inventory.domain.service.ServicePlatformService.Issued;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,10 +29,13 @@ public class AdminOwnerController {
 
     private final ServicePlatformService platform;
     private final BusinessProfileService profiles;
+    private final EventFeedService events;
 
-    public AdminOwnerController(ServicePlatformService platform, BusinessProfileService profiles) {
+    public AdminOwnerController(ServicePlatformService platform, BusinessProfileService profiles,
+                                EventFeedService events) {
         this.platform = platform;
         this.profiles = profiles;
+        this.events = events;
     }
 
     @PostMapping
@@ -55,6 +59,12 @@ public class AdminOwnerController {
     public void writeAuthority(@PathVariable String ownerId, @RequestBody Map<String, String> req,
                                @RequestHeader("X-Inventory-Actor") String operator) {
         platform.setWriteAuthority(ownerId, req.get("writeAuthority"), operator);
+    }
+
+    /** 清理该业主已确认的事件（保留期由运维按需触发；游标落在清理点之前的宿主会收到过期提示）。 */
+    @PostMapping("/{ownerId}/events/prune")
+    public Map<String, Integer> pruneEvents(@PathVariable String ownerId) {
+        return Map.of("removed", events.prune(ownerId, platform.owner(ownerId).getSystemCode()));
     }
 
     public record OpenOwner(String systemCode, String externalRef, String name) {

@@ -32603,6 +32603,34 @@
       "package": "ai.neargo.inventory.domain.entity"
     },
     {
+      "table": "inv_dispatch_adjust",
+      "class": "InvDispatchAdjust",
+      "zh": "调整 / 撤回的前后快照，只追加：「这单原来发给谁、谁改的、为什么」要查得到。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_dispatch_claim",
+      "class": "InvDispatchClaim",
+      "zh": "领取（签收）。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_dispatch_item",
+      "class": "InvDispatchItem",
+      "zh": "出库池记录：交接凭证，不是库存（TDD §2.9）。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_dispatch_target",
+      "class": "InvDispatchTarget",
+      "zh": "出库池记录的当前目标。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
       "table": "inv_document_serial",
       "class": "InvDocumentSerial",
       "zh": "单据上的一件 SN。",
@@ -32613,6 +32641,27 @@
       "table": "inv_document_target",
       "class": "InvDocumentTarget",
       "zh": "单据目标（收货方 / 接收人）与名称快照：宿主改了名，历史单据不跟着变。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_event_log",
+      "class": "InvEventLog",
+      "zh": "事件日志：序号在提交后分配，宿主按序号拉取，不漏不重。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_event_pending",
+      "class": "InvEventPending",
+      "zh": "待排序事件：业务事务里写，提交后由排序器搬进 InvEventLog 并分配序号。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_event_subscription",
+      "class": "InvEventSubscription",
+      "zh": "事件订阅：确认到哪了、清理到哪了。",
       "module": "inventory",
       "package": "ai.neargo.inventory.domain.entity"
     },
@@ -35585,6 +35634,20 @@
         "name": "EPISODE",
         "value": "EPI",
         "zh": "在库周期",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "DISPATCH",
+        "value": "DSP",
+        "zh": "出库池记录",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "CLAIM",
+        "value": "CLM",
+        "zh": "领取批次",
         "module": "inventory"
       },
       {
@@ -43988,6 +44051,10 @@
           "PROFILE_INVALID",
           "GATE_REF_MISSING",
           "SERIAL_CONFLICT",
+          "DISPATCH_NOT_AVAILABLE",
+          "DISPATCH_CHILD_LOCKED",
+          "ISSUE_VOID_FORBIDDEN",
+          "EVENTS_CURSOR_EXPIRED",
           "INTERNAL"
         ],
         "zh": "进销存自己的错误码。",

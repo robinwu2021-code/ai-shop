@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.AutoConfigurationExcludeFilter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FullyQualifiedAnnotationBeanNameGenerator;
 import org.springframework.context.annotation.FilterType;
 
 /**
@@ -20,8 +21,9 @@ import org.springframework.context.annotation.FilterType;
  */
 @AutoConfiguration
 // 排除自身：本类也在被扫的包里，不排除会被当成普通配置类再注册一遍
-@ComponentScan(basePackages = "ai.neargo.inventory.domain", excludeFilters = @ComponentScan.Filter(
-        type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class))
+// Bean 名用全限定类名：内嵌进 ai-shop 时与商城同名的类（如履约域的 DispatchServiceImpl）不再撞名
+@ComponentScan(basePackages = "ai.neargo.inventory.domain", nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class,
+        excludeFilters = @ComponentScan.Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class))
 public class InventoryDomainAutoConfiguration {
 
     /** 宿主没给运行记录时的兜底；ai-shop 内嵌时由它自己的任务记录接管。 */

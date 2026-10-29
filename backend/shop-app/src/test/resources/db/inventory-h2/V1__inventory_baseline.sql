@@ -826,6 +826,132 @@ CREATE TABLE IF NOT EXISTS inv_document_target
     CONSTRAINT uk_inv_document_target UNIQUE (owner_id, doc_kind, doc_no, target_type)
 );
 
+CREATE TABLE IF NOT EXISTS inv_dispatch_item
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    dispatch_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    outbound_no VARCHAR(32) NOT NULL,
+    line_no INT NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    serial_id VARCHAR(32) DEFAULT NULL,
+    serial_no VARCHAR(64) DEFAULT NULL,
+    episode_id VARCHAR(32) DEFAULT NULL,
+    qty DECIMAL(24,6) NOT NULL,
+    parent_dispatch_id VARCHAR(32) DEFAULT NULL,
+    root_target_type VARCHAR(32) NOT NULL,
+    root_target_ref VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    resource_version INT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_dispatch_item UNIQUE (owner_id, dispatch_id),
+    CONSTRAINT uk_inv_dispatch_item_episode UNIQUE (owner_id, episode_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_dispatch_target
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    dispatch_id VARCHAR(32) NOT NULL,
+    target_type VARCHAR(32) NOT NULL,
+    target_ref VARCHAR(64) NOT NULL,
+    name_snapshot VARCHAR(128) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_dispatch_target UNIQUE (owner_id, dispatch_id, target_type)
+);
+
+CREATE TABLE IF NOT EXISTS inv_dispatch_claim
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    claim_no VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    dispatch_id VARCHAR(32) NOT NULL,
+    system_code VARCHAR(32) NOT NULL,
+    request_id VARCHAR(64) DEFAULT NULL,
+    business_ref VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL,
+    active_dispatch_id VARCHAR(32) GENERATED ALWAYS AS (CASE WHEN status = 'ACTIVE' THEN dispatch_id ELSE NULL END),
+    released_at DATETIME DEFAULT NULL,
+    released_by VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_dispatch_claim_active UNIQUE (owner_id, active_dispatch_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_dispatch_adjust
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    dispatch_id VARCHAR(32) NOT NULL,
+    action VARCHAR(16) NOT NULL,
+    before_body TEXT DEFAULT NULL,
+    after_body TEXT DEFAULT NULL,
+    reason VARCHAR(255) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_event_pending
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    event_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    resource_type VARCHAR(32) NOT NULL,
+    resource_id VARCHAR(64) NOT NULL,
+    resource_version INT NOT NULL,
+    payload TEXT DEFAULT NULL,
+    actor VARCHAR(64) DEFAULT NULL,
+    trace_id VARCHAR(64) DEFAULT NULL,
+    occurred_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_event_pending UNIQUE (event_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_event_log
+(
+    seq BIGINT NOT NULL AUTO_INCREMENT,
+    event_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    event_type VARCHAR(32) NOT NULL,
+    resource_type VARCHAR(32) NOT NULL,
+    resource_id VARCHAR(64) NOT NULL,
+    resource_version INT NOT NULL,
+    payload TEXT DEFAULT NULL,
+    actor VARCHAR(64) DEFAULT NULL,
+    trace_id VARCHAR(64) DEFAULT NULL,
+    occurred_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (seq),
+    CONSTRAINT uk_inv_event_log UNIQUE (event_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_event_subscription
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    system_code VARCHAR(32) NOT NULL,
+    acked_seq BIGINT NOT NULL DEFAULT 0,
+    pruned_seq BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_event_subscription UNIQUE (owner_id, system_code)
+);
+
 -- 种子数据
 INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PIECE', '件', 0, 10 FROM DUAL

@@ -25,6 +25,18 @@ public interface HostInboundService {
     void post(Caller caller, String inboundNo);
 
     /**
+     * 纠正入库：只由出库池「撤回」生成，建单即过账。货没离开受控链路，默认沿用原放行凭证（TDD §7.2 Q2）。
+     *
+     * @return 入库单号
+     */
+    String correction(Caller caller, String locationId, String sourceRef, List<Line> lines);
+
+    /**
+     * 退货业务确认：宿主解除了本地业务关联（绑定、装机…），解除这张退货入库加的「退货待确认」冻结（AC-10）。
+     */
+    void businessClearance(Caller caller, String inboundNo);
+
+    /**
      * @param purpose        档案 inboundPurposes 里的用途；{@code CORRECTION} 只能由撤回动作生成，不能手建
      * @param basis          期初等要求依据的用途必填
      * @param attachmentRefs 要求附件的用途必填

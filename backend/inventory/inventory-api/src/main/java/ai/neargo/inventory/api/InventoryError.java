@@ -35,6 +35,14 @@ public enum InventoryError {
     GATE_REF_MISSING("inventory.gate.ref_missing", 400),
     /** SN 冲突。参数形如 {@code SN:原因}（in_stock / not_in_stock / item_mismatch / held / parent / gate_reused），一次列全。 */
     SERIAL_CONFLICT("inventory.serial.conflict", 409),
+    /** 出库池记录不在可操作状态（只有待签收能调整 / 撤回 / 签收）。参数是记录号。 */
+    DISPATCH_NOT_AVAILABLE("inventory.dispatch.not_available", 409),
+    /** 成套的从属记录随主记录走，不能单独操作。参数是记录号。 */
+    DISPATCH_CHILD_LOCKED("inventory.dispatch.child_locked", 409),
+    /** 已过账的交接出库不作废：设备已离开仓库，纠错只走调整、撤回、退货（AC-13）。 */
+    ISSUE_VOID_FORBIDDEN("inventory.issue.void_forbidden", 409),
+    /** 事件游标早于已清理的位置，要从确认点重拉（AC-14）。 */
+    EVENTS_CURSOR_EXPIRED("inventory.events.cursor_expired", 410),
     INTERNAL("inventory.internal", 500);
 
     private final String key;

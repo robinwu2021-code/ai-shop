@@ -65,6 +65,16 @@ public class InboundController {
         });
     }
 
+    /** 退货业务确认：宿主解除了本地业务关联，解冻这张退货入库的「退货待确认」（AC-10）。 */
+    @PostMapping("/api/inventory/v1/inbounds/{no}/business-clearance")
+    public DocNo businessClearance(@PathVariable String no) {
+        Caller caller = InventoryRequestContext.caller();
+        return commands.execute(caller, "inbound.clearance", no, DocNo.class, () -> {
+            inbounds.businessClearance(caller, no);
+            return new DocNo(no);
+        });
+    }
+
     @GetMapping("/api/inventory/v1/inbounds/{no}")
     public Document view(@PathVariable String no) {
         return documents.inbound(InventoryRequestContext.principal().ownerId(), no);

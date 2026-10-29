@@ -4,6 +4,7 @@ import ai.neargo.inventory.api.InventoryError;
 import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.api.profile.BusinessProfile;
 import ai.neargo.inventory.api.profile.BusinessProfile.OutboundPurpose;
+import ai.neargo.inventory.api.profile.Capability;
 import ai.neargo.inventory.domain.config.ConditionalOnInventory;
 import ai.neargo.inventory.domain.entity.InvDocumentSerial;
 import ai.neargo.inventory.domain.entity.InvDocumentTarget;
@@ -21,8 +22,8 @@ import ai.neargo.inventory.domain.mapper.InventoryMappers.OutboundOrderMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.SerialMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.StockEpisodeMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.StockHoldMapper;
-import ai.neargo.inventory.domain.mapper.InventoryMappers.TargetRefMapper;
 import ai.neargo.inventory.domain.service.AuditService;
+import ai.neargo.inventory.domain.service.EventPublisher;
 import ai.neargo.inventory.domain.service.BusinessProfileService.Versioned;
 import ai.neargo.inventory.domain.service.Caller;
 import ai.neargo.inventory.domain.service.HostInboundService;
@@ -55,27 +56,30 @@ public class HostOutboundServiceImpl implements HostOutboundService {
     private final OutboundLineMapper lineMapper;
     private final DocumentSerialMapper docSerialMapper;
     private final DocumentTargetMapper docTargetMapper;
-    private final TargetRefMapper targetMapper;
     private final SerialMapper serialMapper;
     private final StockEpisodeMapper episodeMapper;
     private final StockHoldMapper holdMapper;
+    private final DispatchPoolStore pool;
+    private final EventPublisher events;
     private final StockPostingService posting;
     private final AuditService audit;
 
     public HostOutboundServiceImpl(HostDocumentSupport support, OutboundOrderMapper orderMapper,
                                    OutboundLineMapper lineMapper, DocumentSerialMapper docSerialMapper,
-                                   DocumentTargetMapper docTargetMapper, TargetRefMapper targetMapper,
+                                   DocumentTargetMapper docTargetMapper,
                                    SerialMapper serialMapper, StockEpisodeMapper episodeMapper,
-                                   StockHoldMapper holdMapper, StockPostingService posting, AuditService audit) {
+                                   StockHoldMapper holdMapper, StockPostingService posting, AuditService audit,
+                                   DispatchPoolStore pool, EventPublisher events) {
         this.support = support;
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
         this.docSerialMapper = docSerialMapper;
         this.docTargetMapper = docTargetMapper;
-        this.targetMapper = targetMapper;
         this.serialMapper = serialMapper;
         this.episodeMapper = episodeMapper;
         this.holdMapper = holdMapper;
+        this.pool = pool;
+        this.events = events;
         this.posting = posting;
         this.audit = audit;
     }
@@ -84,13 +88,13 @@ public class HostOutboundServiceImpl implements HostOutboundService {
     @Transactional(transactionManager = "invTransactionManager")
     public String create(Caller caller, Draft draft) {
         Versioned profile = support.profile(caller.ownerId());
-        OutboundPurpose purpose = purpose(profile.profile(), draft.purpose());
+        OutboundPurpose purpose = HostDocumentSupport.outboundPurpose(profile.profile(), draft.purpose());
         if (purpose.handover() == BusinessProfile.Handover.POOL) {
-            // 交接出库要生成出库池记录，归 M4（出库池）；在那之前不放行，免得货出去了却没有交接凭证
-            throw InventoryException.of(InventoryError.BAD_REQUEST, "purpose.handover");
+            // 交接出库：过账时生成出库池记录，要开通出库池能力包
+            support.requireCapability(caller.ownerId(), Capability.DISPATCH_POOL);
         }
         support.requireActiveLocation(caller.ownerId(), draft.locationId());
-        Map<String, InvTargetRef> targets = resolveTargets(caller, profile.profile(), purpose,
+        Map<String, InvTargetRef> targets = support.resolveTargets(caller, purpose,
                 draft.targets() == null ? Map.of() : draft.targets());
 
         InvOutboundOrder order = new InvOutboundOrder();
@@ -149,8 +153,15 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                 .eq(InvOutboundOrder::getOutboundNo, outboundNo)
                 .eq(InvOutboundOrder::getStatus, InvEnums.DocStatus.DRAFT));
         if (changed == 0) {
-            // 已过账的出库单不作废：货已经离开仓库，作废只会让账面「变回在仓」而实物不在
-            throw InventoryException.of(InventoryError.CONFLICT, "status");
+            // 已过账的出库单不作废：货已经离开仓库，作废只会让账面「变回在仓」而实物不在。
+            // 交接出库单独报一个码：它的纠错路是调整、撤回、退货（AC-13）
+            InvOutboundOrder posted = orderMapper.selectOne(Wrappers.<InvOutboundOrder>lambdaQuery()
+                    .eq(InvOutboundOrder::getOwnerId, caller.ownerId())
+                    .eq(InvOutboundOrder::getOutboundNo, outboundNo));
+            boolean handedOver = posted != null && InvEnums.DocStatus.POSTED.equals(posted.getStatus())
+                    && pool.hasRecords(caller.ownerId(), outboundNo);
+            throw InventoryException.of(handedOver ? InventoryError.ISSUE_VOID_FORBIDDEN : InventoryError.CONFLICT,
+                    "status");
         }
         audit.record(caller, "outbound.cancel", "OUTBOUND", outboundNo, null, null, null);
     }
@@ -175,7 +186,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                 .eq(InvDocumentTarget::getOwnerId, caller.ownerId())
                 .eq(InvDocumentTarget::getDocKind, InvEnums.DocKind.OUT)
                 .eq(InvDocumentTarget::getDocNo, outboundNo))) {
-            InvTargetRef current = target(caller, t.getTargetType(), t.getTargetRef());
+            InvTargetRef current = support.target(caller, t.getTargetType(), t.getTargetRef());
             if (current == null || !InvEnums.MasterStatus.ACTIVE.equals(current.getStatus())) {
                 throw InventoryException.of(InventoryError.BAD_REQUEST, "target.disabled:" + t.getTargetType());
             }
@@ -215,8 +226,9 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         }
 
         List<StockPostingService.Line> postingLines = new ArrayList<>();
-        for (InvOutboundLine line : lineMapper.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
-                .eq(InvOutboundLine::getOutboundNo, outboundNo).orderByAsc(InvOutboundLine::getLineNo))) {
+        List<InvOutboundLine> lines = lineMapper.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
+                .eq(InvOutboundLine::getOutboundNo, outboundNo).orderByAsc(InvOutboundLine::getLineNo));
+        for (InvOutboundLine line : lines) {
             postingLines.add(new StockPostingService.Line(line.getLineNo(), line.getItemId(), order.getLocationId(),
                     line.getQtyQuantity().intValueExact(), null));
         }
@@ -235,9 +247,31 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                     HostDocumentSupport.operator(caller)) == 0) {
                 throw InventoryException.of(InventoryError.SERIAL_CONFLICT, s.getSerialNo() + ":not_in_stock");
             }
+            // 出了仓就不再有「在仓的组装关系」：回仓时按实收重新登记（撤回时由出库池的主从关系还原）
+            if (row.getParentSerialId() != null) {
+                serialMapper.update(null, Wrappers.<InvSerial>lambdaUpdate()
+                        .set(InvSerial::getParentSerialId, null)
+                        .eq(InvSerial::getOwnerId, caller.ownerId())
+                        .eq(InvSerial::getSerialId, row.getSerialId()));
+            }
             s.setSerialId(row.getSerialId());
             docSerialMapper.updateById(s);
         }
+        OutboundPurpose purpose = HostDocumentSupport.outboundPurpose(support.profile(caller.ownerId()).profile(),
+                order.getPurpose());
+        if (purpose.handover() == BusinessProfile.Handover.POOL) {
+            // 同一事务：余额、周期、流水、出库池、事件要么都有、要么都没有（AC-06）
+            Map<String, String> episodeBySerialNo = new HashMap<>();
+            episodes.forEach((no, ep) -> episodeBySerialNo.put(no, ep.getEpisodeId()));
+            List<InvDocumentTarget> targets = docTargetMapper.selectList(Wrappers.<InvDocumentTarget>lambdaQuery()
+                    .eq(InvDocumentTarget::getOwnerId, caller.ownerId())
+                    .eq(InvDocumentTarget::getDocKind, InvEnums.DocKind.OUT)
+                    .eq(InvDocumentTarget::getDocNo, outboundNo));
+            pool.createFromIssue(caller, order, lines, serials, episodeBySerialNo, targets,
+                    purpose.requiredTargets().get(0));
+        }
+        events.publish(caller, "OutboundPosted", "OUTBOUND", outboundNo, 1,
+                Map.of("purpose", order.getPurpose(), "locationId", order.getLocationId()));
         audit.record(caller, "outbound.post", "OUTBOUND", outboundNo, null, null, null);
     }
 
@@ -336,53 +370,6 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         row.setUom(item.getBaseUom());
         row.setCreatedBy(HostDocumentSupport.operator(caller));
         lineMapper.insert(row);
-    }
-
-    private static OutboundPurpose purpose(BusinessProfile profile, String code) {
-        return (profile.outboundPurposes() == null ? List.<OutboundPurpose>of() : profile.outboundPurposes())
-                .stream().filter(p -> p.code().equals(code)).findFirst()
-                .orElseThrow(() -> InventoryException.of(InventoryError.BAD_REQUEST, "purpose"));
-    }
-
-    /** 按档案的收货方规则：必填的都要给、只许给登记过的类型、可选目标须挂在所选的上级目标下。 */
-    private Map<String, InvTargetRef> resolveTargets(Caller caller, BusinessProfile profile, OutboundPurpose purpose,
-                                                     Map<String, String> given) {
-        List<String> required = purpose.requiredTargets() == null ? List.of() : purpose.requiredTargets();
-        List<String> optional = purpose.optionalTargets() == null ? List.of() : purpose.optionalTargets();
-        for (String type : required) {
-            if (!given.containsKey(type)) {
-                throw InventoryException.of(InventoryError.BAD_REQUEST, "target.required:" + type);
-            }
-        }
-        Map<String, InvTargetRef> resolved = new LinkedHashMap<>();
-        for (Map.Entry<String, String> e : given.entrySet()) {
-            if (!required.contains(e.getKey()) && !optional.contains(e.getKey())) {
-                throw InventoryException.of(InventoryError.BAD_REQUEST, "target.type:" + e.getKey());
-            }
-            InvTargetRef t = target(caller, e.getKey(), e.getValue());
-            if (t == null || !InvEnums.MasterStatus.ACTIVE.equals(t.getStatus())) {
-                throw InventoryException.of(InventoryError.BAD_REQUEST, "target:" + e.getKey());
-            }
-            resolved.put(e.getKey(), t);
-        }
-        for (InvTargetRef t : resolved.values()) {
-            if (optional.contains(t.getObjectType()) && t.getParentType() != null) {
-                InvTargetRef parent = resolved.get(t.getParentType());
-                if (parent == null || !parent.getObjectRef().equals(t.getParentRef())) {
-                    // 例：站点必须属于所选商家
-                    throw InventoryException.of(InventoryError.BAD_REQUEST, "target.parent:" + t.getObjectType());
-                }
-            }
-        }
-        return resolved;
-    }
-
-    private InvTargetRef target(Caller caller, String type, String ref) {
-        return targetMapper.selectOne(Wrappers.<InvTargetRef>lambdaQuery()
-                .eq(InvTargetRef::getOwnerId, caller.ownerId())
-                .eq(InvTargetRef::getSystemCode, caller.systemCode())
-                .eq(InvTargetRef::getObjectType, type)
-                .eq(InvTargetRef::getObjectRef, ref));
     }
 
     private record Expanded(String itemId, String serialNo, String parentSerialNo) {

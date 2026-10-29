@@ -587,20 +587,20 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-02 | `SerialDocumentFlowTest#sameSerialCanBeInStockOnlyOnceEvenUnderConcurrentPosting`（顺序 + 两线程并发过账同一新 SN，只成功一个） | ✅ 2026-10-29 | |
 | AC-03 | `ServicePlatformFlowTest#ownerCredentialProfileAndIdempotentWarehouse`（同键同参同结果、只建一个仓；同键异参 409；按键查结果） | ✅ 2026-10-29 | ✅ 去掉占键插入 → 变红 |
 | AC-04 | `SerialDocumentFlowTest#missingGateRefsAreListedAllAtOnceAndNothingIsPosted`（柜、两块宝、整行数量物料一次列全） | ✅ 2026-10-29 | ✅ 去掉凭证检查 → 变红 |
-| AC-05 | `IssueTargetRuleTest#site_not_under_merchant_rejected` | | |
-| AC-06 | `IssuePostingTest#balance_episode_pool_ledger_event_in_one_tx` | | |
-| AC-07 | `DispatchRedirectTest#available_ok_claimed_409` | | |
-| AC-08 | `DispatchRevokeTest#revoke_reopens_episode_and_restores_balance` | | |
-| AC-09 | `DispatchClaimConcurrencyTest#batch_all_or_nothing` | | |
-| AC-10 | `ReturnInboundTest#claimed_return_holds_until_clearance` | | |
+| AC-05 | `DispatchPoolFlowTest#issueBuildsAKitInThePoolAndRedirectMovesTheWholeKit`（站点不属于所选商家 → 400 `target.parent:SITE`） | ✅ 2026-10-29 | |
+| AC-06 | 同上（过账后余额、周期、9 条池记录、流水、事件都在；出库与池记录同一事务） | ✅ 2026-10-29 | |
+| AC-07 | 同上（待签收调整成功、整套随动、版本 +1、按站点 / 接收人 / 商家多值查得到；签收后调整 409） | ✅ 2026-10-29 | ✅ 调整只改主记录 → 变红 |
+| AC-08 | `#revokeReturnsTheWholeKitToStockWithANewEpisode`（整套撤回、纠正入库、余额恢复、组装照原样、撤回过的不能签收、可再发） | ✅ 2026-10-29 | |
+| AC-09 | `#concurrentClaimsOnTheSameBatchLetOnlyOneWinAndReleaseReopens`（两线程抢同一条只一方成功、输方整批不动；按幂等键查签收；释放回待签收） | ✅ 2026-10-29 | |
+| AC-10 | `#claimedReturnIsHeldUntilBusinessClearance`（已签收退货 → 池记录已退回 + 退货待确认冻结；确认前发货 409 `C7:held`；确认后放行） | ✅ 2026-10-29 | ✅ 去掉退货冻结 → 变红 |
 | AC-11 | `CountFreezeTest#issue_in_scope_409` | | |
 | AC-12 | `PeriodSummaryTest#opening_plus_in_minus_out_equals_closing` | | |
-| AC-13 | `OutboundCancelTest#posted_issue_cancel_409` | | |
-| AC-14 | `EventCursorTest#expired_cursor_recovers_without_gap_or_dup` | | |
+| AC-13 | `#issueBuildsAKitInThePoolAndRedirectMovesTheWholeKit`（已过账交接出库作废 → 409 `inventory.issue.void_forbidden`） | ✅ 2026-10-29 | |
+| AC-14 | `#eventsArePulledInOrderAckedAndAnExpiredCursorIsReported`（拉、确认、清理、旧游标 410、从确认点继续只拿到新事件） | ✅ 2026-10-29 | ✅ 去掉游标过期检查 → 变红 |
 | AC-15 | `ServicePlatformFlowTest#ownersAreIsolatedByCredential`（B 的凭证带 A 的业主号也看不到 A 的仓）· `#badCredentialsAllLookTheSame` | ✅ 2026-10-29 | |
 | AC-16 | `CapabilityGuardTest#dispatch_pool_disabled_403` | | |
 | AC-17 | `ChargingPileProfileE2ETest#profile_only_onboarding` | | |
-| AC-18 | `KitDispatchTest#revoke_parent_moves_children_child_alone_409` | | |
+| AC-18 | AC-07 / AC-08 两例（单独动从属记录 409 `child_locked`；撤回主记录整套回仓） | ✅ 2026-10-29 | |
 | AC-19 | `ServicePlatformFlowTest#writesAreRejectedWhenThisProcessIsNotTheWriter`（写入方翻回 EMBEDDED 后写 409、读照常） | ✅ 2026-10-29 | |
 | AC-20 | `CoreScenarioSuite`（内嵌 / 独立两种装配） | | |
 | AC-21 | pre-push I1（删本地 shop 构件后构建） | | |
@@ -674,6 +674,22 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T3.3 查询 | `GET /serials`（只返回在仓）、`/ledger`（按 id 游标，单页 ≤ 500）、`/inbounds/{no}`、`/outbounds/{no}` | — |
 | T3.4 组装与展开 | 入库时 `parentSerialNo` 登记组装（同单或本库位在仓的件）；`/serials/{sn}/assemble`、`/disassemble`（只一层、要 SERIAL 能力包）；出库扫上级件带出当前挂着的下级件，单据逐件记；单据 SN 上限 2000（含展开）、草稿可分批追加 | **拆装不写流水**：流水的唯一键是「单号 + 行号」、每行一个非零变动，拆装不改数量，记审计 |
 
+### M4 · 出库池（2026-10-29，T4.1 ~ T4.7）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| V19 | `inv_dispatch_item`、`inv_dispatch_target`、`inv_dispatch_claim`（生成列唯一）、`inv_dispatch_adjust`、`inv_event_pending`、`inv_event_log`、`inv_event_subscription` | 主方案的 `inv_event_delivery` 改为「待排序 + 日志」两张：序号在提交后分配，不需要逐订阅的投递行 |
+| T4.1 交接出库 | `handover = POOL` 的用途要 DISPATCH_POOL 能力包；过账在同一事务里建池记录（逐件一条、数量一行一条），收货方顶层目标 = 用途的第一个必填目标 | 「顶层目标」取第一个必填目标（ShareHub 档案里是商家）；档案里把顶层目标写在第一位即可 |
+| T4.2 查询 / 调整 / 撤回 | 多值过滤（状态、顶层目标、任一目标类型的多个编号、单号、SN、物料）；调整按用途规则整体校验新目标、整套随动、留快照、版本 +1；撤回整套标已撤回 + 纠正入库（回发出库位、新周期、组装还原） | **数量物料撤回的放行依据**：发出时没有逐行凭证可沿用，用 `REVOKE:<记录号>` 作依据 |
+| T4.3 签收与释放 | 整批固定锁序、一次列全、全成全败；领取行生成列唯一兜底；按幂等键查批次；只有原领取系统能释放 | — |
+| T4.4 退货 | `RETURN` 入库过账时，每件 SN 最近一条未结池记录标已退回、关闭有效领取；签收过的加「退货待确认」冻结；`/inbounds/{no}/business-clearance` 解冻 | 数量物料的退货不关联池记录（无法逐件识别是哪一条） |
+| T4.5 禁止作废 | 已过账且有池记录的出库单作废 → `inventory.issue.void_forbidden` | — |
+| T4.6 事件 | 业务事务写待排序；拉取时持订阅行锁把已提交的待排序按 id 搬进日志分配序号；确认只前进；运维清理已确认部分，游标早于清理点返回 410 | 排序在拉取时顺带做，不另起定时任务：拉取方是唯一需要序号的人 |
+| T4.7 成套 | 从属记录随主记录调整 / 撤回 / 签收；单独操作从属 409 `inventory.dispatch.child_locked` | 出库时清空已发出件的组装关系（回仓按实收重登；撤回由池记录主从关系还原），免得退回的宝被下次扫柜码误带出 |
+| 在途 | `GET /in-transit`：待签收按顶层目标 × 物料汇总 | 主方案归 T5.2，顺手在 M4 做了 |
+| 内嵌装配撞名 | 进销存领域组件扫描改用全限定类名做 Bean 名 | 内嵌进 ai-shop 时 `DispatchServiceImpl` 与商城履约域同名类冲突，第一次全量回归 526 例因此起不来；改名生成器一次杜绝这类问题 |
+
+
 
 
 ## §7 确认与完成
@@ -709,4 +725,5 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | 由 ShareHub 方案 + 三轮改造计划合成；D1 ~ D6 裁决；ADR-046 接受；待实施 |
 | 2026-10-29 | D2 改判为「测试一套、生产两套」；新增 AC-28 与 [进销存独立服务-执行方案](./进销存独立服务-执行方案.md) |
 | 2026-10-29 | M1 完成（`1759f58fa`）；M2 T0.1、T2.1 ~ T2.3 完成（`fc682c4e9`）；T2.4、T2.5 完成（`6f2d5d717`） |
-| 2026-10-29 | M3 完成（T3.1 ~ T3.4），后端全量 6982 例 0 失败 |
+| 2026-10-29 | M3 完成（`99159b93c`），后端全量 6982 例 0 失败 |
+| 2026-10-29 | M4 完成（T4.1 ~ T4.7），后端全量 6987 例 0 失败 —— 可交付 ShareHub 联调 |

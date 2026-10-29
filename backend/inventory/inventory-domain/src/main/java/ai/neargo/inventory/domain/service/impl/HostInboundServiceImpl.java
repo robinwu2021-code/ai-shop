@@ -18,7 +18,9 @@ import ai.neargo.inventory.domain.mapper.InventoryMappers.StockEpisodeMapper;
 import ai.neargo.inventory.domain.service.AuditService;
 import ai.neargo.inventory.domain.service.BusinessProfileService.Versioned;
 import ai.neargo.inventory.domain.service.Caller;
+import ai.neargo.inventory.domain.service.EventPublisher;
 import ai.neargo.inventory.domain.service.HostInboundService;
+import ai.neargo.inventory.domain.service.StockHoldService;
 import ai.neargo.inventory.domain.service.StockPostingService;
 import ai.neargo.inventory.domain.service.StockPostingService.PostingDoc;
 import ai.neargo.inventory.domain.support.InvEnums;
@@ -45,6 +47,8 @@ public class HostInboundServiceImpl implements HostInboundService {
 
     /** 只由撤回动作生成（M4），不能手建：手建的「纠正入库」等于凭空变出一件货。 */
     static final String CORRECTION = "CORRECTION";
+    /** 退货回仓：关联原出库池记录（TDD §2.8）。 */
+    static final String RETURN = "RETURN";
 
     private final HostDocumentSupport support;
     private final InboundOrderMapper orderMapper;
@@ -54,11 +58,15 @@ public class HostInboundServiceImpl implements HostInboundService {
     private final StockEpisodeMapper episodeMapper;
     private final StockPostingService posting;
     private final AuditService audit;
+    private final DispatchPoolStore pool;
+    private final StockHoldService holds;
+    private final EventPublisher events;
 
     public HostInboundServiceImpl(HostDocumentSupport support, InboundOrderMapper orderMapper,
                                   InboundLineMapper lineMapper, DocumentSerialMapper docSerialMapper,
                                   SerialMapper serialMapper, StockEpisodeMapper episodeMapper,
-                                  StockPostingService posting, AuditService audit) {
+                                  StockPostingService posting, AuditService audit, DispatchPoolStore pool,
+                                  StockHoldService holds, EventPublisher events) {
         this.support = support;
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
@@ -67,6 +75,9 @@ public class HostInboundServiceImpl implements HostInboundService {
         this.episodeMapper = episodeMapper;
         this.posting = posting;
         this.audit = audit;
+        this.pool = pool;
+        this.holds = holds;
+        this.events = events;
     }
 
     @Override
@@ -88,27 +99,35 @@ public class HostInboundServiceImpl implements HostInboundService {
         if (purpose.attachmentRequired() && attachments.isEmpty()) {
             throw InventoryException.of(InventoryError.BAD_REQUEST, "attachmentRefs");
         }
-        support.requireActiveLocation(caller.ownerId(), draft.locationId());
-
-        InvInboundOrder order = new InvInboundOrder();
-        order.setInboundNo(InvKeys.next(InvKeys.INBOUND));
-        order.setOwnerId(caller.ownerId());
-        order.setLocationId(draft.locationId());
-        order.setSourceType(purpose.code());
-        order.setSourceRef(draft.sourceRef());
-        order.setBasis(draft.basis());
-        order.setAttachmentRefs(attachments.isEmpty() ? null : String.join(",", attachments));
-        order.setProfileVersion(profile.version());
-        order.setStatus(InvEnums.DocStatus.DRAFT);
-        order.setTotalQtyQuantity(BigDecimal.ZERO);
-        order.setOccurredAt(LocalDateTime.now());
-        order.setOperator(HostDocumentSupport.operator(caller));
-        order.setRemark(draft.remark());
-        order.setCreatedBy(HostDocumentSupport.operator(caller));
-        orderMapper.insert(order);
+        InvInboundOrder order = insertOrder(caller, draft.locationId(), purpose.code(), draft.sourceRef(),
+                draft.basis(), attachments, draft.remark(), profile.version());
         addLines(caller, order, draft.lines() == null ? List.of() : draft.lines());
         audit.record(caller, "inbound.create", "INBOUND", order.getInboundNo(), null, draft, null);
         return order.getInboundNo();
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String correction(Caller caller, String locationId, String sourceRef, List<Line> lines) {
+        InvInboundOrder order = insertOrder(caller, locationId, CORRECTION, sourceRef, null, List.of(),
+                "revoke " + sourceRef, support.profile(caller.ownerId()).version());
+        addLines(caller, order, lines);
+        post(caller, order.getInboundNo());
+        return order.getInboundNo();
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void businessClearance(Caller caller, String inboundNo) {
+        InvInboundOrder order = orderMapper.selectOne(Wrappers.<InvInboundOrder>lambdaQuery()
+                .eq(InvInboundOrder::getOwnerId, caller.ownerId()).eq(InvInboundOrder::getInboundNo, inboundNo));
+        if (order == null) {
+            throw InventoryException.of(InventoryError.NOT_FOUND, "inbound");
+        }
+        int released = holds.releaseBySource(caller, InvEnums.HoldReason.RETURN_PENDING, inboundNo);
+        if (released > 0) {
+            events.publish(caller, "ReturnCleared", "INBOUND", inboundNo, 1, Map.of("released", released));
+        }
     }
 
     @Override
@@ -244,7 +263,41 @@ public class HostInboundServiceImpl implements HostInboundService {
                     .eq(InvSerial::getOwnerId, caller.ownerId())
                     .eq(InvSerial::getSerialId, serialIds.get(s.getSerialNo())));
         }
+        // ⑥ 退货：关联的出库池记录标为已退回；已签收的那些，宿主那边可能还挂着业务，先冻上等确认（AC-10）
+        if (RETURN.equals(order.getSourceType())) {
+            for (InvDocumentSerial s : serials) {
+                String before = pool.markReturned(caller, s.getSerialId());
+                if (DispatchPoolStore.CLAIMED.equals(before)) {
+                    holds.place(caller, s.getItemId(), order.getLocationId(), s.getSerialId(), BigDecimal.ONE,
+                            InvEnums.HoldReason.RETURN_PENDING, inboundNo, null);
+                }
+            }
+        }
+        events.publish(caller, "InboundPosted", "INBOUND", inboundNo, 1,
+                Map.of("purpose", order.getSourceType(), "locationId", order.getLocationId()));
         audit.record(caller, "inbound.post", "INBOUND", inboundNo, null, null, null);
+    }
+
+    private InvInboundOrder insertOrder(Caller caller, String locationId, String purpose, String sourceRef,
+                                        String basis, List<String> attachments, String remark, int profileVersion) {
+        support.requireActiveLocation(caller.ownerId(), locationId);
+        InvInboundOrder order = new InvInboundOrder();
+        order.setInboundNo(InvKeys.next(InvKeys.INBOUND));
+        order.setOwnerId(caller.ownerId());
+        order.setLocationId(locationId);
+        order.setSourceType(purpose);
+        order.setSourceRef(sourceRef);
+        order.setBasis(basis);
+        order.setAttachmentRefs(attachments.isEmpty() ? null : String.join(",", attachments));
+        order.setProfileVersion(profileVersion);
+        order.setStatus(InvEnums.DocStatus.DRAFT);
+        order.setTotalQtyQuantity(BigDecimal.ZERO);
+        order.setOccurredAt(LocalDateTime.now());
+        order.setOperator(HostDocumentSupport.operator(caller));
+        order.setRemark(remark);
+        order.setCreatedBy(HostDocumentSupport.operator(caller));
+        orderMapper.insert(order);
+        return order;
     }
 
     private void openEpisode(Caller caller, InvInboundOrder order, InvSerial row, InvDocumentSerial s) {

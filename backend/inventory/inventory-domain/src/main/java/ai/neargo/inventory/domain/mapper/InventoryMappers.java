@@ -5,8 +5,15 @@ import ai.neargo.inventory.domain.entity.InvBusinessProfile;
 import ai.neargo.inventory.domain.entity.InvClientSystem;
 import ai.neargo.inventory.domain.entity.InvCommand;
 import ai.neargo.inventory.domain.entity.InvDailySnapshot;
+import ai.neargo.inventory.domain.entity.InvDispatchAdjust;
+import ai.neargo.inventory.domain.entity.InvDispatchClaim;
+import ai.neargo.inventory.domain.entity.InvDispatchItem;
+import ai.neargo.inventory.domain.entity.InvDispatchTarget;
 import ai.neargo.inventory.domain.entity.InvDocumentSerial;
 import ai.neargo.inventory.domain.entity.InvDocumentTarget;
+import ai.neargo.inventory.domain.entity.InvEventLog;
+import ai.neargo.inventory.domain.entity.InvEventPending;
+import ai.neargo.inventory.domain.entity.InvEventSubscription;
 import ai.neargo.inventory.domain.entity.InvInboundLine;
 import ai.neargo.inventory.domain.entity.InvInboundOrder;
 import ai.neargo.inventory.domain.entity.InvItem;
@@ -247,4 +254,18 @@ public final class InventoryMappers {
     public interface DocumentSerialMapper extends BaseMapper<InvDocumentSerial> {}
 
     public interface DocumentTargetMapper extends BaseMapper<InvDocumentTarget> {}
+
+    public interface DispatchItemMapper extends BaseMapper<InvDispatchItem> {}
+
+    public interface DispatchTargetMapper extends BaseMapper<InvDispatchTarget> {}
+
+    public interface DispatchClaimMapper extends BaseMapper<InvDispatchClaim> {}
+
+    public interface DispatchAdjustMapper extends BaseMapper<InvDispatchAdjust> {}
+
+    public interface EventPendingMapper extends BaseMapper<InvEventPending> {}
+
+    public interface EventLogMapper extends BaseMapper<InvEventLog> {}
+
+    public interface EventSubscriptionMapper extends BaseMapper<InvEventSubscription> {}
 }

@@ -237,9 +237,10 @@ class SerialDocumentFlowTest {
         write(post("/api/inventory/v1/outbounds/" + out + "/post")).andExpect(status().isOk());
         assertThat(onHand(spare)).isEqualByComparingTo("8");
 
-        // 交接出库（出库池）在 M4；逐件物料不能按数量出
+        // 交接出库必须给商家与接收人；逐件物料不能按数量出
         outboundDraft("{\"locationId\":\"%s\",\"purpose\":\"ISSUE\",\"lines\":[]}".formatted(wh))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.data.args[0]").value("purpose.handover"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.data.args[0]").value("target.required:MERCHANT"));
         outboundDraft("{\"locationId\":\"%s\",\"purpose\":\"SCRAP\",\"lines\":[{\"itemId\":\"%s\",\"qty\":1}]}"
                 .formatted(wh, cabinet)).andExpect(status().isBadRequest());
     }
