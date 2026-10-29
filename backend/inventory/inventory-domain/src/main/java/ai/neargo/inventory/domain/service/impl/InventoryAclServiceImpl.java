@@ -847,12 +847,18 @@ public class InventoryAclServiceImpl implements InventoryAclService {
     @Override
     public Set<String> locationsOfStores(String entityNo, Collection<String> storeNos) {
         InvOwner owner = findOwner(entityNo);
-        if (owner == null || storeNos == null || storeNos.isEmpty()) {
+        return owner == null ? Set.of() : locationsOfStoresOf(owner.getOwnerId(), storeNos);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public Set<String> locationsOfStoresOf(String ownerId, Collection<String> storeNos) {
+        if (ownerId == null || storeNos == null || storeNos.isEmpty()) {
             return Set.of();
         }
         Set<String> wanted = new HashSet<>(storeNos);
         List<InvLocation> rows = locationMapper.selectList(Wrappers.<InvLocation>lambdaQuery()
-                .eq(InvLocation::getOwnerId, owner.getOwnerId())
+                .eq(InvLocation::getOwnerId, ownerId)
                 .in(InvLocation::getExternalRef, wanted));
         Set<String> out = new HashSet<>();
         Set<String> seen = new HashSet<>();
@@ -867,7 +873,7 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         if (seen.size() < wanted.size()) {
             // 还没建库位的门店：首次进销存动作会建一个指向默认库位的门店库位，出货落在默认库位上
             locationMapper.selectList(Wrappers.<InvLocation>lambdaQuery()
-                            .eq(InvLocation::getOwnerId, owner.getOwnerId())
+                            .eq(InvLocation::getOwnerId, ownerId)
                             .eq(InvLocation::getIsDefault, 1)
                             .last("LIMIT 1"))
                     .forEach(d -> out.add(d.getLocationId()));

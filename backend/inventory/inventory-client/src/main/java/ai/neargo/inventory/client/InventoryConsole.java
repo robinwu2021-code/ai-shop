@@ -64,6 +64,18 @@ public final class InventoryConsole {
         return read(call.apply(() -> api.put(uri(path, Map.of()), ownerRef, key(), actor, body)), type);
     }
 
+    public <T> T post(String path, Map<String, ?> params, Object body, Class<T> type) {
+        return read(call.apply(() -> api.post(uri(path, params), ownerRef, key(), actor, body)), type);
+    }
+
+    public void post(String path, Map<String, ?> params, Object body) {
+        call.apply(() -> api.post(uri(path, params), ownerRef, key(), actor, body));
+    }
+
+    public void put(String path, Map<String, ?> params, Object body) {
+        call.apply(() -> api.put(uri(path, params), ownerRef, key(), actor, body));
+    }
+
     public void delete(String path) {
         call.apply(() -> api.delete(uri(path, Map.of()), ownerRef, key(), actor));
     }

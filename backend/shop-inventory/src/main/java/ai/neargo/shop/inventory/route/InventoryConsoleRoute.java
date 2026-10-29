@@ -56,6 +56,18 @@ public class InventoryConsoleRoute {
         return BizContext.current().currentStoreNo();
     }
 
+    /**
+     * 当前员工的门店范围（门店号，逗号分隔），店主（整个商家）为空。转给服务的单据请求带上它，
+     * 服务按与内嵌相同的规则判「单据涉及的库位是不是他动得到的」。
+     */
+    public String scopeStores() {
+        BizContext ctx = BizContext.current();
+        if (ctx.owner()) {
+            return null;
+        }
+        return String.join(",", ctx.storeNos() == null ? java.util.Set.of() : ctx.storeNos());
+    }
+
     public <T> T via(Function<InventoryConsole, T> call) {
         try {
             return call.apply(console());
@@ -72,7 +84,8 @@ public class InventoryConsoleRoute {
     }
 
     private InventoryConsole console() {
+        // 操作人原样透传（与内嵌时期写进单据的值相同），审计与单据上看到的是同一个人
         String user = SecurityUtils.currentUserNo();
-        return client.getObject().console(BizContext.requireMerchantNo(), user == null ? "SYSTEM:biz" : "STAFF:" + user);
+        return client.getObject().console(BizContext.requireMerchantNo(), user == null ? "SYSTEM" : user);
     }
 }

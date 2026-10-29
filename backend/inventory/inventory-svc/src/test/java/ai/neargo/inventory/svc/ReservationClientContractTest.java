@@ -229,6 +229,38 @@ class ReservationClientContractTest {
                         e -> assertThat(e.error()).isEqualTo(InventoryError.FORBIDDEN));
     }
 
+    @Test
+    void merchantConsoleDocumentsHonourTheStaffStoreScope() {
+        InventoryConsole console = client.console(merchant, "U9");
+        // 入库：落在当前门店解析出的库位上
+        String no = console.post("/docs/inbounds", InventoryConsole.params("storeRef", "STORE-1"),
+                java.util.Map.of("sourceType", "PURCHASE", "lines",
+                        List.of(java.util.Map.of("itemId", item, "qty", 4, "uom", "PCS", "unitCostMinor", 100))),
+                InventoryVOs.DocNoVO.class).no();
+        // 只管别家门店的员工：动不了这张单
+        assertThatThrownBy(() -> console.post("/docs/inbounds/" + no + "/post",
+                InventoryConsole.params("scopeStores", "STORE-OTHER"), (Object) null))
+                .isInstanceOfSatisfying(InventoryException.class,
+                        e -> assertThat(e.error()).isEqualTo(InventoryError.FORBIDDEN));
+        // 管这家门店的员工 / 店主：可以
+        console.post("/docs/inbounds/" + no + "/post", InventoryConsole.params("scopeStores", "STORE-1"), (Object) null);
+        assertThat(sql.queryForObject("select on_hand from inv_stock_balance where item_id = ?",
+                java.math.BigDecimal.class, item)).isEqualByComparingTo("9");
+        assertThat(sql.queryForObject("select updated_by from inv_inbound_order where inbound_no = ?", String.class, no))
+                .isEqualTo("U9");
+
+        // 盘点：开单 → 录数 → 过账
+        String count = console.post("/docs/counts", InventoryConsole.params("storeRef", "STORE-1"),
+                java.util.Map.of("itemIds", List.of(item)), InventoryVOs.DocNoVO.class).no();
+        console.put("/docs/counts/" + count + "/lines", InventoryConsole.params(),
+                List.of(java.util.Map.of("itemId", item, "countedQty", 8, "reasonCode", "LOSS")));
+        assertThat(console.get("/docs/counts/" + count, InventoryConsole.params(), InventoryVOs.CountVO.class)
+                .countNo()).isEqualTo(count);
+        console.post("/docs/counts/" + count + "/post", InventoryConsole.params(), (Object) null);
+        assertThat(sql.queryForObject("select on_hand from inv_stock_balance where item_id = ?",
+                java.math.BigDecimal.class, item)).isEqualByComparingTo("8");
+    }
+
     private String ownerBearerOf(String merchantRef) throws Exception {
         String owner = sql.queryForObject("select owner_id from inv_owner where system_code = 'SHOP' and external_ref = ?",
                 String.class, merchantRef);

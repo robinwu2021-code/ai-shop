@@ -68,6 +68,9 @@ public interface InventoryAclService {
      */
     java.util.Set<String> locationsOfStores(String entityNo, java.util.Collection<String> storeNos);
 
+    /** 同上，按业主（独立服务的商家后台接口用：业主来自凭证，不经商家号解析） */
+    java.util.Set<String> locationsOfStoresOf(String ownerId, java.util.Collection<String> storeNos);
+
     /**
      * 一张单据涉及的库位：进货 / 出库 / 盘点是它那一个库位，调拨是 {@code [from, to]}。
      * 按业主查，别家的单与不存在的单一样返回空列表（交给业务服务报 NOT_FOUND）。

@@ -1,5 +1,6 @@
 package ai.neargo.shop.inventory.api.biz;
 
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 商家端 · 单据（s03 盘点 · s04 进货 · s05 单据 · s06 报损 · s07 调拨）。
@@ -51,6 +53,8 @@ public class BizStockDocController {
     private final TransferService transfers;
     private final InventoryAclService acl;
     private final LocationService locations;
+    /** 切流（M8）：已翻到库存服务的商家，每个端点转给服务的 /console/docs，返回结构相同 */
+    private final InventoryConsoleRoute route;
 
     public BizStockDocController(
             InboundService inbound,
@@ -58,25 +62,29 @@ public class BizStockDocController {
             StockCountService counts,
             TransferService transfers,
             InventoryAclService acl,
-            LocationService locations) {
+            LocationService locations,
+            InventoryConsoleRoute route) {
         this.inbound = inbound;
         this.outbound = outbound;
         this.counts = counts;
         this.transfers = transfers;
         this.acl = acl;
         this.locations = locations;
+        this.route = route;
     }
 
     // ── 入库 ──────────────────────────────────────────────────────────
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds")
     public InventoryVOs.DocNoVO createInbound(@RequestBody InboundReq req) {
+        if (route.remote()) return route.via(c -> c.post("/docs/inbounds", params("storeRef", route.store()), req, InventoryVOs.DocNoVO.class));
         return new InventoryVOs.DocNoVO(inbound.createDraft(draftOf(req)));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/inbounds/{no}")
     public void updateInbound(@PathVariable String no, @RequestBody InboundReq req) {
+        if (route.remote()) { route.run(c -> c.put("/docs/inbounds/" + no, params("storeRef", route.store(), "scopeStores", route.scopeStores()), req)); return; }
         inbound.updateDraft(docOwner(no), no, draftOf(req));
     }
 
@@ -84,12 +92,14 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds/{no}/post")
     public void postInbound(@PathVariable String no) {
+        if (route.remote()) { route.run(c -> c.post("/docs/inbounds/" + no + "/post", params("scopeStores", route.scopeStores()), (Object) null)); return; }
         inbound.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds/{no}/void")
     public void voidInbound(@PathVariable String no) {
+        if (route.remote()) { route.run(c -> c.post("/docs/inbounds/" + no + "/void", params("scopeStores", route.scopeStores()), (Object) null)); return; }
         inbound.voidOrder(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
@@ -97,6 +107,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds")
     public InventoryVOs.DocNoVO createOutbound(@RequestBody OutboundReq req) {
+        if (route.remote()) return route.via(c -> c.post("/docs/outbounds", params("storeRef", route.store()), req, InventoryVOs.DocNoVO.class));
         List<OutboundService.Line> lines =
                 req.lines().stream()
                         .map(l -> new OutboundService.Line(l.itemId(), l.qty(), l.uom()))
@@ -120,12 +131,14 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds/{no}/post")
     public void postOutbound(@PathVariable String no) {
+        if (route.remote()) { route.run(c -> c.post("/docs/outbounds/" + no + "/post", params("scopeStores", route.scopeStores()), (Object) null)); return; }
         outbound.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds/{no}/void")
     public void voidOutbound(@PathVariable String no) {
+        if (route.remote()) { route.run(c -> c.post("/docs/outbounds/" + no + "/void", params("scopeStores", route.scopeStores()), (Object) null)); return; }
         outbound.voidOrder(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
@@ -133,6 +146,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts")
     public InventoryVOs.DocNoVO openCount(@RequestBody CountOpenReq req) {
+        if (route.remote()) return route.via(c -> c.post("/docs/counts", params("storeRef", route.store()), req, InventoryVOs.DocNoVO.class));
         return new InventoryVOs.DocNoVO(
                 counts.open(owner(), location(), req.itemIds(), SecurityUtils.currentUserNo()));
     }
@@ -141,6 +155,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/counts/{no}")
     public InventoryVOs.CountVO count(@PathVariable String no) {
+        if (route.remote()) return route.via(c -> c.get("/docs/counts/" + no, params("scopeStores", route.scopeStores()), InventoryVOs.CountVO.class));
         return counts.detail(docOwner(no), no);
     }
 
@@ -148,12 +163,14 @@ public class BizStockDocController {
     @PutMapping("/biz/inventory/counts/{no}/lines")
     public void fillCount(
             @PathVariable String no, @RequestBody List<StockCountService.Filled> lines) {
+        if (route.remote()) { route.run(c -> c.put("/docs/counts/" + no + "/lines", params("scopeStores", route.scopeStores()), lines)); return; }
         counts.fill(docOwner(no), no, lines);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/post")
     public void postCount(@PathVariable String no) {
+        if (route.remote()) { route.run(c -> c.post("/docs/counts/" + no + "/post", params("scopeStores", route.scopeStores()), (Object) null)); return; }
         counts.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
@@ -161,6 +178,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers")
     public InventoryVOs.DocNoVO createTransfer(@RequestBody TransferReq req) {
+        if (route.remote()) return route.via(c -> c.post("/docs/transfers", params("scopeStores", route.scopeStores()), req, InventoryVOs.DocNoVO.class));
         List<TransferService.Line> lines =
                 req.lines().stream()
                         .map(l -> new TransferService.Line(l.itemId(), l.qty()))
@@ -186,12 +204,14 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/transfers/{no}")
     public InventoryVOs.TransferVO transfer(@PathVariable String no) {
+        if (route.remote()) return route.via(c -> c.get("/docs/transfers/" + no, params("scopeStores", route.scopeStores()), InventoryVOs.TransferVO.class));
         return transfers.detail(docOwner(no), no);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/ship")
     public void ship(@PathVariable String no, @RequestBody(required = false) ShipReq req) {
+        if (route.remote()) { route.run(c -> c.post("/docs/transfers/" + no + "/ship", params("scopeStores", route.scopeStores()), req)); return; }
         // 请求体可空：自己送、没记承运方也要发得出去 —— 强制填的话商家就学会乱填一个
         ShipReq r = req == null ? new ShipReq(null, null, null) : req;
         transfers.ship(
@@ -206,6 +226,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/receive")
     public void receive(@PathVariable String no) {
+        if (route.remote()) { route.run(c -> c.post("/docs/transfers/" + no + "/receive", params("scopeStores", route.scopeStores()), (Object) null)); return; }
         transfers.receive(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
@@ -224,12 +245,14 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/void")
     public void voidCount(@PathVariable String no) {
+        if (route.remote()) { route.run(c -> c.post("/docs/counts/" + no + "/void", params("scopeStores", route.scopeStores()), (Object) null)); return; }
         counts.cancel(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/void")
     public void voidTransfer(@PathVariable String no) {
+        if (route.remote()) { route.run(c -> c.post("/docs/transfers/" + no + "/void", params("scopeStores", route.scopeStores()), (Object) null)); return; }
         transfers.cancel(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
