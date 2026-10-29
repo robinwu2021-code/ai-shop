@@ -115,6 +115,21 @@ public interface ReservationService {
      */
     String restore(String ownerId, String afterSaleNo, List<Line> lines, String operator);
 
+    /*
+     * 按单号 / 履约单号的跨业主动作，限定在某个调用方系统里（独立服务的系统级接口用，M8）。
+     * 不带系统码的那组等同 systemCode = null：不限系统。两组都只碰写入方是本进程的业主。
+     */
+
+    void releaseByRef(String systemCode, String externalRef);
+
+    String commitByRef(String systemCode, String externalRef, String operator);
+
+    void allocatePaidByRef(String systemCode, String externalRef);
+
+    String issueByFulfillmentRef(String systemCode, String fulfillmentRef, String operator);
+
+    void releaseAllocatedByFulfillmentRef(String systemCode, String fulfillmentRef);
+
     /** 回收到期未确认的预留。由定时任务调，返回回收条数。 */
     int expireOverdue(int limit);
 

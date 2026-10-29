@@ -66,6 +66,20 @@ public class ReservationServiceImpl implements ReservationService {
         exactDb = new JdbcTemplate(ds);
     }
 
+    /** 单一写入方的闸；测试里手工 new 的实例没有它，等同不设防 */
+    private OwnerWriteGuard writers;
+
+    @Autowired(required = false)
+    void setWriters(OwnerWriteGuard writers) {
+        this.writers = writers;
+    }
+
+    private void requireWriter(String ownerId) {
+        if (writers != null) {
+            writers.require(ownerId);
+        }
+    }
+
     public ReservationServiceImpl(
             ReservationMapper resMapper,
             ReservationLineMapper lineMapper,
@@ -119,6 +133,7 @@ public class ReservationServiceImpl implements ReservationService {
         if (ttlSeconds > maxTtlSeconds) {
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         }
+        requireWriter(ownerId);
         if (exactDb != null) {
             if (exactDb.queryForList(
                                     "SELECT owner_id FROM inv_owner WHERE owner_id=? AND"
@@ -242,6 +257,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void acceptUnpaid(String ownerId, String externalRef) {
+        requireWriter(ownerId);
         InvReservation head = find(ownerId, externalRef);
         if (head == null
                 || lifecycle(head) != 3
@@ -336,6 +352,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String commit(String ownerId, String externalRef, String operator) {
+        requireWriter(ownerId);
         InvReservation head = require(ownerId, externalRef);
         if (lifecycle(head) == 3) {
             acknowledgePostpaidPayment(head);
@@ -386,7 +403,13 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void allocatePaidByRef(String externalRef) {
-        for (InvReservation head : allByRef(externalRef)) {
+        allocatePaidByRef(null, externalRef);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void allocatePaidByRef(String systemCode, String externalRef) {
+        for (InvReservation head : allByRef(systemCode, externalRef)) {
             if (lifecycle(head) == 3) {
                 acknowledgePostpaidPayment(head);
                 continue;
@@ -407,6 +430,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void allocatePaid(String ownerId, String externalRef) {
+        requireWriter(ownerId);
         InvReservation head = require(ownerId, externalRef);
         if (lifecycle(head) == 3) {
             acknowledgePostpaidPayment(head);
@@ -434,6 +458,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional(transactionManager = "invTransactionManager")
     public String issue(
             String ownerId, String externalRef, String fulfillmentRef, String operator) {
+        requireWriter(ownerId);
         if (fulfillmentRef == null || fulfillmentRef.isBlank())
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         InvReservation head = require(ownerId, externalRef);
@@ -451,12 +476,19 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String issueByFulfillmentRef(String fulfillmentRef, String operator) {
+        return issueByFulfillmentRef(null, fulfillmentRef, operator);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String issueByFulfillmentRef(String systemCode, String fulfillmentRef, String operator) {
         if (fulfillmentRef == null || fulfillmentRef.isBlank())
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         List<InvReservationLine> matching =
                 lineMapper.selectList(
                         Wrappers.<InvReservationLine>lambdaQuery()
                                 .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef)
+                                .inSql(InvReservationLine::getOwnerId, ownersSql(systemCode))
                                 .orderByAsc(InvReservationLine::getReservationId)
                                 .orderByAsc(InvReservationLine::getLineNo)
                                 .last("FOR UPDATE"));
@@ -556,10 +588,17 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void releaseAllocatedByFulfillmentRef(String fulfillmentRef) {
+        releaseAllocatedByFulfillmentRef(null, fulfillmentRef);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void releaseAllocatedByFulfillmentRef(String systemCode, String fulfillmentRef) {
         List<InvReservationLine> matching =
                 lineMapper.selectList(
                         Wrappers.<InvReservationLine>lambdaQuery()
                                 .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef)
+                                .inSql(InvReservationLine::getOwnerId, ownersSql(systemCode))
                                 .orderByAsc(InvReservationLine::getReservationId)
                                 .orderByAsc(InvReservationLine::getLineNo)
                                 .last("FOR UPDATE"));
@@ -583,6 +622,7 @@ public class ReservationServiceImpl implements ReservationService {
             String externalRef,
             String fulfillmentRef,
             List<ReleaseTarget> targets) {
+        requireWriter(ownerId);
         if (ownerId == null
                 || externalRef == null
                 || fulfillmentRef == null
@@ -738,6 +778,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void release(String ownerId, String externalRef) {
+        requireWriter(ownerId);
         InvReservation head = find(ownerId, externalRef);
         if (head != null && lifecycle(head) == 3) {
             releaseAllocatedLines(head, linesOf(head.getReservationId()));
@@ -753,7 +794,13 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void releaseByRef(String externalRef) {
-        for (InvReservation head : allByRef(externalRef)) {
+        releaseByRef(null, externalRef);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void releaseByRef(String systemCode, String externalRef) {
+        for (InvReservation head : allByRef(systemCode, externalRef)) {
             release(head.getOwnerId(), externalRef);
         }
     }
@@ -761,6 +808,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void cancelByRef(String ownerId, String externalRef) {
+        requireWriter(ownerId);
         InvReservation head = find(ownerId, externalRef);
         if (head != null) {
             if (lifecycle(head) != 3
@@ -783,8 +831,14 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String commitByRef(String externalRef, String operator) {
+        return commitByRef(null, externalRef, operator);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String commitByRef(String systemCode, String externalRef, String operator) {
         String firstOutbound = null;
-        for (InvReservation head : allByRef(externalRef)) {
+        for (InvReservation head : allByRef(systemCode, externalRef)) {
             String outboundNo = commit(head.getOwnerId(), externalRef, operator);
             if (firstOutbound == null) {
                 firstOutbound = outboundNo;
@@ -796,6 +850,7 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String restore(String ownerId, String afterSaleNo, List<Line> lines, String operator) {
+        requireWriter(ownerId);
         if (lines == null || lines.isEmpty()) {
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         }
@@ -819,15 +874,13 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     /**
-     * 本进程是哪一侧的写入方（内嵌 = {@code EMBEDDED}，独立服务 = {@code SVC}）。
-     * 到期回收是跨业主的批处理，只回收写入方是自己的那些业主 —— 否则过渡期两边都在回收同一本账。
+     * 跨业主的批处理（到期回收、按单号 / 履约单号的动作）只挑写入方是本进程的业主 ——
+     * 否则过渡期两边都在动同一本账。
      */
-    @Value("${inventory.write-mode:EMBEDDED}")
-    void setWriteMode(String writeMode) {
-        this.writeMode = writeMode;
+    private String ownersSql(String systemCode) {
+        return writers != null ? writers.ownersSql(systemCode)
+                : "SELECT owner_id FROM inv_owner WHERE write_authority = '" + InvEnums.WriteAuthority.EMBEDDED + "'";
     }
-
-    private String writeMode = InvEnums.WriteAuthority.EMBEDDED;
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
@@ -838,9 +891,7 @@ public class ReservationServiceImpl implements ReservationService {
                         Wrappers.<InvReservation>lambdaQuery()
                                 .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
                                 .lt(InvReservation::getExpiresAt, now)
-                                .inSql(InvReservation::getOwnerId,
-                                        "SELECT owner_id FROM inv_owner WHERE write_authority = '"
-                                                + InvEnums.WriteAuthority.normalize(writeMode) + "'")
+                                .inSql(InvReservation::getOwnerId, ownersSql(null))
                                 .select(InvReservation::getReservationId)
                                 .last("LIMIT " + Math.min(limit, EXPIRE_BATCH_MAX)));
         int expired = 0;
@@ -906,9 +957,14 @@ public class ReservationServiceImpl implements ReservationService {
 
     /** 按单号反查（订单号平台内全局唯一）。 */
     private List<InvReservation> allByRef(String externalRef) {
+        return allByRef(null, externalRef);
+    }
+
+    private List<InvReservation> allByRef(String systemCode, String externalRef) {
         return resMapper.selectList(
                 Wrappers.<InvReservation>lambdaQuery()
                         .eq(InvReservation::getExternalRef, externalRef)
+                        .inSql(InvReservation::getOwnerId, ownersSql(systemCode))
                         .orderByAsc(InvReservation::getOwnerId)
                         .last("FOR UPDATE"));
     }

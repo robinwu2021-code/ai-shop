@@ -1,5 +1,6 @@
 package ai.neargo.inventory.domain.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.inventory.domain.config.ConditionalOnInventory;
 import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.api.InventoryError;
@@ -45,6 +46,20 @@ public class StockCountServiceImpl implements StockCountService {
     private final InboundService inbound;
     private final OutboundService outbound;
     private final InventoryMutationGuard mutationGuard;
+
+    /** 单一写入方的闸（商品页改库存按 SKU 反查业主，绕过了商家号解析那道守卫） */
+    private OwnerWriteGuard writers;
+
+    @Autowired(required = false)
+    void setWriters(OwnerWriteGuard writers) {
+        this.writers = writers;
+    }
+
+    private void requireWriter(String ownerId) {
+        if (writers != null) {
+            writers.require(ownerId);
+        }
+    }
 
     public StockCountServiceImpl(ItemMapper itemMapper,
                                  StockCountMapper countMapper, StockCountLineMapper lineMapper,
@@ -256,6 +271,7 @@ public class StockCountServiceImpl implements StockCountService {
     @Transactional(transactionManager = "invTransactionManager")
     public void adjustOne(String ownerId, String locationId, String itemId, int countedQty,
                           String reasonCode, String operator) {
+        requireWriter(ownerId);
         adjust(ownerId, locationId, itemId, countedQty, reasonCode, operator);
     }
 
@@ -263,6 +279,7 @@ public class StockCountServiceImpl implements StockCountService {
     @Transactional(transactionManager = "invTransactionManager")
     public void adjustOneIdempotent(String ownerId, String locationId, String itemId, int countedQty,
                                     String reasonCode, String operator, String operationNo) {
+        requireWriter(ownerId);
         if (operationNo == null || operationNo.isBlank() || operationNo.length() > 96) {
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         }

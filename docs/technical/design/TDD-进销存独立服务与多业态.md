@@ -609,6 +609,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-24 | `SerialDocumentFlowTest#cabinetWith48PowerbanksGoesInAndOutByScanningOnlyTheCabinet`（柜 + 48 宝入库，只扫柜码出库，单据逐块 49 件，柜 −1、宝 −48）· `#disassembledPowerbankNoLongerTravelsWithItsCabinet` | ✅ 2026-10-29 | ✅ 去掉下级件展开 → 变红 |
 | AC-25 | `ReservationAndFlipFlowTest#reservationIsAllOrNothingIdempotentAndExpiredByTheJobService`（同单号同内容同一预留、换内容 409、不够全拒、取消释放、到期由任务服务经 `/internal/job/*` 触发回收、密钥不对 401）· `#expirySweepOnlyTouchesOwnersThisProcessWritesFor` | ✅ 2026-10-29（服务侧） | ✅ 去掉回收的写入方过滤 → 变红 |
 | AC-26 | ai-shop `OrderReservationOutboxTest#rollback_expires_and_commit_once` | | |
+| T8.3 传统下单 | `ReservationClientContractTest#systemLevelActionsByOrderNoTouchOnlyThisSystemsServiceWrittenMerchants`（系统级付款分配 / 出库只动服务侧商家、同单号的内嵌商家不动；回补、改库存按 SKU / 门店；业主凭证调系统级 403）· shop-app `InventoryStockPortRoutingTest`（跨商家分流、服务侧一家失败撤回已占、翻转中拒、纯内嵌订单不调服务）· `InventoryEmbeddedWriterGuardTest`（按 SKU 进来的写也拒、按单号释放不碰服务侧商家） | ✅ 2026-10-29 | ✅ 领域守卫不拦 → 变红；按单号不过滤写入方 → 变红；锁货失败不补偿 → 变红 |
 | T8.3 预留客户端 | `ReservationClientContractTest`（客户端经 MockMvc 打真实控制器：系统凭证 + 商家号、按 SKU / 门店预留、回包带 SKU、缺货原样回来且不计熔断、未翻转业主 409、不存在的业主不被当成「没有预留」）· `CircuitBreakerTest` · shop-app `RoutingInventoryReservationPortTest`（按写入方路由、翻转中拒、`SVC` 没配客户端不回落内嵌、引用与错误码映射） | ✅ 2026-10-29 | ✅ 路由不看写入方 → 2 例变红；系统凭证不查写入方 → 变红 |
 | AC-27 | `ReservationAndFlipFlowTest#flipReconcilesFirstAndRollsBackWhenTheBooksDoNotBalance`（翻到内嵌再翻回账不变、余额被改坏时翻转失败并保持原写入方且列出差异、翻转中两边拒写、翻转中再翻 409）· shop-app `InventoryEmbeddedWriterGuardTest`（业主为 `SVC` / `FLIPPING` 时内嵌解析业主即拒、内嵌回收不碰它） | ✅ 2026-10-29（服务侧 + 内嵌守卫） | ✅ 翻转不看对账结果 → 变红；去掉内嵌守卫 → 变红 |
 | AC-28 | `InstanceGuardTest`（4 例）+ `ServicePlatformFlowTest#shopCredentialIsRejectedByTheDeviceInstance`（经过滤器）+ 生产形态演练（M6） | ✅ 2026-10-29（演练待 M6） | ✅ 去掉过滤器里的放行检查 → 变红 |
@@ -735,6 +736,17 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 商城路由 | `RoutingInventoryReservationPort`：每次现查 `acl.writeAuthorityOf(商家号)`（唯一不受内嵌守卫限制的业主查询）—— 内嵌 / 未开账走内嵌实现，`SVC` 走 `ServiceInventoryReservationPort`，`FLIPPING` 或 `SVC` 但没配客户端 → 拒单；客户端只在配了 `shop.inventory.service.base-url`（及 `app-key` / `app-secret`、超时、熔断参数）时装配 | — |
 | 仍走内嵌、**翻转前必须切完**的面 | 传统下单 `StockPort`（锁 / 确认 / 释放 / 退款回补）、需求计划端口、生产扣料端口、物料目录端口、商城库存后台 12 个控制器、`invbridge` 的镜像 / 回填 / 健康 / 对账二十余处 | **一个商家只有在它用到的这些面都切完后才能翻**；目前只有「行业订单 + 预留端口」这条线能在服务上跑通。T8.2（`confirm` 出事务）在摸底里已大半成立：行业路径本就在事务外，传统路径 v2 已经经 outbox |
 
+### M8 · 商城切流 —— 第三段：传统下单路径（2026-10-29，T8.2 / T8.3 的 `StockPort`）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| 单一写入方补洞 | 第一段的内嵌守卫只在「商家号解析」入口；传统下单锁货、商品镜像、商品页改库存是**按 SKU 反查业主**，绕过了它。改为守在领域写方法上：`OwnerWriteGuard.require`（预留的按业主写方法、盘点调整）—— 业主写入方不是本进程 `inventory.write-mode` 即 `NOT_WRITER`；按单号 / 履约单号的跨业主动作（释放、确认、付款分配、按履约单出库 / 释放）只挑写入方是本进程的业主 | 入口守卫保留（读也拒）；领域守卫是兜底，哪条路进来都一样 |
+| 系统级接口 | `/api/inventory/v1/system/reservations/{ref}/release|commit|allocate-paid`、`/system/fulfillments/{ref}/issue|release-allocated`：只认系统凭证、不带业主头，动作只碰本系统、写入方为 `SVC` 的业主；业主凭证调 403 | 商城传统路径的释放 / 确认只有订单号（一张父单可跨几个商家），没有业主 |
+| 按商家的其余动作 | `POST /reservations/{ref}/release-allocated-to`（部分退款，按 SKU 给累计量）、`POST /reservations/restores`（退货回补）、`POST /stock/on-hand`（商品页改库存，落成盘点单）；不给门店号 = 商家默认库位（与内嵌一致） | 给了门店号但服务上没有这个门店：404（内嵌会静默落默认库位，这里更严） |
+| 商城 `InventoryStockPort` | 能按 SKU 分组的动作（锁货、带明细释放、回补、部分释放、改库存）按商家写入方分两堆：内嵌照旧，服务经客户端；锁货跨商家**全成全败** —— 服务上任一家失败，撤回已占的几家（撤不掉交给到期回收），抛出让内嵌那几家随事务回滚。只有单号的动作（释放、确认、付款分配、出库、释放分配）两侧各做一遍，**本系统没有任何服务侧商家时不调服务**；释放失败只记日志（有到期回收兜底） | 原单回补、退货收货（`restoreOriginal` / `receiveReturn`）服务上还没有对应接口：涉及服务侧商家就拒（409） |
+| T8.2 确认出事务 | v2 生命周期的确认本来就是写 outbox 命令、事务提交后由 `InventoryMirrorConsumer` 执行；消费者对按单号的五种命令补上服务一侧，失败抛出由 outbox 重投（按单号幂等） | v1 生命周期的确认仍在订单事务里同步调用（与内嵌时期同样不原子）；生产订单为 0，按 v2 推进 |
+| 仍走内嵌、翻转前必须切完的面 | 需求计划端口、生产扣料端口、物料目录端口、商城库存后台 12 个控制器、`invbridge` 的回填 / 健康 / 对账 / 线下销售等 | 一个商家用到的面都切完才能翻；领域守卫保证漏切的面只会报错，不会写坏账 |
+
 ### M7 · 第二业态：充电桩（2026-10-29，T7.1 ~ T7.3）
 
 | 设计 | 实现 | 偏差与原因 |
@@ -789,3 +801,4 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | M7 完成（T7.1 ~ T7.3），AC-17 绿，后端全量 6999 例 0 失败 |
 | 2026-10-29 | M8 第一段（服务侧 T8.1、T8.5）完成，后端全量 7004 例 0 失败；T8.2 ~ T8.4 商城侧待第二段，T8.6 待生产观察期 |
 | 2026-10-29 | M8 第二段：D7 系统凭证；预留一条线经客户端跑通（T8.3 部分），后端全量 7011 例 0 失败。其余商城面见 §6 M8 第二段表末行 |
+| 2026-10-29 | M8 第三段：传统下单 `StockPort` 按商家切流，单一写入方守卫下沉到领域写方法，后端全量 7017 例 0 失败 |

@@ -35,6 +35,8 @@ public class InventoryAuthFilter extends OncePerRequestFilter {
     public static final String PATH_PREFIX = "/api/inventory/v1/";
     /** 系统凭证指定业主用的请求头：值是业主在宿主里的编号（商城 = 商家号） */
     public static final String OWNER_REF = "X-Inventory-Owner-Ref";
+    /** 系统级接口：宿主只有单号、没有业主时用（商城按订单号释放 / 确认），只认系统凭证 */
+    public static final String SYSTEM_PREFIX = PATH_PREFIX + "system/";
     private static final Set<String> SAFE = Set.of("GET", "HEAD", "OPTIONS");
     private static final int MAX_HEADER = 64;
 
@@ -57,7 +59,7 @@ public class InventoryAuthFilter extends OncePerRequestFilter {
         try {
             InventoryPrincipal principal = authenticate(request);
             instanceGuard.check(principal);
-            if (!SAFE.contains(request.getMethod())) {
+            if (!SAFE.contains(request.getMethod()) && principal.ownerId() != null) {
                 InvOwner owner = platform.owner(principal.ownerId());
                 if (!InvEnums.WriteAuthority.SVC.equals(owner.getWriteAuthority())) {
                     throw InventoryException.of(InventoryError.NOT_WRITER, owner.getWriteAuthority());
@@ -89,6 +91,14 @@ public class InventoryAuthFilter extends OncePerRequestFilter {
         }
         Authenticated who = platform.authenticate(token.substring(0, colon), token.substring(colon + 1));
         String ownerId = who.ownerId();
+        boolean systemPath = request.getRequestURI().startsWith(SYSTEM_PREFIX);
+        if (systemPath) {
+            // 系统级接口（按单号跨业主）：只认系统凭证，且不指定业主；动作只碰本系统、写入方为 SVC 的业主
+            if (ownerId != null) {
+                throw InventoryException.of(InventoryError.FORBIDDEN, "system_credential_required");
+            }
+            return new InventoryPrincipal(who.systemCode(), null, header(request, "X-Inventory-Actor"));
+        }
         if (ownerId == null) {
             // 系统凭证：业主由请求头指定，限本系统、限写入方已是独立服务的业主
             InvOwner owner = platform.ownerByRef(who.systemCode(), header(request, OWNER_REF));

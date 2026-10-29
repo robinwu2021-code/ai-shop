@@ -5,6 +5,7 @@ import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.client.CircuitBreaker;
 import ai.neargo.inventory.client.InventoryReservationApi;
 import ai.neargo.inventory.client.InventoryReservationClient;
+import ai.neargo.inventory.client.InventoryStockApi;
 import ai.neargo.svc.client.CallOutcome;
 import ai.neargo.svc.client.ServiceCallException;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,6 +67,8 @@ class ReservationClientContractTest {
     JdbcTemplate sql;
     InventoryReservationClient client;
     String merchant;
+    String systemBearer;
+    String item;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -85,7 +88,7 @@ class ReservationClientContractTest {
                 .content("{\"name\":\"stock\"}")).andExpect(status().isOk()).andReturn().getResponse()
                 .getContentAsString());
         String ownerBearer = "Bearer " + ownerKey.get("appKey").asString() + ":" + ownerKey.get("appSecret").asString();
-        String item = field(write(ownerBearer, put("/api/inventory/v1/items/by-ref/SKU-9").content("{\"name\":\"茶\"}")),
+        item = field(write(ownerBearer, put("/api/inventory/v1/items/by-ref/SKU-9").content("{\"name\":\"茶\"}")),
                 "itemId");
         String wh = field(write(ownerBearer, post("/api/inventory/v1/warehouses").content("{\"name\":\"门店\"}")),
                 "locationId");
@@ -98,7 +101,7 @@ class ReservationClientContractTest {
         JsonNode system = JSON.readTree(admin(post("/api/inventory/admin/v1/systems/SHOP/credentials")
                 .content("{\"name\":\"shop-app\"}")).andExpect(status().isOk()).andReturn().getResponse()
                 .getContentAsString());
-        String systemBearer = "Bearer " + system.get("appKey").asString() + ":" + system.get("appSecret").asString();
+        systemBearer = "Bearer " + system.get("appKey").asString() + ":" + system.get("appSecret").asString();
         RestClient rest = RestClient.builder()
                 .requestFactory(new MockMvcClientHttpRequestFactory(mvc))
                 .baseUrl("http://inventory.test")
@@ -109,9 +112,10 @@ class ReservationClientContractTest {
                             "inventory " + res.getStatusCode().value());
                 })
                 .build();
-        InventoryReservationApi api = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rest)).build()
-                .createClient(InventoryReservationApi.class);
-        client = InventoryReservationClient.of(api, new CircuitBreaker(3, Duration.ofSeconds(30), Clock.systemUTC()));
+        HttpServiceProxyFactory proxies = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rest)).build();
+        client = InventoryReservationClient.of(proxies.createClient(InventoryReservationApi.class),
+                proxies.createClient(InventoryStockApi.class),
+                new CircuitBreaker(3, Duration.ofSeconds(30), Clock.systemUTC()));
     }
 
     @Test
@@ -150,6 +154,52 @@ class ReservationClientContractTest {
         assertThatThrownBy(() -> client.query("NOPE-" + UUID.randomUUID(), "ORD-1"))
                 .isInstanceOfSatisfying(InventoryException.class,
                         e -> assertThat(e.error()).isEqualTo(InventoryError.NOT_FOUND));
+    }
+
+    @Test
+    void systemLevelActionsByOrderNoTouchOnlyThisSystemsServiceWrittenMerchants() throws Exception {
+        client.reserve(merchant, "SYSTEM:order", new InventoryReservationApi.Reserve("ORD-SYS",
+                List.of(new InventoryReservationApi.Line(null, null, "SKU-9", "STORE-1", 1, "F-1")), 900, 2));
+        // 同一单号在一个内嵌写的商家下也有（同库：电商套过渡期就是这样）—— 系统级动作不该碰它
+        String embeddedOwner = field(admin(post("/api/inventory/admin/v1/owners").content(
+                "{\"systemCode\":\"SHOP\",\"externalRef\":\"E-" + UUID.randomUUID().toString().substring(0, 8)
+                        + "\",\"name\":\"内嵌店\"}")), "ownerId");
+        sql.update("insert into inv_reservation (reservation_id, owner_id, external_ref, status, lifecycle_version,"
+                + " expires_at) values (?, ?, 'ORD-SYS', 'HELD', 2, ?)", "RS-EMB-" + System.nanoTime(),
+                embeddedOwner, java.time.LocalDateTime.now().plusHours(1));
+        sql.update("update inv_owner set write_authority = 'EMBEDDED' where owner_id = ?", embeddedOwner);
+
+        client.allocatePaidByRef("SYSTEM:order", "ORD-SYS");
+        assertThat(client.query(merchant, "ORD-SYS")).get().extracting(InventoryReservationApi.View::status)
+                .isEqualTo("ALLOCATED");
+        assertThat(sql.queryForObject("select status from inv_reservation where owner_id = ? and external_ref = ?",
+                String.class, embeddedOwner, "ORD-SYS")).isEqualTo("HELD");
+        assertThat(client.issueByFulfillment("SYSTEM:order", "F-1")).isNotNull();
+        assertThat(client.query(merchant, "ORD-SYS")).get().extracting(InventoryReservationApi.View::status)
+                .isEqualTo("COMMITTED");
+
+        // 退货回补、商品页改库存：按 SKU / 门店
+        InventoryStockApi.Restored restored = client.restore(merchant, "SYSTEM:order", new InventoryStockApi.Restore(
+                "AS-1", List.of(new InventoryReservationApi.Line(null, null, "SKU-9", "STORE-1", 1, null))));
+        assertThat(restored.inboundNo()).isNotBlank();
+        client.setOnHand(merchant, "SYSTEM:order",
+                new InventoryStockApi.OnHand(null, "SKU-9", null, "STORE-1", 7, "OTHER", "GOODS_PAGE"));
+        assertThat(sql.queryForObject("select on_hand from inv_stock_balance where item_id = ?",
+                java.math.BigDecimal.class, item)).isEqualByComparingTo("7");
+
+        // 系统级接口只认系统凭证
+        mvc.perform(post("/api/inventory/v1/system/reservations/ORD-SYS/release")
+                        .header("Authorization", ownerBearerOf(merchant)))
+                .andExpect(status().isForbidden());
+    }
+
+    private String ownerBearerOf(String merchantRef) throws Exception {
+        String owner = sql.queryForObject("select owner_id from inv_owner where system_code = 'SHOP' and external_ref = ?",
+                String.class, merchantRef);
+        JsonNode key = JSON.readTree(admin(post("/api/inventory/admin/v1/owners/" + owner + "/credentials")
+                .content("{\"name\":\"k\"}")).andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString());
+        return "Bearer " + key.get("appKey").asString() + ":" + key.get("appSecret").asString();
     }
 
     private ResultActions write(String bearer, MockHttpServletRequestBuilder req) throws Exception {

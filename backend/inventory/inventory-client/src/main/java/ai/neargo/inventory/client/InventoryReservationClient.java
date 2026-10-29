@@ -34,10 +34,12 @@ public final class InventoryReservationClient {
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     private final InventoryReservationApi api;
+    private final InventoryStockApi stock;
     private final CircuitBreaker breaker;
 
-    InventoryReservationClient(InventoryReservationApi api, CircuitBreaker breaker) {
+    InventoryReservationClient(InventoryReservationApi api, InventoryStockApi stock, CircuitBreaker breaker) {
         this.api = api;
+        this.stock = stock;
         this.breaker = breaker;
     }
 
@@ -54,12 +56,18 @@ public final class InventoryReservationClient {
                 connectTimeout, readTimeout, "shop.inventory.service.base-url", "shop.inventory.service.app-key",
                 List.<ClientHttpRequestInterceptor>of(InventoryReservationClient::decodeErrors));
         return new InventoryReservationClient(ServiceClients.create(InventoryReservationApi.class, spec),
+                ServiceClients.create(InventoryStockApi.class, spec),
                 new CircuitBreaker(breakerThreshold, breakerOpenFor, Clock.systemUTC()));
     }
 
-    /** 测试与自定义传输用：直接给一个 API 实现 */
+    /** 测试与自定义传输用：直接给 API 实现 */
     public static InventoryReservationClient of(InventoryReservationApi api, CircuitBreaker breaker) {
-        return new InventoryReservationClient(api, breaker);
+        return new InventoryReservationClient(api, null, breaker);
+    }
+
+    public static InventoryReservationClient of(InventoryReservationApi api, InventoryStockApi stock,
+                                                CircuitBreaker breaker) {
+        return new InventoryReservationClient(api, stock, breaker);
     }
 
     public InventoryReservationApi.View reserve(String ownerRef, String actor, InventoryReservationApi.Reserve body) {
@@ -94,6 +102,44 @@ public final class InventoryReservationClient {
 
     public InventoryReservationApi.View cancel(String ownerRef, String actor, String ref) {
         return call(() -> api.cancel(ownerRef, key(), actor, ref));
+    }
+
+    // ── 系统级：按单号 / 履约单号，碰本系统所有已翻到服务的商家 ─────────────────────
+
+    public void releaseByRef(String actor, String ref) {
+        call(() -> stock.releaseByRef(actor, ref));
+    }
+
+    /** @return 第一张销售出库单号；没有为空 */
+    public String commitByRef(String actor, String ref) {
+        return call(() -> stock.commitByRef(actor, ref)).get("outboundNo");
+    }
+
+    public void allocatePaidByRef(String actor, String ref) {
+        call(() -> stock.allocatePaidByRef(actor, ref));
+    }
+
+    public String issueByFulfillment(String actor, String fulfillmentRef) {
+        return call(() -> stock.issueByFulfillment(actor, fulfillmentRef)).get("outboundNo");
+    }
+
+    public void releaseAllocatedByFulfillment(String actor, String fulfillmentRef) {
+        call(() -> stock.releaseAllocatedByFulfillment(actor, fulfillmentRef));
+    }
+
+    // ── 按商家 ─────────────────────────────────────────────────────────────────
+
+    public InventoryReservationApi.View releaseAllocatedTo(String ownerRef, String actor, String ref,
+                                                           InventoryStockApi.ReleaseTo body) {
+        return call(() -> stock.releaseAllocatedTo(ownerRef, key(), actor, ref, body));
+    }
+
+    public InventoryStockApi.Restored restore(String ownerRef, String actor, InventoryStockApi.Restore body) {
+        return call(() -> stock.restore(ownerRef, key(), actor, body));
+    }
+
+    public void setOnHand(String ownerRef, String actor, InventoryStockApi.OnHand body) {
+        call(() -> stock.setOnHand(ownerRef, key(), actor, body));
     }
 
     public boolean breakerOpen() {

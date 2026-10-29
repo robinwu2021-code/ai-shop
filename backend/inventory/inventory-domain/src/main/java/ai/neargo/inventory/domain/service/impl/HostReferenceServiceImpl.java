@@ -65,10 +65,12 @@ public class HostReferenceServiceImpl implements HostReferenceService {
     }
 
     @Override
-    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    // 不是只读：默认库位第一次用到时才建（LocationService.defaultLocation）
+    @Transactional(transactionManager = "invTransactionManager")
     public String stockLocationOf(String ownerId, String locationRef) {
         if (locationRef == null || locationRef.isBlank()) {
-            return null;
+            // 不指定门店 = 商家级库存，落在默认库位（与商城内嵌时期一致）
+            return locations.resolveStockLocation(ownerId, locations.defaultLocation(ownerId));
         }
         InvLocation location = locationMapper.selectOne(Wrappers.<InvLocation>lambdaQuery()
                 .eq(InvLocation::getOwnerId, ownerId).eq(InvLocation::getExternalRef, locationRef));

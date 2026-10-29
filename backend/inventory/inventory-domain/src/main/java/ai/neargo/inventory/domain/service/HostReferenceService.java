@@ -12,6 +12,6 @@ public interface HostReferenceService {
     /** 反查：物料在宿主里的编号；没有为空 */
     String itemRefOf(String ownerId, String itemId);
 
-    /** 门店 / 仓的宿主编号 → 实际扣库存的库位（门店共用货源时落到货源库位）；没有为空 */
+    /** 门店 / 仓的宿主编号 → 实际扣库存的库位（门店共用货源时落到货源库位）；不给编号 = 默认库位；给了但没有为空 */
     String stockLocationOf(String ownerId, String locationRef);
 }

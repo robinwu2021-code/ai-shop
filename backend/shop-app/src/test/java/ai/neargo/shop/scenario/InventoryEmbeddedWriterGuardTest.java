@@ -28,6 +28,7 @@ class InventoryEmbeddedWriterGuardTest {
 
     @Autowired InventoryAclService acl;
     @Autowired ReservationService reservations;
+    @Autowired ai.neargo.inventory.domain.service.StockCountService counts;
     @Autowired @Qualifier("invDataSource") DataSource invDataSource;
 
     @Test
@@ -46,6 +47,38 @@ class InventoryEmbeddedWriterGuardTest {
         }
         sql.update("update inv_owner set write_authority = 'EMBEDDED' where owner_id = ?", owner);
         assertThat(acl.findOwnerId(entity)).isEqualTo(owner);
+    }
+
+    @Test
+    void writesThatReachTheOwnerBySkuAreRefusedToo() {
+        // 下单锁货、商品镜像、商品页改库存都是按 SKU 反查业主，不经商家号解析 —— 闸在领域写方法上
+        String owner = acl.ownerIdOf("E-FLIP-SKU-" + System.nanoTime());
+        JdbcTemplate sql = new JdbcTemplate(invDataSource);
+        sql.update("update inv_owner set write_authority = 'SVC' where owner_id = ?", owner);
+        assertThatThrownBy(() -> reservations.reserve(owner, "R-SKU-" + System.nanoTime(),
+                List.of(new ReservationService.Line("ITEM-X", "LOC-X", 1)), 900))
+                .isInstanceOfSatisfying(BizException.class,
+                        e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+        assertThatThrownBy(() -> counts.adjustOne(owner, "LOC-X", "ITEM-X", 3, "OTHER", "GOODS_PAGE"))
+                .isInstanceOfSatisfying(BizException.class,
+                        e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+        sql.update("update inv_owner set write_authority = 'EMBEDDED' where owner_id = ?", owner);
+    }
+
+    @Test
+    void embeddedReleaseByOrderNoLeavesServiceWrittenMerchantsAlone() {
+        String owner = acl.ownerIdOf("E-FLIP-REL-" + System.nanoTime());
+        JdbcTemplate sql = new JdbcTemplate(invDataSource);
+        String ref = "R-REL-" + System.nanoTime();
+        sql.update("insert into inv_reservation (reservation_id, owner_id, external_ref, status, lifecycle_version,"
+                        + " expires_at, created_at, updated_at) values (?, ?, ?, 'HELD', 1, ?, ?, ?)",
+                "RS" + System.nanoTime(), owner, ref, LocalDateTime.now().plusHours(1), LocalDateTime.now(),
+                LocalDateTime.now());
+        sql.update("update inv_owner set write_authority = 'SVC' where owner_id = ?", owner);
+        reservations.releaseByRef(ref);
+        assertThat(sql.queryForObject("select status from inv_reservation where owner_id = ? and external_ref = ?",
+                String.class, owner, ref)).isEqualTo("HELD");
+        sql.update("update inv_owner set write_authority = 'EMBEDDED' where owner_id = ?", owner);
     }
 
     @Test

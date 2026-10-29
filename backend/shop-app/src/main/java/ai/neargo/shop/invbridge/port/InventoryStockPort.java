@@ -2,7 +2,12 @@ package ai.neargo.shop.invbridge.port;
 
 import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
 import ai.neargo.shop.invbridge.ReservationHoldTtl;
+import ai.neargo.inventory.client.InventoryReservationClient;
 import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.support.InvEnums;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.inventory.domain.service.LocationService;
 import ai.neargo.inventory.domain.service.ReservationService;
 import ai.neargo.inventory.domain.service.ReturnReceiptService;
@@ -84,6 +89,22 @@ public class InventoryStockPort implements StockPort {
     @Autowired
     public void setReturnReceipts(ReturnReceiptService returnReceipts) { this.returnReceipts = returnReceipts; }
 
+    /**
+     * 切流（ADR-046 M8）：写入方已翻到库存服务的商家走这里；没配客户端时为空 = 一个商家都没切。
+     * 内嵌那一侧的领域写方法自己有单一写入方的闸（{@code OwnerWriteGuard}），按单号的批处理也只碰内嵌的商家。
+     */
+    private ServiceStockRoute remote;
+
+    @Autowired
+    public void setRemote(ObjectProvider<InventoryReservationClient> client) {
+        InventoryReservationClient c = client.getIfAvailable();
+        this.remote = c == null ? null : new ServiceStockRoute(c);
+    }
+
+    void setRemote(ServiceStockRoute remote) {
+        this.remote = remote;
+    }
+
     public InventoryStockPort(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                               LocationService locations) {
         this.counts = counts;
@@ -98,8 +119,9 @@ public class InventoryStockPort implements StockPort {
         if (items == null || items.isEmpty()) {
             return List.of();
         }
+        Split split = split(items);
         Map<String, List<SkuQty>> byOwner = new LinkedHashMap<>();
-        for (SkuQty item : items) {
+        for (SkuQty item : split.embedded()) {
             byOwner.computeIfAbsent(acl.ownerOfSku(item.skuNo()), owner -> new ArrayList<>()).add(item);
         }
         for (var group : byOwner.entrySet()) {
@@ -107,24 +129,41 @@ public class InventoryStockPort implements StockPort {
             reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()),
                     ReservationHoldTtl.secondsOf(holdTtl), lifecycleVersion);
         }
+        // 已翻到服务的商家：全成全败 —— 任何一家失败，撤回服务上已占的几家，抛出去让内嵌那几家随事务回滚
+        List<String> reserved = new ArrayList<>();
+        try {
+            for (var group : split.service().entrySet()) {
+                int lifecycleVersion = group.getValue().stream().mapToInt(SkuQty::lifecycleVersion).max().orElse(1);
+                remote.reserve(group.getKey(), lockNo, group.getValue(), ReservationHoldTtl.secondsOf(holdTtl),
+                        lifecycleVersion);
+                reserved.add(group.getKey());
+            }
+        } catch (RuntimeException e) {
+            reserved.forEach(merchant -> remote.cancelQuietly(merchant, lockNo));
+            throw e;
+        }
         return List.of();
     }
 
     @Override
     public void release(String lockNo, List<SkuQty> originalNeeds) {
-        originalNeeds.stream().map(item -> acl.ownerOfSku(item.skuNo())).distinct()
+        Split split = split(originalNeeds);
+        split.embedded().stream().map(item -> acl.ownerOfSku(item.skuNo())).distinct()
                 .forEach(owner -> reservations.cancelByRef(owner, lockNo));
+        split.service().keySet().forEach(merchant -> remote.cancel(merchant, lockNo));
     }
 
     @Override
     public void release(String lockNo) {
         // 释放拿不到 items，只能按订单号找 —— 而预留本来就是按 externalRef 存的
         reservations.releaseByRef(lockNo);
+        if (serviceInPlay()) remote.releaseByRef(lockNo);
     }
 
     @Override
     public void confirm(String lockNo) {
         reservations.commitByRef(lockNo, "SYSTEM");
+        if (serviceInPlay()) remote.commitByRef(lockNo);
     }
 
     @Override
@@ -138,23 +177,31 @@ public class InventoryStockPort implements StockPort {
     }
 
     @Override
-    public void allocatePaid(String lockNo) { reservations.allocatePaidByRef(lockNo); }
+    public void allocatePaid(String lockNo) {
+        reservations.allocatePaidByRef(lockNo);
+        if (serviceInPlay()) remote.allocatePaidByRef(lockNo);
+    }
 
     @Override
     public void issue(String fulfillmentRef) {
         reservations.issueByFulfillmentRef(fulfillmentRef, "SYSTEM");
+        if (serviceInPlay()) remote.issue(fulfillmentRef);
     }
 
     @Override
     public void releaseAllocated(String fulfillmentRef) {
         reservations.releaseAllocatedByFulfillmentRef(fulfillmentRef);
+        if (serviceInPlay()) remote.releaseAllocated(fulfillmentRef);
     }
 
     @Override
     public void releaseAllocatedTo(String fulfillmentRef, String orderNo, List<SkuQty> targets) {
         if (targets == null || targets.isEmpty()) throw new IllegalArgumentException("ALLOCATION_TARGETS_REQUIRED");
+        Split split = split(targets);
+        split.service().forEach((merchant, group) -> remote.releaseAllocatedTo(merchant, orderNo, fulfillmentRef, group));
+        if (split.embedded().isEmpty()) return;
         Map<String, List<ReservationService.ReleaseTarget>> owners = new LinkedHashMap<>();
-        for (SkuQty target : targets) {
+        for (SkuQty target : split.embedded()) {
             String owner = acl.ownerOfSku(target.skuNo());
             owners.computeIfAbsent(owner, ignored -> new ArrayList<>())
                     .add(new ReservationService.ReleaseTarget(acl.itemIdOfSku(target.skuNo()), target.qty()));
@@ -168,15 +215,18 @@ public class InventoryStockPort implements StockPort {
             return;
         }
         // 按业主分组，与 lock 一致：回补单可能来自跨商家的父单，拿第一行的业主会把别家的货补进这家
+        Split split = split(items);
         Map<String, List<SkuQty>> byOwner = new LinkedHashMap<>();
-        for (SkuQty item : items) {
+        for (SkuQty item : split.embedded()) {
             byOwner.computeIfAbsent(acl.ownerOfSku(item.skuNo()), owner -> new ArrayList<>()).add(item);
         }
         byOwner.forEach((owner, group) -> reservations.restore(owner, restoreNo, toLines(owner, group), "SYSTEM"));
+        split.service().forEach((merchant, group) -> remote.restore(merchant, restoreNo, group));
     }
 
     @Override
     public RestoreResult restoreOriginal(String purpose, String originalRef, List<SkuQty> items) {
+        requireEmbedded(items == null ? List.of() : items.stream().map(SkuQty::skuNo).toList());
         originalRestores.restore(purpose, originalRef, items);
         return RestoreResult.COMPLETED;
     }
@@ -185,6 +235,7 @@ public class InventoryStockPort implements StockPort {
     public void receiveReturn(String receiptNo, String afterSaleNo, String originalOrderNo,
                               String fulfillmentRef, List<ReturnLine> lines) {
         if (lines == null || lines.isEmpty()) throw new IllegalArgumentException("RETURN_RECEIPT_LINES_REQUIRED");
+        requireEmbedded(lines.stream().map(ReturnLine::skuNo).toList());
         List<ReturnReceiptService.Line> accepted = lines.stream().map(line -> new ReturnReceiptService.Line(
                 acl.itemIdOfSku(line.skuNo()), line.qty(), ReturnReceiptService.Quality.valueOf(line.quality().name())))
                 .toList();
@@ -193,6 +244,40 @@ public class InventoryStockPort implements StockPort {
 
     @Override
     public String returnReceiptStatus(String receiptNo) { return returnReceipts.status(receiptNo); }
+
+    /** 按商家的写入方分两堆：内嵌（含没映射的 SKU，行为与切流前一致）与服务（按商家号分组） */
+    private Split split(List<SkuQty> items) {
+        List<SkuQty> embedded = new ArrayList<>();
+        Map<String, List<SkuQty>> service = new LinkedHashMap<>();
+        for (SkuQty item : items) {
+            InventoryAclService.OwnerRoute route = acl.routeOfSku(item.skuNo());
+            String authority = route == null ? null : route.writeAuthority();
+            if (authority == null || InvEnums.WriteAuthority.EMBEDDED.equals(authority)) {
+                embedded.add(item);
+            } else if (InvEnums.WriteAuthority.SVC.equals(authority) && remote != null) {
+                service.computeIfAbsent(route.entityNo(), k -> new ArrayList<>()).add(item);
+            } else {
+                // 翻转对账中，或已翻到服务却没配客户端：拒，不悄悄走内嵌（内嵌这时也不认这本账）
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+        }
+        return new Split(embedded, service);
+    }
+
+    private record Split(List<SkuQty> embedded, Map<String, List<SkuQty>> service) {
+    }
+
+    /** 拿不到明细的按单号动作：有商家在服务上才去调服务的系统级接口，免得纯内嵌的订单也被服务可用性牵连 */
+    private boolean serviceInPlay() {
+        return remote != null && acl.anyServiceWrittenOwner();
+    }
+
+    /** 原单回补、退货收货在服务上还没有对应接口：涉及已翻到服务的商家就拒（M8 待切） */
+    private void requireEmbedded(List<String> skuNos) {
+        if (!split(skuNos.stream().map(sku -> new SkuQty(sku, 1)).toList()).service().isEmpty()) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
 
     /**
      * 翻译只有两处：{@code skuNo → itemId}、{@code storeNo → locationId}。
@@ -223,6 +308,11 @@ public class InventoryStockPort implements StockPort {
      */
     @Override
     public void setOnHand(String skuNo, String storeNo, int onHand, String reason) {
+        Split split = split(List.of(new SkuQty(skuNo, 1, storeNo)));
+        if (!split.service().isEmpty()) {
+            remote.setOnHand(split.service().keySet().iterator().next(), skuNo, storeNo, onHand, reason);
+            return;
+        }
         String owner = acl.ownerOfSku(skuNo);
         String locationId = locations.resolveStockLocation(
                 owner, acl.locationOfStore(owner, storeNo));

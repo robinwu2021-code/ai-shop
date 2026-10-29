@@ -96,6 +96,39 @@ public class ReservationController {
         return act("reservation.cancel", ref, owner -> reservations.cancelByRef(owner, ref));
     }
 
+    /**
+     * 部分退款：把这张履约单上未出库的分配释放到累计目标量（单调，不会把已释放的再占回来）。
+     * 目标按宿主物料号给（商城：SKU 号）。
+     */
+    @PostMapping("/api/inventory/v1/reservations/{ref}/release-allocated-to")
+    public View releaseAllocatedTo(@PathVariable String ref, @RequestBody ReleaseTo req) {
+        Caller caller = enabled();
+        return commands.execute(caller, "reservation.release_allocated_to", new InboundController.Keyed(ref, req),
+                View.class, () -> {
+                    reservations.releaseAllocatedTo(caller.ownerId(), ref, req.fulfillmentRef(),
+                            req.targets().stream().map(t -> new ReservationService.ReleaseTarget(
+                                    itemOf(caller.ownerId(), new Line(t.itemId(), null, t.itemRef(), null, 0, null)),
+                                    t.cumulativeQty())).toList());
+                    return view(caller.ownerId(), ref);
+                });
+    }
+
+    /** 退货回补：按售后单号回补这些行，生成入库单（同一售后单号幂等）。 */
+    @PostMapping("/api/inventory/v1/reservations/restores")
+    public Restored restore(@RequestBody Restore req) {
+        Caller caller = enabled();
+        if (req.restoreNo() == null || req.lines() == null || req.lines().isEmpty()) {
+            throw InventoryException.of(InventoryError.BAD_REQUEST, "restore");
+        }
+        List<ReservationService.Line> lines = req.lines().stream()
+                .map(l -> new ReservationService.Line(itemOf(caller.ownerId(), l), locationOf(caller.ownerId(), l),
+                        l.qty(), l.fulfillmentRef()))
+                .toList();
+        return commands.execute(caller, "reservation.restore", req, Restored.class, () -> new Restored(
+                req.restoreNo(), reservations.restore(caller.ownerId(), req.restoreNo(), lines,
+                caller.actor() == null ? caller.systemCode() : caller.actor())));
+    }
+
     private View act(String type, String ref, Consumer<String> action) {
         Caller caller = enabled();
         return commands.execute(caller, type, ref, View.class, () -> {
@@ -149,6 +182,19 @@ public class ReservationController {
     }
 
     public record Issue(String fulfillmentRef) {
+    }
+
+    public record ReleaseTo(String fulfillmentRef, List<Target> targets) {
+    }
+
+    /** @param cumulativeQty 这一行累计要释放到的量 */
+    public record Target(String itemId, String itemRef, int cumulativeQty) {
+    }
+
+    public record Restore(String restoreNo, List<Line> lines) {
+    }
+
+    public record Restored(String restoreNo, String inboundNo) {
     }
 
     public record View(String ref, String reservationId, String status, int lifecycleVersion,

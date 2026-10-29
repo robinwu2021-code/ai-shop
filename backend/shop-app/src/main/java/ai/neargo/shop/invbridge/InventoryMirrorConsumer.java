@@ -3,7 +3,9 @@ package ai.neargo.shop.invbridge;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.inventory.client.InventoryReservationClient;
 import ai.neargo.inventory.domain.service.InventoryAclService;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.inventory.domain.service.LocationService;
 import ai.neargo.inventory.domain.service.ReservationService;
 import ai.neargo.inventory.domain.service.ReturnReceiptService;
@@ -72,6 +74,28 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
     @Autowired
     public void setHoldTtl(ReservationHoldTtl holdTtl) { this.holdTtl = holdTtl; }
 
+    /** 切流（ADR-046 M8）：按单号的生命周期命令也要送到库存服务上那几家；没配客户端为空 */
+    private InventoryReservationClient service;
+
+    @Autowired
+    public void setService(ObjectProvider<InventoryReservationClient> client) {
+        this.service = client.getIfAvailable();
+    }
+
+    /**
+     * 按单号的动作在两侧各做一遍，各自只碰自己写的商家。服务这一侧失败就抛 —— 让 outbox 重投（动作按单号幂等）。
+     * 本系统一个翻到服务的商家都没有时不调服务，免得纯内嵌的订单被服务可用性牵连。
+     */
+    private void onService(java.util.function.Consumer<InventoryReservationClient> action) {
+        if (service != null && acl.anyServiceWrittenOwner()) {
+            try {
+                action.accept(service);
+            } catch (ai.neargo.inventory.api.InventoryException e) {
+                throw ai.neargo.shop.inventory.embed.InventoryErrors.toShop(e);
+            }
+        }
+    }
+
     public InventoryMirrorConsumer(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                                    LocationService locations, ObjectMapper json) {
         this.counts = counts;
@@ -110,11 +134,26 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
 
         switch (event.getEventType()) {
             case InvMirrorEvent.RESERVE -> reserve(ref, p);
-            case InvMirrorEvent.COMMIT -> settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
-            case InvMirrorEvent.ALLOCATE -> reservations.allocatePaidByRef(ref);
-            case InvMirrorEvent.ISSUE -> reservations.issueByFulfillmentRef(ref, "MIRROR");
-            case InvMirrorEvent.RELEASE_ALLOCATED -> reservations.releaseAllocatedByFulfillmentRef(ref);
-            case InvMirrorEvent.RELEASE -> settled(ref, () -> reservations.releaseByRef(ref));
+            case InvMirrorEvent.COMMIT -> {
+                settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
+                onService(c -> c.commitByRef("SYSTEM:mirror", ref));
+            }
+            case InvMirrorEvent.ALLOCATE -> {
+                reservations.allocatePaidByRef(ref);
+                onService(c -> c.allocatePaidByRef("SYSTEM:mirror", ref));
+            }
+            case InvMirrorEvent.ISSUE -> {
+                reservations.issueByFulfillmentRef(ref, "MIRROR");
+                onService(c -> c.issueByFulfillment("SYSTEM:mirror", ref));
+            }
+            case InvMirrorEvent.RELEASE_ALLOCATED -> {
+                reservations.releaseAllocatedByFulfillmentRef(ref);
+                onService(c -> c.releaseAllocatedByFulfillment("SYSTEM:mirror", ref));
+            }
+            case InvMirrorEvent.RELEASE -> {
+                settled(ref, () -> reservations.releaseByRef(ref));
+                onService(c -> c.releaseByRef("SYSTEM:mirror", ref));
+            }
             case InvMirrorEvent.RESTORE -> restore(ref, p);
             case InvMirrorEvent.RESTORE_ORIGINAL -> restoreOriginal(ref, p);
             case InvMirrorEvent.RETURN_RECEIPT -> receiveReturn(ref, p);

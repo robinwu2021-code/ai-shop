@@ -32,6 +32,18 @@ public interface InventoryAclService {
      */
     String writeAuthorityOf(String entityNo);
 
+    /**
+     * SKU 归哪个商家、这本账由谁写；SKU 没映射为空。与 {@link #writeAuthorityOf} 同样不受写入方守卫限制：
+     * 商城传统下单只有 SKU，切流路由靠它按商家分组（M8）。
+     */
+    OwnerRoute routeOfSku(String skuNo);
+
+    /** 本系统下有没有已翻到独立服务的商家：一个都没有时，宿主不必去调服务的系统级接口 */
+    boolean anyServiceWrittenOwner();
+
+    record OwnerRoute(String ownerId, String entityNo, String writeAuthority) {
+    }
+
     /** Original AISHOP SKU reference for an owner's reserved material; never invents an external SKU. */
     String skuOfItem(String ownerId, String itemId);
 
