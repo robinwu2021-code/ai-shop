@@ -796,6 +796,15 @@ public class InventoryAclServiceImpl implements InventoryAclService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public OwnerRoute routeOfOwner(String ownerId) {
+        InvOwner owner = ownerId == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getOwnerId, ownerId));
+        return owner == null ? null
+                : new OwnerRoute(owner.getOwnerId(), owner.getExternalRef(), owner.getWriteAuthority());
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
     public boolean anyServiceWrittenOwner() {
         return ownerMapper.exists(Wrappers.<InvOwner>lambdaQuery()
                 .eq(InvOwner::getSystemCode, aclSystem)

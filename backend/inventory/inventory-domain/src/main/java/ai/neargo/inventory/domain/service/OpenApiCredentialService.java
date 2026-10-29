@@ -47,6 +47,9 @@ public interface OpenApiCredentialService {
      */
     void revoke(String credentialId);
 
+    /** 这把凭证属于哪个业主；没有为空（运营吊销时按业主分流、服务吊销时核对归属） */
+    String ownerIdOfCredential(String credentialId);
+
     /**
      * 某个业主发过哪些钥匙。**发得出、看不见等于发不出** ——
      * 运营被问「他们那把还能用吗」时，没有这一条就只能进库里查。

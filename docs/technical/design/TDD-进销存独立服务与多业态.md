@@ -609,6 +609,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-24 | `SerialDocumentFlowTest#cabinetWith48PowerbanksGoesInAndOutByScanningOnlyTheCabinet`（柜 + 48 宝入库，只扫柜码出库，单据逐块 49 件，柜 −1、宝 −48）· `#disassembledPowerbankNoLongerTravelsWithItsCabinet` | ✅ 2026-10-29 | ✅ 去掉下级件展开 → 变红 |
 | AC-25 | `ReservationAndFlipFlowTest#reservationIsAllOrNothingIdempotentAndExpiredByTheJobService`（同单号同内容同一预留、换内容 409、不够全拒、取消释放、到期由任务服务经 `/internal/job/*` 触发回收、密钥不对 401）· `#expirySweepOnlyTouchesOwnersThisProcessWritesFor` | ✅ 2026-10-29（服务侧） | ✅ 去掉回收的写入方过滤 → 变红 |
 | AC-26 | ai-shop `OrderReservationOutboxTest#rollback_expires_and_commit_once` | | |
+| T8.3 运营端与开放接口 | `ReservationClientContractTest#opsAndOpenApiSurfacesGoThroughTheService`（不限库位余额、凭证签发 / 列表 / 吊销、别家凭证 404、开放同步别家库位 403、本家落盘点单并进流水）· shop-inventory `OpenInventoryControllerRoutingTest`（认出的业主已翻走即转发、幂等号作操作人、不碰领域服务） | ✅ 2026-10-29 | ✅ 吊销不核归属 → 变红 |
 | T8.3 后台其余 | `ReservationClientContractTest#merchantConsoleCatalogReportsAndValuationGoThroughTheService`（库位列表、供应商建 / 停用 / 列表、月报期末、CSV 导出、估值同键重放同结果）· shop-inventory `BizCatalogControllersRoutingTest` | ✅ 2026-10-29 | ✅ 导出不分流 → 变红 |
 | T8.3 后台单据 | `ReservationClientContractTest#merchantConsoleDocumentsHonourTheStaffStoreScope`（入库落当前门店库位、别家门店员工过账 403、本店员工可以、操作人原样、盘点开单录数过账）· shop-inventory `BizStockDocControllerRoutingTest`（转发路径与范围参数、不碰领域服务） | ✅ 2026-10-29 | ✅ 去掉服务侧范围判定 → 变红 |
 | T8.3 后台库存页 | `ReservationClientContractTest#merchantConsoleReadsAndWritesGoThroughTheService`（总览、余额、按 SKU 自己的有账别人的 null、单件改数落盘点并进流水、别家库位号 403）· shop-inventory `BizStockControllerRoutingTest`（已翻商家转发且不碰领域服务、内嵌商家照旧） | ✅ 2026-10-29 | ✅ 去掉入口分流 → 变红 |
@@ -759,9 +760,9 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 服务侧 | 每个商城后台控制器对应一个 `/api/inventory/v1/console/...` 控制器，复用同一批领域服务、返回同一批 VO；`storeRef` = 商城当前门店号，经 `HostReferenceService.storeLocationOf`（与内嵌 `locationIdOf` 共用 `StoreLocations.ensure`：门店库位没有就建、默认从主体默认仓发货）落到实际扣库存的库位；端上传来的库位号校验归属 | — |
 | 客户端 | `InventoryConsoleApi`（动态 URI 的通用 GET / POST / PUT / DELETE）+ `InventoryConsole`（按商家号与操作人取得，类型由调用方给，熔断与错误翻译同一套） | 后台端点几十个、返回就是领域 VO，逐个写 `@HttpExchange` 没有收益；VO 目前在 `inventory-domain`，T8.6 删内嵌时整体移到 `inventory-api`（搬家不重写） |
 | 商城 | `InventoryConsoleRoute`：每次现查当前商家写入方 —— 内嵌照旧，`SVC` 转发，翻转中或没配客户端 409；控制器每个端点入口一行分流 | 判权、数据域照旧在商城 `@PreAuthorize` 上做完 |
-| 已切 | `BizStockController` 10 个端点（总览、余额、跨店、可拣、条码、按 SKU、物料详情、流水、单件改数、安全库存）；`BizStockDocController` 17 个端点（入库、出库、盘点、调拨的建单 / 改单 / 过账 / 作废 / 详情）；`BizLocationController` 3、`BizSupplierController` 4、`BizStockReportController` 4（含 CSV 导出：服务回原文，文件名与审计仍在商城）、`BizInventoryValuationController` 2（估值配置的幂等键原样透传）—— 商家后台 40 个端点全部已切 | — |
+| 已切 | `BizStockController` 10 个端点（总览、余额、跨店、可拣、条码、按 SKU、物料详情、流水、单件改数、安全库存）；`BizStockDocController` 17 个端点（入库、出库、盘点、调拨的建单 / 改单 / 过账 / 作废 / 详情）；`BizLocationController` 3、`BizSupplierController` 4、`BizStockReportController` 4（含 CSV 导出：服务回原文，文件名与审计仍在商城）、`BizInventoryValuationController` 2（估值配置的幂等键原样透传）—— 商家后台 40 个端点全部已切；运营端 `OpsInventoryController` 2、`OpsOpenCredentialController` 3（按请求里的商家号分流；吊销按凭证所属业主分流）、旧开放接口 `OpenInventoryController` 3（AppKey 仍在商城认，认出的业主已翻走就转发，幂等号作操作人）—— 商城库存的 48 个端点全部已切 | 服务侧吊销多一道「凭证是这本账的」（内嵌只按凭证号）；开放同步对库位做归属校验（内嵌不校验）。凭证本身仍在商城认，T8.6 前要随业主数据一起迁到服务 |
 | 单据的数据范围 | 只管部分门店的员工：商城在请求上附 `scopeStores`（门店号），服务按与内嵌 `requireLocationAccess` 相同的规则判单据库位（`acl.locationsOfStoresOf` 与内嵌按商家号的版本共用一份实现）；店主不带 | 操作人原样透传商城用户号（与内嵌写进单据的值相同），不加 `STAFF:` 前缀 |
-| 待切 | `OpsInventoryController`（2）、`OpsOpenCredentialController`（3）、`OpenInventoryController`（3）；需求计划 / 生产扣料 / 物料目录端口；`invbridge` 其余 | — |
+| 待切 | 需求计划 / 生产扣料 / 物料目录端口；`invbridge` 其余 | — |
 
 ### M7 · 第二业态：充电桩（2026-10-29，T7.1 ~ T7.3）
 
@@ -821,3 +822,4 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | 裁决：商家后台读写全切；M8 第四段起步，库存页 10 个端点已切，后端全量 7020 例 0 失败 |
 | 2026-10-29 | M8 第四段：单据 17 个端点已切，后端全量 7022 例 0 失败 |
 | 2026-10-29 | M8 第四段：商家后台 40 个端点全部已切（库位、供应商、报表、估值），后端全量 7024 例 0 失败 |
+| 2026-10-29 | M8 第四段：运营端与旧开放接口已切 —— 商城库存 48 个端点全部按商家写入方分流。针对性回归（库存各模块 + shop-inventory 88 例、shop-app 库存与架构相关 259 例）0 失败；后端全量待复跑（当晚积分两例按北京日期取统计、本机 20~24 点必挂，与本改动无关） |

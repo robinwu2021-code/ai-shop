@@ -41,7 +41,30 @@ public class InventoryConsoleRoute {
 
     /** 当前商家是否已翻到库存服务（每次现查：翻转是在线做的） */
     public boolean remote() {
-        String authority = acl.writeAuthorityOf(BizContext.requireMerchantNo());
+        return remoteFor(BizContext.requireMerchantNo());
+    }
+
+    /** 指定商家（运营端按请求参数里的商家号）是否已翻到库存服务 */
+    public boolean remoteFor(String entityNo) {
+        return decide(acl.writeAuthorityOf(entityNo));
+    }
+
+    /** 指定业主（开放接口按 AppKey 认出的业主）：已翻到服务时返回它的商家号，否则为空 */
+    public String remoteEntityOfOwner(String ownerId) {
+        InventoryAclService.OwnerRoute r = acl.routeOfOwner(ownerId);
+        return r != null && decide(r.writeAuthority()) ? r.entityNo() : null;
+    }
+
+    /** 以指定商家、指定操作人转发（运营端、开放接口：不在商家登录上下文里） */
+    public <T> T viaFor(String entityNo, String actor, Function<InventoryConsole, T> call) {
+        try {
+            return call.apply(client.getObject().console(entityNo, actor == null ? "SYSTEM" : actor));
+        } catch (InventoryException e) {
+            throw InventoryErrors.toShop(e);
+        }
+    }
+
+    private boolean decide(String authority) {
         if (authority == null || InvEnums.WriteAuthority.EMBEDDED.equals(authority)) {
             return false;
         }

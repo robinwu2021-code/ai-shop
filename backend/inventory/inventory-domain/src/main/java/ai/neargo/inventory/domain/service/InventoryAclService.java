@@ -38,6 +38,9 @@ public interface InventoryAclService {
      */
     OwnerRoute routeOfSku(String skuNo);
 
+    /** 业主号 → 商家号与写入方（开放接口按 AppKey 认出业主后，据此决定走内嵌还是转发服务）；没有为空 */
+    OwnerRoute routeOfOwner(String ownerId);
+
     /** 本系统下有没有已翻到独立服务的商家：一个都没有时，宿主不必去调服务的系统级接口 */
     boolean anyServiceWrittenOwner();
 

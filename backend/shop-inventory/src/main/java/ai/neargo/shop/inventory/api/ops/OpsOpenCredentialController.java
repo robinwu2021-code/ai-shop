@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.api.ops;
 
 import ai.neargo.shop.auth.Perms;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.inventory.domain.service.OpenApiCredentialService;
@@ -10,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 开放对接凭证的发放口（运营端）。
@@ -44,17 +47,22 @@ public class OpsOpenCredentialController {
 
     private final OpenApiCredentialService credentials;
     private final InventoryAclService acl;
+    /** 切流（M8）：已翻到库存服务的商家，转给服务的 /console/platform，返回结构相同 */
+    private final InventoryConsoleRoute route;
 
     public OpsOpenCredentialController(OpenApiCredentialService credentials,
-                                       InventoryAclService acl) {
+                                       InventoryAclService acl, InventoryConsoleRoute route) {
         this.credentials = credentials;
         this.acl = acl;
+        this.route = route;
     }
 
     /** 某个商家发过哪些钥匙。**吊销过的也在列** —— 这一列要能回答「什么时候停的」 */
     @PreAuthorize("@perm.can('" + Perms.INVENTORY_CREDENTIAL_READ + "')")
     @GetMapping("/ops/inventory/credentials")
     public List<OpenApiCredentialService.Listed> list(@RequestParam String entityNo) {
+        if (route.remoteFor(entityNo)) return route.viaFor(entityNo, SecurityUtils.currentUserNo(), c -> c.get("/platform/credentials",
+                params(), new tools.jackson.core.type.TypeReference<List<OpenApiCredentialService.Listed>>() { }));
         return credentials.list(acl.ownerIdOf(entityNo));
     }
 
@@ -65,6 +73,9 @@ public class OpsOpenCredentialController {
     @PreAuthorize("@perm.can('" + Perms.INVENTORY_CREDENTIAL_GRANT + "')")
     @PostMapping("/ops/inventory/credentials")
     public OpenApiCredentialService.Issued issue(@RequestBody IssueReq req) {
+        if (route.remoteFor(req.entityNo())) return route.viaFor(req.entityNo(), SecurityUtils.currentUserNo(),
+                c -> c.post("/platform/credentials", new RemoteIssue(req.name(), req.scopes(), req.expiresAt()),
+                        OpenApiCredentialService.Issued.class));
         return credentials.issue(acl.ownerIdOf(req.entityNo()), req.name(),
                 req.scopes(), req.expiresAt());
     }
@@ -73,6 +84,12 @@ public class OpsOpenCredentialController {
     @PreAuthorize("@perm.can('" + Perms.INVENTORY_CREDENTIAL_GRANT + "')")
     @PostMapping("/ops/inventory/credentials/{credentialId}/revoke")
     public void revoke(@PathVariable String credentialId) {
+        String entity = route.remoteEntityOfOwner(credentials.ownerIdOfCredential(credentialId));
+        if (entity != null) {
+            route.viaFor(entity, SecurityUtils.currentUserNo(),
+                    c -> { c.postTo("/platform/credentials/" + credentialId + "/revoke", params(), null); return null; });
+            return;
+        }
         credentials.revoke(credentialId);
     }
 
@@ -83,5 +100,8 @@ public class OpsOpenCredentialController {
      */
     public record IssueReq(String entityNo, String name, String scopes,
                            LocalDateTime expiresAt) {
+    }
+
+    record RemoteIssue(String name, String scopes, LocalDateTime expiresAt) {
     }
 }

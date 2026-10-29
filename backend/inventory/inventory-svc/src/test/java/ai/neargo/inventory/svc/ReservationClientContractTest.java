@@ -295,6 +295,41 @@ class ReservationClientContractTest {
                 ai.neargo.inventory.domain.service.InventoryValuationService.Policy.class).unitCostMinor()).isEqualTo(120L);
     }
 
+    @Test
+    void opsAndOpenApiSurfacesGoThroughTheService() {
+        InventoryConsole ops = client.console(merchant, "OPS1");
+        List<InventoryVOs.BalanceVO> all = ops.get("/platform/balances", InventoryConsole.params("type", "all"),
+                new TypeReference<>() { });
+        assertThat(all).extracting(InventoryVOs.BalanceVO::itemId).contains(item);
+
+        var issued = ops.post("/platform/credentials", java.util.Map.of("name", "erp", "scopes", "read,stock:sync"),
+                ai.neargo.inventory.domain.service.OpenApiCredentialService.Issued.class);
+        List<java.util.Map<String, Object>> listed = ops.get("/platform/credentials", InventoryConsole.params(),
+                new TypeReference<>() { });
+        assertThat(listed).extracting(m -> m.get("credentialId")).contains(issued.credentialId());
+        // 别家的凭证号：当作没有
+        assertThatThrownBy(() -> ops.postTo("/platform/credentials/NOT-MINE/revoke", InventoryConsole.params(), null))
+                .isInstanceOfSatisfying(InventoryException.class,
+                        e -> assertThat(e.error()).isEqualTo(InventoryError.NOT_FOUND));
+        ops.postTo("/platform/credentials/" + issued.credentialId() + "/revoke", InventoryConsole.params(), null);
+
+        // 开放同步：别家的库位 403；自己的落成盘点单，幂等号进操作人
+        String wh = sql.queryForObject("select l.location_id from inv_location l join inv_owner o"
+                + " on o.owner_id = l.owner_id where l.external_ref = 'STORE-1' and o.external_ref = ?", String.class,
+                merchant);
+        InventoryConsole open = client.console(merchant, "OPENAPI:R1");
+        assertThatThrownBy(() -> open.post("/platform/stock-sync", java.util.Map.of("requestId", "R1",
+                "locationId", "LOC-OTHER", "lines", List.of()), java.util.Map.class))
+                .isInstanceOfSatisfying(InventoryException.class,
+                        e -> assertThat(e.error()).isEqualTo(InventoryError.FORBIDDEN));
+        open.post("/platform/stock-sync", java.util.Map.of("requestId", "R1", "locationId", wh,
+                "lines", List.of(java.util.Map.of("itemId", item, "qty", 2))), java.util.Map.class);
+        assertThat(sql.queryForObject("select on_hand from inv_stock_balance where item_id = ?",
+                java.math.BigDecimal.class, item)).isEqualByComparingTo("2");
+        assertThat(ops.get("/platform/ledger", InventoryConsole.params("itemId", item), InventoryVOs.LedgerPageVO.class)
+                .entries()).hasSize(2);
+    }
+
     private String ownerBearerOf(String merchantRef) throws Exception {
         String owner = sql.queryForObject("select owner_id from inv_owner where system_code = 'SHOP' and external_ref = ?",
                 String.class, merchantRef);

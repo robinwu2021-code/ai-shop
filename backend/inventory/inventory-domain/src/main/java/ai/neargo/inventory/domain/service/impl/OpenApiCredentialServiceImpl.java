@@ -114,4 +114,11 @@ public class OpenApiCredentialServiceImpl implements OpenApiCredentialService {
                 .eq(InvOpenCredential::getCredentialId, credentialId)
                 .set(InvOpenCredential::getStatus, "REVOKED"));
     }
+
+    @Override
+    public String ownerIdOfCredential(String credentialId) {
+        InvOpenCredential c = credentialId == null ? null : credentialMapper.selectOne(
+                Wrappers.<InvOpenCredential>lambdaQuery().eq(InvOpenCredential::getCredentialId, credentialId));
+        return c == null ? null : c.getOwnerId();
+    }
 }

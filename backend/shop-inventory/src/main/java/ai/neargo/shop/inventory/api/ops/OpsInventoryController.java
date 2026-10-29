@@ -2,6 +2,7 @@ package ai.neargo.shop.inventory.api.ops;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.Perms;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.inventory.domain.dto.InventoryVOs.BalanceVO;
 import ai.neargo.inventory.domain.dto.InventoryVOs.LedgerPageVO;
 import ai.neargo.inventory.domain.service.InventoryAclService;
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 平台端 · 进销存治理。
@@ -33,9 +36,13 @@ public class OpsInventoryController {
 
     private final StockQueryService query;
     private final InventoryAclService acl;
-    public OpsInventoryController(StockQueryService query, InventoryAclService acl) {
+    /** 切流（M8）：已翻到库存服务的商家，转给服务的 /console/platform，返回结构相同 */
+    private final InventoryConsoleRoute route;
+
+    public OpsInventoryController(StockQueryService query, InventoryAclService acl, InventoryConsoleRoute route) {
         this.query = query;
         this.acl = acl;
+        this.route = route;
     }
 
     /**
@@ -53,6 +60,8 @@ public class OpsInventoryController {
     public List<BalanceVO> balances(@RequestParam String entityNo,
                                   @RequestParam(defaultValue = "todo") String type,
                                   @RequestParam(defaultValue = "100") int size) {
+        if (route.remoteFor(entityNo)) return route.viaFor(entityNo, SecurityUtils.currentUserNo(), c -> c.get("/platform/balances",
+                params("type", type, "size", size), new tools.jackson.core.type.TypeReference<List<BalanceVO>>() { }));
         return query.balances(acl.ownerIdOf(entityNo), null, type, Math.min(size, PAGE_MAX));
     }
 
@@ -63,6 +72,8 @@ public class OpsInventoryController {
                                @RequestParam(required = false) String itemId,
                                @RequestParam(required = false) Long cursor,
                                @RequestParam(defaultValue = "50") int size) {
+        if (route.remoteFor(entityNo)) return route.viaFor(entityNo, SecurityUtils.currentUserNo(), c -> c.get("/platform/ledger",
+                params("itemId", itemId, "cursor", cursor, "size", size), LedgerPageVO.class));
         return query.ledger(acl.ownerIdOf(entityNo), itemId, null, null, cursor, Math.min(size, PAGE_MAX));
     }
 }
