@@ -8,6 +8,7 @@ import ai.neargo.shop.commerce.dto.CatalogContracts.CatalogPreviewVO;
 import ai.neargo.shop.commerce.dto.CatalogContracts.PreviewCatalogReq;
 import ai.neargo.shop.commerce.entity.CimCatalogSnapshot;
 import ai.neargo.shop.commerce.policy.CatalogDocumentPolicy;
+import ai.neargo.shop.commerce.policy.CatalogSourceTransportPolicy;
 import ai.neargo.shop.commerce.service.CatalogPublicationService;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -16,6 +17,7 @@ import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort.CaptureCommand;
 import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort.Document;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -38,24 +40,31 @@ public final class CatalogPublicationServiceImpl implements CatalogPublicationSe
         var before = db.commands.query(() -> db.scope(e, store, no, false));
         require(req.expectedScopeVersion().equals(before.scope().getVersion()));
         var refs = db.commands.query(() -> db.sourceRows(no));
-        var proofs = db.validate(before, refs);
+        var selection = db.sourceSelection(before, refs);
+        var proofs = selection.active();
         Owner owner = Owner.valueOf(before.revision().getSourceOwner());
         var port = db.owners.get(owner);
         require(port != null);
         Document document;
         try {
-            document =
-                    CatalogDocumentPolicy.freeze(
-                            port.capture(
-                                    new CaptureCommand(
-                                            e,
-                                            store,
-                                            owner,
-                                            before.connection().getConnectionNo(),
-                                            before.connection().getActiveRevisionNo(),
-                                            proofs)),
+            var command =
+                    new CaptureCommand(
+                            e,
+                            store,
+                            owner,
+                            before.connection().getConnectionNo(),
+                            before.connection().getActiveRevisionNo(),
                             proofs,
-                            db.json, e, store);
+                            selection.withdrawn().isEmpty() ? null : selection.withdrawn());
+            var captured = port.capture(command);
+            // Every removal must preserve the exact verified proof set and explicit replacement
+            // metadata.
+            document =
+                    !selection.withdrawn().isEmpty()
+                                    || captured != null && captured.replacement() != null
+                            ? CatalogSourceTransportPolicy.validateDocument(
+                                    command, captured, db.json, Clock.systemUTC())
+                            : CatalogDocumentPolicy.freeze(captured, proofs, db.json, e, store);
         } catch (RuntimeException failure) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
@@ -65,6 +74,8 @@ public final class CatalogPublicationServiceImpl implements CatalogPublicationSe
         if (document.validUntil().isBefore(expires)) expires = document.validUntil();
         for (var proof : proofs)
             if (proof.proof().validUntil().isBefore(expires)) expires = proof.proof().validUntil();
+        for (var proof : selection.withdrawn())
+            if (proof.validUntil().isBefore(expires)) expires = proof.validUntil();
         final Instant expiry = expires;
         return db.commands.execute(
                 e,
@@ -77,14 +88,16 @@ public final class CatalogPublicationServiceImpl implements CatalogPublicationSe
                 () -> {
                     var c = db.scope(e, store, no, true);
                     db.unchanged(before, c);
-                    db.evidenceFresh(proofs);
+                    db.selectionFresh(selection);
                     require(expiry.isAfter(Instant.now()));
                     var s = audit(new CimCatalogSnapshot(), "SYSTEM");
                     s.setSnapshotNo(BizKey.next("CISN"));
                     s.setEntityNo(e);
                     s.setScopeNo(no);
                     s.setSchemaVersion(CatalogDocumentPolicy.version(document));
-                    s.setSourceManifest(db.json.writeValueAsString(proofs));
+                    s.setSourceManifest(
+                            db.json.writeValueAsString(
+                                    selection.withdrawn().isEmpty() ? proofs : selection));
                     s.setPayloadRef("DB:" + s.getSnapshotNo());
                     s.setPayloadJson(db.json.writeValueAsString(document));
                     s.setContentHash(hash);

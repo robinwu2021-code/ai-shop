@@ -22,6 +22,11 @@ public interface GoodsCatalogInternalApi {
     @PostExchange(MARKET_SKU_PATH)
     CatalogMarketContracts.SkuFacts lookupMarketSku(@RequestBody CatalogMarketContracts.SkuQuery query);
 
+    String SKU_MEASUREMENT_PATH = "/internal/product/catalog/goods/sku-measurement";
+
+    @PostExchange(SKU_MEASUREMENT_PATH)
+    CatalogSkuMeasurementFacts.Facts lookupSkuMeasurement(@RequestBody CatalogMarketContracts.SkuQuery query);
+
     String IMAGES_PATH = "/internal/product/catalog-images/resolve";
 
     /** Strict original cover identity travels without public-response rewriting. */

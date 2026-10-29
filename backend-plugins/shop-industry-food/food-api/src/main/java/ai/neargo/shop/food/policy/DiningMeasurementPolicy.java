@@ -2,11 +2,11 @@ package ai.neargo.shop.food.policy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.pricing.SourceQuantityUnits;
 import ai.neargo.shop.food.dto.MeasurementPolicy;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 
 import java.math.BigDecimal;
-import java.util.Set;
 
 /**
  * Quantity is always expressed in the published sales base unit; no implicit unit conversion or
@@ -29,8 +29,7 @@ public final class DiningMeasurementPolicy {
     public static boolean sameBaseUnit(MeasurementPolicy sales, String stockUnit) {
         return sales.unit().equals(stockUnit)
                 || "COUNT".equals(sales.mode())
-                        && Set.of("EA", "PIECE").contains(sales.unit())
-                        && Set.of("EA", "PIECE").contains(stockUnit);
+                        && SourceQuantityUnits.same(sales.unit(), stockUnit);
     }
 
     public static MeasurementPolicy require(MeasurementPolicy policy) {

@@ -36,6 +36,13 @@ public class OrdOrder extends BaseEntity {
     private String operationNo;
 
     public static final String WAIT_PAY = "WAIT_PAY";
+
+    /**
+     * Original channel receivable; no local payment acknowledgement, paidAt or payment trade is
+     * implied.
+     */
+    public static final String WAIT_CHANNEL_PAY = "WAIT_CHANNEL_PAY";
+
     public static final String POINTS_PENDING = "POINTS_PENDING";
     public static final String PAID = "PAID";
 

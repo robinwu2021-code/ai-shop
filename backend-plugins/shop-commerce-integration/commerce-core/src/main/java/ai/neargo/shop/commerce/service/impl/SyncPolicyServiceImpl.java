@@ -10,6 +10,8 @@ import ai.neargo.shop.commerce.service.SyncPolicyService;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
+import java.time.LocalDateTime;
+
 /** 策略只控制后续意图，不能用开关解除远端未决发布。 */
 public final class SyncPolicyServiceImpl implements SyncPolicyService {
     private final CatalogPersistence db;
@@ -67,16 +69,21 @@ public final class SyncPolicyServiceImpl implements SyncPolicyService {
                                                     .set("scheduled_check", req.scheduledCheck())
                                                     .set("debounce_seconds", req.debounceSeconds())
                                                     .set("recovery_profile", req.recoveryProfile())
-                                                    .set(
-                                                            "next_check_at",
-                                                            req.enabled() && req.scheduledCheck()
-                                                                    ? now().plusMinutes(5)
-                                                                    : null)
+                                                    .set("next_check_at", nextCheck(p, req))
                                                     .set("updated_by", actor)
                                                     .set("updated_at", now()))
                                     == 1);
                     return db.view(db.policy(no));
                 },
                 SyncPolicyVO::policyNo);
+    }
+
+    private static LocalDateTime nextCheck(CimSyncPolicy previous, SaveSyncPolicyReq request) {
+        if (!request.enabled()) return null;
+        if (request.onPublish() && (!previous.getEnabled() || !previous.getOnPublish()))
+            return now().plusSeconds(request.debounceSeconds());
+        if (previous.getEnabled() && previous.getNextCheckAt() != null)
+            return previous.getNextCheckAt();
+        return request.scheduledCheck() ? now().plusMinutes(5) : null;
     }
 }

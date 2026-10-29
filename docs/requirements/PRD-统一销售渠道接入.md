@@ -1,6 +1,6 @@
 # PRD 统一销售渠道接入
 
-> 状态：需求草稿，依据用户2026-10-26连续确认的跨行业方向整理；已交付C0草稿、通用授权引擎及C1目录同步/资源映射内核切片；完整需求未全部实现，未在生产建表或上线。上游：[餐饮完整需求E02及外部接入](./餐饮系统-完整需求文档.md)、[品牌商品库与门店商品](./PRD-品牌商品库与门店商品.md)。设计：[统一销售渠道TDD](../technical/TDD-统一销售渠道接入.md)。
+> 状态：已授权按整批后端方案实施；本轮源码/测试源码与统一编译推进中，集中测试尚未执行，完整验收未完成；真实平台、前端和部署递延。依据用户2026-10-26确认的跨行业方向及后续“先完整开发及编译、再测试”“先用 Mock”指令整理。上游：[餐饮完整需求E02及外部接入](./餐饮系统-完整需求文档.md)、[品牌商品库与门店商品](./PRD-品牌商品库与门店商品.md)。设计：[统一销售渠道TDD](../technical/TDD-统一销售渠道接入.md)。
 
 ## L1 目标
 
@@ -45,3 +45,26 @@
 支付资金执行、券核销和真实外部渠道逐项独立门禁，不因非支付底座完成就启用；经营报表最后，技术同步统计先按业务事实有界读取。可售量、库存余额、发货包裹、权益余额、成本不在渠道再建一套。
 
 按用户交付节奏：整批源码和测试源码→统一编译→集中受影响专项→仅相关复测→统一提交推送与固定SHA集成发布。前轮仅整理设计；本轮已确认启动开发，按TDD实际子集登记进度，当前未发布。
+
+
+### 2026-10-29 本轮实际交付口径
+
+本轮代码覆盖原 FOOD 完整目录/来源核验、原 RETAIL 商品修订选品、原生 Core 渠道订单/收款准入政策、回调与订单恢复、门店营业/库存来源发布、售后原业务决策/外部编排、账单事实导入、外部券验券/核销/撤销，以及瓶存和自助服务权益/宴会计划。上述为源码范围，集中行为测试与权限、架构、数据库专项尚未运行；不能因存在接口或迁移就认定 AC 全部通过。
+
+目录撤销仅接受原菜单真实 DISABLED 当前头、原发布修订和精确 DISABLE_MENU 审计证明；普通校验失败、缺来源或未知状态不转为空目录。完整范围清空另需默认关闭配置及网关显式能力，历史映射修订保留。真实零售撤销 owner 未实现时继续阻断。无 SKU 门店市场/税范围读取复用原 owner，不补造 0 税、无限库存或全天营业。
+
+平台 ACK/REFUNDED/账单行不改变本地现金或资金账。缺独立资金/退款授权、已发料退回或 PMS 财务 owner 时明确等待；不得自动回补熟制材料。瓶存数量移动与费用/实收分离，自助权益配额、延时和宴会到场只依原服务表单及原 owner 入账。外部券明文留在原秘密保管边界，业务日志仅保存摘要/引用。离线 V31 原 owner 源码和测试源码交接已完成，统一编译/安全注册及集中测试待完成；仅设备签名草稿/序号恢复和原 CART_DEVICE KIOSK PICKUP/DELIVERY 在线重放，不创建离线订单、支付、库存、PMS 或厨房事实。
+
+实际路由/参数/返回、原权限码、内部鉴权证据、默认开关与分域迁移以设计真源 `docs/technical/design/schema/commerce-integration-design.json` 的 `implementation.codedInventory` 为准；候选设计与实际源码列表分别保留。生成 Markdown 待统一执行原生成器刷新，验证进度仅由 TDD 的实际编译/测试记录确认。
+
+Room/PMS 应收与财务记账沿原 PAY01 支付范围递延，不宣称新增或完成 PMS 财务 owner；原库存增量为 InventoryDemandPlanPort.Branch.kind 的 BUNDLE_MODIFIERS 字符串及 Leaf 可空、NON_NULL 省略的 sourceKind 字段；五参数旧构造、旧 hash、旧 JSON 保留，仅为内部 typed 计划兼容扩展，不新增公开 REST 或数据库迁移。
+
+ALL14 厨房日报已有真实 FOOD/KITCHEN 原事件数量来源及 affected-day typed 内部接口：`/internal/food/operating-report/kitchen-facts`、`/internal/food/operating-report/kitchen-affected-day`。原持久事件与任务/票据/订单行关系决定业务日和数量，传输时间不冒充发生时间；仅为原日报事实/更正来源，不授予库存、成本利润或资金记账能力。源码清单已同步；最终编译、集中测试及验收仍以 TDD 实际证据为准。
+
+
+瓶存迁移以原 V1 `fnb_bottle_custody` 为准，V1 不改动、V29 不重复建表。V29 仅给原表追加可空 `deposited_qty`（历史累计寄存总量未知，不从剩余量推造），按原 `owner_ref` 建查询索引，并新增 `fnb_bottle_movement` 逐次移动事实。实体 `customerNo` 映射原 `owner_ref`，数据库没有 `customer_no`；原状态仍为 `ACTIVE/CLOSED`。
+
+运营权限沿恢复后的原角色授权表；`SYSTEM_COMMERCE_READ/UPDATE` 常量与精确接口检查不等于给任何默认角色授权。未新增 SUPPORT/TECH_OPS 默认 grants，新增运营接口当前仅原 SUPER_ADMIN 通配权限可用。此处为实际权限口径同步，不扩展业务或角色能力。
+
+
+零售自提/骑手交接来源本轮补齐为原 Core 真实 CHANNEL+RETAIL 动作证据：成功 final commit 同事务追加 V614 `ord_channel_fulfillment_evidence`，封存动作前进度与目标之差、原 MAIN 行 opaque allocation、真实发生时间和原 receipt/hash。历史 terminal、UNKNOWN 和无新增交付量不补造证据。可沿现有 CIM 履约发布接口使用原 `fulfillmentNo` 和 `sourceRevision="1"`，本地或受服务令牌保护的 typed 原来源读取；桥接默认关闭。当前仅支持 `PICKED_UP/HANDED_OVER`，快递 `SHIPPED/DELIVERED` 仍不支持，不改本地 PAID、不造承运商包裹/物流或资金凭证。新增源码及测试源码已写，统一编译/原生测试待主执行者记录。

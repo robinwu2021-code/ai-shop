@@ -105,6 +105,10 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  trade:
+    channel:
+      # New external receivable admission is opt-in; this does not enable a supplier or local cash acknowledgement.
+      enabled: ${SHOP_TRADE_CHANNEL_ENABLED:false}
   ops:
     auth:
       # 运营登录第二因子（安全规范 §2.7，G9）：email = 密码对了再发 6 位码到登录邮箱，凭码换会话。
@@ -250,6 +254,9 @@ shop:
     enabled: ${SHOP_OUTBOX_ENABLED:true}
     maintenance: ${SHOP_OUTBOX_MAINTENANCE:false}
     archive-only:
+      - "PLATFORM:RETAIL_CHANNEL_FULFILLMENT_SEALED"
+      - "ORDER:CHANNEL_ORDER_ACCEPTED"
+      - "PLATFORM:CATALOG_SOURCE_CHANGED"
       - "PLATFORM:PRICING_CONFIG_PUBLISHED"
       - "PLATFORM:PRINT_JOB_CHANGED"
       - "PLATFORM:FOOD_DISH_CHANGED"

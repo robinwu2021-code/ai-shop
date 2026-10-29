@@ -110,7 +110,7 @@ import java.util.function.Supplier;
  * Durable shared checkout owner. Consumer consent and merchant in-person acceptance have separate
  * purposes; both consume the same price seal and ordinary writer.
  */
-@Service
+@Service("tradeCheckoutServiceImpl")
 public class CheckoutServiceImpl implements CheckoutService {
     private final CheckoutMappers.OperationMapper operations;
     private final CheckoutMappers.QuoteMapper quotes;

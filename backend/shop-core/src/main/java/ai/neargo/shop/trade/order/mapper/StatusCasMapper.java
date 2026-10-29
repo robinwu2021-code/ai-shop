@@ -85,6 +85,34 @@ public interface StatusCasMapper {
             @Param("to") String to,
             @Param("now") LocalDateTime now);
 
+    /** Only the transaction holding a validated original channel fulfillment may advance it. */
+    @Update("UPDATE ord_sub_order s SET s.status=#{to}, s.updated_at=#{now}, s.version=s.version+1, "
+            + "s.completed_at=CASE WHEN #{to}='COMPLETED' AND s.completed_at IS NULL "
+            + "THEN #{completedAt} ELSE s.completed_at END "
+            + "WHERE s.sub_order_no=#{no} AND s.status=#{from} AND s.deleted=0 "
+            + "AND s.admission_kind='CHANNEL' AND s.customer_kind='CHANNEL' AND s.open_after_sale_no IS NULL "
+            + "AND EXISTS (SELECT 1 FROM ord_channel_import i WHERE i.tenant_no=s.tenant_no "
+            + "AND i.entity_no=s.entity_no AND i.store_no=s.store_no AND i.order_no=s.order_no "
+            + "AND i.sub_order_no=s.sub_order_no AND i.status='ACCEPTED' AND i.acceptance_receipt_ref IS NOT NULL) "
+            + "AND EXISTS (SELECT 1 FROM ord_industry_fulfillment f WHERE f.tenant_no=s.tenant_no "
+            + "AND f.entity_no=s.entity_no AND f.store_no=s.store_no AND f.sub_order_no=s.sub_order_no "
+            + "AND f.order_no=s.order_no AND f.fulfillment_no=#{fulfillmentNo} AND f.fulfillment_kind=#{kind} "
+            + "AND f.status='PROOF_VALIDATED' AND f.inventory_receipt_json IS NOT NULL "
+            + "AND EXISTS (SELECT 1 FROM ord_channel_import i WHERE i.tenant_no=f.tenant_no "
+            + "AND i.entity_no=f.entity_no AND i.store_no=f.store_no AND i.order_no=f.order_no "
+            + "AND i.sub_order_no=f.sub_order_no AND i.source_system=f.source_system "
+            + "AND i.source_no=f.source_no AND i.source_version=f.source_version "
+            + "AND i.status='ACCEPTED' AND i.acceptance_receipt_ref IS NOT NULL) "
+            + "AND EXISTS (SELECT 1 FROM ord_industry_order_source x WHERE x.tenant_no=f.tenant_no "
+            + "AND x.entity_no=f.entity_no AND x.store_no=f.store_no AND x.order_no=f.order_no "
+            + "AND x.sub_order_no=f.sub_order_no AND x.order_mode='CHANNEL' "
+            + "AND x.source_system=f.source_system AND x.source_type=f.source_type "
+            + "AND x.source_no=f.source_no AND x.source_version=f.source_version "
+            + "AND x.source_hash=f.source_hash AND x.demand_plan_hash=f.plan_hash))")
+    int casChannelFulfillment(@Param("no") String no, @Param("fulfillmentNo") String fulfillmentNo,
+            @Param("kind") String kind, @Param("from") String from, @Param("to") String to,
+            @Param("now") LocalDateTime now, @Param("completedAt") long completedAt);
+
     /** 子单完成时刻（售后期起算点）：只写第一次，不动 version（与 CAS 互不干扰） */
     @Update(
             "UPDATE ord_sub_order SET completed_at = #{at} WHERE sub_order_no = #{no} "

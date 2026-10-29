@@ -23,6 +23,7 @@ import ai.neargo.shop.food.entity.FnbCoreLineAllocation;
 import ai.neargo.shop.food.entity.FnbOrderComponent;
 import ai.neargo.shop.food.entity.FnbOrderModifier;
 import ai.neargo.shop.food.entity.FnbStation;
+import ai.neargo.shop.food.entity.FnbStockBalance;
 import ai.neargo.shop.food.entity.FnbCheckCart;
 import ai.neargo.shop.food.entity.FnbCheckCartItem;
 import ai.neargo.shop.food.entity.FnbSkuStation;
@@ -351,6 +352,23 @@ public final class FoodMappers {
                 + "AND station_no=#{station} AND deleted=0 ORDER BY sku_no,task_role")
         List<FnbSkuStation> stationRoutes(@Param("entity") String entity, @Param("store") String store,
                 @Param("station") String station);
+    }
+
+    /** Explicit owner predicates are retained even for internal calls without a request data scope. */
+    public interface StockBalanceMapper extends BaseMapper<FnbStockBalance> {
+        @Select("SELECT * FROM fnb_stock_balance WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND store_no=#{store} AND item_no=#{item} AND deleted=0 FOR UPDATE")
+        FnbStockBalance lockBalance(@Param("entity") String entity, @Param("store") String store,
+                @Param("item") String item);
+
+        @Update("UPDATE fnb_stock_balance SET on_hand=#{onHand},reserved_qty=#{reserved},version=version+1, "
+                + "updated_at=CURRENT_TIMESTAMP(3),updated_by=#{actor} WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND store_no=#{store} AND item_no=#{item} "
+                + "AND version=#{version} AND deleted=0")
+        int replaceLockedBalance(@Param("entity") String entity, @Param("store") String store,
+                @Param("item") String item, @Param("version") long version,
+                @Param("onHand") BigDecimal onHand, @Param("reserved") BigDecimal reserved,
+                @Param("actor") String actor);
     }
 
     public interface SalesRestrictionMapper extends BaseMapper<FnbSalesRestriction> { }

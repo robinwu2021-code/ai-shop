@@ -1,2 +1,13 @@
 ai.neargo.shop.commerce.config.CommerceCoreAutoConfiguration
 ai.neargo.shop.commerce.config.CommerceSourceValidationAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceAvailabilityAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceStatementAutoConfiguration
+
+ai.neargo.shop.commerce.config.CommerceAfterSaleAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceAfterSaleSourceAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceRedemptionAutoConfiguration
+
+ai.neargo.shop.commerce.config.CommerceCatalogWithdrawalAutoConfiguration
+
+ai.neargo.shop.commerce.config.CommerceFulfillmentTriggerAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceTaxSourceNoticeAutoConfiguration

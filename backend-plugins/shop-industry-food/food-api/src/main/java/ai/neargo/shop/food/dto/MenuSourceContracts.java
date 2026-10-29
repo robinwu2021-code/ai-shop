@@ -4,6 +4,7 @@ import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.product.CatalogRevisionDeserializer;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import jakarta.validation.constraints.NotNull;
 
@@ -28,7 +29,9 @@ public final class MenuSourceContracts {
         OFFER,
         SKU,
         OPTION_GROUP,
-        OPTION
+        OPTION,
+        BUNDLE_GROUP,
+        BUNDLE_MEMBER
     }
 
     public enum Mode {
@@ -52,7 +55,37 @@ public final class MenuSourceContracts {
                     String salesOfferRef,
             @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
                     String optionGroupRef,
-            @NotNull @JsonDeserialize(using = ModeDeserializer.class) Mode mode) {
+            @NotNull @JsonDeserialize(using = ModeDeserializer.class) Mode mode,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+                    @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
+                    String variantSkuRef,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+                    @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
+                    String bundleGroupRef) {
+        public Query(
+                String entityNo,
+                String storeNo,
+                String menuNo,
+                String revisionNo,
+                Kind kind,
+                String resourceRef,
+                String salesOfferRef,
+                String optionGroupRef,
+                Mode mode) {
+            this(
+                    entityNo,
+                    storeNo,
+                    menuNo,
+                    revisionNo,
+                    kind,
+                    resourceRef,
+                    salesOfferRef,
+                    optionGroupRef,
+                    mode,
+                    null,
+                    null);
+        }
+
         @JsonAnySetter
         public void rejectUnknown(String key, Object value) {
             throw new IllegalArgumentException("Unknown menu source query field");
@@ -66,7 +99,18 @@ public final class MenuSourceContracts {
             @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
                     String salesOfferRef,
             @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
-                    String optionGroupRef) {
+                    String optionGroupRef,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+                    @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
+                    String variantSkuRef,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+                    @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
+                    String bundleGroupRef) {
+        public Resource(
+                Kind kind, String resourceRef, String salesOfferRef, String optionGroupRef) {
+            this(kind, resourceRef, salesOfferRef, optionGroupRef, null, null);
+        }
+
         @JsonAnySetter
         public void rejectUnknown(String key, Object value) {
             throw new IllegalArgumentException("Unknown menu resource field");

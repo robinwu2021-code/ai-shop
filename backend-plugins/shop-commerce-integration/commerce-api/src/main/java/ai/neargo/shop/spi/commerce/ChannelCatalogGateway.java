@@ -7,12 +7,27 @@ import java.util.List;
 /** 完整门店替换的获准协议适配器；结果必须绑定原动作和代次，无默认成功实现。 */
 public interface ChannelCatalogGateway extends CommerceGateway {
     /**
-     * Versions two/three require full support; v3 includes absolute expiry and every time/tax constraint.
-     * Older adapters cannot silently flatten new
-     * rules.
+     * Versions two/three require full support; v3 includes absolute expiry and every time/tax
+     * constraint. Older adapters cannot silently flatten new rules.
      */
     default boolean supportsDocumentSchema(int schemaVersion) {
         return schemaVersion == 1;
+    }
+
+    /**
+     * Explicit empty complete-scope replacement is a separate adapter capability, never assumed
+     * from v3 support.
+     */
+    default boolean supportsEmptyReplacement() {
+        return false;
+    }
+
+    /**
+     * Source withdrawal is independently opt-in, even when a protocol can send other empty
+     * documents.
+     */
+    default boolean supportsValidatedWithdrawal() {
+        return false;
     }
 
     boolean supportsQuery();

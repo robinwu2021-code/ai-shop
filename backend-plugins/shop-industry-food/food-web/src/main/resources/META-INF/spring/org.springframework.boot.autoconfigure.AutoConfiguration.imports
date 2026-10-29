@@ -4,3 +4,8 @@ ai.neargo.shop.food.config.DiningIdentityWebAutoConfiguration
 ai.neargo.shop.food.config.DiningDeliveryWebAutoConfiguration
 ai.neargo.shop.food.config.FoodSupportWebAutoConfiguration
 ai.neargo.shop.food.config.FoodReportFactsAutoConfiguration
+
+ai.neargo.shop.food.config.BottleCustodyWebAutoConfiguration
+
+ai.neargo.shop.food.config.FoodServiceEntitlementWebAutoConfiguration
+ai.neargo.shop.food.config.FoodOfflineDraftWebAutoConfiguration

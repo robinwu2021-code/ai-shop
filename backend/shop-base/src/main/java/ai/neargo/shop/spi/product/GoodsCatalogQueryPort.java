@@ -37,6 +37,11 @@ public interface GoodsCatalogQueryPort {
         throw new UnsupportedOperationException("Catalog image identity lookup is unavailable");
     }
 
+    /** Optional versioned product-owned sale-unit capability; unavailable owners fail closed. */
+    default CatalogSkuMeasurementFacts.Facts getCatalogSkuMeasurement(CatalogMarketContracts.SkuQuery query) {
+        throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
+
     GoodsFact getGoods(String entityNo, String storeNo, String goodsNo);
 
     record GoodsFact(String goodsNo, String entityNo, String storeNo, String title, String cover,

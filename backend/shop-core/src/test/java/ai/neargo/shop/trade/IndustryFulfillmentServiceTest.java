@@ -95,6 +95,15 @@ class IndustryFulfillmentServiceTest {
                 .isInstanceOf(BizException.class);
         verify(inventory,never()).issue(any(),anyString());
     }
+    @Test void legacyPickupRejectsAnotherOperationWhileBuyerConfirmationPending() {
+        var service=service(); fixture(false);
+        var pending=new OrdIndustryFulfillment(); pending.setStatus("BUYER_CONFIRM_PENDING");
+        when(journal.selectList(any())).thenReturn(List.of(pending));
+        assertThatThrownBy(() -> service.verifyPickup(new VerifyPickup(reference,"actor",0,"123456"),"new-key"))
+                .isInstanceOf(BizException.class);
+        verify(journal,never()).insert(any(OrdIndustryFulfillment.class));
+        verify(inventory,never()).issue(any(),anyString());
+    }
     @Test void originalAbsentCodeIsExplicitReadinessInsteadOfFabrication() {
         var service=service(); fixture(true);
         var receipt=service.query(reference,"actor","key");

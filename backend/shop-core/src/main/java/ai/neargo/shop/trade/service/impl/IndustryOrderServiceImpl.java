@@ -19,6 +19,7 @@ import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort.SkuSnapshot;
 import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.spi.trade.IndustryChannelOrderPort;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Reference;
 import ai.neargo.shop.spi.trade.IndustryOrderCompositionFacts;
 import ai.neargo.shop.spi.trade.IndustryOrderPort.Allocation;
@@ -29,7 +30,6 @@ import ai.neargo.shop.spi.trade.IndustryOrderPort.Result;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.trade.PricingCheckoutPort;
 import ai.neargo.shop.spi.trade.PricingFeeFacts;
-import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.spi.trade.PricingFeeRulePort;
 import ai.neargo.shop.spi.trade.PricingSourceFacts;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Delivery;
@@ -37,6 +37,7 @@ import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Kind;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Party;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Snapshot;
+import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.spi.user.AdmissionPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
@@ -59,6 +60,7 @@ import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.service.CloseRuleService;
+import ai.neargo.shop.trade.service.IndustryChannelOrderService;
 import ai.neargo.shop.trade.service.IndustryOrderAmendmentService;
 import ai.neargo.shop.trade.service.IndustryOrderService;
 import ai.neargo.shop.trade.service.PricingCheckoutService;
@@ -105,6 +107,14 @@ import java.util.stream.Collectors;
 public class IndustryOrderServiceImpl implements IndustryOrderService {
     private static final String AUTHORITY = "INDUSTRY_INVENTORY_V2";
     private ObjectProvider<InventoryDemandPlanPort> demandProviders;
+    private IndustryChannelOrderService channelOrders;
+
+    /** CHANNEL reads use their own source quote and receipt, never ordinary checkout amendments. */
+    @Autowired(required = false)
+    public void channelOrderProjection(IndustryChannelOrderService service) {
+        this.channelOrders = service;
+    }
+
     private ObjectProvider<PricingFeeRulePort> feeProviders;
     private IndustryOrderAmendmentMapper amendmentRows;
     private IndustryOrderAmendmentService amendments;
@@ -675,6 +685,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                         audit(intent, identity);
                         intent.setPayNo(order.value());
                         intent.setUserNo(identity.buyerNo());
+                        intent.setIdentityRevision(1L);
                         intent.setEndpoint(endpoint(identity));
                         intent.setIdemKey(key);
                         intent.setRequestHash(hash);
@@ -743,6 +754,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         audit(order, identity);
         order.setOrderNo(orderNo);
         order.setUserNo(identity.buyerNo());
+        order.setIdentityRevision(1L);
         order.setCommunityNo(guard.communityNo());
         order.setGoodsAmount(quote.totals().goodsMinor());
         order.setFreightAmount(0L);
@@ -765,6 +777,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         sub.setOrderNo(orderNo);
         sub.setSubOrderNo(binding.getSubOrderNo());
         sub.setUserNo(identity.buyerNo());
+        sub.setIdentityRevision(1L);
         sub.setEntityNo(identity.entityNo());
         sub.setStoreNo(identity.storeNo());
         sub.setEntityName(guard.entityName());
@@ -997,8 +1010,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                     || sku.fulfillments() == null
                     || !sku.fulfillments().contains(fulfillment)
                     || sku.activityOnly()
-                    || !Set.of("NORMAL", "FRESH")
-                            .contains(Objects.toString(sku.categoryType(), ""))
+                    || !Set.of("NORMAL", "FRESH").contains(Objects.toString(sku.categoryType(), ""))
                     || sku.saleMode() != null && !"NORMAL".equals(sku.saleMode()))
                 throw unsupported();
             quantities.merge(unit.goodsNo(), qty, Math::addExact);
@@ -1160,6 +1172,14 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
     }
 
     private Result result(OrdIndustryOrderSource binding) {
+        if ("CHANNEL".equals(binding.getOrderMode())) {
+            if (channelOrders == null || !"CHANNEL_ORDER".equals(binding.getSourceType()))
+                throw conflict();
+            return channelOrders.industryResult(
+                    new IndustryChannelOrderPort.Scope(
+                            binding.getTenantNo(), binding.getEntityNo(), binding.getStoreNo()),
+                    binding.getOrderNo());
+        }
         int lifecycle = "POSTPAY".equals(binding.getOrderMode()) ? 3 : 2;
         if (!Set.of("BOUND", "ACCEPTED").contains(binding.getStatus()))
             return new Result(

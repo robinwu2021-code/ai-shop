@@ -6,6 +6,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.api.FoodBizStoreScope;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
+import ai.neargo.shop.food.api.stream.FoodKdsStreamTransport;
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
@@ -13,7 +14,6 @@ import ai.neargo.shop.food.dto.FoodKdsContracts.ReplayVO;
 import ai.neargo.shop.food.dto.FoodKdsContracts.RevokeReq;
 import ai.neargo.shop.food.dto.FoodKdsContracts.SubscriptionVO;
 import ai.neargo.shop.food.service.FoodKdsService;
-import ai.neargo.shop.food.service.FoodKdsStreamService;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,12 +47,12 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Validated
 public class BizFoodKdsController {
     private final FoodKdsService service;
-    private final FoodKdsStreamService streams;
+    private final FoodKdsStreamTransport streams;
     private final FoodBizStoreScope scope;
 
     public BizFoodKdsController(
             FoodKdsService service,
-            FoodKdsStreamService streams,
+            FoodKdsStreamTransport streams,
             StoreDirectoryPort stores,
             FoodRequestScopeValidator validator) {
         this.service = service;

@@ -95,6 +95,16 @@ public final class PublicationDocuments {
                             || !number.equals(body.optionGroup().configNo())
                             || body.sourceVersion() != body.optionGroup().revision()) throw malformed();
                 }
+                if ("MODIFIER".equals(kind) && body.modifier() != null
+                        && body.modifier().data() != null
+                        && body.modifier().data().inventoryMode() != null) {
+                    try {
+                        ModifierInventoryMode.resolve(body.modifier().kind(),
+                                body.modifier().data().salesSkuNo(), body.modifier().data().inventoryMode());
+                    } catch (IllegalArgumentException invalid) {
+                        throw malformed();
+                    }
+                }
                 if (body.sourceVersion() < 0 || "MODIFIER".equals(kind)
                         && (body.modifier() == null || body.optionGroup() != null)
                         || "OPTION_GROUP".equals(kind) && (body.optionGroup() == null || body.modifier() != null)) {

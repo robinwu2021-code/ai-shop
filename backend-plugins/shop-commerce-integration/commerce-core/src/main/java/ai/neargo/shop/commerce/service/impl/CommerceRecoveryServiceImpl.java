@@ -19,24 +19,43 @@ import ai.neargo.shop.commerce.entity.CimSyncPolicy;
 import ai.neargo.shop.commerce.entity.CimSyncRun;
 import ai.neargo.shop.commerce.entity.CimSyncRunItem;
 import ai.neargo.shop.commerce.policy.ChannelIdentity;
+import ai.neargo.shop.commerce.policy.SourceWithdrawalPolicy;
 import ai.neargo.shop.commerce.service.CommerceRecoveryService;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.spi.commerce.ChannelCatalogGateway;
 import ai.neargo.shop.spi.commerce.ChannelCatalogGateway.Outcome;
 import ai.neargo.shop.spi.commerce.ChannelCatalogGateway.Publication;
 import ai.neargo.shop.spi.commerce.ChannelCatalogGateway.Result;
+import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort.Document;
+import ai.neargo.shop.spi.commerce.ChannelRecoveryPort;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Kind;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Source;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Status;
+import ai.neargo.shop.spi.commerce.ChannelSourceWithdrawalProvider;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /** 同一原动作仅发送一次；恢复只查询。租约到期不是远端写入终止证据。 */
 public final class CommerceRecoveryServiceImpl implements CommerceRecoveryService {
     private final CatalogPersistence db;
+    private Supplier<List<ChannelRecoveryPort>> contributors = List::of;
+
+    /** Lazy binding avoids a recovery/notice cycle and preserves existing constructor callers. */
+    public void contributors(Supplier<List<ChannelRecoveryPort>> workflows) {
+        this.contributors = workflows;
+    }
+
     private final CatalogPublicationServiceImpl previews;
     private final SyncRunServiceImpl runs;
 
@@ -63,7 +82,19 @@ public final class CommerceRecoveryServiceImpl implements CommerceRecoveryServic
 
     public RecoveryVO recoverDue(int limit) {
         require(limit >= 1 && limit <= 100);
-        int automatic = 0, dispatched = 0, queried = 0, pending = 0, failed = 0;
+        var workflows = contributors.get();
+        var workflowNames = new HashSet<String>();
+        int workflowFailures = 0;
+        for (var workflow : workflows) {
+            if (!workflowNames.add(workflow.workflow()))
+                throw new IllegalStateException("Duplicate recovery workflow");
+            try {
+                workflow.recoverDue(limit);
+            } catch (RuntimeException unavailable) {
+                workflowFailures++;
+            }
+        }
+        int automatic = 0, dispatched = 0, queried = 0, pending = 0, failed = workflowFailures;
         var policies =
                 db.commands.query(
                         () ->
@@ -587,69 +618,181 @@ public final class CommerceRecoveryServiceImpl implements CommerceRecoveryServic
                                                 .orderByAsc("id")
                                                 .last("LIMIT 101")));
         require(all.size() <= 100);
-        record Notice(Owner owner, String ref, String revision, String event) {}
-        var notice = new Notice(owner, ref, revision, event);
-        for (var scope : all) {
-            String endpoint = "CATALOG_EVENT:" + scope.getScopeNo();
-            var replay =
-                    db.commands.replay(
-                            e, store, "SYSTEM", endpoint, event, notice, SyncPolicyVO.class);
-            if (replay.isPresent()) continue;
-            var before = db.commands.query(() -> db.scope(e, store, scope.getScopeNo(), false));
-            var p = db.commands.query(() -> db.policy(scope.getScopeNo()));
-            var refs = db.commands.query(() -> db.sourceRows(scope.getScopeNo()));
-            if (!p.getEnabled()
-                    || !p.getOnPublish()
-                    || refs.stream()
-                            .noneMatch(s -> s.sourceOwner() == owner && s.sourceRef().equals(ref)))
-                continue;
-            var changed =
-                    refs.stream()
-                            .map(
-                                    s ->
-                                            s.sourceOwner() == owner && s.sourceRef().equals(ref)
-                                                    ? new SourceReq(
-                                                            owner, ref, revision, s.priority())
-                                                    : s)
-                            .toList();
-            var proofs = db.validate(before, changed);
-            db.commands.execute(
-                    e,
-                    store,
-                    "SYSTEM",
-                    endpoint,
-                    event,
-                    notice,
-                    SyncPolicyVO.class,
-                    () -> {
-                        var c = db.scope(e, store, scope.getScopeNo(), true);
-                        db.unchanged(before, c);
-                        db.evidenceFresh(proofs);
-                        var current = db.policy(scope.getScopeNo());
-                        require(current.getEnabled() && current.getOnPublish());
-                        db.writeSources(e, scope.getScopeNo(), changed);
-                        db.scopes.update(
-                                Wrappers.<CimCatalogScope>update()
-                                        .eq("tenant_no", "MAIN")
-                                        .eq("id", c.scope().getId())
-                                        .set("version", c.scope().getVersion() + 1)
-                                        .set("remote_consistency", "STALE"));
-                        db.policies.update(
-                                Wrappers.<CimSyncPolicy>update()
-                                        .eq("tenant_no", "MAIN")
-                                        .eq("id", current.getId())
-                                        .set("pending_event_ref", event)
-                                        .set(
-                                                "next_check_at",
-                                                now().plusSeconds(current.getDebounceSeconds()))
-                                        .set("version", current.getVersion() + 1));
-                        return db.view(db.policy(scope.getScopeNo()));
-                    },
-                    SyncPolicyVO::policyNo);
-        }
+        for (var scope : all) applyPublished(scope, owner, ref, revision, event);
     }
 
-    private boolean automatic(CimSyncPolicy p) {
+    private record SourcePublicationNotice(
+            Owner owner, String ref, String revision, String event) {}
+
+    @Override
+    public void onPublishedScope(
+            String entity,
+            String store,
+            String scopeNo,
+            Owner owner,
+            String ref,
+            String revision,
+            String event) {
+        text(entity, 32);
+        text(store, 32);
+        text(scopeNo, 32);
+        text(ref, 128);
+        text(revision, 128);
+        text(event, 128);
+        require(owner != null);
+        var scope = db.commands.query(() -> db.scope(entity, store, scopeNo, false).scope());
+        if ("ACTIVE".equals(scope.getStatus())) applyPublished(scope, owner, ref, revision, event);
+    }
+
+    private record SourceWithdrawalNotice(
+            Owner owner, String ref, String previousRevision, String event) {}
+
+    @Override
+    public void onWithdrawnScope(
+            String entity,
+            String store,
+            String scopeNo,
+            Owner owner,
+            String ref,
+            String previousRevision,
+            String event) {
+        text(entity, 32);
+        text(store, 32);
+        text(scopeNo, 32);
+        text(ref, 128);
+        text(previousRevision, 128);
+        text(event, 128);
+        require(owner != null && db.withdrawalsEnabled());
+        var notice = new SourceWithdrawalNotice(owner, ref, previousRevision, event);
+        String endpoint = "CATALOG_WITHDRAWAL:" + scopeNo;
+        if (db.commands
+                .replay(entity, store, "SYSTEM", endpoint, event, notice, SyncPolicyVO.class)
+                .isPresent()) return;
+        var before = db.commands.query(() -> db.scope(entity, store, scopeNo, false));
+        var configured = db.commands.query(() -> db.sourceRows(scopeNo));
+        if (configured.stream()
+                .noneMatch(
+                        s ->
+                                s.sourceOwner() == owner
+                                        && s.sourceRef().equals(ref)
+                                        && s.selectionRevision().equals(previousRevision))) return;
+        var selected = db.sourceSelection(before, configured);
+        require(
+                selected.withdrawn().stream()
+                        .anyMatch(
+                                p ->
+                                        p.data().query().owner() == owner
+                                                && p.data().query().sourceRef().equals(ref)
+                                                && p.data()
+                                                        .query()
+                                                        .previousRevision()
+                                                        .equals(previousRevision)));
+        db.commands.execute(
+                entity,
+                store,
+                "SYSTEM",
+                endpoint,
+                event,
+                notice,
+                SyncPolicyVO.class,
+                () -> {
+                    var current = db.scope(entity, store, scopeNo, true);
+                    db.unchanged(before, current);
+                    db.selectionFresh(selected);
+                    var policy = db.policy(scopeNo);
+                    require(policy.getEnabled() && policy.getOnPublish());
+                    require(
+                            db.scopes.update(
+                                            Wrappers.<CimCatalogScope>update()
+                                                    .eq("tenant_no", "MAIN")
+                                                    .eq("id", current.scope().getId())
+                                                    .eq("version", current.scope().getVersion())
+                                                    .set(
+                                                            "version",
+                                                            current.scope().getVersion() + 1)
+                                                    .set("remote_consistency", "STALE"))
+                                    == 1);
+                    require(
+                            db.policies.update(
+                                            Wrappers.<CimSyncPolicy>update()
+                                                    .eq("tenant_no", "MAIN")
+                                                    .eq("id", policy.getId())
+                                                    .eq("version", policy.getVersion())
+                                                    .set("pending_event_ref", event)
+                                                    .set(
+                                                            "next_check_at",
+                                                            now().plusSeconds(
+                                                                            policy
+                                                                                    .getDebounceSeconds()))
+                                                    .setSql("version=version+1"))
+                                    == 1);
+                    return db.view(db.policy(scopeNo));
+                },
+                SyncPolicyVO::policyNo);
+    }
+
+    private void applyPublished(
+            CimCatalogScope scope, Owner owner, String ref, String revision, String event) {
+        var notice = new SourcePublicationNotice(owner, ref, revision, event);
+        String e = scope.getEntityNo(), store = scope.getStoreNo();
+        String endpoint = "CATALOG_EVENT:" + scope.getScopeNo();
+        var replay =
+                db.commands.replay(e, store, "SYSTEM", endpoint, event, notice, SyncPolicyVO.class);
+        if (replay.isPresent()) return;
+        var before = db.commands.query(() -> db.scope(e, store, scope.getScopeNo(), false));
+        var p = db.commands.query(() -> db.policy(scope.getScopeNo()));
+        var refs = db.commands.query(() -> db.sourceRows(scope.getScopeNo()));
+        if (!p.getEnabled()
+                || !p.getOnPublish()
+                || refs.stream()
+                        .noneMatch(s -> s.sourceOwner() == owner && s.sourceRef().equals(ref)))
+            return;
+        var changed =
+                refs.stream()
+                        .map(
+                                s ->
+                                        s.sourceOwner() == owner && s.sourceRef().equals(ref)
+                                                ? new SourceReq(owner, ref, revision, s.priority())
+                                                : s)
+                        .toList();
+        var selected = db.sourceSelection(before, changed);
+        db.commands.execute(
+                e,
+                store,
+                "SYSTEM",
+                endpoint,
+                event,
+                notice,
+                SyncPolicyVO.class,
+                () -> {
+                    var c = db.scope(e, store, scope.getScopeNo(), true);
+                    db.unchanged(before, c);
+                    db.selectionFresh(selected);
+                    var current = db.policy(scope.getScopeNo());
+                    require(current.getEnabled() && current.getOnPublish());
+                    db.writeSources(e, scope.getScopeNo(), changed);
+                    db.scopes.update(
+                            Wrappers.<CimCatalogScope>update()
+                                    .eq("tenant_no", "MAIN")
+                                    .eq("id", c.scope().getId())
+                                    .set("version", c.scope().getVersion() + 1)
+                                    .set("remote_consistency", "STALE"));
+                    db.policies.update(
+                            Wrappers.<CimSyncPolicy>update()
+                                    .eq("tenant_no", "MAIN")
+                                    .eq("id", current.getId())
+                                    .set("pending_event_ref", event)
+                                    .set(
+                                            "next_check_at",
+                                            now().plusSeconds(current.getDebounceSeconds()))
+                                    .set("version", current.getVersion() + 1));
+                    return db.view(db.policy(scope.getScopeNo()));
+                },
+                SyncPolicyVO::policyNo);
+    }
+
+    private boolean automatic(CimSyncPolicy requested) {
+        var p = reconcileHeads(requested);
         var scope =
                 db.commands.query(
                         () ->
@@ -734,11 +877,144 @@ public final class CommerceRecoveryServiceImpl implements CommerceRecoveryServic
                                         .set("pending_event_ref", null)
                                         .set(
                                                 "next_check_at",
-                                                p.getScheduledCheck() ? now().plusMinutes(5) : null)
+                                                p.getScheduledCheck()
+                                                        ? now().plusMinutes(5)
+                                                        : nextWindowRefresh(
+                                                                preview.snapshotNo(), p))
                                         .set("version", p.getVersion() + 1));
                     return null;
                 });
         return !same;
+    }
+
+    /**
+     * Re-enabling follows authoritative heads even when publication notifications were consumed
+     * while disabled.
+     */
+    private CimSyncPolicy reconcileHeads(CimSyncPolicy policy) {
+        if (!policy.getOnPublish()) return policy;
+        var before =
+                db.commands.query(
+                        () ->
+                                db.scope(
+                                        policy.getEntityNo(),
+                                        policy.getStoreNo(),
+                                        policy.getScopeNo(),
+                                        false));
+        var refs = db.commands.query(() -> db.sourceRows(policy.getScopeNo()));
+        var authority = db.authority.get();
+        require(authority != null);
+        var dispositionsChanged = new AtomicBoolean(false);
+        var known = db.knownWithdrawals(policy.getEntityNo(), policy.getStoreNo(), refs);
+        var changed =
+                refs.stream()
+                        .map(
+                                source -> {
+                                    var query =
+                                            new ChannelSourceWithdrawalProvider.Query(
+                                                    policy.getEntityNo(),
+                                                    policy.getStoreNo(),
+                                                    source.sourceOwner(),
+                                                    source.sourceRef(),
+                                                    source.selectionRevision());
+                                    ChannelSourceWithdrawalProvider.Disposition state = null;
+                                    if (db.hasWithdrawalOwner(source.sourceOwner())) {
+                                        state =
+                                                db.withdrawalOwner(source.sourceOwner())
+                                                        .disposition(query);
+                                        SourceWithdrawalPolicy.disposition(
+                                                query, state, Clock.systemUTC());
+                                        if (state.state()
+                                                == ChannelSourceWithdrawalProvider.State
+                                                        .WITHDRAWN) {
+                                            var withdrawn = state.withdrawal();
+                                            if (known.stream()
+                                                    .noneMatch(p -> p.equals(withdrawn.data())))
+                                                dispositionsChanged.set(true);
+                                            db.recordWithdrawal(withdrawn, null);
+                                            return source;
+                                        }
+                                    }
+                                    // A native ACTIVE read is still not a positive sale proof.
+                                    // Failure here remains blocking.
+                                    var current =
+                                            authority.current(
+                                                    new Source(
+                                                            policy.getEntityNo(),
+                                                            policy.getStoreNo(),
+                                                            source.sourceOwner(),
+                                                            source.sourceOwner() == Owner.FOOD
+                                                                    ? Kind.MENU
+                                                                    : Kind.SELECTION,
+                                                            source.sourceRef(),
+                                                            source.selectionRevision()));
+                                    require(
+                                            current != null
+                                                    && current.status() == Status.VALID
+                                                    && source.sourceRef()
+                                                            .equals(current.canonicalRef()));
+                                    text(current.canonicalRevision(), 128);
+                                    if (state != null) {
+                                        if (known.stream().anyMatch(p -> p.query().equals(query)))
+                                            dispositionsChanged.set(true);
+                                        db.activeDisposition(state, current);
+                                    }
+                                    return new SourceReq(
+                                            source.sourceOwner(),
+                                            source.sourceRef(),
+                                            current.canonicalRevision(),
+                                            source.priority());
+                                })
+                        .toList();
+        if (refs.equals(changed) && !dispositionsChanged.get()) return policy;
+        var selected = db.sourceSelection(before, changed);
+        return db.commands.atomic(
+                () -> {
+                    var current =
+                            db.scope(
+                                    policy.getEntityNo(),
+                                    policy.getStoreNo(),
+                                    policy.getScopeNo(),
+                                    true);
+                    db.unchanged(before, current);
+                    db.selectionFresh(selected);
+                    var saved = db.policy(policy.getScopeNo());
+                    require(
+                            saved.getEnabled()
+                                    && saved.getOnPublish()
+                                    && saved.getVersion().equals(policy.getVersion()));
+                    db.writeSources(policy.getEntityNo(), policy.getScopeNo(), changed);
+                    db.scopes.update(
+                            Wrappers.<CimCatalogScope>update()
+                                    .eq("tenant_no", "MAIN")
+                                    .eq("id", current.scope().getId())
+                                    .set("version", current.scope().getVersion() + 1)
+                                    .set("remote_consistency", "STALE"));
+                    require(
+                            db.policies.update(
+                                            Wrappers.<CimSyncPolicy>update()
+                                                    .eq("tenant_no", "MAIN")
+                                                    .eq("id", saved.getId())
+                                                    .eq("version", saved.getVersion())
+                                                    .set(
+                                                            "pending_event_ref",
+                                                            "CURRENT:"
+                                                                    + ChannelIdentity.hash(
+                                                                            db.json
+                                                                                    .writeValueAsString(
+                                                                                            changed)))
+                                                    .set("version", saved.getVersion() + 1))
+                                    == 1);
+                    return db.policy(policy.getScopeNo());
+                });
+    }
+
+    private LocalDateTime nextWindowRefresh(String snapshot, CimSyncPolicy policy) {
+        var row = db.snapshot(policy.getEntityNo(), policy.getScopeNo(), snapshot);
+        if (!Integer.valueOf(3).equals(row.getSchemaVersion())) return null;
+        var document = db.json.readValue(row.getPayloadJson(), Document.class);
+        var next = document.availability().horizonEnd().minusSeconds(24 * 3600);
+        return LocalDateTime.ofInstant(next, ZoneOffset.UTC);
     }
 
     private void deferPolicy(CimSyncPolicy p) {

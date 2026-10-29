@@ -67,6 +67,35 @@ public final class CommerceCommands {
                 ChannelIdentity.hash(
                         ChannelIdentity.part(entity)
                                 + ChannelIdentity.part(store == null ? "" : store));
+        return replayScoped(kind, scope, actor, endpoint, key, request, type);
+    }
+
+    /**
+     * Platform infrastructure has no invented merchant; the existing nullable journal owner stays
+     * null.
+     */
+    public <T> Optional<T> replayPlatform(
+            String actor, String endpoint, String key, Object request, Class<T> type) {
+        CommerceValidation.text(actor, 32);
+        CommerceValidation.text(key, 128);
+        return replayScoped(
+                "PLATFORM",
+                ChannelIdentity.hash("PLATFORM:MAIN"),
+                actor,
+                endpoint,
+                key,
+                request,
+                type);
+    }
+
+    private <T> Optional<T> replayScoped(
+            String kind,
+            String scope,
+            String actor,
+            String endpoint,
+            String key,
+            Object request,
+            Class<T> type) {
         String hash = ChannelIdentity.hash(json.writeValueAsString(request));
         return query(
                 () -> {
@@ -106,6 +135,47 @@ public final class CommerceCommands {
                 ChannelIdentity.hash(
                         ChannelIdentity.part(entity)
                                 + ChannelIdentity.part(store == null ? "" : store));
+        return executeScoped(entity, kind, scope, actor, endpoint, key, request, type, action, ref);
+    }
+
+    /**
+     * Original platform scope is distinct from ENTITY/STORE and shares the same committed replay
+     * semantics.
+     */
+    public <T> T executePlatform(
+            String actor,
+            String endpoint,
+            String key,
+            Object request,
+            Class<T> type,
+            Supplier<T> action,
+            Function<T, String> ref) {
+        CommerceValidation.text(actor, 32);
+        CommerceValidation.text(key, 128);
+        return executeScoped(
+                null,
+                "PLATFORM",
+                ChannelIdentity.hash("PLATFORM:MAIN"),
+                actor,
+                endpoint,
+                key,
+                request,
+                type,
+                action,
+                ref);
+    }
+
+    private <T> T executeScoped(
+            String entity,
+            String kind,
+            String scope,
+            String actor,
+            String endpoint,
+            String key,
+            Object request,
+            Class<T> type,
+            Supplier<T> action,
+            Function<T, String> ref) {
         String keyHash = ChannelIdentity.hash(key);
         String requestHash = ChannelIdentity.hash(json.writeValueAsString(request));
         try {

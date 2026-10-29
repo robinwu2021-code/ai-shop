@@ -23,6 +23,10 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  // Exact original commerce OPS grants; merchant operating policy remains outside OPS authority.
+  ["GET", /^\/ops\/x\/commerce\/support\/health$/, "system:commerce:read"],
+  ["GET", /^\/ops\/x\/commerce\/support\/operations\/[^/]+$/, "system:commerce:read"],
+  ["PUT", /^\/ops\/x\/commerce\/product-profiles\/[^/]+$/, "system:commerce:update"],
   ["GET", /^\/ops\/print\/(?:health|incidents|operations\/[^/]+)$/, "ops:print:read"],
   ["POST", /^\/ops\/print\/reconciliations$/, "ops:print:resolve"],
   ["GET", /^\/ops\/pay\/entitlement-(?:dead-letters|exceptions(?:\/[^/]+(?:\/actions)?)?|reconciliations(?:\/[^/]+(?:\/differences)?)?)$/, "ops:pay:ent:read"],

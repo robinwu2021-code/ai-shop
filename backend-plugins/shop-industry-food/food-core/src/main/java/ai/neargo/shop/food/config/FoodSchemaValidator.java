@@ -77,8 +77,8 @@ public final class FoodSchemaValidator {
         }
         var current = flyway.info().current();
         require(
-                current != null && "25".equals(current.getVersion().getVersion()),
-                "food migration version must be 25");
+                current != null && "33".equals(current.getVersion().getVersion()),
+                "food migration version must be 33");
         try (var connection = source.getConnection();
                 var column =
                         connection
@@ -107,8 +107,66 @@ public final class FoodSchemaValidator {
         require(missing.isEmpty(), "missing food columns: " + missing);
         missing.addAll(new PlatformWritePrerequisites().missing(source));
         missing.addAll(missingFoodUniqueKeys(source, actual));
+        missing.addAll(missingLocalStockContract(source));
         Collections.sort(missing);
         return new FoodSchemaReady(true, current.getVersion().getVersion(), missing);
+    }
+
+    static List<String> missingLocalStockContract(DataSource source) {
+        List<String> missing = new ArrayList<>();
+        try (Connection connection = source.getConnection()) {
+            connection.setReadOnly(true);
+            var metadata = connection.getMetaData();
+            for (var table : FoodLocalStockSchemaContract.REQUIRED.entrySet()) {
+                var decimals = FoodLocalStockSchemaContract.DECIMALS.getOrDefault(table.getKey(), List.of());
+                for (String column : table.getValue()) {
+                    try (var rows = metadata.getColumns(connection.getCatalog(), connection.getSchema(),
+                            table.getKey(), column)) {
+                        if (!rows.next()) {
+                            missing.add(table.getKey() + "." + column + ".metadata");
+                            continue;
+                        }
+                        int nullable = rows.getInt("NULLABLE");
+                        if (!FoodLocalStockSchemaContract.nonNull(nullable))
+                            missing.add(table.getKey() + "." + column + ".not_null");
+                        if (decimals.contains(column) && !FoodLocalStockSchemaContract.exactDecimal(
+                                rows.getInt("DATA_TYPE"), rows.getInt("COLUMN_SIZE"),
+                                rows.getInt("DECIMAL_DIGITS"), nullable))
+                            missing.add(table.getKey() + "." + column + ".decimal_24_6");
+                    }
+                }
+            }
+            String product = metadata.getDatabaseProductName();
+            boolean mysql = "MySQL".equalsIgnoreCase(product);
+            String schema = mysql || "MariaDB".equalsIgnoreCase(product)
+                    ? connection.getCatalog() : connection.getSchema();
+            String query = "SELECT t.table_name,c.check_clause"
+                    + (mysql ? ",t.enforced" : "")
+                    + " FROM information_schema.table_constraints t"
+                    + " JOIN information_schema.check_constraints c"
+                    + " ON c.constraint_schema=t.constraint_schema AND c.constraint_name=t.constraint_name"
+                    + " WHERE t.table_schema=? AND t.constraint_type='CHECK'";
+            Map<String, List<String>> clauses = new HashMap<>();
+            try (var statement = connection.prepareStatement(query)) {
+                statement.setString(1, schema);
+                try (var rows = statement.executeQuery()) {
+                    while (rows.next()) {
+                        if (mysql && !"YES".equalsIgnoreCase(rows.getString(3))) continue;
+                        String table = rows.getString(1);
+                        if (table != null)
+                            clauses.computeIfAbsent(table.toLowerCase(Locale.ROOT), ignored -> new ArrayList<>())
+                                    .add(rows.getString(2));
+                    }
+                }
+            }
+            for (String table : FoodLocalStockSchemaContract.CHECKS.keySet())
+                if (!FoodLocalStockSchemaContract.hasExpectedCheck(table, clauses.get(table)))
+                    missing.add(table + ".check_constraint");
+        } catch (SQLException failure) {
+            throw new IllegalStateException("Cannot inspect restaurant stock contract (SQLState="
+                    + failure.getSQLState() + ")", failure);
+        }
+        return missing;
     }
 
     private static List<String> missingFoodUniqueKeys(
@@ -199,6 +257,60 @@ public final class FoodSchemaValidator {
                 "fnb_service_responsibility",
                 List.of("entity_no,store_no,source_kind,source_no", "responsibility_no"));
         contracts.put("fnb_service_slot", List.of("slot_no"));
+        contracts.put(
+                "fnb_channel_party",
+                List.of("party_no", "tenant_no,entity_no,store_no,channel_store_key,party_key"));
+        contracts.put(
+                "fnb_channel_order_source",
+                List.of(
+                        "source_no",
+                        "tenant_no,entity_no,store_no,import_no",
+                        "tenant_no,channel_store_key,external_order_key",
+                        "cart_no",
+                        "batch_no"));
+        contracts.put(
+                "fnb_service_entitlement",
+                List.of("entitlement_no", "entity_no,store_no,form_no,attendee_no,sku_no"));
+        contracts.put(
+                "fnb_service_entitlement_event",
+                List.of("event_no", "entity_no,store_no,event_kind,batch_no,food_line_no"));
+        contracts.put(
+                "fnb_banquet_plan_revision",
+                List.of("plan_no", "entity_no,store_no,form_no,revision"));
+        contracts.put(
+                "fnb_banquet_attendance_confirmation",
+                List.of("confirmation_no", "entity_no,store_no,form_no,plan_no"));
+        contracts.put("fnb_bottle_custody", List.of("custody_no"));
+        contracts.put(
+                "fnb_bottle_movement",
+                List.of("movement_no", "tenant_no,entity_no,store_no,key_hash"));
+        contracts.put(
+                "fnb_channel_import_guard",
+                List.of("guard_no", "tenant_no,entity_no,store_no,import_no"));
+        contracts.put(
+                "fnb_offline_signer",
+                List.of("key_no", "entity_no,store_no,device_no,device_generation"));
+        contracts.put("fnb_offline_challenge", List.of("challenge_no"));
+        contracts.put("fnb_offline_writer", List.of("entity_no,store_no", "lease_no"));
+        contracts.put(
+                "fnb_offline_draft",
+                List.of("draft_no", "entity_no,store_no,lease_no,sequence_no"));
+        contracts.put(
+                "fnb_offline_line", List.of("draft_no,line_index", "draft_no,source_line_ref"));
+        contracts.put(
+                "fnb_offline_audit",
+                List.of("receipt_no", "entity_no,store_no,device_no,operation_kind,request_key"));
+        contracts.put("fnb_stock_item", List.of("item_no", "tenant_no,entity_no,sku_no"));
+        contracts.put("fnb_stock_balance", List.of("balance_no", "tenant_no,entity_no,store_no,item_no"));
+        contracts.put("fnb_stock_reservation", List.of("reservation_no",
+                "tenant_no,entity_no,store_no,source_system,source_no,source_version",
+                "tenant_no,entity_no,store_no,operation_key"));
+        contracts.put("fnb_stock_reservation_item",
+                List.of("tenant_no,entity_no,store_no,reservation_no,leaf_ref"));
+        contracts.put("fnb_stock_command", List.of("command_no",
+                "tenant_no,entity_no,store_no,action,operation_key"));
+        contracts.put("fnb_stock_movement", List.of("movement_no",
+                "tenant_no,entity_no,store_no,command_no,line_ref"));
         List<String> missing = new ArrayList<>();
         try (Connection connection = source.getConnection()) {
             connection.setReadOnly(true);
@@ -327,6 +439,7 @@ public final class FoodSchemaValidator {
                     expected.size() == 73 && expected.values().stream().noneMatch(Set::isEmpty),
                     "food V1 manifest incomplete");
             expected.get("fnb_table_occupancy").add("sharing_mode");
+            expected.get("fnb_modifier").add("inventory_mode");
             var common =
                     List.of(
                             "id",
@@ -1046,6 +1159,340 @@ public final class FoodSchemaValidator {
             expected.computeIfAbsent("fnb_station_runtime", key -> new TreeSet<>())
                     .addAll(List.of("entity_no", "station_no", "status", "store_no", "version"));
             // END BIZ-01..12 reviewed incremental schema manifest.
+            var channelParty = new TreeSet<>(common);
+            channelParty.addAll(
+                    List.of(
+                            "party_no",
+                            "store_no",
+                            "channel_store_key",
+                            "party_key",
+                            "external_customer_ref",
+                            "original_external_order_ref",
+                            "display_name"));
+            expected.put("fnb_channel_party", channelParty);
+            var channelSource = new TreeSet<>(common);
+            channelSource.addAll(
+                    List.of(
+                            "source_no",
+                            "store_no",
+                            "import_no",
+                            "channel_store_key",
+                            "external_order_key",
+                            "external_order_ref",
+                            "original_document_hash",
+                            "original_financial_hash",
+                            "connection_no",
+                            "connection_revision_no",
+                            "external_snapshot_no",
+                            "party_no",
+                            "cart_no",
+                            "batch_no",
+                            "source_version",
+                            "source_hash",
+                            "source_snapshot",
+                            "envelope_snapshot",
+                            "status",
+                            "core_order_no",
+                            "core_sub_order_no",
+                            "core_acceptance_receipt_ref",
+                            "core_preparation_snapshot",
+                            "core_acceptance_snapshot",
+                            "acceptance_receipt_ref",
+                            "cancellation_receipt_ref",
+                            "fence",
+                            "lease_until",
+                            "next_recovery_at",
+                            "last_error_code"));
+            expected.put("fnb_channel_order_source", channelSource);
+            var channelGuard = new TreeSet<>(common);
+            channelGuard.addAll(
+                    List.of(
+                            "store_no",
+                            "guard_no",
+                            "import_no",
+                            "original_document_hash",
+                            "status",
+                            "withdrawal_snapshot",
+                            "core_cancellation_snapshot",
+                            "cancellation_receipt_ref"));
+            expected.put("fnb_channel_import_guard", channelGuard);
+            var custody = new TreeSet<>(common);
+            custody.addAll(
+                    List.of(
+                            "store_no",
+                            "custody_no",
+                            "owner_ref",
+                            "sku_no",
+                            "deposited_qty",
+                            "remaining_qty",
+                            "unit",
+                            "expires_at",
+                            "status"));
+            expected.put("fnb_bottle_custody", custody);
+            var custodyMovement = new TreeSet<>(common);
+            custodyMovement.addAll(
+                    List.of(
+                            "store_no",
+                            "movement_no",
+                            "custody_no",
+                            "action",
+                            "quantity",
+                            "remaining_qty",
+                            "unit",
+                            "actor_no",
+                            "recipient_no",
+                            "reason",
+                            "original_receipt_ref",
+                            "key_hash",
+                            "request_hash",
+                            "result_snapshot"));
+            expected.put("fnb_bottle_movement", custodyMovement);
+            expected.put(
+                    "fnb_service_entitlement",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "entitlement_no",
+                                    "form_no",
+                                    "attendee_no",
+                                    "goods_no",
+                                    "sku_no",
+                                    "menu_item_no",
+                                    "unit",
+                                    "granted_qty",
+                                    "consumed_qty",
+                                    "valid_from",
+                                    "valid_until",
+                                    "owner_snapshot",
+                                    "quote_no",
+                                    "quote_hash",
+                                    "source_hash",
+                                    "version",
+                                    "created_at",
+                                    "updated_at",
+                                    "created_by",
+                                    "updated_by")));
+            expected.put(
+                    "fnb_service_entitlement_event",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "event_no",
+                                    "form_no",
+                                    "entitlement_no",
+                                    "event_kind",
+                                    "quantity",
+                                    "batch_no",
+                                    "food_line_no",
+                                    "quote_no",
+                                    "quote_hash",
+                                    "evidence_snapshot",
+                                    "actor_no",
+                                    "reason",
+                                    "created_at")));
+            expected.put(
+                    "fnb_banquet_plan_revision",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "form_no",
+                                    "plan_no",
+                                    "revision",
+                                    "currency",
+                                    "intended_budget_minor",
+                                    "planned_persons",
+                                    "plan_snapshot",
+                                    "content_hash",
+                                    "actor_no",
+                                    "reason",
+                                    "created_at")));
+            expected.put(
+                    "fnb_banquet_attendance_confirmation",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "form_no",
+                                    "confirmation_no",
+                                    "plan_no",
+                                    "form_version",
+                                    "actual_persons",
+                                    "roster_snapshot",
+                                    "roster_hash",
+                                    "quote_no",
+                                    "quote_hash",
+                                    "quote_snapshot",
+                                    "actor_no",
+                                    "reason",
+                                    "created_at")));
+            expected.put(
+                    "fnb_offline_signer",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "created_at",
+                                    "created_by",
+                                    "updated_at",
+                                    "updated_by",
+                                    "version",
+                                    "deleted",
+                                    "key_no",
+                                    "device_no",
+                                    "device_generation",
+                                    "public_key",
+                                    "public_key_hash")));
+            expected.put(
+                    "fnb_offline_challenge",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "created_at",
+                                    "created_by",
+                                    "updated_at",
+                                    "updated_by",
+                                    "version",
+                                    "deleted",
+                                    "challenge_no",
+                                    "device_no",
+                                    "device_generation",
+                                    "public_key",
+                                    "challenge_json",
+                                    "expires_at",
+                                    "key_no")));
+            expected.put(
+                    "fnb_offline_writer",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "created_at",
+                                    "created_by",
+                                    "updated_at",
+                                    "updated_by",
+                                    "version",
+                                    "deleted",
+                                    "device_no",
+                                    "device_generation",
+                                    "key_no",
+                                    "lease_no",
+                                    "fence",
+                                    "expires_at",
+                                    "accepted_through")));
+            expected.put(
+                    "fnb_offline_draft",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "created_at",
+                                    "created_by",
+                                    "updated_at",
+                                    "updated_by",
+                                    "version",
+                                    "deleted",
+                                    "draft_no",
+                                    "device_no",
+                                    "device_generation",
+                                    "key_no",
+                                    "lease_no",
+                                    "fence",
+                                    "sequence_no",
+                                    "payload_json",
+                                    "payload_hash",
+                                    "signature_value",
+                                    "signature_hash",
+                                    "status",
+                                    "session_no",
+                                    "cart_no",
+                                    "applied_lines",
+                                    "reason",
+                                    "receipt_no")));
+            expected.put(
+                    "fnb_offline_line",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "created_at",
+                                    "created_by",
+                                    "updated_at",
+                                    "updated_by",
+                                    "version",
+                                    "deleted",
+                                    "draft_no",
+                                    "line_index",
+                                    "source_line_ref",
+                                    "cart_version",
+                                    "owner_key")));
+            expected.put(
+                    "fnb_offline_audit",
+                    new TreeSet<>(
+                            List.of(
+                                    "id",
+                                    "tenant_no",
+                                    "entity_no",
+                                    "store_no",
+                                    "created_at",
+                                    "created_by",
+                                    "updated_at",
+                                    "updated_by",
+                                    "version",
+                                    "deleted",
+                                    "receipt_no",
+                                    "device_no",
+                                    "operation_kind",
+                                    "request_key",
+                                    "request_hash",
+                                    "signature_hash",
+                                    "status",
+                                    "reason",
+                                    "original_payload",
+                                    "result_json")));
+            var stockItem = new TreeSet<>(common);
+            stockItem.addAll(List.of("item_no", "item_kind", "sku_no", "name", "base_unit", "tracking_mode", "status"));
+            expected.put("fnb_stock_item", stockItem);
+            var stockBalance = new TreeSet<>(common);
+            stockBalance.addAll(List.of("store_no", "balance_no", "item_no", "on_hand", "reserved_qty"));
+            expected.put("fnb_stock_balance", stockBalance);
+            var stockReservation = new TreeSet<>(common);
+            stockReservation.addAll(List.of("store_no", "reservation_no", "source_system", "source_no", "source_version",
+                    "operation_key", "request_hash", "plan_hash", "lifecycle_version", "status", "expires_at"));
+            expected.put("fnb_stock_reservation", stockReservation);
+            var stockReservationItem = new TreeSet<>(common);
+            stockReservationItem.addAll(List.of("store_no", "reservation_no", "leaf_ref", "source_component_ref",
+                    "item_no", "base_unit", "original_qty", "issued_qty", "released_qty", "phase", "definition_hash"));
+            expected.put("fnb_stock_reservation_item", stockReservationItem);
+            var stockCommand = new TreeSet<>(common);
+            stockCommand.addAll(List.of("store_no", "command_no", "action", "operation_key", "request_hash", "status", "result_json"));
+            expected.put("fnb_stock_command", stockCommand);
+            var stockMovement = new TreeSet<>(common);
+            stockMovement.addAll(List.of("store_no", "movement_no", "command_no", "line_ref", "item_no", "reservation_no",
+                    "action", "quantity", "base_unit", "on_hand_before", "on_hand_after", "reserved_before", "reserved_after",
+                    "reason_code", "reason_detail"));
+            expected.put("fnb_stock_movement", stockMovement);
             return expected;
         } catch (IllegalStateException ex) {
             throw ex;

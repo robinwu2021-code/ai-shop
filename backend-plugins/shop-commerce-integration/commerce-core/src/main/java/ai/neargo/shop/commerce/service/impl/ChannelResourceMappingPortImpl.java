@@ -32,7 +32,7 @@ public final class ChannelResourceMappingPortImpl implements ChannelResourceMapp
                         && revision.getSourceContentHash() != null
                         && ChannelIdentity.hash(revision.getMappingSnapshot())
                                 .equals(revision.getContentHash()));
-        var fresh = data.validate(before, revision);
+        var fresh = data.validate(before, revision, true);
         require(fresh.contentHash().equals(revision.getSourceContentHash()));
         return data.db.commands.query(
                 () -> {
@@ -51,7 +51,8 @@ public final class ChannelResourceMappingPortImpl implements ChannelResourceMapp
                             revision.getSalesOfferRef(),
                             revision.getSourceContentHash(),
                             revision.getExternalEvidenceRef(),
-                            fresh.ownerReceiptNo());
+                            fresh.ownerReceiptNo(),
+                            fresh.canonicalContext());
                 });
     }
 }

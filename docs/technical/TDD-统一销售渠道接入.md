@@ -276,6 +276,61 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 
 原维护/发布normalize与validate入口不增强为强制“所有分支可达”；存在性算法统一使用精确数量网格并遵守原下单单项上限，修正旧算法把多个正数量视为可无限趋零或允许超过下单上限的误判，避免把目录能力扩展变成未授权的原管理行为变更；新prove为完整渠道目录准入使用。搜索结果不是授权/价格/库存凭据，不注册完整目录provider，不启用真实平台。不增新表/迁移/端点/配置。B2.2完整图组装、C跨进程调用及S3事件仍待后续；本批单独交付不标B2全完成。
 
+#### L3 全量后端执行批次（2026-10-28，用户授权）
+
+用户要求一次性完成剩余任务的开发与编译，然后统一测试。沿当前f0bb429ac起点持续实施，不在单个切片结束后停下询问或提前测试。测试源码随实现编写；Java编译必须包含测试源码，使用-DskipTests，全部可实施任务开发与编译完成后才进入集中验证。此安排覆盖此前逐切片运行的节奏，不为适应旧skill而先运行失败专项。
+
+| 顺序 | 执行包 | 代码交付/依赖 | 状态 |
+| --- | --- | --- | --- |
+| ALL-01 | B2.2完整FOOD目录 | FoodCatalogAssembler/SourcePortImpl，原价税/图片/日历/组合证明，捕获前后原事实重验 | Native FOOD source and exact cross-menu historical modifier revision resolution coded/compiled; tests pending |
+| ALL-02 | C集成/远程接线 | 通用typed内部合同、FOOD控制器和远程客户端、本地/远程唯一提供方与关闭条件 | 已编码编译，待集中测试 |
+| ALL-03 | S3通知与滚动 | 原Outbox通知、未来生效唤醒、窗口到期前重捕获，沿唯一恢复任务 | Source notices, rolling refresh, explicit withdrawals, empty replacement and tax notices coded/compiled; tests pending |
+| ALL-04 | 连接及动作恢复 | 连接配置/核验/启停，动作与尝试查询及受控恢复，保留UNKNOWN门禁 | 已编码编译，待集中测试 |
+| ALL-05 | 发布受控映射 | MANAGED发布事实/子资源父语境与历史核验；不开放自报成功 | 单品/配料/套餐历史父语境已编码编译，待集中测试 |
+| ALL-06 | 可售与库存/门店状态 | 原库存及营业证据、增量状态发布与幂等恢复；无owner事实不能发布 | Genuine inventory/store availability, boundary recovery, signed remote and Mock coded/compiled; tests pending |
+| ALL-07 | 回调事件 | 原始字节验签、持久化ACK、重复冲突乱序及重试/查询 | 已编码编译，已补测试源码，尚未执行 |
+| ALL-08 | 外部订单/接拒单 | 原行/金额/数量快照、行业准备与核心导入、平台接单、一次派工 | Native Core admission, FOOD/retail preparation, import/cancellation and collection evidence revision coded/compiled; tests pending; payment execution deferred |
+| ALL-09 | 履约与售后 | 餐饮/零售回传、部分交接、多包裹、取消退餐退货及恢复 | Native custody source, automatic fulfillment bridge and aftersale coded/compiled; tests pending; genuine missing return/funds authority remains explicit waiting |
+| ALL-10 | 零售来源 | 原零售目录/选品及来源核验，复用通用内核、不跨行业猜测 | Optional retail bridge, original selection/catalog/hours/native order coded/compiled; package/mapper alignment completed; tests pending |
+| ALL-11 | 运营/统计 | 同步/接单统计、健康、动作证据与平台基础配置权限 | 技术统计/健康、OPS只读与档案版本管理已编码编译，待集中测试 |
+| ALL-12 | 权益/资金后端 | 原权益核销/撤销及渠道账单/资金证据，依原owner获准合同 | Technical statement evidence, original external certificate use/reversal and Vault bridge coded/compiled; tests pending; no financial reconciliation claim |
+| ALL-13 | 原餐饮收口/扩展 | SSE隔离、图片顺序测试、自助/宴会/寄存/房账、离线持久化及恢复 | SSE isolation, buffet quotas/banquet, custody and offline drafts V31 coded/compiled; tests pending; PMS financial settlement/offline payments/device storage deferred |
+| ALL-14 | 报表缺源及启用准备 | 真实成本费用分摊/余额/事件、独立库与每日任务恢复/导出；生产启用单列 | Genuine kitchen event source and original-event dirty-day bridge coded; reuse independent report database and sole daily task; final compile/tests pending; unknown costs/expenses/historical balance remain unknown |
+| ALL-15 | 统一编译和验收 | 默认/集成/独立编译完成后集中专项；一次全批独立review、重要问题定向复现修复 | Compile76 passed all41 modules and test sources (28.574s); final clean builds, targeted tests and one final review pending |
+| ALL-16 | Mock测试平台 | 显式非生产档案，真实HTTP/原键持久化；目录、回调、订单及后续履约/售后/账单故障场景 | Mock catalog/auth/callback/orders/fulfillment/aftersale/availability/statements/certificates coded/compiled; tests pending; no real vendor connection |
+
+本批平台范围以用户确认为准：暂不接入真实平台，使用显式非生产 Mock HTTP 平台验证完整对接流程；这不替代原核心、支付、库存、餐饮和零售业务方的真实归属与授权。真实 Keeta 等协议与前端仍暂缓。集成新增 `retail-commerce-embedded` profile，组合原三个 profile；默认不加载零售渠道桥接。最新一次整批 `test-compile` 为 71（32.161 秒通过），仅编译生产和测试源码，未执行测试；后续新增代码仍须再次编译。独立批量编码未结束，不据此宣称全部功能通过验收。
+
+原生餐饮渠道引用使用 `FOOD / CHANNEL_ORDER / FCS`，共享核心保留真实原发票、OCQ 来源报价、外部应收与独立库存准备代次；不套用普通扫码访客或普通报价。新增来源 guard 可在尚无真实 cart/batch/core order 时保存原撤单证据，阻止迟到建单。平台取消修订先进入待撤销，原业务方查询返回实际 `COMMITTED` / `ACCEPTED` 时转售后，禁止撤销已成交备单。厨房/耗料从原渠道冻结组成读取；预约单沿原 `ServiceSlotLifecycle` 同库预占、接受时绑定、撤销时释放，并由原到时派厨任务执行，不新增另一套预约调度。
+
+库存补充（编码中）：保留原 `FINISHED_SKU` / `RECIPE_MATERIAL` 两种排他分支，新增显式 `FINISHED_WITH_MODIFIERS`，只用于成品主菜附加有真实物料定义的配料。每个叶子明确原库存阶段：唯一成品叶在交付扣减，附加物料叶在制作扣减；同一主菜不同时展开自身成品和自身配方。物料引用来自冻结配料依赖及原库存定义，不以配料成员号冒充物料号。旧五参数叶构造、未出现新字段的 JSON 和原计划摘要保持；库存原 owner 存储真实叶阶段，Core 与厨房分别核验制作/交付证明。全部数量六位以内精确计算，不截断或补零，最终仍需集中原生库存测试。
+
+收款事实修订补充（编码中）：货到付款变为平台已代收时，不重写原发票、不重复占用商户应收额度。先核对当前真实收款证明及当前商户政策，再保存原准入和新准入的不可变历史（增量主库 V613）。原确认租约有效期间、原单已成交或已撤销时不切换；未获当前政策授权继续阻断。该修订不生成本地已支付或资金到账事实。
+
+本批订单补充：COM-041原始行分页直接投影指定不可变订单修订，禁止跨单/门店取行；正式核心行映射待原owner导入后持久化。COM-045只提交QUERY动作，由原恢复任务事务外读原单，快照记录source_operation_no，不伪造回调事件。COM-046只排程原importRef恢复，不清除CONFLICT或未知接单屏障。原准备回执必须提供validUntil，首次接单前至少覆盖两分钟SEND租约；旧回执可读但不授予新SEND，已发UNKNOWN仍只查回。
+
+历史映射补充（ALL-05/08）：旧目录订单按原catalogHash定位已终结的发布动作及最后一次已确认资源回执，重建精确父子身份；只使用SUCCEEDED/PARTIAL中的成功资源且父资源完整。该历史发布回执证明过去发布事实，不伪造成新的“当前资源查询成功”。再向原owner实时请求HISTORICAL修订证明，核对原内容hash/父语境，追加带TERMINAL_PUBLICATION证据的VERIFIED历史修订；已有current active/latest草稿指针均不回退。新身份只建立历史映射，active为空。修订序列统一在映射锁下取最大序号加一，兼容历史旁路追加。订单查历史修订先按原来源/修订/内容hash筛选，避免正常累计超过100次修订后全部拒绝。
+
+原渠道证据补充：ChannelOrderSourceEvidencePort按原importNo、门店、行业owner和原documentHash定位不可变导入。每次新鲜读取先建立现有CHANNEL_ORDER_REFRESH的QUERY日志和尝试，再读Mock/获准Gateway并持久化原查询回执；原平台版本未变化也保留本次尝试。集成与独立服务复用同一严格校验和原服务令牌，独立客户端显式开启且本地原owner优先。查询结果只提供原平台当前收款/接受/取消证据，不授予本地已付、扣库存或厨房派工。凭据在途失效或换代，旧尝试仍保留实际读取事实，但不返回新的行业准入权威。金额字段必须是显式非负整数；缺失、null、小数、数字字符串及枚举序号均不得被宽松转换成有效金额/状态。原始业务快照不因付款状态修订被重写。
+
+餐饮来源新增私有V26（本批未部署迁移）：`fnb_channel_party`仅保存真实渠道外部顾客或原交易参与方关系，不生成本地账号、访客令牌或会员资产权限；`fnb_channel_order_source`绑定原渠道门店、外部订单、稳定importNo、原订单/财务hash、真实party/cart/batch与核心接单回执，并保存独立恢复围栏。真实CHANNEL购物篮只能由该来源持有和锁定，不能借用普通扫码会话。当前已补表、实体和Mapper及schema校验；原行业业务服务、组成冻结、核心导入与厨房派发仍继续编码，表存在不代表已打通。
+
+原核心与餐饮导入实施细化（ALL-08，继续编码，不以接口存在代表闭环完成）：
+
+1. shop-base新增IndustryChannelOrderPort及IndustryChannelOrderSourcePort，只接受原行业来源引用/版本/hash/importRef；跨内部服务按原SYSTEM签名/服务令牌接线。Core不接收公网自报价格、买家、库存量或“已支付”布尔值。FOOD桥接先在原food owner持久化外部事务来源，核对餐牌历史条目、SKU、套餐/配料归属，沿原组成、配方和物料事实构建物理需求。真实外部顾客/交易参与方单独建来源关系，不能伪造本地userNo、访客会话、购物车授权或PricingQuote编号。
+2. 原核心新增受控渠道订单准入，继续写ord_order/ord_sub_order/ord_item及原行业来源关系；独立的ord_channel_import保存稳定导入/真实编号/准备与恢复状态，ord_channel_quote保存原平台金额和来源报价/分摊，不虚构普通PricingQuote。CHANNEL_RECEIVABLE与本地PREPAY/POSTPAY分开，主单为WAIT_CHANNEL_PAY（渠道应收，保持原status的VARCHAR(16)宽度），不调用markPaid、不发OrderPaid、不写本地支付流水。原平台代收证据、商家应收、消费者应付、平台补贴/手续费/配送费分开保存。
+3. 商家在原主体/门店范围配置渠道应收准入策略（默认关闭，无平台审核），限定渠道身份、币种、平台代收/COD资格和单笔/在途额度。准备时原子预留应收额度；取消经原撤销权威释放。未知平台接受不能因本地时间到而释放额度或宣称撤单成功。政策变更不追改已经明确接受的原业务合同。
+4. 原行业来源提供不可变发票原行与组件、原scope及价格来源证据；Core校验原行总额、币种和组件分摊守恒，不读取当前零售价重新定价，不叠加本地活动/券。确需从原父行分摊时沿共享确定性分摊策略，并标记分摊依据，不能冒充供应商逐组件开价或税额。缺必要来源时保持WAITING_OWNER/FUNDING，不填0。
+5. 原InventoryDemandPlanPort执行真实预留/查询/未收款履约授权。CHANNEL应收履约明确表示本地未收款，不伪装POSTPAY订单。库存代际与渠道原importRef分开：原hold过期可由原owner按同一不可变需求新建真实准备代次，保留旧代次/凭据；已受理、已领料或撤销结果未知不能重建代次。首次平台SEND仍受真实准备validUntil门禁；发送未知后仅查原动作，原业务持续原键恢复。
+6. 平台接单回执在原food来源记录绑定原平台订单/hash后，再由Core查询原source的接受证据并确认渠道应收受理。Food据真实Core接受结果一次性落原FnbOrderBatch/Line/Component/CoreBinding/Allocation，保留完整厨房路由并发原DiningOrderAccepted Outbox，复用原厨房与打印。平台ACK本身不直接写厨房、支付、库存或日结。部分履约继续经原IndustryFulfillment合同增加显式CHANNEL资格分支，不放宽现有PREPAY/POSTPAY守卫。
+7. 开发顺序：共享引用/金额及资金准入合同→原Core持久化、额度与库存准备/确认/撤销/查询→原food来源/组成与两段式接线→真实核心行分摊/厨房打印接入→真实履约事实与自动事件→取消/售后/资金后续。测试源码随编码补齐，全部可实施编码/编译后再集中执行。
+
+
+Mock履约协议补充（ALL-09/16）：共享typed Gateway区分PREPARING、READY、HANDED_OVER、SHIPPED、DELIVERED、PICKED_UP；原业务履约引用/修订/回执、精确原行数量及包裹号一并冻结。Mock模拟平台只核对原平台订单/行及动作身份，不代替本地厨房、库存或售后owner。提交动作后落盘，QUERY查回原键；模拟提交后崩溃并恢复投影。多包裹按包裹累计核验不超原数量，出餐和交接不视为签收，重复与旧阶段不能倒退已确认进度。真实本地发布准入及owner事实桥接继续按ALL-09实现，不因Mock返回成功而标记本地履约/退款成功。
+
+
+用户补充确认本批先不接入真实平台，使用Mock测试平台验证统一渠道方案。Mock沿真实HTTP、签名、原动作和持久化恢复合同运行，默认关闭并限制非生产档案；不据此声明真实Keeta或其他供应商已接入。原订单、支付、库存、厨房与打印等本地owner继续复用真实基础能力，不能以Mock原业务provider充当交付。前端页面继续暂缓。部署/生产迁移、真实资金操作和账号启用与编码完成分开记录。
+
 #### L3 3. 目录组装与完整性校验
 
 | 原对象 | 目录投影 | 要求 |

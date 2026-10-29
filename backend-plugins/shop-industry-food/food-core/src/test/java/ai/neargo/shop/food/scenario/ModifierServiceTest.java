@@ -46,7 +46,7 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
                 + "entity_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),"
                 + "updated_by VARCHAR(32),version BIGINT DEFAULT 0,deleted INT DEFAULT 0,";
         f.sql().execute("CREATE TABLE fnb_modifier (" + common + "modifier_no VARCHAR(32) UNIQUE,"
-                + "name VARCHAR(64),kind VARCHAR(16),sales_sku_no VARCHAR(32),published_revision_no VARCHAR(32),"
+                + "name VARCHAR(64),kind VARCHAR(16),sales_sku_no VARCHAR(32),inventory_mode VARCHAR(16),published_revision_no VARCHAR(32),"
                 + "status VARCHAR(16))");
         f.sql().execute("CREATE TABLE fnb_modifier_component (" + common + "component_no VARCHAR(32) UNIQUE,"
                 + "combo_no VARCHAR(32),member_no VARCHAR(32),quantity DECIMAL(12,3),UNIQUE(combo_no,member_no))");
@@ -129,6 +129,43 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
             code(() -> s.updateModifier("E", "A", a.configNo(), "actor",
                     new UpdateModifierReq("嵌套", "COMBO", null, List.of(part(a.configNo(), "1")), 1L), "kind"),
                     ErrorCode.CONFLICT);
+        });
+    }
+
+    @Test void explicitModesAreValidatedAndComponentWritesRemainClosed() {
+        run((c, f) -> {
+            var service = c.getBean(ModifierService.class);
+            var leaf = service.createModifier("E", "A", "actor", addon("SKU"), "mode-leaf");
+            var parts = List.of(part(leaf.configNo(), "1"));
+            var combo = service.createModifier("E", "A", "actor",
+                    new CreateModifierReq("combo", "COMBO", "SKU", parts, "SALES_SKU"), "sales-mode");
+            assertThat(service.listModifiers("E", "A", null).records().stream()
+                    .filter(item -> combo.configNo().equals(item.configNo())).findFirst().orElseThrow()
+                    .data().inventoryMode()).isEqualTo("SALES_SKU");
+            assertThatThrownBy(() -> service.createModifier("E", "A", "actor",
+                    new CreateModifierReq("combo", "COMBO", "SKU", parts, "COMPONENTS"), "blocked-mode"))
+                    .isInstanceOf(BizException.class);
+            assertThatThrownBy(() -> service.updateModifier("E", "A", combo.configNo(), "actor",
+                    new UpdateModifierReq("combo", "COMBO", null, parts, 0L), "clear-required-sku"))
+                    .isInstanceOf(BizException.class);
+        });
+    }
+
+    @Test void legacyUpdatePreservesAnExistingExplicitInventoryMode() {
+        run((c, f) -> {
+            var service = c.getBean(ModifierService.class);
+            var leaf = service.createModifier("E", "A", "actor", addon("SKU"), "leaf-mode");
+            var parts = List.of(part(leaf.configNo(), "1"));
+            var combo = service.createModifier("E", "A", "actor",
+                    new CreateModifierReq("combo", "COMBO", "SKU", parts), "combo-mode");
+            f.sql().update("UPDATE fnb_modifier SET inventory_mode='COMPONENTS' WHERE modifier_no=?",
+                    combo.configNo());
+            service.updateModifier("E", "A", combo.configNo(), "actor",
+                    new UpdateModifierReq("renamed", "COMBO", "SKU", parts, 0L), "old-client");
+            var view = service.listModifiers("E", "A", null).records().stream()
+                    .filter(item -> combo.configNo().equals(item.configNo())).findFirst().orElseThrow();
+            assertThat(view.data().inventoryMode()).isEqualTo("COMPONENTS");
+            assertThat(view.data().name()).isEqualTo("renamed");
         });
     }
 

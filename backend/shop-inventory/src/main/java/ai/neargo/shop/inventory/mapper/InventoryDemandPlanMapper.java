@@ -90,6 +90,18 @@ public class InventoryDemandPlanMapper {
                 value6);
     }
 
+    /**
+     * Terminal withdrawal is an original owner tombstone; it prevents a later reserve from taking
+     * stock.
+     */
+    public int markWithdrawn(String owner, String plan) {
+        return db.update(
+                "UPDATE inv_demand_plan SET status='WITHDRAWN' WHERE owner_id=? AND plan_no=?"
+                        + " AND status IN ('HELD','EXPIRED','RELEASED')",
+                owner,
+                plan);
+    }
+
     public int reserveBalance(
             BigDecimal value0, String value1, String value2, String value3, BigDecimal value4) {
         return db.update(
@@ -143,9 +155,9 @@ public class InventoryDemandPlanMapper {
     public int releaseCompletedHold(String owner, String plan) {
         return db.update(
                 "UPDATE inv_demand_plan SET status='RELEASED' WHERE owner_id=? AND plan_no=? AND"
-                    + " status='HELD' AND NOT EXISTS (SELECT 1 FROM inv_demand_leaf l WHERE"
-                    + " l.owner_id=? AND l.plan_no=? AND (l.issued_qty<>0 OR"
-                    + " l.released_qty<>l.qty))",
+                        + " status='HELD' AND NOT EXISTS (SELECT 1 FROM inv_demand_leaf l WHERE"
+                        + " l.owner_id=? AND l.plan_no=? AND (l.issued_qty<>0 OR"
+                        + " l.released_qty<>l.qty))",
                 owner,
                 plan,
                 owner,

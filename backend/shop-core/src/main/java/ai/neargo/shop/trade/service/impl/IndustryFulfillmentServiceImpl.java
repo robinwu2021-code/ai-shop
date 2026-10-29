@@ -17,12 +17,12 @@ import ai.neargo.shop.spi.trade.IndustryFulfillmentPort;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Receipt;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.Reference;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort.VerifyPickup;
-import ai.neargo.shop.spi.trade.IndustryOrderPort;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.spi.trade.PricingSourceFacts;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort.Scope;
 import ai.neargo.shop.spi.trade.PricingSourceRef;
 import ai.neargo.shop.spi.user.MerchantScopeFactsPort;
+import ai.neargo.shop.trade.entity.OrdChannelImport;
 import ai.neargo.shop.trade.entity.OrdIndustryFulfillment;
 import ai.neargo.shop.trade.entity.OrdIndustryOrderSource;
 import ai.neargo.shop.trade.entity.OrdItem;
@@ -31,6 +31,7 @@ import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.IndustryFulfillmentMapper;
 import ai.neargo.shop.trade.mapper.IndustryPartialFulfillmentMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.IndustryOrderSourceMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.ChannelImportMapper;
 import ai.neargo.shop.trade.order.entity.OrdCreateIntent;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
@@ -98,6 +99,31 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
             ObjectProvider<InventoryDemandPlanPort> exactInventory) {
         this.partials = partials;
         this.exactInventory = exactInventory;
+    }
+
+    private IndustryChannelOrderStore channelOrders;
+    private ChannelFulfillmentEvidenceStore channelFulfillmentEvidence;
+    private ChannelImportMapper channelImports;
+
+    @Autowired(required = false)
+    void channelImports(ChannelImportMapper mapper) {
+        this.channelImports = mapper;
+    }
+
+    /**
+     * New retail handovers must seal original per-action deltas in the final primary transaction.
+     */
+    @Autowired(required = false)
+    public void channelFulfillmentEvidence(ChannelFulfillmentEvidenceStore evidence) {
+        this.channelFulfillmentEvidence = evidence;
+    }
+
+    /**
+     * Only the original channel ledger can grant its independent receivable fulfillment authority.
+     */
+    @Autowired(required = false)
+    public void channelOrderLedger(IndustryChannelOrderStore store) {
+        this.channelOrders = store;
     }
 
     private record Facts(
@@ -273,9 +299,12 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
         } catch (IllegalArgumentException malformed) {
             throw conflict();
         }
+        boolean channel = "CHANNEL".equals(f.source().getOrderMode());
+        if (channel && (channelOrders == null || !p.equals(channelOrders.acceptedPlan(f.source()))))
+            throw conflict();
         if (!p.planHash().equals(f.source().getDemandPlanHash())
                 || !p.planNo().equals(f.source().getDemandPlanNo())
-                || !p.scope().externalRef().equals(f.order().getOrderNo())
+                || !channel && !p.scope().externalRef().equals(f.order().getOrderNo())
                 || !p.scope().entityNo().equals(f.source().getEntityNo())) throw conflict();
         return p;
     }
@@ -288,8 +317,10 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                                 f.source().getEntityNo(),
                                 f.sub().getSubOrderNo())
                         > 0) throw conflict();
-        if (f.intent() == null
-                || !OrdCreateIntent.COMMITTED.equals(f.intent().getStatus())
+        boolean channel = "CHANNEL".equals(f.source().getOrderMode());
+        if (!channel
+                        && (f.intent() == null
+                                || !OrdCreateIntent.COMMITTED.equals(f.intent().getStatus()))
                 || f.openAfterSale()
                 || !c.planHash().equals(f.source().getDemandPlanHash())
                 || !Set.of(2, 3).contains(f.sub().getInventoryLifecycleVersion())) throw conflict();
@@ -301,6 +332,11 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                     || !"PREPAY".equals(f.source().getOrderMode())
                     || !OrdOrder.PAID.equals(f.order().getStatus())
                     || f.order().getPaidAt() == null) throw conflict();
+        } else if (channel) {
+            if (!"ACCEPTED".equals(f.source().getStatus())
+                    || !OrdOrder.WAIT_CHANNEL_PAY.equals(f.order().getStatus())
+                    || f.order().getPaidAt() != null
+                    || f.order().getPayTradeNo() != null) throw conflict();
         } else if (!"POSTPAY".equals(f.source().getOrderMode())
                 || !"ACCEPTED".equals(f.source().getStatus())
                 || !Set.of(OrdOrder.WAIT_PAY, OrdOrder.PAID).contains(f.order().getStatus()))
@@ -309,7 +345,10 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                 switch (c.kind()) {
                     case "PICKUP" -> Fulfillments.STORE_PICKUP;
                     case "DINE_IN" -> Fulfillments.DINE_IN;
-                    default -> Fulfillments.MERCHANT_DELIVERY;
+                    default ->
+                            channel
+                                    ? Fulfillments.CHANNEL_DELIVERY
+                                    : Fulfillments.MERCHANT_DELIVERY;
                 };
         if (!expected.equals(f.sub().getFulfillment())) throw conflict();
         if ("PICKUP".equals(c.kind())
@@ -385,6 +424,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
             }
             if (bs.size() != 1) throw conflict();
             var b = bs.getFirst();
+            if ("BUNDLE_MODIFIERS".equals(b.kind())) container(f, c, item, p);
             if (!b.unit().equals(item.unit())) throw conflict();
             for (var leaf : b.leaves()) {
                 final BigDecimal qty;
@@ -396,7 +436,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                 } catch (ArithmeticException impossiblePrecision) {
                     throw conflict();
                 }
-                if ("FINISHED_SKU".equals(b.kind()))
+                if ("FINISHED_SKU".equals(InventoryDemandPlanFacts.sourceKind(b, leaf)))
                     targets.add(new InventoryDemandPlanPort.Target(leaf.leafRef(), qty));
             }
         }
@@ -470,6 +510,24 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                             || !Set.of("ACCEPTED_UNPAID", "ALLOCATED").contains(proof.status())
                             || !row.getExpectedSubVersion().equals(f.sub().getVersion()))
                         throw conflict();
+                    boolean retail =
+                            "CHANNEL".equals(f.source().getOrderMode())
+                                    && "RETAIL".equals(f.source().getSourceSystem());
+                    if (retail && channelFulfillmentEvidence == null) throw unsupported();
+                    var before = new HashMap<Long, BigDecimal>();
+                    if (retail) {
+                        for (var target : c.lines()) {
+                            var originalItem =
+                                    f.items().stream()
+                                            .filter(
+                                                    item ->
+                                                            item.getId()
+                                                                    .equals(target.orderItemId()))
+                                            .findFirst()
+                                            .orElseThrow(IndustryFulfillmentServiceImpl::conflict);
+                            before.put(originalItem.getId(), fulfilled(f, originalItem));
+                        }
+                    }
                     for (var target : c.lines()) {
                         var branch =
                                 p.branches().stream()
@@ -495,13 +553,17 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                                     c.actorNo());
                             continue;
                         }
+                        if ("BUNDLE_MODIFIERS".equals(branch.kind())) container(f, c, target, p);
                         for (var leaf : branch.leaves()) {
                             var got =
                                     proof.lines().stream()
                                             .filter(l -> l.leafRef().equals(leaf.leafRef()))
                                             .findFirst()
                                             .orElseThrow(IndustryFulfillmentServiceImpl::conflict);
-                            if (!got.kind().equals(branch.kind())
+                            if (!got.kind()
+                                            .equals(
+                                                    InventoryDemandPlanFacts.sourceKind(
+                                                            branch, leaf))
                                     || !got.unit().equals(leaf.unit())
                                     || !got.definitionHash().equals(leaf.definitionHash())
                                     || got.issuedQty()
@@ -533,15 +595,27 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                                                                                     effectiveQuantity(
                                                                                             f, i))
                                                                     == 0);
+                    // Seal the validated receipt and line progress in this transaction before
+                    // authorizing a channel status transition. The intermediate state is never
+                    // committed: the terminal journal update below succeeds or everything rolls back.
+                    if (complete && "CHANNEL".equals(f.source().getOrderMode())
+                            && (!"DELIVERY_HANDOVER".equals(c.kind())
+                                    || OrdSubOrder.WAIT_FULFILL.equals(f.sub().getStatus()))) {
+                        row.setInventoryReceiptJson(json.writeValueAsString(proof));
+                        row.setStatus("PROOF_VALIDATED");
+                        row.setUpdatedAt(LocalDateTime.now());
+                        if (journal.updateById(row) != 1) throw conflict();
+                    }
                     if (complete && !"DELIVERY_HANDOVER".equals(c.kind())) {
-                        writer.order(
-                                f.sub(),
-                                OrderEvent.VERIFIED,
-                                Actor.MERCHANT,
-                                c.actorNo(),
-                                "行业原行交付完成",
-                                OrderContext.authorizedOnly()
-                                        .withRequireBuyerConfirm(buyerConfirm(f.sub())));
+                        if ("CHANNEL".equals(f.source().getOrderMode())) {
+                            writer.channelFulfillment(f.sub(), row.getFulfillmentNo(), c.kind(),
+                                    c.actorNo(), "行业原行交付完成", buyerConfirm(f.sub()));
+                        } else {
+                            writer.order(
+                                    f.sub(), OrderEvent.VERIFIED, Actor.MERCHANT, c.actorNo(),
+                                    "行业原行交付完成", OrderContext.authorizedOnly()
+                                            .withRequireBuyerConfirm(buyerConfirm(f.sub())));
+                        }
                         if (OrdSubOrder.COMPLETED.equals(f.sub().getStatus()))
                             events.publish(
                                     new OrderEvents.SubOrderCompleted(
@@ -559,15 +633,16 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                     } else {
                         if (complete
                                 && "DELIVERY_HANDOVER".equals(c.kind())
-                                && OrdSubOrder.WAIT_FULFILL.equals(f.sub().getStatus()))
-                            writer.order(
-                                    f.sub(),
-                                    OrderEvent.SHIP_BY_MERCHANT,
-                                    Actor.MERCHANT,
-                                    c.actorNo(),
-                                    "骑手已领取",
-                                    OrderContext.authorizedOnly());
-                        else {
+                                && OrdSubOrder.WAIT_FULFILL.equals(f.sub().getStatus())) {
+                            if ("CHANNEL".equals(f.source().getOrderMode())) {
+                                writer.channelFulfillment(f.sub(), row.getFulfillmentNo(), c.kind(),
+                                        c.actorNo(), "骑手已领取", false);
+                            } else {
+                                writer.order(
+                                        f.sub(), OrderEvent.SHIP_BY_MERCHANT, Actor.MERCHANT,
+                                        c.actorNo(), "骑手已领取", OrderContext.authorizedOnly());
+                            }
+                        } else {
                             if (subs.update(
                                             null,
                                             Wrappers.<OrdSubOrder>lambdaUpdate()
@@ -586,6 +661,10 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                     row.setInventoryReceiptJson(json.writeValueAsString(proof));
                     row.setUpdatedAt(LocalDateTime.now());
                     if (journal.updateById(row) != 1) throw conflict();
+                    if (retail)
+                        channelFulfillmentEvidence
+                                .seal(row, c, proof, before)
+                                .ifPresent(events::publish);
                     return exactProject(row, f);
                 });
     }
@@ -672,6 +751,16 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                                     return prior;
                                 }
                                 eligible(facts, false);
+                                // Legacy pickup is whole-order only; its old unique index
+                                // rejected every second operation, including buyer confirmation.
+                                // Preserve that behavior under the original order/sub-order lock.
+                                if (!journal.selectList(
+                                                Wrappers.<OrdIndustryFulfillment>lambdaQuery()
+                                                        .eq(OrdIndustryFulfillment::getTenantNo,
+                                                                ref.scope().tenantNo())
+                                                        .eq(OrdIndustryFulfillment::getSubOrderNo,
+                                                                ref.subOrderNo()))
+                                        .isEmpty()) throw conflict();
                                 if (!command.verifyCode().equals(facts.sub().getVerifyCode())
                                         || command.expectedVersion() != facts.sub().getVersion())
                                     throw conflict();
@@ -883,9 +972,37 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                 || !ref.orderNo().equals(sub.getOrderNo())
                 || !ref.subOrderNo().equals(sub.getSubOrderNo())
                 || !scope.entityNo().equals(sub.getEntityNo())
-                || !scope.storeNo().equals(sub.getStoreNo())
-                || !source.getBuyerNo().equals(order.getUserNo())
-                || !source.getBuyerNo().equals(sub.getUserNo())) throw missing();
+                || !scope.storeNo().equals(sub.getStoreNo())) throw missing();
+        if ("CHANNEL".equals(source.getOrderMode())) {
+            if (channelImports == null
+                    || !"CHANNEL".equals(order.getCustomerKind())
+                    || !"CHANNEL".equals(sub.getCustomerKind())
+                    || !"CHANNEL".equals(order.getAdmissionKind())
+                    || !"CHANNEL".equals(sub.getAdmissionKind())
+                    || order.getUserNo() != null || sub.getUserNo() != null
+                    || order.getGuestNo() != null || sub.getGuestNo() != null
+                    || order.getIdentityRevision() != null || sub.getIdentityRevision() != null
+                    || !Objects.equals(source.getBuyerNo(), "")
+                    || !Objects.equals(source.getSourceSystem(), order.getCaller())
+                    || !Objects.equals(source.getSourceSystem(), sub.getCaller())
+                    || !Objects.equals(scope.entityNo(), order.getEntityNo())
+                    || !Objects.equals(scope.storeNo(), order.getStoreNo())
+                    || order.getOperationNo() == null) throw missing();
+            var admission = channelImports.selectOne(
+                    Wrappers.<OrdChannelImport>lambdaQuery()
+                            .eq(OrdChannelImport::getTenantNo, scope.tenantNo())
+                            .eq(OrdChannelImport::getEntityNo, scope.entityNo())
+                            .eq(OrdChannelImport::getStoreNo, scope.storeNo())
+                            .eq(OrdChannelImport::getAdmissionNo, order.getOperationNo())
+                            .eq(OrdChannelImport::getOrderNo, ref.orderNo())
+                            .eq(OrdChannelImport::getSubOrderNo, ref.subOrderNo())
+                            .eq(OrdChannelImport::getSourceSystem, source.getSourceSystem())
+                            .eq(OrdChannelImport::getSourceNo, source.getSourceNo())
+                            .eq(OrdChannelImport::getSourceVersion, source.getSourceVersion())
+                            .eq(OrdChannelImport::getStatus, "ACCEPTED"));
+            if (admission == null || admission.getAcceptanceReceiptRef() == null) throw missing();
+        } else if (!Objects.equals(source.getBuyerNo(), order.getUserNo())
+                || !Objects.equals(source.getBuyerNo(), sub.getUserNo())) throw missing();
         var all =
                 items.selectList(
                         Wrappers.<OrdItem>lambdaQuery()
@@ -1039,7 +1156,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                 || ref.source() == null
                 || !"MAIN".equals(ref.scope().tenantNo())
                 || !"FOOD".equals(ref.source().sourceSystem())
-                || !"CART".equals(ref.source().sourceType())
+                || !Set.of("CART", "CHANNEL_ORDER").contains(ref.source().sourceType())
                 || ref.source().scopeNo() != null
                 || key == null
                 || key.isBlank()

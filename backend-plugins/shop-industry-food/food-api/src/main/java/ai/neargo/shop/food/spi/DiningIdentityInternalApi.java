@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.spi;
 
+import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceCredentialVO;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceSessionReq;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceVO;
@@ -68,6 +69,8 @@ public interface DiningIdentityInternalApi {
 
     record SessionQuery(String sessionNo) {}
 
+    record DeviceAccess(String entityNo, String storeNo, CartAccess access) {}
+
     @PostExchange(ROOT + "/device")
     DeviceVO device(@RequestBody DeviceQuery query);
 
@@ -88,6 +91,9 @@ public interface DiningIdentityInternalApi {
 
     @PostExchange(ROOT + "/party")
     PartyVO party(@RequestBody PartyQuery query);
+
+    @PostExchange(ROOT + "/authenticate-device-session")
+    PartyVO authenticateDeviceSession(@RequestBody DeviceAccess query);
 
     @PostExchange(ROOT + "/validate-device-session")
     Boolean validateDeviceSession(@RequestBody SessionQuery query);

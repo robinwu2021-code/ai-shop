@@ -55,11 +55,13 @@ public class TradeStatusWriter {
     public void setPrintFacts(ai.neargo.shop.trade.order.printing.service.OrderPrintFactService facts) {this.printFacts=facts;}
     private final StateTransitionGate gate;
     private final StatusCasMapper casMapper;
+    private final OrderStatusLogMapper channelLogs;
     private PaymentMapper orderMapper;
     private OrderPointsClosureFlowService pointsClosure;
 
     public TradeStatusWriter(StatusCasMapper casMapper, OrderStatusLogMapper logMapper) {
         this.casMapper = casMapper;
+        this.channelLogs = logMapper;
         this.gate = new StateTransitionGate(new MybatisStatusStore(casMapper), new StatusLogStore(logMapper),
                 SignalPublisher.NONE);
     }
@@ -120,6 +122,43 @@ public class TradeStatusWriter {
             }
         }
         return f;
+    }
+
+    /** Original channel fulfillment uses a proof-gated CAS and the same order state machine. */
+    public Fired<OrderStatus, OrderEvent> channelFulfillment(
+            OrdSubOrder sub, String fulfillmentNo, String kind, String actorNo, String reason,
+            boolean buyerConfirm) {
+        if (!"CHANNEL".equals(sub.getAdmissionKind()) || fulfillmentNo == null || fulfillmentNo.isBlank()
+                || !List.of("DELIVERY_HANDOVER", "PICKUP", "DINE_IN").contains(kind))
+            throw BizException.of(ErrorCode.CONFLICT);
+        boolean delivery = "DELIVERY_HANDOVER".equals(kind);
+        long completionTime = System.currentTimeMillis();
+        var channelStore = new StatusStore() {
+            @Override public String load(Aggregate aggregate, String no) {
+                if (aggregate != Aggregate.ORDER || !sub.getSubOrderNo().equals(no))
+                    throw BizException.of(ErrorCode.CONFLICT);
+                return DataScopeContext.executeWithoutScope(() -> casMapper.orderStatus(no));
+            }
+            @Override public boolean cas(Aggregate aggregate, String no, String from, String to) {
+                boolean valid = delivery ? "WAIT_FULFILL".equals(from) && "FULFILLING".equals(to)
+                        : List.of("WAIT_FULFILL", "FULFILLING").contains(from)
+                          && List.of("FULFILLING", "COMPLETED").contains(to);
+                if (aggregate != Aggregate.ORDER || !sub.getSubOrderNo().equals(no) || !valid) return false;
+                return DataScopeContext.executeWithoutScope(() -> casMapper.casChannelFulfillment(
+                        no, fulfillmentNo, kind, from, to, java.time.LocalDateTime.now(), completionTime)) == 1;
+            }
+        };
+        var guardedGate = new StateTransitionGate(channelStore, new StatusLogStore(channelLogs), SignalPublisher.NONE);
+        var ctx = OrderContext.authorizedOnly().withRequireBuyerConfirm(buyerConfirm)
+                .withOpenAfterSale(hasOpenAfterSale(sub.getSubOrderNo()));
+        var result = guardedGate.apply(OrderMachine.MACHINE, OrderStatus.class,
+                new Command<>(Aggregate.ORDER, sub.getSubOrderNo(), sub.getSubOrderNo(),
+                        delivery ? OrderEvent.SHIP_BY_MERCHANT : OrderEvent.VERIFIED,
+                        Actor.MERCHANT, actorNo, reason, ctx));
+        sync(sub, result.changed());
+        sub.setStatus(result.to().name());
+        if (result.changed() && result.to() == OrderStatus.COMPLETED) sub.setCompletedAt(completionTime);
+        return result;
     }
 
     /** 售后占位或存量未收口售后行，任一即算「有进行中售后」（与发货侧 {@code MybatisShipmentReadStore} 同口径）。 */

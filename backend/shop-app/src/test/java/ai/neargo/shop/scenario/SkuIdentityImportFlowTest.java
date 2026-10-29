@@ -45,11 +45,30 @@ class SkuIdentityImportFlowTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers
                         .springSecurity())
                 .build();
+    }
+
+    @Test
+    void importingUnitAdvancesSkuVersionAndIdenticalReplayDoesNot() throws Exception {
+        String token = merchant("12600311010", "SKU单位版本");
+        String skuNo = firstSkuNo(token, createGoods(token, "版本测试"));
+        Long before = jdbc.queryForObject("SELECT version FROM prd_sku WHERE sku_no=? AND market='CN'",
+                Long.class, skuNo);
+        String csv = "skuNo,单位\n" + skuNo + ",EA";
+        importCsv(token, csv);
+        Long after = jdbc.queryForObject("SELECT version FROM prd_sku WHERE sku_no=? AND market='CN'",
+                Long.class, skuNo);
+        assertThat(after).isEqualTo(before + 1);
+        importCsv(token, csv);
+        assertThat(jdbc.queryForObject("SELECT version FROM prd_sku WHERE sku_no=? AND market='CN'",
+                Long.class, skuNo)).isEqualTo(after);
     }
 
     @Test

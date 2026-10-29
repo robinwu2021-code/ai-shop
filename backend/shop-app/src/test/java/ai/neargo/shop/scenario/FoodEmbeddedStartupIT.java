@@ -43,20 +43,34 @@ class FoodEmbeddedStartupIT {
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
         String root = System.getenv("FOOD_HOST_SMOKE_JDBC_URL");
-        if (root == null || !root.matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/food_host_smoke")) {
+        if (root == null || !root.matches("jdbc:mysql://127[.]0[.]0[.]1:[0-9]+/food_host_smoke")) {
             throw new IllegalArgumentException("Disposable loopback database required");
         }
         registry.add(
                 "spring.datasource.url", () -> root + "?allowPublicKeyRetrieval=true&useSSL=false");
-        registry.add("spring.datasource.username", () -> "root");
-        registry.add("spring.datasource.password", () -> "");
+        registry.add("spring.datasource.username", () -> databaseUser());
+        registry.add("spring.datasource.password", () -> databasePassword());
         registry.add("spring.datasource.driver-class-name", () -> "com.mysql.cj.jdbc.Driver");
         registry.add("shop.inventory.enabled", () -> "true");
         registry.add(
                 "shop.inventory.datasource.url",
                 () -> root + "_inv?allowPublicKeyRetrieval=true&useSSL=false");
-        registry.add("shop.inventory.datasource.username", () -> "root");
-        registry.add("shop.inventory.datasource.password", () -> "");
+        registry.add("shop.inventory.datasource.username", () -> databaseUser());
+        registry.add("shop.inventory.datasource.password", () -> databasePassword());
+    }
+
+    // Local persistent MySQL uses a schema-scoped account; disposable containers retain
+    // their existing root/empty-password fixture. Never read deployment credentials.
+    private static String databaseUser() {
+        return System.getenv().getOrDefault("FOOD_HOST_SMOKE_DB_USER", "root");
+    }
+
+    private static String databasePassword() {
+        String password = System.getenv("FOOD_HOST_SMOKE_DB_PASSWORD");
+        if (!"root".equals(databaseUser()) && (password == null || password.isBlank())) {
+            throw new IllegalArgumentException("Local MySQL test account requires a password");
+        }
+        return password == null ? "" : password;
     }
 
     @Autowired ApplicationContext context;
@@ -64,12 +78,21 @@ class FoodEmbeddedStartupIT {
 
     @Test
     void nativeMigrationsAndRealHostStartTogether() throws ClassNotFoundException {
+        assertThat(context.getBeansOfType(ai.neargo.shop.svc.ConfigServiceLocator.class)).hasSize(1);
         assertThat(context.getBean("foodMpCatalogController")).isNotNull();
         assertThat(context.getBean("mpCatalogController")).isNotNull();
         assertThat(context.getBeansOfType(SysIdempotentMapper.class)).hasSize(1);
         assertThat(context.getBeansOfType(InventoryDemandPlanPort.class)).hasSize(1);
-        assertThat(context.getBeansOfType(Class.forName("ai.neargo.shop.food.service.CheckBusinessGuardService"))).hasSize(1);
-        assertThat(context.getBeansOfType(Class.forName("ai.neargo.shop.food.service.DiningOrderAuthorityService"))).hasSize(1);
+        assertThat(
+                        context.getBeansOfType(
+                                Class.forName(
+                                        "ai.neargo.shop.food.service.CheckBusinessGuardService")))
+                .hasSize(1);
+        assertThat(
+                        context.getBeansOfType(
+                                Class.forName(
+                                        "ai.neargo.shop.food.service.DiningOrderAuthorityService")))
+                .hasSize(1);
         assertThat(context.getBean(IndustryPartialFulfillmentMapper.class).pending(1)).isEmpty();
         assertThat(
                         context.getBean(InventoryExactSupportMapper.class)
@@ -78,8 +101,8 @@ class FoodEmbeddedStartupIT {
         assertThat(
                         sql.queryForObject(
                                 "SELECT MAX(CAST(version AS UNSIGNED)) FROM fnb_flyway_history"
-                                    + " WHERE success=1",
+                                        + " WHERE success=1",
                                 Integer.class))
-                .isEqualTo(25);
+                .isEqualTo(33);
     }
 }
