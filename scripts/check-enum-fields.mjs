@@ -891,6 +891,7 @@ export const DISMISSED = [
   { key: "inv_dispatch_item.status", why: "出库池状态（AVAILABLE / CLAIMED / REVOKED / RETURNED），只给宿主后端，ai-shop 三端不展示" },
   { key: "inv_dispatch_claim.status", why: "领取状态（ACTIVE / RELEASED / CLOSED），独立服务内部，生成列唯一索引靠它" },
   { key: "inv_dispatch_adjust.action", why: "出库池调整动作（REDIRECT / REVOKE），只追加的审计快照，端上不展示" },
+  { key: "inv_count_scan.verdict", why: "盘点扫码判定（IN_SCOPE / OUT_OF_SCOPE / NOT_IN_STOCK / UNKNOWN），经独立服务接口给宿主后端，ai-shop 三端不展示" },
   { key: "inv_target_ref.status", why: "外部目标状态（ACTIVE / DISABLED），由宿主同步来、回给宿主，ai-shop 三端不展示" },
   { key: "inv_owner.write_authority", why: "一本账的写入方（EMBEDDED / SVC），商城切流按业主翻转用的内部开关，只在服务入口判定，端上不展示" },
   { key: "sv_release.activity_no", why: "Core活动业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },

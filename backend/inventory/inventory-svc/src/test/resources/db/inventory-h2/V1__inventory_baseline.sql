@@ -335,6 +335,12 @@ CREATE TABLE IF NOT EXISTS inv_stock_count
     created_by  VARCHAR(64)  DEFAULT NULL,
     updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64) DEFAULT NULL,
+    content_version INT NOT NULL DEFAULT 0,
+    approved_version INT DEFAULT NULL,
+    submitted_by VARCHAR(64) DEFAULT NULL,
+    reviewer VARCHAR(64) DEFAULT NULL,
+    review_note VARCHAR(255) DEFAULT NULL,
+    profile_version INT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_count UNIQUE (owner_id, count_no)
 );
@@ -950,6 +956,21 @@ CREATE TABLE IF NOT EXISTS inv_event_subscription
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT uk_inv_event_subscription UNIQUE (owner_id, system_code)
+);
+
+CREATE TABLE IF NOT EXISTS inv_count_scan
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    count_no VARCHAR(32) NOT NULL,
+    serial_no VARCHAR(64) NOT NULL,
+    serial_id VARCHAR(32) DEFAULT NULL,
+    item_id VARCHAR(32) DEFAULT NULL,
+    verdict VARCHAR(16) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_count_scan UNIQUE (owner_id, count_no, serial_no)
 );
 
 -- 种子数据

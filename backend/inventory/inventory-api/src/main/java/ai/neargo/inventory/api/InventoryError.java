@@ -43,6 +43,8 @@ public enum InventoryError {
     ISSUE_VOID_FORBIDDEN("inventory.issue.void_forbidden", 409),
     /** 事件游标早于已清理的位置，要从确认点重拉（AC-14）。 */
     EVENTS_CURSOR_EXPIRED("inventory.events.cursor_expired", 410),
+    /** 盘点范围内冻结中：开盘到过账 / 作废之间，范围内的物料不许进出（AC-11）。参数是盘点单号。 */
+    COUNT_FROZEN("inventory.count.frozen", 409),
     INTERNAL("inventory.internal", 500);
 
     private final String key;

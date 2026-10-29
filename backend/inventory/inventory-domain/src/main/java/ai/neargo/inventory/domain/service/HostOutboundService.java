@@ -21,6 +21,13 @@ public interface HostOutboundService {
     void post(Caller caller, String outboundNo);
 
     /**
+     * 盘亏出库：只由盘点过账生成，建单即过账；逐件按给定 SN 出（不展开下级件 —— 盘到的就是盘到的）。
+     *
+     * @return 出库单号
+     */
+    String countLoss(Caller caller, String locationId, String countNo, List<Line> lines, List<String> serialNos);
+
+    /**
      * @param targets   目标类型 → 目标编号，如 {@code PERSON → E1001}
      * @param lines     数量物料的行
      * @param serialNos 逐件物料：扫到的 SN；上级件自动带出它当前挂着的下级件

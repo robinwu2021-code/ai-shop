@@ -31,6 +31,9 @@ public interface HostInboundService {
      */
     String correction(Caller caller, String locationId, String sourceRef, List<Line> lines);
 
+    /** 盘盈入库：只由盘点过账生成，建单即过账，不受本盘点自己的冻结挡（放行依据记为 {@code COUNT:<盘点单号>}）。 */
+    String countGain(Caller caller, String locationId, String countNo, List<Line> lines);
+
     /**
      * 退货业务确认：宿主解除了本地业务关联（绑定、装机…），解除这张退货入库加的「退货待确认」冻结（AC-10）。
      */

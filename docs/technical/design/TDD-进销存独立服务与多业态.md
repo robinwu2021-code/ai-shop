@@ -593,8 +593,8 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-08 | `#revokeReturnsTheWholeKitToStockWithANewEpisode`（整套撤回、纠正入库、余额恢复、组装照原样、撤回过的不能签收、可再发） | ✅ 2026-10-29 | |
 | AC-09 | `#concurrentClaimsOnTheSameBatchLetOnlyOneWinAndReleaseReopens`（两线程抢同一条只一方成功、输方整批不动；按幂等键查签收；释放回待签收） | ✅ 2026-10-29 | |
 | AC-10 | `#claimedReturnIsHeldUntilBusinessClearance`（已签收退货 → 池记录已退回 + 退货待确认冻结；确认前发货 409 `C7:held`；确认后放行） | ✅ 2026-10-29 | ✅ 去掉退货冻结 → 变红 |
-| AC-11 | `CountFreezeTest#issue_in_scope_409` | | |
-| AC-12 | `PeriodSummaryTest#opening_plus_in_minus_out_equals_closing` | | |
+| AC-11 | `CountAndSummaryFlowTest#openCountFreezesItsScopeUntilCancelled`（范围内出库 409 `inventory.count.frozen`、范围外照常、同库位只一张、作废即解冻）· `#countCannotOpenOverActiveReservations` | ✅ 2026-10-29 | ✅ 去掉冻结检查 → 变红 |
+| AC-12 | `#periodSummaryReconcilesOpeningInOutAndClosing`（期初 + 入 − 出 = 期末 = 当前余额；下一段期初 = 上一段期末） | ✅ 2026-10-29 | |
 | AC-13 | `#issueBuildsAKitInThePoolAndRedirectMovesTheWholeKit`（已过账交接出库作废 → 409 `inventory.issue.void_forbidden`） | ✅ 2026-10-29 | |
 | AC-14 | `#eventsArePulledInOrderAckedAndAnExpiredCursorIsReported`（拉、确认、清理、旧游标 410、从确认点继续只拿到新事件） | ✅ 2026-10-29 | ✅ 去掉游标过期检查 → 变红 |
 | AC-15 | `ServicePlatformFlowTest#ownersAreIsolatedByCredential`（B 的凭证带 A 的业主号也看不到 A 的仓）· `#badCredentialsAllLookTheSame` | ✅ 2026-10-29 | |
@@ -689,8 +689,16 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 在途 | `GET /in-transit`：待签收按顶层目标 × 物料汇总 | 主方案归 T5.2，顺手在 M4 做了 |
 | 内嵌装配撞名 | 进销存领域组件扫描改用全限定类名做 Bean 名 | 内嵌进 ai-shop 时 `DispatchServiceImpl` 与商城履约域同名类冲突，第一次全量回归 526 例因此起不来；改名生成器一次杜绝这类问题 |
 
+### M5 · 盘点与汇总（2026-10-29，T5.1 ~ T5.2）
 
-
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| 范围冻结持久化 | 开着的盘点单就是冻结（V20 给 `inv_stock_count` 加内容版本与复核列）；`CountFreezeGuard` 先锁库位行、再按盘点行的物料判断；宿主入库过账、出库过账（含撤回走的纠正入库）都接入；盘点自己的盘盈 / 盘亏单豁免 | **冻结不写进 `inv_stock_hold`**：冻结是「不许进出」，不是「数量不可用」—— 算进不可用会让开盘时余额守卫与预留互相打架；盘点单状态本身就持久 |
+| 开盘拒绝 | 同库位已有开着的盘点（宿主或商城的）拒绝；范围内有预留（reserved > 0）拒绝 | 主方案还写了「未结命令」拒绝开盘：草稿不动库存，过账时会被冻结挡住，不必在开盘时拒 |
+| SN 实盘 | `inv_count_scan`（唯一键：盘点单 × SN），重扫不重计；判定 IN_SCOPE / OUT_OF_SCOPE / NOT_IN_STOCK / UNKNOWN；只有 IN_SCOPE 计数，其余列为异常 | — |
+| 复核 | 提交 → 批准（档案要求时复核人 ≠ 提交人）→ 过账；驳回回到录数并清掉批准；批准绑定内容版本，过账时版本不等拒绝；档案不要求复核时提交即可过账 | — |
+| 过账 | 逐件：账面在仓未扫到的 SN 走盘亏出库（不展开下级件）；未知 / 已出库 SN 不自动盘盈；数量：差额生成盘盈入库 / 盘亏出库；数量物料没录实盘数拒绝过账 | 盘盈数量物料的放行依据记为 `COUNT:<盘点单号>` |
+| T5.2 期间汇总 | `GET /reports/period-summary`：按 `occurred_at` 取期间，期初 = 期间前全部变动之和，入 / 出按用途分组，期末 = 期初 + 入 − 出 | **期初用变动之和，不用流水结存**：单据发生时间可回填，按 id 的最后一行未必是按时间的最后一行；单次最多扫 20 万行流水，超出要求按仓或物料拆开 |
 
 ## §7 确认与完成
 
@@ -726,4 +734,5 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | D2 改判为「测试一套、生产两套」；新增 AC-28 与 [进销存独立服务-执行方案](./进销存独立服务-执行方案.md) |
 | 2026-10-29 | M1 完成（`1759f58fa`）；M2 T0.1、T2.1 ~ T2.3 完成（`fc682c4e9`）；T2.4、T2.5 完成（`6f2d5d717`） |
 | 2026-10-29 | M3 完成（`99159b93c`），后端全量 6982 例 0 失败 |
-| 2026-10-29 | M4 完成（T4.1 ~ T4.7），后端全量 6987 例 0 失败 —— 可交付 ShareHub 联调 |
+| 2026-10-29 | M4 完成（`973b6d717`），后端全量 6987 例 0 失败 —— 可交付 ShareHub 联调 |
+| 2026-10-29 | M5 完成（T5.1 ~ T5.2），后端全量 6991 例 0 失败 |

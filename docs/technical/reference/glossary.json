@@ -32596,6 +32596,13 @@
       "package": "ai.neargo.inventory.domain.entity"
     },
     {
+      "table": "inv_count_scan",
+      "class": "InvCountScan",
+      "zh": "盘点 SN 实扫一条。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
       "table": "inv_daily_snapshot",
       "class": "InvDailySnapshot",
       "zh": "日快照：派生数据，删光重跑即可",
@@ -44055,6 +44062,7 @@
           "DISPATCH_CHILD_LOCKED",
           "ISSUE_VOID_FORBIDDEN",
           "EVENTS_CURSOR_EXPIRED",
+          "COUNT_FROZEN",
           "INTERNAL"
         ],
         "zh": "进销存自己的错误码。",

@@ -51,6 +51,9 @@ import java.util.Set;
 @Service
 public class HostOutboundServiceImpl implements HostOutboundService {
 
+    /** 盘亏：只由盘点过账生成，不走档案的用途登记。 */
+    static final String COUNT_LOSS = "COUNT_LOSS";
+
     private final HostDocumentSupport support;
     private final OutboundOrderMapper orderMapper;
     private final OutboundLineMapper lineMapper;
@@ -61,6 +64,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
     private final StockHoldMapper holdMapper;
     private final DispatchPoolStore pool;
     private final EventPublisher events;
+    private final CountFreezeGuard freeze;
     private final StockPostingService posting;
     private final AuditService audit;
 
@@ -69,7 +73,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                                    DocumentTargetMapper docTargetMapper,
                                    SerialMapper serialMapper, StockEpisodeMapper episodeMapper,
                                    StockHoldMapper holdMapper, StockPostingService posting, AuditService audit,
-                                   DispatchPoolStore pool, EventPublisher events) {
+                                   DispatchPoolStore pool, EventPublisher events, CountFreezeGuard freeze) {
         this.support = support;
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
@@ -80,6 +84,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         this.holdMapper = holdMapper;
         this.pool = pool;
         this.events = events;
+        this.freeze = freeze;
         this.posting = posting;
         this.audit = audit;
     }
@@ -122,8 +127,32 @@ public class HostOutboundServiceImpl implements HostOutboundService {
             row.setCreatedBy(HostDocumentSupport.operator(caller));
             docTargetMapper.insert(row);
         }
-        addLines(caller, order, draft.lines(), draft.serialNos());
+        addLines(caller, order, draft.lines(), draft.serialNos(), true);
         audit.record(caller, "outbound.create", "OUTBOUND", order.getOutboundNo(), null, draft, null);
+        return order.getOutboundNo();
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String countLoss(Caller caller, String locationId, String countNo, List<Line> lines,
+                            List<String> serialNos) {
+        support.requireActiveLocation(caller.ownerId(), locationId);
+        InvOutboundOrder order = new InvOutboundOrder();
+        order.setOutboundNo(InvKeys.next(InvKeys.OUTBOUND));
+        order.setOwnerId(caller.ownerId());
+        order.setLocationId(locationId);
+        order.setPurpose(COUNT_LOSS);
+        order.setSourceRef(countNo);
+        order.setProfileVersion(support.profile(caller.ownerId()).version());
+        order.setStatus(InvEnums.DocStatus.DRAFT);
+        order.setTotalQtyQuantity(BigDecimal.ZERO);
+        order.setOccurredAt(LocalDateTime.now());
+        order.setOperator(HostDocumentSupport.operator(caller));
+        order.setRemark("count " + countNo);
+        order.setCreatedBy(HostDocumentSupport.operator(caller));
+        orderMapper.insert(order);
+        addLines(caller, order, lines, serialNos, false);
+        post(caller, order.getOutboundNo());
         return order.getOutboundNo();
     }
 
@@ -139,7 +168,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         if (!InvEnums.DocStatus.DRAFT.equals(order.getStatus())) {
             throw InventoryException.of(InventoryError.CONFLICT, "status");
         }
-        addLines(caller, order, lines, serialNos);
+        addLines(caller, order, lines, serialNos, true);
         audit.record(caller, "outbound.append", "OUTBOUND", outboundNo, null, serialNos, null);
     }
 
@@ -180,6 +209,12 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         }
         InvOutboundOrder order = orderMapper.selectOne(Wrappers.<InvOutboundOrder>lambdaQuery()
                 .eq(InvOutboundOrder::getOwnerId, caller.ownerId()).eq(InvOutboundOrder::getOutboundNo, outboundNo));
+        List<InvOutboundLine> lines = lineMapper.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
+                .eq(InvOutboundLine::getOutboundNo, outboundNo).orderByAsc(InvOutboundLine::getLineNo));
+        // 盘点范围冻结：盘点自己的盘亏单豁免（AC-11）
+        freeze.assertNotFrozen(caller.ownerId(), order.getLocationId(),
+                lines.stream().map(InvOutboundLine::getItemId).distinct().toList(),
+                COUNT_LOSS.equals(order.getPurpose()) ? order.getSourceRef() : null);
 
         // 目标在建单后被宿主停用：不再发给它
         for (InvDocumentTarget t : docTargetMapper.selectList(Wrappers.<InvDocumentTarget>lambdaQuery()
@@ -226,8 +261,6 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         }
 
         List<StockPostingService.Line> postingLines = new ArrayList<>();
-        List<InvOutboundLine> lines = lineMapper.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
-                .eq(InvOutboundLine::getOutboundNo, outboundNo).orderByAsc(InvOutboundLine::getLineNo));
         for (InvOutboundLine line : lines) {
             postingLines.add(new StockPostingService.Line(line.getLineNo(), line.getItemId(), order.getLocationId(),
                     line.getQtyQuantity().intValueExact(), null));
@@ -257,9 +290,9 @@ public class HostOutboundServiceImpl implements HostOutboundService {
             s.setSerialId(row.getSerialId());
             docSerialMapper.updateById(s);
         }
-        OutboundPurpose purpose = HostDocumentSupport.outboundPurpose(support.profile(caller.ownerId()).profile(),
-                order.getPurpose());
-        if (purpose.handover() == BusinessProfile.Handover.POOL) {
+        OutboundPurpose purpose = COUNT_LOSS.equals(order.getPurpose()) ? null
+                : HostDocumentSupport.outboundPurpose(support.profile(caller.ownerId()).profile(), order.getPurpose());
+        if (purpose != null && purpose.handover() == BusinessProfile.Handover.POOL) {
             // 同一事务：余额、周期、流水、出库池、事件要么都有、要么都没有（AC-06）
             Map<String, String> episodeBySerialNo = new HashMap<>();
             episodes.forEach((no, ep) -> episodeBySerialNo.put(no, ep.getEpisodeId()));
@@ -275,7 +308,8 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         audit.record(caller, "outbound.post", "OUTBOUND", outboundNo, null, null, null);
     }
 
-    private void addLines(Caller caller, InvOutboundOrder order, List<Line> lines, List<String> serialNos) {
+    private void addLines(Caller caller, InvOutboundOrder order, List<Line> lines, List<String> serialNos,
+                          boolean expand) {
         List<Line> quantityLines = lines == null ? List.of() : lines;
         List<String> scanned = serialNos == null ? List.of() : serialNos;
         Map<String, InvItem> items = support.activeItems(caller.ownerId(),
@@ -298,6 +332,9 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                 continue;
             }
             add(byItem, onDoc, conflicts, new Expanded(serial.getItemId(), serial.getSerialNo(), null));
+            if (!expand) {
+                continue;
+            }
             for (InvSerial child : serialMapper.selectList(Wrappers.<InvSerial>lambdaQuery()
                     .eq(InvSerial::getOwnerId, caller.ownerId())
                     .eq(InvSerial::getParentSerialId, serial.getSerialId())

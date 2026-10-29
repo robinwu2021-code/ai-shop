@@ -4,6 +4,7 @@ import ai.neargo.inventory.domain.entity.InvAudit;
 import ai.neargo.inventory.domain.entity.InvBusinessProfile;
 import ai.neargo.inventory.domain.entity.InvClientSystem;
 import ai.neargo.inventory.domain.entity.InvCommand;
+import ai.neargo.inventory.domain.entity.InvCountScan;
 import ai.neargo.inventory.domain.entity.InvDailySnapshot;
 import ai.neargo.inventory.domain.entity.InvDispatchAdjust;
 import ai.neargo.inventory.domain.entity.InvDispatchClaim;
@@ -268,4 +269,6 @@ public final class InventoryMappers {
     public interface EventLogMapper extends BaseMapper<InvEventLog> {}
 
     public interface EventSubscriptionMapper extends BaseMapper<InvEventSubscription> {}
+
+    public interface CountScanMapper extends BaseMapper<InvCountScan> {}
 }

@@ -49,6 +49,8 @@ public class HostInboundServiceImpl implements HostInboundService {
     static final String CORRECTION = "CORRECTION";
     /** 退货回仓：关联原出库池记录（TDD §2.8）。 */
     static final String RETURN = "RETURN";
+    /** 盘盈：只由盘点过账生成。 */
+    static final String COUNT_GAIN = "COUNT_GAIN";
 
     private final HostDocumentSupport support;
     private final InboundOrderMapper orderMapper;
@@ -61,12 +63,13 @@ public class HostInboundServiceImpl implements HostInboundService {
     private final DispatchPoolStore pool;
     private final StockHoldService holds;
     private final EventPublisher events;
+    private final CountFreezeGuard freeze;
 
     public HostInboundServiceImpl(HostDocumentSupport support, InboundOrderMapper orderMapper,
                                   InboundLineMapper lineMapper, DocumentSerialMapper docSerialMapper,
                                   SerialMapper serialMapper, StockEpisodeMapper episodeMapper,
                                   StockPostingService posting, AuditService audit, DispatchPoolStore pool,
-                                  StockHoldService holds, EventPublisher events) {
+                                  StockHoldService holds, EventPublisher events, CountFreezeGuard freeze) {
         this.support = support;
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
@@ -78,6 +81,7 @@ public class HostInboundServiceImpl implements HostInboundService {
         this.pool = pool;
         this.holds = holds;
         this.events = events;
+        this.freeze = freeze;
     }
 
     @Override
@@ -109,8 +113,20 @@ public class HostInboundServiceImpl implements HostInboundService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String correction(Caller caller, String locationId, String sourceRef, List<Line> lines) {
-        InvInboundOrder order = insertOrder(caller, locationId, CORRECTION, sourceRef, null, List.of(),
-                "revoke " + sourceRef, support.profile(caller.ownerId()).version());
+        return systemInbound(caller, locationId, CORRECTION, sourceRef, lines, "revoke " + sourceRef);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String countGain(Caller caller, String locationId, String countNo, List<Line> lines) {
+        return systemInbound(caller, locationId, COUNT_GAIN, countNo, lines, "count " + countNo);
+    }
+
+    /** 系统生成的入库（撤回纠正、盘盈）：不走档案的用途登记，建单即过账。 */
+    private String systemInbound(Caller caller, String locationId, String purpose, String sourceRef, List<Line> lines,
+                                 String remark) {
+        InvInboundOrder order = insertOrder(caller, locationId, purpose, sourceRef, null, List.of(), remark,
+                support.profile(caller.ownerId()).version());
         addLines(caller, order, lines);
         post(caller, order.getInboundNo());
         return order.getInboundNo();
@@ -173,6 +189,9 @@ public class HostInboundServiceImpl implements HostInboundService {
         List<InvDocumentSerial> serials = docSerials(caller.ownerId(), inboundNo);
         Map<String, InvItem> items = support.activeItems(caller.ownerId(),
                 lines.stream().map(InvInboundLine::getItemId).distinct().toList());
+        // ⓪ 盘点范围冻结：盘点自己的盘盈单豁免（AC-11）
+        freeze.assertNotFrozen(caller.ownerId(), order.getLocationId(), items.keySet(),
+                COUNT_GAIN.equals(order.getSourceType()) ? order.getSourceRef() : null);
 
         // ① 放行凭证：缺的一次列全（AC-04）
         List<String> missing = new ArrayList<>();

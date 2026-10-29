@@ -32,7 +32,7 @@ public final class InventoryErrors {
             case NOT_WRITER, IDEMPOTENCY_CONFLICT -> ErrorCode.CONFLICT;
             case PROFILE_INVALID, GATE_REF_MISSING -> ErrorCode.BAD_REQUEST;
             case SERIAL_CONFLICT, DISPATCH_NOT_AVAILABLE, DISPATCH_CHILD_LOCKED, ISSUE_VOID_FORBIDDEN,
-                    EVENTS_CURSOR_EXPIRED -> ErrorCode.CONFLICT;
+                    EVENTS_CURSOR_EXPIRED, COUNT_FROZEN -> ErrorCode.CONFLICT;
             case INTERNAL -> ErrorCode.INTERNAL_ERROR;
         };
     }

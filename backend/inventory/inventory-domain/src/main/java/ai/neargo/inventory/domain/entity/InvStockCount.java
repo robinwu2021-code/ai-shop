@@ -39,4 +39,13 @@ public class InvStockCount extends InvMutableEntity {
 
     private String remark;
 
+    /** 录数 / 扫码每改一次 +1（宿主盘点） */
+    private Integer contentVersion;
+    /** 批准时的内容版本；与当前不等 = 批准失效 */
+    private Integer approvedVersion;
+    private String submittedBy;
+    /** 复核人；档案要求时必须不同于提交人 */
+    private String reviewer;
+    private String reviewNote;
+    private Integer profileVersion;
 }
