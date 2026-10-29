@@ -239,7 +239,7 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
             var f = sql(() -> facts(ref, false));
             exactEligible(f, c, false);
             var plan = exactPlan(f);
-            var provider = exactProvider();
+            var provider = exactProvider(f,plan);
             var proof = provider.query(plan.scope());
             var targets = exactTargets(f, c, plan);
             if (!targets.isEmpty())
@@ -281,6 +281,15 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
         return complete;
     }
 
+    private ai.neargo.shop.trade.stock.IndustryStockOwnerRouter stockOwners;
+    @Autowired(required=false)
+    public void stockOwnerRouter(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter router){this.stockOwners=router;}
+    private InventoryDemandPlanPort exactProvider(Facts facts,InventoryDemandPlanPort.Plan plan) {
+        if(stockOwners!=null)return stockOwners.exact(facts.source().getInventoryOwner(),plan,
+                Set.of("POSTPAY","CHANNEL").contains(facts.source().getOrderMode())?3:2);
+        if(ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.FOOD_LOCAL.equals(facts.source().getInventoryOwner()))throw unsupported();
+        return exactProvider();
+    }
     private InventoryDemandPlanPort exactProvider() {
         if (exactInventory == null) throw unsupported();
         var ps = exactInventory.orderedStream().limit(2).toList();
@@ -951,6 +960,8 @@ public class IndustryFulfillmentServiceImpl implements IndustryFulfillmentServic
                 || !ref.source().sourceType().equals(source.getSourceType())
                 || !ref.source().sourceNo().equals(source.getSourceNo())
                 || ref.source().sourceVersion() != source.getSourceVersion()) throw forbidden();
+        if(ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.FOOD_LOCAL.equals(source.getInventoryOwner())
+                &&(source.getDemandPlanHash()==null||source.getDemandPlanSnapshot()==null))throw unsupported();
         var order =
                 orders.selectOne(
                         Wrappers.<OrdOrder>lambdaQuery()

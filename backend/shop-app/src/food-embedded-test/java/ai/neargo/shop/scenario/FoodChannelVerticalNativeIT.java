@@ -85,6 +85,7 @@ import javax.sql.DataSource;
             "shop.services.internal-token=food-native-only",
             "shop.trade.channel.enabled=true",
             "shop.food.menu-publication-enabled=true",
+            "shop.food.bundle-publication-enabled=true",
             "shop.food.recipe-publication-enabled=true",
             "shop.food.station-publication-enabled=true",
             "shop.inventory.stock-authority=INVENTORY",
@@ -205,10 +206,13 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                             sql, json, platform, provisioned.references(), MOCK_TOKEN);
             var acl = context.getBean(ai.neargo.shop.inventory.service.InventoryAclService.class);
             if ("BUNDLE_MODIFIERS".equals(kind))
-                assertThat(acl.itemIdOf("M0001", provisioned.menu().skuNo())).isNull();
-            accept(fixture, fixture.references.happyOrderNo(), false, kind);
+                assertThat(acl.itemIdOfSku(provisioned.menu().skuNo())).isNull();
+            accept(fixture, fixture.references.happyOrderNo(), false, "RECIPE_MATERIAL");
+            var plan=restaurant.get(fixture.key(fixture.references.happyOrderNo())).corePreparation().inventoryPlan();
+            String comboSku=provisioned.menu().materialSkus().getLast();
+            assertThat(plan.branches().stream().flatMap(b->b.leaves().stream())).noneMatch(leaf->comboSku.equals(leaf.itemRef()));
             if ("BUNDLE_MODIFIERS".equals(kind))
-                assertThat(acl.itemIdOf("M0001", provisioned.menu().skuNo())).isNull();
+                assertThat(acl.itemIdOfSku(provisioned.menu().skuNo())).isNull();
         }
     }
 
@@ -248,7 +252,12 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                             .findFirst()
                             .orElseThrow();
             assertThat(retained.originalQty()).isEqualByComparingTo(leaf.quantity());
-            assertThat(retained.itemRef()).isEqualTo(leaf.itemRef());
+            var originalBranch=plan.branches().stream().filter(b->b.leaves().contains(leaf)).findFirst().orElseThrow();
+            String expectedMaterial="FINISHED_SKU".equals(
+                    ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts.sourceKind(originalBranch,leaf))
+                    ? context.getBean(ai.neargo.shop.inventory.service.InventoryAclService.class)
+                            .itemIdOfSku(leaf.itemRef()) : leaf.itemRef();
+            assertThat(retained.itemRef()).isEqualTo(expectedMaterial);
             assertThat(retained.unit()).isEqualTo(leaf.unit());
         }
         var operation =
@@ -361,7 +370,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
         String station =
                 sql.queryForObject(
                         "SELECT t.station_no FROM fnb_kitchen_task t JOIN fnb_kitchen_ticket k ON"
-                            + " k.ticket_no=t.ticket_no WHERE k.batch_no=? AND t.task_role='MAKE'"
+                            + " k.ticket_no=t.ticket_no WHERE k.batch_no=? AND t.task_role IN ('MAKE','ASSEMBLE')"
                             + " AND t.component_no IS NULL",
                         String.class,
                         batch);

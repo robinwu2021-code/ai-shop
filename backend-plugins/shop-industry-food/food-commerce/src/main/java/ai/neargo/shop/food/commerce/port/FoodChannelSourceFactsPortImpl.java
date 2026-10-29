@@ -611,7 +611,7 @@ public final class FoodChannelSourceFactsPortImpl implements DiningChannelSource
         require(found != null && found.size() == 1 && sku.equals(found.getFirst().skuNo()));
         var material = found.getFirst().material();
         require(
-                MaterialCatalogFacts.validFact(material)
+                ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(material)
                         && key.entityNo().equals(material.entityNo())
                         && (quantity.stripTrailingZeros().scale() <= 0
                                 || Integer.valueOf(1).equals(material.weighed())));

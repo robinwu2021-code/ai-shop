@@ -105,6 +105,11 @@ import java.util.stream.Collectors;
  */
 @Service
 public class IndustryOrderServiceImpl implements IndustryOrderService {
+    private ai.neargo.shop.trade.stock.IndustryStockOwnerRouter stockOwners;
+    @Autowired(required=false)
+    public void stockOwnerRouter(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter router){this.stockOwners=router;}
+    private boolean localOwner(String source){return stockOwners!=null&&ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.FOOD_LOCAL.equals(stockOwners.newOwner(source));}
+    private static boolean localBinding(OrdIndustryOrderSource source){return ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.FOOD_LOCAL.equals(source.getInventoryOwner());}
     private static final String AUTHORITY = "INDUSTRY_INVENTORY_V2";
     private ObjectProvider<InventoryDemandPlanPort> demandProviders;
     private IndustryChannelOrderService channelOrders;
@@ -277,7 +282,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                         : result(binding);
             if (!OrdCreateIntent.PREPARED.equals(prior.getStatus())) throw conflict();
         }
-        if (!"INVENTORY".equals(stockAuthority)) throw unsupported();
+        if (!"INVENTORY".equals(stockAuthority)&&!localOwner(command.source().sourceSystem())) throw unsupported();
         var prepared = prepareSource(command, staff);
         authorizedSource(command, prepared, staff);
         var quote = revalidate(command, staff);
@@ -313,16 +318,18 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                     return null;
                 });
         var binding = binding(command.identity(), prior.getPayNo(), false);
+        ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.same(prior.getInventoryOwner(),binding.getInventoryOwner(),AUTHORITY);
         Plan exactPlan = frozenPlan(command, binding, prepared.source());
         if (exactPlan != null) {
             var held =
-                    demands()
+                    demands(binding,exactPlan)
                             .reserve(
                                     exactPlan,
                                     guard.minutes() * 60L,
                                     command.mode() == Mode.POSTPAY ? 3 : 2);
             demandReceipt(exactPlan, held, Set.of("HELD"));
         } else {
+            if(localBinding(binding))throw unsupported();
             var inventory = inventory();
             List<StockPort.SkuQty> needs = needs(prior);
             var stockLines =
@@ -408,11 +415,13 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
         var scope = inventoryScope(source);
         if (source.getDemandPlanSnapshot() != null) {
             var plan = json.readValue(source.getDemandPlanSnapshot(), Plan.class);
-            var accepted = demands().acceptUnpaid(scope);
+            ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.same(intent.getInventoryOwner(),source.getInventoryOwner(),AUTHORITY);
+            var accepted = demands(source,plan).acceptUnpaid(scope);
             demandReceipt(
                     plan, accepted, Set.of("ACCEPTED_UNPAID", "PARTIAL_UNPAID", "ISSUED_UNPAID"));
             if (accepted.lifecycleVersion() != 3) throw conflict();
         } else {
+            if(localBinding(source))throw unsupported();
             var actual = inventory().acceptUnpaid(scope);
             if (actual == null
                     || !scope.equals(actual.scope())
@@ -690,6 +699,8 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                         intent.setIdemKey(key);
                         intent.setRequestHash(hash);
                         intent.setStockAuthority(AUTHORITY);
+                        String frozenOwner=localOwner(command.source().sourceSystem())?ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.FOOD_LOCAL:ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.LEGACY;
+                        intent.setInventoryOwner(frozenOwner);
                         intent.setStockNeedsJson(json.writeValueAsString(needs));
                         intent.setStatus(
                                 tombstone ? OrdCreateIntent.RELEASED : OrdCreateIntent.PREPARED);
@@ -697,6 +708,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                         intents.insert(intent);
                         var binding = new OrdIndustryOrderSource();
                         audit(binding, identity);
+                        binding.setInventoryOwner(frozenOwner);
                         binding.setOrderNo(order.value());
                         binding.setSubOrderNo(sub.value());
                         binding.setEntityNo(identity.entityNo());
@@ -1141,16 +1153,12 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                             .flatMap(b -> b.leaves().stream())
                             .map(l -> new InventoryDemandPlanPort.Target(l.leafRef(), l.quantity()))
                             .toList();
-            demandReceipt(
-                    plan,
-                    demands()
-                            .releaseTo(
-                                    plan.scope(),
-                                    "CANCEL_" + source.getOrderNo(),
-                                    plan.planHash(),
-                                    targets),
-                    Set.of("RELEASED", "EXPIRED"));
+            if(localBinding(source)){
+                var withdrawn=demands(source,plan).withdraw(plan,"CANCEL_"+source.getOrderNo(),"POSTPAY".equals(source.getOrderMode())?3:2);
+                if(withdrawn==null||!plan.scope().equals(withdrawn.scope())||!plan.planHash().equals(withdrawn.planHash())||withdrawn.receiptRef()==null)throw conflict();
+            }else demandReceipt(plan,demands(source,plan).releaseTo(plan.scope(),"CANCEL_"+source.getOrderNo(),plan.planHash(),targets),Set.of("RELEASED","EXPIRED"));
         } else {
+            if(localBinding(source))throw unsupported();
             var cancelled = inventory().cancelAll(inventoryScope(source));
             if (cancelled == null
                     || !inventoryScope(source).equals(cancelled.scope())
@@ -1491,7 +1499,7 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
             if (requiresDemandPlan(source)) throw unsupported();
             return null;
         }
-        if (command.mode() != Mode.POSTPAY
+        if (command.mode() != Mode.POSTPAY&&!localBinding(original)
                 || !InventoryDemandPlanFacts.hash(plan).equals(plan.planHash()))
             throw unsupported();
         var parts =
@@ -1543,6 +1551,12 @@ public class IndustryOrderServiceImpl implements IndustryOrderService {
                 });
     }
 
+    private InventoryDemandPlanPort demands(OrdIndustryOrderSource source,Plan plan) {
+        if(stockOwners!=null)return stockOwners.exact(source.getInventoryOwner(),plan,
+                Set.of("POSTPAY","CHANNEL").contains(source.getOrderMode())?3:2);
+        if(localBinding(source))throw unsupported();
+        return demands();
+    }
     private InventoryDemandPlanPort demands() {
         var providers =
                 demandProviders == null

@@ -244,9 +244,13 @@ public class CounterCampaignFence implements SmartInitializingSingleton {
         return "'0'".equals(text) ? "0" : text;
     }
 
-    private static List<String> check(String expression) {
+    static List<String> check(String expression) {
         // These two simple CHECKs have no function calls; servers add redundant grouping and charset introducers.
-        return tokens(expression).stream().filter(t -> !List.of("(", ")", "_utf8mb4").contains(t)).toList();
+        // MySQL 9.7 exposes simple charset literals with escaped delimiters in CHECK_CLAUSE.
+        // Decode only one recognized metadata form; escaped content or additional SQL still fails exact token comparison.
+        String normalized=expression.replaceAll("(?i)"+java.util.regex.Pattern.quote("_utf8mb4\\'")
+                +"([A-Z][A-Z0-9_]*)"+java.util.regex.Pattern.quote("\\'"),"_utf8mb4'$1'");
+        return tokens(normalized).stream().filter(t -> !List.of("(", ")", "_utf8mb4").contains(t)).toList();
     }
 
     private static List<String> tokens(String sql) {

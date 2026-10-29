@@ -127,6 +127,11 @@ import tools.jackson.databind.ObjectMapper;
             "ai.neargo.shop.food.config.FoodMaintenanceConfiguration"
         })
 @Import({
+    ai.neargo.shop.food.api.biz.BizFoodStockController.class,
+    ai.neargo.shop.food.api.biz.BizFoodStockReservationController.class,
+    ai.neargo.shop.food.api.biz.BizFoodStockSyncController.class,
+    ai.neargo.shop.food.api.biz.BizFoodReturnStockController.class,
+    ai.neargo.shop.food.foodclient.FoodStockClientConfiguration.class,
     FoodClientConfiguration.class,
     FoodOfflineDraftClientConfiguration.class,
     ai.neargo.shop.food.foodclient.FoodScopeSigningConfiguration.class,

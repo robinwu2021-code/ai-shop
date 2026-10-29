@@ -39,7 +39,7 @@ public class BottleCustodyAutoConfiguration {
             StoreCardQueryPort stores,
             CustomerAccountQueryPort customers,
             GoodsCatalogQueryPort goods,
-            MaterialCatalogQueryPort materials,
+            ai.neargo.shop.food.service.FoodMaterialSource materials,
             ObjectMapper json,
             ObjectProvider<Clock> clocks,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
@@ -49,7 +49,7 @@ public class BottleCustodyAutoConfiguration {
                 stores,
                 customers,
                 goods,
-                materials,
+                materials.port(),
                 json,
                 clocks.getIfAvailable(Clock::systemUTC),
                 manager);

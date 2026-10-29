@@ -26,6 +26,9 @@ import java.util.Set;
 /** Persists an exact reservation intent before calling the independent stock owner. */
 @Component
 public final class IndustryChannelStockPreparation {
+    private ai.neargo.shop.trade.stock.IndustryStockOwnerRouter stockOwners;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void stockOwnerRouter(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter router){this.stockOwners=router;}
     private final IndustryChannelOrderStore store;
     private final ObjectProvider<InventoryDemandPlanPort> inventories;
 
@@ -45,7 +48,6 @@ public final class IndustryChannelStockPreparation {
      * A current lease serializes preparation; uncertain calls recover the same original generation.
      */
     public void prepare(Reference reference, IndustryChannelOrderSourcePort source) {
-        var inventory = inventory();
         var claim = claim(reference);
         if (claim == null) return;
         var preparation = claim.preparation();
@@ -64,6 +66,7 @@ public final class IndustryChannelStockPreparation {
         }
         // A cancellation may have fenced the builder while source preparation was in flight.
         if (!owns(claim)) return;
+        var inventory=inventory(claim.preparation(),plan);
         var receipt = inventory.query(plan.scope());
         if ("ABSENT".equals(receipt.status())) {
             require(
@@ -100,6 +103,9 @@ public final class IndustryChannelStockPreparation {
                     if (current == null || "EXPIRED".equals(current.getStatus())) {
                         var next = new OrdChannelPreparation();
                         store.audit(next, ref.scope());
+                        next.setInventoryOwner(current==null
+                                ? stockOwners==null?ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.LEGACY:stockOwners.newOwner(row.getSourceSystem())
+                                : current.getInventoryOwner());
                         next.setPreparationNo(BizKey.next("OCP"));
                         next.setEntityNo(row.getEntityNo());
                         next.setStoreNo(row.getStoreNo());
@@ -315,7 +321,9 @@ public final class IndustryChannelStockPreparation {
                 require(finished.size() == 1);
                 var leaf = finished.getFirst();
                 require(
-                        component.skuNo().equals(leaf.itemRef())
+                        (ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.FOOD_LOCAL.equals(preparation.getInventoryOwner())
+                                ? component.skuNo().equals(leaf.sourceSkuNo())
+                                : leaf.sourceSkuNo()==null&&component.skuNo().equals(leaf.itemRef()))
                                 && component.unit().equals(leaf.unit())
                                 && component.physicalQuantity().compareTo(leaf.quantity()) == 0);
             }
@@ -365,6 +373,12 @@ public final class IndustryChannelStockPreparation {
         require(lines.isEmpty());
     }
 
+    private InventoryDemandPlanPort inventory(OrdChannelPreparation preparation,Plan plan) {
+        if(stockOwners!=null)return stockOwners.exact(preparation.getInventoryOwner(),plan,3);
+        if(ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.FOOD_LOCAL.equals(preparation.getInventoryOwner()))
+            throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+        return inventory();
+    }
     private InventoryDemandPlanPort inventory() {
         var providers = inventories.orderedStream().limit(2).toList();
         if (providers.size() != 1) throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);

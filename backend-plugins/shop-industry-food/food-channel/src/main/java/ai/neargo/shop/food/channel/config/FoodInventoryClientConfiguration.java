@@ -22,6 +22,24 @@ import org.springframework.context.annotation.Lazy;
 @Configuration(proxyBeanMethods = false)
 public class FoodInventoryClientConfiguration {
     @Bean @Lazy
+    ai.neargo.shop.spi.food.FoodProductionStockInternalApi foodProductionStockInternalApi(InternalHttp http) {
+        return http.client(ServiceName.PLATFORM,ai.neargo.shop.spi.food.FoodProductionStockInternalApi.class,Duration.ofSeconds(5));
+    }
+    @Bean @ConditionalOnMissingBean(ai.neargo.shop.spi.food.FoodProductionStockPort.class)
+    ai.neargo.shop.spi.food.FoodProductionStockPort coreFoodProductionStockPort(
+            ObjectProvider<ai.neargo.shop.spi.food.FoodProductionStockInternalApi> api) {
+        return new ai.neargo.shop.food.channel.port.CoreFoodProductionStockPortImpl(api::getObject);
+    }
+    @Bean @Lazy
+    ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionInternalApi inventoryFoodStockProjectionInternalApi(InternalHttp http) {
+        return http.client(ServiceName.PLATFORM,ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionInternalApi.class,Duration.ofSeconds(5));
+    }
+    @Bean @ConditionalOnMissingBean(ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.class)
+    ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort coreFoodStockProjectionPort(
+            ObjectProvider<ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionInternalApi> api) {
+        return new ai.neargo.shop.food.channel.port.CoreFoodStockProjectionPortImpl(api::getObject);
+    }
+    @Bean @Lazy
     InventoryDemandPlanInternalApi inventoryDemandPlanInternalApi(InternalHttp http) {
         return http.client(ServiceName.PLATFORM, InventoryDemandPlanInternalApi.class, Duration.ofSeconds(5));
     }

@@ -82,6 +82,16 @@ class FoodOfflineDraftNativeIT extends FoodEmbeddedStartupIT {
 
     @Test
     void actualDeviceProofFencesSignedDraftsAndReplaysOnlyRealOnlineCarts() throws Exception {
+        // Persistent isolated test clones retain earlier OD fixture devices. Expire only that
+        // fixture's lease before starting a new fixture; never change leases in the default database.
+        String isolated=System.getenv("FOOD_MYSQL_RUN_TAG");
+        if(isolated!=null&&isolated.matches("run[0-9]+[a-z]?")) {
+            String database=sql.queryForObject("SELECT DATABASE()",String.class);
+            assertThat(database).isEqualTo("food_host_smoke_"+isolated);
+            sql.update("UPDATE fnb_offline_writer SET expires_at=UTC_TIMESTAMP(3)-INTERVAL 1 SECOND "
+                    +"WHERE entity_no=? AND store_no=? AND device_no LIKE 'OD%'",ENTITY,STORE);
+        }
+
         var menu = new FoodChannelVerticalMenuFixture(context, sql, json, port).publish(null);
         String device = "OD" + key().substring(0, 12);
         var registered =

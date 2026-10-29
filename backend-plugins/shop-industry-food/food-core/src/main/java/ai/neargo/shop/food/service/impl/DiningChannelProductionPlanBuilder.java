@@ -144,6 +144,18 @@ public final class DiningChannelProductionPlanBuilder {
                             .toList();
             require(drafts.size() == 1);
             var draft = drafts.getFirst();
+            if("OPTION".equals(component.externalKind())&&draft.selectionSourceNo()!=null) {
+                var roots=frozen.original().definitions().stream().filter(d->"MODIFIER".equals(d.kind())
+                        &&draft.selectionSourceNo().equals(d.configNo())).toList();
+                require(roots.size()==1);
+                var composite=DiningChannelModifierDemand.compilePriced(source.getEntityNo(),source.getStoreNo(),component.componentRef(),
+                        component.physicalQuantity(),roots.getFirst(),frozen.original().definitions(),materials,json);
+                if(composite!=null) {
+                    require(frozen.kitchenRoutes().routes().stream().anyMatch(route->"MAKE".equals(route.taskRole())&&component.skuNo().equals(route.skuNo())));
+                    branches.add(new Branch(component.componentRef(),subOrderNo,source.getStoreNo(),"RECIPE_MATERIAL",component.physicalQuantity(),component.unit(),composite));
+                    continue;
+                }
+            }
             List<Leaf> leaves;
             String kind;
             String recipeRevision = draft.recipeRevisionNo();
@@ -267,7 +279,7 @@ public final class DiningChannelProductionPlanBuilder {
                                 && component.skuNo().equals(facts.getFirst().skuNo()));
                 var material = facts.getFirst().material();
                 require(
-                        MaterialCatalogFacts.validFact(material)
+                        ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(material)
                                 && source.getEntityNo().equals(material.entityNo())
                                 && component.unit().equals(material.baseUom())
                                 && (component.physicalQuantity().stripTrailingZeros().scale() <= 0
@@ -277,10 +289,11 @@ public final class DiningChannelProductionPlanBuilder {
                                 new Leaf(
                                         PricingSnapshotHash.of(
                                                 List.of(component.componentRef(), "SKU")),
-                                        component.skuNo(),
+                                        "FOOD_LOCAL".equals(material.dataSource())?material.itemId():component.skuNo(),
                                         component.physicalQuantity(),
                                         material.baseUom(),
-                                        material.definitionHash()));
+                                        material.definitionHash(),null,
+                                        "FOOD_LOCAL".equals(material.dataSource())?component.skuNo():null));
                 kind = "FINISHED_SKU";
                 if (!modifiers.isEmpty()) {
                     var combined = new ArrayList<Leaf>();
@@ -292,7 +305,7 @@ public final class DiningChannelProductionPlanBuilder {
                                     finished.quantity(),
                                     finished.unit(),
                                     finished.definitionHash(),
-                                    "FINISHED_SKU"));
+                                    "FINISHED_SKU",finished.sourceSkuNo()));
                     modifiers.forEach(
                             leaf ->
                                     combined.add(

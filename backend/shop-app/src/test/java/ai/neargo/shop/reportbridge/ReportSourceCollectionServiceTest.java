@@ -29,6 +29,23 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 class ReportSourceCollectionServiceTest {
+    @Test void localStockReportSelectionNeverReadsTheLegacyInventorySource() {
+        var legacy=org.mockito.Mockito.mock(ReportSourceFactsPort.class);
+        var key=new SourceKey(Owner.INVENTORY,"STOCK");org.mockito.Mockito.when(legacy.source()).thenReturn(key);
+        var calls=new AtomicInteger();
+        ai.neargo.shop.spi.food.FoodStockReportFactsPort local=q->{calls.incrementAndGet();return new SourceSnapshot(q.partition(),key,"local","1",Instant.now(),0,
+                "0".repeat(64),Coverage.EMPTY_VERIFIED,null,List.of(),List.of());};
+        var result=new ReportSourceCollectionServiceImpl(List.of(port(Owner.FOOD,false),port(Owner.CORE,false),legacy),local,true).collect(query());
+        assertThat(calls).hasValue(1);assertThat(result.stream().filter(v->v.source().equals(key)).findFirst().orElseThrow().snapshotRef()).isEqualTo("local");
+        org.mockito.Mockito.verify(legacy,org.mockito.Mockito.never()).readSnapshot(org.mockito.ArgumentMatchers.any());
+    }
+    @Test void missingLocalReportPortIsUnknownWithoutFallingBackToTheLegacySource() {
+        var legacy=org.mockito.Mockito.mock(ReportSourceFactsPort.class);var key=new SourceKey(Owner.INVENTORY,"STOCK");
+        org.mockito.Mockito.when(legacy.source()).thenReturn(key);
+        var result=new ReportSourceCollectionServiceImpl(List.of(port(Owner.FOOD,false),port(Owner.CORE,false),legacy),null,true).collect(query());
+        assertThat(result.stream().filter(v->v.source().equals(key)).findFirst().orElseThrow().coverage()).isEqualTo(Coverage.UNKNOWN);
+        org.mockito.Mockito.verify(legacy,org.mockito.Mockito.never()).readSnapshot(org.mockito.ArgumentMatchers.any());
+    }
     @Test
     void noPaymentOwnerIsUnknownRatherThanZero() {
         var service =

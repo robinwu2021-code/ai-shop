@@ -30,6 +30,10 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
         this.amendments = amendments;
     }
 
+    private Supplier<ai.neargo.shop.food.service.FoodReturnStockService> returnStock=()->null;
+    public FoodMaintenanceServiceImpl withReturnStock(Supplier<ai.neargo.shop.food.service.FoodReturnStockService> source) {
+        this.returnStock=source;return this;
+    }
     @Override
     public Report run(Task task, int limit) {
         if (task == null || limit < 1 || limit > 200) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -39,7 +43,11 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
                 yield new Report(report.completed(), report.pending());
             }
             case QUEUE_NOTICE -> new Report(require(notices, task).runDue(limit), 0);
-            case PRODUCTION_RECOVERY -> new Report(require(production, task).recover(limit), 0);
+            case PRODUCTION_RECOVERY -> {
+                int count=require(production,task).recover(limit);var returns=returnStock.get();
+                if(returns!=null)count+=returns.recover(limit);
+                yield new Report(count,0);
+            }
             case RETURN_AMENDMENT_RECOVERY -> new Report(require(amendments, task).recover(limit), 0);
         };
     }

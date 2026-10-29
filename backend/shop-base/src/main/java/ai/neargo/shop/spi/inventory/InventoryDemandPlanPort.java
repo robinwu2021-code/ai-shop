@@ -19,7 +19,11 @@ public interface InventoryDemandPlanPort {
             BigDecimal quantity,
             String unit,
             String definitionHash,
-            @JsonInclude(JsonInclude.Include.NON_NULL) String sourceKind) {
+            @JsonInclude(JsonInclude.Include.NON_NULL) String sourceKind,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String sourceSkuNo) {
+        public Leaf(String leafRef,String itemRef,BigDecimal quantity,String unit,String definitionHash,String sourceKind) {
+            this(leafRef,itemRef,quantity,unit,definitionHash,sourceKind,null);
+        }
         public Leaf(
                 String leafRef,
                 String itemRef,

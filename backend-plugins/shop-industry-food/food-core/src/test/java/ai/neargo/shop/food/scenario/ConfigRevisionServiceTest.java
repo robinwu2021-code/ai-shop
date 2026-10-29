@@ -84,19 +84,22 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
     }
     PublishConfigReq request(long version) { return new PublishConfigReq(version, NOW, null); }
 
-    @Test void componentModeCannotBePublishedBeforeOrderPathsAreReady() {
+    @Test void componentModePublicationFreezesMembersAndAuthority() {
         run((c, f) -> {
             var leaf = addon(c, "leaf-component-gate");
+            c.getBean(ConfigRevisionService.class).publishModifier(
+                    "E", "A", leaf, "actor", request(0), "publish-leaf-component");
             var combo = c.getBean(ModifierService.class).createModifier("E", "A", "actor",
                     new CreateModifierReq("combo", "COMBO", "SKU", List.of(
                             new ModifierComponentInput(leaf, BigDecimal.ONE))), "combo-component-gate");
             f.sql().update("UPDATE fnb_modifier SET inventory_mode='COMPONENTS' WHERE modifier_no=?",
                     combo.configNo());
-            assertThatThrownBy(() -> c.getBean(ConfigRevisionService.class).publishModifier(
-                    "E", "A", combo.configNo(), "actor", request(0), "blocked-component-gate"))
-                    .isInstanceOf(BizException.class);
+            var published = c.getBean(ConfigRevisionService.class).publishModifier(
+                    "E", "A", combo.configNo(), "actor", request(0), "component-mode").publication();
+            assertThat(c.getBean(ConfigRevisionService.class).getRevision("E", "A", published.revisionNo())
+                    .definitionSnapshot()).contains("COMPONENTS", leaf);
             assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class))
-                    .isZero();
+                    .isEqualTo(2);
         });
     }
 

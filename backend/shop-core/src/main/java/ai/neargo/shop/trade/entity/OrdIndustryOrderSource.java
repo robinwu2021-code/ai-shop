@@ -10,6 +10,10 @@ import lombok.Setter;
 @Setter
 @TableName("ord_industry_order_source")
 public class OrdIndustryOrderSource extends BaseEntity {
+    /** Immutable selected stock owner, independent of the legacy stock authority protocol. */
+    @com.baomidou.mybatisplus.annotation.TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private String inventoryOwner;
+
     private String orderNo;
     private String subOrderNo;
     private String entityNo;

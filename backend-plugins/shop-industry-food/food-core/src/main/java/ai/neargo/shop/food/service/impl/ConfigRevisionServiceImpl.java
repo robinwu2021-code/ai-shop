@@ -618,7 +618,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         if (current == null || current.size() != refs.size()) throw BizException.of(ErrorCode.CONFLICT);
         var facts = new TreeMap<String, MaterialFact>();
         for (var fact : current) {
-            if (!MaterialCatalogFacts.validFact(fact) || !entity.equals(fact.entityNo())
+            if (!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(fact) || !entity.equals(fact.entityNo())
                     || !refs.contains(fact.itemId()) || facts.put(fact.itemId(), fact) != null) throw bad();
         }
         for (var fact : body.materialFacts()) if (!fact.definitionHash().equals(
@@ -690,9 +690,6 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             var row = modifiers.selectOne(query);
             if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
             if (!editable(row.getStatus()) || !validKey(row.getSalesSkuNo(), 32)) throw bad();
-            // Fail closed until every original order and fulfillment path preserves the
-            // priced selection while expanding its member inventory without double issue.
-            if ("COMPONENTS".equals(row.getInventoryMode())) throw bad();
             skuNos.add(row.getSalesSkuNo());
             var children = components.selectList(Wrappers.<FnbModifierComponent>lambdaQuery()
                     .eq(FnbModifierComponent::getEntityNo, entity).eq(FnbModifierComponent::getComboNo, number)
@@ -983,7 +980,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                 if (current == null || current.size() != refs.size()) throw BizException.of(ErrorCode.CONFLICT);
                 var facts = new TreeMap<String, MaterialFact>();
                 for (var fact : current) {
-                    if (!MaterialCatalogFacts.validFact(fact)
+                    if (!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(fact)
                             || !entity.equals(fact.entityNo()) || !refs.contains(fact.itemId())
                             || facts.put(fact.itemId(), fact) != null) throw bad();
                 }

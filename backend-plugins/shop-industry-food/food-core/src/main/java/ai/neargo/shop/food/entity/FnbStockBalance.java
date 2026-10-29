@@ -15,6 +15,8 @@ public class FnbStockBalance extends BaseEntity {
     private String storeNo;
     private String balanceNo;
     private String itemNo;
+    private String trackingMode;
+    private String status;
     private BigDecimal onHand;
     private BigDecimal reservedQty;
 }

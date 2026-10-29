@@ -159,7 +159,7 @@ import tools.jackson.databind.ObjectMapper;
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = {"org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
         "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"})
-@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class, FoodOperationsConfiguration.class})
+@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class, FoodOperationsConfiguration.class, FoodMaterialSourceConfiguration.class})
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {
@@ -208,7 +208,7 @@ public class FoodAutoConfiguration {
             ObjectProvider<GoodsCatalogQueryPort> goods, ObjectProvider<SpecValueCatalogQueryPort> specs,
             @Value("${shop.food.bundle-publication-enabled:false}") boolean bundlePublicationEnabled,
             RecipeMapper recipeHeads, RecipeLineMapper recipeLines, RecipeAdjustmentMapper recipeAdjustments,
-            DishOptionGroupMapper recipeBindings, ObjectProvider<MaterialCatalogQueryPort> materialCatalog,
+            DishOptionGroupMapper recipeBindings, ai.neargo.shop.food.service.FoodMaterialSource materialCatalog,
             @Value("${shop.food.recipe-publication-enabled:false}") boolean recipePublicationEnabled,
             ObjectProvider<MenuWorkingDefinitionAccess> workingMenus, DishMapper dishes,
             MenuChannelBindingMapper channelBindings, StationMapper stationHeads, SkuStationMapper stationRoutes,
@@ -223,7 +223,7 @@ public class FoodAutoConfiguration {
                         () -> bundlePublicationEnabled),
                 new RecipePublicationSource(recipeHeads, recipeLines, recipeAdjustments, items, groups,
                         recipeBindings, () -> recipePublicationEnabled, json),
-                new LazyMaterialCatalogQueryPortImpl(materialCatalog),
+                materialCatalog.port(),
                 menuPublicationEnabled ? new MenuPublicationSource(new MenuWorkingDefinitionAccess() {
                     @Override
                     public MenuConfigResultVO capture(String entity, String store, String menu, boolean lock) {
@@ -317,11 +317,11 @@ public class FoodAutoConfiguration {
             RecipeAdjustmentMapper adjustments, OptionGroupItemMapper optionItems, OptionGroupMapper optionGroups,
             IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager,
-            ObjectProvider<GoodsCatalogQueryPort> catalogs, ObjectProvider<MaterialCatalogQueryPort> materials,
+            ObjectProvider<GoodsCatalogQueryPort> catalogs, ai.neargo.shop.food.service.FoodMaterialSource materials,
             CatalogCurrencyService currencies) {
         GoodsCatalogQueryPort catalog = new LazyGoodsCatalogQueryPortImpl(catalogs);
         return new RecipeServiceImpl(heads, lines, actions, idem, publisher, json, manager, catalog,
-                new LazyMaterialCatalogQueryPortImpl(materials),
+                materials.port(),
                 adjustments, optionItems, optionGroups, currencies);
     }
 

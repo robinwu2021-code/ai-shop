@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "owner": "shop-merchant/primary",
-  "platformVersion": 607,
-  "migrationScript": "V607__resource_actual_occupation.sql",
+  "platformVersion": 621,
+  "migrationScript": "V621__resource_actual_occupation.sql",
   "flywayChecksum": -827315647,
   "migrationSha256": "42e51c9ec7bf33cbfdf07e34936b944e62bb223efe893d0c896aa7ff234b8c9d",
   "ownerIdentity": [

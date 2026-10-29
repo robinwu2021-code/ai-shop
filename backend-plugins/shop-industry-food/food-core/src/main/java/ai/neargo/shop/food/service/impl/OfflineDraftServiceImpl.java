@@ -389,6 +389,12 @@ public final class OfflineDraftServiceImpl implements OfflineDraftService {
         id(r.draftNo());
         var party = identities.authenticateDeviceSession(e, s, r.access());
         require(d.equals(party.deviceNo()));
+        if(!(carts instanceof ai.neargo.shop.food.port.OfflineCartReplayPort replayCarts))
+            throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        var createCart=replayCarts.prepareOfflineCreate(s,r.access(),
+                new CreateCustomerCartReq(null,party.sessionNo(),
+                        json.readValue(required(db.one("draft",e,s,"draft_no",r.draftNo(),false)).text("payload_json"),Envelope.class).fulfillment(),null),
+                "OFFLINE_CREATE:"+r.draftNo());
         try {
             var start =
                     atomic(
@@ -420,16 +426,7 @@ public final class OfflineDraftServiceImpl implements OfflineDraftService {
                                 identities.authenticateDeviceSession(e, s, r.access());
                                 db.begin(e, s, r.draftNo(), party.sessionNo());
                                 if (row.text("cart_no") == null) {
-                                    var cart =
-                                            carts.customerCreateCart(
-                                                    s,
-                                                    r.access(),
-                                                    new CreateCustomerCartReq(
-                                                            null,
-                                                            party.sessionNo(),
-                                                            envelope.fulfillment(),
-                                                            null),
-                                                    "OFFLINE_CREATE:" + r.draftNo());
+                                    var cart = createCart.get();
                                     db.cart(e, s, r.draftNo(), cart.cart().cartNo());
                                 }
                                 return required(
@@ -442,6 +439,11 @@ public final class OfflineDraftServiceImpl implements OfflineDraftService {
                     index < envelope.lines().size();
                     index++) {
                 final int step = index;
+                var cart=carts.customerGetCart(start.text("cart_no"),r.access());
+                var line=envelope.lines().get(step);
+                String ownerKey="OFFLINE_LINE:"+r.draftNo()+":"+step;
+                var applyLine=replayCarts.prepareOfflineReplace(start.text("cart_no"),line.sourceLineRef(),r.access(),
+                        new ReplaceCartLineReq(line,cart.cart().version()),ownerKey);
                 boolean applied =
                         atomic(
                                 () -> {
@@ -467,18 +469,7 @@ public final class OfflineDraftServiceImpl implements OfflineDraftService {
                                     require(live.deviceGeneration() == envelope.deviceGeneration());
                                     if (row.number("applied_lines") > step) return true;
                                     require(row.number("applied_lines") == step);
-                                    var cart =
-                                            carts.customerGetCart(row.text("cart_no"), r.access());
-                                    String ownerKey = "OFFLINE_LINE:" + r.draftNo() + ":" + step;
-                                    var line = envelope.lines().get(step);
-                                    var result =
-                                            carts.customerReplaceLine(
-                                                    row.text("cart_no"),
-                                                    line.sourceLineRef(),
-                                                    r.access(),
-                                                    new ReplaceCartLineReq(
-                                                            line, cart.cart().version()),
-                                                    ownerKey);
+                                    var result = applyLine.get();
                                     var progress = stamp(e, s, d);
                                     progress.put("draft_no", r.draftNo());
                                     progress.put("line_index", step);

@@ -23,8 +23,12 @@ public final class ReportSourceCollectionServiceImpl implements ReportSourceColl
     private static final SourceKey FOOD = new SourceKey(Owner.FOOD, "ORDER");
     private static final SourceKey CORE = new SourceKey(Owner.CORE, "ORDER");
     private final Map<SourceKey, ReportSourceFactsPort> ports;
+    private final ai.neargo.shop.spi.food.FoodStockReportFactsPort foodStock;
+    private final boolean localStock;
 
-    public ReportSourceCollectionServiceImpl(List<ReportSourceFactsPort> owners) {
+    public ReportSourceCollectionServiceImpl(List<ReportSourceFactsPort> owners) {this(owners,null,false);}
+    public ReportSourceCollectionServiceImpl(List<ReportSourceFactsPort> owners,ai.neargo.shop.spi.food.FoodStockReportFactsPort foodStock,boolean localStock) {
+        this.foodStock=foodStock;this.localStock=localStock;
         Map<SourceKey, ReportSourceFactsPort> found = new HashMap<>();
         for (var owner : owners)
             if (found.putIfAbsent(owner.source(), owner) != null)
@@ -70,7 +74,7 @@ public final class ReportSourceCollectionServiceImpl implements ReportSourceColl
                         new SourceKey(Owner.EXPENSE, "EXPENSE"),
                         new SourceKey(Owner.FOOD, "KITCHEN"),
                         new SourceKey(Owner.FOOD, "STAFF"))) {
-            if (!ports.containsKey(key))
+            if (!ports.containsKey(key)&&!(localStock&&key.equals(new SourceKey(Owner.INVENTORY,"STOCK"))))
                 snapshots.add(unavailable(query, key, "OWNER_SOURCE_NOT_AVAILABLE"));
             else {
                 try {
@@ -104,8 +108,10 @@ public final class ReportSourceCollectionServiceImpl implements ReportSourceColl
 
     private SourceSnapshot read(SourceKey key, SourceQuery q) {
         var port = ports.get(key);
-        if (port == null) throw new IllegalStateException("REPORT_REQUIRED_OWNER_NOT_AVAILABLE");
-        var result = port.readSnapshot(q);
+        boolean local=localStock&&key.equals(new SourceKey(Owner.INVENTORY,"STOCK"));
+        if(local&&foodStock==null)throw new IllegalStateException("REPORT_LOCAL_STOCK_SOURCE_NOT_CONFIGURED");
+        if (!local&&port == null) throw new IllegalStateException("REPORT_REQUIRED_OWNER_NOT_AVAILABLE");
+        var result=local?foodStock.readSnapshot(q):port.readSnapshot(q);
         if (!result.partition().equals(q.partition())
                 || !result.source().equals(key)
                 || result.rowCount() > q.rowLimit())

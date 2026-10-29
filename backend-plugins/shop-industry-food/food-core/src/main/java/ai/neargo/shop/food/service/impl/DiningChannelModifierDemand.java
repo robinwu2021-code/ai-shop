@@ -61,6 +61,7 @@ public final class DiningChannelModifierDemand {
             if (!"COMPONENTS".equals(ai.neargo.shop.food.policy.ModifierInventoryMode.resolve(
                     body.modifier().kind(), body.modifier().data().salesSkuNo(),
                     body.modifier().data().inventoryMode()))) continue;
+            if(body.modifier().data().salesSkuNo()!=null)continue; // A priced selection owns its own component branch.
             if (body.modifier().data().components().isEmpty()) continue;
             BigDecimal quantity = mainQuantity.multiply(selected.qty());
             InventoryDemandPlanFacts.quantity(quantity, false);
@@ -80,6 +81,15 @@ public final class DiningChannelModifierDemand {
         return List.copyOf(result);
     }
 
+    /** null denotes a normal finished-SKU branch; a composite uses only its frozen member leaves. */
+    public static List<Leaf> compilePriced(String entity,String store,String componentRef,BigDecimal quantity,
+            Definition root,List<Definition> definitions,MaterialCatalogQueryPort materials,ObjectMapper json) {
+        var snapshot=body(root,json);
+        if(!"COMPONENTS".equals(ai.neargo.shop.food.policy.ModifierInventoryMode.resolve(snapshot.modifier().kind(),
+                snapshot.modifier().data().salesSkuNo(),snapshot.modifier().data().inventoryMode())))return null;
+        var result=new ArrayList<Leaf>();expand(entity,store,componentRef,root,quantity,definitions,materials,json,new HashSet<>(),0,result);
+        require(!result.isEmpty());return List.copyOf(result);
+    }
     private static PublicationSnapshot body(Definition definition, ObjectMapper json) {
         require(
                 "MODIFIER".equals(definition.kind())
@@ -130,7 +140,7 @@ public final class DiningChannelModifierDemand {
             require(found != null && found.size() == 1 && sku.equals(found.getFirst().skuNo()));
             var material = found.getFirst().material();
             require(
-                    MaterialCatalogFacts.validFact(material)
+                    ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(material)
                             && entity.equals(material.entityNo())
                             && (quantity.stripTrailingZeros().scale() <= 0
                                     || Integer.valueOf(1).equals(material.weighed())));

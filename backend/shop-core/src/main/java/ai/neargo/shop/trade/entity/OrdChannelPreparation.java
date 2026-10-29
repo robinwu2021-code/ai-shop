@@ -14,6 +14,10 @@ import java.time.LocalDateTime;
 @Setter
 @TableName("ord_channel_preparation")
 public class OrdChannelPreparation extends BaseEntity {
+    /** Immutable selected stock owner, independent of the legacy stock authority protocol. */
+    @com.baomidou.mybatisplus.annotation.TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private String inventoryOwner;
+
     private String preparationNo;
     private String entityNo;
     private String storeNo;

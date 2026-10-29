@@ -821,7 +821,7 @@ class FoodServerPrimaryDatabaseTest {
                                                         Integer.class))
                                         .isZero();
                                 assertThat(context.getBean(FoodSchemaReady.class).version())
-                                        .isEqualTo("33");
+                                        .isEqualTo("37");
                                 var extraTables = new ArrayList<String>();
                                 for (String code : List.of("T03", "T04"))
                                     extraTables.add(

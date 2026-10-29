@@ -34,7 +34,7 @@ import javax.sql.DataSource;
 @Component
 public final class ResourceOccupationSchemaVerifier {
     private static final String DESCRIPTOR = "META-INF/shop/resource-actual-occupation-schema.json";
-    private static final String MIGRATION = "db/migration/V607__resource_actual_occupation.sql";
+    private static final String MIGRATION = "db/migration/V621__resource_actual_occupation.sql";
     private static final Set<String> TABLES = Set.of(
             "mch_resource_occupation", "mch_resource_occupation_unit",
             "mch_resource_occupation_segment", "mch_resource_occupation_bucket");
@@ -51,7 +51,7 @@ public final class ResourceOccupationSchemaVerifier {
         this.historySchema = historySchema == null || historySchema.isBlank() ? null : historySchema;
     }
 
-    /** ABSENT is legal only when neither a V607 marker nor any new owner table exists. */
+    /** ABSENT is legal only when neither a V621 marker nor any new owner table exists. */
     public enum Installation {
         ABSENT, UNSUPPORTED, INSTALLED, CORRUPT
     }
@@ -101,7 +101,7 @@ public final class ResourceOccupationSchemaVerifier {
             }
             List<Map<String, Object>> markers = tableExists(connection, schema, historyTable)
                     ? query(connection, "SELECT version, script, type, checksum, success FROM "
-                            + quoted(schema) + "." + quoted(historyTable) + " WHERE version=?", "607")
+                            + quoted(schema) + "." + quoted(historyTable) + " WHERE version=?", "621")
                     : List.of();
             JsonNode contract = descriptor();
             int altered = 0;
@@ -129,7 +129,7 @@ public final class ResourceOccupationSchemaVerifier {
             require(present == 4 && altered == expectedAltered && markers.size() == 1
                     && installedTriggers == expectedTriggers.size());
             Map<String, Object> marker = markers.getFirst();
-            require("V607__resource_actual_occupation.sql".equals(text(marker, "script"))
+            require("V621__resource_actual_occupation.sql".equals(text(marker, "script"))
                     && "SQL".equals(text(marker, "type")) && success(marker.get("success"))
                     && marker.get("checksum") instanceof Number checksum
                     && checksum.intValue() == contract.path("flywayChecksum").asInt());
@@ -160,7 +160,7 @@ public final class ResourceOccupationSchemaVerifier {
         try (InputStream stream = descriptors.getFirst().openStream()) {
             contract = JsonMapper.builder().build().readTree(stream);
         }
-        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 607
+        require(contract.path("schemaVersion").asInt() == 1 && contract.path("platformVersion").asInt() == 621
                 && "shop-merchant/primary".equals(contract.path("owner").asString())
                 && contract.path("tables").size() == 4 && contract.path("commonTables").size() == 4
                 && contract.path("triggers").size() == 14);

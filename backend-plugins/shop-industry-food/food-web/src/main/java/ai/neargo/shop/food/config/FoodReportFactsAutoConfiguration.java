@@ -20,6 +20,7 @@ import java.time.Duration;
 
 /** Facts/day/correction transport is required by standalone workers as well as API instances. */
 @AutoConfiguration
+@org.springframework.context.annotation.Import(ai.neargo.shop.food.foodclient.FoodScopeSigningConfiguration.class)
 @ConditionalOnFoodWebEnabled
 @ConditionalOnProperty(name = "shop.food.deployment", havingValue = "standalone")
 @ConditionalOnProperty(
@@ -28,6 +29,12 @@ import java.time.Duration;
 @ConditionalOnBean(InternalHttp.class)
 @Profile({"api", "ops", "worker"})
 public class FoodReportFactsAutoConfiguration {
+    @Bean @ConditionalOnMissingBean(ai.neargo.shop.spi.food.FoodStockReportFactsPort.class)
+    @ConditionalOnProperty(name="shop.food.local-stock.enabled",havingValue="true")
+    ai.neargo.shop.spi.food.FoodStockReportFactsPort remoteFoodStockReportFactsPort(InternalHttp http) {
+        var api=http.client(ServiceName.FOOD,ai.neargo.shop.food.spi.FoodStockReportInternalApi.class,Duration.ofSeconds(15));
+        return query->ai.neargo.svc.client.ServiceCalls.call(ServiceName.FOOD,()->api.facts(query));
+    }
     @Bean
     @ConditionalOnMissingBean(DiningKitchenReportFactsService.class)
     DiningKitchenReportFactsService remoteDiningKitchenReportFactsService(InternalHttp http) {

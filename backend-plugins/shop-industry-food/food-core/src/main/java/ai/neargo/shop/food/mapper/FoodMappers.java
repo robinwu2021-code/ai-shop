@@ -355,6 +355,18 @@ public final class FoodMappers {
     }
 
     /** Explicit owner predicates are retained even for internal calls without a request data scope. */
+    public interface StockSyncConfigMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncConfig> { }
+    public interface StockSyncMappingMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncMapping> { }
+    public interface StockSyncItemStateMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncItemState> { }
+    public interface StockSyncDeliveryMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncDelivery> { }
+    public interface StockSyncReconciliationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncReconciliation> { }
+    public interface StockSyncDifferenceMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncDifference> { }
+    public interface StockItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockItem> { }
+    public interface StockReservationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockReservation> { }
+    public interface StockReservationItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockReservationItem> { }
+    public interface StockCommandMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockCommand> { }
+    public interface StockMovementMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockMovement> { }
+
     public interface StockBalanceMapper extends BaseMapper<FnbStockBalance> {
         @Select("SELECT * FROM fnb_stock_balance WHERE tenant_no='MAIN' AND entity_no=#{entity} "
                 + "AND store_no=#{store} AND item_no=#{item} AND deleted=0 FOR UPDATE")
@@ -439,4 +451,5 @@ public final class FoodMappers {
     }
     public interface ProductionConsumptionLineMapper extends BaseMapper<FnbProductionConsumptionLine> { }
     public interface QueueTicketMapper extends BaseMapper<FnbQueueTicket> { }
+    public interface ReturnStockDispositionMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbReturnStockDisposition> {}
 }

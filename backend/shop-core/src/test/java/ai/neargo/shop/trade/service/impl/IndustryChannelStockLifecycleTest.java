@@ -106,6 +106,9 @@ class IndustryChannelStockLifecycleTest {
                         new FileSystemResource(
                                 "../shop-app/src/main/resources/db/migration/V613__channel_collection_admission_history.sql"))
                 .execute(dataSource);
+        // This narrow fixture owns only channel tables; mirror its V618 owner column.
+        new org.springframework.jdbc.core.JdbcTemplate(dataSource).execute(
+                "ALTER TABLE ord_channel_preparation ADD COLUMN inventory_owner VARCHAR(32) NULL");
         var configuration = new MybatisConfiguration();
         configuration.setMapUnderscoreToCamelCase(true);
         configuration.addMapper(ChannelImportMapper.class);

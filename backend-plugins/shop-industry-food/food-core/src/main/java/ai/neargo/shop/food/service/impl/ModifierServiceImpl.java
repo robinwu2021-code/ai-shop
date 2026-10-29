@@ -274,8 +274,6 @@ public class ModifierServiceImpl implements ModifierService {
             } catch (IllegalArgumentException invalid) {
                 throw BizException.of(ErrorCode.BAD_REQUEST);
             }
-            // Do not allow new member-based configurations until all order paths honor them.
-            if ("COMPONENTS".equals(input.inventoryMode())) throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         return new CreateModifierReq(input.name().trim(), input.kind(), input.salesSkuNo(), parts,
                 input.inventoryMode());

@@ -124,7 +124,9 @@ class DiningChannelModifierDemandTest {
                         "REAL_MATERIAL", "E", "Milk", "ML", 1, "OWN"));
         when(materials.getSkuMaterials("E", "S", List.of("REAL_SKU")))
                 .thenReturn(List.of(new MaterialCatalogQueryPort.SkuMaterialFact("REAL_SKU", material)));
-        var result = compile(List.of(root, leaf));
+        assertThat(compile(List.of(root, leaf))).isEmpty();
+        var result = DiningChannelModifierDemand.compilePriced("E", "S", "OPTION", new BigDecimal("1.25"),
+                root, List.of(root, leaf), materials, json);
         assertThat(result).singleElement().satisfies(item -> {
             assertThat(item.itemRef()).isEqualTo("REAL_MATERIAL");
             assertThat(item.quantity()).isEqualByComparingTo("2.5");

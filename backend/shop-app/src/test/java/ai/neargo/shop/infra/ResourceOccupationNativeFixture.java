@@ -44,13 +44,13 @@ public final class ResourceOccupationNativeFixture {
             scripts = Files.createTempDirectory("resource-native-forward-");
             for (String name : List.of("V604__manual_service_execution_authority.sql",
                     "V605__execution_stock_retention.sql", "V606__execution_retention_route.sql",
-                    "V607__resource_actual_occupation.sql")) {
+                    "V621__resource_actual_occupation.sql")) {
                 try (var input = new ClassPathResource("db/migration/" + name).getInputStream()) {
                     Files.copy(input, scripts.resolve(name));
                 }
             }
             Flyway.configure().dataSource(source).baselineOnMigrate(true).baselineVersion("595")
-                    .locations("filesystem:" + scripts).target("607").load().migrate();
+                    .locations("filesystem:" + scripts).target("621").load().migrate();
         } catch (IOException | SQLException failure) {
             throw new IllegalStateException("native forward fixture source unavailable", failure);
         } finally {

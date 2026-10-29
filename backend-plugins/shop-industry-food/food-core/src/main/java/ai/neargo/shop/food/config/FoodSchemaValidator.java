@@ -77,8 +77,8 @@ public final class FoodSchemaValidator {
         }
         var current = flyway.info().current();
         require(
-                current != null && "33".equals(current.getVersion().getVersion()),
-                "food migration version must be 33");
+                current != null && "37".equals(current.getVersion().getVersion()),
+                "food migration version must be 37");
         try (var connection = source.getConnection();
                 var column =
                         connection
@@ -162,6 +162,8 @@ public final class FoodSchemaValidator {
             for (String table : FoodLocalStockSchemaContract.CHECKS.keySet())
                 if (!FoodLocalStockSchemaContract.hasExpectedCheck(table, clauses.get(table)))
                     missing.add(table + ".check_constraint");
+            if (!FoodLocalStockSchemaContract.hasReturnedCheck(clauses.get("fnb_stock_reservation_item")))
+                missing.add("fnb_stock_reservation_item.returned_check_constraint");
         } catch (SQLException failure) {
             throw new IllegalStateException("Cannot inspect restaurant stock contract (SQLState="
                     + failure.getSQLState() + ")", failure);
@@ -300,6 +302,12 @@ public final class FoodSchemaValidator {
         contracts.put(
                 "fnb_offline_audit",
                 List.of("receipt_no", "entity_no,store_no,device_no,operation_kind,request_key"));
+        contracts.put("fnb_stock_sync_config", List.of("tenant_no,entity_no,store_no,target_system"));
+        contracts.put("fnb_stock_sync_mapping", List.of("tenant_no,entity_no,store_no,item_no,target_system"));
+        contracts.put("fnb_stock_sync_item_state", List.of("tenant_no,entity_no,store_no,item_no"));
+        contracts.put("fnb_stock_sync_delivery", List.of("sync_no", "event_no", "tenant_no,entity_no,store_no,item_no,generation,source_version"));
+        contracts.put("fnb_stock_sync_reconciliation", List.of("reconciliation_no", "tenant_no,entity_no,store_no,operation_key"));
+        contracts.put("fnb_stock_sync_difference", List.of("difference_no", "tenant_no,entity_no,store_no,reconciliation_no,item_no,difference_type"));
         contracts.put("fnb_stock_item", List.of("item_no", "tenant_no,entity_no,sku_no"));
         contracts.put("fnb_stock_balance", List.of("balance_no", "tenant_no,entity_no,store_no,item_no"));
         contracts.put("fnb_stock_reservation", List.of("reservation_no",
@@ -307,6 +315,8 @@ public final class FoodSchemaValidator {
                 "tenant_no,entity_no,store_no,operation_key"));
         contracts.put("fnb_stock_reservation_item",
                 List.of("tenant_no,entity_no,store_no,reservation_no,leaf_ref"));
+        contracts.put("fnb_return_stock_disposition", List.of("operation_no",
+                "tenant_no,entity_no,store_no,operation_key"));
         contracts.put("fnb_stock_command", List.of("command_no",
                 "tenant_no,entity_no,store_no,action,operation_key"));
         contracts.put("fnb_stock_movement", List.of("movement_no",
@@ -1493,6 +1503,20 @@ public final class FoodSchemaValidator {
                     "action", "quantity", "base_unit", "on_hand_before", "on_hand_after", "reserved_before", "reserved_after",
                     "reason_code", "reason_detail"));
             expected.put("fnb_stock_movement", stockMovement);
+            expected.get("fnb_stock_reservation").addAll(List.of("source_plan_hash", "protocol_version"));
+            expected.get("fnb_stock_reservation_item").addAll(List.of("last_issue_movement_no", "last_issue_command_no", "tracking_mode"));
+            expected.put("fnb_return_stock_disposition",new HashSet<>(List.of("tenant_no","entity_no","store_no","operation_no","return_no","return_item_no","production_event_no","dish_qty","disposition","operation_key","request_hash","request_snapshot","native_snapshot","status","stock_command_no","result_snapshot","last_error_code")));
+            expected.get("fnb_stock_item").add("weighed");
+            expected.get("fnb_stock_command").add("request_snapshot");
+            expected.get("fnb_stock_balance").addAll(List.of("tracking_mode", "status"));
+            expected.get("fnb_stock_reservation_item").addAll(List.of("definition_snapshot", "returned_qty"));
+            expected.get("fnb_stock_movement").add("original_movement_no");
+            expected.put("fnb_stock_sync_config", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "target_system", "status", "generation", "baseline_cursor", "baseline_end_id", "next_attempt_at", "last_error_code", "enabled_at", "disabled_at")));
+            expected.put("fnb_stock_sync_mapping", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "item_no", "target_system", "target_owner_ref", "target_location_ref", "target_item_ref", "source_unit", "target_unit", "mapping_revision", "status")));
+            expected.put("fnb_stock_sync_item_state", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "item_no", "source_version", "snapshot_hash")));
+            expected.put("fnb_stock_sync_delivery", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "sync_no", "event_no", "item_no", "generation", "source_version", "payload_hash", "operation_key", "payload_snapshot", "status", "attempts", "next_attempt_at", "last_error_code", "ack_ref")));
+            expected.put("fnb_stock_sync_reconciliation", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "reconciliation_no", "generation", "operation_key", "request_hash", "status", "cursor_id", "end_id", "request_snapshot", "checked_count", "difference_count", "started_at", "finished_at", "last_error_code")));
+            expected.put("fnb_stock_sync_difference", new TreeSet<>(List.of("id", "tenant_no", "entity_no", "store_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted", "difference_no", "reconciliation_no", "item_no", "generation", "source_version", "target_version", "difference_type", "source_snapshot", "target_snapshot", "resolution_status")));
             return expected;
         } catch (IllegalStateException ex) {
             throw ex;

@@ -51,6 +51,9 @@ import java.util.Set;
 @Service
 public final class IndustryChannelOrderServiceImpl implements IndustryChannelOrderService {
     private final IndustryChannelOrderStore store;
+    private ai.neargo.shop.trade.stock.IndustryStockOwnerRouter stockOwners;
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    public void stockOwnerRouter(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter router){this.stockOwners=router;}
     private final IndustryChannelStockPreparation stock;
     private final IndustryChannelOrderCommitter committer;
     private final ObjectProvider<InventoryDemandPlanPort> inventories;
@@ -190,7 +193,7 @@ public final class IndustryChannelOrderServiceImpl implements IndustryChannelOrd
                             return next;
                         });
         var plan = store.query(() -> plan(store.required(ref, false)));
-        var inventory = inventory();
+        var inventory = inventory(ref,plan);
         var receipt = inventory.query(plan.scope());
         IndustryChannelStockPreparation.validateReceipt(plan, receipt);
         if ("HELD".equals(receipt.status())) {
@@ -257,7 +260,7 @@ public final class IndustryChannelOrderServiceImpl implements IndustryChannelOrd
         var plan = store.query(() -> plan(claim));
         Object stockProof = null;
         if (plan != null) {
-            var inventory = inventory();
+            var inventory = inventory(ref,plan);
             var receipt = inventory.query(plan.scope());
             if (!"ABSENT".equals(receipt.status())) {
                 IndustryChannelStockPreparation.validateReceipt(plan, receipt);
@@ -535,6 +538,14 @@ public final class IndustryChannelOrderServiceImpl implements IndustryChannelOrd
                                 .contains(collection.collection()));
     }
 
+    private InventoryDemandPlanPort inventory(Reference ref,Plan plan) {
+        var preparation=store.query(()->store.preparation(store.required(ref,false),false));
+        if(preparation==null)throw BizException.of(ErrorCode.CONFLICT);
+        if(stockOwners!=null)return stockOwners.exact(preparation.getInventoryOwner(),plan,3);
+        if(ai.neargo.shop.trade.stock.IndustryStockOwnerPolicy.FOOD_LOCAL.equals(preparation.getInventoryOwner()))
+            throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+        return inventory();
+    }
     private InventoryDemandPlanPort inventory() {
         var providers = inventories.orderedStream().limit(2).toList();
         if (providers.size() != 1) throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);

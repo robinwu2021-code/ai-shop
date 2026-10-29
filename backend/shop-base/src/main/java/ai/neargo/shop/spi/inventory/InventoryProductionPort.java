@@ -59,7 +59,12 @@ public interface InventoryProductionPort {
         }
     }
 
-    record Reverse(Command original, String reverseEventNo, String reason) {}
+    record Reverse(Command original, String reverseEventNo, String reason,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String disposition,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String reasonCode,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String actorNo) {
+        public Reverse(Command original,String reverseEventNo,String reason){this(original,reverseEventNo,reason,null,null,null);}
+    }
 
     record IssuedLine(
             String leafRef,

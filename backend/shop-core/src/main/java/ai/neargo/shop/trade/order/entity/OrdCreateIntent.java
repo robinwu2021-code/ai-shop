@@ -12,6 +12,10 @@ import lombok.Setter;
 @Setter
 @TableName("ord_create_intent")
 public class OrdCreateIntent extends BaseEntity {
+    /** Immutable selected stock owner, independent of the legacy stock authority protocol. */
+    @com.baomidou.mybatisplus.annotation.TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private String inventoryOwner;
+
     /** Historical customer identity never changes when the guest later claims an account. */
     @TableField(updateStrategy = FieldStrategy.NEVER)
     private String customerKind = "USER";

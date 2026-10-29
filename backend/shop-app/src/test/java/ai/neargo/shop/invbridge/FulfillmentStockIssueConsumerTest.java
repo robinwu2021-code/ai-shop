@@ -62,6 +62,25 @@ class FulfillmentStockIssueConsumerTest {
         return new InventoryReservationPort.Snapshot(scope,"RES",state,3,paid,
                 List.of(new InventoryReservationPort.ReservedLine("SKU",quantity,"SUB-1")));
     }
+    @Test void completedLocalExactOrderIsVerifiedWithoutLegacyStockCallsOrAnotherIssue() {
+        setup(3,false);var json=new ObjectMapper();String hash="0".repeat(64);
+        var leaf=new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Leaf("L","MATERIAL",new java.math.BigDecimal("2"),"EA",hash,null,"SKU");
+        var branch=new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Branch("C","SUB-1","S","FINISHED_SKU",new java.math.BigDecimal("2"),"EA",List.of(leaf));
+        var draft=new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan(scope,"PLAN","",List.of(branch));
+        var plan=new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan(scope,"PLAN",ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts.hash(draft),draft.branches());
+        var source=new OrdIndustryOrderSource();source.setInventoryOwner("FOOD_LOCAL");source.setOrderMode("POSTPAY");source.setStatus("ACCEPTED");
+        source.setDemandPlanNo(plan.planNo());source.setDemandPlanHash(plan.planHash());source.setDemandPlanSnapshot(json.writeValueAsString(plan));
+        when(sources.selectOne(any())).thenReturn(source);
+        var router=mock(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter.class);
+        var local=mock(ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.class);
+        when(router.exact("FOOD_LOCAL",plan,3)).thenReturn(local);
+        var progress=new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Progress("L","C","SUB-1","FINISHED_SKU","MATERIAL",
+                new java.math.BigDecimal("2"),new java.math.BigDecimal("2"),java.math.BigDecimal.ZERO,"EA",hash,"DOC","MOV",null,null,"UNKNOWN");
+        when(local.query(scope)).thenReturn(new ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Receipt(scope,"PLAN",plan.planHash(),"ACCEPTED_UNPAID",3,null,List.of(progress)));
+        consumer.routeIndustryStock(router);consumer.consume(event);consumer.consume(event);
+        verifyNoInteractions(stock,inventory,providers);verify(local,never()).issueTo(any(),any(),any(),any(),any());
+        org.assertj.core.api.Assertions.assertThat(consumer.externalWorkflow()).isTrue();
+    }
     @Test void handoffFirstVerifiesOriginalPaymentThenAllocatesAndIssues() {
         setup(2,true); consumer.consume(event);
         var ordered=inOrder(stock); ordered.verify(stock).allocatePaid("PAY-1");
@@ -78,12 +97,15 @@ class FulfillmentStockIssueConsumerTest {
         var locks=mock(ai.neargo.shop.product.mapper.ProductMappers.StockLockMapper.class);
         var stores=mock(ai.neargo.shop.product.mapper.ProductMappers.StoreStockMapper.class);
         // The original owner reads only ALLOCATED locks: an already issued/released original has none.
-        when(locks.selectList(any())).thenReturn(List.of());
+        when(locks.lockFulfillmentCurrent("SUB-1")).thenReturn(List.of());
         var original=new ai.neargo.shop.product.port.StockPortImpl(sku,locks,stores,
                 mock(ai.neargo.shop.product.service.StoreStockReader.class));
+        var guard=mock(ai.neargo.shop.product.policy.ExecutionStockRetentionGuard.class);
+        original.setRetentionGuard(guard);
         var bridge=new FulfillmentStockIssueConsumer(original,new ObjectMapper(),children,parents,sources,items,providers);
         bridge.consume(event); bridge.consume(event);
-        verify(locks,org.mockito.Mockito.times(2)).selectList(any());
+        verify(locks,org.mockito.Mockito.times(2)).lockFulfillmentCurrent("SUB-1");
+        verify(guard,org.mockito.Mockito.times(2)).checkLocked(List.of());
         verifyNoInteractions(sku,stores,inventory); verify(locks,never()).updateById(any(ai.neargo.shop.product.entity.PrdStockLock.class));
     }
     @Test void lifecycleThreeRefundedChildStillRequiresReconciliation() {

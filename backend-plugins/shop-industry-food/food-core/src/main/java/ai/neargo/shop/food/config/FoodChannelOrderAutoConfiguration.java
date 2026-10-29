@@ -77,8 +77,8 @@ public class FoodChannelOrderAutoConfiguration {
 
     @Bean
     DiningChannelProductionPlanBuilder diningChannelProductionPlanBuilder(
-            DiningChannelSourceStore store, MaterialCatalogQueryPort materials, ObjectMapper json) {
-        return new DiningChannelProductionPlanBuilder(store, materials, json);
+            DiningChannelSourceStore store, ai.neargo.shop.food.service.FoodMaterialSource materials, ObjectMapper json) {
+        return new DiningChannelProductionPlanBuilder(store, materials.port(), json);
     }
 
     @Bean

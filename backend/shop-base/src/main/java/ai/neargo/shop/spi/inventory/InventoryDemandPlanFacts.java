@@ -82,6 +82,9 @@ public final class InventoryDemandPlanFacts {
                         || !l.definitionHash().matches("[0-9a-f]{64}"))
                     throw new IllegalArgumentException("Invalid leaf");
                 quantity(l.quantity(), false);
+                if(l.sourceSkuNo()!=null&&(!MaterialCatalogFacts.validKey(l.sourceSkuNo(),32)
+                        ||!"FINISHED_SKU".equals(sourceKind(b,l))))
+                    throw new IllegalArgumentException("Only an explicit finished leaf may bind a source SKU");
                 if (composite
                         ? l.sourceKind() == null
                                 || !Set.of("FINISHED_SKU", "RECIPE_MATERIAL")
@@ -120,6 +123,7 @@ public final class InventoryDemandPlanFacts {
                                 leaf.unit(),
                                 leaf.definitionHash()));
         if (leaf.sourceKind() != null) result.add(leaf.sourceKind());
+        if (leaf.sourceSkuNo() != null) {result.add("FOOD_SKU_BINDING_V1");result.add(leaf.sourceSkuNo());}
         return List.copyOf(result);
     }
 

@@ -116,7 +116,7 @@ public final class BottleCustodyServiceImpl implements BottleCustodyService {
                 || mappings.size() != 1
                 || !sku.skuNo().equals(mappings.getFirst().skuNo())) throw conflict();
         var material = mappings.getFirst().material();
-        if (!MaterialCatalogFacts.validFact(material)
+        if (!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(material)
                 || !entity.equals(material.entityNo())
                 || !request.unit().equals(material.baseUom())) throw conflict();
         return command(

@@ -688,7 +688,7 @@ public final class ServiceEntitlementServiceImpl implements ServiceEntitlementSe
         require(facts != null && facts.size() == 1 && sku.equals(facts.getFirst().skuNo()));
         var material = facts.getFirst().material();
         require(
-                MaterialCatalogFacts.validFact(material)
+                ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(material)
                         && e.equals(material.entityNo())
                         && (quantity.stripTrailingZeros().scale() <= 0
                                 || Integer.valueOf(1).equals(material.weighed())));

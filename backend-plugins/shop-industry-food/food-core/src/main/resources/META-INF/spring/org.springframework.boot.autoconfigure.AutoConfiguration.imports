@@ -27,3 +27,7 @@ ai.neargo.shop.food.config.FoodMenuWithdrawalAutoConfiguration
 ai.neargo.shop.food.config.FoodChannelFulfillmentSignalAutoConfiguration
 ai.neargo.shop.food.config.FoodOfflineDraftAutoConfiguration
 ai.neargo.shop.food.config.DiningKitchenReportFactsConfiguration
+
+ai.neargo.shop.food.config.FoodStockAutoConfiguration
+
+ai.neargo.shop.food.config.FoodMaterialSourceConfiguration

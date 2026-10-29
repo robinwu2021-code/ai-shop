@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "platformVersion": 607,
+  "platformVersion": 621,
   "owner": "shop-merchant/primary",
-  "migration": "backend/shop-app/src/main/resources/db/migration/V607__resource_actual_occupation.sql",
+  "migration": "backend/shop-app/src/main/resources/db/migration/V621__resource_actual_occupation.sql",
   "resource": "backend/shop-merchant/src/main/resources/META-INF/shop/resource-actual-occupation-schema.json",
   "ownerIdentity": [
     {

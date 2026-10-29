@@ -17,6 +17,8 @@ import static org.mockito.Mockito.when;
 class FoodLocalStockSchemaDriftTest {
     @Test void schemaGateRejectsDecimalTruncationNullableIdempotencyAndDisabledCheck() throws Exception {
         assertThat(FoodSchemaValidator.missingLocalStockContract(source(null))).isEmpty();
+        assertThat(FoodSchemaValidator.missingLocalStockContract(source("returned")))
+                .contains("fnb_stock_reservation_item.returned_check_constraint");
         assertThat(FoodSchemaValidator.missingLocalStockContract(source("scale")))
                 .contains("fnb_stock_balance.on_hand.decimal_24_6");
         assertThat(FoodSchemaValidator.missingLocalStockContract(source("nullable")))
@@ -51,6 +53,8 @@ class FoodLocalStockSchemaDriftTest {
         when(connection.prepareStatement(anyString())).thenReturn(statement);
         when(statement.executeQuery()).thenReturn(checks);
         var entries = new ArrayList<>(FoodLocalStockSchemaContract.CHECKS.entrySet());
+        if(!"returned".equals(drift))entries.add(new java.util.AbstractMap.SimpleEntry<>(
+                "fnb_stock_reservation_item","returned_qty>=0 and returned_qty<=issued_qty"));
         final int[] index = {-1};
         when(checks.next()).thenAnswer(call -> ++index[0] < entries.size());
         when(checks.getString(1)).thenAnswer(call -> entries.get(index[0]).getKey());

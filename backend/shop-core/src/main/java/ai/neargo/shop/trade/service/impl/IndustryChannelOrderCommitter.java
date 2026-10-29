@@ -230,7 +230,10 @@ public final class IndustryChannelOrderCommitter {
                                         component.physicalQuantity(),
                                         component.unit()));
                     }
+                    var originalStock=store.preparation(row,false);
+                    IndustryChannelOrderStore.require(originalStock!=null);
                     var binding = new OrdIndustryOrderSource();
+                    binding.setInventoryOwner(originalStock.getInventoryOwner());
                     store.audit(binding, ref.scope());
                     binding.setOrderNo(row.getOrderNo());
                     binding.setSubOrderNo(row.getSubOrderNo());

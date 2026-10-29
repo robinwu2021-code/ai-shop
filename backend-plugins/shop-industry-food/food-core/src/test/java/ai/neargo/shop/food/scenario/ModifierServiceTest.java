@@ -132,7 +132,7 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
         });
     }
 
-    @Test void explicitModesAreValidatedAndComponentWritesRemainClosed() {
+    @Test void explicitModesAreValidatedAndComponentWritesPreserveTheirAuthority() {
         run((c, f) -> {
             var service = c.getBean(ModifierService.class);
             var leaf = service.createModifier("E", "A", "actor", addon("SKU"), "mode-leaf");
@@ -142,9 +142,11 @@ class ModifierServiceTest extends FoodWriteGuardFixture {
             assertThat(service.listModifiers("E", "A", null).records().stream()
                     .filter(item -> combo.configNo().equals(item.configNo())).findFirst().orElseThrow()
                     .data().inventoryMode()).isEqualTo("SALES_SKU");
-            assertThatThrownBy(() -> service.createModifier("E", "A", "actor",
-                    new CreateModifierReq("combo", "COMBO", "SKU", parts, "COMPONENTS"), "blocked-mode"))
-                    .isInstanceOf(BizException.class);
+            var components = service.createModifier("E", "A", "actor",
+                    new CreateModifierReq("combo", "COMBO", "SKU", parts, "COMPONENTS"), "component-mode");
+            assertThat(service.listModifiers("E", "A", null).records().stream()
+                    .filter(item -> components.configNo().equals(item.configNo())).findFirst().orElseThrow()
+                    .data().inventoryMode()).isEqualTo("COMPONENTS");
             assertThatThrownBy(() -> service.updateModifier("E", "A", combo.configNo(), "actor",
                     new UpdateModifierReq("combo", "COMBO", null, parts, 0L), "clear-required-sku"))
                     .isInstanceOf(BizException.class);

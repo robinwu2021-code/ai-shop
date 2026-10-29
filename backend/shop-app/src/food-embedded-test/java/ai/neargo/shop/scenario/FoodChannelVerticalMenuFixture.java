@@ -192,7 +192,8 @@ final class FoodChannelVerticalMenuFixture {
                         route.path("version").asLong(),
                         "routes",
                         List.of(
-                                Map.of("stationNo", stationNo, "taskRole", "MAKE"),
+                                Map.of("stationNo", stationNo, "taskRole",
+                                        "BUNDLE_MODIFIERS".equals(branchKind) ? "ASSEMBLE" : "MAKE"),
                                 Map.of("stationNo", packNo, "taskRole", "PACK"))),
                 token);
         if (extras != null)
@@ -421,6 +422,7 @@ final class FoodChannelVerticalMenuFixture {
                                 "COMBO",
                                 "salesSkuNo",
                                 compositeSku,
+                                "inventoryMode","COMPONENTS",
                                 "components",
                                 List.of(
                                         Map.of("memberNo", a, "quantity", 1),
@@ -544,7 +546,7 @@ final class FoodChannelVerticalMenuFixture {
                                                     1))),
                             token);
             f.post(
-                    "/biz/x/food/stores/" + store + "/bundles/" + root + ":publish",
+                    "/biz/x/food/stores/" + store + "/bundles/" + head.path("configNo").asString() + ":publish",
                     Map.of("version", body.path("version").asLong(), "effectiveAt", effective()),
                     token,
                     f.key());
