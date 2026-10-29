@@ -2,18 +2,33 @@ package ai.neargo.shop.spi.inventory;
 
 import ai.neargo.shop.spi.inventory.InventoryReservationPort.Scope;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-/** Versioned exact demand. One branch chooses finished stock OR recipe leaves, never both. */
+/**
+ * Exact demand preserves exclusive finished/recipe branches; explicit finished-with-modifier
+ * branches tag each leaf phase.
+ */
 public interface InventoryDemandPlanPort {
     record Leaf(
             String leafRef,
             String itemRef,
             BigDecimal quantity,
             String unit,
-            String definitionHash) {}
+            String definitionHash,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String sourceKind) {
+        public Leaf(
+                String leafRef,
+                String itemRef,
+                BigDecimal quantity,
+                String unit,
+                String definitionHash) {
+            this(leafRef, itemRef, quantity, unit, definitionHash, null);
+        }
+    }
 
     record Branch(
             String sourceComponentRef,
@@ -76,6 +91,29 @@ public interface InventoryDemandPlanPort {
         public Receipt {
             lines = List.copyOf(lines);
         }
+    }
+
+    enum WithdrawalStatus {
+        WITHDRAWN_ABSENT,
+        WITHDRAWN_RESERVED,
+        ALREADY_WITHDRAWN,
+        ALREADY_EXPIRED
+    }
+
+    record WithdrawalReceipt(
+            Scope scope,
+            String planNo,
+            String planHash,
+            String operationRef,
+            WithdrawalStatus status,
+            String receiptRef) {}
+
+    /**
+     * The original owner records withdrawal even before reserve arrives; old providers cannot
+     * manufacture this proof.
+     */
+    default WithdrawalReceipt withdraw(Plan plan, String operationRef, int lifecycleVersion) {
+        throw new UnsupportedOperationException("Inventory plan withdrawal is not installed");
     }
 
     Receipt reserve(Plan plan, long ttlSeconds, int lifecycleVersion);

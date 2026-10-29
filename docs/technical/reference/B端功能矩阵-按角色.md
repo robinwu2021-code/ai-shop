@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 50 个权限点 × 405 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 480 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,21 +16,21 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 87 | ✅ | — | — | — | — | — |
 | `STOCK` | 改库存（含门店库存） | 51 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 39 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 32 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 27 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
+| `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_READ` | 角色 → 权限码 | 15 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_CONFIG` | 角色 → 权限码 | 15 | ✅ | ✅ | — | — | — | — |
 | `PRINT_RESOLVE` | 角色 → 权限码 | 14 | ✅ | ✅ | — | — | — | — |
+| `AFTERSALE` | 售后同意/驳回/收货 | 13 | ✅ | ✅ | — | — | — | ✅ |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 9 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
-| `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
-| `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
 | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
 | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
@@ -67,10 +67,100 @@
 | `SERVICE_TASK_APPROVE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 | `SERVICE_TASK_CLOSE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 30 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`CASH_RECEIVE`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`、`BOOKING_VIEW`、`BOOKING_MANAGE`、`SERVICE_TASK_SELF`、`SERVICE_TASK_VIEW`、`SERVICE_TASK_COORDINATE`、`SERVICE_TASK_APPROVE`、`SERVICE_TASK_CLOSE`
+**只有 OWNER 能碰的 30 项**：`STORE_ADMIN`、`FINANCE`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`CASH_RECEIVE`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`、`BOOKING_VIEW`、`BOOKING_MANAGE`、`SERVICE_TASK_SELF`、`SERVICE_TASK_VIEW`、`SERVICE_TASK_COORDINATE`、`SERVICE_TASK_APPROVE`、`SERVICE_TASK_CLOSE`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
+
+### `STORE_ADMIN`　（OWNER）
+
+- `/biz/entities`
+- `/biz/entity/{entityNo}`
+- `/biz/inventory/locations/{id}/source`
+- `/biz/member-settings`
+- `/biz/personnel/{personnelNo}/account-links`
+- `/biz/personnel/{personnelNo}/assignments`
+- `/biz/personnel/{personnelNo}/status-changes`
+- `/biz/plan`
+- `/biz/plan/trial`
+- `/biz/role-perms`
+- `/biz/role/{roleCode}`
+- `/biz/role/{roleCode}/delete`
+- `/biz/roles`
+- `/biz/staff`
+- `/biz/staff/logs`
+- `/biz/staff/{mchAccountNo}/status`
+- `/biz/staff/{mchAccountNo}/store`
+- `/biz/store/create`
+- `/biz/store/{storeNo}/default`
+- `/biz/store/{storeNo}/payment`
+- `/biz/store/{storeNo}/rename`
+- `/biz/store/{storeNo}/slug`
+- `/biz/store/{storeNo}/status`
+- `/biz/store/{storeNo}/stock-alignment/batch/{batchNo}/confirm`
+- `/biz/store/{storeNo}/stock-alignment/confirm`
+- `/biz/store/{storeNo}/stock-alignment/preview`
+- `/biz/store/{storeNo}/stock-reconcile`
+- `/biz/stores/{storeNo}/channel-order-policies`
+- `/biz/stores/{storeNo}/channel-order-policies/{channelStoreKey}`
+- `/biz/x/commerce/account-operations`
+- `/biz/x/commerce/account-operations/{operationNo}/attempts`
+- `/biz/x/commerce/account-operations/{operationNo}:recover`
+- `/biz/x/commerce/account-operations/{operationNo}:refresh`
+- `/biz/x/commerce/accounts`
+- `/biz/x/commerce/accounts/{accountNo}`
+- `/biz/x/commerce/accounts/{accountNo}/authorization-revisions`
+- `/biz/x/commerce/accounts/{accountNo}/statement-imports`
+- `/biz/x/commerce/accounts/{accountNo}/statements`
+- `/biz/x/commerce/accounts/{accountNo}:authorize`
+- `/biz/x/commerce/accounts/{accountNo}:revoke`
+- `/biz/x/commerce/catalog-scopes/{scopeNo}`
+- `/biz/x/commerce/catalog-scopes/{scopeNo}/sync-policy`
+- `/biz/x/commerce/catalog-scopes/{scopeNo}:preview`
+- `/biz/x/commerce/connections/{connectionNo}`
+- `/biz/x/commerce/connections/{connectionNo}:set-status`
+- `/biz/x/commerce/connections/{connectionNo}:verify`
+- `/biz/x/commerce/inbound-events/{eventNo}/receipts`
+- `/biz/x/commerce/inbound-events/{eventNo}:recover`
+- `/biz/x/commerce/operations/{operationNo}`
+- `/biz/x/commerce/operations/{operationNo}/attempts`
+- `/biz/x/commerce/operations/{operationNo}:recover`
+- `/biz/x/commerce/operations/{operationNo}:refresh`
+- `/biz/x/commerce/orders/{channelOrderNo}`
+- `/biz/x/commerce/orders/{channelOrderNo}/fulfillments`
+- `/biz/x/commerce/orders/{channelOrderNo}/lines`
+- `/biz/x/commerce/orders/{channelOrderNo}/revisions`
+- `/biz/x/commerce/orders/{channelOrderNo}:accept`
+- `/biz/x/commerce/orders/{channelOrderNo}:recover-import`
+- `/biz/x/commerce/orders/{channelOrderNo}:refresh`
+- `/biz/x/commerce/orders/{channelOrderNo}:reject`
+- `/biz/x/commerce/providers`
+- `/biz/x/commerce/providers/{providerNo}/profiles`
+- `/biz/x/commerce/redemptions/{redemptionNo}`
+- `/biz/x/commerce/redemptions/{redemptionNo}:reverse`
+- `/biz/x/commerce/resource-mappings`
+- `/biz/x/commerce/resource-mappings/{mappingNo}`
+- `/biz/x/commerce/resource-mappings/{mappingNo}/revisions`
+- `/biz/x/commerce/stores/{storeNo}/catalog-scopes`
+- `/biz/x/commerce/stores/{storeNo}/connections`
+- `/biz/x/commerce/stores/{storeNo}/fulfillment-publications`
+- `/biz/x/commerce/stores/{storeNo}/inbound-events`
+- `/biz/x/commerce/stores/{storeNo}/integration-health`
+- `/biz/x/commerce/stores/{storeNo}/operations`
+- `/biz/x/commerce/stores/{storeNo}/orders`
+- `/biz/x/commerce/stores/{storeNo}/redemption-previews`
+- `/biz/x/commerce/stores/{storeNo}/redemptions`
+- `/biz/x/commerce/stores/{storeNo}/resource-mappings`
+- `/biz/x/commerce/stores/{storeNo}/statement-lines`
+- `/biz/x/commerce/stores/{storeNo}/statistics/order-imports`
+- `/biz/x/commerce/stores/{storeNo}/statistics/providers`
+- `/biz/x/commerce/stores/{storeNo}/statistics/sync`
+- `/biz/x/commerce/stores/{storeNo}/stock-publications`
+- `/biz/x/commerce/stores/{storeNo}/store-publications`
+- `/biz/x/commerce/stores/{storeNo}/sync-runs`
+- `/biz/x/commerce/sync-runs/{runNo}`
+- `/biz/x/commerce/sync-runs/{runNo}/items`
+- `/biz/x/commerce/sync-runs/{runNo}:cancel-queued`
 
 ### `STOCK`　（OWNER、MANAGER、CLERK、PICKER）
 
@@ -272,36 +362,6 @@
 - `/biz/report/goods`
 - `/biz/report/monthly`
 
-### `STORE_ADMIN`　（OWNER）
-
-- `/biz/entities`
-- `/biz/entity/{entityNo}`
-- `/biz/inventory/locations/{id}/source`
-- `/biz/member-settings`
-- `/biz/personnel/{personnelNo}/account-links`
-- `/biz/personnel/{personnelNo}/assignments`
-- `/biz/personnel/{personnelNo}/status-changes`
-- `/biz/plan`
-- `/biz/plan/trial`
-- `/biz/role-perms`
-- `/biz/role/{roleCode}`
-- `/biz/role/{roleCode}/delete`
-- `/biz/roles`
-- `/biz/staff`
-- `/biz/staff/logs`
-- `/biz/staff/{mchAccountNo}/status`
-- `/biz/staff/{mchAccountNo}/store`
-- `/biz/store/create`
-- `/biz/store/{storeNo}/default`
-- `/biz/store/{storeNo}/payment`
-- `/biz/store/{storeNo}/rename`
-- `/biz/store/{storeNo}/slug`
-- `/biz/store/{storeNo}/status`
-- `/biz/store/{storeNo}/stock-alignment/batch/{batchNo}/confirm`
-- `/biz/store/{storeNo}/stock-alignment/confirm`
-- `/biz/store/{storeNo}/stock-alignment/preview`
-- `/biz/store/{storeNo}/stock-reconcile`
-
 ### `STORE`　（OWNER、MANAGER）
 
 - `/biz/appointment-slots/{slotNo}/close`
@@ -327,6 +387,26 @@
 - `/biz/stores/{storeNo}/appointment-slots`
 - `/biz/stores/{storeNo}/fulfillment`
 - `/biz/stores/{storeNo}/fulfillment/{channel}/impact`
+
+### `VERIFY`　（OWNER、MANAGER、CLERK）
+
+- `/biz/coupon-redeem`
+- `/biz/coupon-redeem/{code}`
+- `/biz/pickup/orders`
+- `/biz/pickup/overview`
+- `/biz/pickup/verify`
+- `/biz/pickup/verify/batch`
+- `/biz/pickup/verify/search`
+- `/biz/x/food/bottle-custody`
+- `/biz/x/food/bottle-custody/{custodyNo}`
+- `/biz/x/food/bottle-custody/{custodyNo}/movements`
+- `/biz/x/food/bottle-custody/{custodyNo}/withdrawals`
+- `/biz/x/food/service-entitlements/banquet-plan`
+- `/biz/x/food/service-entitlements/confirm-attendance`
+- `/biz/x/food/service-entitlements/consume`
+- `/biz/x/food/service-entitlements/extend`
+- `/biz/x/food/service-entitlements/grant`
+- `/biz/x/food/service-entitlements/list`
 
 ### `PRINT_READ`　（OWNER、MANAGER、CLERK）
 
@@ -381,6 +461,22 @@
 - `/biz/print/printers/{printerNo}/uncertainty-resolutions`
 - `/biz/print/requests/{requestNo}/generation-retries`
 
+### `AFTERSALE`　（OWNER、MANAGER、CS）
+
+- `/biz/after-sale`
+- `/biz/after-sale/by-order/{subOrderNo}`
+- `/biz/after-sale/worklist`
+- `/biz/after-sale/{afterSaleNo}`
+- `/biz/after-sale/{afterSaleNo}/approve`
+- `/biz/after-sale/{afterSaleNo}/confirm-refund`
+- `/biz/after-sale/{afterSaleNo}/receive`
+- `/biz/after-sale/{afterSaleNo}/reject`
+- `/biz/stores/{storeNo}/channel-after-sale-decisions`
+- `/biz/stores/{storeNo}/channel-after-sale-decisions/release-unissued`
+- `/biz/x/commerce/after-sales/{caseNo}`
+- `/biz/x/commerce/after-sales/{caseNo}:apply-decision`
+- `/biz/x/commerce/stores/{storeNo}/after-sales`
+
 ### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
 
 - `/biz/order/{subOrderNo}/delivered`
@@ -417,27 +513,6 @@
 - `/biz/stored-value/recharges`
 - `/biz/stored-value/recharges/{rechargeNo}/cancel`
 - `/biz/stored-value/recharges/{rechargeNo}/submit`
-
-### `AFTERSALE`　（OWNER、MANAGER、CS）
-
-- `/biz/after-sale`
-- `/biz/after-sale/by-order/{subOrderNo}`
-- `/biz/after-sale/worklist`
-- `/biz/after-sale/{afterSaleNo}`
-- `/biz/after-sale/{afterSaleNo}/approve`
-- `/biz/after-sale/{afterSaleNo}/confirm-refund`
-- `/biz/after-sale/{afterSaleNo}/receive`
-- `/biz/after-sale/{afterSaleNo}/reject`
-
-### `VERIFY`　（OWNER、MANAGER、CLERK）
-
-- `/biz/coupon-redeem`
-- `/biz/coupon-redeem/{code}`
-- `/biz/pickup/orders`
-- `/biz/pickup/overview`
-- `/biz/pickup/verify`
-- `/biz/pickup/verify/batch`
-- `/biz/pickup/verify/search`
 
 ### `SV_ACCOUNT_READ`　（OWNER）
 

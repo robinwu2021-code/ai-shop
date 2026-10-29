@@ -39,6 +39,14 @@ public class CoreGoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
                 f -> CatalogMarketFacts.validate(query, f, Instant.now()));
     }
 
+    @Override
+    public ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts getCatalogSkuMeasurement(
+            CatalogMarketContracts.SkuQuery query) {
+        CatalogMarketFacts.validateQuery(query);
+        return marketCall(() -> api.get().lookupSkuMeasurement(query),
+                f -> ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.validate(query, f, Instant.now()));
+    }
+
     private <T> T marketCall(Supplier<T> operation, Consumer<T> validation) {
         try {
             return ServiceCalls.call(ServiceName.PLATFORM, () -> {

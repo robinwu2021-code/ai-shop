@@ -22,6 +22,8 @@ import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway.Query;
 import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway.Status;
 import ai.neargo.shop.spi.commerce.ChannelResourceMappingPort;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.ReadMode;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.SourceContext;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -78,7 +80,8 @@ class ResourceMappingTest {
                 Owner.FOOD,
                 "SKU",
                 sourceRev,
-                "OFFER");
+                "OFFER",
+                new SourceContext("MENU", null, ReadMode.CURRENT));
     }
 
     @Test
@@ -541,7 +544,7 @@ class ResourceMappingTest {
                             s.sql()
                                     .update(
                                             "UPDATE cim_store_connection SET"
-                                                + " active_revision_no='CR2'");
+                                                    + " active_revision_no='CR2'");
                             assertThat(
                                             resolver.resolveHistorical(
                                                             new ChannelResourceMappingPort

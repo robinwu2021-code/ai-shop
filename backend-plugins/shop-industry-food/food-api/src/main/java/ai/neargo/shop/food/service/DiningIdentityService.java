@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.service;
 
+import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceCredentialVO;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceSessionReq;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceVO;
@@ -50,4 +51,13 @@ public interface DiningIdentityService {
     PartyVO party(String entity, String store, String sessionNo);
 
     void validateDeviceSession(String sessionNo);
+
+    /**
+     * Authenticates the original restricted device token; session existence is never
+     * authentication.
+     */
+    default PartyVO authenticateDeviceSession(String entity, String store, CartAccess access) {
+        throw ai.neargo.shop.common.BizException.of(
+                ai.neargo.shop.common.ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
 }

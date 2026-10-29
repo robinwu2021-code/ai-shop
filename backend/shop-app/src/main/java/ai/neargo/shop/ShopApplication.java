@@ -1,5 +1,7 @@
 package ai.neargo.shop;
 
+import ai.neargo.shop.svc.ConfigServiceLocator;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.AutoConfigurationExcludeFilter;
@@ -14,10 +16,11 @@ import org.springframework.context.annotation.FilterType;
  * 拆微服务时新增 {@code shop-app-xxx} 启动模块，只改依赖列表，本类与业务代码不动。
  */
 @SpringBootApplication
+@EnableConfigurationProperties(ConfigServiceLocator.class)
 @ComponentScan(excludeFilters = {
         @ComponentScan.Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
         @ComponentScan.Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class),
-        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "ai\\.neargo\\.shop\\.(food|commerce)\\..*")
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "ai\\.neargo\\.shop\\.(food|commerce|retail\\.commerce)\\..*")
 })
 public class ShopApplication {
 

@@ -15,7 +15,7 @@
 // BizEndpointPermTest.REQUIRED，因为 /biz 有一批「有意公开」的端点，注解上看不出来。
 // /ops 这边只有 3 条没有注解且都是有意的，登记在 PUBLIC 里就够，不值得再维护一张 147 行的表。
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { codeOf } from "./perm-endpoint-map.mjs";
 import { fileURLToPath } from "node:url";
@@ -58,7 +58,9 @@ export const PUBLIC = new Map([
 
 /** 扫 /ops 端点 → 权限常量名 */
 export function scanEndpoints(root = ROOT) {
-  const files = execSync(`grep -rl '"/ops' --include='*.java' backend`, {
+  // Optional channel controllers retain the same permission checks as core controllers.
+  const files = execFileSync("rg", ["-l", '"/ops', "--glob", "*.java", "backend",
+    "backend-plugins/shop-commerce-integration/commerce-web/src/main/java"], {
     cwd: root, encoding: "utf8",
   }).trim().split("\n").filter(Boolean);
 

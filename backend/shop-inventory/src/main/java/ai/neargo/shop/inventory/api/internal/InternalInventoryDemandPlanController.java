@@ -8,6 +8,7 @@ import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Change;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Reference;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Reserve;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Reverse;
+import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Withdraw;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.InternalServiceResponses;
@@ -48,6 +49,21 @@ public class InternalInventoryDemandPlanController {
                 t,
                 Reserve.class,
                 c -> owner.reserve(c.plan(), c.ttlSeconds(), c.lifecycleVersion()));
+    }
+
+    @PostMapping(InventoryDemandPlanInternalApi.ROOT + "/withdraw")
+    public ResponseEntity<?> withdraw(
+            @RequestBody byte[] body,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String header) {
+        return call(
+                body,
+                header,
+                Withdraw.class,
+                command ->
+                        owner.withdraw(
+                                command.plan(),
+                                command.operationRef(),
+                                command.lifecycleVersion()));
     }
 
     @PostMapping(InventoryDemandPlanInternalApi.ROOT + "/query")

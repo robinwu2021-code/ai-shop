@@ -282,6 +282,13 @@
 
     <profiles>
         <profile>
+            <id>retail-commerce-embedded</id>
+            <dependencies>
+                <dependency><groupId>ai.neargo.shop</groupId><artifactId>retail-commerce</artifactId>
+                    <version>${project.version}</version></dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>food-commerce-embedded</id>
             <dependencies>
                 <dependency>

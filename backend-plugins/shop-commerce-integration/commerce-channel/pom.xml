@@ -4,7 +4,7 @@
  <modelVersion>4.0.0</modelVersion>
  <parent><groupId>ai.neargo.shop</groupId><artifactId>shop-parent</artifactId>
  <version>0.1.0-SNAPSHOT</version><relativePath>../../../backend/pom.xml</relativePath></parent>
- <artifactId>commerce-channel</artifactId><dependencies><dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-api</artifactId><version>${project.version}</version></dependency>
+ <artifactId>commerce-channel</artifactId><dependencies><dependency><groupId>ai.neargo.shop</groupId><artifactId>secret-api</artifactId><version>${project.version}</version></dependency><dependency><groupId>ai.neargo.shop</groupId><artifactId>commerce-api</artifactId><version>${project.version}</version></dependency>
 <dependency><groupId>ai.neargo.shop</groupId><artifactId>svc-client</artifactId><version>${project.version}</version></dependency>
 <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-autoconfigure</artifactId></dependency>
 </dependencies>

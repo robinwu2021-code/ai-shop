@@ -43,6 +43,21 @@ class InternalGoodsCatalogApiTest {
     private static final GoodsFact FACT=new GoodsFact("G","E","S","菜品",null,false,"PENDING",3,
             List.of(new SkuFact("SKU1","小份",0),new SkuFact("SKU2","大份",1)));
 
+    @Test void skuMeasurementAuthenticatesBeforeCallingTheOwner() throws Exception {
+        var port = mock(GoodsCatalogQueryPort.class);
+        var mvc = MockMvcBuilders.standaloneSetup(
+                new InternalGoodsCatalogEndpoint(port, "secret", VALIDATION.getValidator()))
+                .setControllerAdvice(new GlobalExceptionHandler(), new ApiResponseWrapper()).build();
+        String body = "{\"entityNo\":\"E\",\"storeNo\":\"S\",\"skuNo\":\"SKU\",\"expectedMarket\":\"AE\"}";
+        mvc.perform(post(GoodsCatalogInternalApi.SKU_MEASUREMENT_PATH).header(InternalHttp.TOKEN_HEADER, "wrong")
+                .contentType("application/json").content(body)).andExpect(status().isUnauthorized());
+        verifyNoInteractions(port);
+        var query = new ai.neargo.shop.spi.product.CatalogMarketContracts.SkuQuery("E", "S", "SKU", "AE");
+        when(port.getCatalogSkuMeasurement(query)).thenThrow(BizException.of(ErrorCode.NOT_FOUND));
+        mvc.perform(post(GoodsCatalogInternalApi.SKU_MEASUREMENT_PATH).header(InternalHttp.TOKEN_HEADER, "secret")
+                .contentType("application/json").content(body)).andExpect(status().isNotFound());
+    }
+
     @Test void skuInfrastructureFailuresKeepInternal500AndDoNotBypassToken() throws Exception {
         var port = mock(GoodsCatalogQueryPort.class);
         when(port.getSku("E", "S", "SKU")).thenThrow(new IllegalStateException("private database failure"));

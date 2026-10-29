@@ -10,6 +10,7 @@ import ai.neargo.shop.commerce.entity.CimCatalogScope;
 import ai.neargo.shop.commerce.entity.CimCatalogSnapshot;
 import ai.neargo.shop.commerce.entity.CimCatalogSource;
 import ai.neargo.shop.commerce.entity.CimConnectionRevision;
+import ai.neargo.shop.commerce.entity.CimOrderLink;
 import ai.neargo.shop.commerce.entity.CimProductProfile;
 import ai.neargo.shop.commerce.entity.CimStoreConnection;
 import ai.neargo.shop.commerce.entity.CimSyncPolicy;
@@ -28,7 +29,9 @@ import ai.neargo.shop.commerce.mapper.CommerceMappers.SyncPolicyMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.SyncRunItemMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.SyncRunMapper;
 import ai.neargo.shop.commerce.policy.CatalogDocumentPolicy;
+import ai.neargo.shop.commerce.policy.CatalogSourceTransportPolicy;
 import ai.neargo.shop.commerce.policy.CommerceValidation;
+import ai.neargo.shop.commerce.policy.SourceWithdrawalPolicy;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -39,12 +42,14 @@ import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort.Document;
 import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort.ValidatedSource;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
+import ai.neargo.shop.spi.commerce.ChannelSourceWithdrawalProvider;
 import ai.neargo.shop.spi.commerce.CommerceGateway;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -74,6 +79,81 @@ public final class CatalogPersistence {
     final CommerceCommands commands;
     final ObjectMapper json = new ObjectMapper();
     final Supplier<ChannelSourceValidationPort> authority;
+    private boolean withdrawalEnabled;
+    private Supplier<List<ChannelSourceWithdrawalProvider>> withdrawalOwners = List::of;
+    private SourceWithdrawalStore withdrawalStore;
+
+    public void withdrawalSupport(
+            boolean enabled,
+            Supplier<List<ChannelSourceWithdrawalProvider>> providers,
+            SourceWithdrawalStore store) {
+        require(!enabled || providers != null && store != null);
+        withdrawalEnabled = enabled;
+        withdrawalOwners = providers;
+        withdrawalStore = store;
+    }
+
+    boolean withdrawalsEnabled() {
+        return withdrawalEnabled;
+    }
+
+    boolean hasWithdrawalOwner(Owner owner) {
+        if (!withdrawalEnabled) return false;
+        long count = withdrawalOwners.get().stream().filter(p -> p.owner() == owner).count();
+        require(count <= 1);
+        return count == 1;
+    }
+
+    CatalogSourceDispositionResolver.Partition sourceSelection(
+            Context context, List<SourceReq> configured) {
+        if (!withdrawalEnabled)
+            return new CatalogSourceDispositionResolver.Partition(
+                    validate(context, configured), List.of());
+        var known =
+                withdrawalStore.current(
+                        context.connection().getEntityNo(),
+                        context.connection().getStoreNo(),
+                        configured);
+        return new CatalogSourceDispositionResolver(
+                        authority.get(), withdrawalOwners.get(), Clock.systemUTC())
+                .partition(
+                        context.connection().getEntityNo(),
+                        context.connection().getStoreNo(),
+                        Owner.valueOf(context.revision().getSourceOwner()),
+                        configured,
+                        known);
+    }
+
+    List<ChannelSourceWithdrawalProvider.Data> knownWithdrawals(
+            String entity, String store, List<SourceReq> configured) {
+        return withdrawalEnabled ? withdrawalStore.current(entity, store, configured) : List.of();
+    }
+
+    ChannelSourceWithdrawalProvider withdrawalOwner(Owner owner) {
+        require(withdrawalEnabled);
+        var providers = withdrawalOwners.get().stream().filter(p -> p.owner() == owner).toList();
+        require(providers.size() == 1);
+        return providers.getFirst();
+    }
+
+    String recordWithdrawal(ChannelSourceWithdrawalProvider.Facts proof, String notice) {
+        require(withdrawalEnabled);
+        return withdrawalStore.record(proof, notice);
+    }
+
+    void activeDisposition(
+            ChannelSourceWithdrawalProvider.Disposition current,
+            ChannelSourceValidationPort.Validation positive) {
+        require(withdrawalEnabled);
+        withdrawalStore.active(current, positive);
+    }
+
+    void selectionFresh(CatalogSourceDispositionResolver.Partition selection) {
+        evidenceFresh(selection.active());
+        for (var proof : selection.withdrawn())
+            SourceWithdrawalPolicy.validate(proof.data().query(), proof, Clock.systemUTC());
+    }
+
     final Map<Owner, ChannelCatalogSourcePort> owners = new HashMap<>();
     final Map<String, ChannelCatalogGateway> gateways = new HashMap<>();
 
@@ -143,6 +223,41 @@ public final class CatalogPersistence {
 
     static void text(String s, int n) {
         CommerceValidation.text(s, n);
+    }
+
+    record PublishedCatalog(CimCatalogSnapshot snapshot, Document document) {}
+
+    PublishedCatalog publishedCatalog(CimOrderLink order, String hash) {
+        var candidates =
+                snapshots.selectList(
+                        Wrappers.<CimCatalogSnapshot>query()
+                                .eq("tenant_no", "MAIN")
+                                .eq("entity_no", order.getEntityNo())
+                                .eq("content_hash", hash)
+                                .exists(
+                                        "SELECT 1 FROM cim_catalog_scope s WHERE"
+                                                + " s.tenant_no=cim_catalog_snapshot.tenant_no AND"
+                                                + " s.entity_no=cim_catalog_snapshot.entity_no AND"
+                                                + " s.scope_no=cim_catalog_snapshot.scope_no AND"
+                                                + " s.connection_no={0} AND s.store_no={1} AND"
+                                                + " s.deleted=0",
+                                        order.getConnectionNo(), order.getStoreNo())
+                                .exists(
+                                        "SELECT 1 FROM cim_sync_run r WHERE"
+                                            + " r.tenant_no=cim_catalog_snapshot.tenant_no AND"
+                                            + " r.entity_no=cim_catalog_snapshot.entity_no AND"
+                                            + " r.snapshot_no=cim_catalog_snapshot.snapshot_no AND"
+                                            + " r.status IN ('SUCCEEDED','PARTIAL') AND"
+                                            + " r.deleted=0")
+                                .orderByDesc("id")
+                                .last("LIMIT 1"));
+        require(candidates.size() == 1);
+        var snapshot = candidates.getFirst();
+        var document = document(snapshot);
+        require(
+                hash.equals(CatalogDocumentPolicy.hash(document, json))
+                        && order.getSourceOwner().equals(document.owner().name()));
+        return new PublishedCatalog(snapshot, document);
     }
 
     record Context(
@@ -480,8 +595,15 @@ public final class CatalogPersistence {
     }
 
     boolean compatible(Context context, CimCatalogSnapshot snapshot) {
-        return gateway(context)
-                .supportsDocumentSchema(CatalogDocumentPolicy.version(document(snapshot)));
+        var document = document(snapshot);
+        var adapter = gateway(context);
+        if (!adapter.supportsDocumentSchema(CatalogDocumentPolicy.version(document))) return false;
+        if (document.replacement() == null) return true;
+        boolean removes = !document.replacement().withdrawals().isEmpty(),
+                empty = CatalogDocumentPolicy.itemCount(document) == 0;
+        return (!removes && !empty || withdrawalEnabled)
+                && (!removes || adapter.supportsValidatedWithdrawal())
+                && (!empty || adapter.supportsEmptyReplacement());
     }
 
     void validSnapshot(Context c, CimCatalogSnapshot s) {
@@ -494,7 +616,50 @@ public final class CatalogPersistence {
 
     void revalidate(Context c, CimCatalogSnapshot s) {
         validSnapshot(c, s);
-        var old = document(s).sources();
+        var frozen = document(s);
+        if (frozen.replacement() != null) {
+            require(withdrawalEnabled);
+            var selected = sourceSelection(c, sourceRows(c.scope().getScopeNo()));
+            selectionFresh(selected);
+            require(
+                    frozen.sources().stream()
+                            .map(
+                                    p ->
+                                            List.of(
+                                                    p.sourceRef(),
+                                                    p.selectionRevision(),
+                                                    p.proof().contentHash()))
+                            .toList()
+                            .equals(
+                                    selected.active().stream()
+                                            .map(
+                                                    p ->
+                                                            List.of(
+                                                                    p.sourceRef(),
+                                                                    p.selectionRevision(),
+                                                                    p.proof().contentHash()))
+                                            .toList()));
+            require(
+                    frozen.replacement().withdrawals().stream()
+                            .map(p -> p.data())
+                            .toList()
+                            .equals(selected.withdrawn().stream().map(p -> p.data()).toList()));
+            var command =
+                    new ChannelCatalogSourcePort.CaptureCommand(
+                            c.connection().getEntityNo(),
+                            c.connection().getStoreNo(),
+                            frozen.owner(),
+                            c.connection().getConnectionNo(),
+                            c.connection().getActiveRevisionNo(),
+                            selected.active(),
+                            selected.withdrawn().isEmpty() ? null : selected.withdrawn());
+            var current = owners.get(frozen.owner()).capture(command);
+            CatalogSourceTransportPolicy.validateDocument(
+                    command, current, json, Clock.systemUTC());
+            require(s.getContentHash().equals(CatalogDocumentPolicy.hash(current, json)));
+            return;
+        }
+        var old = frozen.sources();
         var fresh =
                 validate(
                         c,

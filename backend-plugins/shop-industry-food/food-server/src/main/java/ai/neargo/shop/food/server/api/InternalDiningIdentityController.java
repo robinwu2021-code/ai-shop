@@ -136,4 +136,14 @@ public class InternalDiningIdentityController {
                     return Boolean.TRUE;
                 });
     }
+
+    @PostMapping(DiningIdentityInternalApi.ROOT + "/authenticate-device-session")
+    public ResponseEntity<?> authenticateDeviceSession(
+            @RequestBody DiningIdentityInternalApi.DeviceAccess q,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(
+                token,
+                given,
+                () -> service.authenticateDeviceSession(q.entityNo(), q.storeNo(), q.access()));
+    }
 }

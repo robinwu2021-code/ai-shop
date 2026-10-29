@@ -44,13 +44,35 @@ public final class InventoryDemandPlanFacts {
                     || !components.add(b.sourceComponentRef())
                     || !MaterialCatalogFacts.validKey(b.storeNo(), 32)
                     || !MaterialCatalogFacts.validKey(b.fulfillmentRef(), 64)
-                    || !Set.of("FINISHED_SKU", "RECIPE_MATERIAL").contains(b.kind())
+                    || b.kind() == null
+                    || !Set.of(
+                                    "FINISHED_SKU",
+                                    "RECIPE_MATERIAL",
+                                    "FINISHED_WITH_MODIFIERS",
+                                    "BUNDLE_MODIFIERS")
+                            .contains(b.kind())
                     || !MaterialCatalogFacts.validKey(b.unit(), 16)
                     || b.leaves().isEmpty()
                     || b.leaves().size() > 200
                     || "FINISHED_SKU".equals(b.kind()) && b.leaves().size() != 1)
                 throw new IllegalArgumentException("Invalid exclusive branch");
             quantity(b.quantity(), false);
+            boolean composite = "FINISHED_WITH_MODIFIERS".equals(b.kind());
+            if ("BUNDLE_MODIFIERS".equals(b.kind()) && b.recipeRevisionNo() != null)
+                throw new IllegalArgumentException("Bundle modifiers are not an invented recipe");
+            if (composite
+                    && (b.recipeRevisionNo() != null
+                            || b.leaves().stream()
+                                            .filter(
+                                                    leaf ->
+                                                            "FINISHED_SKU"
+                                                                    .equals(leaf.sourceKind()))
+                                            .count()
+                                    != 1
+                            || b.leaves().stream()
+                                    .noneMatch(
+                                            leaf -> "RECIPE_MATERIAL".equals(leaf.sourceKind()))))
+                throw new IllegalArgumentException("Explicit finished/modifier phases required");
             for (var l : b.leaves()) {
                 if (!MaterialCatalogFacts.validKey(l.leafRef(), 64)
                         || !leaves.add(l.leafRef())
@@ -60,11 +82,45 @@ public final class InventoryDemandPlanFacts {
                         || !l.definitionHash().matches("[0-9a-f]{64}"))
                     throw new IllegalArgumentException("Invalid leaf");
                 quantity(l.quantity(), false);
+                if (composite
+                        ? l.sourceKind() == null
+                                || !Set.of("FINISHED_SKU", "RECIPE_MATERIAL")
+                                        .contains(l.sourceKind())
+                        : l.sourceKind() != null)
+                    throw new IllegalArgumentException("Invalid leaf phase");
+                if (composite
+                        && "FINISHED_SKU".equals(l.sourceKind())
+                        && (!b.unit().equals(l.unit())
+                                || b.quantity().compareTo(l.quantity()) != 0))
+                    throw new IllegalArgumentException("Original finished quantity/unit required");
             }
         }
         if (!hash(plan).equals(plan.planHash()))
             throw new IllegalArgumentException("Plan hash mismatch");
         return plan;
+    }
+
+    /**
+     * The authoritative inventory owner persists effective leaf phases; legacy hashes retain their
+     * exact shape.
+     */
+    public static String sourceKind(Branch branch, Leaf leaf) {
+        if (!branch.leaves().contains(leaf)) throw new IllegalArgumentException("Foreign leaf");
+        if ("BUNDLE_MODIFIERS".equals(branch.kind())) return "RECIPE_MATERIAL";
+        return "FINISHED_WITH_MODIFIERS".equals(branch.kind()) ? leaf.sourceKind() : branch.kind();
+    }
+
+    private static List<String> canonicalLeaf(Leaf leaf) {
+        var result =
+                new ArrayList<String>(
+                        List.of(
+                                leaf.leafRef(),
+                                leaf.itemRef(),
+                                quantity(leaf.quantity(), false).toPlainString(),
+                                leaf.unit(),
+                                leaf.definitionHash()));
+        if (leaf.sourceKind() != null) result.add(leaf.sourceKind());
+        return List.copyOf(result);
     }
 
     private static List<Object> canonical(Plan p) {
@@ -76,15 +132,7 @@ public final class InventoryDemandPlanFacts {
                             var leaves =
                                     b.leaves().stream()
                                             .sorted(Comparator.comparing(Leaf::leafRef))
-                                            .map(
-                                                    l ->
-                                                            List.of(
-                                                                    l.leafRef(),
-                                                                    l.itemRef(),
-                                                                    quantity(l.quantity(), false)
-                                                                            .toPlainString(),
-                                                                    l.unit(),
-                                                                    l.definitionHash()))
+                                            .map(InventoryDemandPlanFacts::canonicalLeaf)
                                             .toList();
                             result.add(
                                     List.of(

@@ -1,9 +1,13 @@
 package ai.neargo.shop.spi.commerce;
 
+import ai.neargo.shop.commerce.dto.CommerceInstantDeserializer;
 import ai.neargo.shop.commerce.dto.CommerceIntegerDeserializer;
+import ai.neargo.shop.commerce.dto.CommerceTextDeserializer;
+import ai.neargo.shop.commerce.dto.CommerceWireCodecs;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Validation;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import tools.jackson.databind.annotation.JsonDeserialize;
@@ -20,45 +24,63 @@ public interface ChannelCatalogSourcePort {
     Document capture(CaptureCommand command);
 
     record ValidatedSource(
-            Owner owner,
-            String sourceRef,
-            String selectionRevision,
+            @JsonDeserialize(using = CommerceWireCodecs.OwnerDeserializer.class) Owner owner,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String sourceRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String selectionRevision,
             int priority,
             Validation proof) {}
 
     record CaptureCommand(
-            String entityNo,
-            String storeNo,
-            Owner owner,
-            String connectionNo,
-            String connectionRevisionNo,
-            List<ValidatedSource> sources) {}
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String entityNo,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String storeNo,
+            @JsonDeserialize(using = CommerceWireCodecs.OwnerDeserializer.class) Owner owner,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String connectionNo,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String connectionRevisionNo,
+            List<ValidatedSource> sources,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+                    List<ChannelSourceWithdrawalProvider.Facts> withdrawals) {
+        public CaptureCommand(
+                String entityNo,
+                String storeNo,
+                Owner owner,
+                String connectionNo,
+                String connectionRevisionNo,
+                List<ValidatedSource> sources) {
+            this(entityNo, storeNo, owner, connectionNo, connectionRevisionNo, sources, null);
+        }
+
+        public CaptureCommand {
+            sources = sources == null ? null : List.copyOf(sources);
+            withdrawals = withdrawals == null ? null : List.copyOf(withdrawals);
+        }
+    }
 
     record Document(
-            Owner owner,
-            String currency,
+            @JsonDeserialize(using = CommerceWireCodecs.OwnerDeserializer.class) Owner owner,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String currency,
             List<ValidatedSource> sources,
             List<Section> sections,
             List<Offer> offers,
             List<Schedule> schedules,
-            Instant validUntil,
-            String receiptNo,
+            @JsonDeserialize(using = CommerceInstantDeserializer.class) Instant validUntil,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String receiptNo,
             @JsonInclude(JsonInclude.Include.NON_NULL)
                     @JsonDeserialize(using = CommerceIntegerDeserializer.class)
                     Integer schemaVersion,
             @JsonInclude(JsonInclude.Include.NON_NULL) ChannelCatalogDetails details,
             @JsonInclude(JsonInclude.Include.NON_NULL) CatalogAvailability availability,
-            @JsonInclude(JsonInclude.Include.NON_NULL) List<CatalogTaxBasis> taxBases) {
-        public Document { taxBases = taxBases == null ? null : List.copyOf(taxBases); }
-
-        /** Version-two callers retain the exact serialized shape and cannot implicitly opt into version three. */
-        public Document(Owner owner, String currency, List<ValidatedSource> sources, List<Section> sections,
-                List<Offer> offers, List<Schedule> schedules, Instant validUntil, String receiptNo,
-                Integer schemaVersion, ChannelCatalogDetails details) {
-            this(owner, currency, sources, sections, offers, schedules, validUntil, receiptNo,
-                    schemaVersion, details, null, null);
+            @JsonInclude(JsonInclude.Include.NON_NULL) List<CatalogTaxBasis> taxBases,
+            @JsonInclude(JsonInclude.Include.NON_NULL) CatalogReplacement replacement) {
+        public Document {
+            taxBases = taxBases == null ? null : List.copyOf(taxBases);
         }
-        /** Original callers and persisted payloads retain their version-one shape and hashing. */
+
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw new IllegalArgumentException("Unknown catalog document field");
+        }
+
+        /** Existing v3 source implementations retain their exact serialized shape and checksum. */
         public Document(
                 Owner owner,
                 String currency,
@@ -67,7 +89,67 @@ public interface ChannelCatalogSourcePort {
                 List<Offer> offers,
                 List<Schedule> schedules,
                 Instant validUntil,
-                String receiptNo) {
+                String receiptNo,
+                Integer schemaVersion,
+                ChannelCatalogDetails details,
+                CatalogAvailability availability,
+                List<CatalogTaxBasis> taxBases) {
+            this(
+                    owner,
+                    currency,
+                    sources,
+                    sections,
+                    offers,
+                    schedules,
+                    validUntil,
+                    receiptNo,
+                    schemaVersion,
+                    details,
+                    availability,
+                    taxBases,
+                    null);
+        }
+
+        /**
+         * Version-two callers retain the exact serialized shape and cannot implicitly opt into
+         * version three.
+         */
+        public Document(
+                Owner owner,
+                String currency,
+                List<ValidatedSource> sources,
+                List<Section> sections,
+                List<Offer> offers,
+                List<Schedule> schedules,
+                Instant validUntil,
+                String receiptNo,
+                Integer schemaVersion,
+                ChannelCatalogDetails details) {
+            this(
+                    owner,
+                    currency,
+                    sources,
+                    sections,
+                    offers,
+                    schedules,
+                    validUntil,
+                    receiptNo,
+                    schemaVersion,
+                    details,
+                    null,
+                    null);
+        }
+
+        /** Original callers and persisted payloads retain their version-one shape and hashing. */
+        public Document(
+                @JsonDeserialize(using = CommerceWireCodecs.OwnerDeserializer.class) Owner owner,
+                @JsonDeserialize(using = CommerceTextDeserializer.class) String currency,
+                List<ValidatedSource> sources,
+                List<Section> sections,
+                List<Offer> offers,
+                List<Schedule> schedules,
+                @JsonDeserialize(using = CommerceInstantDeserializer.class) Instant validUntil,
+                @JsonDeserialize(using = CommerceTextDeserializer.class) String receiptNo) {
             this(
                     owner,
                     currency,
@@ -82,14 +164,34 @@ public interface ChannelCatalogSourcePort {
         }
     }
 
-    record Section(String key, String name, int sortNo) {}
+    record Section(
+            String key,
+            String name,
+            int sortNo,
+            @JsonInclude(JsonInclude.Include.NON_NULL) SectionSource source) {
+        public Section(String key, String name, int sortNo) {
+            this(key, name, sortNo, null);
+        }
+
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw new IllegalArgumentException("Unknown catalog section field");
+        }
+    }
+
+    record SectionSource(String sourceRef, String selectionRevision, String categoryRef) {
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw new IllegalArgumentException("Unknown section source field");
+        }
+    }
 
     record Offer(
-            String offerRef,
-            String sourceRef,
-            String selectionRevision,
-            String name,
-            String sectionKey,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String offerRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String sourceRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String selectionRevision,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String name,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String sectionKey,
             List<Sku> skus,
             List<OptionGroup> optionGroups,
             List<BundleGroup> bundleGroups,
@@ -99,34 +201,58 @@ public interface ChannelCatalogSourcePort {
 
     record Price(
             long amountMinor,
-            String currency,
-            String priceSourceRef,
-            String priceRevision,
-            String taxBasisRef,
-            String receiptNo) {}
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String currency,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String priceSourceRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String priceRevision,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String taxBasisRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String receiptNo) {}
 
     record OptionGroup(
-            String groupRef, String name, int min, int max, List<OptionChoice> choices) {}
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String groupRef,
+            String name,
+            int min,
+            int max,
+            List<OptionChoice> choices) {}
 
     record OptionChoice(
-            String choiceRef,
-            String name,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String choiceRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String name,
             Price price,
-            String inventoryPolicyRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String inventoryPolicyRef,
             int min,
             int max) {}
 
     record BundleGroup(
-            String groupRef, String name, int min, int max, List<BundleChoice> choices) {}
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String groupRef,
+            String name,
+            int min,
+            int max,
+            List<BundleChoice> choices) {}
 
     record BundleChoice(String choiceRef, String offerRef, Price extraPrice, int quantity) {}
 
-    record Image(String assetNo, String url, String receiptNo) {}
+    /** Stable media revision participates in v3 content; old constructors omit it byte-for-byte. */
+    record Image(
+            String assetNo,
+            String url,
+            String receiptNo,
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+                    @JsonDeserialize(using = CommerceTextDeserializer.class)
+                    String sourceRevision) {
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw new IllegalArgumentException("Unknown catalog image field");
+        }
+
+        public Image(String assetNo, String url, String receiptNo) {
+            this(assetNo, url, receiptNo, null);
+        }
+    }
 
     record Schedule(
-            String sourceRef,
-            String selectionRevision,
-            String timezone,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String sourceRef,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String selectionRevision,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String timezone,
             List<Integer> weekdays,
             LocalTime from,
             LocalTime to,

@@ -60,6 +60,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -577,35 +578,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                 .eq(FnbOrderLine::getBatchNo, batch.getBatchNo()));
         if (line == null) throw missing();
         var frozen = json.readTree(batch.getFrozenRequest());
-        var facts = json.treeToValue(frozen.get("facts"), DiningPriceFacts.class);
-        if (facts == null || facts.payload() == null || facts.payload().cart() == null)
-            throw conflict();
-        var cart = facts.payload().cart();
-        DiningPriceFactsPolicy.validate(
-                facts, entity, store, cart.cartNo(), cart.version(), facts.payload().subjectNo());
-        var choices =
-                cart.lines().stream()
-                        .filter(c -> line.getSourceLineRef().equals(c.sourceLineRef()))
-                        .toList();
-        if (choices.size() != 1) throw conflict();
-        var choice = choices.getFirst();
-        if (!line.getSkuNo().equals(choice.skuNo())
-                || !line.getGoodsNo().equals(choice.goodsNo())
-                || choice.qty().compareTo(line.getQty()) != 0) throw conflict();
-        var selectedItems =
-                facts.payload().composition().items().stream()
-                        .filter(
-                                i ->
-                                        choice.menuNo().equals(i.menuNo())
-                                                && choice.menuItemNo().equals(i.menuItemNo())
-                                                && choice.goodsNo().equals(i.goodsNo()))
-                        .toList();
-        if (selectedItems.size() != 1
-                || selectedItems.getFirst().dish() == null
-                || selectedItems.getFirst().dish().measurement() == null
-                || !Objects.equals(
-                        line.getUnit(), selectedItems.getFirst().dish().measurement().unit()))
-            throw conflict();
+        var source = plannedSource(batch, line, frozen, entity, store);
         var routes = json.treeToValue(frozen.get("kitchenRoutes"), FrozenRoutes.class);
         if (routes == null
                 || routes.routes().stream()
@@ -632,13 +605,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                     evidence.componentReference(
                             entity, line.getFoodLineNo(), task.getComponentNo());
         } else {
-            var units =
-                    facts.payload().units().stream()
-                            .filter(
-                                    u ->
-                                            choice.sourceLineRef().equals(u.sourceLineNo())
-                                                    && "MAIN".equals(u.kind()))
-                            .toList();
+            var units = source.units().stream().filter(unit -> "MAIN".equals(unit.kind())).toList();
             if (units.size() != 1) throw conflict();
             componentRef = units.getFirst().componentRef();
         }
@@ -653,41 +620,39 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                         .toList();
         if (branches.size() != 1) throw conflict();
         var branch = branches.getFirst();
+        var sourceUnits =
+                source.units().stream()
+                        .filter(unit -> sourceComponent.equals(unit.componentRef()))
+                        .toList();
+        if (sourceUnits.size() != 1) throw conflict();
         var makers =
                 routes.routes().stream()
                         .filter(
-                                r ->
-                                        "MAKE".equals(r.taskRole())
-                                                && r.skuNo()
-                                                        .equals(
-                                                                task.getComponentNo() == null
-                                                                        ? choice.skuNo()
-                                                                        : facts
-                                                                                .payload()
-                                                                                .units()
-                                                                                .stream()
-                                                                                .filter(
-                                                                                        u ->
-                                                                                                sourceComponent
-                                                                                                        .equals(
-                                                                                                                u
-                                                                                                                        .componentRef()))
-                                                                                .findFirst()
-                                                                                .orElseThrow(
-                                                                                        ProductionConsumptionServiceImpl
-                                                                                                ::conflict)
-                                                                                .skuNo()))
+                                route ->
+                                        "MAKE".equals(route.taskRole())
+                                                && sourceUnits
+                                                        .getFirst()
+                                                        .skuNo()
+                                                        .equals(route.skuNo()))
                         .sorted(Comparator.comparing(KitchenContracts.FrozenRoute::stationNo))
                         .toList();
         if (makers.isEmpty()) throw conflict();
         boolean required =
-                "RECIPE_MATERIAL".equals(branch.kind())
+                branch.leaves().stream()
+                                .anyMatch(
+                                        leaf ->
+                                                "RECIPE_MATERIAL"
+                                                        .equals(
+                                                                InventoryDemandPlanFacts.sourceKind(
+                                                                        branch, leaf)))
                         && makers.getFirst().stationNo().equals(task.getStationNo());
         var sourceLeaves = new ArrayList<InventoryProductionPort.SourceLeaf>();
         var materialQty = new TreeMap<String, BigDecimal>();
         var materialDefinitions = new HashMap<String, InventoryDemandPlanPort.Leaf>();
         if (required)
             for (var leaf : branch.leaves()) {
+                if (!"RECIPE_MATERIAL".equals(InventoryDemandPlanFacts.sourceKind(branch, leaf)))
+                    continue;
                 final BigDecimal quantity;
                 try {
                     quantity =
@@ -777,6 +742,97 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
      * Immutable orders predating demand-plan authority retain their original theoretical
      * projection.
      */
+    private record ProductionUnit(String componentRef, String kind, String skuNo) {}
+
+    private record ProductionSource(List<ProductionUnit> units) {}
+
+    /**
+     * Native channel composition is its own immutable source; it never masquerades as an ordinary
+     * price quote.
+     */
+    private ProductionSource plannedSource(
+            FnbOrderBatch batch, FnbOrderLine line, JsonNode frozen, String entity, String store) {
+        if ("CHANNEL".equals(batch.getPayMode())) {
+            var source = json.treeToValue(frozen, DiningChannelSourceStore.FrozenSource.class);
+            if (source.schema() != 1
+                    || !Objects.equals(source.sourceHash(), batch.getQuoteHash())
+                    || source.cartLines().size() != source.original().lines().size())
+                throw conflict();
+            int index = -1;
+            for (int i = 0; i < source.cartLines().size(); i++) {
+                if (line.getSourceLineRef().equals(source.cartLines().get(i).sourceLineRef())) {
+                    if (index >= 0) throw conflict();
+                    index = i;
+                }
+            }
+            if (index < 0) throw conflict();
+            var input = source.cartLines().get(index);
+            var original = source.original().lines().get(index);
+            var main =
+                    original.components().stream()
+                            .filter(component -> "MAIN".equals(component.externalKind()))
+                            .toList();
+            if (main.size() != 1
+                    || !line.getSkuNo().equals(input.skuNo())
+                    || !line.getGoodsNo().equals(input.goodsNo())
+                    || line.getQty().compareTo(input.qty()) != 0
+                    || !line.getSkuNo().equals(original.skuNo())
+                    || !line.getGoodsNo().equals(original.goodsNo())
+                    || line.getQty().compareTo(original.quantity()) != 0
+                    || !line.getUnit().equals(main.getFirst().unit())) throw conflict();
+            return new ProductionSource(
+                    original.components().stream()
+                            .map(
+                                    component ->
+                                            new ProductionUnit(
+                                                    PricingSnapshotHash.of(
+                                                            List.of(
+                                                                    source.sourceNo(),
+                                                                    input.sourceLineRef(),
+                                                                    component.logicalKey())),
+                                                    component.externalKind(),
+                                                    component.skuNo()))
+                            .toList());
+        }
+        var facts = json.treeToValue(frozen.get("facts"), DiningPriceFacts.class);
+        if (facts == null || facts.payload() == null || facts.payload().cart() == null)
+            throw conflict();
+        var cart = facts.payload().cart();
+        DiningPriceFactsPolicy.validate(
+                facts, entity, store, cart.cartNo(), cart.version(), facts.payload().subjectNo());
+        var choices =
+                cart.lines().stream()
+                        .filter(c -> line.getSourceLineRef().equals(c.sourceLineRef()))
+                        .toList();
+        if (choices.size() != 1) throw conflict();
+        var choice = choices.getFirst();
+        if (!line.getSkuNo().equals(choice.skuNo())
+                || !line.getGoodsNo().equals(choice.goodsNo())
+                || choice.qty().compareTo(line.getQty()) != 0) throw conflict();
+        var selectedItems =
+                facts.payload().composition().items().stream()
+                        .filter(
+                                i ->
+                                        choice.menuNo().equals(i.menuNo())
+                                                && choice.menuItemNo().equals(i.menuItemNo())
+                                                && choice.goodsNo().equals(i.goodsNo()))
+                        .toList();
+        if (selectedItems.size() != 1
+                || selectedItems.getFirst().dish() == null
+                || selectedItems.getFirst().dish().measurement() == null
+                || !Objects.equals(
+                        line.getUnit(), selectedItems.getFirst().dish().measurement().unit()))
+            throw conflict();
+        return new ProductionSource(
+                facts.payload().units().stream()
+                        .filter(unit -> choice.sourceLineRef().equals(unit.sourceLineNo()))
+                        .map(
+                                unit ->
+                                        new ProductionUnit(
+                                                unit.componentRef(), unit.kind(), unit.skuNo()))
+                        .toList());
+    }
+
     private FnbProductionConsumption prepareLegacy(
             String entity, String store, String actor, String eventNo) {
         var prior = find(entity, store, eventNo, false);

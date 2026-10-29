@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 import javax.sql.DataSource;
@@ -55,10 +56,27 @@ class CatalogSynchronizationTest {
         boolean legacyOfferProof;
         Owner sourceOwner = Owner.FOOD;
         int captures;
+        String headRevision;
+        int currentReads;
         Runnable captureHook;
 
         public Owner owner() {
             return sourceOwner;
+        }
+
+        @Override
+        public Validation current(ChannelSourceValidationPort.Source request) {
+            currentReads++;
+            return validate(
+                    new ChannelSourceValidationPort.Source(
+                            request.entityNo(),
+                            request.storeNo(),
+                            request.owner(),
+                            request.kind(),
+                            request.sourceRef(),
+                            headRevision == null ? request.sourceRevision() : headRevision,
+                            request.salesOfferRef(),
+                            request.context()));
         }
 
         public Validation validate(ChannelSourceValidationPort.Source request) {
@@ -71,7 +89,8 @@ class CatalogSynchronizationTest {
                     (hashChanged ? "b" : "a").repeat(64),
                     Instant.now().plusSeconds(evidenceTtlSeconds),
                     "OWNER_RECEIPT",
-                    legacyOfferProof ? null : request.salesOfferRef());
+                    legacyOfferProof ? null : request.salesOfferRef(),
+                    legacyOfferProof ? null : request.context());
         }
 
         public Document capture(CaptureCommand request) {
@@ -133,9 +152,12 @@ class CatalogSynchronizationTest {
         boolean detailedSupported;
         boolean availabilitySupported;
         Publication lastPublication;
+        Function<Publication, Result> resultFactory;
 
         public boolean supportsDocumentSchema(int schema) {
-            return schema == 1 || schema == 2 && detailedSupported || schema == 3 && availabilitySupported;
+            return schema == 1
+                    || schema == 2 && detailedSupported
+                    || schema == 3 && availabilitySupported;
         }
 
         boolean timeout;
@@ -181,6 +203,7 @@ class CatalogSynchronizationTest {
         }
 
         private Result result(Publication request) {
+            if (resultFactory != null) return resultFactory.apply(request);
             return new Result(
                     request.operationNo(),
                     request.generation(),
@@ -216,7 +239,19 @@ class CatalogSynchronizationTest {
         run(Owner.FOOD, false, test);
     }
 
+    void runWith(UnaryOperator<ApplicationContextRunner> customization, Consumer<State> test) {
+        run(Owner.FOOD, true, test, customization);
+    }
+
     private void run(Owner owner, boolean publishing, Consumer<State> test) {
+        run(owner, publishing, test, UnaryOperator.identity());
+    }
+
+    private void run(
+            Owner owner,
+            boolean publishing,
+            Consumer<State> test,
+            UnaryOperator<ApplicationContextRunner> customization) {
         var source = new Source();
         source.sourceOwner = owner;
         var gateway = new Gateway();
@@ -238,6 +273,7 @@ class CatalogSynchronizationTest {
                                 "spring.datasource.username=sa",
                                 "spring.datasource.password=");
         if (publishing) runner = runner.withBean(ChannelCatalogGateway.class, () -> gateway);
+        runner = customization.apply(runner);
         runner.run(
                 c -> {
                     assertThat(c).hasNotFailed();

@@ -1096,9 +1096,13 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
     }
 
     String prepareStock(String sku) {
+        return prepareStock(sku, "COUNT");
+    }
+
+    String prepareStock(String sku, String unit) {
         var acl = context.getBean(InventoryAclService.class);
         String owner = acl.ownerIdOf("M0001");
-        String item = acl.upsertItem("M0001", sku, "native food", "fixture", null, null, "COUNT");
+        String item = acl.upsertItem("M0001", sku, "native food", "fixture", null, null, unit);
         acl.locationIdOf("M0001", STORE);
         String location = acl.stockLocationOfExistingStore("M0001", STORE);
         assertThat(location).isNotBlank();

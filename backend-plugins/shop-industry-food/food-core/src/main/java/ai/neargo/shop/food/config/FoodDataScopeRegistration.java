@@ -9,6 +9,7 @@ import java.util.Map;
 public final class FoodDataScopeRegistration implements DataScopeRegistrar {
     @Override
     public void register(DataScopeTableRegistry registry) {
+        registry.register("fnb_stock_balance", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_queue_ticket",Map.of(ScopeDim.MERCHANT,"entity_no"));
         registry.register("fnb_course", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_kitchen_ticket", Map.of(ScopeDim.MERCHANT, "entity_no"));

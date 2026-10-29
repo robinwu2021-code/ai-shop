@@ -4,20 +4,17 @@ import ai.neargo.shop.event.DomainEvent;
 
 import java.util.List;
 
-/**
- * 交易域对外发布的事件。**载荷自带消费方所需字段**，消费方不回查主表 ——
- * 回查会引入时序问题（事件到达时主表可能已被后续操作改写）。
- */
+/** 交易域对外发布的事件。**载荷自带消费方所需字段**，消费方不回查主表 —— 回查会引入时序问题（事件到达时主表可能已被后续操作改写）。 */
 public final class OrderEvents {
 
-    private OrderEvents() {
-    }
+    private OrderEvents() {}
 
     public static final String AGG_ORDER = "ORDER";
     public static final String AGG_SUB_ORDER = "SUB_ORDER";
 
     /** 下单成功。消费方：marketing(核销券) · message(发提醒) · risk(行为画像)。 */
-    public record OrderCreated(String orderNo, String userNo, List<String> subOrderNos, long payAmount)
+    public record OrderCreated(
+            String orderNo, String userNo, List<String> subOrderNos, long payAmount)
             implements DomainEvent {
         @Override
         public String aggregateType() {
@@ -32,6 +29,38 @@ public final class OrderEvents {
         @Override
         public String eventType() {
             return "ORDER_CREATED";
+        }
+    }
+
+    /**
+     * A channel receivable was admitted; this event grants no local payment or settlement
+     * authority.
+     */
+    public record ChannelOrderAccepted(
+            String orderNo,
+            String subOrderNo,
+            String entityNo,
+            String storeNo,
+            String sourceSystem,
+            String sourceNo,
+            long sourceVersion,
+            String acceptanceReceiptRef,
+            String currency,
+            long merchantReceivableMinor)
+            implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return AGG_ORDER;
+        }
+
+        @Override
+        public String aggregateId() {
+            return orderNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "CHANNEL_ORDER_ACCEPTED";
         }
     }
 
@@ -55,42 +84,39 @@ public final class OrderEvents {
     }
 
     /**
-     * 子订单完成（核销/确认收货）。消费方：product(可写评价) · settle(解冻计时) · report。
-     * 粒度是子订单而不是主单 —— 一次下单跨三家商家，三家各自完成，各自结算。
+     * 子订单完成（核销/确认收货）。消费方：product(可写评价) · settle(解冻计时) · report。 粒度是子订单而不是主单 ——
+     * 一次下单跨三家商家，三家各自完成，各自结算。
      */
     /**
      * 子单走到终态。
      *
-     * @param fulfillment 履约方式（{@code STORE_PICKUP} / {@code MERCHANT_DELIVERY} /
-     *                    {@code EXPRESS}）。**消费方靠它分文案** ——
-     *                    自提是「已取货」，商家配送是「已送达」，快递是「已签收」。
-     *                    不带这个字段的话三条链会共用一句「已取货」，
-     *                    而收到快递的人根本没去过任何自提点。
+     * @param fulfillment 履约方式（{@code STORE_PICKUP} / {@code MERCHANT_DELIVERY} / {@code
+     *     EXPRESS}）。**消费方靠它分文案** —— 自提是「已取货」，商家配送是「已送达」，快递是「已签收」。 不带这个字段的话三条链会共用一句「已取货」，
+     *     而收到快递的人根本没去过任何自提点。
      */
     /**
-     * 已发货 / 开始配送。**这是履约链上此前完全没有通知的一环**：
-     * {@code MerchantOrderService#ship} 与 {@code #delivered} 都不发事件
-     * （路径写成通配会把 Javadoc 注释提前截断，别这么写），
-     * 于是买家从下单到收货，商家配送与快递这两条链一条消息都收不到
-     * （2026-09-29 查证：线上真实成交全走商家配送，自提零使用）。
+     * 已发货 / 开始配送。**这是履约链上此前完全没有通知的一环**： {@code MerchantOrderService#ship} 与 {@code #delivered}
+     * 都不发事件 （路径写成通配会把 Javadoc 注释提前截断，别这么写）， 于是买家从下单到收货，商家配送与快递这两条链一条消息都收不到 （2026-09-29
+     * 查证：线上真实成交全走商家配送，自提零使用）。
      *
-     * @param fulfillment    履约方式
+     * @param fulfillment 履约方式
      * @param expressCompany 快递公司码（自送为 null）
-     * @param expressNo      快递单号（自送为 null）—— <b>单号是这条通知的全部价值</b>，
-     *                       没有它，「已发货」只说了一件买家本来就在等的事
+     * @param expressNo 快递单号（自送为 null）—— <b>单号是这条通知的全部价值</b>， 没有它，「已发货」只说了一件买家本来就在等的事
      */
     /**
-     * 微信发货信息上传成功（{@code upload_shipping_info}）。物流据此满足换 waybill_token 的前置条件之一
-     * （另一个是已揽收；两者先后不定，物流两边都判 —— TDD-物流模块 §2.4.3）。
+     * 微信发货信息上传成功（{@code upload_shipping_info}）。物流据此满足换 waybill_token 的前置条件之一 （另一个是已揽收；两者先后不定，物流两边都判
+     * —— TDD-物流模块 §2.4.3）。
      *
      * @param outTradeNo 微信支付的商户单号。物流按它找运单（登记快照里存了同一个值），不必认识子单与支付单的对应
      */
-    public record WxShippingUploaded(String orderNo, String outTradeNo, long at,
-                                     List<WxShippingPort.ShippingItem> shipments) implements DomainEvent {
+    public record WxShippingUploaded(
+            String orderNo, String outTradeNo, long at, List<WxShippingPort.ShippingItem> shipments)
+            implements DomainEvent {
         /** Old events remain explicitly unmapped and cannot acknowledge a modern package. */
         public WxShippingUploaded(String orderNo, String outTradeNo, long at) {
             this(orderNo, outTradeNo, at, List.of());
         }
+
         @Override
         public String aggregateType() {
             return "ORDER";
@@ -107,16 +133,40 @@ public final class OrderEvents {
         }
     }
 
-    public record SubOrderShipped(String subOrderNo, String orderNo, String merchantNo,
-                                  String userNo, String fulfillment,
-                                  String expressCompany, String expressNo,
-                                  String sourceShipmentNo, Long sourceShipmentVersion)
+    public record SubOrderShipped(
+            String subOrderNo,
+            String orderNo,
+            String merchantNo,
+            String userNo,
+            String fulfillment,
+            String expressCompany,
+            String expressNo,
+            String sourceShipmentNo,
+            Long sourceShipmentVersion)
             implements DomainEvent {
-        /** Old publishers remain compatible; new shipping freezes the immutable source generation. */
-        public SubOrderShipped(String subOrderNo, String orderNo, String merchantNo, String userNo,
-                               String fulfillment, String expressCompany, String expressNo) {
-            this(subOrderNo, orderNo, merchantNo, userNo, fulfillment, expressCompany, expressNo, null, null);
+        /**
+         * Old publishers remain compatible; new shipping freezes the immutable source generation.
+         */
+        public SubOrderShipped(
+                String subOrderNo,
+                String orderNo,
+                String merchantNo,
+                String userNo,
+                String fulfillment,
+                String expressCompany,
+                String expressNo) {
+            this(
+                    subOrderNo,
+                    orderNo,
+                    merchantNo,
+                    userNo,
+                    fulfillment,
+                    expressCompany,
+                    expressNo,
+                    null,
+                    null);
         }
+
         @Override
         public String aggregateType() {
             return AGG_SUB_ORDER;
@@ -134,16 +184,34 @@ public final class OrderEvents {
     }
 
     /** Buyer promise changed before hand-off; order and freight amounts remain unchanged. */
-    public record SubOrderFulfillmentChanged(String subOrderNo, String orderNo, String userNo,
-                                             String merchantNo, String storeNo, String previous,
-                                             String current, String reason) implements DomainEvent {
-        @Override public String aggregateType() { return AGG_SUB_ORDER; }
-        @Override public String aggregateId() { return subOrderNo; }
-        @Override public String eventType() { return "SUB_ORDER_FULFILLMENT_CHANGED"; }
+    public record SubOrderFulfillmentChanged(
+            String subOrderNo,
+            String orderNo,
+            String userNo,
+            String merchantNo,
+            String storeNo,
+            String previous,
+            String current,
+            String reason)
+            implements DomainEvent {
+        @Override
+        public String aggregateType() {
+            return AGG_SUB_ORDER;
+        }
+
+        @Override
+        public String aggregateId() {
+            return subOrderNo;
+        }
+
+        @Override
+        public String eventType() {
+            return "SUB_ORDER_FULFILLMENT_CHANGED";
+        }
     }
 
-    public record SubOrderCompleted(String subOrderNo, String orderNo, String merchantNo,
-                                    String userNo, String fulfillment)
+    public record SubOrderCompleted(
+            String subOrderNo, String orderNo, String merchantNo, String userNo, String fulfillment)
             implements DomainEvent {
         @Override
         public String aggregateType() {
@@ -164,11 +232,15 @@ public final class OrderEvents {
     /**
      * 子订单支付成功（按商家粒度）。消费方：message（B 端「新订单」提醒，B-N-1）。
      *
-     * <p>与 {@link OrderPaid}（主单粒度）并存而不是取代：结算/履约要的是主单事实，
-     * 而商家通知天然是子单粒度 —— 跨商家合单支付时，每家只该被自己的那单吵到。
+     * <p>与 {@link OrderPaid}（主单粒度）并存而不是取代：结算/履约要的是主单事实， 而商家通知天然是子单粒度 —— 跨商家合单支付时，每家只该被自己的那单吵到。
      */
-    public record SubOrderPaid(String subOrderNo, String orderNo, String entityNo,
-                               String storeNo, String userNo, long payAmount)
+    public record SubOrderPaid(
+            String subOrderNo,
+            String orderNo,
+            String entityNo,
+            String storeNo,
+            String userNo,
+            long payAmount)
             implements DomainEvent {
         @Override
         public String aggregateType() {
@@ -187,16 +259,20 @@ public final class OrderEvents {
     }
 
     /**
-     * 售后申请提交。消费方：message（B 端提醒，B-N-2）。
-     * <b>发布时机在申请落库之后、任何审核动作之前</b> —— 商家越早看到越可能协商解决，
+     * 售后申请提交。消费方：message（B 端提醒，B-N-2）。 <b>发布时机在申请落库之后、任何审核动作之前</b> —— 商家越早看到越可能协商解决，
      * 拖到平台介入时双方都已经在气头上。
      *
-     * <p><b>{@code storeNo} 是 2026-10-10 补的</b>（用户订正：售后与评价的开关也基于门店）。
-     * 没有它，通知只能按主体级开关发 —— 而那意味着「福田店关掉售后提醒」会连带
-     * 把粮油店的也关掉。历史 payload 里这一格是 null，消费侧据此回落到只走平台总闸。
+     * <p><b>{@code storeNo} 是 2026-10-10 补的</b>（用户订正：售后与评价的开关也基于门店）。 没有它，通知只能按主体级开关发 ——
+     * 而那意味着「福田店关掉售后提醒」会连带 把粮油店的也关掉。历史 payload 里这一格是 null，消费侧据此回落到只走平台总闸。
      */
-    public record AfterSaleApplied(String afterSaleNo, String subOrderNo, String entityNo,
-                                   String storeNo, String userNo, String type, long refundMinor)
+    public record AfterSaleApplied(
+            String afterSaleNo,
+            String subOrderNo,
+            String entityNo,
+            String storeNo,
+            String userNo,
+            String type,
+            long refundMinor)
             implements DomainEvent {
         @Override
         public String aggregateType() {
@@ -217,8 +293,7 @@ public final class OrderEvents {
     /**
      * 到货：自提点把一批子订单标记为「可来取货」。消费方：message（到货通知，C-FF-02）。
      *
-     * <p><b>按 userNo 聚合发布</b>，不是一个子订单一个事件：一次到货登记通常是一车货，
-     * 同一个买家在这批里有三单的话，逐单发事件会让他收到三条「到货了」——
+     * <p><b>按 userNo 聚合发布</b>，不是一个子订单一个事件：一次到货登记通常是一车货， 同一个买家在这批里有三单的话，逐单发事件会让他收到三条「到货了」——
      * 到货通知是全链路最重要的一条触达，恰恰最不能被自己刷成噪音。
      */
     public record SubOrdersArrived(String userNo, String pickupNo, List<String> subOrderNos)
@@ -240,27 +315,26 @@ public final class OrderEvents {
     }
 
     /**
-     * 售后退款完成。消费方：settle（账务冲销）、product（库存回补）、user（商家评分）。
-     * <b>发布时机在退款成功之后</b> —— 提前发的话，下游会按「已退款」处理一笔还没退成的钱。
+     * 售后退款完成。消费方：settle（账务冲销）、product（库存回补）、user（商家评分）。 <b>发布时机在退款成功之后</b> ——
+     * 提前发的话，下游会按「已退款」处理一笔还没退成的钱。
      */
     /**
      * 售后有结果了 —— 商家驳回，或者同意了但要先把货寄回来。
      *
-     * <p><b>这两件都是「买家正在等的结果」</b>，而此前一条通知都没有：
-     * {@code AfterSaleServiceImpl#reject} 与 {@code #approve} 的退货分支都不发事件。
-     * 被驳回的人不知道自己被驳回了，该寄回的人不知道要寄 —— 而后者有时限，
-     * 不寄会被 {@code AfterSaleTimeoutJob} 自动关单（那条时效 2026-09-27 才加上）。
+     * <p><b>这两件都是「买家正在等的结果」</b>，而此前一条通知都没有： {@code AfterSaleServiceImpl#reject} 与 {@code #approve}
+     * 的退货分支都不发事件。 被驳回的人不知道自己被驳回了，该寄回的人不知道要寄 —— 而后者有时限， 不寄会被 {@code AfterSaleTimeoutJob} 自动关单（那条时效
+     * 2026-09-27 才加上）。
      *
      * @param decision {@link #REJECTED} / {@link #RETURN_WAIT}
-     * @param remark   商家的说明。驳回时**必须说出理由**，
-     *                 否则买家只看到「被拒了」而不知道下一步能做什么
+     * @param remark 商家的说明。驳回时**必须说出理由**， 否则买家只看到「被拒了」而不知道下一步能做什么
      */
-    public record AfterSaleDecided(String afterSaleNo, String subOrderNo, String userNo,
-                                   String decision, String remark)
+    public record AfterSaleDecided(
+            String afterSaleNo, String subOrderNo, String userNo, String decision, String remark)
             implements DomainEvent {
 
         /** 商家驳回。 */
         public static final String REJECTED = "REJECTED";
+
         /** 同意退货退款，等买家寄回。 */
         public static final String RETURN_WAIT = "RETURN_WAIT";
 
@@ -274,17 +348,15 @@ public final class OrderEvents {
             return afterSaleNo;
         }
 
-        /**
-         * <p><b>按结果给事件类型</b>：驳回与待寄回是两件不同的事，
-         * 运营可能想给它们不同的通道，场景×通道表里要能分别开关。
-         */
+        /** <b>按结果给事件类型</b>：驳回与待寄回是两件不同的事， 运营可能想给它们不同的通道，场景×通道表里要能分别开关。 */
         @Override
         public String eventType() {
             return REJECTED.equals(decision) ? "AFTER_SALE_REJECTED" : "AFTER_SALE_RETURN_WAIT";
         }
     }
 
-    public record AfterSaleRefunded(String afterSaleNo, String subOrderNo, String userNo, long refundMinor)
+    public record AfterSaleRefunded(
+            String afterSaleNo, String subOrderNo, String userNo, long refundMinor)
             implements DomainEvent {
 
         @Override

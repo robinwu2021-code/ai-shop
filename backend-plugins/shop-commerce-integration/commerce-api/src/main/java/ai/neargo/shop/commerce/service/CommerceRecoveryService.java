@@ -14,4 +14,34 @@ public interface CommerceRecoveryService {
             String sourceRef,
             String newRevision,
             String eventNo);
+
+    /**
+     * Durable source notices process one explicitly scoped target without rescanning the same
+     * store.
+     */
+    default void onPublishedScope(
+            String entityNo,
+            String storeNo,
+            String scopeNo,
+            Owner owner,
+            String sourceRef,
+            String revision,
+            String eventNo) {
+        throw new UnsupportedOperationException("Scoped source publication unavailable");
+    }
+
+    /**
+     * Explicit native withdrawal retains its configured subscription and every immutable mapping
+     * revision.
+     */
+    default void onWithdrawnScope(
+            String entityNo,
+            String storeNo,
+            String scopeNo,
+            Owner owner,
+            String sourceRef,
+            String previousRevision,
+            String eventNo) {
+        throw new UnsupportedOperationException("Scoped original withdrawal unavailable");
+    }
 }

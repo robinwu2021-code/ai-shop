@@ -1,0 +1,10 @@
+ai.neargo.shop.retail.commerce.config.RetailCommerceAutoConfiguration
+ai.neargo.shop.retail.commerce.config.RetailCommerceInternalAutoConfiguration
+
+ai.neargo.shop.retail.commerce.config.RetailChannelOrderAutoConfiguration
+
+ai.neargo.shop.retail.commerce.config.RetailChannelOrderInternalAutoConfiguration
+
+ai.neargo.shop.retail.commerce.config.RetailStoreBusinessAvailabilityInternalAutoConfiguration
+ai.neargo.shop.retail.commerce.config.RetailChannelFulfillmentSourceAutoConfiguration
+ai.neargo.shop.retail.commerce.config.RetailChannelFulfillmentEventsAutoConfiguration

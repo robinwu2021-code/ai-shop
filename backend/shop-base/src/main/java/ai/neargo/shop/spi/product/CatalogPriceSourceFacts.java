@@ -35,27 +35,92 @@ public final class CatalogPriceSourceFacts {
     private CatalogPriceSourceFacts() {}
 
     public static void validateMarketScope(MarketScope scope) {
-        if (scope == null || !DishOfferFacts.validKey(scope.entityNo())
-                || !DishOfferFacts.validKey(scope.storeNo())) throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (scope == null
+                || !DishOfferFacts.validKey(scope.entityNo())
+                || !DishOfferFacts.validKey(scope.storeNo()))
+            throw BizException.of(ErrorCode.BAD_REQUEST);
     }
 
     public static MarketFacts sealMarket(MarketFacts f) {
-        var unsigned = new MarketFacts(f.schemaVersion(), f.purpose(), f.scope(), f.market(),
-                f.verifiedAt(), f.validUntil(), null);
-        return new MarketFacts(f.schemaVersion(), f.purpose(), f.scope(), f.market(),
-                f.verifiedAt(), f.validUntil(), PricingSnapshotHash.of(unsigned));
+        var unsigned =
+                new MarketFacts(
+                        f.schemaVersion(),
+                        f.purpose(),
+                        f.scope(),
+                        f.market(),
+                        f.verifiedAt(),
+                        f.validUntil(),
+                        null);
+        return new MarketFacts(
+                f.schemaVersion(),
+                f.purpose(),
+                f.scope(),
+                f.market(),
+                f.verifiedAt(),
+                f.validUntil(),
+                PricingSnapshotHash.of(unsigned));
     }
 
     /** A typed descriptor does not replace the original scope, lifetime and integrity checks. */
     public static void validateMarketFacts(MarketScope scope, MarketFacts f, Instant now) {
         validateMarketScope(scope);
-        require(f != null && f.schemaVersion() == 1 && "CATALOG_MARKET".equals(f.purpose())
-                && scope.equals(f.scope()) && now != null);
+        require(
+                f != null
+                        && f.schemaVersion() == 1
+                        && "CATALOG_MARKET".equals(f.purpose())
+                        && scope.equals(f.scope())
+                        && now != null);
         validateMarket(f.market());
-        require(f.verifiedAt() != null && f.validUntil() != null && !f.verifiedAt().isAfter(now)
-                && f.validUntil().isAfter(now) && f.validUntil().isAfter(f.verifiedAt())
-                && !f.validUntil().isAfter(f.verifiedAt().plusSeconds(30))
-                && sealMarket(f).receiptNo().equals(f.receiptNo()));
+        require(
+                f.verifiedAt() != null
+                        && f.validUntil() != null
+                        && !f.verifiedAt().isAfter(now)
+                        && f.validUntil().isAfter(now)
+                        && f.validUntil().isAfter(f.verifiedAt())
+                        && !f.validUntil().isAfter(f.verifiedAt().plusSeconds(30))
+                        && sealMarket(f).receiptNo().equals(f.receiptNo()));
+    }
+
+    public static CatalogPriceSourcePort.ScopeFacts sealScope(
+            CatalogPriceSourcePort.ScopeFacts facts) {
+        var unsigned =
+                new CatalogPriceSourcePort.ScopeFacts(
+                        facts.schemaVersion(),
+                        facts.purpose(),
+                        facts.scope(),
+                        facts.market(),
+                        facts.tax(),
+                        facts.verifiedAt(),
+                        facts.validUntil(),
+                        null);
+        return new CatalogPriceSourcePort.ScopeFacts(
+                facts.schemaVersion(),
+                facts.purpose(),
+                facts.scope(),
+                facts.market(),
+                facts.tax(),
+                facts.verifiedAt(),
+                facts.validUntil(),
+                PricingSnapshotHash.of(unsigned));
+    }
+
+    public static void validateScopeFacts(
+            MarketScope scope, CatalogPriceSourcePort.ScopeFacts facts, Instant now) {
+        validateMarketScope(scope);
+        require(
+                facts != null
+                        && facts.schemaVersion() == 1
+                        && "CATALOG_SCOPE".equals(facts.purpose())
+                        && scope.equals(facts.scope()));
+        validateMarket(facts.market());
+        taxSnapshotForScope(scope, facts.tax());
+        require(
+                facts.verifiedAt() != null
+                        && !facts.verifiedAt().isAfter(now)
+                        && facts.validUntil() != null
+                        && facts.validUntil().isAfter(now)
+                        && !facts.validUntil().isAfter(facts.verifiedAt().plusSeconds(30))
+                        && sealScope(facts).receiptNo().equals(facts.receiptNo()));
     }
 
     public static void validateRequest(Request request) {
@@ -90,7 +155,10 @@ public final class CatalogPriceSourceFacts {
         return taxDefinition(request.entityNo(), request.storeNo(), tax);
     }
 
-    /** Scope-only readers reuse the original definition checks without fabricating a SKU or a price request. */
+    /**
+     * Scope-only readers reuse the original definition checks without fabricating a SKU or a price
+     * request.
+     */
     public static MerchantTaxSnapshot taxSnapshotForScope(MarketScope scope, TaxFact tax) {
         validateMarketScope(scope);
         validateTax(tax);
@@ -98,13 +166,26 @@ public final class CatalogPriceSourceFacts {
     }
 
     private static void validateTax(TaxFact tax) {
-        require(tax != null && tax.source() != null && tax.managedVersion() != null
-                && tax.sourceVersion() != null && tax.rateBp() != null && tax.priceTaxMode() != null);
+        require(
+                tax != null
+                        && tax.source() != null
+                        && tax.managedVersion() != null
+                        && tax.sourceVersion() != null
+                        && tax.rateBp() != null
+                        && tax.priceTaxMode() != null);
     }
 
     private static MerchantTaxSnapshot taxDefinition(String entity, String store, TaxFact tax) {
-        return new MerchantTaxSnapshot("MAIN", entity, store, tax.managedVersion(), Source.valueOf(tax.source()),
-                tax.ownerNo(), tax.sourceVersion(), tax.rateBp(), PriceTaxMode.valueOf(tax.priceTaxMode()),
+        return new MerchantTaxSnapshot(
+                "MAIN",
+                entity,
+                store,
+                tax.managedVersion(),
+                Source.valueOf(tax.source()),
+                tax.ownerNo(),
+                tax.sourceVersion(),
+                tax.rateBp(),
+                PriceTaxMode.valueOf(tax.priceTaxMode()),
                 tax.contentHash());
     }
 

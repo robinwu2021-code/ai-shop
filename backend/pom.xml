@@ -234,6 +234,10 @@
 
     <profiles>
         <profile>
+            <id>retail-commerce-embedded</id>
+            <modules><module>../backend-plugins/shop-retail-commerce</module></modules>
+        </profile>
+        <profile>
             <id>food-commerce-embedded</id>
             <modules>
                 <module>../backend-plugins/shop-industry-food/food-commerce</module>

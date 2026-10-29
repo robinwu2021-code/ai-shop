@@ -84,6 +84,22 @@ class ConfigRevisionServiceTest extends FoodWriteGuardFixture {
     }
     PublishConfigReq request(long version) { return new PublishConfigReq(version, NOW, null); }
 
+    @Test void componentModeCannotBePublishedBeforeOrderPathsAreReady() {
+        run((c, f) -> {
+            var leaf = addon(c, "leaf-component-gate");
+            var combo = c.getBean(ModifierService.class).createModifier("E", "A", "actor",
+                    new CreateModifierReq("combo", "COMBO", "SKU", List.of(
+                            new ModifierComponentInput(leaf, BigDecimal.ONE))), "combo-component-gate");
+            f.sql().update("UPDATE fnb_modifier SET inventory_mode='COMPONENTS' WHERE modifier_no=?",
+                    combo.configNo());
+            assertThatThrownBy(() -> c.getBean(ConfigRevisionService.class).publishModifier(
+                    "E", "A", combo.configNo(), "actor", request(0), "blocked-component-gate"))
+                    .isInstanceOf(BizException.class);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_config_revision", Integer.class))
+                    .isZero();
+        });
+    }
+
     @Test void publicationIsAppendOnlyAndReplayKeepsOriginalReceiptAfterDraftEdits() {
         run((c,f) -> {
             var s = c.getBean(ConfigRevisionService.class); String number = addon(c, "a");

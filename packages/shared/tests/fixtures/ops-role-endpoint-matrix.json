@@ -1237,7 +1237,10 @@
     "POST /ops/topics",
     "POST /ops/topics/{topicNo}/archived",
     "GET /ops/topics/{topicNo}/goods",
-    "POST /ops/topics/{topicNo}/goods"
+    "POST /ops/topics/{topicNo}/goods",
+    "PUT /ops/x/commerce/product-profiles/{profileNo}",
+    "GET /ops/x/commerce/support/health",
+    "GET /ops/x/commerce/support/operations/{operationNo}"
   ],
   "SUPPORT": [
     "GET /ops/after-sales",

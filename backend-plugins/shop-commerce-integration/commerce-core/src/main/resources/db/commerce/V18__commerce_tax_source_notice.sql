@@ -1,0 +1,26 @@
+-- Durable real platform/merchant tax-source scope; no placeholder merchant is created for a platform default.
+CREATE TABLE cim_tax_source_notice (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    notice_no VARCHAR(32) NOT NULL,
+    source_event_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(32) NULL,
+    setting_key VARCHAR(128) NOT NULL,
+    source_version BIGINT NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
+    payload_hash VARCHAR(64) NOT NULL,
+    effective_at DATETIME(3) NOT NULL,
+    scope_cursor BIGINT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    next_check_at DATETIME(3) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_cim_tax_source_notice(tenant_no,notice_no),
+    UNIQUE KEY uk_cim_tax_source_event(tenant_no,source_event_no),
+    KEY idx_cim_tax_source_due(tenant_no,status,next_check_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

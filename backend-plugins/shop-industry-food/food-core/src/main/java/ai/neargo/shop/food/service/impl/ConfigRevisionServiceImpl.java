@@ -690,6 +690,9 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             var row = modifiers.selectOne(query);
             if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
             if (!editable(row.getStatus()) || !validKey(row.getSalesSkuNo(), 32)) throw bad();
+            // Fail closed until every original order and fulfillment path preserves the
+            // priced selection while expanding its member inventory without double issue.
+            if ("COMPONENTS".equals(row.getInventoryMode())) throw bad();
             skuNos.add(row.getSalesSkuNo());
             var children = components.selectList(Wrappers.<FnbModifierComponent>lambdaQuery()
                     .eq(FnbModifierComponent::getEntityNo, entity).eq(FnbModifierComponent::getComboNo, number)
@@ -706,7 +709,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             var definition = new ModifierConfigVO(number, row.getKind(), row.getVersion(), row.getStatus(),
                     new ModifierConfigVO.Data(row.getName(), row.getSalesSkuNo(), row.getPublishedRevisionNo(),
                             children.stream().map(p -> new ModifierConfigVO.Component(p.getComponentNo(),
-                                    p.getMemberNo(), p.getQuantity())).toList()));
+                                    p.getMemberNo(), p.getQuantity())).toList(), row.getInventoryMode()));
             return new Candidate(row.getVersion(), definition, null, null, deps, List.copyOf(skuNos),
                     List.of(), null, null, null);
         }

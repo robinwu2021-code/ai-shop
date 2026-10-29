@@ -13,3 +13,17 @@ ai.neargo.shop.food.config.FoodSupportAutoConfiguration
 ai.neargo.shop.food.config.FoodBusinessAmendmentConfiguration
 
 ai.neargo.shop.food.config.DiningReportFactsConfiguration
+
+ai.neargo.shop.food.config.FoodChannelOrderAutoConfiguration
+
+ai.neargo.shop.food.config.FoodChannelFulfillmentAutoConfiguration
+
+ai.neargo.shop.food.config.BottleCustodyAutoConfiguration
+
+ai.neargo.shop.food.config.FoodServiceEntitlementAutoConfiguration
+
+ai.neargo.shop.food.config.FoodMenuWithdrawalAutoConfiguration
+
+ai.neargo.shop.food.config.FoodChannelFulfillmentSignalAutoConfiguration
+ai.neargo.shop.food.config.FoodOfflineDraftAutoConfiguration
+ai.neargo.shop.food.config.DiningKitchenReportFactsConfiguration

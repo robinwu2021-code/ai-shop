@@ -101,6 +101,7 @@ public class ModifierServiceImpl implements ModifierService {
                 row.setKind(req.kind());
                 row.setName(req.name());
                 row.setSalesSkuNo(req.salesSkuNo());
+                row.setInventoryMode(req.inventoryMode());
                 row.setVersion(0L);
                 row.setStatus("DRAFT");
                 heads.insert(row);
@@ -121,7 +122,7 @@ public class ModifierServiceImpl implements ModifierService {
         if (input == null || input.version() == null || input.version() < 0) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        var req = normalize(new CreateModifierReq(input.name(), input.kind(), input.salesSkuNo(), input.components()));
+        var req = normalize(new CreateModifierReq(input.name(), input.kind(), input.salesSkuNo(), input.components(), input.inventoryMode()));
         var currency = currencies.open(entity, store);
         sku(entity, store, req.salesSkuNo(), currency);
         currency.refresh();
@@ -139,9 +140,16 @@ public class ModifierServiceImpl implements ModifierService {
                     throw BizException.of(ErrorCode.CONFLICT);
                 }
                 var before = views(entity, List.of(row)).getFirst();
+                try {
+                    ai.neargo.shop.food.policy.ModifierInventoryMode.resolve(req.kind(), req.salesSkuNo(),
+                            req.inventoryMode() == null ? row.getInventoryMode() : req.inventoryMode());
+                } catch (IllegalArgumentException invalid) {
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+                }
                 validateMembers(entity, req);
                 row.setName(req.name());
                 row.setSalesSkuNo(req.salesSkuNo());
+                if (req.inventoryMode() != null) row.setInventoryMode(req.inventoryMode());
                 row.setStatus("DRAFT");
                 // ALWAYS strategy on salesSkuNo makes explicit null clear the old reference.
                 if (heads.updateById(row) != 1) throw BizException.of(ErrorCode.CONFLICT);
@@ -217,7 +225,7 @@ public class ModifierServiceImpl implements ModifierService {
                 row.getStatus(), new ModifierConfigVO.Data(row.getName(), row.getSalesSkuNo(),
                         row.getPublishedRevisionNo(), children.getOrDefault(row.getModifierNo(), List.of()).stream()
                                 .map(p -> new ModifierConfigVO.Component(p.getComponentNo(), p.getMemberNo(),
-                                        p.getQuantity())).toList()))).toList();
+                                        p.getQuantity())).toList(), row.getInventoryMode()))).toList();
     }
 
     private void record(String entity, String store, String actor, String key, String action,
@@ -259,7 +267,18 @@ public class ModifierServiceImpl implements ModifierService {
             }
             return new ModifierComponentInput(p.memberNo(), qty);
         }).sorted(Comparator.comparing(ModifierComponentInput::memberNo)).toList();
-        return new CreateModifierReq(input.name().trim(), input.kind(), input.salesSkuNo(), parts);
+        if (input.inventoryMode() != null) {
+            try {
+                ai.neargo.shop.food.policy.ModifierInventoryMode.resolve(
+                        input.kind(), input.salesSkuNo(), input.inventoryMode());
+            } catch (IllegalArgumentException invalid) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            // Do not allow new member-based configurations until all order paths honor them.
+            if ("COMPONENTS".equals(input.inventoryMode())) throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return new CreateModifierReq(input.name().trim(), input.kind(), input.salesSkuNo(), parts,
+                input.inventoryMode());
     }
 
     private static boolean editable(String status) { return "DRAFT".equals(status) || "ACTIVE".equals(status); }

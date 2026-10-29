@@ -65,6 +65,16 @@ public class InternalGoodsCatalogEndpoint {
         });
     }
 
+    /** Sale unit is product-owned, market-scoped and accessible only to trusted services. */
+    @PostMapping(GoodsCatalogInternalApi.SKU_MEASUREMENT_PATH)
+    public ResponseEntity<?> lookupSkuMeasurement(@RequestBody(required = false) CatalogMarketContracts.SkuQuery query,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> {
+            CatalogMarketFacts.validateQuery(query);
+            return catalog.getCatalogSkuMeasurement(query);
+        });
+    }
+
     @PostMapping(GoodsCatalogInternalApi.SKU_PATH)
     public ResponseEntity<?> lookupSku(@RequestBody(required=false) GoodsCatalogInternalApi.SkuLookup request,
             @RequestHeader(value=InternalHttp.TOKEN_HEADER, required=false) String given) {

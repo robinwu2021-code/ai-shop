@@ -3,14 +3,14 @@ package ai.neargo.shop.food.config;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.api.biz.BizFoodKdsController;
 import ai.neargo.shop.food.api.biz.BizFoodStationRuntimeController;
+import ai.neargo.shop.food.api.stream.FoodKdsStreamTransport;
+import ai.neargo.shop.food.api.stream.FoodKdsStreamTransportImpl;
 import ai.neargo.shop.food.event.DiningKdsEventConsumer;
 import ai.neargo.shop.food.foodclient.RemoteFoodKdsService;
 import ai.neargo.shop.food.foodclient.RemoteFoodStationRuntimeService;
 import ai.neargo.shop.food.service.FoodKdsService;
-import ai.neargo.shop.food.service.FoodKdsStreamService;
 import ai.neargo.shop.food.service.FoodPrintService;
 import ai.neargo.shop.food.service.FoodStationRuntimeService;
-import ai.neargo.shop.food.service.impl.FoodKdsStreamServiceImpl;
 import ai.neargo.shop.food.spi.FoodKdsInternalApi;
 import ai.neargo.shop.food.spi.FoodStationRuntimeInternalApi;
 import ai.neargo.shop.spi.printing.PrintPort;
@@ -69,16 +69,16 @@ public class FoodKdsWebAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(FoodKdsStreamService.class)
-    FoodKdsStreamService foodKdsStreamService(FoodKdsService service) {
-        return new FoodKdsStreamServiceImpl(service);
+    @ConditionalOnMissingBean(FoodKdsStreamTransport.class)
+    FoodKdsStreamTransport foodKdsStreamService(FoodKdsService service) {
+        return new FoodKdsStreamTransportImpl(service);
     }
 
     @Bean
     @ConditionalOnMissingBean(BizFoodKdsController.class)
     BizFoodKdsController bizFoodKdsController(
             FoodKdsService service,
-            FoodKdsStreamService streams,
+            FoodKdsStreamTransport streams,
             StoreDirectoryPort stores,
             FoodRequestScopeValidator validator) {
         return new BizFoodKdsController(service, streams, stores, validator);

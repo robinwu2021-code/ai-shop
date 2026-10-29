@@ -1,14 +1,24 @@
 package ai.neargo.shop.commerce.config;
 
 import ai.neargo.shop.commerce.api.CommerceRequestScope;
+import ai.neargo.shop.commerce.api.biz.BizAccountOperationController;
 import ai.neargo.shop.commerce.api.biz.BizCatalogPreviewController;
 import ai.neargo.shop.commerce.api.biz.BizCatalogScopeController;
 import ai.neargo.shop.commerce.api.biz.BizChannelAccountController;
+import ai.neargo.shop.commerce.api.biz.BizChannelAfterSaleController;
 import ai.neargo.shop.commerce.api.biz.BizChannelAuthorizationController;
+import ai.neargo.shop.commerce.api.biz.BizChannelAvailabilityController;
 import ai.neargo.shop.commerce.api.biz.BizChannelConnectionController;
+import ai.neargo.shop.commerce.api.biz.BizChannelFulfillmentController;
 import ai.neargo.shop.commerce.api.biz.BizChannelOperationController;
+import ai.neargo.shop.commerce.api.biz.BizChannelOrderController;
 import ai.neargo.shop.commerce.api.biz.BizChannelProviderController;
+import ai.neargo.shop.commerce.api.biz.BizChannelRedemptionController;
+import ai.neargo.shop.commerce.api.biz.BizChannelStatementController;
+import ai.neargo.shop.commerce.api.biz.BizChannelStatisticsController;
+import ai.neargo.shop.commerce.api.biz.BizInboundEventController;
 import ai.neargo.shop.commerce.api.biz.BizResourceMappingController;
+import ai.neargo.shop.commerce.api.biz.BizStoreOperationController;
 import ai.neargo.shop.commerce.api.biz.BizSyncPolicyController;
 import ai.neargo.shop.commerce.api.biz.BizSyncRunController;
 import ai.neargo.shop.commerce.api.callback.ChannelAuthorizationCallbackController;
@@ -26,10 +36,20 @@ import org.springframework.context.annotation.Profile;
 @ConditionalOnCommerceWebEnabled
 @Import({
     BizChannelAccountController.class,
+    BizChannelAvailabilityController.class,
+    BizChannelAfterSaleController.class,
+    BizChannelStatementController.class,
+    BizChannelRedemptionController.class,
     BizChannelConnectionController.class,
     BizChannelProviderController.class,
     BizChannelAuthorizationController.class,
     BizChannelOperationController.class,
+    BizStoreOperationController.class,
+    BizInboundEventController.class,
+    BizChannelOrderController.class,
+    BizChannelFulfillmentController.class,
+    BizAccountOperationController.class,
+    BizChannelStatisticsController.class,
     BizCatalogScopeController.class,
     BizCatalogPreviewController.class,
     BizSyncPolicyController.class,

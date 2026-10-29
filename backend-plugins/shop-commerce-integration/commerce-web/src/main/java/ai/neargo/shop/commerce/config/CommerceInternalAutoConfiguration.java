@@ -1,6 +1,8 @@
 package ai.neargo.shop.commerce.config;
 
 import ai.neargo.shop.commerce.api.internal.InternalChannelCatalogAuthorityController;
+import ai.neargo.shop.commerce.api.internal.InternalChannelOrderSourceEvidenceController;
+import ai.neargo.shop.commerce.api.internal.InternalSourceNoticeController;
 import ai.neargo.shop.commerce.service.ChannelCatalogAuthorityService;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -12,5 +14,9 @@ import org.springframework.context.annotation.Import;
 @AutoConfiguration(afterName = "ai.neargo.shop.commerce.config.CommerceCoreAutoConfiguration")
 @ConditionalOnProperty(prefix = "shop.commerce", name = "enabled", havingValue = "true")
 @ConditionalOnBean(ChannelCatalogAuthorityService.class)
-@Import(InternalChannelCatalogAuthorityController.class)
+@Import({
+    InternalChannelCatalogAuthorityController.class,
+    InternalSourceNoticeController.class,
+    InternalChannelOrderSourceEvidenceController.class
+})
 public class CommerceInternalAutoConfiguration {}
