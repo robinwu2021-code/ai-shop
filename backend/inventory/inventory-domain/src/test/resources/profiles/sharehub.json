@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "capabilities": ["SERIAL", "DISPATCH_POOL"],
+  "targetTypes": [
+    {"code": "MERCHANT", "nameKey": "inventory.target.merchant", "parentType": null},
+    {"code": "SITE", "nameKey": "inventory.target.site", "parentType": "MERCHANT"},
+    {"code": "PERSON", "nameKey": "inventory.target.person", "parentType": null}
+  ],
+  "inboundPurposes": [
+    {"code": "PURCHASE", "basisRequired": false, "attachmentRequired": false},
+    {"code": "OPENING", "basisRequired": true, "attachmentRequired": true},
+    {"code": "RETURN", "basisRequired": false, "attachmentRequired": false},
+    {"code": "CORRECTION", "basisRequired": false, "attachmentRequired": false},
+    {"code": "COUNT_GAIN", "basisRequired": false, "attachmentRequired": false}
+  ],
+  "outboundPurposes": [
+    {"code": "ISSUE", "requiredTargets": ["MERCHANT", "PERSON"], "optionalTargets": ["SITE"], "handover": "POOL"},
+    {"code": "SCRAP", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "RETURN_SUPPLIER", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "COUNT_LOSS", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"}
+  ],
+  "gateRefTypes": ["QC"],
+  "countReview": {"required": true, "reviewerMustDiffer": true}
+}

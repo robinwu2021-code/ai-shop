@@ -9,6 +9,7 @@ import ai.neargo.inventory.domain.entity.InvOwner;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.inventory.domain.service.StockQueryService;
+import ai.neargo.shop.inventory.embed.ShopInventorySystem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class MerchantStockDigestServiceImpl implements MerchantStockDigestServic
     @Override
     public Digest of(String entityNo) {
         InvOwner owner = ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
                 .eq(InvOwner::getExternalRef, entityNo)
                 .last("limit 1"));
         if (owner == null) {

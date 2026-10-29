@@ -585,7 +585,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 |---|---|---|---|
 | AC-01 | `InboundPostingTest#rollback_all_on_midway_failure` | | |
 | AC-02 | `SerialEpisodeConcurrencyTest#same_sn_two_inbounds_only_one_wins` | | |
-| AC-03 | `CommandIdempotencyTest#lost_response_retry_returns_original` | | |
+| AC-03 | `ServicePlatformFlowTest#ownerCredentialProfileAndIdempotentWarehouse`（同键同参同结果、只建一个仓；同键异参 409；按键查结果） | ✅ 2026-10-29 | ✅ 去掉占键插入 → 变红 |
 | AC-04 | `GatePolicyTest#missing_gate_ref_lists_all_items` | | |
 | AC-05 | `IssueTargetRuleTest#site_not_under_merchant_rejected` | | |
 | AC-06 | `IssuePostingTest#balance_episode_pool_ledger_event_in_one_tx` | | |
@@ -597,11 +597,11 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-12 | `PeriodSummaryTest#opening_plus_in_minus_out_equals_closing` | | |
 | AC-13 | `OutboundCancelTest#posted_issue_cancel_409` | | |
 | AC-14 | `EventCursorTest#expired_cursor_recovers_without_gap_or_dup` | | |
-| AC-15 | `GuardIsolationTest#cross_owner_and_cross_system_403` | | |
+| AC-15 | `ServicePlatformFlowTest#ownersAreIsolatedByCredential`（B 的凭证带 A 的业主号也看不到 A 的仓）· `#badCredentialsAllLookTheSame` | ✅ 2026-10-29 | |
 | AC-16 | `CapabilityGuardTest#dispatch_pool_disabled_403` | | |
 | AC-17 | `ChargingPileProfileE2ETest#profile_only_onboarding` | | |
 | AC-18 | `KitDispatchTest#revoke_parent_moves_children_child_alone_409` | | |
-| AC-19 | `WriteAuthorityTest#non_writer_rejected` | | |
+| AC-19 | `ServicePlatformFlowTest#writesAreRejectedWhenThisProcessIsNotTheWriter`（写入方翻回 EMBEDDED 后写 409、读照常） | ✅ 2026-10-29 | |
 | AC-20 | `CoreScenarioSuite`（内嵌 / 独立两种装配） | | |
 | AC-21 | pre-push I1（删本地 shop 构件后构建） | | |
 | AC-22 | `InventoryArchitectureTest#inventoryDoesNotDependOnShopCode` + `scripts/check-inventory-independence.mjs` + enforcer | ✅ 2026-10-29 | ✅ 临时加一行 `import ai.neargo.shop.common.BizException` 与一个指出目录的链接 → 脚本报 2 处、退出 1 |
@@ -610,11 +610,12 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-25 | `ReservationTest#idempotent_and_expires` | | |
 | AC-26 | ai-shop `OrderReservationOutboxTest#rollback_expires_and_commit_once` | | |
 | AC-27 | `WriteAuthorityFlipTest#flip_and_back_consistent` | | |
-| AC-28 | `InstanceGuardTest`（4 例：设备凭证打电商套、电商凭证打设备套、测试套全放行、空放行表全拒）+ 生产形态演练（M6） | ✅ 判定部分 2026-10-29；接入过滤器待 M2 | |
+| AC-28 | `InstanceGuardTest`（4 例）+ `ServicePlatformFlowTest#shopCredentialIsRejectedByTheDeviceInstance`（经过滤器）+ 生产形态演练（M6） | ✅ 2026-10-29（演练待 M6） | ✅ 去掉过滤器里的放行检查 → 变红 |
 | I5 | `StandaloneContextTest`（空库、只连库存库、进程内 0 个 `ai.neargo.shop.*` Bean） | ✅ 2026-10-29 | |
 | M1 零行为变化 | 商城进销存相关 199 例 + 后端全量（`mvn -o test`，全部模块 SUCCESS、0 失败） | ✅ 2026-10-29 | |
 | M1 错误码 | `InventoryErrorsTest`（映射逐个与搬迁前相同、Advisor 翻译并保留参数） | ✅ 2026-10-29 | ✅ 把 `STOCK_SHORT` 映到 `CONFLICT` → 2 例变红 |
 | M1 复制规则 | `DomainRuleParityTest`（规范哈希、凭证哈希、精确数量、物料规则与原件逐一比对） | ✅ 2026-10-29 | |
+| T0.1 档案 | `ProfileCodecTest`（四份示例档案通过并可往返；出库池缺能力包、可选目标没挂在必填目标下、未知上级、未知字段四种写错被拒并说清规则） | ✅ 2026-10-29 | |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -637,6 +638,22 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 闸门 I1 ~ I4 | I2 `InventoryArchitectureTest`（字节码）+ `check-inventory-independence.mjs`（源码，含 I3、I4，已挂 pre-push）；I3 enforcer；I5 `StandaloneContextTest` | I1「删本地 shop 构件后构建」未自动化：enforcer 已在构建期禁 shop 构件，删 `.m2` 的做法会破坏共享机器的本地仓库 |
 | I6 核心用例两种装配各跑一遍 | 未做 | 归 M2：先有独立形态的 HTTP 入口才有第二种装配可跑 |
 | 路径类引用 | 脚本与棘轮里 9 处 `backend/shop-inventory/.../db/inventory` 改为新路径（`known-sql-dialect.txt` 两条只是改名，条数不变）；新增 `inventory-svc` 的 H2 测试库生成登记 | — |
+
+### M2 · 平台层（2026-10-29，T0.1、T2.1 ~ T2.3；T2.4、T2.5 未做）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| T0.1 档案 schema + 四份示例 | `inventory-api` 的 `BusinessProfile` / `Capability`；示例在 `inventory-domain` 测试资源 `profiles/{shop,food,sharehub,charging}.json`；`ProfileCodec` 保存时一次校验完 | — |
+| V16 迁移 | `inv_client_system`（种子 SHOP / SHAREHUB / CHARGING）、`inv_business_profile`、`inv_command`、`inv_audit`；`inv_owner` 加 `system_code / write_authority / profile_version`，外部引用唯一键改「系统 + 外部引用」；`inv_open_credential` 加 `system_code / capabilities` | 存量业主默认 `SHOP` + `EMBEDDED`，无需数据迁移 |
+| 商城侧按主体号找业主 | ACL 两处、`shop-app` 三处查询加系统码条件（`ShopInventorySystem.CODE`） | 测试环境共用一个库时，ShareHub 的运营方号可能与商城主体号相同 —— 不加就会认错账 |
+| 服务凭证（T2.1） | 一把凭证绑一个系统、一个业主；`Authorization: Bearer <appKey>:<appSecret>`；五种失败同一个 401 | 设计里「可访问业主」写的是复数，实现为单个：一个宿主多个业主就多签几把，换来「业主取自凭证」没有歧义 |
+| 档案（T2.2） | `BusinessProfileService`：只追加、版本递增、锁业主行防并发；`requireCapability` | 能力包开关已有，但还没有能力包端点用它（出库池在 M4），AC-16 的端点级用例随 M4 补 |
+| 幂等与审计（T2.3） | `CommandService`：先占键再执行，同事务；同键并发靠唯一索引排队 + 锁定读；`AuditService` 强制在业务事务内 | — |
+| 入口守卫 | `InventoryAuthFilter`：凭证 → 实例放行 → 写请求查写入方 → 透传操作人 / 幂等键 / 链路号；`AdminTokenFilter`：每套一把运维令牌，没配即关闭 | — |
+| 独立进程首批端点 | 运维：开通业主、签凭证、装档案、翻写入方；宿主：读档案、按键查命令、仓库列表与新建（完整写路径） | 「仓库」先于主方案其它主数据落地，用来打通整条写路径 |
+| T2.4 物料 / 外部目标、T2.5 余额冻结 | 未做 | 下一批 |
+| 定时任务接共用任务服务 | 未做 | 独立进程仍 `inventory.jobs.enabled=false`；接入随 M3 的出站投递一起做 |
+
 
 ## §7 确认与完成
 

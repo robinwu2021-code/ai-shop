@@ -15,7 +15,7 @@ public interface LocationService {
     /**
      * 设发货源。
      *
-     * @throws ai.neargo.shop.common.InventoryException {@code BAD_REQUEST} —— 目标自己也指着别处时。
+     * @throws ai.neargo.inventory.api.InventoryException {@code BAD_REQUEST} —— 目标自己也指着别处时。
      *         <b>不允许链式</b>（A→B→C）：第一个后果是环，第二个是没人说得清货到底从哪出
      */
     void setSource(String ownerId, String locationId, String sourceLocationId, String operator);

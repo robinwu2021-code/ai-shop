@@ -22,11 +22,16 @@ class InventoryErrorsTest {
         assertThat(InventoryErrors.toShop(InventoryError.STOCK_SHORT)).isEqualTo(ErrorCode.STOCK_SHORT_ITEMS);
         assertThat(InventoryErrors.toShop(InventoryError.COUNT_ALREADY_OPEN)).isEqualTo(ErrorCode.COUNT_ALREADY_OPEN);
         assertThat(InventoryErrors.toShop(InventoryError.INTERNAL)).isEqualTo(ErrorCode.INTERNAL_ERROR);
-        Set<ErrorCode> targets = EnumSet.noneOf(ErrorCode.class);
-        for (InventoryError e : InventoryError.values()) {
-            targets.add(InventoryErrors.toShop(e));
+        // 搬迁前就存在的八个码：一一对应，彼此不撞
+        Set<ErrorCode> legacy = EnumSet.noneOf(ErrorCode.class);
+        for (InventoryError e : EnumSet.range(InventoryError.BAD_REQUEST, InventoryError.COUNT_ALREADY_OPEN)) {
+            legacy.add(InventoryErrors.toShop(e));
         }
-        assertThat(targets).hasSize(InventoryError.values().length);
+        legacy.add(InventoryErrors.toShop(InventoryError.INTERNAL));
+        assertThat(legacy).hasSize(8);
+        for (InventoryError e : InventoryError.values()) {
+            assertThat(InventoryErrors.toShop(e)).as(e.name()).isNotNull();
+        }
     }
 
     @Test

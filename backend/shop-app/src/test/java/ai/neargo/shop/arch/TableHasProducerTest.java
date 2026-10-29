@@ -56,6 +56,8 @@ class TableHasProducerTest {
             "lgs_carrier", "lgs_carrier_code", "mch_admission_policy", "sys_channel_category_rule",
             "sys_function", "sys_function_point", "sys_industry", "sys_legal_form",
             "sys_merchant_plan_def", "sys_pay_channel",
+            // 进销存调用系统登记：db/inventory V16 种子（SHOP / SHAREHUB / CHARGING）；新增系统走迁移
+            "inv_client_system",
             // 支付产品与地区：db/pay V4 种子；运营维护入口随 I5 支付运营接口
             "pay_channel_product", "pay_channel_product_market");
     // 元器件的 elc_* 表 2026-09-30 随元器件迁到独立项目 ai-hxkey，不在本仓库扫描范围内

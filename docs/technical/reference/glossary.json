@@ -32568,6 +32568,34 @@
       "package": "ai.neargo.shop.platform.entity"
     },
     {
+      "table": "inv_audit",
+      "class": "InvAudit",
+      "zh": "写动作审计，只追加。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_business_profile",
+      "class": "InvBusinessProfile",
+      "zh": "业态档案的一个版本。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_client_system",
+      "class": "InvClientSystem",
+      "zh": "调用系统登记：凭证与业主只能引用登记过的系统码。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_command",
+      "class": "InvCommand",
+      "zh": "一条写命令的幂等记录：同键同参返回原结果，同键异参冲突（AC-03）。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
       "table": "inv_daily_snapshot",
       "class": "InvDailySnapshot",
       "zh": "日快照：派生数据，删光重跑即可",
@@ -34949,6 +34977,20 @@
         "value": "LINE_NO_OFFER",
         "zh": "某一行：收到求购的供应商都回了「没货」，平台也没报",
         "module": "elec"
+      },
+      {
+        "host": "WriteAuthority",
+        "name": "EMBEDDED",
+        "value": "EMBEDDED",
+        "zh": "ai-shop 进程内嵌直写（过渡期）",
+        "module": "inventory"
+      },
+      {
+        "host": "WriteAuthority",
+        "name": "SVC",
+        "value": "SVC",
+        "zh": "独立服务进程写",
+        "module": "inventory"
       },
       {
         "host": "LocationKind",
@@ -41783,6 +41825,13 @@
         "module": "shop-core"
       },
       {
+        "host": "ShopInventorySystem",
+        "name": "CODE",
+        "value": "SHOP",
+        "zh": "",
+        "module": "shop-inventory"
+      },
+      {
         "host": "MchAccount",
         "name": "ACTIVE",
         "value": "ACTIVE",
@@ -42959,6 +43008,17 @@
       {
         "name": "Capability",
         "values": [
+          "SERIAL",
+          "DISPATCH_POOL",
+          "RESERVATION",
+          "PRODUCTION"
+        ],
+        "zh": "能力包（TDD §2.5 / §2.13）。",
+        "module": "inventory"
+      },
+      {
+        "name": "Capability",
+        "values": [
           "SUBSCRIBE",
           "PUSH",
           "PROBE"
@@ -43690,6 +43750,15 @@
         "module": "print"
       },
       {
+        "name": "Handover",
+        "values": [
+          "POOL",
+          "NONE"
+        ],
+        "zh": "",
+        "module": "inventory"
+      },
+      {
         "name": "Holder",
         "values": [
           "USER",
@@ -43786,6 +43855,11 @@
           "CONFLICT",
           "STOCK_SHORT",
           "COUNT_ALREADY_OPEN",
+          "CAPABILITY_DISABLED",
+          "SYSTEM_NOT_SERVED",
+          "NOT_WRITER",
+          "IDEMPOTENCY_CONFLICT",
+          "PROFILE_INVALID",
           "INTERNAL"
         ],
         "zh": "进销存自己的错误码。",
@@ -48538,6 +48612,14 @@
       "module": "elec"
     },
     {
+      "host": "BusinessProfile",
+      "name": "CURRENT_SCHEMA",
+      "type": "int",
+      "value": "1",
+      "zh": "",
+      "module": "inventory"
+    },
+    {
       "host": "EventType",
       "name": "DOCUMENT_POSTED",
       "type": "String",
@@ -48575,6 +48657,22 @@
       "type": "int",
       "value": "10",
       "zh": "到这个次数就不再自动重试，交给人：让它在积压里显出来。",
+      "module": "inventory"
+    },
+    {
+      "host": "AdminTokenFilter",
+      "name": "PATH_PREFIX",
+      "type": "String",
+      "value": "\"/api/inventory/admin/v1/\"",
+      "zh": "",
+      "module": "inventory"
+    },
+    {
+      "host": "InventoryAuthFilter",
+      "name": "PATH_PREFIX",
+      "type": "String",
+      "value": "\"/api/inventory/v1/\"",
+      "zh": "",
       "module": "inventory"
     },
     {

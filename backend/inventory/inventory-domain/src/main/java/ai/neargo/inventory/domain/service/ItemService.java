@@ -25,7 +25,7 @@ public interface ItemService {
      * @param qty        {@code null} <b>只在设库位覆盖时合法</b>，含义是「撤掉覆盖，跟随默认」。
      *                   设默认值时传 null 是错的：物料那一列 {@code NOT NULL}，
      *                   而「撤掉默认值」这件事没有意义
-     * @throws ai.neargo.shop.common.InventoryException {@code NOT_FOUND} 物料不在本业主名下 /
+     * @throws ai.neargo.inventory.api.InventoryException {@code NOT_FOUND} 物料不在本业主名下 /
      *                                            指定的库位上这件货没有余额行；
      *                                            {@code BAD_REQUEST} 阈值为负、超上限，或设默认值时传了 null
      */

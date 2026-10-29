@@ -37,4 +37,8 @@ public class InvOpenCredential extends InvMutableEntity {
     /** 发现「这把钥匙半年没人用了」的唯一依据 */
     private LocalDateTime lastUsedAt;
 
+    /** 服务凭证所属系统；空 = 存量开放接口只读凭证（不能进独立服务入口） */
+    private String systemCode;
+    /** 逗号分隔的能力包；空 = 只按业主档案 */
+    private String capabilities;
 }

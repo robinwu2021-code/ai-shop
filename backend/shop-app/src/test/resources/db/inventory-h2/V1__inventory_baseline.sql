@@ -34,9 +34,12 @@ CREATE TABLE IF NOT EXISTS inv_owner
     created_by   VARCHAR(64)  DEFAULT NULL,
     updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by   VARCHAR(64)  DEFAULT NULL,
+    system_code VARCHAR(32) NOT NULL DEFAULT 'SHOP',
+    write_authority VARCHAR(16) NOT NULL DEFAULT 'EMBEDDED',
+    profile_version INT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_owner UNIQUE (owner_id),
-    CONSTRAINT uk_owner_ext UNIQUE (external_ref)
+    CONSTRAINT uk_owner_system_ext UNIQUE (system_code, external_ref)
 );
 
 CREATE TABLE IF NOT EXISTS inv_location
@@ -435,6 +438,8 @@ CREATE TABLE IF NOT EXISTS inv_open_credential
     created_by      VARCHAR(64)  DEFAULT NULL,
     updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64)  DEFAULT NULL,
+    system_code VARCHAR(32) DEFAULT NULL,
+    capabilities VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_credential UNIQUE (credential_id),
     CONSTRAINT uk_app_key UNIQUE (app_key)
@@ -629,6 +634,66 @@ CREATE TABLE IF NOT EXISTS inv_item_valuation_history
     created_by VARCHAR(64) NOT NULL,UNIQUE KEY uk_item_valuation_operation(owner_id,operation_key)
 );
 
+CREATE TABLE IF NOT EXISTS inv_client_system
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    system_code VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_client_system UNIQUE (system_code)
+);
+
+CREATE TABLE IF NOT EXISTS inv_business_profile
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    version INT NOT NULL,
+    body TEXT NOT NULL,
+    body_hash CHAR(64) NOT NULL,
+    reason VARCHAR(255) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_business_profile UNIQUE (owner_id, version)
+);
+
+CREATE TABLE IF NOT EXISTS inv_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    system_code VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    request_id VARCHAR(64) NOT NULL,
+    command_type VARCHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    result_body TEXT DEFAULT NULL,
+    actor VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_command UNIQUE (system_code, owner_id, request_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_audit
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    system_code VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    actor VARCHAR(64) DEFAULT NULL,
+    action VARCHAR(64) NOT NULL,
+    resource_type VARCHAR(32) NOT NULL,
+    resource_id VARCHAR(64) NOT NULL,
+    before_body TEXT DEFAULT NULL,
+    after_body TEXT DEFAULT NULL,
+    reason VARCHAR(255) DEFAULT NULL,
+    request_id VARCHAR(64) DEFAULT NULL,
+    trace_id VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+);
+
 -- 种子数据
 INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PIECE', '件', 0, 10 FROM DUAL
@@ -654,3 +719,6 @@ SELECT 'KG', '公斤', 1, 70 FROM DUAL
 INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'G', '克', 1, 80 FROM DUAL
  WHERE NOT EXISTS (SELECT 1 FROM inv_uom x WHERE x.uom_code = 'G');
+INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('SHOP', 'ai-shop', 'MIGRATION');
+INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('SHAREHUB', 'ShareHub', 'MIGRATION');
+INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('CHARGING', 'charging', 'MIGRATION');

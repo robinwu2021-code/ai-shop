@@ -27,7 +27,7 @@ public interface SupplierService {
     /**
      * 建档，返回 {@code supplierNo}。
      *
-     * @throws ai.neargo.shop.common.InventoryException {@code CONFLICT} —— 同一商家已有同名。
+     * @throws ai.neargo.inventory.api.InventoryException {@code CONFLICT} —— 同一商家已有同名。
      *         <b>这条不是可选的校验</b>：不拦的话，漂移只是从「单据上的名字」
      *         换到「档案里的名字」继续长，而这张表存在的理由就没了。
      */

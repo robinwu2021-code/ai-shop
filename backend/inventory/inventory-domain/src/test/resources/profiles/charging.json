@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "capabilities": ["SERIAL", "DISPATCH_POOL"],
+  "targetTypes": [
+    {"code": "PROJECT", "nameKey": "inventory.target.project", "parentType": null},
+    {"code": "STATION", "nameKey": "inventory.target.station", "parentType": "PROJECT"},
+    {"code": "PERSON", "nameKey": "inventory.target.person", "parentType": null}
+  ],
+  "inboundPurposes": [
+    {"code": "PURCHASE", "basisRequired": false, "attachmentRequired": false},
+    {"code": "RETURN", "basisRequired": false, "attachmentRequired": false},
+    {"code": "CORRECTION", "basisRequired": false, "attachmentRequired": false},
+    {"code": "COUNT_GAIN", "basisRequired": false, "attachmentRequired": false}
+  ],
+  "outboundPurposes": [
+    {"code": "ISSUE", "requiredTargets": ["STATION", "PERSON"], "optionalTargets": [], "handover": "POOL"},
+    {"code": "CONSUME", "requiredTargets": ["PERSON"], "optionalTargets": [], "handover": "NONE"},
+    {"code": "SCRAP", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "COUNT_LOSS", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"}
+  ],
+  "gateRefTypes": ["ACCEPTANCE"],
+  "countReview": {"required": true, "reviewerMustDiffer": true}
+}

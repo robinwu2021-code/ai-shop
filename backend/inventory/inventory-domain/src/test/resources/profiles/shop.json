@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "capabilities": ["RESERVATION"],
+  "targetTypes": [],
+  "inboundPurposes": [
+    {"code": "PURCHASE", "basisRequired": false, "attachmentRequired": false},
+    {"code": "RETURN", "basisRequired": false, "attachmentRequired": false},
+    {"code": "TRANSFER_IN", "basisRequired": false, "attachmentRequired": false},
+    {"code": "COUNT_GAIN", "basisRequired": false, "attachmentRequired": false},
+    {"code": "OTHER", "basisRequired": false, "attachmentRequired": false}
+  ],
+  "outboundPurposes": [
+    {"code": "SALE", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "TRANSFER_OUT", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "SCRAP", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "COUNT_LOSS", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"}
+  ],
+  "gateRefTypes": [],
+  "countReview": {"required": false, "reviewerMustDiffer": false}
+}

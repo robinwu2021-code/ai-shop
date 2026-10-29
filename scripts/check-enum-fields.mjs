@@ -876,6 +876,10 @@ function plannedValues(src, name, ownerConst) {
  * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
  */
 export const DISMISSED = [
+  // 进销存独立服务平台层（V16，TDD-进销存独立服务与多业态 §2.4）：服务间内部取值，没有任何端上类型
+  { key: "inv_client_system.status", why: "进销存独立服务的调用系统登记状态（ACTIVE / DISABLED），只给服务自己判是否放行，端上不展示" },
+  { key: "inv_client_system.system_code", why: "调用系统码（SHOP / SHAREHUB / CHARGING）是开放集合，靠登记表管理而不是枚举；端上不展示" },
+  { key: "inv_owner.write_authority", why: "一本账的写入方（EMBEDDED / SVC），商城切流按业主翻转用的内部开关，只在服务入口判定，端上不展示" },
   { key: "sv_release.activity_no", why: "Core活动业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },
   { key: "sv_release.draft_revision_no", why: "活动草稿修订业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },
   { key: "pmt_preset_template.template_code", why: "AP/EP是活动/付费产品编号前缀，实际AP001等为业务键，不是二值枚举。" },

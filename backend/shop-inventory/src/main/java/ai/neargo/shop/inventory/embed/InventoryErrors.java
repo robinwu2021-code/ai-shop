@@ -27,6 +27,10 @@ public final class InventoryErrors {
             case CONFLICT -> ErrorCode.CONFLICT;
             case STOCK_SHORT -> ErrorCode.STOCK_SHORT_ITEMS;
             case COUNT_ALREADY_OPEN -> ErrorCode.COUNT_ALREADY_OPEN;
+            // M2 起新增的码只在独立服务入口上出现；内嵌万一碰到，按 HTTP 语义落到最接近的商城码
+            case CAPABILITY_DISABLED, SYSTEM_NOT_SERVED -> ErrorCode.FORBIDDEN;
+            case NOT_WRITER, IDEMPOTENCY_CONFLICT -> ErrorCode.CONFLICT;
+            case PROFILE_INVALID -> ErrorCode.BAD_REQUEST;
             case INTERNAL -> ErrorCode.INTERNAL_ERROR;
         };
     }

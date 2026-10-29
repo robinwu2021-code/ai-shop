@@ -12,6 +12,7 @@ import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
+import ai.neargo.shop.inventory.embed.ShopInventorySystem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -147,6 +148,7 @@ public class MerchantChainServiceImpl implements MerchantChainService {
     private Map<String, String> ownerIds(Set<String> entityNos) {
         Map<String, String> out = new HashMap<>();
         for (InvOwner o : ownerMapper.selectList(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
                 .in(InvOwner::getExternalRef, entityNos))) {
             out.put(o.getExternalRef(), o.getOwnerId());
         }

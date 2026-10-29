@@ -25,7 +25,7 @@ public interface ReservationService {
      * 网络超时重试是常态，不幂等就会预留两次，而第二次没人释放。
      *
      * @param ttlSeconds 到期自动回收。跨进程之后**兜底必须在本领域内** —— 调用方可能永远不回来
-     * @throws ai.neargo.shop.common.InventoryException {@code STOCK_NOT_ENOUGH}，带上是哪几件不够
+     * @throws ai.neargo.inventory.api.InventoryException {@code STOCK_NOT_ENOUGH}，带上是哪几件不够
      */
     String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds);
 

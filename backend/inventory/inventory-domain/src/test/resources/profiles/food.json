@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "capabilities": ["RESERVATION", "PRODUCTION"],
+  "targetTypes": [],
+  "inboundPurposes": [
+    {"code": "PURCHASE", "basisRequired": false, "attachmentRequired": false},
+    {"code": "COUNT_GAIN", "basisRequired": false, "attachmentRequired": false}
+  ],
+  "outboundPurposes": [
+    {"code": "SALE", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "PRODUCTION", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "SCRAP", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"},
+    {"code": "COUNT_LOSS", "requiredTargets": [], "optionalTargets": [], "handover": "NONE"}
+  ],
+  "gateRefTypes": [],
+  "countReview": {"required": false, "reviewerMustDiffer": false}
+}

@@ -20,5 +20,10 @@ public class InvOwner extends InvMutableEntity {
 
     /** ACTIVE / ARCHIVED */
     private String status;
-
+    /** 所属调用系统（{@code inv_client_system}）。外部引用按「系统 + 外部引用」唯一 */
+    private String systemCode;
+    /** 谁有权写这本账：{@code InvEnums.WriteAuthority}，同一时刻只有一个 */
+    private String writeAuthority;
+    /** 当前生效的业态档案版本；空 = 未装档案 */
+    private Integer profileVersion;
 }

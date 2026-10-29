@@ -23,7 +23,7 @@ public class InstanceGuard {
         String system = principal == null || principal.systemCode() == null
                 ? "" : principal.systemCode().strip().toUpperCase(Locale.ROOT);
         if (!instance.getAllowedSystems().contains(system)) {
-            throw InventoryException.of(InventoryError.FORBIDDEN, "system_not_served", system, instance.getCode());
+            throw InventoryException.of(InventoryError.SYSTEM_NOT_SERVED, system, instance.getCode());
         }
     }
 }

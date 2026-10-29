@@ -11,6 +11,17 @@ public final class InvEnums {
     }
 
     /** 库位类型。门店、仓、在途、虚拟（报废区/样品/借出）都是库位。 */
+    /** 一本账的写入方（{@code inv_owner.write_authority}）。商城切流期间逐个业主翻转（AC-19、AC-27）。 */
+    public static final class WriteAuthority {
+        /** ai-shop 进程内嵌直写（过渡期） */
+        public static final String EMBEDDED = "EMBEDDED";
+        /** 独立服务进程写 */
+        public static final String SVC = "SVC";
+
+        private WriteAuthority() {
+        }
+    }
+
     public static final class LocationKind {
         public static final String STORE = "STORE";
         public static final String WAREHOUSE = "WAREHOUSE";

@@ -14,7 +14,7 @@ public interface OutboundService {
     /**
      * 建草稿（报损 / 领用 / 其它）。
      *
-     * @throws ai.neargo.shop.common.InventoryException {@code FORBIDDEN} —— 当 {@code purpose = SALE}。
+     * @throws ai.neargo.inventory.api.InventoryException {@code FORBIDDEN} —— 当 {@code purpose = SALE}。
      *         <b>销售出库只能由预留 commit 产生</b>：允许手工建的话，
      *         商家能凭空造一笔销售出库，而它会进销量榜
      */

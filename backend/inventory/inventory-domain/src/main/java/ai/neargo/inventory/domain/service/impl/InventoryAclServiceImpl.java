@@ -39,6 +39,7 @@ import ai.neargo.inventory.domain.support.MaterialRules;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +61,18 @@ public class InventoryAclServiceImpl implements InventoryAclService {
 
     /** 平台默认单位。{@code sale_unit} 是可空的，而计量单位不能空 —— 空了就没法相加。 */
     private static final String DEFAULT_UOM = "PIECE";
+
+    /**
+     * 本 ACL 面向哪个调用系统。它把调用方的主体号（{@code entityNo}）翻成业主，
+     * 而主体号只在同一个系统里唯一 —— 测试环境共用一个库，商城的主体号与 ShareHub 的运营方号可能撞。
+     * 默认是商城（这层 ACL 就是给内嵌的商城用的）。
+     */
+    private String aclSystem = "SHOP";
+
+    @Value("${inventory.acl.system-code:SHOP}")
+    void setAclSystem(String aclSystem) {
+        this.aclSystem = aclSystem;
+    }
 
     private final OwnerMapper ownerMapper;
     private final LocationMapper locationMapper;
@@ -121,7 +134,9 @@ public class InventoryAclServiceImpl implements InventoryAclService {
     public String ownerIdOf(String entityNo) {
         InvOwner row =
                 ownerMapper.selectOne(
-                        Wrappers.<InvOwner>lambdaQuery().eq(InvOwner::getExternalRef, entityNo));
+                        Wrappers.<InvOwner>lambdaQuery()
+                                .eq(InvOwner::getSystemCode, aclSystem)
+                                .eq(InvOwner::getExternalRef, entityNo));
         if (row != null) {
             return row.getOwnerId();
         }
@@ -130,6 +145,8 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         created.setName(entityNo);
         created.setExternalRef(entityNo);
         created.setStatus(InvEnums.MasterStatus.ACTIVE);
+        created.setSystemCode(aclSystem);
+        created.setWriteAuthority(InvEnums.WriteAuthority.EMBEDDED);
         created.setCreatedBy("SYSTEM");
         ownerMapper.insert(created);
         return created.getOwnerId();
@@ -894,7 +911,9 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         return entityNo == null
                 ? null
                 : ownerMapper.selectOne(
-                        Wrappers.<InvOwner>lambdaQuery().eq(InvOwner::getExternalRef, entityNo));
+                        Wrappers.<InvOwner>lambdaQuery()
+                                .eq(InvOwner::getSystemCode, aclSystem)
+                                .eq(InvOwner::getExternalRef, entityNo));
     }
 
     // ────────────────────────────────────────────────────────────────────

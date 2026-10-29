@@ -24,7 +24,7 @@ class InstanceGuardTest {
     void deviceCredentialHittingShopInstanceIsRejected() {
         assertThatThrownBy(() -> guard("SHOP", "SHOP").check(new InventoryPrincipal("SHAREHUB", "O1", "STAFF:E1")))
                 .isInstanceOf(InventoryException.class)
-                .satisfies(e -> assertThat(((InventoryException) e).error()).isEqualTo(InventoryError.FORBIDDEN));
+                .satisfies(e -> assertThat(((InventoryException) e).error()).isEqualTo(InventoryError.SYSTEM_NOT_SERVED));
     }
 
     @Test

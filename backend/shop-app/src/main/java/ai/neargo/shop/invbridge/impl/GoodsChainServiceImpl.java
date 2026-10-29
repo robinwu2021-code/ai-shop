@@ -14,6 +14,7 @@ import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.inventory.embed.ShopInventorySystem;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -80,7 +81,8 @@ public class GoodsChainServiceImpl implements GoodsChainService {
         int available = 0;
         InvOwner owner = DataScopeContext.executeWithoutScope(() ->
                 ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
-                        .eq(InvOwner::getExternalRef, g.getEntityNo())
+                .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
+                .eq(InvOwner::getExternalRef, g.getEntityNo())
                         .last("limit 1")));
         if (owner != null && !skuNos.isEmpty()) {
             Set<String> itemIds = new HashSet<>();

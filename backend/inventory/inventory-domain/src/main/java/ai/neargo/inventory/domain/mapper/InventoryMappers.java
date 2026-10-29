@@ -1,5 +1,9 @@
 package ai.neargo.inventory.domain.mapper;
 
+import ai.neargo.inventory.domain.entity.InvAudit;
+import ai.neargo.inventory.domain.entity.InvBusinessProfile;
+import ai.neargo.inventory.domain.entity.InvClientSystem;
+import ai.neargo.inventory.domain.entity.InvCommand;
 import ai.neargo.inventory.domain.entity.InvDailySnapshot;
 import ai.neargo.inventory.domain.entity.InvInboundLine;
 import ai.neargo.inventory.domain.entity.InvInboundOrder;
@@ -184,4 +188,12 @@ public final class InventoryMappers {
 
     /** Open API 凭证。{@code app_secret} 只存 bcrypt 哈希。 */
     public interface OpenCredentialMapper extends BaseMapper<InvOpenCredential> {}
+
+    public interface ClientSystemMapper extends BaseMapper<InvClientSystem> {}
+
+    public interface BusinessProfileMapper extends BaseMapper<InvBusinessProfile> {}
+
+    public interface CommandMapper extends BaseMapper<InvCommand> {}
+
+    public interface AuditMapper extends BaseMapper<InvAudit> {}
 }
