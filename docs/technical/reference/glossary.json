@@ -35091,6 +35091,13 @@
         "module": "inventory"
       },
       {
+        "host": "WriteAuthority",
+        "name": "FLIPPING",
+        "value": "FLIPPING",
+        "zh": "翻转中（对账期间）：两边都拒写（AC-27）",
+        "module": "inventory"
+      },
+      {
         "host": "LocationKind",
         "name": "STORE",
         "value": "STORE",

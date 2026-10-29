@@ -20,6 +20,11 @@
             <artifactId>inventory-guard</artifactId>
         </dependency>
         <dependency>
+            <!-- 共用任务服务的 HTTP 契约（只有常量与记录，零依赖；白名单 §2.1） -->
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>job-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>

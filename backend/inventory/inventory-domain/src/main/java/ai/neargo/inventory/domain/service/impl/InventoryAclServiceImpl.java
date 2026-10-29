@@ -1,5 +1,7 @@
 package ai.neargo.inventory.domain.service.impl;
 
+import ai.neargo.inventory.api.InventoryError;
+import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.domain.config.ConditionalOnInventory;
 import ai.neargo.inventory.domain.entity.InvInboundLine;
 import ai.neargo.inventory.domain.entity.InvInboundOrder;
@@ -138,7 +140,7 @@ public class InventoryAclServiceImpl implements InventoryAclService {
                                 .eq(InvOwner::getSystemCode, aclSystem)
                                 .eq(InvOwner::getExternalRef, entityNo));
         if (row != null) {
-            return row.getOwnerId();
+            return served(row).getOwnerId();
         }
         InvOwner created = new InvOwner();
         created.setOwnerId(InvKeys.next(InvKeys.OWNER));
@@ -908,12 +910,26 @@ public class InventoryAclServiceImpl implements InventoryAclService {
 
     /** 只读地找业主。{@link #ownerIdOf} 找不到会建一个 —— 查询路径上不能有这种副作用 */
     private InvOwner findOwner(String entityNo) {
-        return entityNo == null
+        InvOwner owner = entityNo == null
                 ? null
                 : ownerMapper.selectOne(
                         Wrappers.<InvOwner>lambdaQuery()
                                 .eq(InvOwner::getSystemCode, aclSystem)
                                 .eq(InvOwner::getExternalRef, entityNo));
+        return owner == null ? null : served(owner);
+    }
+
+    /**
+     * 单一写入方（AC-27）：这本账已翻给独立服务（或正在翻），内嵌一律不再碰 —— 读也不碰，
+     * 因为切流后的商城对这个业主走客户端；内嵌还在读，说明调用点漏切了，报出来比读到一份不再更新的账好。
+     * 商城所有业主解析都经这里（控制器的 {@code ownerIdOf}、端口的 {@code findOwnerId}），所以守在这一处。
+     */
+    private static InvOwner served(InvOwner owner) {
+        String authority = owner.getWriteAuthority();
+        if (authority != null && !InvEnums.WriteAuthority.EMBEDDED.equals(authority)) {
+            throw InventoryException.of(InventoryError.NOT_WRITER, authority);
+        }
+        return owner;
     }
 
     // ────────────────────────────────────────────────────────────────────

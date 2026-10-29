@@ -607,9 +607,9 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-22 | `InventoryArchitectureTest#inventoryDoesNotDependOnShopCode` + `scripts/check-inventory-independence.mjs` + enforcer | ✅ 2026-10-29 | ✅ 临时加一行 `import ai.neargo.shop.common.BizException` 与一个指出目录的链接 → 脚本报 2 处、退出 1 |
 | AC-23 | `DependencyTreeTest#no_redis_security_shop` | | |
 | AC-24 | `SerialDocumentFlowTest#cabinetWith48PowerbanksGoesInAndOutByScanningOnlyTheCabinet`（柜 + 48 宝入库，只扫柜码出库，单据逐块 49 件，柜 −1、宝 −48）· `#disassembledPowerbankNoLongerTravelsWithItsCabinet` | ✅ 2026-10-29 | ✅ 去掉下级件展开 → 变红 |
-| AC-25 | `ReservationTest#idempotent_and_expires` | | |
+| AC-25 | `ReservationAndFlipFlowTest#reservationIsAllOrNothingIdempotentAndExpiredByTheJobService`（同单号同内容同一预留、换内容 409、不够全拒、取消释放、到期由任务服务经 `/internal/job/*` 触发回收、密钥不对 401）· `#expirySweepOnlyTouchesOwnersThisProcessWritesFor` | ✅ 2026-10-29（服务侧） | ✅ 去掉回收的写入方过滤 → 变红 |
 | AC-26 | ai-shop `OrderReservationOutboxTest#rollback_expires_and_commit_once` | | |
-| AC-27 | `WriteAuthorityFlipTest#flip_and_back_consistent` | | |
+| AC-27 | `ReservationAndFlipFlowTest#flipReconcilesFirstAndRollsBackWhenTheBooksDoNotBalance`（翻到内嵌再翻回账不变、余额被改坏时翻转失败并保持原写入方且列出差异、翻转中两边拒写、翻转中再翻 409）· shop-app `InventoryEmbeddedWriterGuardTest`（业主为 `SVC` / `FLIPPING` 时内嵌解析业主即拒、内嵌回收不碰它） | ✅ 2026-10-29（服务侧 + 内嵌守卫） | ✅ 翻转不看对账结果 → 变红；去掉内嵌守卫 → 变红 |
 | AC-28 | `InstanceGuardTest`（4 例）+ `ServicePlatformFlowTest#shopCredentialIsRejectedByTheDeviceInstance`（经过滤器）+ 生产形态演练（M6） | ✅ 2026-10-29（演练待 M6） | ✅ 去掉过滤器里的放行检查 → 变红 |
 | I5 | `StandaloneContextTest`（空库、只连库存库、进程内 0 个 `ai.neargo.shop.*` Bean） | ✅ 2026-10-29 | |
 | M1 零行为变化 | 商城进销存相关 199 例 + 后端全量（`mvn -o test`，全部模块 SUCCESS、0 失败） | ✅ 2026-10-29 | |
@@ -712,6 +712,18 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T6.3 演练 | 自动化三例（见 §5）；库停、重启写成手册里的人工步骤 | 「P95 写 < 500 ms 压测」（§4）未做，生产形态演练时一并测 |
 | T6.4 部署与回滚 | [设备套上线与回滚手册](../进销存独立服务-设备套上线与回滚手册.md)；systemd 模板与 env 样例 M1 已有 | **`backup-to-cos.sh` 的 `DBS` 暂不加 `neargo_inv_device`**：库还不存在，加了当晚备份会失败；手册第 1 步要求建库同一步加上 |
 
+### M8 · 商城切流 —— 第一段：服务侧（2026-10-29，T8.1、T8.5）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| T8.1 预留对外 | `/api/inventory/v1/reservations`（预留 / 查询 / `accept-unpaid` / `allocate-paid` / `issue` / `cancel`），要 `RESERVATION` 能力包，经命令幂等；动作与商城 `InventoryReservationPort` 一一对应，用的是服务自己的物料号与库位号（商城侧映射在客户端做） | 设计只写了 `commit`；现有预留协议还有先货后款受理、付款分配、按履约单出库，按协议原样对外，不另造一套 |
+| T8.1 到期回收 | `InventoryJobEndpoint`：`/internal/job/declarations`、`/internal/job/{handlerName}/run`，`X-Job-Token`，契约与商城的任务端点相同；任务名带实例代号（`inventory-shop-reservation-expiry`、`…-daily-snapshot`） | 名字带实例：任务服务按名登记，与内嵌时期的 `inv-reservation-expiry` 同名会互相顶掉；`InvOutboxDispatchJob` 不在独立服务里跑（独立形态的事件走拉取） |
+| 回收只管自己的业主 | `ReservationServiceImpl.expireOverdue` 只挑写入方等于本进程 `inventory.write-mode` 的业主；独立服务配 `SVC`，商城默认 `EMBEDDED` | 过渡期两边都有回收任务，不过滤就是两个写入方 |
+| T8.5 翻转 | `POST /admin/v1/owners/{id}/write-authority/flip`：置 `FLIPPING`（两边拒写）→ 等在途写入（`inventory.flip.drain-millis`，默认 2 秒）→ 对账 → 平则翻到目标，不平则翻回原值并返回差异；`GET …/reconciliation` 只对账。对账：余额在手 = 流水之和、逐件物料在仓件数 = 余额在手 | **预留占用未纳入对账**：预留有十种生命周期状态，「占用 = 未结行之和」要按状态逐一推，留到 T8.3 联调时补 |
+| T8.5 内嵌侧拒写 | 商城解析业主的唯一入口（`InventoryAclServiceImpl` 的 `ownerIdOf` / `findOwner`）：业主不是 `EMBEDDED` 即抛 `NOT_WRITER`（商城码 `CONFLICT`）。现有商城业主默认都是 `EMBEDDED`，翻转前零行为变化 | **读也拒**：切流后的商城对这个业主应走客户端，内嵌还在读说明调用点漏切了。也因此：**T8.3 落地之前不得翻转任何商城业主** |
+| T8.2 / T8.3 / T8.4 | **未做**（第二段）：商城客户端（`inventory-client`）、`invbridge` 二十余处直连领域服务改走客户端、传统 `StockPort.confirm` 移出订单事务、餐饮扣料经 Outbox | 摸底发现行业订单路径已在事务外调用库存、传统路径 v2 已经经 outbox 投递，T8.2 的实际改动比设计估计小；`invbridge` 直连领域服务的面比估计大 |
+| T8.6 | **不做**：要全部业主翻完并过 2 周观察期 | — |
+
 ### M7 · 第二业态：充电桩（2026-10-29，T7.1 ~ T7.3）
 
 | 设计 | 实现 | 偏差与原因 |
@@ -763,3 +775,4 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | M5 完成（T5.1 ~ T5.2），后端全量 6991 例 0 失败 |
 | 2026-10-29 | M6 代码与手册完成（T6.1 ~ T6.4），后端全量 6997 例 0 失败；生产形态演练、设备套建库上线、库停 / 重启人工演练待执行 |
 | 2026-10-29 | M7 完成（T7.1 ~ T7.3），AC-17 绿，后端全量 6999 例 0 失败 |
+| 2026-10-29 | M8 第一段（服务侧 T8.1、T8.5）完成，后端全量 7004 例 0 失败；T8.2 ~ T8.4 商城侧待第二段，T8.6 待生产观察期 |

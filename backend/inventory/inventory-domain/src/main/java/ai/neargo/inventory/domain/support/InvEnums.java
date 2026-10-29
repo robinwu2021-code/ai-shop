@@ -17,6 +17,13 @@ public final class InvEnums {
         public static final String EMBEDDED = "EMBEDDED";
         /** 独立服务进程写 */
         public static final String SVC = "SVC";
+        /** 翻转中（对账期间）：两边都拒写（AC-27） */
+        public static final String FLIPPING = "FLIPPING";
+
+        /** 配置值只认两种写入方；别的值按内嵌处理（拼进 SQL 前先收口成常量） */
+        public static String normalize(String mode) {
+            return SVC.equals(mode) ? SVC : EMBEDDED;
+        }
 
         private WriteAuthority() {
         }

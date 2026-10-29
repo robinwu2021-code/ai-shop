@@ -11,6 +11,10 @@ import ai.neargo.inventory.domain.service.MigrationImportService.Batch;
 import ai.neargo.inventory.domain.service.MigrationImportService.Report;
 import ai.neargo.inventory.domain.service.ServicePlatformService;
 import ai.neargo.inventory.domain.service.ServicePlatformService.Issued;
+import ai.neargo.inventory.domain.service.WriteAuthorityFlipService;
+import ai.neargo.inventory.domain.service.WriteAuthorityFlipService.Reconciliation;
+import ai.neargo.inventory.domain.service.WriteAuthorityFlipService.Result;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -37,13 +41,16 @@ public class AdminOwnerController {
     private final BusinessProfileService profiles;
     private final EventFeedService events;
     private final MigrationImportService migration;
+    private final WriteAuthorityFlipService flips;
 
     public AdminOwnerController(ServicePlatformService platform, BusinessProfileService profiles,
-                                EventFeedService events, MigrationImportService migration) {
+                                EventFeedService events, MigrationImportService migration,
+                                WriteAuthorityFlipService flips) {
         this.platform = platform;
         this.profiles = profiles;
         this.events = events;
         this.migration = migration;
+        this.flips = flips;
     }
 
     @PostMapping
@@ -73,6 +80,23 @@ public class AdminOwnerController {
     @PostMapping("/{ownerId}/events/prune")
     public Map<String, Integer> pruneEvents(@PathVariable String ownerId) {
         return Map.of("removed", events.prune(ownerId, platform.owner(ownerId).getSystemCode()));
+    }
+
+    /**
+     * 按业主灰度切流（T8.5、AC-27）：置翻转中 → 等在途写入 → 对账 → 平则翻到目标、不平则翻回并返回差异。
+     * 翻回 {@code EMBEDDED} 就是回滚，走同一条路。上面的 {@code PUT write-authority} 是不对账的强制改写，只给排障用。
+     */
+    @PostMapping("/{ownerId}/write-authority/flip")
+    public Result flip(@PathVariable String ownerId, @RequestBody Map<String, String> req,
+                       @RequestHeader("X-Inventory-Actor") String operator) {
+        return flips.flip(ownerId, req.get("to"), operator);
+    }
+
+    /** 只对账不翻转：翻转前先看一眼，或观察期每天跑。 */
+    @GetMapping("/{ownerId}/reconciliation")
+    public Reconciliation reconcile(@PathVariable String ownerId) {
+        platform.owner(ownerId);
+        return flips.reconcile(ownerId);
     }
 
     /**

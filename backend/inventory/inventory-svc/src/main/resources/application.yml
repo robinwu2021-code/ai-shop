@@ -14,13 +14,16 @@ inventory:
   instance:
     code: ${INVENTORY_INSTANCE_CODE:DEV}
     allowed-systems: ${INVENTORY_INSTANCE_ALLOWED_SYSTEMS:}
+  # 本进程是独立服务一侧的写入方：跨业主的批处理（到期回收）只处理写入方为 SVC 的业主
+  write-mode: SVC
   datasource:
     url: ${INVENTORY_DATASOURCE_URL:}
     username: ${INVENTORY_DATASOURCE_USERNAME:}
     password: ${INVENTORY_DATASOURCE_PASSWORD:}
-  # 定时任务 M2 起接共用任务服务；在此之前独立进程不跑任务
+  # 定时任务由共用任务服务经 /internal/job/* 触发（InventoryJobEndpoint）；本进程不自己排程
   jobs:
-    enabled: false
+    enabled: ${INVENTORY_JOBS_ENABLED:false}
+    internal-token: ${INVENTORY_JOB_TOKEN:}
 
 management:
   endpoints:

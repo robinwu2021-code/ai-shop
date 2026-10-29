@@ -818,6 +818,17 @@ public class ReservationServiceImpl implements ReservationService {
                 operator);
     }
 
+    /**
+     * 本进程是哪一侧的写入方（内嵌 = {@code EMBEDDED}，独立服务 = {@code SVC}）。
+     * 到期回收是跨业主的批处理，只回收写入方是自己的那些业主 —— 否则过渡期两边都在回收同一本账。
+     */
+    @Value("${inventory.write-mode:EMBEDDED}")
+    void setWriteMode(String writeMode) {
+        this.writeMode = writeMode;
+    }
+
+    private String writeMode = InvEnums.WriteAuthority.EMBEDDED;
+
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public int expireOverdue(int limit) {
@@ -827,6 +838,9 @@ public class ReservationServiceImpl implements ReservationService {
                         Wrappers.<InvReservation>lambdaQuery()
                                 .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
                                 .lt(InvReservation::getExpiresAt, now)
+                                .inSql(InvReservation::getOwnerId,
+                                        "SELECT owner_id FROM inv_owner WHERE write_authority = '"
+                                                + InvEnums.WriteAuthority.normalize(writeMode) + "'")
                                 .select(InvReservation::getReservationId)
                                 .last("LIMIT " + Math.min(limit, EXPIRE_BATCH_MAX)));
         int expired = 0;
