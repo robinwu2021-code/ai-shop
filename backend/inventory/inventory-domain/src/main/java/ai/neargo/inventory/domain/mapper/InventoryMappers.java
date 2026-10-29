@@ -5,6 +5,8 @@ import ai.neargo.inventory.domain.entity.InvBusinessProfile;
 import ai.neargo.inventory.domain.entity.InvClientSystem;
 import ai.neargo.inventory.domain.entity.InvCommand;
 import ai.neargo.inventory.domain.entity.InvDailySnapshot;
+import ai.neargo.inventory.domain.entity.InvDocumentSerial;
+import ai.neargo.inventory.domain.entity.InvDocumentTarget;
 import ai.neargo.inventory.domain.entity.InvInboundLine;
 import ai.neargo.inventory.domain.entity.InvInboundOrder;
 import ai.neargo.inventory.domain.entity.InvItem;
@@ -18,7 +20,9 @@ import ai.neargo.inventory.domain.entity.InvOutbox;
 import ai.neargo.inventory.domain.entity.InvOwner;
 import ai.neargo.inventory.domain.entity.InvReservation;
 import ai.neargo.inventory.domain.entity.InvReservationLine;
+import ai.neargo.inventory.domain.entity.InvSerial;
 import ai.neargo.inventory.domain.entity.InvStockBalance;
+import ai.neargo.inventory.domain.entity.InvStockEpisode;
 import ai.neargo.inventory.domain.entity.InvStockHold;
 import ai.neargo.inventory.domain.entity.InvTargetRef;
 import ai.neargo.inventory.domain.entity.InvStockCount;
@@ -223,4 +227,24 @@ public final class InventoryMappers {
     public interface StockHoldMapper extends BaseMapper<InvStockHold> {}
 
     public interface TargetRefMapper extends BaseMapper<InvTargetRef> {}
+
+    public interface SerialMapper extends BaseMapper<InvSerial> {
+        /** 占用一个 SN：只在它当前不在仓时成功（双保险之一；另一道是周期表的生成列唯一索引）。 */
+        @Update("UPDATE inv_serial SET active_episode_id=#{episodeId}, updated_by=#{operator}"
+                + " WHERE owner_id=#{ownerId} AND serial_id=#{serialId} AND active_episode_id IS NULL")
+        int occupy(@Param("ownerId") String ownerId, @Param("serialId") String serialId,
+                   @Param("episodeId") String episodeId, @Param("operator") String operator);
+
+        /** 出库释放：只在当前周期正是这一个时成功。 */
+        @Update("UPDATE inv_serial SET active_episode_id=NULL, updated_by=#{operator}"
+                + " WHERE owner_id=#{ownerId} AND serial_id=#{serialId} AND active_episode_id=#{episodeId}")
+        int vacate(@Param("ownerId") String ownerId, @Param("serialId") String serialId,
+                   @Param("episodeId") String episodeId, @Param("operator") String operator);
+    }
+
+    public interface StockEpisodeMapper extends BaseMapper<InvStockEpisode> {}
+
+    public interface DocumentSerialMapper extends BaseMapper<InvDocumentSerial> {}
+
+    public interface DocumentTargetMapper extends BaseMapper<InvDocumentTarget> {}
 }

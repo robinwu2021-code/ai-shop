@@ -46,4 +46,7 @@ public class InvInboundLine extends InvMutableEntity {
 
     /** 留位 */
     private LocalDate expireAt;
+
+    /** 数量物料：这一行的放行凭证 */
+    private String gateRef;
 }

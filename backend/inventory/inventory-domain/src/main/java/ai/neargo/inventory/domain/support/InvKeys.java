@@ -41,6 +41,10 @@ public final class InvKeys {
     public static final String SUPPLIER = "SUP";
     /** 冻结 */
     public static final String HOLD = "HLD";
+    /** SN 档案 */
+    public static final String SERIAL = "SN";
+    /** 在库周期 */
+    public static final String EPISODE = "EPI";
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

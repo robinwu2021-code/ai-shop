@@ -30,7 +30,8 @@ public final class InventoryErrors {
             // M2 起新增的码只在独立服务入口上出现；内嵌万一碰到，按 HTTP 语义落到最接近的商城码
             case CAPABILITY_DISABLED, SYSTEM_NOT_SERVED -> ErrorCode.FORBIDDEN;
             case NOT_WRITER, IDEMPOTENCY_CONFLICT -> ErrorCode.CONFLICT;
-            case PROFILE_INVALID -> ErrorCode.BAD_REQUEST;
+            case PROFILE_INVALID, GATE_REF_MISSING -> ErrorCode.BAD_REQUEST;
+            case SERIAL_CONFLICT -> ErrorCode.CONFLICT;
             case INTERNAL -> ErrorCode.INTERNAL_ERROR;
         };
     }

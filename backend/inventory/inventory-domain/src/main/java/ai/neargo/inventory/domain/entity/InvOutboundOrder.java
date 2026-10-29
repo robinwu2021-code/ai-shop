@@ -76,4 +76,7 @@ public class InvOutboundOrder extends InvMutableEntity {
     private String operator;
 
     private String remark;
+
+    /** 过账时所用业态档案版本 */
+    private Integer profileVersion;
 }

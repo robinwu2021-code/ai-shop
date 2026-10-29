@@ -885,6 +885,8 @@ export const DISMISSED = [
   { key: "inv_item.gate_policy", why: "入库放行策略（NONE / REF_REQUIRED），同上，只给宿主后端" },
   { key: "inv_stock_hold.reason", why: "冻结原因（COUNT / RETURN_PENDING / MANUAL），独立服务内部与宿主后端用，ai-shop 三端不展示" },
   { key: "inv_stock_hold.status", why: "冻结状态（ACTIVE / RELEASED），同上" },
+  { key: "inv_document_serial.doc_kind", why: "单据方向（IN / OUT），与 inv_ledger.doc_kind 同一取值，独立服务内部关联用，端上不展示" },
+  { key: "inv_stock_episode.status", why: "在库周期状态（OPEN / CLOSED），只在独立服务内判「在不在仓」，宿主看到的是在仓 SN 列表，端上不展示" },
   { key: "inv_target_ref.status", why: "外部目标状态（ACTIVE / DISABLED），由宿主同步来、回给宿主，ai-shop 三端不展示" },
   { key: "inv_owner.write_authority", why: "一本账的写入方（EMBEDDED / SVC），商城切流按业主翻转用的内部开关，只在服务入口判定，端上不展示" },
   { key: "sv_release.activity_no", why: "Core活动业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },

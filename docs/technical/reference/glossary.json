@@ -32603,6 +32603,20 @@
       "package": "ai.neargo.inventory.domain.entity"
     },
     {
+      "table": "inv_document_serial",
+      "class": "InvDocumentSerial",
+      "zh": "单据上的一件 SN。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_document_target",
+      "class": "InvDocumentTarget",
+      "zh": "单据目标（收货方 / 接收人）与名称快照：宿主改了名，历史单据不跟着变。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
       "table": "inv_inbound_line",
       "class": "InvInboundLine",
       "zh": "入库单行",
@@ -32708,6 +32722,13 @@
       "package": "ai.neargo.inventory.domain.entity"
     },
     {
+      "table": "inv_serial",
+      "class": "InvSerial",
+      "zh": "SN 档案：一件设备一份，跨多轮在库周期不变（TDD §2.6）。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
       "table": "inv_stock_balance",
       "class": "InvStockBalance",
       "zh": "库存余额：available = on_hand - reserved，派生不落库",
@@ -32732,6 +32753,13 @@
       "table": "inv_stock_count_operation",
       "class": "InvStockCountOperation",
       "zh": "Idempotency marker stored in the same inventory database transaction as a one-line count adjustment.",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_stock_episode",
+      "class": "InvStockEpisode",
+      "zh": "在库周期：入库开、出库关。",
       "module": "inventory",
       "package": "ai.neargo.inventory.domain.entity"
     },
@@ -35543,6 +35571,20 @@
         "name": "HOLD",
         "value": "HLD",
         "zh": "冻结",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "SERIAL",
+        "value": "SN",
+        "zh": "SN 档案",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "EPISODE",
+        "value": "EPI",
+        "zh": "在库周期",
         "module": "inventory"
       },
       {
@@ -43944,6 +43986,8 @@
           "NOT_WRITER",
           "IDEMPOTENCY_CONFLICT",
           "PROFILE_INVALID",
+          "GATE_REF_MISSING",
+          "SERIAL_CONFLICT",
           "INTERNAL"
         ],
         "zh": "进销存自己的错误码。",

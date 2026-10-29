@@ -583,10 +583,10 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| AC-01 | `InboundPostingTest#rollback_all_on_midway_failure` | | |
-| AC-02 | `SerialEpisodeConcurrencyTest#same_sn_two_inbounds_only_one_wins` | | |
+| AC-01 | `SerialDocumentFlowTest#midwayFailureRollsBackQuantitiesSerialsAndLedger`（数量行 + 已在仓 SN → 整单失败，余额、流水、新 SN 都不留，单据仍是草稿） | ✅ 2026-10-29 | |
+| AC-02 | `SerialDocumentFlowTest#sameSerialCanBeInStockOnlyOnceEvenUnderConcurrentPosting`（顺序 + 两线程并发过账同一新 SN，只成功一个） | ✅ 2026-10-29 | |
 | AC-03 | `ServicePlatformFlowTest#ownerCredentialProfileAndIdempotentWarehouse`（同键同参同结果、只建一个仓；同键异参 409；按键查结果） | ✅ 2026-10-29 | ✅ 去掉占键插入 → 变红 |
-| AC-04 | `GatePolicyTest#missing_gate_ref_lists_all_items` | | |
+| AC-04 | `SerialDocumentFlowTest#missingGateRefsAreListedAllAtOnceAndNothingIsPosted`（柜、两块宝、整行数量物料一次列全） | ✅ 2026-10-29 | ✅ 去掉凭证检查 → 变红 |
 | AC-05 | `IssueTargetRuleTest#site_not_under_merchant_rejected` | | |
 | AC-06 | `IssuePostingTest#balance_episode_pool_ledger_event_in_one_tx` | | |
 | AC-07 | `DispatchRedirectTest#available_ok_claimed_409` | | |
@@ -606,7 +606,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-21 | pre-push I1（删本地 shop 构件后构建） | | |
 | AC-22 | `InventoryArchitectureTest#inventoryDoesNotDependOnShopCode` + `scripts/check-inventory-independence.mjs` + enforcer | ✅ 2026-10-29 | ✅ 临时加一行 `import ai.neargo.shop.common.BizException` 与一个指出目录的链接 → 脚本报 2 处、退出 1 |
 | AC-23 | `DependencyTreeTest#no_redis_security_shop` | | |
-| AC-24 | `SerialExpansionTest#scan_cabinet_expands_children` | | |
+| AC-24 | `SerialDocumentFlowTest#cabinetWith48PowerbanksGoesInAndOutByScanningOnlyTheCabinet`（柜 + 48 宝入库，只扫柜码出库，单据逐块 49 件，柜 −1、宝 −48）· `#disassembledPowerbankNoLongerTravelsWithItsCabinet` | ✅ 2026-10-29 | ✅ 去掉下级件展开 → 变红 |
 | AC-25 | `ReservationTest#idempotent_and_expires` | | |
 | AC-26 | ai-shop `OrderReservationOutboxTest#rollback_expires_and_commit_once` | | |
 | AC-27 | `WriteAuthorityFlipTest#flip_and_back_consistent` | | |
@@ -664,6 +664,17 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 商城侧可用量展示 | 未改 | `StockQueryServiceImpl` 等处仍按 `on_hand − reserved` 展示：商城业主今天不会有冻结（冻结只能经独立服务下），切流（M8）前补 |
 | 定时任务接共用任务服务 | 未做 | 独立进程仍 `inventory.jobs.enabled=false`；接入随 M3 的出站投递一起做 |
 
+### M3 · SN 与放行（2026-10-29，T3.1 ~ T3.4）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| T3.1 SN 档案与在库周期 | V18：`inv_serial`、`inv_stock_episode`（生成列 `open_serial_id` 唯一）；过账时 SN 按号升序加锁、条件更新 `active_episode_id` + 唯一索引双保险；回仓永远开新周期 | — |
+| T3.2 入库 | `HostInboundService`：用途取自档案、`CORRECTION` 不能手建、期初要依据与附件；放行凭证缺的一次列全（`inventory.gate.ref_missing`）；SN 问题一次列全（`inventory.serial.conflict`，`SN:原因`）；同一张凭证不能放行第二件 | **凭证唯一性只对逐件物料查**：数量物料的一张质检单可能覆盖多批到货，查了会误伤 |
+| T3.3 处置出库 | `HostOutboundService`：用途与收货方规则取自档案、目标须已同步且未停用、名称快照进 `inv_document_target`；过账时 SN 必须在本库位在仓且未冻结；已过账的不作废；`handover = POOL` 的用途拒绝（M4） | 主方案 `inv_outbound_order` 上的 merchant / site / receiver 三列不加，统一走 `inv_document_target` |
+| T3.3 查询 | `GET /serials`（只返回在仓）、`/ledger`（按 id 游标，单页 ≤ 500）、`/inbounds/{no}`、`/outbounds/{no}` | — |
+| T3.4 组装与展开 | 入库时 `parentSerialNo` 登记组装（同单或本库位在仓的件）；`/serials/{sn}/assemble`、`/disassemble`（只一层、要 SERIAL 能力包）；出库扫上级件带出当前挂着的下级件，单据逐件记；单据 SN 上限 2000（含展开）、草稿可分批追加 | **拆装不写流水**：流水的唯一键是「单号 + 行号」、每行一个非零变动，拆装不改数量，记审计 |
+
+
 
 ## §7 确认与完成
 
@@ -697,4 +708,5 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 |---|---|
 | 2026-10-29 | 由 ShareHub 方案 + 三轮改造计划合成；D1 ~ D6 裁决；ADR-046 接受；待实施 |
 | 2026-10-29 | D2 改判为「测试一套、生产两套」；新增 AC-28 与 [进销存独立服务-执行方案](./进销存独立服务-执行方案.md) |
-| 2026-10-29 | M1 完成（`1759f58fa`）；M2 T0.1、T2.1 ~ T2.3 完成（`fc682c4e9`）；T2.4、T2.5 完成，后端全量 6975 例 0 失败 |
+| 2026-10-29 | M1 完成（`1759f58fa`）；M2 T0.1、T2.1 ~ T2.3 完成（`fc682c4e9`）；T2.4、T2.5 完成（`6f2d5d717`） |
+| 2026-10-29 | M3 完成（T3.1 ~ T3.4），后端全量 6982 例 0 失败 |

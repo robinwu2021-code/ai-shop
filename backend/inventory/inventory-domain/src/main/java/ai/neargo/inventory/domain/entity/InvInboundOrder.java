@@ -65,4 +65,11 @@ public class InvInboundOrder extends InvMutableEntity {
     private String operator;
 
     private String remark;
+
+    /** 期初依据：INVOICE / DELIVERY_NOTE / CONTRACT / COUNT / MIGRATION / OTHER */
+    private String basis;
+    /** 附件引用，逗号分隔 */
+    private String attachmentRefs;
+    /** 过账时所用业态档案版本 */
+    private Integer profileVersion;
 }

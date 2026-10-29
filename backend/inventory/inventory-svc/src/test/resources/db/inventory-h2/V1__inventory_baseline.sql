@@ -240,6 +240,9 @@ CREATE TABLE IF NOT EXISTS inv_inbound_order
     updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by       VARCHAR(64)  DEFAULT NULL,
     supplier_no VARCHAR(32) DEFAULT NULL,
+    basis VARCHAR(32) DEFAULT NULL,
+    attachment_refs VARCHAR(1024) DEFAULT NULL,
+    profile_version INT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_inbound UNIQUE (owner_id, inbound_no)
 );
@@ -260,6 +263,7 @@ CREATE TABLE IF NOT EXISTS inv_inbound_line
     created_by      VARCHAR(64) DEFAULT NULL,
     updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64) DEFAULT NULL,
+    gate_ref VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_inbound_line UNIQUE (inbound_no, line_no)
 );
@@ -289,6 +293,7 @@ CREATE TABLE IF NOT EXISTS inv_outbound_order
     target_type VARCHAR(16) DEFAULT NULL,
     target_no   VARCHAR(32) DEFAULT NULL,
     target_name VARCHAR(64) DEFAULT NULL,
+    profile_version INT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_outbound UNIQUE (owner_id, outbound_no)
 );
@@ -744,6 +749,81 @@ CREATE TABLE IF NOT EXISTS inv_target_ref
     updated_by VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_inv_target_ref UNIQUE (owner_id, system_code, object_type, object_ref)
+);
+
+CREATE TABLE IF NOT EXISTS inv_serial
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    serial_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    serial_no VARCHAR(64) NOT NULL,
+    active_episode_id VARCHAR(32) DEFAULT NULL,
+    parent_serial_id VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_serial_id UNIQUE (owner_id, serial_id),
+    CONSTRAINT uk_inv_serial_no UNIQUE (owner_id, serial_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_stock_episode
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    episode_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    serial_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    gate_ref VARCHAR(64) DEFAULT NULL,
+    open_doc_no VARCHAR(32) NOT NULL,
+    close_doc_no VARCHAR(32) DEFAULT NULL,
+    opened_at DATETIME NOT NULL,
+    closed_at DATETIME DEFAULT NULL,
+    open_serial_id VARCHAR(32) GENERATED ALWAYS AS (CASE WHEN status = 'OPEN' THEN serial_id ELSE NULL END),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_stock_episode UNIQUE (owner_id, episode_id),
+    CONSTRAINT uk_inv_stock_episode_open UNIQUE (owner_id, open_serial_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_document_serial
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    doc_kind VARCHAR(8) NOT NULL,
+    doc_no VARCHAR(32) NOT NULL,
+    line_no INT NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    serial_no VARCHAR(64) NOT NULL,
+    serial_id VARCHAR(32) DEFAULT NULL,
+    parent_serial_no VARCHAR(64) DEFAULT NULL,
+    gate_ref VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_document_serial UNIQUE (owner_id, doc_kind, doc_no, serial_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_document_target
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    doc_kind VARCHAR(8) NOT NULL,
+    doc_no VARCHAR(32) NOT NULL,
+    target_type VARCHAR(32) NOT NULL,
+    target_ref VARCHAR(64) NOT NULL,
+    name_snapshot VARCHAR(128) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_document_target UNIQUE (owner_id, doc_kind, doc_no, target_type)
 );
 
 -- 种子数据

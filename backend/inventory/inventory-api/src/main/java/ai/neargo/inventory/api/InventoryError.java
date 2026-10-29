@@ -31,6 +31,10 @@ public enum InventoryError {
     IDEMPOTENCY_CONFLICT("inventory.command.conflict", 409),
     /** 业态档案不合法。参数是第一条违反的规则。 */
     PROFILE_INVALID("inventory.profile.invalid", 400),
+    /** 要求放行的物料缺放行凭证。参数是缺凭证的 SN（逐件）或物料号（数量物料），一次列全（AC-04）。 */
+    GATE_REF_MISSING("inventory.gate.ref_missing", 400),
+    /** SN 冲突。参数形如 {@code SN:原因}（in_stock / not_in_stock / item_mismatch / held / parent / gate_reused），一次列全。 */
+    SERIAL_CONFLICT("inventory.serial.conflict", 409),
     INTERNAL("inventory.internal", 500);
 
     private final String key;
