@@ -6,6 +6,8 @@
 #   scripts/deploy-backend.sh            # 从当前 HEAD 打包并上线
 #   REF=55793a7d1 scripts/deploy-backend.sh   # 发指定提交（与 deploy-frontend.sh 的 REF 同义）
 #   HOST=soukmind-tx scripts/deploy-backend.sh
+#   BUILD_PROFILES=food-embedded,commerce-embedded,food-commerce-embedded,retail-commerce-embedded scripts/deploy-backend.sh
+#   REF=<sha> PREBUILT_JAR=/absolute/path/shop-app.jar scripts/deploy-backend.sh
 #   DRY=1 scripts/deploy-backend.sh      # 只打包与核对，不切软链、不重启
 #   scripts/deploy-backend.sh --rollback # 切回上一版并守到 health=200
 #
@@ -130,7 +132,7 @@ if [ -f "$GATE_FILE" ]; then
   先跑 scripts/check-head-compiles.sh ${HEAD_SHA}，或确认过之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
         fi
     else
-        DRIFT="$(git log --oneline "$GATE_SHA..$HEAD_SHA" -- backend 2>/dev/null || true)"
+        DRIFT="$(git log --oneline "$GATE_SHA..$HEAD_SHA" -- backend backend-plugins 2>/dev/null || true)"
         if [ -z "$DRIFT" ]; then
             say "闸门验的是 ${GATE_SHA}，本次构建 $HEAD_SHA —— 其间**没有 backend 改动**，jar 行为一致"
         elif [ "${ALLOW_GATE_DRIFT:-}" = "1" ]; then
@@ -222,17 +224,23 @@ trap cleanup EXIT
 #
 # **不在主工作区打包。** 这个目录常有多个会话同时在改，主工作区里别人未提交的
 # 半成品会被一起烘进 jar 推上线，而 git status 里那些行看起来跟你毫无关系。
-WT="$(mktemp -d)/deploy-head"
-git worktree add -q --detach "$WT" "$FULL_SHA"
-
 TS="$(date +%Y%m%d-%H%M)"
 # **名字里带上提交号。** 时间戳答不了「线上跑的是哪个提交」——
 # 2026-08-29 为这个问题反推了四轮。带上 SHA 之后 readlink 一眼就是答案。
 JAR_NAME="$APP-$TS-$HEAD_SHA.jar"
-say "构建中（干净副本，约 2 分钟）…"
-( cd "$WT/backend" && mvn -o clean package -pl "$MVN_MODULE" -am -DskipTests -q -Dgit.sha="$FULL_SHA" ) \
-    || die "构建失败"
-LOCAL_JAR="$WT/backend/$JAR_IN_REPO"
+if [ -n "${PREBUILT_JAR:-}" ]; then
+    LOCAL_JAR="$PREBUILT_JAR"
+    say "复用已构建产物 $LOCAL_JAR"
+else
+    WT="$(mktemp -d)/deploy-head"
+    git worktree add -q --detach "$WT" "$FULL_SHA"
+    BUILD_ARGS=()
+    [ -n "${BUILD_PROFILES:-}" ] && BUILD_ARGS+=("-P$BUILD_PROFILES")
+    say "构建中（干净副本${BUILD_PROFILES:+，profiles=$BUILD_PROFILES}）…"
+    ( cd "$WT/backend" && mvn -o package "${BUILD_ARGS[@]}" -pl "$MVN_MODULE" -am -DskipTests -q -Dgit.sha="$FULL_SHA" ) \
+        || die "构建失败"
+    LOCAL_JAR="$WT/backend/$JAR_IN_REPO"
+fi
 [ -f "$LOCAL_JAR" ] || die "构建完了却找不到 jar：$LOCAL_JAR"
 BUILT_SHA="$(unzip -p "$LOCAL_JAR" META-INF/build-info.properties | sed -n 's/^build.gitSha=//p' | tr -d '\r')"
 [ "$BUILT_SHA" = "$FULL_SHA" ] || die "Build metadata does not match exact full source SHA: ${BUILT_SHA:-missing}"
