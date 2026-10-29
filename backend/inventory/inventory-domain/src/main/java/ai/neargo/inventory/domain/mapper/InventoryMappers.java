@@ -19,6 +19,8 @@ import ai.neargo.inventory.domain.entity.InvOwner;
 import ai.neargo.inventory.domain.entity.InvReservation;
 import ai.neargo.inventory.domain.entity.InvReservationLine;
 import ai.neargo.inventory.domain.entity.InvStockBalance;
+import ai.neargo.inventory.domain.entity.InvStockHold;
+import ai.neargo.inventory.domain.entity.InvTargetRef;
 import ai.neargo.inventory.domain.entity.InvStockCount;
 import ai.neargo.inventory.domain.entity.InvStockCountLine;
 import ai.neargo.inventory.domain.entity.InvStockCountOperation;
@@ -66,7 +68,7 @@ public final class InventoryMappers {
                 "UPDATE inv_stock_balance SET"
                     + " on_hand=on_hand+#{delta},last_moved_at=NOW(),version=version+1 WHERE"
                     + " owner_id=#{ownerId} AND item_id=#{itemId} AND location_id=#{locationId} AND"
-                    + " on_hand+#{delta}>=reserved")
+                    + " on_hand+#{delta}>=reserved+unavailable_quantity")
         int applyExactDelta(
                 @Param("ownerId") String ownerId,
                 @Param("itemId") String itemId,
@@ -74,7 +76,11 @@ public final class InventoryMappers {
                 @Param("delta") BigDecimal delta);
 
         /**
-         * 实存增减。**返回 0 = 会扣成负数**，调用方据此抛 {@code INV_INSUFFICIENT}。
+         * 实存增减。**返回 0 = 扣不动**，调用方据此抛 {@code STOCK_SHORT}。
+         *
+         * <p><b>扣减不许动别人的预留，也不许动冻结的货</b>（T2.5）：此前守卫只是 {@code on_hand + delta >= 0}，
+         * 一张报废单能把已付款订单预留的货扣掉，而预留那边毫不知情 —— 到发货那天才发现没货。
+         * 销售出库先释放预留、再过账，不受影响；入库（delta 为正）不设限。
          *
          * <p>靠 SQL 的条件更新做原子，不是「先查后改」—— 后者在并发下必然超卖： 两个请求都查到「还有 1 件」。与平台 {@code SkuMapper.lockStock}
          * 完全同一手法。
@@ -84,7 +90,7 @@ public final class InventoryMappers {
                 UPDATE inv_stock_balance
                    SET on_hand = on_hand + #{delta}, last_moved_at = NOW(), version = version + 1
                  WHERE owner_id = #{ownerId} AND item_id = #{itemId} AND location_id = #{locationId}
-                   AND on_hand + #{delta} >= 0
+                   AND (#{delta} >= 0 OR on_hand + #{delta} >= reserved + unavailable_quantity)
                 """)
         int applyDelta(
                 @Param("ownerId") String ownerId,
@@ -101,7 +107,7 @@ public final class InventoryMappers {
                 UPDATE inv_stock_balance
                    SET reserved = reserved + #{qty}, version = version + 1
                  WHERE owner_id = #{ownerId} AND item_id = #{itemId} AND location_id = #{locationId}
-                   AND on_hand - reserved - #{qty} >= 0
+                   AND on_hand - reserved - unavailable_quantity - #{qty} >= 0
                 """)
         int hold(
                 @Param("ownerId") String ownerId,
@@ -147,6 +153,23 @@ public final class InventoryMappers {
                 @Param("locationId") String locationId,
                 @Param("qty") Integer qty,
                 @Param("operator") String operator);
+
+        /**
+         * 冻结占用改成给定值（由冻结服务按「同一件至多计 1」重算后写入）。
+         * <b>返回 0 = 可用量不够冻</b>：冻结不能把预留的货也冻进去。
+         */
+        @Update(
+                """
+                UPDATE inv_stock_balance
+                   SET unavailable_quantity = #{unavailable}, version = version + 1
+                 WHERE owner_id = #{ownerId} AND item_id = #{itemId} AND location_id = #{locationId}
+                   AND on_hand - reserved >= #{unavailable}
+                """)
+        int setUnavailable(
+                @Param("ownerId") String ownerId,
+                @Param("itemId") String itemId,
+                @Param("locationId") String locationId,
+                @Param("unavailable") BigDecimal unavailable);
     }
 
     // ── 流水：只追加 ──────────────────────────────────────────────────────
@@ -196,4 +219,8 @@ public final class InventoryMappers {
     public interface CommandMapper extends BaseMapper<InvCommand> {}
 
     public interface AuditMapper extends BaseMapper<InvAudit> {}
+
+    public interface StockHoldMapper extends BaseMapper<InvStockHold> {}
+
+    public interface TargetRefMapper extends BaseMapper<InvTargetRef> {}
 }

@@ -616,6 +616,11 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | M1 错误码 | `InventoryErrorsTest`（映射逐个与搬迁前相同、Advisor 翻译并保留参数） | ✅ 2026-10-29 | ✅ 把 `STOCK_SHORT` 映到 `CONFLICT` → 2 例变红 |
 | M1 复制规则 | `DomainRuleParityTest`（规范哈希、凭证哈希、精确数量、物料规则与原件逐一比对） | ✅ 2026-10-29 | |
 | T0.1 档案 | `ProfileCodecTest`（四份示例档案通过并可往返；出库池缺能力包、可选目标没挂在必填目标下、未知上级、未知字段四种写错被拒并说清规则） | ✅ 2026-10-29 | |
+| T2.4 物料 | `CatalogTargetsHoldsFlowTest#itemsFollowTheProfileAndFreezeTrackingOnceTheyHaveLedger`（SERIAL 需档案能力包、放行凭证类型须登记、BATCH 拒绝、有流水后跟踪方式不可改、改名照常） | ✅ 2026-10-29 | |
+| T2.4 外部目标 | `#targetsUseProfileTypesHierarchyAndSourceVersion`（档案外类型拒绝、站点须挂已同步商家、旧版本忽略） | ✅ 2026-10-29 | |
+| T2.4 仓库停用 | `#warehouseCannotBeDisabledWhileItStillHoldsStockOrFreezes`（一次列全 BALANCE、HOLDS） | ✅ 2026-10-29 | |
+| T2.5 冻结 | `#holdsReduceAvailabilityCountEachUnitOnceAndBlockDeduction`（不可用随冻结 / 解冻变化、冻不进余量、解冻幂等、扣减不进冻结） | ✅ 2026-10-29 | ✅ 扣减守卫改回旧写法 → 变红 |
+| T2.5 修侵占预留 | `#ordinaryDeductionNoLongerEatsReservedStock`（报废扣不动预留；销售「先释放、后扣减」照常） | ✅ 2026-10-29 | ✅ 同上 → 变红 |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -639,7 +644,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | I6 核心用例两种装配各跑一遍 | 未做 | 归 M2：先有独立形态的 HTTP 入口才有第二种装配可跑 |
 | 路径类引用 | 脚本与棘轮里 9 处 `backend/shop-inventory/.../db/inventory` 改为新路径（`known-sql-dialect.txt` 两条只是改名，条数不变）；新增 `inventory-svc` 的 H2 测试库生成登记 | — |
 
-### M2 · 平台层（2026-10-29，T0.1、T2.1 ~ T2.3；T2.4、T2.5 未做）
+### M2 · 平台层（2026-10-29，T0.1、T2.1 ~ T2.5）
 
 | 设计 | 实现 | 偏差与原因 |
 |---|---|---|
@@ -651,7 +656,12 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 幂等与审计（T2.3） | `CommandService`：先占键再执行，同事务；同键并发靠唯一索引排队 + 锁定读；`AuditService` 强制在业务事务内 | — |
 | 入口守卫 | `InventoryAuthFilter`：凭证 → 实例放行 → 写请求查写入方 → 透传操作人 / 幂等键 / 链路号；`AdminTokenFilter`：每套一把运维令牌，没配即关闭 | — |
 | 独立进程首批端点 | 运维：开通业主、签凭证、装档案、翻写入方；宿主：读档案、按键查命令、仓库列表与新建（完整写路径） | 「仓库」先于主方案其它主数据落地，用来打通整条写路径 |
-| T2.4 物料 / 外部目标、T2.5 余额冻结 | 未做 | 下一批 |
+| T2.4 物料 | V17 给 `inv_item` 加跟踪方式、放行策略与类型、宿主物料号、展示属性；`HostCatalogService` 按宿主物料号推送，规则取自档案 | 物料走「宿主推送」新入口；商城的 `ItemService` 不动（它的物料仍由商城同步链路建） |
+| T2.4 库位 | `inv_location` 加区域、停用时间；`WarehouseService` 停用守卫逐项列 `BALANCE / OPEN_DOCUMENTS / HOLDS` | — |
+| T2.4 外部目标 | 新表 `inv_target_ref`；`ExternalTargetService`：类型取自档案、按上级类型校验挂靠、`sourceVersion` 旧版本忽略、并发首推按已存在重走 | — |
+| T2.5 不可用与冻结 | `inv_stock_balance.unavailable_quantity`；新表 `inv_stock_hold`；`StockHoldService` 按「单件去重 + 数量按原因取最大」重算；余额、预留、按需计划预留的 SQL 守卫都减去不可用 | **数量冻结按原因取最大**：设计只说「同一件至多计 1」，数量物料无法逐件识别，取最大是不重复计的最保守解释 |
+| T2.5 修「普通扣减侵占预留」 | `applyDelta` 守卫由 `on_hand + delta >= 0` 改为 `delta >= 0 OR on_hand + delta >= reserved + unavailable` | 销售出库先释放预留再扣减，不受影响；后端全量回归见 §7.3 |
+| 商城侧可用量展示 | 未改 | `StockQueryServiceImpl` 等处仍按 `on_hand − reserved` 展示：商城业主今天不会有冻结（冻结只能经独立服务下），切流（M8）前补 |
 | 定时任务接共用任务服务 | 未做 | 独立进程仍 `inventory.jobs.enabled=false`；接入随 M3 的出站投递一起做 |
 
 
@@ -687,3 +697,4 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 |---|---|
 | 2026-10-29 | 由 ShareHub 方案 + 三轮改造计划合成；D1 ~ D6 裁决；ADR-046 接受；待实施 |
 | 2026-10-29 | D2 改判为「测试一套、生产两套」；新增 AC-28 与 [进销存独立服务-执行方案](./进销存独立服务-执行方案.md) |
+| 2026-10-29 | M1 完成（`1759f58fa`）；M2 T0.1、T2.1 ~ T2.3 完成（`fc682c4e9`）；T2.4、T2.5 完成，后端全量 6975 例 0 失败 |

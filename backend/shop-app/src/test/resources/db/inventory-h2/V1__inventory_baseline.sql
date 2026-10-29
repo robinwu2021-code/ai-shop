@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS inv_location
     created_by         VARCHAR(64)  DEFAULT NULL,
     updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by         VARCHAR(64)  DEFAULT NULL,
+    region_ref VARCHAR(64) DEFAULT NULL,
+    disabled_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_loc UNIQUE (owner_id, location_id),
     CONSTRAINT uk_loc_ext UNIQUE (owner_id, external_ref)
@@ -105,9 +107,15 @@ CREATE TABLE IF NOT EXISTS inv_item
     succeeded_by VARCHAR(40) DEFAULT NULL,
     cost_currency VARCHAR(3) NULL,
     valuation_version BIGINT NOT NULL DEFAULT 0,
+    tracking_mode VARCHAR(16) NOT NULL DEFAULT 'QUANTITY',
+    gate_policy VARCHAR(16) NOT NULL DEFAULT 'NONE',
+    gate_ref_type VARCHAR(32) DEFAULT NULL,
+    external_ref VARCHAR(64) DEFAULT NULL,
+    attributes TEXT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_item UNIQUE (owner_id, item_id),
-    CONSTRAINT uk_item_code UNIQUE (owner_id, item_code)
+    CONSTRAINT uk_item_code UNIQUE (owner_id, item_code),
+    CONSTRAINT uk_item_external_ref UNIQUE (owner_id, external_ref)
 );
 
 CREATE TABLE IF NOT EXISTS inv_item_ref
@@ -138,6 +146,7 @@ CREATE TABLE IF NOT EXISTS inv_stock_balance
     updated_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by      VARCHAR(64) DEFAULT NULL,
     updated_by      VARCHAR(64) DEFAULT NULL,
+    unavailable_quantity DECIMAL(24,6) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_balance UNIQUE (owner_id, item_id, location_id)
 );
@@ -692,6 +701,49 @@ CREATE TABLE IF NOT EXISTS inv_audit
     trace_id VARCHAR(64) DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_stock_hold
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    hold_id VARCHAR(32) NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    serial_id VARCHAR(32) DEFAULT NULL,
+    qty DECIMAL(24,6) NOT NULL,
+    reason VARCHAR(24) NOT NULL,
+    source_ref VARCHAR(64) DEFAULT NULL,
+    note VARCHAR(255) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    released_at DATETIME DEFAULT NULL,
+    released_by VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_stock_hold UNIQUE (owner_id, hold_id)
+);
+
+CREATE TABLE IF NOT EXISTS inv_target_ref
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    system_code VARCHAR(32) NOT NULL,
+    object_type VARCHAR(32) NOT NULL,
+    object_ref VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    parent_type VARCHAR(32) DEFAULT NULL,
+    parent_ref VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE',
+    source_version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_target_ref UNIQUE (owner_id, system_code, object_type, object_ref)
 );
 
 -- 种子数据

@@ -35,6 +35,13 @@ public class InvStockBalance extends InvMutableEntity {
         onHandQuantity = value == null ? null : BigDecimal.valueOf(value);
     }
 
+    /**
+     * 冻结占用（盘点 / 退货待确认 / 人工，同一件至多计 1）。只有冻结服务能改。
+     * {@code available = onHand - reserved - unavailable}
+     */
+    @TableField("unavailable_quantity")
+    private BigDecimal unavailableQuantity;
+
     /** 已预留未出库。只有预留能改 */
     @TableField("reserved")
     private BigDecimal reservedQuantity;

@@ -164,6 +164,42 @@ public final class InvEnums {
         }
     }
 
+    /** 物料跟踪方式（TDD §2.6）。BATCH 保留不实现（批次效期单独立项）。 */
+    public static final class TrackingMode {
+        public static final String QUANTITY = "QUANTITY";
+        public static final String SERIAL = "SERIAL";
+
+        private TrackingMode() {
+        }
+    }
+
+    /** 入库放行策略（TDD §2.8）：库存只校验凭证在不在、不判断质检内容。 */
+    public static final class GatePolicy {
+        public static final String NONE = "NONE";
+        public static final String REF_REQUIRED = "REF_REQUIRED";
+
+        private GatePolicy() {
+        }
+    }
+
+    /** 冻结原因（TDD §2.7）。可并存、按原因单独解除。 */
+    public static final class HoldReason {
+        public static final String COUNT = "COUNT";
+        public static final String RETURN_PENDING = "RETURN_PENDING";
+        public static final String MANUAL = "MANUAL";
+
+        private HoldReason() {
+        }
+    }
+
+    public static final class HoldStatus {
+        public static final String ACTIVE = "ACTIVE";
+        public static final String RELEASED = "RELEASED";
+
+        private HoldStatus() {
+        }
+    }
+
     /** 物料主数据来源。**两种交付形态的唯一分叉点**。 */
     public static final class DataSource {
         public static final String OWN = "OWN";

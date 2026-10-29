@@ -92,4 +92,15 @@ public class InvItem extends InvMutableEntity {
 
     /** ACTIVE / ARCHIVED。归档不删流水 —— 历史账要能查 */
     private String status;
+
+    /** QUANTITY / SERIAL（BATCH 保留不实现）。有流水后不可改：改了历史流水就解释不通 */
+    private String trackingMode;
+    /** NONE / REF_REQUIRED：入库是否必须带宿主出具的放行凭证 */
+    private String gatePolicy;
+    /** 放行凭证类型，取自业态档案 gateRefTypes */
+    private String gateRefType;
+    /** 宿主物料号：宿主按它推送物料（PUT /items/by-ref/{ref}） */
+    private String externalRef;
+    /** 宿主自管的展示属性 JSON，不参与任何规则 */
+    private String attributes;
 }

@@ -879,6 +879,13 @@ export const DISMISSED = [
   // 进销存独立服务平台层（V16，TDD-进销存独立服务与多业态 §2.4）：服务间内部取值，没有任何端上类型
   { key: "inv_client_system.status", why: "进销存独立服务的调用系统登记状态（ACTIVE / DISABLED），只给服务自己判是否放行，端上不展示" },
   { key: "inv_client_system.system_code", why: "调用系统码（SHOP / SHAREHUB / CHARGING）是开放集合，靠登记表管理而不是枚举；端上不展示" },
+  // V17：独立服务接口返回这些值给宿主后端（ShareHub / 充电桩），宿主自己展示；ai-shop 三端都不消费。
+  // 宿主前端接入后由宿主的契约对账，不在本仓库的端上类型里
+  { key: "inv_item.tracking_mode", why: "进销存独立服务的物料跟踪方式（QUANTITY / SERIAL），只经 /api/inventory/v1 给宿主后端，ai-shop 三端不展示" },
+  { key: "inv_item.gate_policy", why: "入库放行策略（NONE / REF_REQUIRED），同上，只给宿主后端" },
+  { key: "inv_stock_hold.reason", why: "冻结原因（COUNT / RETURN_PENDING / MANUAL），独立服务内部与宿主后端用，ai-shop 三端不展示" },
+  { key: "inv_stock_hold.status", why: "冻结状态（ACTIVE / RELEASED），同上" },
+  { key: "inv_target_ref.status", why: "外部目标状态（ACTIVE / DISABLED），由宿主同步来、回给宿主，ai-shop 三端不展示" },
   { key: "inv_owner.write_authority", why: "一本账的写入方（EMBEDDED / SVC），商城切流按业主翻转用的内部开关，只在服务入口判定，端上不展示" },
   { key: "sv_release.activity_no", why: "Core活动业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },
   { key: "sv_release.draft_revision_no", why: "活动草稿修订业务编号；注释中的V2、PLAN、NULL说明来源与历史可空性，不是有限取值域。" },

@@ -39,6 +39,8 @@ public final class InvKeys {
     public static final String CREDENTIAL = "CRD";
     /** 供应商档案 */
     public static final String SUPPLIER = "SUP";
+    /** 冻结 */
+    public static final String HOLD = "HLD";
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

@@ -32736,9 +32736,23 @@
       "package": "ai.neargo.inventory.domain.entity"
     },
     {
+      "table": "inv_stock_hold",
+      "class": "InvStockHold",
+      "zh": "一条冻结：盘点、退货待业务确认、人工三类原因可以并存，按原因单独解除（TDD §2.7）。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
       "table": "inv_supplier",
       "class": "InvSupplier",
       "zh": "供应商档案：进货单指向的那个稳定对象。",
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
+    },
+    {
+      "table": "inv_target_ref",
+      "class": "InvTargetRef",
+      "zh": "外部目标：宿主单向同步来的收货方 / 接收人（TDD §2.4）。",
       "module": "inventory",
       "package": "ai.neargo.inventory.domain.entity"
     },
@@ -35329,6 +35343,69 @@
         "module": "inventory"
       },
       {
+        "host": "TrackingMode",
+        "name": "QUANTITY",
+        "value": "QUANTITY",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "TrackingMode",
+        "name": "SERIAL",
+        "value": "SERIAL",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "GatePolicy",
+        "name": "NONE",
+        "value": "NONE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "GatePolicy",
+        "name": "REF_REQUIRED",
+        "value": "REF_REQUIRED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "HoldReason",
+        "name": "COUNT",
+        "value": "COUNT",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "HoldReason",
+        "name": "RETURN_PENDING",
+        "value": "RETURN_PENDING",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "HoldReason",
+        "name": "MANUAL",
+        "value": "MANUAL",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "HoldStatus",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "HoldStatus",
+        "name": "RELEASED",
+        "value": "RELEASED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
         "host": "DataSource",
         "name": "OWN",
         "value": "OWN",
@@ -35459,6 +35536,13 @@
         "name": "SUPPLIER",
         "value": "SUP",
         "zh": "供应商档案",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "HOLD",
+        "value": "HLD",
+        "zh": "冻结",
         "module": "inventory"
       },
       {

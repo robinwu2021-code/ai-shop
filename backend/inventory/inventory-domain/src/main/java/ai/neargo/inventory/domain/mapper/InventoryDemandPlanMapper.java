@@ -95,7 +95,7 @@ public class InventoryDemandPlanMapper {
         return db.update(
                 "UPDATE inv_stock_balance SET reserved=reserved+?,version=version+1"
                         + " WHERE owner_id=? AND item_id=? AND location_id=? AND"
-                        + " on_hand-reserved>=?",
+                        + " on_hand-reserved-unavailable_quantity>=?",
                 value0,
                 value1,
                 value2,
@@ -297,7 +297,7 @@ public class InventoryDemandPlanMapper {
         return db.update(
                 "UPDATE inv_stock_balance SET reserved=reserved+?,version=version+1"
                         + " WHERE owner_id=? AND item_id=? AND location_id=? AND"
-                        + " on_hand-reserved>=?",
+                        + " on_hand-reserved-unavailable_quantity>=?",
                 value0,
                 value1,
                 value2,

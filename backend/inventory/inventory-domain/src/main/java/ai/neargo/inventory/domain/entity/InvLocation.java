@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 /** 库位：存货的地方，门店与仓与在途都在这里 */
 @Getter
 @Setter
@@ -31,4 +33,8 @@ public class InvLocation extends InvMutableEntity {
     /** ACTIVE / DISABLED */
     private String status;
 
+    /** 宿主的区域引用 */
+    private String regionRef;
+    /** 停用时间；与 status=DISABLED 同时写 */
+    private LocalDateTime disabledAt;
 }
