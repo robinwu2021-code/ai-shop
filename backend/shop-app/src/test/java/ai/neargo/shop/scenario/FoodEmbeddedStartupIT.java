@@ -77,7 +77,7 @@ class FoodEmbeddedStartupIT {
     @Autowired JdbcTemplate sql;
 
     @Test
-    void nativeMigrationsAndRealHostStartTogether() throws ClassNotFoundException {
+    void nativeMigrationsAndRealHostStartTogether() throws ReflectiveOperationException {
         assertThat(context.getBeansOfType(ai.neargo.shop.svc.ConfigServiceLocator.class)).hasSize(1);
         assertThat(context.getBean("foodMpCatalogController")).isNotNull();
         assertThat(context.getBean("mpCatalogController")).isNotNull();
@@ -104,6 +104,7 @@ class FoodEmbeddedStartupIT {
                                 "SELECT MAX(CAST(version AS UNSIGNED)) FROM fnb_flyway_history"
                                         + " WHERE success=1",
                                 Integer.class))
-                .isEqualTo(Integer.parseInt(context.getBean(ai.neargo.shop.food.config.FoodSchemaReady.class).version()));
+                .isEqualTo(Integer.parseInt((String) Class.forName("ai.neargo.shop.food.config.FoodSchemaReady")
+                        .getMethod("version").invoke(context.getBean("foodSchemaReady"))));
     }
 }
