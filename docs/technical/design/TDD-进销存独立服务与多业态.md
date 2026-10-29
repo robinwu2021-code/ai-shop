@@ -402,7 +402,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | `inv_location` | 加 `region_ref`、`disabled_at`（停用守卫：有余额 / 未完成单 / 冻结时逐项拒绝） |
 | `inv_stock_balance` | 加 `unavailable_quantity` |
 | `inv_inbound_order` / `_line` | 用途扩 `OPENING / CORRECTION`；单头加 `basis`、`attachment_refs`、`dispatch_item_id`；行加 `gate_ref`、`parent_line_no` |
-| `inv_outbound_order` / `_line` | 用途扩 `ISSUE / CONSUME / RETURN_SUPPLIER`；行加 `parent_line_no` |
+| `inv_outbound_order` / `_line` | 用途扩 `ISSUE / CONSUME / RETURN_SUPPLIER`；行加 ~~`parent_line_no`~~ `parent_serial_no`（V21，见 §6 M7） |
 | ★ `inv_document_target` | `(doc_kind, doc_no, role, target_type, target_ref, name_snapshot)`，角色 `DESTINATION / PARENT / RECEIVER` |
 | 盘点三表 | 加 `scope_items`、`content_version`、`approved_version`、`reviewer`；实扫加 `serial_id` |
 | ★ `inv_serial` | `UK(owner_id, serial_no)`，`active_episode_id`，`parent_serial_id` |
@@ -599,7 +599,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-14 | `#eventsArePulledInOrderAckedAndAnExpiredCursorIsReported`（拉、确认、清理、旧游标 410、从确认点继续只拿到新事件） | ✅ 2026-10-29 | ✅ 去掉游标过期检查 → 变红 |
 | AC-15 | `ServicePlatformFlowTest#ownersAreIsolatedByCredential`（B 的凭证带 A 的业主号也看不到 A 的仓）· `#badCredentialsAllLookTheSame` | ✅ 2026-10-29 | |
 | AC-16 | `CapabilityGuardTest#dispatch_pool_disabled_403` | | |
-| AC-17 | `ChargingPileProfileE2ETest#profile_only_onboarding` | | |
+| AC-17 | `ChargingPileProfileE2ETest#profileOnlyOnboarding`（同一份 `charging.json`：开业主、装档案、签凭证后走验收入库 → 发场站（桩 + 模块 + 成套枪线）→ 单独撤枪线 409、撤桩整套回仓 → 维修领用不进出库池、缺领用人 400 → 复核盘点提交人自批 403）· `#kitLineMustHangOnATopLevelSerialOfTheSameDocument` | ✅ 2026-10-29 | ✅ 去掉出库池里成套行的挂靠 → 2 例变红 |
 | AC-18 | AC-07 / AC-08 两例（单独动从属记录 409 `child_locked`；撤回主记录整套回仓） | ✅ 2026-10-29 | |
 | AC-19 | `ServicePlatformFlowTest#writesAreRejectedWhenThisProcessIsNotTheWriter`（写入方翻回 EMBEDDED 后写 409、读照常） | ✅ 2026-10-29 | |
 | AC-20 | `CoreScenarioSuite`（内嵌 / 独立两种装配） | | |
@@ -712,6 +712,15 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T6.3 演练 | 自动化三例（见 §5）；库停、重启写成手册里的人工步骤 | 「P95 写 < 500 ms 压测」（§4）未做，生产形态演练时一并测 |
 | T6.4 部署与回滚 | [设备套上线与回滚手册](../进销存独立服务-设备套上线与回滚手册.md)；systemd 模板与 env 样例 M1 已有 | **`backup-to-cos.sh` 的 `DBS` 暂不加 `neargo_inv_device`**：库还不存在，加了当晚备份会失败；手册第 1 步要求建库同一步加上 |
 
+### M7 · 第二业态：充电桩（2026-10-29，T7.1 ~ T7.3）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| T7.1 成套行 | 出库数量行可带 `parentSerialNo`（V21 `inv_outbound_line.parent_serial_no`）；必须是同一张单上扫到的**顶层件**（不能挂在被带出的下级件下，成套只有一层），追加行时也可挂到之前扫过的件；交接出库生成出库池时成为上级件记录的从属记录，随它调整 / 撤回 / 签收，单独动 409 `child_locked`，撤回时按数量一并回仓 | **指向上级件 SN，不指向行号**（设计写的是 `parent_line_no`）：逐件物料按物料合成一行，一行里可能有多根桩，行号分不出枪线挂在哪一根下。入库侧不加：退货回仓的数量附件按普通数量入库 |
+| T7.2 `CONSUME` | 无代码改动：用途、必填领用人、`NONE` 交接全由档案给；工单号走单头 `reasonCode` | — |
+| T7.3 充电桩档案 + 端到端 | 用领域层夹具 `charging.json` 原文件接入，见 §5 AC-17 | — |
+| 不良品库位（§2.18 M7 行） | **不写代码**：同仓另开一个仓库作不良品库位（§2.5 表「不新增库存状态维度」），坏件退回时直接入它、离开走 `SCRAP` / `RETURN_SUPPLIER` | **在仓发现的坏件从良品仓挪到不良品仓**需要宿主侧移库，宿主 API 目前没有；执行方案 M7 出口要求领域层只多 T7.1、T7.2，故不在 M7 做，列为后续 |
+
 
 
 
@@ -753,3 +762,4 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | M4 完成（`973b6d717`），后端全量 6987 例 0 失败 —— 可交付 ShareHub 联调 |
 | 2026-10-29 | M5 完成（T5.1 ~ T5.2），后端全量 6991 例 0 失败 |
 | 2026-10-29 | M6 代码与手册完成（T6.1 ~ T6.4），后端全量 6997 例 0 失败；生产形态演练、设备套建库上线、库停 / 重启人工演练待执行 |
+| 2026-10-29 | M7 完成（T7.1 ~ T7.3），AC-17 绿，后端全量 6999 例 0 失败 |

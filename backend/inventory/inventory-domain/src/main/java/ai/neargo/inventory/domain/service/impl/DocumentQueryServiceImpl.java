@@ -53,7 +53,7 @@ public class DocumentQueryServiceImpl implements DocumentQueryService {
         }
         List<Line> lines = inboundLineMapper.selectList(Wrappers.<InvInboundLine>lambdaQuery()
                         .eq(InvInboundLine::getInboundNo, inboundNo).orderByAsc(InvInboundLine::getLineNo))
-                .stream().map(l -> new Line(l.getLineNo(), l.getItemId(), l.getQtyQuantity(), l.getGateRef()))
+                .stream().map(l -> new Line(l.getLineNo(), l.getItemId(), l.getQtyQuantity(), l.getGateRef(), null))
                 .toList();
         return new Document(o.getInboundNo(), InvEnums.DocKind.IN, o.getStatus(), o.getSourceType(),
                 o.getLocationId(), o.getTotalQtyQuantity(), o.getProfileVersion(), lines,
@@ -69,7 +69,8 @@ public class DocumentQueryServiceImpl implements DocumentQueryService {
         }
         List<Line> lines = outboundLineMapper.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
                         .eq(InvOutboundLine::getOutboundNo, outboundNo).orderByAsc(InvOutboundLine::getLineNo))
-                .stream().map(l -> new Line(l.getLineNo(), l.getItemId(), l.getQtyQuantity(), null)).toList();
+                .stream().map(l -> new Line(l.getLineNo(), l.getItemId(), l.getQtyQuantity(), null,
+                        l.getParentSerialNo())).toList();
         return new Document(o.getOutboundNo(), InvEnums.DocKind.OUT, o.getStatus(), o.getPurpose(),
                 o.getLocationId(), o.getTotalQtyQuantity(), o.getProfileVersion(), lines,
                 serials(ownerId, InvEnums.DocKind.OUT, outboundNo), targets(ownerId, InvEnums.DocKind.OUT, outboundNo));

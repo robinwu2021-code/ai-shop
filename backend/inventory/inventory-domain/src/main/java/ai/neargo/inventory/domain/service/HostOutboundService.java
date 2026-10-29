@@ -36,6 +36,14 @@ public interface HostOutboundService {
                  List<Line> lines, List<String> serialNos) {
     }
 
-    record Line(String itemId, Integer qty) {
+    /**
+     * @param parentSerialNo 成套行：这行数量附件随哪一件上级件出（如枪线 ×2 随桩 P-001）；
+     *                       须是同一张单上扫到的顶层件。交接出库时它成为上级件出库池记录的从属记录
+     */
+    record Line(String itemId, Integer qty, String parentSerialNo) {
+
+        public Line(String itemId, Integer qty) {
+            this(itemId, qty, null);
+        }
     }
 }

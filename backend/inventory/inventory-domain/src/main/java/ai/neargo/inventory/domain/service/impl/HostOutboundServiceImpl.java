@@ -320,6 +320,9 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                 .eq(InvDocumentSerial::getDocNo, order.getOutboundNo()));
         Set<String> onDoc = new LinkedHashSet<>();
         already.forEach(s -> onDoc.add(s.getSerialNo()));
+        // 成套行只能挂在顶层件下（扫到的件，不是被带出的下级件）：成套只有一层
+        Set<String> heads = new LinkedHashSet<>();
+        already.stream().filter(s -> s.getParentSerialNo() == null).forEach(s -> heads.add(s.getSerialNo()));
 
         // 扫上级件即带出它当前挂着的下级件（柜 → 柜内宝）；展开结果逐件记在单据上
         Set<String> conflicts = new LinkedHashSet<>();
@@ -332,6 +335,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                 continue;
             }
             add(byItem, onDoc, conflicts, new Expanded(serial.getItemId(), serial.getSerialNo(), null));
+            heads.add(serial.getSerialNo());
             if (!expand) {
                 continue;
             }
@@ -361,7 +365,10 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                 // 逐件物料只能按 SN 出：按数量出就不知道出去的是哪几台
                 throw InventoryException.of(InventoryError.BAD_REQUEST, "qty:" + item.getItemId());
             }
-            insertLine(caller, order, lineNo++, item, line.qty());
+            if (line.parentSerialNo() != null && !heads.contains(line.parentSerialNo())) {
+                throw InventoryException.of(InventoryError.BAD_REQUEST, "parentSerialNo:" + line.parentSerialNo());
+            }
+            insertLine(caller, order, lineNo++, item, line.qty(), line.parentSerialNo());
             added = added.add(BigDecimal.valueOf(line.qty()));
         }
         for (Map.Entry<String, List<Expanded>> e : byItem.entrySet()) {
@@ -370,7 +377,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                 throw InventoryException.of(InventoryError.BAD_REQUEST, "serials:" + item.getItemId());
             }
             int no = lineNo++;
-            insertLine(caller, order, no, item, e.getValue().size());
+            insertLine(caller, order, no, item, e.getValue().size(), null);
             for (Expanded x : e.getValue()) {
                 InvDocumentSerial ds = new InvDocumentSerial();
                 ds.setOwnerId(caller.ownerId());
@@ -397,7 +404,8 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         byItem.computeIfAbsent(x.itemId(), k -> new ArrayList<>()).add(x);
     }
 
-    private void insertLine(Caller caller, InvOutboundOrder order, int lineNo, InvItem item, int qty) {
+    private void insertLine(Caller caller, InvOutboundOrder order, int lineNo, InvItem item, int qty,
+                            String parentSerialNo) {
         InvOutboundLine row = new InvOutboundLine();
         row.setOutboundNo(order.getOutboundNo());
         row.setLineNo(lineNo);
@@ -405,6 +413,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         row.setItemId(item.getItemId());
         row.setQtyQuantity(BigDecimal.valueOf(qty));
         row.setUom(item.getBaseUom());
+        row.setParentSerialNo(parentSerialNo);
         row.setCreatedBy(HostDocumentSupport.operator(caller));
         lineMapper.insert(row);
     }

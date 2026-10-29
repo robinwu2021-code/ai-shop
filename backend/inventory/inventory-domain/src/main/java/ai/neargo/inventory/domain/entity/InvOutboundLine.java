@@ -41,4 +41,7 @@ public class InvOutboundLine extends InvMutableEntity {
 
     /** 留位 */
     private String batchNo;
+
+    /** 成套行：这行数量附件随哪一件上级件出（如枪线随桩）；为空 = 独立的行 */
+    private String parentSerialNo;
 }

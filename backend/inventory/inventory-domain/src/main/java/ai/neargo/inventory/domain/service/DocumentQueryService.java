@@ -17,7 +17,8 @@ public interface DocumentQueryService {
                     List<Target> targets) {
     }
 
-    record Line(int lineNo, String itemId, BigDecimal qty, String gateRef) {
+    /** @param parentSerialNo 出库成套行随哪一件上级件；入库与独立行为空 */
+    record Line(int lineNo, String itemId, BigDecimal qty, String gateRef, String parentSerialNo) {
     }
 
     record Serial(int lineNo, String itemId, String serialNo, String parentSerialNo, String gateRef) {

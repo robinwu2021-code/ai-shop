@@ -66,7 +66,7 @@ class DispatchPoolStore {
     }
 
     /**
-     * 交接出库过账时生成出库池：逐件一件一条，数量一行一条；下级件挂到上级件的记录下（成套）。
+     * 交接出库过账时生成出库池：逐件一件一条，数量一行一条；下级件、成套行挂到上级件的记录下（成套）。
      *
      * @param rootType 收货方层级最顶的目标类型（用途的第一个必填目标，如商家）
      */
@@ -97,6 +97,9 @@ class DispatchPoolStore {
                 continue;
             }
             InvDispatchItem row = base(caller, order, line.getLineNo(), line.getItemId(), line.getQtyQuantity(), root);
+            // 成套行：数量附件挂到上级件的记录下（枪线随桩）
+            row.setParentDispatchId(line.getParentSerialNo() == null ? null
+                    : dispatchBySerialNo.get(line.getParentSerialNo()));
             itemMapper.insert(row);
             created.add(row);
         }
