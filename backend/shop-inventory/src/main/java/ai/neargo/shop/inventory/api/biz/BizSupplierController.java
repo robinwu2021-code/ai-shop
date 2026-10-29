@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 商家端 · 供应商档案。
@@ -36,9 +38,13 @@ public class BizSupplierController {
     private final SupplierService suppliers;
     private final InventoryAclService acl;
 
-    public BizSupplierController(SupplierService suppliers, InventoryAclService acl) {
+    /** 切流（M8）：已翻到库存服务的商家，转给服务的 /console，返回结构相同 */
+    private final InventoryConsoleRoute route;
+
+    public BizSupplierController(SupplierService suppliers, InventoryAclService acl, InventoryConsoleRoute route) {
         this.suppliers = suppliers;
         this.acl = acl;
+        this.route = route;
     }
 
     /**
@@ -51,18 +57,22 @@ public class BizSupplierController {
     @GetMapping("/biz/inventory/suppliers")
     public List<SupplierVO> list(@RequestParam(required = false) String keyword,
                                  @RequestParam(defaultValue = "true") boolean activeOnly) {
+        if (route.remote()) return route.via(c -> c.get("/suppliers", params("keyword", keyword, "activeOnly", activeOnly),
+                new tools.jackson.core.type.TypeReference<List<SupplierVO>>() { }));
         return suppliers.list(owner(), keyword, activeOnly).stream().map(SupplierVO::of).toList();
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/suppliers")
     public SupplierNoVO create(@RequestBody SupplierReq req) {
+        if (route.remote()) return route.via(c -> c.post("/suppliers", req, SupplierNoVO.class));
         return new SupplierNoVO(suppliers.create(owner(), req.toEntity(), SecurityUtils.currentUserNo()));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/suppliers/{no}")
     public void update(@PathVariable String no, @RequestBody SupplierReq req) {
+        if (route.remote()) { route.run(c -> c.put("/suppliers/" + no, req)); return; }
         suppliers.update(owner(), no, req.toEntity(), SecurityUtils.currentUserNo());
     }
 
@@ -72,6 +82,7 @@ public class BizSupplierController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/suppliers/{no}/active")
     public void setActive(@PathVariable String no, @RequestBody ActiveReq req) {
+        if (route.remote()) { route.run(c -> c.post("/suppliers/" + no + "/active", req)); return; }
         suppliers.setActive(owner(), no, req.active(), SecurityUtils.currentUserNo());
     }
 

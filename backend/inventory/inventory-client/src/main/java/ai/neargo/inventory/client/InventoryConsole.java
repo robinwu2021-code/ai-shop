@@ -44,6 +44,11 @@ public final class InventoryConsole {
         return read(call.apply(() -> api.get(uri(path, params), ownerRef, actor)), type);
     }
 
+    /** 非 JSON 的应答（CSV 导出）原文取回 */
+    public String getText(String path, Map<String, ?> params) {
+        return call.apply(() -> api.get(uri(path, params), ownerRef, actor));
+    }
+
     public <T> T post(String path, Object body, Class<T> type) {
         return read(call.apply(() -> api.post(uri(path, Map.of()), ownerRef, key(), actor, body)), type);
     }
@@ -68,11 +73,12 @@ public final class InventoryConsole {
         return read(call.apply(() -> api.post(uri(path, params), ownerRef, key(), actor, body)), type);
     }
 
-    public void post(String path, Map<String, ?> params, Object body) {
+    /** 带查询参数、不要返回值的 POST（单独命名：与 {@code post(path, body, type)} 在 body 是 Map 时会撞重载） */
+    public void postTo(String path, Map<String, ?> params, Object body) {
         call.apply(() -> api.post(uri(path, params), ownerRef, key(), actor, body));
     }
 
-    public void put(String path, Map<String, ?> params, Object body) {
+    public void putTo(String path, Map<String, ?> params, Object body) {
         call.apply(() -> api.put(uri(path, params), ownerRef, key(), actor, body));
     }
 

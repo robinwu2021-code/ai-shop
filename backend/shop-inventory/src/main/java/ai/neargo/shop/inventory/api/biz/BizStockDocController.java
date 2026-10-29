@@ -84,7 +84,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/inbounds/{no}")
     public void updateInbound(@PathVariable String no, @RequestBody InboundReq req) {
-        if (route.remote()) { route.run(c -> c.put("/docs/inbounds/" + no, params("storeRef", route.store(), "scopeStores", route.scopeStores()), req)); return; }
+        if (route.remote()) { route.run(c -> c.putTo("/docs/inbounds/" + no, params("storeRef", route.store(), "scopeStores", route.scopeStores()), req)); return; }
         inbound.updateDraft(docOwner(no), no, draftOf(req));
     }
 
@@ -92,14 +92,14 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds/{no}/post")
     public void postInbound(@PathVariable String no) {
-        if (route.remote()) { route.run(c -> c.post("/docs/inbounds/" + no + "/post", params("scopeStores", route.scopeStores()), (Object) null)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/inbounds/" + no + "/post", params("scopeStores", route.scopeStores()), null)); return; }
         inbound.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/inbounds/{no}/void")
     public void voidInbound(@PathVariable String no) {
-        if (route.remote()) { route.run(c -> c.post("/docs/inbounds/" + no + "/void", params("scopeStores", route.scopeStores()), (Object) null)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/inbounds/" + no + "/void", params("scopeStores", route.scopeStores()), null)); return; }
         inbound.voidOrder(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
@@ -131,14 +131,14 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds/{no}/post")
     public void postOutbound(@PathVariable String no) {
-        if (route.remote()) { route.run(c -> c.post("/docs/outbounds/" + no + "/post", params("scopeStores", route.scopeStores()), (Object) null)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/outbounds/" + no + "/post", params("scopeStores", route.scopeStores()), null)); return; }
         outbound.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/outbounds/{no}/void")
     public void voidOutbound(@PathVariable String no) {
-        if (route.remote()) { route.run(c -> c.post("/docs/outbounds/" + no + "/void", params("scopeStores", route.scopeStores()), (Object) null)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/outbounds/" + no + "/void", params("scopeStores", route.scopeStores()), null)); return; }
         outbound.voidOrder(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
@@ -163,14 +163,14 @@ public class BizStockDocController {
     @PutMapping("/biz/inventory/counts/{no}/lines")
     public void fillCount(
             @PathVariable String no, @RequestBody List<StockCountService.Filled> lines) {
-        if (route.remote()) { route.run(c -> c.put("/docs/counts/" + no + "/lines", params("scopeStores", route.scopeStores()), lines)); return; }
+        if (route.remote()) { route.run(c -> c.putTo("/docs/counts/" + no + "/lines", params("scopeStores", route.scopeStores()), lines)); return; }
         counts.fill(docOwner(no), no, lines);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/post")
     public void postCount(@PathVariable String no) {
-        if (route.remote()) { route.run(c -> c.post("/docs/counts/" + no + "/post", params("scopeStores", route.scopeStores()), (Object) null)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/counts/" + no + "/post", params("scopeStores", route.scopeStores()), null)); return; }
         counts.post(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
@@ -211,7 +211,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/ship")
     public void ship(@PathVariable String no, @RequestBody(required = false) ShipReq req) {
-        if (route.remote()) { route.run(c -> c.post("/docs/transfers/" + no + "/ship", params("scopeStores", route.scopeStores()), req)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/transfers/" + no + "/ship", params("scopeStores", route.scopeStores()), req)); return; }
         // 请求体可空：自己送、没记承运方也要发得出去 —— 强制填的话商家就学会乱填一个
         ShipReq r = req == null ? new ShipReq(null, null, null) : req;
         transfers.ship(
@@ -226,7 +226,7 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/receive")
     public void receive(@PathVariable String no) {
-        if (route.remote()) { route.run(c -> c.post("/docs/transfers/" + no + "/receive", params("scopeStores", route.scopeStores()), (Object) null)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/transfers/" + no + "/receive", params("scopeStores", route.scopeStores()), null)); return; }
         transfers.receive(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
@@ -245,14 +245,14 @@ public class BizStockDocController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/counts/{no}/void")
     public void voidCount(@PathVariable String no) {
-        if (route.remote()) { route.run(c -> c.post("/docs/counts/" + no + "/void", params("scopeStores", route.scopeStores()), (Object) null)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/counts/" + no + "/void", params("scopeStores", route.scopeStores()), null)); return; }
         counts.cancel(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/transfers/{no}/void")
     public void voidTransfer(@PathVariable String no) {
-        if (route.remote()) { route.run(c -> c.post("/docs/transfers/" + no + "/void", params("scopeStores", route.scopeStores()), (Object) null)); return; }
+        if (route.remote()) { route.run(c -> c.postTo("/docs/transfers/" + no + "/void", params("scopeStores", route.scopeStores()), null)); return; }
         transfers.cancel(docOwner(no), no, SecurityUtils.currentUserNo());
     }
 

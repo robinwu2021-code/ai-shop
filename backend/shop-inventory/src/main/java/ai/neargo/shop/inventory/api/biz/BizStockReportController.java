@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 商家端 · 单据列表与报表（s05 · s08）。
@@ -43,12 +45,17 @@ public class BizStockReportController {
     private final InventoryAclService acl;
     private final LocationService locations;
 
+    /** 切流（M8）：已翻到库存服务的商家，转给服务的 /console，返回结构相同 */
+    private final InventoryConsoleRoute route;
+
     public BizStockReportController(StockQueryService query, InventoryReportService reports,
-                                    InventoryAclService acl, LocationService locations) {
+                                    InventoryAclService acl, LocationService locations,
+                                    InventoryConsoleRoute route) {
         this.query = query;
         this.reports = reports;
         this.acl = acl;
         this.locations = locations;
+        this.route = route;
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -56,12 +63,15 @@ public class BizStockReportController {
     public List<DocumentVO> documents(@RequestParam(required = false) String kind,
                                       @RequestParam(required = false) String no,
                                       @RequestParam(defaultValue = "30") int size) {
+        if (route.remote()) return route.via(c -> c.get("/documents", params("kind", kind, "no", no, "storeRef", route.store(),
+                "size", size), new tools.jackson.core.type.TypeReference<List<DocumentVO>>() { }));
         return query.documents(owner(), location(), kind, no, Math.min(size, PAGE_MAX));
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/inventory/report/monthly")
     public MonthlyVO monthly(@RequestParam String month) {
+        if (route.remote()) return route.via(c -> c.get("/report/monthly", params("month", month, "storeRef", route.store()), MonthlyVO.class));
         return reports.monthly(owner(), location(), month);
     }
 
@@ -70,6 +80,8 @@ public class BizStockReportController {
     public List<RankVO> ranking(@RequestParam(defaultValue = "fast") String type,
                                 @RequestParam(defaultValue = "30") int days,
                                 @RequestParam(defaultValue = "10") int limit) {
+        if (route.remote()) return route.via(c -> c.get("/report/ranking", params("type", type, "days", days, "limit", limit,
+                "storeRef", route.store()), new tools.jackson.core.type.TypeReference<List<RankVO>>() { }));
         return reports.ranking(owner(), location(), type, days, Math.min(limit, PAGE_MAX));
     }
 
@@ -82,7 +94,11 @@ public class BizStockReportController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.CUSTOMER + "')")
     @GetMapping("/biz/inventory/export")
     public ResponseEntity<byte[]> export(@RequestParam(defaultValue = "ledger") String type) {
-        byte[] body = reports.exportCsv(owner(), location(), type).getBytes(StandardCharsets.UTF_8);
+        String csv = route.remote()
+                ? route.via(c -> c.getText("/export", params("type", type, "storeRef", route.store())))
+                : reports.exportCsv(owner(), location(), type);
+        byte[] body = (csv == null ? "" : csv).getBytes(StandardCharsets.UTF_8);
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"inventory-" + type + ".csv\"")

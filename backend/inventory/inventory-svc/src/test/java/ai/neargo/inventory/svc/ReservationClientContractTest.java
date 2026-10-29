@@ -238,12 +238,12 @@ class ReservationClientContractTest {
                         List.of(java.util.Map.of("itemId", item, "qty", 4, "uom", "PCS", "unitCostMinor", 100))),
                 InventoryVOs.DocNoVO.class).no();
         // 只管别家门店的员工：动不了这张单
-        assertThatThrownBy(() -> console.post("/docs/inbounds/" + no + "/post",
-                InventoryConsole.params("scopeStores", "STORE-OTHER"), (Object) null))
+        assertThatThrownBy(() -> console.postTo("/docs/inbounds/" + no + "/post",
+                InventoryConsole.params("scopeStores", "STORE-OTHER"), null))
                 .isInstanceOfSatisfying(InventoryException.class,
                         e -> assertThat(e.error()).isEqualTo(InventoryError.FORBIDDEN));
         // 管这家门店的员工 / 店主：可以
-        console.post("/docs/inbounds/" + no + "/post", InventoryConsole.params("scopeStores", "STORE-1"), (Object) null);
+        console.postTo("/docs/inbounds/" + no + "/post", InventoryConsole.params("scopeStores", "STORE-1"), null);
         assertThat(sql.queryForObject("select on_hand from inv_stock_balance where item_id = ?",
                 java.math.BigDecimal.class, item)).isEqualByComparingTo("9");
         assertThat(sql.queryForObject("select updated_by from inv_inbound_order where inbound_no = ?", String.class, no))
@@ -252,13 +252,47 @@ class ReservationClientContractTest {
         // 盘点：开单 → 录数 → 过账
         String count = console.post("/docs/counts", InventoryConsole.params("storeRef", "STORE-1"),
                 java.util.Map.of("itemIds", List.of(item)), InventoryVOs.DocNoVO.class).no();
-        console.put("/docs/counts/" + count + "/lines", InventoryConsole.params(),
+        console.putTo("/docs/counts/" + count + "/lines", InventoryConsole.params(),
                 List.of(java.util.Map.of("itemId", item, "countedQty", 8, "reasonCode", "LOSS")));
         assertThat(console.get("/docs/counts/" + count, InventoryConsole.params(), InventoryVOs.CountVO.class)
                 .countNo()).isEqualTo(count);
-        console.post("/docs/counts/" + count + "/post", InventoryConsole.params(), (Object) null);
+        console.postTo("/docs/counts/" + count + "/post", InventoryConsole.params(), null);
         assertThat(sql.queryForObject("select on_hand from inv_stock_balance where item_id = ?",
                 java.math.BigDecimal.class, item)).isEqualByComparingTo("8");
+    }
+
+    @Test
+    void merchantConsoleCatalogReportsAndValuationGoThroughTheService() {
+        InventoryConsole console = client.console(merchant, "U9");
+        List<ai.neargo.inventory.domain.entity.InvLocation> locs = console.get("/locations", InventoryConsole.params(),
+                new TypeReference<>() { });
+        assertThat(locs).extracting(ai.neargo.inventory.domain.entity.InvLocation::getExternalRef).contains("STORE-1");
+
+        String supplier = console.post("/suppliers", java.util.Map.of("name", "茶园"),
+                java.util.Map.class).get("supplierNo").toString();
+        List<java.util.Map<String, Object>> list = console.get("/suppliers", InventoryConsole.params("activeOnly", true),
+                new TypeReference<>() { });
+        assertThat(list).extracting(m -> m.get("supplierNo")).contains(supplier);
+        console.post("/suppliers/" + supplier + "/active", java.util.Map.of("active", false));
+        assertThat(console.get("/suppliers", InventoryConsole.params("activeOnly", true),
+                new TypeReference<List<java.util.Map<String, Object>>>() { })).isEmpty();
+
+        String month = java.time.YearMonth.now().toString();
+        InventoryVOs.MonthlyVO monthly = console.get("/report/monthly",
+                InventoryConsole.params("month", month, "storeRef", "STORE-1"), InventoryVOs.MonthlyVO.class);
+        assertThat(monthly.closing()).isEqualTo(5);
+        assertThat(console.getText("/export", InventoryConsole.params("type", "ledger", "storeRef", "STORE-1")))
+                .contains(",");
+
+        var policy = new ai.neargo.inventory.domain.service.InventoryValuationService.Policy(0, "CNY", "LATEST", 120L, false);
+        var saved = console.post("/items/" + item + "/valuation", InventoryConsole.params("key", "VAL-1"), policy,
+                ai.neargo.inventory.domain.service.InventoryValuationService.Policy.class);
+        // 同一把幂等键重放：同一个结果
+        var replay = console.post("/items/" + item + "/valuation", InventoryConsole.params("key", "VAL-1"), policy,
+                ai.neargo.inventory.domain.service.InventoryValuationService.Policy.class);
+        assertThat(replay).isEqualTo(saved);
+        assertThat(console.get("/items/" + item + "/valuation", InventoryConsole.params(),
+                ai.neargo.inventory.domain.service.InventoryValuationService.Policy.class).unitCostMinor()).isEqualTo(120L);
     }
 
     private String ownerBearerOf(String merchantRef) throws Exception {
