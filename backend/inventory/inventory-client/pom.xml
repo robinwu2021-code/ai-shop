@@ -12,7 +12,7 @@
 
     <artifactId>inventory-client</artifactId>
     <packaging>jar</packaging>
-    <description>进销存 · 给调用方的客户端（M0 冻结契约后生成）。只依赖契约与传输件</description>
+    <description>进销存 · 给调用方的客户端（M8 T8.3）。只依赖契约与传输件</description>
 
     <dependencies>
         <dependency>
@@ -22,6 +22,16 @@
         <dependency>
             <groupId>ai.neargo.shop</groupId>
             <artifactId>svc-client</artifactId>
+        </dependency>
+        <dependency>
+            <!-- 解错误体；svc-client 把 JSON 编解码留给调用方的 classpath，这里要自己解就自己声明 -->
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

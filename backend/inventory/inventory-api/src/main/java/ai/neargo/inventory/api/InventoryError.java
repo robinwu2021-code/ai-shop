@@ -45,6 +45,8 @@ public enum InventoryError {
     EVENTS_CURSOR_EXPIRED("inventory.events.cursor_expired", 410),
     /** 盘点范围内冻结中：开盘到过账 / 作废之间，范围内的物料不许进出（AC-11）。参数是盘点单号。 */
     COUNT_FROZEN("inventory.count.frozen", 409),
+    /** 调用方一侧：库存服务连不上、超时或熔断中（客户端抛，服务端不抛）。宿主据此拒单而不是放行（Q7）。 */
+    UNAVAILABLE("inventory.unavailable", 503),
     INTERNAL("inventory.internal", 500);
 
     private final String key;
@@ -62,5 +64,15 @@ public enum InventoryError {
 
     public int httpStatus() {
         return httpStatus;
+    }
+
+    /** 按文案键反查（客户端把服务的错误体翻回码）；不认识的键为空 */
+    public static InventoryError byKey(String key) {
+        for (InventoryError e : values()) {
+            if (e.key.equals(key)) {
+                return e;
+            }
+        }
+        return null;
     }
 }

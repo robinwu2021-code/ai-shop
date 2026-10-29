@@ -77,12 +77,35 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
     public Issued issueCredential(String ownerId, String name, Set<Capability> capabilities,
                                   LocalDateTime expiresAt, String operator) {
         InvOwner owner = owner(ownerId);
+        return issue(owner.getSystemCode(), ownerId, name, capabilities, expiresAt, operator);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public Issued issueSystemCredential(String systemCode, String name, Set<Capability> capabilities,
+                                        LocalDateTime expiresAt, String operator) {
+        InvClientSystem system = systemCode == null ? null : systemMapper.selectOne(
+                Wrappers.<InvClientSystem>lambdaQuery().eq(InvClientSystem::getSystemCode, systemCode));
+        if (system == null || !InvEnums.MasterStatus.ACTIVE.equals(system.getStatus())) {
+            throw InventoryException.of(InventoryError.BAD_REQUEST, "system");
+        }
+        return issue(systemCode, null, name, capabilities, expiresAt, operator);
+    }
+
+    @Override
+    public InvOwner ownerByRef(String systemCode, String externalRef) {
+        return externalRef == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getSystemCode, systemCode).eq(InvOwner::getExternalRef, externalRef));
+    }
+
+    private Issued issue(String systemCode, String ownerId, String name, Set<Capability> capabilities,
+                         LocalDateTime expiresAt, String operator) {
         String key = "SK" + InvKeys.next(InvKeys.CREDENTIAL);
         String secret = InvKeys.secret();
         InvOpenCredential row = new InvOpenCredential();
         row.setCredentialId(InvKeys.next(InvKeys.CREDENTIAL));
         row.setOwnerId(ownerId);
-        row.setSystemCode(owner.getSystemCode());
+        row.setSystemCode(systemCode);
         row.setAppKey(key);
         row.setAppSecretHash(hasher.encode(secret));
         row.setName(name);

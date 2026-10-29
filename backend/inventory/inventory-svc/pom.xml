@@ -53,6 +53,13 @@
             <artifactId>archunit-junit5</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <!-- 客户端对真实控制器的契约测试 -->
+            <groupId>ai.neargo.inventory</groupId>
+            <artifactId>inventory-client</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

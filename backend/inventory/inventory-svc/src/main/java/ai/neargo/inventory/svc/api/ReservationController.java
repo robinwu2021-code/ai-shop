@@ -6,6 +6,7 @@ import ai.neargo.inventory.api.profile.Capability;
 import ai.neargo.inventory.domain.service.BusinessProfileService;
 import ai.neargo.inventory.domain.service.Caller;
 import ai.neargo.inventory.domain.service.CommandService;
+import ai.neargo.inventory.domain.service.HostReferenceService;
 import ai.neargo.inventory.domain.service.ReservationService;
 import ai.neargo.inventory.guard.InventoryRequestContext;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,12 +31,14 @@ public class ReservationController {
     private final ReservationService reservations;
     private final BusinessProfileService profiles;
     private final CommandService commands;
+    private final HostReferenceService refs;
 
     public ReservationController(ReservationService reservations, BusinessProfileService profiles,
-                                 CommandService commands) {
+                                 CommandService commands, HostReferenceService refs) {
         this.reservations = reservations;
         this.profiles = profiles;
         this.commands = commands;
+        this.refs = refs;
     }
 
     @PostMapping("/api/inventory/v1/reservations")
@@ -45,7 +48,8 @@ public class ReservationController {
             throw InventoryException.of(InventoryError.BAD_REQUEST, "reservation");
         }
         List<ReservationService.Line> lines = req.lines().stream()
-                .map(l -> new ReservationService.Line(l.itemId(), l.locationId(), l.qty(), l.fulfillmentRef()))
+                .map(l -> new ReservationService.Line(itemOf(caller.ownerId(), l), locationOf(caller.ownerId(), l),
+                        l.qty(), l.fulfillmentRef()))
                 .toList();
         return commands.execute(caller, "reservation.reserve", req, View.class, () -> {
             reservations.reserve(caller.ownerId(), req.ref(), lines, req.ttlSeconds(),
@@ -104,8 +108,26 @@ public class ReservationController {
         ReservationService.Snapshot s = reservations.query(owner, ref)
                 .orElseThrow(() -> InventoryException.of(InventoryError.NOT_FOUND, "reservation"));
         return new View(ref, s.reservationId(), s.status().name(), s.lifecycleVersion(), s.paymentAcknowledged(),
-                s.lines().stream().map(l -> new Line(l.itemId(), l.locationId(), l.qty(), l.fulfillmentRef()))
-                        .toList());
+                s.lines().stream().map(l -> new Line(l.itemId(), l.locationId(), refs.itemRefOf(owner, l.itemId()),
+                        null, l.qty(), l.fulfillmentRef())).toList());
+    }
+
+    /** 行可以给本服务的物料号，也可以给宿主的编号（商城：SKU 号）；都给时以物料号为准 */
+    private String itemOf(String owner, Line l) {
+        String id = l.itemId() != null ? l.itemId() : refs.itemIdOf(owner, l.itemRef());
+        if (id == null) {
+            throw InventoryException.of(InventoryError.NOT_FOUND, "item:" + l.itemRef());
+        }
+        return id;
+    }
+
+    /** 库位同理（商城：门店号，共用货源的门店落到货源库位） */
+    private String locationOf(String owner, Line l) {
+        String id = l.locationId() != null ? l.locationId() : refs.stockLocationOf(owner, l.locationRef());
+        if (id == null) {
+            throw InventoryException.of(InventoryError.NOT_FOUND, "location:" + l.locationRef());
+        }
+        return id;
     }
 
     private Caller enabled() {
@@ -118,7 +140,12 @@ public class ReservationController {
     public record Reserve(String ref, List<Line> lines, long ttlSeconds, Integer lifecycleVersion) {
     }
 
-    public record Line(String itemId, String locationId, int qty, String fulfillmentRef) {
+    /**
+     * @param itemRef     宿主的物料编号（商城：SKU 号），与 {@code itemId} 二选一
+     * @param locationRef 宿主的库位编号（商城：门店号），与 {@code locationId} 二选一
+     */
+    public record Line(String itemId, String locationId, String itemRef, String locationRef, int qty,
+                       String fulfillmentRef) {
     }
 
     public record Issue(String fulfillmentRef) {

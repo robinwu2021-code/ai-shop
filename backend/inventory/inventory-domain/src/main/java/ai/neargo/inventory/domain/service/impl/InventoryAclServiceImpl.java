@@ -815,6 +815,14 @@ public class InventoryAclServiceImpl implements InventoryAclService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public String writeAuthorityOf(String entityNo) {
+        InvOwner owner = entityNo == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getSystemCode, aclSystem).eq(InvOwner::getExternalRef, entityNo));
+        return owner == null ? null : owner.getWriteAuthority();
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
     public String findOwnerId(String entityNo) {
         InvOwner owner = findOwner(entityNo);
         return owner == null ? null : owner.getOwnerId();

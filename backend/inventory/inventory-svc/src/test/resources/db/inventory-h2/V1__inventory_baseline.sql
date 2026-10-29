@@ -447,7 +447,7 @@ CREATE TABLE IF NOT EXISTS inv_open_credential
 (
     id              BIGINT       NOT NULL AUTO_INCREMENT,
     credential_id   VARCHAR(32)  NOT NULL,
-    owner_id        VARCHAR(32)  NOT NULL,
+    owner_id VARCHAR(32) NULL,
     app_key         VARCHAR(64)  NOT NULL,
     app_secret_hash VARCHAR(128) NOT NULL,
     name            VARCHAR(64)  DEFAULT NULL,

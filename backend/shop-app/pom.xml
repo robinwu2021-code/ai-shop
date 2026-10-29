@@ -82,6 +82,11 @@
             <artifactId>shop-inventory</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <!-- 切流（ADR-046 M8）：已翻到独立服务的业主经客户端调库存服务 -->
+            <groupId>ai.neargo.inventory</groupId>
+            <artifactId>inventory-client</artifactId>
+        </dependency>
         <!-- 报表：独立库的持久层。日结「读交易域、写报表库」是跨域组合，
              按 ArchitectureTest 的规矩住在本模块（reportbridge 包），
              所以引它的是 shop-app，而不是 shop-report 反过来引 shop-core -->

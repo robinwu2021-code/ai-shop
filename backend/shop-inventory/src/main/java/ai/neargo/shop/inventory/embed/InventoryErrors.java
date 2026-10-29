@@ -33,7 +33,8 @@ public final class InventoryErrors {
             case PROFILE_INVALID, GATE_REF_MISSING -> ErrorCode.BAD_REQUEST;
             case SERIAL_CONFLICT, DISPATCH_NOT_AVAILABLE, DISPATCH_CHILD_LOCKED, ISSUE_VOID_FORBIDDEN,
                     EVENTS_CURSOR_EXPIRED, COUNT_FROZEN -> ErrorCode.CONFLICT;
-            case INTERNAL -> ErrorCode.INTERNAL_ERROR;
+            // 库存服务不可用（客户端熔断 / 超时）：拒单而不是放行（Q7）；暂不另设商城码，免得新增三语文案
+            case UNAVAILABLE, INTERNAL -> ErrorCode.INTERNAL_ERROR;
         };
     }
 

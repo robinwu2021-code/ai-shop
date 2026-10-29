@@ -26,6 +26,12 @@ public interface InventoryAclService {
     /** Existing source ownership only; never creates an owner during a command authorization or read. */
     String findOwnerId(String entityNo);
 
+    /**
+     * 这个商家的账由谁写（{@code EMBEDDED} / {@code SVC} / {@code FLIPPING}）；没开过账为空。
+     * <b>唯一不受写入方守卫限制的业主查询</b>：切流路由靠它决定走内嵌还是走客户端（M8 T8.3）。
+     */
+    String writeAuthorityOf(String entityNo);
+
     /** Original AISHOP SKU reference for an owner's reserved material; never invents an external SKU. */
     String skuOfItem(String ownerId, String itemId);
 
