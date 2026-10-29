@@ -80,6 +80,11 @@ public class WriteAuthorityFlipServiceImpl implements WriteAuthorityFlipService 
             if (InvEnums.WriteAuthority.FLIPPING.equals(owner.getWriteAuthority())) {
                 throw InventoryException.of(InventoryError.CONFLICT, "flipping");
             }
+            // 翻到服务前必须已装业态档案：服务的接口按档案开通能力包（如预留），宿主内嵌时期建的业主没有档案，
+            // 翻过去之后下单预留会全部被拒。先装档案再翻，而不是翻完才发现
+            if (InvEnums.WriteAuthority.SVC.equals(to) && owner.getProfileVersion() == null) {
+                throw InventoryException.of(InventoryError.CONFLICT, "profile_missing");
+            }
             String previous = owner.getWriteAuthority();
             set(ownerId, InvEnums.WriteAuthority.FLIPPING, operator);
             return previous;

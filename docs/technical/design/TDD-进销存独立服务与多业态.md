@@ -609,6 +609,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-24 | `SerialDocumentFlowTest#cabinetWith48PowerbanksGoesInAndOutByScanningOnlyTheCabinet`（柜 + 48 宝入库，只扫柜码出库，单据逐块 49 件，柜 −1、宝 −48）· `#disassembledPowerbankNoLongerTravelsWithItsCabinet` | ✅ 2026-10-29 | ✅ 去掉下级件展开 → 变红 |
 | AC-25 | `ReservationAndFlipFlowTest#reservationIsAllOrNothingIdempotentAndExpiredByTheJobService`（同单号同内容同一预留、换内容 409、不够全拒、取消释放、到期由任务服务经 `/internal/job/*` 触发回收、密钥不对 401）· `#expirySweepOnlyTouchesOwnersThisProcessWritesFor` | ✅ 2026-10-29（服务侧） | ✅ 去掉回收的写入方过滤 → 变红 |
 | AC-26 | ai-shop `OrderReservationOutboxTest#rollback_expires_and_commit_once` | | |
+| 端到端：商城用独立进销存 | shop-app `InventoryStandaloneCutoverE2ETest`：同一 JVM 起真实库存服务、与商城内嵌连同一个库、签 `SHOP` 系统凭证配给商城客户端 —— 内嵌建账进货 → 无档案翻转被拒 → 装电商档案、翻转（对账平）→ 商城真实 `StockPort` 锁货落在服务（命令表记 `SYSTEM:order`）、内嵌直写被拒 → 付款确认经系统级接口实扣 → 后台库存页转发看到同一本账 → 翻回内嵌后商城照常走内嵌 | ✅ 2026-10-29 | — |
 | T8.3 运营端与开放接口 | `ReservationClientContractTest#opsAndOpenApiSurfacesGoThroughTheService`（不限库位余额、凭证签发 / 列表 / 吊销、别家凭证 404、开放同步别家库位 403、本家落盘点单并进流水）· shop-inventory `OpenInventoryControllerRoutingTest`（认出的业主已翻走即转发、幂等号作操作人、不碰领域服务） | ✅ 2026-10-29 | ✅ 吊销不核归属 → 变红 |
 | T8.3 后台其余 | `ReservationClientContractTest#merchantConsoleCatalogReportsAndValuationGoThroughTheService`（库位列表、供应商建 / 停用 / 列表、月报期末、CSV 导出、估值同键重放同结果）· shop-inventory `BizCatalogControllersRoutingTest` | ✅ 2026-10-29 | ✅ 导出不分流 → 变红 |
 | T8.3 后台单据 | `ReservationClientContractTest#merchantConsoleDocumentsHonourTheStaffStoreScope`（入库落当前门店库位、别家门店员工过账 403、本店员工可以、操作人原样、盘点开单录数过账）· shop-inventory `BizStockDocControllerRoutingTest`（转发路径与范围参数、不碰领域服务） | ✅ 2026-10-29 | ✅ 去掉服务侧范围判定 → 变红 |
@@ -823,3 +824,4 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | M8 第四段：单据 17 个端点已切，后端全量 7022 例 0 失败 |
 | 2026-10-29 | M8 第四段：商家后台 40 个端点全部已切（库位、供应商、报表、估值），后端全量 7024 例 0 失败 |
 | 2026-10-29 | M8 第四段：运营端与旧开放接口已切 —— 商城库存 48 个端点全部按商家写入方分流。针对性回归（库存各模块 + shop-inventory 88 例、shop-app 库存与架构相关 259 例）0 失败；后端全量待复跑（当晚积分两例按北京日期取统计、本机 20~24 点必挂，与本改动无关） |
+| 2026-10-29 | 端到端用例通过：电商商家翻到独立服务后，商城下单锁货、付款确认、后台库存页都落在服务上，回滚可用。发现并修掉：翻向服务要求先装业态档案（内嵌时期建的业主没有档案，否则翻过去预留全被拒）。`inventory-svc` 可执行包改挂 `exec` 分类器，普通 jar 供测试引用。餐饮的需求计划 / 生产扣料端口未切：餐饮商家暂不能翻 |

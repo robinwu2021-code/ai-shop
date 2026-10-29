@@ -72,6 +72,11 @@
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <configuration>
+                            <!-- 可执行包另挂分类器：普通 jar 留作主构件，商城的端到端测试才能把服务当依赖起在同一 JVM 里。
+                                 部署取 inventory-svc-*-exec.jar，放到目标机重命名为 inventory-svc.jar -->
+                            <classifier>exec</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

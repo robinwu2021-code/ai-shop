@@ -108,7 +108,7 @@ public class InventoryConsoleRoute {
 
     private InventoryConsole console() {
         // 操作人原样透传（与内嵌时期写进单据的值相同），审计与单据上看到的是同一个人
-        String user = SecurityUtils.currentUserNo();
+        String user = SecurityUtils.currentUserNoOrNull();
         return client.getObject().console(BizContext.requireMerchantNo(), user == null ? "SYSTEM" : user);
     }
 }

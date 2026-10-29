@@ -87,6 +87,13 @@
             <groupId>ai.neargo.inventory</groupId>
             <artifactId>inventory-client</artifactId>
         </dependency>
+        <dependency>
+            <!-- 端到端：商城对真实的库存服务（同 JVM、同库），验证切流后商城照常用库存 -->
+            <groupId>ai.neargo.inventory</groupId>
+            <artifactId>inventory-svc</artifactId>
+            <version>${inventory.version}</version>
+            <scope>test</scope>
+        </dependency>
         <!-- 报表：独立库的持久层。日结「读交易域、写报表库」是跨域组合，
              按 ArchitectureTest 的规矩住在本模块（reportbridge 包），
              所以引它的是 shop-app，而不是 shop-report 反过来引 shop-core -->
