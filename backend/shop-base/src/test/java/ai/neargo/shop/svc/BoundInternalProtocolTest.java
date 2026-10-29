@@ -189,6 +189,24 @@ class BoundInternalProtocolTest {
     }
 
     @Test
+    void sharedResourceDependencyIs503ForBothLegacyAndBoundInternalCalls() {
+        var legacy = InternalServiceResponses.invoke(TOKEN, TOKEN, () -> {
+            throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
+        });
+        assertThat(legacy.getStatusCode().value()).isEqualTo(503);
+        var bound = InternalServiceResponses.invokeBound(TOKEN, TOKEN, () -> "c".repeat(64), () -> {
+            throw BizException.of(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE);
+        });
+        assertThat(bound.getStatusCode().value()).isEqualTo(503);
+        assertThat(bound.getHeaders().getFirst("X-Internal-Error-Code")).isEqualTo("RESOURCE_DEPENDENCY_UNAVAILABLE");
+        assertThat(bound.getHeaders().getFirst("X-Internal-Request-Digest")).isEqualTo("c".repeat(64));
+        assertThat(bound.getBody()).isNull();
+        assertThat(InternalServiceResponses.invoke(TOKEN, TOKEN, () -> {
+            throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
+        }).getStatusCode().value()).isEqualTo(500);
+    }
+
+    @Test
     void legacyClientsKeepStatusSemanticsWhileBoundErrorsRequireDigest() {
         var legacy =
                 InternalServiceResponses.invoke(

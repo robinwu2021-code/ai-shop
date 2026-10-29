@@ -1,5 +1,8 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
+import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.LoginUser;
@@ -74,6 +77,7 @@ class ResourceCommandPersistenceIT {
             ScriptUtils.executeSqlScript(connection,
                     new ClassPathResource("db/migration/V595__shared_resource_booking_foundation.sql"));
         }
+        ResourceOccupationNativeFixture.install(sql.getDataSource());
         login("ACTOR");
     }
 
@@ -84,11 +88,31 @@ class ResourceCommandPersistenceIT {
     }
 
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 Mappers.class, required("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
                 required("ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl"))
                 .withBean(AuditMetaObjectHandler.class).withPropertyValues("spring.datasource.url=" + url,
                         "spring.datasource.username=root", "spring.datasource.password=");
+    }
+
+    @Test
+    void bookingGoldenOriginalHashAndReceiptShapeSurviveActualJournalDiscriminator() {
+        sql.update("INSERT INTO mch_booking_owner(entity_no,owner_no,store_no,source_type,source_no,created_at,updated_at) "
+                + "VALUES('E','O','S','BEAUTY_APPOINTMENT','A',NOW(),NOW())");
+        runner().run(ctx -> {
+            String payload = " \n{\"a\":\"é\"}\n";
+            Object accepted = call(ctx, "accept", request(scope("MAIN", "e", "s"), "RELEASE", " GOLD ", "A", 0, 1, null, payload));
+            assertThat(get(accepted, "payloadHash")).isEqualTo("437043f4b7bdb0d9f66358e6a4198d14a2361bd30e02cfe331466ada7111d55a");
+            assertThat(get(accepted, "frozenPayload")).isEqualTo(payload);
+            assertThat(sql.queryForObject("SELECT request_key_hash FROM mch_resource_command", String.class))
+                    .isEqualTo("a1d0f15ad3f16b1c98a7f751cb4296763906e62496f37e7ba441a5c32c55f76f");
+            assertThat(sql.queryForObject("SELECT command_kind FROM mch_resource_command", String.class)).isEqualTo("BOOKING_V1");
+            assertThat(find(ctx, scope(), get(accepted, "commandNo"))).isEqualTo(accepted);
+            assertThat(java.util.Arrays.stream(accepted.getClass().getRecordComponents()).map(java.lang.reflect.RecordComponent::getName))
+                    .containsExactly("scope", "commandNo", "ownerNo", "sourceType", "sourceNo", "action", "status", "version",
+                            "expectedOwnerVersion", "sourceRevision", "target", "payloadHash", "frozenPayload", "resultPayload",
+                            "rejectionCode", "waitReason", "nextRetryAt", "initiatedBy");
+        });
     }
 
     @Test

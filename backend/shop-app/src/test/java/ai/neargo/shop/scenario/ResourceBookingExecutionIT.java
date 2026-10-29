@@ -1,9 +1,20 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.merchant.policy.ResourceOccupationSchemaVerifier;
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceOccupationMapper;
+import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
+import org.mockito.Mockito;
+
+import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
+import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
@@ -57,6 +68,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -128,6 +140,7 @@ class ResourceBookingExecutionIT {
         }
         // Overlapping cross-store rules fail closed; contention test switches requested store between executions.
         sql.execute("UPDATE mch_schedule_rule SET status='INACTIVE' WHERE store_no='OTHER'");
+        ResourceOccupationNativeFixture.install(sql.getDataSource());
         physical("B", 1);
         physical("C", 1);
         String schema;
@@ -154,7 +167,7 @@ class ResourceBookingExecutionIT {
 
     private ApplicationContextRunner runner() {
         try {
-            return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+            return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                     Mappers.class, ResourceBookingPortImpl.class, ResourceCandidatesPortImpl.class,
                     ResourceFactsPortImpl.class, Class.forName("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
                     Class.forName("ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl"),
@@ -170,6 +183,229 @@ class ResourceBookingExecutionIT {
         } catch (ClassNotFoundException ex) {
             throw new AssertionError("booking execution service is missing", ex);
         }
+    }
+
+    @Test
+    void projectedCommonActualArtifactCannotBeCreditedAsLegacyCapacity() {
+        runner().run(ctx -> {
+            // Native guard detects an unmatched consumed tuple before any booking mutation.
+            sql.update("INSERT INTO mch_resource_bucket(entity_no,created_at,updated_at,bucket_no,resource_no,"
+                    + "start_at,end_at,capacity,held_qty,confirmed_qty,capacity_revision) "
+                    + "VALUES('E',NOW(),NOW(),'CORRUPT','B','2026-10-21 09:00:00',"
+                    + "'2026-10-21 09:05:00',1,0,0,0)");
+            sql.update("UPDATE mch_resource_bucket SET occupied_qty=1 WHERE resource_no='B'");
+            assertThatThrownBy(() -> ctx.getBean(ResourceCandidatesPort.class).capacity(
+                    new ResourceCandidatesPort.CapacityQuery(new ResourceBookingPort.Scope("MAIN", "E", "S"),
+                            Set.of("B"), NOW.plusSeconds(3600), NOW.plusSeconds(3900), NOW, null)))
+                    .isInstanceOf(BizException.class);
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"OPEN", "PAUSED", "CLEANING"})
+    void actualUnknownEndAndManualCleaningRetainMissingFutureBucketsAndResidualCapacity(String state) {
+        sql.update("UPDATE mch_resource SET capacity=2 WHERE resource_no='B'");
+        ResourceOccupationNativeFixture.directEvidence(sql, "B", state);
+        runner().run(ctx -> {
+            var capacity = ctx.getBean(ResourceCandidatesPort.class).capacity(new ResourceCandidatesPort.CapacityQuery(
+                    new ResourceBookingPort.Scope("MAIN", "E", "S"), Set.of("B"),
+                    NOW.plusSeconds(14400), NOW.plusSeconds(14700), NOW.plusSeconds(14400), null));
+            assertThat(capacity).hasSize(1);
+            assertThat(capacity.getFirst().used()).isEqualTo(1);
+            assertThat(capacity.getFirst().capacity()).isEqualTo(2);
+            var fact = ctx.getBean(ResourceFactsPort.class).getBatch(new ResourceFactsPort.Query("MAIN", "E", "S",
+                    Set.of("B"), NOW.plusSeconds(14400))).getFirst();
+            assertThat(fact.openOccupied()).isFalse();
+            assertThat(fact.actualUsed()).isEqualTo(1);
+            assertThat(number("SELECT COUNT(*) FROM mch_resource_bucket")).isZero();
+        });
+    }
+
+    @Test
+    void actualOverrunAtLastSlotRejectsTheWholeRealBookingWithoutReleasingPhysicalWork() {
+        ResourceOccupationNativeFixture.directEvidence(sql, "B", "OPEN");
+        runner().run(ctx -> {
+            var command = accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B");
+            var result = execute(ctx, command);
+            assertThat(result.status()).isEqualTo(Status.REJECTED);
+            assertThat(result.rejectionCode()).isEqualTo("CAPACITY_UNAVAILABLE");
+            assertThat(number("SELECT COUNT(*) FROM mch_booking_hold")).isZero();
+            assertThat(number("SELECT COUNT(*) FROM mch_resource_bucket")).isZero();
+            assertThat(number("SELECT COUNT(*) FROM mch_resource_occupation WHERE state='OPEN'")).isOne();
+            assertThat(sql.queryForObject("SELECT initial_start_command_no FROM mch_booking_owner WHERE owner_no='AO'", String.class))
+                    .isEqualTo("START");
+        });
+    }
+
+    @Test
+    void oldBookingQueryCannotParseOrExecuteActualJournalKind() {
+        ResourceOccupationNativeFixture.directEvidence(sql, "B", "OPEN");
+        runner().run(ctx -> assertThatThrownBy(() -> commands(ctx).find(S, "START"))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("KIND_CONFLICT"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Action.class, names = {"RELEASE", "EXPIRE", "REPLACE", "RECONCILE", "RENEW", "PROTECT", "CONFIRM"})
+    void everyLegacyWholeHoldMutationRejectsPermanentlyConsumedGroupsWithoutPrefixEffects(Action action) {
+        runner().run(ctx -> {
+            execute(ctx, accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B"));
+            String hold = current();
+            execute(ctx, accept(ctx, S, Action.CONFIRM, "A", 1, 2, target(hold), "B"));
+            ResourceOccupationNativeFixture.bookingEvidence(sql, "B", hold);
+            var command = accept(ctx, S, action, "A", 2, 3, target(hold), "B");
+            var before = sql.queryForList("SELECT * FROM mch_booking_hold_unit ORDER BY id");
+            var result = execute(ctx, command);
+            assertThat(result.status()).isEqualTo(Status.REJECTED);
+            assertThat(result.rejectionCode()).isEqualTo("HOLD_CONSUMED");
+            assertThat(sql.queryForList("SELECT * FROM mch_booking_hold_unit ORDER BY id")).isEqualTo(before);
+            assertThat(sql.queryForObject("SELECT execution_started_at FROM mch_booking_hold WHERE hold_no=?", LocalDateTime.class, hold))
+                    .isNull();
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_booking_hold_unit WHERE consumed_at IS NOT NULL", Long.class))
+                    .isEqualTo(2L);
+            assertThatThrownBy(() -> sql.update("UPDATE mch_booking_hold_unit SET consumed_at=NULL,consume_occupation_unit_no=NULL,consume_command_no=NULL"))
+                    .isInstanceOf(RuntimeException.class);
+        });
+    }
+
+    @Test
+    void exactProjectionAntiJoinCountsOneLogicalDemandAcrossMultiplePermanentOriginalBuckets() {
+        runner().run(ctx -> {
+            execute(ctx, accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B"));
+            String hold = current();
+            execute(ctx, accept(ctx, S, Action.CONFIRM, "A", 1, 2, target(hold), "B"));
+            ResourceOccupationNativeFixture.bookingEvidence(sql, "B", hold);
+            String bucket = sql.queryForObject("SELECT bucket_no FROM mch_resource_bucket ORDER BY start_at LIMIT 1", String.class);
+            sql.update("UPDATE mch_resource_bucket SET occupied_qty=1 WHERE bucket_no=?", bucket);
+            ResourceOccupationNativeFixture.insert(sql, "mch_resource_occupation_bucket", Map.ofEntries(
+                    Map.entry("projection_no", "PROJ"), Map.entry("occupation_no", "O"), Map.entry("segment_no", "SEG"),
+                    Map.entry("logical_demand_no", "G"), Map.entry("resource_no", "B"), Map.entry("bucket_no", bucket),
+                    Map.entry("start_at", "2026-10-21 09:00:00"), Map.entry("end_at", "2026-10-21 09:05:00"),
+                    Map.entry("category", "OCCUPIED"), Map.entry("qty", 1)));
+            var result = ctx.getBean(ResourceCandidatesPort.class).capacity(new ResourceCandidatesPort.CapacityQuery(
+                    new ResourceBookingPort.Scope("MAIN", "E", "S"), Set.of("B"),
+                    NOW.plusSeconds(3600), NOW.plusSeconds(4500), NOW, null));
+            assertThat(result).hasSize(3);
+            assertThat(result).extracting(ResourceCandidatesPort.Capacity::used).containsExactly(1, 1, 1);
+        });
+    }
+
+    @Test
+    void endedOccupationCannotReleaseOrReusePermanentOriginalBookingConsumption() {
+        runner().run(ctx -> {
+            execute(ctx, accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B"));
+            String hold = current();
+            execute(ctx, accept(ctx, S, Action.CONFIRM, "A", 1, 2, target(hold), "B"));
+            ResourceOccupationNativeFixture.bookingEvidence(sql, "B", hold);
+            sql.update("UPDATE mch_resource_occupation_segment SET actual_end_at='2026-10-21 09:10:00',close_command_no='END'");
+            sql.update("UPDATE mch_resource_occupation SET state='ENDED',ended_at='2026-10-21 09:10:00',revision=revision+1");
+            assertThatThrownBy(() -> sql.update("INSERT INTO mch_resource_occupation_unit "
+                    + "(tenant_no,entity_no,created_at,updated_at,occupation_unit_no,occupation_no,start_command_no,logical_demand_no,"
+                    + "origin,reservation_unit_no,hold_no,booking_owner_no,source_line_ref,allocation_revision,source_bucket_no,qty,consumed_at) "
+                    + "SELECT tenant_no,entity_no,NOW(),NOW(),'REUSE',occupation_no,start_command_no,logical_demand_no,"
+                    + "origin,reservation_unit_no,hold_no,booking_owner_no,source_line_ref,allocation_revision,source_bucket_no,qty,consumed_at "
+                    + "FROM mch_resource_occupation_unit ORDER BY id LIMIT 1"))
+                    .isInstanceOf(RuntimeException.class).hasMessageContaining("uk_rcu_original");
+            var result = execute(ctx, accept(ctx, S, Action.RELEASE, "A", 2, 3, target(hold), "B"));
+            assertThat(result.rejectionCode()).isEqualTo("HOLD_CONSUMED");
+        });
+    }
+
+    @Test
+    void databaseEquivalentScopeAliasesCannotHideUnprojectedNativeDemand() {
+        sql.update("UPDATE mch_resource SET capacity=3 WHERE resource_no='B'");
+        ResourceOccupationNativeFixture.directEvidence(sql, "B", "OPEN");
+        runner().run(ctx -> {
+            var capacities = ctx.getBean(ResourceCandidatesPort.class).capacity(new ResourceCandidatesPort.CapacityQuery(
+                    new ResourceBookingPort.Scope("MAIN", "e", "s"), Set.of("B"),
+                    NOW.plusSeconds(14400), NOW.plusSeconds(14700), NOW.plusSeconds(14400), null));
+            assertThat(capacities).hasSize(1);
+            assertThat(capacities.getFirst().used()).isEqualTo(1);
+            assertThat(ctx.getBean(ResourceFactsPort.class).getBatch(new ResourceFactsPort.Query("MAIN", "e", "s",
+                    Set.of("B"), NOW.plusSeconds(14400))).getFirst().actualUsed()).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void initialSegmentCannotUseAnotherResourceWhileConsumingOriginalBookingRows() {
+        runner().run(ctx -> {
+            execute(ctx, accept(ctx, S, Action.RESERVE, "A", 0, 1, null, "B"));
+            String hold = current();
+            execute(ctx, accept(ctx, S, Action.CONFIRM, "A", 1, 2, target(hold), "B"));
+            ResourceOccupationNativeFixture.bookingEvidence(sql, "C", hold);
+            assertThatThrownBy(() -> ctx.getBean(ResourceCandidatesPort.class).capacity(new ResourceCandidatesPort.CapacityQuery(
+                    new ResourceBookingPort.Scope("MAIN", "E", "S"), Set.of("B"),
+                    NOW.plusSeconds(3600), NOW.plusSeconds(3900), NOW, null)))
+                    .isInstanceOf(BizException.class);
+        });
+    }
+
+    @Test
+    void permanentLogicalDemandWithoutAnySegmentCannotDisappearFromCapacity() {
+        ResourceOccupationNativeFixture.directEvidence(sql, "B", "OPEN");
+        ResourceOccupationNativeFixture.insert(sql, "mch_resource_occupation_unit", Map.of("occupation_unit_no", "ORPHAN",
+                "occupation_no", "O", "start_command_no", "START", "logical_demand_no", "MISSING", "origin", "DIRECT",
+                "qty", 1, "consumed_at", "2026-10-21 09:00:00"));
+        runner().run(ctx -> assertThatThrownBy(() -> ctx.getBean(ResourceCandidatesPort.class).capacity(
+                new ResourceCandidatesPort.CapacityQuery(new ResourceBookingPort.Scope("MAIN", "E", "S"), Set.of("B"),
+                        NOW.plusSeconds(3600), NOW.plusSeconds(3900), NOW, null)))
+                .isInstanceOf(BizException.class));
+    }
+
+    @Test
+    void appliedStartJournalWithoutHeaderIsUnavailableThroughRealFactsAndCandidates() {
+        ResourceOccupationNativeFixture.appliedStartOriginal(sql);
+        runner().run(ctx -> {
+            assertThat(ctx.getBean(ResourceOccupationSchemaVerifier.class).installation())
+                    .isEqualTo(ResourceOccupationSchemaVerifier.Installation.INSTALLED);
+            assertThat(number("SELECT COUNT(*) FROM mch_resource_occupation")).isZero();
+            assertThatThrownBy(() -> ctx.getBean(ResourceCandidatesPort.class).capacity(new ResourceCandidatesPort.CapacityQuery(
+                    new ResourceBookingPort.Scope("MAIN", "E", "S"), Set.of("B"), NOW.plusSeconds(3600), NOW.plusSeconds(3900), NOW, null)))
+                    .isInstanceOfSatisfying(BizException.class, failure -> assertThat(failure.errorCode())
+                            .isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));
+            assertThatThrownBy(() -> ctx.getBean(ResourceFactsPort.class).getBatch(new ResourceFactsPort.Query(
+                    "MAIN", "E", "S", Set.of("B"), NOW)))
+                    .isInstanceOfSatisfying(BizException.class, failure -> assertThat(failure.errorCode())
+                            .isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ACCEPTED", "SEALED"})
+    void acceptedOrNoEffectOriginalWithoutHeaderIsNotAppliedCapacity(String state) {
+        if ("ACCEPTED".equals(state)) { ResourceOccupationNativeFixture.acceptedStartOriginal(sql); }
+        else { ResourceOccupationNativeFixture.sealedOriginal(sql); }
+        runner().run(ctx -> {
+            var rows = ctx.getBean(ResourceCandidatesPort.class).capacity(new ResourceCandidatesPort.CapacityQuery(
+                    new ResourceBookingPort.Scope("MAIN", "E", "S"), Set.of("B"), NOW.plusSeconds(3600), NOW.plusSeconds(3900), NOW, null));
+            assertThat(rows).hasSize(1);
+            assertThat(rows.getFirst().used()).isZero();
+            assertThat(ctx.getBean(ResourceFactsPort.class).getBatch(new ResourceFactsPort.Query("MAIN", "E", "S", Set.of("B"), NOW))
+                    .getFirst().actualUsed()).isZero();
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"UNKNOWN", "FAKE_DIRECT"})
+    void nativeGuardSemanticReadRejectsDamagedTupleUsingRealMapper(String damage) {
+        // Isolated fault fixture removes only the two product checks, leaving real native data/mappers.
+        // Stub schema inspection solely to reach the independent semantic guard; countInvalid is never mocked.
+        sql.execute("ALTER TABLE mch_resource_occupation_unit DROP CHECK ck_rcu_origin_kind");
+        sql.execute("ALTER TABLE mch_resource_occupation_unit DROP CHECK ck_rcu_booking_tuple");
+        var overrides = "UNKNOWN".equals(damage) ? Map.<String, Object>of("origin", "UNKNOWN")
+                : Map.<String, Object>of("reservation_unit_no", "UNCONSUMED_BOOKING_ORIGINAL");
+        ResourceOccupationNativeFixture.directEvidence(sql, "B", "OPEN", overrides);
+        assertThat(number("SELECT COUNT(*) FROM mch_resource_occupation_unit")).isOne();
+        runner().run(ctx -> {
+            var schema = Mockito.mock(ResourceOccupationSchemaVerifier.class);
+            Mockito.when(schema.installation()).thenReturn(
+                    ResourceOccupationSchemaVerifier.Installation.INSTALLED);
+            var actualRows = ctx.getBean(ResourceOccupationMapper.class);
+            var guard = new ResourceOccupationGuard(schema, actualRows);
+            assertThatThrownBy(() -> DataScopeContext.executeWithoutScope(
+                    () -> guard.inspect(new ResourceCommandScopeRow("MAIN", "E", "S"))))
+                    .isInstanceOfSatisfying(BizException.class, failure -> assertThat(failure.errorCode())
+                            .isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));
+        });
     }
 
     @AfterEach

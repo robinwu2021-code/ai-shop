@@ -1,5 +1,8 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
+import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -92,9 +95,11 @@ class PersonnelMaintenanceIT {
         sql = new JdbcTemplate(source);
         String schema = Files.readString(Path.of(System.getProperty("personnel-maintenance.test.root"),
                 "backend/shop-app/src/test/resources/schema-test.sql"));
+        schema = ResourceOccupationNativeFixture.beforeNativeUpgrade(schema);
         schema = schema.replaceAll("\\b([A-Za-z_]\\w*) IS JSON\\b", "JSON_VALID($1)");
         new ResourceDatabasePopulator(new ByteArrayResource(schema.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .execute(source);
+        ResourceOccupationNativeFixture.install(source);
         sql.update("INSERT INTO mch_entity(entity_no,name,owner_user_no,status,created_at,updated_at) "
                 + "VALUES('E','entity','OWNER','ACTIVE',NOW(),NOW())");
         sql.update("INSERT INTO mch_store(store_no,entity_no,name,is_default,status,created_at,updated_at) "
@@ -112,7 +117,7 @@ class PersonnelMaintenanceIT {
         if (sql != null) { sql.execute("DROP DATABASE " + database); }
     }
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 required("service.impl.PersonnelServiceImpl"), PersonnelFactsPortImpl.class, Mappers.class)
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withBean(MerchantStaffService.class, () -> mock(MerchantStaffService.class))

@@ -29,4 +29,10 @@ public class MchBookingHoldUnit extends BaseEntity {
     private LocalDateTime releasedAt;
     /** 释放证据命令。 */
     private String releaseCommandNo;
+    /** Actual occupation association; empty for legacy booking. */
+    private String consumeOccupationUnitNo;
+    /** Actual occupation association; empty for legacy booking. */
+    private LocalDateTime consumedAt;
+    /** Actual occupation association; empty for legacy booking. */
+    private String consumeCommandNo;
 }

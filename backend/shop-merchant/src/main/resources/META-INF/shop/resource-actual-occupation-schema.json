@@ -1,0 +1,3033 @@
+{
+  "schemaVersion": 1,
+  "owner": "shop-merchant/primary",
+  "platformVersion": 607,
+  "migrationScript": "V607__resource_actual_occupation.sql",
+  "flywayChecksum": -827315647,
+  "migrationSha256": "42e51c9ec7bf33cbfdf07e34936b944e62bb223efe893d0c896aa7ff234b8c9d",
+  "ownerIdentity": [
+    {
+      "table": "mch_booking_owner",
+      "column": "tenant_no",
+      "type": "varchar(32)",
+      "role": "TENANT"
+    },
+    {
+      "table": "mch_resource",
+      "column": "tenant_no",
+      "type": "varchar(32)",
+      "role": "TENANT"
+    },
+    {
+      "table": "mch_resource",
+      "column": "entity_no",
+      "type": "varchar(32)",
+      "role": "OWNER_REFERENCE"
+    },
+    {
+      "table": "mch_resource",
+      "column": "resource_no",
+      "type": "varchar(32)",
+      "role": "OWNER_REFERENCE"
+    },
+    {
+      "table": "mch_resource",
+      "column": "personnel_no",
+      "type": "varchar(32)",
+      "role": "OWNER_REFERENCE"
+    },
+    {
+      "table": "mch_personnel",
+      "column": "personnel_no",
+      "type": "varchar(32)",
+      "role": "OWNER_REFERENCE"
+    }
+  ],
+  "tables": [
+    {
+      "name": "mch_resource_occupation",
+      "tag": "rco",
+      "comment": "Permanent actual resource evidence",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "occupation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "start_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "payload_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "planned_resource_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "planned_resource_command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "reference_json",
+          "type": "longtext",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "reference_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "initial_plan_json",
+          "type": "longtext",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "result_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "result_revision",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "result_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "initial_effects_json",
+          "type": "longtext",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "initial_effects_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "state",
+          "type": "varchar(24)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": "'OPEN'",
+          "immutable": false
+        },
+        {
+          "name": "revision",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "1",
+          "immutable": false
+        },
+        {
+          "name": "started_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "ended_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "current_segment_set_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "stop_obligation",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "conflict_obligation",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "observation_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_rco_no": [
+          "tenant_no",
+          "entity_no",
+          "occupation_no"
+        ],
+        "uk_rco_execution": [
+          "tenant_no",
+          "entity_no",
+          "execution_no"
+        ],
+        "uk_rco_start": [
+          "tenant_no",
+          "entity_no",
+          "start_command_no"
+        ]
+      },
+      "indexes": {
+        "idx_rco_recovery": [
+          "tenant_no",
+          "entity_no",
+          "next_retry_at",
+          "id"
+        ]
+      },
+      "checks": {
+        "ck_rco_base": "deleted=0 AND version>=0",
+        "ck_rco_state": "CHAR_LENGTH(TRIM(state))>0 AND CHAR_LENGTH(state)=CHAR_LENGTH(TRIM(state))",
+        "ck_rco_end": "((state IN ('OPEN','PAUSED') AND ended_at IS NULL) OR (state IN ('CLEANING','ENDED') AND ended_at IS NOT NULL AND ended_at>=started_at))",
+        "ck_rco_json": "JSON_VALID(reference_json) AND JSON_VALID(initial_plan_json) AND JSON_VALID(initial_effects_json)",
+        "ck_rco_tenant_no": "CHAR_LENGTH(TRIM(tenant_no))>0 AND CHAR_LENGTH(tenant_no)=CHAR_LENGTH(TRIM(tenant_no))",
+        "ck_rco_created_by": "CHAR_LENGTH(TRIM(created_by))>0 AND CHAR_LENGTH(created_by)=CHAR_LENGTH(TRIM(created_by))",
+        "ck_rco_updated_by": "CHAR_LENGTH(TRIM(updated_by))>0 AND CHAR_LENGTH(updated_by)=CHAR_LENGTH(TRIM(updated_by))",
+        "ck_rco_entity_no": "CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(entity_no)=CHAR_LENGTH(TRIM(entity_no))",
+        "ck_rco_store_no": "CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))",
+        "ck_rco_occupation_no": "CHAR_LENGTH(TRIM(occupation_no))>0 AND CHAR_LENGTH(occupation_no)=CHAR_LENGTH(TRIM(occupation_no))",
+        "ck_rco_owner_no": "CHAR_LENGTH(TRIM(owner_no))>0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))",
+        "ck_rco_execution_no": "CHAR_LENGTH(TRIM(execution_no))>0 AND CHAR_LENGTH(execution_no)=CHAR_LENGTH(TRIM(execution_no))",
+        "ck_rco_start_command_no": "CHAR_LENGTH(TRIM(start_command_no))>0 AND CHAR_LENGTH(start_command_no)=CHAR_LENGTH(TRIM(start_command_no))",
+        "ck_rco_payload_hash": "payload_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_planned_resource_command_no": "CHAR_LENGTH(TRIM(planned_resource_command_no))>0 AND CHAR_LENGTH(planned_resource_command_no)=CHAR_LENGTH(TRIM(planned_resource_command_no))",
+        "ck_rco_planned_resource_command_hash": "planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_reference_hash": "reference_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_plan_hash": "plan_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_result_no": "CHAR_LENGTH(TRIM(result_no))>0 AND CHAR_LENGTH(result_no)=CHAR_LENGTH(TRIM(result_no))",
+        "ck_rco_result_hash": "result_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_initial_effects_hash": "initial_effects_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_current_segment_set_hash": "current_segment_set_hash REGEXP '^[0-9a-f]{64}$'"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "deleted",
+        "entity_no",
+        "store_no",
+        "occupation_no",
+        "owner_no",
+        "execution_no",
+        "start_command_no",
+        "payload_hash",
+        "planned_resource_command_no",
+        "planned_resource_command_hash",
+        "reference_json",
+        "reference_hash",
+        "initial_plan_json",
+        "plan_hash",
+        "result_no",
+        "result_revision",
+        "result_hash",
+        "initial_effects_json",
+        "initial_effects_hash",
+        "started_at"
+      ]
+    },
+    {
+      "name": "mch_resource_occupation_unit",
+      "tag": "rcu",
+      "comment": "Permanent actual resource evidence",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "occupation_unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "occupation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "start_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "logical_demand_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "origin",
+          "type": "varchar(16)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "reservation_unit_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "booking_owner_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "source_line_ref",
+          "type": "varchar(128)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "allocation_revision",
+          "type": "bigint",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "source_bucket_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "consumed_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_rcu_no": [
+          "tenant_no",
+          "entity_no",
+          "occupation_unit_no"
+        ],
+        "uk_rcu_original": [
+          "tenant_no",
+          "entity_no",
+          "reservation_unit_no"
+        ]
+      },
+      "indexes": {
+        "idx_rcu_demand": [
+          "tenant_no",
+          "entity_no",
+          "occupation_no",
+          "logical_demand_no"
+        ]
+      },
+      "checks": {
+        "ck_rcu_base": "deleted=0 AND version>=0",
+        "ck_rcu_qty": "qty>0",
+        "ck_rcu_origin": "CHAR_LENGTH(TRIM(origin))>0 AND CHAR_LENGTH(origin)=CHAR_LENGTH(TRIM(origin))",
+        "ck_rcu_tenant_no": "CHAR_LENGTH(TRIM(tenant_no))>0 AND CHAR_LENGTH(tenant_no)=CHAR_LENGTH(TRIM(tenant_no))",
+        "ck_rcu_created_by": "CHAR_LENGTH(TRIM(created_by))>0 AND CHAR_LENGTH(created_by)=CHAR_LENGTH(TRIM(created_by))",
+        "ck_rcu_updated_by": "CHAR_LENGTH(TRIM(updated_by))>0 AND CHAR_LENGTH(updated_by)=CHAR_LENGTH(TRIM(updated_by))",
+        "ck_rcu_entity_no": "CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(entity_no)=CHAR_LENGTH(TRIM(entity_no))",
+        "ck_rcu_occupation_unit_no": "CHAR_LENGTH(TRIM(occupation_unit_no))>0 AND CHAR_LENGTH(occupation_unit_no)=CHAR_LENGTH(TRIM(occupation_unit_no))",
+        "ck_rcu_occupation_no": "CHAR_LENGTH(TRIM(occupation_no))>0 AND CHAR_LENGTH(occupation_no)=CHAR_LENGTH(TRIM(occupation_no))",
+        "ck_rcu_start_command_no": "CHAR_LENGTH(TRIM(start_command_no))>0 AND CHAR_LENGTH(start_command_no)=CHAR_LENGTH(TRIM(start_command_no))",
+        "ck_rcu_logical_demand_no": "CHAR_LENGTH(TRIM(logical_demand_no))>0 AND CHAR_LENGTH(logical_demand_no)=CHAR_LENGTH(TRIM(logical_demand_no))",
+        "ck_rcu_reservation_unit_no": "reservation_unit_no IS NULL OR (CHAR_LENGTH(TRIM(reservation_unit_no))>0 AND CHAR_LENGTH(reservation_unit_no)=CHAR_LENGTH(TRIM(reservation_unit_no)))",
+        "ck_rcu_hold_no": "hold_no IS NULL OR (CHAR_LENGTH(TRIM(hold_no))>0 AND CHAR_LENGTH(hold_no)=CHAR_LENGTH(TRIM(hold_no)))",
+        "ck_rcu_booking_owner_no": "booking_owner_no IS NULL OR (CHAR_LENGTH(TRIM(booking_owner_no))>0 AND CHAR_LENGTH(booking_owner_no)=CHAR_LENGTH(TRIM(booking_owner_no)))",
+        "ck_rcu_source_line_ref": "source_line_ref IS NULL OR (CHAR_LENGTH(TRIM(source_line_ref))>0 AND CHAR_LENGTH(source_line_ref)=CHAR_LENGTH(TRIM(source_line_ref)))",
+        "ck_rcu_source_bucket_no": "source_bucket_no IS NULL OR (CHAR_LENGTH(TRIM(source_bucket_no))>0 AND CHAR_LENGTH(source_bucket_no)=CHAR_LENGTH(TRIM(source_bucket_no)))",
+        "ck_rcu_origin_kind": "origin IN ('BOOKING','DIRECT')",
+        "ck_rcu_booking_tuple": "((origin='BOOKING' AND reservation_unit_no IS NOT NULL AND hold_no IS NOT NULL AND booking_owner_no IS NOT NULL AND source_line_ref IS NOT NULL AND allocation_revision IS NOT NULL AND source_bucket_no IS NOT NULL AND allocation_revision>0) OR (origin='DIRECT' AND reservation_unit_no IS NULL AND hold_no IS NULL AND booking_owner_no IS NULL AND source_line_ref IS NULL AND allocation_revision IS NULL AND source_bucket_no IS NULL))"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "deleted",
+        "entity_no",
+        "occupation_unit_no",
+        "occupation_no",
+        "start_command_no",
+        "logical_demand_no",
+        "origin",
+        "reservation_unit_no",
+        "hold_no",
+        "booking_owner_no",
+        "source_line_ref",
+        "allocation_revision",
+        "source_bucket_no",
+        "qty",
+        "consumed_at"
+      ]
+    },
+    {
+      "name": "mch_resource_occupation_segment",
+      "tag": "rcs",
+      "comment": "Permanent actual resource evidence",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "segment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "occupation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "logical_demand_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "previous_segment_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "source_group_ref",
+          "type": "varchar(128)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "role_slot",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "source_units_json",
+          "type": "longtext",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "source_units_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "qualification_json",
+          "type": "longtext",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "plan_json",
+          "type": "longtext",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "actual_start_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "actual_end_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "expected_end_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "cleaning_from",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "cleaning_until",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "cleaning_completed_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "close_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "cleaning_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_rcs_no": [
+          "tenant_no",
+          "entity_no",
+          "segment_no"
+        ],
+        "uk_rcs_group": [
+          "tenant_no",
+          "entity_no",
+          "occupation_no",
+          "segment_no",
+          "logical_demand_no"
+        ]
+      },
+      "indexes": {
+        "idx_rcs_resource": [
+          "tenant_no",
+          "entity_no",
+          "resource_no",
+          "actual_start_at"
+        ]
+      },
+      "checks": {
+        "ck_rcs_base": "deleted=0 AND version>=0",
+        "ck_rcs_qty": "qty>0 AND expected_end_at>actual_start_at AND (actual_end_at IS NULL OR actual_end_at>=actual_start_at)",
+        "ck_rcs_json": "JSON_VALID(source_units_json) AND JSON_VALID(qualification_json) AND JSON_VALID(plan_json)",
+        "ck_rcs_close": "(actual_end_at IS NULL AND close_command_no IS NULL) OR (actual_end_at IS NOT NULL AND close_command_no IS NOT NULL)",
+        "ck_rcs_clean": "(cleaning_from IS NULL AND cleaning_until IS NULL AND cleaning_completed_at IS NULL AND cleaning_command_no IS NULL) OR (actual_end_at IS NOT NULL AND cleaning_from IS NOT NULL AND cleaning_until IS NOT NULL AND cleaning_until>=cleaning_from AND ((cleaning_completed_at IS NULL AND cleaning_command_no IS NULL) OR (cleaning_completed_at>=cleaning_from AND cleaning_command_no IS NOT NULL)))",
+        "ck_rcs_tenant_no": "CHAR_LENGTH(TRIM(tenant_no))>0 AND CHAR_LENGTH(tenant_no)=CHAR_LENGTH(TRIM(tenant_no))",
+        "ck_rcs_created_by": "CHAR_LENGTH(TRIM(created_by))>0 AND CHAR_LENGTH(created_by)=CHAR_LENGTH(TRIM(created_by))",
+        "ck_rcs_updated_by": "CHAR_LENGTH(TRIM(updated_by))>0 AND CHAR_LENGTH(updated_by)=CHAR_LENGTH(TRIM(updated_by))",
+        "ck_rcs_entity_no": "CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(entity_no)=CHAR_LENGTH(TRIM(entity_no))",
+        "ck_rcs_segment_no": "CHAR_LENGTH(TRIM(segment_no))>0 AND CHAR_LENGTH(segment_no)=CHAR_LENGTH(TRIM(segment_no))",
+        "ck_rcs_occupation_no": "CHAR_LENGTH(TRIM(occupation_no))>0 AND CHAR_LENGTH(occupation_no)=CHAR_LENGTH(TRIM(occupation_no))",
+        "ck_rcs_logical_demand_no": "CHAR_LENGTH(TRIM(logical_demand_no))>0 AND CHAR_LENGTH(logical_demand_no)=CHAR_LENGTH(TRIM(logical_demand_no))",
+        "ck_rcs_previous_segment_no": "previous_segment_no IS NULL OR (CHAR_LENGTH(TRIM(previous_segment_no))>0 AND CHAR_LENGTH(previous_segment_no)=CHAR_LENGTH(TRIM(previous_segment_no)))",
+        "ck_rcs_command_no": "CHAR_LENGTH(TRIM(command_no))>0 AND CHAR_LENGTH(command_no)=CHAR_LENGTH(TRIM(command_no))",
+        "ck_rcs_resource_no": "CHAR_LENGTH(TRIM(resource_no))>0 AND CHAR_LENGTH(resource_no)=CHAR_LENGTH(TRIM(resource_no))",
+        "ck_rcs_personnel_no": "personnel_no IS NULL OR (CHAR_LENGTH(TRIM(personnel_no))>0 AND CHAR_LENGTH(personnel_no)=CHAR_LENGTH(TRIM(personnel_no)))",
+        "ck_rcs_source_group_ref": "CHAR_LENGTH(TRIM(source_group_ref))>0 AND CHAR_LENGTH(source_group_ref)=CHAR_LENGTH(TRIM(source_group_ref))",
+        "ck_rcs_role_slot": "CHAR_LENGTH(TRIM(role_slot))>0 AND CHAR_LENGTH(role_slot)=CHAR_LENGTH(TRIM(role_slot))",
+        "ck_rcs_source_units_hash": "source_units_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rcs_close_command_no": "close_command_no IS NULL OR (CHAR_LENGTH(TRIM(close_command_no))>0 AND CHAR_LENGTH(close_command_no)=CHAR_LENGTH(TRIM(close_command_no)))",
+        "ck_rcs_cleaning_command_no": "cleaning_command_no IS NULL OR (CHAR_LENGTH(TRIM(cleaning_command_no))>0 AND CHAR_LENGTH(cleaning_command_no)=CHAR_LENGTH(TRIM(cleaning_command_no)))"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "deleted",
+        "entity_no",
+        "segment_no",
+        "occupation_no",
+        "logical_demand_no",
+        "previous_segment_no",
+        "command_no",
+        "resource_no",
+        "personnel_no",
+        "source_group_ref",
+        "role_slot",
+        "qty",
+        "source_units_json",
+        "source_units_hash",
+        "qualification_json",
+        "plan_json",
+        "actual_start_at",
+        "expected_end_at"
+      ]
+    },
+    {
+      "name": "mch_resource_occupation_bucket",
+      "tag": "rcb",
+      "comment": "Permanent actual resource evidence",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "projection_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "occupation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "segment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "logical_demand_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "bucket_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "start_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "end_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "category",
+          "type": "varchar(16)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "retired_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "retire_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_rcb_no": [
+          "tenant_no",
+          "entity_no",
+          "projection_no"
+        ],
+        "uk_rcb_projection": [
+          "tenant_no",
+          "entity_no",
+          "occupation_no",
+          "segment_no",
+          "logical_demand_no",
+          "bucket_no",
+          "category"
+        ]
+      },
+      "indexes": {
+        "idx_rcb_bucket": [
+          "tenant_no",
+          "entity_no",
+          "resource_no",
+          "start_at",
+          "category"
+        ]
+      },
+      "checks": {
+        "ck_rcb_base": "deleted=0 AND version>=0",
+        "ck_rcb_qty": "qty>0 AND category IN ('OCCUPIED','CLEANING')",
+        "ck_rcb_grid": "MOD(MINUTE(start_at),5)=0 AND SECOND(start_at)=0 AND MICROSECOND(start_at)=0 AND end_at=TIMESTAMPADD(MINUTE,5,start_at)",
+        "ck_rcb_retired": "(retired_at IS NULL AND retire_command_no IS NULL) OR (retired_at IS NOT NULL AND retire_command_no IS NOT NULL)",
+        "ck_rcb_tenant_no": "CHAR_LENGTH(TRIM(tenant_no))>0 AND CHAR_LENGTH(tenant_no)=CHAR_LENGTH(TRIM(tenant_no))",
+        "ck_rcb_created_by": "CHAR_LENGTH(TRIM(created_by))>0 AND CHAR_LENGTH(created_by)=CHAR_LENGTH(TRIM(created_by))",
+        "ck_rcb_updated_by": "CHAR_LENGTH(TRIM(updated_by))>0 AND CHAR_LENGTH(updated_by)=CHAR_LENGTH(TRIM(updated_by))",
+        "ck_rcb_entity_no": "CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(entity_no)=CHAR_LENGTH(TRIM(entity_no))",
+        "ck_rcb_projection_no": "CHAR_LENGTH(TRIM(projection_no))>0 AND CHAR_LENGTH(projection_no)=CHAR_LENGTH(TRIM(projection_no))",
+        "ck_rcb_occupation_no": "CHAR_LENGTH(TRIM(occupation_no))>0 AND CHAR_LENGTH(occupation_no)=CHAR_LENGTH(TRIM(occupation_no))",
+        "ck_rcb_segment_no": "CHAR_LENGTH(TRIM(segment_no))>0 AND CHAR_LENGTH(segment_no)=CHAR_LENGTH(TRIM(segment_no))",
+        "ck_rcb_logical_demand_no": "CHAR_LENGTH(TRIM(logical_demand_no))>0 AND CHAR_LENGTH(logical_demand_no)=CHAR_LENGTH(TRIM(logical_demand_no))",
+        "ck_rcb_resource_no": "CHAR_LENGTH(TRIM(resource_no))>0 AND CHAR_LENGTH(resource_no)=CHAR_LENGTH(TRIM(resource_no))",
+        "ck_rcb_bucket_no": "CHAR_LENGTH(TRIM(bucket_no))>0 AND CHAR_LENGTH(bucket_no)=CHAR_LENGTH(TRIM(bucket_no))",
+        "ck_rcb_category": "CHAR_LENGTH(TRIM(category))>0 AND CHAR_LENGTH(category)=CHAR_LENGTH(TRIM(category))",
+        "ck_rcb_retire_command_no": "retire_command_no IS NULL OR (CHAR_LENGTH(TRIM(retire_command_no))>0 AND CHAR_LENGTH(retire_command_no)=CHAR_LENGTH(TRIM(retire_command_no)))"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "deleted",
+        "entity_no",
+        "projection_no",
+        "occupation_no",
+        "segment_no",
+        "logical_demand_no",
+        "resource_no",
+        "bucket_no",
+        "start_at",
+        "end_at",
+        "category",
+        "qty"
+      ]
+    }
+  ],
+  "commonTables": [
+    {
+      "name": "mch_booking_owner",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": "'MAIN'",
+          "immutable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "source_type",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "source_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "current_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "owner_version",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "occupation_association_state",
+          "type": "varchar(24)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": "'UNBOUND'",
+          "immutable": false
+        },
+        {
+          "name": "planned_resource_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "planned_resource_command_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "execution_reference_json",
+          "type": "longtext",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "execution_reference_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "execution_plan_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "initial_start_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "seal_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_booking_owner_1": [
+          "tenant_no",
+          "entity_no",
+          "owner_no"
+        ],
+        "uk_booking_owner_2": [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "source_type",
+          "source_no"
+        ],
+        "uk_rco_owner_planned": [
+          "tenant_no",
+          "entity_no",
+          "planned_resource_command_no"
+        ]
+      },
+      "indexes": {
+        "idx_booking_owner_1": [
+          "tenant_no",
+          "entity_no",
+          "current_hold_no"
+        ]
+      },
+      "checks": {
+        "ck_booking_owner_version": "version >= 0",
+        "ck_booking_owner_deleted": "deleted IN (0,1)",
+        "ck_booking_owner_scope": "CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0",
+        "ck_booking_owner_f3": "CHAR_LENGTH(TRIM(owner_no)) > 0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))",
+        "ck_booking_owner_f4": "CHAR_LENGTH(TRIM(store_no)) > 0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))",
+        "ck_booking_owner_f5": "CHAR_LENGTH(TRIM(source_type)) > 0 AND CHAR_LENGTH(source_type)=CHAR_LENGTH(TRIM(source_type))",
+        "ck_booking_owner_f6": "CHAR_LENGTH(TRIM(source_no)) > 0 AND CHAR_LENGTH(source_no)=CHAR_LENGTH(TRIM(source_no))",
+        "ck_booking_owner_f7": "current_hold_no IS NULL OR (CHAR_LENGTH(TRIM(current_hold_no)) > 0 AND CHAR_LENGTH(current_hold_no)=CHAR_LENGTH(TRIM(current_hold_no)))",
+        "ck_booking_owner_revision": "owner_version >= 0 AND (source_revision IS NULL OR source_revision >= 0)",
+        "ck_booking_owner_head": "(current_hold_no IS NULL AND source_revision IS NULL) OR (current_hold_no IS NOT NULL AND source_revision IS NOT NULL)",
+        "ck_rco_owner_association": "((occupation_association_state='UNBOUND' AND planned_resource_command_no IS NULL AND planned_resource_command_hash IS NULL AND execution_reference_json IS NULL AND execution_reference_hash IS NULL AND execution_plan_hash IS NULL AND initial_start_command_no IS NULL AND seal_command_no IS NULL) OR (occupation_association_state IN ('ACCEPTED','SEALED_BEFORE_ACCEPT') AND source_type='SERVICE_EXECUTION' AND deleted=0 AND planned_resource_command_no IS NOT NULL AND planned_resource_command_hash IS NOT NULL AND execution_reference_json IS NOT NULL AND JSON_VALID(execution_reference_json) AND execution_reference_hash IS NOT NULL AND execution_plan_hash IS NOT NULL AND ((occupation_association_state='ACCEPTED' AND initial_start_command_no IS NOT NULL AND seal_command_no IS NULL) OR (occupation_association_state='SEALED_BEFORE_ACCEPT' AND initial_start_command_no IS NULL AND seal_command_no IS NOT NULL))))",
+        "ck_rco_booking_owner_planned_resource_command_hash": "planned_resource_command_hash IS NULL OR planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_booking_owner_execution_reference_hash": "execution_reference_hash IS NULL OR execution_reference_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_booking_owner_execution_plan_hash": "execution_plan_hash IS NULL OR execution_plan_hash REGEXP '^[0-9a-f]{64}$'"
+      },
+      "addedColumns": [
+        {
+          "name": "occupation_association_state",
+          "type": "varchar(24)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": "'UNBOUND'",
+          "immutable": false
+        },
+        {
+          "name": "planned_resource_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "planned_resource_command_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "execution_reference_json",
+          "type": "longtext",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "execution_reference_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "execution_plan_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "initial_start_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "seal_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "addedChecks": {
+        "ck_rco_owner_association": "((occupation_association_state='UNBOUND' AND planned_resource_command_no IS NULL AND planned_resource_command_hash IS NULL AND execution_reference_json IS NULL AND execution_reference_hash IS NULL AND execution_plan_hash IS NULL AND initial_start_command_no IS NULL AND seal_command_no IS NULL) OR (occupation_association_state IN ('ACCEPTED','SEALED_BEFORE_ACCEPT') AND source_type='SERVICE_EXECUTION' AND deleted=0 AND planned_resource_command_no IS NOT NULL AND planned_resource_command_hash IS NOT NULL AND execution_reference_json IS NOT NULL AND JSON_VALID(execution_reference_json) AND execution_reference_hash IS NOT NULL AND execution_plan_hash IS NOT NULL AND ((occupation_association_state='ACCEPTED' AND initial_start_command_no IS NOT NULL AND seal_command_no IS NULL) OR (occupation_association_state='SEALED_BEFORE_ACCEPT' AND initial_start_command_no IS NULL AND seal_command_no IS NOT NULL))))",
+        "ck_rco_booking_owner_planned_resource_command_hash": "planned_resource_command_hash IS NULL OR planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_booking_owner_execution_reference_hash": "execution_reference_hash IS NULL OR execution_reference_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_booking_owner_execution_plan_hash": "execution_plan_hash IS NULL OR execution_plan_hash REGEXP '^[0-9a-f]{64}$'"
+      },
+      "droppedChecks": [],
+      "addedUnique": {
+        "uk_rco_owner_planned": [
+          "tenant_no",
+          "entity_no",
+          "planned_resource_command_no"
+        ]
+      }
+    },
+    {
+      "name": "mch_resource_command",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": "'MAIN'",
+          "immutable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "action",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "request_key_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "payload_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "frozen_payload",
+          "type": "longtext",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "expected_owner_version",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "target_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "expected_hold_version",
+          "type": "bigint",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "expected_lease_revision",
+          "type": "bigint",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "result_payload",
+          "type": "longtext",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "rejection_code",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "wait_reason",
+          "type": "varchar(128)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "initiated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "command_kind",
+          "type": "varchar(24)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": "'BOOKING_V1'",
+          "immutable": true
+        },
+        {
+          "name": "payload_schema",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "execution_reference_json",
+          "type": "longtext",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "execution_reference_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "planned_resource_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "planned_resource_command_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "execution_plan_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "original_start_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "actor_namespace",
+          "type": "varchar(24)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "actor_provenance_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "machine_purpose",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "observation_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "original_result_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "original_result_revision",
+          "type": "bigint",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "original_result_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "occupation_outcome",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "seal_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "seal_revision",
+          "type": "bigint",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "seal_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_resource_command_1": [
+          "tenant_no",
+          "entity_no",
+          "command_no"
+        ],
+        "uk_resource_command_2": [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "action",
+          "request_key_hash"
+        ]
+      },
+      "indexes": {
+        "idx_resource_command_1": [
+          "tenant_no",
+          "entity_no",
+          "owner_no",
+          "created_at",
+          "id"
+        ],
+        "idx_resource_command_2": [
+          "tenant_no",
+          "entity_no",
+          "status",
+          "next_retry_at",
+          "id"
+        ]
+      },
+      "checks": {
+        "ck_resource_command_version": "version >= 0",
+        "ck_resource_command_deleted": "deleted IN (0,1)",
+        "ck_resource_command_scope": "CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0",
+        "ck_resource_command_f3": "CHAR_LENGTH(TRIM(command_no)) > 0 AND CHAR_LENGTH(command_no)=CHAR_LENGTH(TRIM(command_no))",
+        "ck_resource_command_f4": "CHAR_LENGTH(TRIM(owner_no)) > 0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))",
+        "ck_resource_command_f5": "CHAR_LENGTH(TRIM(store_no)) > 0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))",
+        "ck_resource_command_f6": "CHAR_LENGTH(TRIM(action)) > 0 AND CHAR_LENGTH(action)=CHAR_LENGTH(TRIM(action))",
+        "ck_resource_command_f7": "request_key_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_resource_command_f8": "payload_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_resource_command_f9": "target_hold_no IS NULL OR (CHAR_LENGTH(TRIM(target_hold_no)) > 0 AND CHAR_LENGTH(target_hold_no)=CHAR_LENGTH(TRIM(target_hold_no)))",
+        "ck_resource_command_f10": "CHAR_LENGTH(TRIM(status)) > 0 AND CHAR_LENGTH(status)=CHAR_LENGTH(TRIM(status))",
+        "ck_resource_command_f11": "rejection_code IS NULL OR (CHAR_LENGTH(TRIM(rejection_code)) > 0 AND CHAR_LENGTH(rejection_code)=CHAR_LENGTH(TRIM(rejection_code)))",
+        "ck_resource_command_f12": "wait_reason IS NULL OR (CHAR_LENGTH(TRIM(wait_reason)) > 0 AND CHAR_LENGTH(wait_reason)=CHAR_LENGTH(TRIM(wait_reason)))",
+        "ck_resource_command_f13": "CHAR_LENGTH(TRIM(initiated_by)) > 0 AND CHAR_LENGTH(initiated_by)=CHAR_LENGTH(TRIM(initiated_by))",
+        "ck_resource_command_action": "((command_kind='BOOKING_V1' AND action IN ('RESERVE','PROTECT','CONFIRM','RENEW','RELEASE','EXPIRE','RECONCILE','REPLACE') AND payload_schema IS NULL AND execution_reference_json IS NULL AND execution_reference_hash IS NULL AND planned_resource_command_no IS NULL AND planned_resource_command_hash IS NULL AND execution_plan_hash IS NULL AND original_start_command_no IS NULL AND actor_namespace IS NULL AND actor_provenance_hash IS NULL AND machine_purpose IS NULL AND observation_epoch=0 AND original_result_no IS NULL AND original_result_revision IS NULL AND original_result_hash IS NULL AND occupation_outcome IS NULL AND seal_no IS NULL AND seal_revision IS NULL AND seal_hash IS NULL) OR (command_kind='OCCUPATION_V1' AND action IN ('START','SEAL_START','CHANGE','END','COMPLETE_CLEANING','VALIDATE_WORKFLOW') AND deleted=0 AND payload_schema IS NOT NULL AND execution_reference_json IS NOT NULL AND JSON_VALID(execution_reference_json) AND execution_reference_hash IS NOT NULL AND planned_resource_command_no IS NOT NULL AND planned_resource_command_hash IS NOT NULL AND execution_plan_hash IS NOT NULL AND actor_namespace IN ('MCH','USR','MACHINE') AND actor_provenance_hash IS NOT NULL))",
+        "ck_resource_command_status": "status IN ('ACCEPTED','SUCCEEDED','REJECTED')",
+        "ck_resource_command_revision": "expected_owner_version >= 0 AND source_revision >= 0 AND (expected_hold_version IS NULL OR expected_hold_version >= 0) AND (expected_lease_revision IS NULL OR expected_lease_revision >= 1)",
+        "ck_resource_command_target": "target_hold_no IS NOT NULL OR (expected_hold_version IS NULL AND expected_lease_revision IS NULL)",
+        "ck_resource_command_payload": "JSON_VALID(frozen_payload) AND (result_payload IS NULL OR JSON_VALID(result_payload))",
+        "ck_resource_command_result": "(status='ACCEPTED' AND result_payload IS NULL AND rejection_code IS NULL) OR (status='SUCCEEDED' AND result_payload IS NOT NULL AND rejection_code IS NULL) OR (status='REJECTED' AND result_payload IS NOT NULL AND rejection_code IS NOT NULL)",
+        "ck_resource_command_retry": "status='ACCEPTED' OR (wait_reason IS NULL AND next_retry_at IS NULL)",
+        "ck_rco_command_result": "observation_epoch>=0 AND ((original_result_no IS NULL AND original_result_revision IS NULL AND original_result_hash IS NULL AND occupation_outcome IS NULL) OR (command_kind='OCCUPATION_V1' AND status<>'ACCEPTED' AND original_result_no IS NOT NULL AND original_result_revision>0 AND original_result_hash IS NOT NULL AND occupation_outcome IN ('APPLIED','NEVER_ACCEPTED_SEALED','CANCELLED_BEFORE_EFFECT','REJECTED'))) AND ((seal_no IS NULL AND seal_revision IS NULL AND seal_hash IS NULL) OR (command_kind='OCCUPATION_V1' AND status='SUCCEEDED' AND seal_no IS NOT NULL AND seal_revision>0 AND seal_hash IS NOT NULL AND occupation_outcome IN ('NEVER_ACCEPTED_SEALED','CANCELLED_BEFORE_EFFECT')))",
+        "ck_rco_command_execution_reference_hash": "execution_reference_hash IS NULL OR execution_reference_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_planned_resource_command_hash": "planned_resource_command_hash IS NULL OR planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_execution_plan_hash": "execution_plan_hash IS NULL OR execution_plan_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_actor_provenance_hash": "actor_provenance_hash IS NULL OR actor_provenance_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_original_result_hash": "original_result_hash IS NULL OR original_result_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_seal_hash": "seal_hash IS NULL OR seal_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_purpose": "command_kind='BOOKING_V1' OR (payload_schema=CONCAT('RESOURCE_OCCUPATION_',action,'_V1') AND ((actor_namespace IN ('MCH','USR') AND machine_purpose IS NULL) OR (actor_namespace='MACHINE' AND action='SEAL_START' AND machine_purpose='RESOURCE_CANCEL_BEFORE_EFFECT_V1')))",
+        "ck_rco_command_original_start": "command_kind='BOOKING_V1' OR (action='START' AND original_start_command_no IS NULL) OR action='SEAL_START' OR (action IN ('CHANGE','END','COMPLETE_CLEANING','VALIDATE_WORKFLOW') AND original_start_command_no IS NOT NULL)",
+        "ck_rco_command_terminal_proof": "command_kind='BOOKING_V1' OR status<>'SUCCEEDED' OR original_result_no IS NOT NULL",
+        "ck_rco_command_seal_outcome": "(occupation_outcome IS NULL OR occupation_outcome NOT IN ('NEVER_ACCEPTED_SEALED','CANCELLED_BEFORE_EFFECT')) OR (action='SEAL_START' AND seal_no IS NOT NULL AND ((occupation_outcome='NEVER_ACCEPTED_SEALED' AND original_start_command_no IS NULL) OR (occupation_outcome='CANCELLED_BEFORE_EFFECT' AND original_start_command_no IS NOT NULL)))"
+      },
+      "addedColumns": [
+        {
+          "name": "command_kind",
+          "type": "varchar(24)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": "'BOOKING_V1'",
+          "immutable": true
+        },
+        {
+          "name": "payload_schema",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "execution_reference_json",
+          "type": "longtext",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "execution_reference_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "planned_resource_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "planned_resource_command_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "execution_plan_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "original_start_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "actor_namespace",
+          "type": "varchar(24)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "actor_provenance_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "machine_purpose",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": true
+        },
+        {
+          "name": "observation_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "original_result_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "original_result_revision",
+          "type": "bigint",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "original_result_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "occupation_outcome",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "seal_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "seal_revision",
+          "type": "bigint",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "seal_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "addedChecks": {
+        "ck_resource_command_action": "((command_kind='BOOKING_V1' AND action IN ('RESERVE','PROTECT','CONFIRM','RENEW','RELEASE','EXPIRE','RECONCILE','REPLACE') AND payload_schema IS NULL AND execution_reference_json IS NULL AND execution_reference_hash IS NULL AND planned_resource_command_no IS NULL AND planned_resource_command_hash IS NULL AND execution_plan_hash IS NULL AND original_start_command_no IS NULL AND actor_namespace IS NULL AND actor_provenance_hash IS NULL AND machine_purpose IS NULL AND observation_epoch=0 AND original_result_no IS NULL AND original_result_revision IS NULL AND original_result_hash IS NULL AND occupation_outcome IS NULL AND seal_no IS NULL AND seal_revision IS NULL AND seal_hash IS NULL) OR (command_kind='OCCUPATION_V1' AND action IN ('START','SEAL_START','CHANGE','END','COMPLETE_CLEANING','VALIDATE_WORKFLOW') AND deleted=0 AND payload_schema IS NOT NULL AND execution_reference_json IS NOT NULL AND JSON_VALID(execution_reference_json) AND execution_reference_hash IS NOT NULL AND planned_resource_command_no IS NOT NULL AND planned_resource_command_hash IS NOT NULL AND execution_plan_hash IS NOT NULL AND actor_namespace IN ('MCH','USR','MACHINE') AND actor_provenance_hash IS NOT NULL))",
+        "ck_rco_command_result": "observation_epoch>=0 AND ((original_result_no IS NULL AND original_result_revision IS NULL AND original_result_hash IS NULL AND occupation_outcome IS NULL) OR (command_kind='OCCUPATION_V1' AND status<>'ACCEPTED' AND original_result_no IS NOT NULL AND original_result_revision>0 AND original_result_hash IS NOT NULL AND occupation_outcome IN ('APPLIED','NEVER_ACCEPTED_SEALED','CANCELLED_BEFORE_EFFECT','REJECTED'))) AND ((seal_no IS NULL AND seal_revision IS NULL AND seal_hash IS NULL) OR (command_kind='OCCUPATION_V1' AND status='SUCCEEDED' AND seal_no IS NOT NULL AND seal_revision>0 AND seal_hash IS NOT NULL AND occupation_outcome IN ('NEVER_ACCEPTED_SEALED','CANCELLED_BEFORE_EFFECT')))",
+        "ck_rco_command_execution_reference_hash": "execution_reference_hash IS NULL OR execution_reference_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_planned_resource_command_hash": "planned_resource_command_hash IS NULL OR planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_execution_plan_hash": "execution_plan_hash IS NULL OR execution_plan_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_actor_provenance_hash": "actor_provenance_hash IS NULL OR actor_provenance_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_original_result_hash": "original_result_hash IS NULL OR original_result_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_seal_hash": "seal_hash IS NULL OR seal_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_rco_command_purpose": "command_kind='BOOKING_V1' OR (payload_schema=CONCAT('RESOURCE_OCCUPATION_',action,'_V1') AND ((actor_namespace IN ('MCH','USR') AND machine_purpose IS NULL) OR (actor_namespace='MACHINE' AND action='SEAL_START' AND machine_purpose='RESOURCE_CANCEL_BEFORE_EFFECT_V1')))",
+        "ck_rco_command_original_start": "command_kind='BOOKING_V1' OR (action='START' AND original_start_command_no IS NULL) OR action='SEAL_START' OR (action IN ('CHANGE','END','COMPLETE_CLEANING','VALIDATE_WORKFLOW') AND original_start_command_no IS NOT NULL)",
+        "ck_rco_command_terminal_proof": "command_kind='BOOKING_V1' OR status<>'SUCCEEDED' OR original_result_no IS NOT NULL",
+        "ck_rco_command_seal_outcome": "(occupation_outcome IS NULL OR occupation_outcome NOT IN ('NEVER_ACCEPTED_SEALED','CANCELLED_BEFORE_EFFECT')) OR (action='SEAL_START' AND seal_no IS NOT NULL AND ((occupation_outcome='NEVER_ACCEPTED_SEALED' AND original_start_command_no IS NULL) OR (occupation_outcome='CANCELLED_BEFORE_EFFECT' AND original_start_command_no IS NOT NULL)))"
+      },
+      "droppedChecks": [
+        "ck_resource_command_action"
+      ],
+      "addedUnique": {}
+    },
+    {
+      "name": "mch_resource_bucket",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": "'MAIN'",
+          "immutable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "bucket_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "start_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "end_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "capacity",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "held_qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "confirmed_qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "capacity_revision",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "occupied_qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "cleaning_qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_resource_bucket_1": [
+          "tenant_no",
+          "entity_no",
+          "bucket_no"
+        ],
+        "uk_resource_bucket_2": [
+          "tenant_no",
+          "entity_no",
+          "resource_no",
+          "start_at"
+        ]
+      },
+      "indexes": {
+        "idx_resource_bucket_1": [
+          "tenant_no",
+          "entity_no",
+          "resource_no",
+          "end_at"
+        ]
+      },
+      "checks": {
+        "ck_resource_bucket_version": "version >= 0",
+        "ck_resource_bucket_deleted": "deleted IN (0,1)",
+        "ck_resource_bucket_scope": "CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0",
+        "ck_resource_bucket_f3": "CHAR_LENGTH(TRIM(bucket_no)) > 0 AND CHAR_LENGTH(bucket_no)=CHAR_LENGTH(TRIM(bucket_no))",
+        "ck_resource_bucket_f4": "CHAR_LENGTH(TRIM(resource_no)) > 0 AND CHAR_LENGTH(resource_no)=CHAR_LENGTH(TRIM(resource_no))",
+        "ck_resource_bucket_grid": "MOD(MINUTE(start_at),5)=0 AND SECOND(start_at)=0 AND MICROSECOND(start_at)=0 AND end_at=TIMESTAMPADD(MINUTE,5,start_at)",
+        "ck_resource_bucket_range": "start_at >= '1000-01-03 00:00:00.000' AND end_at <= '9999-12-29 00:00:00.000'",
+        "ck_resource_bucket_capacity": "capacity>0 AND held_qty>=0 AND confirmed_qty>=0 AND occupied_qty>=0 AND cleaning_qty>=0 AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty+occupied_qty+cleaning_qty<=capacity",
+        "ck_resource_bucket_revision": "capacity_revision >= 0"
+      },
+      "addedColumns": [
+        {
+          "name": "occupied_qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "cleaning_qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        }
+      ],
+      "addedChecks": {
+        "ck_resource_bucket_capacity": "capacity>0 AND held_qty>=0 AND confirmed_qty>=0 AND occupied_qty>=0 AND cleaning_qty>=0 AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty+occupied_qty+cleaning_qty<=capacity"
+      },
+      "droppedChecks": [
+        "ck_resource_bucket_capacity"
+      ],
+      "addedUnique": {}
+    },
+    {
+      "name": "mch_booking_hold_unit",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": "'MAIN'",
+          "immutable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0",
+          "immutable": false
+        },
+        {
+          "name": "unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "hold_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "bucket_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "allocation_revision",
+          "type": "bigint",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "nullable": false,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "source_line_ref",
+          "type": "varchar(128)",
+          "nullable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "released_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "release_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "consume_occupation_unit_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "consumed_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "consume_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_booking_hold_unit_1": [
+          "tenant_no",
+          "entity_no",
+          "unit_no"
+        ],
+        "uk_booking_hold_unit_2": [
+          "tenant_no",
+          "entity_no",
+          "hold_no",
+          "allocation_revision",
+          "bucket_no",
+          "source_line_ref"
+        ]
+      },
+      "indexes": {
+        "idx_booking_hold_unit_1": [
+          "tenant_no",
+          "entity_no",
+          "bucket_no",
+          "hold_no"
+        ],
+        "idx_booking_hold_unit_2": [
+          "tenant_no",
+          "entity_no",
+          "hold_no",
+          "released_at"
+        ]
+      },
+      "checks": {
+        "ck_booking_hold_unit_version": "version >= 0",
+        "ck_booking_hold_unit_deleted": "deleted IN (0,1)",
+        "ck_booking_hold_unit_scope": "CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0",
+        "ck_booking_hold_unit_f3": "CHAR_LENGTH(TRIM(unit_no)) > 0 AND CHAR_LENGTH(unit_no)=CHAR_LENGTH(TRIM(unit_no))",
+        "ck_booking_hold_unit_f4": "CHAR_LENGTH(TRIM(hold_no)) > 0 AND CHAR_LENGTH(hold_no)=CHAR_LENGTH(TRIM(hold_no))",
+        "ck_booking_hold_unit_f5": "CHAR_LENGTH(TRIM(bucket_no)) > 0 AND CHAR_LENGTH(bucket_no)=CHAR_LENGTH(TRIM(bucket_no))",
+        "ck_booking_hold_unit_f6": "CHAR_LENGTH(TRIM(source_line_ref)) > 0 AND CHAR_LENGTH(source_line_ref)=CHAR_LENGTH(TRIM(source_line_ref))",
+        "ck_booking_hold_unit_f7": "release_command_no IS NULL OR (CHAR_LENGTH(TRIM(release_command_no)) > 0 AND CHAR_LENGTH(release_command_no)=CHAR_LENGTH(TRIM(release_command_no)))",
+        "ck_booking_unit_quantity": "qty > 0 AND allocation_revision >= 1",
+        "ck_booking_unit_release": "(released_at IS NULL AND release_command_no IS NULL) OR (released_at IS NOT NULL AND release_command_no IS NOT NULL)",
+        "ck_rco_unit_consume": "(consume_occupation_unit_no IS NULL AND consumed_at IS NULL AND consume_command_no IS NULL) OR (consume_occupation_unit_no IS NOT NULL AND consumed_at IS NOT NULL AND consume_command_no IS NOT NULL AND released_at IS NULL AND release_command_no IS NULL AND deleted=0)"
+      },
+      "addedColumns": [
+        {
+          "name": "consume_occupation_unit_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "consumed_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "charset": null,
+          "collation": null,
+          "default": null,
+          "immutable": false
+        },
+        {
+          "name": "consume_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null,
+          "immutable": false
+        }
+      ],
+      "addedChecks": {
+        "ck_rco_unit_consume": "(consume_occupation_unit_no IS NULL AND consumed_at IS NULL AND consume_command_no IS NULL) OR (consume_occupation_unit_no IS NOT NULL AND consumed_at IS NOT NULL AND consume_command_no IS NOT NULL AND released_at IS NULL AND release_command_no IS NULL AND deleted=0)"
+      },
+      "droppedChecks": [],
+      "addedUnique": {}
+    }
+  ],
+  "retainedStatementHashes": [
+    "a2bad068da939c35065b86cf2675f8e0778ff3c144a8312d5426ff686837c725",
+    "c1a7ee8fd9884ebfe175f5343dc05d7778975c247253a9eb6241c5abedd1068b",
+    "a48fd8433ad3a61b56f6951d011c9eef9d8b6db064bcc5da8823856105a6b274",
+    "a78a37f08bd452ea08dc8c78303feb892cf42ac6c599b27fc5f61b997e0dff1c",
+    "10a25d2b4227b7b72a168fea7ecf8d4cca47a109f59093f7f26d0ed01bb4e0f7",
+    "4a033423cad5ffe9c4f28aa4178ab61fa3f286f4b51fe1a980f41fdcfb6669b3",
+    "0c38c1ae51fc4b834306c17f4a7c53d2604981cebfaea3dd5610523e41c6eac9",
+    "9c4b47435e099c42b32d28d5a0b87e5fb0705b39b4a974f6931c786efb702190",
+    "694dbbb8ef0cdc0a90deb703f4cd42a0a3d1f9c4c483f8c58b621ac0910e5c2a",
+    "fee8e2cdf0b5aa80356c70e3c687199542c13395f85131776df916d2f8e0fce2",
+    "98dd3db3e514bb81d7660c76740897f5608eb26d97d940b6d78732d325d02ec1",
+    "534282b5e123f12538286b3192b9dad91e4867aa159a3444c4de5db72758057b",
+    "7a9a041df206f7e08091f891fd6a56aad22ced12f58f6c9d5e62e13a1a0d5b34",
+    "a4decbe699c301004e59b72ee40c061e5aa4e6b22ed8db27d0f54d3c547bd192",
+    "698bbe6f52715aa06a95c31f4ab6283a41b6f7549bb9ae3b9682aa4f410a62e5",
+    "8a645193e464b960dad15b93a6cfad769a73c69cd476d24212dcfec663bdc467",
+    "3d6eaa54d33c7fcce682bc58ba20211e35b3124588ba3cc735ff9efc796c5190",
+    "52b6959fb456e634bbb66c7cadcb0493000a3090821fa8f0995581a57d6d81dd",
+    "94ed3000899e07dab794c1fa1114f9d3b9f260dd74d28693276c1c47e27b0aef",
+    "2a583d2902eb866f8f4203606ec45e45614e4ed73b76cc170acfae3d16b37596",
+    "2da7680578969c724ccbd77a3f5d245206cace874e45ce76ed176babf639c1a8",
+    "ffd8ea80243c06ea22b580d90c207b25680896403469c6a03f537c3ee4dc20c2",
+    "50741c50b6e5968b6d774bb50354f280383ae949ccbdfd3597fb23b1a26bcc97",
+    "88eaca7f2ab7aadd5161c398b15f14868f25fca9e02ba4c337c3b1f7a72e9ab8",
+    "7b5fb306a579cfd169a298cbc8211de5ea9cb0e23d66aa158765b337d386b8ce",
+    "e498fcee5ca71910fedddd451048270c3515a0591218348b16ae5f26ec8d5f78",
+    "71ce07ea9ffe07ac63fa112a8ba90ee6b185c66034d31ae2cd573548de824c05",
+    "3db6137cabcc2b58bcfe37c9bc249a6df9133aacce3935dc34b3ba3159d851c2",
+    "c8f7d2e16bfef8b004f66770c1d53a3ac354faf38b21eba5f1fa2a9d6929fbba",
+    "7098f5fa866627e2a2a6a5b3b5de62b53c92fa3d91c84443678b8f8d1162595c",
+    "fdd0fa7a5e4d4966c9f5734640f1bf6ee0654f87f5c1d5a08c665b1ea223e206",
+    "e02621c0fe8cbec594ec80084567cbfac3c0c191669375f9f59fea2c51c399e4",
+    "32162f65d10e2e5938bb9344644444047df4bbf681da836c9d2efc95d4f97f35",
+    "53fd875fcdd5a1f339dca74fd5a1274611261ddf9d5ca265534abe3e2e0e3c4d",
+    "002185f5822684bfff2372f78ae1909c389cb4a70d8e1b9c8b0aab5b370b6797",
+    "bb84d2c11c742d25be86131a80cfd2d9881b0a6b5d6162d96af339835a16356f",
+    "d67625a1824d60a2eacd75c97a4a3c4a71f5dfe8eeba449f1a1cfc9caa984d95",
+    "b0f97bea9baf9d079a80180113549456cf55f1f8968853e93dd67aa67b004506",
+    "ff1ff07aa7ced53dd4a6decd3517b0b2042b358cfac504702a49e67f2f95d8f0",
+    "b499ec636527250db4bf18ef3cb3503f3d05f02af1a3cc2c6f0dfd3d14752424",
+    "524c0ee11c65b46d416ee3977079bdc2cc02ac52253cbfd3e225901f1f113192",
+    "b3601f613f4cd3069c9a96188e51fe13ae3e84e5824a949d48ec6c5e70ce104a",
+    "6a3610150974c17716288e97ff64bf6265f7324229dd5a8126e8c6ee446ec340",
+    "0af6bafa3dc5c177a52deb413cddc75531884d2f7c7f39e3d4e94b1eb2a8f159",
+    "6443e3c5ca0eb2292a96a0f43c4a739f8aca1941a2306f5712c4a648ae4db920",
+    "2caef7c3e9ad2b1967849321cd07fed39b51165b465d58d3cd5273d0a122c5ac",
+    "38072ac41951686ceeea36018ba8d44b8b51a62e1859ec9f1d2e13a079c50574",
+    "22dd9590806b7e7819c3b88d3750095512fe581f29852d731f1f497e7c48d5e0",
+    "30bb3d6121d396c9a46c827df5d9dd0388b6c03ce6c1ad5b3a57264d24c44c94",
+    "0a13cf90f94cd206d9827ef9f98d609c843f8e124a57a42009da5018c9feff5c",
+    "bfbf8a7e8ec5f648c85ad6916580d14f3facd9c6f2910c4d4fc4f6f062605531",
+    "48201990f465a09b8d5380a33240c0288853d54c088e02e9fcebd57fead8fee4",
+    "3cdffb446e4c587903794b05112979c72eff40813912ff4af4eac26a9bf3b905"
+  ],
+  "triggers": [
+    {
+      "name": "trg_rco_immutable",
+      "table": "mch_resource_occupation",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (BINARY NEW.id <=> BINARY OLD.id) OR\n        NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.created_at <=> BINARY OLD.created_at) OR\n        NOT (BINARY NEW.created_by <=> BINARY OLD.created_by) OR\n        NOT (BINARY NEW.deleted <=> BINARY OLD.deleted) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.store_no <=> BINARY OLD.store_no) OR\n        NOT (BINARY NEW.occupation_no <=> BINARY OLD.occupation_no) OR\n        NOT (BINARY NEW.owner_no <=> BINARY OLD.owner_no) OR\n        NOT (BINARY NEW.execution_no <=> BINARY OLD.execution_no) OR\n        NOT (BINARY NEW.start_command_no <=> BINARY OLD.start_command_no) OR\n        NOT (BINARY NEW.payload_hash <=> BINARY OLD.payload_hash) OR\n        NOT (BINARY NEW.planned_resource_command_no <=> BINARY OLD.planned_resource_command_no) OR\n        NOT (BINARY NEW.planned_resource_command_hash <=> BINARY OLD.planned_resource_command_hash) OR\n        NOT (BINARY NEW.reference_json <=> BINARY OLD.reference_json) OR\n        NOT (BINARY NEW.reference_hash <=> BINARY OLD.reference_hash) OR\n        NOT (BINARY NEW.initial_plan_json <=> BINARY OLD.initial_plan_json) OR\n        NOT (BINARY NEW.plan_hash <=> BINARY OLD.plan_hash) OR\n        NOT (BINARY NEW.result_no <=> BINARY OLD.result_no) OR\n        NOT (BINARY NEW.result_revision <=> BINARY OLD.result_revision) OR\n        NOT (BINARY NEW.result_hash <=> BINARY OLD.result_hash) OR\n        NOT (BINARY NEW.initial_effects_json <=> BINARY OLD.initial_effects_json) OR\n        NOT (BINARY NEW.initial_effects_hash <=> BINARY OLD.initial_effects_hash) OR\n        NOT (BINARY NEW.started_at <=> BINARY OLD.started_at) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Immutable resource original';\n    END IF;\n    IF (OLD.state='ENDED' AND NEW.state<>'ENDED') OR (OLD.state='CLEANING' AND NEW.state NOT IN ('CLEANING','ENDED')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Occupation lifecycle cannot reopen';\n    END IF;\n    IF NEW.revision<OLD.revision OR NEW.revision>OLD.revision+1 OR NEW.observation_epoch<OLD.observation_epoch OR NEW.observation_epoch>OLD.observation_epoch+1 OR (NEW.state<>OLD.state AND NEW.revision<>OLD.revision+1) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Occupation lifecycle revision required';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rco_no_delete",
+      "table": "mch_resource_occupation",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Resource evidence cannot be deleted';\nEND"
+    },
+    {
+      "name": "trg_rcu_immutable",
+      "table": "mch_resource_occupation_unit",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (BINARY NEW.id <=> BINARY OLD.id) OR\n        NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.created_at <=> BINARY OLD.created_at) OR\n        NOT (BINARY NEW.created_by <=> BINARY OLD.created_by) OR\n        NOT (BINARY NEW.deleted <=> BINARY OLD.deleted) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.occupation_unit_no <=> BINARY OLD.occupation_unit_no) OR\n        NOT (BINARY NEW.occupation_no <=> BINARY OLD.occupation_no) OR\n        NOT (BINARY NEW.start_command_no <=> BINARY OLD.start_command_no) OR\n        NOT (BINARY NEW.logical_demand_no <=> BINARY OLD.logical_demand_no) OR\n        NOT (BINARY NEW.origin <=> BINARY OLD.origin) OR\n        NOT (BINARY NEW.reservation_unit_no <=> BINARY OLD.reservation_unit_no) OR\n        NOT (BINARY NEW.hold_no <=> BINARY OLD.hold_no) OR\n        NOT (BINARY NEW.booking_owner_no <=> BINARY OLD.booking_owner_no) OR\n        NOT (BINARY NEW.source_line_ref <=> BINARY OLD.source_line_ref) OR\n        NOT (BINARY NEW.allocation_revision <=> BINARY OLD.allocation_revision) OR\n        NOT (BINARY NEW.source_bucket_no <=> BINARY OLD.source_bucket_no) OR\n        NOT (BINARY NEW.qty <=> BINARY OLD.qty) OR\n        NOT (BINARY NEW.consumed_at <=> BINARY OLD.consumed_at) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Immutable resource original';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rcu_no_delete",
+      "table": "mch_resource_occupation_unit",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Resource evidence cannot be deleted';\nEND"
+    },
+    {
+      "name": "trg_rcs_immutable",
+      "table": "mch_resource_occupation_segment",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (BINARY NEW.id <=> BINARY OLD.id) OR\n        NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.created_at <=> BINARY OLD.created_at) OR\n        NOT (BINARY NEW.created_by <=> BINARY OLD.created_by) OR\n        NOT (BINARY NEW.deleted <=> BINARY OLD.deleted) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.segment_no <=> BINARY OLD.segment_no) OR\n        NOT (BINARY NEW.occupation_no <=> BINARY OLD.occupation_no) OR\n        NOT (BINARY NEW.logical_demand_no <=> BINARY OLD.logical_demand_no) OR\n        NOT (BINARY NEW.previous_segment_no <=> BINARY OLD.previous_segment_no) OR\n        NOT (BINARY NEW.command_no <=> BINARY OLD.command_no) OR\n        NOT (BINARY NEW.resource_no <=> BINARY OLD.resource_no) OR\n        NOT (BINARY NEW.personnel_no <=> BINARY OLD.personnel_no) OR\n        NOT (BINARY NEW.source_group_ref <=> BINARY OLD.source_group_ref) OR\n        NOT (BINARY NEW.role_slot <=> BINARY OLD.role_slot) OR\n        NOT (BINARY NEW.qty <=> BINARY OLD.qty) OR\n        NOT (BINARY NEW.source_units_json <=> BINARY OLD.source_units_json) OR\n        NOT (BINARY NEW.source_units_hash <=> BINARY OLD.source_units_hash) OR\n        NOT (BINARY NEW.qualification_json <=> BINARY OLD.qualification_json) OR\n        NOT (BINARY NEW.plan_json <=> BINARY OLD.plan_json) OR\n        NOT (BINARY NEW.actual_start_at <=> BINARY OLD.actual_start_at) OR\n        NOT (BINARY NEW.expected_end_at <=> BINARY OLD.expected_end_at) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Immutable resource original';\n    END IF;\n    IF OLD.actual_end_at IS NOT NULL AND (NOT (BINARY NEW.actual_end_at <=> BINARY OLD.actual_end_at) OR\n        NOT (BINARY NEW.close_command_no <=> BINARY OLD.close_command_no)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Segment close is permanent';\n    END IF;\n    IF OLD.cleaning_from IS NOT NULL AND (NOT (BINARY NEW.cleaning_from <=> BINARY OLD.cleaning_from) OR\n        NOT (BINARY NEW.cleaning_until <=> BINARY OLD.cleaning_until)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cleaning policy interval is immutable';\n    END IF;\n    IF OLD.cleaning_completed_at IS NOT NULL AND (NOT (BINARY NEW.cleaning_completed_at <=> BINARY OLD.cleaning_completed_at) OR\n        NOT (BINARY NEW.cleaning_command_no <=> BINARY OLD.cleaning_command_no)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cleaning completion is permanent';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rcs_no_delete",
+      "table": "mch_resource_occupation_segment",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Resource evidence cannot be deleted';\nEND"
+    },
+    {
+      "name": "trg_rcb_immutable",
+      "table": "mch_resource_occupation_bucket",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (BINARY NEW.id <=> BINARY OLD.id) OR\n        NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.created_at <=> BINARY OLD.created_at) OR\n        NOT (BINARY NEW.created_by <=> BINARY OLD.created_by) OR\n        NOT (BINARY NEW.deleted <=> BINARY OLD.deleted) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.projection_no <=> BINARY OLD.projection_no) OR\n        NOT (BINARY NEW.occupation_no <=> BINARY OLD.occupation_no) OR\n        NOT (BINARY NEW.segment_no <=> BINARY OLD.segment_no) OR\n        NOT (BINARY NEW.logical_demand_no <=> BINARY OLD.logical_demand_no) OR\n        NOT (BINARY NEW.resource_no <=> BINARY OLD.resource_no) OR\n        NOT (BINARY NEW.bucket_no <=> BINARY OLD.bucket_no) OR\n        NOT (BINARY NEW.start_at <=> BINARY OLD.start_at) OR\n        NOT (BINARY NEW.end_at <=> BINARY OLD.end_at) OR\n        NOT (BINARY NEW.category <=> BINARY OLD.category) OR\n        NOT (BINARY NEW.qty <=> BINARY OLD.qty) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Immutable resource original';\n    END IF;\n    IF OLD.retired_at IS NOT NULL AND (NOT (BINARY NEW.retired_at <=> BINARY OLD.retired_at) OR\n        NOT (BINARY NEW.retire_command_no <=> BINARY OLD.retire_command_no)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Projection retirement is permanent';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rcb_no_delete",
+      "table": "mch_resource_occupation_bucket",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Resource evidence cannot be deleted';\nEND"
+    },
+    {
+      "name": "trg_rco_owner_immutable",
+      "table": "mch_booking_owner",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF OLD.occupation_association_state<>'UNBOUND' AND (NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.store_no <=> BINARY OLD.store_no) OR\n        NOT (BINARY NEW.owner_no <=> BINARY OLD.owner_no) OR\n        NOT (BINARY NEW.source_type <=> BINARY OLD.source_type) OR\n        NOT (BINARY NEW.source_no <=> BINARY OLD.source_no) OR\n        NOT (BINARY NEW.occupation_association_state <=> BINARY OLD.occupation_association_state) OR\n        NOT (BINARY NEW.planned_resource_command_no <=> BINARY OLD.planned_resource_command_no) OR\n        NOT (BINARY NEW.planned_resource_command_hash <=> BINARY OLD.planned_resource_command_hash) OR\n        NOT (BINARY NEW.execution_reference_json <=> BINARY OLD.execution_reference_json) OR\n        NOT (BINARY NEW.execution_reference_hash <=> BINARY OLD.execution_reference_hash) OR\n        NOT (BINARY NEW.execution_plan_hash <=> BINARY OLD.execution_plan_hash) OR\n        NOT (BINARY NEW.initial_start_command_no <=> BINARY OLD.initial_start_command_no) OR\n        NOT (BINARY NEW.seal_command_no <=> BINARY OLD.seal_command_no) OR NEW.deleted<>0) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Occupation owner association is permanent';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rco_owner_no_delete",
+      "table": "mch_booking_owner",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    IF OLD.occupation_association_state<>'UNBOUND' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Actual resource association cannot be deleted';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rco_command_immutable",
+      "table": "mch_resource_command",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (BINARY NEW.command_kind <=> BINARY OLD.command_kind) OR\n        NOT (BINARY NEW.command_kind <=> BINARY OLD.command_kind) OR\n        NOT (BINARY NEW.payload_schema <=> BINARY OLD.payload_schema) OR\n        NOT (BINARY NEW.execution_reference_json <=> BINARY OLD.execution_reference_json) OR\n        NOT (BINARY NEW.execution_reference_hash <=> BINARY OLD.execution_reference_hash) OR\n        NOT (BINARY NEW.planned_resource_command_no <=> BINARY OLD.planned_resource_command_no) OR\n        NOT (BINARY NEW.planned_resource_command_hash <=> BINARY OLD.planned_resource_command_hash) OR\n        NOT (BINARY NEW.execution_plan_hash <=> BINARY OLD.execution_plan_hash) OR\n        NOT (BINARY NEW.original_start_command_no <=> BINARY OLD.original_start_command_no) OR\n        NOT (BINARY NEW.actor_namespace <=> BINARY OLD.actor_namespace) OR\n        NOT (BINARY NEW.actor_provenance_hash <=> BINARY OLD.actor_provenance_hash) OR\n        NOT (BINARY NEW.machine_purpose <=> BINARY OLD.machine_purpose) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Resource command kind and original are immutable';\n    END IF;\n    IF OLD.command_kind='OCCUPATION_V1' AND (NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.store_no <=> BINARY OLD.store_no) OR\n        NOT (BINARY NEW.command_no <=> BINARY OLD.command_no) OR\n        NOT (BINARY NEW.owner_no <=> BINARY OLD.owner_no) OR\n        NOT (BINARY NEW.action <=> BINARY OLD.action) OR\n        NOT (BINARY NEW.request_key_hash <=> BINARY OLD.request_key_hash) OR\n        NOT (BINARY NEW.payload_hash <=> BINARY OLD.payload_hash) OR\n        NOT (BINARY NEW.frozen_payload <=> BINARY OLD.frozen_payload) OR\n        NOT (BINARY NEW.initiated_by <=> BINARY OLD.initiated_by) OR NEW.deleted<>0) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Actual command original is permanent';\n    END IF;\n    IF OLD.command_kind='OCCUPATION_V1' AND OLD.status<>'ACCEPTED' AND (NOT (BINARY NEW.status <=> BINARY OLD.status) OR\n        NOT (BINARY NEW.result_payload <=> BINARY OLD.result_payload) OR\n        NOT (BINARY NEW.original_result_no <=> BINARY OLD.original_result_no) OR\n        NOT (BINARY NEW.original_result_revision <=> BINARY OLD.original_result_revision) OR\n        NOT (BINARY NEW.original_result_hash <=> BINARY OLD.original_result_hash) OR\n        NOT (BINARY NEW.occupation_outcome <=> BINARY OLD.occupation_outcome) OR\n        NOT (BINARY NEW.seal_no <=> BINARY OLD.seal_no) OR\n        NOT (BINARY NEW.seal_revision <=> BINARY OLD.seal_revision) OR\n        NOT (BINARY NEW.seal_hash <=> BINARY OLD.seal_hash)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Original occupation result is permanent';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rco_command_no_delete",
+      "table": "mch_resource_command",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    IF OLD.command_kind='OCCUPATION_V1' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Actual resource association cannot be deleted';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rco_consumed_immutable",
+      "table": "mch_booking_hold_unit",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF OLD.consumed_at IS NOT NULL AND (NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.unit_no <=> BINARY OLD.unit_no) OR\n        NOT (BINARY NEW.hold_no <=> BINARY OLD.hold_no) OR\n        NOT (BINARY NEW.bucket_no <=> BINARY OLD.bucket_no) OR\n        NOT (BINARY NEW.allocation_revision <=> BINARY OLD.allocation_revision) OR\n        NOT (BINARY NEW.qty <=> BINARY OLD.qty) OR\n        NOT (BINARY NEW.source_line_ref <=> BINARY OLD.source_line_ref) OR\n        NOT (BINARY NEW.consume_occupation_unit_no <=> BINARY OLD.consume_occupation_unit_no) OR\n        NOT (BINARY NEW.consumed_at <=> BINARY OLD.consumed_at) OR\n        NOT (BINARY NEW.consume_command_no <=> BINARY OLD.consume_command_no) OR NEW.deleted<>0 OR NEW.released_at IS NOT NULL OR NEW.release_command_no IS NOT NULL) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Booking consumption is permanent';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_rco_consumed_no_delete",
+      "table": "mch_booking_hold_unit",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    IF OLD.consumed_at IS NOT NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Actual resource association cannot be deleted';\n    END IF;\nEND"
+    }
+  ]
+}

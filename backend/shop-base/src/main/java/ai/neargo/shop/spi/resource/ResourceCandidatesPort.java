@@ -39,5 +39,14 @@ public interface ResourceCandidatesPort {
         }
     }
     /** Expired unreleased protected holds remain used; no lease deadline filter is permitted. */
-    record Capacity(String resourceNo, Instant from, Instant to, int capacity, int used) { }
+    record Capacity(String resourceNo, Instant from, Instant to, int capacity, int used, String projectionSchema) {
+        public Capacity {
+            if (!"RESOURCE_CAPACITY_V2".equals(projectionSchema)) {
+                throw new IllegalArgumentException("complete actual capacity projection is required");
+            }
+        }
+        public Capacity(String resourceNo, Instant from, Instant to, int capacity, int used) {
+            this(resourceNo, from, to, capacity, used, "RESOURCE_CAPACITY_V2");
+        }
+    }
 }

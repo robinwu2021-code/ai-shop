@@ -1,5 +1,8 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
+import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -83,6 +86,7 @@ class ResourceSourceAuthorizationIT {
             ScriptUtils.executeSqlScript(connection,
                     new ClassPathResource("db/migration/V595__shared_resource_booking_foundation.sql"));
         }
+        ResourceOccupationNativeFixture.install(sql.getDataSource());
         login("ACTOR");
     }
 
@@ -97,7 +101,7 @@ class ResourceSourceAuthorizationIT {
     }
 
     private ApplicationContextRunner emptyRunner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 Mappers.class, required("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
                 required("ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl"),
                 required("ai.neargo.shop.merchant.service.impl.ResourceSourceAuthorizationServiceImpl"))

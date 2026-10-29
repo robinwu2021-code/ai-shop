@@ -1,5 +1,10 @@
 package ai.neargo.shop.infra;
 
+import java.util.ArrayList;
+import java.util.Locale;
+import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
+
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
@@ -57,6 +62,7 @@ public final class H2FixtureProjection {
                 && "H2_TEST_PROJECTION_V1".equals(text(policy, "purpose")), "policy version/purpose");
         require(policy.path("entries").isArray(), "policy entries");
         Map<String, Set<String>> absent = new TreeMap<>();
+        Map<String, JsonNode> common = new TreeMap<>();
         Set<Path> seen = new HashSet<>();
         for (JsonNode entry : policy.path("entries")) {
             require(keys(entry).equals(ENTRY_FIELDS), "entry fields");
@@ -86,9 +92,19 @@ public final class H2FixtureProjection {
             Map<String, Set<String>> declared = columns(descriptor);
             require(definitions.equals(declared), "native descriptor columns " + migration.getFileName());
             verifyTriggers(sql, descriptor);
+            verifyRetained(sql, descriptor, entry);
             Set<String> excluded = strings(entry.path("absentTables"));
             String mode = text(entry, "mode");
-            if ("NATIVE_OWNER_ABSENT".equals(mode)) {
+            if ("NATIVE_OWNER_ABSENT".equals(mode) || "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS".equals(mode)) {
+                if ("NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS".equals(mode)) {
+                    require(descriptor.path("commonTables").isArray() && descriptor.path("commonTables").size() == 4,
+                            "hybrid common table set");
+                    for (JsonNode table : descriptor.path("commonTables")) {
+                        require(common.putIfAbsent(text(table, "name"), table) == null, "duplicate common table");
+                    }
+                    require(common.keySet().equals(Set.of("mch_booking_owner", "mch_resource_command",
+                            "mch_resource_bucket", "mch_booking_hold_unit")), "hybrid common identities");
+                }
                 require(excluded.equals(declared.keySet()), "absent table set");
                 require(runtimeTables(text(entry, "guardClass")).equals(excluded), "runtime native owner table set");
                 require(descriptor.has("migrationSha256"), "native descriptor source binding");
@@ -100,23 +116,69 @@ public final class H2FixtureProjection {
                 require(!text(entry, "capability").isBlank(), "capability identity");
             }
         }
-        return new Projection(absent);
+        return new Projection(absent, common);
     }
 
     private static void verifyTriggers(String sql, JsonNode descriptor) {
-        Map<String, List<String>> expected = new TreeMap<>();
-        require(descriptor.path("triggers").isArray(), "descriptor triggers");
+        Map<String, JsonNode> expected = new TreeMap<>();
         for (JsonNode trigger : descriptor.path("triggers")) {
-            require(expected.putIfAbsent(text(trigger, "name"), List.of(text(trigger, "table"),
-                    text(trigger, "timing"), text(trigger, "event"))) == null, "duplicate descriptor trigger");
+            require(expected.putIfAbsent(text(trigger, "name"), trigger) == null, "duplicate descriptor trigger");
         }
-        Map<String, List<String>> actual = new TreeMap<>();
-        var matcher = TRIGGER.matcher(SchemaDdl.codeText(sql));
-        while (matcher.find()) {
-            require(actual.putIfAbsent(matcher.group(1), List.of(matcher.group(4), matcher.group(2),
-                    matcher.group(3))) == null, "duplicate source trigger");
+        Set<String> seen = new HashSet<>();
+        for (String statement : SchemaDdl.statements(sql)) {
+            var matcher = Pattern.compile("(?is)^CREATE TRIGGER (\\w+) (BEFORE|AFTER) (INSERT|UPDATE|DELETE) ON (\\w+)\\s+FOR EACH ROW\\s+(.*)$").matcher(statement);
+            if (!matcher.matches()) { continue; }
+            var spec = expected.get(matcher.group(1));
+            require(spec != null && seen.add(matcher.group(1)) && text(spec, "table").equals(matcher.group(4))
+                    && text(spec, "timing").equals(matcher.group(2)) && text(spec, "event").equals(matcher.group(3))
+                    && text(spec, "body").trim().equals(matcher.group(5).trim()), "native trigger body/identity");
         }
-        require(!expected.isEmpty() && actual.equals(expected), "native trigger identities");
+        require(!seen.isEmpty() && seen.equals(expected.keySet()), "native trigger identities");
+    }
+
+    private static void verifyRetained(String sql, JsonNode descriptor, JsonNode entry) {
+        boolean hybrid = "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS".equals(text(entry, "mode"));
+        boolean absent = hybrid || "NATIVE_OWNER_ABSENT".equals(text(entry, "mode"));
+        var retained = new ArrayList<String>();
+        for (String statement : SchemaDdl.statements(sql)) {
+            if (statement.matches("(?is)^CREATE TRIGGER .*")) { continue; }
+            if (absent && statement.matches("(?is)^CREATE TABLE .*")) { continue; }
+            if (hybrid) {
+                require(statement.matches("(?is)^ALTER TABLE (mch_booking_owner|mch_resource_command|mch_resource_bucket|mch_booking_hold_unit) (ADD COLUMN|ADD CONSTRAINT|DROP CHECK|ADD UNIQUE KEY) .*"),
+                        "unknown hybrid SQL");
+            } else if (absent) { throw invalid("non-CREATE native SQL"); }
+            retained.add(digest(statement.getBytes(StandardCharsets.UTF_8)));
+        }
+        var expected = new ArrayList<String>();
+        entry.path("retainedStatementHashes").forEach(v -> expected.add(v.asString()));
+        require(retained.equals(expected), "retained statement hashes");
+        if (hybrid) {
+            var bound = new ArrayList<String>();
+            descriptor.path("retainedStatementHashes").forEach(v -> bound.add(v.asString()));
+            require(!retained.isEmpty() && retained.equals(bound), "hybrid descriptor retained binding");
+            var expectedSql = new ArrayList<String>();
+            for (JsonNode table : descriptor.path("commonTables")) {
+                String prefix = "ALTER TABLE " + text(table, "name");
+                for (JsonNode c : table.path("addedColumns")) { expectedSql.add(prefix + " ADD COLUMN " + column(c)); }
+                table.path("droppedChecks").forEach(v -> expectedSql.add(prefix + " DROP CHECK " + v.asString()));
+                table.path("addedChecks").properties().forEach(e -> expectedSql.add(prefix + " ADD CONSTRAINT " + e.getKey() + " CHECK (" + e.getValue().asString() + ")"));
+                table.path("addedUnique").properties().forEach(e -> {
+                    var cols = new ArrayList<String>(); e.getValue().forEach(v -> cols.add(v.asString()));
+                    expectedSql.add(prefix + " ADD UNIQUE KEY " + e.getKey() + " (" + String.join(", ", cols) + ")");
+                });
+            }
+            require(expectedSql.stream().map(v -> digest(v.getBytes(StandardCharsets.UTF_8)))
+                    .toList().equals(retained), "hybrid declared ALTER inventory");
+        }
+    }
+
+    private static String column(JsonNode c) {
+        String name = text(c, "name");
+        return name + " " + text(c, "type").toUpperCase(Locale.ROOT)
+                + (c.path("charset").isNull() ? "" : " CHARACTER SET " + text(c, "charset"))
+                + (c.path("collation").isNull() || "OWNER_TENANT".equals(c.path("collation").asString()) ? "" : " COLLATE " + text(c, "collation"))
+                + (c.path("nullable").asBoolean() ? " NULL" : " NOT NULL") + ("id".equals(name) ? " AUTO_INCREMENT" : "")
+                + (c.path("default").isNull() ? "" : " DEFAULT " + text(c, "default"));
     }
 
     private static Map<String, Set<String>> columns(JsonNode descriptor) {
@@ -183,7 +245,7 @@ public final class H2FixtureProjection {
     private static String digest(byte[] bytes) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-        } catch (java.security.NoSuchAlgorithmException impossible) {
+        } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);
         }
     }
@@ -198,21 +260,53 @@ public final class H2FixtureProjection {
         return new IllegalStateException("Invalid H2 fixture projection: " + reason);
     }
 
-    public record Projection(Map<String, Set<String>> nativeTables) {
+    public record Projection(Map<String, Set<String>> nativeTables, Map<String, JsonNode> commonTables) {
+        public Projection(Map<String, Set<String>> nativeTables) { this(nativeTables, Map.of()); }
         public Projection {
             Map<String, Set<String>> copy = new LinkedHashMap<>();
             nativeTables.forEach((name, columns) -> copy.put(name, Set.copyOf(columns)));
             nativeTables = Map.copyOf(copy);
+            commonTables = Map.copyOf(commonTables);
         }
 
         /** Validate the whole original shape before removing any declared native table. */
         public void applyTo(Map<String, Set<String>> completeSchema) {
+            commonTables.forEach((name, table) -> {
+                Set<String> expected = new HashSet<>(); table.path("columns").forEach(c -> expected.add(text(c, "name")));
+                require(expected.equals(completeSchema.get(name)), "common columns after ALTER " + name);
+            });
             nativeTables.forEach((name, columns) -> require(columns.equals(completeSchema.get(name)),
                     "native columns before projection " + name));
             nativeTables.keySet().forEach(completeSchema::remove);
         }
 
+        /** Full post-ALTER column/default/nullability/check/unique contract must survive the generated fixture. */
+        public void verifyCommonFixture(String sql) {
+            var actual = SchemaDdl.definitions(sql);
+            commonTables.forEach((name, table) -> {
+                Map<String, String> expected = new TreeMap<>();
+                for (JsonNode c : table.path("columns")) {
+                    String value = column(c).replaceAll(" NULL(?= DEFAULT|$)", "");
+                    // Native implicit NULL and explicit NULL have the same fixture meaning.
+                    expected.put(text(c, "name"), SchemaDdl.normalized(value));
+                }
+                expected.put("PRIMARY", SchemaDdl.normalized("PRIMARY KEY (id)"));
+                table.path("unique").properties().forEach(e -> {
+                    var cols = new ArrayList<String>(); e.getValue().forEach(v -> cols.add(v.asString()));
+                    expected.put(e.getKey(), SchemaDdl.normalized("CONSTRAINT " + e.getKey() + " UNIQUE (" + String.join(", ", cols) + ")"));
+                });
+                table.path("checks").properties().forEach(e -> expected.put(e.getKey(), SchemaDdl.normalized(
+                        SchemaDdl.h2Check("CONSTRAINT " + e.getKey() + " CHECK (" + e.getValue().asString() + ")"))));
+                Map<String, String> found = new TreeMap<>();
+                require(actual.containsKey(name), "common fixture missing " + name);
+                actual.get(name).forEach((key, value) -> found.put(key,
+                        SchemaDdl.normalized(value.replaceAll(" NULL(?= DEFAULT|$)", ""))));
+                require(found.equals(expected), "common fixture definitions " + name);
+            });
+        }
+
         public void applyTables(Set<String> completeTables) {
+            require(completeTables.containsAll(commonTables.keySet()), "common table membership");
             require(completeTables.containsAll(nativeTables.keySet()), "native table membership before projection");
             completeTables.removeAll(nativeTables.keySet());
         }

@@ -26,4 +26,20 @@ public class MchBookingOwner extends BaseEntity {
     private Long ownerVersion;
     /** 当前头外部来源修订。 */
     private Long sourceRevision;
+    /** Actual occupation association; empty for legacy booking. */
+    private String occupationAssociationState;
+    /** Actual occupation association; empty for legacy booking. */
+    private String plannedResourceCommandNo;
+    /** Actual occupation association; empty for legacy booking. */
+    private String plannedResourceCommandHash;
+    /** Actual occupation association; empty for legacy booking. */
+    private String executionReferenceJson;
+    /** Actual occupation association; empty for legacy booking. */
+    private String executionReferenceHash;
+    /** Actual occupation association; empty for legacy booking. */
+    private String executionPlanHash;
+    /** Actual occupation association; empty for legacy booking. */
+    private String initialStartCommandNo;
+    /** Actual occupation association; empty for legacy booking. */
+    private String sealCommandNo;
 }

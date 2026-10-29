@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.port;
 
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -15,10 +17,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Reads exact original journal truth after current operator checks; caller-provided result fields are never used. */
 @Component
 public class ResourceCommandFactsPortImpl implements ResourceCommandFactsPort {
+    private final ResourceOccupationGuard occupations;
     private final MerchantMappers.ResourceCommandMapper commands;
     private final MerchantOperatorAccessPort access;
-    public ResourceCommandFactsPortImpl(MerchantMappers.ResourceCommandMapper commands,
+    public ResourceCommandFactsPortImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceCommandMapper commands,
             MerchantOperatorAccessPort access) {
+        this.occupations = occupations;
         this.commands = commands;
         this.access = access;
     }
@@ -34,9 +38,11 @@ public class ResourceCommandFactsPortImpl implements ResourceCommandFactsPort {
             throw BizException.of(ErrorCode.FORBIDDEN);
         }
         return DataScopeContext.executeWithoutScope(() -> {
+            occupations.requireCommon(new ResourceCommandScopeRow(b.tenantNo(), b.entityNo(), b.storeNo()));
             var row = commands.selectOriginalFact(new ResourceCommandScopeRow(b.tenantNo(), b.entityNo(), b.storeNo()),
                     b.commandNo());
             if (row == null) { return new Lookup(null); }
+            if (!"BOOKING_V1".equals(row.commandKind())) { throw BizException.of(ErrorCode.CONFLICT); }
             var actual = new ResourceSourceAuthorityPort.Binding(row.tenantNo(), row.entityNo(), row.storeNo(),
                     row.commandNo(), row.sourceType(), row.sourceNo(), row.sourceRevision(), row.action(),
                     row.commandHash(), ResourcePlanContract.hash(row.frozenPayload()));

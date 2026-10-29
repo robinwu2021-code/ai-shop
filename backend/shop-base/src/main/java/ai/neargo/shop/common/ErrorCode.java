@@ -36,6 +36,8 @@ public enum ErrorCode {
     TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
     /** 逆地理编码没配地图厂商密钥：端上据此**藏掉**「定位取地址」按钮，而不是报错 */
     GEO_UNAVAILABLE(10503, "err.geo.unavailable"),
+    /** Shared booking/actual resource authority is unavailable; no industry-specific fallback is permitted. */
+    RESOURCE_DEPENDENCY_UNAVAILABLE(10505, "err.resource.dependency_unavailable"),
 
     /*
      * 发码限流的两条。**分成两个码而不是共用 10429**：端上要做的事完全不同 ——

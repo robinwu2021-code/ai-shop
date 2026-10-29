@@ -1,5 +1,8 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -43,6 +46,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Physical maintenance shares admission's resource root; canonical STAFF remains owned by personnel maintenance. */
 @Service
 public class ResourceServiceImpl implements ResourceService {
+    private final ResourceOccupationGuard occupations;
     private final MerchantMappers.ResourceMapper resources;
     private final MerchantMappers.PersonnelMapper people;
     private final MerchantMappers.BookingOwnerMapper parents;
@@ -54,13 +58,14 @@ public class ResourceServiceImpl implements ResourceService {
     private final TransactionTemplate reads;
     private final OutboxPublisher publisher;
 
-    public ResourceServiceImpl(MerchantMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
+    public ResourceServiceImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
             MerchantMappers.BookingOwnerMapper parents, MerchantMappers.MchStaffLogMapper audit,
             IdempotencyService idempotency, ObjectMapper json, @Qualifier("dataSource") DataSource source,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
             @Value("${shop.resource.publication.archive-only:false}") boolean archiveOnly,
             @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+        this.occupations = occupations;
         this.resources = resources;
         this.people = people;
         this.parents = parents;
@@ -147,7 +152,7 @@ public class ResourceServiceImpl implements ResourceService {
                         if (row.getVersion().longValue() != request.expectedRevision()) {
                             throw BizException.of(ErrorCode.CONFLICT);
                         }
-                        fence(entity, row, request);
+                        fence(trusted, row, request);
                         one(resources.saveMaintenance(entity, store, row.getResourceNo(), request.expectedRevision(),
                                 request.name(), request.capacity(), request.status(), actor, now()));
                         row.setName(request.name());
@@ -164,7 +169,9 @@ public class ResourceServiceImpl implements ResourceService {
         }
     }
 
-    private void fence(String entity, MchResource row, SaveResourceReq request) {
+    private void fence(ResourceCommandScopeRow scope, MchResource row, SaveResourceReq request) {
+        String entity = scope.entityNo();
+        occupations.requireNoWork(scope, row.getResourceNo());
         if (row.getOpenOccupationNo() != null || people.countPendingMaintenance(entity) > 0
                 || people.countResourceWork(entity, row.getResourceNo()) > 0
                 || !row.getCapacity().equals(request.capacity())

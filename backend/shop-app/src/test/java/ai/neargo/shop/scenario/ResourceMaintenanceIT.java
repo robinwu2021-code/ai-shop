@@ -1,5 +1,10 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.common.ErrorCode;
+
+import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
+import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -20,6 +25,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -62,9 +68,11 @@ class ResourceMaintenanceIT {
         sql = new JdbcTemplate(source);
         String schema = Files.readString(Path.of(System.getProperty("resource-maintenance.test.root"),
                 "backend/shop-app/src/test/resources/schema-test.sql"));
+        schema = ResourceOccupationNativeFixture.beforeNativeUpgrade(schema);
         schema = schema.replaceAll("\\b([A-Za-z_]\\w*) IS JSON\\b", "JSON_VALID($1)");
         new ResourceDatabasePopulator(new ByteArrayResource(schema.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
                 .execute(source);
+        ResourceOccupationNativeFixture.install(source);
         sql.update("INSERT INTO mch_entity(entity_no,name,owner_user_no,status,created_at,updated_at) "
                 + "VALUES('E','entity','OWNER','ACTIVE',NOW(),NOW())");
         sql.update("INSERT INTO mch_store(store_no,entity_no,name,is_default,status,created_at,updated_at) "
@@ -82,7 +90,7 @@ class ResourceMaintenanceIT {
         if (sql != null) { sql.execute("DROP DATABASE " + database); }
     }
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 required("service.impl.ResourceServiceImpl"), ResourceFactsPortImpl.class, Mappers.class)
                 .withBean(ObjectMapper.class, () -> json).withBean(AuditMetaObjectHandler.class)
                 .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root",
@@ -240,6 +248,71 @@ class ResourceMaintenanceIT {
             assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isZero();
         });
     }
+    @Test
+    void nativeActualWorkWithoutAnyFutureBucketFencesRealResourceDisable() {
+        runner().run(ctx -> {
+            String no = create(ctx).get("resourceNo").asText();
+            ResourceOccupationNativeFixture.directEvidence(sql, no, "PAUSED");
+            assertThatThrownBy(() -> save(ctx, body(no, 1, "ROOM", 2, "SUSPENDED"), "ACTUAL"))
+                    .isInstanceOf(BizException.class);
+            assertThat(sql.queryForObject("SELECT status FROM mch_resource WHERE resource_no=?", String.class, no))
+                    .isEqualTo("ACTIVE");
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_resource_bucket", Long.class)).isZero();
+        });
+    }
+
+    @Test
+    void validEndedHistoricalProjectionDoesNotKeepResourceDisableBusyForever() {
+        runner().run(ctx -> {
+            String no = create(ctx).get("resourceNo").asText();
+            ResourceOccupationNativeFixture.directEvidence(sql, no, "OPEN");
+            ResourceOccupationNativeFixture.insert(sql, "mch_resource_bucket", Map.ofEntries(Map.entry("bucket_no", "HIST"),
+                    Map.entry("resource_no", no), Map.entry("start_at", "2026-10-21 09:00:00"),
+                    Map.entry("end_at", "2026-10-21 09:05:00"), Map.entry("capacity", 2), Map.entry("occupied_qty", 1)));
+            ResourceOccupationNativeFixture.insert(sql, "mch_resource_occupation_bucket", Map.ofEntries(
+                    Map.entry("projection_no", "HIST"), Map.entry("occupation_no", "O"), Map.entry("segment_no", "SEG"),
+                    Map.entry("logical_demand_no", "G"), Map.entry("resource_no", no), Map.entry("bucket_no", "HIST"),
+                    Map.entry("start_at", "2026-10-21 09:00:00"), Map.entry("end_at", "2026-10-21 09:05:00"),
+                    Map.entry("category", "OCCUPIED"), Map.entry("qty", 1)));
+            sql.update("UPDATE mch_resource_occupation_segment SET actual_end_at='2026-10-21 09:05:00',close_command_no='END'");
+            sql.update("UPDATE mch_resource_occupation SET state='ENDED',ended_at='2026-10-21 09:05:00',revision=revision+1");
+            assertThat(save(ctx, body(no, 1, "ROOM", 2, "SUSPENDED"), "HISTORY").get("revision").asLong()).isEqualTo(2);
+            assertThat(sql.queryForObject("SELECT COUNT(*) FROM mch_resource_occupation_unit", Long.class)).isOne();
+        });
+    }
+
+    @Test
+    void appliedStartJournalWithoutHeaderCannotPermitRealResourceMaintenance() {
+        runner().run(ctx -> {
+            String no = create(ctx).get("resourceNo").asText();
+            ResourceOccupationNativeFixture.appliedStartOriginal(sql);
+            assertThatThrownBy(() -> save(ctx, body(no, 1, "ROOM", 2, "SUSPENDED"), "MISSING_EFFECT"))
+                    .isInstanceOfSatisfying(BizException.class, failure -> assertThat(failure.errorCode())
+                            .isEqualTo(ErrorCode.RESOURCE_DEPENDENCY_UNAVAILABLE));
+            assertThat(sql.queryForObject("SELECT status FROM mch_resource WHERE resource_no=?", String.class, no)).isEqualTo("ACTIVE");
+        });
+    }
+
+    @Test
+    void acceptedOriginalStillBlocksMaintenanceButPermanentNoEffectDoesNot() {
+        runner().run(ctx -> {
+            String no = create(ctx).get("resourceNo").asText();
+            ResourceOccupationNativeFixture.acceptedStartOriginal(sql);
+            assertThatThrownBy(() -> save(ctx, body(no, 1, "ROOM", 2, "SUSPENDED"), "PENDING_ACTUAL"))
+                    .isInstanceOfSatisfying(BizException.class, failure -> assertThat(failure.errorCode())
+                            .isEqualTo(ErrorCode.CONFLICT));
+        });
+    }
+
+    @Test
+    void permanentNoEffectOriginalDoesNotInventBusyWork() {
+        runner().run(ctx -> {
+            String no = create(ctx).get("resourceNo").asText();
+            ResourceOccupationNativeFixture.sealedOriginal(sql);
+            assertThat(save(ctx, body(no, 1, "ROOM", 2, "SUSPENDED"), "SEALED_ONLY").get("revision").asLong()).isEqualTo(2);
+        });
+    }
+
     @Configuration(proxyBeanMethods = false)
     @MapperScan(basePackageClasses = MerchantMappers.class)
     static class Mappers {

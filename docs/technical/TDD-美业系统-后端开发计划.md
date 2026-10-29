@@ -2886,3 +2886,28 @@ Actual public ingress: POST /biz/x/beauty/work-orders/{workOrderNo}/tasks/{taskN
 START GET only projects; POST explicitly recovers the original. Beauty reuses its existing candidate lease for prepared quantity with pending stock. The sole HOST recovery job only continues accepted intent, uses one common distributed lock for all entry points, bounds the batch at 100 and isolates row/overflow failures. Every preparation result remains canStart=false. Actual resource occupation/start/completion are subsequent business slices.
 
 Independent [source review](./design/reviews/beauty-preparation-source-review.md), [FIX1](./design/reviews/beauty-preparation-source-review-fix1.md), and [FIX2](./design/reviews/beauty-preparation-source-review-fix2.md) close I1 final-IO SELF, I2 exact roster/receipt binding, I3 native fault/pin/Beauty consumer source fixtures and the erroneous mutable-observation hash assertion. Final SPEC/QUALITY source-stage PASS. The 56 product/test/schema/script paths include 15 test sources. Native A/B substitution, persisted semantic faults, existing pin protection and actual Beauty consumption are SOURCE ONLY, not runtime evidence. Existing Grant, five legacy routes, old proof/hash domains and historical migrations remain unchanged. Runtime tests, native DB, HTTP and deployment remain deferred.
+
+### C04c-c1 实际资源占用保护：开发实施
+
+BASE为执行准备源码检查点87311602b。按[资源占用设计](./design/美业系统-实际资源占用实施细化.md)及其“统一分支实施前核对”附录执行，先完成可独立审查的所有者保护片，再实现c2实际开工/移交及c3结束/清洁。c1只建立真实资源证据模型并保护现有预约/候选/维护写入口，不开放实际START，canStart保持false。
+
+- [ ] 作者先核当前类/方法/DDL与完整现有writer，输出精确文件、方法和重要测试源码清单。
+- [ ] 测试源码先行：旧BOOKING字节兼容、错误command kind拒绝、已消费单位永久不可重复释放、容量及OPEN/PAUSED/清洁overlays、旧新writer竞争、H2 hybrid/原生缺失或漂移。
+- [ ] 冻结journal判别/关联字段、四张actual occupation证据表、common bucket投影字段及完整JSON真源/renderer/native descriptor/verifier；仅向前V607候选，实施前重查最大值，旧SQL不改。
+- [ ] 共享ResourceCommandService及全部旧command扫描/查询/receipt路径先判kind；旧BOOKING hash/action/receipt不改，不把实际占用命令解析成旧预约枚举。
+- [ ] 完整更新预约持有/确认/释放/迁移、候选和可用性、人员与资源维护、过期补偿等所有真实入口，遵守共享所有者锁顺序，短事务前完成外部IO。不得在只覆盖部分writer时启用新占用。
+- [ ] 容量采用原shared counters和实际证据投影，缺失bucket的active/cleaning overlay用精确anti-join补齐，不建第二数量/库存/容量余额。capacity>1保持剩余容量，超时服务/手动清洁保守阻挡，永久消费关联不删除。
+- [ ] H2新增严格hash绑定hybrid模式，保留common journal/booking/bucket ALTER及约束，仅省略明确新native owner tables/triggers；Python和独立Java投影验证同时对账，不伪造安装标记、不整迁移skip、不弱化未知SQL检查。H2 capability明确unavailable，native部分安装明确corrupt。
+- [ ] 新增SOURCE fixtures并纯生成结构/fixture，源码冻结后由root进行三形态联合main+test-compile及独立spec/quality复审。所有运行测试、SQL/Flyway、HTTP、应用和部署继续后置。
+
+### 当前执行范围调整（2026-10-29，覆盖此前验证矩阵）
+
+用户最新要求：优先继续美业业务代码；本阶段仅编译beauty-embedded。取消后续默认形态、beauty-standalone及餐饮embedded/standalone重复编译，不再安排零售或餐饮功能、专项兼容及验证任务。现有已完成代码及历史编译证据保留，不为缩小范围删除既有模块。必要共用商品、订单、人员、资源等依赖只检查美业所需的实际路径和基础正确性。
+
+编码/源码审查/embedded主源码与测试源码编译继续先行；运行测试、原生数据库和部署仍统一后置。当前资源保护审查已发现的美业容量/结构/原件完整性问题继续修复，不以范围缩减跳过数据安全问题。后续开工直接排班、任务工作流、完工、评价等按美业路径推进；原零售组合C10及餐饮扩展移出当前执行清单。
+
+### C04c-c1 源码检查点
+
+资源journal判别、四张永久占用证据表及V607、全部美业所用预约/候选/事实/维护保护已编码，未开放实际START。独立初审4项Important经FIX1全部关闭：H2有限等价转换、BOOKING/DIRECT来源全元组、native fixture审计字段、成功START原件逆向效果完整性。限定复审SPEC PASS/QUALITY APPROVED，报告见[初审](./design/reviews/beauty-resource-occupation-source-review.md)和[复审](./design/reviews/beauty-resource-occupation-source-review-fix1.md)。
+
+按最新用户范围，仅美业embedded及必要共用依赖完成干净clean test-compile -DskipTests（BUILD SUCCESS，62秒）。源码SHA/62路径/日志SHA见[检查点](./design/schema/beauty-resource-occupation-source-checkpoint.json)。不是测试、原生安装、并发或部署通过。c2a直接排班、实际资格/开工/ACK和工作流仍待开发，库存issue/unpin及支付链未新增。

@@ -727,6 +727,8 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [C04b3 FIX1 scoped independent review](./design/reviews/beauty-preparation-source-review-fix1.md) | — |
 | [C04b3 FIX2 scoped independent review](./design/reviews/beauty-preparation-source-review-fix2.md) | — |
 | [C04b3 independent specification and quality review](./design/reviews/beauty-preparation-source-review.md) | — |
+| [C04c-c1 FIX1 限定复审](./design/reviews/beauty-resource-occupation-source-review-fix1.md) | — |
+| [C04c-c1 独立 SPEC / QUALITY source review](./design/reviews/beauty-resource-occupation-source-review.md) | — |
 | [业务库存与进销存：领域、流程及前后端优化方案](./design/reviews/库存业务与进销存-领域流程与前后端优化方案-2026-10-19.md) | 历史设计，当前实施状态以现行TDD为准。 |
 | [门店储值：Android真机装包与基础验证](./design/reviews/门店储值-Android真机装包-2026-10-20.md) | 历史验证记录（2026-10-20）；结论仅限本文记录的范围与当时环境，不代表当前全量回归或完整营业验收。 |
 | [门店储值 A批存量盘点](./design/reviews/门店储值-A批存量盘点.md) | 历史验证记录（2026-10-20）；结论仅限本文记录的范围与当时环境，不代表当前全量回归或完整营业验收。 |

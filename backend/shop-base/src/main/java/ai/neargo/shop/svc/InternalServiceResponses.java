@@ -79,7 +79,8 @@ public final class InternalServiceResponses {
                     CHECKOUT_OPERATION_REJECTED ->
                     409;
             case CHECKOUT_UNSUPPORTED_SELECTION, BEAUTY_SEARCH_INCOMPLETE -> 422;
-            case CHECKOUT_DEPENDENCY_UNAVAILABLE,
+            case RESOURCE_DEPENDENCY_UNAVAILABLE,
+                    CHECKOUT_DEPENDENCY_UNAVAILABLE,
                     ENTITLEMENT_FEATURE_UNAVAILABLE,
                     PAY_MODE_NOT_SUPPORTED,
                     PRICING_OWNER_UNSUPPORTED,

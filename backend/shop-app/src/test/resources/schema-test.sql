@@ -32,6 +32,8 @@
 
 -- Native capability absent: backend/shop-app/src/main/resources/db/migration/V606__execution_retention_route.sql | prd_execution_retention_route
 
+-- Native capability unavailable; common contract retained: backend/shop-app/src/main/resources/db/migration/V607__resource_actual_occupation.sql | source=42e51c9ec7bf33cbfdf07e34936b944e62bb223efe893d0c896aa7ff234b8c9d | descriptor=dfc64b4595db561e4ba0e5b4b72f633b9e07d7d4ad3d0d284fe5bd731bdb35d1 | retained=a2bad068da939c35065b86cf2675f8e0778ff3c144a8312d5426ff686837c725,c1a7ee8fd9884ebfe175f5343dc05d7778975c247253a9eb6241c5abedd1068b,a48fd8433ad3a61b56f6951d011c9eef9d8b6db064bcc5da8823856105a6b274,a78a37f08bd452ea08dc8c78303feb892cf42ac6c599b27fc5f61b997e0dff1c,10a25d2b4227b7b72a168fea7ecf8d4cca47a109f59093f7f26d0ed01bb4e0f7,4a033423cad5ffe9c4f28aa4178ab61fa3f286f4b51fe1a980f41fdcfb6669b3,0c38c1ae51fc4b834306c17f4a7c53d2604981cebfaea3dd5610523e41c6eac9,9c4b47435e099c42b32d28d5a0b87e5fb0705b39b4a974f6931c786efb702190,694dbbb8ef0cdc0a90deb703f4cd42a0a3d1f9c4c483f8c58b621ac0910e5c2a,fee8e2cdf0b5aa80356c70e3c687199542c13395f85131776df916d2f8e0fce2,98dd3db3e514bb81d7660c76740897f5608eb26d97d940b6d78732d325d02ec1,534282b5e123f12538286b3192b9dad91e4867aa159a3444c4de5db72758057b,7a9a041df206f7e08091f891fd6a56aad22ced12f58f6c9d5e62e13a1a0d5b34,a4decbe699c301004e59b72ee40c061e5aa4e6b22ed8db27d0f54d3c547bd192,698bbe6f52715aa06a95c31f4ab6283a41b6f7549bb9ae3b9682aa4f410a62e5,8a645193e464b960dad15b93a6cfad769a73c69cd476d24212dcfec663bdc467,3d6eaa54d33c7fcce682bc58ba20211e35b3124588ba3cc735ff9efc796c5190,52b6959fb456e634bbb66c7cadcb0493000a3090821fa8f0995581a57d6d81dd,94ed3000899e07dab794c1fa1114f9d3b9f260dd74d28693276c1c47e27b0aef,2a583d2902eb866f8f4203606ec45e45614e4ed73b76cc170acfae3d16b37596,2da7680578969c724ccbd77a3f5d245206cace874e45ce76ed176babf639c1a8,ffd8ea80243c06ea22b580d90c207b25680896403469c6a03f537c3ee4dc20c2,50741c50b6e5968b6d774bb50354f280383ae949ccbdfd3597fb23b1a26bcc97,88eaca7f2ab7aadd5161c398b15f14868f25fca9e02ba4c337c3b1f7a72e9ab8,7b5fb306a579cfd169a298cbc8211de5ea9cb0e23d66aa158765b337d386b8ce,e498fcee5ca71910fedddd451048270c3515a0591218348b16ae5f26ec8d5f78,71ce07ea9ffe07ac63fa112a8ba90ee6b185c66034d31ae2cd573548de824c05,3db6137cabcc2b58bcfe37c9bc249a6df9133aacce3935dc34b3ba3159d851c2,c8f7d2e16bfef8b004f66770c1d53a3ac354faf38b21eba5f1fa2a9d6929fbba,7098f5fa866627e2a2a6a5b3b5de62b53c92fa3d91c84443678b8f8d1162595c,fdd0fa7a5e4d4966c9f5734640f1bf6ee0654f87f5c1d5a08c665b1ea223e206,e02621c0fe8cbec594ec80084567cbfac3c0c191669375f9f59fea2c51c399e4,32162f65d10e2e5938bb9344644444047df4bbf681da836c9d2efc95d4f97f35,53fd875fcdd5a1f339dca74fd5a1274611261ddf9d5ca265534abe3e2e0e3c4d,002185f5822684bfff2372f78ae1909c389cb4a70d8e1b9c8b0aab5b370b6797,bb84d2c11c742d25be86131a80cfd2d9881b0a6b5d6162d96af339835a16356f,d67625a1824d60a2eacd75c97a4a3c4a71f5dfe8eeba449f1a1cfc9caa984d95,b0f97bea9baf9d079a80180113549456cf55f1f8968853e93dd67aa67b004506,ff1ff07aa7ced53dd4a6decd3517b0b2042b358cfac504702a49e67f2f95d8f0,b499ec636527250db4bf18ef3cb3503f3d05f02af1a3cc2c6f0dfd3d14752424,524c0ee11c65b46d416ee3977079bdc2cc02ac52253cbfd3e225901f1f113192,b3601f613f4cd3069c9a96188e51fe13ae3e84e5824a949d48ec6c5e70ce104a,6a3610150974c17716288e97ff64bf6265f7324229dd5a8126e8c6ee446ec340,0af6bafa3dc5c177a52deb413cddc75531884d2f7c7f39e3d4e94b1eb2a8f159,6443e3c5ca0eb2292a96a0f43c4a739f8aca1941a2306f5712c4a648ae4db920,2caef7c3e9ad2b1967849321cd07fed39b51165b465d58d3cd5273d0a122c5ac,38072ac41951686ceeea36018ba8d44b8b51a62e1859ec9f1d2e13a079c50574,22dd9590806b7e7819c3b88d3750095512fe581f29852d731f1f497e7c48d5e0,30bb3d6121d396c9a46c827df5d9dd0388b6c03ce6c1ad5b3a57264d24c44c94,0a13cf90f94cd206d9827ef9f98d609c843f8e124a57a42009da5018c9feff5c,bfbf8a7e8ec5f648c85ad6916580d14f3facd9c6f2910c4d4fc4f6f062605531,48201990f465a09b8d5380a33240c0288853d54c088e02e9fcebd57fead8fee4,3cdffb446e4c587903794b05112979c72eff40813912ff4af4eac26a9bf3b905
+
 CREATE TABLE IF NOT EXISTS cmt_community
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
@@ -11077,6 +11079,15 @@ CREATE TABLE IF NOT EXISTS mch_booking_owner
     current_hold_no VARCHAR(32) NULL,
     owner_version BIGINT NOT NULL DEFAULT 0,
     source_revision BIGINT NULL,
+    occupation_association_state VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'UNBOUND',
+    planned_resource_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    planned_resource_command_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    execution_reference_json LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    execution_reference_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    execution_plan_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    initial_start_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    seal_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_rco_owner_planned UNIQUE (tenant_no, entity_no, planned_resource_command_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_booking_owner_1 UNIQUE (tenant_no, entity_no, owner_no),
     CONSTRAINT uk_booking_owner_2 UNIQUE (tenant_no, entity_no, store_no, source_type, source_no),
@@ -11089,7 +11100,11 @@ CREATE TABLE IF NOT EXISTS mch_booking_owner
     CONSTRAINT ck_booking_owner_f6 CHECK (CHAR_LENGTH(TRIM(source_no)) > 0 AND CHAR_LENGTH(source_no)=CHAR_LENGTH(TRIM(source_no))),
     CONSTRAINT ck_booking_owner_f7 CHECK (current_hold_no IS NULL OR (CHAR_LENGTH(TRIM(current_hold_no)) > 0 AND CHAR_LENGTH(current_hold_no)=CHAR_LENGTH(TRIM(current_hold_no)))),
     CONSTRAINT ck_booking_owner_revision CHECK (owner_version >= 0 AND (source_revision IS NULL OR source_revision >= 0)),
-    CONSTRAINT ck_booking_owner_head CHECK ((current_hold_no IS NULL AND source_revision IS NULL) OR (current_hold_no IS NOT NULL AND source_revision IS NOT NULL))
+    CONSTRAINT ck_booking_owner_head CHECK ((current_hold_no IS NULL AND source_revision IS NULL) OR (current_hold_no IS NOT NULL AND source_revision IS NOT NULL)),
+    CONSTRAINT ck_rco_owner_association CHECK (((occupation_association_state='UNBOUND' AND planned_resource_command_no IS NULL AND planned_resource_command_hash IS NULL AND execution_reference_json IS NULL AND execution_reference_hash IS NULL AND execution_plan_hash IS NULL AND initial_start_command_no IS NULL AND seal_command_no IS NULL) OR ((CASE occupation_association_state WHEN 'ACCEPTED' THEN TRUE WHEN 'SEALED_BEFORE_ACCEPT' THEN TRUE ELSE CASE WHEN occupation_association_state IS NULL THEN NULL ELSE FALSE END END) AND source_type='SERVICE_EXECUTION' AND deleted=0 AND planned_resource_command_no IS NOT NULL AND planned_resource_command_hash IS NOT NULL AND execution_reference_json IS NOT NULL AND (execution_reference_json IS JSON) AND execution_reference_hash IS NOT NULL AND execution_plan_hash IS NOT NULL AND ((occupation_association_state='ACCEPTED' AND initial_start_command_no IS NOT NULL AND seal_command_no IS NULL) OR (occupation_association_state='SEALED_BEFORE_ACCEPT' AND initial_start_command_no IS NULL AND seal_command_no IS NOT NULL))))),
+    CONSTRAINT ck_rco_booking_owner_planned_resource_command_hash CHECK (planned_resource_command_hash IS NULL OR planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_booking_owner_execution_reference_hash CHECK (execution_reference_hash IS NULL OR execution_reference_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_booking_owner_execution_plan_hash CHECK (execution_plan_hash IS NULL OR execution_plan_hash REGEXP '^[0-9a-f]{64}$')
 );
 
 CREATE TABLE IF NOT EXISTS mch_resource_command
@@ -11121,6 +11136,25 @@ CREATE TABLE IF NOT EXISTS mch_resource_command
     wait_reason VARCHAR(128) NULL,
     next_retry_at DATETIME(3) NULL,
     initiated_by VARCHAR(64) NOT NULL,
+    command_kind VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'BOOKING_V1',
+    payload_schema VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    execution_reference_json LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    execution_reference_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    planned_resource_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    planned_resource_command_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    execution_plan_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    original_start_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    actor_namespace VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    actor_provenance_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    machine_purpose VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    observation_epoch BIGINT NOT NULL DEFAULT 0,
+    original_result_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    original_result_revision BIGINT NULL,
+    original_result_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    occupation_outcome VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    seal_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    seal_revision BIGINT NULL,
+    seal_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_resource_command_1 UNIQUE (tenant_no, entity_no, command_no),
     CONSTRAINT uk_resource_command_2 UNIQUE (tenant_no, entity_no, store_no, action, request_key_hash),
@@ -11138,13 +11172,24 @@ CREATE TABLE IF NOT EXISTS mch_resource_command
     CONSTRAINT ck_resource_command_f11 CHECK (rejection_code IS NULL OR (CHAR_LENGTH(TRIM(rejection_code)) > 0 AND CHAR_LENGTH(rejection_code)=CHAR_LENGTH(TRIM(rejection_code)))),
     CONSTRAINT ck_resource_command_f12 CHECK (wait_reason IS NULL OR (CHAR_LENGTH(TRIM(wait_reason)) > 0 AND CHAR_LENGTH(wait_reason)=CHAR_LENGTH(TRIM(wait_reason)))),
     CONSTRAINT ck_resource_command_f13 CHECK (CHAR_LENGTH(TRIM(initiated_by)) > 0 AND CHAR_LENGTH(initiated_by)=CHAR_LENGTH(TRIM(initiated_by))),
-    CONSTRAINT ck_resource_command_action CHECK ((CASE action WHEN 'RESERVE' THEN TRUE WHEN 'PROTECT' THEN TRUE WHEN 'CONFIRM' THEN TRUE WHEN 'RENEW' THEN TRUE WHEN 'RELEASE' THEN TRUE WHEN 'EXPIRE' THEN TRUE WHEN 'RECONCILE' THEN TRUE WHEN 'REPLACE' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_resource_command_status CHECK ((CASE status WHEN 'ACCEPTED' THEN TRUE WHEN 'SUCCEEDED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_resource_command_revision CHECK (expected_owner_version >= 0 AND source_revision >= 0 AND (expected_hold_version IS NULL OR expected_hold_version >= 0) AND (expected_lease_revision IS NULL OR expected_lease_revision >= 1)),
     CONSTRAINT ck_resource_command_target CHECK (target_hold_no IS NOT NULL OR (expected_hold_version IS NULL AND expected_lease_revision IS NULL)),
     CONSTRAINT ck_resource_command_payload CHECK ((frozen_payload IS JSON) AND (result_payload IS NULL OR (result_payload IS JSON))),
     CONSTRAINT ck_resource_command_result CHECK ((status='ACCEPTED' AND result_payload IS NULL AND rejection_code IS NULL) OR (status='SUCCEEDED' AND result_payload IS NOT NULL AND rejection_code IS NULL) OR (status='REJECTED' AND result_payload IS NOT NULL AND rejection_code IS NOT NULL)),
-    CONSTRAINT ck_resource_command_retry CHECK (status='ACCEPTED' OR (wait_reason IS NULL AND next_retry_at IS NULL))
+    CONSTRAINT ck_resource_command_retry CHECK (status='ACCEPTED' OR (wait_reason IS NULL AND next_retry_at IS NULL)),
+    CONSTRAINT ck_resource_command_action CHECK (((command_kind='BOOKING_V1' AND (CASE action WHEN 'RESERVE' THEN TRUE WHEN 'PROTECT' THEN TRUE WHEN 'CONFIRM' THEN TRUE WHEN 'RENEW' THEN TRUE WHEN 'RELEASE' THEN TRUE WHEN 'EXPIRE' THEN TRUE WHEN 'RECONCILE' THEN TRUE WHEN 'REPLACE' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END) AND payload_schema IS NULL AND execution_reference_json IS NULL AND execution_reference_hash IS NULL AND planned_resource_command_no IS NULL AND planned_resource_command_hash IS NULL AND execution_plan_hash IS NULL AND original_start_command_no IS NULL AND actor_namespace IS NULL AND actor_provenance_hash IS NULL AND machine_purpose IS NULL AND observation_epoch=0 AND original_result_no IS NULL AND original_result_revision IS NULL AND original_result_hash IS NULL AND occupation_outcome IS NULL AND seal_no IS NULL AND seal_revision IS NULL AND seal_hash IS NULL) OR (command_kind='OCCUPATION_V1' AND (CASE action WHEN 'START' THEN TRUE WHEN 'SEAL_START' THEN TRUE WHEN 'CHANGE' THEN TRUE WHEN 'END' THEN TRUE WHEN 'COMPLETE_CLEANING' THEN TRUE WHEN 'VALIDATE_WORKFLOW' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END) AND deleted=0 AND payload_schema IS NOT NULL AND execution_reference_json IS NOT NULL AND (execution_reference_json IS JSON) AND execution_reference_hash IS NOT NULL AND planned_resource_command_no IS NOT NULL AND planned_resource_command_hash IS NOT NULL AND execution_plan_hash IS NOT NULL AND (CASE actor_namespace WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE WHEN 'MACHINE' THEN TRUE ELSE CASE WHEN actor_namespace IS NULL THEN NULL ELSE FALSE END END) AND actor_provenance_hash IS NOT NULL))),
+    CONSTRAINT ck_rco_command_result CHECK (observation_epoch>=0 AND ((original_result_no IS NULL AND original_result_revision IS NULL AND original_result_hash IS NULL AND occupation_outcome IS NULL) OR (command_kind='OCCUPATION_V1' AND status<>'ACCEPTED' AND original_result_no IS NOT NULL AND original_result_revision>0 AND original_result_hash IS NOT NULL AND (CASE occupation_outcome WHEN 'APPLIED' THEN TRUE WHEN 'NEVER_ACCEPTED_SEALED' THEN TRUE WHEN 'CANCELLED_BEFORE_EFFECT' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN occupation_outcome IS NULL THEN NULL ELSE FALSE END END))) AND ((seal_no IS NULL AND seal_revision IS NULL AND seal_hash IS NULL) OR (command_kind='OCCUPATION_V1' AND status='SUCCEEDED' AND seal_no IS NOT NULL AND seal_revision>0 AND seal_hash IS NOT NULL AND (CASE occupation_outcome WHEN 'NEVER_ACCEPTED_SEALED' THEN TRUE WHEN 'CANCELLED_BEFORE_EFFECT' THEN TRUE ELSE CASE WHEN occupation_outcome IS NULL THEN NULL ELSE FALSE END END)))),
+    CONSTRAINT ck_rco_command_execution_reference_hash CHECK (execution_reference_hash IS NULL OR execution_reference_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_planned_resource_command_hash CHECK (planned_resource_command_hash IS NULL OR planned_resource_command_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_execution_plan_hash CHECK (execution_plan_hash IS NULL OR execution_plan_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_actor_provenance_hash CHECK (actor_provenance_hash IS NULL OR actor_provenance_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_original_result_hash CHECK (original_result_hash IS NULL OR original_result_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_seal_hash CHECK (seal_hash IS NULL OR seal_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_rco_command_purpose CHECK (command_kind='BOOKING_V1' OR (payload_schema=CONCAT('RESOURCE_OCCUPATION_',action,'_V1') AND (((CASE actor_namespace WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_namespace IS NULL THEN NULL ELSE FALSE END END) AND machine_purpose IS NULL) OR (actor_namespace='MACHINE' AND action='SEAL_START' AND machine_purpose='RESOURCE_CANCEL_BEFORE_EFFECT_V1')))),
+    CONSTRAINT ck_rco_command_original_start CHECK (command_kind='BOOKING_V1' OR (action='START' AND original_start_command_no IS NULL) OR action='SEAL_START' OR ((CASE action WHEN 'CHANGE' THEN TRUE WHEN 'END' THEN TRUE WHEN 'COMPLETE_CLEANING' THEN TRUE WHEN 'VALIDATE_WORKFLOW' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END) AND original_start_command_no IS NOT NULL)),
+    CONSTRAINT ck_rco_command_terminal_proof CHECK (command_kind='BOOKING_V1' OR status<>'SUCCEEDED' OR original_result_no IS NOT NULL),
+    CONSTRAINT ck_rco_command_seal_outcome CHECK ((occupation_outcome IS NULL OR NOT (CASE occupation_outcome WHEN 'NEVER_ACCEPTED_SEALED' THEN TRUE WHEN 'CANCELLED_BEFORE_EFFECT' THEN TRUE ELSE CASE WHEN occupation_outcome IS NULL THEN NULL ELSE FALSE END END)) OR (action='SEAL_START' AND seal_no IS NOT NULL AND ((occupation_outcome='NEVER_ACCEPTED_SEALED' AND original_start_command_no IS NULL) OR (occupation_outcome='CANCELLED_BEFORE_EFFECT' AND original_start_command_no IS NOT NULL))))
 );
 
 CREATE TABLE IF NOT EXISTS mch_resource_bucket
@@ -11166,6 +11211,8 @@ CREATE TABLE IF NOT EXISTS mch_resource_bucket
     held_qty INT NOT NULL DEFAULT 0,
     confirmed_qty INT NOT NULL DEFAULT 0,
     capacity_revision BIGINT NOT NULL DEFAULT 0,
+    occupied_qty INT NOT NULL DEFAULT 0,
+    cleaning_qty INT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_resource_bucket_1 UNIQUE (tenant_no, entity_no, bucket_no),
     CONSTRAINT uk_resource_bucket_2 UNIQUE (tenant_no, entity_no, resource_no, start_at),
@@ -11176,8 +11223,8 @@ CREATE TABLE IF NOT EXISTS mch_resource_bucket
     CONSTRAINT ck_resource_bucket_f4 CHECK (CHAR_LENGTH(TRIM(resource_no)) > 0 AND CHAR_LENGTH(resource_no)=CHAR_LENGTH(TRIM(resource_no))),
     CONSTRAINT ck_resource_bucket_grid CHECK (MOD(MINUTE(start_at),5)=0 AND SECOND(start_at)=0 AND EXTRACT(MICROSECOND FROM start_at)=0 AND end_at=TIMESTAMPADD(MINUTE,5,start_at)),
     CONSTRAINT ck_resource_bucket_range CHECK (start_at >= '1000-01-03 00:00:00.000' AND end_at <= '9999-12-29 00:00:00.000'),
-    CONSTRAINT ck_resource_bucket_capacity CHECK (capacity > 0 AND held_qty >= 0 AND confirmed_qty >= 0 AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty <= capacity),
-    CONSTRAINT ck_resource_bucket_revision CHECK (capacity_revision >= 0)
+    CONSTRAINT ck_resource_bucket_revision CHECK (capacity_revision >= 0),
+    CONSTRAINT ck_resource_bucket_capacity CHECK (capacity>0 AND held_qty>=0 AND confirmed_qty>=0 AND occupied_qty>=0 AND cleaning_qty>=0 AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty+occupied_qty+cleaning_qty<=capacity)
 );
 
 CREATE TABLE IF NOT EXISTS mch_booking_hold
@@ -11252,6 +11299,9 @@ CREATE TABLE IF NOT EXISTS mch_booking_hold_unit
     source_line_ref VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
     released_at DATETIME(3) NULL,
     release_command_no VARCHAR(32) NULL,
+    consume_occupation_unit_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    consumed_at DATETIME(3) NULL,
+    consume_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_booking_hold_unit_1 UNIQUE (tenant_no, entity_no, unit_no),
     CONSTRAINT uk_booking_hold_unit_2 UNIQUE (tenant_no, entity_no, hold_no, allocation_revision, bucket_no, source_line_ref),
@@ -11264,7 +11314,8 @@ CREATE TABLE IF NOT EXISTS mch_booking_hold_unit
     CONSTRAINT ck_booking_hold_unit_f6 CHECK (CHAR_LENGTH(TRIM(source_line_ref)) > 0 AND CHAR_LENGTH(source_line_ref)=CHAR_LENGTH(TRIM(source_line_ref))),
     CONSTRAINT ck_booking_hold_unit_f7 CHECK (release_command_no IS NULL OR (CHAR_LENGTH(TRIM(release_command_no)) > 0 AND CHAR_LENGTH(release_command_no)=CHAR_LENGTH(TRIM(release_command_no)))),
     CONSTRAINT ck_booking_unit_quantity CHECK (qty > 0 AND allocation_revision >= 1),
-    CONSTRAINT ck_booking_unit_release CHECK ((released_at IS NULL AND release_command_no IS NULL) OR (released_at IS NOT NULL AND release_command_no IS NOT NULL))
+    CONSTRAINT ck_booking_unit_release CHECK ((released_at IS NULL AND release_command_no IS NULL) OR (released_at IS NOT NULL AND release_command_no IS NOT NULL)),
+    CONSTRAINT ck_rco_unit_consume CHECK ((consume_occupation_unit_no IS NULL AND consumed_at IS NULL AND consume_command_no IS NULL) OR (consume_occupation_unit_no IS NOT NULL AND consumed_at IS NOT NULL AND consume_command_no IS NOT NULL AND released_at IS NULL AND release_command_no IS NULL AND deleted=0))
 );
 
 CREATE TABLE IF NOT EXISTS prd_store_catalog

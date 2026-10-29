@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.ResourceBookingService;
 import ai.neargo.shop.merchant.service.ResourceCommandService;
@@ -18,15 +19,17 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Thin trusted server bridge; preserves original identity and bytes without exposing a generic public endpoint. */
 @Component
 public class ResourceBookingPortImpl implements ResourceBookingPort {
+    private final ResourceOccupationGuard occupations;
     private final ResourceCommandService commands;
     private final ResourceBookingService bookings;
     private final MerchantMappers.BookingHoldMapper holds;
     private final MerchantMappers.BookingOwnerMapper owners;
     private final MerchantMappers.ResourceCommandMapper journal;
 
-    public ResourceBookingPortImpl(ResourceCommandService commands, ResourceBookingService bookings,
+    public ResourceBookingPortImpl(ResourceOccupationGuard occupations, ResourceCommandService commands, ResourceBookingService bookings,
             MerchantMappers.BookingHoldMapper holds, MerchantMappers.BookingOwnerMapper owners,
             MerchantMappers.ResourceCommandMapper journal) {
+        this.occupations = occupations;
         this.commands = commands;
         this.bookings = bookings;
         this.holds = holds;
@@ -63,8 +66,10 @@ public class ResourceBookingPortImpl implements ResourceBookingPort {
         noTransaction();
         return DataScopeContext.executeWithoutScope(() -> {
             var scope = new ResourceCommandScopeRow(binding.tenantNo(), binding.entityNo(), binding.storeNo());
+            occupations.requireCommon(scope);
             var row = journal.selectCommand(scope, binding.commandNo());
             if (row == null) { return Optional.empty(); }
+            if (!"BOOKING_V1".equals(row.getCommandKind())) { throw BizException.of(ErrorCode.CONFLICT); }
             var owner = owners.selectOwner(scope, row.getOwnerNo());
             if (owner == null) { throw new IllegalStateException("original owner binding unavailable"); }
             var actual = new Binding(row.getTenantNo(), row.getEntityNo(), row.getStoreNo(), row.getCommandNo(),

@@ -49,4 +49,42 @@ public class MchResourceCommand extends BaseEntity {
     private LocalDateTime nextRetryAt;
     /** 原命令发起者。 */
     private String initiatedBy;
+    /** Actual occupation association; empty for legacy booking. */
+    private String commandKind;
+    /** Actual occupation association; empty for legacy booking. */
+    private String payloadSchema;
+    /** Actual occupation association; empty for legacy booking. */
+    private String executionReferenceJson;
+    /** Actual occupation association; empty for legacy booking. */
+    private String executionReferenceHash;
+    /** Actual occupation association; empty for legacy booking. */
+    private String plannedResourceCommandNo;
+    /** Actual occupation association; empty for legacy booking. */
+    private String plannedResourceCommandHash;
+    /** Actual occupation association; empty for legacy booking. */
+    private String executionPlanHash;
+    /** Actual occupation association; empty for legacy booking. */
+    private String originalStartCommandNo;
+    /** Actual occupation association; empty for legacy booking. */
+    private String actorNamespace;
+    /** Actual occupation association; empty for legacy booking. */
+    private String actorProvenanceHash;
+    /** Actual occupation association; empty for legacy booking. */
+    private String machinePurpose;
+    /** Actual occupation association; empty for legacy booking. */
+    private Long observationEpoch;
+    /** Actual occupation association; empty for legacy booking. */
+    private String originalResultNo;
+    /** Actual occupation association; empty for legacy booking. */
+    private Long originalResultRevision;
+    /** Actual occupation association; empty for legacy booking. */
+    private String originalResultHash;
+    /** Actual occupation association; empty for legacy booking. */
+    private String occupationOutcome;
+    /** Actual occupation association; empty for legacy booking. */
+    private String sealNo;
+    /** Actual occupation association; empty for legacy booking. */
+    private Long sealRevision;
+    /** Actual occupation association; empty for legacy booking. */
+    private String sealHash;
 }

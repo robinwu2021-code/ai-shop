@@ -26,7 +26,17 @@ public interface ResourceFactsPort {
 
     /** STAFF is entity-wide and its storeNo stays null; physical resources belong to their canonical store. */
     record ResourceFact(String resourceNo, Type resourceType, String storeNo, String personnelNo,
-            String name, int capacity, boolean openOccupied) {
+            String name, int capacity, boolean openOccupied, Long actualUsed) {
+        public ResourceFact {
+            if (actualUsed == null || actualUsed < 0) {
+                throw new IllegalArgumentException("actual capacity observation is required");
+            }
+        }
+        /** Legacy scalar remains exclusively blocking; actual concurrent use preserves residual capacity. */
+        public ResourceFact(String resourceNo, Type resourceType, String storeNo, String personnelNo,
+                String name, int capacity, boolean openOccupied) {
+            this(resourceNo, resourceType, storeNo, personnelNo, name, capacity, openOccupied, 0L);
+        }
     }
 
     /** Stable shared categories; industry names and workflows are not separate resource identities. */

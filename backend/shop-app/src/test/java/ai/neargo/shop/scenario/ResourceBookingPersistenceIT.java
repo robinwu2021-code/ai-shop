@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.LoginUser;
@@ -72,6 +74,7 @@ class ResourceBookingPersistenceIT {
             ScriptUtils.executeSqlScript(connection,
                     new ClassPathResource("db/migration/V595__shared_resource_booking_foundation.sql"));
         }
+        ResourceOccupationNativeFixture.install(source);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 LoginUser.merchant("ACTOR", "operator"), null, List.of()));
     }

@@ -29,4 +29,8 @@ public class MchResourceBucket extends BaseEntity {
     private Integer confirmedQty;
     /** 容量事实修订。 */
     private Long capacityRevision;
+    /** Actual occupation association; empty for legacy booking. */
+    private Integer occupiedQty;
+    /** Actual occupation association; empty for legacy booking. */
+    private Integer cleaningQty;
 }

@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -62,6 +64,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Shared maintenance takes the same personnel/resource roots as admission; it never performs automatic handover. */
 @Service
 public class PersonnelServiceImpl implements PersonnelService {
+    private final ResourceOccupationGuard occupations;
     private final MerchantMappers.PersonnelMapper people;
     private final MerchantMappers.PersonnelStoreMapper assignments;
     private final MerchantMappers.PersonnelPositionMapper positions;
@@ -80,7 +83,7 @@ public class PersonnelServiceImpl implements PersonnelService {
     private final TransactionTemplate writes;
     private final TransactionTemplate reads;
 
-    public PersonnelServiceImpl(MerchantMappers.PersonnelMapper people,
+    public PersonnelServiceImpl(ResourceOccupationGuard occupations, MerchantMappers.PersonnelMapper people,
             MerchantMappers.PersonnelStoreMapper assignments, MerchantMappers.PersonnelPositionMapper positions,
             MerchantMappers.PersonnelSkillMapper skills, MerchantMappers.PersonnelAccountMapper links,
             MerchantMappers.ResourceMapper resources, MerchantMappers.BookingOwnerMapper parents,
@@ -91,6 +94,7 @@ public class PersonnelServiceImpl implements PersonnelService {
             ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
             @Value("${shop.personnel.publication.archive-only:false}") boolean archiveOnly,
             @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+        this.occupations = occupations;
         this.people = people;
         this.assignments = assignments;
         this.positions = positions;
@@ -411,6 +415,7 @@ public class PersonnelServiceImpl implements PersonnelService {
         var resource = resources.selectOne(Wrappers.<MchResource>lambdaQuery()
                 .eq(MchResource::getTenantNo, "MAIN").eq(MchResource::getEntityNo, person.getEntityNo())
                 .eq(MchResource::getPersonnelNo, person.getPersonnelNo()).last("FOR UPDATE"));
+        if (resource != null) { occupations.requireNoWork(scope, resource.getResourceNo()); }
         if (resource == null || !"STAFF".equals(resource.getResourceType()) || resource.getCapacity() != 1
                 || resource.getStoreNo() != null || resource.getOpenOccupationNo() != null
                 || people.countPendingMaintenance(scope.entityNo()) > 0

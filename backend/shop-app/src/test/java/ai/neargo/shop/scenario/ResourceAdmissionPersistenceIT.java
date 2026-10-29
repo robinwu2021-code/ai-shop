@@ -1,5 +1,8 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
+import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -78,6 +81,7 @@ class ResourceAdmissionPersistenceIT {
             ScriptUtils.executeSqlScript(connection,
                     new ClassPathResource("db/migration/V595__shared_resource_booking_foundation.sql"));
         }
+        ResourceOccupationNativeFixture.install(sql.getDataSource());
         sql.update("INSERT INTO mch_personnel(entity_no,created_at,updated_at,personnel_no,name,status) "
                 + "VALUES('E',?,?,'P','PERSON','ACTIVE')", T0, T0);
         sql.update("INSERT INTO mch_personnel_store(entity_no,created_at,updated_at,assignment_no,personnel_no,"
@@ -100,7 +104,7 @@ class ResourceAdmissionPersistenceIT {
     }
 
     private ApplicationContextRunner runner() {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 Mappers.class, required("ai.neargo.shop.merchant.config.PersonnelDataScopeRegistration"),
                 required("ai.neargo.shop.merchant.service.impl.ResourceCommandServiceImpl"),
                 required("ai.neargo.shop.merchant.service.impl.ResourceAdmissionServiceImpl"))

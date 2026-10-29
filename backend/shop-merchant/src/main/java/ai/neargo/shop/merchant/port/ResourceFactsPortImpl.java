@@ -1,6 +1,8 @@
 package ai.neargo.shop.merchant.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.ResourceMapper;
 import ai.neargo.shop.spi.resource.ResourceFactsPort;
 import java.time.LocalDateTime;
@@ -11,12 +13,14 @@ import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 
-/** One scoped SQL statement reads canonical identity facts, without making capacity or qualification promises. */
+/** Canonical identity plus current anonymous actual use; neither grants capacity admission or qualification. */
 @Component
 public class ResourceFactsPortImpl implements ResourceFactsPort {
     private final ResourceMapper resources;
+    private final ResourceOccupationGuard occupations;
 
-    public ResourceFactsPortImpl(ResourceMapper resources) {
+    public ResourceFactsPortImpl(ResourceMapper resources, ResourceOccupationGuard occupations) {
+        this.occupations = occupations;
         this.resources = resources;
     }
 
@@ -39,7 +43,9 @@ public class ResourceFactsPortImpl implements ResourceFactsPort {
                 throw new IllegalStateException("ambiguous effective resource employment");
             }
             result.add(new ResourceFact(row.resourceNo(), Type.valueOf(row.resourceType()), row.storeNo(),
-                    row.personnelNo(), row.name(), row.capacity(), row.openOccupied()));
+                    row.personnelNo(), row.name(), row.capacity(), row.openOccupied(),
+                    occupations.currentUsed(new ResourceCommandScopeRow(row.tenantNo(), row.entityNo(), row.sourceStoreNo()),
+                            row.resourceNo(), LocalDateTime.ofInstant(query.at(), ZoneOffset.UTC))));
         }
         return List.copyOf(result);
     }

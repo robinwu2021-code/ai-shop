@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -50,6 +52,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Short owner transactions lock personnel before resources and validate the full finite rule before commit. */
 @Service
 public class ScheduleServiceImpl implements ScheduleService {
+    private final ResourceOccupationGuard occupations;
     private final MerchantMappers.ResourceMapper resources;
     private final MerchantMappers.PersonnelMapper people;
     private final MerchantMappers.PersonnelStoreMapper assignments;
@@ -64,7 +67,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final TransactionTemplate reads;
     private final OutboxPublisher publisher;
 
-    public ScheduleServiceImpl(MerchantMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
+    public ScheduleServiceImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceMapper resources, MerchantMappers.PersonnelMapper people,
             MerchantMappers.PersonnelStoreMapper assignments, MerchantMappers.ScheduleRuleMapper rules,
             MerchantMappers.ScheduleChangeLogMapper changes, MerchantMappers.BookingOwnerMapper parents,
             ScheduleWindowsPort windows, IdempotencyService idempotency, ObjectMapper json,
@@ -73,6 +76,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
             @Value("${shop.schedule.publication.archive-only:false}") boolean archiveOnly,
             @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+        this.occupations = occupations;
         this.resources = resources;
         this.people = people;
         this.assignments = assignments;
@@ -134,7 +138,7 @@ public class ScheduleServiceImpl implements ScheduleService {
                     if (resource.getVersion().longValue() != request.expectedRevision()) {
                         throw BizException.of(ErrorCode.CONFLICT);
                     }
-                    fence(entity, resource);
+                    fence(scope, resource);
                     MchScheduleRule old = null;
                     if (request.ruleNo() != null) {
                         old = rules.selectOne(Wrappers.<MchScheduleRule>lambdaQuery()
@@ -231,7 +235,9 @@ public class ScheduleServiceImpl implements ScheduleService {
         if (active && !"ACTIVE".equals(row.getStatus())) { throw BizException.of(ErrorCode.CONFLICT); }
         return row;
     }
-    private void fence(String entity, MchResource resource) {
+    private void fence(ResourceCommandScopeRow scope, MchResource resource) {
+        String entity = scope.entityNo();
+        occupations.requireNoWork(scope, resource.getResourceNo());
         if (resource.getOpenOccupationNo() != null || people.countPendingMaintenance(entity) > 0
                 || people.countResourceWork(entity, resource.getResourceNo()) > 0) {
             throw BizException.of(ErrorCode.CONFLICT);

@@ -74,9 +74,31 @@ class SchemaGeneratorTest {
 
         var projection = H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(module),
                 module.resolve("src/main/resources/db/migration"));
+        projection.verifyCommonFixture(Files.readString(generated));
         assertThat(gen.keySet()).doesNotContainAnyElementsOf(projection.nativeTables().keySet());
         assertH2CanLoad(generated);
         Files.deleteIfExists(generated);
+    }
+
+    @Test
+    void projectedH2CommonContractHasUnavailableNativeCapabilityWithoutFakeHistory() throws Exception {
+        Path root = H2FixtureProjection.repositoryRoot(Path.of(""));
+        try (var c = java.sql.DriverManager.getConnection("jdbc:h2:mem:occupation_projection_" + System.nanoTime() + ";MODE=MySQL", "sa", "")) {
+            org.h2.tools.RunScript.execute(c, Files.newBufferedReader(root.resolve("backend/shop-app/src/test/resources/schema-test.sql")));
+            var source = new org.springframework.jdbc.datasource.SingleConnectionDataSource(c, true);
+            var type = Class.forName("ai.neargo.shop.merchant.policy.ResourceOccupationSchemaVerifier");
+            var verifier = type.getConstructor(javax.sql.DataSource.class, String.class, String.class)
+                    .newInstance(source, "flyway_schema_history", "");
+            assertThat(type.getMethod("installation").invoke(verifier).toString()).isEqualTo("UNSUPPORTED");
+            assertThatThrownBy(() -> type.getMethod("requireAvailable").invoke(verifier))
+                    .hasCauseInstanceOf(ai.neargo.shop.common.BizException.class);
+            try (var absent = c.getMetaData().getTables(c.getCatalog(), null, "MCH_RESOURCE_OCCUPATION", null)) {
+                assertThat(absent.next()).isFalse();
+            }
+            try (var absent = c.getMetaData().getTables(c.getCatalog(), null, "FLYWAY_SCHEMA_HISTORY", null)) {
+                assertThat(absent.next()).isFalse();
+            }
+        }
     }
 
     @Test

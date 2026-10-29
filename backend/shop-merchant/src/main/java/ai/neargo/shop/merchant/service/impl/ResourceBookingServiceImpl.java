@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizKey;
@@ -65,6 +67,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Serializes the complete old/new resource union and commits capacity, history, head, result and outbox together. */
 @Service
 public class ResourceBookingServiceImpl implements ResourceBookingService {
+    private final ResourceOccupationGuard occupations;
     private final ResourceCommandService commands;
     private final ResourceSourceAuthorizationService sources;
     private final ResourceAdmissionService admission;
@@ -79,7 +82,7 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
     private final OutboxPublisher publisher;
     private final ObjectMapper json;
 
-    public ResourceBookingServiceImpl(ResourceCommandService commands, ResourceSourceAuthorizationService sources,
+    public ResourceBookingServiceImpl(ResourceOccupationGuard occupations, ResourceCommandService commands, ResourceSourceAuthorizationService sources,
             ResourceAdmissionService admission, ResourceMapper resources, PersonnelMapper personnel,
             ResourceBucketMapper buckets, ResourceCommandMapper journal, BookingHoldMapper holds,
             BookingHoldUnitMapper units,
@@ -88,6 +91,7 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
             ObjectProvider<UnifiedOutboxFacade> facades, ObjectProvider<OutboxConsumer> consumers,
             @Value("${shop.resource.publication.archive-only:false}") boolean archiveOnly,
             @Value("${shop.outbox.maintenance:false}") boolean maintenance) {
+        this.occupations = occupations;
         this.commands = commands;
         this.sources = sources;
         this.admission = admission;
@@ -189,6 +193,11 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
             old = holds.lockBookingHold(scope, original.ownerNo(), old.getHoldNo());
             target(execution, old);
         }
+        boolean nativeAvailable = occupations.inspect(scope);
+        if (allocations.stream().anyMatch(a -> a.consumeOccupationUnitNo() != null
+                || a.consumedAt() != null || a.consumeCommandNo() != null)) {
+            reject("HOLD_CONSUMED");
+        }
         LocalDateTime now = now();
         validateAction(original, old, frozen, now);
         Action action = original.action();
@@ -244,7 +253,8 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
             if (held < 0 || confirmed < 0) {
                 throw new IllegalStateException("capacity counter evidence inconsistent");
             }
-            if (held + confirmed > bucket.getCapacity()) { reject("CAPACITY_UNAVAILABLE"); }
+            if (occupations.used(scope, key.resource(), key.start(), bucket, held, confirmed, nativeAvailable)
+                    > bucket.getCapacity()) { reject("CAPACITY_UNAVAILABLE"); }
             if (!Objects.equals(bucket.getCapacity(), roots.get(key.resource()).getCapacity())) {
                 throw new IllegalStateException("bucket capacity differs from authoritative resource");
             }
@@ -425,6 +435,8 @@ public class ResourceBookingServiceImpl implements ResourceBookingService {
         bucket.setCapacityRevision(root.getVersion());
         bucket.setHeldQty(0);
         bucket.setConfirmedQty(0);
+        bucket.setOccupiedQty(0);
+        bucket.setCleaningQty(0);
         one(buckets.insert(bucket));
         return buckets.lockBookingBucket(scope, root.getResourceNo(), start);
     }

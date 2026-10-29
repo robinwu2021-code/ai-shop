@@ -266,7 +266,7 @@ def load_projection_policy(src_dir, *, root=None, policy_path=None):
             _policy_require(isinstance(entry[field], str) and re.fullmatch(r"[a-f0-9]{64}", entry[field]),
                             "invalid " + field)
             _policy_require(hashlib.sha256(path.read_bytes()).hexdigest() == entry[field], "changed " + field)
-        _policy_require(entry["mode"] in {"PROJECT_WITH_NATIVE_TRIGGERS", "NATIVE_OWNER_ABSENT"}, "unknown mode")
+        _policy_require(entry["mode"] in {"PROJECT_WITH_NATIVE_TRIGGERS", "NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"}, "unknown mode")
         _policy_require(isinstance(entry["capability"], str) and entry["capability"], "missing capability")
         _policy_require(isinstance(entry["guardClass"], str)
                         and re.fullmatch(r"(?:[A-Za-z_]\w*\.)+[A-Za-z_]\w*", entry["guardClass"]), "guard class")
@@ -306,7 +306,34 @@ def project_migration(path, policies):
     names = [table.get("name") for table in tables]
     _policy_require(all(isinstance(name, str) for name in names) and len(set(names)) == len(names),
                     "descriptor table identities")
-    absent = entry["mode"] == "NATIVE_OWNER_ABSENT"
+    hybrid = entry["mode"] == "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"
+    absent = entry["mode"] in {"NATIVE_OWNER_ABSENT", "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS"}
+    common = descriptor.get("commonTables", [])
+    if hybrid:
+        _policy_require(isinstance(common, list) and {t["name"] for t in common} == {
+            "mch_booking_owner", "mch_resource_command", "mch_resource_bucket", "mch_booking_hold_unit"},
+            "hybrid common target set")
+        _policy_require(descriptor.get("retainedStatementHashes") == entry["retainedStatementHashes"]
+                        and entry["retainedStatementHashes"], "hybrid descriptor retained hashes")
+    expected_alters = []
+    if hybrid:
+        for table in common:
+            name = table["name"]
+            for column in table["addedColumns"]:
+                definition = column["name"] + " " + column["type"].upper()
+                if column["charset"]:
+                    definition += " CHARACTER SET " + column["charset"]
+                if column["collation"] and column["collation"] != "OWNER_TENANT":
+                    definition += " COLLATE " + column["collation"]
+                definition += " NULL" if column["nullable"] else " NOT NULL"
+                if column["default"] is not None:
+                    definition += " DEFAULT " + column["default"]
+                expected_alters.append(f"ALTER TABLE {name} ADD COLUMN {definition}")
+            expected_alters.extend(f"ALTER TABLE {name} DROP CHECK {check}" for check in table["droppedChecks"])
+            expected_alters.extend(f"ALTER TABLE {name} ADD CONSTRAINT {check} CHECK ({expression})"
+                                   for check, expression in table["addedChecks"].items())
+            expected_alters.extend(f"ALTER TABLE {name} ADD UNIQUE KEY {key} ({', '.join(columns)})"
+                                   for key, columns in table["addedUnique"].items())
     _policy_require(set(entry["absentTables"]) == (set(names) if absent else set()), "table omission set")
     trigger_specs = descriptor.get("triggers")
     _policy_require(isinstance(trigger_specs, list) and trigger_specs, "descriptor trigger set")
@@ -334,6 +361,11 @@ def project_migration(path, policies):
             seen_tables.append(create.group(1))
             if not absent:
                 kept.append(statement)
+            continue
+        if hybrid:
+            _policy_require(len(kept) < len(expected_alters) and statement == expected_alters[len(kept)],
+                            "unknown or changed hybrid common statement")
+            kept.append(statement)
             continue
         _policy_require(not absent, "non-CREATE statement in native-owner migration")
         _policy_require(any(re.match(r"INSERT(?:\s+IGNORE)?\s+INTO\s+" + re.escape(name) + r"\b",
@@ -397,7 +429,11 @@ def main():
                           else src_dir.relative_to(ROOT).as_posix().split("resources/")[-1] + "/V*.sql")]
     for policy in policies.values():
         entry = policy.entry
-        if entry["mode"] == "NATIVE_OWNER_ABSENT":
+        if entry["mode"] == "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS":
+            out.append("-- Native capability unavailable; common contract retained: " + entry["migration"]
+                       + " | source=" + entry["sourceSha256"] + " | descriptor=" + entry["descriptorSha256"]
+                       + " | retained=" + ",".join(entry["retainedStatementHashes"]) + "\n")
+        elif entry["mode"] == "NATIVE_OWNER_ABSENT":
             out.append("-- Native capability absent: " + entry["migration"] + " | "
                        + ",".join(entry["absentTables"]) + "\n")
         else:

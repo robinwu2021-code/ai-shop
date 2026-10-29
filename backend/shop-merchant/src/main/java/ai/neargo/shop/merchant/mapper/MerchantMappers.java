@@ -14,6 +14,10 @@ import ai.neargo.shop.merchant.dto.ResourceBookingCounterRow;
 import ai.neargo.shop.merchant.dto.ScheduleRuleFactRow;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchBookingOwner;
+import ai.neargo.shop.merchant.entity.MchResourceOccupation;
+import ai.neargo.shop.merchant.entity.MchResourceOccupationUnit;
+import ai.neargo.shop.merchant.entity.MchResourceOccupationSegment;
+import ai.neargo.shop.merchant.entity.MchResourceOccupationBucket;
 import ai.neargo.shop.merchant.entity.MchResourceCommand;
 import ai.neargo.shop.merchant.entity.MchResourceBucket;
 import ai.neargo.shop.merchant.entity.MchBookingHold;
@@ -108,6 +112,18 @@ public final class MerchantMappers {
         ResourceCommandScopeRow lockScope(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,
                 @Param("storeNo") String storeNo);
 
+        /** Advisory normalization uses actual owner collation before reading binary actual evidence. */
+        @Select("""
+                SELECT e.tenant_no,e.entity_no,s.store_no FROM mch_entity e
+                JOIN mch_store s ON s.tenant_no=e.tenant_no AND s.entity_no=e.entity_no
+                WHERE e.tenant_no=#{tenantNo} AND e.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND e.status='ACTIVE' AND e.archived_at IS NULL AND e.deleted=0
+                  AND s.status='ACTIVE' AND s.deleted=0
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        ResourceCommandScopeRow selectScope(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo);
+
         /** Current root read; a missing row is established by scoped unique insert, not an unlocked absence check. */
         @Select("""
                 SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
@@ -161,7 +177,7 @@ public final class MerchantMappers {
         @Select("""
                 SELECT c.tenant_no,c.entity_no,c.store_no,c.command_no,o.source_type,o.source_no,
                   c.source_revision,c.action,c.payload_hash AS command_hash,c.frozen_payload,c.status,
-                  c.version AS revision,c.result_payload,c.rejection_code
+                  c.version AS revision,c.result_payload,c.rejection_code,c.command_kind
                 FROM mch_resource_command c JOIN mch_booking_owner o ON o.tenant_no=c.tenant_no
                   AND o.entity_no=c.entity_no AND o.store_no=c.store_no AND o.owner_no=c.owner_no AND o.deleted=0
                 WHERE c.tenant_no=#{scope.tenantNo} AND c.entity_no=#{scope.entityNo} AND c.store_no=#{scope.storeNo}
@@ -206,7 +222,7 @@ public final class MerchantMappers {
                 UPDATE mch_resource_command SET wait_reason=#{reason},next_retry_at=#{retryAt},version=version+1,
                   updated_at=#{now},updated_by=#{actor}
                 WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
-                  AND command_no=#{commandNo} AND status='ACCEPTED' AND version=#{version} AND deleted=0
+                  AND command_no=#{commandNo} AND command_kind='BOOKING_V1' AND status='ACCEPTED' AND version=#{version} AND deleted=0
                   AND version<9223372036854775807
                 """)
         int markWaiting(@Param("scope") ResourceCommandScopeRow scope, @Param("commandNo") String commandNo,
@@ -219,7 +235,7 @@ public final class MerchantMappers {
                 UPDATE mch_resource_command SET status=#{status},result_payload=#{result},rejection_code=#{code},
                   wait_reason=NULL,next_retry_at=NULL,version=version+1,updated_at=#{now},updated_by=#{actor}
                 WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
-                  AND command_no=#{commandNo} AND status='ACCEPTED' AND version=#{version} AND deleted=0
+                  AND command_no=#{commandNo} AND command_kind='BOOKING_V1' AND status='ACCEPTED' AND version=#{version} AND deleted=0
                   AND version<9223372036854775807
                 """)
         int finishAccepted(@Param("scope") ResourceCommandScopeRow scope, @Param("commandNo") String commandNo,
@@ -228,11 +244,222 @@ public final class MerchantMappers {
 
     }
 
+    /** Native evidence queries are called only after actual supported-schema inspection. */
+    public interface ResourceOccupationMapper extends BaseMapper<MchResourceOccupation> {
+        /** Common contract is available on projected H2; no native table is referenced here. */
+        @Select("""
+                SELECT (SELECT COUNT(*) FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo}
+                    AND entity_no=#{scope.entityNo} AND (occupation_association_state<>'UNBOUND'
+                    OR planned_resource_command_no IS NOT NULL OR planned_resource_command_hash IS NOT NULL
+                    OR execution_reference_json IS NOT NULL OR execution_reference_hash IS NOT NULL
+                    OR execution_plan_hash IS NOT NULL OR initial_start_command_no IS NOT NULL OR seal_command_no IS NOT NULL))
+                + (SELECT COUNT(*) FROM mch_resource_command WHERE tenant_no=#{scope.tenantNo}
+                    AND entity_no=#{scope.entityNo} AND (command_kind<>'BOOKING_V1' OR payload_schema IS NOT NULL
+                    OR execution_reference_json IS NOT NULL OR execution_reference_hash IS NOT NULL
+                    OR planned_resource_command_no IS NOT NULL OR planned_resource_command_hash IS NOT NULL
+                    OR execution_plan_hash IS NOT NULL OR original_start_command_no IS NOT NULL
+                    OR actor_namespace IS NOT NULL OR actor_provenance_hash IS NOT NULL OR machine_purpose IS NOT NULL
+                    OR original_result_no IS NOT NULL OR original_result_revision IS NOT NULL OR original_result_hash IS NOT NULL
+                    OR occupation_outcome IS NOT NULL OR seal_no IS NOT NULL OR seal_revision IS NOT NULL
+                    OR seal_hash IS NOT NULL OR observation_epoch<>0))
+                + (SELECT COUNT(*) FROM mch_booking_hold_unit WHERE tenant_no=#{scope.tenantNo}
+                    AND entity_no=#{scope.entityNo} AND (consume_occupation_unit_no IS NOT NULL
+                    OR consumed_at IS NOT NULL OR consume_command_no IS NOT NULL))
+                + (SELECT COUNT(*) FROM mch_resource_bucket WHERE tenant_no=#{scope.tenantNo}
+                    AND entity_no=#{scope.entityNo} AND (occupied_qty<>0 OR cleaning_qty<>0))
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long countCommonArtifacts(@Param("scope") ResourceCommandScopeRow scope);
+
+        /** Validate permanent consumption in both directions, including deleted originals and missing parents. */
+        @Select("""
+                SELECT (SELECT COUNT(*) FROM mch_resource_occupation_unit x
+                  LEFT JOIN mch_resource_occupation h ON h.tenant_no=x.tenant_no AND h.entity_no=x.entity_no
+                    AND h.occupation_no=x.occupation_no
+                  LEFT JOIN mch_booking_hold_unit u ON u.tenant_no=x.tenant_no AND u.entity_no=x.entity_no
+                    AND u.unit_no=x.reservation_unit_no
+                  LEFT JOIN mch_booking_hold bh ON bh.tenant_no=u.tenant_no AND bh.entity_no=u.entity_no
+                    AND bh.hold_no=u.hold_no
+                  WHERE x.tenant_no=#{scope.tenantNo} AND x.entity_no=#{scope.entityNo} AND
+                    (x.deleted<>0 OR h.id IS NULL OR h.deleted<>0 OR NOT (x.start_command_no <=> h.start_command_no)
+                    OR x.origin IS NULL OR x.origin NOT IN ('BOOKING','DIRECT')
+                    OR (x.origin='DIRECT' AND (x.reservation_unit_no IS NOT NULL OR x.hold_no IS NOT NULL
+                      OR x.booking_owner_no IS NOT NULL OR x.source_line_ref IS NOT NULL
+                      OR x.allocation_revision IS NOT NULL OR x.source_bucket_no IS NOT NULL))
+                    OR (x.origin='BOOKING' AND (x.reservation_unit_no IS NULL OR x.hold_no IS NULL
+                      OR x.booking_owner_no IS NULL OR x.source_line_ref IS NULL OR x.allocation_revision IS NULL
+                      OR x.source_bucket_no IS NULL OR x.allocation_revision<=0))
+                    OR NOT EXISTS (SELECT 1 FROM mch_resource_occupation_segment segment
+                      WHERE segment.tenant_no=x.tenant_no AND segment.entity_no=x.entity_no
+                        AND segment.occupation_no=x.occupation_no AND segment.logical_demand_no=x.logical_demand_no
+                        AND segment.deleted=0)
+                    OR (x.origin='BOOKING' AND (u.id IS NULL OR u.deleted<>0 OR u.released_at IS NOT NULL
+                    OR u.consume_occupation_unit_no IS NULL OR NOT (u.consume_occupation_unit_no <=> x.occupation_unit_no)
+                    OR u.consumed_at IS NULL OR NOT (u.consumed_at <=> x.consumed_at)
+                    OR u.consume_command_no IS NULL OR NOT (u.consume_command_no <=> x.start_command_no)
+                    OR NOT (u.qty <=> x.qty) OR NOT (u.hold_no <=> x.hold_no) OR NOT (u.bucket_no <=> x.source_bucket_no)
+                    OR NOT (u.allocation_revision <=> x.allocation_revision) OR NOT (u.source_line_ref <=> x.source_line_ref)
+                    OR bh.id IS NULL OR bh.deleted<>0 OR NOT (bh.owner_no <=> x.booking_owner_no)))))
+                + (SELECT COUNT(*) FROM mch_booking_hold_unit u LEFT JOIN mch_resource_occupation_unit x
+                    ON x.tenant_no=u.tenant_no AND x.entity_no=u.entity_no
+                    AND x.occupation_unit_no=u.consume_occupation_unit_no
+                  WHERE u.tenant_no=#{scope.tenantNo} AND u.entity_no=#{scope.entityNo}
+                    AND (u.consume_occupation_unit_no IS NOT NULL OR u.consumed_at IS NOT NULL OR u.consume_command_no IS NOT NULL)
+                    AND (x.id IS NULL OR NOT (x.reservation_unit_no <=> u.unit_no) OR x.deleted<>0))
+                + (SELECT COUNT(*) FROM mch_resource_command c
+                  WHERE c.tenant_no=#{scope.tenantNo} AND c.entity_no=#{scope.entityNo}
+                    AND c.command_kind='OCCUPATION_V1' AND c.action='START'
+                    AND c.status='SUCCEEDED' AND c.occupation_outcome='APPLIED'
+                    AND (c.deleted<>0 OR (SELECT COUNT(*) FROM mch_resource_occupation h
+                      WHERE h.tenant_no=c.tenant_no AND h.entity_no=c.entity_no AND h.store_no=c.store_no
+                        AND h.owner_no=c.owner_no AND h.start_command_no=c.command_no AND h.deleted=0
+                        AND h.payload_hash=c.payload_hash AND h.reference_json=c.execution_reference_json
+                        AND h.reference_hash=c.execution_reference_hash
+                        AND h.planned_resource_command_no=c.planned_resource_command_no
+                        AND h.planned_resource_command_hash=c.planned_resource_command_hash
+                        AND h.plan_hash=c.execution_plan_hash AND h.result_no=c.original_result_no
+                        AND h.result_revision=c.original_result_revision AND h.result_hash=c.original_result_hash)<>1))
+                + (SELECT COUNT(*) FROM mch_resource_occupation h
+                  LEFT JOIN mch_booking_owner o ON o.tenant_no=h.tenant_no AND o.entity_no=h.entity_no
+                    AND o.store_no=h.store_no AND o.owner_no=h.owner_no
+                  LEFT JOIN mch_resource_command c ON c.tenant_no=h.tenant_no AND c.entity_no=h.entity_no
+                    AND c.store_no=h.store_no AND c.command_no=h.start_command_no AND c.owner_no=h.owner_no
+                  WHERE h.tenant_no=#{scope.tenantNo} AND h.entity_no=#{scope.entityNo} AND
+                    (h.deleted<>0 OR o.id IS NULL OR o.deleted<>0 OR NOT (o.source_type <=> 'SERVICE_EXECUTION')
+                    OR NOT (o.source_no <=> h.execution_no) OR NOT (o.occupation_association_state <=> 'ACCEPTED')
+                    OR NOT (o.initial_start_command_no <=> h.start_command_no)
+                    OR NOT (o.planned_resource_command_no <=> h.planned_resource_command_no)
+                    OR NOT (o.planned_resource_command_hash <=> h.planned_resource_command_hash)
+                    OR NOT (o.execution_reference_hash <=> h.reference_hash) OR NOT (o.execution_plan_hash <=> h.plan_hash)
+                    OR c.id IS NULL OR c.deleted<>0 OR NOT (c.command_kind <=> 'OCCUPATION_V1') OR NOT (c.action <=> 'START')
+                    OR NOT (c.status <=> 'SUCCEEDED') OR NOT (c.occupation_outcome <=> 'APPLIED')
+                    OR NOT (c.payload_hash <=> h.payload_hash) OR NOT (c.original_result_no <=> h.result_no)
+                    OR NOT (c.original_result_hash <=> h.result_hash) OR NOT (c.original_result_revision <=> h.result_revision)
+                    OR NOT (c.planned_resource_command_no <=> h.planned_resource_command_no)
+                    OR NOT (c.planned_resource_command_hash <=> h.planned_resource_command_hash)
+                    OR NOT (c.execution_reference_json <=> h.reference_json)
+                    OR NOT (c.execution_reference_hash <=> h.reference_hash)
+                    OR NOT (c.execution_plan_hash <=> h.plan_hash)
+                    OR NOT (o.execution_reference_json <=> h.reference_json)
+                    OR (h.state IN ('OPEN','PAUSED') AND NOT EXISTS
+                      (SELECT 1 FROM mch_resource_occupation_segment s WHERE s.tenant_no=h.tenant_no
+                      AND s.entity_no=h.entity_no AND s.occupation_no=h.occupation_no AND s.actual_end_at IS NULL))
+                    OR NOT EXISTS (SELECT 1 FROM mch_resource_occupation_unit x WHERE x.tenant_no=h.tenant_no
+                      AND x.entity_no=h.entity_no AND x.occupation_no=h.occupation_no)))
+                + (SELECT COUNT(*) FROM mch_resource_occupation_segment s
+                  LEFT JOIN mch_resource_occupation h ON h.tenant_no=s.tenant_no AND h.entity_no=s.entity_no
+                    AND h.occupation_no=s.occupation_no
+                  LEFT JOIN mch_resource r ON r.tenant_no=s.tenant_no AND r.entity_no=s.entity_no
+                    AND r.resource_no=s.resource_no
+                  WHERE s.tenant_no=#{scope.tenantNo} AND s.entity_no=#{scope.entityNo} AND
+                    (s.deleted<>0 OR h.id IS NULL OR h.deleted<>0 OR r.id IS NULL OR r.deleted<>0
+                    OR (s.actual_end_at IS NULL AND h.state NOT IN ('OPEN','PAUSED'))
+                    OR SHA2(s.source_units_json,256)<>s.source_units_hash
+                    OR JSON_LENGTH(s.source_units_json)<>(SELECT COUNT(*) FROM mch_resource_occupation_unit x
+                      WHERE x.tenant_no=s.tenant_no AND x.entity_no=s.entity_no
+                      AND x.occupation_no=s.occupation_no AND x.logical_demand_no=s.logical_demand_no)
+                    OR EXISTS (SELECT 1 FROM mch_resource_occupation_unit x WHERE x.tenant_no=s.tenant_no
+                      AND x.entity_no=s.entity_no AND x.occupation_no=s.occupation_no
+                      AND x.logical_demand_no=s.logical_demand_no AND (x.qty<>s.qty
+                      OR NOT JSON_CONTAINS(s.source_units_json, JSON_QUOTE(x.occupation_unit_no))))
+                    OR (s.previous_segment_no IS NULL AND (NOT (s.command_no <=> h.start_command_no)
+                      OR EXISTS (SELECT 1 FROM mch_resource_occupation_unit x
+                        LEFT JOIN mch_resource_bucket origin_bucket ON origin_bucket.tenant_no=x.tenant_no
+                          AND origin_bucket.entity_no=x.entity_no AND origin_bucket.bucket_no=x.source_bucket_no
+                        WHERE x.tenant_no=s.tenant_no AND x.entity_no=s.entity_no
+                          AND x.occupation_no=s.occupation_no AND x.logical_demand_no=s.logical_demand_no
+                          AND x.origin='BOOKING' AND (origin_bucket.id IS NULL
+                          OR NOT (origin_bucket.resource_no <=> s.resource_no)
+                          OR NOT (x.source_line_ref <=> s.source_group_ref)))))
+                    OR (s.previous_segment_no IS NOT NULL AND NOT EXISTS
+                      (SELECT 1 FROM mch_resource_occupation_segment prior_segment
+                        JOIN mch_resource_command c ON c.tenant_no=s.tenant_no AND c.entity_no=s.entity_no
+                          AND c.command_no=s.command_no AND c.owner_no=h.owner_no
+                        WHERE prior_segment.tenant_no=s.tenant_no AND prior_segment.entity_no=s.entity_no
+                          AND prior_segment.occupation_no=s.occupation_no AND prior_segment.logical_demand_no=s.logical_demand_no
+                          AND prior_segment.segment_no=s.previous_segment_no AND prior_segment.deleted=0
+                          AND prior_segment.actual_end_at=s.actual_start_at AND c.command_kind='OCCUPATION_V1'
+                          AND c.action='CHANGE' AND c.original_start_command_no=h.start_command_no
+                          AND c.status='SUCCEEDED' AND c.deleted=0))
+                    OR NOT EXISTS (SELECT 1 FROM mch_resource_occupation_unit x WHERE x.tenant_no=s.tenant_no
+                      AND x.entity_no=s.entity_no AND x.occupation_no=s.occupation_no
+                      AND x.logical_demand_no=s.logical_demand_no)))
+                + (SELECT COUNT(*) FROM mch_resource_occupation_bucket p
+                  LEFT JOIN mch_resource_occupation_segment s ON s.tenant_no=p.tenant_no AND s.entity_no=p.entity_no
+                    AND s.occupation_no=p.occupation_no AND s.segment_no=p.segment_no
+                    AND s.logical_demand_no=p.logical_demand_no AND s.resource_no=p.resource_no
+                  LEFT JOIN mch_resource_bucket b ON b.tenant_no=p.tenant_no AND b.entity_no=p.entity_no
+                    AND b.bucket_no=p.bucket_no AND b.resource_no=p.resource_no AND b.start_at=p.start_at
+                  WHERE p.tenant_no=#{scope.tenantNo} AND p.entity_no=#{scope.entityNo} AND
+                    (p.deleted<>0 OR s.id IS NULL OR s.deleted<>0 OR NOT (s.qty <=> p.qty)
+                    OR b.id IS NULL OR b.deleted<>0 OR NOT (b.end_at <=> p.end_at)))
+                + (SELECT COUNT(*) FROM mch_resource_bucket b WHERE b.tenant_no=#{scope.tenantNo}
+                  AND b.entity_no=#{scope.entityNo} AND (b.occupied_qty<>(SELECT COALESCE(SUM(CAST(p.qty AS DECIMAL(20,0))),0)
+                    FROM mch_resource_occupation_bucket p WHERE p.tenant_no=b.tenant_no AND p.entity_no=b.entity_no
+                      AND p.bucket_no=b.bucket_no AND p.category='OCCUPIED' AND p.retired_at IS NULL AND p.deleted=0)
+                  OR b.cleaning_qty<>(SELECT COALESCE(SUM(CAST(p.qty AS DECIMAL(20,0))),0)
+                    FROM mch_resource_occupation_bucket p WHERE p.tenant_no=b.tenant_no AND p.entity_no=b.entity_no
+                      AND p.bucket_no=b.bucket_no AND p.category='CLEANING' AND p.retired_at IS NULL AND p.deleted=0)))
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long countInvalid(@Param("scope") ResourceCommandScopeRow scope);
+
+        /** Exact projections already represented in the two actual counters. */
+        @Select("""
+                SELECT COALESCE(SUM(CAST(qty AS DECIMAL(20,0))),0) FROM mch_resource_occupation_bucket
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND resource_no=#{resource}
+                  AND start_at=#{start} AND category=#{category} AND retired_at IS NULL AND deleted=0
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long projected(@Param("scope") ResourceCommandScopeRow scope, @Param("resource") String resource,
+                @Param("start") LocalDateTime start, @Param("category") String category);
+
+        /** One row per continuous logical demand; never multiply by its original multibucket booking units. */
+        @Select("""
+                SELECT COALESCE(SUM(CAST(s.qty AS DECIMAL(20,0))),0) FROM mch_resource_occupation_segment s
+                JOIN mch_resource_occupation h ON h.tenant_no=s.tenant_no AND h.entity_no=s.entity_no
+                  AND h.occupation_no=s.occupation_no AND h.deleted=0
+                WHERE s.tenant_no=#{scope.tenantNo} AND s.entity_no=#{scope.entityNo}
+                  AND s.resource_no=#{resource} AND s.deleted=0 AND
+                  ((s.actual_end_at IS NULL AND h.state IN ('OPEN','PAUSED') AND s.actual_start_at<#{end}
+                    AND NOT EXISTS (SELECT 1 FROM mch_resource_occupation_bucket p
+                      WHERE p.tenant_no=s.tenant_no AND p.entity_no=s.entity_no AND p.occupation_no=s.occupation_no
+                        AND p.segment_no=s.segment_no AND p.logical_demand_no=s.logical_demand_no
+                        AND p.resource_no=s.resource_no AND p.start_at=#{start} AND p.end_at=#{end}
+                        AND p.category='OCCUPIED' AND p.retired_at IS NULL AND p.deleted=0))
+                  OR (s.cleaning_from IS NOT NULL AND s.cleaning_completed_at IS NULL AND s.cleaning_from<#{end}
+                    AND NOT EXISTS (SELECT 1 FROM mch_resource_occupation_bucket p
+                      WHERE p.tenant_no=s.tenant_no AND p.entity_no=s.entity_no AND p.occupation_no=s.occupation_no
+                        AND p.segment_no=s.segment_no AND p.logical_demand_no=s.logical_demand_no
+                        AND p.resource_no=s.resource_no AND p.start_at=#{start} AND p.end_at=#{end}
+                        AND p.category='CLEANING' AND p.retired_at IS NULL AND p.deleted=0)))
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long missing(@Param("scope") ResourceCommandScopeRow scope, @Param("resource") String resource,
+                @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+        /** No owner acquisition here: maintenance already holds canonical personnel/resource roots. */
+        @Select("""
+                SELECT COUNT(*) FROM mch_resource_occupation_segment s WHERE s.tenant_no=#{scope.tenantNo}
+                  AND s.entity_no=#{scope.entityNo} AND s.resource_no=#{resource}
+                  AND (s.actual_end_at IS NULL OR (s.cleaning_from IS NOT NULL AND s.cleaning_completed_at IS NULL)
+                    OR EXISTS (SELECT 1 FROM mch_resource_occupation_bucket p WHERE p.tenant_no=s.tenant_no
+                    AND p.entity_no=s.entity_no AND p.segment_no=s.segment_no AND p.retired_at IS NULL AND p.end_at>#{at}))
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long countWork(@Param("scope") ResourceCommandScopeRow scope, @Param("resource") String resource,
+                @Param("at") LocalDateTime at);
+    }
+
+    public interface ResourceOccupationUnitMapper extends BaseMapper<MchResourceOccupationUnit> { }
+    public interface ResourceOccupationSegmentMapper extends BaseMapper<MchResourceOccupationSegment> { }
+    public interface ResourceOccupationBucketMapper extends BaseMapper<MchResourceOccupationBucket> { }
+
     /** 跨店统一容量仲裁桶数据访问；完整仲裁由后续服务编排。 */
     public interface ResourceBucketMapper extends BaseMapper<MchResourceBucket> {
         /** Never infer availability from a drifted count or silently drop orphaned/deleted active allocations. */
-        @Select("SELECT COALESCE(SUM(CASE WHEN h.status='HELD' THEN u.qty ELSE 0 END),0) AS held,"
-                + "COALESCE(SUM(CASE WHEN h.status='CONFIRMED' THEN u.qty ELSE 0 END),0) AS confirmed,"
+        @Select("SELECT COALESCE(SUM(CASE WHEN h.status='HELD' AND u.consumed_at IS NULL THEN u.qty ELSE 0 END),0) AS held,"
+                + "COALESCE(SUM(CASE WHEN h.status='CONFIRMED' AND u.consumed_at IS NULL THEN u.qty ELSE 0 END),0) AS confirmed,"
                 + "COALESCE(SUM(CASE WHEN h.id IS NULL OR h.deleted<>0 OR u.deleted<>0 "
                 + "OR h.status NOT IN ('HELD','CONFIRMED') OR o.id IS NULL OR o.deleted<>0 "
                 + "OR o.current_hold_no IS NULL OR o.current_hold_no<>h.hold_no "
@@ -259,7 +486,7 @@ public final class MerchantMappers {
                 + "version=version+1,updated_by=#{actor},updated_at=#{at} WHERE tenant_no=#{scope.tenantNo} "
                 + "AND entity_no=#{scope.entityNo} AND bucket_no=#{bucket} AND version=#{version} AND deleted=0 "
                 + "AND version<9223372036854775807 AND held_qty+#{held}>=0 AND confirmed_qty+#{confirmed}>=0 "
-                + "AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty+#{held}+#{confirmed}<=capacity")
+                + "AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty+occupied_qty+cleaning_qty+#{held}+#{confirmed}<=capacity")
         int adjustBookingCapacity(@Param("scope") ResourceCommandScopeRow scope, @Param("bucket") String bucket,
                 @Param("version") long version, @Param("held") long held, @Param("confirmed") long confirmed,
                 @Param("actor") String actor, @Param("at") LocalDateTime at);
@@ -282,7 +509,10 @@ public final class MerchantMappers {
                 + "version=version+1,updated_by=#{actor},updated_at=#{at} WHERE tenant_no=#{scope.tenantNo} "
                 + "AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo} AND owner_no=#{next.ownerNo} "
                 + "AND hold_no=#{next.holdNo} AND version=#{next.version} AND deleted=0 "
-                + "AND version<9223372036854775807 AND execution_started_at IS NULL")
+                + "AND version<9223372036854775807 AND execution_started_at IS NULL "
+                + "AND NOT EXISTS (SELECT 1 FROM mch_booking_hold_unit u WHERE u.tenant_no=#{scope.tenantNo} "
+                + "AND u.entity_no=#{scope.entityNo} AND u.hold_no=#{next.holdNo} "
+                + "AND (u.consumed_at IS NOT NULL OR u.consume_occupation_unit_no IS NOT NULL OR u.consume_command_no IS NOT NULL))")
         int saveBookingHold(@Param("scope") ResourceCommandScopeRow scope, @Param("next") MchBookingHold next,
                 @Param("actor") String actor, @Param("at") LocalDateTime at);
 
@@ -294,6 +524,13 @@ public final class MerchantMappers {
         @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
         MchBookingHold selectOwnedHold(@Param("scope") ResourceCommandScopeRow scope,
                 @Param("ownerNo") String ownerNo, @Param("holdNo") String holdNo);
+
+        /** Consumption is permanent, including after actual service and cleaning have ended. */
+        @Select("SELECT COUNT(*) FROM mch_booking_hold_unit WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND hold_no=#{holdNo} AND (consumed_at IS NOT NULL "
+                + "OR consume_occupation_unit_no IS NOT NULL OR consume_command_no IS NOT NULL)")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long countConsumed(@Param("scope") ResourceCommandScopeRow scope, @Param("holdNo") String holdNo);
 
         /** Old-head retirement includes soft-deleted unreleased units; deletion must never manufacture a release. */
         @Select("""
@@ -325,7 +562,7 @@ public final class MerchantMappers {
 
         /** Owner root serializes discovery; LEFT JOIN exposes corrupt/deleted parent evidence rather than dropping it. */
         @Select("SELECT u.unit_no,u.version,u.bucket_no,b.resource_no,b.start_at,b.end_at,u.qty,u.source_line_ref,"
-                + "u.deleted FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b "
+                + "u.deleted,u.consume_occupation_unit_no,u.consumed_at,u.consume_command_no FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b "
                 + "ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no AND b.deleted=0 "
                 + "WHERE u.tenant_no=#{scope.tenantNo} AND u.entity_no=#{scope.entityNo} "
                 + "AND u.hold_no=#{hold} AND u.released_at IS NULL ORDER BY u.id LIMIT 10001")
@@ -337,7 +574,8 @@ public final class MerchantMappers {
         @Update("UPDATE mch_booking_hold_unit SET released_at=#{at},release_command_no=#{command},version=version+1,"
                 + "updated_at=#{at},updated_by=#{actor} WHERE tenant_no=#{scope.tenantNo} "
                 + "AND entity_no=#{scope.entityNo} AND hold_no=#{hold} AND unit_no=#{unit} AND version=#{version} "
-                + "AND released_at IS NULL AND deleted=0 AND version<9223372036854775807")
+                + "AND released_at IS NULL AND consumed_at IS NULL AND consume_occupation_unit_no IS NULL "
+                + "AND consume_command_no IS NULL AND deleted=0 AND version<9223372036854775807")
         int releaseBookingUnit(@Param("scope") ResourceCommandScopeRow scope, @Param("hold") String hold,
                 @Param("unit") String unit, @Param("version") long version, @Param("command") String command,
                 @Param("actor") String actor, @Param("at") LocalDateTime at);
@@ -668,7 +906,7 @@ public final class MerchantMappers {
                     AND b.entity_no=#{entity} AND b.resource_no=#{resource}
                     AND (b.held_qty>0 OR b.confirmed_qty>0 OR EXISTS
                     (SELECT 1 FROM mch_booking_hold_unit u WHERE u.tenant_no=b.tenant_no
-                     AND u.entity_no=b.entity_no AND u.bucket_no=b.bucket_no AND u.released_at IS NULL)))
+                     AND u.entity_no=b.entity_no AND u.bucket_no=b.bucket_no AND u.released_at IS NULL AND u.consumed_at IS NULL)))
                 + (SELECT COUNT(*) FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b
                     ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no
                     WHERE u.tenant_no='MAIN' AND u.entity_no=#{entity} AND u.released_at IS NULL AND b.id IS NULL)
@@ -874,7 +1112,8 @@ LIMIT 2
                 WHEN r.resource_type='SEAT' THEN 'SEAT' WHEN r.resource_type='DEVICE' THEN 'DEVICE'
                 ELSE r.resource_type END AS resource_type,
                 CASE WHEN r.resource_type='STAFF' THEN NULL ELSE s.store_no END AS store_no,
-                p.personnel_no, r.name, r.capacity, (r.open_occupation_no IS NOT NULL) AS open_occupied
+                p.personnel_no, r.name, r.capacity, (r.open_occupation_no IS NOT NULL) AS open_occupied,
+                e.tenant_no,e.entity_no,s.store_no AS source_store_no
                 FROM mch_resource r
                 JOIN mch_entity e ON e.tenant_no=r.tenant_no AND e.entity_no=r.entity_no
                 JOIN mch_store s ON s.tenant_no=r.tenant_no AND s.entity_no=r.entity_no AND s.store_no=#{storeNo}

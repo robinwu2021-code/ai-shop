@@ -66,6 +66,8 @@ class SchemaParityTest {
             }
         }
         H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root), migrations).applyTables(migrated);
+        H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root), migrations).verifyCommonFixture(
+                Files.readString(testSchema));
         Set<String> inTest = new LinkedHashSet<>();
         collect(Files.readString(testSchema, StandardCharsets.UTF_8), inTest);
 

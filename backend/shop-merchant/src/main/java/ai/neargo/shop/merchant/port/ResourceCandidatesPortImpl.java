@@ -2,6 +2,7 @@ package ai.neargo.shop.merchant.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
 import ai.neargo.shop.merchant.entity.MchBookingHoldUnit;
 import ai.neargo.shop.merchant.entity.MchResourceBucket;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
@@ -22,6 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Advisory reads include every unreleased hold; expiration never silently manufactures free capacity. */
 @Component
 public class ResourceCandidatesPortImpl implements ResourceCandidatesPort {
+    private final ResourceOccupationGuard occupations;
     private final MerchantMappers.ResourceMapper resources;
     private final MerchantMappers.ResourceBucketMapper buckets;
     private final MerchantMappers.BookingHoldUnitMapper units;
@@ -29,10 +31,11 @@ public class ResourceCandidatesPortImpl implements ResourceCandidatesPort {
     private final MerchantMappers.BookingOwnerMapper owners;
     private final MerchantMappers.BookingHoldMapper holds;
     private final ResourceBookingPort booking;
-    public ResourceCandidatesPortImpl(MerchantMappers.ResourceMapper resources,
+    public ResourceCandidatesPortImpl(ResourceOccupationGuard occupations, MerchantMappers.ResourceMapper resources,
             MerchantMappers.ResourceBucketMapper buckets, MerchantMappers.BookingHoldUnitMapper units,
             ResourceFactsPort facts, MerchantMappers.BookingOwnerMapper owners,
             MerchantMappers.BookingHoldMapper holds, ResourceBookingPort booking) {
+        this.occupations = occupations;
         this.resources = resources;
         this.buckets = buckets;
         this.units = units;
@@ -55,8 +58,10 @@ public class ResourceCandidatesPortImpl implements ResourceCandidatesPort {
     public List<Capacity> capacity(CapacityQuery query) {
         outside();
         var s = query.scope();
-        var scope = new ResourceCommandScopeRow(s.tenantNo(), s.entityNo(), s.storeNo());
         return DataScopeContext.executeWithoutScope(() -> {
+            var scope = owners.selectScope(s.tenantNo(), s.entityNo(), s.storeNo());
+            if (scope == null) { throw new IllegalArgumentException("unknown scoped resource owner"); }
+            boolean nativeAvailable = occupations.inspect(scope);
             if (units.hasBookingOrphans(scope)) { throw new IllegalStateException("resource allocation needs repair"); }
             var known = facts.getBatch(new ResourceFactsPort.Query(s.tenantNo(), s.entityNo(), s.storeNo(),
                     query.resourceNos(), query.factAt()));
@@ -71,17 +76,51 @@ public class ResourceCandidatesPortImpl implements ResourceCandidatesPort {
                     .last("LIMIT 10001"));
             if (rows.size() > 10000) { throw new IllegalArgumentException("capacity window too large"); }
             var excluded = replacementUnits(query, scope);
-            List<Capacity> result = new ArrayList<>();
+            Map<String, MchResourceBucket> bySlot = new HashMap<>();
             for (var row : rows) {
-                var count = buckets.selectBookingCounters(scope, row.getBucketNo());
-                if (count.invalid() != 0 || count.held() != row.getHeldQty()
-                        || count.confirmed() != row.getConfirmedQty()) {
-                    throw new IllegalStateException("resource capacity counters need repair");
+                if (bySlot.put(row.getResourceNo() + "/" + row.getStartAt(), row) != null) {
+                    throw new IllegalStateException("duplicate canonical capacity slot");
                 }
-                long used = count.held() + count.confirmed() - excluded.getOrDefault(row.getBucketNo(), 0L);
-                if (used < 0) { throw new IllegalStateException("replacement capacity evidence changed"); }
-                result.add(new Capacity(row.getResourceNo(), row.getStartAt().toInstant(ZoneOffset.UTC),
-                        row.getEndAt().toInstant(ZoneOffset.UTC), row.getCapacity(), Math.toIntExact(used)));
+            }
+            List<Capacity> result = new ArrayList<>();
+            var from = LocalDateTime.ofInstant(query.from(), ZoneOffset.UTC);
+            var to = LocalDateTime.ofInstant(query.to(), ZoneOffset.UTC);
+            var first = from.withSecond(0).withNano(0).minusMinutes(from.getMinute() % 5);
+            for (var fact : known) {
+                for (var start = first; start.isBefore(to); start = start.plusMinutes(5)) {
+                    if (result.size() == 10000) { throw new IllegalArgumentException("capacity window too large"); }
+                    var row = bySlot.get(fact.resourceNo() + "/" + start);
+                    long held = 0;
+                    long confirmed = 0;
+                    long credit = 0;
+                    if (row == null) {
+                        row = new MchResourceBucket();
+                        row.setResourceNo(fact.resourceNo());
+                        row.setStartAt(start);
+                        row.setEndAt(start.plusMinutes(5));
+                        row.setCapacity(fact.capacity());
+                        row.setOccupiedQty(0);
+                        row.setCleaningQty(0);
+                    } else {
+                        var count = buckets.selectBookingCounters(scope, row.getBucketNo());
+                        if (count.invalid() != 0 || count.held() != row.getHeldQty()
+                                || count.confirmed() != row.getConfirmedQty() || row.getCapacity() != fact.capacity()) {
+                            throw new IllegalStateException("resource capacity counters need repair");
+                        }
+                        held = count.held();
+                        confirmed = count.confirmed();
+                        credit = excluded.getOrDefault(row.getBucketNo(), 0L);
+                    }
+                    long used = occupations.used(scope, fact.resourceNo(), start, row, held, confirmed, nativeAvailable);
+                    if (credit > held + confirmed || credit < 0) {
+                        throw new IllegalStateException("replacement capacity evidence changed");
+                    }
+                    used -= credit;
+                    // This scalar is exclusively the old blocker; actual capacity has its own demand projection.
+                    if (fact.openOccupied()) { used = Math.max(used, fact.capacity()); }
+                    result.add(new Capacity(fact.resourceNo(), start.toInstant(ZoneOffset.UTC),
+                            start.plusMinutes(5).toInstant(ZoneOffset.UTC), fact.capacity(), occupations.reportedUsed(used)));
+                }
             }
             return List.copyOf(result);
         });
@@ -120,7 +159,13 @@ public class ResourceCandidatesPortImpl implements ResourceCandidatesPort {
                 .isNull(MchBookingHoldUnit::getReleasedAt).last("LIMIT 10001"));
         if (rows.size() > 10000) { throw new IllegalArgumentException("replacement allocation too large"); }
         Map<String, Long> result = new HashMap<>();
-        for (var row : rows) { result.merge(row.getBucketNo(), (long) row.getQty(), Math::addExact); }
+        for (var row : rows) {
+            if (row.getConsumedAt() != null || row.getConsumeOccupationUnitNo() != null
+                    || row.getConsumeCommandNo() != null) {
+                throw new IllegalArgumentException("consumed hold cannot receive replacement credit");
+            }
+            result.merge(row.getBucketNo(), (long) row.getQty(), Math::addExact);
+        }
         return result;
     }
     private void outside() {

@@ -33,6 +33,9 @@ public interface ResourceCommandService {
     record Scope(String tenantNo, String entityNo, String storeNo) {
     }
 
+    /** Journal discriminator is independent of the frozen BOOKING action and receipt bytes. */
+    enum Kind { BOOKING_V1, OCCUPATION_V1 }
+
     /** Existing booking actions only; occupation actions require their own future contract. */
     enum Action {
         RESERVE, PROTECT, CONFIRM, RENEW, RELEASE, EXPIRE, RECONCILE, REPLACE

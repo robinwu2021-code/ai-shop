@@ -145,6 +145,9 @@ class SchemaDriftTest {
             }
         }
         H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root),
+                root.resolve("src/main/resources/db/migration")).verifyCommonFixture(
+                        Files.readString(root.resolve("src/test/resources/schema-test.sql")));
+        H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root),
                 root.resolve("src/main/resources/db/migration")).applyTo(migration);
         Map<String, Set<String>> test = parse(root.resolve("src/test/resources/schema-test.sql"));
 

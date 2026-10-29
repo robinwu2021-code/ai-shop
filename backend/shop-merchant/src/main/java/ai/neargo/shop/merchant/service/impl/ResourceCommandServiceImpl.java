@@ -1,5 +1,7 @@
 package ai.neargo.shop.merchant.service.impl;
 
+import ai.neargo.shop.merchant.policy.ResourceOccupationGuard;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizKey;
@@ -38,16 +40,18 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
     private static final JsonMapper JSON = JsonMapper.builder()
             .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
+    private final ResourceOccupationGuard occupations;
     private final BookingOwnerMapper owners;
     private final ResourceCommandMapper commands;
     private final BookingHoldMapper holds;
     private final DataSource dataSource;
     private final TransactionTemplate transactions;
 
-    public ResourceCommandServiceImpl(BookingOwnerMapper owners, ResourceCommandMapper commands,
+    public ResourceCommandServiceImpl(ResourceOccupationGuard occupations, BookingOwnerMapper owners, ResourceCommandMapper commands,
             BookingHoldMapper holds,
             @Qualifier("dataSource") DataSource dataSource,
             @Qualifier("transactionManager") PlatformTransactionManager transactionManager) {
+        this.occupations = occupations;
         this.owners = owners;
         this.commands = commands;
         this.holds = holds;
@@ -71,6 +75,7 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
                 command.setCommandNo(BizKey.next("RBC"));
                 command.setOwnerNo(owner.getOwnerNo());
                 command.setAction(request.action().name());
+                command.setCommandKind("BOOKING_V1");
                 command.setRequestKeyHash(keyHash(scope, request));
                 command.setPayloadHash(payloadHash(owner.getOwnerNo(), request, target));
                 command.setFrozenPayload(request.frozenPayload());
@@ -221,6 +226,10 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
     }
 
     private String validateHead(ExecutionHandle handle, String requestedHead) {
+        if (handle.owner.currentHoldNo() != null
+                && holds.countConsumed(handle.scope, handle.owner.currentHoldNo()) > 0) {
+            throw new IllegalStateException("consumed booking head cannot be rewritten");
+        }
         Action action = handle.command.action();
         boolean clearing = action == Action.RELEASE || action == Action.EXPIRE;
         if (action != Action.RECONCILE && clearing != (requestedHead == null)) {
@@ -296,6 +305,7 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
         text(scope.entityNo(), 32);
         text(scope.storeNo(), 32);
         var user = SecurityUtils.requireUser();
+        occupations.requireCommon(new ResourceCommandScopeRow(scope.tenantNo(), scope.entityNo(), scope.storeNo()));
         var row = owners.lockScope(scope.tenantNo(), scope.entityNo(), scope.storeNo());
         if (row == null || !row.tenantNo().equals(user.tenantNo())) {
             throw new IllegalStateException("resource command scope unavailable");
@@ -322,6 +332,7 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
 
     private LockedState lockState(ResourceCommandScopeRow scope, String commandNo) {
         var observed = commands.selectCommand(scope, commandNo);
+        requireBooking(observed);
         if (observed == null) {
             throw new IllegalStateException("resource command unavailable");
         }
@@ -405,6 +416,7 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
     }
 
     private Receipt receipt(MchResourceCommand row) {
+        requireBooking(row);
         var scope = new ResourceCommandScopeRow(row.getTenantNo(), row.getEntityNo(), row.getStoreNo());
         var owner = owners.selectOwner(scope,
                 row.getOwnerNo());
@@ -423,7 +435,14 @@ public class ResourceCommandServiceImpl implements ResourceCommandService {
                 row.getNextRetryAt(), row.getInitiatedBy());
     }
 
+    private static void requireBooking(MchResourceCommand row) {
+        if (row != null && !"BOOKING_V1".equals(row.getCommandKind())) {
+            throw new IllegalStateException("RESOURCE_COMMAND_KIND_CONFLICT");
+        }
+    }
+
     private static void accepted(MchResourceCommand row, long version) {
+        requireBooking(row);
         if (!Status.ACCEPTED.name().equals(row.getStatus()) || row.getVersion() != version) {
             throw new IllegalStateException("resource command state or version conflict; query original result");
         }

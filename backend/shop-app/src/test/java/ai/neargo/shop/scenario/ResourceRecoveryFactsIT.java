@@ -1,5 +1,8 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.infra.ResourceOccupationNativeFixture;
+import ai.neargo.shop.infra.ResourceOccupationFixtureConfiguration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -78,6 +81,7 @@ class ResourceRecoveryFactsIT {
             ScriptUtils.executeSqlScript(connection,
                     new ClassPathResource("db/migration/V595__shared_resource_booking_foundation.sql"));
         }
+        ResourceOccupationNativeFixture.install(sql.getDataSource());
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 LoginUser.merchant("OWNER", "owner"), null, List.of()));
     }
@@ -85,7 +89,7 @@ class ResourceRecoveryFactsIT {
     void clear() { DataScopeContext.clear(); SecurityContextHolder.clearContext(); }
     private ApplicationContextRunner runner() { return runner(Mappers.class); }
     private ApplicationContextRunner runner(Class<?> mapperConfiguration) {
-        return new ApplicationContextRunner().withUserConfiguration(PrimaryPersistenceConfiguration.class,
+        return new ApplicationContextRunner().withUserConfiguration(ResourceOccupationFixtureConfiguration.class, PrimaryPersistenceConfiguration.class,
                 mapperConfiguration, ResourceCommandServiceImpl.class,
                 required("ai.neargo.shop.merchant.port.MerchantOperatorAccessPortImpl"),
                 required("ai.neargo.shop.merchant.port.ResourceCommandFactsPortImpl"))
