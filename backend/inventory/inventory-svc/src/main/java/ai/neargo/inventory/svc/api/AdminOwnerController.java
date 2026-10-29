@@ -2,8 +2,13 @@ package ai.neargo.inventory.svc.api;
 
 import ai.neargo.inventory.api.profile.BusinessProfile;
 import ai.neargo.inventory.api.profile.Capability;
+import ai.neargo.inventory.domain.entity.InvOwner;
 import ai.neargo.inventory.domain.service.BusinessProfileService;
+import ai.neargo.inventory.domain.service.Caller;
 import ai.neargo.inventory.domain.service.EventFeedService;
+import ai.neargo.inventory.domain.service.MigrationImportService;
+import ai.neargo.inventory.domain.service.MigrationImportService.Batch;
+import ai.neargo.inventory.domain.service.MigrationImportService.Report;
 import ai.neargo.inventory.domain.service.ServicePlatformService;
 import ai.neargo.inventory.domain.service.ServicePlatformService.Issued;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -30,12 +36,14 @@ public class AdminOwnerController {
     private final ServicePlatformService platform;
     private final BusinessProfileService profiles;
     private final EventFeedService events;
+    private final MigrationImportService migration;
 
     public AdminOwnerController(ServicePlatformService platform, BusinessProfileService profiles,
-                                EventFeedService events) {
+                                EventFeedService events, MigrationImportService migration) {
         this.platform = platform;
         this.profiles = profiles;
         this.events = events;
+        this.migration = migration;
     }
 
     @PostMapping
@@ -65,6 +73,17 @@ public class AdminOwnerController {
     @PostMapping("/{ownerId}/events/prune")
     public Map<String, Integer> pruneEvents(@PathVariable String ownerId) {
         return Map.of("removed", events.prune(ownerId, platform.owner(ownerId).getSystemCode()));
+    }
+
+    /**
+     * 宿主旧仓储数据导入（T6.1）：{@code apply=false} 只出差异报告；确认后 {@code apply=true} 执行。
+     * 同一批次重复执行，第二次差异为空。
+     */
+    @PostMapping("/{ownerId}/imports")
+    public Report importBatch(@PathVariable String ownerId, @RequestParam(defaultValue = "false") boolean apply,
+                              @RequestBody Batch batch, @RequestHeader("X-Inventory-Actor") String operator) {
+        InvOwner owner = platform.owner(ownerId);
+        return migration.run(new Caller(owner.getSystemCode(), ownerId, operator, null, null), batch, apply);
     }
 
     public record OpenOwner(String systemCode, String externalRef, String name) {

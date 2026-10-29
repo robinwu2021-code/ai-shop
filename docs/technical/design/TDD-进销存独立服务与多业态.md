@@ -621,6 +621,9 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T2.4 仓库停用 | `#warehouseCannotBeDisabledWhileItStillHoldsStockOrFreezes`（一次列全 BALANCE、HOLDS） | ✅ 2026-10-29 | |
 | T2.5 冻结 | `#holdsReduceAvailabilityCountEachUnitOnceAndBlockDeduction`（不可用随冻结 / 解冻变化、冻不进余量、解冻幂等、扣减不进冻结） | ✅ 2026-10-29 | ✅ 扣减守卫改回旧写法 → 变红 |
 | T2.5 修侵占预留 | `#ordinaryDeductionNoLongerEatsReservedStock`（报废扣不动预留；销售「先释放、后扣减」照常） | ✅ 2026-10-29 | ✅ 同上 → 变红 |
+| T6.1 迁移 | `MigrationAndMetricsFlowTest#dryRunReportsThenApplyImportsThenRerunIsANoOp`（预演不落库、执行按 `OPENING` 入库、目标先上级后下级、重复执行报告为空）· `#batchBelowBookIsAConflictNotASilentLoss` | ✅ 2026-10-29 | ✅ 去掉「有冲突整批拒绝」→ 变红 |
+| T6.2 监控 | `#metricsExposeEventBacklogAndErrorsByCode`（积压随拉取清零、未确认随之上升、错误按码计数，均带 `instance` 标签） | ✅ 2026-10-29 | |
+| T6.3 演练 | `ResilienceDrillTest`（回包丢失同键重发只过账一次、失败命令不占键、未确认事件重拉同一批同一序号）；库停与重启为人工演练，步骤见手册 §四 | ✅ 2026-10-29（人工部分待上线前） | |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -700,6 +703,19 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 过账 | 逐件：账面在仓未扫到的 SN 走盘亏出库（不展开下级件）；未知 / 已出库 SN 不自动盘盈；数量：差额生成盘盈入库 / 盘亏出库；数量物料没录实盘数拒绝过账 | 盘盈数量物料的放行依据记为 `COUNT:<盘点单号>` |
 | T5.2 期间汇总 | `GET /reports/period-summary`：按 `occurred_at` 取期间，期初 = 期间前全部变动之和，入 / 出按用途分组，期末 = 期初 + 入 − 出 | **期初用变动之和，不用流水结存**：单据发生时间可回填，按 id 的最后一行未必是按时间的最后一行；单次最多扫 20 万行流水，超出要求按仓或物料拆开 |
 
+### M6 · 上线就绪（2026-10-29，T6.1 ~ T6.4 代码与手册部分）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| T6.1 迁移工具 | `POST /admin/v1/owners/{ownerId}/imports?apply=`；一个事务：仓库按 `external_ref`、物料按宿主物料号、外部目标先上级后下级，在仓按仓合成一张 `OPENING` 入库（依据 `MIGRATION`、附件 `migration:<批次号>`）并过账；审计 `migration.apply` | **只补不减**：账面多于批次、SN 已在别的仓都列为冲突，执行时整批 409，不自动盘亏 —— 迁移不该静默抹掉账；数量物料放行依据缺省记 `MIGRATION:<批次号>`，SN 的放行凭证由 ShareHub 在批次里给（Q3） |
+| T6.2 监控 | `InventoryMetrics`：事件积压、未确认、最久未关盘点、最久退货待确认四个计量，`ApiErrorAdvice` 按错误码计 `inventory.errors`；全部带 `instance` 标签；`/actuator/metrics` 暴露 | **「预留过期」没做**：设备套不开 `RESERVATION`，随 M8 电商套补；告警阈值写在手册里，由云监控配置，不进代码 |
+| T6.3 演练 | 自动化三例（见 §5）；库停、重启写成手册里的人工步骤 | 「P95 写 < 500 ms 压测」（§4）未做，生产形态演练时一并测 |
+| T6.4 部署与回滚 | [设备套上线与回滚手册](../进销存独立服务-设备套上线与回滚手册.md)；systemd 模板与 env 样例 M1 已有 | **`backup-to-cos.sh` 的 `DBS` 暂不加 `neargo_inv_device`**：库还不存在，加了当晚备份会失败；手册第 1 步要求建库同一步加上 |
+
+
+
+
+
 ## §7 确认与完成
 
 ### 7.1 已裁决（2026-10-29，用户）
@@ -736,3 +752,4 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | M3 完成（`99159b93c`），后端全量 6982 例 0 失败 |
 | 2026-10-29 | M4 完成（`973b6d717`），后端全量 6987 例 0 失败 —— 可交付 ShareHub 联调 |
 | 2026-10-29 | M5 完成（T5.1 ~ T5.2），后端全量 6991 例 0 失败 |
+| 2026-10-29 | M6 代码与手册完成（T6.1 ~ T6.4），后端全量 6997 例 0 失败；生产形态演练、设备套建库上线、库停 / 重启人工演练待执行 |
