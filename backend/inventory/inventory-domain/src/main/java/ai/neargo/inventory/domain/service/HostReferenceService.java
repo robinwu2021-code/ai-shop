@@ -14,4 +14,10 @@ public interface HostReferenceService {
 
     /** 门店 / 仓的宿主编号 → 实际扣库存的库位（门店共用货源时落到货源库位）；不给编号 = 默认库位；给了但没有为空 */
     String stockLocationOf(String ownerId, String locationRef);
+
+    /**
+     * 商家后台的「当前门店」→ 实际扣库存的库位：门店库位没有就建（默认从主体默认仓发货），与商城内嵌
+     * {@code InventoryAclService#locationIdOf} 同一份逻辑；不给门店号 = 默认库位。
+     */
+    String storeLocationOf(String ownerId, String storeRef);
 }

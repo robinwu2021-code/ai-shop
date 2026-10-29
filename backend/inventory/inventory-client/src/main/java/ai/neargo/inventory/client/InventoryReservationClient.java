@@ -35,11 +35,14 @@ public final class InventoryReservationClient {
 
     private final InventoryReservationApi api;
     private final InventoryStockApi stock;
+    private final InventoryConsoleApi consoleApi;
     private final CircuitBreaker breaker;
 
-    InventoryReservationClient(InventoryReservationApi api, InventoryStockApi stock, CircuitBreaker breaker) {
+    InventoryReservationClient(InventoryReservationApi api, InventoryStockApi stock, InventoryConsoleApi consoleApi,
+                               CircuitBreaker breaker) {
         this.api = api;
         this.stock = stock;
+        this.consoleApi = consoleApi;
         this.breaker = breaker;
     }
 
@@ -57,17 +60,28 @@ public final class InventoryReservationClient {
                 List.<ClientHttpRequestInterceptor>of(InventoryReservationClient::decodeErrors));
         return new InventoryReservationClient(ServiceClients.create(InventoryReservationApi.class, spec),
                 ServiceClients.create(InventoryStockApi.class, spec),
+                ServiceClients.create(InventoryConsoleApi.class, spec),
                 new CircuitBreaker(breakerThreshold, breakerOpenFor, Clock.systemUTC()));
     }
 
     /** 测试与自定义传输用：直接给 API 实现 */
     public static InventoryReservationClient of(InventoryReservationApi api, CircuitBreaker breaker) {
-        return new InventoryReservationClient(api, null, breaker);
+        return new InventoryReservationClient(api, null, null, breaker);
     }
 
     public static InventoryReservationClient of(InventoryReservationApi api, InventoryStockApi stock,
                                                 CircuitBreaker breaker) {
-        return new InventoryReservationClient(api, stock, breaker);
+        return new InventoryReservationClient(api, stock, null, breaker);
+    }
+
+    public static InventoryReservationClient of(InventoryReservationApi api, InventoryStockApi stock,
+                                                InventoryConsoleApi console, CircuitBreaker breaker) {
+        return new InventoryReservationClient(api, stock, console, breaker);
+    }
+
+    /** 商家后台转发：这个商家（{@code ownerRef}）、这个操作人 */
+    public InventoryConsole console(String ownerRef, String actor) {
+        return new InventoryConsole(consoleApi, this::call, ownerRef, actor);
     }
 
     public InventoryReservationApi.View reserve(String ownerRef, String actor, InventoryReservationApi.Reserve body) {

@@ -3,7 +3,11 @@ package ai.neargo.inventory.svc;
 import ai.neargo.inventory.api.InventoryError;
 import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.client.CircuitBreaker;
+import ai.neargo.inventory.client.InventoryConsole;
+import ai.neargo.inventory.client.InventoryConsoleApi;
 import ai.neargo.inventory.client.InventoryReservationApi;
+import ai.neargo.inventory.domain.dto.InventoryVOs;
+import tools.jackson.core.type.TypeReference;
 import ai.neargo.inventory.client.InventoryReservationClient;
 import ai.neargo.inventory.client.InventoryStockApi;
 import ai.neargo.svc.client.CallOutcome;
@@ -114,7 +118,7 @@ class ReservationClientContractTest {
                 .build();
         HttpServiceProxyFactory proxies = HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rest)).build();
         client = InventoryReservationClient.of(proxies.createClient(InventoryReservationApi.class),
-                proxies.createClient(InventoryStockApi.class),
+                proxies.createClient(InventoryStockApi.class), proxies.createClient(InventoryConsoleApi.class),
                 new CircuitBreaker(3, Duration.ofSeconds(30), Clock.systemUTC()));
     }
 
@@ -191,6 +195,38 @@ class ReservationClientContractTest {
         mvc.perform(post("/api/inventory/v1/system/reservations/ORD-SYS/release")
                         .header("Authorization", ownerBearerOf(merchant)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void merchantConsoleReadsAndWritesGoThroughTheService() {
+        InventoryConsole console = client.console(merchant, "STAFF:E9");
+        InventoryVOs.SummaryVO summary = console.get("/stock/summary",
+                InventoryConsole.params("storeRef", "STORE-1"), InventoryVOs.SummaryVO.class);
+        assertThat(summary.itemCount()).isEqualTo(1);
+        List<InventoryVOs.BalanceVO> balances = console.get("/stock/balances",
+                InventoryConsole.params("filter", "all", "storeRef", "STORE-1", "size", 10), new TypeReference<>() { });
+        assertThat(balances).singleElement().extracting(InventoryVOs.BalanceVO::itemId).isEqualTo(item);
+
+        // 自己的 SKU 有账，别人的 / 不存在的回 null（不泄露存在与否）
+        assertThat(console.get("/stock/item-by-sku", InventoryConsole.params("skuNo", "SKU-9"),
+                InventoryVOs.ItemDetailVO.class)).isNotNull();
+        assertThat(console.get("/stock/item-by-sku", InventoryConsole.params("skuNo", "SKU-NOPE"),
+                InventoryVOs.ItemDetailVO.class)).isNull();
+
+        // 单件改数 → 盘点单 → 流水可查
+        console.post("/stock/adjust", java.util.Map.of("itemId", item, "countedQty", 3, "reasonCode", "OTHER",
+                "storeRef", "STORE-1"));
+        assertThat(sql.queryForObject("select on_hand from inv_stock_balance where item_id = ?",
+                java.math.BigDecimal.class, item)).isEqualByComparingTo("3");
+        InventoryVOs.LedgerPageVO ledger = console.get("/stock/ledger",
+                InventoryConsole.params("itemId", item, "storeRef", "STORE-1"), InventoryVOs.LedgerPageVO.class);
+        assertThat(ledger.entries()).hasSize(2);
+
+        // 端上传来的库位号不是这本账的 → 403
+        assertThatThrownBy(() -> console.get("/stock/balances", InventoryConsole.params("locationId", "LOC-OTHER"),
+                new TypeReference<List<InventoryVOs.BalanceVO>>() { }))
+                .isInstanceOfSatisfying(InventoryException.class,
+                        e -> assertThat(e.error()).isEqualTo(InventoryError.FORBIDDEN));
     }
 
     private String ownerBearerOf(String merchantRef) throws Exception {

@@ -609,6 +609,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-24 | `SerialDocumentFlowTest#cabinetWith48PowerbanksGoesInAndOutByScanningOnlyTheCabinet`（柜 + 48 宝入库，只扫柜码出库，单据逐块 49 件，柜 −1、宝 −48）· `#disassembledPowerbankNoLongerTravelsWithItsCabinet` | ✅ 2026-10-29 | ✅ 去掉下级件展开 → 变红 |
 | AC-25 | `ReservationAndFlipFlowTest#reservationIsAllOrNothingIdempotentAndExpiredByTheJobService`（同单号同内容同一预留、换内容 409、不够全拒、取消释放、到期由任务服务经 `/internal/job/*` 触发回收、密钥不对 401）· `#expirySweepOnlyTouchesOwnersThisProcessWritesFor` | ✅ 2026-10-29（服务侧） | ✅ 去掉回收的写入方过滤 → 变红 |
 | AC-26 | ai-shop `OrderReservationOutboxTest#rollback_expires_and_commit_once` | | |
+| T8.3 后台库存页 | `ReservationClientContractTest#merchantConsoleReadsAndWritesGoThroughTheService`（总览、余额、按 SKU 自己的有账别人的 null、单件改数落盘点并进流水、别家库位号 403）· shop-inventory `BizStockControllerRoutingTest`（已翻商家转发且不碰领域服务、内嵌商家照旧） | ✅ 2026-10-29 | ✅ 去掉入口分流 → 变红 |
 | T8.3 传统下单 | `ReservationClientContractTest#systemLevelActionsByOrderNoTouchOnlyThisSystemsServiceWrittenMerchants`（系统级付款分配 / 出库只动服务侧商家、同单号的内嵌商家不动；回补、改库存按 SKU / 门店；业主凭证调系统级 403）· shop-app `InventoryStockPortRoutingTest`（跨商家分流、服务侧一家失败撤回已占、翻转中拒、纯内嵌订单不调服务）· `InventoryEmbeddedWriterGuardTest`（按 SKU 进来的写也拒、按单号释放不碰服务侧商家） | ✅ 2026-10-29 | ✅ 领域守卫不拦 → 变红；按单号不过滤写入方 → 变红；锁货失败不补偿 → 变红 |
 | T8.3 预留客户端 | `ReservationClientContractTest`（客户端经 MockMvc 打真实控制器：系统凭证 + 商家号、按 SKU / 门店预留、回包带 SKU、缺货原样回来且不计熔断、未翻转业主 409、不存在的业主不被当成「没有预留」）· `CircuitBreakerTest` · shop-app `RoutingInventoryReservationPortTest`（按写入方路由、翻转中拒、`SVC` 没配客户端不回落内嵌、引用与错误码映射） | ✅ 2026-10-29 | ✅ 路由不看写入方 → 2 例变红；系统凭证不查写入方 → 变红 |
 | AC-27 | `ReservationAndFlipFlowTest#flipReconcilesFirstAndRollsBackWhenTheBooksDoNotBalance`（翻到内嵌再翻回账不变、余额被改坏时翻转失败并保持原写入方且列出差异、翻转中两边拒写、翻转中再翻 409）· shop-app `InventoryEmbeddedWriterGuardTest`（业主为 `SVC` / `FLIPPING` 时内嵌解析业主即拒、内嵌回收不碰它） | ✅ 2026-10-29（服务侧 + 内嵌守卫） | ✅ 翻转不看对账结果 → 变红；去掉内嵌守卫 → 变红 |
@@ -747,6 +748,18 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T8.2 确认出事务 | v2 生命周期的确认本来就是写 outbox 命令、事务提交后由 `InventoryMirrorConsumer` 执行；消费者对按单号的五种命令补上服务一侧，失败抛出由 outbox 重投（按单号幂等） | v1 生命周期的确认仍在订单事务里同步调用（与内嵌时期同样不原子）；生产订单为 0，按 v2 推进 |
 | 仍走内嵌、翻转前必须切完的面 | 需求计划端口、生产扣料端口、物料目录端口、商城库存后台 12 个控制器、`invbridge` 的回填 / 健康 / 对账 / 线下销售等 | 一个商家用到的面都切完才能翻；领域守卫保证漏切的面只会报错，不会写坏账 |
 
+### M8 · 商城切流 —— 第四段：商家后台读写全切（2026-10-29，起步：库存页）
+
+裁决（2026-10-29，用户）：商家后台**读写全切** —— 已翻商家的 48 个后台端点全部改调服务，不走「读同库、只切写」。
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| 服务侧 | 每个商城后台控制器对应一个 `/api/inventory/v1/console/...` 控制器，复用同一批领域服务、返回同一批 VO；`storeRef` = 商城当前门店号，经 `HostReferenceService.storeLocationOf`（与内嵌 `locationIdOf` 共用 `StoreLocations.ensure`：门店库位没有就建、默认从主体默认仓发货）落到实际扣库存的库位；端上传来的库位号校验归属 | — |
+| 客户端 | `InventoryConsoleApi`（动态 URI 的通用 GET / POST / PUT / DELETE）+ `InventoryConsole`（按商家号与操作人取得，类型由调用方给，熔断与错误翻译同一套） | 后台端点几十个、返回就是领域 VO，逐个写 `@HttpExchange` 没有收益；VO 目前在 `inventory-domain`，T8.6 删内嵌时整体移到 `inventory-api`（搬家不重写） |
+| 商城 | `InventoryConsoleRoute`：每次现查当前商家写入方 —— 内嵌照旧，`SVC` 转发，翻转中或没配客户端 409；控制器每个端点入口一行分流 | 判权、数据域照旧在商城 `@PreAuthorize` 上做完 |
+| 已切 | `BizStockController` 10 个端点（总览、余额、跨店、可拣、条码、按 SKU、物料详情、流水、单件改数、安全库存） | — |
+| 待切 | `BizStockDocController`（17）、`BizLocationController`（3）、`BizSupplierController`（4）、`BizStockReportController`（4）、`BizInventoryValuationController`（2）、`OpsInventoryController`（2）、`OpsOpenCredentialController`（3）、`OpenInventoryController`（3）；需求计划 / 生产扣料 / 物料目录端口；`invbridge` 其余 | — |
+
 ### M7 · 第二业态：充电桩（2026-10-29，T7.1 ~ T7.3）
 
 | 设计 | 实现 | 偏差与原因 |
@@ -802,3 +815,4 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 2026-10-29 | M8 第一段（服务侧 T8.1、T8.5）完成，后端全量 7004 例 0 失败；T8.2 ~ T8.4 商城侧待第二段，T8.6 待生产观察期 |
 | 2026-10-29 | M8 第二段：D7 系统凭证；预留一条线经客户端跑通（T8.3 部分），后端全量 7011 例 0 失败。其余商城面见 §6 M8 第二段表末行 |
 | 2026-10-29 | M8 第三段：传统下单 `StockPort` 按商家切流，单一写入方守卫下沉到领域写方法，后端全量 7017 例 0 失败 |
+| 2026-10-29 | 裁决：商家后台读写全切；M8 第四段起步，库存页 10 个端点已切，后端全量 7020 例 0 失败 |

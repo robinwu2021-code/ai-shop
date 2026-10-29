@@ -16,6 +16,8 @@ import ai.neargo.inventory.domain.service.ItemService;
 import ai.neargo.inventory.domain.service.LocationService;
 import ai.neargo.inventory.domain.service.StockCountService;
 import ai.neargo.inventory.domain.service.StockQueryService;
+import ai.neargo.shop.inventory.route.InventoryConsoleRoute;
+import tools.jackson.core.type.TypeReference;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +29,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+
+import static ai.neargo.inventory.client.InventoryConsole.params;
 
 /**
  * 商家端 · 库存（s01 库存 · s02 明细）。
@@ -51,20 +55,24 @@ public class BizStockController {
     private final ItemService items;
     private final InventoryAclService acl;
     private final LocationService locations;
+    /** 切流（M8）：已翻到库存服务的商家，每个端点转给服务的 /console/stock，返回结构相同 */
+    private final InventoryConsoleRoute route;
 
     public BizStockController(StockQueryService query, StockCountService counts,
                               ItemService items, InventoryAclService acl,
-                              LocationService locations) {
+                              LocationService locations, InventoryConsoleRoute route) {
         this.query = query;
         this.counts = counts;
         this.items = items;
         this.acl = acl;
         this.locations = locations;
+        this.route = route;
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/summary")
     public SummaryVO summary() {
+        if (route.remote()) return route.via(c -> c.get("/stock/summary", params("storeRef", route.store()), SummaryVO.class));
         return query.summary(owner(), location());
     }
 
@@ -80,6 +88,8 @@ public class BizStockController {
     public List<BalanceVO> balances(@RequestParam(required = false) String filter,
                                     @RequestParam(required = false) String locationId,
                                     @RequestParam(defaultValue = "50") int size) {
+        if (route.remote()) return route.via(c -> c.get("/stock/balances", params("filter", filter,
+                "locationId", locationId, "storeRef", route.store(), "size", size), new TypeReference<List<BalanceVO>>() { }));
         return query.balances(owner(), locationOr(locationId), filter, Math.min(size, PAGE_MAX));
     }
 
@@ -97,6 +107,8 @@ public class BizStockController {
     @GetMapping("/biz/inventory/cross-store")
     public List<CrossStoreVO> crossStore(@RequestParam(required = false) String filter,
                                          @RequestParam(defaultValue = "50") int size) {
+        if (route.remote()) return route.via(c -> c.get("/stock/cross-store", params("filter", filter, "size", size),
+                new TypeReference<List<CrossStoreVO>>() { }));
         return query.crossStore(owner(), filter, Math.min(size, PAGE_MAX));
     }
 
@@ -111,6 +123,8 @@ public class BizStockController {
     @GetMapping("/biz/inventory/pickable")
     public List<BalanceVO> pickable(@RequestParam(required = false) String q,
                                     @RequestParam(defaultValue = "200") int size) {
+        if (route.remote()) return route.via(c -> c.get("/stock/pickable", params("q", q, "storeRef", route.store(),
+                "size", size), new TypeReference<List<BalanceVO>>() { }));
         return query.pickableItems(owner(), location(), q, Math.min(size, PAGE_MAX));
     }
 
@@ -130,6 +144,8 @@ public class BizStockController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/items/by-barcode")
     public BalanceVO byBarcode(@RequestParam String code) {
+        if (route.remote()) return route.via(c -> c.get("/stock/items/by-barcode",
+                params("code", code, "storeRef", route.store()), BalanceVO.class));
         return query.byBarcode(owner(), location(), code);
     }
 
@@ -152,6 +168,7 @@ public class BizStockController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/item-by-sku")
     public ItemDetailVO itemBySku(@RequestParam String skuNo) {
+        if (route.remote()) return route.via(c -> c.get("/stock/item-by-sku", params("skuNo", skuNo), ItemDetailVO.class));
         String ownerId = owner();
         String itemId = acl.itemIdOfSku(skuNo);
         if (itemId == null) {
@@ -175,6 +192,7 @@ public class BizStockController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @GetMapping("/biz/inventory/items/{itemId}")
     public ItemDetailVO item(@PathVariable String itemId) {
+        if (route.remote()) return route.via(c -> c.get("/stock/items/" + itemId, params(), ItemDetailVO.class));
         return query.itemDetail(owner(), itemId);
     }
 
@@ -184,6 +202,8 @@ public class BizStockController {
                                @RequestParam(required = false) String docNo,
                                @RequestParam(required = false) Long cursor,
                                @RequestParam(defaultValue = "20") int size) {
+        if (route.remote()) return route.via(c -> c.get("/stock/ledger", params("itemId", itemId, "docNo", docNo,
+                "cursor", cursor, "storeRef", route.store(), "size", size), LedgerPageVO.class));
         return query.ledger(owner(), itemId, docNo, location(), cursor, Math.min(size, PAGE_MAX));
     }
 
@@ -191,11 +211,20 @@ public class BizStockController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PostMapping("/biz/inventory/adjust")
     public void adjust(@RequestBody AdjustReq req) {
+        if (route.remote()) {
+            route.run(c -> c.post("/stock/adjust", new RemoteAdjust(req.itemId(), req.countedQty(), req.reasonCode(),
+                    route.store())));
+            return;
+        }
         counts.adjustOne(owner(), location(), req.itemId(), req.countedQty(),
                 req.reasonCode(), SecurityUtils.currentUserNo());
     }
 
     public record AdjustReq(String itemId, int countedQty, String reasonCode) {
+    }
+
+    /** 转给服务时多带当前门店号 */
+    record RemoteAdjust(String itemId, int countedQty, String reasonCode, String storeRef) {
     }
 
     /**
@@ -217,6 +246,10 @@ public class BizStockController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     @PutMapping("/biz/inventory/safety-stock")
     public void safetyStock(@RequestBody SafetyStockReq req) {
+        if (route.remote()) {
+            route.run(c -> c.put("/stock/safety-stock", req));
+            return;
+        }
         items.setSafetyStock(owner(), req.itemId(), req.locationId(), req.qty(),
                 SecurityUtils.currentUserNo());
     }

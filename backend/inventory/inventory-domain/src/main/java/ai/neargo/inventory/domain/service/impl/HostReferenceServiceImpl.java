@@ -65,6 +65,14 @@ public class HostReferenceServiceImpl implements HostReferenceService {
     }
 
     @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String storeLocationOf(String ownerId, String storeRef) {
+        String location = storeRef == null || storeRef.isBlank() ? locations.defaultLocation(ownerId)
+                : StoreLocations.ensure(locationMapper, locations, ownerId, storeRef);
+        return locations.resolveStockLocation(ownerId, location);
+    }
+
+    @Override
     // 不是只读：默认库位第一次用到时才建（LocationService.defaultLocation）
     @Transactional(transactionManager = "invTransactionManager")
     public String stockLocationOf(String ownerId, String locationRef) {

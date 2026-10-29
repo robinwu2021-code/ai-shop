@@ -37,6 +37,11 @@
             <artifactId>inventory-domain</artifactId>
         </dependency>
         <dependency>
+            <!-- 切流（ADR-046 M8）：已翻到库存服务的商家，后台接口转发给服务 -->
+            <groupId>ai.neargo.inventory</groupId>
+            <artifactId>inventory-client</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>test</scope>
