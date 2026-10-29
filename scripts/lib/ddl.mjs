@@ -27,7 +27,7 @@ export const MIGRATION_DIR = "backend/shop-app/src/main/resources/db/migration";
  * python 对照）都只认 ai_shop 那一套，混进去会让它们凭空多出 17 张表。
  * 需要它的只有两条守卫（实体对齐 / DDL 可解析），它们显式传第二个参数。
  */
-export const INVENTORY_MIGRATION_DIR = "backend/shop-inventory/src/main/resources/db/inventory";
+export const INVENTORY_MIGRATION_DIR = "backend/inventory/inventory-domain/src/main/resources/db/inventory";
 
 /**
  * 支付库的迁移目录（db/pay，另一条 Flyway 历史，独立部署时是 ai_shop_pay 库）。

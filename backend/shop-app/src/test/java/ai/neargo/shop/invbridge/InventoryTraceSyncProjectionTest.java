@@ -3,7 +3,7 @@ package ai.neargo.shop.invbridge;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
-import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
+import ai.neargo.inventory.domain.service.InventoryOrderTraceService;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;

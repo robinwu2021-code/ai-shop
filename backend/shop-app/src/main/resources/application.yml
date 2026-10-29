@@ -706,6 +706,27 @@ shop:
 #
 # **不动 `org.springframework.boot.tomcat`**：「Tomcat started on port 8081」那行是启动地标，
 # 出事时用来判断"进程到底起没起来"，不是噪音。规范说的"Tomcat 降 WARN"指的是容器内部。
+
+# 进销存独立服务的领域包读 inventory.*（ADR-046）。商城过渡期内嵌，部署、测试与菜单开关
+# （sys_function_point.gated_by）认的仍是 shop.inventory.* —— 在这里一对一桥接，存量配置一个字都不用改。
+# 商城切流（M8）后内嵌装配删除，这一段随之删除。
+inventory:
+  enabled: ${shop.inventory.enabled:false}
+  flyway-enabled: ${shop.inventory.flyway-enabled:true}
+  flyway-locations: ${shop.inventory.flyway-locations:classpath:db/inventory}
+  datasource:
+    url: ${shop.inventory.datasource.url:}
+    username: ${shop.inventory.datasource.username:}
+    password: ${shop.inventory.datasource.password:}
+    max-pool-size: ${shop.inventory.datasource.max-pool-size:8}
+  reserve:
+    max-ttl-seconds: ${shop.inventory.reserve.max-ttl-seconds:86400}
+  jobs:
+    enabled: ${shop.job.enabled:false}
+    outbox-cron: ${shop.job.inv-outbox.cron:*/5 * * * * *}
+    snapshot-cron: ${shop.job.inv-snapshot.cron:0 30 3 * * *}
+    reservation-expiry-cron: ${shop.job.inv-reservation-expiry.cron:0 * * * * *}
+
 logging:
   level:
     com.zaxxer.hikari: WARN

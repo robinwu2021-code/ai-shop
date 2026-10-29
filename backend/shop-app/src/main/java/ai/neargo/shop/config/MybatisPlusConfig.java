@@ -26,6 +26,10 @@ import org.springframework.context.annotation.Import;
  *
  * 两头夹：这里排除，那边按 inventory.mapper 包显式绑到 invSqlSessionFactory。
  * 少任何一头都只在跑到那一行时才炸。
+ *
+ * 2026-10-29 起进销存的 Mapper 已搬进独立服务（ai.neargo.inventory.domain.mapper，ADR-046），
+ * 不在本扫描根之下，天然够不着；下面排除规则里的 inventory 留给 ai-shop 侧的适配包
+ * （ai.neargo.shop.inventory），防止将来有人在那里放 Mapper。
  */
 @MapperScan(basePackages = "ai.neargo.shop",
         markerInterface = com.baomidou.mybatisplus.core.mapper.BaseMapper.class,

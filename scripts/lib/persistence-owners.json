@@ -430,45 +430,45 @@
     "modelSymbol": "Map<String,Object>"
   },
   "inv_demand_plan": {
-    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
-    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "owner": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
+    "querySource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "modelSource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
     "modelSymbol": "Head"
   },
   "inv_demand_leaf": {
-    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
-    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "owner": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
+    "querySource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "modelSource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
     "modelSymbol": "Leaf"
   },
   "inv_demand_operation": {
-    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
-    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "owner": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
+    "querySource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "modelSource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
     "modelSymbol": "Operation"
   },
   "inv_stock_lot": {
-    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
-    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "owner": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
+    "querySource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryDemandPlanMapper.java",
+    "modelSource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryDemandPlanMapper.java",
     "modelSymbol": "Lot"
   },
   "inv_production_operation": {
-    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryProductionMapper.java",
-    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryProductionMapper.java",
+    "owner": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryProductionMapper.java",
+    "querySource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryProductionMapper.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryProductionMapper.java",
+    "modelSource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryProductionMapper.java",
     "modelSymbol": "Operation"
   },
   "inv_item_valuation_history": {
-    "owner": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryExactSupportMapper.java",
-    "querySource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryExactSupportMapper.java",
+    "owner": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryExactSupportMapper.java",
+    "querySource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryExactSupportMapper.java",
     "rowShape": "RECORD",
-    "modelSource": "backend/shop-inventory/src/main/java/ai/neargo/shop/inventory/mapper/InventoryExactSupportMapper.java",
+    "modelSource": "backend/inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/mapper/InventoryExactSupportMapper.java",
     "modelSymbol": "HistoryRow"
   }
 }

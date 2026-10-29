@@ -3,9 +3,9 @@ package ai.neargo.shop.scenario;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.common.pricing.TaxClass;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.StockPostingService;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemMapper;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.StockPostingService;
 import ai.neargo.shop.product.dto.GoodsPricingPolicyCommands;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -145,7 +145,7 @@ final class FoodComplexDishNativeScenario {
             var mapper = f.context.getBean(ItemMapper.class);
             var row =
                     mapper.selectOne(
-                            new QueryWrapper<ai.neargo.shop.inventory.entity.InvItem>()
+                            new QueryWrapper<ai.neargo.inventory.domain.entity.InvItem>()
                                     .eq("item_id", item));
             row.setWeighed(1);
             mapper.updateById(row);

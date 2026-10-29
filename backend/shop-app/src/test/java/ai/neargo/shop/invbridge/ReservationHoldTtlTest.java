@@ -2,9 +2,9 @@ package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.invbridge.port.InventoryStockPort;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.LocationService;
-import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.LocationService;
+import ai.neargo.inventory.domain.service.ReservationService;
 import ai.neargo.shop.spi.product.StockPort.SkuQty;
 import ai.neargo.shop.trade.service.CloseRuleService;
 import org.junit.jupiter.api.DisplayName;

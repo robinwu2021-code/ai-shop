@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import ai.neargo.shop.inventory.mapper.InventoryDemandPlanMapper;
+import ai.neargo.inventory.domain.mapper.InventoryDemandPlanMapper;
 import ai.neargo.shop.inventory.port.InventoryDemandPlanPortImpl;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Target;
 import ai.neargo.shop.spi.inventory.InventoryReservationPort.Scope;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.StockPostingService;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

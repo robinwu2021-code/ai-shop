@@ -1,6 +1,6 @@
 package ai.neargo.shop.arch;
 
-import ai.neargo.shop.inventory.service.StockCountService;
+import ai.neargo.inventory.domain.service.StockCountService;
 import ai.neargo.shop.invbridge.InventoryMirrorConsumer;
 import ai.neargo.shop.invbridge.InventoryTraceSyncProjection;
 import ai.neargo.shop.portal.biz.BizOrderInventoryTraceController;
@@ -64,13 +64,13 @@ class InventoryDisabledContextTest {
          * 留下任何一个，它迟早会去要一个不存在的 Mapper —— 那正是这次的形状。
          */
         assertThat(ctx.getBeanNamesForType(
-                ai.neargo.shop.inventory.service.StockQueryService.class))
+                ai.neargo.inventory.domain.service.StockQueryService.class))
                 .as("进销存关着时不该有本域的 Service").isEmpty();
         assertThat(ctx.getBeanNamesForType(
-                ai.neargo.shop.inventory.service.InventorySnapshotService.class))
+                ai.neargo.inventory.domain.service.InventorySnapshotService.class))
                 .as("日快照也不例外 —— 这次就是它把上下文拖垮的").isEmpty();
         assertThat(ctx.getBeanNamesForType(
-                ai.neargo.shop.inventory.service.OpenApiCredentialService.class))
+                ai.neargo.inventory.domain.service.OpenApiCredentialService.class))
                 .as("凭证服务同上").isEmpty();
         assertThat(ctx.getBeanNamesForType(StockCountService.class))
                 .as("库存镜像消费者依赖盘点服务，进销存关闭时也必须一并关闭").isEmpty();

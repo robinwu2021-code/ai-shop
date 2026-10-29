@@ -5,7 +5,7 @@ import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Instant;
 import ai.neargo.shop.event.OutboxEventBus;
-import ai.neargo.shop.inventory.service.InventoryEventSink;
+import ai.neargo.inventory.domain.service.InventoryEventSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

@@ -4,12 +4,12 @@ import ai.neargo.shop.invbridge.GoodsChainService;
 import ai.neargo.shop.invbridge.MerchantChainService.Stuck;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
-import ai.neargo.shop.inventory.entity.InvItemRef;
-import ai.neargo.shop.inventory.entity.InvOwner;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OwnerMapper;
-import ai.neargo.shop.inventory.service.StockQueryService;
+import ai.neargo.inventory.domain.dto.InventoryVOs.BalanceVO;
+import ai.neargo.inventory.domain.entity.InvItemRef;
+import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemRefMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
+import ai.neargo.inventory.domain.service.StockQueryService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;

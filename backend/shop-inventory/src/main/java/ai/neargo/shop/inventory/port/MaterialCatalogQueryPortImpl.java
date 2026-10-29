@@ -3,8 +3,8 @@ package ai.neargo.shop.inventory.port;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.mapper.InventoryExactSupportMapper;
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.mapper.InventoryExactSupportMapper;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.spi.inventory.MaterialCatalogFacts;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
 

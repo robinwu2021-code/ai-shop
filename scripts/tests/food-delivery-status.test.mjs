@@ -44,7 +44,7 @@ test('committed domain OpenAPI references resolve to actual local definitions',(
 test('generated headers discover current source migrations separately from recorded production baseline',()=>{
  const latest=dir=>Math.max(...fs.readdirSync(new URL('../../'+dir+'/',import.meta.url)).map(n=>Number(/^V(\d+)__/.exec(n)?.[1]||0)));
  const core=latest('backend/shop-app/src/main/resources/db/migration');
- const inventory=latest('backend/shop-inventory/src/main/resources/db/inventory');
+ const inventory=latest('backend/inventory/inventory-domain/src/main/resources/db/inventory');
  const doc=fs.readFileSync(new URL('../../docs/technical/design/餐饮系统-API设计.md',import.meta.url),'utf8');
  assert.ok(doc.includes(`源码迁移目标 FOOD V25 / CORE V${core} / INVENTORY V${inventory}`));
 });

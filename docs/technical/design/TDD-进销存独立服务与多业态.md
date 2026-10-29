@@ -434,7 +434,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 修改 | 订单侧 `stockPort.confirm` 调用点 | M8：移出事务，写 Outbox |
 | 修改 | `backend/pom.xml` | 聚合 `inventory`；`inventory.version` 属性 |
 | 修改 | `.githooks/pre-push` | I1 ~ I4 |
-| 新增 | `deploy/tencent/systemd/neargo-inventory-shop.service` · `neargo-inventory-device.service` · `inventory.env.example` | 照 `ai-shop-pay.service` 同形；测试环境用 `neargo-inventory.service` |
+| 新增 | `deploy/tencent/systemd/neargo-inventory@.service`（模板单元，`@shop` / `@device` / `@test`）· `backend/inventory/deploy/inventory.env.example` | 照 `ai-shop-pay.service` 同形；同一程序包按实例名起多套 |
 | 修改 | `deploy/tencent/backup-to-cos.sh` | `DBS` 加设备套的库 |
 
 ### 2.16 ai-shop 侧留下什么
@@ -604,17 +604,39 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-19 | `WriteAuthorityTest#non_writer_rejected` | | |
 | AC-20 | `CoreScenarioSuite`（内嵌 / 独立两种装配） | | |
 | AC-21 | pre-push I1（删本地 shop 构件后构建） | | |
-| AC-22 | `InventoryArchitectureTest` + enforcer（加一行 shop import / 依赖） | | 本条即消融 |
+| AC-22 | `InventoryArchitectureTest#inventoryDoesNotDependOnShopCode` + `scripts/check-inventory-independence.mjs` + enforcer | ✅ 2026-10-29 | ✅ 临时加一行 `import ai.neargo.shop.common.BizException` 与一个指出目录的链接 → 脚本报 2 处、退出 1 |
 | AC-23 | `DependencyTreeTest#no_redis_security_shop` | | |
 | AC-24 | `SerialExpansionTest#scan_cabinet_expands_children` | | |
 | AC-25 | `ReservationTest#idempotent_and_expires` | | |
 | AC-26 | ai-shop `OrderReservationOutboxTest#rollback_expires_and_commit_once` | | |
 | AC-27 | `WriteAuthorityFlipTest#flip_and_back_consistent` | | |
-| AC-28 | `InstanceGuardTest#system_not_served_403` + 生产形态演练 | | |
+| AC-28 | `InstanceGuardTest`（4 例：设备凭证打电商套、电商凭证打设备套、测试套全放行、空放行表全拒）+ 生产形态演练（M6） | ✅ 判定部分 2026-10-29；接入过滤器待 M2 | |
+| I5 | `StandaloneContextTest`（空库、只连库存库、进程内 0 个 `ai.neargo.shop.*` Bean） | ✅ 2026-10-29 | |
+| M1 零行为变化 | 商城进销存相关 199 例 + 后端全量（`mvn -o test`，全部模块 SUCCESS、0 失败） | ✅ 2026-10-29 | |
+| M1 错误码 | `InventoryErrorsTest`（映射逐个与搬迁前相同、Advisor 翻译并保留参数） | ✅ 2026-10-29 | ✅ 把 `STOCK_SHORT` 映到 `CONFLICT` → 2 例变红 |
+| M1 复制规则 | `DomainRuleParityTest`（规范哈希、凭证哈希、精确数量、物料规则与原件逐一比对） | ✅ 2026-10-29 | |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
 按里程碑贴 `git show --stat <提交>`，与 §2.15 逐行比；差异与偏差写在这里。
+
+### M1 · 脱离 ai-shop（2026-10-29，T1.1 ~ T1.6）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| `backend/inventory/` 五模块，父 `neargo-build-parent` | 已建：`inventory-{api,domain,guard,svc,client}`；`backend/pom.xml` 只聚合 | — |
+| 领域代码改包移入 `inventory-domain` | 79 个类 + 15 个迁移 `git mv`，包 `ai.neargo.inventory.domain.*`；`inv_flyway_history` 不变 | — |
+| §1.3 的 28 个外部类逐类替换 | `BizException / ErrorCode` → `InventoryException / InventoryError`（`inventory-api`）；`PricingSnapshotHash`、`InventoryDemandPlanFacts.quantity`、`MaterialCatalog*` 的校验、`PasswordHasher` → 本服务 `support` 下的复制品；`JobSupport` → SPI `InventoryJobRunner`；`UnifiedOutboxFacade` → SPI `InventoryEventRelay`；`RetryPolicy` → `RetryBackoff` | **复制而非依赖**：四条规则与原件逐字节一致由 `shop-inventory` 的 `DomainRuleParityTest` 守住。`SecretHasher` **不认一期占位哈希**（凭证从来都是 BCrypt；占位哈希只准留在商城口令哈希里，`ArchitectureTest#legacyPasswordHashIsContained`） |
+| `MaterialCatalogQueryPort` 反转为商城推送 | 未做 | 搬迁时发现领域里只用到它的**静态校验**，不是反向调用；推送改造归 M2 T2.4 |
+| 错误码在边界翻译 | `shop-inventory` 的 `InventoryEmbeddingConfiguration`：基础设施 Advisor 包在领域 service 外层，`InventoryException` → 原商城码 | 用 Spring 自带 Advisor 而不是 AspectJ（ai-shop 没引 AspectJ）；`InventoryErrorsTest` 守映射与翻译 |
+| 配置改 `inventory.*`，旧键兼容 | `shop-app/application.yml` 一对一桥接 `shop.inventory.*`、`shop.job.*` → `inventory.*` | 商城侧开关仍认 `shop.inventory.enabled`：恢复了商城自己的 `ConditionalOnInventory`（菜单门控 `gated_by` 与部署都是这个键） |
+| 内嵌装配 | 领域经 `InventoryDomainAutoConfiguration`（自动装配）进入 shop-app；`ShopInventoryJobRunner`、`UnifiedOutboxEventRelay` 接商城的任务记录与统一出站表 | — |
+| `inventory-guard` 凭证解析 | 只做了 `InstanceProperties` + `InstanceGuard`（AC-28 的判定） | 凭证模型升级在 M2 T2.1，届时接进过滤器 |
+| `inventory-svc` | 启动类、`/actuator/info` 报实例代号与放行系统、`StandaloneContextTest`（I5） | — |
+| systemd 两个单元 | 一个模板单元 `neargo-inventory@.service`，`@shop / @device / @test` | 同一程序包按实例名起，比三个几乎相同的单元文件少一处漂移 |
+| 闸门 I1 ~ I4 | I2 `InventoryArchitectureTest`（字节码）+ `check-inventory-independence.mjs`（源码，含 I3、I4，已挂 pre-push）；I3 enforcer；I5 `StandaloneContextTest` | I1「删本地 shop 构件后构建」未自动化：enforcer 已在构建期禁 shop 构件，删 `.m2` 的做法会破坏共享机器的本地仓库 |
+| I6 核心用例两种装配各跑一遍 | 未做 | 归 M2：先有独立形态的 HTTP 入口才有第二种装配可跑 |
+| 路径类引用 | 脚本与棘轮里 9 处 `backend/shop-inventory/.../db/inventory` 改为新路径（`known-sql-dialect.txt` 两条只是改名，条数不变）；新增 `inventory-svc` 的 H2 测试库生成登记 | — |
 
 ## §7 确认与完成
 

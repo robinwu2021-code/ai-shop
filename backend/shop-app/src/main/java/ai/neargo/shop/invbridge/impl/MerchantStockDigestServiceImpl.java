@@ -3,12 +3,12 @@ package ai.neargo.shop.invbridge.impl;
 import ai.neargo.shop.invbridge.MerchantStockDigestService;
 
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.inventory.dto.InventoryVOs.SummaryVO;
-import ai.neargo.shop.inventory.entity.InvLedger;
-import ai.neargo.shop.inventory.entity.InvOwner;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OwnerMapper;
-import ai.neargo.shop.inventory.service.StockQueryService;
+import ai.neargo.inventory.domain.dto.InventoryVOs.SummaryVO;
+import ai.neargo.inventory.domain.entity.InvLedger;
+import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
+import ai.neargo.inventory.domain.service.StockQueryService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;

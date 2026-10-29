@@ -141,7 +141,13 @@ const GENERATORS = [
   ["backend/scripts/gen-test-schema.py",
    ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql"],
    ["backend/shop-app/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql",
-    "backend/shop-inventory/src/main/resources/db/inventory"]],
+    "backend/inventory/inventory-domain/src/main/resources/db/inventory"]],
+  // 进销存独立服务自己的那份（空库启动测试用）。不复用 shop-app 那份：
+  // 独立服务的目录要能整体搬走，测试资源不许指向目录外（TDD-进销存独立服务与多业态 §2.1 闸门 I4）
+  ["backend/scripts/gen-test-schema.py",
+   ["backend/inventory/inventory-svc/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql"],
+   ["backend/inventory/inventory-svc/src/test/resources/db/inventory-h2/V1__inventory_baseline.sql",
+    "backend/inventory/inventory-domain/src/main/resources/db/inventory"]],
   // 元器件的 ER 图与测试库结构两项 2026-09-30 随元器件迁到 ai-hxkey（它自己的 pre-push 里跑）
 ];
 

@@ -2,11 +2,11 @@ package ai.neargo.shop.invbridge.port;
 
 import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
 import ai.neargo.shop.invbridge.ReservationHoldTtl;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.LocationService;
-import ai.neargo.shop.inventory.service.ReservationService;
-import ai.neargo.shop.inventory.service.ReturnReceiptService;
-import ai.neargo.shop.inventory.service.StockCountService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.LocationService;
+import ai.neargo.inventory.domain.service.ReservationService;
+import ai.neargo.inventory.domain.service.ReturnReceiptService;
+import ai.neargo.inventory.domain.service.StockCountService;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.event.OutboxEventBus;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

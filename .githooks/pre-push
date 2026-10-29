@@ -231,6 +231,13 @@ if ! gate_run node scripts/check-sql-portability.mjs --check; then
   exit 1
 fi
 
+# 进销存独立服务（ADR-046）：backend/inventory/ 不许 import 商城代码、不许依赖 ai-shop 构件
+# （白名单只有 job-api、svc-client）、不许有指出目录的相对路径 —— 它要能整目录搬走。
+# 每一次越界都局部合理，攒到第三次就搬不走了，而构建不会报错。纯读文件，几十毫秒。
+if ! gate_run node scripts/check-inventory-independence.mjs; then
+  exit 1
+fi
+
 # 生成物有没有跟着源码走。**在本条之前只有界面清单有闸门**，
 # 其余五个生成器谁都不盯，于是一直在漂：2026-08-26 重跑一次，
 # API 清单 +51/−16、B 端功能点矩阵 +192/−69。

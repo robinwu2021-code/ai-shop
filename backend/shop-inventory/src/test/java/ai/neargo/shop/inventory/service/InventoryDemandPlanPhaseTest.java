@@ -10,13 +10,15 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.inventory.mapper.InventoryDemandPlanMapper;
-import ai.neargo.shop.inventory.mapper.InventoryDemandPlanMapper.Head;
-import ai.neargo.shop.inventory.mapper.InventoryDemandPlanMapper.Leaf;
+import ai.neargo.inventory.domain.mapper.InventoryDemandPlanMapper;
+import ai.neargo.inventory.domain.mapper.InventoryDemandPlanMapper.Head;
+import ai.neargo.inventory.domain.mapper.InventoryDemandPlanMapper.Leaf;
 import ai.neargo.shop.inventory.port.InventoryDemandPlanPortImpl;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Target;
 import ai.neargo.shop.spi.inventory.InventoryReservationPort.Scope;
 import ai.neargo.shop.spi.inventory.MaterialCatalogQueryPort;
+import ai.neargo.inventory.domain.service.StockPostingService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 
 import org.junit.jupiter.api.Test;
 

@@ -3,7 +3,7 @@ package ai.neargo.shop.portal.biz;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
+import ai.neargo.inventory.domain.service.InventoryOrderTraceService;
 import ai.neargo.shop.invbridge.InventoryTraceSyncProjection;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.service.MerchantOrderService;

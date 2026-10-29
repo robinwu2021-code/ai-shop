@@ -1,6 +1,6 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
 import org.junit.jupiter.api.DisplayName;
@@ -57,7 +57,7 @@ class StoreLevelAccessFlowTest {
     @Autowired
     private InventoryAclService acl;
     @Autowired
-    private ai.neargo.shop.inventory.service.LocationService locations;
+    private ai.neargo.inventory.domain.service.LocationService locations;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

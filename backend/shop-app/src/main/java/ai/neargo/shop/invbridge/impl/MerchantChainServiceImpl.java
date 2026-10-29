@@ -2,12 +2,12 @@ package ai.neargo.shop.invbridge.impl;
 
 import ai.neargo.shop.invbridge.MerchantChainService;
 
-import ai.neargo.shop.inventory.entity.InvItemRef;
-import ai.neargo.shop.inventory.entity.InvLedger;
-import ai.neargo.shop.inventory.entity.InvOwner;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.OwnerMapper;
+import ai.neargo.inventory.domain.entity.InvItemRef;
+import ai.neargo.inventory.domain.entity.InvLedger;
+import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemRefMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.product.entity.PrdGoods;

@@ -682,7 +682,7 @@ const ENTITY_MAP = {
 
   // ── 2026-08-30 进销存这一批 ──
   //
-  // 这些实体的表在**第二个库**（backend/shop-inventory/.../db/inventory），
+  // 这些实体的表在**第二个库**（backend/inventory/inventory-domain/.../db/inventory），
   // 而本文件此前只读平台那一条 Flyway 历史 —— 于是整个域被报成
   // 「契约有类型、库里无承载（阻塞）」，**结论正好反了**：表都建好了。
   // 20 条假阻塞把真的那几条淹掉，这正是这份清单最怕的形状。

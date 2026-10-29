@@ -1,0 +1,39 @@
+# 进销存独立服务（ADR-046）。**一个模板单元，按实例名起多套**：
+#   systemctl enable --now neargo-inventory@device   # 生产 · 设备套（ShareHub、充电桩），M6
+#   systemctl enable --now neargo-inventory@shop     # 生产 · 电商套，M8
+#   systemctl enable --now neargo-inventory@test     # 测试环境（一套放行全部系统）
+# 三者是同一个程序包；差异全部在各自的 inventory.env 里（实例代号、放行系统、库、端口）。
+# 样例：backend/inventory/deploy/inventory.env.example；执行方案 §二 有逐项说明。
+#
+# 安装位置：/etc/systemd/system/neargo-inventory@.service（源文件在仓库 deploy/tencent/systemd/）
+[Unit]
+Description=neargo inventory service (%i)
+# 依赖跟着数据源走（ai-shop-pay.service 的教训：写错了「停库」这件事根本不成立）
+After=network.target mysql97.service
+Requires=mysql97.service
+
+[Service]
+User=deploy
+Group=deploy
+WorkingDirectory=/data/app/neargo/inventory-%i
+EnvironmentFile=/data/app/neargo/inventory-%i/inventory.env
+Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+# 日志：logback 自己滚动、总量封顶（运维-目录与日志方案）
+Environment=LOGGING_FILE_NAME=/data/log/neargo/inventory-%i/inventory.log
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE=10MB
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_MAX_HISTORY=30
+Environment=LOGGING_LOGBACK_ROLLINGPOLICY_TOTAL_SIZE_CAP=50MB
+Environment=LOGGING_THRESHOLD_CONSOLE=ERROR
+ExecStartPre=/bin/mkdir -p /data/log/neargo/inventory-%i
+
+# 堆 384m：负荷很低；单机 7.5 GB 上与主应用、支付、任务、ShareHub 并存（执行方案「内存预算」）
+ExecStart=/usr/lib/jvm/java-21-openjdk-amd64/bin/java -Xms128m -Xmx384m -jar /data/app/neargo/inventory-%i/inventory-svc.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

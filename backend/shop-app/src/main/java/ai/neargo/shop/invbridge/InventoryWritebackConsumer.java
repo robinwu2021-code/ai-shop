@@ -3,7 +3,7 @@ package ai.neargo.shop.invbridge;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.support.InvEnums;
+import ai.neargo.inventory.domain.support.InvEnums;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

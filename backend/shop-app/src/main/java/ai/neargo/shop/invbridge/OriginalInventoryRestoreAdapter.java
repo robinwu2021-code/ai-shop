@@ -1,9 +1,9 @@
 package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.OriginalReservationRestoreService;
-import ai.neargo.shop.inventory.service.OriginalReservationRestoreService.ItemQty;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.OriginalReservationRestoreService;
+import ai.neargo.inventory.domain.service.OriginalReservationRestoreService.ItemQty;
 import ai.neargo.shop.spi.product.StockPort.SkuQty;
 import java.util.List;
 import org.springframework.stereotype.Component;

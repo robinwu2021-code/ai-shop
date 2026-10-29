@@ -1,6 +1,6 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.inventory.domain.service.ReservationService;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -44,7 +44,7 @@ class InventoryReserveTtlCapTest {
     private ReservationService reservations;
 
     @Autowired
-    private ai.neargo.shop.inventory.service.InventoryAclService acl;
+    private ai.neargo.inventory.domain.service.InventoryAclService acl;
 
     @Test
     @DisplayName("★★★ 超长 TTL 被拒 —— 预留期间那批货谁也买不走，而到期释放是静默的")

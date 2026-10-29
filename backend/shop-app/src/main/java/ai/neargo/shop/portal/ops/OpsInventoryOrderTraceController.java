@@ -2,7 +2,7 @@ package ai.neargo.shop.portal.ops;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
+import ai.neargo.inventory.domain.service.InventoryOrderTraceService;
 import ai.neargo.shop.invbridge.InventoryTraceSyncProjection;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;

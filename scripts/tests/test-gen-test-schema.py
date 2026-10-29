@@ -17,7 +17,7 @@ spec.loader.exec_module(generator)
 class StatementBoundaryTest(unittest.TestCase):
     def test_actual_inventory_comment_semicolon_preserves_column_widening(self):
         tables, order, seeds, renames, altered = {}, [], [], {}, set()
-        inventory = ROOT / 'backend/shop-inventory/src/main/resources/db/inventory'
+        inventory = ROOT / 'backend/inventory/inventory-domain/src/main/resources/db/inventory'
         generator.replay((inventory / 'V1__inventory_baseline.sql').read_text(),
                          tables, order, seeds, renames, altered)
         generator.replay((inventory / 'V15__production_ledger_reason_width.sql').read_text(),

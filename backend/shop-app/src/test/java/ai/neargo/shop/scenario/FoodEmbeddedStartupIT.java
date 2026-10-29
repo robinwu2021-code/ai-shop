@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.ShopApplication;
 import ai.neargo.shop.idem.SysIdempotentMapper;
-import ai.neargo.shop.inventory.mapper.InventoryExactSupportMapper;
+import ai.neargo.inventory.domain.mapper.InventoryExactSupportMapper;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
 import ai.neargo.shop.trade.mapper.IndustryPartialFulfillmentMapper;
 

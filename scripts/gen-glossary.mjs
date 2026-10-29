@@ -516,9 +516,15 @@ function collectMaven() {
    * 为什么拦得这么死：模块里写的版本在 shop-app 里根本不生效（根工程继承的 Boot BOM
    * 覆盖传递依赖声明的版本），它只会让模块测试与发布物跑两个版本，而 Maven 一个字不报。
    */
+  /*
+   * 独立父工程：进销存独立服务（ADR-046）的父 POM 是 neargo-build-parent，不继承 backend/pom.xml，
+   * backend/pom.xml 只聚合它。它的版本只能管在它自己的父 POM 里 —— 等价于 backend/pom.xml 之于商城。
+   * 它的子模块照旧一条版本都不许写（下面的规则对它们一样生效）。
+   */
+  const independentParents = new Set(["backend/inventory/pom.xml"]);
   const literals = [];
   for (const m of modules) {
-    if (m.rel === parentRel) continue;
+    if (m.rel === parentRel || independentParents.has(m.rel)) continue;
     const scan = read(join(ROOT, m.rel))
       .replace(/<parent>[\s\S]*?<\/parent>/, "")
       .replace(/<build>[\s\S]*?<\/build>/g, "");

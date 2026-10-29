@@ -32571,162 +32571,162 @@
       "table": "inv_daily_snapshot",
       "class": "InvDailySnapshot",
       "zh": "日快照：派生数据，删光重跑即可",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_inbound_line",
       "class": "InvInboundLine",
       "zh": "入库单行",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_inbound_order",
       "class": "InvInboundOrder",
       "zh": "入库单：方向恒为正",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_item",
       "class": "InvItem",
       "zh": "物料（零售形态即 SKU）：被计数的东西",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_item_ref",
       "class": "InvItemRef",
       "zh": "外部引用：与外部世界唯一的钩子 只追加：继承 InvEntity 而不是 InvMutableEntity —— 实体上没有 updatedAt，「改一行」在编译期就不成立。",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_ledger",
       "class": "InvLedger",
       "zh": "库存流水：只追加，不修改，不删除 只追加：继承 InvEntity 而不是 InvMutableEntity —— 实体上没有 updatedAt，「改一行」在编译期就不成立。",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_location",
       "class": "InvLocation",
       "zh": "库位：存货的地方，门店与仓与在途都在这里",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_open_credential",
       "class": "InvOpenCredential",
       "zh": "Open API 凭证：服务端到服务端，不复用给人用的令牌",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_outbound_line",
       "class": "InvOutboundLine",
       "zh": "出库单行",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_outbound_order",
       "class": "InvOutboundOrder",
       "zh": "出库单：方向恒为负，不带售价",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_outbox",
       "class": "InvOutbox",
       "zh": "领域事件出站：投递侧将来换 MQ，写入侧不动",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_owner",
       "class": "InvOwner",
       "zh": "业主：库存归谁所有",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_refund_restore",
       "class": "InvRefundRestore",
       "zh": "Immutable claim on the quantity of one originally committed reservation line.",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_reservation",
       "class": "InvReservation",
       "zh": "预留：占住一批货等人来取",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_reservation_line",
       "class": "InvReservationLine",
       "zh": "Reserved quantity and source are immutable; V2 fulfillment issue/release progress is mutable and audited.",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_return_receipt",
       "class": "InvReturnReceipt",
       "zh": "Immutable proof of a physically received return line and its quality disposition.",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_stock_balance",
       "class": "InvStockBalance",
       "zh": "库存余额：available = on_hand - reserved，派生不落库",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_stock_count",
       "class": "InvStockCount",
       "zh": "盘点单：盘点自己不改余额，盈亏各生成一张单",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_stock_count_line",
       "class": "InvStockCountLine",
       "zh": "盘点单行",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_stock_count_operation",
       "class": "InvStockCountOperation",
       "zh": "Idempotency marker stored in the same inventory database transaction as a one-line count adjustment.",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_supplier",
       "class": "InvSupplier",
       "zh": "供应商档案：进货单指向的那个稳定对象。",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_transfer_order",
       "class": "InvTransferOrder",
       "zh": "调拨单：编排一出一入，中间停在 TRANSIT",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "inv_uom",
       "class": "InvUom",
       "zh": "计量单位字典。",
-      "module": "shop-inventory",
-      "package": "ai.neargo.shop.inventory.entity"
+      "module": "inventory",
+      "package": "ai.neargo.inventory.domain.entity"
     },
     {
       "table": "lgs_carrier",
@@ -34949,6 +34949,475 @@
         "value": "LINE_NO_OFFER",
         "zh": "某一行：收到求购的供应商都回了「没货」，平台也没报",
         "module": "elec"
+      },
+      {
+        "host": "LocationKind",
+        "name": "STORE",
+        "value": "STORE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "LocationKind",
+        "name": "WAREHOUSE",
+        "value": "WAREHOUSE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "LocationKind",
+        "name": "TRANSIT",
+        "value": "TRANSIT",
+        "zh": "调拨途中的货停在这里 —— **有它，Σ on_hand 才任意时刻守恒**。",
+        "module": "inventory"
+      },
+      {
+        "host": "LocationKind",
+        "name": "VIRTUAL",
+        "value": "VIRTUAL",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "DocKind",
+        "name": "IN",
+        "value": "IN",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "DocKind",
+        "name": "OUT",
+        "value": "OUT",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "DocStatus",
+        "name": "DRAFT",
+        "value": "DRAFT",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "DocStatus",
+        "name": "COUNTING",
+        "value": "COUNTING",
+        "zh": "盘点单专有的「正在盘」。",
+        "module": "inventory"
+      },
+      {
+        "host": "DocStatus",
+        "name": "POSTED",
+        "value": "POSTED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "DocStatus",
+        "name": "VOIDED",
+        "value": "VOIDED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "InboundSource",
+        "name": "PURCHASE",
+        "value": "PURCHASE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "InboundSource",
+        "name": "RETURN",
+        "value": "RETURN",
+        "zh": "退货入库。",
+        "module": "inventory"
+      },
+      {
+        "host": "InboundSource",
+        "name": "TRANSFER_IN",
+        "value": "TRANSFER_IN",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "InboundSource",
+        "name": "COUNT_GAIN",
+        "value": "COUNT_GAIN",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "InboundSource",
+        "name": "INIT",
+        "value": "INIT",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "InboundSource",
+        "name": "OFFLINE_RETURN",
+        "value": "OFFLINE_RETURN",
+        "zh": "线下卖出的撤销：把柜台卖错的那几件加回来，指回原出库单号",
+        "module": "inventory"
+      },
+      {
+        "host": "InboundSource",
+        "name": "OTHER",
+        "value": "OTHER",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "SALE",
+        "value": "SALE",
+        "zh": "销售出库。",
+        "module": "inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "TRANSFER_OUT",
+        "value": "TRANSFER_OUT",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "SCRAP",
+        "value": "SCRAP",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "COUNT_LOSS",
+        "value": "COUNT_LOSS",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "INTERNAL",
+        "value": "INTERNAL",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "OFFLINE_SALE",
+        "value": "OFFLINE_SALE",
+        "zh": "柜台卖出。",
+        "module": "inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "RETURN_SUPPLIER",
+        "value": "RETURN_SUPPLIER",
+        "zh": "退回供应商。",
+        "module": "inventory"
+      },
+      {
+        "host": "OutboundPurpose",
+        "name": "OTHER",
+        "value": "OTHER",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "TargetType",
+        "name": "SUPPLIER",
+        "value": "SUPPLIER",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "TargetType",
+        "name": "STORE",
+        "value": "STORE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "Reason",
+        "name": "CHECK",
+        "value": "CHECK",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "Reason",
+        "name": "BROKEN",
+        "value": "BROKEN",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "Reason",
+        "name": "EXPIRED",
+        "value": "EXPIRED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "Reason",
+        "name": "GIFT",
+        "value": "GIFT",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "Reason",
+        "name": "OTHER",
+        "value": "OTHER",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "HELD",
+        "value": "HELD",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "ACCEPTED_UNPAID",
+        "value": "ACCEPTED_UNPAID",
+        "zh": "Accepted credit order; no payment has been acknowledged.",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "PARTIAL_UNPAID",
+        "value": "PARTIAL_UNPAID",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "ISSUED_UNPAID",
+        "value": "ISSUED_UNPAID",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "ALLOCATED",
+        "value": "ALLOCATED",
+        "zh": "Paid allocation; excluded from unpaid expiry and issued only on fulfillment handoff.",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "PARTIALLY_COMMITTED",
+        "value": "PARTIAL_COMMIT",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "COMMITTED",
+        "value": "COMMITTED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "RELEASED",
+        "value": "RELEASED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "EXPIRED",
+        "value": "EXPIRED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "TransferStatus",
+        "name": "DRAFT",
+        "value": "DRAFT",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "TransferStatus",
+        "name": "SHIPPED",
+        "value": "SHIPPED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "TransferStatus",
+        "name": "RECEIVED",
+        "value": "RECEIVED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "TransferStatus",
+        "name": "VOIDED",
+        "value": "VOIDED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "MasterStatus",
+        "name": "ACTIVE",
+        "value": "ACTIVE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "MasterStatus",
+        "name": "ARCHIVED",
+        "value": "ARCHIVED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "MasterStatus",
+        "name": "DISABLED",
+        "value": "DISABLED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "DataSource",
+        "name": "OWN",
+        "value": "OWN",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "DataSource",
+        "name": "SYNCED",
+        "value": "SYNCED",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "RefSystem",
+        "name": "AISHOP",
+        "value": "AISHOP",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "RefSystem",
+        "name": "ERP",
+        "value": "ERP",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "RefSystem",
+        "name": "BARCODE",
+        "value": "BARCODE",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "RefSystem",
+        "name": "POS",
+        "value": "POS",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CostMethod",
+        "name": "LATEST",
+        "value": "LATEST",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "CostMethod",
+        "name": "MANUAL",
+        "value": "MANUAL",
+        "zh": "",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "INBOUND",
+        "value": "IN",
+        "zh": "入库单",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "OUTBOUND",
+        "value": "OUT",
+        "zh": "出库单",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "COUNT",
+        "value": "CNT",
+        "zh": "盘点单",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "TRANSFER",
+        "value": "TRF",
+        "zh": "调拨单",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "RESERVATION",
+        "value": "RSV",
+        "zh": "预留",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "ITEM",
+        "value": "ITM",
+        "zh": "物料",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "LOCATION",
+        "value": "LOC",
+        "zh": "库位",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "OWNER",
+        "value": "OWN",
+        "zh": "业主",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "EVENT",
+        "value": "EVT",
+        "zh": "领域事件",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "CREDENTIAL",
+        "value": "CRD",
+        "zh": "Open API 凭证",
+        "module": "inventory"
+      },
+      {
+        "host": "InvKeys",
+        "name": "SUPPLIER",
+        "value": "SUP",
+        "zh": "供应商档案",
+        "module": "inventory"
       },
       {
         "host": "WaybillStatus",
@@ -41314,475 +41783,6 @@
         "module": "shop-core"
       },
       {
-        "host": "LocationKind",
-        "name": "STORE",
-        "value": "STORE",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "LocationKind",
-        "name": "WAREHOUSE",
-        "value": "WAREHOUSE",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "LocationKind",
-        "name": "TRANSIT",
-        "value": "TRANSIT",
-        "zh": "调拨途中的货停在这里 —— **有它，Σ on_hand 才任意时刻守恒**。",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "LocationKind",
-        "name": "VIRTUAL",
-        "value": "VIRTUAL",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "DocKind",
-        "name": "IN",
-        "value": "IN",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "DocKind",
-        "name": "OUT",
-        "value": "OUT",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "DocStatus",
-        "name": "DRAFT",
-        "value": "DRAFT",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "DocStatus",
-        "name": "COUNTING",
-        "value": "COUNTING",
-        "zh": "盘点单专有的「正在盘」。",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "DocStatus",
-        "name": "POSTED",
-        "value": "POSTED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "DocStatus",
-        "name": "VOIDED",
-        "value": "VOIDED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InboundSource",
-        "name": "PURCHASE",
-        "value": "PURCHASE",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InboundSource",
-        "name": "RETURN",
-        "value": "RETURN",
-        "zh": "退货入库。",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InboundSource",
-        "name": "TRANSFER_IN",
-        "value": "TRANSFER_IN",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InboundSource",
-        "name": "COUNT_GAIN",
-        "value": "COUNT_GAIN",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InboundSource",
-        "name": "INIT",
-        "value": "INIT",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InboundSource",
-        "name": "OFFLINE_RETURN",
-        "value": "OFFLINE_RETURN",
-        "zh": "线下卖出的撤销：把柜台卖错的那几件加回来，指回原出库单号",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InboundSource",
-        "name": "OTHER",
-        "value": "OTHER",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "OutboundPurpose",
-        "name": "SALE",
-        "value": "SALE",
-        "zh": "销售出库。",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "OutboundPurpose",
-        "name": "TRANSFER_OUT",
-        "value": "TRANSFER_OUT",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "OutboundPurpose",
-        "name": "SCRAP",
-        "value": "SCRAP",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "OutboundPurpose",
-        "name": "COUNT_LOSS",
-        "value": "COUNT_LOSS",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "OutboundPurpose",
-        "name": "INTERNAL",
-        "value": "INTERNAL",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "OutboundPurpose",
-        "name": "OFFLINE_SALE",
-        "value": "OFFLINE_SALE",
-        "zh": "柜台卖出。",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "OutboundPurpose",
-        "name": "RETURN_SUPPLIER",
-        "value": "RETURN_SUPPLIER",
-        "zh": "退回供应商。",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "OutboundPurpose",
-        "name": "OTHER",
-        "value": "OTHER",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "TargetType",
-        "name": "SUPPLIER",
-        "value": "SUPPLIER",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "TargetType",
-        "name": "STORE",
-        "value": "STORE",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "Reason",
-        "name": "CHECK",
-        "value": "CHECK",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "Reason",
-        "name": "BROKEN",
-        "value": "BROKEN",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "Reason",
-        "name": "EXPIRED",
-        "value": "EXPIRED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "Reason",
-        "name": "GIFT",
-        "value": "GIFT",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "Reason",
-        "name": "OTHER",
-        "value": "OTHER",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "HELD",
-        "value": "HELD",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "ACCEPTED_UNPAID",
-        "value": "ACCEPTED_UNPAID",
-        "zh": "Accepted credit order; no payment has been acknowledged.",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "PARTIAL_UNPAID",
-        "value": "PARTIAL_UNPAID",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "ISSUED_UNPAID",
-        "value": "ISSUED_UNPAID",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "ALLOCATED",
-        "value": "ALLOCATED",
-        "zh": "Paid allocation; excluded from unpaid expiry and issued only on fulfillment handoff.",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "PARTIALLY_COMMITTED",
-        "value": "PARTIAL_COMMIT",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "COMMITTED",
-        "value": "COMMITTED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "RELEASED",
-        "value": "RELEASED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "ReservationStatus",
-        "name": "EXPIRED",
-        "value": "EXPIRED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "TransferStatus",
-        "name": "DRAFT",
-        "value": "DRAFT",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "TransferStatus",
-        "name": "SHIPPED",
-        "value": "SHIPPED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "TransferStatus",
-        "name": "RECEIVED",
-        "value": "RECEIVED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "TransferStatus",
-        "name": "VOIDED",
-        "value": "VOIDED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "MasterStatus",
-        "name": "ACTIVE",
-        "value": "ACTIVE",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "MasterStatus",
-        "name": "ARCHIVED",
-        "value": "ARCHIVED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "MasterStatus",
-        "name": "DISABLED",
-        "value": "DISABLED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "DataSource",
-        "name": "OWN",
-        "value": "OWN",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "DataSource",
-        "name": "SYNCED",
-        "value": "SYNCED",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "RefSystem",
-        "name": "AISHOP",
-        "value": "AISHOP",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "RefSystem",
-        "name": "ERP",
-        "value": "ERP",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "RefSystem",
-        "name": "BARCODE",
-        "value": "BARCODE",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "RefSystem",
-        "name": "POS",
-        "value": "POS",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "CostMethod",
-        "name": "LATEST",
-        "value": "LATEST",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "CostMethod",
-        "name": "MANUAL",
-        "value": "MANUAL",
-        "zh": "",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "INBOUND",
-        "value": "IN",
-        "zh": "入库单",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "OUTBOUND",
-        "value": "OUT",
-        "zh": "出库单",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "COUNT",
-        "value": "CNT",
-        "zh": "盘点单",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "TRANSFER",
-        "value": "TRF",
-        "zh": "调拨单",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "RESERVATION",
-        "value": "RSV",
-        "zh": "预留",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "ITEM",
-        "value": "ITM",
-        "zh": "物料",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "LOCATION",
-        "value": "LOC",
-        "zh": "库位",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "OWNER",
-        "value": "OWN",
-        "zh": "业主",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "EVENT",
-        "value": "EVT",
-        "zh": "领域事件",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "CREDENTIAL",
-        "value": "CRD",
-        "zh": "Open API 凭证",
-        "module": "shop-inventory"
-      },
-      {
-        "host": "InvKeys",
-        "name": "SUPPLIER",
-        "value": "SUP",
-        "zh": "供应商档案",
-        "module": "shop-inventory"
-      },
-      {
         "host": "MchAccount",
         "name": "ACTIVE",
         "value": "ACTIVE",
@@ -43777,6 +43777,21 @@
         "module": "shop-base"
       },
       {
+        "name": "InventoryError",
+        "values": [
+          "BAD_REQUEST",
+          "UNAUTHORIZED",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "CONFLICT",
+          "STOCK_SHORT",
+          "COUNT_ALREADY_OPEN",
+          "INTERNAL"
+        ],
+        "zh": "进销存自己的错误码。",
+        "module": "inventory"
+      },
+      {
         "name": "InvocationState",
         "values": [
           "CREATED",
@@ -44695,7 +44710,7 @@
           "UNSALEABLE"
         ],
         "zh": "",
-        "module": "shop-inventory"
+        "module": "inventory"
       },
       {
         "name": "Realm",
@@ -45185,6 +45200,23 @@
       {
         "name": "Status",
         "values": [
+          "HELD",
+          "ACCEPTED_UNPAID",
+          "PARTIAL_UNPAID",
+          "ISSUED_UNPAID",
+          "ALLOCATED",
+          "PARTIALLY_COMMITTED",
+          "COMMITTED",
+          "PARTIAL_RELEASED",
+          "RELEASED",
+          "EXPIRED"
+        ],
+        "zh": "Typed inventory lifecycle states, including partial fulfillment and partial cancellation.",
+        "module": "inventory"
+      },
+      {
+        "name": "Status",
+        "values": [
           "SUCCEEDED",
           "REJECTED",
           "UNKNOWN"
@@ -45284,23 +45316,6 @@
         ],
         "zh": "",
         "module": "shop-core"
-      },
-      {
-        "name": "Status",
-        "values": [
-          "HELD",
-          "ACCEPTED_UNPAID",
-          "PARTIAL_UNPAID",
-          "ISSUED_UNPAID",
-          "ALLOCATED",
-          "PARTIALLY_COMMITTED",
-          "COMMITTED",
-          "PARTIAL_RELEASED",
-          "RELEASED",
-          "EXPIRED"
-        ],
-        "zh": "Typed inventory lifecycle states, including partial fulfillment and partial cancellation.",
-        "module": "shop-inventory"
       },
       {
         "name": "StorageTier",
@@ -48521,6 +48536,46 @@
       "value": "java.util.List.of( PERM_RFQ_READ, PERM_RFQ_QUOTE, PERM_SUPPLIER_READ, PERM_SUPPLIER_MANAGE, PERM_PART_READ, PERM_BASE_MANAGE)",
       "zh": "元器件用得到的全部运营码。",
       "module": "elec"
+    },
+    {
+      "host": "EventType",
+      "name": "DOCUMENT_POSTED",
+      "type": "String",
+      "value": "\"DocumentPosted\"",
+      "zh": "",
+      "module": "inventory"
+    },
+    {
+      "host": "EventType",
+      "name": "BALANCE_CHANGED",
+      "type": "String",
+      "value": "\"StockBalanceChanged\"",
+      "zh": "",
+      "module": "inventory"
+    },
+    {
+      "host": "EventType",
+      "name": "RESERVATION_EXPIRED",
+      "type": "String",
+      "value": "\"ReservationExpired\"",
+      "zh": "",
+      "module": "inventory"
+    },
+    {
+      "host": "EventType",
+      "name": "LOW_STOCK",
+      "type": "String",
+      "value": "\"LowStockDetected\"",
+      "zh": "",
+      "module": "inventory"
+    },
+    {
+      "host": "RetryBackoff",
+      "name": "MAX_ATTEMPTS",
+      "type": "int",
+      "value": "10",
+      "zh": "到这个次数就不再自动重试，交给人：让它在积压里显出来。",
+      "module": "inventory"
     },
     {
       "host": "JobHttpPaths",
@@ -53291,38 +53346,6 @@
       "module": "shop-core"
     },
     {
-      "host": "EventType",
-      "name": "DOCUMENT_POSTED",
-      "type": "String",
-      "value": "\"DocumentPosted\"",
-      "zh": "",
-      "module": "shop-inventory"
-    },
-    {
-      "host": "EventType",
-      "name": "BALANCE_CHANGED",
-      "type": "String",
-      "value": "\"StockBalanceChanged\"",
-      "zh": "",
-      "module": "shop-inventory"
-    },
-    {
-      "host": "EventType",
-      "name": "RESERVATION_EXPIRED",
-      "type": "String",
-      "value": "\"ReservationExpired\"",
-      "zh": "",
-      "module": "shop-inventory"
-    },
-    {
-      "host": "EventType",
-      "name": "LOW_STOCK",
-      "type": "String",
-      "value": "\"LowStockDetected\"",
-      "zh": "",
-      "module": "shop-inventory"
-    },
-    {
       "host": "StoreSlugs",
       "name": "PATTERN",
       "type": "Pattern",
@@ -53495,6 +53518,7 @@
     "maven": {
       "properties": {
         "archunit.version": "1.3.0",
+        "inventory.version": "1.0.0-SNAPSHOT",
         "shedlock.version": "6.9.0",
         "cos.version": "5.6.245",
         "jts.version": "1.20.0",
@@ -53502,6 +53526,8 @@
         "resilience4j.version": "2.3.0"
       },
       "managed": [
+        "ai.neargo.inventory:inventory-api",
+        "ai.neargo.inventory:inventory-domain",
         "com.google.errorprone:error_prone_annotations",
         "com.google.geometry:s2-geometry",
         "com.qcloud:cos_api",

@@ -1,0 +1,32 @@
+# 进销存独立服务。测试一套、生产电商 / 设备两套都用这份；差异只从环境变量进来
+# （样例见本服务目录 deploy/inventory.env.example，执行方案 §二）。
+server:
+  port: ${SERVER_PORT:8086}
+  # 只绑回环：同机内网直连，不经 nginx 对外（执行方案 §一）
+  address: ${SERVER_ADDRESS:127.0.0.1}
+
+spring:
+  application:
+    name: inventory-svc
+
+inventory:
+  enabled: true
+  instance:
+    code: ${INVENTORY_INSTANCE_CODE:DEV}
+    allowed-systems: ${INVENTORY_INSTANCE_ALLOWED_SYSTEMS:}
+  datasource:
+    url: ${INVENTORY_DATASOURCE_URL:}
+    username: ${INVENTORY_DATASOURCE_USERNAME:}
+    password: ${INVENTORY_DATASOURCE_PASSWORD:}
+  # 定时任务 M2 起接共用任务服务；在此之前独立进程不跑任务
+  jobs:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  info:
+    env:
+      enabled: false

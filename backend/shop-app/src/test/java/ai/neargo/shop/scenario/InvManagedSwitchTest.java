@@ -2,9 +2,9 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.OtpStore;
-import ai.neargo.shop.inventory.entity.InvItem;
-import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.entity.InvItem;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemMapper;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.support.TestLogin;

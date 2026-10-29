@@ -2,10 +2,10 @@ package ai.neargo.shop.inventory.api.ops;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.auth.Perms;
-import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
-import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.StockQueryService;
+import ai.neargo.inventory.domain.dto.InventoryVOs.BalanceVO;
+import ai.neargo.inventory.domain.dto.InventoryVOs.LedgerPageVO;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.StockQueryService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;

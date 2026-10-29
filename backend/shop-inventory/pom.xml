@@ -13,7 +13,7 @@
 
     <artifactId>shop-inventory</artifactId>
     <packaging>jar</packaging>
-    <description>进销存 · 独立库存领域（独立数据源与迁移，可独立交付）</description>
+    <description>进销存 · ai-shop 侧适配：商城 BFF、Port 实现、错误码翻译、过渡期内嵌装配（领域在 inventory/）</description>
 
     <dependencies>
         <dependency>
@@ -31,15 +31,10 @@
             <artifactId>shop-base-auth</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- 迁移自己带：独立交付时不能要求客户先装一个 ai_shop，
-             也就不能指望 shop-app 帮它跑迁移 -->
+        <!-- 领域、持久化与迁移都在独立服务的领域包里（ADR-046）；本模块只做商城侧适配 -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-mysql</artifactId>
+            <groupId>ai.neargo.inventory</groupId>
+            <artifactId>inventory-domain</artifactId>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>

@@ -475,7 +475,7 @@ export const FIELDS = [
     concept: "调拨单状态",
     field: "inv_transfer_order.status",
     backend: {
-      javaConst: "shop-inventory/src/main/java/ai/neargo/shop/inventory/support/InvEnums.java",
+      javaConst: "inventory/inventory-domain/src/main/java/ai/neargo/inventory/domain/support/InvEnums.java",
       // InvEnums 是一个装了十几个取值域的壳（ReservationStatus / MasterStatus / …），
       // 不按名字排掉的话会把整个文件的常量都当成这一列的取值域
       only: ["DRAFT", "SHIPPED", "RECEIVED", "VOIDED"],

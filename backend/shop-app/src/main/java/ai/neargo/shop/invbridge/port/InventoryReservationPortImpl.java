@@ -2,8 +2,8 @@ package ai.neargo.shop.invbridge.port;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.inventory.service.InventoryAclService;
-import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.ReservationService;
 import ai.neargo.shop.spi.inventory.InventoryReservationInternalApi;
 import ai.neargo.shop.spi.inventory.InventoryReservationPort;
 import java.util.List;

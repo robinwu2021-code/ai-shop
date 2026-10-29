@@ -6,7 +6,7 @@ import ai.neargo.shop.numbering.DocumentSource;
 import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.service.InvManagedService;

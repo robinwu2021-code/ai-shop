@@ -2,7 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.common.OtpStore;
-import ai.neargo.shop.inventory.service.InventoryAclService;
+import ai.neargo.inventory.domain.service.InventoryAclService;
 import ai.neargo.shop.support.TestLogin;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -63,13 +63,13 @@ class InventoryBizEndpointTest {
     @Autowired
     private InventoryAclService acl;
     @Autowired
-    private ai.neargo.shop.inventory.service.LocationService locations;
+    private ai.neargo.inventory.domain.service.LocationService locations;
     @Autowired
     private ai.neargo.shop.event.OutboxDispatcher dispatcher;
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
     @Autowired
-    private ai.neargo.shop.inventory.service.StockQueryService query;
+    private ai.neargo.inventory.domain.service.StockQueryService query;
     @Autowired
     private ai.neargo.shop.invbridge.InventoryOrphanSweepService orphanSweep;
 
@@ -643,7 +643,7 @@ class InventoryBizEndpointTest {
     }
 
     private List<String> flagsIn(
-            List<ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO> rows, String itemId) {
+            List<ai.neargo.inventory.domain.dto.InventoryVOs.BalanceVO> rows, String itemId) {
         return rows.stream().filter(r -> itemId.equals(r.itemId())).findFirst()
                 .orElseThrow(() -> new AssertionError("这一份里没有 " + itemId + " —— 那是另一个缺陷"))
                 .flags();
