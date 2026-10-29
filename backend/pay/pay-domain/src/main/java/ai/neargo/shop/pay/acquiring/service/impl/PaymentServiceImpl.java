@@ -39,7 +39,8 @@ import java.util.stream.Collectors;
 import java.util.Objects;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.pay.PayQueryPort;
-import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.SettlePort.PaymentOpen;
+import ai.neargo.shop.spi.settle.SettlePort.PaymentSettled;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DuplicateKeyException;
@@ -168,54 +169,72 @@ public class PaymentServiceImpl implements PaymentService {
         }
         requireOwner(caller, o);
         policy.check(caller, PayAction.START_PAYMENT, o.getStoreId());
-        PayOrderStatus status = PayOrderStatus.valueOf(o.getStatus());
-        if (status != PayOrderStatus.CREATED && status != PayOrderStatus.AWAITING_PAYMENT) {
-            throw BizException.of(ErrorCode.PAY_ORDER_STATE, status.name());
-        }
-        if (o.getCloseRequestedAt() != null) {
-            throw BizException.of(ErrorCode.PAY_ORDER_STATE, "CLOSE_REQUESTED");
-        }
-        if (o.getExpireAt() != null && o.getExpireAt().isBefore(LocalDateTime.now(ZoneOffset.UTC))) {
-            throw BizException.of(ErrorCode.PAY_ORDER_STATE, "EXPIRED");
-        }
         if (cmd == null || cmd.payMethod() == null || cmd.payMethod().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        RouteSelectionPolicy.Selected sel = routes.select(o.getStoreId(), o.getMarket(), cmd.payMethod())
-                .orElseThrow(() -> BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE));
-        var r = sel.route();
-        // 冻结：之后退款、查单都按这一份，不随读切与密钥轮换漂移（I3 AC7）；资金路径改取收款商户（R34 / 复核 D-12）
-        PayOrder frozen = new PayOrder();
-        frozen.setId(o.getId());
-        frozen.setPayType(sel.product().getPayType());
-        frozen.setPayMethod(sel.product().getPayMethod());
-        frozen.setPayChannelProductId(sel.product().getId());
-        frozen.setPayMerchantId(r.payMerchantId());
-        frozen.setPayChannel(r.payChannel());
-        frozen.setAccessMode(r.accessMode());
-        frozen.setFundsPath(r.fundsPath());
-        frozen.setSubMerchantId(r.subMerchantId());
-        frozen.setSecKeyVersion(r.keyVersion());
-        tx.executeWithoutResult(s -> DataScopeContext.executeWithoutScope(() -> orders.updateById(frozen)));
-
-        // 交易尝试的订单号用支付单号：第三方的外部单号只在本接入方内唯一，不能拿来当全局键
-        String actor = caller.type().name() + ":" + caller.callerId();
-        SettlePort.PaymentOpen open = new SettlePort.PaymentOpen(o.getPayOrderNo(), actor, null, r.payChannel(),
-                o.getAmountMinor(), o.getSubject(), o.getCurrency(), List.of());
-        var payer = new PayOrdinaryPaymentRequests.PayerIdentity(actor, o.getPayOrderNo(), cmd.payerOpenId(),
-                cmd.payerAppId(), PayOrdinaryPaymentRequests.hash(open));
-        SettlePort.PayInitResult init;
+        Prepared prepared;
         try {
-            init = initiation.initiate(open, payer);
-        } catch (IllegalArgumentException e) {
+            prepared = tx.execute(s -> prepareLocked(orders.lockById(o.getId()), caller, cmd));
+        } catch (IllegalArgumentException invalid) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        if (!init.success()) {
-            throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
-        }
+        // Only local intent preparation is transactional; an uncertain network response retains that same intent.
+        var init = initiation.initiate(prepared.request(), prepared.payer());
+        if (!init.success()) throw BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE);
         return new StartPaymentResult(o.getPayOrderNo(), init.outTradeNo(), init.payChannel(),
                 init.payParams() == null ? java.util.Map.of() : init.payParams());
     }
+
+    private Prepared prepareLocked(PayOrder order, PayCaller caller, StartPaymentCmd cmd) {
+        if (order == null) throw BizException.of(ErrorCode.PAY_ORDER_NOT_FOUND);
+        PayOrderStatus status = PayOrderStatus.valueOf(order.getStatus());
+        if (status != PayOrderStatus.CREATED && status != PayOrderStatus.AWAITING_PAYMENT) {
+            throw BizException.of(ErrorCode.PAY_ORDER_STATE, status.name());
+        }
+        if (order.getCloseRequestedAt() != null) throw BizException.of(ErrorCode.PAY_ORDER_STATE, "CLOSE_REQUESTED");
+        if (order.getExpireAt() != null && order.getExpireAt().isBefore(LocalDateTime.now(ZoneOffset.UTC))) {
+            throw BizException.of(ErrorCode.PAY_ORDER_STATE, "EXPIRED");
+        }
+        List<StlPayment> open = openAttempts(order.getId());
+        PaymentOpen request;
+        if (!open.isEmpty()) {
+            if (open.size() != 1 || !Objects.equals(order.getPayMethod(), cmd.payMethod())) {
+                throw BizException.of(ErrorCode.PAY_ORDER_CONFLICT);
+            }
+            request = ledger.paymentRequest(open.getFirst().getOutTradeNo()).orElseThrow(
+                    () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
+            if (request.acquiringRoute() == null) {
+                throw new IllegalArgumentException("PAY_ROUTE_SNAPSHOT_REQUIRED");
+            }
+        } else {
+            var selected = routes.select(order.getStoreId(), order.getMarket(), order.getCurrency(),
+                    order.getAmountMinor(), cmd.payMethod())
+                    .orElseThrow(() -> BizException.of(ErrorCode.PAY_CHANNEL_UNAVAILABLE));
+            var route = selected.route();
+            PayOrder frozen = new PayOrder();
+            frozen.setId(order.getId());
+            frozen.setPayType(selected.product().getPayType());
+            frozen.setPayMethod(selected.product().getPayMethod());
+            frozen.setPayChannelProductId(selected.product().getId());
+            frozen.setPayMerchantId(route.payMerchantId());
+            frozen.setPayChannel(route.payChannel());
+            frozen.setAccessMode(route.accessMode());
+            frozen.setFundsPath(route.fundsPath());
+            frozen.setSubMerchantId(route.subMerchantId());
+            frozen.setSecKeyVersion(route.keyVersion());
+            DataScopeContext.executeWithoutScope(() -> orders.updateById(frozen));
+            String actor = caller.type().name() + ":" + caller.callerId();
+            request = new PaymentOpen(order.getPayOrderNo(), actor, null, route.payChannel(),
+                    order.getAmountMinor(), order.getSubject(), order.getCurrency(), List.of())
+                    .withAcquiringRoute(route);
+        }
+        var payer = new PayOrdinaryPaymentRequests.PayerIdentity(request.userNo(), request.orderNo(), cmd.payerOpenId(),
+                cmd.payerAppId(), PayOrdinaryPaymentRequests.hash(request));
+        initiation.prepare(request, payer);
+        return new Prepared(request, payer);
+    }
+
+    private record Prepared(PaymentOpen request, PayOrdinaryPaymentRequests.PayerIdentity payer) { }
 
     @Override
     public PayOrder findByOutOrderNo(Long appId, String outOrderNo) {
@@ -270,7 +289,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private void applyPaidAttempt(StlPayment attempt, PayQueryPort.Result receipt) {
-        ledger.settle(new SettlePort.PaymentSettled(attempt.getOutTradeNo(), attempt.getPayChannel(), receipt.tradeNo(),
+        ledger.settle(new PaymentSettled(attempt.getOutTradeNo(), attempt.getPayChannel(), receipt.tradeNo(),
                 receipt.amountMinor(), System.currentTimeMillis(),
                 receipt.currency() == null ? attempt.getCurrency() : receipt.currency()));
     }

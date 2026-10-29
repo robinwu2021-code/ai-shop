@@ -67,7 +67,7 @@ RefundSplitBackPort	8
 # 收款入账 —— 引用随 controller 搬进了 pay，跨域调用本身没有新增。开发计划 M7.3「交易侧改由支付事件驱动」后两者都退场。
 # 2026-10-28 SettlePort 66 → 67、OrderRepairPort 3 → 4：pay-guard M7.1 在 pay-svc 的 PendingRemotePortsConfig 登记这两个 Port 的 .class（调用即抛的桩，
 # 不是调用）——回调入账在独立进程里还没有实现，那张账就是要把它列出来；M7.2 / M7.3 后与桩一起删。
-SettlePort	67
+SettlePort	59
 OrderRepairPort	4
 SourceFactsPort	3
 # 2026-10-26 新登记 2：同上，合并时登记、来自报表提交 f0cfe667b —— pay-domain 的 PaymentReportFactsService

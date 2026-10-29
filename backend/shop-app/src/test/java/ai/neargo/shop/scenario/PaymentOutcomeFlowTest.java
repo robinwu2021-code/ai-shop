@@ -3,6 +3,7 @@ package ai.neargo.shop.scenario;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.pay.service.FundInvariantService;
 import ai.neargo.shop.spi.pay.PaymentPort;
 import ai.neargo.shop.spi.pay.PaymentPort.InternalCreatePaymentCmd;
 import ai.neargo.shop.spi.settle.SettlePort;
@@ -33,6 +34,7 @@ class PaymentOutcomeFlowTest {
     @Autowired private PaymentLedgerService ledger;
     @Autowired private SettlePort settle;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private FundInvariantService invariants;
 
     private String opened(long amount) {
         String no = "PO-OC-" + UUID.randomUUID().toString().substring(0, 8);
@@ -59,6 +61,8 @@ class PaymentOutcomeFlowTest {
         assertThat(settle.settlePayment(paid(no, 1990))).isEqualTo(no);
         assertThat(order(no)).containsEntry("status", "SUCCEEDED").containsEntry("paid_minor", 1990L);
         assertThat(order(no).get("succeeded_at")).isNotNull();
+        assertThat(invariants.successPaymentsSince(0, 10000)).extracting(FundInvariantService.SuccessPayment::orderNo)
+                .contains(no);
     }
 
     @Test
@@ -89,4 +93,47 @@ class PaymentOutcomeFlowTest {
                 order(no).get("id"))).isEqualTo("AMOUNT_MISMATCH");
         assertThat(settle.paymentByOutTradeNo(no).amountMinor()).as("交易域按回执判「实收不符」，回执要报实收").isEqualTo(2000L);
     }
+    @Test
+    @DisplayName("异币首个回执及重放保留渠道事实，但不能认领为正常收款")
+    void differentCurrencyCannotBecomeNormalSuccessOnFirstReceiptOrReplay() {
+        String no = opened(1990);
+        long id = ((Number) order(no).get("id")).longValue();
+        var receipt = new PaymentSettled(no, "TEST", "USD-" + no, 1990,
+                System.currentTimeMillis(), "USD");
+        assertThat(settle.settlePayment(receipt)).isNull();
+        assertThat(settle.settlePayment(receipt)).isNull();
+        assertThat(order(no)).containsEntry("status", "AWAITING_PAYMENT")
+                .containsEntry("currency", "CNY").containsEntry("paid_minor", 0L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ledger_voucher WHERE ref_type='PAY_ORDER'"
+                + " AND ref_id=?", Long.class, id)).isZero();
+        assertThat(jdbc.queryForList("SELECT kind, currency FROM pay_exception WHERE pay_order_id=?", id))
+                .singleElement().satisfies(e -> assertThat(e).containsEntry("kind", "AMOUNT_MISMATCH")
+                        .containsEntry("currency", "USD"));
+        assertThat(invariants.successPaymentsSince(0, 10000)).extracting(FundInvariantService.SuccessPayment::orderNo)
+                .doesNotContain(no);
+        assertThat(jdbc.queryForMap("SELECT channel_amount_minor, channel_currency, payment_request_json"
+                + " FROM stl_payment WHERE out_trade_no=?", no))
+                .containsEntry("channel_amount_minor", 1990L).containsEntry("channel_currency", "USD")
+                .satisfies(row -> assertThat((String) row.get("payment_request_json")).contains("CNY"));
+    }
+
+    @Test
+    void duplicateSuccessfulAttemptCannotBecomeNormalBusinessSuccessOnReplay() {
+        String no = opened(1990);
+        ledger.close(no, "retry with another intent");
+        String second = ledger.open(new SettlePort.PaymentOpen(no, "U-" + no, null, "TEST", 1990, "goods"));
+        assertThat(second).isNotEqualTo(no);
+        assertThat(settle.settlePayment(paid(no, 1990))).isEqualTo(no);
+        var duplicate = new PaymentSettled(second, "TEST", "TX-" + second, 1990,
+                System.currentTimeMillis(), "CNY");
+        assertThat(settle.settlePayment(duplicate)).isNull();
+        assertThat(settle.settlePayment(duplicate)).isNull();
+        String duplicateNo = jdbc.queryForObject("SELECT payment_no FROM stl_payment WHERE out_trade_no=?",
+                String.class, second);
+        assertThat(invariants.successPaymentsSince(0, 10000))
+                .extracting(FundInvariantService.SuccessPayment::paymentNo).doesNotContain(duplicateNo);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_exception WHERE pay_order_id=?"
+                + " AND kind='DUPLICATE_PAYMENT'", Long.class, order(no).get("id"))).isEqualTo(1);
+    }
+
 }

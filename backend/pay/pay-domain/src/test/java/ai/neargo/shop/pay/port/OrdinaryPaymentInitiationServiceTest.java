@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
+import ai.neargo.shop.spi.pay.PayMerchantQueryPort.PayRoute;
 
 class OrdinaryPaymentInitiationServiceTest {
     private final PaymentLedgerService ledger = mock(PaymentLedgerService.class);
@@ -97,6 +99,30 @@ class OrdinaryPaymentInitiationServiceTest {
         when(channels.supports("WECHAT")).thenReturn(false);
         assertThat(service.initiate(request, payer("PAYER1")).success()).isFalse();
         verify(ledger, never()).close(anyString(), anyString());
+        verify(channels, never()).prepay(anyString(), any());
+    }
+
+    @Test
+    void oldRequestJsonAndDigestRemainCompatibleWithoutAFrozenAcquiringRoute() {
+        String oldJson = "{\"orderNo\":\"O1\",\"userNo\":\"U1\",\"entityNo\":\"E1\","
+                + "\"payChannel\":\"WECHAT\",\"amountMinor\":123,\"subject\":\"items\","
+                + "\"currency\":\"USD\",\"stores\":[]}";
+        var mapper = new ObjectMapper();
+        var restored = mapper.readValue(oldJson, SettlePort.PaymentOpen.class);
+        assertThat(restored).isEqualTo(request);
+        assertThat(mapper.writeValueAsString(restored)).isEqualTo(oldJson);
+        assertThat(restored.acquiringRoute()).isNull();
+        assertThat(PayOrdinaryPaymentRequests.hash(restored)).isEqualTo(PayOrdinaryPaymentRequests.hash(request));
+    }
+
+    @Test
+    void directInitiationCannotPrepareAnUnprovenSigningAccount() {
+        var routed = request.withAcquiringRoute(new PayRoute(1L, 2L, "PM-2", "WECHAT", "CN", "USD",
+                "MERCHANT_OWN", "AGGREGATED", "MCH-2", "SUB-2", null, 7, 1));
+        var identity = new PayerIdentity("U1", "O1", "OPEN", "APP1", PayOrdinaryPaymentRequests.hash(routed));
+        assertThatThrownBy(() -> service.initiate(routed, identity))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("ACQUIRING_ACCOUNT_UNVERIFIED");
+        verifyNoInteractions(ledger);
         verify(channels, never()).prepay(anyString(), any());
     }
 

@@ -4,6 +4,7 @@ import ai.neargo.shop.pay.channel.api.ChannelResult;
 import ai.neargo.shop.pay.channel.api.PayScene;
 import ai.neargo.shop.pay.channel.api.command.PayCommand;
 import ai.neargo.shop.pay.channel.invoke.Invocation;
+import ai.neargo.shop.pay.channel.context.ChannelRoute;
 import java.util.Set;
 
 /**
@@ -14,6 +15,11 @@ public interface OnlinePayCapability extends ChannelCapability {
 
     /** 支持的线上场景：{@code ONLINE_SDK} / {@code ONLINE_REDIRECT} / {@code ONLINE_QR} 的子集 */
     Set<PayScene> onlineScenes();
+
+    /** True only when this implementation can prove it executes with this exact frozen account and key. */
+    default boolean supportsFrozenAccount(ChannelRoute route) {
+        return false;
+    }
 
     ChannelResult payOnline(Invocation inv, PayCommand command);
 }

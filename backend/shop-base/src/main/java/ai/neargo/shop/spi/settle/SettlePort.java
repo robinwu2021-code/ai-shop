@@ -1,6 +1,8 @@
 package ai.neargo.shop.spi.settle;
 
 import ai.neargo.shop.spi.user.MerchantQueryPort.PaymentRoute;
+import ai.neargo.shop.spi.pay.PayMerchantQueryPort.PayRoute;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.List;
 
@@ -187,9 +189,22 @@ public interface SettlePort {
      */
     record PaymentOpen(String orderNo, String userNo, String entityNo,
                        String payChannel, long amountMinor, String subject,
-                       String currency, List<PaymentStore> stores) {
+                       String currency, List<PaymentStore> stores,
+                       @JsonInclude(JsonInclude.Include.NON_NULL) PayRoute acquiringRoute) {
         public PaymentOpen {
             stores = stores == null ? List.of() : List.copyOf(stores);
+        }
+
+        /** Preserve the old request JSON and constructors when no acquiring route was frozen. */
+        public PaymentOpen(String orderNo, String userNo, String entityNo, String payChannel, long amountMinor,
+                           String subject, String currency, List<PaymentStore> stores) {
+            this(orderNo, userNo, entityNo, payChannel, amountMinor, subject, currency, stores, null);
+        }
+
+        /** A selected account becomes part of the immutable original instruction and its request hash. */
+        public PaymentOpen withAcquiringRoute(PayRoute route) {
+            return new PaymentOpen(orderNo, userNo, entityNo, payChannel, amountMinor, subject,
+                    currency, stores, route);
         }
 
         /** 兼容普通现金支付调用；积分交易必须显式提供交易币种及门店路由。 */

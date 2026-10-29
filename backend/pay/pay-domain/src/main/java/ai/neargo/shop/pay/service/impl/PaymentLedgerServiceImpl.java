@@ -1,6 +1,8 @@
 package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.shop.pay.acquiring.dto.ChannelOutcome;
+import ai.neargo.shop.pay.mapper.acquiring.AcquiringMappers.PayExceptionMapper;
+import ai.neargo.shop.pay.acquiring.entity.PayException;
 import ai.neargo.shop.pay.acquiring.service.RefundService;
 import ai.neargo.shop.pay.acquiring.service.RefundOutcomeService;
 import ai.neargo.shop.spi.settle.RefundRequest;
@@ -41,6 +43,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     private final SettleMappers.PaymentMapper paymentMapper;
     private final ObjectMapper json = new ObjectMapper();
+
+    @Autowired
+    private PayExceptionMapper paymentExceptions;
 
     private final RefundCapacityLedger capacity;
     public PaymentLedgerServiceImpl(SettleMappers.PaymentMapper paymentMapper, RefundCapacityLedger capacity) {
@@ -103,6 +108,15 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             p.setSubMerchantId(route.subMerchantId());
             p.setPayMerchantNo(route.payMerchantNo());
         });
+        var route = cmd.acquiringRoute();
+        if (route != null) {
+            p.setPayMerchantId(route.payMerchantId());
+            p.setPayMerchantNo(route.payMerchantNo());
+            p.setSubMerchantId(route.subMerchantId());
+            p.setMarket(route.market());
+            p.setFundsPath(route.fundsPath());
+            p.setSecKeyVersion(route.keyVersion());
+        }
         try {
             DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
         } catch (org.springframework.dao.DuplicateKeyException race) {
@@ -134,7 +148,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                 || !Objects.equals(original.entityNo(), cmd.entityNo())
                 || !Objects.equals(original.payChannel(), cmd.payChannel())
                 || !Objects.equals(original.currency(), cmd.currency())
-                || original.amountMinor() != cmd.amountMinor()) {
+                || original.amountMinor() != cmd.amountMinor()
+                || !Objects.equals(original.acquiringRoute(), cmd.acquiringRoute())) {
             throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
         }
         return open.getOutTradeNo();
@@ -202,6 +217,14 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                 || request.currency() == null || !request.currency().matches("[A-Z]{3}")
                 || request.amountMinor() < 0) {
             throw new IllegalArgumentException("PAY_REQUEST_INVALID");
+        }
+        var acquiring = request.acquiringRoute();
+        if (acquiring != null && (!Objects.equals(acquiring.payChannel(), request.payChannel())
+                || !Objects.equals(acquiring.currency(), request.currency()) || acquiring.payMerchantId() == null
+                || acquiring.storeId() == null || !nonblank(acquiring.payMerchantNo()) || !nonblank(acquiring.market())
+                || !nonblank(acquiring.accessMode()) || acquiring.keyVersion() == null
+                || !("DIRECT".equals(acquiring.fundsPath()) || "AGGREGATED".equals(acquiring.fundsPath())))) {
+            throw new IllegalArgumentException("PAY_ROUTE_SNAPSHOT_INVALID");
         }
         Set<String> subs = new HashSet<>();
         String directAccount = null;
@@ -615,9 +638,25 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             return null;
         }
         if (StlPayment.SUCCESS.equals(existing.getStatus())) {
-            return Objects.equals(existing.getTradeNo(), cmd.tradeNo())
+            boolean sameReceipt = Objects.equals(existing.getTradeNo(), cmd.tradeNo())
                     && nz(existing.getAmountMinor()) == cmd.amountMinor()
-                    && Objects.equals(existing.getCurrency(), cmd.currency()) ? existing.getOrderNo() : null;
+                    && Objects.equals(existing.getCurrency(), cmd.currency());
+            if (!sameReceipt) return null;
+            if (existing.getPayOrderId() != null) {
+                if (paymentExceptions == null || DataScopeContext.executeWithoutScope(() ->
+                        paymentExceptions.selectCount(Wrappers.<PayException>lambdaQuery()
+                                .eq(PayException::getStlPaymentId, existing.getId())
+                                .in(PayException::getKind, "AMOUNT_MISMATCH",
+                                        "LATE_PAYMENT", "DUPLICATE_PAYMENT"))) > 0) {
+                    return null;
+                }
+                var service = payOrders == null ? null : payOrders.getIfAvailable();
+                var order = service == null ? null : service.findById(existing.getPayOrderId());
+                if (order == null || !Set.of("SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED")
+                        .contains(order.getStatus()) || !Objects.equals(order.getCurrency(), cmd.currency())
+                        || !Objects.equals(order.getAmountMinor(), cmd.amountMinor())) return null;
+            }
+            return existing.getOrderNo();
         }
         StlPayment patch = new StlPayment();
         patch.setId(existing.getId());
@@ -633,8 +672,10 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
         if (outcomes != null && outcomes.getIfAvailable() != null) {
             // 支付单这一层由结果唯一入口决定（I3 S4）：关单后到账、实收不符、重复支付都转异常，不进成功
-            outcomes.getObject().apply(new ChannelOutcome(existing.getId(), existing.getPayOrderId(), existing.getPayChannel(), cmd.tradeNo(),
+            boolean accepted = outcomes.getObject().apply(new ChannelOutcome(existing.getId(),
+                    existing.getPayOrderId(), existing.getPayChannel(), cmd.tradeNo(),
                     cmd.amountMinor(), cmd.currency(), cmd.succeededAt()));
+            if (existing.getPayOrderId() != null && !accepted) return null;
         }
         return existing.getOrderNo();
     }

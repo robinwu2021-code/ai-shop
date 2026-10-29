@@ -51,6 +51,16 @@ public class FundInvariantServiceImpl implements FundInvariantService {
                                                 .eq(StlPayment::getDirection, StlPayment.PAY)
                                                 .eq(StlPayment::getStatus, StlPayment.SUCCESS)
                                                 .isNotNull(StlPayment::getOrderNo)
+                                                .apply("(pay_order_id IS NULL OR EXISTS (SELECT 1 FROM pay_order po"
+                                                        + " WHERE po.id=stl_payment.pay_order_id AND po.deleted=0"
+                                                        + " AND po.status IN ('SUCCEEDED','PARTIALLY_REFUNDED',"
+                                                        + "'REFUNDED')"
+                                                        + " AND po.currency=stl_payment.currency"
+                                                        + " AND po.amount_minor=stl_payment.amount_minor))"
+                                                        + " AND NOT EXISTS (SELECT 1 FROM pay_exception pe"
+                                                        + " WHERE pe.stl_payment_id=stl_payment.id AND pe.deleted=0"
+                                                        + " AND pe.kind IN ('AMOUNT_MISMATCH','LATE_PAYMENT',"
+                                                        + "'DUPLICATE_PAYMENT'))")
                                                 .ge(StlPayment::getSucceededAt, since)
                                                 .orderByAsc(StlPayment::getSucceededAt)
                                                 .last("LIMIT " + limit)))

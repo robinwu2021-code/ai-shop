@@ -19,6 +19,7 @@ import ai.neargo.shop.pay.channel.capability.ChannelCapability;
 import ai.neargo.shop.pay.channel.capability.OnlinePayCapability;
 import ai.neargo.shop.pay.channel.capability.TransactionCapability;
 import ai.neargo.shop.pay.channel.invoke.Invocation;
+import ai.neargo.shop.pay.channel.context.ChannelRoute;
 import ai.neargo.shop.spi.pay.PayInstruction;
 import ai.neargo.shop.spi.pay.RefundQueryResult;
 import java.util.EnumSet;
@@ -70,6 +71,12 @@ public final class InProcessChannel implements OnlinePayCapability, TransactionC
     @Override
     public boolean supportsRefundCurrency(String currency) {
         return bank.supportsRefundCurrency(currency);
+    }
+
+    /** The stateful test bank has no external signing account; real and stateless stub channels do not qualify. */
+    @Override
+    public boolean supportsFrozenAccount(ChannelRoute route) {
+        return bank instanceof TestPayGateway;
     }
 
     @Override

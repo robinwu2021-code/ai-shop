@@ -19,6 +19,7 @@ import ai.neargo.shop.pay.channel.api.command.RefundCommand;
 import ai.neargo.shop.pay.channel.api.command.RefundQueryCommand;
 import ai.neargo.shop.pay.channel.capability.ChannelCapabilityRegistry;
 import ai.neargo.shop.pay.channel.capability.TransactionCapability;
+import ai.neargo.shop.pay.channel.capability.OnlinePayCapability;
 import ai.neargo.shop.pay.channel.context.ChannelContextFactory;
 import ai.neargo.shop.pay.channel.context.ChannelRoute;
 import ai.neargo.shop.pay.channel.handler.ChannelHandlerRegistry;
@@ -26,6 +27,7 @@ import ai.neargo.shop.pay.channel.invoke.Invocation;
 import ai.neargo.shop.pay.channel.platform.InProcessChannel;
 import ai.neargo.shop.spi.pay.RefundQueryResult;
 import java.util.Optional;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +82,30 @@ public final class LegacyChannelBridge {
      * 管线同时已登记补查 —— 而不是像 I2 那样抛出去变成一个 500。
      */
     public PayGateway.PrepayResult prepay(String payChannel, PayGateway.PrepayCommand c) {
-        ChannelAccountContext ctx = context(payChannel, c.currency(), c.subMchId());
+        return prepay(context(payChannel, c.currency(), c.subMchId()), c);
+    }
+
+    /** No deployment-default account fallback is allowed for an explicitly frozen acquiring route. */
+    public PayGateway.PrepayResult prepayRouted(ChannelRoute route, PayGateway.PrepayCommand c) {
+        if (!supportsRoutedAccount(route) || !route.currency().equals(c.currency())
+                || !Objects.equals(route.subMerchantId(), c.subMchId())) {
+            return PayGateway.PrepayResult.fail("ACQUIRING_ACCOUNT_UNVERIFIED");
+        }
+        return prepay(contexts.from(route), c);
+    }
+
+    /** Also used before preparing an attempt and when listing methods; signing-account proof is opt-in. */
+    public boolean supportsRoutedAccount(ChannelRoute route) {
+        return route != null && route.accessMode() != null && route.payMerchantId() != null
+                && route.payMerchantNo() != null && !route.payMerchantNo().isBlank()
+                && route.market() != null && !route.market().isBlank() && route.currency() != null
+                && route.keyVersion() != null
+                && capabilities.find(route.payChannel(), route.accessMode(), OnlinePayCapability.class)
+                        .filter(c -> c.onlineScenes().contains(PayScene.ONLINE_SDK))
+                        .filter(c -> c.supportsFrozenAccount(route)).isPresent();
+    }
+
+    private PayGateway.PrepayResult prepay(ChannelAccountContext ctx, PayGateway.PrepayCommand c) {
         PayCommand cmd = new PayCommand(meta("PAY", c.outTradeNo()), PayScene.ONLINE_SDK,
                 new Money(c.amountMinor(), c.currency()), c.subject(), c.outTradeNo(), null, c.payerId(), null);
         ChannelResult r = c.amountMinor() <= 0 ? direct(ctx, cmd) : channels.execute(ctx, cmd);

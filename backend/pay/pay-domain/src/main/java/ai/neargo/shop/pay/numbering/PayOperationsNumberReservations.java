@@ -65,6 +65,7 @@ public class PayOperationsNumberReservations extends DefaultPointcutAdvisor {
             case "SettleBatchServiceImpl" -> method.equals("collectIntoBatches");
             case "SettleServiceImpl" -> method.equals("generateForOrder") || method.equals("submitInvoice");
             case "PaymentLedgerServiceImpl" -> method.equals("open");
+            case "PaymentServiceImpl" -> method.equals("start");
             case "LegacyCouponUseWriter" -> List.of("settle", "reverse", "replay", "repairUsage").contains(method);
             case "SettlementPointsFundingServiceImpl" -> method.equals("prepare") || method.equals("accept");
             case "SplitPreparationServiceImpl" -> method.equals("prepare");
@@ -90,7 +91,7 @@ public class PayOperationsNumberReservations extends DefaultPointcutAdvisor {
             case "SettleBatchServiceImpl" -> Map.of(SETTLEMENT_BATCH, 500);
             case "SettleServiceImpl" -> method.equals("submitInvoice") ? Map.of(SETTLEMENT_INVOICE_REQUEST, 1)
                     : Map.of(SETTLEMENT_BILL, ((List<?>) args[1]).size());
-            case "PaymentLedgerServiceImpl" -> Map.of(PAYMENT_ATTEMPT, 1);
+            case "PaymentLedgerServiceImpl", "PaymentServiceImpl" -> Map.of(PAYMENT_ATTEMPT, 1);
             case "LegacyCouponUseWriter" -> Map.of(ENTITLEMENT_USAGE, 1);
             case "SettlementPointsFundingServiceImpl", "SplitPreparationServiceImpl", "SplitResultServiceImpl" -> Map.of(POINTS_VOUCHER, 1);
             default -> throw new IllegalArgumentException("Unknown operation number budget");

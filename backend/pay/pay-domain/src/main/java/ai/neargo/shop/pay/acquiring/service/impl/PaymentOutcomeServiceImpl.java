@@ -13,6 +13,7 @@ import ai.neargo.shop.pay.mapper.acquiring.AcquiringMappers.PayOrderMapper;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ai.neargo.shop.pay.funds.FundsPaths;
@@ -69,7 +70,8 @@ public class PaymentOutcomeServiceImpl implements PaymentOutcomeService {
             // 同一张单另一笔尝试也成功了：重复支付，钱要退回给顾客
             return exception(DUPLICATE_PAYMENT, o, outcome);
         }
-        if (outcome.channelAmountMinor() != o.getAmountMinor()) {
+        if (outcome.channelAmountMinor() != o.getAmountMinor()
+                || !Objects.equals(outcome.channelCurrency(), o.getCurrency())) {
             return exception(AMOUNT_MISMATCH, o, outcome);
         }
         PayOrder patch = new PayOrder();

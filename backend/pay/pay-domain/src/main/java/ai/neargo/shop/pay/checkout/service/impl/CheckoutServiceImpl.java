@@ -95,7 +95,8 @@ public class CheckoutServiceImpl implements CheckoutService {
         PayCheckoutSession s = usable(token);
         PayOrder o = orderOf(s);
         boolean done = paid(o);
-        List<String> methods = done ? List.of() : routes.available(o.getStoreId(), o.getMarket()).stream()
+        List<String> methods = done ? List.of() : routes.available(
+                o.getStoreId(), o.getMarket(), o.getCurrency(), o.getAmountMinor()).stream()
                 .map(x -> x.product().getPayMethod()).distinct().toList();
         return new SessionView(o.getPayOrderNo(), o.getEntityNameSnapshot(), o.getStoreNameSnapshot(),
                 o.getAmountMinor(), o.getCurrency(), scaleOf(o.getMarket()), o.getMarket(), done ? "DONE" : s.getStatus(),
