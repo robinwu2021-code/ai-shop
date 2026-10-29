@@ -1100,6 +1100,31 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
     }
 
     String prepareStock(String sku, String unit) {
+        if(context.getEnvironment().getProperty("shop.food.local-stock.enabled",Boolean.class,false)) {
+            return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(()->{
+                var existing=context.getBean(ai.neargo.shop.food.mapper.FoodMappers.StockItemMapper.class)
+                        .selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers.<ai.neargo.shop.food.entity.FnbStockItem>lambdaQuery()
+                                .eq(ai.neargo.shop.food.entity.FnbStockItem::getTenantNo,"MAIN")
+                                .eq(ai.neargo.shop.food.entity.FnbStockItem::getEntityNo,"M0001")
+                                .eq(ai.neargo.shop.food.entity.FnbStockItem::getSkuNo,sku));
+                if(existing!=null) {
+                    assertThat(existing.getBaseUnit()).isEqualTo(unit);
+                    var stocks=context.getBean(ai.neargo.shop.food.service.FoodStockBalanceService.class);
+                    var balance=stocks.getBalance("M0001",STORE,existing.getItemNo());
+                    stocks.adjust("M0001",STORE,existing.getItemNo(),"SF-M0001",
+                            new ai.neargo.shop.food.dto.FoodStockContracts.Adjust(java.math.BigDecimal.TEN,
+                                    balance.version(),"COUNT","Native fixture replenishment"),key());
+                    return existing.getItemNo();
+                }
+                var item=context.getBean(ai.neargo.shop.food.service.FoodStockItemService.class)
+                        .createItem("M0001",STORE,"SF-M0001",
+                                new ai.neargo.shop.food.dto.FoodStockContracts.CreateItem("FINISHED",sku,"native food",unit,"TRACKED"),key());
+                context.getBean(ai.neargo.shop.food.service.FoodStockBalanceService.class)
+                        .initialize("M0001",STORE,"SF-M0001",new ai.neargo.shop.food.dto.FoodStockContracts.Initialize(
+                                item.itemNo(),"TRACKED","ACTIVE",java.math.BigDecimal.TEN,"COUNT","Native fixture opening count"),key());
+                return item.itemNo();
+            });
+        }
         var acl = context.getBean(InventoryAclService.class);
         String owner = acl.ownerIdOf("M0001");
         String item = acl.upsertItem("M0001", sku, "native food", "fixture", null, null, unit);
@@ -1312,7 +1337,18 @@ class FoodNonPaymentNativeHttpIT extends FoodEmbeddedStartupIT {
     }
 
     String recipe(String token, String sku) throws Exception {
-        String ingredient = prepareStock("SK0003");
+        String ingredient;
+        if(context.getEnvironment().getProperty("shop.food.local-stock.enabled",Boolean.class,false)) {
+            ingredient=ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(()->{
+                var item=context.getBean(ai.neargo.shop.food.service.FoodStockItemService.class)
+                        .createItem("M0001",STORE,"SF-M0001",new ai.neargo.shop.food.dto.FoodStockContracts.CreateItem(
+                                "MATERIAL",null,"Native raw ingredient","COUNT","TRACKED"),key());
+                context.getBean(ai.neargo.shop.food.service.FoodStockBalanceService.class)
+                        .initialize("M0001",STORE,"SF-M0001",new ai.neargo.shop.food.dto.FoodStockContracts.Initialize(
+                                item.itemNo(),"TRACKED","ACTIVE",java.math.BigDecimal.TEN,"COUNT","Native raw ingredient opening count"),key());
+                return item.itemNo();
+            });
+        } else ingredient = prepareStock("SK0003");
         var draft =
                 post(
                                 "/biz/x/food/stores/" + STORE + "/recipes",

@@ -26,6 +26,29 @@ class RecipeSnapshotCompatibilityTest {
                 + "\"postingSupport\":\"INTEGER_ONLY\",\"definitionHash\":\"" + materialHash + "\"}],"
                 + "\"optionGroups\":[],\"approvalRef\":null}";
     }
+    String localRecipe() {
+        String oldHash=MaterialCatalogFacts.definitionHash("MILK","E","Milk","KG",1,"OWN");
+        String hash=ai.neargo.shop.food.policy.FoodMaterialFacts.hash("MILK","E","Milk","KG",1);
+        return recipe().replace(oldHash,hash).replace("\"dataSource\":\"OWN\"","\"dataSource\":\"FOOD_LOCAL\"")
+                .replace("\"postingSupport\":\"INTEGER_ONLY\"","\"postingSupport\":\"EXACT_DECIMAL_6\"");
+    }
+    @Test void localRecipeFactsKeepExactContractAndRejectTampering() {
+        assertThat(PublicationDocuments.validate(json,"RECIPE","R",localRecipe())).isEqualTo(3);
+        String hash=ai.neargo.shop.food.policy.FoodMaterialFacts.hash("MILK","E","Milk","KG",1);
+        for(String bad:new String[]{localRecipe().replace(hash,"a".repeat(64)),
+                localRecipe().replace("\"baseUom\":\"KG\"","\"baseUom\":\"G\""),
+                localRecipe().replace("\"postingSupport\":\"EXACT_DECIMAL_6\"","\"postingSupport\":\"INTEGER_ONLY\"")})
+            assertThatThrownBy(()->PublicationDocuments.validate(json,"RECIPE","R",bad)).isInstanceOf(RuntimeException.class);
+    }
+    @Test void localAndLegacyFactSignaturesCannotBeRelabelled() {
+        assertThatThrownBy(()->PublicationDocuments.validate(json,"RECIPE","R",localRecipe()
+                .replace("\"dataSource\":\"FOOD_LOCAL\"","\"dataSource\":\"OWN\"")))
+                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(()->PublicationDocuments.validate(json,"RECIPE","R",recipe()
+                .replace("\"dataSource\":\"OWN\"","\"dataSource\":\"FOOD_LOCAL\"")
+                .replace("\"postingSupport\":\"INTEGER_ONLY\"","\"postingSupport\":\"EXACT_DECIMAL_6\"")))
+                .isInstanceOf(RuntimeException.class);
+    }
     @Test void schemaThreeCannotOmitDefinitionCountersOrAdjustmentCollections() {
         for (String bad : new String[] {recipe().replace(",\"adjustments\":[]", ""),
                 recipe().replace("\"configVersion\":1,", "")}) {

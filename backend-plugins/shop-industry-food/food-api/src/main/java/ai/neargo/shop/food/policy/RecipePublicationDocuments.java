@@ -103,7 +103,7 @@ public final class RecipePublicationDocuments {
         var materials = new HashMap<String, String>();
         for (var f : body.materialFacts()) {
             require(
-                    MaterialCatalogFacts.validFact(f)
+                    FoodMaterialFacts.validFact(f)
                             && sku.entityNo().equals(f.entityNo())
                             && materials.putIfAbsent(f.itemId(), f.definitionHash()) == null);
         }

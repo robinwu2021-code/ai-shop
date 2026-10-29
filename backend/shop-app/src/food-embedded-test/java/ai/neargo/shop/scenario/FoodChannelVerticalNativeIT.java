@@ -216,6 +216,14 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
         }
     }
 
+    @Test
+    void actualTwoHandoversConserveOriginalQuantityAndReplayWithoutDuplicateSupplierEffects() throws Exception {
+        var configured=new FoodChannelVerticalProvisioning(context,MOCK_TOKEN,2)
+                .provision(port,"FINISHED_WITH_MODIFIERS");
+        var fixture=new FoodChannelVerticalFixture(sql,json,platform,configured.references(),MOCK_TOKEN);
+        accept(fixture,fixture.references.happyOrderNo(),false,"RECIPE_MATERIAL",true);
+    }
+
     private void accept(FoodChannelVerticalFixture fixture, String number, boolean uncertain)
             throws Exception {
         accept(fixture, number, uncertain, null);
@@ -227,6 +235,10 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
             boolean uncertain,
             String expectedBranch)
             throws Exception {
+        accept(fixture,number,uncertain,expectedBranch,false);
+    }
+    private void accept(FoodChannelVerticalFixture fixture,String number,boolean uncertain,
+            String expectedBranch,boolean split) throws Exception {
         var refs = fixture.references;
         fixture.scenario(number, uncertain ? Scenario.PERSIST_THEN_TIMEOUT : Scenario.SUCCESS);
         until(
@@ -241,7 +253,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
         if (expectedBranch != null)
             assertThat(plan.branches())
                     .anySatisfy(branch -> assertThat(branch.kind()).isEqualTo(expectedBranch));
-        var reservation = inventory.query(plan.scope());
+        var reservation = inventoryFor(plan).query(plan.scope());
         assertThat(reservation.planHash()).isEqualTo(plan.planHash());
         assertThat(reservation.lines())
                 .hasSize(plan.branches().stream().mapToInt(b -> b.leaves().size()).sum());
@@ -253,7 +265,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                             .orElseThrow();
             assertThat(retained.originalQty()).isEqualByComparingTo(leaf.quantity());
             var originalBranch=plan.branches().stream().filter(b->b.leaves().contains(leaf)).findFirst().orElseThrow();
-            String expectedMaterial="FINISHED_SKU".equals(
+            String expectedMaterial=leaf.sourceSkuNo()==null && "FINISHED_SKU".equals(
                     ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts.sourceKind(originalBranch,leaf))
                     ? context.getBean(ai.neargo.shop.inventory.service.InventoryAclService.class)
                             .itemIdOfSku(leaf.itemRef()) : leaf.itemRef();
@@ -351,7 +363,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                                 binding.batchNo()))
                 .isPositive();
         printAttempt(binding.batchNo(), refs.entityNo(), refs.storeNo());
-        produceAndDeliver(fixture, number, binding.batchNo());
+        produceAndDeliver(fixture, number, binding.batchNo(),split);
         assertThat(restaurant.confirm(fixture.key(number)).orderNo())
                 .isEqualTo(binding.coreOrderNo());
         assertThat(
@@ -413,7 +425,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
         assertThat(failed.status()).isEqualTo("FAILED");
     }
 
-    private void produceAndDeliver(FoodChannelVerticalFixture fixture, String number, String batch)
+    private void produceAndDeliver(FoodChannelVerticalFixture fixture, String number, String batch, boolean split)
             throws Exception {
         var f = new FoodChannelVerticalMenuFixture(context, sql, json, port);
         var host = f.original;
@@ -472,7 +484,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                     key());
         }
         var originalPlan = restaurant.get(fixture.key(number)).corePreparation().inventoryPlan();
-        var phaseReceipt = inventory.query(originalPlan.scope());
+        var phaseReceipt = inventoryFor(originalPlan).query(originalPlan.scope());
         assertThat(phaseReceipt.lines())
                 .anySatisfy(line -> assertThat(line.kind()).isEqualTo("RECIPE_MATERIAL"));
         for (var physical : phaseReceipt.lines()) {
@@ -507,32 +519,33 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                         "SELECT party_no FROM fnb_channel_order_source WHERE batch_no=?",
                         String.class,
                         batch);
-        String handoverKey = key();
-        var handoverBody =
-                java.util.Map.of(
-                        "kind",
-                        "DELIVERY",
-                        "lines",
-                        lines,
-                        "recipientNo",
-                        party,
-                        "recipientRef",
-                        fixture.command(number)
-                                .original()
-                                .document()
-                                .customer()
-                                .externalCustomerRef(),
-                        "reason",
-                        "Native original delivery custody");
-        var request = json.readValue(json.writeValueAsString(handoverBody),
-                ai.neargo.shop.food.dto.KitchenContracts.HandoverReq.class);
-        var first = context.getBean(ai.neargo.shop.food.service.KitchenTaskService.class)
-                .handover(fixture.references.entityNo(), fixture.references.storeNo(), "SF-M0001", batch, request, handoverKey);
-        var handed = json.readTree(json.writeValueAsString(first));
-        assertThat(host.post("/biz/x/food/batches/" + batch + ":handover",
-                handoverBody, f.token, handoverKey)).isEqualTo(handed);
-        assertThat(handed.path("coreDeliveryRef").asString()).isNotBlank();
-        assertThat(handed.path("deliveryPending").asBoolean()).isFalse();
+        var portions=split?java.util.stream.IntStream.range(0,2)
+                .mapToObj(i->lines.stream().map(line->{
+                    var qty=new java.math.BigDecimal(line.get("qty").toString());
+                    assertThat(qty).isEqualByComparingTo("2");
+                    return java.util.Map.<String,Object>of("foodLineNo",line.get("foodLineNo"),"qty",java.math.BigDecimal.ONE);
+                }).toList()).toList():List.of(lines);
+        var deliveryRefs=new java.util.HashSet<String>();
+        int portion=0;
+        for(var part:portions) {
+            String handoverKey=key();
+            var body=java.util.Map.of("kind","DELIVERY","lines",part,"recipientNo",party,
+                    "recipientRef",fixture.command(number).original().document().customer().externalCustomerRef(),
+                    "reason","Native original delivery custody");
+            var request=json.readValue(json.writeValueAsString(body),ai.neargo.shop.food.dto.KitchenContracts.HandoverReq.class);
+            var first=context.getBean(ai.neargo.shop.food.service.KitchenTaskService.class)
+                    .handover(fixture.references.entityNo(),fixture.references.storeNo(),"SF-M0001",batch,request,handoverKey);
+            var handed=json.readTree(json.writeValueAsString(first));
+            assertThat(host.post("/biz/x/food/batches/"+batch+":handover",body,f.token,handoverKey)).isEqualTo(handed);
+            assertThat(handed.path("coreDeliveryRef").asString()).isNotBlank();
+            assertThat(handed.path("deliveryPending").asBoolean()).isFalse();
+            assertThat(deliveryRefs.add(handed.path("coreDeliveryRef").asString())).isTrue();
+            if(split && ++portion==1) {
+                assertThat(inventoryFor(originalPlan).query(originalPlan.scope()).lines().stream().filter(l->"FINISHED_SKU".equals(l.kind())))
+                        .isNotEmpty().allSatisfy(l->assertThat(l.issuedQty().multiply(java.math.BigDecimal.valueOf(2)))
+                                .isEqualByComparingTo(l.originalQty()));
+            }
+        }
         var events =
                 sql.queryForList(
                         "SELECT o.event_no FROM fnb_service_event e JOIN fnb_kitchen_task t ON"
@@ -567,6 +580,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                 publications
                         .listFulfillments(refs.entityNo(), refs.storeNo(), number, 1, 100)
                         .records();
+        var handovers=new java.util.ArrayList<FulfillmentPublication>();
         for (var link : links) {
             assertThat(link.externalEvidenceRef()).isNotBlank();
             var frozen =
@@ -576,16 +590,32 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                                     String.class,
                                     link.linkNo()),
                             FulfillmentPublication.class);
+            if(frozen.stage()==ai.neargo.shop.spi.commerce.ChannelFulfillmentGateway.Stage.HANDED_OVER)
+                handovers.add(frozen);
+            if(split)assertThat(frozen.stage()).isNotEqualTo(ai.neargo.shop.spi.commerce.ChannelFulfillmentGateway.Stage.DELIVERED);
             var original = context.getBean(MockCommerceGateway.class).queryFulfillment(frozen);
             assertThat(original.status()).isEqualTo(PublicationStatus.CONFIRMED);
             assertThat(original.originalReceiptRef()).isEqualTo(link.externalEvidenceRef());
         }
+        if(split) {
+            assertThat(handovers).hasSize(2);
+            assertThat(handovers.stream().map(FulfillmentPublication::sourceFulfillmentRef).distinct()).hasSize(2);
+            assertThat(handovers.stream().flatMap(h->h.lines().stream()).map(l->new java.math.BigDecimal(l.quantity()))
+                    .reduce(java.math.BigDecimal.ZERO,java.math.BigDecimal::add)).isEqualByComparingTo("2");
+        }
         var plan = restaurant.get(fixture.key(number)).corePreparation().inventoryPlan();
-        assertThat(inventory.query(plan.scope()).lines())
+        assertThat(inventoryFor(plan).query(plan.scope()).lines())
                 .allSatisfy(
                         line ->
                                 assertThat(line.issuedQty())
                                         .isEqualByComparingTo(line.originalQty()));
+    }
+
+    private InventoryDemandPlanPort inventoryFor(ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan plan) {
+        String owner=sql.queryForObject("SELECT inventory_owner FROM ord_channel_preparation "
+                +"WHERE tenant_no=? AND entity_no=? AND JSON_UNQUOTE(JSON_EXTRACT(plan_snapshot,'$.planNo'))=?",
+                String.class,plan.scope().tenantNo(),plan.scope().entityNo(),plan.planNo());
+        return context.getBean(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter.class).exact(owner,plan,3);
     }
 
     private void deliver(String event, String handler) throws Exception {

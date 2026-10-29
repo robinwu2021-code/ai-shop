@@ -69,8 +69,14 @@ final class FoodChannelVerticalProvisioning {
     private final MockCommercePlatform platform;
     private final MockCommerceGateway gateway;
     private final String token;
+    private final int mainQuantity;
 
     FoodChannelVerticalProvisioning(ApplicationContext context, String token) {
+        this(context, token, 1);
+    }
+    FoodChannelVerticalProvisioning(ApplicationContext context, String token, int mainQuantity) {
+        if (mainQuantity < 1) throw new IllegalArgumentException("Positive original quantity required");
+        this.mainQuantity = mainQuantity;
         this.context = context;
         json = context.getBean(ObjectMapper.class);
         platform = context.getBean(MockCommercePlatform.class);
@@ -412,13 +418,21 @@ final class FoodChannelVerticalProvisioning {
                                 extra));
                 amount = Math.addExact(amount, extra);
             }
+        if (mainQuantity != 1) {
+            amount = Math.multiplyExact(amount, mainQuantity);
+            for (int i=0;i<selections.size();i++) {
+                var original=selections.get(i);
+                selections.set(i,new ChannelOrderGateway.Selection(original.lineRef(),original.kind(),
+                        original.externalIdentity(),original.quantity(),Math.multiplyExact(original.amountMinor(),mainQuantity)));
+            }
+        }
         String ref = "vertical-order-" + key();
         var line =
                 new ChannelOrderGateway.Line(
                         "main",
                         offerIdentity,
                         skuIdentity,
-                        "1",
+                        Integer.toString(mainQuantity),
                         offer.measurement().unitCode(),
                         amount,
                         0,
