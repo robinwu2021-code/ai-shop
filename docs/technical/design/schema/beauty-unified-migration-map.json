@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "purpose": "BEAUTY_UNIFIED_SOURCE_MIGRATION_MAPPING_NOT_DEPLOYMENT_HISTORY",
+  "unifiedCommit": "f0bb429ac",
+  "beautyCommit": "3615e19db",
+  "targetHistoryValidation": "REQUIRED_BEFORE_DEPLOYMENT",
+  "unifiedMigrationsImmutable": true,
+  "migrations": [
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V532__shared_personnel_foundation.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V592__shared_personnel_foundation.sql",
+      "originalSqlSha256": "299c7ed3dc22f7b5a0510949956e685c702d74b88a606b5a92004ca1cb7d579b",
+      "integratedSqlSha256": "299c7ed3dc22f7b5a0510949956e685c702d74b88a606b5a92004ca1cb7d579b",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -848797086
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V533__shared_resource_identity.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V593__shared_resource_identity.sql",
+      "originalSqlSha256": "2b41485b9b032ffa00b74b5cec31bfaf774a9024f465e3e2d5ec149759c43aff",
+      "integratedSqlSha256": "2b41485b9b032ffa00b74b5cec31bfaf774a9024f465e3e2d5ec149759c43aff",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -606051304
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V534__shared_schedule_rules.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V594__shared_schedule_rules.sql",
+      "originalSqlSha256": "f52c7ee04d31b4d407287e7cf6b200d9a70b308289053ed403996cf25a130997",
+      "integratedSqlSha256": "f52c7ee04d31b4d407287e7cf6b200d9a70b308289053ed403996cf25a130997",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": 942087526
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V535__shared_resource_booking_foundation.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V595__shared_resource_booking_foundation.sql",
+      "originalSqlSha256": "0518429c19edf0f411aefb2e1c296c2df6aab72e93137699ccef0fd54a9dd9c0",
+      "integratedSqlSha256": "0518429c19edf0f411aefb2e1c296c2df6aab72e93137699ccef0fd54a9dd9c0",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": 1056329416
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V536__shared_store_sales_catalog.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V596__shared_store_sales_catalog.sql",
+      "originalSqlSha256": "3e6733122055963b7dcf7442e0166167defd720682696762c49cafb8ce9b8e16",
+      "integratedSqlSha256": "3e6733122055963b7dcf7442e0166167defd720682696762c49cafb8ce9b8e16",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -577333670
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V537__shared_guest_registration.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V597__shared_guest_registration.sql",
+      "originalSqlSha256": "9c93c44dc328b4cbf47be8baae6972743e0922aca1a0cf62b84906905b4f0b0f",
+      "integratedSqlSha256": "9c93c44dc328b4cbf47be8baae6972743e0922aca1a0cf62b84906905b4f0b0f",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -68147226
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V538__member_reference_actor_namespace.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V598__member_reference_actor_namespace.sql",
+      "originalSqlSha256": "65f1536102d92776224a8542f12c1e90a4cab1a9e4e07540dffab1cab7a30183",
+      "integratedSqlSha256": "65f1536102d92776224a8542f12c1e90a4cab1a9e4e07540dffab1cab7a30183",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -1504203594
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V539__checkout_source_foundation.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V599__checkout_source_foundation.sql",
+      "originalSqlSha256": "5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a9d8f9e14d3b",
+      "integratedSqlSha256": "5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a9d8f9e14d3b",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -1903891383
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V540__checkout_payment_operation.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V600__checkout_payment_operation.sql",
+      "originalSqlSha256": "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745",
+      "integratedSqlSha256": "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -642535418
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V541__manual_service_admission.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V601__manual_service_admission.sql",
+      "originalSqlSha256": "9d01ae07c112cfdb350f4950c88fe7bfba8297be2053b26f97961f31175f9400",
+      "integratedSqlSha256": "9d01ae07c112cfdb350f4950c88fe7bfba8297be2053b26f97961f31175f9400",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -293886135
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V542__shared_manual_order_customer_party.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V602__shared_manual_order_customer_party.sql",
+      "originalSqlSha256": "91638cf01a977645284f152aede1177223bc97046153aefe48235dd408f813f0",
+      "integratedSqlSha256": "91638cf01a977645284f152aede1177223bc97046153aefe48235dd408f813f0",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -1736817462
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V543__counter_campaign_owner_fence.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V603__counter_campaign_owner_fence.sql",
+      "originalSqlSha256": "7151507414413188096b2bed9cebbea21bfb46e5ab5eab9636b5458b432f39bf",
+      "integratedSqlSha256": "7151507414413188096b2bed9cebbea21bfb46e5ab5eab9636b5458b432f39bf",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": 67443195,
+      "descriptorPath": "backend/shop-core/src/main/resources/schema/counter-campaign-owner-fence-descriptor.json",
+      "descriptorSha256": "194d705c2b44d3ff0dde762df970d0a1216a8a9b00de263091fd07490901228d"
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V544__manual_service_execution_authority.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V604__manual_service_execution_authority.sql",
+      "originalSqlSha256": "daac4b0956de310676f8795d41ba34e412c66179549445dd76f1cdf740643fc1",
+      "integratedSqlSha256": "daac4b0956de310676f8795d41ba34e412c66179549445dd76f1cdf740643fc1",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -1519445049,
+      "descriptorPath": "backend/shop-core/src/main/resources/META-INF/shop/manual-service-execution-schema.json",
+      "descriptorSha256": "567f1fd29570d937f58024925b23560cf4f310ed23a6b84f77ac5a30aca74bb9"
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V545__execution_stock_retention.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V605__execution_stock_retention.sql",
+      "originalSqlSha256": "a0674ee3859ea27e400d63753983b7f7fd7bc4d533aba5d08abb62e7e596e155",
+      "integratedSqlSha256": "a0674ee3859ea27e400d63753983b7f7fd7bc4d533aba5d08abb62e7e596e155",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": 815253733,
+      "descriptorPath": "backend/shop-core/src/main/resources/META-INF/shop/execution-stock-retention-schema.json",
+      "descriptorSha256": "3cd80a0a5d33fd07341cd845c47e3b40222615a4a89dbf443716e6ab9cbbd309"
+    },
+    {
+      "originalPath": "backend/shop-app/src/main/resources/db/migration/V546__execution_retention_route.sql",
+      "integratedPath": "backend/shop-app/src/main/resources/db/migration/V606__execution_retention_route.sql",
+      "originalSqlSha256": "d01896fa7cc345a3ab83f1404679859224f641547365c33b5bdfd06e7b35ddae",
+      "integratedSqlSha256": "d01896fa7cc345a3ab83f1404679859224f641547365c33b5bdfd06e7b35ddae",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": 298141623,
+      "descriptorPath": "backend/shop-app/src/main/resources/META-INF/shop/execution-retention-route-schema.json",
+      "descriptorSha256": "e40325c930032a587c2a0b99dca1019e0e12e5dcd41963d8aba2e4b558630ade"
+    },
+    {
+      "originalPath": "backend/shop-inventory/src/main/resources/db/inventory/V14__original_stock_disposition.sql",
+      "integratedPath": "backend/shop-inventory/src/main/resources/db/inventory/V16__original_stock_disposition.sql",
+      "originalSqlSha256": "0a84cc624f3dbd7a58eb38067eefa74778a79cc47d34d4127ba751fd3f4c8095",
+      "integratedSqlSha256": "0a84cc624f3dbd7a58eb38067eefa74778a79cc47d34d4127ba751fd3f4c8095",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -906118757
+    },
+    {
+      "originalPath": "backend/shop-inventory/src/main/resources/db/inventory/V15__execution_stock_retention.sql",
+      "integratedPath": "backend/shop-inventory/src/main/resources/db/inventory/V17__execution_stock_retention.sql",
+      "originalSqlSha256": "3725630fc006ad0b15afa55c44054522e16c84cdfba629108e1affb59ecb7ab0",
+      "integratedSqlSha256": "3725630fc006ad0b15afa55c44054522e16c84cdfba629108e1affb59ecb7ab0",
+      "sqlBytesUnchanged": true,
+      "flywayChecksum": -915721551,
+      "descriptorPath": "backend/shop-inventory/src/main/resources/META-INF/shop/inventory-execution-retention-schema.json",
+      "descriptorSha256": "a3b6ec424b6d8360fc5027902e485f25e3897b43a6f0e673e041208a1ad0dac8"
+    }
+  ],
+  "verification": {
+    "unifiedNativeMigrationFilesCompared": 521,
+    "allUnifiedNativeSqlBytesUnchanged": true,
+    "allBeautyNativeSqlBytesUnchanged": true,
+    "versionUniquenessPerLocation": true,
+    "nativeDescriptorPolicyHashesConsistent": true,
+    "runtimeTestsExecuted": false,
+    "deploymentHistoryInspected": false
+  }
+}

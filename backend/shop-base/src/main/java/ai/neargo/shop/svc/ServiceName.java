@@ -24,6 +24,9 @@ public final class ServiceName {
     /** 统一渠道独立进程；集成形态可显式将其定位到PLATFORM。 */
     public static final String COMMERCE = "COMMERCE";
 
+    /** 美业独立内部业务进程；公开入口仍在PLATFORM。 */
+    public static final String BEAUTY = "BEAUTY";
+
     private ServiceName() {
     }
 }

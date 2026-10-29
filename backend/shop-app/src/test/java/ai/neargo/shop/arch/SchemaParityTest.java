@@ -1,5 +1,8 @@
 package ai.neargo.shop.arch;
 
+import ai.neargo.shop.infra.H2FixtureProjection;
+import ai.neargo.shop.infra.SchemaDdl;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +37,7 @@ class SchemaParityTest {
 
     /** 建表 / 改名 / 删表，**一个正则**，这样三者能按出现顺序处理（见 {@link #collect}） */
     private static final Pattern CREATE_OR_RENAME_OR_DROP = Pattern.compile(
-            "CREATE TABLE IF NOT EXISTS (\\w+)"
+            "CREATE TABLE(?: IF NOT EXISTS)? (\\w+)"
                     + "|ALTER TABLE\\s+(\\w+)\\s+RENAME TO\\s+(\\w+)"
                     + "|DROP TABLE(?:\\s+IF EXISTS)?\\s+(\\w+)",
             Pattern.CASE_INSENSITIVE);
@@ -62,9 +65,12 @@ class SchemaParityTest {
                 collect(Files.readString(f, StandardCharsets.UTF_8), migrated);
             }
         }
+        H2FixtureProjection.load(H2FixtureProjection.repositoryRoot(root), migrations).applyTables(migrated);
         Set<String> inTest = new LinkedHashSet<>();
         collect(Files.readString(testSchema, StandardCharsets.UTF_8), inTest);
 
+        assertThat(inTest).as("Exact declared H2 projection table set")
+                .containsExactlyInAnyOrderElementsOf(migrated);
         List<String> missing = migrated.stream().filter(t -> !inTest.contains(t)).toList();
         assertThat(missing)
                 .as("这些表在 Flyway 迁移里建了，但 H2 测试 schema 里没有：%s\n"
@@ -92,7 +98,7 @@ class SchemaParityTest {
      * 分开收就会把「建」当成先发生的那一个。
      */
     private static void collect(String sql, Set<String> out) {
-        Matcher m = CREATE_OR_RENAME_OR_DROP.matcher(sql);
+        Matcher m = CREATE_OR_RENAME_OR_DROP.matcher(SchemaDdl.codeText(sql));
         while (m.find()) {
             if (m.group(1) != null) {
                 out.add(m.group(1).toLowerCase());

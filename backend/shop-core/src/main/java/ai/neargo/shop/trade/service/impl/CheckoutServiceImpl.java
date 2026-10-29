@@ -1,0 +1,2005 @@
+package ai.neargo.shop.trade.service.impl;
+
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PrepareCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterCheckoutQuote;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.AcceptCounterReq;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CounterConfirmation;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.PlaceCounterReq;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.auth.BoundActionContext;
+import ai.neargo.shop.auth.DelegatedIdentityContext;
+import ai.neargo.shop.spi.member.GuestRegistrationPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+import ai.neargo.shop.trade.order.service.create.CounterOrderPlacementService;
+import ai.neargo.shop.trade.order.service.create.CounterOrderPlan.PreparedCommand;
+import ai.neargo.shop.trade.order.service.create.CounterOrderPlan.SelectorProof;
+import ai.neargo.shop.trade.policy.CheckoutAccessPolicy.CashierActor;
+import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.common.BaseEntity;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.marketing.CouponPort;
+import ai.neargo.shop.spi.marketing.CouponPort.MerchantAmount;
+import ai.neargo.shop.spi.member.CustomerIdentityPort;
+import ai.neargo.shop.spi.product.StoreSalesCatalogPort;
+import ai.neargo.shop.spi.settle.PaymentOperationPort;
+import ai.neargo.shop.spi.settle.PaymentOperationPort.PaymentOperationView;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.SettlePort.PaymentReceipt;
+import ai.neargo.shop.spi.trade.CheckoutPort.BuyerConfirmation;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutQuote;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutLineReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutResult;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutScope;
+import ai.neargo.shop.spi.trade.CheckoutPort.CheckoutSourceFacts;
+import ai.neargo.shop.spi.trade.CheckoutPort.ConfirmCheckoutReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.DiscountFact;
+import ai.neargo.shop.spi.trade.CheckoutPort.InitiatePaymentReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.OperationRef;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentAttemptView;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentFact;
+import ai.neargo.shop.spi.trade.CheckoutPort.PaymentLookup;
+import ai.neargo.shop.spi.trade.CheckoutPort.PlaceCheckoutReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.PrepareCheckoutReq;
+import ai.neargo.shop.spi.trade.CheckoutPort.PromotionOption;
+import ai.neargo.shop.spi.trade.CheckoutPort.SourceLine;
+import ai.neargo.shop.spi.trade.CheckoutPort.SourceLookup;
+import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.entity.OrdCheckoutConfirmation;
+import ai.neargo.shop.trade.entity.OrdCheckoutLine;
+import ai.neargo.shop.trade.entity.OrdCheckoutOperation;
+import ai.neargo.shop.trade.entity.OrdCheckoutPaymentRequest;
+import ai.neargo.shop.trade.entity.OrdCheckoutQuote;
+import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.mapper.CheckoutMappers;
+import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.entity.OrdCreateIntent;
+import ai.neargo.shop.trade.order.mapper.CreateIntentMapper;
+import ai.neargo.shop.trade.order.service.create.CheckoutClock;
+import ai.neargo.shop.trade.order.service.create.CheckoutCommand;
+import ai.neargo.shop.trade.order.service.create.CheckoutDigests;
+import ai.neargo.shop.trade.order.service.create.CheckoutEconomicSnapshot;
+import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec;
+import ai.neargo.shop.trade.order.service.create.CounterEconomicCodec.CounterPolicy;
+import ai.neargo.shop.trade.order.service.create.CheckoutPricingScope;
+import ai.neargo.shop.trade.order.service.create.CheckoutQuoteGuard;
+import ai.neargo.shop.trade.order.service.create.ExpectedCheckoutQuote;
+import ai.neargo.shop.trade.policy.CheckoutAccessPolicy;
+import ai.neargo.shop.trade.policy.ManualServicePurchasePolicy;
+import ai.neargo.shop.trade.service.CheckoutOrderWriter;
+import ai.neargo.shop.trade.service.CheckoutPaymentService;
+import ai.neargo.shop.trade.service.CheckoutService;
+import ai.neargo.shop.trade.service.OrderService;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import tools.jackson.databind.ObjectMapper;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.function.Supplier;
+
+/**
+ * Durable shared checkout owner. Consumer consent and merchant in-person acceptance have separate
+ * purposes; both consume the same price seal and ordinary writer.
+ */
+@Service
+public class CheckoutServiceImpl implements CheckoutService {
+    private final CheckoutMappers.OperationMapper operations;
+    private final CheckoutMappers.QuoteMapper quotes;
+    private final CheckoutMappers.ConfirmationMapper confirmations;
+    private final CheckoutAccessPolicy access;
+    private final CustomerIdentityPort identities;
+    private final StoreSalesCatalogPort catalogs;
+    private final CheckoutOrderWriter writer;
+    private final ObjectMapper json;
+    private final CheckoutClock clock;
+    private final CheckoutQuoteGuard guard;
+    private final CreateIntentMapper intents;
+    private final CouponPort coupons;
+    private final CampaignPort campaigns;
+    private final TransactionTemplate writes;
+    private final OrderMapper sourceOrders;
+    private final SubOrderMapper sourceSubs;
+    private final OrderItemMapper sourceItems;
+    private final AfterSaleMapper sourceAfterSales;
+    private final CheckoutMappers.LineMapper sourceLines;
+    private final SettlePort settlement;
+    private final PaymentOperationPort financialOperations;
+    private final CheckoutMappers.PaymentRequestMapper paymentRequests;
+    private final TransactionTemplate sourceReads;
+    private final CheckoutPaymentService payments;
+    @Autowired private ManualServicePurchasePolicy manualPolicy;
+    @Autowired private GuestRegistrationPort guests;
+    @Autowired private CounterOrderPlacementService counterPlacement;
+
+    @Autowired(required = false)
+    private ManualServiceAdmissionPort.CounterCustomerResolver counterCustomers;
+
+    /**
+     * Bind durable checkout writes and serialized source reads to the platform transaction manager.
+     */
+    public CheckoutServiceImpl(
+            CheckoutMappers.OperationMapper operations,
+            CheckoutMappers.QuoteMapper quotes,
+            CheckoutMappers.ConfirmationMapper confirmations,
+            CheckoutAccessPolicy access,
+            CustomerIdentityPort identities,
+            StoreSalesCatalogPort catalogs,
+            CheckoutOrderWriter writer,
+            ObjectMapper json,
+            CheckoutClock clock,
+            CheckoutQuoteGuard guard,
+            CreateIntentMapper intents,
+            CouponPort coupons,
+            CampaignPort campaigns,
+            OrderMapper sourceOrders,
+            SubOrderMapper sourceSubs,
+            OrderItemMapper sourceItems,
+            AfterSaleMapper sourceAfterSales,
+            CheckoutMappers.LineMapper sourceLines,
+            SettlePort settlement,
+            PaymentOperationPort financialOperations,
+            CheckoutMappers.PaymentRequestMapper paymentRequests,
+            CheckoutPaymentService payments,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        this.operations = operations;
+        this.quotes = quotes;
+        this.confirmations = confirmations;
+        this.access = access;
+        this.identities = identities;
+        this.catalogs = catalogs;
+        this.writer = writer;
+        this.json = json;
+        this.clock = clock;
+        this.guard = guard;
+        this.intents = intents;
+        this.coupons = coupons;
+        this.campaigns = campaigns;
+        this.sourceOrders = sourceOrders;
+        this.sourceSubs = sourceSubs;
+        this.sourceItems = sourceItems;
+        this.sourceAfterSales = sourceAfterSales;
+        this.sourceLines = sourceLines;
+        this.settlement = settlement;
+        this.financialOperations = financialOperations;
+        this.paymentRequests = paymentRequests;
+        this.payments = payments;
+        sourceReads = new TransactionTemplate(manager);
+        sourceReads.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        sourceReads.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        writes = new TransactionTemplate(manager);
+        writes.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+    }
+
+    @Override
+    public CounterCheckoutQuote prepareCounter(CheckoutScope scope, PrepareCounterReq request) {
+        if (request == null || request.couponNo() != null) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        var actor = counterActor(scope, "COUNTER_PREPARE", request.operation(), request);
+        manualPolicy.requireBusiness(scope);
+        String namespace = counterNamespace(scope, actor);
+        String key =
+                CheckoutDigests.hash(
+                        json,
+                        List.of(
+                                "COUNTER_PREPARE_KEY_V1",
+                                namespace,
+                                request.operation().operationNo(),
+                                request.requestKey()));
+        var existing =
+                unscoped(
+                        () ->
+                                operations.find(
+                                        request.operation().caller(),
+                                        request.operation().operationNo()));
+        if (existing != null) {
+            requireScope(existing, scope);
+            requireCounter(existing);
+            var frozen = json.readValue(existing.getCommandJson(), PreparedCommand.class);
+            requireSelector(request, frozen.selector());
+            return counterReplay(
+                    existing,
+                    scope,
+                    namespace,
+                    key,
+                    counterPayload(request, party(existing), frozen.selector()));
+        }
+        var resolved = resolveCounterParty(scope, actor, request);
+        var customer = resolved.party();
+        String payload = counterPayload(request, customer, resolved.selector());
+        var catalog = catalogs.read(scope.entityNo(), scope.storeNo(), clock.now());
+        var command =
+                command(
+                        scope,
+                        request.lines(),
+                        request.couponNo(),
+                        request.activityChoices(),
+                        request.remark(),
+                        "OFFLINE");
+        var pricingScope =
+                new CheckoutPricingScope(
+                        scope.tenantNo(),
+                        scope.entityNo(),
+                        scope.storeNo(),
+                        request.scopeRevision(),
+                        request.scopeHash(),
+                        request.lines(),
+                        catalog,
+                        "MANUAL_OFFLINE",
+                        request.operation().operationNo(),
+                        customer,
+                        "MERCHANT_RECORDED_IN_PERSON",
+                        CounterPolicy.CURRENT_FULL_CUT,
+                        null);
+        if (!actor.equals(counterActor(scope, "COUNTER_PREPARE", request.operation(), request))) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        manualPolicy.requireBusiness(scope);
+        var now = clock.now().truncatedTo(ChronoUnit.MILLIS);
+        var operation = new OrdCheckoutOperation();
+        operation.setOperationNo(request.operation().operationNo());
+        operation.setCaller(request.operation().caller());
+        operation.setEntityNo(scope.entityNo());
+        operation.setStoreNo(scope.storeNo());
+        operation.setCustomerKind(customer.kind());
+        operation.setBuyerNo(customer.userNo());
+        operation.setGuestNo(customer.guestNo());
+        operation.setIdentityRevision(customer.identityRevision());
+        operation.setAdmissionKind("MANUAL_OFFLINE");
+        operation.setPurchaseAuthority("MERCHANT_RECORDED_IN_PERSON");
+        operation.setAuthorityNamespaceHash(namespace);
+        operation.setActorNo(actor.actorNo());
+        operation.setActorRealm(actor.realm());
+        operation.setActorKind(actor.subjectKind());
+        operation.setAccountNo(actor.accountNo());
+        operation.setRequestKeyHash(key);
+        operation.setPayloadHash(payload);
+        operation.setScopeRevision(request.scopeRevision());
+        operation.setScopeHash(request.scopeHash());
+        operation.setCommandJson(
+                json.writeValueAsString(
+                        new PreparedCommand(command, request.lines(), resolved.selector())));
+        operation.setPhase("QUOTED");
+        operation.setCurrentQuoteNo(number("CQ"));
+        operation.setSourceRevision(0L);
+        operation.setManualObservationRevision(0L);
+        stamp(operation, actor.actorNo(), now);
+        var quote = new OrdCheckoutQuote();
+        quote.setQuoteNo(operation.getCurrentQuoteNo());
+        quote.setOperationNo(operation.getOperationNo());
+        quote.setCaller(operation.getCaller());
+        quote.setRevision(1L);
+        quote.setExpiresAt(LocalDateTime.ofInstant(now.plusSeconds(300), ZoneOffset.UTC));
+        quote.setStatus("OPEN");
+        stamp(quote, actor.actorNo(), now);
+        try {
+            return unscoped(
+                    () ->
+                            writes.execute(
+                                    status -> {
+                                        operations.insert(operation);
+                                        var economic =
+                                                writer.quoteManualFor(
+                                                        customer, command, pricingScope);
+                                        quote.setQuoteHash(economic.economic().quoteHash());
+                                        quote.setPricingJson(new CounterEconomicCodec(json).writeQuote(economic));
+                                        quotes.insert(quote);
+                                        return counterView(operation, quote);
+                                    }));
+        } catch (DuplicateKeyException conflict) {
+            var winner =
+                    unscoped(
+                            () ->
+                                    operations.find(
+                                            request.operation().caller(),
+                                            request.operation().operationNo()));
+            if (winner == null) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return counterReplay(winner, scope, namespace, key, payload);
+        }
+    }
+
+    @Override
+    public CounterCheckoutQuote readCounterQuote(CheckoutScope scope, OperationRef operation) {
+        manualPolicy.requireCounterReader(scope, operation);
+        return unscoped(
+                () -> {
+                    var op = requireOperation(operation);
+                    requireScope(op, scope);
+                    requireCounter(op);
+                    return counterView(op, requireQuote(op));
+                });
+    }
+
+    @Override
+    public CounterConfirmation acceptCounter(CheckoutScope scope, AcceptCounterReq request) {
+        if (request == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var actor = counterActor(scope, "COUNTER_ACCEPT", request.operation(), request);
+        manualPolicy.requireBusiness(scope);
+        String namespace = counterNamespace(scope, actor);
+        String key =
+                CheckoutDigests.hash(
+                        json,
+                        List.of(
+                                "COUNTER_ACCEPT_KEY_V1",
+                                namespace,
+                                request.operation().operationNo(),
+                                request.requestKey()));
+        var observed = unscoped(() -> requireOperation(request.operation()));
+        requireScope(observed, scope);
+        requireCounter(observed);
+        if (!namespace.equals(observed.getAuthorityNamespaceHash())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        var customer = party(observed);
+        String payload =
+                CheckoutDigests.hash(
+                        json,
+                        Arrays.asList(
+                                "COUNTER_ACCEPT_V1",
+                                request.operation(),
+                                request.quoteNo(),
+                                request.quoteRevision(),
+                                request.quoteHash(),
+                                customer,
+                                request.identityRevision(),
+                                request.evidenceKind(),
+                                request.acceptedAt()));
+        if (!actor.equals(counterActor(scope, "COUNTER_ACCEPT", request.operation(), request))) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        try {
+            return unscoped(
+                    () ->
+                            writes.execute(
+                                    status -> {
+                                        var op =
+                                                operations.lock(
+                                                        request.operation().caller(),
+                                                        request.operation().operationNo());
+                                        requireScope(op, scope);
+                                        requireCounter(op);
+                                        if (!namespace.equals(op.getAuthorityNamespaceHash())) {
+                                            throw BizException.of(ErrorCode.FORBIDDEN);
+                                        }
+                                        if (!customer.equals(party(op))) {
+                                            throw BizException.of(ErrorCode.CONFLICT);
+                                        }
+                                        var quote = quotes.lock(op.getCurrentQuoteNo());
+                                        if (quote == null
+                                                || !request.quoteNo().equals(quote.getQuoteNo())
+                                                || request.quoteRevision() != quote.getRevision()
+                                                || !request.quoteHash().equals(quote.getQuoteHash())
+                                                || !op.getOperationNo()
+                                                        .equals(quote.getOperationNo())
+                                                || !op.getCaller().equals(quote.getCaller())) {
+                                            throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+                                        }
+                                        if (!Objects.equals(
+                                                request.identityRevision(),
+                                                customer.identityRevision())) {
+                                            throw BizException.of(ErrorCode.CONFLICT);
+                                        }
+                                        if (op.getConfirmationNo() != null) {
+                                            var prior = confirmations.lock(op.getConfirmationNo());
+                                            if (prior == null
+                                                    || !namespace.equals(
+                                                            prior.getAuthorityNamespaceHash())
+                                                    || !key.equals(prior.getRequestKeyHash())
+                                                    || !payload.equals(prior.getRequestHash())
+                                                    || !actor.actorNo().equals(prior.getActorNo())
+                                                    || !actor.realm().equals(prior.getActorRealm())
+                                                    || !actor.subjectKind()
+                                                            .equals(prior.getActorKind())
+                                                    || !actor.accountNo()
+                                                            .equals(prior.getAccountNo())) {
+                                                throw BizException.of(ErrorCode.CONFLICT);
+                                            }
+                                            return counterConfirmation(prior);
+                                        }
+                                        var now = clock.now().truncatedTo(ChronoUnit.MILLIS);
+                                        if (!"QUOTED".equals(op.getPhase())
+                                                || !"OPEN".equals(quote.getStatus())
+                                                || !now.isBefore(
+                                                        quote.getExpiresAt()
+                                                                .toInstant(ZoneOffset.UTC))) {
+                                            throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+                                        }
+                                        if (request.acceptedAt().isAfter(now)
+                                                || request.acceptedAt()
+                                                        .isBefore(
+                                                                quote.getCreatedAt()
+                                                                        .toInstant(
+                                                                                ZoneOffset.UTC))) {
+                                            throw BizException.of(ErrorCode.BAD_REQUEST);
+                                        }
+                                        var economic =
+                                                new CounterEconomicCodec(json).readQuote(quote.getPricingJson());
+                                        var confirmation = new OrdCheckoutConfirmation();
+                                        confirmation.setConfirmationNo(number("CC"));
+                                        confirmation.setCaller(op.getCaller());
+                                        confirmation.setOperationNo(op.getOperationNo());
+                                        confirmation.setEntityNo(op.getEntityNo());
+                                        confirmation.setStoreNo(op.getStoreNo());
+                                        confirmation.setCustomerKind(customer.kind());
+                                        confirmation.setBuyerNo(customer.userNo());
+                                        confirmation.setGuestNo(customer.guestNo());
+                                        confirmation.setIdentityRevision(
+                                                customer.identityRevision());
+                                        confirmation.setAdmissionKind("MANUAL_OFFLINE");
+                                        confirmation.setPurchaseAuthority(
+                                                "MERCHANT_RECORDED_IN_PERSON");
+                                        confirmation.setAuthorityNamespaceHash(namespace);
+                                        confirmation.setActorNo(actor.actorNo());
+                                        confirmation.setActorRealm(actor.realm());
+                                        confirmation.setActorKind(actor.subjectKind());
+                                        confirmation.setAccountNo(actor.accountNo());
+                                        confirmation.setQuoteNo(quote.getQuoteNo());
+                                        confirmation.setQuoteRevision(quote.getRevision());
+                                        confirmation.setQuoteHash(quote.getQuoteHash());
+                                        confirmation.setRequestKeyHash(key);
+                                        confirmation.setRequestHash(payload);
+                                        confirmation.setAmountMinor(economic.dueMinor());
+                                        confirmation.setCurrency(economic.currency());
+                                        confirmation.setPurpose("ORDINARY_SERVICE_PURCHASE");
+                                        confirmation.setAcceptedAt(
+                                                LocalDateTime.ofInstant(
+                                                        request.acceptedAt(), ZoneOffset.UTC));
+                                        confirmation.setConfirmedAt(
+                                                LocalDateTime.ofInstant(now, ZoneOffset.UTC));
+                                        confirmation.setExpiresAt(quote.getExpiresAt());
+                                        confirmation.setStatus("AUTHORIZED");
+                                        stamp(confirmation, actor.actorNo(), now);
+                                        confirmations.insert(confirmation);
+                                        quote.setStatus("CONFIRMED");
+                                        changed(quotes.updateById(quote));
+                                        op.setConfirmationNo(confirmation.getConfirmationNo());
+                                        op.setPhase("CONFIRMED");
+                                        changed(operations.updateById(op));
+                                        return counterConfirmation(confirmation);
+                                    }));
+        } catch (DuplicateKeyException collision) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    @Override
+    public CheckoutResult placeCounter(CheckoutScope scope, PlaceCounterReq request) {
+        return counterPlacement.place(scope, request);
+    }
+
+    private CashierActor counterActor(
+            CheckoutScope scope, String action, OperationRef operation, Object request) {
+        return manualPolicy.requireCounterCashier(scope, action, operation.operationNo(), request);
+    }
+
+    private String counterNamespace(CheckoutScope scope, CashierActor actor) {
+        return CheckoutDigests.hash(
+                json,
+                List.of(
+                        "COUNTER_NAMESPACE_V1",
+                        scope.tenantNo(),
+                        scope.entityNo(),
+                        scope.storeNo(),
+                        actor.realm(),
+                        actor.subjectKind(),
+                        actor.actorNo(),
+                        actor.accountNo()));
+    }
+
+    private ResolvedCounterParty resolveCounterParty(
+            CheckoutScope scope, CashierActor actor, PrepareCounterReq request) {
+        var selector = request.customer();
+        if (BoundActionContext.present()
+                && ("USER".equals(selector.kind()) || "CLAIMED_GUEST".equals(selector.kind()))) {
+            if (counterCustomers == null) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            var resolved = counterCustomers.resolveBound(scope, request);
+            if (resolved == null
+                    || "USER".equals(selector.kind()) && resolved.selectorRevision() != null
+                    || "CLAIMED_GUEST".equals(selector.kind())
+                            && resolved.selectorRevision() == null) {
+                throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+            }
+            return new ResolvedCounterParty(
+                    resolved.party(),
+                    new SelectorProof(
+                            selector.kind(),
+                            selector.guestNo(),
+                            resolved.selectorRevision(),
+                            selectorDigest(request)));
+        }
+        if ("USER".equals(selector.kind())) {
+            var customer =
+                    identities.resolveCounterReference(
+                            new EntitlementContext(
+                                    scope.tenantNo(),
+                                    actor.actorNo(),
+                                    request.operation().operationNo(),
+                                    CheckoutDigests.hash(
+                                            json,
+                                            List.of(
+                                                    "COUNTER_MEMBER_REFERENCE_V1",
+                                                    selector.memberNo(),
+                                                    request.scopeHash()))),
+                            new CustomerIdentityPort.CounterReferenceQuery(
+                                    scope.entityNo(), scope.storeNo(), selector.memberNo()));
+            if (customer == null || customer.userNo() == null || customer.userNo().isBlank()) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            return new ResolvedCounterParty(
+                    new CustomerParty("USER", customer.userNo(), null, (Long) null),
+                    new SelectorProof("USER", null, null, selectorDigest(request)));
+        }
+        var ownerScope =
+                new GuestRegistrationPort.Scope(
+                        scope.entityNo(), scope.storeNo(), DelegatedIdentityContext.current());
+        if ("CLAIMED_GUEST".equals(selector.kind())) {
+            var actual =
+                    guests.resolveClaimedCustomer(
+                            ownerScope, selector.guestNo(), selector.claimToken());
+            if (actual == null || !selector.guestNo().equals(actual.guest().guestNo())) {
+                throw BizException.of(ErrorCode.NOT_FOUND);
+            }
+            return new ResolvedCounterParty(
+                    new CustomerParty("USER", actual.customer().userNo(), null, (Long) null),
+                    new SelectorProof(
+                            "CLAIMED_GUEST",
+                            actual.guest().guestNo(),
+                            actual.guest().revision(),
+                            selectorDigest(request)));
+        }
+        var actual = guests.verify(ownerScope, selector.guestNo(), selector.claimToken());
+        if (actual == null || !selector.guestNo().equals(actual.guestNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (!"REGISTERED".equals(actual.state()) || actual.userNo() != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return new ResolvedCounterParty(
+                new CustomerParty("GUEST", null, actual.guestNo(), actual.revision()),
+                new SelectorProof(
+                        "GUEST", actual.guestNo(), actual.revision(), selectorDigest(request)));
+    }
+
+    private record ResolvedCounterParty(CustomerParty party, SelectorProof selector) {}
+
+    private String selectorDigest(PrepareCounterReq request) {
+        var selector = request.customer();
+        return CheckoutDigests.hash(
+                json,
+                Arrays.asList(
+                        selector.kind(),
+                        selector.memberNo(),
+                        selector.guestNo(),
+                        selector.claimToken() == null
+                                ? null
+                                : CheckoutDigests.hash(selector.claimToken())));
+    }
+
+    private void requireSelector(PrepareCounterReq request, SelectorProof frozen) {
+        if (!frozen.kind().equals(request.customer().kind())
+                || !Objects.equals(frozen.guestNo(), request.customer().guestNo())
+                || !frozen.proofDigest().equals(selectorDigest(request))) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private String counterPayload(
+            PrepareCounterReq request, CustomerParty customer, SelectorProof proof) {
+        return CheckoutDigests.hash(
+                json,
+                Arrays.asList(
+                        "COUNTER_PREPARE_V1",
+                        request.operation(),
+                        customer,
+                        request.scopeRevision(),
+                        request.scopeHash(),
+                        request.lines(),
+                        request.couponNo(),
+                        request.activityChoices(),
+                        request.remark(),
+                        proof));
+    }
+
+    private CounterCheckoutQuote counterReplay(
+            OrdCheckoutOperation operation,
+            CheckoutScope scope,
+            String namespace,
+            String key,
+            String payload) {
+        requireScope(operation, scope);
+        requireCounter(operation);
+        if (!namespace.equals(operation.getAuthorityNamespaceHash())
+                || !key.equals(operation.getRequestKeyHash())
+                || !payload.equals(operation.getPayloadHash())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return unscoped(() -> counterView(operation, requireQuote(operation)));
+    }
+
+    private static void requireConsumerAuthority(OrdCheckoutOperation operation) {
+        if (!"CONSUMER_SESSION".equals(operation.getPurchaseAuthority())
+                || !"USER".equals(operation.getCustomerKind())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+    }
+
+    private static void requireCounter(OrdCheckoutOperation op) {
+        if (op == null
+                || !"MERCHANT_RECORDED_IN_PERSON".equals(op.getPurchaseAuthority())
+                || !"MANUAL_OFFLINE".equals(op.getAdmissionKind())) {
+            throw BizException.of(ErrorCode.CHECKOUT_CONFIRMATION_REQUIRED);
+        }
+    }
+
+    private static CustomerParty party(OrdCheckoutOperation op) {
+        return new CustomerParty(
+                op.getCustomerKind(), op.getBuyerNo(), op.getGuestNo(), op.getIdentityRevision());
+    }
+
+    private CounterCheckoutQuote counterView(OrdCheckoutOperation op, OrdCheckoutQuote quote) {
+        requireCounter(op);
+        return new CounterCheckoutQuote(view(op, quote), party(op), op.getPurchaseAuthority());
+    }
+
+    private static CounterConfirmation counterConfirmation(OrdCheckoutConfirmation row) {
+        return new CounterConfirmation(
+                new OperationRef(row.getCaller(), row.getOperationNo()),
+                row.getConfirmationNo(),
+                row.getQuoteNo(),
+                row.getQuoteRevision(),
+                row.getQuoteHash(),
+                new CustomerParty(
+                        row.getCustomerKind(),
+                        row.getBuyerNo(),
+                        row.getGuestNo(),
+                        row.getIdentityRevision()),
+                row.getPurchaseAuthority(),
+                row.getAcceptedAt().toInstant(ZoneOffset.UTC),
+                row.getExpiresAt().toInstant(ZoneOffset.UTC),
+                row.getStatus());
+    }
+
+    @Override
+    public PaymentAttemptView initiatePayment(InitiatePaymentReq request) {
+        access.requireCurrentBuyer();
+        var operation =
+                unscoped(
+                        () ->
+                                operations.find(
+                                        request.operation().caller(),
+                                        request.operation().operationNo()));
+        if (operation != null && "MANUAL_OFFLINE".equals(operation.getAdmissionKind())) {
+            throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
+        }
+        return payments.initiatePayment(request);
+    }
+
+    @Override
+    public PaymentAttemptView findPayment(CheckoutScope scope, PaymentLookup request) {
+        return payments.findPayment(scope, request);
+    }
+
+    @Override
+    public PaymentAttemptView findPaymentForCurrentBuyer(PaymentLookup request) {
+        return payments.findPaymentForCurrentBuyer(request);
+    }
+
+    @Override
+    public CheckoutQuote prepare(CheckoutScope scope, PrepareCheckoutReq request) {
+        return prepareOwned(scope, request, "LEGACY_FUNDED");
+    }
+
+    @Override
+    public CheckoutQuote prepareManual(CheckoutScope scope, PrepareCheckoutReq request) {
+        return prepareOwned(scope, request, "MANUAL_OFFLINE");
+    }
+
+    private CheckoutQuote prepareOwned(
+            CheckoutScope scope, PrepareCheckoutReq request, String admissionKind) {
+        var actor = access.requireMerchant(scope, BizPerms.CHECKOUT_PREPARE);
+        boolean manual = "MANUAL_OFFLINE".equals(admissionKind);
+        if (manual) {
+            manualPolicy.requireSupported(request);
+            manualPolicy.requireBusiness(scope);
+        }
+        String keyHash =
+                CheckoutDigests.hash(
+                        json,
+                        List.of(
+                                scope.tenantNo(),
+                                request.operation().caller(),
+                                scope.entityNo(),
+                                scope.storeNo(),
+                                actor.realm(),
+                                actor.subjectKind(),
+                                actor.actorNo(),
+                                manual ? "MANUAL_PREPARE" : "PREPARE",
+                                request.requestKey()));
+        String payload =
+                CheckoutDigests.hash(
+                        json,
+                        Arrays.asList(
+                                actor,
+                                request.operation(),
+                                CheckoutDigests.hash(request.customerRef()),
+                                request.scopeRevision(),
+                                request.scopeHash(),
+                                request.lines(),
+                                request.payMode(),
+                                request.couponNo(),
+                                request.activityChoices(),
+                                request.remark()));
+        if (manual) {
+            payload =
+                    CheckoutDigests.hash(
+                            json, List.of("CHECKOUT_MANUAL_V1", admissionKind, payload));
+        }
+        final String payloadHash = payload;
+        var existing =
+                unscoped(
+                        () ->
+                                operations.find(
+                                        request.operation().caller(),
+                                        request.operation().operationNo()));
+        if (existing != null) {
+            if (!admissionKind.equals(existing.getAdmissionKind())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return replay(existing, scope, actor, keyHash, payloadHash);
+        }
+        var used =
+                unscoped(
+                        () ->
+                                operations.findPrepareKey(
+                                        request.operation().caller(),
+                                        scope.entityNo(),
+                                        scope.storeNo(),
+                                        keyHash));
+        if (used != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        var customer =
+                identities.resolveClaimReference(
+                        new EntitlementContext(
+                                scope.tenantNo(),
+                                actor.actorNo(),
+                                request.operation().operationNo(),
+                                payloadHash),
+                        new CustomerIdentityPort.ReferenceQuery(
+                                scope.entityNo(), scope.storeNo(), request.customerRef()));
+        if (customer == null || customer.userNo() == null || customer.userNo().isBlank()) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        var catalog = catalogs.read(scope.entityNo(), scope.storeNo(), clock.now());
+        var command = command(scope, request);
+        var pricingScope =
+                new CheckoutPricingScope(
+                        scope.tenantNo(),
+                        scope.entityNo(),
+                        scope.storeNo(),
+                        request.scopeRevision(),
+                        request.scopeHash(),
+                        request.lines(),
+                        catalog,
+                        admissionKind,
+                        request.operation().operationNo());
+        var economic = manual ? null : writer.quoteFor(customer.userNo(), command, pricingScope);
+        var at = clock.now().truncatedTo(ChronoUnit.MILLIS);
+        String quoteNo = number("CQ");
+        var operation = new OrdCheckoutOperation();
+        operation.setIdentityRevision(1L);
+        operation.setOperationNo(request.operation().operationNo());
+        operation.setAdmissionKind(admissionKind);
+        operation.setManualObservationRevision(0L);
+        operation.setCaller(request.operation().caller());
+        operation.setEntityNo(scope.entityNo());
+        operation.setStoreNo(scope.storeNo());
+        operation.setBuyerNo(customer.userNo());
+        operation.setActorNo(actor.actorNo());
+        operation.setActorRealm(actor.realm());
+        operation.setActorKind(actor.subjectKind());
+        operation.setAuthorityNamespaceHash(
+                CheckoutDigests.hash(
+                        json,
+                        List.of(
+                                "LEGACY_CHECKOUT_NAMESPACE_V1",
+                                scope.tenantNo(),
+                                request.operation().caller(),
+                                scope.entityNo(),
+                                scope.storeNo(),
+                                actor.realm(),
+                                actor.subjectKind(),
+                                actor.actorNo())));
+        operation.setRequestKeyHash(keyHash);
+        operation.setPayloadHash(payloadHash);
+        operation.setScopeRevision(request.scopeRevision());
+        operation.setScopeHash(request.scopeHash());
+        operation.setCommandJson(
+                json.writeValueAsString(new CheckoutCommand(command, request.lines())));
+        operation.setPhase("QUOTED");
+        operation.setCurrentQuoteNo(quoteNo);
+        operation.setSourceRevision(0L);
+        stamp(operation, actor.actorNo(), at);
+        var quote = new OrdCheckoutQuote();
+        quote.setQuoteNo(quoteNo);
+        quote.setOperationNo(operation.getOperationNo());
+        quote.setCaller(operation.getCaller());
+        quote.setRevision(1L);
+        if (economic != null) {
+            quote.setQuoteHash(economic.quoteHash());
+        }
+        if (economic != null) {
+            quote.setPricingJson(json.writeValueAsString(economic));
+        }
+        quote.setExpiresAt(LocalDateTime.ofInstant(at.plusSeconds(300), ZoneOffset.UTC));
+        quote.setStatus("OPEN");
+        stamp(quote, actor.actorNo(), at);
+        if (manual) {
+            access.requireMerchant(scope, BizPerms.CHECKOUT_PREPARE);
+            manualPolicy.requireBusiness(scope);
+        }
+        try {
+            return unscoped(
+                    () ->
+                            writes.execute(
+                                    status -> {
+                                        operations.insert(operation);
+                                        if (manual) {
+                                            var sealed =
+                                                    writer.quoteFor(
+                                                            customer.userNo(),
+                                                            command,
+                                                            pricingScope);
+                                            quote.setQuoteHash(sealed.quoteHash());
+                                            quote.setPricingJson(json.writeValueAsString(sealed));
+                                        }
+                                        quotes.insert(quote);
+                                        return view(operation, quote);
+                                    }));
+        } catch (DuplicateKeyException conflict) {
+            var winner =
+                    unscoped(
+                            () ->
+                                    operations.find(
+                                            request.operation().caller(),
+                                            request.operation().operationNo()));
+            if (winner == null) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return replay(winner, scope, actor, keyHash, payloadHash);
+        }
+    }
+
+    @Override
+    public CheckoutQuote readQuote(CheckoutScope scope, OperationRef reference) {
+        access.requireMerchant(scope, BizPerms.ORDER_VIEW);
+        return unscoped(
+                () -> {
+                    var operation = requireOperation(reference);
+                    requireScope(operation, scope);
+                    requireConsumerAuthority(operation);
+                    return view(operation, requireQuote(operation));
+                });
+    }
+
+    @Override
+    public CheckoutQuote readQuoteForCurrentBuyer(OperationRef reference) {
+        String buyer = access.requireCurrentBuyer();
+        return unscoped(
+                () -> {
+                    var operation =
+                            operations.findForBuyer(
+                                    reference.caller(), reference.operationNo(), buyer);
+                    if (operation == null
+                            || !"CONSUMER_SESSION".equals(operation.getPurchaseAuthority())
+                            || !"USER".equals(operation.getCustomerKind())) {
+                        throw BizException.of(ErrorCode.NOT_FOUND);
+                    }
+                    return view(operation, requireQuote(operation));
+                });
+    }
+
+    @Override
+    public BuyerConfirmation confirm(ConfirmCheckoutReq request) {
+        String buyer = access.requireCurrentBuyer();
+        String key =
+                CheckoutDigests.hash(json, List.of("MAIN", buyer, "CONFIRM", request.requestKey()));
+        String payload =
+                CheckoutDigests.hash(
+                        json,
+                        List.of(
+                                request.operation(),
+                                request.quoteNo(),
+                                request.quoteRevision(),
+                                request.quoteHash()));
+        try {
+            BuyerConfirmation result =
+                    unscoped(
+                            () ->
+                                    writes.execute(
+                                            status -> {
+                                                var operation =
+                                                        operations.lock(
+                                                                request.operation().caller(),
+                                                                request.operation().operationNo());
+                                                if (operation == null
+                                                        || !"CONSUMER_SESSION"
+                                                                .equals(
+                                                                        operation
+                                                                                .getPurchaseAuthority())
+                                                        || !"USER"
+                                                                .equals(operation.getCustomerKind())
+                                                        || !buyer.equals(operation.getBuyerNo())) {
+                                                    throw BizException.of(ErrorCode.NOT_FOUND);
+                                                }
+                                                var quote =
+                                                        quotes.lock(operation.getCurrentQuoteNo());
+                                                if (quote == null
+                                                        || !request.quoteNo()
+                                                                .equals(quote.getQuoteNo())
+                                                        || request.quoteRevision()
+                                                                != quote.getRevision()
+                                                        || !request.quoteHash()
+                                                                .equals(quote.getQuoteHash())
+                                                        || !operation
+                                                                .getOperationNo()
+                                                                .equals(quote.getOperationNo())
+                                                        || !operation
+                                                                .getCaller()
+                                                                .equals(quote.getCaller())) {
+                                                    throw BizException.of(ErrorCode.CONFLICT);
+                                                }
+                                                if (operation.getConfirmationNo() != null) {
+                                                    var existing =
+                                                            confirmations.lock(
+                                                                    operation.getConfirmationNo());
+                                                    if (existing == null
+                                                            || !buyer.equals(existing.getBuyerNo())
+                                                            || !key.equals(
+                                                                    existing.getRequestKeyHash())
+                                                            || !payload.equals(
+                                                                    existing.getRequestHash())) {
+                                                        throw BizException.of(ErrorCode.CONFLICT);
+                                                    }
+                                                    return confirmationView(existing);
+                                                }
+                                                if (!"QUOTED".equals(operation.getPhase())
+                                                        || !"OPEN".equals(quote.getStatus())) {
+                                                    throw BizException.of(
+                                                            ErrorCode.CHECKOUT_QUOTE_STALE);
+                                                }
+                                                var now =
+                                                        clock.now().truncatedTo(ChronoUnit.MILLIS);
+                                                if (!now.isBefore(
+                                                        quote.getExpiresAt()
+                                                                .toInstant(ZoneOffset.UTC))) {
+                                                    quote.setStatus("EXPIRED");
+                                                    operation.setPhase("REQUOTE_REQUIRED");
+                                                    changed(quotes.updateById(quote));
+                                                    changed(operations.updateById(operation));
+                                                    return null;
+                                                }
+                                                var money =
+                                                        json.readValue(
+                                                                quote.getPricingJson(),
+                                                                CheckoutEconomicSnapshot.class);
+                                                var confirmation = new OrdCheckoutConfirmation();
+                                                confirmation.setIdentityRevision(1L);
+                                                confirmation.setConfirmationNo(number("CC"));
+                                                confirmation.setCaller(operation.getCaller());
+                                                confirmation.setOperationNo(
+                                                        operation.getOperationNo());
+                                                confirmation.setQuoteNo(quote.getQuoteNo());
+                                                confirmation.setQuoteRevision(quote.getRevision());
+                                                confirmation.setQuoteHash(quote.getQuoteHash());
+                                                confirmation.setBuyerNo(buyer);
+                                                confirmation.setAuthorityNamespaceHash(
+                                                        operation.getAuthorityNamespaceHash());
+                                                confirmation.setRequestKeyHash(key);
+                                                confirmation.setRequestHash(payload);
+                                                confirmation.setAmountMinor(money.dueMinor());
+                                                confirmation.setCurrency(money.currency());
+                                                confirmation.setPurpose(
+                                                        "ORDINARY_SERVICE_PURCHASE");
+                                                confirmation.setExpiresAt(quote.getExpiresAt());
+                                                confirmation.setStatus("AUTHORIZED");
+                                                confirmation.setConfirmedAt(
+                                                        LocalDateTime.ofInstant(
+                                                                now, ZoneOffset.UTC));
+                                                stamp(confirmation, buyer, now);
+                                                confirmations.insert(confirmation);
+                                                quote.setStatus("CONFIRMED");
+                                                changed(quotes.updateById(quote));
+                                                operation.setConfirmationNo(
+                                                        confirmation.getConfirmationNo());
+                                                operation.setPhase("CONFIRMED");
+                                                changed(operations.updateById(operation));
+                                                return confirmationView(confirmation);
+                                            }));
+            if (result == null) {
+                throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+            }
+            return result;
+        } catch (DuplicateKeyException collision) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private static BuyerConfirmation confirmationView(OrdCheckoutConfirmation row) {
+        return new BuyerConfirmation(
+                row.getConfirmationNo(),
+                new OperationRef(row.getCaller(), row.getOperationNo()),
+                row.getQuoteNo(),
+                row.getQuoteRevision(),
+                row.getQuoteHash(),
+                row.getExpiresAt().toInstant(ZoneOffset.UTC),
+                row.getStatus());
+    }
+
+    private static void changed(int affected) {
+        if (affected != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private void requireSameBuyer(String buyer) {
+        if (!buyer.equals(access.requireCurrentBuyer())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+    }
+
+    @Override
+    public CheckoutResult place(PlaceCheckoutReq request) {
+        String buyer = access.requireCurrentBuyer();
+        String key =
+                CheckoutDigests.hash(json, List.of("MAIN", buyer, "PLACE", request.requestKey()));
+        String payload =
+                CheckoutDigests.hash(json, List.of(request.operation(), request.confirmationNo()));
+        var observed =
+                unscoped(
+                        () ->
+                                operations.findForBuyer(
+                                        request.operation().caller(),
+                                        request.operation().operationNo(),
+                                        buyer));
+        if (observed == null
+                || !"CONSUMER_SESSION".equals(observed.getPurchaseAuthority())
+                || !"USER".equals(observed.getCustomerKind())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        requirePlaceReplay(observed, request, key, payload);
+        if ("CREATED".equals(observed.getPhase())) {
+            return result(observed);
+        }
+        var quote = unscoped(() -> requireQuote(observed));
+        var pricing = json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class);
+        var frozen = json.readValue(observed.getCommandJson(), CheckoutCommand.class);
+        if ("MANUAL_OFFLINE".equals(observed.getAdmissionKind())) {
+            manualPolicy.requireBusiness(
+                    new CheckoutScope(
+                            "MAIN",
+                            observed.getEntityNo(),
+                            observed.getStoreNo(),
+                            observed.getActorNo()));
+        }
+        // Preparation only; final local owner locks and actual writer pricing remain authoritative.
+        catalogs.read(observed.getEntityNo(), observed.getStoreNo(), clock.now());
+        campaigns.requireOrdinarySelection(buyer, pricing.activity());
+        coupons.quoteOrdinary(
+                buyer,
+                frozen.command().couponNo(),
+                List.of(
+                        new MerchantAmount(
+                                observed.getEntityNo(),
+                                pricing.goodsMinor() - pricing.activity().total(),
+                                observed.getStoreNo())));
+        requireSameBuyer(buyer);
+        try {
+            unscoped(
+                    () ->
+                            writes.execute(
+                                    status -> {
+                                        var op =
+                                                operations.lock(
+                                                        request.operation().caller(),
+                                                        request.operation().operationNo());
+                                        if (op == null || !buyer.equals(op.getBuyerNo())) {
+                                            throw BizException.of(ErrorCode.NOT_FOUND);
+                                        }
+                                        requirePlaceReplay(op, request, key, payload);
+                                        if ("CREATED".equals(op.getPhase())) {
+                                            return op;
+                                        }
+                                        lockedAuthorization(op, request);
+                                        if (op.getPlaceKeyHash() == null) {
+                                            op.setPlaceKeyHash(key);
+                                            op.setPlacePayloadHash(payload);
+                                            changed(operations.updateById(op));
+                                        }
+                                        return op;
+                                    }));
+        } catch (DuplicateKeyException collision) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        } catch (BizException failure) {
+            if (failure.errorCode() == ErrorCode.CHECKOUT_QUOTE_STALE) {
+                unscoped(
+                        () ->
+                                writes.execute(
+                                        status -> {
+                                            var op =
+                                                    operations.lock(
+                                                            request.operation().caller(),
+                                                            request.operation().operationNo());
+                                            if (op != null
+                                                    && buyer.equals(op.getBuyerNo())
+                                                    && "CONFIRMED".equals(op.getPhase())
+                                                    && request.confirmationNo()
+                                                            .equals(op.getConfirmationNo())
+                                                    && (op.getPlaceKeyHash() == null
+                                                            || key.equals(op.getPlaceKeyHash()))) {
+                                                var q = quotes.lock(op.getCurrentQuoteNo());
+                                                var c = confirmations.lock(op.getConfirmationNo());
+                                                op.setPhase("REQUOTE_REQUIRED");
+                                                op.setLastErrorCode(failure.errorCode().name());
+                                                q.setStatus("EXPIRED");
+                                                c.setStatus("REVOKED");
+                                                changed(confirmations.updateById(c));
+                                                changed(quotes.updateById(q));
+                                                changed(operations.updateById(op));
+                                            }
+                                            return null;
+                                        }));
+            }
+            throw failure;
+        }
+        requireSameBuyer(buyer);
+        try {
+            return unscoped(
+                    () ->
+                            writes.execute(
+                                    status -> {
+                                        var op =
+                                                operations.lock(
+                                                        request.operation().caller(),
+                                                        request.operation().operationNo());
+                                        if (op == null || !buyer.equals(op.getBuyerNo())) {
+                                            throw BizException.of(ErrorCode.NOT_FOUND);
+                                        }
+                                        requirePlaceReplay(op, request, key, payload);
+                                        if ("CREATED".equals(op.getPhase())) {
+                                            return result(op);
+                                        }
+                                        var authorized = lockedAuthorization(op, request);
+                                        var intent = originalIntent(op);
+                                        if (intent != null) {
+                                            if (OrdCreateIntent.RELEASED.equals(
+                                                    intent.getStatus())) {
+                                                rejectReleased(op, authorized);
+                                                return result(op);
+                                            }
+                                            return new CheckoutResult(
+                                                    request.operation(),
+                                                    "PLACING",
+                                                    op.getVersion(),
+                                                    null,
+                                                    null,
+                                                    op.getSourceObservationHash(),
+                                                    intent.getErrorCode(),
+                                                    clock.now());
+                                        }
+                                        var expected =
+                                                new ExpectedCheckoutQuote(
+                                                        op.getOperationNo(),
+                                                        authorized.quote().getQuoteNo(),
+                                                        authorized.quote().getRevision(),
+                                                        authorized.quote().getQuoteHash(),
+                                                        authorized
+                                                                .confirmation()
+                                                                .getConfirmationNo(),
+                                                        op.getScopeHash(),
+                                                        authorized
+                                                                .confirmation()
+                                                                .getExpiresAt()
+                                                                .toInstant(ZoneOffset.UTC),
+                                                        op.getAdmissionKind());
+                                        var current =
+                                                json.readValue(
+                                                        op.getCommandJson(), CheckoutCommand.class);
+                                        var created =
+                                                writer.createConfirmedFor(
+                                                        buyer,
+                                                        current.command(),
+                                                        internalKey(op),
+                                                        expected);
+                                        if (created.subOrders() == null
+                                                || created.subOrders().size() != 1) {
+                                            throw BizException.of(ErrorCode.CONFLICT);
+                                        }
+                                        guard.complete(
+                                                expected,
+                                                created.payOrderNo(),
+                                                created.subOrders().get(0).orderNo());
+                                        return result(
+                                                operations.find(
+                                                        op.getCaller(), op.getOperationNo()));
+                                    }));
+        } catch (BizException failure) {
+            if (failure.errorCode() == ErrorCode.CHECKOUT_QUOTE_STALE
+                    || failure.errorCode() == ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION) {
+                unscoped(
+                        () ->
+                                writes.execute(
+                                        status -> {
+                                            var op =
+                                                    operations.lock(
+                                                            request.operation().caller(),
+                                                            request.operation().operationNo());
+                                            if (op != null
+                                                    && "CONFIRMED".equals(op.getPhase())
+                                                    && key.equals(op.getPlaceKeyHash())) {
+                                                var q = quotes.lock(op.getCurrentQuoteNo());
+                                                var c = confirmations.lock(op.getConfirmationNo());
+                                                op.setPhase("REQUOTE_REQUIRED");
+                                                op.setLastErrorCode(failure.errorCode().name());
+                                                q.setStatus("REVOKED");
+                                                c.setStatus("REVOKED");
+                                                changed(confirmations.updateById(c));
+                                                changed(quotes.updateById(q));
+                                                changed(operations.updateById(op));
+                                            }
+                                            return null;
+                                        }));
+            }
+            throw failure;
+        }
+    }
+
+    @Override
+    public CheckoutResult findOperation(CheckoutScope scope, OperationRef reference) {
+        access.requireMerchant(scope, BizPerms.ORDER_VIEW);
+        return unscoped(
+                () -> {
+                    var op = requireOperation(reference);
+                    requireScope(op, scope);
+                    if ("CREATED".equals(op.getPhase())) {
+                        return result(op);
+                    }
+                    var intent = originalIntent(op);
+                    if (intent != null && !OrdCreateIntent.RELEASED.equals(intent.getStatus())) {
+                        return new CheckoutResult(
+                                reference,
+                                "PLACING",
+                                op.getVersion(),
+                                null,
+                                null,
+                                op.getSourceObservationHash(),
+                                intent.getErrorCode(),
+                                clock.now());
+                    }
+                    if (intent != null) {
+                        return new CheckoutResult(
+                                reference,
+                                "REJECTED",
+                                op.getVersion(),
+                                null,
+                                null,
+                                op.getSourceObservationHash(),
+                                "CREATE_INTENT_RELEASED",
+                                clock.now());
+                    }
+                    return result(op);
+                });
+    }
+
+    private void requirePlaceReplay(
+            OrdCheckoutOperation op, PlaceCheckoutReq request, String key, String payload) {
+        if (!Objects.equals(request.confirmationNo(), op.getConfirmationNo())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (op.getPlaceKeyHash() != null
+                && (!key.equals(op.getPlaceKeyHash())
+                        || !payload.equals(op.getPlacePayloadHash()))) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private Authorized lockedAuthorization(OrdCheckoutOperation op, PlaceCheckoutReq request) {
+        var q = quotes.lock(op.getCurrentQuoteNo());
+        var c = confirmations.lock(request.confirmationNo());
+        if (!"CONFIRMED".equals(op.getPhase())
+                || q == null
+                || c == null
+                || !"CONFIRMED".equals(q.getStatus())
+                || !"AUTHORIZED".equals(c.getStatus())
+                || !op.getOperationNo().equals(q.getOperationNo())
+                || !op.getOperationNo().equals(c.getOperationNo())
+                || !op.getBuyerNo().equals(c.getBuyerNo())
+                || !q.getQuoteNo().equals(c.getQuoteNo())
+                || !q.getQuoteHash().equals(c.getQuoteHash())
+                || !q.getRevision().equals(c.getQuoteRevision())) {
+            throw BizException.of(ErrorCode.CHECKOUT_CONFIRMATION_REQUIRED);
+        }
+        if (!clock.now().isBefore(q.getExpiresAt().toInstant(ZoneOffset.UTC))
+                || !clock.now().isBefore(c.getExpiresAt().toInstant(ZoneOffset.UTC))) {
+            throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+        }
+        return new Authorized(q, c);
+    }
+
+    private void rejectReleased(OrdCheckoutOperation op, Authorized authorized) {
+        op.setPhase("REJECTED");
+        op.setLastErrorCode("CREATE_INTENT_RELEASED");
+        authorized.quote().setStatus("REVOKED");
+        authorized.confirmation().setStatus("REVOKED");
+        changed(confirmations.updateById(authorized.confirmation()));
+        changed(quotes.updateById(authorized.quote()));
+        changed(operations.updateById(op));
+    }
+
+    private OrdCreateIntent originalIntent(OrdCheckoutOperation op) {
+        return intents.selectOne(
+                Wrappers.<OrdCreateIntent>lambdaQuery()
+                        .eq(OrdCreateIntent::getTenantNo, "MAIN")
+                        .eq(OrdCreateIntent::getEndpoint, "POST /mp/order")
+                        .eq(OrdCreateIntent::getIdemKey, internalKey(op)));
+    }
+
+    private String internalKey(OrdCheckoutOperation op) {
+        return "CHK_"
+                + CheckoutDigests.hash(json, List.of("MAIN", op.getCaller(), op.getOperationNo()));
+    }
+
+    private CheckoutResult result(OrdCheckoutOperation op) {
+        return new CheckoutResult(
+                new OperationRef(op.getCaller(), op.getOperationNo()),
+                op.getPhase(),
+                op.getVersion(),
+                op.getOrderNo(),
+                op.getSubOrderNo(),
+                op.getSourceObservationHash(),
+                op.getLastErrorCode(),
+                clock.now());
+    }
+
+    private record Authorized(OrdCheckoutQuote quote, OrdCheckoutConfirmation confirmation) {}
+
+    @Override
+    public CheckoutSourceFacts source(CheckoutScope scope, SourceLookup request) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        access.requireMerchant(scope, BizPerms.ORDER_VIEW);
+        return unscoped(
+                () -> {
+                    CheckoutSourceFacts last = null;
+                    for (int attempt = 0; attempt < 2; attempt++) {
+                        var observed = requireOperation(request.operation());
+                        requireSourceReference(observed, scope, request);
+                        var order = sourceOrder(observed.getOrderNo());
+                        if ("MANUAL_OFFLINE".equals(observed.getAdmissionKind())) {
+                            return sourceReads.execute(
+                                    status -> {
+                                        var locked =
+                                                operations.lock(
+                                                        request.operation().caller(),
+                                                        request.operation().operationNo());
+                                        requireSourceReference(locked, scope, request);
+                                        return unknownSource(
+                                                locked, sourceOrder(locked.getOrderNo()));
+                                    });
+                        }
+                        // All financial calls and possible receipt projection finish before the RR
+                        // source lock.
+                        var funding = sourceFunding(observed, order);
+                        var read =
+                                sourceReads.execute(
+                                        status -> sourceSnapshot(scope, request, order, funding));
+                        last = read.facts();
+                        if (!read.retry()) {
+                            return last;
+                        }
+                    }
+                    return last;
+                });
+    }
+
+    private SourceRead sourceSnapshot(
+            CheckoutScope scope, SourceLookup request, OrdOrder observed, SourceFunding funding) {
+        PaymentReceipt receipt = funding.receipt();
+        // This must be the first SQL in the new RR transaction. All business facts below are
+        // ordinary consistent reads; no sub/item current read may be mixed into this snapshot.
+        var op = operations.lock(request.operation().caller(), request.operation().operationNo());
+        if (op == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        requireSourceReference(op, scope, request);
+        var order = sourceOrder(op.getOrderNo());
+        var sub =
+                sourceSubs.selectOne(
+                        Wrappers.<OrdSubOrder>lambdaQuery()
+                                .eq(OrdSubOrder::getTenantNo, "MAIN")
+                                .eq(OrdSubOrder::getSubOrderNo, op.getSubOrderNo()));
+        var items =
+                sourceItems.selectList(
+                        Wrappers.<OrdItem>lambdaQuery()
+                                .eq(OrdItem::getTenantNo, "MAIN")
+                                .eq(OrdItem::getSubOrderNo, op.getSubOrderNo())
+                                .orderByAsc(OrdItem::getId));
+        var mappings =
+                sourceLines.selectList(
+                        Wrappers.<OrdCheckoutLine>lambdaQuery()
+                                .eq(OrdCheckoutLine::getTenantNo, "MAIN")
+                                .eq(OrdCheckoutLine::getCaller, op.getCaller())
+                                .eq(OrdCheckoutLine::getOperationNo, op.getOperationNo())
+                                .orderByAsc(OrdCheckoutLine::getOrderItemId));
+        var afterSales =
+                sourceAfterSales.selectList(
+                        Wrappers.<OrdAfterSale>lambdaQuery()
+                                .eq(OrdAfterSale::getTenantNo, "MAIN")
+                                .eq(OrdAfterSale::getSubOrderNo, op.getSubOrderNo())
+                                .orderByAsc(OrdAfterSale::getAfterSaleNo));
+        var refundWork = sourceLines.refundWork(op.getSubOrderNo());
+        var currentRequests = paymentRequests.forOperation(op.getCaller(), op.getOperationNo());
+        boolean changedMapping = !requestStamp(currentRequests).equals(funding.requestStamp());
+        boolean changedAttempt =
+                changedMapping
+                        || order != null
+                                && (observed == null
+                                        || !Objects.equals(
+                                                order.getPayChannel(), observed.getPayChannel())
+                                        || !Objects.equals(
+                                                order.getPayTradeNo(), observed.getPayTradeNo()));
+        if (changedMapping
+                || order == null
+                || sub == null
+                || !op.getOrderNo().equals(sub.getOrderNo())
+                || !op.getBuyerNo().equals(order.getUserNo())
+                || !op.getBuyerNo().equals(sub.getUserNo())
+                || !op.getEntityNo().equals(sub.getEntityNo())
+                || !op.getStoreNo().equals(sub.getStoreNo())
+                || !op.getOperationNo().equals(sub.getSourceOperationNo())
+                || !OrdSubOrder.SERVICE_EXECUTION.equals(sub.getFulfillmentAuthority())
+                || !"STORE_VERIFY".equals(sub.getFulfillment())
+                || order.getPayAmount() == null
+                || order.getPayAmount() < 0
+                || !Objects.equals(order.getPayAmount(), sub.getPayAmount())
+                || !"CNY".equals(order.getCurrency())
+                || items.isEmpty()
+                || items.size() != mappings.size()
+                || receipt == null
+                || !present(receipt.paymentNo())
+                || !"SUCCESS".equals(receipt.status())
+                || !op.getOrderNo().equals(receipt.orderNo())
+                || !op.getBuyerNo().equals(receipt.userNo())
+                || (!funding.mapped() || present(order.getPayChannel()))
+                        && !Objects.equals(order.getPayChannel(), receipt.payChannel())
+                || (!funding.mapped() || present(order.getPayTradeNo()))
+                        && !Objects.equals(order.getPayTradeNo(), receipt.tradeNo())
+                || !"CNY".equals(receipt.currency())
+                || receipt.amountMinor() != order.getPayAmount()) {
+            return new SourceRead(unknownSource(op, order), changedAttempt);
+        }
+        long refunded = sub.getRefundedMinor() == null ? 0 : sub.getRefundedMinor();
+        if (refunded < 0 || refunded > receipt.amountMinor()) {
+            return new SourceRead(unknownSource(op, order), false);
+        }
+        boolean closed =
+                "CANCELLED".equals(order.getStatus())
+                        || "CLOSED".equals(order.getStatus())
+                        || "CANCELLED".equals(sub.getStatus())
+                        || "REFUNDED".equals(sub.getStatus());
+        boolean blocked =
+                closed
+                        || !"PAID".equals(order.getStatus())
+                        || !Set.of("WAIT_FULFILL", "FULFILLING").contains(sub.getStatus())
+                        || afterSales.stream()
+                                .anyMatch(
+                                        a ->
+                                                !Set.of("CLOSED", "REJECTED", "REFUNDED")
+                                                        .contains(a.getStatus()))
+                        || refundWork.stream()
+                                .anyMatch(
+                                        w ->
+                                                "POINTS".equals(w.kind())
+                                                        ? !Set.of("COMMITTED", "ABORTED")
+                                                                .contains(w.status())
+                                                        : !"SUCCEEDED".equals(w.status())
+                                                                || !"DONE"
+                                                                        .equals(
+                                                                                w
+                                                                                        .resourceStatus()));
+        var lines = new ArrayList<SourceLine>();
+        var itemFacts = new ArrayList<Object>();
+        long totalPaid = 0;
+        try {
+            for (int index = 0; index < items.size(); index++) {
+                var item = items.get(index);
+                var mapping = mappings.get(index);
+                int refundedQty = item.getRefundedQty() == null ? 0 : item.getRefundedQty();
+                long itemRefund = item.getRefundedMinor() == null ? 0 : item.getRefundedMinor();
+                if (!item.getId().equals(mapping.getOrderItemId())
+                        || !op.getOrderNo().equals(item.getOrderNo())
+                        || !op.getSubOrderNo().equals(mapping.getSubOrderNo())
+                        || !Objects.equals(item.getGoodsNo(), mapping.getGoodsNo())
+                        || !Objects.equals(item.getSkuNo(), mapping.getSkuNo())
+                        || !Objects.equals(item.getQty(), mapping.getQuantity())
+                        || !"COUNT".equals(mapping.getUom())
+                        || item.getQty() == null
+                        || item.getQty() < 1
+                        || refundedQty < 0
+                        || refundedQty > item.getQty()
+                        || item.getPaidShareMinor() == null
+                        || item.getPaidShareMinor() < 0
+                        || itemRefund < 0
+                        || itemRefund > item.getPaidShareMinor()) {
+                    return new SourceRead(unknownSource(op, order), false);
+                }
+                totalPaid = Math.addExact(totalPaid, item.getPaidShareMinor());
+                lines.add(
+                        new SourceLine(
+                                mapping.getSourceLineNo(),
+                                mapping.getClientLineRef(),
+                                item.getGoodsNo(),
+                                item.getSkuNo(),
+                                item.getQty(),
+                                closed ? 0 : item.getQty() - refundedQty,
+                                "COUNT",
+                                item.getPaidShareMinor()));
+                itemFacts.add(
+                        Arrays.asList(
+                                item.getId(),
+                                item.getPrice(),
+                                item.getAmount(),
+                                item.getPaidShareMinor(),
+                                item.getQty(),
+                                refundedQty,
+                                itemRefund));
+            }
+        } catch (ArithmeticException overflow) {
+            return new SourceRead(unknownSource(op, order), false);
+        }
+        if (totalPaid != order.getPayAmount()) {
+            return new SourceRead(unknownSource(op, order), false);
+        }
+        long received = receipt.amountMinor() - refunded;
+        long outstanding = Math.max(0, (closed ? 0 : order.getPayAmount() - refunded) - received);
+        String financial =
+                refunded == 0
+                        ? "PAID"
+                        : refunded == receipt.amountMinor() ? "REFUNDED" : "PARTIALLY_REFUNDED";
+        String execution = blocked ? "BLOCKED" : "NOT_STARTED";
+        String hash =
+                CheckoutDigests.hash(
+                        json,
+                        Arrays.asList(
+                                "CHECKOUT_SOURCE_V1",
+                                op.getOrderNo(),
+                                op.getSubOrderNo(),
+                                op.getBuyerNo(),
+                                op.getEntityNo(),
+                                op.getStoreNo(),
+                                order.getStatus(),
+                                order.getCurrency(),
+                                order.getPayAmount(),
+                                order.getPayChannel(),
+                                order.getPayTradeNo(),
+                                sub.getStatus(),
+                                sub.getRefundedMinor(),
+                                sub.getRefundProgress(),
+                                itemFacts,
+                                lines,
+                                funding.mapped()
+                                        ? Arrays.asList(
+                                                receipt,
+                                                funding.operationNo(),
+                                                funding.outTradeNo(),
+                                                funding.receiptNo())
+                                        : receipt,
+                                afterSales.stream()
+                                        .map(
+                                                a ->
+                                                        Arrays.asList(
+                                                                a.getAfterSaleNo(),
+                                                                a.getStatus(),
+                                                                a.getRefundMinor(),
+                                                                a.getApprovedMinor(),
+                                                                a.getRefundedAt(),
+                                                                a.getRefundPaymentNo()))
+                                        .toList(),
+                                refundWork,
+                                financial,
+                                execution));
+        if (!hash.equals(op.getSourceObservationHash())) {
+            op.setSourceRevision(Math.addExact(op.getSourceRevision(), 1L));
+            op.setSourceObservationHash(hash);
+            changed(operations.updateById(op));
+        }
+        var payment =
+                new PaymentFact(
+                        funding.operationNo(),
+                        receipt.paymentNo(),
+                        funding.outTradeNo(),
+                        receipt.payChannel(),
+                        receipt.tradeNo(),
+                        receipt.status(),
+                        receipt.amountMinor(),
+                        receipt.currency(),
+                        funding.receiptNo(),
+                        clock.now());
+        return new SourceRead(
+                new CheckoutSourceFacts(
+                        request.operation(),
+                        op.getOrderNo(),
+                        op.getSubOrderNo(),
+                        op.getBuyerNo(),
+                        op.getEntityNo(),
+                        op.getStoreNo(),
+                        op.getSourceRevision(),
+                        hash,
+                        sub.getStatus(),
+                        "CNY",
+                        order.getPayAmount(),
+                        received,
+                        outstanding,
+                        financial,
+                        lines,
+                        List.of(payment),
+                        execution,
+                        clock.now()),
+                false);
+    }
+
+    private SourceFunding sourceFunding(OrdCheckoutOperation op, OrdOrder order) {
+        var rows = paymentRequests.forOperation(op.getCaller(), op.getOperationNo());
+        var stamp = requestStamp(rows);
+        if (rows.isEmpty()) {
+            PaymentReceipt legacy = null;
+            if (order != null && present(order.getPayChannel()) && present(order.getPayTradeNo())) {
+                try {
+                    legacy =
+                            settlement.successPayment(
+                                    order.getOrderNo(),
+                                    order.getPayChannel(),
+                                    order.getPayTradeNo());
+                } catch (RuntimeException unavailable) {
+                    // Missing financial evidence is UNKNOWN, never zero received money.
+                }
+            }
+            return new SourceFunding(legacy, null, null, null, stamp, false);
+        }
+        PaymentOperationView actual = null;
+        try {
+            for (var row : rows) {
+                if (!op.getOrderNo().equals(row.getOrderNo())
+                        || !op.getSubOrderNo().equals(row.getSubOrderNo())
+                        || !op.getBuyerNo().equals(row.getBuyerNo())
+                        || !op.getEntityNo().equals(row.getEntityNo())
+                        || !op.getStoreNo().equals(row.getStoreNo())) {
+                    return unknownFunding(stamp);
+                }
+                var observed = financialOperations.query(row.getPaymentOperationNo());
+                if (!row.getPaymentOperationNo().equals(observed.operationNo())
+                        || !row.getRequestHash().equals(observed.requestHash())) {
+                    return unknownFunding(stamp);
+                }
+                if ("REJECTED".equals(observed.phase())
+                        && (observed.receipt() == null
+                                || "CLOSED".equals(observed.receipt().status())
+                                        && observed.receiptNo() == null
+                                        && present(observed.canonicalOperationNo())
+                                        && present(observed.outTradeNo())
+                                        && Objects.equals(
+                                                observed.paymentNo(),
+                                                observed.receipt().paymentNo())
+                                        && row.getOrderNo().equals(observed.receipt().orderNo())
+                                        && row.getBuyerNo().equals(observed.receipt().userNo()))) {
+                    // Only a proved unsent terminal attempt can be skipped; real SUCCESS remains
+                    // money.
+                    continue;
+                }
+                if (observed.receipt() == null
+                        || !"SUCCESS".equals(observed.receipt().status())
+                        || !present(observed.receiptNo())
+                        || !present(observed.canonicalOperationNo())
+                        || !present(observed.outTradeNo())
+                        || !Objects.equals(observed.paymentNo(), observed.receipt().paymentNo())) {
+                    return unknownFunding(stamp);
+                }
+                if (actual != null
+                        && (!Objects.equals(
+                                        actual.canonicalOperationNo(),
+                                        observed.canonicalOperationNo())
+                                || !Objects.equals(actual.paymentNo(), observed.paymentNo())
+                                || !Objects.equals(actual.outTradeNo(), observed.outTradeNo())
+                                || !Objects.equals(actual.receiptNo(), observed.receiptNo())
+                                || !Objects.equals(actual.receipt(), observed.receipt()))) {
+                    return unknownFunding(stamp);
+                }
+                actual = observed;
+            }
+        } catch (RuntimeException unavailable) {
+            return unknownFunding(stamp);
+        }
+        return actual == null
+                ? unknownFunding(stamp)
+                : new SourceFunding(
+                        actual.receipt(),
+                        actual.canonicalOperationNo(),
+                        actual.outTradeNo(),
+                        actual.receiptNo(),
+                        stamp,
+                        true);
+    }
+
+    private static List<String> requestStamp(List<OrdCheckoutPaymentRequest> rows) {
+        return rows.stream()
+                .map(row -> row.getPaymentOperationNo() + ":" + row.getRequestHash())
+                .toList();
+    }
+
+    private static SourceFunding unknownFunding(List<String> stamp) {
+        return new SourceFunding(null, null, null, null, stamp, true);
+    }
+
+    private record SourceFunding(
+            PaymentReceipt receipt,
+            String operationNo,
+            String outTradeNo,
+            String receiptNo,
+            List<String> requestStamp,
+            boolean mapped) {}
+
+    private OrdOrder sourceOrder(String no) {
+        return sourceOrders.selectOne(
+                Wrappers.<OrdOrder>lambdaQuery()
+                        .eq(OrdOrder::getTenantNo, "MAIN")
+                        .eq(OrdOrder::getOrderNo, no));
+    }
+
+    private void requireSourceReference(
+            OrdCheckoutOperation op, CheckoutScope scope, SourceLookup request) {
+        requireScope(op, scope);
+        if (!"CREATED".equals(op.getPhase())
+                || op.getOrderNo() == null
+                || op.getSubOrderNo() == null
+                || request.subOrderNo() != null
+                        && !request.subOrderNo().equals(op.getSubOrderNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+    }
+
+    private CheckoutSourceFacts unknownSource(OrdCheckoutOperation op, OrdOrder order) {
+        long due =
+                order == null || order.getPayAmount() == null
+                        ? 0
+                        : Math.max(0, order.getPayAmount());
+        return new CheckoutSourceFacts(
+                new OperationRef(op.getCaller(), op.getOperationNo()),
+                op.getOrderNo(),
+                op.getSubOrderNo(),
+                op.getBuyerNo(),
+                op.getEntityNo(),
+                op.getStoreNo(),
+                op.getSourceRevision(),
+                op.getSourceObservationHash(),
+                order == null ? null : order.getStatus(),
+                "CNY",
+                due,
+                null,
+                null,
+                "UNKNOWN",
+                List.of(),
+                List.of(),
+                "BLOCKED",
+                clock.now());
+    }
+
+    private static boolean present(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private record SourceRead(CheckoutSourceFacts facts, boolean retry) {}
+
+    private CheckoutQuote replay(
+            OrdCheckoutOperation operation,
+            CheckoutScope scope,
+            CheckoutAccessPolicy.MerchantActor actor,
+            String key,
+            String payload) {
+        requireScope(operation, scope);
+        if (!Objects.equals(actor.actorNo(), operation.getActorNo())
+                || !Objects.equals(actor.realm(), operation.getActorRealm())
+                || !Objects.equals(actor.subjectKind(), operation.getActorKind())
+                || !key.equals(operation.getRequestKeyHash())
+                || !payload.equals(operation.getPayloadHash())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return unscoped(() -> view(operation, requireQuote(operation)));
+    }
+
+    private OrdCheckoutOperation requireOperation(OperationRef reference) {
+        var operation = operations.find(reference.caller(), reference.operationNo());
+        if (operation == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return operation;
+    }
+
+    private OrdCheckoutQuote requireQuote(OrdCheckoutOperation operation) {
+        var quote = quotes.find(operation.getCurrentQuoteNo());
+        if (quote == null
+                || !operation.getCaller().equals(quote.getCaller())
+                || !operation.getOperationNo().equals(quote.getOperationNo())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return quote;
+    }
+
+    private void requireScope(OrdCheckoutOperation operation, CheckoutScope scope) {
+        if (operation == null
+                || !scope.tenantNo().equals(operation.getTenantNo())
+                || !scope.entityNo().equals(operation.getEntityNo())
+                || !scope.storeNo().equals(operation.getStoreNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+    }
+
+    private CheckoutQuote view(OrdCheckoutOperation operation, OrdCheckoutQuote quote) {
+        var counter = "MERCHANT_RECORDED_IN_PERSON".equals(operation.getPurchaseAuthority())
+                ? new CounterEconomicCodec(json).readQuoteSnapshot(quote.getPricingJson()) : null;
+        var money = counter == null ? json.readValue(quote.getPricingJson(), CheckoutEconomicSnapshot.class)
+                : counter.economic();
+        var promotions = counter == null
+                ? money.activity().applied().stream().map(a -> new PromotionOption(
+                        a.activityNo(), "ACTIVITY", a.name(), true, null)).toList()
+                : counter.promotions();
+        var discounts = new ArrayList<DiscountFact>();
+        money.activity()
+                .applied()
+                .forEach(
+                        a ->
+                                discounts.add(
+                                        new DiscountFact(
+                                                a.activityNo(),
+                                                "ACTIVITY",
+                                                a.amountMinor(),
+                                                a.platformMinor() == 0
+                                                        ? "MERCHANT"
+                                                        : a.platformMinor() == a.amountMinor()
+                                                                ? "PLATFORM"
+                                                                : "MIXED",
+                                                null)));
+        var command =
+                "MERCHANT_RECORDED_IN_PERSON".equals(operation.getPurchaseAuthority())
+                        ? json.readValue(operation.getCommandJson(), PreparedCommand.class)
+                                .command()
+                        : json.readValue(operation.getCommandJson(), CheckoutCommand.class)
+                                .command();
+        if (command.couponNo() != null) {
+            discounts.add(
+                    new DiscountFact(
+                            command.couponNo(),
+                            "COUPON",
+                            money.coupon().totalDiscount(),
+                            money.coupon().byMerchant() ? "MERCHANT" : "PLATFORM",
+                            null));
+        }
+        return new CheckoutQuote(
+                new OperationRef(operation.getCaller(), operation.getOperationNo()),
+                quote.getQuoteNo(),
+                quote.getRevision(),
+                quote.getQuoteHash(),
+                quote.getExpiresAt().toInstant(ZoneOffset.UTC),
+                operation.getBuyerNo(),
+                operation.getEntityNo(),
+                operation.getStoreNo(),
+                money.currency(),
+                money.lines(),
+                money.goodsMinor(),
+                money.discountMinor(),
+                money.dueMinor(),
+                money.payMode(),
+                money.fulfillment(),
+                money.fulfillmentAuthority(),
+                promotions,
+                discounts,
+                operation.getPhase(),
+                operation.getVersion());
+    }
+
+    private static OrderService.CreateOrderCommand command(
+            CheckoutScope scope, PrepareCheckoutReq request) {
+        return command(
+                scope,
+                request.lines(),
+                request.couponNo(),
+                request.activityChoices(),
+                request.remark(),
+                request.payMode());
+    }
+
+    private static OrderService.CreateOrderCommand command(
+            CheckoutScope scope,
+            List<CheckoutLineReq> lines,
+            String coupon,
+            Map<String, String> activities,
+            String remark,
+            String payMode) {
+        return new OrderService.CreateOrderCommand(
+                lines.stream()
+                        .map(
+                                l ->
+                                        new OrderService.CreateOrderCommand.Item(
+                                                null, l.skuNo(), l.quantity()))
+                        .toList(),
+                "STORE_VERIFY",
+                null,
+                null,
+                coupon,
+                0L,
+                remark,
+                null,
+                payMode,
+                null,
+                null,
+                null,
+                false,
+                new TreeMap<>(activities),
+                Map.of(scope.entityNo(), scope.storeNo()),
+                Map.of());
+    }
+
+    private static String number(String prefix) {
+        return prefix + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private static void stamp(BaseEntity row, String actor, Instant at) {
+        row.setTenantNo("MAIN");
+        row.setVersion(1L);
+        row.setDeleted(0);
+        row.setCreatedAt(LocalDateTime.ofInstant(at, ZoneOffset.UTC));
+        row.setUpdatedAt(LocalDateTime.ofInstant(at, ZoneOffset.UTC));
+        row.setCreatedBy(actor);
+        row.setUpdatedBy(actor);
+    }
+
+    private static <T> T unscoped(Supplier<T> action) {
+        return DataScopeContext.executeWithoutScope(action);
+    }
+}

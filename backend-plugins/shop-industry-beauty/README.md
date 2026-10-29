@@ -1,0 +1,256 @@
+# 美业独立 Java 工程
+
+> 状态：BM01/02基础与BM03预约后端模块完成，Task53双形态隔离部署及独立审查/修复复审通过 · 2026-10-22。BM04–06完整服务营业与前端未交付。
+
+沿零售的 shop-parent、Java 21、MyBatis-Plus、主库事务及审计规范实现。
+执行范围、原始方法签名和验收进度见[后端开发计划](../../docs/technical/TDD-美业系统-后端开发计划.md)。
+
+| 构件 | 职责 | 当前实现 |
+|---|---|---|
+| beauty-api | DTO / Service 接口 | 政策及项目定义的请求、响应、Service与内部HTTP合同 |
+| beauty-core | 领域实现、实体、Mapper | 正式V1–V4共23项私表、严格manifest与主库接线；政策/定义、预约准备/持久操作/不可变安排/来源冻结及终态协调 |
+| beauty-web | 用户端 HTTP 入口 | 独立条件配置、api/ops profile隔离；政策/定义及B/C预约、基础可约查询、操作查询/显式恢复 Controller |
+| beauty-channel | 内部协议适配 | standalone 的政策/定义/预约远程Service及反向来源许可；商品、人员、排班、资源、权限事实适配 |
+| beauty-server | 独立内部服务 | 内部政策/定义/预约/来源端点、服务令牌安全链、私有主库/outbox及共用Job目标接线 |
+
+只有 server 是可执行 JAR。web/channel 不依赖 core；商品、订单、资金、人员、排班、资源、库存及通知打印沿原所有者提供。
+整体 readiness 保持 OUT_OF_SERVICE，等待BM04–06履约等后续能力；BM03模块证据不等于整个业务可营业。
+
+## 构建与宿主形态
+
+先按平台流程准备已发布到本机/制品库的 shop-parent、shop-base、shop-store-mybatis、shop-base-auth、svc-client；POM不依赖零售源码目录解析父工程。同机多工作树共用 SNAPSHOT 仓库时，应先构建本分支公共构件，再构建行业包，避免旧构件覆盖。
+
+```sh
+mvn -o -f backend/pom.xml -pl shop-store-mybatis -am install
+mvn -o -f backend-plugins/shop-industry-beauty/pom.xml verify
+mvn -o -f backend-plugins/shop-industry-beauty/pom.xml install
+mvn -o -f backend/pom.xml -pl shop-app -am -Pbeauty-embedded test -Dtest=BeautyEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -o -f backend/pom.xml -pl shop-app -am -Pbeauty-standalone test -Dtest=BeautyEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+宿主默认零售构建不带美业。embedded 引入 web/core；standalone 引入 web/channel，enforcer禁止本地 core/server。
+运行时 `shop.beauty.enabled` 默认 false；启用后 `shop.beauty.deployment` 必须明确为 embedded 或 standalone，并与构件形态一致。
+独立 beauty-server 只接受 standalone。关闭不需要数据库；启用后通过平台 PrimaryPersistenceConfiguration 装配主库。
+
+独立服务参数：`BEAUTY_SERVER_PORT`（默认8087）、`BEAUTY_DB_URL`、`BEAUTY_DB_USER`、`BEAUTY_DB_PASSWORD`、`SHOP_INTERNAL_TOKEN`。
+数据库与令牌无内置凭据。服务令牌采用既有 InternalHttp 头协议；预约入口验证当前认证身份、店铺及权限；源许可的反向调用保持完整委托身份。
+
+## 数据所有权与迁移
+
+V1创建16项P1私表；V2追加来源意图/永久栅栏2表；V3追加准备/操作/当前指针/不可变安排4表；V4追加来源冻结决策1表，当前schema版本4、私表23项，不包含14项共用人员/资源结构、P3护理业绩提成或P4疗程计划。
+业务唯一键带 tenant/entity 前缀；源行分配 guard 身份不含 source_revision；数量守恒、时间区间由数据库 CHECK 约束保护。
+
+`shop.beauty.migration.mode` 默认 validate，仅校验；migrate 仅供部署时单一受控执行者显式使用。
+行业历史表为 bty_flyway_history，Flyway对象不注册为全局Bean，不接管零售的迁移位置及历史。
+独立 server 的平台全量 Flyway 默认关闭；宿主的原平台 Flyway保持独立生效。
+发现无历史的既有 bty 表、未知表、历史/字段/默认值/索引/检查约束漂移时拒绝启动；不会隐式 baseline 既有美业数据或 repair。
+
+V1首次生成后冻结；后续新增版本，不回写已执行文件。P3/P4按其正式合同再追加迁移。
+
+## 验证
+
+```sh
+node --test scripts/tests/beauty-schema-sql.test.mjs
+node scripts/gen-beauty-schema.mjs --check
+node scripts/verify-beauty-schema-mysql.mjs
+node scripts/verify-beauty-persistence.mjs --include-server --include-host
+node scripts/smoke-beauty-server.mjs
+```
+
+MySQL脚本只创建和删除自己命名的一次性容器，使用已缓存的 mysql:8.4，不拉镜像、不读取营业库配置。
+DDL验证无网络；JDBC测试仅映射本机随机端口，每例独立数据库。IT由脚本明确选择，普通 verify 不冒充已执行真实数据库测试。
+JAR smoke明确关闭美业、清空数据源 URL并监听本机随机端口，检查 liveness=200、readiness=503后结束自己启动的进程。
+
+## 首个业务切片与三行业共用边界
+
+`POST /biz/x/beauty/store-policies/versions`（BAPI-002）按既有 Controller/Service 方法设计实现；
+新增可选原始 `X-Store-No` 参数用于拒绝过滤器默认店回落掩盖的非法请求，Service 参数保持原设计。
+登录员工、主体和当前门店来自可信上下文，权限沿用 `biz:store`，不接受请求体伪造 actor。
+请求包含 `expectedRevision`、`validFrom` 和 typed `policy`；P1 仅允许 `PREPAID_SINGLE`。
+首次创建要求 revision=0，后续按当前正数 revision 发布；追加不可变版本、CAS 更新根、操作日志、幂等结果与 PLATFORM outbox 同一主库事务。
+同 key/同规范输入返回原响应，异参或过期版本冲突；时间归一 UTC 毫秒。
+
+零售拥有的 auth、IdempotencyService、PLATFORM outbox 和主库事务继续作为核心：
+公共包新增 StoreRequestScopeValidator、IdempotencyScope、PlatformOutboxPublisher、PlatformWritePrerequisites，
+餐饮和美业接入；零售既有默认门店回落与无 key 的旧接口行为保持兼容，并有回归用例。
+收尾已追平餐饮最新已提交 c634de551（本分支74fdaf218），包括实际政策读取入口。
+元数据前置检查复用事务连接，单连接池也能发布；不执行公共表 DDL。
+
+本批新增 `GET /biz/x/beauty/store-policies`、`GET /biz/x/beauty/service-definitions`、
+`POST /biz/x/beauty/service-definitions/versions`。两种 Service 同时提供 embedded 与 standalone 实现。
+政策按 `effective_at` 选有效版本，不把未来版本提前生效；响应分别给出根revision和有效版本revision。
+定义使用现有审计 `created_at` 作历史查询时点，沿平台JVM本地审计约定换算；部署各实例须使用同一稳定时区，
+返回publishedAt转换为UTC。定义查询page默认1、size默认20且最大100；子要求只能通过当前范围内父版本读取。
+
+定义的 `duration` 包含 minutes/bufferBeforeMin/bufferAfterMin；requirements包含角色、资源类型、技能项目、数量和占用区间。
+P1仅单步骤SERVICE（sequenceNo=0）、ANY_QUALIFIED规则，资源类型STAFF/ROOM/SEAT/DEVICE；BM03已接入实际人员/排班及资源容量合同；完整任务日历仍属BM06。
+基础时长校验 `prd_goods.duration_min`，共享商品域ServiceProductFactsPort负责MAIN/CN、本店、SERVICE类型及在架报价事实。
+美业不保存售价；duration与商品事实不符时拒绝。商品外部查询在主事务外执行，禁止从已开启事务调用定义发布。
+
+不可变政策/定义发布事件本批采用明确归档合同：版本表和action_log为权威，outbox事件留作发布凭据，
+不承诺通知、支付或资源副作用。部署需显式设置
+`spring.config.import=classpath:beauty-publication-archive.yml`（可合并到已有导入列表）；
+此文件显式启用`shop.beauty.publication.archive-only=true`，将政策/定义版本及预约原操作完成事件作为ARCHIVED证据写入共用PLATFORM存储，不切换宿主全局投递模式，不创建另一套投递泵。
+已有实际消费者或正式路由时拒绝归档并回滚；此时必须关闭该显式模式并使用正式投递。未启用归档且缺路由仍拒绝发布、整体回滚。
+独立server本批只装配共享PLATFORM存储用于归档；需要实际投递消费者时须先接入交付引擎并验收。
+
+standalone 宿主需要配置 `shop.services.targets.BEAUTY`；beauty-server 反向查商品需配置
+`shop.services.targets.PLATFORM`，两者使用原 `shop.services.internal-token`。
+令牌只授予受信平台内部委托资格；公开用户不得直接提交entity/store/actor。
+内部scope字段非空有长度约束，Service再次校验query门店和SQL范围；操作人适配原审计后finally恢复线程身份。
+readiness 继续为503，直到业务提供方、正式投递和后续合同完成验收。
+
+ENG-03/DATA-04及BM01目录切片已交付，原始分批记录保留在主TDD；BM03当前部署与恢复范围见末节。
+DATA-05/06的数据层已实现：预约及项目/安排历史、工单、任务、步骤、实际参与段7实体，15条既定自定义Mapper方法；
+没有新增公开接口。改约/签到、任务启停/数量、绑定版本、冻结/关闭均做本地范围及CAS检查，
+返回0须由后续业务Service转为冲突。安排revision、工单scopeRevision、任务bindingRevision与BaseEntity.version分别处理。
+未来业务事务必须按工单根→排序任务→子行加锁；当前trade_binding读取仅校验本地引用完整性，不能代表来源授权或资源确认。
+DATA-07持久化已实现：提交意图、来源绑定、规范来源行guard三个实体与9条原始Mapper方法（操作日志复用已有实现）。
+累计16项P1实体和数据域。来源修订不另开guard；分配/刷新/释放显式CAS和数量精度校验；恢复扫描有界SKIP LOCKED，
+必须同短事务认领租约后提交，外部查询不持锁。跨action相同请求摘要歧义拒绝，未来Service规范摘要须包含action。
+释放采用整guard保守校验，任一历史分配已消费、在途或父链不完整时拒绝；即使其他部分空闲也不局部释放。
+涉及来源的业务事务按排序guard→工单→任务→绑定/提交加锁；恢复scanner的租约事务独立提交。
+这些DATA阶段本地方法不代表外部取消/消费证明；BM03现已接入预约来源许可与原操作恢复，工单履约/消费及完整预约工作台仍属后续，49任务尚未全部完成。
+
+## 共用人员 SHR-01a 基础切片
+
+共用人员五表及内部批量事实查询由 `shop-merchant` 实现，正式平台迁移为V532；不加入美业私有迁移。
+`shop-base/spi/personnel/PersonnelFactsPort` 读取明确名单在指定门店/时点的有效任职、业务岗位和已核验资格。
+允许无登录账号，账号/权限角色不作为岗位或技能；输出不含账号、电话和联系资料。
+同一人员的重叠任职及超限数据明确拒绝；数据库规范人员/任职号用于投影分组，三次查询来自同一只读快照。
+该段记录SHR-01a事实查询切片；人员维护、排班及组合占用后续已交付并供BM03使用，实际服务开工仍属BM04–06。
+实施与验收见[开发计划§11](../../docs/technical/TDD-美业系统-后端开发计划.md)。
+
+
+## 共用资源 SHR-02a 基础切片
+
+规范资源主档由shop-merchant拥有，平台V533新增mch_resource，未加入美业私有迁移。
+STAFF同主体同人员唯一、capacity=1且不归某个门店，通过有效任职验证查询门店；物理ROOM/SEAT/DEVICE必须属于有效门店。
+shop-base/spi/resource/ResourceFactsPort提供明确资源名单的单SQL批量事实，拒绝重叠任职和超限；不输出账号、联系资料或占用凭证。
+openOccupied只表示主档已有开放阻断指针；事实查询不提供班表、剩余容量或整个服务时段的预约许可。
+该段记录SHR-02a事实切片；维护、排班及组合占用后续已接入BM03。旧slot切换须沿既有明确所有权门控，不能把资源事实当任意执行许可。
+实施与验收见[开发计划§12](../../docs/technical/TDD-美业系统-后端开发计划.md)。
+
+
+## 共用周排班 SHR-01b 基础切片
+
+shop-merchant拥有mch_schedule_rule/change_log，平台V534新增，未进入美业私有迁移。
+shop-base/spi/schedule/ScheduleWindowsPort在明确资源名单、门店及最长31天范围内返回周排班窗口。
+规则按本地ISO星期与开始日展开，支持跨午夜、午夜1440分钟及区域/固定偏移时区；窗口按请求和有效任职裁剪。
+同店同任职合并并保留规则来源，邻接任职分段；跨店同资源重叠或同店任职重叠明确拒绝。
+DST缺失/重复端点影响请求时拒绝，不猜测偏移；数据库规范门店号用于筛选，支持CI引用且不输出其他店规则。
+本批周窗口不包含P3例外审批或容量/资格许可；变更历史数据不代表已处理已有预约影响。
+维护HTTP/写Service、完整影响协调、容量桶/组合占用、远程接入与预约日历后续实施。验收见[开发计划§13](../../docs/technical/TDD-美业系统-后端开发计划.md)。
+
+## BM-01门店政策、项目定义与共用销售目录
+
+公共入口为GET `/mp/x/beauty/stores/{storeNo}`、GET `/mp/x/beauty/services/{skuNo}?storeNo=...`；
+受权商家详情为GET `/biz/x/beauty/services/{skuNo}?storeNo=...`。
+目录维护由商品域拥有：GET `/biz/store-sales-catalog`及POST `/biz/store-sales-catalog/versions`，
+使用当前授权门店与`biz:goods`，发布要求`Idempotency-Key`和`expectedRevision`。
+新表来自平台V536；美业私有V1不变。共用目录只冻结分组/陈列/时段，不维护价格、货架、库存或人员容量。
+无已生效目录继续既有展示口径；配置后隐藏条目/隐藏分组不返回详情，窗口外展示`saleableNow=false`。
+`saleableNow`不是预约或收费许可，后续来源/资源/成交守卫仍须独立通过。
+
+不可变目录发布证据可显式配置`shop.catalog.publication.archive-only=true`；
+它与`shop.beauty.publication.archive-only`复用同一个共用发布器和实际PLATFORM outbox。
+默认保持严格交付前置；有真实消费者/交付路由的事件拒绝归档，不切全局LEGACY/UNIFIED模式。
+
+原生目录验收：`node scripts/verify-store-sales-catalog.mjs`，只使用脚本自建并自动清理的MySQL容器。
+部署验收：先用`beauty-embedded`、`beauty-standalone`和默认profile分别clean打包shop-app，
+并保留各自JAR；独立beauty-server从美业reactor构建。设置以下环境变量后执行
+`node scripts/verify-beauty-bm01-deployment.mjs`：
+
+- `JAVA_HOME`：Java21；`BEAUTY_EMBEDDED_JAR`、`BEAUTY_STANDALONE_HOST_JAR`、`BEAUTY_DEFAULT_RETAIL_JAR`：上述真实JAR绝对路径。
+- `BEAUTY_BM01_EVIDENCE_DIR`可选，默认为`/tmp`下独立随机目录；保存构件摘要、探针及进程/数据库日志，不含实际营业库连接信息。
+
+脚本使用本机已缓存MySQL9.7.2、回环随机端口和自建tmpfs数据库，不拉取镜像、不连接共享库。
+平台历史结构使用显式测试夹具，再执行真实V536；不代表完整平台历史Flyway重放或生产迁移批准。
+独立服务整体readiness仍为503；模块运行用例通过不代表预约/工作流整体可营业。
+完整范围、最终证据和延期项见主TDD§22；下一业务模块为人员、排班与资源维护。
+
+
+## BM02-a共用人员维护内部检查点
+
+BAPI012～016实际入口归shop-merchant的`/biz/personnel`，使用现有`biz:store:admin`和可信当前店；
+主体级账号关联及停用另限owner。无登录人员、跨店任职岗位/SKU资格和全主体唯一STAFF复用同一身份。
+停用联动原成员服务，先锁成员行并回查DISABLED；业务岗位不写成员角色，恢复业务人员不自动恢复登录。
+默认严格要求事件路由；无实际消费者的证据归档仅显式`shop.personnel.publication.archive-only=true`启用。
+验证脚本`node scripts/verify-personnel-maintenance.mjs`使用自建/自动清理MySQL8.4；
+`--race-only`、`--directory-only`、`--impact-only`可聚焦竞态、目录和影响补验。产品事实与部分OTP/成员构造边界的替身范围见主TDD§23。
+人员维护为BM02-a内部检查点；资源/周班表及standalone事实最终模块验收见主TDD§25，不计作可预约或开工。
+
+## BM02-b共用物理资源维护
+
+BAPI020/021归shop-merchant：GET/POST `/biz/resources`，沿`biz:store:admin`及可信当前门店；写入强制Idempotency-Key与expectedRevision。
+物理ROOM/SEAT/DEVICE店内维护，身份/类型/归属不可改写；STAFF只查询，不绕过人员维护流程。
+任意历史容量桶存在时冻结容量；未恢复命令、开放占用及容量证据未解决时拒绝更新，不重写旧slot或容量桶。
+证据事件默认严格交付；显式`shop.resource.publication.archive-only=true`才允许无消费者归档。
+原生验证脚本`node scripts/verify-resource-maintenance.mjs`使用自建/自动清理MySQL8.4结构夹具，非全历史迁移重放。
+BM02-c班表/远程事实及整模块隔离构件部署已通过主TDD§25关口；预约和工作流仍为后续模块。
+
+## BM02-c周班表与独立事实接入
+
+共用所有者新增GET `/biz/schedules`与POST `/biz/schedule-rules`，沿`biz:store:admin`和当前店；写入必须带Idempotency-Key、资源根expectedRevision及reason。
+查询1..50个资源、最多31日；新周规则必须明确最后开始日、最多366日，长期班表需续排。替换保留旧INACTIVE行，新版本另号；跨店冲突、任职歧义与DST端点异常明确拒绝，不把工作窗口当剩余容量。
+默认证据事件要求正式路由，仅显式`shop.schedule.publication.archive-only=true`允许无消费者归档。
+独立服务的BeautyMerchantClientConfiguration提供三个既有Port的远程实现，使用内部凭证向PLATFORM读取人员、规范资源和周窗口；embedded继续本地所有者，不复制数据。
+原生验证：`node scripts/verify-schedule-maintenance.mjs`，`--employment-only`聚焦任职变更对已有周规则的保护。
+整模块验证：沿BM-01的真实构件环境变量，执行`node scripts/verify-beauty-bm02-deployment.mjs`，可设`BEAUTY_BM02_EVIDENCE_DIR`保存证据。
+部署脚本复用原隔离框架并扩展人员/资源/周规则用例；`scripts/fixtures/BeautyMerchantFactsProbe.java`只在验收中对已提取且记录摘要的实际server类路径启动原BeautyApplication，调用真实远程Bean。它不是生产路由，不替代普通server/host JAR启动，该历史BM02证据不证明BM03预约链路；BM03采用末节独立普通JAR HTTP harness。
+模块隔离部署已通过；实际范围/构件摘要/延期项见主TDD§25。内部事实冲突映射HTTP409；任职变更遇本店ACTIVE规则时须先显式停用，包含历史日期规则。
+
+### BM03-a1预约来源存储
+
+`node scripts/gen-beauty-resource-intent-schema.mjs --check`核对独立增量真源及冻结V2，原V1生成检查保持16表。
+`node scripts/verify-beauty-persistence.mjs --resource-intent-only`在独占MySQL8.4中验证V1→V2显式升级、原始计划字节、并发单栅栏、相反写者、终态前禁止释放和回滚。
+该a1阶段仅交付存储；实际来源provider及预约HTTP已由后续BM03任务实现，Mapper参数本身仍不是许可。阶段记录见主TDD§26，当前模块部署准出见Task53报告。
+
+### BM03-a2-1共用核验前置
+
+独立channel新增MerchantOperatorAccessPort与ResourceCommandFactsPort的PLATFORM远程适配；同部署本地owner存在时不注册远程替身。前者验证当前经营成员/当店权限，后者按完整Binding查询原资源命令，保留原结果及终态摘要；失败不转为空或许可，网络读取须在调用方事务外。
+内部协议见ResourceRecoveryInternalApi两条POST及API清单实施增量；成员输入只能来自可信已认证入口。原始结果仅供内部核实，不日志/公网输出。
+该a2-1阶段是来源授权前置；持久业务计划、freeze/query决定及真实终态协调由后续任务实现。主TDD§2.16/§27保留当时检查。
+
+共用原生与协议复现：`node scripts/verify-resource-recovery-facts.mjs --include-journal --include-protocol`；需沿构建说明使用当前分支公共构件及隔离Maven仓库，脚本自建并清理MySQL8.4。
+
+## BM03部署与恢复
+
+执行 `bash scripts/build-beauty-bm03-artifacts.sh` 后运行 `node scripts/verify-beauty-bm03-deployment.mjs`。
+构建固定Java21及隔离离线Maven库，逐个复制embedded、standalone HOST、beauty-server、默认零售与job-worker构件，证据目录记录SHA256/构件内容/HTTP结果/代理调用/进程日志。
+standalone HOST只含web/channel，无core；SERVER独立私有schema只有23项bty业务表、行业迁移历史及必要sys_idempotent/outbox/锁基础表，不复制商品/会员/订单/人员/容量账。HOST与SERVER必须分别配置BEAUTY、PLATFORM目标，实际预约冻结经SERVER→HOST→SERVER来源回调。
+
+`api`下声明`beauty-appointment-recovery`，默认每分钟、60秒超时/120秒锁，沿JobDeclaration/JobHttpPaths/JobHandlerRegistry及ShedLock。配置`shop.job.enabled=true`、`shop.job.internal-token`使SERVER成为目标；独立job-worker的`shop.job.worker.targets.BEAUTY`指向SERVER，`shop.job.worker.token`须匹配。业务令牌与调度令牌分别配置，job目标不认用户令牌。worker保持既有首次默认停用策略；需显式启用该定义，后续cron/enabled由框架定义管理。
+恢复扫描只核验已绑定原终态，不冒充存储的用户或接受新命令；accept回执未知等需授权步骤由当前有权管理者显式恢复原operationNo。共享Job端点实现只有一份，应用与独立服务各一薄适配，无美业私有定时器。
+
+范围与结果以[Task53报告](../../.superpowers/sdd/beauty-backend/task-53-report.md)及主TDD为准：160原始API/49任务基线保留，公开恢复+1和30机器合同另列。基础可约/预约安排时间线是后端能力，不代表BM06全任务日历或前端已交付；归档事件不声称通知已送达；共用容量内核不代表零售/餐饮业务预约流程已实现。
+
+
+### BM03独立模块审查修复（round1）
+
+自动预约匹配采用确定性的有界重分配：先取候选/任职资格/排班/容量事实，再在内存中回溯，搜索节点不RPC、不持DB锁；固定指定项保持硬约束。候选尝试预算10000（需求槽位也不超过10000），预算不足或50候选截断无法确定无解时使用BEAUTY_SEARCH_INCOMPLETE/complete=false，不能把首次贪心失败当确定冲突。STAFF的bucket按personnelNo规范归一、容量1，同人resource别名不会增加容量；物理资源仍按各自resourceNo/capacity。可行解不因候选集截断而丢弃，其complete标志仍准确表示枚举范围。
+
+原操作恢复按nextRetryAt、id稳定排序，每批50，并在LIMIT前排除活租约；30/60秒延期使当前无权自动推进的操作让位于更早到期工作。原号、永久栅栏、版本CAS与不冒充用户的边界不变。实际RED/GREEN、构件与新部署证据见[模块修复报告](../../.superpowers/sdd/beauty-backend/task-53-module-fix-report.md)，独立复审已通过，I1/I2均关闭；模块准出见主TDD§31。
+
+前置容量/候选bucket物化总预算100000，计入既有占用展开及所有候选5分钟bucket；超过返回IncompleteSearch，而不是继续占用无界内存或断言冲突。合法大数量请求也可能超过预算，其语义为未完成搜索；通过更小查询/明确指定可缩小工作量，不承诺所有合法最大组合能在一次搜索内穷尽。
+
+
+## BM04 Task54：共用临客与本人身份核验
+
+共享guest归shop-core/member，契约唯一位于shop-base/spi/member，平台追加V537；行业不建bty_guest或伪买家。独立SERVER在BeautyMerchantClientConfiguration装配RemoteGuestRegistrationPort，embedded/default复用本地唯一owner。完整委托身份、原请求和作用域回显核验；新增4个guest机器入口和1个consumer-proof入口另记，160项设计基线不变，当前机器合同30+5=35。
+
+显式配置`shop.member.guest.credential-key`（32字节base64，无默认密钥），未配置只禁用guest能力；零售默认启动及会员码原流程保持。AES-GCM独立随机IV和tenant/entity/store/guest/purpose AAD保护contact和原凭证；原键可在进程重启后解密重放。原登记actor命名空间仅限定登记幂等键，当前同店有biz:customer的员工可交接，认领必须其本人actor/store绑定cr1和原guest随机凭证。消费本人proof只接受当前CONSUMER-USR对应的真实活动账号和原mc1短票据；所有识别均不授予支付授权。
+
+复现：`JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home node scripts/verify-member-guest-registration.mjs`。脚本只使用已缓存MySQL8.4、--pull never、tmpfs和localhost随机端口，finally清理自有容器；当前平台DDL fixture+正式V537/V538，明确不是全历史平台迁移重放。原生owner、JVM重启重放、真实TCP边界及H2原会员码回归证据见task-54-report.md；Task54不是BM04全模块准出。
+
+
+Task54增量安全规则：独立V538扩展原member ticket的actor realm/kind，保留V537冻结字节；guest只接受当前完整namespace绑定的cr1，旧无namespace票据仅保持旧解析接口兼容。登记contact请求指纹改用显式owner key和独立用途域的HmacSHA256。已提交claim的精确原请求可在cr1过期后读回持久结果，仍须当前CUSTOMER权限、原claim完整身份、原secret及活动用户；不将重放当新授权或改绑入口。
+
+
+## BM04 Task59：公开接待与双向协议（代码阶段验收，2026-10-24）
+
+已提交`c9d951879`：18个公开映射、19个typed内部方法、4个反向B交易接口，覆盖临客/认领、到店签到/直客、工单、来源提交、账单/trace及原号恢复。embedded使用本地业务，standalone HOST不带beauty-core，私有SERVER维护行业事实；普通商品、订单、资金和人员资源仍归共用所有者。机器接口不授C购买或支付权限。
+
+11个公开资源path在委派前校验非空白及32字符上限；B/C详情核对根工单与实际任务清单。两项审查问题经R1修复和独立复审通过，定向65项无失败/错误/跳过，插件与HOST两形态夹具编译通过。完整证据见[Task59报告](../../.superpowers/sdd/beauty-backend/task-59-report.md)和[修复复审](../../.superpowers/sdd/beauty-backend/review-task-59-r1.md)。
+
+当前继续60A架构/测试脚本/SQL/权限词条和文档收尾，再开发BM05及后续P2～P4。按用户最新顺序，实际双进程及全链路部署统一后置，未计通过；BM04整体尚未部署准出，作业开工/履约与完整任务日历仍未交付。新隔离MySQL验证沿当前cached9.7.2/DISK64M规则，前文旧模块的版本与结果是历史记录。

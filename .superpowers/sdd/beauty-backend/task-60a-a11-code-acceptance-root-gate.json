@@ -1,0 +1,221 @@
+{
+  "base": "d54e3f1b3b9a4ad391bd4917c3ebb1cee0e7ac57",
+  "products": [
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/WalkInRecoveryIT.java",
+      "sha256": "1732fc3d76e2ae50f161f1866a9f9ea4a23e8401c3736ec42cc2041615e24d40"
+    },
+    {
+      "path": "scripts/verify-beauty-bm04-wire.mjs",
+      "sha256": "7f5ff2221b0f5c076c5af40adf8d525004f3c4b3a013650c927fd407c1efad45"
+    },
+    {
+      "path": "scripts/tests/beauty-bm04-wire-runner.test.mjs",
+      "sha256": "c39dbb42e31f30d5ba26a0d812703d563d247370b31c21337194ab79db127f61"
+    },
+    {
+      "path": "scripts/check-sql-portability.mjs",
+      "sha256": "70fb7c1fae7252e70d4ad2a70642bfe23b89803c9d69de89c9c0a590d94d89f4"
+    },
+    {
+      "path": "scripts/tests/sql-portability-scope.test.mjs",
+      "sha256": "3cd19f87499800eea52416fdda93d909e4e2ec937fbc3b79cbf02b36d50aebaf"
+    }
+  ],
+  "reportSHA256": "6e6af6fc81ba660dd1cea780ccbddd535c71ff7b10e47eddb7657213fdeb3ad7",
+  "evidenceFiles": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/complete-BASE-owned.diff",
+      "sha256": "343e74bb461e08423c41b5ace77ed7a819da7987f300f7466c1c33d1687c5091"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/complete-BASE-worktree-tracked.diff",
+      "sha256": "343e74bb461e08423c41b5ace77ed7a819da7987f300f7466c1c33d1687c5091"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/credential-review.json",
+      "sha256": "daa625ebebdacd0491d047ac238cce8328929c94edb9ae9880c240efe8d31d17"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/final-status.txt",
+      "sha256": "10df279cee2508d5bb4205a06dc7bff7b37f4fa457a6fb4b3de2a0350360f4cb"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/first-green-result.json",
+      "sha256": "114188f2cf84df7bef9f7cfb9adca9a9c7e2e8fd886fca0fe7810496732b902d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/first-green-runner.log",
+      "sha256": "56cfcceaf8148c7289b9ba74caeab2d6d55c22ebccc168e765bc996e25a32a8a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/first-green-summary.json",
+      "sha256": "d5154f79229ad5a691960eb3ceb9ecb061ee0006fee14da35ef39fcf1f677221"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/first-green.log",
+      "sha256": "e6127ceb56700349da7adb1b9f0dc8fb1d55f3690484f523454289ec0addd7ed"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/first-green.xml",
+      "sha256": "a865faba9c8def78500b234a8ded023ce8de40501163bf3d3af8f579819227bf"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/format-boundary.txt",
+      "sha256": "2c46b52ad4752ecd8d5e4b4c342d3bf830cde5fbff022f9bd5ad7017784427ab"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/format-command.json",
+      "sha256": "d4d6120a89e46733d034adbcdf579dd35a1aa20046a23d25022fba1763cb75d7"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/format.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/lineOf-mutation-red.log",
+      "sha256": "3f54db92ec10412b1ded8731022016213a1dfc94484a79e3a636f3cb4f8beb16"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/lineOf-mutation.json",
+      "sha256": "f40c7587c00608e059b80af02c2c068ebf893c9ac65a241fbea448511d5f2cfc"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/manifest.json",
+      "sha256": "250e27c6188b2aafc4d9c39159dff1b0eaeb5ca9489648cd49bd4c42e5635fc9"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/node-corrected-red.log",
+      "sha256": "478906ceba097acd5438dedb41ead46946f8c330c7f19cfee48f8aa519cb7de4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/node-final-green-result.json",
+      "sha256": "da1f9f5ae8c706361d7b54a355ccde4f30965e2a6e2328ba0a5a2bdf6e447e67"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/node-final-green.log",
+      "sha256": "7815b077f408b4d7b3683dbf5fae7c917252327be0509bc5a49798e3459e3553"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/node-first-green.log",
+      "sha256": "397acb2b1dc9484c52deb49fbd0f5efd8355ba181db2c58ef1320d0e8d04c91c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/node-initial-red.log",
+      "sha256": "de76cac57f09c194abee25b8d8270fcffe415ed3fb1df7fe3cfaa6a7c225ddfe"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/product-manifest.json",
+      "sha256": "9d301ecb95bcd8c79b746103580324e7080e116ec16fe34931baeb49c25aa89e"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/production-original.java",
+      "sha256": "f2f579e4e99efb13628c70a51bc9f934319aab21fd176fcd9ed13ff9c06e19c1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/production-warn-ablated.java",
+      "sha256": "ba480bc63a85a963f706712649b96a58452efc32764d3ef5329ebf6f837d2f0d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/restored-green-result.json",
+      "sha256": "a84f31e2e81efcbeb49039e4ecde668a39d0f1097242e7f45e0e28aee42bef1b"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/restored-green-runner.log",
+      "sha256": "373a86220f587bbdc0e0f8ae6b6650ef47c767d997d37301490d9b1998476bb3"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/restored-green-summary.json",
+      "sha256": "ec613f985270b911d6a52fa89d0d794de5c41986d80bdfa8b3d8401a779191f8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/restored-green.log",
+      "sha256": "8243c4fcd2e0ad358530290767b760de573e84578edb6a826b616307c40e4c31"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/restored-green.xml",
+      "sha256": "213e8f713e702680d6d4e5f0662832e8d599ac55720eebba6c68d7ccffd2ceb1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/run-native-evidence.py",
+      "sha256": "5020d042453fa9c3edbf16906ee6bee1875ee32a41da7bcf363ab60a9a04d858"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/scanner-check-result.json",
+      "sha256": "11ee2dc1c33bb93b9abf043da638c6089401c6631837037de8de2826df1fd851"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/scanner-check.log",
+      "sha256": "5581239b2d7cf780003a29274de9e73e27b7c2539d8d65a09279507078edee85"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/warn-mutation-red-result.json",
+      "sha256": "cf6b21996c095762cbcb9197c284cc478d73337749094d8081df3a319d469fd8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/warn-mutation-red-runner.log",
+      "sha256": "36af5e81c079db85efbec47589a7b0fcd972dc15101b84a157cc20d7ff56ebb4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/warn-mutation-red-summary.json",
+      "sha256": "d7d82427557a094e70b99052dc4aad8021a04ab1cfc494c1ea5634cdaf7ce7fc"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/warn-mutation-red.log",
+      "sha256": "a1909e6ed59432e77565b4cad69f76853e226883a1e7ffcdfc831f385bdcd155"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/warn-mutation-red.xml",
+      "sha256": "e8c3be43c8350d2e55e3d51e86ff24b6f2b6640ab41c9b7a524f172c93c7bfd9"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/warning-ledger.json",
+      "sha256": "f10b14a7e381224310af71000578356f4aa2fb26692950046d66d1b6fff6f31a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-60a-a11-evidence/warning-mutation.json",
+      "sha256": "2b28b87cd89c4c273e08af09cf095c8e79f372ca49122d5ac9ae061981f9b571"
+    }
+  ],
+  "actualXML": {
+    "first-green": [
+      1,
+      0,
+      0,
+      0
+    ],
+    "warn-mutation-red": [
+      1,
+      1,
+      0,
+      0
+    ],
+    "restored-green": [
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  "currentClassMatchesInitialRestored": true,
+  "unchangedFrozenSourcesBASEEqual": {
+    "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ReceptionRecovery.java": "f2f579e4e99efb13628c70a51bc9f934319aab21fd176fcd9ed13ff9c06e19c1",
+    "scripts/lib/sql-mask.mjs": "06d8a13a364fdc911433cfecc4e989d8a3f27a55c63bdbbf5994a2b275df7e48",
+    "backend/known-sql-dialect.txt": "0edd37e78ae6e67d805327e9f2afe33361b6cee403a3bd75e0072bbc1c96f502"
+  },
+  "ownCleanup": {
+    "allThreeOwnedAbsent": true,
+    "lockAbsent": true
+  },
+  "reviewPackage": "/tmp/task60a-a11-review-package-909f640f-1243-4eb1-88c0-e7ca33d9dcb2.diff",
+  "reviewPackageSHA256": "4a7401df37249f9ef8680d48d980eda1e8d53fe91b12d7fcf411161de9216dfe",
+  "deployment": "NOT_EXECUTED",
+  "productCommit": "817ec6c58478d62f48fa90dda509c01815bbc9b3",
+  "reviewSHA256": "dc8f7cfd02eaf86f15d326fc26092b66bc2a61f2cbf51d539a2d06b9c80d3452",
+  "spec": "PASS",
+  "quality": "Approved",
+  "minorDebt": [
+    "Existing Flyway newer-version compatibility warning",
+    "Existing compiler processor/deprecated notes"
+  ]
+}

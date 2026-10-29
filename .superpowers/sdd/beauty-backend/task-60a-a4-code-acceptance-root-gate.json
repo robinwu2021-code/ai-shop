@@ -1,0 +1,45 @@
+{
+  "manifestSha256": "aab808f2a8c7e0f40a2ce7bd2d70779b4112d5fc11ab97265061cb02ec237052",
+  "reportSha256": "f7a0cd5f65dc99d9ccd0537a775a3810dff3236125503870076d640a10713d4f",
+  "filesVerified": 5,
+  "nodeFinal": "7/0/0/0",
+  "javaFinal": [
+    {
+      "class": "SchemaDriftTest",
+      "tests": 4,
+      "sha256": "bb81048d1fa023d7c3a067329258153690bd0cd4f75e36bcb1f0306978970eb6"
+    },
+    {
+      "class": "SchemaGeneratorTest",
+      "tests": 2,
+      "sha256": "49432246824d3cc45eb2ca1b6718e8e4867c360a8cbebc0aa044ccc2d9d3231d"
+    }
+  ],
+  "exactRestoredFiles": 5,
+  "frozenSourcesUnchanged": 553,
+  "generatedRestored": 6,
+  "newLockAbsent": true,
+  "shared": "22 tests/19pass/3fail: A5+A5b",
+  "oldNewParserTables": 363,
+  "nineKeyMembershipsIdentical": true,
+  "nativeDeployment": false,
+  "r1": {
+    "filesVerified": 5,
+    "changedFromR0": [
+      "scripts/lib/ddl.mjs",
+      "scripts/tests/ddl-column-definitions.test.mjs"
+    ],
+    "javaUnchanged": 3,
+    "nodeFinal": "10/0/0/0",
+    "javaEvidence": "R0 same Java bytes; 6/0/0/0, not rerun",
+    "frozenSourcesUnchanged": 553,
+    "manifestSha256": "348be17417a6865cc72e8e592ea743071f4c0e303941c957eb36b055a85576b1",
+    "reportSha256": "488ea912f929c6dd97182e3415695bef12ab576ace452529db470e5569d236c3",
+    "fixDiffSha256": "23c2c58b7dae1520f15564f848a467e7dc2ebab172c362a4af756b6069bb2fc6",
+    "shared": "previous22/19pass/3fail remains A5+A5b",
+    "nativeDeployment": false
+  },
+  "productCommit": "a018b4dc09956fe84f937543bd85d07512c3e0b2",
+  "productTree": "a0c88289e8d089be370b14020131ac269d6e4378",
+  "reviewR1Sha256": "51798cd766a3308eed9726a6da5ebe4d6daaecf48dd0d18e5ee092d5f19e91ce"
+}

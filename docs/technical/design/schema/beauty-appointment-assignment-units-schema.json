@@ -1,0 +1,9 @@
+{
+  "version": 7,
+  "table": "bty_appointment_assignment",
+  "dropUniqueIndex": "uk_bty_appointment_assignment_2",
+  "addIndex": "idx_bty_appointment_assignment_1",
+  "columns": ["tenant_no", "entity_no", "appointment_item_no", "appointment_revision", "requirement_no", "resource_no"],
+  "retainedUniqueIndex": "uk_bty_appointment_assignment_1",
+  "reason": "Each capacity demand unit retains a distinct planned_assignment_no; multiple units may bind the same resource within one item/requirement. Keep immutable arrangement JSON and all rows; no data rewrite or collapse."
+}

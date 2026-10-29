@@ -1,0 +1,104 @@
+{
+  "status": "BM03_IMMUTABLE_DECISION_REPLAY",
+  "baseline": "beauty-database-design.json: original 41-table design and 16-table V1 unchanged",
+  "common_fields": [
+    [
+      "id",
+      "bigint",
+      "物理自增主键，不对外"
+    ],
+    [
+      "tenant_no",
+      "varchar(32)",
+      "沿当前租户上下文；不另启租户体系"
+    ],
+    [
+      "entity_no",
+      "varchar(32)",
+      "商家主体范围；不等于租户"
+    ],
+    [
+      "created_at",
+      "datetime(3)",
+      "创建时刻"
+    ],
+    [
+      "created_by",
+      "varchar(64)",
+      "实际操作者业务引用"
+    ],
+    [
+      "updated_at",
+      "datetime(3)",
+      "更新时间"
+    ],
+    [
+      "updated_by",
+      "varchar(64)",
+      "更新操作者"
+    ],
+    [
+      "version",
+      "bigint",
+      "乐观锁"
+    ],
+    [
+      "deleted",
+      "int",
+      "沿BaseEntity；事实表禁止删除或软删覆盖"
+    ]
+  ],
+  "tables": [
+    {
+      "name": "bty_appointment_resource_decision",
+      "fields": [
+        {
+          "name": "intent_no",
+          "type": "varchar(32)",
+          "description": "intent_no",
+          "nullable": false
+        },
+        {
+          "name": "command_no",
+          "type": "varchar(32)",
+          "description": "command_no",
+          "nullable": false
+        },
+        {
+          "name": "decision_no",
+          "type": "varchar(32)",
+          "description": "decision_no",
+          "nullable": false
+        },
+        {
+          "name": "fence_no",
+          "type": "varchar(32)",
+          "description": "fence_no",
+          "nullable": false
+        },
+        {
+          "name": "fence_revision",
+          "type": "bigint",
+          "description": "fence_revision",
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "intent_no"
+        ],
+        [
+          "command_no"
+        ],
+        [
+          "decision_no"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0",
+        "`fence_revision` >= 0"
+      ]
+    }
+  ]
+}

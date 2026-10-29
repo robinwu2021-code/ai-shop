@@ -5,6 +5,9 @@ import ai.neargo.shop.common.Fulfillments;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,6 +27,17 @@ import java.util.Set;
 public class OrdSubOrder extends BaseEntity {
     /** Shared industry business fee, unrelated to platform commission. */
     private Long feeMinor;
+    /** Historical customer identity never changes when the guest later claims an account. */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String customerKind = "USER";
+
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String guestNo;
+
+    @TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.NEVER)
+    private Long identityRevision;
+
+    private String caller;
 
     public static final String WAIT_PAY = "WAIT_PAY";
     public static final String WAIT_FULFILL = "WAIT_FULFILL";
@@ -76,6 +90,16 @@ public class OrdSubOrder extends BaseEntity {
 
     /** 到店核销（服务品类）。付款即出码，支付成功直接落 {@link #FULFILLING} */
     public static final String STORE_VERIFY = Fulfillments.STORE_VERIFY;
+
+    public static final String SERVICE_EXECUTION = "SERVICE_EXECUTION";
+
+    /** NULL preserves the historical ordinary fulfillment owner. */
+    private String fulfillmentAuthority;
+
+    private String sourceOperationNo;
+
+    /** Copied from the immutable checkout operation, never a public pay-mode flag. */
+    private String admissionKind;
 
     private String subOrderNo;
     private String orderNo;

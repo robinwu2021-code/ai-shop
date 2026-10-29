@@ -44,6 +44,8 @@ import org.springframework.context.annotation.Import;
          *   food      —— 与商品订单共主库，但只允许由餐饮 enabled 条件配置注册，
          *                防止关闭餐饮时全局扫描提前装入 Mapper。
          *
+         *   beauty    —— 与商品订单共主库，由美业条件配置及结构校验后注册。
+         *
          * 漏掉哪一个，那个域的 Mapper 都会被注册到平台工厂上。
          * inventory 漏了会报「表不存在」；**pay 漏了什么都不会报** ——
          * 库是同一个，查询照常能跑，只是事务隔离静默失效，
@@ -51,7 +53,7 @@ import org.springframework.context.annotation.Import;
          */
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.REGEX,
-                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce)\\..*"))
+                pattern = "ai\\.neargo\\.shop\\.(inventory|pay|food|commerce|beauty)\\..*"))
 /*
  * 第二个 @MapperScan：**不继承 BaseMapper 的 Mapper**。
  *
@@ -71,7 +73,8 @@ import org.springframework.context.annotation.Import;
         // StatusCasMapper（订单状态机转换门）：四个聚合各一对读 / 条件写，跨四张表，绑不到单一实体
         "ai.neargo.shop.trade.order.mapper", "ai.neargo.shop.trade.mapper",
         // Unified activity CAS/accounting updates span resource tables, without a single BaseMapper entity.
-        "ai.neargo.shop.promotion.mapper", "ai.neargo.shop.paybridge.mapper"},
+        "ai.neargo.shop.promotion.mapper", "ai.neargo.shop.paybridge.mapper",
+        "ai.neargo.shop.invbridge.mapper"},
         annotationClass = org.apache.ibatis.annotations.Mapper.class,
         sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {

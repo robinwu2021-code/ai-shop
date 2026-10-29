@@ -1,0 +1,466 @@
+{
+  "status": "BM04_RECEPTION_V5",
+  "baseline": "V1–V4 unchanged; four additive private tables",
+  "common_fields": [
+    [
+      "id",
+      "bigint",
+      "物理自增主键，不对外"
+    ],
+    [
+      "tenant_no",
+      "varchar(32)",
+      "沿当前租户上下文；不另启租户体系"
+    ],
+    [
+      "entity_no",
+      "varchar(32)",
+      "商家主体范围；不等于租户"
+    ],
+    [
+      "created_at",
+      "datetime(3)",
+      "创建时刻"
+    ],
+    [
+      "created_by",
+      "varchar(64)",
+      "实际操作者业务引用"
+    ],
+    [
+      "updated_at",
+      "datetime(3)",
+      "更新时间"
+    ],
+    [
+      "updated_by",
+      "varchar(64)",
+      "更新操作者"
+    ],
+    [
+      "version",
+      "bigint",
+      "乐观锁"
+    ],
+    [
+      "deleted",
+      "int",
+      "沿BaseEntity；事实表禁止删除或软删覆盖"
+    ]
+  ],
+  "tables": [
+    {
+      "name": "bty_reception_operation",
+      "fields": [
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "store_no"
+        },
+        {
+          "name": "operation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "operation_no"
+        },
+        {
+          "name": "actor_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "actor_no"
+        },
+        {
+          "name": "actor_realm",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "actor_realm"
+        },
+        {
+          "name": "actor_kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "actor_kind"
+        },
+        {
+          "name": "endpoint",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "endpoint"
+        },
+        {
+          "name": "action",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "action"
+        },
+        {
+          "name": "key_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "key_hash"
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "request_hash"
+        },
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "appointment_no"
+        },
+        {
+          "name": "work_order_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "work_order_no"
+        },
+        {
+          "name": "identity_kind",
+          "type": "varchar(16)",
+          "nullable": true,
+          "description": "identity_kind"
+        },
+        {
+          "name": "identity_ref",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "identity_ref"
+        },
+        {
+          "name": "phase",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "phase"
+        },
+        {
+          "name": "appointment_operation_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "appointment_operation_no"
+        },
+        {
+          "name": "derived_key_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "description": "derived_key_hash"
+        },
+        {
+          "name": "frozen_payload",
+          "type": "json",
+          "nullable": false,
+          "description": "frozen_payload"
+        },
+        {
+          "name": "result",
+          "type": "json",
+          "nullable": true,
+          "description": "result"
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "next_retry_at"
+        },
+        {
+          "name": "lease_until",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "lease_until"
+        },
+        {
+          "name": "failure_code",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "failure_code"
+        }
+      ],
+      "unique": [
+        [
+          "tenant_no",
+          "entity_no",
+          "operation_no"
+        ],
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "actor_realm",
+          "actor_kind",
+          "actor_no",
+          "endpoint",
+          "key_hash"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "phase",
+          "next_retry_at",
+          "lease_until",
+          "id"
+        ],
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "appointment_no"
+        ],
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "work_order_no"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0",
+        "`phase` IN ('RECEIVED','RESOURCE_PENDING','ARRIVAL_PENDING','OPEN_PENDING','SUCCEEDED','REJECTED')",
+        "(`identity_kind` IS NULL AND `identity_ref` IS NULL) OR (`identity_kind` IN ('USER','GUEST') AND `identity_ref` IS NOT NULL AND CHAR_LENGTH(`identity_ref`) > 0)"
+      ]
+    },
+    {
+      "name": "bty_work_order_context",
+      "fields": [
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "store_no"
+        },
+        {
+          "name": "work_order_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "work_order_no"
+        },
+        {
+          "name": "identity_kind",
+          "type": "varchar(16)",
+          "nullable": false,
+          "description": "identity_kind"
+        },
+        {
+          "name": "identity_ref",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "identity_ref"
+        },
+        {
+          "name": "source_reception_operation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "source_reception_operation_no"
+        },
+        {
+          "name": "appointment_arrangement_revision",
+          "type": "bigint",
+          "nullable": true,
+          "description": "appointment_arrangement_revision"
+        },
+        {
+          "name": "frozen_scope",
+          "type": "json",
+          "nullable": false,
+          "description": "frozen_scope"
+        }
+      ],
+      "unique": [
+        [
+          "tenant_no",
+          "entity_no",
+          "work_order_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "identity_kind",
+          "identity_ref"
+        ],
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "source_reception_operation_no"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0",
+        "`identity_kind` IN ('USER','GUEST')",
+        "`appointment_arrangement_revision` IS NULL OR `appointment_arrangement_revision` > 0"
+      ]
+    },
+    {
+      "name": "bty_guest_claim_receipt",
+      "fields": [
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "store_no"
+        },
+        {
+          "name": "guest_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "guest_no"
+        },
+        {
+          "name": "claim_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "claim_revision"
+        },
+        {
+          "name": "user_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "user_no"
+        },
+        {
+          "name": "owner_receipt_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "owner_receipt_hash"
+        },
+        {
+          "name": "recorded_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "recorded_at"
+        }
+      ],
+      "unique": [
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "guest_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "user_no",
+          "guest_no"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0",
+        "`claim_revision` > 0"
+      ]
+    },
+    {
+      "name": "bty_arrival_challenge",
+      "fields": [
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "store_no"
+        },
+        {
+          "name": "challenge_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "challenge_no"
+        },
+        {
+          "name": "code",
+          "type": "varchar(43)",
+          "nullable": false,
+          "description": "code"
+        },
+        {
+          "name": "issued_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "issued_at"
+        },
+        {
+          "name": "expires_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "expires_at"
+        },
+        {
+          "name": "actor_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "actor_no"
+        },
+        {
+          "name": "actor_realm",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "actor_realm"
+        },
+        {
+          "name": "actor_kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "actor_kind"
+        },
+        {
+          "name": "key_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "key_hash"
+        }
+      ],
+      "unique": [
+        [
+          "tenant_no",
+          "entity_no",
+          "challenge_no"
+        ],
+        [
+          "tenant_no",
+          "code"
+        ],
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "actor_realm",
+          "actor_kind",
+          "actor_no",
+          "key_hash"
+        ]
+      ],
+      "indexes": [
+        [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "expires_at"
+        ]
+      ],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` = 0",
+        "`expires_at` > `issued_at`",
+        "CHAR_LENGTH(`code`) = 43"
+      ]
+    }
+  ],
+  "walkInRecoveryContract": [
+    "Task55D adds no tables or migrations; frozen V1-V7, ready7 and 27 private tables remain unchanged.",
+    "RECEIVE_WALK_IN/BAPI-048 persists verified canonical identity, fixed derived key, selected start and complete plan. CREATE preview/root/fence/current/appointment operation and outer link commit atomically.",
+    "RESOURCE_PENDING -> ARRIVAL_PENDING -> OPEN_PENDING -> SUCCEEDED; C sole scope writer stores typed WalkInVO in the same transaction as work order/context/tasks/local draft/log/outbox.",
+    "CONFIRM rejection remains PENDING RESOURCE_RELEASE_REQUIRED until an original CANCEL/RELEASE receipt, completed intent and current RELEASED hold prove no residual resource side effect.",
+    "Background queue filters trusted complete receipt/intent binding before LIMIT50; next_retry_at,id ascending, fresh per-item lease30s, completion-based unfinished retry30s/failure60s. Only original reconciliation; no user authorization, guest lookup, accept, arrival or opening."
+  ]
+}

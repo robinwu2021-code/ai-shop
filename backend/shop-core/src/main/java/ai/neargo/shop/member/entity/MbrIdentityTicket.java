@@ -18,6 +18,8 @@ public class MbrIdentityTicket extends BaseEntity {
     private String entityNo;
     private String storeNo;
     private String actorNo;
+    private String actorRealm;
+    private String actorKind;
     private String sourceTicketHash;
     private String operatorScopeType;
     private String issuerNo;

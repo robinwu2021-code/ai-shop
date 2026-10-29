@@ -8,20 +8,19 @@ import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.service.StockCountService;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
-
+import ai.neargo.shop.spi.product.StockPort.ReturnLine;
+import ai.neargo.shop.spi.product.StockPort.SkuQty;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import ai.neargo.shop.spi.product.StockPort.ReturnLine;
-import ai.neargo.shop.spi.product.StockPort.SkuQty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 把平台侧的库存动作<b>补记</b>到进销存。双写的第二半。
@@ -187,9 +186,14 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
                 reason == null ? "OTHER" : reason, "GOODS_PAGE");
     }
 
-    /** 与 {@link #reserve} 同一条：按业主分组回补，别的商家的货不回到第一行商家的库位上。 */
+    /** Resolve the saved original order before restoring; current ownership is not return authority. */
     private void restore(String ref, JsonNode p) {
-        linesByOwner(p).forEach((owner, lines) -> reservations.restore(owner, ref, lines, "MIRROR"));
+        JsonNode items = p.get("items");
+        if (items == null || !items.isArray() || items.isEmpty() || originalRestores == null) {
+            throw new IllegalStateException("STOCK_RETURN_SOURCE_UNAVAILABLE");
+        }
+        var original = json.readValue(json.writeValueAsString(items), new TypeReference<List<SkuQty>>() { });
+        originalRestores.restoreLegacy(ref, original);
     }
 
     /**
@@ -221,7 +225,13 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, storeNo));
             out.computeIfAbsent(owner, k -> new ArrayList<>()).add(
-                    new ReservationService.Line(acl.itemIdOfSku(skuNo), locationId, qty, text(it, "fulfillmentRef")));
+                    new ReservationService.Line(
+                            acl.itemIdOfSku(skuNo),
+                            locationId,
+                            qty,
+                            text(it, "fulfillmentRef"),
+                            text(it, "fulfillmentRef") == null ? null : skuNo,
+                            text(it, "fulfillmentRef") == null ? null : storeNo));
         }
         return out;
     }

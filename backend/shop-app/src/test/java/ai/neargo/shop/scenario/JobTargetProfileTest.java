@@ -1,12 +1,16 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.job.engine.JobRegistry;
+import ai.neargo.job.api.JobHttpPaths;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import ai.neargo.shop.job.JobHandlerRegistry;
 import ai.neargo.shop.portal.internal.JobHandlerEndpoint;
+import net.javacrumbs.shedlock.core.LockProvider;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,11 +69,26 @@ class JobTargetProfileTest {
     String token;
 
     @Test
+    void inheritedCommonTargetRegistersExactlyOneRouteSet() {
+        var mappings = ctx.getBeansOfType(RequestMappingHandlerMapping.class).values().stream()
+                .flatMap(mapping -> mapping.getHandlerMethods().keySet().stream()).toList();
+        assertThat(mappings.stream().filter(m -> m.getPatternValues().contains(JobHttpPaths.DECLARATIONS)))
+                .hasSize(1);
+        assertThat(mappings.stream().filter(m -> m.getPatternValues().contains(JobHttpPaths.RUN))).hasSize(1);
+    }
+
+    @Test
     @DisplayName("没有 worker profile 时，任务体索引与内部端点仍要在")
     void 任务目标的装配不依赖worker_profile() {
         // 这两个就是线上起不来的那对：端点要注册表，而注册表当时只在 worker 下存在
         assertThat(ctx.getBean(JobHandlerEndpoint.class)).isNotNull();
         assertThat(handlers.declarations()).isNotEmpty();
+    }
+
+    @Test
+    void hasExactlyOneLockProviderAndExecutor() {
+        assertThat(ctx.getBeansOfType(LockProvider.class)).hasSize(1);
+        assertThat(ctx.getBeansOfType(LockingTaskExecutor.class)).hasSize(1);
     }
 
     @Test

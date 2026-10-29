@@ -1,5 +1,6 @@
 -- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/migration/V*.sql、再接 db/pay/V*.sql、db/secret/V*.sql 得到。
--- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
+-- Legacy/shared H2 projection; exact native omissions are descriptor/hash-bound below.
+-- Native installation/conformance is verified only on the actual supported server.
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
 -- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
@@ -22,6 +23,14 @@
 -- @MockitoBean、自定义 @DynamicPropertySource —— 它们都进 context key。
 -- 写测试时只声明真正需要的那些。
 
+
+-- Native trigger projection: backend/shop-app/src/main/resources/db/migration/V603__counter_campaign_owner_fence.sql | trg_ccf_mkt_campaign_insert,trg_ccf_mkt_campaign_update,trg_ccf_mkt_campaign_delete,trg_ccf_pmt_activity_insert,trg_ccf_pmt_activity_update,trg_ccf_pmt_activity_delete,trg_ccf_pmt_activity_version_insert,trg_ccf_pmt_activity_version_update,trg_ccf_pmt_activity_version_delete,trg_ccf_pmt_activity_goods_insert,trg_ccf_pmt_activity_goods_update,trg_ccf_pmt_activity_goods_delete,trg_ccf_pmt_activity_rule_insert,trg_ccf_pmt_activity_rule_update,trg_ccf_pmt_activity_rule_delete,trg_ccf_pmt_enrollment_insert,trg_ccf_pmt_enrollment_update,trg_ccf_pmt_enrollment_delete,trg_ccf_pmt_enrollment_goods_insert,trg_ccf_pmt_enrollment_goods_update,trg_ccf_pmt_enrollment_goods_delete
+
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V604__manual_service_execution_authority.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
+
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V605__execution_stock_retention.sql | prd_execution_retention
+
+-- Native capability absent: backend/shop-app/src/main/resources/db/migration/V606__execution_retention_route.sql | prd_execution_retention_route
 
 CREATE TABLE IF NOT EXISTS cmt_community
 (
@@ -588,7 +597,7 @@ CREATE TABLE IF NOT EXISTS ord_order
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     order_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
     community_no VARCHAR(64) DEFAULT NULL,
     pay_amount BIGINT(20) NOT NULL DEFAULT 0,
     goods_amount BIGINT(20) NOT NULL DEFAULT 0,
@@ -613,8 +622,35 @@ CREATE TABLE IF NOT EXISTS ord_order
     offline_confirmed_at BIGINT DEFAULT NULL,
     points_integrated TINYINT NOT NULL DEFAULT 0,
     fee_minor BIGINT NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    receipt_provenance VARCHAR(24) NULL,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_order_no UNIQUE (order_no)
+    CONSTRAINT uk_order_no UNIQUE (order_no),
+    CONSTRAINT ck_order_admission_kind CHECK ((CASE admission_kind WHEN 'LEGACY_FUNDED' THEN TRUE WHEN 'MANUAL_OFFLINE' THEN TRUE ELSE CASE WHEN admission_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_order_manual_provenance CHECK (receipt_provenance IS NULL OR
+         (admission_kind='MANUAL_OFFLINE' AND receipt_provenance='MANUAL_DECLARATION'
+          AND pay_channel IS NULL AND pay_trade_no IS NULL)),
+    CONSTRAINT ck_counter_order_party CHECK (
+        (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
+         AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND operation_no IS NOT NULL
+        AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND user_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND operation_no IS NOT NULL
+        AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0))
 );
 
 CREATE TABLE IF NOT EXISTS ord_status_log
@@ -640,7 +676,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     sub_order_no VARCHAR(64) NOT NULL,
     order_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     entity_name VARCHAR(128) DEFAULT NULL,
     fulfillment VARCHAR(24) DEFAULT NULL,
@@ -699,9 +735,40 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     receiver_salutation VARCHAR(16) DEFAULT NULL,
     inventory_lifecycle_version INT NOT NULL DEFAULT 1,
     fee_minor BIGINT NULL,
+    fulfillment_authority VARCHAR(32) NULL,
+    source_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_sub_checkout_operation UNIQUE (tenant_no,source_operation_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
-    CONSTRAINT uk_verify_code UNIQUE (verify_code)
+    CONSTRAINT uk_verify_code UNIQUE (verify_code),
+    CONSTRAINT ck_sub_checkout_authority CHECK (
+        (fulfillment_authority IS NULL AND source_operation_no IS NULL)
+        OR (fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION' AND source_operation_no IS NOT NULL AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY')),
+    CONSTRAINT ck_sub_manual_kind CHECK (admission_kind='LEGACY_FUNDED' OR
+        (admission_kind='MANUAL_OFFLINE' AND fulfillment_authority IS NOT NULL
+         AND fulfillment_authority='SERVICE_EXECUTION'
+         AND source_operation_no IS NOT NULL AND fulfillment='STORE_VERIFY')),
+    CONSTRAINT ck_counter_sub_party CHECK (
+        (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
+         AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND source_operation_no IS NOT NULL
+        AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(store_no))>0
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(source_operation_no))>0
+        AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY'
+        AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION')))
+        OR (customer_kind='GUEST' AND user_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND source_operation_no IS NOT NULL
+        AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(store_no))>0
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(source_operation_no))>0
+        AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY'
+        AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION'))
 );
 
 CREATE TABLE IF NOT EXISTS prd_category
@@ -860,7 +927,14 @@ CREATE TABLE IF NOT EXISTS prd_stock_lock
     store_no VARCHAR(64) DEFAULT NULL,
     presale TINYINT(4) NOT NULL DEFAULT 0,
     fulfillment_ref VARCHAR(64) DEFAULT NULL,
-    PRIMARY KEY (id)
+    source_manifest_hash CHAR(64) NULL,
+    source_store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    lifecycle_version INT NULL,
+    confirmation_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT ck_stock_original_manifest CHECK ((source_manifest_hash IS NULL AND source_store_no IS NULL AND lifecycle_version IS NULL
+          AND confirmation_operation_no IS NULL) OR
+         (source_manifest_hash IS NOT NULL AND (CASE lifecycle_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN lifecycle_version IS NULL THEN NULL ELSE FALSE END END) AND qty>0))
 );
 
 CREATE TABLE IF NOT EXISTS pts_user_account
@@ -1112,6 +1186,8 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_query_at BIGINT DEFAULT NULL,
     refund_terminal_proof LONGTEXT DEFAULT NULL,
     refund_recovery_proof LONGTEXT DEFAULT NULL,
+    initiating_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    receipt_no VARCHAR(40) COLLATE utf8mb4_bin NULL,
     sub_merchant_id VARCHAR(64) DEFAULT NULL,
     pay_merchant_no VARCHAR(64) DEFAULT NULL,
     pay_order_id BIGINT NULL,
@@ -1123,6 +1199,7 @@ CREATE TABLE IF NOT EXISTS stl_payment
     channel_amount_minor BIGINT NULL,
     channel_currency CHAR(3) NULL,
     CONSTRAINT uk_stl_payment_out_trade_no UNIQUE (out_trade_no),
+    CONSTRAINT uk_payment_receipt_no UNIQUE (tenant_no,receipt_no),
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
@@ -4918,7 +4995,7 @@ CREATE TABLE IF NOT EXISTS ord_create_intent
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
     pay_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
     endpoint VARCHAR(128) NOT NULL,
     idem_key VARCHAR(128) NULL,
     request_hash VARCHAR(64) NOT NULL,
@@ -4934,9 +5011,63 @@ CREATE TABLE IF NOT EXISTS ord_create_intent
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    creation_kind VARCHAR(16) NOT NULL DEFAULT 'LEGACY',
+    confirmation_no VARCHAR(40) COLLATE utf8mb4_bin NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    authority_namespace_hash CHAR(64) COLLATE utf8mb4_bin NULL,
+    counter_plan_json LONGTEXT NULL,
+    plan_hash CHAR(64) NULL,
+    reservation_operation_no CHAR(64) NULL,
+    reservation_state VARCHAR(16) NULL,
+    reservation_observation_json LONGTEXT NULL,
+    reservation_observation_hash CHAR(64) NULL,
+    CONSTRAINT uk_counter_intent_operation UNIQUE (tenant_no,creation_kind,caller,operation_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_create_pay UNIQUE (pay_no),
-    CONSTRAINT uk_ord_create_key UNIQUE (endpoint, idem_key)
+    CONSTRAINT uk_ord_create_key UNIQUE (endpoint, idem_key),
+    CONSTRAINT ck_counter_intent_party CHECK (
+        (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
+         AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND creation_kind='COUNTER' AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY'
+        AND operation_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND user_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND creation_kind='COUNTER' AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY'
+        AND operation_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0)),
+    CONSTRAINT ck_counter_intent_stage CHECK (
+        (creation_kind='LEGACY' AND customer_kind='USER' AND identity_revision IS NOT NULL
+         AND identity_revision>0 AND counter_plan_json IS NULL AND plan_hash IS NULL
+         AND confirmation_no IS NULL AND sub_order_no IS NULL AND reservation_state IS NULL
+         AND reservation_operation_no IS NULL AND reservation_observation_json IS NULL
+         AND reservation_observation_hash IS NULL AND authority_namespace_hash IS NULL)
+        OR (creation_kind='COUNTER' AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY'
+            AND endpoint='POST /biz/service-orders/counter-orders' AND idem_key IS NOT NULL
+            AND operation_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL
+            AND confirmation_no IS NOT NULL AND sub_order_no IS NOT NULL
+            AND authority_namespace_hash IS NOT NULL AND authority_namespace_hash REGEXP '^[a-f0-9]{64}$'
+            AND counter_plan_json IS NOT NULL AND (counter_plan_json IS JSON)
+            AND (counter_plan_json IS JSON OBJECT)
+            AND plan_hash IS NOT NULL AND plan_hash REGEXP '^[a-f0-9]{64}$'
+            AND reservation_operation_no IS NOT NULL AND reservation_operation_no REGEXP '^[a-f0-9]{64}$'
+            AND reservation_state IS NOT NULL AND (CASE reservation_state WHEN 'NOT_SENT' THEN TRUE WHEN 'UNKNOWN' THEN TRUE WHEN 'RESERVED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN reservation_state IS NULL THEN NULL ELSE FALSE END END)
+            AND ((reservation_observation_json IS NULL AND reservation_observation_hash IS NULL)
+                 OR (reservation_observation_json IS NOT NULL AND (reservation_observation_json IS JSON)
+                     AND (reservation_observation_json IS JSON OBJECT)
+                     AND reservation_observation_hash IS NOT NULL
+                     AND reservation_observation_hash REGEXP '^[a-f0-9]{64}$'))))
 );
 
 CREATE TABLE IF NOT EXISTS ord_payment_resolution
@@ -6373,6 +6504,8 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     issuer_no VARCHAR(64) NULL,
     brand_scope_revision BIGINT NULL,
     scope_member_no VARCHAR(64) NULL,
+    actor_realm VARCHAR(16) NULL,
+    actor_kind VARCHAR(8) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_member_identity_hash UNIQUE (tenant_no,ticket_hash),
     CHECK (expires_at>issued_at),
@@ -6380,7 +6513,10 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
  (purpose='MEMBER_CODE' AND user_no IS NOT NULL AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL)
  OR (purpose='CUSTOMER_REFERENCE' AND user_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL)
  OR (purpose='CUSTOMER_SELECTION' AND customer_no IS NOT NULL AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NULL)
-)
+),
+    CONSTRAINT ck_mbr_ticket_actor_namespace CHECK (
+        (actor_realm IS NULL AND actor_kind IS NULL)
+        OR (purpose='CUSTOMER_REFERENCE' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_authorization
@@ -10028,7 +10164,7 @@ CREATE TABLE IF NOT EXISTS ord_industry_amendment
     store_no VARCHAR(32) NOT NULL,order_no VARCHAR(32) NOT NULL,sub_order_no VARCHAR(32) NOT NULL,
     amendment_no VARCHAR(32) NOT NULL,operation_key VARCHAR(64) NOT NULL,request_hash VARCHAR(64) NOT NULL,
     kind VARCHAR(16) NOT NULL,source_return_no VARCHAR(32) NULL,source_hash VARCHAR(64) NOT NULL,
-    command_snapshot TEXT NOT NULL,evidence_snapshot TEXT NULL,inventory_snapshot TEXT NULL,
+    command_snapshot TEXT NOT NULL,evidence_snapshot JSON NULL,inventory_snapshot JSON NULL,
     status VARCHAR(24) NOT NULL,actor_no VARCHAR(32) NOT NULL,expected_sub_version BIGINT NOT NULL,
     currency VARCHAR(3) NOT NULL,receivable_delta_minor BIGINT NOT NULL DEFAULT 0,replacement_cart_no VARCHAR(32) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,created_by VARCHAR(32) NOT NULL,
@@ -10073,14 +10209,14 @@ CREATE TABLE IF NOT EXISTS ord_pricing_fee_rule
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
     rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,status VARCHAR(16) NOT NULL,
     version BIGINT NOT NULL,updated_at DATETIME(3) NOT NULL,updated_by VARCHAR(32) NOT NULL,
-    CONSTRAINT uk_pricing_fee_rule UNIQUE (entity_no,store_no,rule_no),CHECK (status IN ('ACTIVE','DISABLED'))
+    CONSTRAINT uk_pricing_fee_rule UNIQUE (entity_no,store_no,rule_no),CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'DISABLED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
 );
 
 CREATE TABLE IF NOT EXISTS ord_pricing_fee_revision
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',entity_no VARCHAR(32) NOT NULL,store_no VARCHAR(32) NOT NULL,
-    rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,definition_snapshot TEXT NOT NULL,
+    rule_no VARCHAR(32) NOT NULL,revision_no VARCHAR(32) NOT NULL,definition_snapshot JSON NOT NULL,
     request_key CHAR(64) NOT NULL,request_hash CHAR(64) NOT NULL,actor_no VARCHAR(32) NOT NULL,
     version BIGINT NOT NULL,reason VARCHAR(255) NOT NULL,created_at DATETIME(3) NOT NULL,
     CONSTRAINT uk_pricing_fee_revision UNIQUE (revision_no),UNIQUE KEY uk_pricing_fee_rule_command (entity_no,store_no,request_key)
@@ -10702,6 +10838,948 @@ CREATE TABLE IF NOT EXISTS biz_print_fact
     CONSTRAINT uk_biz_print_fact_no UNIQUE (tenant_no, print_fact_no),
     CONSTRAINT uk_biz_print_fact_source UNIQUE (tenant_no, entity_no, store_no, source_fact_key),
     CONSTRAINT uk_biz_print_receipt_intent UNIQUE (tenant_no, entity_no, store_no, receipt_intent_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    personnel_no VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    avatar_ref VARCHAR(64) NULL,
+    status VARCHAR(24) NOT NULL,
+    contact_ref VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_1 UNIQUE (tenant_no, entity_no, personnel_no),
+    CONSTRAINT ck_mch_personnel_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_3 CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'SUSPENDED' THEN TRUE WHEN 'LEFT' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_account
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    link_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    mch_account_no VARCHAR(32) NULL,
+    linked_at DATETIME(3) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_account_1 UNIQUE (tenant_no, entity_no, link_no),
+    CONSTRAINT uk_mch_personnel_account_2 UNIQUE (tenant_no, entity_no, personnel_no),
+    CONSTRAINT uk_mch_personnel_account_3 UNIQUE (tenant_no, entity_no, mch_account_no),
+    CONSTRAINT ck_mch_personnel_account_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_account_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_store
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    assignment_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    status VARCHAR(24) NOT NULL,
+    public_visible TINYINT NOT NULL,
+    level_code VARCHAR(32) NULL,
+    sort_order INT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_store_1 UNIQUE (tenant_no, entity_no, assignment_no),
+    CONSTRAINT ck_mch_personnel_store_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_store_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_store_3 CHECK (valid_to IS NULL OR valid_to > valid_from),
+    CONSTRAINT ck_mch_personnel_store_4 CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_store_5 CHECK ((CASE public_visible WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN public_visible IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_position
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    position_no VARCHAR(32) NOT NULL,
+    assignment_no VARCHAR(32) NOT NULL,
+    position_code VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_position_1 UNIQUE (tenant_no, entity_no, position_no),
+    CONSTRAINT uk_mch_personnel_position_2 UNIQUE (tenant_no, entity_no, assignment_no, position_code),
+    CONSTRAINT ck_mch_personnel_position_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_position_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_position_3 CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_skill
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    skill_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NULL,
+    goods_no VARCHAR(32) NOT NULL,
+    sku_no VARCHAR(32) NULL,
+    level_code VARCHAR(32) NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    status VARCHAR(24) NOT NULL,
+    verified_by VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_skill_1 UNIQUE (tenant_no, entity_no, skill_no),
+    CONSTRAINT ck_mch_personnel_skill_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_skill_2 CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_personnel_skill_3 CHECK (valid_to IS NULL OR valid_to > valid_from),
+    CONSTRAINT ck_mch_personnel_skill_4 CHECK ((CASE status WHEN 'PENDING' THEN TRUE WHEN 'VERIFIED' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mch_resource
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    resource_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NULL,
+    resource_type VARCHAR(24) NOT NULL,
+    personnel_no VARCHAR(32) NULL,
+    name VARCHAR(64) NOT NULL,
+    capacity INT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    open_occupation_no VARCHAR(32) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_resource_no UNIQUE (tenant_no, entity_no, resource_no),
+    CONSTRAINT uk_mch_resource_personnel UNIQUE (tenant_no, entity_no, personnel_no),
+    CONSTRAINT ck_mch_resource_version CHECK (version >= 0),
+    CONSTRAINT ck_mch_resource_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_resource_type CHECK ((CASE resource_type WHEN 'STAFF' THEN TRUE WHEN 'ROOM' THEN TRUE WHEN 'SEAT' THEN TRUE WHEN 'DEVICE' THEN TRUE ELSE CASE WHEN resource_type IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_resource_status CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'SUSPENDED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_resource_capacity CHECK (capacity > 0),
+    CONSTRAINT ck_mch_resource_shape CHECK ( (resource_type='STAFF' AND store_no IS NULL AND personnel_no IS NOT NULL AND CHAR_LENGTH(TRIM(personnel_no)) > 0 AND capacity=1) OR ((CASE resource_type WHEN 'ROOM' THEN TRUE WHEN 'SEAT' THEN TRUE WHEN 'DEVICE' THEN TRUE ELSE CASE WHEN resource_type IS NULL THEN NULL ELSE FALSE END END) AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(store_no)) > 0 AND personnel_no IS NULL) ),
+    CONSTRAINT ck_mch_resource_identity CHECK (CHAR_LENGTH(TRIM(resource_no)) > 0),
+    CONSTRAINT ck_mch_resource_open_ref CHECK ( open_occupation_no IS NULL OR CHAR_LENGTH(TRIM(open_occupation_no)) > 0 )
+);
+
+CREATE TABLE IF NOT EXISTS mch_schedule_rule
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    rule_no VARCHAR(32) NOT NULL,
+    resource_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    timezone VARCHAR(64) NOT NULL,
+    weekday_mask INT NOT NULL,
+    start_minute INT NOT NULL,
+    end_minute INT NOT NULL,
+    end_day_offset INT NOT NULL,
+    valid_from DATE NOT NULL,
+    valid_to DATE NULL,
+    status VARCHAR(24) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_schedule_rule_no UNIQUE (tenant_no, entity_no, rule_no),
+    CONSTRAINT ck_mch_schedule_rule_version CHECK (version >= 0),
+    CONSTRAINT ck_mch_schedule_rule_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_schedule_rule_days CHECK (weekday_mask BETWEEN 1 AND 127),
+    CONSTRAINT ck_mch_schedule_rule_minutes CHECK (start_minute BETWEEN 0 AND 1439 AND end_minute BETWEEN 0 AND 1440),
+    CONSTRAINT ck_mch_schedule_rule_offset CHECK ((CASE end_day_offset WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN end_day_offset IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_schedule_rule_duration CHECK (end_day_offset*1440+end_minute-start_minute BETWEEN 1 AND 1440),
+    CONSTRAINT ck_mch_schedule_rule_dates CHECK (valid_to IS NULL OR valid_to >= valid_from),
+    CONSTRAINT ck_mch_schedule_rule_status CHECK ((CASE status WHEN 'ACTIVE' THEN TRUE WHEN 'INACTIVE' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_schedule_rule_timezone CHECK (CHAR_LENGTH(TRIM(timezone)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS mch_schedule_change_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    change_no VARCHAR(32) NOT NULL,
+    resource_no VARCHAR(32) NOT NULL,
+    source_ref VARCHAR(64) NOT NULL,
+    before_revision BIGINT NOT NULL,
+    after_revision BIGINT NOT NULL,
+    affected_refs TEXT NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_schedule_change_no UNIQUE (tenant_no, entity_no, change_no),
+    CONSTRAINT ck_mch_schedule_change_version CHECK (version >= 0),
+    CONSTRAINT ck_mch_schedule_change_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mch_schedule_change_revision CHECK (before_revision >= 0 AND after_revision > before_revision)
+);
+
+CREATE TABLE IF NOT EXISTS mch_booking_owner
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    owner_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    source_type VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    current_hold_no VARCHAR(32) NULL,
+    owner_version BIGINT NOT NULL DEFAULT 0,
+    source_revision BIGINT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_booking_owner_1 UNIQUE (tenant_no, entity_no, owner_no),
+    CONSTRAINT uk_booking_owner_2 UNIQUE (tenant_no, entity_no, store_no, source_type, source_no),
+    CONSTRAINT ck_booking_owner_version CHECK (version >= 0),
+    CONSTRAINT ck_booking_owner_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_owner_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_booking_owner_f3 CHECK (CHAR_LENGTH(TRIM(owner_no)) > 0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))),
+    CONSTRAINT ck_booking_owner_f4 CHECK (CHAR_LENGTH(TRIM(store_no)) > 0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))),
+    CONSTRAINT ck_booking_owner_f5 CHECK (CHAR_LENGTH(TRIM(source_type)) > 0 AND CHAR_LENGTH(source_type)=CHAR_LENGTH(TRIM(source_type))),
+    CONSTRAINT ck_booking_owner_f6 CHECK (CHAR_LENGTH(TRIM(source_no)) > 0 AND CHAR_LENGTH(source_no)=CHAR_LENGTH(TRIM(source_no))),
+    CONSTRAINT ck_booking_owner_f7 CHECK (current_hold_no IS NULL OR (CHAR_LENGTH(TRIM(current_hold_no)) > 0 AND CHAR_LENGTH(current_hold_no)=CHAR_LENGTH(TRIM(current_hold_no)))),
+    CONSTRAINT ck_booking_owner_revision CHECK (owner_version >= 0 AND (source_revision IS NULL OR source_revision >= 0)),
+    CONSTRAINT ck_booking_owner_head CHECK ((current_hold_no IS NULL AND source_revision IS NULL) OR (current_hold_no IS NOT NULL AND source_revision IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS mch_resource_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    command_no VARCHAR(32) NOT NULL,
+    owner_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    action VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    request_key_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    frozen_payload LONGTEXT NOT NULL,
+    expected_owner_version BIGINT NOT NULL,
+    source_revision BIGINT NOT NULL,
+    target_hold_no VARCHAR(32) NULL,
+    expected_hold_version BIGINT NULL,
+    expected_lease_revision BIGINT NULL,
+    status VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    result_payload LONGTEXT NULL,
+    rejection_code VARCHAR(64) NULL,
+    wait_reason VARCHAR(128) NULL,
+    next_retry_at DATETIME(3) NULL,
+    initiated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_resource_command_1 UNIQUE (tenant_no, entity_no, command_no),
+    CONSTRAINT uk_resource_command_2 UNIQUE (tenant_no, entity_no, store_no, action, request_key_hash),
+    CONSTRAINT ck_resource_command_version CHECK (version >= 0),
+    CONSTRAINT ck_resource_command_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_resource_command_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_resource_command_f3 CHECK (CHAR_LENGTH(TRIM(command_no)) > 0 AND CHAR_LENGTH(command_no)=CHAR_LENGTH(TRIM(command_no))),
+    CONSTRAINT ck_resource_command_f4 CHECK (CHAR_LENGTH(TRIM(owner_no)) > 0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))),
+    CONSTRAINT ck_resource_command_f5 CHECK (CHAR_LENGTH(TRIM(store_no)) > 0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))),
+    CONSTRAINT ck_resource_command_f6 CHECK (CHAR_LENGTH(TRIM(action)) > 0 AND CHAR_LENGTH(action)=CHAR_LENGTH(TRIM(action))),
+    CONSTRAINT ck_resource_command_f7 CHECK (request_key_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_resource_command_f8 CHECK (payload_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_resource_command_f9 CHECK (target_hold_no IS NULL OR (CHAR_LENGTH(TRIM(target_hold_no)) > 0 AND CHAR_LENGTH(target_hold_no)=CHAR_LENGTH(TRIM(target_hold_no)))),
+    CONSTRAINT ck_resource_command_f10 CHECK (CHAR_LENGTH(TRIM(status)) > 0 AND CHAR_LENGTH(status)=CHAR_LENGTH(TRIM(status))),
+    CONSTRAINT ck_resource_command_f11 CHECK (rejection_code IS NULL OR (CHAR_LENGTH(TRIM(rejection_code)) > 0 AND CHAR_LENGTH(rejection_code)=CHAR_LENGTH(TRIM(rejection_code)))),
+    CONSTRAINT ck_resource_command_f12 CHECK (wait_reason IS NULL OR (CHAR_LENGTH(TRIM(wait_reason)) > 0 AND CHAR_LENGTH(wait_reason)=CHAR_LENGTH(TRIM(wait_reason)))),
+    CONSTRAINT ck_resource_command_f13 CHECK (CHAR_LENGTH(TRIM(initiated_by)) > 0 AND CHAR_LENGTH(initiated_by)=CHAR_LENGTH(TRIM(initiated_by))),
+    CONSTRAINT ck_resource_command_action CHECK ((CASE action WHEN 'RESERVE' THEN TRUE WHEN 'PROTECT' THEN TRUE WHEN 'CONFIRM' THEN TRUE WHEN 'RENEW' THEN TRUE WHEN 'RELEASE' THEN TRUE WHEN 'EXPIRE' THEN TRUE WHEN 'RECONCILE' THEN TRUE WHEN 'REPLACE' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_resource_command_status CHECK ((CASE status WHEN 'ACCEPTED' THEN TRUE WHEN 'SUCCEEDED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_resource_command_revision CHECK (expected_owner_version >= 0 AND source_revision >= 0 AND (expected_hold_version IS NULL OR expected_hold_version >= 0) AND (expected_lease_revision IS NULL OR expected_lease_revision >= 1)),
+    CONSTRAINT ck_resource_command_target CHECK (target_hold_no IS NOT NULL OR (expected_hold_version IS NULL AND expected_lease_revision IS NULL)),
+    CONSTRAINT ck_resource_command_payload CHECK ((frozen_payload IS JSON) AND (result_payload IS NULL OR (result_payload IS JSON))),
+    CONSTRAINT ck_resource_command_result CHECK ((status='ACCEPTED' AND result_payload IS NULL AND rejection_code IS NULL) OR (status='SUCCEEDED' AND result_payload IS NOT NULL AND rejection_code IS NULL) OR (status='REJECTED' AND result_payload IS NOT NULL AND rejection_code IS NOT NULL)),
+    CONSTRAINT ck_resource_command_retry CHECK (status='ACCEPTED' OR (wait_reason IS NULL AND next_retry_at IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS mch_resource_bucket
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    bucket_no VARCHAR(32) NOT NULL,
+    resource_no VARCHAR(32) NOT NULL,
+    start_at DATETIME(3) NOT NULL,
+    end_at DATETIME(3) NOT NULL,
+    capacity INT NOT NULL,
+    held_qty INT NOT NULL DEFAULT 0,
+    confirmed_qty INT NOT NULL DEFAULT 0,
+    capacity_revision BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_resource_bucket_1 UNIQUE (tenant_no, entity_no, bucket_no),
+    CONSTRAINT uk_resource_bucket_2 UNIQUE (tenant_no, entity_no, resource_no, start_at),
+    CONSTRAINT ck_resource_bucket_version CHECK (version >= 0),
+    CONSTRAINT ck_resource_bucket_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_resource_bucket_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_resource_bucket_f3 CHECK (CHAR_LENGTH(TRIM(bucket_no)) > 0 AND CHAR_LENGTH(bucket_no)=CHAR_LENGTH(TRIM(bucket_no))),
+    CONSTRAINT ck_resource_bucket_f4 CHECK (CHAR_LENGTH(TRIM(resource_no)) > 0 AND CHAR_LENGTH(resource_no)=CHAR_LENGTH(TRIM(resource_no))),
+    CONSTRAINT ck_resource_bucket_grid CHECK (MOD(MINUTE(start_at),5)=0 AND SECOND(start_at)=0 AND EXTRACT(MICROSECOND FROM start_at)=0 AND end_at=TIMESTAMPADD(MINUTE,5,start_at)),
+    CONSTRAINT ck_resource_bucket_range CHECK (start_at >= '1000-01-03 00:00:00.000' AND end_at <= '9999-12-29 00:00:00.000'),
+    CONSTRAINT ck_resource_bucket_capacity CHECK (capacity > 0 AND held_qty >= 0 AND confirmed_qty >= 0 AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty <= capacity),
+    CONSTRAINT ck_resource_bucket_revision CHECK (capacity_revision >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS mch_booking_hold
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    hold_no VARCHAR(32) NOT NULL,
+    owner_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    command_no VARCHAR(32) NOT NULL,
+    source_revision BIGINT NOT NULL,
+    lease_revision BIGINT NOT NULL,
+    status VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    expiration_policy VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    creation_plan_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    current_plan_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    plan_revision BIGINT NOT NULL,
+    replaces_hold_no VARCHAR(32) NULL,
+    replaced_by_hold_no VARCHAR(32) NULL,
+    termination_reason VARCHAR(64) NULL,
+    terminated_at DATETIME(3) NULL,
+    execution_started_at DATETIME(3) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_booking_hold_1 UNIQUE (tenant_no, entity_no, hold_no),
+    CONSTRAINT uk_booking_hold_2 UNIQUE (tenant_no, entity_no, command_no),
+    CONSTRAINT ck_booking_hold_version CHECK (version >= 0),
+    CONSTRAINT ck_booking_hold_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_hold_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_booking_hold_f3 CHECK (CHAR_LENGTH(TRIM(hold_no)) > 0 AND CHAR_LENGTH(hold_no)=CHAR_LENGTH(TRIM(hold_no))),
+    CONSTRAINT ck_booking_hold_f4 CHECK (CHAR_LENGTH(TRIM(owner_no)) > 0 AND CHAR_LENGTH(owner_no)=CHAR_LENGTH(TRIM(owner_no))),
+    CONSTRAINT ck_booking_hold_f5 CHECK (CHAR_LENGTH(TRIM(store_no)) > 0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))),
+    CONSTRAINT ck_booking_hold_f6 CHECK (CHAR_LENGTH(TRIM(command_no)) > 0 AND CHAR_LENGTH(command_no)=CHAR_LENGTH(TRIM(command_no))),
+    CONSTRAINT ck_booking_hold_f7 CHECK (CHAR_LENGTH(TRIM(status)) > 0 AND CHAR_LENGTH(status)=CHAR_LENGTH(TRIM(status))),
+    CONSTRAINT ck_booking_hold_f8 CHECK (CHAR_LENGTH(TRIM(expiration_policy)) > 0 AND CHAR_LENGTH(expiration_policy)=CHAR_LENGTH(TRIM(expiration_policy))),
+    CONSTRAINT ck_booking_hold_f9 CHECK (creation_plan_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_booking_hold_f10 CHECK (current_plan_hash REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT ck_booking_hold_f11 CHECK (replaces_hold_no IS NULL OR (CHAR_LENGTH(TRIM(replaces_hold_no)) > 0 AND CHAR_LENGTH(replaces_hold_no)=CHAR_LENGTH(TRIM(replaces_hold_no)))),
+    CONSTRAINT ck_booking_hold_f12 CHECK (replaced_by_hold_no IS NULL OR (CHAR_LENGTH(TRIM(replaced_by_hold_no)) > 0 AND CHAR_LENGTH(replaced_by_hold_no)=CHAR_LENGTH(TRIM(replaced_by_hold_no)))),
+    CONSTRAINT ck_booking_hold_f13 CHECK (termination_reason IS NULL OR (CHAR_LENGTH(TRIM(termination_reason)) > 0 AND CHAR_LENGTH(termination_reason)=CHAR_LENGTH(TRIM(termination_reason)))),
+    CONSTRAINT ck_booking_hold_status CHECK ((CASE status WHEN 'HELD' THEN TRUE WHEN 'CONFIRMED' THEN TRUE WHEN 'RELEASED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_hold_policy CHECK ((CASE expiration_policy WHEN 'LOCAL_TTL' THEN TRUE WHEN 'SOURCE_COORDINATED' THEN TRUE ELSE CASE WHEN expiration_policy IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_hold_revision CHECK (source_revision >= 0 AND lease_revision >= 1 AND plan_revision >= 1),
+    CONSTRAINT ck_booking_hold_terminal CHECK (((CASE status WHEN 'HELD' THEN TRUE WHEN 'CONFIRMED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND termination_reason IS NULL AND terminated_at IS NULL) OR ((CASE status WHEN 'RELEASED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND termination_reason IS NOT NULL AND terminated_at IS NOT NULL)),
+    CONSTRAINT ck_booking_hold_execution CHECK (status <> 'HELD' OR execution_started_at IS NULL),
+    CONSTRAINT ck_booking_hold_links CHECK ((replaces_hold_no IS NULL OR replaces_hold_no <> hold_no) AND (replaced_by_hold_no IS NULL OR replaced_by_hold_no <> hold_no))
+);
+
+CREATE TABLE IF NOT EXISTS mch_booking_hold_unit
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    unit_no VARCHAR(32) NOT NULL,
+    hold_no VARCHAR(32) NOT NULL,
+    bucket_no VARCHAR(32) NOT NULL,
+    allocation_revision BIGINT NOT NULL,
+    qty INT NOT NULL,
+    source_line_ref VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    released_at DATETIME(3) NULL,
+    release_command_no VARCHAR(32) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_booking_hold_unit_1 UNIQUE (tenant_no, entity_no, unit_no),
+    CONSTRAINT uk_booking_hold_unit_2 UNIQUE (tenant_no, entity_no, hold_no, allocation_revision, bucket_no, source_line_ref),
+    CONSTRAINT ck_booking_hold_unit_version CHECK (version >= 0),
+    CONSTRAINT ck_booking_hold_unit_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_booking_hold_unit_scope CHECK (CHAR_LENGTH(TRIM(tenant_no)) > 0 AND CHAR_LENGTH(TRIM(entity_no)) > 0),
+    CONSTRAINT ck_booking_hold_unit_f3 CHECK (CHAR_LENGTH(TRIM(unit_no)) > 0 AND CHAR_LENGTH(unit_no)=CHAR_LENGTH(TRIM(unit_no))),
+    CONSTRAINT ck_booking_hold_unit_f4 CHECK (CHAR_LENGTH(TRIM(hold_no)) > 0 AND CHAR_LENGTH(hold_no)=CHAR_LENGTH(TRIM(hold_no))),
+    CONSTRAINT ck_booking_hold_unit_f5 CHECK (CHAR_LENGTH(TRIM(bucket_no)) > 0 AND CHAR_LENGTH(bucket_no)=CHAR_LENGTH(TRIM(bucket_no))),
+    CONSTRAINT ck_booking_hold_unit_f6 CHECK (CHAR_LENGTH(TRIM(source_line_ref)) > 0 AND CHAR_LENGTH(source_line_ref)=CHAR_LENGTH(TRIM(source_line_ref))),
+    CONSTRAINT ck_booking_hold_unit_f7 CHECK (release_command_no IS NULL OR (CHAR_LENGTH(TRIM(release_command_no)) > 0 AND CHAR_LENGTH(release_command_no)=CHAR_LENGTH(TRIM(release_command_no)))),
+    CONSTRAINT ck_booking_unit_quantity CHECK (qty > 0 AND allocation_revision >= 1),
+    CONSTRAINT ck_booking_unit_release CHECK ((released_at IS NULL AND release_command_no IS NULL) OR (released_at IS NOT NULL AND release_command_no IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS prd_store_catalog
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    catalog_no VARCHAR(32) NOT NULL,
+    current_version_no VARCHAR(32) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_catalog_scope UNIQUE (tenant_no, entity_no, store_no),
+    CONSTRAINT uk_prd_catalog_no UNIQUE (tenant_no, entity_no, catalog_no),
+    CONSTRAINT ck_prd_catalog_revision CHECK (version >= 1),
+    CONSTRAINT ck_prd_catalog_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS prd_store_catalog_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    catalog_version_no VARCHAR(32) NOT NULL,
+    catalog_no VARCHAR(32) NOT NULL,
+    revision_index BIGINT NOT NULL,
+    effective_at DATETIME(3) NOT NULL,
+    frozen_payload LONGTEXT NOT NULL,
+    snapshot_hash VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_catalog_version_no UNIQUE (tenant_no, entity_no, catalog_version_no),
+    CONSTRAINT uk_prd_catalog_revision UNIQUE (tenant_no, entity_no, catalog_no, revision_index),
+    CONSTRAINT ck_prd_catalog_version_revision CHECK (revision_index >= 1 AND version >= 0),
+    CONSTRAINT ck_prd_catalog_payload CHECK ((frozen_payload IS JSON)),
+    CONSTRAINT ck_prd_catalog_hash CHECK (CHAR_LENGTH(snapshot_hash) = 64),
+    CONSTRAINT ck_prd_catalog_version_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS mbr_guest_registration
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    contact_cipher TEXT NULL,
+    display_name VARCHAR(80) NULL,
+    claim_token_hash CHAR(64) NOT NULL,
+    claim_token_cipher TEXT NOT NULL,
+    state VARCHAR(16) NOT NULL,
+    claimed_user_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    claimed_at DATETIME(3) NULL,
+    claim_key_hash CHAR(64) NULL,
+    claim_request_hash CHAR(64) NULL,
+    claim_actor_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    claim_actor_realm VARCHAR(16) NULL,
+    claim_actor_kind VARCHAR(8) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mbr_guest_no UNIQUE (tenant_no, guest_no),
+    CONSTRAINT uk_mbr_guest_key UNIQUE (tenant_no, entity_no, store_no, actor_realm, actor_kind, actor_no, key_hash),
+    CONSTRAINT ck_mbr_guest_actor CHECK (actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mbr_guest_state CHECK ( (state='REGISTERED' AND version=1 AND claimed_user_no IS NULL AND claimed_at IS NULL AND claim_key_hash IS NULL AND claim_request_hash IS NULL AND claim_actor_no IS NULL AND claim_actor_realm IS NULL AND claim_actor_kind IS NULL) OR (state='CLAIMED' AND version=2 AND claimed_user_no IS NOT NULL AND claimed_at IS NOT NULL AND claim_key_hash IS NOT NULL AND claim_request_hash IS NOT NULL AND claim_actor_no IS NOT NULL AND claim_actor_realm='MERCHANT' AND (CASE claim_actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN claim_actor_kind IS NULL THEN NULL ELSE FALSE END END))),
+    CONSTRAINT ck_mbr_guest_deleted CHECK ((CASE deleted WHEN 0 THEN TRUE WHEN 1 THEN TRUE ELSE CASE WHEN deleted IS NULL THEN NULL ELSE FALSE END END))
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    scope_revision BIGINT NOT NULL,
+    scope_hash CHAR(64) NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    phase VARCHAR(24) NOT NULL,
+    current_quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    confirmation_no VARCHAR(40) COLLATE utf8mb4_bin NULL,
+    place_key_hash CHAR(64) NULL,
+    place_payload_hash CHAR(64) NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_revision BIGINT NOT NULL DEFAULT 0,
+    source_observation_hash CHAR(64) NULL,
+    last_error_code VARCHAR(64) NULL,
+    next_retry_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    manual_observation_revision BIGINT NOT NULL DEFAULT 0,
+    manual_observation_hash CHAR(64) NULL,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    purchase_authority VARCHAR(40) NOT NULL DEFAULT 'CONSUMER_SESSION',
+    authority_namespace_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    account_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_counter_place_namespace UNIQUE (tenant_no,authority_namespace_hash,place_key_hash),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_operation UNIQUE (tenant_no,caller,operation_no),
+    CONSTRAINT uk_checkout_prepare_key UNIQUE (tenant_no,caller,entity_no,store_no,request_key_hash),
+    CONSTRAINT uk_checkout_place_key UNIQUE (tenant_no,buyer_no,place_key_hash),
+    CONSTRAINT uk_checkout_order UNIQUE (tenant_no,order_no),
+    CONSTRAINT uk_checkout_sub_order UNIQUE (tenant_no,sub_order_no),
+    CONSTRAINT ck_checkout_operation_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND scope_revision>0),
+    CONSTRAINT ck_checkout_operation_actor CHECK (actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_operation_phase CHECK ((CASE phase WHEN 'QUOTED' THEN TRUE WHEN 'CONFIRMED' THEN TRUE WHEN 'CREATED' THEN TRUE WHEN 'REQUOTE_REQUIRED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_operation_created CHECK ((phase='CREATED' AND order_no IS NOT NULL AND sub_order_no IS NOT NULL AND confirmation_no IS NOT NULL AND place_key_hash IS NOT NULL) OR (phase<>'CREATED' AND order_no IS NULL AND sub_order_no IS NULL)),
+    CONSTRAINT ck_checkout_operation_confirmation CHECK ((phase='QUOTED' AND confirmation_no IS NULL AND place_key_hash IS NULL) OR ((CASE phase WHEN 'CONFIRMED' THEN TRUE WHEN 'CREATED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END) AND confirmation_no IS NOT NULL) OR (CASE phase WHEN 'REQUOTE_REQUIRED' THEN TRUE WHEN 'REJECTED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_operation_place CHECK ((place_key_hash IS NULL AND place_payload_hash IS NULL) OR (place_key_hash IS NOT NULL AND place_payload_hash IS NOT NULL)),
+    CONSTRAINT ck_checkout_operation_source CHECK (source_revision>=0 AND ((source_revision=0 AND source_observation_hash IS NULL) OR (source_revision>0 AND source_observation_hash IS NOT NULL))),
+    CONSTRAINT ck_checkout_operation_json CHECK ((command_json IS JSON)),
+    CONSTRAINT ck_checkout_operation_deleted CHECK (deleted=0),
+    CONSTRAINT ck_checkout_admission_kind CHECK ((CASE admission_kind WHEN 'LEGACY_FUNDED' THEN TRUE WHEN 'MANUAL_OFFLINE' THEN TRUE ELSE CASE WHEN admission_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_manual_observation CHECK (manual_observation_revision>=0 AND
+        ((manual_observation_revision=0 AND manual_observation_hash IS NULL) OR
+         (manual_observation_revision>0 AND manual_observation_hash IS NOT NULL))),
+    CONSTRAINT ck_counter_operation_party CHECK (
+        (customer_kind='USER' AND buyer_no IS NOT NULL AND CHAR_LENGTH(TRIM(buyer_no))>0
+         AND OCTET_LENGTH(buyer_no)=OCTET_LENGTH(TRIM(buyer_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND purchase_authority='MERCHANT_RECORDED_IN_PERSON'
+        AND caller='BEAUTY' AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND buyer_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND purchase_authority='MERCHANT_RECORDED_IN_PERSON'
+        AND caller='BEAUTY' AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)),
+    CONSTRAINT ck_counter_operation_authority CHECK (
+        (purchase_authority='CONSUMER_SESSION' AND customer_kind='USER'
+         AND identity_revision IS NOT NULL AND identity_revision>0 AND account_no IS NULL)
+        OR (purchase_authority='MERCHANT_RECORDED_IN_PERSON' AND admission_kind='MANUAL_OFFLINE'
+            AND account_no IS NOT NULL AND CHAR_LENGTH(TRIM(account_no))>0)),
+    CONSTRAINT ck_counter_operation_namespace CHECK (authority_namespace_hash REGEXP '^[a-f0-9]{64}$')
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_quote
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    revision BIGINT NOT NULL,
+    quote_hash CHAR(64) NOT NULL,
+    pricing_json LONGTEXT NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_quote UNIQUE (tenant_no,quote_no),
+    CONSTRAINT uk_checkout_quote_revision UNIQUE (tenant_no,caller,operation_no,revision),
+    CONSTRAINT ck_checkout_quote_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND revision=1),
+    CONSTRAINT ck_checkout_quote_status CHECK ((CASE status WHEN 'OPEN' THEN TRUE WHEN 'CONFIRMED' THEN TRUE WHEN 'CONSUMED' THEN TRUE WHEN 'EXPIRED' THEN TRUE WHEN 'REVOKED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_checkout_quote_json CHECK ((pricing_json IS JSON)),
+    CONSTRAINT ck_checkout_quote_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_confirmation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    confirmation_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    quote_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    quote_revision BIGINT NOT NULL,
+    quote_hash CHAR(64) NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    purpose VARCHAR(40) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    confirmed_at DATETIME(3) NOT NULL,
+    consumed_at DATETIME(3) NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'LEGACY_FUNDED',
+    purchase_authority VARCHAR(40) NOT NULL DEFAULT 'CONSUMER_SESSION',
+    authority_namespace_hash CHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    accepted_at DATETIME(3) NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    actor_realm VARCHAR(16) NULL,
+    actor_kind VARCHAR(8) NULL,
+    account_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_counter_accept_namespace UNIQUE (tenant_no,authority_namespace_hash,request_key_hash),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_confirmation UNIQUE (tenant_no,confirmation_no),
+    CONSTRAINT uk_checkout_confirm_key UNIQUE (tenant_no,buyer_no,request_key_hash),
+    CONSTRAINT uk_checkout_confirm_quote UNIQUE (tenant_no,caller,operation_no,quote_no),
+    CONSTRAINT ck_checkout_confirm_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND quote_revision=1),
+    CONSTRAINT ck_checkout_confirm_money CHECK (amount_minor>=0 AND currency='CNY' AND purpose='ORDINARY_SERVICE_PURCHASE'),
+    CONSTRAINT ck_checkout_confirm_state CHECK ((status='CONSUMED' AND consumed_at IS NOT NULL AND order_no IS NOT NULL) OR ((CASE status WHEN 'AUTHORIZED' THEN TRUE WHEN 'REVOKED' THEN TRUE WHEN 'EXPIRED' THEN TRUE ELSE CASE WHEN status IS NULL THEN NULL ELSE FALSE END END) AND consumed_at IS NULL AND order_no IS NULL)),
+    CONSTRAINT ck_checkout_confirm_deleted CHECK (deleted=0),
+    CONSTRAINT ck_counter_confirmation_party CHECK (
+        (customer_kind='USER' AND buyer_no IS NOT NULL AND CHAR_LENGTH(TRIM(buyer_no))>0
+         AND OCTET_LENGTH(buyer_no)=OCTET_LENGTH(TRIM(buyer_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND purchase_authority='MERCHANT_RECORDED_IN_PERSON'
+        AND caller='BEAUTY' AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND buyer_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND purchase_authority='MERCHANT_RECORDED_IN_PERSON'
+        AND caller='BEAUTY' AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)),
+    CONSTRAINT ck_counter_confirmation_authority CHECK (
+        (purchase_authority='CONSUMER_SESSION' AND customer_kind='USER'
+         AND identity_revision IS NOT NULL AND identity_revision>0
+         AND accepted_at IS NULL AND actor_no IS NULL AND actor_realm IS NULL
+         AND actor_kind IS NULL AND account_no IS NULL)
+        OR (purchase_authority='MERCHANT_RECORDED_IN_PERSON' AND admission_kind='MANUAL_OFFLINE'
+            AND entity_no IS NOT NULL AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
+            AND CHAR_LENGTH(TRIM(store_no))>0 AND actor_no IS NOT NULL AND CHAR_LENGTH(TRIM(actor_no))>0
+            AND actor_realm IS NOT NULL AND actor_realm='MERCHANT'
+            AND actor_kind IS NOT NULL AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)
+            AND account_no IS NOT NULL AND CHAR_LENGTH(TRIM(account_no))>0
+            AND accepted_at IS NOT NULL AND accepted_at<=confirmed_at)),
+    CONSTRAINT ck_counter_confirmation_namespace CHECK (authority_namespace_hash REGEXP '^[a-f0-9]{64}$')
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    source_line_no VARCHAR(40) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    client_line_ref VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    goods_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sku_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    quantity INT NOT NULL,
+    uom VARCHAR(8) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_source_line UNIQUE (tenant_no,source_line_no),
+    CONSTRAINT uk_checkout_client_line UNIQUE (tenant_no,caller,operation_no,client_line_ref),
+    CONSTRAINT uk_checkout_item UNIQUE (tenant_no,order_item_id),
+    CONSTRAINT ck_checkout_line_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY'),
+    CONSTRAINT ck_checkout_line_count CHECK (quantity BETWEEN 1 AND 999 AND uom='COUNT'),
+    CONSTRAINT ck_checkout_line_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_checkout_payment_request
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payment_operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    actor_account_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    action VARCHAR(24) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    request_json LONGTEXT NOT NULL,
+    payment_request_json LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_checkout_payment_operation UNIQUE (tenant_no,payment_operation_no),
+    CONSTRAINT uk_checkout_payment_key UNIQUE (tenant_no,actor_realm,actor_kind,actor_no,action,request_key_hash),
+    CONSTRAINT ck_checkout_payment_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY'),
+    CONSTRAINT ck_checkout_payment_actor CHECK ((action='INITIATE_PAYMENT' AND actor_realm='CONSUMER' AND actor_kind='USR' AND actor_account_no IS NULL) OR (action='OFFLINE_RECEIPT' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END) AND actor_account_no IS NOT NULL)),
+    CONSTRAINT ck_checkout_payment_json CHECK ((request_json IS JSON) AND (payment_request_json IS JSON)),
+    CONSTRAINT ck_checkout_payment_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS stl_payment_order_guard
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_payment_order_guard UNIQUE (order_no),
+    CONSTRAINT ck_payment_order_guard_live CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS stl_payment_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    canonical_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    owner_kind VARCHAR(24) NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    request_hash CHAR(64) NOT NULL,
+    payment_request_json LONGTEXT NOT NULL,
+    offline_request_json LONGTEXT NULL,
+    purpose VARCHAR(8) NOT NULL,
+    phase VARCHAR(24) NOT NULL,
+    payment_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    out_trade_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    send_started_at DATETIME(3) NULL,
+    pay_params_json LONGTEXT NULL,
+    pay_params_expires_at DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    method VARCHAR(16) NULL,
+    evidence_ref VARCHAR(255) COLLATE utf8mb4_bin NULL,
+    evidence_json LONGTEXT NULL,
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    actor_realm VARCHAR(16) NULL,
+    actor_kind VARCHAR(8) NULL,
+    actor_account_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    received_at DATETIME(3) NULL,
+    note VARCHAR(500) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_payment_operation UNIQUE (operation_no),
+    CONSTRAINT uk_payment_receipt_evidence UNIQUE (tenant_no,evidence_ref),
+    CONSTRAINT ck_payment_operation_scope CHECK ((CASE owner_kind WHEN 'CHECKOUT' THEN TRUE WHEN 'LEGACY_TRADE' THEN TRUE ELSE CASE WHEN owner_kind IS NULL THEN NULL ELSE FALSE END END) AND (owner_kind='LEGACY_TRADE' OR (tenant_no='MAIN' AND entity_no IS NOT NULL AND store_no IS NOT NULL))),
+    CONSTRAINT ck_payment_operation_phase CHECK ((CASE phase WHEN 'PREPARED' THEN TRUE WHEN 'OPENED' THEN TRUE WHEN 'SENDING' THEN TRUE WHEN 'PAYABLE' THEN TRUE WHEN 'UNKNOWN' THEN TRUE WHEN 'SUCCEEDED' THEN TRUE WHEN 'REJECTED' THEN TRUE WHEN 'ALIASED' THEN TRUE WHEN 'MANUAL_REQUIRED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_payment_operation_mapping CHECK ((phase='PREPARED' AND payment_no IS NULL AND out_trade_no IS NULL AND canonical_operation_no IS NULL) OR (phase<>'PREPARED' AND payment_no IS NOT NULL AND out_trade_no IS NOT NULL AND canonical_operation_no IS NOT NULL)),
+    CONSTRAINT ck_payment_operation_alias CHECK ((phase='ALIASED' AND canonical_operation_no<>operation_no AND send_started_at IS NULL AND pay_params_json IS NULL AND evidence_ref IS NULL AND evidence_json IS NULL) OR (phase<>'ALIASED' AND (canonical_operation_no IS NULL OR canonical_operation_no=operation_no))),
+    CONSTRAINT ck_payment_operation_purpose CHECK ((CASE purpose WHEN 'ONLINE' THEN TRUE WHEN 'OFFLINE' THEN TRUE ELSE CASE WHEN purpose IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_payment_operation_offline_request CHECK ((purpose='ONLINE' AND offline_request_json IS NULL) OR (purpose='OFFLINE' AND offline_request_json IS NOT NULL AND (offline_request_json IS JSON))),
+    CONSTRAINT ck_payment_operation_prepared_evidence CHECK (phase<>'PREPARED' OR (evidence_ref IS NULL AND evidence_json IS NULL)),
+    CONSTRAINT ck_payment_operation_offline CHECK (purpose<>'OFFLINE' OR (CASE phase WHEN 'PREPARED' THEN TRUE WHEN 'ALIASED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END) OR (method IS NOT NULL AND (CASE method WHEN 'CASH' THEN TRUE WHEN 'BANK_TRANSFER' THEN TRUE ELSE CASE WHEN method IS NULL THEN NULL ELSE FALSE END END) AND actor_no IS NOT NULL AND actor_realm IS NOT NULL AND actor_realm='MERCHANT' AND actor_kind IS NOT NULL AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END) AND actor_account_no IS NOT NULL AND received_at IS NOT NULL AND ((method='CASH' AND note IS NOT NULL AND CHAR_LENGTH(note)>0) OR (method='BANK_TRANSFER' AND evidence_ref IS NOT NULL AND evidence_json IS NOT NULL)))),
+    CONSTRAINT ck_payment_operation_evidence CHECK ((evidence_ref IS NULL AND evidence_json IS NULL) OR (evidence_ref IS NOT NULL AND evidence_json IS NOT NULL AND (evidence_json IS JSON))),
+    CONSTRAINT ck_payment_operation_json CHECK ((payment_request_json IS JSON) AND (pay_params_json IS NULL OR (pay_params_json IS JSON))),
+    CONSTRAINT ck_payment_operation_params CHECK ((pay_params_json IS NULL AND pay_params_expires_at IS NULL) OR (pay_params_json IS NOT NULL AND pay_params_expires_at IS NOT NULL)),
+    CONSTRAINT ck_payment_operation_deleted CHECK (deleted=0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_manual_service_admission
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    declaration_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    caller VARCHAR(16) COLLATE utf8mb4_bin NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    sub_order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    buyer_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    admission_kind VARCHAR(24) NOT NULL DEFAULT 'MANUAL_OFFLINE',
+    actor_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_realm VARCHAR(16) NOT NULL,
+    actor_kind VARCHAR(8) NOT NULL,
+    account_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    method VARCHAR(24) NOT NULL,
+    declared_minor BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    received_at DATETIME(3) NOT NULL,
+    recorded_at DATETIME(3) NOT NULL,
+    note VARCHAR(500) NULL,
+    receipt_provenance VARCHAR(24) NOT NULL DEFAULT 'MANUAL_DECLARATION',
+    phase VARCHAR(24) NOT NULL,
+    admission_revision BIGINT NOT NULL DEFAULT 1,
+    order_revision BIGINT NOT NULL,
+    quote_hash CHAR(64) NOT NULL,
+    stock_authority VARCHAR(16) NOT NULL,
+    stock_lifecycle_version INT NOT NULL,
+    stock_manifest_json LONGTEXT NOT NULL,
+    stock_manifest_hash CHAR(64) NOT NULL,
+    stock_operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    stock_outcome VARCHAR(16) NULL,
+    stock_state VARCHAR(24) NULL,
+    stock_observation_hash CHAR(64) NULL,
+    reason_code VARCHAR(64) NULL,
+    next_retry_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    customer_kind VARCHAR(8) NOT NULL DEFAULT 'USER',
+    guest_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
+    identity_revision BIGINT NULL DEFAULT 1,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_manual_declaration UNIQUE (tenant_no,declaration_no),
+    CONSTRAINT uk_manual_order UNIQUE (tenant_no,order_no),
+    CONSTRAINT uk_manual_operation UNIQUE (tenant_no,caller,operation_no),
+    CONSTRAINT uk_manual_receipt_key UNIQUE (tenant_no,entity_no,store_no,request_key_hash),
+    CONSTRAINT ck_manual_scope CHECK (tenant_no='MAIN' AND caller='BEAUTY' AND admission_kind='MANUAL_OFFLINE' AND actor_realm='MERCHANT' AND (CASE actor_kind WHEN 'MCH' THEN TRUE WHEN 'USR' THEN TRUE ELSE CASE WHEN actor_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_manual_money CHECK (declared_minor>0 AND currency='CNY' AND (CASE method WHEN 'CASH' THEN TRUE WHEN 'OFFLINE_TRANSFER' THEN TRUE ELSE CASE WHEN method IS NULL THEN NULL ELSE FALSE END END) AND receipt_provenance='MANUAL_DECLARATION'),
+    CONSTRAINT ck_manual_phase CHECK ((CASE phase WHEN 'RECEIVED' THEN TRUE WHEN 'STOCK_PENDING' THEN TRUE WHEN 'ADMITTED' THEN TRUE WHEN 'SUSPENDED' THEN TRUE WHEN 'CANCELLED' THEN TRUE ELSE CASE WHEN phase IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_manual_revisions CHECK (admission_revision>0 AND order_revision>=0 AND version>0 AND deleted=0),
+    CONSTRAINT ck_manual_stock CHECK ((CASE stock_authority WHEN 'PLATFORM' THEN TRUE WHEN 'DUAL' THEN TRUE WHEN 'INVENTORY' THEN TRUE ELSE CASE WHEN stock_authority IS NULL THEN NULL ELSE FALSE END END) AND (CASE stock_lifecycle_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN stock_lifecycle_version IS NULL THEN NULL ELSE FALSE END END) AND (stock_manifest_json IS JSON) AND (stock_manifest_json IS JSON OBJECT)),
+    CONSTRAINT ck_manual_admitted CHECK (phase<>'ADMITTED' OR (stock_outcome IS NOT NULL AND stock_outcome='APPLIED' AND stock_state IS NOT NULL AND (CASE stock_state WHEN 'ALLOCATED' THEN TRUE WHEN 'CONSUMED' THEN TRUE ELSE CASE WHEN stock_state IS NULL THEN NULL ELSE FALSE END END) AND stock_observation_hash IS NOT NULL)),
+    CONSTRAINT ck_manual_times CHECK (received_at<=recorded_at),
+    CONSTRAINT ck_counter_admission_party CHECK (
+        (customer_kind='USER' AND buyer_no IS NOT NULL AND CHAR_LENGTH(TRIM(buyer_no))>0
+         AND OCTET_LENGTH(buyer_no)=OCTET_LENGTH(TRIM(buyer_no)) AND guest_no IS NULL
+         AND ((identity_revision IS NOT NULL AND identity_revision>0)
+              OR (identity_revision IS NULL AND admission_kind='MANUAL_OFFLINE' AND caller='BEAUTY'
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0)))
+        OR (customer_kind='GUEST' AND buyer_no IS NULL AND guest_no IS NOT NULL
+            AND CHAR_LENGTH(TRIM(guest_no))>0 AND OCTET_LENGTH(guest_no)=OCTET_LENGTH(TRIM(guest_no))
+            AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND caller='BEAUTY'
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0))
+);
+
+CREATE TABLE IF NOT EXISTS ord_manual_service_admission_action
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    action_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    declaration_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    store_no VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    admission_revision BIGINT NOT NULL,
+    action VARCHAR(24) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    result_json LONGTEXT NOT NULL,
+    reason_code VARCHAR(64) NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 1,
+    deleted INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_manual_action UNIQUE (tenant_no,action_no),
+    CONSTRAINT uk_manual_action_revision UNIQUE (tenant_no,declaration_no,admission_revision),
+    CONSTRAINT ck_manual_action CHECK (tenant_no='MAIN' AND admission_revision>0 AND version>0 AND deleted=0 AND (CASE action WHEN 'RECEIPT_RECORDED' THEN TRUE WHEN 'STOCK_OBSERVED' THEN TRUE WHEN 'ADMISSION_CHANGED' THEN TRUE ELSE CASE WHEN action IS NULL THEN NULL ELSE FALSE END END) AND (result_json IS JSON) AND (result_json IS JSON OBJECT))
+);
+
+CREATE TABLE IF NOT EXISTS mkt_counter_campaign_fence
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    scope_kind VARCHAR(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (tenant_no, scope_kind, scope_no),
+    CONSTRAINT ck_mkt_counter_fence_scope CHECK ((CASE scope_kind WHEN 'PLATFORM' THEN TRUE WHEN 'ENTITY' THEN TRUE ELSE CASE WHEN scope_kind IS NULL THEN NULL ELSE FALSE END END)),
+    CONSTRAINT ck_mkt_counter_fence_revision CHECK (revision >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS pay_channel_product
@@ -13903,7 +14981,7 @@ VALUES ('TECH_OPS', 'ACT__SYSTEM_MEDIA_PURGE', 'OPS', NOW(), NOW());
 INSERT IGNORE INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
 SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
 FROM (
-    
+
     SELECT 'ORDER_PAID' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
     SELECT 'ORDER_PAID', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
     SELECT 'ORDER_ARRIVED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
@@ -13914,7 +14992,7 @@ FROM (
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'INAPP', 1, 'NORMAL' UNION ALL
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'WXSUB', 1, 'NORMAL' UNION ALL
     SELECT 'AFTER_SALE_REFUNDED', 'C_USER', 'PUSH', 0, 'NORMAL' UNION ALL
-    
+
     SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
     SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'PUSH', 1, 'RING' UNION ALL
     SELECT 'AFTER_SALE_APPLIED', 'B_STAFF', 'INAPP', 1, 'NORMAL' UNION ALL
@@ -14929,7 +16007,7 @@ INSERT IGNORE INTO prd_category_spec_value (category_no, dim_no, value_no, label
   ('CAT240', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF12M', NULL, 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT240', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF18M', NULL, 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT240', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF24M', NULL, 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('CAT320', 'SD_DURATION', 'SV_DURATION_D30', '30分钟内', 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT320', 'SD_DURATION', 'SV_DURATION_D60', '1小时', 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT320', 'SD_DURATION', 'SV_DURATION_D120', '2小时', 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
@@ -14950,7 +16028,7 @@ INSERT IGNORE INTO prd_category_spec (category_no, dim_no, usage_type, is_primar
   ('CAT190', 'SD_PACK', NULL, 0, 0, 30, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT190', 'SD_ORIGIN', NULL, 0, 0, 40, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
 INSERT IGNORE INTO prd_category_spec_value (category_no, dim_no, value_no, label_override, sort, tenant_no, created_at, created_by, updated_at, updated_by) VALUES
-  
+
   ('CAT180', 'SD_VOLUME', 'SV_VOLUME_V200ML', NULL, 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_VOLUME', 'SV_VOLUME_V250ML', NULL, 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_VOLUME', 'SV_VOLUME_V500ML', NULL, 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
@@ -14962,11 +16040,11 @@ INSERT IGNORE INTO prd_category_spec_value (category_no, dim_no, value_no, label
   ('CAT180', 'SD_PACK', 'SV_PACK_PBOX', NULL, 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_PACK', 'SV_PACK_PBOTTLE', NULL, 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_PACK', 'SV_PACK_PBAG', NULL, 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('CAT180', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF7D', NULL, 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF1M', NULL, 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT180', 'SD_SHELF_LIFE', 'SV_SHELF_LIFE_SLF6M', NULL, 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('CAT190', 'SD_WEIGHT', 'SV_WEIGHT_W250G', '半斤', 10, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT190', 'SD_WEIGHT', 'SV_WEIGHT_W500G', '1斤', 20, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT190', 'SD_WEIGHT', 'SV_WEIGHT_W1KG', '2斤', 30, 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
@@ -15626,26 +16704,26 @@ UPDATE prd_spec_template
 SET name = '数量', updated_at = NOW(), updated_by = 'SYSTEM'
 WHERE template_no = 'SPT_SEED_NORMAL_COUNT' AND name = '规格';
 INSERT IGNORE INTO prd_spec_value (value_no, dim_no, code, label, numeric_value, numeric_unit, aliases, scope, sort, status, tenant_no, created_at, created_by, updated_at, updated_by) VALUES
-  
+
   ('SV_CUT_CUTHALF', 'SD_CUT', 'CUTHALF', '半只', NULL, NULL, NULL, 'PLATFORM', 15, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('SV_WEIGHT_W3KG', 'SD_WEIGHT', 'W3KG', '3kg', 3000, 'g', '["6斤", "6斤装", "3千克"]', 'PLATFORM', 3000, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('SV_VOLUME_V30ML', 'SD_VOLUME', 'V30ML', '30ml', 30, 'ml', NULL, 'PLATFORM', 30, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('SV_VOLUME_V60ML', 'SD_VOLUME', 'V60ML', '60ml', 60, 'ml', NULL, 'PLATFORM', 60, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('SV_VOLUME_V400ML', 'SD_VOLUME', 'V400ML', '400ml', 400, 'ml', NULL, 'PLATFORM', 400, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
+
   ('SV_DURATION_D240', 'SD_DURATION', 'D240', '240分钟', 240, '分钟', '["4小时"]', 'PLATFORM', 240, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
 UPDATE prd_spec_value SET aliases = '["单次", "一次"]', updated_at = NOW(), updated_by = 'SYSTEM'
 WHERE value_no = 'SV_TIMES_T1' AND aliases IS NULL;
 INSERT IGNORE INTO prd_category_spec (category_no, dim_no, usage_type, is_primary, required, sort, status, tenant_no, created_at, created_by, updated_at, updated_by) VALUES
-  ('CAT110', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT140', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT140', 'SD_CUT',   NULL, 0, 0, 80, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT210', 'SD_WEIGHT',NULL, 0, 0, 50, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT210', 'SD_SIZE',  NULL, 0, 0, 60, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT240', 'SD_SIZE',  NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
-  ('CAT310', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),  
+  ('CAT110', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT140', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT140', 'SD_CUT',   NULL, 0, 0, 80, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT210', 'SD_WEIGHT',NULL, 0, 0, 50, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT210', 'SD_SIZE',  NULL, 0, 0, 60, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT240', 'SD_SIZE',  NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
+  ('CAT310', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT320', 'SD_COUNT', NULL, 0, 0, 70, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM');
 UPDATE prd_goods SET spec_groups = '[{"name": "重量", "options": ["10斤装", "20斤装"], "optionCodes": ["W5KG", "W10KG"], "templateNo": "SD_WEIGHT"}]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE goods_no = 'G0001' AND spec_groups = '[{"name":"规格","options":["10斤装","20斤装"]}]';
 UPDATE prd_goods SET spec_groups = '[{"name": "容量", "options": ["5L"], "optionCodes": ["V5L"], "templateNo": "SD_VOLUME"}]', updated_at = NOW(), updated_by = 'SYSTEM' WHERE goods_no = 'G0002' AND spec_groups = '[{"name":"规格","options":["5L"]}]';
@@ -16671,9 +17749,9 @@ VALUES
   ('CAT120', 'SD_SHELF_LIFE', 'PROP', 0, 0, 210, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT120', 'SD_STORE_COND', 'PROP', 0, 0, 220, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT120', 'SD_TASTE', 'PROP', 0, 0, 230, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
-  
-  
-  
+
+
+
   ('CAT121', 'SD_WEIGHT', NULL, 1, 0, 10, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT122', 'SD_WEIGHT', NULL, 1, 0, 10, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
   ('CAT121', 'SD_ORIGIN', 'PROP', 0, 0, 200, 'ACTIVE', 'MAIN', NOW(), 'SYSTEM', NOW(), 'SYSTEM'),
@@ -16788,7 +17866,7 @@ VALUES
      'elec:part:read', 'elec:part:read', 'IMPLEMENTED', 1, 'P-19.3', 'MENU', 30, NOW(), NOW()),
     ('OPS_ELEC__TAB_BASE', 'OPS_ELEC', '基础数据', '主数据', '/elec?tab=base',
      'elec:base:manage', 'elec:base:manage', 'IMPLEMENTED', 1, 'P-19.4', 'MENU', 40, NOW(), NOW()),
-    
+
     ('ACT__ELEC_RFQ_QUOTE', 'OPS_ELEC', 'elec:rfq:quote', '页面内操作', NULL,
      'elec:rfq:quote', 'elec:rfq:quote', 'IMPLEMENTED', 1, NULL, 'ACTION', 910, NOW(), NOW()),
     ('ACT__ELEC_SUPPLIER_MANAGE', 'OPS_ELEC', 'elec:supplier:manage', '页面内操作', NULL,
@@ -17400,6 +18478,19 @@ INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updat
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__SEC_KEY_WRITE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__SEC_KEY_WRITE' AND end_code='OPS');
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__SEC_KEY_ENABLE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__SEC_KEY_ENABLE' AND end_code='OPS');
 INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'FINANCE','OPS_PAY_06','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='FINANCE' AND point_code='OPS_PAY_06' AND end_code='OPS');
+UPDATE ord_checkout_operation SET authority_namespace_hash=SHA2(CONCAT(
+    'LEGACY_CHECKOUT_NAMESPACE_V1',CHAR_LENGTH(tenant_no),':',tenant_no,
+    CHAR_LENGTH(caller),':',caller,CHAR_LENGTH(entity_no),':',entity_no,
+    CHAR_LENGTH(store_no),':',store_no,CHAR_LENGTH(actor_realm),':',actor_realm,
+    CHAR_LENGTH(actor_kind),':',actor_kind,CHAR_LENGTH(actor_no),':',actor_no),256)
+WHERE authority_namespace_hash IS NULL;
+UPDATE ord_checkout_confirmation SET authority_namespace_hash=SHA2(CONCAT(
+    'LEGACY_CHECKOUT_NAMESPACE_V1',CHAR_LENGTH(tenant_no),':',tenant_no,
+    CHAR_LENGTH(caller),':',caller,CHAR_LENGTH(operation_no),':',operation_no,
+    CHAR_LENGTH(buyer_no),':',buyer_no),256)
+WHERE authority_namespace_hash IS NULL;
+INSERT IGNORE INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)
+VALUES ('MAIN', 'PLATFORM', 'PLATFORM', 0);
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

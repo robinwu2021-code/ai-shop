@@ -1,5 +1,7 @@
 package ai.neargo.shop.invbridge;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.numbering.DocumentSource;
@@ -167,7 +169,7 @@ public class StockReconcileService {
         if (source == null) return;
         for (String other : merchants.storeNos(entityNo)) {
             if (!Objects.equals(storeNo, other) && Objects.equals(source, acl.stockLocationOf(entityNo, other))) {
-                throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.STOCK_SHARED_SOURCE,
+                throw BizException.of(ErrorCode.STOCK_SHARED_SOURCE,
                         storeNo, other);
             }
         }

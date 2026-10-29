@@ -1,8 +1,5 @@
 package ai.neargo.svc.client;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -12,6 +9,10 @@ import org.springframework.http.client.support.HttpRequestWrapper;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
 
 /**
  * 按 {@link ServiceClientSpec} 造一个 {@code @HttpExchange} 接口的代理。
@@ -56,11 +57,32 @@ public final class ServiceClients {
         RestClient rest = builder
                 .defaultStatusHandler(status -> !status.is2xxSuccessful(), (req, res) -> {
                     int code = res.getStatusCode().value();
-                    throw new ServiceCallException(CallOutcome.REMOTE_ERROR, spec.service(), code,
-                            spec.service() + " 返回 " + code);
+                    throw new ServiceCallException(
+                                            CallOutcome.REMOTE_ERROR,
+                                            spec.service(),
+                                            code,
+                                            spec.service() + " 返回 " + code,
+                                            null,
+                                            safeHeader(
+                                                    res,
+                                                    "X-Internal-Error-Code",
+                                                    "[A-Z][A-Z0-9_]{0,63}"),
+                                            safeHeader(
+                                                    res,
+                                                    "X-Internal-Request-Digest",
+                                                    "[0-9a-f]{64}"));
                 })
                 .build();
         return HttpServiceProxyFactory.builderFor(RestClientAdapter.create(rest)).build().createClient(api);
+    }
+
+    private static String safeHeader(ClientHttpResponse response, String name, String pattern) {
+        var values = response.getHeaders().get(name);
+        if (values == null || values.size() != 1) {
+            return null;
+        }
+        String value = values.getFirst();
+        return value != null && value.matches(pattern) ? value : null;
     }
 
     private static String hint(String configKey) {

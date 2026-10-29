@@ -1,6 +1,7 @@
 package ai.neargo.shop.inventory.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,6 +10,11 @@ import lombok.Setter;
 @Setter
 @TableName("inv_reservation_line")
 public class InvReservationLine extends InvMutableEntity {
+
+    /** Source mapping frozen at reserve, independent from today's ACL mappings. */
+    private String sourceSkuNo;
+
+    private String sourceStoreNo;
 
     private String reservationId;
 

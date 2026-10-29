@@ -666,7 +666,7 @@
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| POST | `/biz/member-code/resolve` | 识别统一会员码 | — | `CustomerReference` | 🔒 | ✅ | ✅ |
+| POST | `/biz/member-code/resolve` | 识别统一会员码 | `ResolveMemberCodeReq` | `CustomerReference` | 🔒 | ✅ | ✅ |
 
 ### member-reach（4）
 

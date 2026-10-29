@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 42 个权限点 × 398 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 405 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -17,20 +17,20 @@
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
 | `STOCK` | 改库存（含门店库存） | 51 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
+| `GOODS` | 建/改商品、上下架、规格模板、识图 | 39 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 32 | ✅ | — | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 27 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
 | `PRINT_READ` | 角色 → 权限码 | 15 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_CONFIG` | 角色 → 权限码 | 15 | ✅ | ✅ | — | — | — | — |
 | `PRINT_RESOLVE` | 角色 → 权限码 | 14 | ✅ | ✅ | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 9 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 7 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
 | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
 | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
@@ -51,6 +51,7 @@
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
 | `PRINT_REPRINT` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `PRINT_SIMULATE` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
+| `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
 | `PRINT_SUBMIT` | 角色 → 权限码 | 1 | ✅ | ✅ | ✅ | — | — | — |
@@ -58,8 +59,15 @@
 | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
 | `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
+| `BOOKING_VIEW` | Cross-industry appointment reading; gran | 0 | ✅ | — | — | — | — | — |
+| `BOOKING_MANAGE` | Explicit appointment management, indepen | 0 | ✅ | — | — | — | — | — |
+| `SERVICE_TASK_SELF` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
+| `SERVICE_TASK_VIEW` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
+| `SERVICE_TASK_COORDINATE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
+| `SERVICE_TASK_APPROVE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
+| `SERVICE_TASK_CLOSE` | Independently assignable service action; | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 22 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 30 项**：`FINANCE`、`STORE_ADMIN`、`SV_RECHARGE_CREATE`、`SV_ACCOUNT_READ`、`PRICING_CONFIG_PUBLISH`、`SV_CONSUME_CREATE`、`PRICING_CONFIG_READ`、`ENT_READ`、`ENT_USE`、`PRICING_TAX_UPDATE`、`PRICING_CONFIG_UPDATE`、`SV_PLAN_READ`、`SV_PLAN_MANAGE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`CASH_RECEIVE`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`PRICING_TAX_READ`、`REPORT_EXPORT`、`ENT_TEMPLATE_READ`、`BOOKING_VIEW`、`BOOKING_MANAGE`、`SERVICE_TASK_SELF`、`SERVICE_TASK_VIEW`、`SERVICE_TASK_COORDINATE`、`SERVICE_TASK_APPROVE`、`SERVICE_TASK_CLOSE`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -157,6 +165,7 @@
 - `/biz/spec-templates`
 - `/biz/spec-values`
 - `/biz/spu-std`
+- `/biz/store-sales-catalog/versions`
 - `/biz/store-spec-dims`
 
 ### `CAMPAIGN`　（OWNER、MANAGER）
@@ -269,6 +278,9 @@
 - `/biz/entity/{entityNo}`
 - `/biz/inventory/locations/{id}/source`
 - `/biz/member-settings`
+- `/biz/personnel/{personnelNo}/account-links`
+- `/biz/personnel/{personnelNo}/assignments`
+- `/biz/personnel/{personnelNo}/status-changes`
 - `/biz/plan`
 - `/biz/plan/trial`
 - `/biz/role-perms`
@@ -382,6 +394,18 @@
 - `/biz/order/{subOrderNo}/ship/precheck`
 - `/biz/order/{subOrderNo}/waybill`
 
+### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
+
+- `/biz/checkout/{operationNo}/offline-receipts/lookup`
+- `/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}`
+- `/biz/order`
+- `/biz/order/worklist`
+- `/biz/order/{orderNo}/points-earning`
+- `/biz/order/{subOrderNo}`
+- `/biz/order/{subOrderNo}/inventory-trace`
+- `/biz/order/{subOrderNo}/logistics-updates`
+- `/biz/order/{subOrderNo}/trace`
+
 ### `SV_RECHARGE_CREATE`　（OWNER）
 
 - `/biz/stored-value/plan-recharges`
@@ -414,16 +438,6 @@
 - `/biz/pickup/verify`
 - `/biz/pickup/verify/batch`
 - `/biz/pickup/verify/search`
-
-### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
-
-- `/biz/order`
-- `/biz/order/worklist`
-- `/biz/order/{orderNo}/points-earning`
-- `/biz/order/{subOrderNo}`
-- `/biz/order/{subOrderNo}/inventory-trace`
-- `/biz/order/{subOrderNo}/logistics-updates`
-- `/biz/order/{subOrderNo}/trace`
 
 ### `SV_ACCOUNT_READ`　（OWNER）
 
@@ -548,6 +562,10 @@
 
 - `/biz/print/simulations`
 - `/biz/print/simulations/{simulationNo}`
+
+### `CASH_RECEIVE`　（OWNER）
+
+- `/biz/checkout/{operationNo}/offline-receipts`
 
 ### `ENT_ISSUE`　（OWNER）
 

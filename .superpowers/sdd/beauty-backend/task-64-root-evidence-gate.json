@@ -1,0 +1,180 @@
+{
+  "status": "CODE_ACCEPTED_NOT_DEPLOYED",
+  "base": "03a4a70482bf480210eff759bae4830ab653096d",
+  "productPaths": 69,
+  "sourceFixturePinsVerified": 82,
+  "compiledClassPinsAfterFoodVerified": 195,
+  "fixtureSourcePinsVerified": 472,
+  "evidenceArtifactPinsVerified": 223,
+  "finalNative": {
+    "evidence": "green-fdcc25ca-8fd4-46e0-8ae4-b3a186e9e1fc",
+    "tests": 39,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "driver": 0
+  },
+  "architecture": {
+    "tests": 17,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "backendI18n": {
+    "tests": 6,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "foodCompatibility": "current backend+beauty+food canonical reactor;food-embedded;BUILD SUCCESS41.629s;no install",
+  "mutation": "exact actual before-LIMIT settlementfilter source+class deletion;1ownassertionRED;exactfullprovenancerestore;1focusedGREEN. Later disjoint version/contamination/type-wiring/recovery deltas have final39GREEN; no ritual repeat.",
+  "cleanup": "all Task64 UUID Docker label query empty;9 own native temp dirs/sharedlock/currentfood temp absent",
+  "artifacts": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-report-initial-snapshot.md",
+      "bytes": 12512,
+      "sha256": "37cba95d5e79a961214a50becf72776a1ad5dcfc281dfeed8903895c162fc606"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/final-evidence-inventory.json",
+      "bytes": 56289,
+      "sha256": "ee49826902c1847e48d398dcd8dfdbdab680656f0090e2aa451a523c6bee59e2"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-brief.md",
+      "bytes": 17269,
+      "sha256": "f8e8051c9281e70e4e4f2ab7b9980413fd42c74f1edf454e1b62f96cc7bd6cf8"
+    }
+  ],
+  "reviewPackage": {
+    "path": "/tmp/task64-final-review-package-25faab16-d356-463f-ac08-5fe7bc0f3b58.diff",
+    "bytes": 517304,
+    "sha256": "36f99f864226d923fc934b21c8b1c20d07526fa1b2b0a128a6d27e9f4b32b128"
+  },
+  "limits": [
+    "reduced structural fixtures, not full historicalFlyway",
+    "no packaged topology/deployment",
+    "no Paychain/guest/start enablement",
+    "independent review still required"
+  ],
+  "initialIndependentReview": {
+    "path": ".superpowers/sdd/beauty-backend/review-task-64.md",
+    "sha256": "b403f85f03e44d189e697d25c12c94b6a34204763176e37a791141111f53b0cc",
+    "spec": "ISSUES_FOUND",
+    "quality": "NEEDS_FIXES",
+    "critical": 0,
+    "important": 3,
+    "minor": 4
+  },
+  "currentEvidenceBoundary": "CurrentM1 source accepted through original69review +11fileR1 +4fileR2. Original39/arch/i18n/food at historicalpins; currentR2 actual2GREEN and94/211pins. No fullFlyway/deploy/fullcash-core claim.",
+  "r1": {
+    "report": {
+      "path": ".superpowers/sdd/beauty-backend/task-64-report-r1-snapshot.md",
+      "bytes": 25502,
+      "sha256": "2d043765e01af4c39b56ba8baa931281eef5061560488829c1ab5838888f4ffe"
+    },
+    "evidenceIndex": {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r1/final-evidence-inventory.json",
+      "artifacts": 47,
+      "sha256": "09b24939c96501350d67cb048ed793db2463c06f85ae467b934f08ebe081ed0e"
+    },
+    "sourcePins": 88,
+    "classPins": 203,
+    "nativeRed": {
+      "id": "r1-red-d4ba7d41-b55d-4bdd-9a68-cd4d1f98252f",
+      "tests": 4,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    "nativeGreen": {
+      "id": "r1-green-b2a7265e-ce54-4114-ad64-fb9a94a3ef02",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reviewPackage": {
+      "path": "/tmp/task64-r1-review-package-6f3639c9-b27e-45bc-8692-598129161d81.diff",
+      "files": 11,
+      "bytes": 89375,
+      "sha256": "b411dbfec1c715b34fb45e1107320f2a6dd1de3c8a7be6c1364f6e71802b0281"
+    },
+    "fixBaseSnapshot": "/tmp/task64-r1-before-5f00c6b5-465d-4860-b280-30f5ac5ea9df",
+    "cleanup": "actualownDockerUUIDqueryempty; owntemp/sharedlockabsent",
+    "reviewAgent": "/root/review_task64_manual_admission",
+    "reportExpected": ".superpowers/sdd/beauty-backend/review-task-64-r1.md",
+    "review": {
+      "path": ".superpowers/sdd/beauty-backend/review-task-64-r1.md",
+      "sha256": "905c2732cc0e8ee2e72fcaff81b55412233bfd01ec5958b707374583350d715f",
+      "addressed": [
+        "I1",
+        "I2",
+        "I3"
+      ],
+      "open": [
+        "R1-N1"
+      ]
+    }
+  },
+  "r2": {
+    "brief": ".superpowers/sdd/beauty-backend/task-64-fix-r2-brief.md",
+    "fixBaseSnapshot": "/tmp/task64-r2-before-53064a62-ad9a-4313-8efd-d9d6e8c9b8ed",
+    "nativeAuthorized": false,
+    "report": {
+      "path": ".superpowers/sdd/beauty-backend/task-64-report.md",
+      "bytes": 35774,
+      "sha256": "e2ad4813611389593f874e24e3d6626306b71c9a0fb275cb092d9d3ed21ac3fa"
+    },
+    "evidenceIndex": {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/final-evidence-inventory.json",
+      "artifacts": 32,
+      "sha256": "e018e5a4d041010421457ddc24bb7dd6f90b06360e8d908a2375e186fa7f6f44"
+    },
+    "sourcePins": 94,
+    "classPins": 211,
+    "nativeRed": {
+      "id": "r2-red-8295386e-80a0-49c6-af77-a27562ba3576",
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "nativeGreen": {
+      "id": "r2-green-4a0691b6-c2ef-4187-95c0-76770621badb",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reviewPackage": {
+      "path": "/tmp/task64-r2-review-package-e453a535-7dc8-4a71-b271-3721f1df7d97.diff",
+      "files": 4,
+      "bytes": 32521,
+      "sha256": "3c6356306433dc010c8371b5d2b92904278e4ec1512a3c59842fdebfbfb11f1c"
+    },
+    "reviewAgent": "/root/review_task64_manual_admission",
+    "reportExpected": ".superpowers/sdd/beauty-backend/review-task-64-r2.md",
+    "cleanup": "actualownDockerUUIDqueryempty; ownnativeTemp/sharedlockabsent",
+    "review": {
+      "path": ".superpowers/sdd/beauty-backend/review-task-64-r2.md",
+      "sha256": "023912389d234123647a00e3c9f84f9cb9087fa8995c90ff2691825b756e1d2c",
+      "spec": "COMPLIES_REVIEWED_M1_SCOPE",
+      "quality": "APPROVED_WITH_NITS",
+      "openCritical": 0,
+      "openImportant": 0,
+      "trackedMinor": 4
+    }
+  },
+  "codeCommit": "fb8fc86d50a394422be408b94278d50989d8ef8a",
+  "currentProductPaths": 75,
+  "finalIndependentReview": {
+    "path": ".superpowers/sdd/beauty-backend/review-task-64-r2.md",
+    "sha256": "023912389d234123647a00e3c9f84f9cb9087fa8995c90ff2691825b756e1d2c",
+    "spec": "COMPLIES_REVIEWED_M1_SCOPE",
+    "quality": "APPROVED_WITH_NITS",
+    "openCritical": 0,
+    "openImportant": 0,
+    "trackedMinor": 4
+  }
+}

@@ -1,0 +1,31 @@
+# Task55C 工单范围（55B验收后冻结的启动任务）
+55B已在714542115独立复审SpecPASS/QualityApproved，当前ready7、27私表。授权启动C精确开发方案：先补task-55c-design.md说明DAG/确切辅助签名/DTO/锁序/原键/AC映射，控制器技术核对后继续真实业务RED与编码，不需要新用户审批。绑定主TDD Task55与task-55-design.md §2/3/7/8/9/10。
+
+实现052 openWorkOrderFromAppointment、054 openWorkOrder、055 getWorkOrder、155 getMyWorkOrder。Service/DTO签名按方法JSON及已冻结设计。新增052对已有RemoteAppointmentService仅临时fail-closed default兼容，本地必须真实覆盖，59移除default并wire，不称远程已交付。WorkOrderService不要生成056/065–067/071空壳。
+预约转单只CHECKED_IN，当前CUSTOMER+BOOKING_MANAGE、完整scope/revision；复用B成功安排/hold取证、原冻结定义和内部RECEPTION_CHANGE。不隐式签到。仅换资源仍原定义/时长/buffer/政策，UNKNOWN不建单，失败旧安排保留。
+原键先当前身份/权限、完整原requestHash、原operation查找；成功返回原单不重验过期原ticket或旧revision。不同key争同预约根/永久fence/current，只一workOrder；输家确定冲突，不借用赢家结果或产生第二草稿。
+统一WorkOrderCoordinator/Preparation写体供AppointmentService及WorkOrderService调用，不反依赖AppointmentService形成循环。已有预约锁序根→fence→current→reception operation→workOrder/context/tasks/submission→log/outbox；所有事实/RPC锁外，短事务内只核已观察本域版本与持久证据。
+一个短事务写workOrder OPEN/scopeRevision1/startedAt=null/context、每个原成功安排项目一task，qty忠于原快照（通常展开1）、done/void0、PENDING/bindingRevision0/actualStartedAt=null、完整冻结定义/规则。正确parent/store/tenant关联；customer_ref严格USER:/GUEST:，规范身份以context校验，GUEST不能作为buyer。
+同事务写OPEN/RECEIVED submission草稿，版本/范围hash/可信identity/taskRefs，无ticket/secret/外部下单指令/新支付号，nextRetryAt=null；Task58需当前合法人明确submit才进入外域来源。安全event/ActionLog/operation成功同事务，失败全回滚。
+无预约054客户严格核验、真实门店可售SERVICE/P1已发布单步骤定义，qty展开≤10；创建未安排范围，task.status仍PENDING而assignmentState=UNASSIGNED，无appointment/hold/assignment/实际参与，canStart=false。不用无预约054假装立即资源直客（048归D）。
+读取必须先SQL授权根/context父链，C直接USER或同scope不可变claim receipt；task/step/participation只本域真实子行。legacy缺context仅B同店只读UNKNOWN/动作空，C无归属；无真实step/participation返回[]，不得造执行事实。新单source=UNBOUND、canStart=false、availableActions只已实现read，无start/complete/getBill假金额。
+WorkOrderScopeIT原生覆盖一次转单两连接/同键旧revision/变参/多数量与定义/旧规则不被新版本覆盖/未安排/已开单禁重排/软删和错父链/Outbox回滚。真实USER/guest新消费桥接必要时补host，资源fixture边界明示；有效父链或唯一单防线消融必须真实RED后还原GREEN。
+V1–V7冻结不改，不凭代码清理改变唯一键历史。严格生成真源/方法JSON/字典对账与受影响B/native/普通reactor；真实部署归60。低内存测试BEAUTY_TEST_DISK=1、cachedpullnever/UUID/localhost/TCP/finally只清自己，不能动其他food/pricing。
+报告task-55c-report.md，design先写准确辅助方法/AC再业务RED→实现→GREEN，精确owned提交；排除controllerTDD/progress/brief/总体design，不spawn agents、不越D，独立review后才继续。
+
+## 55B 实际接口核对（初版115d1cb74，修复714542115已独立审查通过）
+- WorkOrderPreparation.fromAppointment(BtyAppointment)已实际返回PreparedWorkOrderScope；verifyLocked目前从scope.frozen().holdEvidence().binding()取scope，无预约路径不得直接复用此非空假设。C新增unassigned时需保留同一可信entity/store来源，设计并测试无hold的本域head重核，不伪造资源绑定。
+- ReceptionCoordinator.reassign(entity,store,actor,appointment,long revision,List<AppointmentAssignmentReq>,OffsetDateTime startAt,String key)实际返回BtyAppointmentOperation：无变更返回null，待决/确定结果使用原操作。C必须持久外层接待operation与派生key/原预约operation的关联；不能把null或UNKNOWN一概当可建单，也不能重建随机操作。
+- fromAppointment内部先调用currentArrangementEvidence（含owner hold读取）再db.read；只允许锁外使用。已有verifyLocked仅检查本域definition/policy heads；C最终根锁内还须比较本次观察的根revision/安排hash/hold/current/fence及已存在工单，不能把head检查代替原子一次转单。
+- B已提供WorkOrderTaskSnapshotVO/RequirementVO/StepTemplateVO及FrozenAppointmentScope等；C沿用，不重新定义同义DTO或复制冻结规则加载器。若B审查修复改变这些接口，冻结C前重新核对此节。
+
+## B已验收的容量合同增量
+控制器已裁决保留同一requirement的多份容量可来自同一resource。V7已以追加迁移将assignment uk2改普通同列索引，每份planned_assignment_no仍唯一，V1–6不改；V7 SHA及执行前独立记录见v7-preexecution-root-record.json。B修复及复审已通过；C使用实际ready7。
+转工单范围测试必须包含原item qty展开与requirement qty两类不同数量：一个服务项目可要求ROOM qty2且同一capacity2资源提供两份；任务仍按服务项目数建行，冻结requirements.qty=2，assignments保留两份，不按resourceNo去重丢容量、不把资源份数当服务task数量。跨item共享同一容量资源亦按原计划守恒。
+
+## C启动前必须解决的DAG接口冲突
+实际B把reassign放在ReceptionCoordinator；C若WorkOrderCoordinator调用它，而D又要求ReceptionCoordinator调用WorkOrderCoordinator，将出现双向依赖。精确C设计必须先解决：将这段已审重排真实实现移到同域单一职责辅助（如ReceptionReassignment）或其他无环既有归属，C与接待流程共同消费同一个实现，禁止复制重排体、通过ObjectProvider/懒加载掩盖循环、反调Service层。不预设B补丁中就更改归属；C设计文件应画出新Bean DAG并列出受影响原ReceptionBusinessIT装配与回归。
+
+实施基线：7145421152938f09624d25a3f1a9204a392b6e66（控制器验收文档commit随后记录dispatch BASE）。V7 SHA8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2；V1–7不改，不造V8，确有数据合同缺口先向控制器提交精确方案。资源与目录fixture边界如实，真实公开协议与部署仍59/60。
+
+C精确方案已由控制器逐项核对，授权继续RED/实现：ReceptionReassignment单一移实现，prepareReception既有短TX绑定外层op，无预约prepared增加可信Scope。scopeHash在外层op准备时由原item或展开lineIndex/定义/规则/身份/安排/qty/uom稳定计算，排除最终随机task/workOrder/submission号；最终草稿记录真实taskRefs及相同语义hash。context.frozen_scope须保存完整原定义/安排/hold引用与实际task映射，复用已有typed冻结对象，不靠后续当前预约重建；无预约hold为空，不存proof。首RED可在完整DTO/已裁决兼容default后，真实已签到本地052期望OPEN而未实现业务失败，不能把编译/装配错计RED。详task-55c-design.md修订。

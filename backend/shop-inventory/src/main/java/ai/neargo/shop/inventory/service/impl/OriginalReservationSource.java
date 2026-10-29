@@ -10,6 +10,9 @@ import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundOrderMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationMapper;
 import ai.neargo.shop.inventory.support.InvEnums;
+import ai.neargo.shop.inventory.policy.ExecutionStockRetentionGuard;
+import ai.neargo.shop.inventory.entity.InvLedger;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,19 +29,26 @@ class OriginalReservationSource {
     private final ReservationLineMapper lines;
     private final OutboundOrderMapper outbound;
     private final OutboundLineMapper outboundLines;
+    private final ExecutionStockRetentionGuard retention;
+    private final LedgerMapper ledger;
 
     OriginalReservationSource(ReservationMapper reservations, ReservationLineMapper lines,
-                              OutboundOrderMapper outbound, OutboundLineMapper outboundLines) {
+                              OutboundOrderMapper outbound, OutboundLineMapper outboundLines,
+                              ExecutionStockRetentionGuard retention, LedgerMapper ledger) {
         this.reservations = reservations;
         this.lines = lines;
         this.outbound = outbound;
         this.outboundLines = outboundLines;
+        this.retention = retention;
+        this.ledger = ledger;
     }
 
     List<Source> lock(String originalRef) {
-        List<InvReservation> heads = reservations.selectList(Wrappers.<InvReservation>lambdaQuery()
-                .eq(InvReservation::getExternalRef, originalRef).orderByAsc(InvReservation::getOwnerId)
-                .last("FOR UPDATE"));
+        List<InvReservation> heads = reservations.lockOriginal(originalRef);
+        for (var head : heads) {
+            lines.lockOriginal(head.getReservationId());
+        }
+        retention.requireUnretained(heads);
         if (heads.isEmpty()) {
             throw invalid();
         }
@@ -65,9 +75,8 @@ class OriginalReservationSource {
                 || !Objects.equals(actual.getReservationId(), head.getReservationId())) {
             throw invalid();
         }
-        List<InvReservationLine> original = lines.selectList(Wrappers.<InvReservationLine>lambdaQuery()
-                .eq(InvReservationLine::getReservationId, head.getReservationId())
-                .orderByAsc(InvReservationLine::getId));
+        List<InvReservationLine> original = lines.lockOriginal(head.getReservationId());
+        requireUnreversed(actual);
         Map<String, Long> costs = verifyLines(actual, original);
         return original.stream().map(line -> new Source(line, costs.get(line.getItemId()), line.getQty())).toList();
     }
@@ -77,8 +86,7 @@ class OriginalReservationSource {
                 InvEnums.ReservationStatus.PARTIAL_UNPAID, InvEnums.ReservationStatus.ISSUED_UNPAID)
                 .contains(head.getStatus())) throw invalid();
         List<Source> result = new ArrayList<>();
-        for (InvReservationLine line : lines.selectList(Wrappers.<InvReservationLine>lambdaQuery()
-                .eq(InvReservationLine::getReservationId, head.getReservationId()).orderByAsc(InvReservationLine::getId))) {
+        for (InvReservationLine line : lines.lockOriginal(head.getReservationId())) {
             if (line.getIssuedQty() == null || line.getIssuedQty() == 0) continue;
             if (line.getIssuedQty() + (line.getReleasedQty() == null ? 0 : line.getReleasedQty()) > line.getQty()
                     || line.getOutboundNo() == null) throw invalid();
@@ -89,11 +97,13 @@ class OriginalReservationSource {
                     || !Objects.equals(actual.getSourceRef(), originalRef)
                     || !Objects.equals(actual.getReservationId(), head.getReservationId())
                     || !Objects.equals(actual.getLocationId(), line.getLocationId())) throw invalid();
+            requireUnreversed(actual);
             Map<String, Integer> expected = Map.of(line.getItemId(), line.getIssuedQty());
             Map<String, Integer> posted = new HashMap<>();
             Map<String, Long> costs = new HashMap<>();
             for (InvOutboundLine outLine : outboundLines.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
-                    .eq(InvOutboundLine::getOutboundNo, actual.getOutboundNo()))) {
+                    .eq(InvOutboundLine::getOutboundNo, actual.getOutboundNo()).orderByAsc(InvOutboundLine::getLineNo)
+                    .last("FOR UPDATE"))) {
                 if (!Objects.equals(outLine.getOwnerId(), head.getOwnerId()) || outLine.getQty() == null
                         || outLine.getQty() <= 0) throw invalid();
                 posted.merge(outLine.getItemId(), outLine.getQty(), Math::addExact);
@@ -118,7 +128,8 @@ class OriginalReservationSource {
         Map<String, Integer> posted = new HashMap<>();
         Map<String, Long> costs = new HashMap<>();
         for (InvOutboundLine line : outboundLines.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
-                .eq(InvOutboundLine::getOutboundNo, actual.getOutboundNo()))) {
+                .eq(InvOutboundLine::getOutboundNo, actual.getOutboundNo()).orderByAsc(InvOutboundLine::getLineNo)
+                    .last("FOR UPDATE"))) {
             if (!Objects.equals(line.getOwnerId(), actual.getOwnerId()) || line.getQty() == null
                     || line.getQty() <= 0 || (costs.containsKey(line.getItemId())
                     && !Objects.equals(costs.get(line.getItemId()), line.getUnitCostMinor()))) {
@@ -131,6 +142,16 @@ class OriginalReservationSource {
             throw invalid();
         }
         return costs;
+    }
+
+    private void requireUnreversed(InvOutboundOrder actual) {
+        var reversals = ledger.selectList(Wrappers.<InvLedger>lambdaQuery()
+                .eq(InvLedger::getOwnerId, actual.getOwnerId())
+                .eq(InvLedger::getDocNo, actual.getOutboundNo() + "-R")
+                .orderByAsc(InvLedger::getLineNo).last("FOR UPDATE"));
+        if (!reversals.isEmpty()) {
+            throw invalid();
+        }
     }
 
     private IllegalStateException invalid() {

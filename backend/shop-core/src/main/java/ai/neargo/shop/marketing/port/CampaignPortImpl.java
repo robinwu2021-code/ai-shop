@@ -1,13 +1,24 @@
 package ai.neargo.shop.marketing.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.marketing.campaign.CampaignJson;
+import ai.neargo.shop.marketing.campaign.CounterCampaignFence;
+import ai.neargo.shop.marketing.campaign.CounterCampaignRules;
+import ai.neargo.shop.spi.marketing.CounterCampaignContract;
 import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.product.ProductScopeFactsPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.spring.SqlSessionUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
@@ -15,6 +26,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.HashSet;
+
+import javax.sql.DataSource;
 
 /**
  * trade → marketing：店铺活动的自动优惠（{@link CampaignPort}）。
@@ -47,6 +64,247 @@ public class CampaignPortImpl implements CampaignPort {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setProductFacts(ProductScopeFactsPort productFacts) {
         this.productFacts = productFacts;
+    }
+
+    @Autowired
+    @Qualifier("sqlSessionFactory")
+    private SqlSessionFactory counterSessions;
+
+    private void currentCounterReads() {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var session = SqlSessionUtils.getSqlSession(counterSessions);
+        try {
+            session.clearCache();
+        } finally {
+            SqlSessionUtils.closeSqlSession(session, counterSessions);
+        }
+    }
+
+    @Autowired
+    @Qualifier("dataSource")
+    private DataSource checkoutSource;
+
+    @Autowired
+    private CounterCampaignFence counterFence;
+
+    @Override
+    public List<AppliedActivity> counterCandidates(CustomerParty party, List<MerchantAmount> groups) {
+        return counterCandidates(party, groups, Map.of()).candidates();
+    }
+
+    @Override
+    public CounterCandidates counterCandidates(CustomerParty party, List<MerchantAmount> groups,
+            Map<String, String> choices) {
+        lockCounter(groups);
+        return evaluateCounter(party, groups, choices, System.currentTimeMillis());
+    }
+
+    /** Direct legacy callers acquire the same absence fence as the primary combined-owner router. */
+    public void lockCounter(List<MerchantAmount> groups) {
+        var canonical = CounterCampaignContract.canonicalGroups(groups);
+        counterFence.lock("MAIN", canonical.stream().map(MerchantAmount::merchantNo).toList());
+    }
+
+    /** One fenced current read supplies all supported display candidates and the selected frozen rule facts. */
+    public CounterCandidates evaluateCounter(CustomerParty party, List<MerchantAmount> groups,
+            Map<String, String> choices, long ownerNowMillis) {
+        currentCounterReads();
+        var canonical = CounterCampaignContract.canonicalGroups(groups);
+        var normalized = CounterCampaignContract.normalizeChoices(canonical, choices);
+        var choice = CounterCampaignContract.resolveChoices(canonical, normalized).getFirst();
+        var group = canonical.getFirst();
+        var scoped = DataScopeContext.executeWithoutScope(() -> {
+            var heads = campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+                    .eq(MktCampaign::getTenantNo, "MAIN").eq(MktCampaign::getEntityNo, group.merchantNo())
+                    .eq(MktCampaign::getDeleted, 0).orderByAsc(MktCampaign::getId));
+            var storeIds = new HashSet<>(campaignMapper.selectList(Wrappers.<MktCampaign>lambdaQuery()
+                    .eq(MktCampaign::getTenantNo, "MAIN").eq(MktCampaign::getEntityNo, group.merchantNo())
+                    .eq(MktCampaign::getDeleted, 0).eq(MktCampaign::getStoreNo, group.storeNo()))
+                    .stream().map(MktCampaign::getId).toList());
+            return heads.stream().filter(row -> row.getStoreNo() == null || row.getStoreNo().isBlank()
+                    || storeIds.contains(row.getId())).toList();
+        });
+        var candidates = new ArrayList<AppliedActivity>();
+        MktCampaign selected = null;
+        long selectedAmount = -1;
+        boolean foundExplicit = false;
+        for (var row : scoped) {
+            boolean explicit = "EXPLICIT".equals(choice.mode())
+                    && choice.activityNo().equals(row.getCampaignNo());
+            if (!explicit && !CounterCampaignRules.active(row, ownerNowMillis)) {
+                continue;
+            }
+            var goods = CounterCampaignRules.goodsNos(json, row.getGoodsNos());
+            if (explicit) {
+                foundExplicit = true;
+                if (!MktCampaign.FULL_CUT.equals(row.getType()) || !goods.isEmpty()) {
+                    throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                }
+            }
+            if (CounterCampaignRules.mandatoryPriceOrGiftEffect(row, goods, group, ownerNowMillis)
+                    || "AUTO".equals(choice.mode())
+                    && CounterCampaignRules.scopedFullCutEffect(row, goods, group, ownerNowMillis)) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+            if (!CounterCampaignRules.supportedEligible(row, goods, group, ownerNowMillis)) {
+                if (explicit) {
+                    throw BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE);
+                }
+                continue;
+            }
+            var candidate = CounterCampaignRules.candidate(row, goods, group, ownerNowMillis);
+            candidates.add(candidate);
+            if (explicit || "AUTO".equals(choice.mode()) && candidate.amountMinor() > selectedAmount) {
+                selected = row;
+                selectedAmount = candidate.amountMinor();
+            }
+        }
+        if ("EXPLICIT".equals(choice.mode()) && !foundExplicit) {
+            throw BizException.of(ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE);
+        }
+        var discount = Discount.none();
+        List<CounterRule> rules = List.of();
+        if (selected != null) {
+            if (selectedAmount >= group.goodsAmount()) {
+                throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+            }
+            var applied = CounterCampaignRules.candidate(selected, List.of(), group, ownerNowMillis);
+            discount = new Discount(selectedAmount,
+                    List.of(new MerchantDiscount(group.merchantNo(), selectedAmount, group.storeNo())),
+                    List.of(applied));
+            rules = List.of(CounterCampaignRules.selectedRule(selected, List.of(), group, ownerNowMillis));
+        }
+        return new CounterCandidates(candidates, discount,
+                CounterCampaignRules.seal(json, party, canonical, normalized, rules));
+    }
+
+    @Override
+    public void requireCounterSelection(CustomerParty party, List<MerchantAmount> originalGroups,
+            Map<String, String> originalChoices, CounterActivitySeal originalSeal, Discount originalSelected) {
+        requireCounterEvidence(party, originalGroups, originalChoices, originalSeal, originalSelected);
+        lockCounter(originalGroups);
+        try {
+            var current = evaluateCounter(party, originalGroups, originalChoices, System.currentTimeMillis());
+            requireSameCounter(originalSeal, current);
+        } catch (BizException failure) {
+            if (failure.errorCode() == ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION
+                    || failure.errorCode() == ErrorCode.ACTIVITY_CHOICE_UNAVAILABLE) {
+                throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+            }
+            throw failure;
+        }
+    }
+
+    /** Validate frozen evidence before any current owner result can be compared with it. */
+    public void requireCounterEvidence(CustomerParty party, List<MerchantAmount> groups, Map<String, String> choices,
+            CounterActivitySeal seal, Discount selected) {
+        try {
+            CounterCampaignContract.requireSelection(json, seal, party, groups, choices, selected);
+        } catch (RuntimeException invalid) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    /** Names and competing display rows are not selected economic authority. */
+    public void requireSameCounter(CounterActivitySeal original, CounterCandidates current) {
+        if (!Objects.equals(original, current.seal())) {
+            throw BizException.of(ErrorCode.CHECKOUT_QUOTE_STALE);
+        }
+    }
+
+    @Override
+    public void requireCounterSelection(CustomerParty party, Discount selected) {
+        if (party == null
+                || selected == null
+                || selected.total() != 0
+                || !selected.shares().isEmpty()
+                || !selected.applied().isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+    }
+
+    @Override
+    public Map<String, Long> counterFlashPrices(CustomerParty party, Collection<String> goodsNos) {
+        if (party == null || goodsNos == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!flashPrices(goodsNos).isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        return Map.of();
+    }
+
+    @Override
+    public Map<String, GiftRule> counterGiftRules(
+            CustomerParty party, Collection<String> goodsNos) {
+        if (party == null || goodsNos == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!giftRules(goodsNos).isEmpty()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        return Map.of();
+    }
+
+    @Override
+    public void commitCounter(CustomerParty party, String orderNo, Discount discount) {
+        if (party == null || orderNo == null || discount == null
+                || !TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(checkoutSource)
+                || discount.total() < 0 || discount.applied().size() > 1
+                || discount.shares().size() != discount.applied().size()
+                || discount.applied().stream().anyMatch(a -> a.platformMinor() != 0 || a.enrollmentNo() != null
+                        || a.qty() != 1 || a.amountMinor() <= 0)
+                || discount.applied().stream().mapToLong(AppliedActivity::amountMinor).sum() != discount.total()
+                || discount.shares().stream().mapToLong(MerchantDiscount::amount).sum() != discount.total()) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        // The supported legacy merchant discount has no usage or account quota ledger.
+    }
+
+    @Override
+    public List<AppliedActivity> candidatesFor(String buyerNo, List<MerchantAmount> groups) {
+        return candidates(groups);
+    }
+
+    @Override
+    public Map<String, Long> flashPricesFor(String buyerNo, Collection<String> goodsNos) {
+        return flashPrices(goodsNos);
+    }
+
+    @Override
+    public Map<String, GiftRule> giftRulesFor(String buyerNo, Collection<String> goodsNos) {
+        return giftRules(goodsNos);
+    }
+
+    @Override
+    public void requireOrdinarySelection(String buyerNo, Discount selected) {
+        boolean locked = TransactionSynchronizationManager.isActualTransactionActive();
+        if (locked && !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    for (var selectedRow :
+                            selected.applied().stream()
+                                    .sorted(Comparator.comparing(AppliedActivity::activityNo))
+                                    .toList()) {
+                        var row =
+                                campaignMapper.selectOne(
+                                        Wrappers.<MktCampaign>lambdaQuery()
+                                                .eq(MktCampaign::getTenantNo, "MAIN")
+                                                .eq(
+                                                        MktCampaign::getCampaignNo,
+                                                        selectedRow.activityNo())
+                                                .last(locked ? "FOR UPDATE" : ""));
+                        if (row == null || !"FULL_CUT".equals(row.getType())) {
+                            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+                        }
+                    }
+                });
     }
 
     @Override

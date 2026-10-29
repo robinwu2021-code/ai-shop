@@ -1,0 +1,221 @@
+{
+  "task": "Task68/C02",
+  "status": "ALL_36_SOURCES_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+  "baselineProductCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9",
+  "baselineDocsCommit": "28ebe9f111ede8363194cd0e42d50005de465a39",
+  "codingBaseCommit": null,
+  "design": ".superpowers/sdd/beauty-backend/task-68-design-addendum.md",
+  "designSha256": "8a74b6e40a0cf792a0326eb42a720071fd8b59513a5c8a00589238ef08aff763",
+  "phase": "A_CODE_AND_TEST_COMPILE_ONLY",
+  "runtimeTestsAllowed": false,
+  "migrationExecutionAllowed": false,
+  "paymentIntegration": false,
+  "canStart": false,
+  "modify": [
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CampaignPort.java",
+      "baselineSha256": "92d0cce6d20c04faa38220a8a7659d26a95fc3f386575aa3774bc9266f602476"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "baselineSha256": "0eef6dbdaf21e3b0cdb088a10668a6bfa5f9549aff741fc340bc9be2e7909a04"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/port/CampaignPortImpl.java",
+      "baselineSha256": "9f6b09eea179d6e27ca0faf42159136a5cf5dce35530ce9ef8c450a5f6bd6adc"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/ActivityPricingService.java",
+      "baselineSha256": "741dd7f641a59829f0d3413a8eafe7bf3280bad17aca3f2b558d3da75655d185"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/ActivityPricingServiceImpl.java",
+      "baselineSha256": "9c4b0d95a4b59dd9d2bbec9c0aec6dd5a6618ff2c4d9df74a44cb87647592a92"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/port/GoodsQueryPortImpl.java",
+      "baselineSha256": "0124ba379cd909cea9865cca311b9e2aeaea64d259afeb50921f74bd2a60cfa1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java",
+      "baselineSha256": "50e7f668b1972c0475c1c3df21d2a052f4f5c22fad1985b88f7bdadfa27ba307"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/CheckoutOrderWriter.java",
+      "baselineSha256": "c6304561ad76d903c7872008857318b58d64b68304a8fee70f3be7a0c61d98b8"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
+      "baselineSha256": "c2dff79753f935c1137af4925825a3ddc455d8f43bff7e14e122feffe5df956b"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+      "baselineSha256": "ab1f780e1b7e0763b741ac4a1c72919b4c113f6bccd96f24e640043485def23f"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutEconomicSnapshot.java",
+      "baselineSha256": "f7efd1585e981c91393a09e2007319c9619d7a847facfb0dfcd856705eb48cae"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutPricingScope.java",
+      "baselineSha256": "c913c40c672a3ad3c205171f7955fe9ece685378975ed7207180da88e6efb32b"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java",
+      "baselineSha256": "768d4233b8ee3ce1d0e6827a9fa626c8b44b8acbb4cf0996be9c7fc00acec7d3"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/CounterOrderPlacementServiceImpl.java",
+      "baselineSha256": "18dba60e54748f5cb7e3b2b640e6b779d9aa2bb2506b8cac18f6b3949eed6125"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/OrderCreationRecoveryServiceImpl.java",
+      "baselineSha256": "ab81f7f00668ae40f5136f08ab91854bb6fbb438c4a29e33a1a94909c2a47664"
+    },
+    {
+      "path": "packages/shared/tests/entity-alignment.test.ts",
+      "baselineSha256": "2756d20054045dcc8cd6443130fa53d223ac4d84a602f402f4eda411180e06ea"
+    },
+    {
+      "path": "scripts/lib/schema-lineage.mjs",
+      "baselineSha256": "ff101d151bcc656f6a463b1f0eaca3ad86f0b2cf5e549579b73ef9f07c0bec46"
+    },
+    {
+      "path": "packages/shared/tests/schema-lineage.test.ts",
+      "baselineSha256": "1a78cd9d604a5d66b278fa98f47f97a9b6dfd497d7008552ccfc27bb362fdd2b"
+    },
+    {
+      "path": "scripts/verify-manual-counter-source.mjs",
+      "baselineSha256": "471cd2cf309a3ca9d6fc827530d49bb9793cc15295ccbf016eccf3819247d38c"
+    },
+    {
+      "path": "scripts/tests/manual-counter-source-runner.test.mjs",
+      "baselineSha256": "07e37527eeff415e91e07082e78bf75d420fbc25d08f08c94ba3c49397648fdc"
+    }
+  ],
+  "create": [
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V543__counter_campaign_owner_fence.sql"
+    },
+    {
+      "path": "docs/technical/design/schema/counter-campaign-owner-fence-schema.json"
+    },
+    {
+      "path": "scripts/gen-counter-campaign-owner-fence-schema.mjs"
+    },
+    {
+      "path": "backend/shop-core/src/main/resources/schema/counter-campaign-owner-fence-descriptor.json"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterDiscountIT.java"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterDiscountFixture.java"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/CounterCampaignFenceIT.java"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCompatibilityTest.java"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/marketing/campaign/CounterCampaignRulesTest.java"
+    },
+    {
+      "path": "scripts/tests/counter-campaign-owner-fence-schema.test.mjs"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java"
+    }
+  ],
+  "deferredBaselineBytes": [
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/ordinary-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/m1-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/m2a-user-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/m2a-guest-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/m2a-pending-plan-v1.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    },
+    {
+      "path": "backend/shop-core/src/test/resources/counter-economics/hashes.json",
+      "status": "DEFERRED_BASELINE_BYTES_PHASE_B",
+      "producer": "genuine pinned prechange serializer sources/classes; no generated or hand-tuned bytes in phase A"
+    }
+  ],
+  "runtimeGate": "Root creates fresh finite Task68 gate/pins only in unified phase B; no m2a/m2b gate fallback",
+  "rootOwned": [
+    "main TDD and paired beauty metadata/rendered documents",
+    "task brief/inventory/reports/gates/ledger",
+    "existing ER generated outputs if actually changed by new V543"
+  ],
+  "frozen": [
+    "all existing platform V1–V542 migrations",
+    "inventory V1–V14",
+    "beauty V1–V9",
+    "CounterOrderPlan public shape",
+    "ordinary/M1 pricing and source hash tuples"
+  ],
+  "migrationReservations": {
+    "C02": "platform V543",
+    "M3": "platform V544 (was uncreated V543)",
+    "M4": "platform V545 (was uncreated V544)",
+    "beauty": "V10 unchanged; all future numbers rechecked before creation"
+  },
+  "codingBaseReference": "Root supplies exact HEAD at dispatch after this publication commit",
+  "task68ACodeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6",
+  "identityEquivalenceOverlay": {
+    "path": ".superpowers/sdd/beauty-backend/task-68a-fix1-brief.md",
+    "sha256": "4849fae9c4ace5cfed7d7ada4117aac016d3ed192069a9532722cbbdb4de7e5f"
+  },
+  "sharedContractOverlay": {
+    "design": ".superpowers/sdd/beauty-backend/task-68b-shared-contract-addendum.md",
+    "designSha256": "7005f0483528a88476892cbaa40e097a16f33fbcdbe2082aaf113a3ed59c12e5",
+    "review": ".superpowers/sdd/beauty-backend/review-task-68b-shared-contract.md",
+    "reviewSha256": "882263d7c8f882bfcc5ff4dced414214fc827252dd678a2bc3b944dd911bd388"
+  },
+  "materializationOverlay": {
+    "path": ".superpowers/sdd/beauty-backend/task-68c-materialization-addendum.md",
+    "sha256": "ef6c5418d562eb89764413b00ac326b46387d757e8025a342bcc673629aaa0f7",
+    "status": "DESIGN_STATIC_REVIEW_APPROVED_C_TWO_SCRIPT_CODE_RELEASED_RUNTIME_NOT_AUTHORIZED_NOW"
+  },
+  "codeCommits": {
+    "A": "5aa1769f2c1719cd86f0cdf4528699527827d7e6",
+    "B1": "419e9d94fa5618d8783abcdb847201c05fa1d525",
+    "B2": "5477210b96ef3339f340ac5d715263d8abf27a19",
+    "C": "1b222220605d87c2400da144668add9cbb1fc08e"
+  },
+  "codePhaseGate": ".superpowers/sdd/beauty-backend/task-68-code-phase-root-gate.json"
+}

@@ -1,5 +1,8 @@
 package ai.neargo.shop.spi.marketing;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+
 import java.util.List;
 
 /**
@@ -9,6 +12,16 @@ import java.util.List;
  * （门槛、出资方、商家券只作用于本店），放在 trade 里算意味着每加一种券型都要改交易主干。
  */
 public interface CouponPort {
+    /** Quote only supported local coupon owners; this capability must never fall back to remote PAY routing. */
+    default Allocation quoteOrdinary(
+            String userNo, String userCouponNo, List<MerchantAmount> groups) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Hold the local migration root and instance on the existing platform transaction until order commit. */
+    default void lockOrdinary(String userNo, String userCouponNo) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
 
     /**
      * 计算券在各子单上的分摊。

@@ -1,0 +1,68 @@
+{
+  "reportSha256": "cdfa25331b24219c1f4683eefd35abbb94c003d3282d324412d5f3aa7906bbdc",
+  "manifestSha256": "3adb5d5f58b38f92ccc812bef23ed67ac49803d00e28d639a27ac58ebd71a988",
+  "briefSha256": "cb666cb9b8c6c810807eb47e84d694c8ccbbe0e2511d84f15103a536d7637a2c",
+  "filesVerified": 3,
+  "counts": {
+    "red": {
+      "tests": 29,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "green-attempt-query-error": {
+      "tests": 29,
+      "failures": 0,
+      "errors": 5,
+      "skipped": 0
+    },
+    "green-attempt-decimal-scale": {
+      "tests": 29,
+      "failures": 5,
+      "errors": 0,
+      "skipped": 0
+    },
+    "focused-green": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "action-red": {
+      "tests": 2,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "receipt-red": {
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "quantity-red": {
+      "tests": 2,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "restored-green": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "node": "8/0/0/0",
+  "restoreProofsIdentical": true,
+  "compiledClassVerified": true,
+  "allOwnContainersAbsent": 10,
+  "sharedLockAbsent": true,
+  "sqlKnownUnchanged": true,
+  "formalDeployment": false,
+  "finalSingle29GreenClaim": false,
+  "productCommit": "ba07edc99c7b88a1d3de70c18c6e0586eae0073c",
+  "productTree": "aef658a25ee5ea378a857bca2d74e4779403c417",
+  "reviewSha256": "5c5c2233a04ee1264f824a6f59ed192ee1dd0008ee71634a482771cca34a3ba8",
+  "scope": "A3 code/test fixture only; whole BM04 and formal deployment pending"
+}

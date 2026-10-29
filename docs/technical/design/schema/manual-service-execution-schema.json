@@ -1,0 +1,1090 @@
+{
+  "schemaVersion": 1,
+  "owner": "shop-core/primary",
+  "platformVersion": 604,
+  "migration": "backend/shop-app/src/main/resources/db/migration/V604__manual_service_execution_authority.sql",
+  "resource": "backend/shop-core/src/main/resources/META-INF/shop/manual-service-execution-schema.json",
+  "ownerIdentity": [
+    {
+      "table": "ord_checkout_line",
+      "column": "tenant_no",
+      "role": "TENANT",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "ord_checkout_operation",
+      "column": "tenant_no",
+      "role": "TENANT",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "ord_manual_service_admission",
+      "column": "tenant_no",
+      "role": "TENANT",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "ord_checkout_operation",
+      "column": "entity_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "ord_checkout_operation",
+      "column": "store_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "ord_manual_service_admission",
+      "column": "entity_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "ord_manual_service_admission",
+      "column": "store_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "ord_checkout_line",
+      "column": "source_line_no",
+      "role": "BINARY",
+      "type": "varchar(40)"
+    }
+  ],
+  "tables": [
+    {
+      "name": "ord_service_execution_unit",
+      "tag": "seu",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "caller",
+          "type": "varchar(16)",
+          "nullable": false,
+          "default": "'BEAUTY'",
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_operation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "order_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "sub_order_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_line_no",
+          "type": "varchar(40)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "order_item_id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "unit_ordinal",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "ordered_units",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "uom",
+          "type": "varchar(8)",
+          "nullable": false,
+          "default": "'COUNT'",
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "work_order_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "binding_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "binding_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "state",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "current_execution_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "attempt_no",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "source_identity_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_seu_source_unit": [
+          "tenant_no",
+          "source_line_no",
+          "unit_ordinal"
+        ],
+        "uk_seu_task": [
+          "tenant_no",
+          "entity_no",
+          "caller",
+          "task_no"
+        ],
+        "uk_seu_unit": [
+          "tenant_no",
+          "unit_no"
+        ]
+      },
+      "indexes": {
+        "idx_seu_source": [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "source_line_no",
+          "unit_ordinal"
+        ]
+      },
+      "checks": {
+        "ck_seu_base": "tenant_no='MAIN' AND version>0 AND deleted=0",
+        "ck_seu_lane": "caller='BEAUTY' AND quantity=1 AND uom='COUNT'",
+        "ck_seu_count": "ordered_units BETWEEN 1 AND 999 AND unit_ordinal BETWEEN 1 AND ordered_units",
+        "ck_seu_revisions": "binding_revision>0 AND order_item_id>0 AND attempt_no>=0",
+        "ck_seu_state": "state IN ('BOUND','RESERVED','PERFORMED','VOIDED')",
+        "ck_seu_current": "(state='RESERVED' AND current_execution_no IS NOT NULL AND attempt_no>0) OR (state<>'RESERVED' AND current_execution_no IS NULL)",
+        "ck_seu_hashes": "source_identity_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_seu_references": "(CHAR_LENGTH(TRIM(tenant_no))>0 AND CHAR_LENGTH(tenant_no)=CHAR_LENGTH(TRIM(tenant_no))) AND (CHAR_LENGTH(TRIM(unit_no))>0 AND CHAR_LENGTH(unit_no)=CHAR_LENGTH(TRIM(unit_no))) AND (CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(entity_no)=CHAR_LENGTH(TRIM(entity_no))) AND (CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))) AND (CHAR_LENGTH(TRIM(source_operation_no))>0 AND CHAR_LENGTH(source_operation_no)=CHAR_LENGTH(TRIM(source_operation_no))) AND (CHAR_LENGTH(TRIM(order_no))>0 AND CHAR_LENGTH(order_no)=CHAR_LENGTH(TRIM(order_no))) AND (CHAR_LENGTH(TRIM(sub_order_no))>0 AND CHAR_LENGTH(sub_order_no)=CHAR_LENGTH(TRIM(sub_order_no))) AND (CHAR_LENGTH(TRIM(source_line_no))>0 AND CHAR_LENGTH(source_line_no)=CHAR_LENGTH(TRIM(source_line_no))) AND (CHAR_LENGTH(TRIM(task_no))>0 AND CHAR_LENGTH(task_no)=CHAR_LENGTH(TRIM(task_no))) AND (CHAR_LENGTH(TRIM(work_order_no))>0 AND CHAR_LENGTH(work_order_no)=CHAR_LENGTH(TRIM(work_order_no))) AND (CHAR_LENGTH(TRIM(binding_no))>0 AND CHAR_LENGTH(binding_no)=CHAR_LENGTH(TRIM(binding_no))) AND (current_execution_no IS NULL OR (CHAR_LENGTH(TRIM(current_execution_no))>0 AND CHAR_LENGTH(current_execution_no)=CHAR_LENGTH(TRIM(current_execution_no))))"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "unit_no",
+        "entity_no",
+        "store_no",
+        "caller",
+        "source_operation_no",
+        "order_no",
+        "sub_order_no",
+        "source_line_no",
+        "order_item_id",
+        "unit_ordinal",
+        "ordered_units",
+        "quantity",
+        "uom",
+        "task_no",
+        "work_order_no",
+        "binding_no",
+        "binding_revision",
+        "source_identity_hash"
+      ],
+      "comment": "Permanent original manual service unit; no recycling"
+    },
+    {
+      "name": "ord_service_execution",
+      "tag": "sex",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "attempt_no",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "grant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "uom",
+          "type": "varchar(8)",
+          "nullable": false,
+          "default": "'COUNT'",
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "state",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "binding_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "binding_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_intent_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "prepare_action_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "prepare_key_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "prepare_action_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "declaration_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "admission_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "manual_source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "manual_source_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "original_stock_manifest_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "confirmation_no",
+          "type": "varchar(40)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "stock_observation_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_fence_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_fence_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "resource_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_outcome_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "resource_outcome_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        },
+        {
+          "name": "observation_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "reason_code",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_sex_execution": [
+          "tenant_no",
+          "execution_no"
+        ],
+        "uk_sex_grant": [
+          "tenant_no",
+          "grant_no"
+        ],
+        "uk_sex_attempt": [
+          "tenant_no",
+          "unit_no",
+          "attempt_no"
+        ],
+        "uk_sex_prepare_key": [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "prepare_key_hash"
+        ]
+      },
+      "indexes": {
+        "idx_sex_recovery": [
+          "tenant_no",
+          "state",
+          "next_retry_at",
+          "id"
+        ],
+        "idx_sex_scope": [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "execution_no"
+        ]
+      },
+      "checks": {
+        "ck_sex_base": "tenant_no='MAIN' AND version>0 AND deleted=0",
+        "ck_sex_count": "attempt_no>0 AND quantity=1 AND uom='COUNT'",
+        "ck_sex_revisions": "admission_revision>0 AND manual_source_revision>0 AND source_fence_revision>0 AND observation_epoch>=0",
+        "ck_sex_state": "state IN ('PREPARED','SUSPEND_REQUESTED','STARTED','STARTED_SUSPENDED','RELEASING','RELEASED','FULFILLED')",
+        "ck_sex_json": "JSON_VALID(binding_json) AND JSON_TYPE(binding_json)='OBJECT' AND OCTET_LENGTH(binding_json)<=262144 AND JSON_CONTAINS_PATH(binding_json,'all','$.schema','$.binding')=1 AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.schema'))='MANUAL_EXECUTION_V1' AND JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding'))='OBJECT'",
+        "ck_sex_outcome": "(resource_outcome_no IS NULL AND resource_outcome_hash IS NULL) OR (resource_outcome_no IS NOT NULL AND resource_outcome_hash IS NOT NULL)",
+        "ck_sex_started": "state NOT IN ('STARTED','STARTED_SUSPENDED','RELEASING','RELEASED','FULFILLED') OR (resource_outcome_no IS NOT NULL AND resource_outcome_hash IS NOT NULL)",
+        "ck_sex_retry": "next_retry_at IS NULL OR reason_code IS NOT NULL",
+        "ck_sex_hashes": "binding_hash REGEXP '^[0-9a-f]{64}$' AND source_intent_hash REGEXP '^[0-9a-f]{64}$' AND prepare_key_hash REGEXP '^[0-9a-f]{64}$' AND prepare_action_hash REGEXP '^[0-9a-f]{64}$' AND manual_source_hash REGEXP '^[0-9a-f]{64}$' AND original_stock_manifest_hash REGEXP '^[0-9a-f]{64}$' AND stock_observation_hash REGEXP '^[0-9a-f]{64}$' AND resource_command_hash REGEXP '^[0-9a-f]{64}$' AND (resource_outcome_hash IS NULL OR resource_outcome_hash REGEXP '^[0-9a-f]{64}$')",
+        "ck_sex_references": "(CHAR_LENGTH(TRIM(tenant_no))>0 AND CHAR_LENGTH(tenant_no)=CHAR_LENGTH(TRIM(tenant_no))) AND (CHAR_LENGTH(TRIM(execution_no))>0 AND CHAR_LENGTH(execution_no)=CHAR_LENGTH(TRIM(execution_no))) AND (CHAR_LENGTH(TRIM(unit_no))>0 AND CHAR_LENGTH(unit_no)=CHAR_LENGTH(TRIM(unit_no))) AND (CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(entity_no)=CHAR_LENGTH(TRIM(entity_no))) AND (CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no))) AND (CHAR_LENGTH(TRIM(grant_no))>0 AND CHAR_LENGTH(grant_no)=CHAR_LENGTH(TRIM(grant_no))) AND (CHAR_LENGTH(TRIM(prepare_action_no))>0 AND CHAR_LENGTH(prepare_action_no)=CHAR_LENGTH(TRIM(prepare_action_no))) AND (CHAR_LENGTH(TRIM(declaration_no))>0 AND CHAR_LENGTH(declaration_no)=CHAR_LENGTH(TRIM(declaration_no))) AND (CHAR_LENGTH(TRIM(confirmation_no))>0 AND CHAR_LENGTH(confirmation_no)=CHAR_LENGTH(TRIM(confirmation_no))) AND (CHAR_LENGTH(TRIM(source_fence_no))>0 AND CHAR_LENGTH(source_fence_no)=CHAR_LENGTH(TRIM(source_fence_no))) AND (CHAR_LENGTH(TRIM(resource_command_no))>0 AND CHAR_LENGTH(resource_command_no)=CHAR_LENGTH(TRIM(resource_command_no))) AND (resource_outcome_no IS NULL OR (CHAR_LENGTH(TRIM(resource_outcome_no))>0 AND CHAR_LENGTH(resource_outcome_no)=CHAR_LENGTH(TRIM(resource_outcome_no))))",
+        "ck_sex_reason": "reason_code IS NULL OR reason_code IN ('SOURCE_UNKNOWN','SOURCE_SUSPENDED','SOURCE_REVISION_CONFLICT','SOURCE_IDENTITY_MISMATCH','SOURCE_QUANTITY_EXCEEDED','TASK_CHANGED','PERMANENT_UNIT_CONFLICT','RESOURCE_PLAN_REQUIRED','UNSUPPORTED_TASK_QUANTITY','RESOURCE_EXECUTION_UNAVAILABLE','EXECUTION_SCHEMA_UNAVAILABLE')"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "execution_no",
+        "unit_no",
+        "entity_no",
+        "store_no",
+        "attempt_no",
+        "grant_no",
+        "quantity",
+        "uom",
+        "binding_json",
+        "binding_hash",
+        "source_intent_hash",
+        "prepare_action_no",
+        "prepare_key_hash",
+        "prepare_action_hash",
+        "declaration_no",
+        "admission_revision",
+        "manual_source_revision",
+        "manual_source_hash",
+        "original_stock_manifest_hash",
+        "confirmation_no",
+        "stock_observation_hash",
+        "source_fence_no",
+        "source_fence_revision",
+        "resource_command_no",
+        "resource_command_hash"
+      ],
+      "comment": "Original manual execution attempt and durable observation"
+    },
+    {
+      "name": "ord_service_execution_action",
+      "tag": "sea",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "action_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "actor_namespace_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "request_key_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "action_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "expected_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "observation_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "result_state",
+          "type": "varchar(32)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "result_revision",
+          "type": "bigint",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "proof_json",
+          "type": "longtext",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "proof_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_sea_action": [
+          "tenant_no",
+          "action_no"
+        ],
+        "uk_sea_key": [
+          "tenant_no",
+          "execution_no",
+          "kind",
+          "request_key_hash"
+        ]
+      },
+      "indexes": {
+        "idx_sea_original": [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "execution_no",
+          "id"
+        ]
+      },
+      "checks": {
+        "ck_sea_base": "tenant_no='MAIN' AND version>0 AND deleted=0",
+        "ck_sea_kind": "kind IN ('PREPARE','SOURCE_SUSPEND','OBSERVE')",
+        "ck_sea_revisions": "expected_revision>=0 AND observation_epoch>=0 AND (result_revision IS NULL OR result_revision>0)",
+        "ck_sea_actor": "(kind<>'PREPARE' OR actor_namespace_hash IS NOT NULL) AND (kind<>'OBSERVE' OR actor_namespace_hash IS NULL)",
+        "ck_sea_result": "(result_state IS NULL AND result_revision IS NULL) OR (result_state IS NOT NULL AND result_revision IS NOT NULL AND result_state IN ('PREPARED','SUSPEND_REQUESTED','STARTED','STARTED_SUSPENDED','RELEASING','RELEASED','FULFILLED'))",
+        "ck_sea_proof": "(proof_json IS NULL AND proof_hash IS NULL AND kind<>'SOURCE_SUSPEND') OR (proof_json IS NOT NULL AND proof_hash IS NOT NULL AND JSON_VALID(proof_json) AND JSON_TYPE(proof_json)='OBJECT' AND OCTET_LENGTH(proof_json)<=262144 AND JSON_CONTAINS_PATH(proof_json,'all','$.schema','$.binding','$.suspension')=1 AND JSON_UNQUOTE(JSON_EXTRACT(proof_json,'$.schema'))='BEAUTY_EXECUTION_SUSPEND_V1' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.binding'))='OBJECT' AND JSON_TYPE(JSON_EXTRACT(proof_json,'$.suspension'))='OBJECT')",
+        "ck_sea_hashes": "(actor_namespace_hash IS NULL OR actor_namespace_hash REGEXP '^[0-9a-f]{64}$') AND request_key_hash REGEXP '^[0-9a-f]{64}$' AND action_hash REGEXP '^[0-9a-f]{64}$' AND (proof_hash IS NULL OR proof_hash REGEXP '^[0-9a-f]{64}$')",
+        "ck_sea_references": "(CHAR_LENGTH(TRIM(tenant_no))>0 AND CHAR_LENGTH(tenant_no)=CHAR_LENGTH(TRIM(tenant_no))) AND (CHAR_LENGTH(TRIM(action_no))>0 AND CHAR_LENGTH(action_no)=CHAR_LENGTH(TRIM(action_no))) AND (CHAR_LENGTH(TRIM(execution_no))>0 AND CHAR_LENGTH(execution_no)=CHAR_LENGTH(TRIM(execution_no))) AND (CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(entity_no)=CHAR_LENGTH(TRIM(entity_no))) AND (CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(store_no)=CHAR_LENGTH(TRIM(store_no)))"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "action_no",
+        "execution_no",
+        "entity_no",
+        "store_no",
+        "kind",
+        "actor_namespace_hash",
+        "request_key_hash",
+        "action_hash",
+        "expected_revision",
+        "observation_epoch",
+        "proof_json",
+        "proof_hash"
+      ],
+      "comment": "Append-only original execution action identity"
+    }
+  ]
+}

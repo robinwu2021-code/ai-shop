@@ -55,12 +55,18 @@ function javaLabels(): Record<string, string> {
 /** 某个语言包里 `perm: { … }` 段：权限码 → 文案 */
 function localeLabels(locale: string): Record<string, string> {
   const src = readFileSync(join(ROOT, `b-app/src/i18n/locale/${locale}.ts`), "utf8");
+  return parseLocaleLabels(src, locale);
+}
+
+function parseLocaleLabels(src: string, locale: string): Record<string, string> {
   const at = src.indexOf("  perm: {");
   expect(at, `${locale}.ts 里找不到 perm 段`).toBeGreaterThan(0);
   const block = src.slice(at, src.indexOf("},", at));
   const out: Record<string, string> = {};
   for (const m of block.matchAll(/"(biz:[a-z:]+)":\s*"([^"]+)"/g)) {
-    out[m[1]!] = m[2]!;
+    const code = m[1]!;
+    if (Object.hasOwn(out, code)) throw new Error(`${locale}.ts perm 重复权限码：${code}`);
+    out[code] = m[2]!;
   }
   return out;
 }
@@ -68,6 +74,30 @@ function localeLabels(locale: string): Record<string, string> {
 describe("权限码的人话文案", () => {
   const java = javaLabels();
   const consts = codeConstants();
+
+  it.each([
+    ["zh-CN", "查看预约", "创建、调整及取消预约"],
+    ["en", "View appointments", "Create, change and cancel appointments"],
+    ["ar", "عرض المواعيد", "إنشاء المواعيد وتعديلها وإلغاؤها"],
+  ])("%s 的预约文案区分查看与创建、调整及取消", (locale, view, manage) => {
+    const labels = localeLabels(locale);
+    expect(labels["biz:booking:view"]).toBe(view);
+    expect(labels["biz:booking:manage"]).toBe(manage);
+  });
+
+  it.each([["self", "操作本人服务任务", "Operate own service tasks", "تنفيذ مهام الخدمة الخاصة بي"], ["view", "查看门店服务任务", "View store service tasks", "عرض مهام الخدمة في المتجر"], ["coordinate", "协调服务任务", "Coordinate service tasks", "تنسيق مهام الخدمة"], ["approve", "审核服务调整", "Approve service changes", "اعتماد تغييرات الخدمة"], ["close", "关闭已结清服务工单", "Close settled service work orders", "إغلاق أوامر الخدمة المسوّاة"]])('service task %s has exact three-language authorization labels', (action, zh, en, ar) => {
+    const code = `biz:service:task:${action}`;
+    expect(java[code]).toBe(zh);
+    expect(localeLabels('zh-CN')[code]).toBe(zh);
+    expect(localeLabels('en')[code]).toBe(en);
+    expect(localeLabels('ar')[code]).toBe(ar);
+  });
+
+  it.each(LOCALES)("%s 的实际 perm 解析器拒绝重复权限码", (locale) => {
+    const src = readFileSync(join(ROOT, `b-app/src/i18n/locale/${locale}.ts`), "utf8");
+    const duplicate = src.replace('  perm: {', '  perm: {\n    "biz:receive": "duplicate",');
+    expect(() => parseLocaleLabels(duplicate, locale)).toThrow(`perm 重复权限码：biz:receive`);
+  });
 
   it("两个源都解析得到（正则失效时不要静默通过）", () => {
     expect(Object.keys(java).length, "BizPerms.LABELS 解析为空").toBeGreaterThanOrEqual(13);

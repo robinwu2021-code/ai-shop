@@ -427,3 +427,12 @@ B端入口复用原STORE权限、可信操作人和目录范围；内部typed合
 CAT-02A implements store-bound menu header creation, editing, detail and pagination through the existing GOODS permission and FOOD typed transport. It reuses V1 `fnb_menu` / `fnb_menu_store` without migration; names such as breakfast/lunch/dinner are configurable. New writes require the current effective store-policy timezone, while completed idempotency receipts and authorized historical working-head reads remain available. Single-store edits reject shared/overridden bindings to prevent cross-store side effects. This is draft management only: schedules, item composition, publication, channel price authority and sellability remain subsequent slices; Keeta stays planned.
 
 CAT-02B adds the explicit `section: SCHEDULE` branch of menu definition management. Weekly windows and start-date exceptions replace V1 working rows atomically; date bounds, overlap validation and empty-array clearing are supported. Detail `schedule` is additive: absence from a legacy provider means unknown. `MenuSchedulePolicy` intersects these windows with the existing store hours/business-day calendar; draft management does not enable sellability. Full composition/channel/publication branches remain pending. All four landed menu tables now use the platform MERCHANT DataScope registry.
+
+## 三行业共用写入基础（合并对齐）
+
+门店目标比较委托 `shop-base-auth` 的 `StoreRequestScopeValidator`；公共表字段及唯一键前置检查委托
+`shop-store-mybatis` 的 `PlatformWritePrerequisites`，餐饮继续校验 v25 行业迁移和餐饮唯一键。
+保留宿主 MapperScan 对幂等 Mapper 的所有权保护。餐饮 Outbox 保持原 PLATFORM 发布适配及
+缺消费者时 FAILED/NO_CONSUMER 的既有合同；共享严格 `PlatformOutboxPublisher` 额外要求路由，
+本次不将该要求引入已交付餐饮写入入口。
+本次合并保留最新餐饮策略发布、营业日历、桌台及后续业务实现；未运行测试、构建、服务或访问业务库。

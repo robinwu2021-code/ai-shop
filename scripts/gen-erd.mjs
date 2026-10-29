@@ -15,7 +15,8 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { domainOverview, tableGraph } from "./lib/svg-erd.mjs";
-import { readSchema } from "./lib/ddl.mjs";
+import { readSchema, AUDIT } from "./lib/ddl.mjs";
+import { NAME_COLLISIONS, relations, columnBadge, describeRelation } from "./lib/schema-lineage.mjs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -57,134 +58,14 @@ const DOMAINS = [
   ["mbr", "会员"],
   ["pmt", "券与活动"],
   ["sys", "系统"],
+  ["sv", "储值"],
+  ["prn", "统一打印"],
+  ["ent", "支付权益"],
+  ["pay", "支付支持"],
+  ["notify", "通知"],
+  ["lgs", "物流"],
+  ["biz", "共享业务事实"],
 ];
-
-/**
- * 业务键归属：这个 `xxx_no` 是谁的主键。
- *
- * **必须显式登记，不能从表名推断** —— 真实的表名与主键列名经常对不上：
- * `stl_bill` 的主键叫 `settle_no`、`pts_user_ledger` 的叫 `ledger_no`。
- * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
- */
-export const KEY_OWNERS = {
-  active_job_no: "prn_job",
-  active_attempt_no: "prn_attempt",
-  agent_no: "prn_agent",
-  printer_no: "prn_printer",
-  route_version_no: "prn_route_version",
-  active_store_no: "mch_store",
-  from_brand_no: "mch_brand",
-  to_brand_no: "mch_brand",
-  clearing_no: "sv_clearing_entry",
-  payer_entity_no: "mch_entity",
-  payee_entity_no: "mch_entity",
-  bill_no: "sv_settlement_bill",
-  amendment_no: "ord_industry_amendment",
-  application_no: "ord_pricing_fee_application",
-  first_store_no: "mch_store",
-  recharge_store_no: "mch_store",
-  execution_no: "ord_refund_execution",
-  customer_no: "sv_customer_identity",
-  issuer_no: "sv_issuer",
-  scope_member_no: "mbr_scope_member",
-  issuer_version_no: "sv_issuer_version",
-  plan_version_no: "sv_recharge_plan_version",
-  release_no: "sv_release",
-  collection_entity_no: "mch_entity",
-  settlement_entity_no: "mch_entity",
-  operating_entity_no: "mch_entity",
-  management_no: "mch_management_space",
-  brand_no: "mch_brand",
-  change_no: "mch_brand_change",
-  config_no: "ord_store_pricing_config",
-  template_revision_no: "ord_pricing_template_revision",
-  quota_no: "sv_issue_quota",
-  quote_line_no: "ord_price_quote_line",
-  device_no: "prn_device",
-  job_no: "prn_job",
-  tier_no: "pmt_recharge_tier",
-  grant_no: "ent_grant",
-  instance_no: "ent_instance",
-  usage_no: "ent_usage",
-  source_order_no: "ord_order",
-  recharge_no: "sv_recharge",
-  lot_no: "sv_lot",
-  exception_no: "pay_ent_exception",
-  recon_no: "pay_ent_recon_run",
-  stage_no: "ent_migration_stage",
-  alias_no: "ent_migration_alias",
-  checkout_no: "ord_legacy_coupon_checkout",
-  plan_no: "ent_migration_plan",
-  import_no: "ent_migration_import",
-  return_no: "pmt_migration_return",
-  target_template_no: "ent_template",
-  template_version_no: "ent_template_version",
-  activity_version_no: "pmt_activity_version",
-
-  build_no: "pts_statement_build",
-  payout_no: "stl_payout",
-  voucher_no: "pts_voucher",
-  evidence_no: "pts_fund_evidence",
-  receivable_no: "pts_receivable",
-  statement_no: "pts_store_statement",
-  cash_payment_no: "stl_payment",
-  origin_payment_no: "stl_payment",
-  pay_no: "ord_create_intent",
-  /*
-   * ── 2026-08-29 补齐的十三个 ──
-   * 与 packages/shared/tests/schema-lineage.test.ts 的 KEY_OWNERS **必须逐条相等**
-   * （那边有一条断言盯着，两份分叉会让 ER 图连错线）。
-   * 归属判据：看哪张表把它建成了唯一键，只有一张的就是它的主。
-   */
-  std_no: "prd_spu_std",
-  dim_no: "prd_spec_dim",
-  value_no: "prd_spec_value",
-  topic_no: "prd_topic",
-  // 事件号：sys_outbox 是主，sys_event_consumed（事件级幂等）引用它
-  event_no: "sys_outbox",
-  shipment_no: "lgs_waybill",
-  // 商户订单号：stl_payment 是主，trd_shipping_upload（微信发货上报台账 V323）引用它。
-  // 判据与理由见 packages/shared/tests/schema-lineage.test.ts 的同一条 —— 两份必须一致
-  out_trade_no: "stl_payment",
-  area_no: "mch_service_area",
-  // person_no 与 member_no 是两级：跨商家的人 vs 他在某一家的会员身份
-  person_no: "usr_person",
-  member_no: "mbr_member",
-  tag_no: "mbr_tag",
-  segment_no: "mbr_segment",
-  activity_no: "pmt_activity",
-  fission_no: "mkt_fission_campaign",
-  task_no: "notify_push_task",
-  entity_no: "mch_entity",
-  // 门店与商家账号。store_no 与 entity_no 是两级，别按名字互相 join
-  store_no: "mch_store",
-  mch_account_no: "mch_account",
-  pay_merchant_no: "mch_payment_merchant",
-  user_no: "usr_account",
-  order_no: "ord_order",
-  sub_order_no: "ord_sub_order",
-  community_no: "cmt_community",
-  pickup_no: "cmt_pickup_point",
-  goods_no: "prd_goods",
-  sku_no: "prd_sku",
-  category_no: "prd_category",
-  coupon_no: "mkt_coupon",
-  quote_no: "mkt_quote",
-  group_no: "mkt_group_buy",
-  period_no: "pmt_period",
-  enrollment_no: "pmt_enrollment",
-  review_no: "rvw_review",
-  staff_no: "sys_ops_staff",
-  settle_no: "stl_bill",
-  after_sale_no: "ord_after_sale",
-  payment_no: "stl_payment",
-  // 商家进账挂用户的 USE 流水：一次使用一条进账。积分发出后与发放方脱钩（V28）
-  use_ledger_no: "pts_user_ledger",
-  inviter_no: "usr_account",
-  issuer_merchant_no: "mch_entity",
-  // 保证金账户/流水按商家挂；命名欠账见 schema-lineage.test.ts 里的说明
-  merchant_no: "mch_entity",
-};
 
 /**
  * 专题图：一个业务域**横跨多个表名前缀**时，按前缀分的图看不全它。
@@ -299,112 +180,6 @@ const TOPICS = [
   },
 ];
 
-/**
- * 同名不同义：**不可按名字连线**，连了就是错的。
- *
- * 键是列名，值是理由 —— 文档里那张表由它渲染，不再手写一份。
- * 手写的那份在 `pts_merchant_ledger` 被删（V34）之后还挂着 `ledger_no` 一行，
- * 而守卫只查集合不查文档，漏了两天没人发现。
- */
-const NAME_COLLISIONS_WHY = {
-  trace_no: "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
-  receipt_no: "权益迁移返回凭证与打印设备回执是独立证据族，必须按来源表选择所属域。",
-  route_no: "打印管理路由目录与统一投递目标路由是不同层级；管理版本引用catalog，投递路由仍由统一服务持有。",
-  policy_version_no: "储值发行政策版本与打印场景政策版本各自发布，必须结合来源表选择所属版本族。",
-  source_event_no: "来源系统各自产生的事件号；必须结合source_system及原始来源，不能仅按同名跨系统关联。",
-  rule_no: "stl_fee_rule是结算费率规则；ord_price_quote_allocation保存本次试算规则标识，两套规则目录独立。",
-  subject_no: "角色成员与报价/人工改价都使用主体多态编号；需同时核验各自subject_type，不能当成单一外键。",
-  link_no: "会员来源、旧会员迁移关系与储值活动发布/审批各有独立关联记录；编号仅在对应关系族内有效。",
-  attempt_no: "物流订阅尝试与打印投递尝试独立生成，不能混为同一次执行。",
-  entry_no: "pts_ledger_entry积分分录与ent_ledger权益分录是不同账本，不共用分录身份。",
-  binding_no: "订单积分接线与品牌门店有效期绑定是不同聚合，不能按同名连接。",
-  adjustment_no: "积分人工调整与订单人工改价分别有自己的命令/审计身份。",
-  line_no: "库存对齐行与储值过账行只在各自父单据内编号，不能作为全局行身份。",
-  allocation_no: "储值冻结批次分配与报价金额分摊有不同对象、数量和金额语义。",
-  target_no: "权益所有者注册与储值发行政策的目标都是多态范围，必须结合target_type及所属域。",
-  document_no: "Core与Pay分别分配业务展示单号；通知保存来源单号，必须结合来源系统/单据类型，不能假定单一主表。",
-  active_revision_no: "行业模板与门店配置各自引用自己的不可变发布版本，按源表指定目标。",
-  previous_revision_no: "行业模板版本与门店配置版本各自形成历史链，不能跨版本族关联。",
-  draft_revision_no: "储值发布和Core活动审批冻结对应活动的草稿标识，必须连同activity_no及来源版本解释，非全库通用版本键。",
-  policy_no: "SKU定价策略、储值发行管控、人工改价策略是独立政策族，不能按同名跨域关联。",
-  bridge_actor_no: "打印桥接认证主体标识，需结合可信桥接凭证与租户核验；不是用户或运营账号表的通用外键。",
-  voucher_no: "积分凭证与储值凭证是独立账本；须按来源表选择pts_voucher或sv_voucher，禁止跨账本按号猜关联。",
-  quote_no: "营销报价与订单试算快照是独立报价族，须按来源表选择权威报价。",
-  plan_no: "权益迁移计划与储值充值方案是独立计划族；同名不表示相同方案。",
-  grant_no: "权益发放记录与经营管理授权是独立授权族，须按来源表解释。",
-
-  parent_no: "不同层级树的父节点，必须结合所属树。",
-  provider_no: "通道回执需结合通道、资金方向与原请求。",
-  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
-  revision_no: "商品版本与积分账单版本，各自独立。",
-  holder_no: "积分持有人多态编号，必须结合 holder_type。",
-  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
-  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
-  request_no: "`mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号",
-  express_no: "`ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反**",
-  operator_no: "各表各自记录操作人，不是外键",
-};
-const NAME_COLLISIONS = new Set(Object.keys(NAME_COLLISIONS_WHY));
-
-export const SCOPED_KEY_OWNERS = {
-  "prn_route_version.route_no": "prn_route_catalog",
-  "prn_request.policy_version_no": "prn_policy_version",
-  "sv_issue_policy_version.policy_version_no": "sv_issue_policy_version",
-  "prn_receipt.receipt_no": "prn_receipt",
-  "ent_migration_return.receipt_no": "ent_migration_return",
-  "pts_ledger_entry.voucher_no": "pts_voucher",
-  "pts_pool_flow.voucher_no": "pts_voucher",
-  "sv_entry.voucher_no": "sv_voucher",
-  "sv_posting_line.voucher_no": "sv_voucher",
-  "sv_statement.voucher_no": "sv_voucher",
-  "ord_pricing_template.active_revision_no": "ord_pricing_template_revision",
-  "ord_store_pricing_config.active_revision_no": "ord_store_pricing_revision",
-  "ord_pricing_template_revision.previous_revision_no": "ord_pricing_template_revision",
-  "ord_store_pricing_revision.previous_revision_no": "ord_store_pricing_revision",
-  "ord_price_quote_line.quote_no": "ord_price_quote",
-  "ord_price_quote_allocation.quote_no": "ord_price_quote",
-  "sv_recharge_plan_version.plan_no": "sv_recharge_plan",
-  "sv_recharge.plan_no": "sv_recharge_plan",
-  "mch_management_grant.grant_no": "mch_management_grant",
-  "mkt_quote_revision.quote_no": "mkt_quote",
-  "ord_pricing_funding_source.quote_no": "ord_price_quote",
-  "ord_industry_order_source.quote_no": "ord_price_quote",
-  "pts_topup_plan.plan_no": "pts_topup_plan",
-  "pmt_migration_decision.plan_no": "ent_migration_plan",
-  "ent_migration_import.plan_no": "ent_migration_plan",
-  "sv_statement.plan_no": "sv_recharge_plan",
-  "ent_instance.grant_no": "ent_grant",
-  "ent_sale_reservation.grant_no": "ent_grant",
-  "pmt_pay_coupon_projection.grant_no": "ent_grant",
-  "sv_issue_policy_version.policy_no": "sv_issue_policy",
-  "ord_manual_price_adjustment.policy_no": "ord_manual_price_policy"
-};
-export function keyOwner(table, column) {
-  return SCOPED_KEY_OWNERS[`${table}.${column}`]
-    ?? (NAME_COLLISIONS.has(column) ? undefined : KEY_OWNERS[column]);
-}
-
-
-/** 每张表都有，画进图里只会挤满屏幕 */
-const AUDIT = new Set([
-  "id", "tenant_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted",
-]);
-
-// ---------------------------------------------------------------- 关系
-/** 表 A 的某列是表 B 的主键 → A 引用 B */
-function relations(tables) {
-  const out = [];
-  for (const [table, def] of tables) {
-    for (const c of def.cols) {
-      if (AUDIT.has(c.name)) continue;
-      const owner = keyOwner(table, c.name);
-      if (!owner || owner === table || !tables.has(owner)) continue;
-      out.push({ from: table, to: owner, col: c.name });
-    }
-  }
-  return out;
-}
-
 const domainOf = (t) => t.split("_")[0];
 
 // ---------------------------------------------------------------- 渲染
@@ -497,7 +272,7 @@ for (const d of domainList) {
     ...new Set(
       rels
         .filter((r) => own.includes(r.from) && !own.includes(r.to))
-        .map((r) => `\`${r.from}.${r.col}\` → \`${r.to}\``),
+        .map((r) => `\`${describeRelation(r)}\``),
     ),
   ];
   md.push(
@@ -516,19 +291,24 @@ for (const d of domainList) {
 md.push(
   "## 三、逐表详情",
   "",
-  "见网页版 [数据库-ER图.html](./数据库-ER图.html) —— 54 张表的字段、类型、索引、关联。",
+  "见网页版 [数据库-ER图.html](./数据库-ER图.html) —— 查看各表的字段、类型、索引、关联。",
   "Markdown 里铺开会有近两千行，那不是给人读的。",
   "",
   "## 四、不可按名字连线的列",
   "",
-  "以下列名出现在多张表里但**语义不同**，图中刻意不连：",
+  "以下列名不能按全局同名编号直接关联；已证明的限定引用列在下一节，其余不画无条件边：",
   "",
   "| 列 | 为什么 |",
   "|---|---|",
-  ...Object.entries(NAME_COLLISIONS_WHY).map(([k, why]) => `| \`${k}\` | ${why} |`),
+  ...Object.entries(NAME_COLLISIONS).map(([k, why]) => `| \`${k}\` | ${why.replace(/\r?\n/g, "<br>").replace(/\|/g, "\\|")} |`),
   "",
 );
 
+md.push(
+  "## 五、带作用域的限定引用", "",
+  "以下逻辑引用必须同时匹配列出的作用域，不能只按编号 join。条件型路径见上一节。现有域图未覆盖 sv/ent/pay 等前缀，本列表保留其限定语义。", "",
+  ...rels.filter(r => r.scope.length).map(r => `- \`${describeRelation(r)}\``), "",
+);
 writeFileSync(OUT, md.join("\n"));
 
 // ---------------------------------------------------------------- HTML
@@ -573,11 +353,7 @@ for (const [prefix, label] of DOMAINS) {
       const rows = def.cols
         .filter((c) => !AUDIT.has(c.name))
         .map((c) => {
-          const badge = def.uniques.has(c.name)
-            ? '<i class="k uk">UK</i>'
-            : keyOwner(t, c.name) && keyOwner(t, c.name) !== t
-              ? '<i class="k fk">FK</i>'
-              : "";
+          const badge = columnBadge(tables, t, c.name);
           return `<tr><td class="cn"><code>${c.name}</code>${badge}</td>` +
             `<td class="ct">${c.type}</td>` +
             `<td class="cnl">${c.nullable ? "可空" : "必填"}</td>` +
@@ -585,8 +361,8 @@ for (const [prefix, label] of DOMAINS) {
         })
         .join("");
       const relLines = [
-        ...refsOut.map((r) => `<code>${r.col}</code> → <code>${r.to}</code>`),
-        ...refsIn.map((r) => `<code>${r.from}</code> 经 <code>${r.col}</code> 指向本表`),
+        ...refsOut.map((r) => `<code>${esc(describeRelation(r))}</code>`),
+        ...refsIn.map((r) => `<code>${esc(describeRelation(r))}</code>`),
       ];
       return `<article class="card" id="t-${t}">
 <h3><code>${t}</code><span class="tdesc">${escMd(def.comment || "")}</span></h3>
@@ -603,8 +379,8 @@ ${def.indexes.length ? `<p class="rel"><span class="rl">索引</span>${def.index
 <div class="canvas">${svg}</div>
 ${inward.length || outward.length ? `<p class="xref"><span class="xlabel">跨域</span>${[
     ...new Set([
-      ...outward.map((r) => `${r.from}.${r.col} → ${r.to}`),
-      ...inward.map((r) => `${r.from}.${r.col} → ${r.to}`),
+      ...outward.map((r) => describeRelation(r)),
+      ...inward.map((r) => describeRelation(r)),
     ]),
   ].map((x) => `<code>${esc(x)}</code>`).join("")}</p>` : ""}
 ${cards}
@@ -719,13 +495,17 @@ ${navItems
 ${sections.join("\n")}
 <section id="caveat"><div class="caveat">
 <h2>不可按名字连线的列</h2>
-<p>以下列名出现在多张表里但语义不同，图中刻意不给它们画关系。按名字连就是错的。</p>
+<p>以下列名不能按全局同名编号直接关联。已证明的限定引用列在后面；其余不画无条件边。</p>
 <table><tbody>
-${Object.entries(NAME_COLLISIONS_WHY)
+${Object.entries(NAME_COLLISIONS)
   .map(([k, why]) => `<tr><td><code>${k}</code></td><td>${escMd(why.replace(/`([^`]+)`/g, "<code>$1</code>"))}</td></tr>`)
   .join("\n")}
 </tbody></table>
 </div></section>
+<section id="scoped-references"><h2>带作用域的限定引用</h2>
+<p>必须同时匹配所列作用域，不能只按编号 join。条件型路径见上节；现有域图未覆盖 sv/ent/pay 等前缀。</p>
+<ul>${rels.filter(r => r.scope.length).map(r => `<li><code>${esc(describeRelation(r))}</code></li>`).join("\n")}</ul>
+</section>
 </main>
 </div>
 <script>

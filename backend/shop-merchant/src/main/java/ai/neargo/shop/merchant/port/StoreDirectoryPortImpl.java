@@ -1,6 +1,8 @@
 package ai.neargo.shop.merchant.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.Geo;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchStore;
@@ -9,7 +11,10 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.merchant.service.impl.EntityReachability;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -20,6 +25,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import javax.sql.DataSource;
 
 /**
  * {@link StoreDirectoryPort} 的实现：C 端「以门店为单位」的门店目录。
@@ -45,6 +52,28 @@ public class StoreDirectoryPortImpl implements StoreDirectoryPort {
         this.storeMapper = storeMapper;
         this.entityMapper = entityMapper;
         this.reachability = reachability;
+    }
+
+    @Autowired
+    @Qualifier("dataSource")
+    private DataSource checkoutSource;
+
+    @Override
+    public StoreCard checkoutCardInCurrentTransaction(
+            String tenantNo, String entityNo, String storeNo) {
+        if (!"MAIN".equals(tenantNo)
+                || !TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        var result = cards(List.of(storeNo)).get(storeNo);
+        if (result == null
+                || !entityNo.equals(result.entityNo())
+                || !storeNo.equals(result.storeNo())
+                || !STORE_ACTIVE.equals(result.status())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        return result;
     }
 
     @Override

@@ -147,6 +147,7 @@ public class ReconServiceImpl implements ReconService {
         long cutoff = now - staleMinutes * 60_000L;
         return DataScopeContext.executeWithoutScope(() ->
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
+                    .ne(StlPayment::getPayChannel, "OFFLINE")
                     .and(q -> q.eq(StlPayment::getDirection,StlPayment.PAY)
                             .in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
                         // 关单后的观察窗（I3 S7）：关单关到了尝试这一层，而渠道没有关单接口、用户仍可能付成；

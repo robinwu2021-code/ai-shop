@@ -2,8 +2,8 @@ package ai.neargo.shop.trade.order.refund.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.event.AfterCommit;
-import ai.neargo.shop.spi.settle.RefundDispatchResult;
 import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
+import ai.neargo.shop.spi.settle.RefundDispatchResult;
 import ai.neargo.shop.spi.settle.RefundRequest;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -13,8 +13,8 @@ import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.policy.LineShares;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
-import ai.neargo.shop.trade.order.refund.service.RefundFinancialOwnerService;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
+import ai.neargo.shop.trade.order.refund.service.RefundFinancialOwnerService;
 import ai.neargo.shop.trade.order.refund.service.RefundPreparationService;
 import ai.neargo.shop.trade.order.refund.service.RefundResourceService;
 import ai.neargo.shop.trade.order.refund.service.RefundResultService;
@@ -63,7 +63,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
 
     @Override
     public void dispatch(String no) {
-        OrdRefundExecution row = store.claim(no);
+        OrdRefundExecution row = RefundExecutionStore.requireFunded(store.claim(no));
         if (row == null) {
             return;
         }
@@ -80,8 +80,9 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
                 }
                 store.cashReady(no);
             }
-            applyResult(financialOwner.request(row));
+            applyResult(financialOwner.request(source(no)));
         } catch (RuntimeException failure) {
+            source(no);
             results.apply(new RefundDispatchResult(no, row.getPaymentNo(), DispatchStatus.UNKNOWN,
                     "REFUND_EXECUTION_UNKNOWN", true, null));
             log.warn("refund {} awaits original execution recovery: {}", no, failure.getClass().getSimpleName());
@@ -93,8 +94,9 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
         if (result == null) {
             throw new IllegalArgumentException("refund result required");
         }
+        var original = source(result.executionNo());
         RefundDispatchResult verified = result.status() == DispatchStatus.SUCCEEDED
-                ? financialOwner.query(store.read(result.executionNo())) : result;
+                ? financialOwner.query(original) : result;
         results.apply(verified);
         if (verified.status() == DispatchStatus.SUCCEEDED) {
             recoverSuccessful(verified.executionNo());
@@ -103,7 +105,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
 
     @Override
     public void recover(String no) {
-        OrdRefundExecution row = store.read(no);
+        OrdRefundExecution row = source(no);
         if (row == null) {
             return;
         }
@@ -139,7 +141,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
     }
 
     private void recoverSuccessful(String no) {
-        var row=store.read(no);
+        var row = source(no);
         if(row!=null && Integer.valueOf(2).equals(row.getClosureVersion())) {
             obligations.recover(no);
             results.closePending(no);
@@ -150,6 +152,10 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
     @Override
     public OrdRefundExecution find(String afterSaleNo) {
         return store.byAfterSale(afterSaleNo);
+    }
+
+    private OrdRefundExecution source(String no) {
+        return RefundExecutionStore.requireFunded(store.currentSource(no));
     }
 
     private RefundRequest request(OrdRefundExecution row) {

@@ -89,7 +89,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private static final java.util.Set<String> AFTER_SALE_TYPES = java.util.Set.of(
             OrdAfterSale.REFUND_ONLY, OrdAfterSale.RETURN_REFUND, OrdAfterSale.EXCHANGE);
 
-
     /*
      * 售后原因已收编到 {@link OrdAfterSale#REASONS}（与它的 status / type 两组取值域同处），
      * 并登记进按字段对账（`ord_after_sale.reason`）。这里不再另存一份 ——
@@ -916,7 +915,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         remind(as, REMIND_SIGNED, "买家已签收，待商家确认退款");
     }
 
-
     /**
      * 下单时间（毫秒）。{@code withinHours} 的措辞就是「下单后多少小时内」，所以取的是
      * 子单的创建时间，而不是主单的 {@code paidAt} —— 后者要多一个 mapper，
@@ -1025,7 +1023,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             couponPort.release(sub.getOrderNo());
         }
 
-
     }
 
     /**
@@ -1042,12 +1039,16 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      * 与 {@code OrderServiceImpl} 里 {@code stockPort.release()} 同一个形状，
      * 不新增跨域依赖，也不需要事件带上它本来没有的行明细。
      */
-    private void restoreStockIfReturned(OrdAfterSale as, ai.neargo.shop.trade.order.refund.model.RefundPlan plan) {
+    private StockPort.RestoreResult restoreStockIfReturned(OrdAfterSale as,
+            ai.neargo.shop.trade.order.refund.model.RefundPlan plan) {
         if (!OrdAfterSale.RETURN_REFUND.equals(as.getType())
                 || Integer.valueOf(1).equals(as.getStockRestored())) {
-            return;
+            return StockPort.RestoreResult.COMPLETED;
         }
         OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        if (sub == null || !as.getOrderNo().equals(sub.getOrderNo()) || !as.getSubOrderNo().equals(plan.subOrderNo())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         java.util.Map<Long, OrdItem> byId = new java.util.HashMap<>();
         DataScopeContext.executeWithoutScope(() -> orderItemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
                 .eq(OrdItem::getSubOrderNo, as.getSubOrderNo()))).forEach(it -> byId.put(it.getId(), it));
@@ -1055,15 +1056,35 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         List<StockPort.SkuQty> lines = new ArrayList<>();
         for (var l : plan.lines()) {
             OrdItem it = byId.get(l.itemId());
-            if (it != null && l.qty() > 0) {
-                lines.add(new StockPort.SkuQty(it.getSkuNo(), l.qty(), sub == null ? null : sub.getStoreNo()));
-            }
+            if (it == null || l.qty() <= 0) throw BizException.of(ErrorCode.CONFLICT);
+            lines.add(new StockPort.SkuQty(it.getSkuNo(), l.qty(), sub.getStoreNo()));
         }
-        if (lines.isEmpty()) {
-            return;
+        if (lines.isEmpty()) return StockPort.RestoreResult.PENDING;
+        var restored = stockPort.restore(as.getAfterSaleNo(), as.getOrderNo(), lines);
+        if (restored == StockPort.RestoreResult.COMPLETED) as.setStockRestored(1);
+        return restored;
+    }
+
+    /** Original stock work only: never prepares, confirms, commits or retries a financial effect. */
+    @Override
+    public StockPort.RestoreResult reconcileReturnedStock(String afterSaleNo) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("RETURN_RECONCILIATION_REQUIRES_NO_TRANSACTION");
         }
-        stockPort.restore(as.getAfterSaleNo(), lines);
-        as.setStockRestored(1);
+        // This short existing owner read finishes before taking case/stock locks; the COMMITTED plan is immutable.
+        var saved = refundExecutions.inspect(afterSaleNo);
+        if (saved == null || !"COMMITTED".equals(saved.preparation().state())) return StockPort.RestoreResult.PENDING;
+        return refundTransactions.execute(tx -> {
+            lockRefundChild(saved.plan().subOrderNo());
+            var as = refundAfterSale(afterSaleNo, true);
+            if (!OrdAfterSale.RETURN_REFUND.equals(as.getType())
+                    || !OrdAfterSale.REFUNDED.equals(as.getStatus())) throw BizException.of(ErrorCode.CONFLICT);
+            if (Integer.valueOf(1).equals(as.getStockRestored())) return StockPort.RestoreResult.COMPLETED;
+            if (!as.getSubOrderNo().equals(saved.plan().subOrderNo())) throw BizException.of(ErrorCode.CONFLICT);
+            var result = restoreStockIfReturned(as, saved.plan());
+            if (result == StockPort.RestoreResult.COMPLETED) update(as);
+            return result;
+        });
     }
 
     private static boolean canFullyRefund(OrdSubOrder sub) {

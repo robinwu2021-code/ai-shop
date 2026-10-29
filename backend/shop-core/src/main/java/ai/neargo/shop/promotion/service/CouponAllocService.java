@@ -14,6 +14,12 @@ import java.util.List;
  * 开关切错的那一刻，用户手上一整类券会同时失效。
  */
 public interface CouponAllocService {
+    /** Reuse the coupon allocation owner only after ordinary eligibility constraints are verified. */
+    CouponPort.Allocation quoteOrdinary(
+            String userNo, String userCouponNo, List<CouponPort.MerchantAmount> groups);
+
+    /** Lock the original local instance and template before the shared writer prices and consumes it. */
+    void lockOrdinary(String userNo, String userCouponNo);
 
     /** An existing order coupon blocks a second protocol, even if its template has been removed. */
     boolean hasActiveBinding(String tenantNo, String orderNo);

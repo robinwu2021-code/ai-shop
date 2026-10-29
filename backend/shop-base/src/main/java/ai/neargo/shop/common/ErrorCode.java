@@ -358,6 +358,15 @@ public enum ErrorCode {
 
     /** Do not report cash-order cleanup complete when an older order still contains points liabilities. */
     ORDER_POINTS_MANUAL_REQUIRED(20014, "err.trade.order_points_manual_required"),
+    CHECKOUT_QUOTE_STALE(20015, "err.trade.checkout_quote_stale"),
+    CHECKOUT_UNSUPPORTED_SELECTION(20016, "err.trade.checkout_unsupported_selection"),
+    CHECKOUT_CONFIRMATION_REQUIRED(20017, "err.trade.checkout_confirmation_required"),
+    CHECKOUT_DEPENDENCY_UNAVAILABLE(20019, "err.trade.checkout_dependency_unavailable"),
+    CHECKOUT_OPERATION_REJECTED(20020, "err.trade.checkout_operation_rejected"),
+    CHECKOUT_PAYMENT_CONFLICT(20021, "err.trade.checkout_payment_conflict"),
+    CHECKOUT_RECEIPT_EVIDENCE_INVALID(20022, "err.trade.checkout_receipt_evidence_invalid"),
+    CHECKOUT_PAYMENT_PARAMS_UNAVAILABLE(20023, "err.trade.checkout_payment_params_unavailable"),
+    MANAGED_SERVICE_COMPLETION_BLOCKED(20018, "err.trade.managed_service_completion_blocked"),
 
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
@@ -542,6 +551,7 @@ public enum ErrorCode {
     /** A disabled new rights workflow is not a missing staff permission and must not trigger a login redirect. */
     ENTITLEMENT_FEATURE_UNAVAILABLE(40040, "err.entitlement.feature_unavailable"),
     MEMBER_CODE_INVALID(40041, "err.member.code_invalid"),
+    MEMBER_GUEST_UNAVAILABLE(40042, "err.member.guest_unavailable"),
 
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
@@ -1342,7 +1352,13 @@ public enum ErrorCode {
      * <b>刻意不用 FORBIDDEN(10403)</b>：那个在前端 FORBIDDEN_CODES 里会触发全局「无权限」处理（跳登录），
      * 而「非本人」要的是页面提示「这单不是寄给你的」，不是登出 —— 用它会把人踢进登录死循环。
      */
-    TRACK_NOT_RECIPIENT(80103, "err.track.not_recipient");
+    TRACK_NOT_RECIPIENT(80103, "err.track.not_recipient"),
+
+    /** Bounded appointment search cannot prove that capacity is unavailable. */
+    BEAUTY_SEARCH_INCOMPLETE(80104, "err.beauty.search_incomplete"),
+    BEAUTY_ARRIVAL_REQUIRES_RESCHEDULE(80105, "err.beauty.arrival_requires_reschedule"),
+    BEAUTY_SOURCE_CUSTOMER_REQUIRED(80106, "err.beauty.source_customer_required"),
+    BEAUTY_DEPENDENCY_UNAVAILABLE(80107, "err.beauty.dependency_unavailable");
 
     // ---- 9xxxx 保留给电子元器件，**本仓库不要再用** ----
     // 2026-09-30 元器件独立成项目 ai-hxkey，9xxxx 整段搬到 ai-hxkey 的 ElecErrorCode（码值不变，端上按码分流）。

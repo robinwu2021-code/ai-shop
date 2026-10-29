@@ -4,6 +4,7 @@ import ai.neargo.shop.pay.channel.api.ChannelResult;
 import ai.neargo.shop.pay.channel.api.Money;
 import ai.neargo.shop.pay.channel.api.PayErrorCode;
 import ai.neargo.shop.spi.pay.PayInstruction;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,7 +18,7 @@ public final class WechatResults {
      * 查单应答：没有 {@code trade_state} → 渠道没有这笔；不是 SUCCESS → 有这笔未付；SUCCESS → 已付（带渠道金额与<b>实际币种</b>，
      * 币种缺失不编造）。
      */
-    public static ChannelResult trade(Map<String, Object> resp) {
+    public static ChannelResult trade(String originalNumber, Map<String, Object> resp) {
         Object state = resp.get("trade_state");
         if (state == null) {
             return new ChannelResult.Failed(PayErrorCode.TRADE_NOT_FOUND, null, "渠道没有这笔", false);
@@ -26,11 +27,20 @@ public final class WechatResults {
         if (!"SUCCESS".equals(state)) {
             return new ChannelResult.Pending(PayInstruction.none(), tradeNo, String.valueOf(state));
         }
-        long total = resp.get("amount") instanceof Map<?, ?> m && m.get("total") instanceof Number n ? n.longValue() : 0L;
-        String currency = currencyOf(resp);
-        Map<String, String> extra = new HashMap<>();
-        extra.put("channelStatus", "SUCCESS");
-        return new ChannelResult.Succeeded(tradeNo, currency == null ? null : new Money(total, currency), null, extra);
+        if (!originalNumber.equals(resp.get("out_trade_no")) || tradeNo == null || tradeNo.isBlank()
+                || !(resp.get("amount") instanceof Map<?, ?> amount)
+                || !(amount.get("total") instanceof Number total)
+                || !(amount.get("currency") instanceof String currency) || currency.isBlank()) {
+            return new ChannelResult.Unknown("PAYMENT_RECEIPT_MISMATCH");
+        }
+        try {
+            long minor = new BigDecimal(total.toString()).longValueExact();
+            if (minor < 0) return new ChannelResult.Unknown("PAYMENT_RECEIPT_INVALID_AMOUNT");
+            return new ChannelResult.Succeeded(tradeNo, new Money(minor, currency), null,
+                    Map.of("channelStatus", "SUCCESS"));
+        } catch (ArithmeticException | NumberFormatException invalidMoney) {
+            return new ChannelResult.Unknown("PAYMENT_RECEIPT_INVALID_AMOUNT");
+        }
     }
 
     /**

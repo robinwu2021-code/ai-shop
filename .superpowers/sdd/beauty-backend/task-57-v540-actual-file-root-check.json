@@ -1,0 +1,13 @@
+{
+  "checked_at_utc": "2026-10-23 16:03:00 UTC",
+  "implementation_base": "b34e31ba4f10bc75088ccd44d1eef4ef0c5a4ac1",
+  "actual_path": "backend/shop-app/src/main/resources/db/migration/V540__checkout_payment_operation.sql",
+  "bytes": 7477,
+  "sha256": "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745",
+  "matches_pinned_document_bytes": true,
+  "v539_unchanged": true,
+  "checked_before_first_execution": true,
+  "first_execution_authorized": true,
+  "scope": "owned isolated local tests only; no shared or remote schema",
+  "after_execution": "migration immutable; later fixes append only"
+}

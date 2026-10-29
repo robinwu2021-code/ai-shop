@@ -1,23 +1,29 @@
 package ai.neargo.shop.portal.port;
 
-import ai.neargo.shop.marketing.port.CouponPortImpl;
-import ai.neargo.shop.promotion.service.CouponAllocService;
-import ai.neargo.shop.spi.marketing.CouponPort;
-import org.springframework.context.annotation.Primary;
-import org.springframework.beans.factory.annotation.Autowired;
-import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
-import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.paybridge.LegacyCouponWalletProjectionService;
-import ai.neargo.shop.paybridge.impl.LegacyCouponRouteResolver;
-import ai.neargo.shop.spi.entitlement.LegacyCouponUsePort;
-import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.MerchantGroup;
-import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.OwnerSystem;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.marketing.port.CouponPortImpl;
+import ai.neargo.shop.paybridge.LegacyCouponWalletProjectionService;
+import ai.neargo.shop.paybridge.impl.LegacyCouponRouteResolver;
+import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
+import ai.neargo.shop.promotion.service.CouponAllocService;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.OwnerSystem;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
+import ai.neargo.shop.spi.entitlement.LegacyCouponCheckoutSourcePort.MerchantGroup;
+import ai.neargo.shop.spi.entitlement.LegacyCouponUsePort;
+import ai.neargo.shop.spi.marketing.CouponPort;
+import ai.neargo.shop.trade.service.LegacyCouponCheckoutJournal;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
+
 import java.util.List;
+
 
 /**
  * 券在下单时走老模型还是新模型 —— <b>按这张券在哪张表里分流，不按开关</b>（P4）。
@@ -49,6 +55,40 @@ public class CouponPortRouter implements CouponPort {
     public CouponPortRouter(CouponPortImpl legacy, CouponAllocService promo) {
         this.legacy = legacy;
         this.promo = promo;
+    }
+
+    @Autowired private LegacyCouponSourceFenceService ordinaryFences;
+
+
+    @Override
+    public Allocation quoteOrdinary(
+            String userNo, String userCouponNo, List<MerchantAmount> groups) {
+        if (userCouponNo == null) {
+            return Allocation.none();
+        }
+        return DataScopeContext.executeWithoutScope(
+                () -> {
+                    var source = ordinaryFences.ordinarySource("MAIN", userNo, userCouponNo);
+                    return source == SourceSystem.PMT
+                            ? promo.quoteOrdinary(userNo, userCouponNo, groups)
+                            : legacy.quoteOrdinary(userNo, userCouponNo, groups);
+                });
+    }
+
+    @Override
+    public void lockOrdinary(String userNo, String userCouponNo) {
+        if (userCouponNo == null) {
+            return;
+        }
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    var source = ordinaryFences.lockOrdinarySource("MAIN", userNo, userCouponNo);
+                    if (source == SourceSystem.PMT) {
+                        promo.lockOrdinary(userNo, userCouponNo);
+                    } else {
+                        legacy.lockOrdinary(userNo, userCouponNo);
+                    }
+                });
     }
 
     @Override

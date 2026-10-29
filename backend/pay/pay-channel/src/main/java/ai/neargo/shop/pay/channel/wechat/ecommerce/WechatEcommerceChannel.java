@@ -92,7 +92,8 @@ public final class WechatEcommerceChannel implements OnlinePayCapability, Transa
     @Override
     public ChannelResult payOnline(Invocation inv, PayCommand c) {
         // 「没实现」必须表现为失败，不能表现为成功：假参数会让端上唤起一个付不了的收银台
-        return new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED, null, "WECHAT 收付通尚未实现向通道下单", false);
+        return new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED, "LOCAL_PAYMENT_NOT_SENT",
+                "WECHAT 收付通尚未实现向通道下单", false);
     }
 
     /**
@@ -105,7 +106,7 @@ public final class WechatEcommerceChannel implements OnlinePayCapability, Transa
         if (sub == null || spMchId == null || spMchId.isBlank()) {
             return new ChannelResult.Unknown("SUB_MERCHANT_UNKNOWN");
         }
-        return WechatResults.trade(client.get(inv, PARTNER_TRANSACTION_BY_OUT_TRADE_NO + c.outTradeNo()
+        return WechatResults.trade(c.outTradeNo(), client.get(inv, PARTNER_TRANSACTION_BY_OUT_TRADE_NO + c.outTradeNo()
                 + "?sp_mchid=" + spMchId + "&sub_mchid=" + sub));
     }
 

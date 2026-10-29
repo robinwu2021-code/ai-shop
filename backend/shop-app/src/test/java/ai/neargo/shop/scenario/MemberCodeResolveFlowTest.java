@@ -1,6 +1,8 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.auth.DelegatedIdentityContext;
+import ai.neargo.shop.spi.security.DelegatedIdentity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.member.config.MemberCodeProperties;
@@ -18,6 +20,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -200,6 +203,41 @@ class MemberCodeResolveFlowTest {
                 ex -> assertThat(ex.errorCode()).isEqualTo(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
         rejected(() -> service.resolve(scope, code));
         assertThat(service.requireReference(scope, ref).userNo()).isEqualTo(user);
+    }
+
+    @Test
+    void consumerProofRequiresCurrentConsumerAndOriginalLiveMemberTicket() {
+        var c = new EntitlementContext("MAIN", user, "proof", "a".repeat(64));
+        String code = service.issue("MAIN", user).memberCode();
+        var consumer = new DelegatedIdentity("MAIN", "CONSUMER", "USR", user);
+        DelegatedIdentityContext.call(consumer, () -> {
+            assertThat(identity.verifyConsumerProof(c, code).userNo()).isEqualTo(user);
+            for (String forged : List.of(user, "17700000000", "login-token", "mc1_" + "a".repeat(43))) {
+                rejected(() -> identity.verifyConsumerProof(c, forged));
+            }
+            return null;
+        });
+        for (var wrong : List.of(new DelegatedIdentity("MAIN", "MERCHANT", "USR", user),
+                new DelegatedIdentity("MAIN", "MERCHANT", "MCH", user),
+                new DelegatedIdentity("MAIN", "CONSUMER", "USR", "OTHER"))) {
+            DelegatedIdentityContext.call(wrong, () -> {
+                rejected(() -> identity.verifyConsumerProof(c, code)); return null;
+            });
+        }
+        jdbc.update("UPDATE mbr_identity_ticket SET issued_at=?,expires_at=? WHERE user_no=?",
+                LocalDateTime.now(ZoneOffset.UTC).minusSeconds(120),
+                LocalDateTime.now(ZoneOffset.UTC).minusSeconds(1), user);
+        DelegatedIdentityContext.call(consumer, () -> {
+            rejected(() -> identity.verifyConsumerProof(c, code)); return null;
+        });
+        String fresh = service.issue("MAIN", user).memberCode();
+        jdbc.update("UPDATE usr_account SET status='BANNED' WHERE user_no=?", user);
+        DelegatedIdentityContext.call(consumer, () -> {
+            rejected(() -> identity.verifyConsumerProof(c, fresh)); return null;
+        });
+        CustomerIdentityPort oldFunctional = (context, query) -> new CustomerIdentityPort.ResolvedCustomer(user);
+        assertThatThrownBy(() -> oldFunctional.verifyConsumerProof(c, code))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     private static void rejected(Runnable action) {

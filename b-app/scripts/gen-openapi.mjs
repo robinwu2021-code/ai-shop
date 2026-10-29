@@ -786,6 +786,7 @@ mSvFinancialBrandStart:"SvFinancialBrandRequest",mSvFinancialBrandChange:"SvFina
   mSubmitBrandChange: "ManagementBrandChangeSubmitReq",
   mDecideBrandChange: "ManagementBrandDecisionReq",
 
+  mResolveMemberCode: "ResolveMemberCodeReq",
   mStorePointStatement: "StorePointStatementQuery",
   mStorePointStatementLines: "StorePointStatementLinesQuery",
   mStorePointStatements: "StorePointsEntriesQuery",

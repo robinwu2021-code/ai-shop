@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.mapping.VendorDatabaseIdProvider;
 import org.flywaydb.core.Flyway;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,6 +20,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import javax.sql.DataSource;
 
 import java.time.LocalDateTime;
+import java.util.Properties;
 
 /**
  * 进销存的**独立数据源**装配。
@@ -100,6 +102,15 @@ public class InventoryDataSourceConfig {
                                            InvMigrated invFlyway) throws Exception {
         MybatisSqlSessionFactoryBean bean = new MybatisSqlSessionFactoryBean();
         bean.setDataSource(invDataSource);
+        // Native original HEAD locks need an ordered index scan; keep its optimizer hint
+        // out of H2 fixtures. Database metadata selects SQL, never execution capability.
+        var dialects = new Properties();
+        dialects.setProperty("MySQL", "MySQL");
+        dialects.setProperty("MariaDB", "MySQL");
+        dialects.setProperty("H2", "H2");
+        var databaseIds = new VendorDatabaseIdProvider();
+        databaseIds.setProperties(dialects);
+        bean.setDatabaseIdProvider(databaseIds);
         bean.setTypeAliasesPackage("ai.neargo.shop.inventory.entity");
         bean.setMapperLocations(new PathMatchingResourcePatternResolver()
                 .getResources("classpath*:mapper/inventory/*.xml"));

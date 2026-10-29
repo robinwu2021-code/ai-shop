@@ -17,23 +17,25 @@ import ai.neargo.shop.trade.order.mapper.CreateIntentMapper;
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
-import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
-import ai.neargo.shop.trade.order.refund.service.RefundFinancialOwnerService;
-import ai.neargo.shop.trade.order.refund.service.OriginalRefundEvidenceService;
 import ai.neargo.shop.trade.order.refund.port.AfterSaleLineStore;
+import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
+import ai.neargo.shop.trade.order.refund.service.OriginalRefundEvidenceService;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
+import ai.neargo.shop.trade.order.refund.service.RefundFinancialOwnerService;
 import ai.neargo.shop.trade.order.refund.service.RefundPreparationService;
 import ai.neargo.shop.trade.order.refund.service.RefundableQuery;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /** Current child facts are read after serialization, including the original successful financial receipt. */
@@ -111,6 +113,9 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
         OrdSubOrder child = locks.lockOrder(hint.getSubOrderNo());
         if (child == null || actor == null || !actor.owns(child)) {
             throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if ("MANUAL_OFFLINE".equals(child.getAdmissionKind())) {
+            throw BizException.of(ErrorCode.CHECKOUT_PAYMENT_CONFLICT);
         }
         OrdAfterSale as = afterSale(no);
         OrdRefundExecution previous = store.byAfterSale(no);

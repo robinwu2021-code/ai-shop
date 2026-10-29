@@ -1,5 +1,6 @@
 package ai.neargo.shop.invbridge.port;
 
+import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
 import ai.neargo.shop.invbridge.ReservationHoldTtl;
 import ai.neargo.shop.inventory.service.InventoryAclService;
@@ -7,17 +8,18 @@ import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.service.StockCountService;
+import ai.neargo.shop.spi.product.OriginalStockReturnPort;
+import ai.neargo.shop.spi.product.StockDispositionContract.ReservationOwner;
 import ai.neargo.shop.spi.product.StockPort;
-import ai.neargo.shop.event.OutboxEventBus;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.LinkedHashMap;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -54,7 +56,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Primary
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "INVENTORY")
-public class InventoryStockPort implements StockPort {
+public class InventoryStockPort implements StockPort, ReservationOwner {
+    private ObjectProvider<OriginalStockReturnPort> originalReturns;
+
+    @Autowired
+    public void setOriginalReturns(ObjectProvider<OriginalStockReturnPort> originalReturns) {
+        this.originalReturns = originalReturns;
+    }
+
+    @Override
+    public String stockAuthority() {
+        return "INVENTORY";
+    }
 
     /**
      * 预留的存活时长，由「未支付自动关单」的窗口推出（见 {@link ReservationHoldTtl}）——
@@ -163,16 +176,18 @@ public class InventoryStockPort implements StockPort {
     }
 
     @Override
+    public RestoreResult restore(String restoreNo, String originalOrderNo, List<SkuQty> items) {
+        var router = originalReturns.getIfAvailable();
+        if (router == null) throw new IllegalStateException("FROZEN_RETURN_AUTHORITY_UNAVAILABLE");
+        return router.restore(restoreNo, originalOrderNo, items);
+    }
+
+    @Override
     public void restore(String restoreNo, List<SkuQty> items) {
         if (items == null || items.isEmpty()) {
             return;
         }
-        // 按业主分组，与 lock 一致：回补单可能来自跨商家的父单，拿第一行的业主会把别家的货补进这家
-        Map<String, List<SkuQty>> byOwner = new LinkedHashMap<>();
-        for (SkuQty item : items) {
-            byOwner.computeIfAbsent(acl.ownerOfSku(item.skuNo()), owner -> new ArrayList<>()).add(item);
-        }
-        byOwner.forEach((owner, group) -> reservations.restore(owner, restoreNo, toLines(owner, group), "SYSTEM"));
+        originalRestores.restoreLegacy(restoreNo, items);
     }
 
     @Override
@@ -208,7 +223,14 @@ public class InventoryStockPort implements StockPort {
         for (SkuQty q : items) {
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, q.storeNo()));
-            lines.add(new ReservationService.Line(acl.itemIdOfSku(q.skuNo()), locationId, q.qty(), q.fulfillmentRef()));
+            lines.add(
+                    new ReservationService.Line(
+                            acl.itemIdOfSku(q.skuNo()),
+                            locationId,
+                            q.qty(),
+                            q.fulfillmentRef(),
+                            q.fulfillmentRef() == null ? null : q.skuNo(),
+                            q.fulfillmentRef() == null ? null : q.storeNo()));
         }
         return lines;
     }

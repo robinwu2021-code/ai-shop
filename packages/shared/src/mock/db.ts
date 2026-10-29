@@ -1562,6 +1562,8 @@ export const db = {
     "biz:verify": "核销取货",
     "biz:ship": "发货与标记送达",
     "biz:order:view": "看订单与金额",
+    "pay:cash:receive": "确认线下实收",
+    "trade:checkout:prepare": "准备服务购买报价",
     "biz:stock": "改库存",
     "biz:goods": "建商品、改价、上下架",
     "biz:campaign": "营销活动与报价",

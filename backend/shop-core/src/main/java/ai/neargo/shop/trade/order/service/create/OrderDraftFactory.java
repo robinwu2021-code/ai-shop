@@ -21,6 +21,7 @@ public final class OrderDraftFactory {
         long goods = group.lines().stream().mapToLong(CartLine::amount).sum();
 
         OrdSubOrder order = new OrdSubOrder();
+        order.setIdentityRevision(1L);
         order.setSubOrderNo(orderNo);
         order.setOrderNo(payNo);
         order.setUserNo(userNo);

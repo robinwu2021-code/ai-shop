@@ -1,0 +1,12 @@
+{
+  "fixBaseTree": "20a4801e8f7189dc1453c4d665892c0a78209c70",
+  "updatedTree": "d4201a0b576d40985a5908e45a7a31ac18ff8bfa",
+  "ownedCount": 98,
+  "changedCount": 9,
+  "unchangedCount": 89,
+  "package": "/tmp/task57-r1-root-review-package.diff",
+  "bytes": 83144,
+  "sha256": "a5f4fe7d6dd006ab58f66d6ca8495472cad8b514aae3d580a7e33e6fe8730cea",
+  "manifestSha256": "f39229ffa61ebe9f5e333324a36315d31d6f31e334b01656bf7adc1905505dc9",
+  "head": "b34e31ba4f10bc75088ccd44d1eef4ef0c5a4ac1"
+}

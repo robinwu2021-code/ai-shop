@@ -1,0 +1,188 @@
+{
+  "task": "Task68/C02",
+  "status": "ALL_36_SOURCES_CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+  "codeCommits": {
+    "A": "5aa1769f2c1719cd86f0cdf4528699527827d7e6",
+    "B1": "419e9d94fa5618d8783abcdb847201c05fa1d525",
+    "B2": "5477210b96ef3339f340ac5d715263d8abf27a19",
+    "C": "1b222220605d87c2400da144668add9cbb1fc08e"
+  },
+  "sourcePins": [
+    {
+      "path": "packages/shared/tests/entity-alignment.test.ts",
+      "sha256": "51309bb26f30398667775bf7c725a5a8d3cf2f52d3b3d4be6c7568ff3e0a9120"
+    },
+    {
+      "path": "scripts/lib/schema-lineage.mjs",
+      "sha256": "3520fce93c23528278630929e9843fb60f34b5afbf3ceb47cbd1642f057980e1"
+    },
+    {
+      "path": "packages/shared/tests/schema-lineage.test.ts",
+      "sha256": "cf9dbe849632b1ae53c7b8d19d21eed612588c5d6ae386584605110c62955b4f"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignFence.java",
+      "sha256": "387c97d77fc705a29326529e300306d36b1929d19301ea24b4c5e911af54232a"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/mapper/CounterCampaignFenceMapper.java",
+      "sha256": "70ba17bf45f83aaee890954a090cdcc45ffcb5c55e2bfd25b66708adf8c974c4"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V543__counter_campaign_owner_fence.sql",
+      "sha256": "7151507414413188096b2bed9cebbea21bfb46e5ab5eab9636b5458b432f39bf"
+    },
+    {
+      "path": "docs/technical/design/schema/counter-campaign-owner-fence-schema.json",
+      "sha256": "0041175c3e0d17b9c40eed67724178f34e3bc59218e7ea0fcc74cc5f95625eb8"
+    },
+    {
+      "path": "scripts/gen-counter-campaign-owner-fence-schema.mjs",
+      "sha256": "4eecbe54725b48cafb5b0180baff9c343df65119d6a3105b951f953acc0519c2"
+    },
+    {
+      "path": "backend/shop-core/src/main/resources/schema/counter-campaign-owner-fence-descriptor.json",
+      "sha256": "194d705c2b44d3ff0dde762df970d0a1216a8a9b00de263091fd07490901228d"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/CounterCampaignFenceIT.java",
+      "sha256": "28878c2110da3dc25c3167e6b4e1ac100935a42cac9248f4ffec9935b1eb6732"
+    },
+    {
+      "path": "scripts/tests/counter-campaign-owner-fence-schema.test.mjs",
+      "sha256": "7d85a09ae0ee6039ce740d951bd1b01cc747de82d80ce8782384c2a5a74a4fab"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CampaignPort.java",
+      "sha256": "364f3e07adc0fa713e490fd905dd3a065d6508e519691964662aabe889a5f7fc"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutEconomicSnapshot.java",
+      "sha256": "84ffbf1dc58e4ea34edbfa4fa3194d414461ed46fc3700e6c130f76e81ec1237"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutPricingScope.java",
+      "sha256": "fea01078516e7c23434d54a609ffdd375b90705d06e08e8d0be61fe5cb99c6af"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/campaign/CounterCampaignRules.java",
+      "sha256": "29a3b0360f77a852f33401ae1360ec683e05aaf981685d3e2863ef27288285a1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCodec.java",
+      "sha256": "188aa673d3d3481026b4547f86d07799d1c7bcf13e4bad6815dcab126472efd5"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterQuoteSnapshot.java",
+      "sha256": "b645014f34ae17e4d6ddaa80f5b758350e916ba56eee86c224dfed2968631772"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/trade/order/service/create/CounterEconomicCompatibilityTest.java",
+      "sha256": "0e1d1ef0f09a51d2bc6be14c742c703f59e598c059088079c1270ae8530236ac"
+    },
+    {
+      "path": "backend/shop-core/src/test/java/ai/neargo/shop/marketing/campaign/CounterCampaignRulesTest.java",
+      "sha256": "f403ce14f7a754d2a01e12f98d3076e5b85ca1e500f320cc26e8809f82077f6d"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/marketing/CounterCampaignContract.java",
+      "sha256": "5280a79001b8338e7ca9827bdf7d9b3aba8295405077aaf61018f56b4e57c48a"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "sha256": "fb2c388ccccc4325f6a9cd590c4bdc45e5c0d4dd87ced5ac3ab94e7259de851c"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/port/CampaignPortImpl.java",
+      "sha256": "f4bbe3c72e93f583e25228d376cba0e88af0d1dbf6955f986f88675027d6f121"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/ActivityPricingService.java",
+      "sha256": "949284a691f99d4ac6b843791df1e849c4b6b17e3727309004eb332998b0fa88"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/ActivityPricingServiceImpl.java",
+      "sha256": "a3c873922a53d7d1208f6db265cffd06816045346605b4edf9a5e8d0eca48461"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/port/GoodsQueryPortImpl.java",
+      "sha256": "a3ab36af5f70f28b1ba45d68a842dbcdcc2ea16f099dac54e4983d4c9f6976b1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java",
+      "sha256": "5372d8a2f37a93bfe8767ca2a623bedb75eb562bfac3470d7ade0644377123ae"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/CheckoutOrderWriter.java",
+      "sha256": "92ee35239d22e067d5efc2116b9e4ac950b4f783a0ddc31e06c0bfb43923123c"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
+      "sha256": "5dfc51e4c11278954b07c04c7c0261ab2468da3dfdf013cd5e5dea67dda236b1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+      "sha256": "15f8c7b4b3187c4533a0b1b57442af86b24c90bca8b2957458f8ec690a585637"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java",
+      "sha256": "9d822096ac5c47fff482ca1801ccdde6417e6c2c4e5bfc6773cf34cfc7a4789a"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/CounterOrderPlacementServiceImpl.java",
+      "sha256": "40e7389da9508077813e09dc8fd1825dfbef7181cadb87fcd8c79fd640dfb7a1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/OrderCreationRecoveryServiceImpl.java",
+      "sha256": "78d408d5c8456a10dd17cdf95f27550f346d29c4f7c167be4a7c216f257f7c0d"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterDiscountIT.java",
+      "sha256": "ae5fa71f0e9398429e118dd83b0bfccc9b83af1caead3a5478f4bf955903744a"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterDiscountFixture.java",
+      "sha256": "c99b03a79d3bd01eaa02b02baaa84206550e3421b826b6d1117802598767cd21"
+    },
+    {
+      "path": "scripts/verify-manual-counter-source.mjs",
+      "sha256": "c298560e26d5e1d4a030fa5b52c828c755f6746bb65a31386daddb4aa532dbdc",
+      "bytes": 149475
+    },
+    {
+      "path": "scripts/tests/manual-counter-source-runner.test.mjs",
+      "sha256": "698607c4524a751dca53691b49a6d89d75bec845fc1aacbf28d912f021862884",
+      "bytes": 48375
+    }
+  ],
+  "sliceGates": [
+    ".superpowers/sdd/beauty-backend/task-68a-code-phase-root-gate.json",
+    ".superpowers/sdd/beauty-backend/task-68b1-code-phase-root-gate.json",
+    ".superpowers/sdd/beauty-backend/task-68b2-code-phase-root-gate.json",
+    ".superpowers/sdd/beauty-backend/task-68c-code-phase-root-gate.json"
+  ],
+  "wholeCompileMatrix": ".superpowers/sdd/beauty-backend/task-68c-compile-matrix.json",
+  "sharedMethodRegistry": 100,
+  "selectedJUnitMethodsUnexecuted": 53,
+  "runnerNodeCasesUnexecuted": 45,
+  "frozenHistoricalMigrations": 485,
+  "serializerArchiveInputsUnchanged": 8,
+  "goldenFilesGenerated": 0,
+  "oldRuntimeBuilt": false,
+  "runtimeValidation": false,
+  "testsExecuted": false,
+  "migrationExecuted": false,
+  "applicationStarted": false,
+  "nativeGateCreated": false,
+  "paymentIntegration": false,
+  "canStart": false,
+  "deploymentExecuted": false,
+  "deferredMinor": [
+    {
+      "id": "M1",
+      "description": "Recorded SKIPPED with started=false is emitted as XML error before skip branch; fails closed and JSON status remains correct",
+      "owner": "C18 final whole-branch review triage before unified testing",
+      "sourceReview": ".superpowers/sdd/beauty-backend/review-task-68c-r0.md"
+    }
+  ]
+}

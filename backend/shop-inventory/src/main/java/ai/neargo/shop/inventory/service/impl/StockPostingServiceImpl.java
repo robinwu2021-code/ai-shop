@@ -13,22 +13,20 @@ import ai.neargo.shop.inventory.mapper.InventoryExactSupportMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.BalanceMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboxMapper;
+import ai.neargo.shop.inventory.policy.ExecutionStockRetentionGuard;
 import ai.neargo.shop.inventory.service.StockPostingService;
 import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.inventory.support.InvKeys;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
-
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 过账实现。三件事在**一个事务**里：改余额 → 写流水 → 发事件。
@@ -53,11 +51,14 @@ public class StockPostingServiceImpl implements StockPostingService {
         this.exactMapper = mapper;
     }
 
-    public StockPostingServiceImpl(
-            BalanceMapper balanceMapper, LedgerMapper ledgerMapper, OutboxMapper outboxMapper) {
+    private final ExecutionStockRetentionGuard retention;
+
+    public StockPostingServiceImpl(BalanceMapper balanceMapper, LedgerMapper ledgerMapper,
+                                   OutboxMapper outboxMapper, ExecutionStockRetentionGuard retention) {
         this.balanceMapper = balanceMapper;
         this.ledgerMapper = ledgerMapper;
         this.outboxMapper = outboxMapper;
+        this.retention = retention;
     }
 
     @Override
@@ -172,14 +173,20 @@ public class StockPostingServiceImpl implements StockPostingService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public List<Long> reverse(String ownerId, String docNo, String docKind, String operator) {
-        List<InvLedger> origin =
-                ledgerMapper.selectList(
-                        Wrappers.<InvLedger>lambdaQuery()
-                                .eq(InvLedger::getOwnerId, ownerId)
-                                .eq(InvLedger::getDocNo, docNo)
-                                .orderByAsc(InvLedger::getLineNo));
+        var source = retention.lockReversibleOutbound(ownerId, docNo);
+        List<InvLedger> origin = ledgerMapper.selectList(Wrappers.<InvLedger>lambdaQuery()
+                .eq(InvLedger::getOwnerId, ownerId)
+                .eq(InvLedger::getDocNo, docNo)
+                .orderByAsc(InvLedger::getLineNo).last("FOR UPDATE"));
         if (origin.isEmpty()) {
             throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (source == null && !InvEnums.DocKind.IN.equals(docKind)
+                || origin.stream().anyMatch(row -> !docKind.equals(row.getDocKind())
+                || row.getQtyDelta() == null || row.getQtyDelta() == 0 || row.getQtyDelta() == Integer.MIN_VALUE)
+                || origin.stream().anyMatch(row -> "SALE".equals(row.getReasonCode()))
+                        && (source == null || !"SALE".equals(source.getPurpose()) || !"OUT".equals(docKind))) {
+            throw BizException.of(ErrorCode.CONFLICT);
         }
         // 反向单号 = 原单号 + "-R"：**幂等靠它** —— 唯一键 (doc_no, line_no) 会挡住重复作废，
         // 而不是靠先查一遍「作废过没有」（那在并发下挡不住）

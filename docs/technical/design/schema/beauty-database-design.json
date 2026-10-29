@@ -1,0 +1,3528 @@
+{
+  "status": "DRAFT_NOT_APPLIED",
+  "date": "2026-10-21",
+  "common_fields": [
+    [
+      "id",
+      "bigint",
+      "物理自增主键，不对外"
+    ],
+    [
+      "tenant_no",
+      "varchar(32)",
+      "沿当前租户上下文；不另启租户体系"
+    ],
+    [
+      "entity_no",
+      "varchar(32)",
+      "商家主体范围；不等于租户"
+    ],
+    [
+      "created_at",
+      "datetime(3)",
+      "创建时刻"
+    ],
+    [
+      "created_by",
+      "varchar(64)",
+      "实际操作者业务引用"
+    ],
+    [
+      "updated_at",
+      "datetime(3)",
+      "更新时间"
+    ],
+    [
+      "updated_by",
+      "varchar(64)",
+      "更新操作者"
+    ],
+    [
+      "version",
+      "bigint",
+      "乐观锁"
+    ],
+    [
+      "deleted",
+      "int",
+      "沿BaseEntity；事实表禁止删除或软删覆盖"
+    ]
+  ],
+  "tables": [
+    {
+      "name": "mch_personnel",
+      "group": "人员",
+      "business_key": "personnel_no",
+      "description": "共用业务人员主档",
+      "fields": [
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "稳定业务人员号"
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "业务姓名"
+        },
+        {
+          "name": "avatar_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "媒体引用"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或SUSPENDED或LEFT"
+        },
+        {
+          "name": "contact_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "受控联系资料引用"
+        }
+      ],
+      "unique": [
+        [
+          "personnel_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "status",
+          "id"
+        ]
+      ],
+      "rules": "同主体内一份主档；允许无登录账号，不按手机号跨主体自动合并。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_personnel_account",
+      "group": "人员",
+      "business_key": "link_no",
+      "description": "当前人员账号关联",
+      "fields": [
+        {
+          "name": "link_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "关联业务号"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "人员",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "mch_account_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "当前账号，无绑定可空",
+          "references": "mch_account"
+        },
+        {
+          "name": "linked_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "绑定时刻"
+        }
+      ],
+      "unique": [
+        [
+          "link_no"
+        ],
+        [
+          "personnel_no"
+        ],
+        [
+          "mch_account_no"
+        ]
+      ],
+      "indexes": [],
+      "rules": "同主体账号与人员一对一当前关联；解绑清空当前引用并追加审计，历史不丢；校验账号主体一致。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_personnel_store",
+      "group": "人员",
+      "business_key": "assignment_no",
+      "description": "跨门店业务任职",
+      "fields": [
+        {
+          "name": "assignment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "任职号"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "人员",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "任职门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "valid_from",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "生效"
+        },
+        {
+          "name": "valid_to",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "结束"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或INACTIVE"
+        },
+        {
+          "name": "public_visible",
+          "type": "tinyint",
+          "nullable": false,
+          "description": "对客展示"
+        },
+        {
+          "name": "level_code",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "本店业务等级"
+        },
+        {
+          "name": "sort_order",
+          "type": "int",
+          "nullable": false,
+          "description": "展示顺序"
+        }
+      ],
+      "unique": [
+        [
+          "assignment_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_no",
+          "status",
+          "personnel_no"
+        ],
+        [
+          "personnel_no",
+          "valid_from"
+        ]
+      ],
+      "rules": "同人员同店有效任职区间不得重叠；锁人员主行仲裁；业务任职不授予登录权限。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_personnel_position",
+      "group": "人员",
+      "business_key": "position_no",
+      "description": "任职上的业务岗位",
+      "fields": [
+        {
+          "name": "position_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "岗位分配号"
+        },
+        {
+          "name": "assignment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "任职",
+          "references": "mch_personnel_store"
+        },
+        {
+          "name": "position_code",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "WAITER或TECHNICIAN等受控业务岗位"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或INACTIVE"
+        }
+      ],
+      "unique": [
+        [
+          "position_no"
+        ],
+        [
+          "assignment_no",
+          "position_code"
+        ]
+      ],
+      "indexes": [],
+      "rules": "同一任职可多岗位；与mch_store_role授权角色分开；岗位码实施前统一字典。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_personnel_skill",
+      "group": "人员",
+      "business_key": "skill_no",
+      "description": "项目服务资格",
+      "fields": [
+        {
+          "name": "skill_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "资格号"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "人员",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "可选门店限制",
+          "references": "mch_store"
+        },
+        {
+          "name": "goods_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "可服务项目",
+          "references": "prd_goods"
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "可选规格约束",
+          "references": "prd_sku"
+        },
+        {
+          "name": "level_code",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "技能级别"
+        },
+        {
+          "name": "valid_from",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "生效"
+        },
+        {
+          "name": "valid_to",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "到期"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "PENDING或VERIFIED或REVOKED"
+        },
+        {
+          "name": "verified_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "核验人"
+        }
+      ],
+      "unique": [
+        [
+          "skill_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "personnel_no",
+          "goods_no",
+          "status"
+        ],
+        [
+          "store_no",
+          "goods_no",
+          "status"
+        ]
+      ],
+      "rules": "匹配取有效且已核验的资格；重叠规则优先级明确，更新锁人员主行；资格不授予收款或隐私权限。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_schedule_rule",
+      "group": "人员",
+      "business_key": "rule_no",
+      "description": "资源班表规则",
+      "fields": [
+        {
+          "name": "rule_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "规则号"
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "可占资源",
+          "references": "mch_resource"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "作业门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "timezone",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "业务时区"
+        },
+        {
+          "name": "weekday_mask",
+          "type": "int",
+          "nullable": false,
+          "description": "周规则"
+        },
+        {
+          "name": "start_minute",
+          "type": "int",
+          "nullable": false,
+          "description": "本地开始分钟"
+        },
+        {
+          "name": "end_minute",
+          "type": "int",
+          "nullable": false,
+          "description": "结束分钟"
+        },
+        {
+          "name": "end_day_offset",
+          "type": "int",
+          "nullable": false,
+          "description": "跨午夜偏移"
+        },
+        {
+          "name": "valid_from",
+          "type": "date",
+          "nullable": false,
+          "description": "规则首日"
+        },
+        {
+          "name": "valid_to",
+          "type": "date",
+          "nullable": true,
+          "description": "规则末日"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或INACTIVE"
+        }
+      ],
+      "unique": [
+        [
+          "rule_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "resource_no",
+          "valid_from"
+        ],
+        [
+          "store_no",
+          "status"
+        ]
+      ],
+      "rules": "跨店同人员班表重叠需显式拒绝或协调；生成幂等且不覆盖已占用时段。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_schedule_exception",
+      "group": "人员",
+      "business_key": "exception_no",
+      "description": "请假加班停约例外",
+      "fields": [
+        {
+          "name": "exception_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "例外号"
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "资源",
+          "references": "mch_resource"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "start_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "开始"
+        },
+        {
+          "name": "end_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "结束"
+        },
+        {
+          "name": "kind",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "LEAVE或EXTRA或CLOSE"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "REQUESTED或APPROVED或REJECTED"
+        },
+        {
+          "name": "reason",
+          "type": "varchar(500)",
+          "nullable": false,
+          "description": "理由"
+        },
+        {
+          "name": "approval_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "审批引用"
+        }
+      ],
+      "unique": [
+        [
+          "exception_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "resource_no",
+          "start_at",
+          "end_at"
+        ]
+      ],
+      "rules": "批准后核查受影响hold/任务，不能静默释放顾客已有约定。",
+      "stage": "P3",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_schedule_change_log",
+      "group": "人员",
+      "business_key": "change_no",
+      "description": "班表调整历史",
+      "fields": [
+        {
+          "name": "change_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "变更号"
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "资源",
+          "references": "mch_resource"
+        },
+        {
+          "name": "source_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "规则或例外来源"
+        },
+        {
+          "name": "before_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "原版本"
+        },
+        {
+          "name": "after_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "新版本"
+        },
+        {
+          "name": "affected_refs",
+          "type": "json",
+          "nullable": false,
+          "description": "受影响业务引用快照"
+        },
+        {
+          "name": "reason",
+          "type": "varchar(500)",
+          "nullable": false,
+          "description": "理由"
+        }
+      ],
+      "unique": [
+        [
+          "change_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "resource_no",
+          "created_at",
+          "id"
+        ]
+      ],
+      "rules": "追加事实；不复制整个预约内容；原号恢复受影响处理。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_resource",
+      "group": "资源",
+      "business_key": "resource_no",
+      "description": "人员或物理资源",
+      "fields": [
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "资源号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "物理资源门店，STAFF为空",
+          "references": "mch_store"
+        },
+        {
+          "name": "resource_type",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "STAFF或ROOM或SEAT或DEVICE"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "STAFF人员引用",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "资源名"
+        },
+        {
+          "name": "capacity",
+          "type": "int",
+          "nullable": false,
+          "description": "并发上限"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或SUSPENDED"
+        },
+        {
+          "name": "open_occupation_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "当前独占式无确定结束占用指针",
+          "references": "mch_resource_occupation"
+        }
+      ],
+      "unique": [
+        [
+          "resource_no"
+        ],
+        [
+          "personnel_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_no",
+          "resource_type",
+          "status"
+        ]
+      ],
+      "rules": "STAFF对应同主体唯一人员且容量1，不复制为每店独立资源；物理资源必须有门店且personnel_no为空。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_booking_owner",
+      "group": "资源",
+      "business_key": "owner_no",
+      "description": "稳定资源仲裁归属",
+      "fields": [
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "稳定仲裁归属号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "来源业务门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "source_type",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "来源类别，精确匹配"
+        },
+        {
+          "name": "source_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "来源业务引用"
+        },
+        {
+          "name": "current_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "当前持有头",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "owner_version",
+          "type": "bigint",
+          "nullable": false,
+          "description": "本域仲裁版本，非BaseEntity版本"
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": true,
+          "description": "当前头外部来源修订"
+        }
+      ],
+      "unique": [
+        [
+          "owner_no"
+        ],
+        [
+          "store_no",
+          "source_type",
+          "source_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "current_hold_no"
+        ]
+      ],
+      "rules": "同来源稳定唯一；当前持有与外部修订成对；本域owner_version与来源修订/实体版本分离。根锁/CAS后续协议实现。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_resource_command",
+      "group": "资源",
+      "business_key": "command_no",
+      "description": "资源持久命令与结果",
+      "fields": [
+        {
+          "name": "command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "持久命令号"
+        },
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "稳定归属",
+          "references": "mch_booking_owner"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "来源门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "action",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "RESERVE/PROTECT/CONFIRM/RENEW/RELEASE/EXPIRE/RECONCILE/REPLACE"
+        },
+        {
+          "name": "request_key_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "作用域内请求键SHA256"
+        },
+        {
+          "name": "payload_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "冻结请求SHA256"
+        },
+        {
+          "name": "frozen_payload",
+          "type": "longtext",
+          "nullable": false,
+          "description": "合法JSON冻结载荷，后续命令协议保持不可变"
+        },
+        {
+          "name": "expected_owner_version",
+          "type": "bigint",
+          "nullable": false,
+          "description": "期望仲裁头版本"
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "外部来源修订"
+        },
+        {
+          "name": "target_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "可选目标持有",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "expected_hold_version",
+          "type": "bigint",
+          "nullable": true,
+          "description": "可选目标实体版本"
+        },
+        {
+          "name": "expected_lease_revision",
+          "type": "bigint",
+          "nullable": true,
+          "description": "可选目标租约修订"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACCEPTED/SUCCEEDED/REJECTED"
+        },
+        {
+          "name": "result_payload",
+          "type": "longtext",
+          "nullable": true,
+          "description": "合法JSON权威结果"
+        },
+        {
+          "name": "rejection_code",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "稳定拒绝原因"
+        },
+        {
+          "name": "wait_reason",
+          "type": "varchar(128)",
+          "nullable": true,
+          "description": "待恢复原因"
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "待恢复下次处理时间"
+        },
+        {
+          "name": "initiated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "原命令发起者"
+        }
+      ],
+      "unique": [
+        [
+          "command_no"
+        ],
+        [
+          "store_no",
+          "action",
+          "request_key_hash"
+        ]
+      ],
+      "indexes": [
+        [
+          "owner_no",
+          "created_at",
+          "id"
+        ],
+        [
+          "status",
+          "next_retry_at",
+          "id"
+        ]
+      ],
+      "rules": "冻结载荷与结果为合法JSON，状态证据匹配；同键异参及不可变/不可逆由后续命令协议实现，不能直接以通用Mapper开放写入。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_resource_bucket",
+      "group": "资源",
+      "business_key": "bucket_no",
+      "description": "跨店统一容量仲裁桶",
+      "fields": [
+        {
+          "name": "bucket_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "容量桶号"
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "跨店规范资源",
+          "references": "mch_resource"
+        },
+        {
+          "name": "start_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "UTC五分钟开始"
+        },
+        {
+          "name": "end_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "UTC五分钟排他结束"
+        },
+        {
+          "name": "capacity",
+          "type": "int",
+          "nullable": false,
+          "description": "桶容量正整数"
+        },
+        {
+          "name": "held_qty",
+          "type": "int",
+          "nullable": false,
+          "description": "未确认占用数量"
+        },
+        {
+          "name": "confirmed_qty",
+          "type": "int",
+          "nullable": false,
+          "description": "确认占用数量"
+        },
+        {
+          "name": "capacity_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "容量事实修订"
+        }
+      ],
+      "unique": [
+        [
+          "bucket_no"
+        ],
+        [
+          "resource_no",
+          "start_at"
+        ]
+      ],
+      "indexes": [
+        [
+          "resource_no",
+          "end_at"
+        ]
+      ],
+      "rules": "UTC统一五分钟网格、存储安全边界、容量正整数及held+confirmed<=capacity；资源身份不含门店。活动事实仍须根锁内复核。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_booking_hold",
+      "group": "资源",
+      "business_key": "hold_no",
+      "description": "资源集合持有凭证",
+      "fields": [
+        {
+          "name": "hold_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "集合持有号"
+        },
+        {
+          "name": "owner_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "稳定归属",
+          "references": "mch_booking_owner"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "业务门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "唯一创建命令",
+          "references": "mch_resource_command"
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "创建来源修订"
+        },
+        {
+          "name": "lease_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "租约修订，从1开始"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "HELD/CONFIRMED/RELEASED/EXPIRED"
+        },
+        {
+          "name": "expiration_policy",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "LOCAL_TTL/SOURCE_COORDINATED"
+        },
+        {
+          "name": "expires_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "原临时期限定点，确认后保留"
+        },
+        {
+          "name": "creation_plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "创建计划摘要不可覆盖"
+        },
+        {
+          "name": "current_plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "当前计划摘要"
+        },
+        {
+          "name": "plan_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "当前计划修订，从1开始"
+        },
+        {
+          "name": "replaces_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "替换的旧持有",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "replaced_by_hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "后继持有",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "termination_reason",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "终止原因"
+        },
+        {
+          "name": "terminated_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "实际终止时刻"
+        },
+        {
+          "name": "execution_started_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "首次执行标记"
+        }
+      ],
+      "unique": [
+        [
+          "hold_no"
+        ],
+        [
+          "command_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "owner_no",
+          "status"
+        ],
+        [
+          "status",
+          "expires_at",
+          "id"
+        ]
+      ],
+      "rules": "创建命令唯一；来源/租约/计划版本分离，终态留完整证据；保护来源未知不由TTL盲释，后续生命周期事务实现。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_booking_hold_unit",
+      "group": "资源",
+      "business_key": "unit_no",
+      "description": "资源持有分配历史明细",
+      "fields": [
+        {
+          "name": "unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "历史分配单位号"
+        },
+        {
+          "name": "hold_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "持有根",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "bucket_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "统一容量桶",
+          "references": "mch_resource_bucket"
+        },
+        {
+          "name": "allocation_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "分配修订，从1开始"
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "nullable": false,
+          "description": "正整数容量份数"
+        },
+        {
+          "name": "source_line_ref",
+          "type": "varchar(128)",
+          "nullable": false,
+          "description": "精确持续使用组引用，utf8mb4_bin"
+        },
+        {
+          "name": "released_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "实际释放标记"
+        },
+        {
+          "name": "release_command_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "释放证据命令",
+          "references": "mch_resource_command"
+        }
+      ],
+      "unique": [
+        [
+          "unit_no"
+        ],
+        [
+          "hold_no",
+          "allocation_revision",
+          "bucket_no",
+          "source_line_ref"
+        ]
+      ],
+      "indexes": [
+        [
+          "bucket_no",
+          "hold_no"
+        ],
+        [
+          "hold_no",
+          "released_at"
+        ]
+      ],
+      "rules": "组引用区分大小写/重音，分配历史唯一且不复用；正数量；释放标记/命令成对。活动单位唯一及计数事务由后续根锁/CAS保证。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_resource_occupation",
+      "group": "资源",
+      "business_key": "occupation_no",
+      "description": "现场占用及预约交接",
+      "fields": [
+        {
+          "name": "occupation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "占用号"
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "资源",
+          "references": "mch_resource"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "执行门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "原预约持有",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "source_type",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "业务来源"
+        },
+        {
+          "name": "source_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "任务或台账号"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "开始"
+        },
+        {
+          "name": "expected_end_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "预计结束"
+        },
+        {
+          "name": "released_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "实际释放"
+        }
+      ],
+      "unique": [
+        [
+          "occupation_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "resource_no",
+          "released_at"
+        ],
+        [
+          "source_type",
+          "source_no"
+        ]
+      ],
+      "rules": "从预约交接复用原容量，不重复占用；开放占用在资源主行记录阻断并与未来预约共同仲裁，不用可空唯一键假装互斥。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "mch_appointment_slot",
+      "group": "资源",
+      "business_key": "slot_no",
+      "description": "既有门店时段的兼容扩展",
+      "fields": [
+        {
+          "name": "slot_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "已有门店时段号"
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "新增规范资源引用",
+          "references": "mch_resource"
+        },
+        {
+          "name": "capacity",
+          "type": "int",
+          "nullable": false,
+          "description": "既有容量"
+        },
+        {
+          "name": "booked",
+          "type": "int",
+          "nullable": false,
+          "description": "既有占用计数"
+        }
+      ],
+      "unique": [
+        [
+          "slot_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "resource_no"
+        ]
+      ],
+      "rules": "此清单仅说明目标增量/既有字段，非重建整表。普通旧路径仍由原协议维护；迁入资源模式后只作投影或统一适配，不能与bucket同时独立扣容量。",
+      "stage": "P1",
+      "mode": "EXTEND_EXISTING"
+    },
+    {
+      "name": "bty_store_policy",
+      "group": "服务",
+      "business_key": "policy_no",
+      "description": "美业门店政策头",
+      "fields": [
+        {
+          "name": "policy_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "政策号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "current_policy_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "当前版本",
+          "references": "bty_store_policy_version"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或INACTIVE"
+        }
+      ],
+      "unique": [
+        [
+          "policy_no"
+        ],
+        [
+          "store_no"
+        ]
+      ],
+      "indexes": [],
+      "rules": "切换当前版本需锁政策头，禁止改历史受理快照。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_store_policy_version",
+      "group": "服务",
+      "business_key": "policy_version_no",
+      "description": "不可变政策版本",
+      "fields": [
+        {
+          "name": "policy_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "版本号"
+        },
+        {
+          "name": "policy_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "政策",
+          "references": "bty_store_policy"
+        },
+        {
+          "name": "revision_index",
+          "type": "int",
+          "nullable": false,
+          "description": "版本序号"
+        },
+        {
+          "name": "booking_ahead_days",
+          "type": "int",
+          "nullable": false,
+          "description": "预约窗口"
+        },
+        {
+          "name": "cancel_rule",
+          "type": "json",
+          "nullable": false,
+          "description": "取消规则"
+        },
+        {
+          "name": "allowed_modes",
+          "type": "json",
+          "nullable": false,
+          "description": "已获准营业模式"
+        },
+        {
+          "name": "effective_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "生效"
+        },
+        {
+          "name": "schema_version",
+          "type": "int",
+          "nullable": false,
+          "description": "规则结构版本"
+        },
+        {
+          "name": "snapshot_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "摘要"
+        }
+      ],
+      "unique": [
+        [
+          "policy_version_no"
+        ],
+        [
+          "policy_no",
+          "revision_index"
+        ]
+      ],
+      "indexes": [],
+      "rules": "发布版本不可编辑；模式配置不授予后付或退款能力。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_service_definition",
+      "group": "服务",
+      "business_key": "definition_no",
+      "description": "项目执行定义头",
+      "fields": [
+        {
+          "name": "definition_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "定义号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "规格",
+          "references": "prd_sku"
+        },
+        {
+          "name": "current_definition_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "版本",
+          "references": "bty_service_definition_version"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或INACTIVE"
+        }
+      ],
+      "unique": [
+        [
+          "definition_no"
+        ],
+        [
+          "store_no",
+          "sku_no"
+        ]
+      ],
+      "indexes": [],
+      "rules": "不复制商品价格；跨店共享可后续抽模板，首期明确门店规格定义。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_service_definition_version",
+      "group": "服务",
+      "business_key": "definition_version_no",
+      "description": "受理用服务规则版本",
+      "fields": [
+        {
+          "name": "definition_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "版本号"
+        },
+        {
+          "name": "definition_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "定义",
+          "references": "bty_service_definition"
+        },
+        {
+          "name": "revision_index",
+          "type": "int",
+          "nullable": false,
+          "description": "序号"
+        },
+        {
+          "name": "duration_min_snapshot",
+          "type": "int",
+          "nullable": false,
+          "description": "受理用商品时长快照"
+        },
+        {
+          "name": "buffer_before_min",
+          "type": "int",
+          "nullable": false,
+          "description": "前缓冲"
+        },
+        {
+          "name": "buffer_after_min",
+          "type": "int",
+          "nullable": false,
+          "description": "后缓冲"
+        },
+        {
+          "name": "steps_template",
+          "type": "json",
+          "nullable": false,
+          "description": "含稳定step_code与顺序的步骤模板"
+        },
+        {
+          "name": "notes",
+          "type": "json",
+          "nullable": false,
+          "description": "项目注意事项"
+        },
+        {
+          "name": "schema_version",
+          "type": "int",
+          "nullable": false,
+          "description": "结构版本"
+        },
+        {
+          "name": "snapshot_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "摘要"
+        }
+      ],
+      "unique": [
+        [
+          "definition_version_no"
+        ],
+        [
+          "definition_no",
+          "revision_index"
+        ]
+      ],
+      "indexes": [],
+      "rules": "不可变版本；时长快照不是另一份可编辑商品时长。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_service_requirement",
+      "group": "服务",
+      "business_key": "requirement_no",
+      "description": "服务资源需求明细",
+      "fields": [
+        {
+          "name": "requirement_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "需求号"
+        },
+        {
+          "name": "definition_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "版本",
+          "references": "bty_service_definition_version"
+        },
+        {
+          "name": "role_code",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "执行角色"
+        },
+        {
+          "name": "resource_type",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "所需资源"
+        },
+        {
+          "name": "skill_goods_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "技能项目",
+          "references": "prd_goods"
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "nullable": false,
+          "description": "需求量"
+        },
+        {
+          "name": "sequence_no",
+          "type": "int",
+          "nullable": false,
+          "description": "任务顺序"
+        },
+        {
+          "name": "offset_min",
+          "type": "int",
+          "nullable": false,
+          "description": "相对开始偏移"
+        },
+        {
+          "name": "duration_min",
+          "type": "int",
+          "nullable": false,
+          "description": "占用时长"
+        },
+        {
+          "name": "selection_rule",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "指定或任意合格"
+        }
+      ],
+      "unique": [
+        [
+          "requirement_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "definition_version_no",
+          "sequence_no"
+        ]
+      ],
+      "rules": "必要资源集合必须原子满足；任意人员并非无容量承诺。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_appointment",
+      "group": "服务",
+      "business_key": "appointment_no",
+      "description": "预约单",
+      "fields": [
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "预约号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "customer_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "已识别客户引用"
+        },
+        {
+          "name": "guest_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "受控临客资料引用"
+        },
+        {
+          "name": "source",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ONLINE或PHONE或WALK_IN或STAFF"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "预约状态"
+        },
+        {
+          "name": "start_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "服务开始"
+        },
+        {
+          "name": "end_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "服务结束"
+        },
+        {
+          "name": "timezone",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "业务时区"
+        },
+        {
+          "name": "hold_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "资源凭证",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "policy_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "受理规则",
+          "references": "bty_store_policy_version"
+        },
+        {
+          "name": "checked_in_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "签到"
+        }
+      ],
+      "unique": [
+        [
+          "appointment_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_no",
+          "start_at",
+          "status"
+        ],
+        [
+          "customer_ref",
+          "start_at"
+        ]
+      ],
+      "rules": "客户引用与临客引用按状态校验；CONFIRMED必须有正式资源承诺；可无交易。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_appointment_item",
+      "group": "服务",
+      "business_key": "appointment_item_no",
+      "description": "预约项目行",
+      "fields": [
+        {
+          "name": "appointment_item_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "项目行号"
+        },
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "预约",
+          "references": "bty_appointment"
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "项目规格",
+          "references": "prd_sku"
+        },
+        {
+          "name": "definition_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "执行版本",
+          "references": "bty_service_definition_version"
+        },
+        {
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "nullable": false,
+          "description": "数量"
+        },
+        {
+          "name": "uom",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "单位"
+        },
+        {
+          "name": "sequence_no",
+          "type": "int",
+          "nullable": false,
+          "description": "顺序"
+        },
+        {
+          "name": "requested_personnel_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "顾客指定人员",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "execution_snapshot",
+          "type": "json",
+          "nullable": false,
+          "description": "受理项目与时长快照"
+        }
+      ],
+      "unique": [
+        [
+          "appointment_item_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "appointment_no",
+          "sequence_no"
+        ]
+      ],
+      "rules": "指定人员是顾客意愿，不能被确认安排或实际执行字段覆盖。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_appointment_assignment",
+      "group": "服务",
+      "business_key": "planned_assignment_no",
+      "description": "预约确认人员安排历史",
+      "fields": [
+        {
+          "name": "planned_assignment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "安排号"
+        },
+        {
+          "name": "appointment_item_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "项目行",
+          "references": "bty_appointment_item"
+        },
+        {
+          "name": "appointment_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "安排对应预约修订"
+        },
+        {
+          "name": "requirement_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "需求",
+          "references": "bty_service_requirement"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "确认人员，资源池可暂未指定",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "resource_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "已承诺资源或合法资源池",
+          "references": "mch_resource"
+        },
+        {
+          "name": "hold_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "持有",
+          "references": "mch_booking_hold"
+        },
+        {
+          "name": "start_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "预计开始"
+        },
+        {
+          "name": "end_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "预计结束"
+        },
+        {
+          "name": "skill_snapshot",
+          "type": "json",
+          "nullable": false,
+          "description": "资格匹配依据"
+        }
+      ],
+      "unique": [
+        [
+          "planned_assignment_no"
+        ],
+        [
+          "appointment_item_no",
+          "appointment_revision",
+          "requirement_no",
+          "resource_no"
+        ]
+      ],
+      "indexes": [],
+      "rules": "保留旧安排版本；预约头version指向当前安排。未指定人需合法资源池合同，首期无资源池实现时不开放该分支。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_work_order",
+      "group": "服务",
+      "business_key": "work_order_no",
+      "description": "服务工单",
+      "fields": [
+        {
+          "name": "work_order_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "工单号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "来源预约",
+          "references": "bty_appointment"
+        },
+        {
+          "name": "customer_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "可信客户"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "OPEN等"
+        },
+        {
+          "name": "scope_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "服务范围版本"
+        },
+        {
+          "name": "scope_frozen",
+          "type": "tinyint",
+          "nullable": false,
+          "description": "关闭检查冻结"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "实际开始"
+        },
+        {
+          "name": "finished_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "范围完工"
+        },
+        {
+          "name": "closed_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "关闭"
+        }
+      ],
+      "unique": [
+        [
+          "work_order_no"
+        ],
+        [
+          "appointment_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_no",
+          "status",
+          "created_at"
+        ]
+      ],
+      "rules": "首期同预约只开一个工单，取消后也不删除重建；直客使用稳定开单键由submission防重。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_service_task",
+      "group": "服务",
+      "business_key": "task_no",
+      "description": "可独立执行服务任务",
+      "fields": [
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "任务号"
+        },
+        {
+          "name": "work_order_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "工单",
+          "references": "bty_work_order"
+        },
+        {
+          "name": "scope_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "创建范围版本"
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "规格",
+          "references": "prd_sku"
+        },
+        {
+          "name": "definition_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "规则",
+          "references": "bty_service_definition_version"
+        },
+        {
+          "name": "appointment_item_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "预约项目行",
+          "references": "bty_appointment_item"
+        },
+        {
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "nullable": false,
+          "description": "承诺数量"
+        },
+        {
+          "name": "done_qty",
+          "type": "decimal(18,6)",
+          "nullable": false,
+          "description": "已做"
+        },
+        {
+          "name": "voided_qty",
+          "type": "decimal(18,6)",
+          "nullable": false,
+          "description": "合法未做撤销"
+        },
+        {
+          "name": "uom",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "单位"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "PENDING等"
+        },
+        {
+          "name": "binding_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "当前来源绑定版本指针"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "开始"
+        },
+        {
+          "name": "finished_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "完工"
+        },
+        {
+          "name": "execution_snapshot",
+          "type": "json",
+          "nullable": false,
+          "description": "冻结执行内容"
+        }
+      ],
+      "unique": [
+        [
+          "task_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "work_order_no",
+          "status"
+        ],
+        [
+          "status",
+          "updated_at"
+        ]
+      ],
+      "rules": "0<=done+voided<=qty，已做不可撤成未做；开始须来源、资格、资源和范围守卫成立。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_service_step",
+      "group": "服务",
+      "business_key": "step_no",
+      "description": "任务步骤实例",
+      "fields": [
+        {
+          "name": "step_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "步骤号"
+        },
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "任务",
+          "references": "bty_service_task"
+        },
+        {
+          "name": "step_code",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "模板稳定步骤码"
+        },
+        {
+          "name": "sequence_no",
+          "type": "int",
+          "nullable": false,
+          "description": "顺序"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "PENDING或IN_PROGRESS或DONE或SKIPPED"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "开始"
+        },
+        {
+          "name": "finished_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "结束"
+        },
+        {
+          "name": "result_snapshot",
+          "type": "json",
+          "nullable": true,
+          "description": "非敏感执行结果"
+        }
+      ],
+      "unique": [
+        [
+          "step_no"
+        ],
+        [
+          "task_no",
+          "step_code"
+        ]
+      ],
+      "indexes": [],
+      "rules": "必须步骤完成后才整任务完工；跳过需理由与权限。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_service_participation",
+      "group": "服务",
+      "business_key": "participation_no",
+      "description": "实际服务人员参与段",
+      "fields": [
+        {
+          "name": "participation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "参与号"
+        },
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "任务",
+          "references": "bty_service_task"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "实际人员",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "assignment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "有效门店任职",
+          "references": "mch_personnel_store"
+        },
+        {
+          "name": "planned_assignment_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "原计划安排",
+          "references": "bty_appointment_assignment"
+        },
+        {
+          "name": "role_code",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "技师或助理等业务角色"
+        },
+        {
+          "name": "occupation_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "实际资源占用",
+          "references": "mch_resource_occupation"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "参与开始"
+        },
+        {
+          "name": "ended_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "参与结束"
+        },
+        {
+          "name": "handover_from_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "前一参与段",
+          "references": "bty_service_participation"
+        },
+        {
+          "name": "reason",
+          "type": "varchar(500)",
+          "nullable": true,
+          "description": "交接理由"
+        },
+        {
+          "name": "qualification_snapshot",
+          "type": "json",
+          "nullable": false,
+          "description": "开工资格与规则版本"
+        }
+      ],
+      "unique": [
+        [
+          "participation_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "personnel_no",
+          "started_at"
+        ],
+        [
+          "task_no",
+          "started_at"
+        ]
+      ],
+      "rules": "结束旧段再追加新段，禁止覆盖人员号；同资源冲突在资源域仲裁；个人任务查询经人员与账号关联鉴权。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_service_submission",
+      "group": "服务",
+      "business_key": "submission_no",
+      "description": "业务提交与跨域恢复意图",
+      "fields": [
+        {
+          "name": "submission_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "提交号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "work_order_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "工单",
+          "references": "bty_work_order"
+        },
+        {
+          "name": "action",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "OPEN或ADD或BIND等"
+        },
+        {
+          "name": "request_key_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "幂等键摘要"
+        },
+        {
+          "name": "payload_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "参数摘要"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "RECEIVED或SOURCE_PENDING或BOUND或RECOVERING或REJECTED"
+        },
+        {
+          "name": "frozen_command",
+          "type": "json",
+          "nullable": false,
+          "description": "受控冻结命令"
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "恢复时刻"
+        },
+        {
+          "name": "failure_code",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "安全错误码"
+        }
+      ],
+      "unique": [
+        [
+          "submission_no"
+        ],
+        [
+          "store_no",
+          "action",
+          "request_key_hash"
+        ]
+      ],
+      "indexes": [
+        [
+          "status",
+          "next_retry_at"
+        ]
+      ],
+      "rules": "跨域超时查询同一源操作；不通过换键新建或恢复时重扣资产。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_trade_binding",
+      "group": "服务",
+      "business_key": "binding_no",
+      "description": "服务来源行数量分配",
+      "fields": [
+        {
+          "name": "binding_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "绑定号"
+        },
+        {
+          "name": "submission_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "拥有此分配的提交",
+          "references": "bty_service_submission"
+        },
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "任务",
+          "references": "bty_service_task"
+        },
+        {
+          "name": "binding_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "绑定版本"
+        },
+        {
+          "name": "source_kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "STORE_ORDER或SERVICE_USE"
+        },
+        {
+          "name": "source_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "类型化源业务号"
+        },
+        {
+          "name": "source_line_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "稳定源行引用"
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "源版本"
+        },
+        {
+          "name": "qty",
+          "type": "decimal(18,6)",
+          "nullable": false,
+          "description": "分配数量"
+        },
+        {
+          "name": "uom",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "单位"
+        },
+        {
+          "name": "source_snapshot_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "源摘要"
+        },
+        {
+          "name": "guard_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "来源行数量仲裁",
+          "references": "bty_source_allocation_guard"
+        }
+      ],
+      "unique": [
+        [
+          "binding_no"
+        ],
+        [
+          "task_no",
+          "binding_revision",
+          "source_kind",
+          "source_no",
+          "source_line_ref"
+        ]
+      ],
+      "indexes": [
+        [
+          "source_kind",
+          "source_no",
+          "source_line_ref"
+        ]
+      ],
+      "rules": "只追加绑定版本；task指针在本地事务切换并守卫旧来源已明确取消；绑定不是一份收款账。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_action_log",
+      "group": "服务",
+      "business_key": "action_no",
+      "description": "行业动作与关键业务证据",
+      "fields": [
+        {
+          "name": "action_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "动作号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "aggregate_type",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "业务对象类型"
+        },
+        {
+          "name": "aggregate_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "对象号"
+        },
+        {
+          "name": "action",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "动作"
+        },
+        {
+          "name": "operator_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "实际操作者"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "相关业务人员",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "expected_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "原版本"
+        },
+        {
+          "name": "result_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "新版本"
+        },
+        {
+          "name": "reason",
+          "type": "varchar(500)",
+          "nullable": true,
+          "description": "原因"
+        },
+        {
+          "name": "safe_snapshot",
+          "type": "json",
+          "nullable": true,
+          "description": "脱敏前后差异"
+        },
+        {
+          "name": "request_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "关联请求"
+        }
+      ],
+      "unique": [
+        [
+          "action_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "aggregate_type",
+          "aggregate_no",
+          "created_at"
+        ]
+      ],
+      "rules": "关键动作本域同事务追加，敏感护理资料不写公共日志；不替代Pay和库存凭证。",
+      "stage": "P1",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_care_profile",
+      "group": "护理疗程",
+      "business_key": "profile_no",
+      "description": "护理档案及权限范围",
+      "fields": [
+        {
+          "name": "profile_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "档案号"
+        },
+        {
+          "name": "customer_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "客户引用"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "首期档案门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或RESTRICTED"
+        },
+        {
+          "name": "access_policy_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "受控资料权限规则"
+        }
+      ],
+      "unique": [
+        [
+          "profile_no"
+        ],
+        [
+          "store_no",
+          "customer_ref"
+        ]
+      ],
+      "indexes": [],
+      "rules": "首期按门店隔离护理资料；主体级共享需单独授权与迁移，顾客会员身份仍共用。",
+      "stage": "P3",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_care_note",
+      "group": "护理疗程",
+      "business_key": "note_no",
+      "description": "追加护理记录与更正",
+      "fields": [
+        {
+          "name": "note_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "记录号"
+        },
+        {
+          "name": "profile_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "档案",
+          "references": "bty_care_profile"
+        },
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "服务任务",
+          "references": "bty_service_task"
+        },
+        {
+          "name": "author_personnel_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "记录人",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "kind",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "CARE或PREFERENCE或ALLERGY"
+        },
+        {
+          "name": "content_cipher",
+          "type": "text",
+          "nullable": false,
+          "description": "加密敏感正文"
+        },
+        {
+          "name": "supersedes_note_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "被更正记录",
+          "references": "bty_care_note"
+        },
+        {
+          "name": "recorded_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "记录发生时刻"
+        }
+      ],
+      "unique": [
+        [
+          "note_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "profile_no",
+          "recorded_at",
+          "id"
+        ]
+      ],
+      "rules": "更正追加且记录链无环；历史不删。密钥与正文分离，访问需用途与岗位。",
+      "stage": "P3",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_care_media",
+      "group": "护理疗程",
+      "business_key": "care_media_no",
+      "description": "私密媒体引用",
+      "fields": [
+        {
+          "name": "care_media_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "媒体关联号"
+        },
+        {
+          "name": "note_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "记录",
+          "references": "bty_care_note"
+        },
+        {
+          "name": "media_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "私有媒体键"
+        },
+        {
+          "name": "purpose",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "资料用途"
+        },
+        {
+          "name": "consent_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "必要授权引用"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACTIVE或RESTRICTED"
+        }
+      ],
+      "unique": [
+        [
+          "care_media_no"
+        ],
+        [
+          "note_no",
+          "media_ref"
+        ]
+      ],
+      "indexes": [],
+      "rules": "不存永久公共URL；撤权不等于删服务事实。",
+      "stage": "P3",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_treatment_plan",
+      "group": "护理疗程",
+      "business_key": "plan_no",
+      "description": "疗程服务计划",
+      "fields": [
+        {
+          "name": "plan_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "计划号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "服务门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "customer_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "客户"
+        },
+        {
+          "name": "entitlement_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "Pay持有权益引用"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "DRAFT或ACTIVE或SUSPENDED或COMPLETED或CANCELLED"
+        },
+        {
+          "name": "plan_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "计划版本"
+        },
+        {
+          "name": "policy_snapshot",
+          "type": "json",
+          "nullable": false,
+          "description": "计划项目间隔等规则"
+        }
+      ],
+      "unique": [
+        [
+          "plan_no"
+        ]
+      ],
+      "indexes": [
+        [
+          "customer_ref",
+          "status"
+        ],
+        [
+          "entitlement_ref"
+        ]
+      ],
+      "rules": "不存可用余次；同权益多计划也不能突破Pay实际可用；取消计划不自动退款。",
+      "stage": "P4",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_treatment_session",
+      "group": "护理疗程",
+      "business_key": "session_no",
+      "description": "疗程计划次及当前执行引用",
+      "fields": [
+        {
+          "name": "session_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "计划次号"
+        },
+        {
+          "name": "plan_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "计划",
+          "references": "bty_treatment_plan"
+        },
+        {
+          "name": "sequence_no",
+          "type": "int",
+          "nullable": false,
+          "description": "次序"
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "计划项目",
+          "references": "prd_sku"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "PLANNED或SCHEDULED或DONE或CANCELLED"
+        },
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "当前预约",
+          "references": "bty_appointment"
+        },
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "当前有效执行任务",
+          "references": "bty_service_task"
+        },
+        {
+          "name": "asset_use_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "对应使用操作"
+        },
+        {
+          "name": "revision_index",
+          "type": "bigint",
+          "nullable": false,
+          "description": "计划次修订"
+        }
+      ],
+      "unique": [
+        [
+          "session_no"
+        ],
+        [
+          "plan_no",
+          "sequence_no"
+        ],
+        [
+          "task_no"
+        ]
+      ],
+      "indexes": [],
+      "rules": "重约保留动作历史；一个任务最多结清一个计划次，特殊补做另受权，不提前扣未来次数。",
+      "stage": "P4",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_performance_allocation",
+      "group": "业绩提成",
+      "business_key": "allocation_no",
+      "description": "产出业绩分配版本",
+      "fields": [
+        {
+          "name": "allocation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "分配版本号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "source_kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "SERVICE_TASK或CARD_SALE"
+        },
+        {
+          "name": "source_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "来源"
+        },
+        {
+          "name": "revision_index",
+          "type": "int",
+          "nullable": false,
+          "description": "版本"
+        },
+        {
+          "name": "basis_code",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "业绩计量口径"
+        },
+        {
+          "name": "total_minor",
+          "type": "bigint",
+          "nullable": false,
+          "description": "本口径分配基数"
+        },
+        {
+          "name": "currency",
+          "type": "char(3)",
+          "nullable": false,
+          "description": "币种"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "DRAFT或CONFIRMED"
+        },
+        {
+          "name": "supersedes_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "前一分配版本",
+          "references": "bty_performance_allocation"
+        }
+      ],
+      "unique": [
+        [
+          "allocation_no"
+        ],
+        [
+          "source_kind",
+          "source_no",
+          "basis_code",
+          "revision_index"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_no",
+          "status",
+          "created_at"
+        ]
+      ],
+      "rules": "确认后不可原地改；服务产出和售卡分口径；总额不是应收或现金流水。",
+      "stage": "P3",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_performance_share",
+      "group": "业绩提成",
+      "business_key": "share_no",
+      "description": "人员业绩份额",
+      "fields": [
+        {
+          "name": "share_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "份额号"
+        },
+        {
+          "name": "allocation_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "分配",
+          "references": "bty_performance_allocation"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "人员",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "role_code",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "参与角色"
+        },
+        {
+          "name": "participation_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "实际参与",
+          "references": "bty_service_participation"
+        },
+        {
+          "name": "share_minor",
+          "type": "bigint",
+          "nullable": false,
+          "description": "份额金额"
+        },
+        {
+          "name": "ratio_ppm",
+          "type": "int",
+          "nullable": true,
+          "description": "百万分比例"
+        }
+      ],
+      "unique": [
+        [
+          "share_no"
+        ],
+        [
+          "allocation_no",
+          "personnel_no",
+          "role_code"
+        ]
+      ],
+      "indexes": [],
+      "rules": "确认事务校验份额合计等于总额，尾差按稳定规则，禁止比例浮点计算。",
+      "stage": "P3",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_commission_policy",
+      "group": "业绩提成",
+      "business_key": "commission_policy_no",
+      "description": "不可变提成规则版本",
+      "fields": [
+        {
+          "name": "commission_policy_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "规则版本号"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店",
+          "references": "mch_store"
+        },
+        {
+          "name": "rule_group_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "规则族"
+        },
+        {
+          "name": "revision_index",
+          "type": "int",
+          "nullable": false,
+          "description": "序号"
+        },
+        {
+          "name": "scope_kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "人员或项目或门店范围"
+        },
+        {
+          "name": "scope_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "范围引用"
+        },
+        {
+          "name": "basis_code",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "原价或成交分摊或定额"
+        },
+        {
+          "name": "mode",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "RATE或FIXED"
+        },
+        {
+          "name": "rate_ppm",
+          "type": "int",
+          "nullable": true,
+          "description": "比例"
+        },
+        {
+          "name": "fixed_minor",
+          "type": "bigint",
+          "nullable": true,
+          "description": "定额"
+        },
+        {
+          "name": "currency",
+          "type": "char(3)",
+          "nullable": false,
+          "description": "币种"
+        },
+        {
+          "name": "priority",
+          "type": "int",
+          "nullable": false,
+          "description": "优先级"
+        },
+        {
+          "name": "valid_from",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "生效"
+        },
+        {
+          "name": "valid_to",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "结束"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "DRAFT或PUBLISHED或RETIRED"
+        }
+      ],
+      "unique": [
+        [
+          "commission_policy_no"
+        ],
+        [
+          "rule_group_no",
+          "revision_index"
+        ]
+      ],
+      "indexes": [
+        [
+          "store_no",
+          "status",
+          "priority"
+        ]
+      ],
+      "rules": "发布锁门店政策头校验适用重叠及优先级；发布后不可改经济规则。",
+      "stage": "P3",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_commission_entry",
+      "group": "业绩提成",
+      "business_key": "entry_no",
+      "description": "计提冲回与发放引用",
+      "fields": [
+        {
+          "name": "entry_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "条目号"
+        },
+        {
+          "name": "share_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "产出份额",
+          "references": "bty_performance_share"
+        },
+        {
+          "name": "commission_policy_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "规则版本",
+          "references": "bty_commission_policy"
+        },
+        {
+          "name": "personnel_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "人员",
+          "references": "mch_personnel"
+        },
+        {
+          "name": "entry_kind",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACCRUAL或REVERSAL或ADJUSTMENT"
+        },
+        {
+          "name": "original_entry_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "原条目",
+          "references": "bty_commission_entry"
+        },
+        {
+          "name": "business_key",
+          "type": "varchar(128)",
+          "nullable": false,
+          "description": "来源动作防重键"
+        },
+        {
+          "name": "base_minor",
+          "type": "bigint",
+          "nullable": false,
+          "description": "基数快照"
+        },
+        {
+          "name": "amount_minor",
+          "type": "bigint",
+          "nullable": false,
+          "description": "带方向金额"
+        },
+        {
+          "name": "currency",
+          "type": "char(3)",
+          "nullable": false,
+          "description": "币种"
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "ACCRUED或PAYABLE或PAID"
+        },
+        {
+          "name": "payment_proof_ref",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "实际发放凭证"
+        },
+        {
+          "name": "occurred_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "description": "发生时间"
+        }
+      ],
+      "unique": [
+        [
+          "entry_no"
+        ],
+        [
+          "business_key"
+        ]
+      ],
+      "indexes": [
+        [
+          "personnel_no",
+          "status",
+          "occurred_at"
+        ],
+        [
+          "original_entry_no"
+        ]
+      ],
+      "rules": "重复计提按来源业务键拒绝；多次冲回锁原条目防累计超冲；已付原条目保持事实，调整另记。",
+      "stage": "P3",
+      "mode": "NEW"
+    },
+    {
+      "name": "bty_source_allocation_guard",
+      "group": "服务",
+      "business_key": "guard_no",
+      "description": "来源行服务分配仲裁",
+      "fields": [
+        {
+          "name": "guard_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "仲裁号"
+        },
+        {
+          "name": "source_kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "来源类型"
+        },
+        {
+          "name": "source_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "来源业务号"
+        },
+        {
+          "name": "source_line_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "稳定来源行"
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "权威来源版本"
+        },
+        {
+          "name": "source_qty",
+          "type": "decimal(18,6)",
+          "nullable": false,
+          "description": "可信来源数量快照"
+        },
+        {
+          "name": "allocated_qty",
+          "type": "decimal(18,6)",
+          "nullable": false,
+          "description": "当前有效分配数量"
+        },
+        {
+          "name": "uom",
+          "type": "varchar(24)",
+          "nullable": false,
+          "description": "数量单位"
+        },
+        {
+          "name": "source_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "来源摘要"
+        }
+      ],
+      "unique": [
+        [
+          "guard_no"
+        ],
+        [
+          "source_kind",
+          "source_no",
+          "source_line_ref"
+        ]
+      ],
+      "indexes": [],
+      "rules": "绑定/释放分配先锁此行，再锁任务按固定顺序处理；allocated_qty不超source_qty，源修订先验证旧分配兼容，不能按源版本另开仲裁行绕过数量上限。",
+      "stage": "P1",
+      "mode": "NEW"
+    }
+  ],
+  "manualServiceFoundation": {
+    "status": "IMPLEMENTED_TASK64_M1_CODE_TESTED_REVIEWED_NOT_DEPLOYED",
+    "owner": "共用trade/Core订单准入；product/inventory权威库存结果；美业仅编排和投影",
+    "design": ".superpowers/sdd/beauty-backend/bm05-offline-core-design.md",
+    "candidates": [
+      {
+        "path": "backend/shop-app/src/main/resources/db/migration/V601__manual_service_admission.sql",
+        "purpose": "共用操作/父子订单不可变admission_kind；人工声明与追加action；独立manual观察/库存原权威清单；同时扩展prd_stock_lock原manifest/源门店/生命周期/确认原号；实际7022字节已在首次隔离执行前审查并冻结；不表示营业库升级",
+        "status": "CODE_COMMITTED_ISOLATED_FIXTURE_EXECUTED_NOT_DEPLOYED",
+        "bytes": 7022,
+        "sha256": "9d01ae07c112cfdb350f4950c88fe7bfba8297be2053b26f97961f31175f9400"
+      },
+      {
+        "path": "backend/shop-inventory/src/main/resources/db/inventory/V16__original_stock_disposition.sql",
+        "purpose": "既有库存预留头/行冻结原SKU/源门店/完整manifest及确认原号；真实所有者结果，旧数据不回填为成功；专用disposition_revision：旧NULL、新清单起1、跟踪变更在原预留根锁递增，不给库存基类新增通用version",
+        "status": "CODE_COMMITTED_ISOLATED_FIXTURE_EXECUTED_NOT_DEPLOYED",
+        "bytes": 935,
+        "sha256": "0a84cc624f3dbd7a58eb38067eefa74778a79cc47d34d4127ba751fd3f4c8095"
+      },
+      {
+        "path": "backend/shop-app/src/main/resources/db/migration/V602__shared_manual_order_customer_party.sql",
+        "status": "TASK66_CODE_ACCEPTED_ISOLATED_SQL_EXECUTED_FORMAL_DEPLOY_PENDING",
+        "purpose": "六项共用交易聚合USER/GUEST条件约束（包含V541 admission.buyer_no）、confirmation authority/namespace与counter intent原号；会员仅增加当前认领索引，无购买见证表"
+      },
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V9__beauty_manual_source_observation.sql",
+        "status": "TASK67_CODE_COMPILED_STATIC_REVIEWED_HISTORICAL_SQL_EXECUTED_UNIFIED_TEST_DEPLOY_PENDING",
+        "purpose": "独立manual epoch/hash与观察/绑定/数量guard；空UNKNOWN占位权威核验后同一行受限adopt、条件SQL及旧financial UPDATE防护，V8冻结不改",
+        "schemaSource": "docs/technical/design/schema/beauty-manual-source-observation-schema.json",
+        "renderer": "scripts/gen-beauty-manual-source-observation-schema.mjs",
+        "bytes": 11501,
+        "sha256": "80eb14c95166709bec87787e7b19c573bd1747759c22d7280eae9a29fd8fdea7"
+      },
+      {
+        "path": "backend/shop-app/src/main/resources/db/migration/V603__counter_campaign_owner_fence.sql",
+        "status": "TASK68A_CODE_COMPILED_STATIC_REVIEWED_SQL_NOT_EXECUTED",
+        "purpose": "共用marketing并发协调表/触发器；非美业私表、非优惠资金账，descriptor和包内能力校验按Task68补充；阶段A仅生成不执行",
+        "schemaSource": "docs/technical/design/schema/counter-campaign-owner-fence-schema.json",
+        "bytes": 31971,
+        "sha256": "7151507414413188096b2bed9cebbea21bfb46e5ab5eab9636b5458b432f39bf",
+        "codeCommit": "5aa1769f2c1719cd86f0cdf4528699527827d7e6"
+      },
+      {
+        "path": "M3–M4：平台V544/V545与美业V10候选（尚未创建）",
+        "purpose": "M2c共用marketing V543 owner fence优先预留；M3来源单位执行许可顺延V544、M4真实占用顺延V545，美业V10不变；实际开工重新核号",
+        "status": "CANDIDATE_NOT_CREATED_RECHECK_NUMBER_BEFORE_USE"
+      }
+    ],
+    "contracts": [
+      "M1仅已识别真实顾客、普通正价单店SERVICE/STORE_VERIFY/COUNT；C购买确认不等于在线支付，不冒充C，临客M2仍属本阶段必做。",
+      "MANUAL_OFFLINE只由专用服务器操作持久；旧在线/资产/正式资金来源不能改标签降级。商品/价格/门店/业务资格仍复用，支付渠道配置/资金查询/点数协调不作为人工模式前置。",
+      "受权现金经办人+CASH_RECEIVE+trade:manual-service:confirm；原额/CNY/时间/作用域及原键幂等校验，真实声明可推进人工PAID；不调用旧markPaid或发布普通金融已付事件。",
+      "原库存命令已接受或void调用成功不等于成功结果；必须读取冻结原权威、生命周期及完整行数量的一致终态；未知保留原号和实收声明，不能ADMITTED。",
+      "人工准入/来源观察与金融回执分开；旧source保持UNKNOWN且不得先查Pay；金额及经办审计按权限裁剪。M1不开放canStart/任务实际占用/履约。原订单详情仅业务状态，专用B查询/source提供人工声明；M2前台账单/展示整合必须显式区分人工登记与Pay核验，开放完整现金闭环前完成，M1不声称页面/全部资金看板已实现。",
+      "PAID/paid_at自动结算选择器在LIMIT前排除人工；普通支付/正式线下receipt/售后退款/修复/通用履约入口拒绝人工；原资金路径及SERVICE_EXECUTION旧完成门禁保持。退款编排的实际派发/查询/成功回调核验和现金、点数两类独立资源恢复都须在外部效果前，以短事务按子单优先锁序核对当前来源及原执行/任务身份；导入矛盾原记录持久保留冲突，不得访问Pay、释放/恢复库存或记成功。扫描排除冲突不能替代直接入口门禁；跨所有者IO不持Core根/执行/任务锁，保留普通资金所有者本地事务。",
+      "Task64 M1已完成代码、分版本定向验证和独立审查；正式部署未执行，M2～M7完整核心尚未完成。M2临客及绑定→M3数量许可→M4真实占用→M5作业→M6履约关闭→M7具体任务日历。",
+      "Task66 M2a共用USER/GUEST购买与V542已接受；Task67 M2b及远程未成单兼容编码编译、独立静态复审完成，V9已在历史隔离分片执行且SQL冻结。真实V8→V9、旧写防护、矩阵与有效消融保留原版本证据；C01新增7项远程测试仅编写编译未执行，不继承旧通过状态。全范围编码之后统一测试和部署，未开放开工。"
+    ],
+    "codeCommit": "fb8fc86d50a394422be408b94278d50989d8ef8a"
+  },
+  "executionServicePlan": {
+    "status": "M3_A1_CODE_REVIEWED_COMPILED_A2_RELEASED",
+    "authority": "主TDD§0.4/§2.48；A1代码bf8fe7688与R1 Spec PASS/Quality APPROVED，24模块编译完成；A2精确13新建+15修改已发布。A3–A5逐片接续；所有测试及部署统一后置，canStart=false。",
+    "candidates": [
+      {
+        "path": "backend/shop-app/src/main/resources/db/migration/V604__manual_service_execution_authority.sql",
+        "purpose": "已编码Core永久单位/尝试授权/原始动作3表，单一schema渲染及懒校验；DDL未执行",
+        "status": "A1_DDL_AUTHORED_REVIEWED_NOT_EXECUTED"
+      },
+      {
+        "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V10__beauty_service_execution_fence.sql",
+        "purpose": "A2已发布新增美业永久执行围栏1表编码；尚未创建/执行",
+        "status": "A2_CODE_RELEASED_SQL_NOT_CREATED"
+      }
+    ],
+    "tables": [
+      {
+        "name": "ord_service_execution_unit",
+        "owner": "Core",
+        "status": "A1_SCHEMA_AUTHORED_REVIEWED_NOT_INSTALLED"
+      },
+      {
+        "name": "ord_service_execution",
+        "owner": "Core",
+        "status": "A1_SCHEMA_AUTHORED_REVIEWED_NOT_INSTALLED"
+      },
+      {
+        "name": "ord_service_execution_action",
+        "owner": "Core",
+        "status": "A1_SCHEMA_AUTHORED_REVIEWED_NOT_INSTALLED"
+      },
+      {
+        "name": "bty_service_execution_fence",
+        "owner": "Beauty",
+        "status": "PLANNED_NOT_CREATED"
+      }
+    ],
+    "contracts": [
+      "共用Core拥有订单行Q及永久(sourceLineNo,unitOrdinal)→task关联，美业不复制订单或数量账；任务仅支持精确COUNT1，1.000000合法，聚合及小数历史不猜测拆分。",
+      "永久单位与尝试分离，换键/取消重建/新绑定不得复用他人单位；reserved+performed+voided<=ordered，UNKNOWN保留单位与原号，M3仅attempt1/PREPARED/query/suspend。",
+      "START意图在美业本地提交后才调用Core；当前SELF/真实人员任职必须重验，原号机器查询不保存或重放人工身份。",
+      "实际completeManual证据异常在同一事务持久挂起；三处pre-owner刷新只产生PENDING，未变化有效结果恢复连续性，不能抹除真正的既有挂起。",
+      "Core锁父单→排序子单→来源行/单位/授权→操作/声明明细，真正失效写入同根协调；旧sourceHash/schema0/seal与柜台经济结果字节不改。",
+      "V1–V9基础28私表严格校验；V10候选新增1表共29，base readiness9与执行能力分开；仅已知扩展损坏隔离到受影响操作，基础或未知结构损坏仍拒绝启动。",
+      "Core/Beauty恢复Bean分别coreServiceExecutionRecoveryJob/beautyServiceExecutionRecoveryJob，声明和逻辑任务名亦不同，禁止开启bean覆盖。",
+      "M4真实占用/双向单位证明、生命周期2库存保留及头→行锁序是实际开工硬前置；M5人工参与和M6履约独立，M3不开放canStart、doneQty或支付链。",
+      "5条内部HTTP为A4待实现；A1已定义合同并完成严格协议、哈希及存储，未新增公开开工空壳；实际业务所有者接入与运行验收仍待后续分片。权限复用Task62，未新增权限码、默认授权、配置键或i18n词条。"
+    ]
+  },
+  "integrationMigrationMapping": {
+    "manifest": "docs/technical/design/schema/beauty-unified-migration-map.json",
+    "sourceOnly": true,
+    "historicalEvidenceUsesOriginalVersions": true,
+    "integratedRuntimeVerification": "PENDING",
+    "targetDeploymentHistoryValidation": "REQUIRED_BEFORE_DEPLOYMENT"
+  }
+}

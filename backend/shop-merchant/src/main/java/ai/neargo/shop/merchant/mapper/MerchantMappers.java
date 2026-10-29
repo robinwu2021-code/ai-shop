@@ -1,21 +1,54 @@
 package ai.neargo.shop.merchant.mapper;
 
+import ai.neargo.shop.merchant.dto.OperatorAccessRow;
+import ai.neargo.shop.merchant.dto.OperatorPersonnelFactRow;
+import ai.neargo.shop.merchant.dto.ResourceCommandFactRow;
+import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
+import ai.neargo.shop.merchant.dto.PersonnelAssignmentFactRow;
+import ai.neargo.shop.merchant.dto.PersonnelPositionFactRow;
+import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
+import ai.neargo.shop.merchant.dto.ResourceFactRow;
+import ai.neargo.shop.merchant.dto.ResourceCommandScopeRow;
+import ai.neargo.shop.merchant.dto.ResourceBookingAllocationRow;
+import ai.neargo.shop.merchant.dto.ResourceBookingCounterRow;
+import ai.neargo.shop.merchant.dto.ScheduleRuleFactRow;
 import ai.neargo.shop.merchant.entity.MchAccount;
+import ai.neargo.shop.merchant.entity.MchBookingOwner;
+import ai.neargo.shop.merchant.entity.MchResourceCommand;
+import ai.neargo.shop.merchant.entity.MchResourceBucket;
+import ai.neargo.shop.merchant.entity.MchBookingHold;
+import ai.neargo.shop.merchant.entity.MchBookingHoldUnit;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.entity.MchPayoutAccount;
+import ai.neargo.shop.merchant.entity.MchPersonnel;
+import ai.neargo.shop.merchant.entity.MchPersonnelAccount;
+import ai.neargo.shop.merchant.entity.MchPersonnelPosition;
+import ai.neargo.shop.merchant.entity.MchPersonnelSkill;
+import ai.neargo.shop.merchant.entity.MchPersonnelStore;
 import ai.neargo.shop.merchant.entity.MchQualification;
+import ai.neargo.shop.merchant.entity.MchResource;
+import ai.neargo.shop.merchant.entity.MchScheduleChangeLog;
+import ai.neargo.shop.merchant.entity.MchScheduleRule;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /**
  * merchant 域的 Mapper 集合（嵌套接口，沿用 powerbank 的写法）。
- * Mapper 只做单表 CRUD 与条件组合，跨表聚合放 Service —— 一旦 Mapper 里出现业务分支，
- * 数据域拦截器与状态机就会被绕过。
+ * Mapper负责CRUD与范围投影；关系投影可JOIN确认父链和规范身份。
+ * 事务编排、权限和资源/资格许可仍由所有者业务层负责，不在Mapper中替代。
  *
  * <p>原先这六个接口与 user 的四个同住 {@code UserMappers}。合在一起的直接后果是：
  * 任何拿到 {@code UserMappers} 的类都顺手能读写商家表，边界靠自觉——
@@ -24,6 +57,290 @@ import org.apache.ibatis.annotations.Update;
 public final class MerchantMappers {
 
     private MerchantMappers() {
+    }
+
+    /** Exact live access projection; source owners must not reuse session-role snapshots or personnel jobs. */
+    @Mapper
+    public interface OperatorAccessMapper {
+        @Select("""
+                SELECT a.mch_account_no AS account_no,
+                  (a.is_owner=1 OR EXISTS (
+                    SELECT 1 FROM mch_store_role g JOIN mch_role d ON d.tenant_no=g.tenant_no
+                      AND CAST(d.role_code AS BINARY)=CAST(g.role AS BINARY) AND d.deleted=0
+                    WHERE g.tenant_no=a.tenant_no AND g.mch_account_no=a.mch_account_no AND g.deleted=0
+                      AND CAST(g.store_no AS BINARY)=CAST(s.store_no AS BINARY)
+                      AND (CAST(d.entity_no AS BINARY)=CAST(e.entity_no AS BINARY)
+                        OR (d.entity_no='*' AND NOT EXISTS (SELECT 1 FROM mch_role custom
+                          WHERE custom.tenant_no=d.tenant_no AND custom.deleted=0
+                            AND CAST(custom.entity_no AS BINARY)=CAST(e.entity_no AS BINARY)
+                            AND CAST(custom.role_code AS BINARY)=CAST(d.role_code AS BINARY))))
+                      AND JSON_VALID(d.perms)
+                      AND (JSON_CONTAINS(d.perms,JSON_QUOTE(#{q.permission}))
+                        OR JSON_CONTAINS(d.perms,JSON_QUOTE('*'))))) AS allowed
+                FROM mch_entity e JOIN mch_store s ON s.tenant_no=e.tenant_no AND s.entity_no=e.entity_no
+                JOIN mch_account a ON a.tenant_no=e.tenant_no AND a.entity_no=e.entity_no
+                WHERE CAST(e.tenant_no AS BINARY)=CAST(#{q.tenantNo} AS BINARY)
+                  AND CAST(e.entity_no AS BINARY)=CAST(#{q.entityNo} AS BINARY)
+                  AND CAST(s.store_no AS BINARY)=CAST(#{q.storeNo} AS BINARY)
+                  AND e.status='ACTIVE' AND e.archived_at IS NULL AND e.deleted=0
+                  AND s.status='ACTIVE' AND s.deleted=0 AND a.status='ACTIVE' AND a.deleted=0
+                  AND ((#{q.subjectKind}='MCH' AND CAST(a.mch_account_no AS BINARY)=CAST(#{q.operatorNo} AS BINARY))
+                    OR (#{q.subjectKind}='USR' AND CAST(a.user_no AS BINARY)=CAST(#{q.operatorNo} AS BINARY)))
+                LIMIT 2
+                """)
+        List<OperatorAccessRow> selectAccess(@Param("q") MerchantOperatorAccessPort.Query query);
+    }
+
+    /** 稳定资源仲裁归属数据访问；完整仲裁由后续服务编排。 */
+    public interface BookingOwnerMapper extends BaseMapper<MchBookingOwner> {
+        /**
+         * Shared parent guards use explicit trusted scope. JSQLParser cannot parse LOCK IN SHARE MODE, so only
+         * this fully scoped statement skips data-permission rewriting; generic mapper interception stays enabled.
+         */
+        @InterceptorIgnore(dataPermission = "true")
+        @Select("""
+                SELECT e.tenant_no,e.entity_no,s.store_no FROM mch_entity e
+                JOIN mch_store s ON s.tenant_no=e.tenant_no AND s.entity_no=e.entity_no
+                WHERE e.tenant_no=#{tenantNo} AND e.entity_no=#{entityNo} AND s.store_no=#{storeNo}
+                  AND e.status='ACTIVE' AND e.archived_at IS NULL AND e.deleted=0
+                  AND s.status='ACTIVE' AND s.deleted=0 LOCK IN SHARE MODE
+                """)
+        ResourceCommandScopeRow lockScope(@Param("tenantNo") String tenantNo, @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo);
+
+        /** Current root read; a missing row is established by scoped unique insert, not an unlocked absence check. */
+        @Select("""
+                SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND source_type=#{sourceType} AND source_no=#{sourceNo}
+                  AND deleted=0 FOR UPDATE
+                """)
+        MchBookingOwner lockBySource(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("sourceType") String sourceType, @Param("sourceNo") String sourceNo);
+
+        /** Nonlocking replay read occurs only after the duplicate-insert transaction has rolled back. */
+        @Select("""
+                SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND source_type=#{sourceType} AND source_no=#{sourceNo} AND deleted=0
+                """)
+        MchBookingOwner selectBySource(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("sourceType") String sourceType, @Param("sourceNo") String sourceNo);
+
+        /** Stable source binding for recovery receipts; no caller-supplied source identity is trusted on query. */
+        @Select("""
+                SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND owner_no=#{ownerNo} AND deleted=0
+                """)
+        MchBookingOwner selectOwner(@Param("scope") ResourceCommandScopeRow scope, @Param("ownerNo") String ownerNo);
+
+        /** Must precede command/resource locks; every business command serializes on this stable root. */
+        @Select("""
+                SELECT * FROM mch_booking_owner WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND owner_no=#{ownerNo} AND deleted=0 FOR UPDATE
+                """)
+        MchBookingOwner lockOwner(@Param("scope") ResourceCommandScopeRow scope, @Param("ownerNo") String ownerNo);
+
+        /** Root CAS is part of the same local transaction as capacity evidence and the terminal command result. */
+        @Update("""
+                UPDATE mch_booking_owner SET current_hold_no=#{holdNo},source_revision=#{sourceRevision},
+                  owner_version=owner_version+1,version=version+1,updated_at=#{now},updated_by=#{actor}
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND owner_no=#{ownerNo} AND owner_version=#{expectedVersion} AND deleted=0
+                  AND owner_version<9223372036854775807 AND version<9223372036854775807
+                  AND (current_hold_no=#{previousHoldNo} OR (current_hold_no IS NULL AND #{previousHoldNo} IS NULL))
+                """)
+        int advanceHead(@Param("scope") ResourceCommandScopeRow scope, @Param("ownerNo") String ownerNo,
+                @Param("expectedVersion") long expectedVersion, @Param("previousHoldNo") String previousHoldNo,
+                @Param("holdNo") String holdNo, @Param("sourceRevision") Long sourceRevision,
+                @Param("actor") String actor, @Param("now") LocalDateTime now);
+
+    }
+
+    /** 资源持久命令与结果数据访问；完整仲裁由后续服务编排。 */
+    public interface ResourceCommandMapper extends BaseMapper<MchResourceCommand> {
+        /** One original parent-chain snapshot; never substitutes the owner's current hold or latest command. */
+        @Select("""
+                SELECT c.tenant_no,c.entity_no,c.store_no,c.command_no,o.source_type,o.source_no,
+                  c.source_revision,c.action,c.payload_hash AS command_hash,c.frozen_payload,c.status,
+                  c.version AS revision,c.result_payload,c.rejection_code
+                FROM mch_resource_command c JOIN mch_booking_owner o ON o.tenant_no=c.tenant_no
+                  AND o.entity_no=c.entity_no AND o.store_no=c.store_no AND o.owner_no=c.owner_no AND o.deleted=0
+                WHERE c.tenant_no=#{scope.tenantNo} AND c.entity_no=#{scope.entityNo} AND c.store_no=#{scope.storeNo}
+                  AND c.command_no=#{commandNo} AND c.deleted=0
+                """)
+        ResourceCommandFactRow selectOriginalFact(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("commandNo") String commandNo);
+
+        /** Explicit parent chain prevents recovery by command number from crossing scope or a foreign owner. */
+        @Select("""
+                SELECT c.* FROM mch_resource_command c JOIN mch_booking_owner o
+                  ON o.tenant_no=c.tenant_no AND o.entity_no=c.entity_no AND o.store_no=c.store_no
+                  AND o.owner_no=c.owner_no AND o.deleted=0
+                WHERE c.tenant_no=#{scope.tenantNo} AND c.entity_no=#{scope.entityNo} AND c.store_no=#{scope.storeNo}
+                  AND c.command_no=#{commandNo} AND c.deleted=0
+                """)
+        MchResourceCommand selectCommand(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("commandNo") String commandNo);
+
+        /** Immutable key evidence; no update is performed during a replay. */
+        @Select("""
+                SELECT c.* FROM mch_resource_command c JOIN mch_booking_owner o
+                  ON o.tenant_no=c.tenant_no AND o.entity_no=c.entity_no AND o.store_no=c.store_no
+                  AND o.owner_no=c.owner_no AND o.deleted=0
+                WHERE c.tenant_no=#{scope.tenantNo} AND c.entity_no=#{scope.entityNo} AND c.store_no=#{scope.storeNo}
+                  AND c.action=#{action} AND c.request_key_hash=#{keyHash} AND c.deleted=0
+                """)
+        MchResourceCommand selectByKey(@Param("scope") ResourceCommandScopeRow scope, @Param("action") String action,
+                @Param("keyHash") String keyHash);
+
+        /** Caller has already locked the scoped owner; this current read cannot reuse an old RR snapshot. */
+        @Select("""
+                SELECT * FROM mch_resource_command WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND owner_no=#{ownerNo} AND command_no=#{commandNo}
+                  AND deleted=0 FOR UPDATE
+                """)
+        MchResourceCommand lockCommand(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("ownerNo") String ownerNo, @Param("commandNo") String commandNo);
+
+        /** Explicit audit/version and ACCEPTED predicate protect terminal records from stale recovery workers. */
+        @Update("""
+                UPDATE mch_resource_command SET wait_reason=#{reason},next_retry_at=#{retryAt},version=version+1,
+                  updated_at=#{now},updated_by=#{actor}
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND command_no=#{commandNo} AND status='ACCEPTED' AND version=#{version} AND deleted=0
+                  AND version<9223372036854775807
+                """)
+        int markWaiting(@Param("scope") ResourceCommandScopeRow scope, @Param("commandNo") String commandNo,
+                @Param("version") long version, @Param("reason") String reason,
+                @Param("retryAt") LocalDateTime retryAt, @Param("actor") String actor,
+                @Param("now") LocalDateTime now);
+
+        /** Frozen request columns are deliberately absent; clearing retry fields is part of terminalization. */
+        @Update("""
+                UPDATE mch_resource_command SET status=#{status},result_payload=#{result},rejection_code=#{code},
+                  wait_reason=NULL,next_retry_at=NULL,version=version+1,updated_at=#{now},updated_by=#{actor}
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo}
+                  AND command_no=#{commandNo} AND status='ACCEPTED' AND version=#{version} AND deleted=0
+                  AND version<9223372036854775807
+                """)
+        int finishAccepted(@Param("scope") ResourceCommandScopeRow scope, @Param("commandNo") String commandNo,
+                @Param("version") long version, @Param("status") String status, @Param("result") String result,
+                @Param("code") String code, @Param("actor") String actor, @Param("now") LocalDateTime now);
+
+    }
+
+    /** 跨店统一容量仲裁桶数据访问；完整仲裁由后续服务编排。 */
+    public interface ResourceBucketMapper extends BaseMapper<MchResourceBucket> {
+        /** Never infer availability from a drifted count or silently drop orphaned/deleted active allocations. */
+        @Select("SELECT COALESCE(SUM(CASE WHEN h.status='HELD' THEN u.qty ELSE 0 END),0) AS held,"
+                + "COALESCE(SUM(CASE WHEN h.status='CONFIRMED' THEN u.qty ELSE 0 END),0) AS confirmed,"
+                + "COALESCE(SUM(CASE WHEN h.id IS NULL OR h.deleted<>0 OR u.deleted<>0 "
+                + "OR h.status NOT IN ('HELD','CONFIRMED') OR o.id IS NULL OR o.deleted<>0 "
+                + "OR o.current_hold_no IS NULL OR o.current_hold_no<>h.hold_no "
+                + "OR o.source_revision<>h.source_revision THEN 1 ELSE 0 END),0) AS invalid "
+                + "FROM mch_booking_hold_unit u LEFT JOIN mch_booking_hold h ON h.tenant_no=u.tenant_no "
+                + "AND h.entity_no=u.entity_no AND h.hold_no=u.hold_no LEFT JOIN mch_booking_owner o "
+                + "ON o.tenant_no=h.tenant_no AND o.entity_no=h.entity_no AND o.store_no=h.store_no "
+                + "AND o.owner_no=h.owner_no WHERE u.tenant_no=#{scope.tenantNo} AND u.entity_no=#{scope.entityNo} "
+                + "AND u.bucket_no=#{bucket} AND u.released_at IS NULL")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        ResourceBookingCounterRow selectBookingCounters(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("bucket") String bucket);
+
+        /** Root locks are already held; bucket identity deliberately excludes store for shared STAFF capacity. */
+        @Select("SELECT * FROM mch_resource_bucket WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND resource_no=#{resource} AND start_at=#{start} "
+                + "AND deleted=0 FOR UPDATE")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchResourceBucket lockBookingBucket(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("resource") String resource, @Param("start") LocalDateTime start);
+
+        /** Signed net deltas avoid replacement double charging; SQL independently enforces nonnegative capacity. */
+        @Update("UPDATE mch_resource_bucket SET held_qty=held_qty+#{held},confirmed_qty=confirmed_qty+#{confirmed},"
+                + "version=version+1,updated_by=#{actor},updated_at=#{at} WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND bucket_no=#{bucket} AND version=#{version} AND deleted=0 "
+                + "AND version<9223372036854775807 AND held_qty+#{held}>=0 AND confirmed_qty+#{confirmed}>=0 "
+                + "AND CAST(held_qty AS DECIMAL(20,0))+confirmed_qty+#{held}+#{confirmed}<=capacity")
+        int adjustBookingCapacity(@Param("scope") ResourceCommandScopeRow scope, @Param("bucket") String bucket,
+                @Param("version") long version, @Param("held") long held, @Param("confirmed") long confirmed,
+                @Param("actor") String actor, @Param("at") LocalDateTime at);
+    }
+
+    /** 资源集合持有凭证数据访问；完整仲裁由后续服务编排。 */
+    public interface BookingHoldMapper extends BaseMapper<MchBookingHold> {
+        /** Acquired after the full personnel/resource union, never before discovering additional roots. */
+        @Select("SELECT * FROM mch_booking_hold WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} "
+                + "AND store_no=#{scope.storeNo} AND owner_no=#{owner} AND hold_no=#{hold} AND deleted=0 FOR UPDATE")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchBookingHold lockBookingHold(@Param("scope") ResourceCommandScopeRow scope, @Param("owner") String owner,
+                @Param("hold") String hold);
+
+        /** Explicit nullable termination/link writes and revision CAS preserve history and immutable creation hash. */
+        @Update("UPDATE mch_booking_hold SET status=#{next.status},source_revision=#{next.sourceRevision},"
+                + "lease_revision=#{next.leaseRevision},expires_at=#{next.expiresAt},"
+                + "expiration_policy=#{next.expirationPolicy},replaced_by_hold_no=#{next.replacedByHoldNo},"
+                + "termination_reason=#{next.terminationReason},terminated_at=#{next.terminatedAt},"
+                + "version=version+1,updated_by=#{actor},updated_at=#{at} WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND store_no=#{scope.storeNo} AND owner_no=#{next.ownerNo} "
+                + "AND hold_no=#{next.holdNo} AND version=#{next.version} AND deleted=0 "
+                + "AND version<9223372036854775807 AND execution_started_at IS NULL")
+        int saveBookingHold(@Param("scope") ResourceCommandScopeRow scope, @Param("next") MchBookingHold next,
+                @Param("actor") String actor, @Param("at") LocalDateTime at);
+
+        /** Resolves canonical hold identity and owner/store parent chain before a command can reference it. */
+        @Select("""
+                SELECT * FROM mch_booking_hold WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND store_no=#{scope.storeNo} AND owner_no=#{ownerNo} AND hold_no=#{holdNo} AND deleted=0
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchBookingHold selectOwnedHold(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("ownerNo") String ownerNo, @Param("holdNo") String holdNo);
+
+        /** Old-head retirement includes soft-deleted unreleased units; deletion must never manufacture a release. */
+        @Select("""
+                SELECT COUNT(*) FROM mch_booking_hold_unit
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND hold_no=#{holdNo}
+                  AND released_at IS NULL AND (#{includeDeleted}=TRUE OR deleted=0)
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long countUnreleased(@Param("scope") ResourceCommandScopeRow scope, @Param("holdNo") String holdNo,
+                @Param("includeDeleted") boolean includeDeleted);
+
+    }
+
+    /** 资源持有分配历史明细数据访问；完整仲裁由后续服务编排。 */
+    public interface BookingHoldUnitMapper extends BaseMapper<MchBookingHoldUnit> {
+        /** Missing bucket identity cannot be inferred as free; conservatively stop the entity until repair. */
+        @Select("SELECT EXISTS(SELECT 1 FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b "
+                + "ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no "
+                + "LEFT JOIN mch_booking_hold h ON h.tenant_no=u.tenant_no AND h.entity_no=u.entity_no "
+                + "AND h.hold_no=u.hold_no LEFT JOIN mch_booking_owner o ON o.tenant_no=h.tenant_no "
+                + "AND o.entity_no=h.entity_no AND o.store_no=h.store_no AND o.owner_no=h.owner_no "
+                + "WHERE u.tenant_no=#{scope.tenantNo} AND u.entity_no=#{scope.entityNo} "
+                + "AND u.released_at IS NULL AND (u.deleted<>0 OR b.id IS NULL OR b.deleted<>0 "
+                + "OR h.id IS NULL OR h.deleted<>0 OR h.status NOT IN ('HELD','CONFIRMED') "
+                + "OR o.id IS NULL OR o.deleted<>0 OR o.current_hold_no IS NULL "
+                + "OR o.current_hold_no<>h.hold_no OR o.source_revision<>h.source_revision))")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        boolean hasBookingOrphans(@Param("scope") ResourceCommandScopeRow scope);
+
+        /** Owner root serializes discovery; LEFT JOIN exposes corrupt/deleted parent evidence rather than dropping it. */
+        @Select("SELECT u.unit_no,u.version,u.bucket_no,b.resource_no,b.start_at,b.end_at,u.qty,u.source_line_ref,"
+                + "u.deleted FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b "
+                + "ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no AND b.deleted=0 "
+                + "WHERE u.tenant_no=#{scope.tenantNo} AND u.entity_no=#{scope.entityNo} "
+                + "AND u.hold_no=#{hold} AND u.released_at IS NULL ORDER BY u.id LIMIT 10001")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        List<ResourceBookingAllocationRow> selectBookingAllocations(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("hold") String hold);
+
+        /** Unit release is evidence, never deletion; effects are atomic with bucket deltas and the original result. */
+        @Update("UPDATE mch_booking_hold_unit SET released_at=#{at},release_command_no=#{command},version=version+1,"
+                + "updated_at=#{at},updated_by=#{actor} WHERE tenant_no=#{scope.tenantNo} "
+                + "AND entity_no=#{scope.entityNo} AND hold_no=#{hold} AND unit_no=#{unit} AND version=#{version} "
+                + "AND released_at IS NULL AND deleted=0 AND version<9223372036854775807")
+        int releaseBookingUnit(@Param("scope") ResourceCommandScopeRow scope, @Param("hold") String hold,
+                @Param("unit") String unit, @Param("version") long version, @Param("command") String command,
+                @Param("actor") String actor, @Param("at") LocalDateTime at);
     }
 
     public interface MchEntityMapper extends BaseMapper<MchEntity> {
@@ -246,6 +563,12 @@ public final class MerchantMappers {
 
     /** 商家子账号：账号 ↔ 主体的成员关系。**身份来源**（取代 mch_entity.owner_user_no）。 */
     public interface MchAccountMapper extends BaseMapper<MchAccount> {
+        /** Personnel account linking and suspension serialize on the existing canonical membership row. */
+        @Select("SELECT * FROM mch_account WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND mch_account_no=#{account} AND deleted=0 FOR UPDATE")
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchAccount lockPersonnelAccount(@Param("entity") String entity, @Param("account") String account);
+
     }
 
     /** 子账号在各门店的角色（每店一个角色）。 */
@@ -321,6 +644,328 @@ public final class MerchantMappers {
      * 不在这里：它要跨行判断并改另一行的状态，放 Mapper 就绕过了状态机。
      */
     public interface PayoutAccountMapper extends BaseMapper<MchPayoutAccount> {
+    }
+
+
+    /** Shared personnel master; login accounts are optional independent associations. */
+    public interface PersonnelMapper extends BaseMapper<MchPersonnel> {
+        /** Parent CAS serializes every employment, account and status maintenance command. */
+        @Update("UPDATE mch_personnel SET status=#{status},version=version+1,updated_at=#{at},updated_by=#{actor} "
+                + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND personnel_no=#{personnel} "
+                + "AND version=#{expected} AND version<9223372036854775807 AND deleted=0")
+        int advanceMaintenance(@Param("entity") String entity, @Param("personnel") String personnel,
+                @Param("expected") long expected, @Param("status") String status, @Param("actor") String actor,
+                @Param("at") LocalDateTime at);
+
+        /** Conservatively block maintenance until every unresolved command in the subject has recovered. */
+        @Select("SELECT COUNT(*) FROM mch_resource_command WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND status='ACCEPTED' AND deleted=0")
+        long countPendingMaintenance(@Param("entity") String entity);
+
+        /** Counter evidence and actual unreleased units both block; broken orphan evidence also fails closed. */
+        @Select("""
+                SELECT (SELECT COUNT(*) FROM mch_resource_bucket b WHERE b.tenant_no='MAIN'
+                    AND b.entity_no=#{entity} AND b.resource_no=#{resource}
+                    AND (b.held_qty>0 OR b.confirmed_qty>0 OR EXISTS
+                    (SELECT 1 FROM mch_booking_hold_unit u WHERE u.tenant_no=b.tenant_no
+                     AND u.entity_no=b.entity_no AND u.bucket_no=b.bucket_no AND u.released_at IS NULL)))
+                + (SELECT COUNT(*) FROM mch_booking_hold_unit u LEFT JOIN mch_resource_bucket b
+                    ON b.tenant_no=u.tenant_no AND b.entity_no=u.entity_no AND b.bucket_no=u.bucket_no
+                    WHERE u.tenant_no='MAIN' AND u.entity_no=#{entity} AND u.released_at IS NULL AND b.id IS NULL)
+                """)
+        long countResourceWork(@Param("entity") String entity, @Param("resource") String resource);
+
+        /** Resolve database-canonical personnel before sorting roots; do not emulate collation in Java. */
+        @Select("""
+                SELECT * FROM mch_personnel WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND personnel_no=#{personnelNo} AND deleted=0
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchPersonnel selectScopedPersonnel(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("personnelNo") String personnelNo);
+
+        /** Qualification/employment writers must take this root before any resource root. */
+        @Select("""
+                SELECT * FROM mch_personnel WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND personnel_no=#{personnelNo} AND deleted=0 FOR UPDATE
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchPersonnel lockScopedPersonnel(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("personnelNo") String personnelNo);
+
+    }
+
+    /** Current optional account link; mutations require a future owner workflow and audit. */
+    public interface PersonnelAccountMapper extends BaseMapper<MchPersonnelAccount> {
+        /** Effective joins preserve every candidate so overlapping assignments fail closed at the owner. */
+        @Select(
+                """
+SELECT p.personnel_no,a.assignment_no,p.version AS personnel_revision,
+  a.version AS assignment_revision,l.version AS link_revision,a.valid_from,a.valid_to,l.link_no
+FROM mch_personnel_account l
+JOIN mch_personnel p ON CAST(p.tenant_no AS BINARY)=CAST(l.tenant_no AS BINARY)
+  AND CAST(p.entity_no AS BINARY)=CAST(l.entity_no AS BINARY)
+  AND CAST(p.personnel_no AS BINARY)=CAST(l.personnel_no AS BINARY)
+JOIN mch_personnel_store a ON CAST(a.tenant_no AS BINARY)=CAST(p.tenant_no AS BINARY)
+  AND CAST(a.entity_no AS BINARY)=CAST(p.entity_no AS BINARY)
+  AND CAST(a.personnel_no AS BINARY)=CAST(p.personnel_no AS BINARY)
+JOIN mch_store s ON CAST(s.tenant_no AS BINARY)=CAST(a.tenant_no AS BINARY)
+  AND CAST(s.entity_no AS BINARY)=CAST(a.entity_no AS BINARY)
+  AND CAST(s.store_no AS BINARY)=CAST(a.store_no AS BINARY)
+JOIN mch_entity e ON CAST(e.tenant_no AS BINARY)=CAST(s.tenant_no AS BINARY)
+  AND CAST(e.entity_no AS BINARY)=CAST(s.entity_no AS BINARY)
+WHERE CAST(l.tenant_no AS BINARY)=CAST(#{tenantNo} AS BINARY)
+  AND CAST(l.entity_no AS BINARY)=CAST(#{entityNo} AS BINARY)
+  AND CAST(s.store_no AS BINARY)=CAST(#{storeNo} AS BINARY)
+  AND CAST(l.mch_account_no AS BINARY)=CAST(#{accountNo} AS BINARY)
+  AND l.deleted=0 AND p.deleted=0 AND a.deleted=0 AND s.deleted=0 AND e.deleted=0
+  AND p.status='ACTIVE' AND a.status='ACTIVE' AND s.status='ACTIVE' AND e.status='ACTIVE'
+  AND e.archived_at IS NULL AND a.valid_from<=#{at}
+  AND (a.valid_to IS NULL OR #{at}<a.valid_to)
+LIMIT 2
+""")
+        List<OperatorPersonnelFactRow> selectCurrentOperatorPersonnel(
+                @Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("accountNo") String accountNo,
+                @Param("at") LocalDateTime at);
+    }
+
+    /** Bounded effective employment projection; overlapping rows remain visible for explicit ambiguity rejection. */
+    public interface PersonnelStoreMapper extends BaseMapper<MchPersonnelStore> {
+        /** Canonical parent identity and all effective employments let the owner reject ambiguity. */
+        @Select("""
+                <script>
+                SELECT a.assignment_no, p.personnel_no, p.name AS display_name, a.level_code,
+                a.public_visible, a.sort_order, a.valid_from, a.valid_to
+                FROM mch_personnel_store a
+                JOIN mch_personnel p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
+                AND p.personnel_no=a.personnel_no
+                JOIN mch_store s ON s.tenant_no=a.tenant_no AND s.entity_no=a.entity_no AND s.store_no=a.store_no
+                JOIN mch_entity e ON e.tenant_no=a.tenant_no AND e.entity_no=a.entity_no
+                WHERE a.tenant_no=#{tenantNo} AND a.entity_no=#{entityNo} AND a.store_no=#{storeNo}
+                AND a.deleted=0 AND p.deleted=0 AND s.deleted=0 AND e.deleted=0
+                AND a.status='ACTIVE' AND p.status='ACTIVE' AND s.status='ACTIVE' AND e.status='ACTIVE'
+                AND e.archived_at IS NULL AND a.valid_from &lt;= #{at} AND (a.valid_to IS NULL OR a.valid_to>#{at})
+                AND a.personnel_no IN
+                <foreach collection="personnelNos" item="person" open="(" separator="," close=")">#{person}</foreach>
+                ORDER BY a.sort_order, a.personnel_no, a.assignment_no LIMIT 201
+                </script>
+                """)
+        List<PersonnelAssignmentFactRow> selectEffectiveAssignments(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("personnelNos") Set<String> personnelNos, @Param("at") LocalDateTime at);
+    }
+
+    /** Batch positions only for the already authorized employment rows in the same snapshot. */
+    public interface PersonnelPositionMapper extends BaseMapper<MchPersonnelPosition> {
+        /** Read only authorized assignment IDs; the parent supplies the stable grouping identity. */
+        @Select("""
+                <script>
+                SELECT a.assignment_no, p.position_code FROM mch_personnel_position p
+                JOIN mch_personnel_store a ON a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no
+                AND a.assignment_no=p.assignment_no
+                WHERE p.tenant_no=#{tenantNo} AND p.entity_no=#{entityNo} AND a.store_no=#{storeNo}
+                AND p.deleted=0 AND a.deleted=0 AND p.status='ACTIVE' AND a.status='ACTIVE'
+                AND p.assignment_no IN
+                <foreach collection="assignmentNos" item="assignment" open="(" separator="," close=")">
+                #{assignment}</foreach>
+                ORDER BY p.assignment_no, p.position_code LIMIT 2001
+                </script>
+                """)
+        List<PersonnelPositionFactRow> selectByAssignments(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("assignmentNos") List<String> assignmentNos);
+    }
+
+    /** Verified effective qualification facts carry their original store scope; no permission inference. */
+    public interface PersonnelSkillMapper extends BaseMapper<MchPersonnelSkill> {
+        /** Whole rounded bucket eligibility; SKU-specific facts cannot authorize an unspecified SKU. */
+        @Select("""
+                SELECT COUNT(*) FROM mch_personnel_skill
+                WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo} AND personnel_no=#{personnelNo}
+                  AND deleted=0 AND status='VERIFIED' AND (store_no IS NULL OR store_no=#{scope.storeNo})
+                  AND goods_no=#{goodsNo} AND (sku_no IS NULL OR (#{skuNo} IS NOT NULL AND sku_no=#{skuNo}))
+                  AND valid_from<=#{startAt} AND (valid_to IS NULL OR valid_to>=#{endAt})
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        long countCoveringQualification(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("personnelNo") String personnelNo, @Param("goodsNo") String goodsNo,
+                @Param("skuNo") String skuNo, @Param("startAt") LocalDateTime startAt,
+                @Param("endAt") LocalDateTime endAt);
+
+        /** Resolve child references through the master identity under the same owner snapshot. */
+        @Select("""
+                <script>
+                SELECT p.personnel_no, k.skill_no, k.store_no, k.goods_no, k.sku_no, k.level_code,
+                k.valid_from, k.valid_to FROM mch_personnel_skill k
+                JOIN mch_personnel p ON p.tenant_no=k.tenant_no AND p.entity_no=k.entity_no
+                AND p.personnel_no=k.personnel_no
+                WHERE k.tenant_no=#{tenantNo} AND k.entity_no=#{entityNo} AND k.deleted=0 AND k.status='VERIFIED'
+                AND p.deleted=0 AND p.status='ACTIVE'
+                AND (k.store_no IS NULL OR k.store_no=#{storeNo})
+                AND k.valid_from &lt;= #{at} AND (k.valid_to IS NULL OR k.valid_to>#{at})
+                AND k.personnel_no IN
+                <foreach collection="personnelNos" item="person" open="(" separator="," close=")">#{person}</foreach>
+                ORDER BY k.personnel_no, k.skill_no LIMIT 2001
+                </script>
+                """)
+        List<PersonnelQualificationFactRow> selectEffectiveByPersonnel(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("personnelNos") Set<String> personnelNos, @Param("at") LocalDateTime at);
+    }
+
+    /** Canonical resources; a staff resource is shared by all valid store assignments of one personnel. */
+    public interface ResourceMapper extends BaseMapper<MchResource> {
+        /** Any active local rule must be explicitly retired before employment can activate clipped occurrences. */
+        @Select("SELECT COUNT(*) FROM mch_schedule_rule WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND resource_no=#{resource} AND store_no=#{store} AND status='ACTIVE' AND deleted=0")
+        long countStoreScheduleRules(@Param("entity") String entity, @Param("store") String store,
+                @Param("resource") String resource);
+
+        /** Schedule and physical maintenance share one root revision, including canonical cross-store STAFF. */
+        @Update("UPDATE mch_resource SET version=version+1,updated_by=#{actor},updated_at=#{at} "
+                + "WHERE tenant_no='MAIN' AND entity_no=#{entity} AND resource_no=#{resource} "
+                + "AND version=#{expected} AND version<9223372036854775807 AND deleted=0")
+        int advanceScheduleRevision(@Param("entity") String entity, @Param("resource") String resource,
+                @Param("expected") long expected, @Param("actor") String actor, @Param("at") LocalDateTime at);
+
+        /** Historical bucket capacities are immutable until a versioned capacity-change protocol exists. */
+        @Select("SELECT COUNT(*) FROM mch_resource_bucket WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND resource_no=#{resource}")
+        long countMaintenanceBuckets(@Param("entity") String entity, @Param("resource") String resource);
+
+        /** Physical resource CAS cannot rewrite canonical identity, store or occupation credentials. */
+        @Update("UPDATE mch_resource SET name=#{name},capacity=#{capacity},status=#{status},version=version+1,"
+                + "updated_by=#{actor},updated_at=#{at} WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND resource_no=#{resource} AND store_no=#{store} AND resource_type IN ('ROOM','SEAT','DEVICE') "
+                + "AND version=#{expected} AND version<9223372036854775807 AND deleted=0")
+        int saveMaintenance(@Param("entity") String entity, @Param("store") String store,
+                @Param("resource") String resource, @Param("expected") long expected, @Param("name") String name,
+                @Param("capacity") int capacity, @Param("status") String status, @Param("actor") String actor,
+                @Param("at") LocalDateTime at);
+
+        /** Physical resources are store-scoped while staff identity and capacity remain entity-wide. */
+        @Select("""
+                SELECT * FROM mch_resource WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND resource_no=#{resourceNo} AND deleted=0
+                  AND (resource_type='STAFF' OR store_no=#{scope.storeNo})
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchResource selectScopedResource(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("resourceNo") String resourceNo);
+
+        /** Individually acquire canonical sorted roots; ORDER BY on an IN query cannot guarantee lock order. */
+        @Select("""
+                SELECT * FROM mch_resource WHERE tenant_no=#{scope.tenantNo} AND entity_no=#{scope.entityNo}
+                  AND resource_no=#{resourceNo} AND deleted=0
+                  AND (resource_type='STAFF' OR store_no=#{scope.storeNo}) FOR UPDATE
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        MchResource lockScopedResource(@Param("scope") ResourceCommandScopeRow scope,
+                @Param("resourceNo") String resourceNo);
+
+        /** Keep joined employment rows to reject overlaps rather than DISTINCT away inconsistent staffing. */
+        @Select("""
+                <script>
+                SELECT r.resource_no,
+                CASE WHEN r.resource_type='STAFF' THEN 'STAFF' WHEN r.resource_type='ROOM' THEN 'ROOM'
+                WHEN r.resource_type='SEAT' THEN 'SEAT' WHEN r.resource_type='DEVICE' THEN 'DEVICE'
+                ELSE r.resource_type END AS resource_type,
+                CASE WHEN r.resource_type='STAFF' THEN NULL ELSE s.store_no END AS store_no,
+                p.personnel_no, r.name, r.capacity, (r.open_occupation_no IS NOT NULL) AS open_occupied
+                FROM mch_resource r
+                JOIN mch_entity e ON e.tenant_no=r.tenant_no AND e.entity_no=r.entity_no
+                JOIN mch_store s ON s.tenant_no=r.tenant_no AND s.entity_no=r.entity_no AND s.store_no=#{storeNo}
+                LEFT JOIN mch_personnel p ON r.resource_type='STAFF' AND p.tenant_no=r.tenant_no
+                AND p.entity_no=r.entity_no AND p.personnel_no=r.personnel_no AND p.deleted=0 AND p.status='ACTIVE'
+                LEFT JOIN mch_personnel_store a ON r.resource_type='STAFF' AND a.tenant_no=p.tenant_no
+                AND a.entity_no=p.entity_no AND a.personnel_no=p.personnel_no AND a.store_no=s.store_no
+                AND a.deleted=0 AND a.status='ACTIVE' AND a.valid_from &lt;= #{at}
+                AND (a.valid_to IS NULL OR a.valid_to>#{at})
+                WHERE r.tenant_no=#{tenantNo} AND r.entity_no=#{entityNo} AND r.deleted=0 AND r.status='ACTIVE'
+                AND e.deleted=0 AND e.status='ACTIVE' AND e.archived_at IS NULL AND s.deleted=0 AND s.status='ACTIVE'
+                AND ((r.resource_type='STAFF' AND a.assignment_no IS NOT NULL)
+                OR (r.resource_type IN ('ROOM','SEAT','DEVICE') AND r.store_no=s.store_no))
+                AND r.resource_no IN
+                <foreach collection="resourceNos" item="resource" open="(" separator="," close=")">
+                #{resource}</foreach>
+                ORDER BY r.resource_no, a.assignment_no LIMIT 201
+                </script>
+                """)
+        List<ResourceFactRow> selectEffectiveFacts(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("resourceNos") Set<String> resourceNos, @Param("at") LocalDateTime at);
+        /** Owner-scoped enumeration; public staff visibility is filtered before any reference leaves the owner. */
+        @Select("""
+                SELECT r.resource_no FROM mch_resource r
+                JOIN mch_entity e ON e.tenant_no=r.tenant_no AND e.entity_no=r.entity_no
+                JOIN mch_store s ON s.tenant_no=r.tenant_no AND s.entity_no=r.entity_no AND s.store_no=#{store}
+                WHERE r.tenant_no=#{tenant} AND r.entity_no=#{entity} AND r.deleted=0 AND r.status='ACTIVE'
+                  AND e.deleted=0 AND e.status='ACTIVE' AND e.archived_at IS NULL
+                  AND s.deleted=0 AND s.status='ACTIVE'
+                  AND ((r.resource_type IN ('ROOM','SEAT','DEVICE') AND r.store_no=s.store_no)
+                    OR (r.resource_type='STAFF' AND EXISTS (SELECT 1 FROM mch_personnel p
+                      JOIN mch_personnel_store a ON a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no
+                        AND a.personnel_no=p.personnel_no
+                      WHERE p.tenant_no=r.tenant_no AND p.entity_no=r.entity_no AND p.personnel_no=r.personnel_no
+                        AND p.deleted=0 AND p.status='ACTIVE' AND a.deleted=0 AND a.status='ACTIVE'
+                        AND a.store_no=s.store_no AND a.valid_from<=#{at}
+                        AND (a.valid_to IS NULL OR a.valid_to>#{at})
+                        AND (#{publicOnly}=FALSE OR a.public_visible=1))))
+                ORDER BY r.resource_no LIMIT #{limit}
+                """)
+        List<String> selectCandidateIds(@Param("tenant") String tenant, @Param("entity") String entity,
+                @Param("store") String store, @Param("at") LocalDateTime at,
+                @Param("publicOnly") boolean publicOnly, @Param("limit") int limit);
+
+    }
+
+
+    /** Weekly rules retain all related store assignments for explicit shared-resource conflict checks. */
+    public interface ScheduleRuleMapper extends BaseMapper<MchScheduleRule> {
+        /** One scoped snapshot; conservative dates precede exact time-zone expansion and employment clipping. */
+        @Select("""
+                <script>
+                SELECT w.rule_no, r.resource_no, s.store_no, q.store_no AS requested_store_no, w.timezone,
+                w.weekday_mask, w.start_minute, w.end_minute, w.end_day_offset, w.valid_from, w.valid_to,
+                (r.resource_type='STAFF') AS staff, a.assignment_no,
+                a.valid_from AS employment_from, a.valid_to AS employment_to
+                FROM mch_schedule_rule w
+                JOIN mch_resource r ON r.tenant_no=w.tenant_no AND r.entity_no=w.entity_no
+                AND r.resource_no=w.resource_no
+                JOIN mch_entity e ON e.tenant_no=r.tenant_no AND e.entity_no=r.entity_no
+                JOIN mch_store s ON s.tenant_no=w.tenant_no AND s.entity_no=w.entity_no AND s.store_no=w.store_no
+                JOIN mch_store q ON q.tenant_no=r.tenant_no AND q.entity_no=r.entity_no AND q.store_no=#{storeNo}
+                LEFT JOIN mch_personnel p ON r.resource_type='STAFF' AND p.tenant_no=r.tenant_no
+                AND p.entity_no=r.entity_no AND p.personnel_no=r.personnel_no AND p.deleted=0 AND p.status='ACTIVE'
+                LEFT JOIN mch_personnel_store a ON r.resource_type='STAFF' AND a.tenant_no=p.tenant_no
+                AND a.entity_no=p.entity_no AND a.personnel_no=p.personnel_no AND a.store_no=s.store_no
+                AND a.deleted=0 AND a.status='ACTIVE' AND a.valid_from &lt; #{until}
+                AND (a.valid_to IS NULL OR a.valid_to>#{from})
+                WHERE w.tenant_no=#{tenantNo} AND w.entity_no=#{entityNo} AND w.deleted=0 AND w.status='ACTIVE'
+                AND r.deleted=0 AND r.status='ACTIVE' AND e.deleted=0 AND e.status='ACTIVE' AND e.archived_at IS NULL
+                AND s.deleted=0 AND s.status='ACTIVE' AND q.deleted=0 AND q.status='ACTIVE'
+                AND ((r.resource_type='STAFF' AND a.assignment_no IS NOT NULL)
+                OR (r.resource_type IN ('ROOM','SEAT','DEVICE') AND r.store_no=s.store_no AND s.store_no=q.store_no))
+                AND w.valid_from &lt;= #{lastAnchor} AND (w.valid_to IS NULL OR w.valid_to>=#{firstAnchor})
+                AND r.resource_no IN
+                <foreach collection="resourceNos" item="resource" open="(" separator="," close=")">
+                #{resource}</foreach>
+                ORDER BY r.resource_no, w.rule_no, a.assignment_no LIMIT 2001
+                </script>
+                """)
+        @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
+        List<ScheduleRuleFactRow> selectWindowRules(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("resourceNos") Set<String> resourceNos, @Param("from") LocalDateTime from,
+                @Param("until") LocalDateTime until, @Param("firstAnchor") LocalDate firstAnchor,
+                @Param("lastAnchor") LocalDate lastAnchor);
+    }
+
+    /** Future owner workflows append change evidence; it does not authorize or execute affected booking changes. */
+    public interface ScheduleChangeLogMapper extends BaseMapper<MchScheduleChangeLog> {
     }
 
 }

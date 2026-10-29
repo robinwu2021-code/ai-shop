@@ -25,4 +25,12 @@ public interface LegacyCouponSourceFenceService {
     FenceView state(EntitlementContext context, SourceIdentity template);
     /** Must join the original business transaction and hold the template root until it commits. */
     void requireWritable(String tenantNo, SourceSystem source, String templateNo, boolean originalRelease);
+    /** Resolve only supported local source facts without consulting a remote owner registry. */
+    SourceSystem ordinarySource(String tenantNo, String buyerNo, String userCouponNo);
+
+    /**
+     * Lock every existing source root in fixed owner order and recheck its state on the caller's
+     * platform transaction before the selected instance can be consumed.
+     */
+    SourceSystem lockOrdinarySource(String tenantNo, String buyerNo, String userCouponNo);
 }

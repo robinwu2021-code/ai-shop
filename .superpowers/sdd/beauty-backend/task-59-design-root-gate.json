@@ -1,0 +1,21 @@
+{
+  "status": "DESIGN_TECHNICALLY_APPROVED_IMPLEMENTATION_RELEASE",
+  "design_base": "317c1f7c78259e170f9c182b7f785991aad861f5",
+  "accepted_task58_product": "ea2ead5c63f4830de566fdb3dcdda4b0a32424a9",
+  "documents": {
+    "task-59-design.md": {
+      "bytes": 94446,
+      "sha256": "16b3abb959f0b7b86bfd4f3b01e19342af1fd636af08eed69dd89cb826f38ccb"
+    },
+    "task-59-report.md": {
+      "bytes": 11406,
+      "sha256": "c924842855bb614b657f5672e725db07fe8ffcd78e10c9c99f58a185db71e9ca"
+    }
+  },
+  "approved_shared_extension": "optional safe code and HMAC digest headers; legacy status and constructors unchanged; no response body logging",
+  "approved_core_delta": "canonical appointment OPEN alias only; schema1 compatibility and original derived key preserved",
+  "frozen10SQLverified": true,
+  "tests_builds_native": "NOT_RUN_DESIGN_ONLY",
+  "implementation_base": "actual root release commit is supplied in dispatch after documentation commit",
+  "checked_at": "2026-10-23T23:02:56.878697+00:00"
+}

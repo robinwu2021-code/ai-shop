@@ -15,7 +15,9 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 每个 {@code /biz} 端点都必须**明确**它要什么权限。
@@ -183,6 +185,13 @@ class BizEndpointPermTest {
         // Resource registry uses stricter write permission; method security tests verify read/write separately.
         put("/biz/pricing-tax-settings", BizPerms.PRICING_TAX_UPDATE);
         put("/biz/pricing-tax-settings/reset", BizPerms.PRICING_TAX_UPDATE);
+        put("/biz/personnel/{personnelNo}/assignments", BizPerms.STORE_ADMIN);
+        put("/biz/personnel/{personnelNo}/account-links", BizPerms.STORE_ADMIN);
+        put("/biz/personnel/{personnelNo}/status-changes", BizPerms.STORE_ADMIN);
+        put("/biz/store-sales-catalog/versions", BizPerms.GOODS);
+        put("/biz/checkout/{operationNo}/offline-receipts", BizPerms.CASH_RECEIVE);
+        put("/biz/checkout/{operationNo}/offline-receipts/{paymentOperationNo}", BizPerms.ORDER_VIEW);
+        put("/biz/checkout/{operationNo}/offline-receipts/lookup", BizPerms.ORDER_VIEW);
         // ---- 进销存（inv_*，独立库）----
         // 三档权限，判据是「这个动作能改什么」而不是「它在哪一屏」：
         //   · biz:stock          改库存与开单 —— 店员与理货员每天的活
@@ -758,6 +767,102 @@ class BizEndpointPermTest {
         BizResourceAuthorization.verify(Path.of("../..").toRealPath(), sourceEndpoints());
     }
 
+
+    /** Exercise the same AST and authorization parser used by the live endpoint decision guard. */
+    private static Set<String> scanGuardedEndpoints(String src) throws IOException {
+        return BizEndpointSource.parse(src).endpoints().stream()
+                .filter(endpoint -> endpoint.method().bizGuard())
+                .map(BizEndpointSource.Endpoint::path)
+                .collect(java.util.stream.Collectors.toCollection(TreeSet::new));
+    }
+
+    @Test
+    void guardScannerFindsAuthorizationBeforeMapping() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    @org.springframework.security.access.prepost.PreAuthorize("@perm.canBiz('biz:goods')")
+                    @PostMapping("/before")
+                    public void before() { }
+                }
+                """)).containsExactly("/biz/example/before");
+    }
+
+    @Test
+    void guardScannerFindsAuthorizationAfterMapping() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    @PostMapping("/after")
+                    @PreAuthorize("@perm.canBiz('biz:goods')")
+                    public void after() { }
+                }
+                """)).containsExactly("/biz/example/after");
+    }
+
+    @Test
+    void guardScannerFindsMultilineAnnotationsBothOrders() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    @PreAuthorize(
+                        "@perm.canAnyBiz('biz:goods', 'biz:stock')")
+                    @PostMapping(
+                        value = "/before")
+                    public void before() { }
+                    @PostMapping(
+                        "/after")
+                    @PreAuthorize(
+                        "@perm.canBiz('biz:goods')")
+                    public void after() { }
+                }
+                """)).containsExactly("/biz/example/after", "/biz/example/before");
+    }
+
+    @Test
+    void guardScannerDoesNotBorrowNeighborAuthorization() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    @PostMapping("/unguarded-before")
+                    public void unguardedBefore() { }
+                    @PreAuthorize("@perm.canBiz('biz:goods')")
+                    @PostMapping("/guarded-before")
+                    public void guardedBefore() { }
+                    @PostMapping("/unguarded-between")
+                    public void unguardedBetween() { }
+                    @PostMapping("/guarded-after")
+                    @PreAuthorize("@perm.canBiz('biz:goods')")
+                    public void guardedAfter() { }
+                    @PostMapping("/unguarded-after")
+                    public void unguardedAfter() { }
+                }
+                """)).containsExactly("/biz/example/guarded-after", "/biz/example/guarded-before");
+    }
+
+    @Test
+    void guardScannerIgnoresCommentedAuthorization() throws IOException {
+        assertThat(scanGuardedEndpoints("""
+                @RequestMapping("/biz/example")
+                class Example {
+                    // @PreAuthorize("@perm.canBiz('biz:goods')")
+                    @PostMapping("/unguarded")
+                    public void unguarded() { }
+                }
+                """)).isEmpty();
+    }
+
+    @Test
+    void guardScannerRejectsMalformedSource() {
+        assertThatThrownBy(() -> scanGuardedEndpoints("""
+                class Example {
+                    @PostMapping("/biz/broken")
+                    public void broken( }
+                """))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot parse permission source");
+    }
+
     /** 从 BizPerms 源码里抽常量值 —— 与运营端那条守卫同一手法 */
     private static Set<String> knownCodes() {
         Set<String> out = new TreeSet<>();
@@ -766,7 +871,7 @@ class BizEndpointPermTest {
                 try {
                     Object v = f.get(null);
                     if (v instanceof String s && (s.startsWith("biz:") || s.startsWith("pay:ent:") || s.startsWith("pay:sv:")
-                            || s.startsWith("mch:pay:"))) {
+                            || s.startsWith("mch:pay:") || s.equals(BizPerms.CASH_RECEIVE))) {
                         out.add(s);
                     }
                 } catch (IllegalAccessException ignored) {

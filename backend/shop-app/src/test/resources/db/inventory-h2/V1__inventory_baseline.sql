@@ -1,5 +1,6 @@
 -- 【自动生成，勿手改】由 backend/scripts/gen-test-schema.py 重放 db/inventory/V*.sql 得到。
--- 生产是 MySQL 方言；这份是 H2 等价物（去列注释与普通索引，UNIQUE 转 CONSTRAINT）。
+-- Legacy/shared H2 projection; exact native omissions are descriptor/hash-bound below.
+-- Native installation/conformance is verified only on the actual supported server.
 -- 与源文件的漂移由 SchemaDriftTest 拦截。
 --
 -- ⚠️ **种子一律是 `INSERT IGNORE`，这份产物因此可以被重放。**
@@ -22,6 +23,8 @@
 -- @MockitoBean、自定义 @DynamicPropertySource —— 它们都进 context key。
 -- 写测试时只声明真正需要的那些。
 
+
+-- Native capability absent: backend/shop-inventory/src/main/resources/db/inventory/V17__execution_stock_retention.sql | inv_execution_retention,inv_execution_retention_claim
 
 CREATE TABLE IF NOT EXISTS inv_owner
 (
@@ -179,9 +182,15 @@ CREATE TABLE IF NOT EXISTS inv_reservation
     updated_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64) DEFAULT NULL,
     lifecycle_version INT NOT NULL DEFAULT 1,
+    source_manifest_hash CHAR(64) NULL,
+    disposition_revision BIGINT NULL,
+    confirmation_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_reservation UNIQUE (owner_id, reservation_id),
-    CONSTRAINT uk_reservation_ext UNIQUE (owner_id, external_ref)
+    CONSTRAINT uk_reservation_ext UNIQUE (owner_id, external_ref),
+    CONSTRAINT ck_inv_original_manifest CHECK ((source_manifest_hash IS NULL AND confirmation_operation_no IS NULL AND disposition_revision IS NULL) OR
+         (source_manifest_hash IS NOT NULL AND disposition_revision IS NOT NULL
+          AND disposition_revision>=1 AND (CASE lifecycle_version WHEN 1 THEN TRUE WHEN 2 THEN TRUE ELSE CASE WHEN lifecycle_version IS NULL THEN NULL ELSE FALSE END END)))
 );
 
 CREATE TABLE IF NOT EXISTS inv_reservation_line
@@ -202,8 +211,13 @@ CREATE TABLE IF NOT EXISTS inv_reservation_line
     issued_at DATETIME DEFAULT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by VARCHAR(64) DEFAULT NULL,
+    source_sku_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_store_no VARCHAR(32) COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_res_line UNIQUE (reservation_id, line_no)
+    CONSTRAINT uk_res_line UNIQUE (reservation_id, line_no),
+    CONSTRAINT ck_inv_original_source CHECK ((source_sku_no IS NULL AND source_store_no IS NULL) OR
+         (source_sku_no IS NOT NULL AND qty>0 AND released_qty>=0 AND issued_qty>=0
+          AND issued_qty+released_qty<=qty))
 );
 
 CREATE TABLE IF NOT EXISTS inv_inbound_order
@@ -596,7 +610,7 @@ CREATE TABLE IF NOT EXISTS inv_demand_operation
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, owner_id VARCHAR(32) NOT NULL, plan_no VARCHAR(32) NOT NULL,
     operation_ref VARCHAR(64) NOT NULL, request_hash VARCHAR(64) NOT NULL, kind VARCHAR(24) NOT NULL,
-    original_operation_ref VARCHAR(64) NULL, receipt_snapshot TEXT NOT NULL, delta_snapshot TEXT NOT NULL,
+    original_operation_ref VARCHAR(64) NULL, receipt_snapshot JSON NOT NULL, delta_snapshot JSON NOT NULL,
     reversed TINYINT NOT NULL DEFAULT 0, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(64) NOT NULL, UNIQUE KEY uk_demand_operation(owner_id,operation_ref)
 );
@@ -624,7 +638,7 @@ CREATE TABLE IF NOT EXISTS inv_stock_lot
 CREATE TABLE IF NOT EXISTS inv_item_valuation_history
 (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,owner_id VARCHAR(32) NOT NULL,item_id VARCHAR(32) NOT NULL,
-    operation_key VARCHAR(64) NOT NULL,request_hash VARCHAR(64) NOT NULL,before_snapshot TEXT NOT NULL,
+    operation_key VARCHAR(64) NOT NULL,request_hash VARCHAR(64) NOT NULL,before_snapshot JSON NOT NULL,
     after_snapshot TEXT NOT NULL,actor_no VARCHAR(32) NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(64) NOT NULL,UNIQUE KEY uk_item_valuation_operation(owner_id,operation_key)
 );

@@ -1,0 +1,110 @@
+{
+  "task": "Task68C",
+  "status": "CURRENT_JAVA_MATRIX_COMPILE_SUCCESS_C_CODE_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+  "sourceBase": "97bb97f18f76411acf9a7a5ec7bd57abf55e7100",
+  "inputManifest": {
+    "path": "/private/tmp/task68c-java-compile-inputs.json",
+    "sha256": "1e86790d20871d21fd22770ab3cd809c34ae9fe708ee0e91da5ca11cae1fd5ba",
+    "files": 4935
+  },
+  "matrix": [
+    {
+      "name": "whole-beauty-food",
+      "log": "/private/tmp/task68c-whole-beauty-food-compile.log",
+      "sha256": "180414fe01d9c9c9015b145739c793d60fc1b499298ec709ba9b0a0d0483bcdb",
+      "reactorModules": [
+        "shop-parent",
+        "shop-auth-store",
+        "job-api",
+        "job-store",
+        "job-core",
+        "svc-client",
+        "shop-base",
+        "shop-base-auth",
+        "shop-store-mybatis",
+        "shop-core",
+        "shop-merchant",
+        "pay-channel",
+        "pay-domain",
+        "shop-inventory",
+        "shop-report",
+        "elec-api",
+        "shop-channel",
+        "logistics-domain",
+        "logistics-channel",
+        "shop-notify",
+        "beauty-api",
+        "beauty-web",
+        "beauty-core",
+        "shop-app",
+        "beauty-channel",
+        "beauty-server",
+        "food-api",
+        "food-core",
+        "food-web",
+        "food-channel",
+        "food-server"
+      ],
+      "elapsed": [
+        "5.053 s"
+      ],
+      "actualCompileLines": [
+        "19 source files with javac [debug parameters release 21] to target/classes",
+        "11 source files with javac [debug parameters release 21] to target/test-classes"
+      ],
+      "testsExecuted": false
+    },
+    {
+      "name": "default-retail",
+      "log": "/private/tmp/task68c-default-retail-compile.log",
+      "sha256": "771cbba8ce3d5947c1b2415a95e0146e8dfe73e1f0438ab9945318e862f6a1c1",
+      "reactorModules": [
+        "shop-parent",
+        "shop-auth-store",
+        "job-api",
+        "job-store",
+        "job-core",
+        "svc-client",
+        "shop-base",
+        "shop-base-auth",
+        "shop-store-mybatis",
+        "shop-core",
+        "shop-merchant",
+        "pay-channel",
+        "pay-domain",
+        "shop-inventory",
+        "shop-report",
+        "elec-api",
+        "shop-channel",
+        "logistics-domain",
+        "logistics-channel",
+        "shop-notify",
+        "shop-app"
+      ],
+      "elapsed": [
+        "2.225 s"
+      ],
+      "actualCompileLines": [],
+      "testsExecuted": false
+    }
+  ],
+  "staticClasspathExport": {
+    "log": "/private/tmp/task68c-dependency-classpath-model.log",
+    "sha256": "294fe104ea4ab8a7424f97ef3bdc1a71512699e1642592da7137bd2dcc79e7d8",
+    "reactorModules": 21,
+    "elapsedSeconds": 2.608,
+    "dependencyEntries": 209,
+    "currentReactorDependencyRoots": 19,
+    "installedShopJars": 0,
+    "oldRuntimeValidated": false
+  },
+  "testsExecuted": false,
+  "applicationStarted": false,
+  "migrationExecuted": false,
+  "nativeGateCreated": false,
+  "paymentIntegration": false,
+  "canStart": false,
+  "deploymentExecuted": false,
+  "cCodeCommit": "1b222220605d87c2400da144668add9cbb1fc08e",
+  "inputFreezeRecheckedAfterCSource": true
+}

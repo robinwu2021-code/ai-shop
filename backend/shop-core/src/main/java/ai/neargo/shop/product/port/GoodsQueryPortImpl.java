@@ -1,21 +1,24 @@
 package ai.neargo.shop.product.port;
 
-import ai.neargo.shop.product.service.impl.GoodsServiceImpl;
-
 import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.spi.marketing.CampaignPort;
-import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers.GoodsMapper;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
+import ai.neargo.shop.product.service.impl.GoodsServiceImpl;
+import ai.neargo.shop.spi.marketing.CampaignPort;
+import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.HashMap;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -232,6 +235,37 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
 
     @Override
     public Map<String, SkuSnapshot> snapshot(List<String> skuNos, Map<String, String> storeByEntity) {
+        return snapshots(null, skuNos, storeByEntity);
+    }
+
+    @Override
+    public Map<String, SkuSnapshot> snapshotFor(
+            String buyerNo, List<String> skuNos, Map<String, String> storeByEntity) {
+        if (buyerNo == null || buyerNo.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return snapshots(buyerNo, skuNos, storeByEntity);
+    }
+
+    @Override
+    public Map<String, SkuSnapshot> snapshotForCounter(
+            CustomerParty party, List<String> skuNos, Map<String, String> storeByEntity) {
+        if (party == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        return snapshots(party.userNo(), skuNos, storeByEntity, party);
+    }
+
+    private Map<String, SkuSnapshot> snapshots(
+            String buyerNo, List<String> skuNos, Map<String, String> storeByEntity) {
+        return snapshots(buyerNo, skuNos, storeByEntity, null);
+    }
+
+    private Map<String, SkuSnapshot> snapshots(
+            String buyerNo,
+            List<String> skuNos,
+            Map<String, String> storeByEntity,
+            CustomerParty party) {
         if (skuNos == null || skuNos.isEmpty()) {
             return Map.of();
         }
@@ -271,7 +305,13 @@ public class GoodsQueryPortImpl implements GoodsQueryPort {
          * 宁可「特价不生效」也不能「按错的价卖」：前者商家会来问，后者没人会发现。
          */
         Map<String, Integer> counts = skuCounts(goodsNos);
-        Map<String, Long> flash = new HashMap<>(campaignPort.flashPrices(goodsNos));
+        Map<String, Long> flash =
+                new HashMap<>(
+                        party != null
+                                ? Map.<String, Long>of()
+                                : buyerNo == null
+                                        ? campaignPort.flashPrices(goodsNos)
+                                        : campaignPort.flashPricesFor(buyerNo, goodsNos));
         flash.keySet().removeIf(no -> counts.getOrDefault(no, 1) > 1);
 
         /*

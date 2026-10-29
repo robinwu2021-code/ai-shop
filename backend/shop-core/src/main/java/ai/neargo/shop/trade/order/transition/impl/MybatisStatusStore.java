@@ -5,6 +5,8 @@ import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
 import ai.neargo.shop.trade.order.transition.Aggregate;
 import ai.neargo.shop.trade.order.transition.StatusStore;
 
+import ai.neargo.shop.trade.policy.ManagedServiceCompletionPolicy;
+
 import java.time.LocalDateTime;
 
 /**
@@ -17,9 +19,11 @@ import java.time.LocalDateTime;
 public class MybatisStatusStore implements StatusStore {
 
     private final StatusCasMapper mapper;
+    private final ManagedServiceCompletionPolicy managedCompletion;
 
     public MybatisStatusStore(StatusCasMapper mapper) {
         this.mapper = mapper;
+        this.managedCompletion = new ManagedServiceCompletionPolicy(mapper);
     }
 
     @Override
@@ -34,6 +38,9 @@ public class MybatisStatusStore implements StatusStore {
 
     @Override
     public boolean cas(Aggregate aggregate, String no, String from, String to) {
+        if (aggregate == Aggregate.ORDER) {
+            managedCompletion.requireAllowed(no, to);
+        }
         LocalDateTime now = LocalDateTime.now();
         int rows = DataScopeContext.executeWithoutScope(() -> switch (aggregate) {
             case PAYMENT -> mapper.casPayment(no, from, to, now);
