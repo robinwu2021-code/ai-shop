@@ -113,9 +113,34 @@ public final class ExecutionStockRetentionAggregateContract {
     }
     public record AcceptedRouteLookup(String routeNo, String routeHash, String acceptedIntentNo,
             String acceptedIntentHash, RetentionLookup original) { }
-    public record ReconcileCursor(Instant nextRetryAt, long id) { }
-    public record ReconcileResult(List<AggregateReceiptV2> receipts, ReconcileCursor next) {
-        public ReconcileResult { receipts = List.copyOf(receipts); }
+
+    /**
+     * Internal composite scan coordinate only; no proof identity or persistent scheduler cursor.
+     */
+    public record ReconcileCursor(Instant nextRetryAt, long id, boolean exhaustedGroup) {
+        public ReconcileCursor(Instant nextRetryAt, long id) {
+            this(nextRetryAt, id, false);
+        }
+    }
+
+    /**
+     * Retry diagnostics are separate from verified owner receipts and never change proof/hash
+     * domains.
+     */
+    public record ReconcileFailure(long routeRowId, String reason, boolean retryDeferred) {}
+
+    public record ReconcileResult(
+            List<AggregateReceiptV2> receipts,
+            ReconcileCursor next,
+            List<ReconcileFailure> failures) {
+        public ReconcileResult {
+            receipts = List.copyOf(receipts);
+            failures = List.copyOf(failures);
+        }
+
+        public ReconcileResult(List<AggregateReceiptV2> receipts, ReconcileCursor next) {
+            this(receipts, next, List.of());
+        }
     }
 
     public static String routeNo(RetentionLookup original) {

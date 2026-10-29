@@ -152,8 +152,18 @@ final class BeautyReceptionResponses {
                                         "OPEN_WORK_ORDER",
                                         "RECEPTION_EXCEPTION",
                                         "SUBMIT_SOURCE",
-                                        "ADD_SOURCE")
+                                        "ADD_SOURCE",
+                                        "START")
                                 .contains(value.action()));
+                if ("START".equals(value.action())) {
+                    var progress = value.taskPreparation();
+                    check(progress != null && !progress.canStart());
+                    same(value.operationNo(), progress.operationNo());
+                    same(value.workOrderNo(), progress.workOrderNo());
+                    same(value.state(), progress.preparationState());
+                    text(progress.taskNo());
+                    text(progress.executionNo());
+                } else check(value.taskPreparation() == null);
                 if (Set.of("SUBMIT_SOURCE", "ADD_SOURCE").contains(value.action())) {
                     text(value.workOrderNo());
                 }

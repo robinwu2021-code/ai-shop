@@ -109,7 +109,8 @@ public final class InternalBindings {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(token.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            String canonical = "SHOP_EXECUTION_ORIGINAL_V1\n" + canonical(tree(call), CANONICAL_JSON);
+            String canonical =
+                    "SHOP_EXECUTION_ORIGINAL_V1\n" + canonical(tree(call), CANONICAL_JSON);
             return HexFormat.of().formatHex(mac.doFinal(canonical.getBytes(StandardCharsets.UTF_8)));
         } catch (GeneralSecurityException failure) {
             throw new IllegalStateException("internal binding unavailable");
@@ -222,7 +223,7 @@ public final class InternalBindings {
         return object;
     }
 
-    private static String canonical(JsonNode value, ObjectMapper json) {
+    static String canonical(JsonNode value, ObjectMapper json) {
         if (value.isNumber()) {
             return value.decimalValue().stripTrailingZeros().toPlainString();
         }

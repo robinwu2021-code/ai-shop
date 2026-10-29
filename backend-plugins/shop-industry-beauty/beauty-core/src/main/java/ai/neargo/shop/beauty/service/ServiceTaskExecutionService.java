@@ -22,5 +22,15 @@ public interface ServiceTaskExecutionService {
     /** Recover only persisted originals, without freezing a new intent or restoring an employee identity. */
     int recoverPending(int limit);
 
-    record ExecutionPreparation(ExecutionBinding binding, Grant grant, String pendingReason) {}
+    record ExecutionPreparation(
+            ExecutionBinding binding, Grant grant, String pendingReason, boolean canStart) {
+        public ExecutionPreparation {
+            if (canStart)
+                throw new IllegalArgumentException("actual resource execution unavailable");
+        }
+
+        public ExecutionPreparation(ExecutionBinding binding, Grant grant, String pendingReason) {
+            this(binding, grant, pendingReason, false);
+        }
+    }
 }

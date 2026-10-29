@@ -1,5 +1,6 @@
 package ai.neargo.shop.beauty.service.impl;
 
+import java.util.function.Function;
 import ai.neargo.shop.auth.DelegatedIdentityContext;
 import ai.neargo.shop.beauty.entity.BtyAppointmentArrangement;
 import ai.neargo.shop.beauty.entity.BtyAppointmentOperation;
@@ -65,6 +66,7 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
     private final BeautyMappers.ServiceSubmissionMapper submissions;
     private final ObjectProvider<ServiceExecutionPort> owner;
     private final Clock clock;
+    private ObjectProvider<ServiceTaskStockPreparationCoordinator> stockObservation;
     private final BeautyMappers.GuestClaimReceiptMapper claims;
 
     public ServiceTaskExecutionServiceImpl(AppointmentPersistence db, ServiceSubmissionQuery query,
@@ -90,6 +92,14 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         this.claims = claims;
     }
 
+    /**
+     * Production configuration attaches the companion observer to this existing candidate lease.
+     */
+    public void setStockObservationProvider(
+            ObjectProvider<ServiceTaskStockPreparationCoordinator> stockObservation) {
+        this.stockObservation = Objects.requireNonNull(stockObservation);
+    }
+
     /** Immutable START envelope is separate from legacy SUBMIT_SOURCE/ADD_SOURCE schema parsers. */
     public record StartCommand(String schema, String requestHash, String requestKeyHash, String bindingHash,
             StartIntent intent, String actionNo, String actionHash) {}
@@ -109,17 +119,22 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         var current = access.requireSelf(request.scope());
         authorizeTask(intent.binding(), current);
         var claimed = claim(lookup, current.identity().actorNo());
-        if (claimed == null) return new ExecutionPreparation(intent.binding(), null, "SOURCE_SUSPENDED");
+        if (claimed == null)
+            return new ExecutionPreparation(intent.binding(), null, "SOURCE_SUSPENDED");
         var provider = owner.getIfAvailable();
-        if (provider == null) return new ExecutionPreparation(intent.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
+        if (provider == null)
+            return new ExecutionPreparation(
+                    intent.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
         var command = command(claimed.start());
         Grant grant;
         try {
             grant = provider.prepare(new PrepareExecution(intent.binding(), command.actionNo(),
                     command.requestKeyHash(), command.actionHash()));
         } catch (RuntimeException unavailable) {
-            // The committed original and claimed epoch remain; failure is never a fabricated owner rejection.
-            return new ExecutionPreparation(intent.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
+            // The committed original and claimed epoch remain; failure is never a fabricated owner
+            // rejection.
+            return new ExecutionPreparation(
+                    intent.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
         }
         access.requireSame(request.scope(), current);
         return apply(claimed, grant, current.identity().actorNo());
@@ -132,13 +147,17 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         var current = access.requireSelf(request.binding().scope());
         authorizeTask(request.binding(), current);
         var claimed = claim(new StartIntentLookup(request.binding()), current.identity().actorNo());
-        if (claimed == null) return new ExecutionPreparation(request.binding(), null, "SOURCE_SUSPENDED");
+        if (claimed == null)
+            return new ExecutionPreparation(request.binding(), null, "SOURCE_SUSPENDED");
         var provider = owner.getIfAvailable();
-        if (provider == null) return new ExecutionPreparation(request.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
+        if (provider == null)
+            return new ExecutionPreparation(
+                    request.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
         Grant grant;
         try { grant = provider.query(new ExecutionLookup(request.binding())); }
         catch (RuntimeException unavailable) {
-            return new ExecutionPreparation(request.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
+            return new ExecutionPreparation(
+                    request.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
         }
         access.requireSame(request.binding().scope(), current);
         return apply(claimed, grant, current.identity().actorNo());
@@ -249,17 +268,45 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         int ordinal = 1;
         while (ordinal <= line.orderedQuantity() && used.contains(ordinal)) ordinal++;
         if (ordinal > line.orderedQuantity()) throw BizException.of(ErrorCode.CONFLICT);
-        String execution = BizKey.next("BTEX"), fence = BizKey.next("BTEF"), submission = BizKey.next("BTSU");
+        String execution = BizKey.next("BTEX"),
+                fence = BizKey.next("BTEF"),
+                submission = BizKey.next("BTSU");
         String resource = BizKey.next("BTRC"), action = BizKey.next("BTEA");
-        String resourceHash = IdempotencyScope.requestHash("BEAUTY_EXECUTION_RESOURCE_V1", execution, resource,
-                planHash, source.getBindingNo(), Integer.toString(ordinal));
-        var provisional = new ExecutionBinding(request.scope(), "BEAUTY", observation.getCheckoutOperationNo(),
-                observation.getOrderNo(), observation.getSourceNo(), source.getSourceLineRef(), ordinal,
-                order.getWorkOrderNo(), order.getScopeRevision(), task.getTaskNo(), task.getVersion(),
-                source.getBindingNo(), source.getBindingRevision(), execution, 1, submission, fence, 1,
-                observation.getManualEpoch(), observation.getManualRevision(), observation.getManualHash(),
-                task.getDefinitionVersionNo(), IdempotencyScope.requestHash(task.getExecutionSnapshot()),
-                planHash, "0".repeat(64));
+        String resourceHash =
+                IdempotencyScope.requestHash(
+                        "BEAUTY_EXECUTION_RESOURCE_V1",
+                        execution,
+                        resource,
+                        planHash,
+                        source.getBindingNo(),
+                        Integer.toString(ordinal));
+        var provisional =
+                new ExecutionBinding(
+                        request.scope(),
+                        "BEAUTY",
+                        observation.getCheckoutOperationNo(),
+                        observation.getOrderNo(),
+                        observation.getSourceNo(),
+                        source.getSourceLineRef(),
+                        ordinal,
+                        order.getWorkOrderNo(),
+                        order.getScopeRevision(),
+                        task.getTaskNo(),
+                        task.getVersion(),
+                        source.getBindingNo(),
+                        source.getBindingRevision(),
+                        execution,
+                        1,
+                        submission,
+                        fence,
+                        1,
+                        observation.getManualEpoch(),
+                        observation.getManualRevision(),
+                        observation.getManualHash(),
+                        task.getDefinitionVersionNo(),
+                        IdempotencyScope.requestHash(task.getExecutionSnapshot()),
+                        planHash,
+                        "0".repeat(64));
         var binding = withPayload(provisional, ServiceExecutionContract.payloadHash(provisional, current.personnel(),
                 current.namespaceHash(), resource, resourceHash));
         var intent = new StartIntent(binding, IntentState.FROZEN, 1, "MANUAL_OFFLINE",
@@ -267,12 +314,25 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                         ServiceExecutionContract.canonical(ServiceSourceObservation.party(observation))),
                 current.personnel(), current.namespaceHash(), resource, resourceHash, planJson, planHash,
                 continuity(observation, binding, null), null);
-        String keyHash = IdempotencyScope.requestHash("BEAUTY_EXECUTION_KEY_V1", current.namespaceHash(),
-                request.requestKey());
-        var command = new StartCommand("START_MANUAL_V1", requestHash(request, current), keyHash,
-                ServiceExecutionContract.bindingHash(binding), intent, action,
-                ServiceExecutionContract.actionHash(binding, "PREPARE", action, 0, current.namespaceHash(),
-                        new StartIntentLookup(binding), null));
+        String keyHash =
+                IdempotencyScope.requestHash(
+                        "BEAUTY_EXECUTION_KEY_V1", current.namespaceHash(), request.requestKey());
+        var command =
+                new StartCommand(
+                        "START_MANUAL_V1",
+                        requestHash(request, current),
+                        keyHash,
+                        ServiceExecutionContract.bindingHash(binding),
+                        intent,
+                        action,
+                        ServiceExecutionContract.actionHash(
+                                binding,
+                                "PREPARE",
+                                action,
+                                0,
+                                current.namespaceHash(),
+                                new StartIntentLookup(binding),
+                                null));
         var row = new BtyServiceExecutionFence();
         row.setTenantNo("MAIN");
         row.setEntityNo(entity);
@@ -353,6 +413,64 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         });
     }
 
+    /**
+     * Trusted local callback uses the existing mandatory source-to-fence lock ordering. No owner IO
+     * is allowed.
+     */
+    public record StockOriginal(
+            BtyServiceExecutionFence fence,
+            BtyServiceSubmission submission,
+            StartCommand command,
+            StartIntent currentIntent) {}
+
+    <T> T withStockOriginal(ExecutionBinding binding, Function<StockOriginal, T> action) {
+        schema.requireAvailable();
+        return db.tx(
+                () -> {
+                    var locked = lock(binding);
+                    return action.apply(
+                            new StockOriginal(
+                                    locked.fence(),
+                                    locked.start(),
+                                    command(locked.start()),
+                                    projection(
+                                            locked.fence(), locked.start(), locked.observation())));
+                });
+    }
+
+    /**
+     * Explicit HUMAN recovery may resend only a genuinely missing quantity original and the saved
+     * command.
+     */
+    ExecutionPreparation resumeTask(StartIntentLookup request) {
+        var current = access.requireSelf(request.binding().scope());
+        authorizeTask(request.binding(), current);
+        var claimed = claim(request, current.identity().actorNo());
+        if (claimed == null)
+            return new ExecutionPreparation(request.binding(), null, "SOURCE_SUSPENDED");
+        var provider = owner.getIfAvailable();
+        if (provider == null)
+            return new ExecutionPreparation(
+                    request.binding(), null, "RESOURCE_EXECUTION_UNAVAILABLE");
+        Grant grant;
+        try {
+            grant = provider.queryOriginal(new ExecutionLookup(request.binding()));
+        } catch (BizException missing) {
+            if (missing.errorCode() != ErrorCode.NOT_FOUND) throw missing;
+            access.requireSame(request.binding().scope(), current);
+            var saved = command(claimed.start());
+            grant =
+                    provider.prepare(
+                            new PrepareExecution(
+                                    request.binding(),
+                                    saved.actionNo(),
+                                    saved.requestKeyHash(),
+                                    saved.actionHash()));
+        }
+        access.requireSame(request.binding().scope(), current);
+        return apply(claimed, grant, current.identity().actorNo());
+    }
+
     private record Locked(BtySourceObservation observation, BtyServiceExecutionFence fence,
             BtyServiceSubmission start) {}
 
@@ -386,26 +504,50 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         if (provider == null) throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
         int examined = 0;
         for (var candidate : pending) {
-            var binding = db.json.treeToValue(db.json.readTree(candidate.getBindingJson()).get("binding"),
-                    ExecutionBinding.class);
+            var binding =
+                    db.json.treeToValue(
+                            db.json.readTree(candidate.getBindingJson()).get("binding"),
+                            ExecutionBinding.class);
             require(candidate.getBindingHash().equals(ServiceExecutionContract.bindingHash(binding))
                     && candidate.getBindingJson().equals(ServiceExecutionContract.bindingJson(binding)));
-            Locked claimed = db.tx(() -> {
-                var locked = lock(binding);
-                var row = locked.fence();
-                if (!row.getVersion().equals(candidate.getVersion()) || "REJECTED".equals(row.getIntentState())
-                        || row.getNextRetryAt() != null && row.getNextRetryAt().isAfter(now())) return null;
-                require(fences.claimExecutionObservation(row, now().plusSeconds(30), now(), "EXECUTION_RECOVERY") == 1);
-                row.setVersion(Math.addExact(row.getVersion(), 1));
-                row.setObservationEpoch(Math.addExact(row.getObservationEpoch(), 1));
-                return locked;
-            });
+            Locked claimed =
+                    db.tx(
+                            () -> {
+                                var locked = lock(binding);
+                                var row = locked.fence();
+                                if (!row.getVersion().equals(candidate.getVersion())
+                                        || "REJECTED".equals(row.getIntentState())
+                                        || row.getNextRetryAt() != null
+                                                && row.getNextRetryAt().isAfter(now())) return null;
+                                require(
+                                        fences.claimExecutionObservation(
+                                                        row,
+                                                        now().plusSeconds(30),
+                                                        now(),
+                                                        "EXECUTION_RECOVERY")
+                                                == 1);
+                                row.setVersion(Math.addExact(row.getVersion(), 1));
+                                row.setObservationEpoch(
+                                        Math.addExact(row.getObservationEpoch(), 1));
+                                return locked;
+                            });
             if (claimed == null) continue;
             try {
                 var grant = provider.queryOriginal(new ExecutionLookup(binding));
                 apply(claimed, grant, "EXECUTION_RECOVERY");
             } catch (RuntimeException unavailable) {
                 // Lease and immutable original remain durable; no prepare/start/release or saved identity replay.
+            }
+            if (stockObservation != null) {
+                var stock = stockObservation.getIfAvailable();
+                if (stock != null) {
+                    try {
+                        stock.queryAcceptedOriginal(binding);
+                    } catch (RuntimeException unavailable) {
+                        // Same lease already advanced; a damaged companion must not starve later
+                        // quantity candidates.
+                    }
+                }
             }
             examined++;
         }
@@ -498,8 +640,12 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                 && Objects.equals(row.getManualVerifiedRevision(), binding.sourceRevision())
                 && Objects.equals(row.getManualHash(), binding.sourceHash())
                 && Objects.equals(row.getManualVerifiedHash(), binding.sourceHash());
-        return new SourceContinuity(row.getManualEpoch(), row.getVersion(), cause != null ? "SUSPENDED"
-                : ready ? "READY_UNCHANGED" : "PENDING", row.getManualRevision(), row.getManualHash(),
+        return new SourceContinuity(
+                row.getManualEpoch(),
+                row.getVersion(),
+                cause != null ? "SUSPENDED" : ready ? "READY_UNCHANGED" : "PENDING",
+                row.getManualRevision(),
+                row.getManualHash(),
                 cause != null ? cause.reasonCode() : ready ? null : "SOURCE_UNKNOWN");
     }
 
@@ -509,7 +655,8 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         var frozen = original.frozen();
         if (root.order().getAppointmentNo() == null || task.getAppointmentItemNo() == null
                 || frozen == null || frozen.holdEvidence() == null) {
-            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION, "RESOURCE_PLAN_REQUIRED");
+            throw BizException.of(
+                    ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION, "RESOURCE_PLAN_REQUIRED");
         }
         var evidence = frozen.holdEvidence(); var holdBinding = evidence.binding();
         var appointment = db.root(root.order().getAppointmentNo());
@@ -598,7 +745,8 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                             && assignment.endAt().equals(item.serviceStartAt().plusMinutes(rule.offsetMin()
                                     + rule.durationMin() + definition.bufferAfterMin()))
                             && ("STAFF".equals(rule.resourceType()) == (assignment.personnelNo() != null)));
-                    String group = item.appointmentItemNo() + ":" + rule.requirementNo() + ":" + ordinal;
+                    String group =
+                            item.appointmentItemNo() + ":" + rule.requirementNo() + ":" + ordinal;
                     reconstructed.add(new ResourcePlanContract.Demand(assignment.resourceNo(), group, 1,
                             List.of(new ResourcePlanContract.Interval(assignment.startAt().toInstant(),
                                     assignment.endAt().toInstant()))));
@@ -626,9 +774,17 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                             && a.endAt().toInstant().equals(demand.intervals().getFirst().endAt())));
         }
         String taskPlan = ResourcePlanContract.encode(demands, qualifications);
-        return new ExecutionPlan("BEAUTY_EXECUTION_PLAN_V1", appointment.getAppointmentNo(), task.getAppointmentItemNo(),
-                evidence.arrangementRevision(), evidence.arrangementHash(), evidence, preview.getFrozenPlan(),
-                holdBinding.planHash(), IdempotencyScope.requestHash(task.getExecutionSnapshot()), taskPlan,
+        return new ExecutionPlan(
+                "BEAUTY_EXECUTION_PLAN_V1",
+                appointment.getAppointmentNo(),
+                task.getAppointmentItemNo(),
+                evidence.arrangementRevision(),
+                evidence.arrangementHash(),
+                evidence,
+                preview.getFrozenPlan(),
+                holdBinding.planHash(),
+                IdempotencyScope.requestHash(task.getExecutionSnapshot()),
+                taskPlan,
                 ResourcePlanContract.hash(taskPlan));
     }
 
@@ -644,7 +800,8 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
         if (snapshot.schemaVersion() != 1) throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
         if (!"ASSIGNED".equals(snapshot.assignmentState()) || snapshot.assignments() == null
                 || snapshot.assignments().isEmpty()) {
-            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION, "RESOURCE_PLAN_REQUIRED");
+            throw BizException.of(
+                    ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION, "RESOURCE_PLAN_REQUIRED");
         }
         if (!"ASSIGNED".equals(snapshot.assignmentState())
                 || snapshot.assignments() == null || snapshot.assignments().isEmpty()
@@ -658,7 +815,8 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
     private static void requireTask(BtyServiceTask task) {
         try { ServiceExecutionContract.requireTaskQuantity(task.getQty(), task.getUom()); }
         catch (IllegalArgumentException unsupported) {
-            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION, "UNSUPPORTED_TASK_QUANTITY");
+            throw BizException.of(
+                    ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION, "UNSUPPORTED_TASK_QUANTITY");
         }
         require("PENDING".equals(task.getStatus()) && task.getStartedAt() == null
                 && task.getDoneQty().signum() == 0 && task.getVoidedQty().signum() == 0);
@@ -680,8 +838,11 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
                     .eq(BtyGuestClaimReceipt::getGuestNo, context.getIdentityRef())
                     .eq(BtyGuestClaimReceipt::getUserNo, observation.getBuyerNo())
                     .eq(BtyGuestClaimReceipt::getClaimRevision, 2));
-            require("USER".equals(observation.getCustomerKind()) && receipt != null
-                    && receipt.getOwnerReceiptHash() != null && receipt.getOwnerReceiptHash().matches("[0-9a-f]{64}"));
+            require(
+                    "USER".equals(observation.getCustomerKind())
+                            && receipt != null
+                            && receipt.getOwnerReceiptHash() != null
+                            && receipt.getOwnerReceiptHash().matches("[0-9a-f]{64}"));
         }
     }
 
@@ -709,8 +870,12 @@ public final class ServiceTaskExecutionServiceImpl implements ServiceTaskExecuti
 
     private static String planHash(String canonicalPlan) {
         try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(("BEAUTY_EXECUTION_PLAN_V1\n" + canonicalPlan).getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(
+                                            ("BEAUTY_EXECUTION_PLAN_V1\n" + canonicalPlan)
+                                                    .getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException unavailable) {
             throw new IllegalStateException("SHA-256 unavailable", unavailable);
         }

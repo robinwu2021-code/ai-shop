@@ -5,6 +5,10 @@ import ai.neargo.shop.auth.BizContextFilter;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.beauty.config.ConditionalOnBeautyWebEnabled;
 import ai.neargo.shop.beauty.dto.OpenWorkOrderReq;
+import ai.neargo.shop.beauty.dto.PrepareServiceTaskReq;
+import ai.neargo.shop.beauty.dto.ServiceTaskPreparationVO;
+import ai.neargo.shop.beauty.service.ServiceTaskPreparationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.beauty.dto.ServiceSubmissionVO;
 import ai.neargo.shop.beauty.dto.SubmitServicesReq;
 import ai.neargo.shop.beauty.dto.WorkOrderBillVO;
@@ -36,6 +40,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/biz/x/beauty/work-orders")
 public class BizWorkOrderController {
     private final ObjectProvider<WorkOrderService> workOrderService;
+    private ObjectProvider<ServiceTaskPreparationService> taskPreparations;
+
+    @Autowired
+    void setTaskPreparations(ObjectProvider<ServiceTaskPreparationService> taskPreparations) {
+        this.taskPreparations = taskPreparations;
+    }
+
     private final ObjectProvider<StoreDirectoryPort> directories;
 
     /** Lazy API dependencies keep disabled and ops assembly free of business writers. */
@@ -101,6 +112,31 @@ public class BizWorkOrderController {
                         BizContext.requireStoreNo(),
                         SecurityUtils.currentUserNo(),
                         workOrderNo,
+                        req,
+                        idempotencyKey);
+    }
+
+    /** Prepares original quantity and stock only; actual resource execution remains unavailable. */
+    @PostMapping("/{workOrderNo}/tasks/{taskNo}/preparations")
+    public ServiceTaskPreparationVO prepareTask(
+            @PathVariable("workOrderNo") String workOrderNo,
+            @PathVariable("taskNo") String taskNo,
+            @Valid @RequestBody PrepareServiceTaskReq req,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader(value = BizContextFilter.STORE_HEADER, required = false)
+                    String requestedStore) {
+        BookingStoreScope.requireResourceNo(workOrderNo);
+        BookingStoreScope.requireResourceNo(taskNo);
+        BookingStoreScope.require(directories, requestedStore);
+        BookingStoreScope.requireKey(idempotencyKey);
+        return taskPreparations
+                .getObject()
+                .prepareTask(
+                        BizContext.requireMerchantNo(),
+                        BizContext.requireStoreNo(),
+                        SecurityUtils.currentUserNo(),
+                        workOrderNo,
+                        taskNo,
                         req,
                         idempotencyKey);
     }

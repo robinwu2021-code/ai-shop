@@ -44,11 +44,15 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
     private final ObjectMapper json;
     private final TransactionTemplate writes;
 
-    public ExecutionStockRetentionCoordinatorImpl(ExecutionRetentionRouteMapper routes,
-            ExecutionRetentionRouteSchemaVerifier schema, ObjectProvider<ServiceExecutionEvidencePort> evidence,
+    public ExecutionStockRetentionCoordinatorImpl(
+            ExecutionRetentionRouteMapper routes,
+            ExecutionRetentionRouteSchemaVerifier schema,
+            ObjectProvider<ServiceExecutionEvidencePort> evidence,
             ObjectProvider<PlatformExecutionStockRetentionComponent> platform,
-            ObjectProvider<InventoryExecutionStockRetentionPort> inventory, ExecutionStockMirrorEvidenceService mirrors,
-            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectProvider<InventoryExecutionStockRetentionPort> inventory,
+            ExecutionStockMirrorEvidenceService mirrors,
+            ObjectMapper json,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
         this.routes = routes;
         this.schema = schema;
         this.evidence = evidence;
@@ -64,9 +68,11 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
     public AggregateReceiptV2 retainV2(RetainExecutionStock request) {
         outside();
         var original = request.lookup();
-        if (!installed()) return absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE");
+        if (!installed())
+            return absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE");
         var provider = evidence.getIfAvailable();
-        if (provider == null) return absent(original, Outcome.UNAVAILABLE, "EXECUTION_EVIDENCE_UNAVAILABLE");
+        if (provider == null)
+            return absent(original, Outcome.UNAVAILABLE, "EXECUTION_EVIDENCE_UNAVAILABLE");
         var core = provider.queryOriginalEvidence(new ExecutionEvidenceLookup(original.reference()));
         if (!ExecutionStockRetentionAggregateContract.compatible(original, core)) {
             return absent(original, Outcome.PENDING, "EXECUTION_ORIGINAL_UNPROVEN");
@@ -82,8 +88,10 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
                 var actor = provider.authorizeCurrent(new ExecutionEvidenceLookup(original.reference()));
                 actor.validate(original.reference());
                 var identity = DelegatedIdentityContext.current();
-                require(actor.actorNo().equals(identity.actorNo())
-                        && actor.scope().tenantNo().equals(identity.tenantNo()), "CURRENT_SELF_CONFLICT");
+                require(
+                        actor.actorNo().equals(identity.actorNo())
+                                && actor.scope().tenantNo().equals(identity.tenantNo()),
+                        "CURRENT_SELF_CONFLICT");
                 route = route(original, core, actor, roster);
                 row = insert(route, core);
                 route = read(row);
@@ -94,8 +102,10 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
                 var actor = provider.authorizeCurrent(new ExecutionEvidenceLookup(original.reference()));
                 actor.validate(original.reference());
                 var identity = DelegatedIdentityContext.current();
-                require(actor.actorNo().equals(identity.actorNo())
-                        && actor.scope().tenantNo().equals(identity.tenantNo()), "CURRENT_SELF_CONFLICT");
+                require(
+                        actor.actorNo().equals(identity.actorNo())
+                                && actor.scope().tenantNo().equals(identity.tenantNo()),
+                        "CURRENT_SELF_CONFLICT");
             }
         } catch (IllegalArgumentException failure) {
             return absent(original, historicalFailure(failure), failure.getMessage());
@@ -108,7 +118,8 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
     @Override
     public AggregateReceiptV2 queryOriginalV2(RetentionLookup original) {
         outside();
-        if (!installed()) return absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE");
+        if (!installed())
+            return absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE");
         var row = find(original);
         if (row == null) return absent(original, Outcome.UNKNOWN, "RETENTION_ROUTE_UNKNOWN");
         try {
@@ -121,10 +132,40 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
     }
 
     @Override
+    public ExecutionStockRetentionPreparationObservation queryPreparationObservation(
+            RetentionLookup original) {
+        outside();
+        if (!installed())
+            return preparation(
+                    original,
+                    absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE"),
+                    null);
+        var row = find(original);
+        if (row == null)
+            return preparation(
+                    original, absent(original, Outcome.UNKNOWN, "RETENTION_ROUTE_UNKNOWN"), null);
+        // read validates the full real route/source/proof bytes before exporting only its
+        // non-authorizing roster.
+        var route = read(row);
+        require(route.original().equals(original), "ROUTE_ORIGINAL_CONFLICT");
+        return preparation(original, observe(row, route, null, null), route.components());
+    }
+
+    private ExecutionStockRetentionPreparationObservation preparation(
+            RetentionLookup original, AggregateReceiptV2 receipt, List<ComponentRouteV2> roster) {
+        var result =
+                new ExecutionStockRetentionPreparationObservation(
+                        ExecutionStockRetentionPreparationObservation.SCHEMA, receipt, roster);
+        result.validate(original);
+        return result;
+    }
+
+    @Override
     public AggregateReceiptV2 continueAcceptedRetentionV2(AcceptedRouteLookup request) {
         outside();
         var original = request.original();
-        if (!installed()) return absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE");
+        if (!installed())
+            return absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE");
         var row = find(original);
         if (row == null) return absent(original, Outcome.UNKNOWN, "RETENTION_ROUTE_UNKNOWN");
         var route = read(row);
@@ -152,7 +193,8 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
     public AggregateReceiptV2 acknowledgeIssuedV2(AggregateIssuedV2 request) {
         outside();
         var original = request.original();
-        if (!installed()) return absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE");
+        if (!installed())
+            return absent(original, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE");
         var row = find(original);
         if (row == null) return absent(original, Outcome.UNKNOWN, "RETENTION_ROUTE_UNKNOWN");
         var route = read(row);
@@ -208,25 +250,75 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
         if (!installed()) return new ReconcileResult(List.of(), cursor);
         var after = cursor == null ? LocalDateTime.of(1970, 1, 1, 0, 0)
                 : LocalDateTime.ofInstant(cursor.nextRetryAt(), ZoneOffset.UTC);
-        var due = unscoped(() -> routes.due(now(), after, cursor == null ? 0 : cursor.id(), limit));
+        var due =
+                unscoped(
+                        () ->
+                                routes.dueGroup(
+                                        now(),
+                                        after,
+                                        cursor == null ? 0 : cursor.id(),
+                                        cursor != null && cursor.exhaustedGroup(),
+                                        limit));
         var results = new ArrayList<AggregateReceiptV2>();
+        var failures = new ArrayList<ReconcileFailure>();
         ReconcileCursor next = cursor;
         for (var row : due) {
-            var route = read(row);
-            next = new ReconcileCursor(row.getNextRetryAt().toInstant(ZoneOffset.UTC), row.getId());
-            results.add(continueAcceptedRetentionV2(new AcceptedRouteLookup(route.routeNo(), route.routeHash(),
-                    route.acceptedIntentNo(), route.acceptedIntentHash(), route.original())));
+            next =
+                    new ReconcileCursor(
+                            row.getNextRetryAt().toInstant(ZoneOffset.UTC),
+                            row.getId(),
+                            exhausted(row));
+            if (exhausted(row)) {
+                failures.add(new ReconcileFailure(row.getId(), "RETRY_REVISION_EXHAUSTED", false));
+                continue;
+            }
+            try {
+                var route = read(row);
+                results.add(
+                        continueAcceptedRetentionV2(
+                                new AcceptedRouteLookup(
+                                        route.routeNo(),
+                                        route.routeHash(),
+                                        route.acceptedIntentNo(),
+                                        route.acceptedIntentHash(),
+                                        route.original())));
+            } catch (RuntimeException unavailable) {
+                boolean deferred = false;
+                try {
+                    var timestamp = now();
+                    // V606 requires epoch+revision CAS on every update; preserve original/receipt
+                    // bytes and state.
+                    deferred =
+                            tx(() -> routes.deferFailure(row, timestamp.plusMinutes(5), timestamp))
+                                    == 1;
+                } catch (RuntimeException retryUnavailable) {
+                    // Explicit failure below remains visible; a failed metadata write is never a
+                    // verified receipt.
+                }
+                failures.add(
+                        new ReconcileFailure(
+                                row.getId(), "ACCEPTED_ROUTE_OBSERVATION_UNAVAILABLE", deferred));
+            }
         }
-        return new ReconcileResult(results, next);
+        return new ReconcileResult(results, next, failures);
+    }
+
+    private static boolean exhausted(PrdExecutionRetentionRoute row) {
+        return row.getRevision() >= Long.MAX_VALUE - 1
+                || row.getObservationEpoch() >= Long.MAX_VALUE - 1
+                || row.getVersion() >= Long.MAX_VALUE - 1;
     }
 
     @Override
     public AcceptedComponentAuthority queryAcceptedComponent(AcceptedComponentLookup request) {
         outside();
-        if (!installed()) return authority(request, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE", null);
+        if (!installed())
+            return authority(
+                    request, Outcome.UNAVAILABLE, "RETENTION_ROUTE_SCHEMA_UNAVAILABLE", null);
         var row = unscoped(() -> routes.findIntent(request.original().reference().scope().tenantNo(),
                 request.acceptedIntentNo()));
-        if (row == null) return authority(request, Outcome.UNKNOWN, "ACCEPTED_INTENT_UNKNOWN", null);
+        if (row == null)
+            return authority(request, Outcome.UNKNOWN, "ACCEPTED_INTENT_UNKNOWN", null);
         var route = read(row);
         if (!route.original().equals(request.original())
                 || !route.acceptedIntentHash().equals(request.acceptedIntentHash())
@@ -235,16 +327,35 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
                         && c.componentHash().equals(request.componentHash())) || !retainable(row)) {
             return authority(request, Outcome.CONFLICT, "ACCEPTED_COMPONENT_CONFLICT", null);
         }
-        var result = new AcceptedComponentAuthority("EXECUTION_STOCK_ACCEPTED_COMPONENT_AUTHORITY_V2", PURPOSE,
-                request, Outcome.RETAINED, null, route, row.getRevision(), row.getObservationEpoch(), null).signed();
+        var result =
+                new AcceptedComponentAuthority(
+                                "EXECUTION_STOCK_ACCEPTED_COMPONENT_AUTHORITY_V2",
+                                PURPOSE,
+                                request,
+                                Outcome.RETAINED,
+                                null,
+                                route,
+                                row.getRevision(),
+                                row.getObservationEpoch(),
+                                null)
+                        .signed();
         result.validate(request);
         return result;
     }
 
     private AcceptedComponentAuthority authority(AcceptedComponentLookup target, Outcome outcome, String reason,
             RouteOriginalV2 route) {
-        return new AcceptedComponentAuthority("EXECUTION_STOCK_ACCEPTED_COMPONENT_AUTHORITY_V2", PURPOSE,
-                target, outcome, reason, route, 0, 0, null).signed();
+        return new AcceptedComponentAuthority(
+                        "EXECUTION_STOCK_ACCEPTED_COMPONENT_AUTHORITY_V2",
+                        PURPOSE,
+                        target,
+                        outcome,
+                        reason,
+                        route,
+                        0,
+                        0,
+                        null)
+                .signed();
     }
 
     private enum Operation { HUMAN, CONTINUE, QUERY, ACK }
@@ -298,7 +409,9 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
                         new PlatformExecutionStockRetentionComponent.ComponentIssued(lookup, expected(issued,
                                 component)));
             };
-            require(value != null && value.component().equals(component.platform()), "PLATFORM_COMPONENT_CONFLICT");
+            require(
+                    value != null && value.component().equals(component.platform()),
+                    "PLATFORM_COMPONENT_CONFLICT");
             value.validate();
             return new ComponentObservationV2(component.componentKind(), component.componentNo(),
                     component.componentHash(), value.outcome(), value, null, null);
@@ -316,12 +429,22 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
             case ACK -> provider.acknowledgeIssued(new InventoryExecutionStockRetentionPort.ComponentIssued(lookup,
                     expected(issued, component)));
         };
-        require(value != null && component.componentNo().equals(value.componentNo())
-                && component.componentHash().equals(value.componentHash())
-                && route.original().reference().referenceHash().equals(value.referenceHash())
-                && route.original().requestHash().equals(value.requestHash())
-                && InventoryExecutionStockRetentionContract.receiptSchema(component.inventory()).equals(value.schema())
-                && value.receiptHash().equals(ExecutionEvidenceContract.digest(value.schema(), value, "receiptHash")),
+        require(
+                value != null
+                        && component.componentNo().equals(value.componentNo())
+                        && component.componentHash().equals(value.componentHash())
+                        && route.original()
+                                .reference()
+                                .referenceHash()
+                                .equals(value.referenceHash())
+                        && route.original().requestHash().equals(value.requestHash())
+                        && InventoryExecutionStockRetentionContract.receiptSchema(
+                                        component.inventory())
+                                .equals(value.schema())
+                        && value.receiptHash()
+                                .equals(
+                                        ExecutionEvidenceContract.digest(
+                                                value.schema(), value, "receiptHash")),
                 "INVENTORY_COMPONENT_CONFLICT");
         if (value.outcome() == Outcome.RETAINED) {
             require(value.proof() != null && value.proof().component().equals(component.inventory()),
@@ -343,9 +466,14 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
                 .findFirst().orElseThrow().expectedIssueObservationHash();
     }
     private static Outcome historicalFailure(RuntimeException failure) {
-        return List.of("CONFLICTING_RESERVE_SCOPE", "NEW_MIRROR_SCOPE_CONFLICT", "IMMUTABLE_EVENT_CHANGED",
-                "MIRROR_SUBSET_CONFLICT")
-                .contains(Objects.toString(failure.getMessage(), "")) ? Outcome.CONFLICT : Outcome.PENDING;
+        return List.of(
+                                "CONFLICTING_RESERVE_SCOPE",
+                                "NEW_MIRROR_SCOPE_CONFLICT",
+                                "IMMUTABLE_EVENT_CHANGED",
+                                "MIRROR_SUBSET_CONFLICT")
+                        .contains(Objects.toString(failure.getMessage(), ""))
+                ? Outcome.CONFLICT
+                : Outcome.PENDING;
     }
     private static ComponentObservationV2 pending(ComponentRouteV2 component) {
         return new ComponentObservationV2(component.componentKind(), component.componentNo(), component.componentHash(),
@@ -432,8 +560,19 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
         String intent = ExecutionStockRetentionAggregateContract.intentNo(number);
         String intentHash = ExecutionStockRetentionAggregateContract.intentHash(original, core.facts().confirmationNo(),
                 core.proofHash(), actor, roster);
-        var value = new RouteOriginalV2("EXECUTION_STOCK_ROUTE_V2", number, original, core.facts().confirmationNo(),
-                core.proofHash(), intent, intentHash, original.stockOriginal().authority(), actor, roster, null);
+        var value =
+                new RouteOriginalV2(
+                        "EXECUTION_STOCK_ROUTE_V2",
+                        number,
+                        original,
+                        core.facts().confirmationNo(),
+                        core.proofHash(),
+                        intent,
+                        intentHash,
+                        original.stockOriginal().authority(),
+                        actor,
+                        roster,
+                        null);
         value = new RouteOriginalV2(value.schema(), number, original, value.sourceConfirmationNo(),
                 value.sourceEvidenceHash(), intent, intentHash, value.frozenAuthority(), actor, roster,
                 ExecutionEvidenceContract.digest(value.schema(), value, "routeHash"));
@@ -457,7 +596,9 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
         } catch (DuplicateKeyException collision) {
             // Exact reread only after the losing transaction has rolled back; never overwrite first acceptance pins.
             var winner = find(route.original());
-            require(winner != null && read(winner).original().equals(route.original()), "PERMANENT_ROUTE_ASSOCIATION");
+            require(
+                    winner != null && read(winner).original().equals(route.original()),
+                    "PERMANENT_ROUTE_ASSOCIATION");
             return winner;
         }
         return row;
@@ -473,8 +614,10 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
         route.validate();
         var core = json.readValue(row.getSourceEvidenceJson(), ExecutionOriginalEvidence.class);
         core.validate();
-        require(ExecutionStockRetentionAggregateContract.compatible(route.original(), core)
-                && core.proofHash().equals(route.sourceEvidenceHash()), "ROUTE_SOURCE_EVIDENCE_CONFLICT");
+        require(
+                ExecutionStockRetentionAggregateContract.compatible(route.original(), core)
+                        && core.proofHash().equals(route.sourceEvidenceHash()),
+                "ROUTE_SOURCE_EVIDENCE_CONFLICT");
         var expected = row(route, core);
         // Compare every immutable persisted identity/evidence column, preserving exact JSON bytes on read.
         require(immutableBytes(row).equals(immutableBytes(expected)), "ROUTE_STORAGE_CONFLICT");
@@ -504,7 +647,8 @@ public final class ExecutionStockRetentionCoordinatorImpl implements ExecutionSt
     private <T> T unscoped(Supplier<T> operation) { return DataScopeContext.executeWithoutScope(operation); }
     private static void outside() {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            throw new IllegalStateException("retention orchestration IO must begin outside a transaction");
+            throw new IllegalStateException(
+                    "retention orchestration IO must begin outside a transaction");
         }
     }
     private static void require(boolean valid, String reason) {

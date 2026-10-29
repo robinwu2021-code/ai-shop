@@ -12,6 +12,9 @@ import ai.neargo.shop.beauty.client.RemoteServiceSubmissionService;
 import ai.neargo.shop.beauty.client.RemoteStorePolicyService;
 import ai.neargo.shop.beauty.client.RemoteWorkOrderBillService;
 import ai.neargo.shop.beauty.client.RemoteWorkOrderService;
+import ai.neargo.shop.beauty.client.RemoteServiceTaskPreparationService;
+import ai.neargo.shop.beauty.service.ServiceTaskPreparationService;
+import ai.neargo.shop.beauty.spi.BeautyTaskPreparationInternalApi;
 import ai.neargo.shop.beauty.port.RemoteAppointmentSourceAuthorityPort;
 import ai.neargo.shop.beauty.service.AppointmentAvailabilityService;
 import ai.neargo.shop.beauty.service.AppointmentService;
@@ -168,5 +171,18 @@ public class BeautyChannelAutoConfiguration {
     WorkOrderBillService beautyRemoteWorkOrderBillService(
             BeautyReceptionInternalApi api, InternalBindings bindings) {
         return new RemoteWorkOrderBillService(api, bindings);
+    }
+
+    /** Public API-only deployment forwards preparations to the actual standalone Beauty owner. */
+    @Bean
+    @ConditionalOnMissingBean(ServiceTaskPreparationService.class)
+    ServiceTaskPreparationService beautyRemoteTaskPreparation(
+            InternalHttp http, InternalBindings bindings) {
+        return new RemoteServiceTaskPreparationService(
+                http.client(
+                        ServiceName.BEAUTY,
+                        BeautyTaskPreparationInternalApi.class,
+                        Duration.ofSeconds(5)),
+                bindings);
     }
 }

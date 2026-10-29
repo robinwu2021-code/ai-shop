@@ -2876,3 +2876,13 @@ A1代码关口：本地提交bf8fe7688d5a02179726fc93a055ebc5907c6141精确23源
 验收：Git无未合并项和冲突标记；双边接口字段与方法继续存在且语义兼容；无同库Flyway重复版本；引用、结构描述和生成器一致；完整当前源码及测试源码在默认、embedded、standalone形态编译通过。测试、原生数据库与部署验收状态单独记录，不能以跳过代替成功。
 
 统一集成编码关口：112个原始冲突已解决，17个美业native迁移顺延且SQL字节保持，Git unmerged=0。当前源码39模块联合编译默认R2 BUILD SUCCESS（73秒），embedded BUILD SUCCESS（23.790秒），standalone BUILD SUCCESS（20.734秒），均为-DskipTests test-compile。日志分别/private/tmp/beauty-unified-compile-r2.log、beauty-unified-embedded-r2.log、beauty-unified-standalone.log。初轮重复people字段已消除；初轮embedded临时reactor重复模块已修正，未修改产品POM规避。源码测试、数据库及部署验收仍后置；不宣称phase B/C完成。
+
+下一业务片 C04b3：执行准备与库存消费，按[实施细化](./design/美业系统-执行准备与库存消费实施细化.md)§8裁定执行。先保留数量原语，再新增可达业务组合、独立调用、companion、原号恢复和唯一宿主续办任务；测试源码先行但执行后置，canStart=false。
+
+### C04b3 execution preparation source gate
+
+Actual public ingress: POST /biz/x/beauty/work-orders/{workOrderNo}/tasks/{taskNo}/preparations. Current SELF/task scope authorizes quantity preparation followed by real PLATFORM/INVENTORY/DUAL retention. The quantity primitive remains independent. Standalone preparation and four neutral trade preparation operations have actual consumers. Typed observations bind the real frozen HOST component roster and historical mirror evidence; current configuration never reconstructs an original. Beauty V11 stores immutable exact originals, sticky route and observation CAS, with no stock or quantity balance.
+
+START GET only projects; POST explicitly recovers the original. Beauty reuses its existing candidate lease for prepared quantity with pending stock. The sole HOST recovery job only continues accepted intent, uses one common distributed lock for all entry points, bounds the batch at 100 and isolates row/overflow failures. Every preparation result remains canStart=false. Actual resource occupation/start/completion are subsequent business slices.
+
+Independent [source review](./design/reviews/beauty-preparation-source-review.md), [FIX1](./design/reviews/beauty-preparation-source-review-fix1.md), and [FIX2](./design/reviews/beauty-preparation-source-review-fix2.md) close I1 final-IO SELF, I2 exact roster/receipt binding, I3 native fault/pin/Beauty consumer source fixtures and the erroneous mutable-observation hash assertion. Final SPEC/QUALITY source-stage PASS. The 56 product/test/schema/script paths include 15 test sources. Native A/B substitution, persisted semantic faults, existing pin protection and actual Beauty consumption are SOURCE ONLY, not runtime evidence. Existing Grant, five legacy routes, old proof/hash domains and historical migrations remain unchanged. Runtime tests, native DB, HTTP and deployment remain deferred.

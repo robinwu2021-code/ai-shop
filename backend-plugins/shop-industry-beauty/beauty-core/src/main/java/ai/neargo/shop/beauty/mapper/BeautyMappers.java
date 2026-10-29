@@ -22,6 +22,7 @@ import ai.neargo.shop.beauty.entity.BtyServiceStep;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.entity.BtyServiceTask;
 import ai.neargo.shop.beauty.entity.BtyServiceExecutionFence;
+import ai.neargo.shop.beauty.entity.BtyServiceExecutionStockIntent;
 import ai.neargo.shop.beauty.entity.BtySourceAllocationGuard;
 import ai.neargo.shop.beauty.entity.BtySourceObservation;
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
@@ -32,6 +33,7 @@ import ai.neargo.shop.beauty.entity.BtyWorkOrderContext;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -47,17 +49,24 @@ public final class BeautyMappers {
 
     /** Locks an authorized existing head; first creation is arbitrated by its scoped business unique key. */
     public interface StorePolicyMapper extends BaseMapper<BtyStorePolicy> {
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_store_policy
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                   AND policy_no=#{policyNo} AND deleted=0
                 FOR UPDATE
                 """)
-        BtyStorePolicy selectScopedForUpdate(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyStorePolicy selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("policyNo") String policyNo);
 
-        /** Publishes only an existing version of this head; zero affected rows is a caller-visible conflict. */
-        @Update("""
+        /**
+         * Publishes only an existing version of this head; zero affected rows is a caller-visible
+         * conflict.
+         */
+        @Update(
+                """
                 UPDATE bty_store_policy
                 SET current_policy_version_no=#{policyVersionNo}, version=version+1,
                     updated_by=#{actorNo}, updated_at=#{updatedAt}
@@ -69,25 +78,36 @@ public final class BeautyMappers {
                     WHERE v.tenant_no='MAIN' AND v.entity_no=#{entityNo} AND v.policy_no=#{policyNo}
                       AND v.policy_version_no=#{policyVersionNo} AND v.deleted=0)
                 """)
-        int switchCurrentVersion(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("policyNo") String policyNo, @Param("expectedVersion") long expectedVersion,
-                @Param("policyVersionNo") String policyVersionNo, @Param("actorNo") String actorNo,
+        int switchCurrentVersion(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("policyNo") String policyNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("policyVersionNo") String policyVersionNo,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
     /** Locks an authorized existing head; first creation is arbitrated by its scoped business unique key. */
     public interface ServiceDefinitionMapper extends BaseMapper<BtyServiceDefinition> {
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_service_definition
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                   AND definition_no=#{definitionNo} AND deleted=0
                 FOR UPDATE
                 """)
-        BtyServiceDefinition selectScopedForUpdate(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyServiceDefinition selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("definitionNo") String definitionNo);
 
-        /** Publishes only an existing version of this head; zero affected rows is a caller-visible conflict. */
-        @Update("""
+        /**
+         * Publishes only an existing version of this head; zero affected rows is a caller-visible
+         * conflict.
+         */
+        @Update(
+                """
                 UPDATE bty_service_definition
                 SET current_definition_version_no=#{definitionVersionNo}, version=version+1,
                     updated_by=#{actorNo}, updated_at=#{updatedAt}
@@ -99,9 +119,13 @@ public final class BeautyMappers {
                     WHERE v.tenant_no='MAIN' AND v.entity_no=#{entityNo} AND v.definition_no=#{definitionNo}
                       AND v.definition_version_no=#{definitionVersionNo} AND v.deleted=0)
                 """)
-        int switchCurrentVersion(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("definitionNo") String definitionNo, @Param("expectedVersion") long expectedVersion,
-                @Param("definitionVersionNo") String definitionVersionNo, @Param("actorNo") String actorNo,
+        int switchCurrentVersion(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("definitionNo") String definitionNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("definitionVersionNo") String definitionVersionNo,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
@@ -123,7 +147,8 @@ public final class BeautyMappers {
     /** 预约单；业务事务先锁预约根，再处理项目及安排历史。 */
     public interface AppointmentMapper extends BaseMapper<BtyAppointment> {
         /** Conversion advances only the revision; execution still has not started. */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment SET version=version+1,updated_by=#{actorNo},updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                 AND appointment_no=#{appointmentNo} AND deleted=0 AND version=#{expectedVersion}
@@ -137,12 +162,17 @@ public final class BeautyMappers {
                 AND NOT EXISTS (SELECT 1 FROM bty_work_order w WHERE w.tenant_no=bty_appointment.tenant_no
                   AND w.entity_no=bty_appointment.entity_no AND w.appointment_no=bty_appointment.appointment_no)
                 """)
-        int markWorkOrderOpened(@Param("entityNo") String entityNo,@Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo,@Param("expectedVersion") long expectedVersion,
-                @Param("actorNo") String actorNo,@Param("updatedAt") LocalDateTime updatedAt);
+        int markWorkOrderOpened(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
 
         /** Existing order roots forbid reception replacement even before actual task execution. */
-        @Select("""
+        @Select(
+                """
                 SELECT (SELECT COUNT(*) FROM bty_work_order w WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo}
                 AND w.store_no=#{storeNo} AND w.appointment_no=#{appointmentNo} AND w.deleted=0)
                 + (SELECT COUNT(*) FROM bty_service_task t JOIN bty_appointment_item a
@@ -151,27 +181,38 @@ public final class BeautyMappers {
                 WHERE a.tenant_no='MAIN' AND a.entity_no=#{entityNo} AND a.appointment_no=#{appointmentNo}
                 AND t.deleted=0)
                 """)
-        long countWorkOrders(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        long countWorkOrders(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("appointmentNo") String appointmentNo);
+
         /** Parent scope is checked before exposing affected task references. */
-        @Select("""
+        @Select(
+                """
                 SELECT t.task_no FROM bty_service_task t JOIN bty_work_order w
                 ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
                 WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo}
                 AND w.appointment_no=#{appointmentNo} AND w.deleted=0 AND t.deleted=0 ORDER BY t.id
                 """)
-        List<String> affectedTaskNos(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        List<String> affectedTaskNos(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("appointmentNo") String appointmentNo);
 
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_appointment WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND
                 store_no=#{storeNo} AND deleted=0 AND appointment_no=#{appointmentNo} FOR UPDATE
                 """)
-        BtyAppointment selectScopedForUpdate(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyAppointment selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("appointmentNo") String appointmentNo);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment SET start_at=#{startAt}, end_at=#{endAt},hold_no=#{holdNo},
                 version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
@@ -184,13 +225,21 @@ public final class BeautyMappers {
                 AND #{holdNo} IS NOT NULL AND LENGTH(TRIM(#{holdNo}))>0 AND #{actorNo} IS NOT NULL AND
                 LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int changeSchedule(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo, @Param("expectedVersion") long expectedVersion,
-                @Param("expectedStatus") String expectedStatus, @Param("startAt") LocalDateTime startAt,
-                @Param("endAt") LocalDateTime endAt, @Param("holdNo") String holdNo,
-                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+        int changeSchedule(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedStatus") String expectedStatus,
+                @Param("startAt") LocalDateTime startAt,
+                @Param("endAt") LocalDateTime endAt,
+                @Param("holdNo") String holdNo,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment SET status=#{targetStatus}, version=version+1, updated_by=#{actorNo},
                 updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
@@ -205,12 +254,19 @@ public final class BeautyMappers {
                 OR (status='CONFIRMED' AND #{targetStatus} IN ('CANCELLED','NO_SHOW')))
                 AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int changeStatus(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo, @Param("expectedVersion") long expectedVersion,
-                @Param("expectedStatus") String expectedStatus, @Param("targetStatus") String targetStatus,
-                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+        int changeStatus(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedStatus") String expectedStatus,
+                @Param("targetStatus") String targetStatus,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment SET status='CHECKED_IN', checked_in_at=#{checkedInAt}, version=version+1,
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
@@ -222,24 +278,33 @@ public final class BeautyMappers {
                 AND #{checkedInAt} IS NOT NULL AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND
                 #{updatedAt} IS NOT NULL
                 """)
-        int markArrived(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo, @Param("expectedVersion") long expectedVersion,
-                @Param("expectedStatus") String expectedStatus, @Param("checkedInAt") LocalDateTime checkedInAt,
-                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+        int markArrived(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedStatus") String expectedStatus,
+                @Param("checkedInAt") LocalDateTime checkedInAt,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
     }
 
     /** 永久预约根栅栏；调用者事务先锁预约，再锁栅栏及意图。禁止按TTL释放。 */
     public interface AppointmentResourceFenceMapper extends BaseMapper<BtyAppointmentResourceFence> {
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_appointment_resource_fence
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                   AND appointment_no=#{appointmentNo} AND deleted=0 FOR UPDATE
                 """)
-        BtyAppointmentResourceFence selectScopedForUpdate(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("appointmentNo") String appointmentNo);
+        BtyAppointmentResourceFence selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo);
 
         /** 持久化原语：不校验操作者权限，不发放业务许可。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment_resource_fence f
                 JOIN bty_appointment p ON p.tenant_no=f.tenant_no AND p.entity_no=f.entity_no
                   AND p.store_no=f.store_no AND p.appointment_no=f.appointment_no AND p.deleted=0
@@ -268,13 +333,18 @@ public final class BeautyMappers {
                       AND o.action='RECEPTION_CHANGE' AND o.state='PENDING')))
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int acquire(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo, @Param("intentNo") String intentNo,
-                @Param("expectedFenceVersion") long expectedFenceVersion, @Param("actorNo") String actorNo,
+        int acquire(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("intentNo") String intentNo,
+                @Param("expectedFenceVersion") long expectedFenceVersion,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
 
         /** 仅允许已对账的活动意图置空；终态权威证据由未来来源Service核验。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment_resource_fence f
                 JOIN bty_appointment_resource_intent i ON i.tenant_no=f.tenant_no AND i.entity_no=f.entity_no
                   AND i.store_no=f.store_no AND i.appointment_no=f.appointment_no
@@ -289,24 +359,32 @@ public final class BeautyMappers {
                   AND i.phase_code=3 AND i.terminal_code IN (1,2) AND i.terminal_hash IS NOT NULL
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int releaseReconciled(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("appointmentNo") String appointmentNo, @Param("intentNo") String intentNo,
-                @Param("expectedFenceVersion") long expectedFenceVersion, @Param("actorNo") String actorNo,
+        int releaseReconciled(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
+                @Param("intentNo") String intentNo,
+                @Param("expectedFenceVersion") long expectedFenceVersion,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
     /** 原始计划与来源决定持久化；不能作为资源授权或回执真实性的证明。 */
     public interface AppointmentResourceIntentMapper extends BaseMapper<BtyAppointmentResourceIntent> {
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_appointment_resource_intent
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                   AND command_no=#{commandNo} AND deleted=0 FOR UPDATE
                 """)
-        BtyAppointmentResourceIntent selectByCommandForUpdate(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("commandNo") String commandNo);
+        BtyAppointmentResourceIntent selectByCommandForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("commandNo") String commandNo);
 
         /** 来源Service先验实际权限及计划；该方法只负责CAS保存决定。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment_resource_intent i
                 JOIN bty_appointment_resource_fence f ON f.tenant_no=i.tenant_no AND f.entity_no=i.entity_no
                   AND f.store_no=i.store_no AND f.appointment_no=i.appointment_no
@@ -339,14 +417,20 @@ public final class BeautyMappers {
                   AND #{issuedAt} IS NOT NULL AND #{validUntil}>#{issuedAt}
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int authorize(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("intentNo") String intentNo, @Param("expectedVersion") long expectedVersion,
-                @Param("decisionNo") String decisionNo, @Param("issuedAt") LocalDateTime issuedAt,
-                @Param("validUntil") LocalDateTime validUntil, @Param("actorNo") String actorNo,
+        int authorize(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("intentNo") String intentNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("decisionNo") String decisionNo,
+                @Param("issuedAt") LocalDateTime issuedAt,
+                @Param("validUntil") LocalDateTime validUntil,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
 
         /** 来源Service核验可信命令终态后调用；传入终态参数本身不构成权威证据。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment_resource_intent i
                 JOIN bty_appointment_resource_fence f ON f.tenant_no=i.tenant_no AND f.entity_no=i.entity_no
                   AND f.store_no=i.store_no AND f.appointment_no=i.appointment_no
@@ -362,10 +446,15 @@ public final class BeautyMappers {
                   AND #{terminalCode} IN (1,2) AND #{terminalHash} IS NOT NULL AND LENGTH(#{terminalHash})=64
                   AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int reconcile(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("intentNo") String intentNo, @Param("expectedVersion") long expectedVersion,
-                @Param("terminalCode") int terminalCode, @Param("terminalHash") String terminalHash,
-                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+        int reconcile(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("intentNo") String intentNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("terminalCode") int terminalCode,
+                @Param("terminalHash") String terminalHash,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
     }
 
     /** 预约项目行；写入前由业务事务锁定已授权预约根。 */
@@ -375,7 +464,8 @@ public final class BeautyMappers {
     /** 预约确认人员安排历史；按显式安排版本追加，不覆盖旧行。 */
     public interface AppointmentAssignmentMapper extends BaseMapper<BtyAppointmentAssignment> {
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
-        @Select("""
+        @Select(
+                """
                 SELECT a.* FROM bty_appointment_assignment a
                 JOIN bty_appointment_item i ON i.tenant_no=a.tenant_no AND i.entity_no=a.entity_no
                 AND i.appointment_item_no=a.appointment_item_no AND i.deleted=0
@@ -386,28 +476,37 @@ public final class BeautyMappers {
                 AND a.appointment_revision=#{appointmentRevision} AND #{appointmentRevision}>=0
                 ORDER BY i.sequence_no, a.requirement_no, a.resource_no, a.planned_assignment_no
                 """)
-        List<BtyAppointmentAssignment> selectByAppointmentRevision(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("appointmentNo") String appointmentNo,
+        List<BtyAppointmentAssignment> selectByAppointmentRevision(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo,
                 @Param("appointmentRevision") long appointmentRevision);
     }
 
     /** 服务工单；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface WorkOrderMapper extends BaseMapper<BtyWorkOrder> {
         /** Binding changes the aggregate revision but never silently changes its service scope. */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_work_order SET version=version+1,updated_by=#{actorNo},updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                   AND work_order_no=#{workOrderNo} AND deleted=0 AND version=#{expectedVersion}
                   AND scope_revision=#{expectedScopeRevision} AND scope_frozen=0 AND status IN ('OPEN','IN_SERVICE')
                 """)
-        int touchSourceBinding(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("workOrderNo") String workOrderNo, @Param("expectedVersion") long expectedVersion,
-                @Param("expectedScopeRevision") long expectedScopeRevision, @Param("actorNo") String actorNo,
+        int touchSourceBinding(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedScopeRevision") long expectedScopeRevision,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
 
-
-        /** Current scope is part of SQL authorization, including canonical root/context encoding. */
-        @Select("""
+        /**
+         * Current scope is part of SQL authorization, including canonical root/context encoding.
+         */
+        @Select(
+                """
                 SELECT w.* FROM bty_work_order w WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo}
                 AND w.store_no=#{storeNo} AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 AND (NOT EXISTS (SELECT 1 FROM bty_work_order_context any_context
@@ -416,7 +515,9 @@ public final class BeautyMappers {
                     AND c.entity_no=w.entity_no AND c.store_no=w.store_no AND c.work_order_no=w.work_order_no
                     AND c.deleted=0 AND w.customer_ref=CONCAT(c.identity_kind,':',c.identity_ref)))
                 """)
-        BtyWorkOrder selectScoped(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyWorkOrder selectScoped(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("workOrderNo") String workOrderNo);
 
         /** Strict original USER owner; local claim receipts alone never authorize GUEST reads. */
@@ -433,7 +534,7 @@ public final class BeautyMappers {
                 @Param("userNo") String userNo, @Param("workOrderNo") String workOrderNo);
 
         @Select(
-                """
+"""
 SELECT w.* FROM bty_work_order w JOIN bty_work_order_context c
   ON c.tenant_no=w.tenant_no AND c.entity_no=w.entity_no AND c.store_no=w.store_no
   AND c.work_order_no=w.work_order_no AND c.deleted=0
@@ -465,14 +566,19 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 @Param("workOrderNo") String workOrderNo);
 
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_work_order WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND
                 store_no=#{storeNo} AND deleted=0 AND work_order_no=#{workOrderNo} FOR UPDATE
                 """)
-        BtyWorkOrder selectScopedForUpdate(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyWorkOrder selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("workOrderNo") String workOrderNo);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_work_order SET scope_frozen=1, version=version+1, updated_by=#{actorNo},
                 updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
@@ -481,12 +587,18 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 AND status IN ('OPEN','IN_SERVICE','SERVICE_FINISHED') AND #{actorNo} IS NOT NULL AND
                 LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int freezeScope(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("workOrderNo") String workOrderNo, @Param("expectedVersion") long expectedVersion,
-                @Param("expectedScopeRevision") long expectedScopeRevision, @Param("actorNo") String actorNo,
+        int freezeScope(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedScopeRevision") long expectedScopeRevision,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_work_order SET scope_revision=scope_revision+1, version=version+1,
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
@@ -494,12 +606,18 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 AND scope_revision=#{expectedScopeRevision} AND scope_frozen=0 AND status IN ('OPEN','IN_SERVICE')
                 AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int advanceScope(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("workOrderNo") String workOrderNo, @Param("expectedVersion") long expectedVersion,
-                @Param("expectedScopeRevision") long expectedScopeRevision, @Param("actorNo") String actorNo,
+        int advanceScope(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedScopeRevision") long expectedScopeRevision,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_work_order SET status='CLOSED', closed_at=#{closedAt}, version=version+1,
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0 AND
@@ -534,17 +652,24 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 p.entity_no=t.entity_no
                 AND p.task_no=t.task_no AND p.deleted=0 AND (p.ended_at IS NULL OR p.ended_at>#{closedAt}))))
                 """)
-        int closeFrozenScope(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("workOrderNo") String workOrderNo, @Param("expectedVersion") long expectedVersion,
+        int closeFrozenScope(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo,
+                @Param("expectedVersion") long expectedVersion,
                 @Param("expectedScopeRevision") long expectedScopeRevision,
-                @Param("closedAt") LocalDateTime closedAt, @Param("actorNo") String actorNo,
+                @Param("closedAt") LocalDateTime closedAt,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
     /** 可独立执行服务任务；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceTaskMapper extends BaseMapper<BtyServiceTask> {
-        /** Every child proves the complete live root and optional original appointment-item parent. */
-        @Select("""
+        /**
+         * Every child proves the complete live root and optional original appointment-item parent.
+         */
+        @Select(
+                """
                 SELECT t.* FROM bty_service_task t JOIN bty_work_order w
                   ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
                 WHERE t.tenant_no='MAIN' AND t.entity_no=#{entityNo} AND t.work_order_no=#{workOrderNo}
@@ -555,20 +680,27 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                     AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
                     AND i.deleted=0)) ORDER BY t.id
                 """)
-        List<BtyServiceTask> selectForWorkOrder(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        List<BtyServiceTask> selectForWorkOrder(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("workOrderNo") String workOrderNo);
 
         /** 显式父链范围读取；不会按当前人员反推历史安排。 */
-        @Select("""
+        @Select(
+                """
                 SELECT t.* FROM bty_service_task t JOIN bty_work_order w
                 ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no AND w.work_order_no=t.work_order_no
                 WHERE t.tenant_no='MAIN' AND t.entity_no=#{entityNo} AND t.task_no=#{taskNo} AND t.deleted=0
                 AND w.store_no=#{storeNo} AND w.deleted=0 FOR UPDATE
                 """)
-        BtyServiceTask selectScopedForUpdate(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyServiceTask selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("taskNo") String taskNo);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_task SET status=#{targetStatus},
                 started_at=CASE WHEN #{targetStatus}='IN_SERVICE' THEN COALESCE(started_at,#{occurredAt}) ELSE
                 started_at END,
@@ -598,14 +730,21 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 WHERE b.tenant_no='MAIN' AND b.entity_no=#{entityNo} AND b.task_no=bty_service_task.task_no
                 AND b.binding_revision=#{expectedBindingRevision} AND b.deleted=0 AND b.uom<>bty_service_task.uom)))
                 """)
-        int changeStatus(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("taskNo") String taskNo, @Param("expectedVersion") long expectedVersion,
+        int changeStatus(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("taskNo") String taskNo,
+                @Param("expectedVersion") long expectedVersion,
                 @Param("expectedBindingRevision") long expectedBindingRevision,
-                @Param("expectedStatus") String expectedStatus, @Param("targetStatus") String targetStatus,
-                @Param("occurredAt") LocalDateTime occurredAt, @Param("actorNo") String actorNo,
+                @Param("expectedStatus") String expectedStatus,
+                @Param("targetStatus") String targetStatus,
+                @Param("occurredAt") LocalDateTime occurredAt,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_task SET
                 status=CASE WHEN done_qty+#{incrementQty}=qty-voided_qty THEN 'DONE' ELSE status END,
                 finished_at=CASE WHEN done_qty+#{incrementQty}=qty-voided_qty THEN #{finishedAt} ELSE finished_at
@@ -637,13 +776,20 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 AND (s.status NOT IN ('DONE','SKIPPED') OR (s.status='DONE' AND s.finished_at IS NULL)
                 OR s.finished_at>#{finishedAt}))))
                 """)
-        int recordCompletion(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("taskNo") String taskNo, @Param("expectedVersion") long expectedVersion,
+        int recordCompletion(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("taskNo") String taskNo,
+                @Param("expectedVersion") long expectedVersion,
                 @Param("expectedBindingRevision") long expectedBindingRevision,
-                @Param("incrementQty") BigDecimal incrementQty, @Param("finishedAt") LocalDateTime finishedAt,
-                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+                @Param("incrementQty") BigDecimal incrementQty,
+                @Param("finishedAt") LocalDateTime finishedAt,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
+
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_task SET binding_revision=#{newBindingRevision}, version=version+1,
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND task_no=#{taskNo} AND deleted=0 AND
@@ -664,17 +810,22 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 AND b.binding_revision=#{newBindingRevision} AND b.deleted=0 AND b.uom<>bty_service_task.uom) AND
                 #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int switchBindingRevision(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("taskNo") String taskNo, @Param("expectedVersion") long expectedVersion,
+        int switchBindingRevision(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("taskNo") String taskNo,
+                @Param("expectedVersion") long expectedVersion,
                 @Param("expectedBindingRevision") long expectedBindingRevision,
-                @Param("newBindingRevision") long newBindingRevision, @Param("actorNo") String actorNo,
+                @Param("newBindingRevision") long newBindingRevision,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
     /** 任务步骤实例；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceStepMapper extends BaseMapper<BtyServiceStep> {
         /** A task number alone cannot authorize rows from a foreign or deleted parent. */
-        @Select("""
+        @Select(
+                """
                 SELECT c.* FROM bty_service_step c JOIN bty_service_task t
                   ON t.tenant_no=c.tenant_no AND t.entity_no=c.entity_no AND t.task_no=c.task_no
                 JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no
@@ -687,11 +838,15 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                     AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
                     AND i.deleted=0)) ORDER BY c.id
                 """)
-        List<BtyServiceStep> selectForTask(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("workOrderNo") String workOrderNo, @Param("taskNo") String taskNo);
+        List<BtyServiceStep> selectForTask(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo,
+                @Param("taskNo") String taskNo);
 
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_step s
                 JOIN bty_service_task t ON t.tenant_no=s.tenant_no AND t.entity_no=s.entity_no AND
                 t.task_no=s.task_no
@@ -712,17 +867,23 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 AND #{resultSnapshot} IS NOT NULL AND JSON_VALID(#{resultSnapshot}) AND #{actorNo} IS NOT NULL AND
                 LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int completeStep(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("stepNo") String stepNo, @Param("taskNo") String taskNo,
-                @Param("expectedVersion") long expectedVersion, @Param("finishedAt") LocalDateTime finishedAt,
-                @Param("resultSnapshot") String resultSnapshot, @Param("actorNo") String actorNo,
+        int completeStep(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("stepNo") String stepNo,
+                @Param("taskNo") String taskNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("finishedAt") LocalDateTime finishedAt,
+                @Param("resultSnapshot") String resultSnapshot,
+                @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
     }
 
     /** 实际服务人员参与段；调用者在本域短事务按根→任务→子行锁序操作。 */
     public interface ServiceParticipationMapper extends BaseMapper<BtyServiceParticipation> {
         /** A task number alone cannot authorize rows from a foreign or deleted parent. */
-        @Select("""
+        @Select(
+                """
                 SELECT c.* FROM bty_service_participation c JOIN bty_service_task t
                   ON t.tenant_no=c.tenant_no AND t.entity_no=c.entity_no AND t.task_no=c.task_no
                 JOIN bty_work_order w ON w.tenant_no=t.tenant_no AND w.entity_no=t.entity_no
@@ -735,12 +896,15 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                     AND i.appointment_item_no=t.appointment_item_no AND i.appointment_no=w.appointment_no
                     AND i.deleted=0)) ORDER BY c.id
                 """)
-        List<BtyServiceParticipation> selectForTask(@Param("entityNo") String entityNo,
+        List<BtyServiceParticipation> selectForTask(
+                @Param("entityNo") String entityNo,
                 @Param("storeNo") String storeNo,
-                @Param("workOrderNo") String workOrderNo, @Param("taskNo") String taskNo);
+                @Param("workOrderNo") String workOrderNo,
+                @Param("taskNo") String taskNo);
 
         /** 本地范围/版本/前态条件不满足返回0；业务Service必须检查影响行并另验外部权威。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_participation p
                 JOIN bty_service_task t ON t.tenant_no=p.tenant_no AND t.entity_no=p.entity_no AND
                 t.task_no=p.task_no
@@ -754,17 +918,23 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 AND w.status IN ('OPEN','IN_SERVICE','SERVICE_FINISHED') AND #{actorNo} IS NOT NULL AND
                 LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int endParticipation(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("participationNo") String participationNo, @Param("expectedVersion") long expectedVersion,
-                @Param("endedAt") LocalDateTime endedAt, @Param("reason") String reason,
-                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+        int endParticipation(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("participationNo") String participationNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("endedAt") LocalDateTime endedAt,
+                @Param("reason") String reason,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
     }
 
 
     /** 提交与恢复意图；外部权威结果由业务Service验证，不持锁调用外部。 */
     public interface ServiceSubmissionMapper extends BaseMapper<BtyServiceSubmission> {
         /** START has its own discriminator and CAS; legacy schema2/3 recovery never consumes it. */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_submission SET status=#{status},failure_code=#{reason},next_retry_at=#{retryAt},
                   version=version+1,updated_at=#{now},updated_by=#{actor}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
@@ -775,12 +945,19 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                   AND JSON_UNQUOTE(JSON_EXTRACT(frozen_command,'$.bindingHash'))=#{bindingHash}
                   AND status IN ('EXECUTION_PENDING','EXECUTION_PREPARED','EXECUTION_SUSPENDED')
                 """)
-        int completeExecutionOriginal(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("submissionNo") String submissionNo, @Param("expectedVersion") long expectedVersion,
-                @Param("executionNo") String executionNo, @Param("bindingHash") String bindingHash,
-                @Param("payloadHash") String payloadHash, @Param("status") String status,
-                @Param("reason") String reason, @Param("retryAt") LocalDateTime retryAt,
-                @Param("now") LocalDateTime now, @Param("actor") String actor);
+        int completeExecutionOriginal(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("executionNo") String executionNo,
+                @Param("bindingHash") String bindingHash,
+                @Param("payloadHash") String payloadHash,
+                @Param("status") String status,
+                @Param("reason") String reason,
+                @Param("retryAt") LocalDateTime retryAt,
+                @Param("now") LocalDateTime now,
+                @Param("actor") String actor);
 
         /** A completed contradiction suspends the exact START in the observation transaction. */
         default int suspendExecutionOriginal(String entityNo, String storeNo, String submissionNo,
@@ -791,17 +968,21 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
         }
 
         /** Keyset traversal stays inside one read-only RR manifest up to its captured maximum. */
-        @Select("""
+        @Select(
+                """
                 SELECT COALESCE(MAX(s.id),0) FROM bty_service_submission s JOIN bty_work_order w
                   ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
                   AND w.work_order_no=s.work_order_no AND w.deleted=0
                 WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                   AND s.work_order_no=#{workOrderNo} AND s.deleted=0 AND s.action IN ('SUBMIT_SOURCE','ADD_SOURCE')
                 """)
-        long sourceMaximum(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        long sourceMaximum(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("workOrderNo") String workOrderNo);
 
-        @Select("""
+        @Select(
+                """
                 <script>
                 SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
                   ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
@@ -812,26 +993,31 @@ WHERE w.tenant_no='MAIN' AND w.work_order_no=#{workOrderNo} AND w.deleted=0
                 ORDER BY s.id LIMIT 100
                 </script>
                 """)
-        List<BtyServiceSubmission> selectWorkOrderPage(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo,
-                @Param("afterId") long afterId, @Param("maxId") long maxId);
-
+        List<BtyServiceSubmission> selectWorkOrderPage(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo,
+                @Param("afterId") long afterId,
+                @Param("maxId") long maxId);
 
         /** The root lock serializes pending selection overlap checks before any owner write. */
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND work_order_no=#{workOrderNo} AND deleted=0
                   AND action IN ('SUBMIT_SOURCE','ADD_SOURCE') AND status IN ('RECEIVED','SOURCE_PENDING','RECOVERING')
                 ORDER BY id
                 """)
-        List<BtyServiceSubmission> selectActiveForWorkOrder(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo);
+        List<BtyServiceSubmission> selectActiveForWorkOrder(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo);
 
         /**
          * A short lease fences local completion; it never grants an owner or consumer permission.
          */
         @Update(
-                """
+"""
 UPDATE bty_service_submission s SET status='RECOVERING',next_retry_at=#{leaseUntil},
   version=version+1,updated_by=#{actorNo},updated_at=#{now}
 WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
@@ -860,7 +1046,7 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
 
         /** Explicit null assignments clear retry/failure fields on one exact leased completion. */
         @Update(
-                """
+"""
 UPDATE bty_service_submission s SET status=#{targetStatus},failure_code=#{failureCode},
   next_retry_at=#{nextRetryAt},version=version+1,updated_by=#{actorNo},updated_at=#{now}
 WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
@@ -889,52 +1075,64 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                 @Param("now") LocalDateTime now,
                 @Param("actorNo") String actorNo);
 
-
-        @Select("""
+        @Select(
+                """
                 SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
                   ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
                   AND w.work_order_no=s.work_order_no AND w.deleted=0
                 WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                   AND s.submission_no=#{submissionNo} AND s.deleted=0
                 """)
-        BtyServiceSubmission selectSubmission(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyServiceSubmission selectSubmission(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("submissionNo") String submissionNo);
 
-        @Select("""
+        @Select(
+                """
                 SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
                   ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
                   AND w.work_order_no=s.work_order_no AND w.deleted=0
                 WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                   AND s.action=#{action} AND s.request_key_hash=#{requestKeyHash} AND s.deleted=0
                 """)
-        BtyServiceSubmission selectActionKey(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("action") String action, @Param("requestKeyHash") String requestKeyHash);
-
+        BtyServiceSubmission selectActionKey(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("action") String action,
+                @Param("requestKeyHash") String requestKeyHash);
 
         /** Only a real OPEN draft belonging to this authorized live root is projected. */
-        @Select("""
+        @Select(
+                """
                 SELECT s.* FROM bty_service_submission s JOIN bty_work_order w
                   ON w.tenant_no=s.tenant_no AND w.entity_no=s.entity_no AND w.store_no=s.store_no
                   AND w.work_order_no=s.work_order_no
                 WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                   AND s.work_order_no=#{workOrderNo} AND s.action='OPEN' AND s.deleted=0 AND w.deleted=0
                 """)
-        BtyServiceSubmission selectOpenForWorkOrder(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo);
+        BtyServiceSubmission selectOpenForWorkOrder(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo);
 
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                 AND store_no=#{storeNo} AND request_key_hash=#{requestKeyHash} AND deleted=0
                 AND (work_order_no IS NULL OR EXISTS (SELECT 1 FROM bty_work_order w
                 WHERE w.tenant_no='MAIN' AND w.entity_no=#{entityNo} AND w.store_no=#{storeNo} AND w.deleted=0
                 AND w.work_order_no=bty_service_submission.work_order_no))
                 """)
-        BtyServiceSubmission selectByRequestKey(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("requestKeyHash") String requestKeyHash);
+        BtyServiceSubmission selectByRequestKey(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("requestKeyHash") String requestKeyHash);
 
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                 AND store_no=#{storeNo} AND submission_no=#{submissionNo} AND deleted=0
                 AND (work_order_no IS NULL OR EXISTS (SELECT 1 FROM bty_work_order w
@@ -942,11 +1140,14 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                 AND w.work_order_no=bty_service_submission.work_order_no))
                 FOR UPDATE
                 """)
-        BtyServiceSubmission selectScopedForUpdate(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("submissionNo") String submissionNo);
+        BtyServiceSubmission selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo);
 
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
-        @Select("""
+        @Select(
+                """
                 <script>
                 SELECT * FROM bty_service_submission WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                 AND store_no=#{storeNo} AND deleted=0 AND status IN ('RECEIVED','SOURCE_PENDING','RECOVERING')
@@ -960,11 +1161,15 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                 FOR UPDATE SKIP LOCKED
                 </script>
                 """)
-        List<BtyServiceSubmission> selectDueForUpdate(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("now") LocalDateTime now, @Param("limit") int limit);
+        List<BtyServiceSubmission> selectDueForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("now") LocalDateTime now,
+                @Param("limit") int limit);
 
         /** 范围或版本不符返回0；标量SQL显式写审计，Service须检查结果与外部证明。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_submission SET status=#{targetStatus}, next_retry_at=#{nextRetryAt},
                 failure_code=#{failureCode}, version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo} AND deleted=0
@@ -985,17 +1190,27 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                 AND w.work_order_no=bty_service_submission.work_order_no))
                 AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int advanceProgress(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("submissionNo") String submissionNo, @Param("expectedVersion") long expectedVersion,
-                @Param("expectedStatus") String expectedStatus, @Param("targetStatus") String targetStatus,
-                @Param("nextRetryAt") LocalDateTime nextRetryAt, @Param("failureCode") String failureCode,
-                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+        int advanceProgress(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("submissionNo") String submissionNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("expectedStatus") String expectedStatus,
+                @Param("targetStatus") String targetStatus,
+                @Param("nextRetryAt") LocalDateTime nextRetryAt,
+                @Param("failureCode") String failureCode,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
     }
 
     /** 不可变来源绑定历史；从双父链确认范围，按版本批读。 */
     public interface TradeBindingMapper extends BaseMapper<BtyTradeBinding> {
-        /** Only the task's current pointer and both exact live parents authorize a binding projection. */
-        @Select("""
+        /**
+         * Only the task's current pointer and both exact live parents authorize a binding
+         * projection.
+         */
+        @Select(
+                """
                 SELECT b.* FROM bty_trade_binding b JOIN bty_service_task t
                   ON t.tenant_no=b.tenant_no AND t.entity_no=b.entity_no AND t.task_no=b.task_no
                   AND t.binding_revision=b.binding_revision AND t.deleted=0
@@ -1008,12 +1223,14 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                   AND w.work_order_no=#{workOrderNo} AND b.deleted=0
                 ORDER BY b.source_no,b.source_line_ref,b.task_no,b.binding_no
                 """)
-        List<BtyTradeBinding> selectCurrentForWorkOrder(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo);
-
+        List<BtyTradeBinding> selectCurrentForWorkOrder(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo);
 
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
-        @Select("""
+        @Select(
+                """
                 <script>
                 SELECT b.* FROM bty_trade_binding b
                 JOIN bty_service_task t ON t.tenant_no=b.tenant_no AND t.entity_no=b.entity_no AND
@@ -1034,16 +1251,17 @@ WHERE s.tenant_no='MAIN' AND s.entity_no=#{entityNo} AND s.store_no=#{storeNo}
                 ORDER BY b.task_no, b.binding_no
                 </script>
                 """)
-        List<BtyTradeBinding> selectByTaskRevisions(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("taskNos") List<String> taskNos,
+        List<BtyTradeBinding> selectByTaskRevisions(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("taskNos") List<String> taskNos,
                 @Param("bindingRevision") long bindingRevision);
-
     }
 
     /** 主体内规范来源行仲裁；涉及来源先锁guard，再锁工单与任务。 */
     public interface SourceAllocationGuardMapper extends BaseMapper<BtySourceAllocationGuard> {
         @Update(
-                """
+"""
 UPDATE bty_source_allocation_guard g SET allocated_qty=allocated_qty+#{incrementQty},
   version=version+1,updated_by=#{actorNo},updated_at=#{updatedAt}
 WHERE g.tenant_no='MAIN' AND g.entity_no=#{entityNo} AND g.guard_no=#{guardNo} AND g.deleted=0
@@ -1080,7 +1298,7 @@ AND o.source_no=g.source_no AND o.deleted=0 AND o.admission_kind='MANUAL_OFFLINE
          * history.
          */
         @Update(
-                """
+"""
 UPDATE bty_source_allocation_guard g SET allocated_qty=allocated_qty+#{incrementQty},
   version=version+1,updated_by=#{actorNo},updated_at=#{updatedAt}
 WHERE g.tenant_no='MAIN' AND g.entity_no=#{entityNo} AND g.guard_no=#{guardNo} AND g.deleted=0
@@ -1109,20 +1327,22 @@ WHERE g.tenant_no='MAIN' AND g.entity_no=#{entityNo} AND g.guard_no=#{guardNo} A
                 @Param("actorNo") String actorNo,
                 @Param("updatedAt") LocalDateTime updatedAt);
 
-
         /** 只读取已授权本地事实；不存在的行不提供创建互斥。 */
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_source_allocation_guard WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                 AND source_kind=#{sourceKind} AND source_no=#{sourceNo} AND source_line_ref=#{sourceLineRef}
                 AND deleted=0 FOR UPDATE
                 """)
-        BtySourceAllocationGuard selectSourceForUpdate(@Param("entityNo") String entityNo,
-                @Param("sourceKind") String sourceKind, @Param("sourceNo") String sourceNo,
+        BtySourceAllocationGuard selectSourceForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("sourceKind") String sourceKind,
+                @Param("sourceNo") String sourceNo,
                 @Param("sourceLineRef") String sourceLineRef);
 
         /** 范围或版本不符返回0；标量SQL显式写审计，Service须检查结果与外部证明。 */
         @Update(
-                """
+"""
 UPDATE bty_source_allocation_guard SET allocated_qty=allocated_qty+#{incrementQty},
 version=version+1,
 updated_by=#{actorNo}, updated_at=#{updatedAt}
@@ -1142,7 +1362,8 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 @Param("updatedAt") LocalDateTime updatedAt);
 
         /** 范围或版本不符返回0；标量SQL显式写审计，Service须检查结果与外部证明。 */
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_source_allocation_guard SET allocated_qty=allocated_qty-#{releaseQty},
                 version=version+1,
                 updated_by=#{actorNo}, updated_at=#{updatedAt}
@@ -1168,13 +1389,17 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 OR s.status NOT IN ('BOUND','REJECTED')))
                 AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NOT NULL
                 """)
-        int releaseUnconsumedQuantity(@Param("entityNo") String entityNo, @Param("guardNo") String guardNo,
-                @Param("expectedVersion") long expectedVersion, @Param("releaseQty") BigDecimal releaseQty,
-                @Param("actorNo") String actorNo, @Param("updatedAt") LocalDateTime updatedAt);
+        int releaseUnconsumedQuantity(
+                @Param("entityNo") String entityNo,
+                @Param("guardNo") String guardNo,
+                @Param("expectedVersion") long expectedVersion,
+                @Param("releaseQty") BigDecimal releaseQty,
+                @Param("actorNo") String actorNo,
+                @Param("updatedAt") LocalDateTime updatedAt);
 
         /** 范围或版本不符返回0；标量SQL显式写审计，Service须检查结果与外部证明。 */
         @Update(
-                """
+"""
 UPDATE bty_source_allocation_guard SET manual_source_revision=#{newSourceRevision},
 source_qty=#{newSourceQty},
 manual_source_hash=#{sourceHash}, version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
@@ -1198,7 +1423,7 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 @Param("updatedAt") LocalDateTime updatedAt);
 
         @Update(
-                """
+"""
 UPDATE bty_source_allocation_guard SET source_revision=#{newSourceRevision},
 source_qty=#{newSourceQty},
 source_hash=#{sourceHash}, version=version+1, updated_by=#{actorNo}, updated_at=#{updatedAt}
@@ -1226,38 +1451,53 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
     public interface AppointmentPreparationMapper extends BaseMapper<BtyAppointmentPreparation> { }
     public interface AppointmentArrangementMapper extends BaseMapper<BtyAppointmentArrangement> { }
     public interface AppointmentCurrentMapper extends BaseMapper<BtyAppointmentCurrent> {
-        @Select("""
+        @Select(
+                """
                 SELECT c.* FROM bty_appointment_current c JOIN bty_appointment a
                 ON a.tenant_no=c.tenant_no AND a.entity_no=c.entity_no AND a.appointment_no=c.appointment_no
                 WHERE c.tenant_no='MAIN' AND c.entity_no=#{entityNo} AND c.appointment_no=#{appointmentNo}
                 AND c.deleted=0 AND a.deleted=0 AND a.store_no=#{storeNo} FOR UPDATE
                 """)
-        BtyAppointmentCurrent selectScopedForUpdate(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo,@Param("appointmentNo") String appointmentNo);
+        BtyAppointmentCurrent selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("appointmentNo") String appointmentNo);
  }
     /** Durable operation claim; CAS leases are independent of actor authority and never authorize commands. */
     public interface AppointmentOperationMapper extends BaseMapper<BtyAppointmentOperation> {
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_appointment_operation SET lease_until=#{until},version=version+1
                 WHERE tenant_no='MAIN' AND entity_no=#{entity} AND operation_no=#{operation}
                   AND version=#{version} AND state='PENDING' AND deleted=0
                   AND (lease_until IS NULL OR lease_until<#{now})
                 """)
-        int claim(@Param("entity") String entity, @Param("operation") String operation,
-                @Param("version") long version, @Param("now") LocalDateTime now,
+        int claim(
+                @Param("entity") String entity,
+                @Param("operation") String operation,
+                @Param("version") long version,
+                @Param("now") LocalDateTime now,
                 @Param("until") LocalDateTime until);
     }
     public interface AppointmentResourceDecisionMapper extends BaseMapper<BtyAppointmentResourceDecision> { }
     /** Scoped reception persistence; authorization remains in services. */
     public interface ReceptionOperationMapper extends BaseMapper<BtyReceptionOperation> {
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_reception_operation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                 AND store_no=#{storeNo} AND operation_no=#{operationNo} AND deleted=0
                 """)
-        BtyReceptionOperation selectScoped(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyReceptionOperation selectScoped(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("operationNo") String operationNo);
-        /** Eligibility is filtered before LIMIT; Java still verifies the authoritative binding and intent. */
-        @Select("""
+
+        /**
+         * Eligibility is filtered before LIMIT; Java still verifies the authoritative binding and
+         * intent.
+         */
+        @Select(
+                """
                 SELECT r.* FROM bty_reception_operation r
                 JOIN bty_appointment_operation a ON a.tenant_no=r.tenant_no AND a.entity_no=r.entity_no
                   AND a.store_no=r.store_no AND a.appointment_no=r.appointment_no
@@ -1311,18 +1551,29 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                 ORDER BY r.next_retry_at ASC,r.id ASC LIMIT 50
                 """)
         List<BtyReceptionOperation> selectResourceRecoverable(@Param("now") LocalDateTime now);
-        @Update("""
+
+        @Update(
+                """
                 UPDATE bty_reception_operation SET lease_until=#{until},version=version+1
                 WHERE tenant_no='MAIN' AND entity_no=#{entityNo} AND store_no=#{storeNo}
                   AND operation_no=#{operationNo} AND deleted=0 AND version=#{version}
                   AND action='RECEIVE_WALK_IN' AND endpoint='BAPI-048' AND phase='RESOURCE_PENDING'
                   AND next_retry_at<=#{now} AND (lease_until IS NULL OR lease_until<#{now})
                 """)
-        int claimResource(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
-                @Param("operationNo") String operationNo, @Param("version") long version,
-                @Param("now") LocalDateTime now, @Param("until") LocalDateTime until);
-        /** A successful opening is read only through its exact original context and live order parent. */
-        @Select("""
+        int claimResource(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("operationNo") String operationNo,
+                @Param("version") long version,
+                @Param("now") LocalDateTime now,
+                @Param("until") LocalDateTime until);
+
+        /**
+         * A successful opening is read only through its exact original context and live order
+         * parent.
+         */
+        @Select(
+                """
                 SELECT o.* FROM bty_reception_operation o JOIN bty_work_order_context c
                   ON c.tenant_no=o.tenant_no AND c.entity_no=o.entity_no AND c.store_no=o.store_no
                   AND c.source_reception_operation_no=o.operation_no AND c.work_order_no=o.work_order_no
@@ -1335,27 +1586,34 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
                   AND ((o.action='OPEN_WORK_ORDER' AND o.endpoint IN ('BAPI-052','BAPI-054'))
                     OR (o.action='RECEIVE_WALK_IN' AND o.endpoint='BAPI-048')) AND o.phase='SUCCEEDED'
                 """)
-        BtyReceptionOperation selectOpenedForWorkOrder(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("workOrderNo") String workOrderNo,
+        BtyReceptionOperation selectOpenedForWorkOrder(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("workOrderNo") String workOrderNo,
                 @Param("operationNo") String operationNo);
 
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_reception_operation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                 AND store_no=#{storeNo} AND operation_no=#{operationNo} AND deleted=0 FOR UPDATE
                 """)
-        BtyReceptionOperation selectScopedForUpdate(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("operationNo") String operationNo);
+        BtyReceptionOperation selectScopedForUpdate(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("operationNo") String operationNo);
     }
 
     /** Scoped reception persistence; authorization remains in services. */
     public interface WorkOrderContextMapper extends BaseMapper<BtyWorkOrderContext> {
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_work_order_context WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND work_order_no=#{workOrderNo} AND deleted=0
                 """)
-        BtyWorkOrderContext selectScoped(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtyWorkOrderContext selectScoped(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("workOrderNo") String workOrderNo);
-
     }
 
     /** Scoped reception persistence; authorization remains in services. */
@@ -1367,23 +1625,27 @@ AND #{actorNo} IS NOT NULL AND LENGTH(TRIM(#{actorNo}))>0 AND #{updatedAt} IS NO
     }
     /** Canonical observation identity is shared across every local work order. */
     public interface SourceObservationMapper extends BaseMapper<BtySourceObservation> {
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_source_observation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND source_kind='STORE_ORDER' AND source_no=#{sourceNo} AND deleted=0
                 """)
-        BtySourceObservation selectCanonical(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        BtySourceObservation selectCanonical(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("sourceNo") String sourceNo);
 
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_source_observation WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND source_kind='STORE_ORDER' AND source_no=#{sourceNo} AND deleted=0 FOR UPDATE
                 """)
-        BtySourceObservation selectCanonicalForUpdate(@Param("entityNo") String entityNo,
-                @Param("sourceNo") String sourceNo);
+        BtySourceObservation selectCanonicalForUpdate(
+                @Param("entityNo") String entityNo, @Param("sourceNo") String sourceNo);
 
         /** Called only while holding the canonical row lock; explicitly clears nullable fields. */
         @Update(
-                """
+"""
 UPDATE bty_source_observation SET observation_epoch=#{row.observationEpoch},state=#{row.state},
   source_revision=#{row.sourceRevision},source_hash=#{row.sourceHash},
   verified_revision=#{row.verifiedRevision},verified_hash=#{row.verifiedHash},
@@ -1401,7 +1663,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                 @Param("expectedVersion") long expectedVersion);
 
         @Select(
-                """
+"""
 SELECT (EXISTS (SELECT 1 FROM bty_trade_binding WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
   AND source_kind='STORE_ORDER' AND source_no=#{sourceNo}) OR EXISTS
   (SELECT 1 FROM bty_source_allocation_guard WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
@@ -1415,7 +1677,7 @@ SELECT (EXISTS (SELECT 1 FROM bty_trade_binding WHERE tenant_no='MAIN' AND entit
          * observation root.
          */
         @Update(
-                """
+"""
 UPDATE bty_source_observation SET admission_kind='MANUAL_OFFLINE',customer_kind=#{row.customerKind},
   guest_no=#{row.guestNo},identity_revision=#{row.identityRevision},
   observation_epoch=observation_epoch+1,manual_epoch=1,manual_state='UNKNOWN',
@@ -1449,7 +1711,7 @@ AND NOT EXISTS (SELECT 1 FROM bty_trade_binding b WHERE b.tenant_no=bty_source_o
          * completion.
          */
         @Update(
-                """
+"""
 UPDATE bty_source_observation SET manual_epoch=#{row.manualEpoch},manual_state=#{row.manualState},
   manual_observed_at=#{row.manualObservedAt},manual_failure_code=#{row.manualFailureCode},
   manual_revision=#{row.manualRevision},manual_hash=#{row.manualHash},
@@ -1470,7 +1732,7 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                 @Param("expectedVersion") long expectedVersion);
 
         @Update(
-                """
+"""
 UPDATE bty_source_observation SET manual_epoch=manual_epoch+1,manual_state='UNKNOWN',
   manual_observed_at=NULL,manual_failure_code='SOURCE_OBSERVATION_IN_FLIGHT',
   version=version+1,updated_at=#{row.updatedAt},updated_by=#{row.updatedBy}
@@ -1489,8 +1751,12 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
 
     /** Permanent originals are discovered only after the canonical source observation is locked. */
     public interface ServiceExecutionFenceMapper extends BaseMapper<BtyServiceExecutionFence> {
-        /** Due-time/id ordering plus durable claim leases prevent one unavailable original starving later rows. */
-        @Select("""
+        /**
+         * Due-time/id ordering plus durable claim leases prevent one unavailable original starving
+         * later rows.
+         */
+        @Select(
+                """
                 SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND deleted=0
                   AND #{limit} BETWEEN 1 AND 100
                   AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED','SUSPEND_REQUESTED')
@@ -1502,48 +1768,64 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                       (next_retry_at=#{afterRetryAt} AND id>#{afterId}))))
                 ORDER BY next_retry_at,id LIMIT #{limit}
                 """)
-        List<BtyServiceExecutionFence> pendingExecutions(@Param("now") LocalDateTime now,
-                @Param("afterRetryAt") LocalDateTime afterRetryAt, @Param("afterId") long afterId,
+        List<BtyServiceExecutionFence> pendingExecutions(
+                @Param("now") LocalDateTime now,
+                @Param("afterRetryAt") LocalDateTime afterRetryAt,
+                @Param("afterId") long afterId,
                 @Param("limit") int limit);
 
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND source_operation_no=#{operationNo} AND source_no=#{sourceNo}
                 ORDER BY execution_no
                 """)
-        List<BtyServiceExecutionFence> findSourceCoordinates(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("operationNo") String operationNo,
+        List<BtyServiceExecutionFence> findSourceCoordinates(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("operationNo") String operationNo,
                 @Param("sourceNo") String sourceNo);
 
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND execution_no=#{executionNo} FOR UPDATE
                 """)
-        BtyServiceExecutionFence lockOriginal(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("executionNo") String executionNo);
+        BtyServiceExecutionFence lockOriginal(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("executionNo") String executionNo);
 
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND task_no=#{taskNo}
                 """)
-        BtyServiceExecutionFence findTask(@Param("entityNo") String entityNo,
-                @Param("storeNo") String storeNo, @Param("taskNo") String taskNo);
+        BtyServiceExecutionFence findTask(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
+                @Param("taskNo") String taskNo);
 
-        @Select("""
+        @Select(
+                """
                 SELECT * FROM bty_service_execution_fence WHERE tenant_no='MAIN'
                   AND source_line_no=#{sourceLineNo} ORDER BY unit_ordinal
                 """)
         List<BtyServiceExecutionFence> allLineHistory(@Param("sourceLineNo") String sourceLineNo);
 
-        @Select("""
+        @Select(
+                """
                 SELECT COUNT(*) FROM bty_service_execution_fence WHERE tenant_no='MAIN' AND entity_no=#{entityNo}
                   AND store_no=#{storeNo} AND work_order_no=#{workOrderNo}
                   AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED','SUSPEND_REQUESTED')
                 """)
-        int activeForWorkOrder(@Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+        int activeForWorkOrder(
+                @Param("entityNo") String entityNo,
+                @Param("storeNo") String storeNo,
                 @Param("workOrderNo") String workOrderNo);
 
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_execution_fence SET intent_state='SUSPEND_REQUESTED',
                   source_fence_revision=source_fence_revision+1,version=version+1,
                   suspension_intent_revision=#{row.suspensionIntentRevision},
@@ -1560,11 +1842,13 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                   AND source_fence_revision=#{expectedIntentRevision} AND suspension_intent_revision IS NULL
                   AND intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED') AND deleted=0
                 """)
-        int suspendOriginal(@Param("row") BtyServiceExecutionFence row,
+        int suspendOriginal(
+                @Param("row") BtyServiceExecutionFence row,
                 @Param("expectedVersion") long expectedVersion,
                 @Param("expectedIntentRevision") long expectedIntentRevision);
 
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_execution_fence SET observation_epoch=observation_epoch+1,version=version+1,
                   next_retry_at=#{retryAt},updated_at=#{now},updated_by=#{actor}
                 WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
@@ -1573,11 +1857,14 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                   AND source_fence_revision=#{row.sourceFenceRevision} AND version=#{row.version}
                   AND observation_epoch=#{row.observationEpoch} AND deleted=0
                 """)
-        int claimExecutionObservation(@Param("row") BtyServiceExecutionFence row,
-                @Param("retryAt") LocalDateTime retryAt, @Param("now") LocalDateTime now,
+        int claimExecutionObservation(
+                @Param("row") BtyServiceExecutionFence row,
+                @Param("retryAt") LocalDateTime retryAt,
+                @Param("now") LocalDateTime now,
                 @Param("actor") String actor);
 
-        @Update("""
+        @Update(
+                """
                 UPDATE bty_service_execution_fence SET observed_grant_no=#{row.observedGrantNo},
                   observed_grant_revision=#{row.observedGrantRevision},observed_grant_state=#{row.observedGrantState},
                   intent_state=#{row.intentState},next_retry_at=#{row.nextRetryAt},version=version+1,
@@ -1588,11 +1875,60 @@ WHERE tenant_no='MAIN' AND entity_no=#{row.entityNo} AND store_no=#{row.storeNo}
                   AND version=#{expectedVersion} AND source_fence_revision=#{expectedIntentRevision}
                   AND observation_epoch=#{expectedEpoch} AND deleted=0
                 """)
-        int applyExecutionObservation(@Param("row") BtyServiceExecutionFence row,
+        int applyExecutionObservation(
+                @Param("row") BtyServiceExecutionFence row,
                 @Param("expectedVersion") long expectedVersion,
                 @Param("expectedIntentRevision") long expectedIntentRevision,
                 @Param("expectedEpoch") long expectedEpoch);
     }
 
+    /** Companion originals never replace the permanent task/fence/unit ownership relation. */
+    @Mapper
+    public interface ServiceExecutionStockIntentMapper
+            extends BaseMapper<BtyServiceExecutionStockIntent> {
+        @Select(
+                """
+                SELECT * FROM bty_service_execution_stock_intent WHERE tenant_no='MAIN'
+                  AND entity_no=#{entity} AND store_no=#{store} AND execution_no=#{execution} AND deleted=0
+                """)
+        BtyServiceExecutionStockIntent find(
+                @Param("entity") String entity,
+                @Param("store") String store,
+                @Param("execution") String execution);
 
+        @Select(
+                """
+                SELECT * FROM bty_service_execution_stock_intent WHERE tenant_no='MAIN'
+                  AND entity_no=#{entity} AND store_no=#{store} AND execution_no=#{execution} AND deleted=0 FOR UPDATE
+                """)
+        BtyServiceExecutionStockIntent lock(
+                @Param("entity") String entity,
+                @Param("store") String store,
+                @Param("execution") String execution);
+
+        @Update(
+                """
+                UPDATE bty_service_execution_stock_intent s
+                SET route_no=#{row.routeNo},route_hash=#{row.routeHash},evidence_json=#{row.evidenceJson},
+                  evidence_hash=#{row.evidenceHash},evidence_observed_at=#{row.evidenceObservedAt},
+                  receipt_json=#{row.receiptJson},receipt_hash=#{row.receiptHash},
+                  receipt_observed_at=#{row.receiptObservedAt},observation_state=#{row.observationState},
+                  pending_reason=#{row.pendingReason},source_fence_revision=#{row.sourceFenceRevision},
+                  observation_epoch=observation_epoch+1,version=version+1,updated_at=#{row.updatedAt},
+                  updated_by=#{row.updatedBy}
+                WHERE id=#{row.id} AND lookup_hash=#{row.lookupHash} AND reference_hash=#{row.referenceHash}
+                  AND version=#{version} AND observation_epoch=#{epoch}
+                  AND version<9223372036854775806 AND observation_epoch<9223372036854775806
+                  AND (route_no IS NULL OR (route_no=#{row.routeNo} AND route_hash=#{row.routeHash}))
+                  AND EXISTS (SELECT 1 FROM bty_service_execution_fence f WHERE f.fence_no=s.fence_no
+                    AND f.execution_no=s.execution_no AND f.source_fence_revision=#{row.sourceFenceRevision}
+                    AND f.observation_epoch=#{fenceEpoch} AND f.version=#{fenceVersion})
+                """)
+        int observe(
+                @Param("row") BtyServiceExecutionStockIntent row,
+                @Param("version") long version,
+                @Param("epoch") long epoch,
+                @Param("fenceEpoch") long fenceEpoch,
+                @Param("fenceVersion") long fenceVersion);
+    }
 }

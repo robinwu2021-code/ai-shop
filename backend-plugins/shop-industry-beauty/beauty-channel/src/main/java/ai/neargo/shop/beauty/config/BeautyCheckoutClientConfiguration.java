@@ -1,6 +1,9 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.port.RemoteCheckoutPort;
+import ai.neargo.shop.beauty.port.RemoteServiceExecutionPreparationPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionPreparationPort;
+import ai.neargo.shop.spi.trade.ServiceExecutionPreparationInternalApi;
 import ai.neargo.shop.beauty.port.RemoteServiceExecutionPort;
 import ai.neargo.shop.spi.trade.ServiceExecutionPort;
 import ai.neargo.shop.spi.trade.ServiceExecutionInternalApi;
@@ -56,5 +59,18 @@ public class BeautyCheckoutClientConfiguration {
             @Value("${shop.services.internal-token:}") String token) {
         return new RemoteServiceExecutionPort(http.client(ServiceName.PLATFORM,
                 ServiceExecutionInternalApi.class, Duration.ofSeconds(5)), new InternalBindings(token));
+    }
+
+    /** Only standalone SERVER installs the finite real preparation bridge. */
+    @Bean
+    @ConditionalOnMissingBean(ServiceExecutionPreparationPort.class)
+    ServiceExecutionPreparationPort beautyRemotePreparationPort(
+            InternalHttp http, @Value("${shop.services.internal-token:}") String token) {
+        return new RemoteServiceExecutionPreparationPort(
+                http.client(
+                        ServiceName.PLATFORM,
+                        ServiceExecutionPreparationInternalApi.class,
+                        Duration.ofSeconds(5)),
+                token);
     }
 }

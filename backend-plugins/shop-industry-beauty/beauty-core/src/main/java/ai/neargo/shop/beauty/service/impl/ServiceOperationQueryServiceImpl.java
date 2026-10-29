@@ -1,6 +1,8 @@
 package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.shop.beauty.dto.OperationVO;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.beauty.entity.BtyReceptionOperation;
 import ai.neargo.shop.beauty.entity.BtyServiceSubmission;
 import ai.neargo.shop.beauty.mapper.BeautyMappers;
@@ -9,10 +11,12 @@ import ai.neargo.shop.beauty.policy.ServiceSubmissionAccess;
 import ai.neargo.shop.beauty.service.ServiceOperationQueryService;
 
 import java.util.List;
+import java.util.Objects;
 
 /** Pure original-number progress read. GET never creates or executes a new command. */
 public final class ServiceOperationQueryServiceImpl implements ServiceOperationQueryService {
     private final AppointmentPersistence db;
+    private ServiceTaskStockPreparationCoordinator taskPreparation;
     private final AppointmentAccess access;
     private final BeautyMappers.ReceptionOperationMapper receptions;
     private final BeautyMappers.ServiceSubmissionMapper submissions;
@@ -33,10 +37,30 @@ public final class ServiceOperationQueryServiceImpl implements ServiceOperationQ
         this.sourceQuery = sourceQuery;
         this.sourceAccess = sourceAccess;
     }
+
+    /** Real START original handling is configured alongside existing operation families. */
+    public void setTaskPreparation(ServiceTaskStockPreparationCoordinator taskPreparation) {
+        this.taskPreparation = Objects.requireNonNull(taskPreparation);
+    }
+
     @Override
     public OperationVO getOperation(String entity, String store, String actor, String number) {
-        access.merchant(entity, store, actor, false);
         var source = db.read(() -> submissions.selectSubmission(entity, store, number));
+        if (source != null && "START".equals(source.getAction())) {
+            if (taskPreparation == null)
+                throw BizException.of(ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE);
+            var progress = taskPreparation.projectOperation(entity, store, actor, number);
+            return new OperationVO(
+                    number,
+                    null,
+                    progress.preparationState(),
+                    "START",
+                    progress.recoveryAction(),
+                    progress.workOrderNo(),
+                    progress.pendingReason(),
+                    progress);
+        }
+        access.merchant(entity, store, actor, false);
         if (source != null && List.of("SUBMIT_SOURCE", "ADD_SOURCE").contains(source.getAction())) {
             sourceAccess.authorize(entity, store, actor, false, false);
             sourceAccess.buyer(
@@ -61,7 +85,9 @@ public final class ServiceOperationQueryServiceImpl implements ServiceOperationQ
                         ? "SUCCEEDED"
                         : "REJECTED".equals(row.getStatus()) ? "REJECTED" : "PENDING",
                 row.getAction(),
-                List.of("BOUND", "REJECTED").contains(row.getStatus()) ? null : "AUTHENTICATED_ORIGINAL_RECOVERY",
+                List.of("BOUND", "REJECTED").contains(row.getStatus())
+                        ? null
+                        : "AUTHENTICATED_ORIGINAL_RECOVERY",
                 row.getWorkOrderNo(),
                 row.getFailureCode());
     }

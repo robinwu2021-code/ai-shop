@@ -1,6 +1,11 @@
 package ai.neargo.shop.beauty.config;
 
 import ai.neargo.shop.beauty.policy.ServiceExecutionAccess;
+import ai.neargo.shop.beauty.policy.ServiceExecutionStockIntentSchemaVerifier;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskStockPreparationCoordinator;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskPreparationServiceImpl;
+import ai.neargo.shop.beauty.service.ServiceTaskPreparationService;
+import ai.neargo.shop.spi.trade.ServiceExecutionPreparationPort;
 import ai.neargo.shop.beauty.job.ServiceExecutionRecoveryJob;
 import ai.neargo.job.api.JobDeclaration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -46,7 +51,8 @@ import java.time.Clock;
 @ConditionalOnBeautyEnabled
 public class BeautySourceConfiguration {
     @Bean
-    ServiceExecutionSchemaVerifier beautyServiceExecutionSchemaVerifier(@Qualifier("dataSource") DataSource source) {
+    ServiceExecutionSchemaVerifier beautyServiceExecutionSchemaVerifier(
+            @Qualifier("dataSource") DataSource source) {
         return new ServiceExecutionSchemaVerifier(source);
     }
 
@@ -68,16 +74,66 @@ public class BeautySourceConfiguration {
     }
 
     @Bean
-    ServiceTaskExecutionServiceImpl serviceTaskExecutionServiceImpl(AppointmentPersistence db,
-            ServiceSubmissionQuery query, ServiceExecutionAccess access, ServiceExecutionSchemaVerifier schema,
-            BeautyMappers.SourceObservationMapper observations, BeautyMappers.SourceAllocationGuardMapper guards,
-            BeautyMappers.WorkOrderMapper orders, BeautyMappers.ServiceTaskMapper tasks,
-            BeautyMappers.TradeBindingMapper bindings, BeautyMappers.ServiceExecutionFenceMapper fences,
-            BeautyMappers.ServiceSubmissionMapper submissions, BeautyMappers.GuestClaimReceiptMapper claims,
+    ServiceTaskExecutionServiceImpl serviceTaskExecutionServiceImpl(
+            AppointmentPersistence db,
+            ServiceSubmissionQuery query,
+            ServiceExecutionAccess access,
+            ServiceExecutionSchemaVerifier schema,
+            BeautyMappers.SourceObservationMapper observations,
+            BeautyMappers.SourceAllocationGuardMapper guards,
+            BeautyMappers.WorkOrderMapper orders,
+            BeautyMappers.ServiceTaskMapper tasks,
+            BeautyMappers.TradeBindingMapper bindings,
+            BeautyMappers.ServiceExecutionFenceMapper fences,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            BeautyMappers.GuestClaimReceiptMapper claims,
             ObjectProvider<ServiceExecutionPort> owner,
+            ObjectProvider<ServiceTaskStockPreparationCoordinator> stock,
             @Qualifier("beautyReceptionClock") Clock clock) {
-        return new ServiceTaskExecutionServiceImpl(db, query, access, schema, observations, guards, orders,
-                tasks, bindings, fences, submissions, claims, owner, clock);
+        var service =
+                new ServiceTaskExecutionServiceImpl(
+                        db,
+                        query,
+                        access,
+                        schema,
+                        observations,
+                        guards,
+                        orders,
+                        tasks,
+                        bindings,
+                        fences,
+                        submissions,
+                        claims,
+                        owner,
+                        clock);
+        service.setStockObservationProvider(stock);
+        return service;
+    }
+
+    @Bean
+    ServiceExecutionStockIntentSchemaVerifier beautyStockIntentSchema(
+            @Qualifier("dataSource") DataSource source) {
+        return new ServiceExecutionStockIntentSchemaVerifier(source);
+    }
+
+    @Bean
+    ServiceTaskStockPreparationCoordinator beautyStockPreparation(
+            AppointmentPersistence db,
+            BeautyMappers.ServiceExecutionStockIntentMapper rows,
+            BeautyMappers.ServiceSubmissionMapper submissions,
+            ServiceExecutionStockIntentSchemaVerifier schema,
+            ServiceExecutionAccess access,
+            ObjectProvider<ServiceTaskExecutionServiceImpl> quantity,
+            ObjectProvider<ServiceExecutionPreparationPort> bridge,
+            @Qualifier("beautyReceptionClock") Clock clock) {
+        return new ServiceTaskStockPreparationCoordinator(
+                db, rows, submissions, schema, access, quantity, bridge, clock);
+    }
+
+    @Bean
+    ServiceTaskPreparationService beautyTaskPreparationService(
+            ServiceTaskExecutionService quantity, ServiceTaskStockPreparationCoordinator stock) {
+        return new ServiceTaskPreparationServiceImpl(quantity, stock);
     }
 
     @Bean

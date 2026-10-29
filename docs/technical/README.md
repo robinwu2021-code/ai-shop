@@ -724,6 +724,9 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [Beauty/unified source migration mapping implementation](./design/beauty-unified-migration-integration-report.md) | — |
 | [TDD-ops-主菜单合并](./design/ops/TDD-ops-主菜单合并.md) | **已验收**（库 + 真实登录态的界面两侧都验过）· 创建 2026-09-09 · 最后更新 2026-09-09 |
 | [TDD · 运营端 · 功能开关与菜单状态](./design/ops/TDD-ops-功能开关与菜单状态.md) | **已实现**（AC1/AC2 单测 + AC3/AC4 闸门；AC2 现场验过）· 创建 2026-09-09 |
+| [C04b3 FIX1 scoped independent review](./design/reviews/beauty-preparation-source-review-fix1.md) | — |
+| [C04b3 FIX2 scoped independent review](./design/reviews/beauty-preparation-source-review-fix2.md) | — |
+| [C04b3 independent specification and quality review](./design/reviews/beauty-preparation-source-review.md) | — |
 | [业务库存与进销存：领域、流程及前后端优化方案](./design/reviews/库存业务与进销存-领域流程与前后端优化方案-2026-10-19.md) | 历史设计，当前实施状态以现行TDD为准。 |
 | [门店储值：Android真机装包与基础验证](./design/reviews/门店储值-Android真机装包-2026-10-20.md) | 历史验证记录（2026-10-20）；结论仅限本文记录的范围与当时环境，不代表当前全量回归或完整营业验收。 |
 | [门店储值 A批存量盘点](./design/reviews/门店储值-A批存量盘点.md) | 历史验证记录（2026-10-20）；结论仅限本文记录的范围与当时环境，不代表当前全量回归或完整营业验收。 |
@@ -781,7 +784,9 @@ Java开发统一入口：[平台开发规范](../../.claude/skills/ai-shop-dev-s
 | [美业系统 Controller、Service 与 Mapper 方法清单](./design/美业系统-Controller-Service-Mapper方法清单.md) | 方法级目标与实施对照 · 2026-10-21 · 已实现范围和部署结果以主TDD为准，不能把整张清单当已完成。 |
 | [美业系统 Java 类与方法清单](./design/美业系统-Java类与方法清单.md) | 方法级目标与实施对照 · 2026-10-21 · 已实现范围和部署结果以主TDD为准，不能把整张清单当已完成。 |
 | [美业 Java 项目结构与类职责](./design/美业系统-Java项目结构与类职责.md) | 目标目录与实际实施对照 · 2026-10-24 · Task59代码接线已实现，实际部署后置；全表不代表全部完成。 |
+| [美业实际资源占用：C04c实施细化](./design/美业系统-实际资源占用实施细化.md) | — |
 | [美业系统开发任务对照索引](./design/美业系统-开发任务对照索引.md) | 任务定义基线 · 2026-10-20 · 实际实施进度以执行入口的记录为准，本索引不推断工程、接口或迁移已交付。 |
+| [C04b3 bounded consumption implementation manifest — provisional source preflight](./design/美业系统-执行准备与库存消费实施细化.md) | — |
 | [美业与共用人员资源数据库字段字典](./design/美业系统-数据库字段字典.md) | 原41项目标基线保留；Task58正式V1–V8共28项私表，增量另列 · 2026-10-24 |
 | [美业与共用人员资源数据库结构设计](./design/美业系统-数据库结构设计.md) | 原41项目标设计基线保留，正式V1–V4与23私表增量见末节 · 2026-10-22；未访问生产数据库。 |
 | [美业系统新旧方案对比](./design/美业系统-新旧方案对比-2026-10-20.md) | 评审草稿 · 创建：2026-10-20 · 在新版独立方案形成后进行对照，不修改旧稿。 |

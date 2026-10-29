@@ -22,6 +22,7 @@ import ai.neargo.shop.beauty.service.impl.AppointmentSourceAuthority;
 import ai.neargo.shop.beauty.service.impl.GuestRegistrationServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ReceptionCoordinator;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationQueryServiceImpl;
+import ai.neargo.shop.beauty.service.impl.ServiceTaskStockPreparationCoordinator;
 import ai.neargo.shop.beauty.service.impl.ServiceOperationRecoveryServiceImpl;
 import ai.neargo.shop.beauty.service.impl.ServiceSubmissionQuery;
 import ai.neargo.shop.beauty.service.impl.WorkOrderCoordinator;
@@ -122,9 +123,13 @@ public class BeautyAppointmentConfiguration {
             BeautyMappers.ReceptionOperationMapper receptions,
             BeautyMappers.ServiceSubmissionMapper submissions,
             ServiceSubmissionQuery query,
-            ServiceSubmissionAccess sourceAccess) {
-        return new ServiceOperationQueryServiceImpl(
-                db, access, receptions, submissions, query, sourceAccess);
+            ServiceSubmissionAccess sourceAccess,
+            ServiceTaskStockPreparationCoordinator taskPreparation) {
+        var service =
+                new ServiceOperationQueryServiceImpl(
+                        db, access, receptions, submissions, query, sourceAccess);
+        service.setTaskPreparation(taskPreparation);
+        return service;
     }
     @Bean
     AppointmentRecovery appointmentRecovery(AppointmentPersistence db, AppointmentCoordinator coordinator) {
@@ -155,17 +160,21 @@ public class BeautyAppointmentConfiguration {
             WorkOrderCoordinator orders,
             GuestRegistrationServiceImpl guests,
             BeautyMappers.ServiceSubmissionMapper submissions,
-            ServiceSubmissionService sources) {
-        return new ServiceOperationRecoveryServiceImpl(
-                db,
-                access,
-                coordinator,
-                receptions,
-                receptionAccess,
-                reception,
-                orders,
-                guests,
-                submissions,
-                sources);
+            ServiceSubmissionService sources,
+            ServiceTaskStockPreparationCoordinator taskPreparation) {
+        var service =
+                new ServiceOperationRecoveryServiceImpl(
+                        db,
+                        access,
+                        coordinator,
+                        receptions,
+                        receptionAccess,
+                        reception,
+                        orders,
+                        guests,
+                        submissions,
+                        sources);
+        service.setTaskPreparation(taskPreparation);
+        return service;
     }
 }

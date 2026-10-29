@@ -1,0 +1,475 @@
+{
+  "schemaVersion": 1,
+  "owner": "beauty-core/primary",
+  "platformVersion": 11,
+  "migration": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V11__beauty_service_execution_stock_intent.sql",
+  "resource": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/META-INF/shop/beauty-service-execution-stock-intent-schema.json",
+  "ownerIdentity": [
+    {
+      "table": "bty_source_observation",
+      "column": "tenant_no",
+      "role": "TENANT",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "bty_source_observation",
+      "column": "entity_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "bty_source_observation",
+      "column": "store_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    }
+  ],
+  "tables": [
+    {
+      "name": "bty_service_execution_stock_intent",
+      "tag": "bsesi",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "work_order_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "fence_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "submission_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "attempt_no",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "binding_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_intent_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "reference_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "lookup_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "retention_no",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": true
+        },
+        {
+          "name": "reference_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "lookup_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "route_no",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        },
+        {
+          "name": "route_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        },
+        {
+          "name": "evidence_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        },
+        {
+          "name": "receipt_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "immutable": false
+        },
+        {
+          "name": "evidence_json",
+          "type": "longtext",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "receipt_json",
+          "type": "longtext",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "evidence_observed_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "receipt_observed_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "observation_state",
+          "type": "varchar(40)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "pending_reason",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "source_fence_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "observation_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_bsesi_task": [
+          "tenant_no",
+          "entity_no",
+          "task_no"
+        ],
+        "uk_bsesi_fence": [
+          "tenant_no",
+          "fence_no"
+        ],
+        "uk_bsesi_execution": [
+          "tenant_no",
+          "execution_no"
+        ],
+        "uk_bsesi_retention": [
+          "tenant_no",
+          "retention_no"
+        ]
+      },
+      "indexes": {},
+      "checks": {
+        "ck_bsesi_base": "deleted=0 AND version>=0 AND observation_epoch>=0 AND source_fence_revision>0 AND attempt_no=1",
+        "ck_bsesi_reference_json": "JSON_VALID(reference_json)",
+        "ck_bsesi_lookup_json": "JSON_VALID(lookup_json)",
+        "ck_bsesi_evidence_json": "evidence_json IS NULL OR JSON_VALID(evidence_json)",
+        "ck_bsesi_receipt_json": "receipt_json IS NULL OR JSON_VALID(receipt_json)",
+        "ck_bsesi_route": "(route_no IS NULL AND route_hash IS NULL) OR (route_no IS NOT NULL AND route_hash IS NOT NULL)",
+        "ck_bsesi_binding_hash": "binding_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_source_intent_hash": "source_intent_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_resource_command_hash": "resource_command_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_plan_hash": "plan_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_reference_hash": "reference_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_lookup_hash": "lookup_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_retention_no": "retention_no REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_request_hash": "request_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_route_no": "route_no IS NULL OR route_no REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_route_hash": "route_hash IS NULL OR route_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_evidence_hash": "evidence_hash IS NULL OR evidence_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_receipt_hash": "receipt_hash IS NULL OR receipt_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_bsesi_ref_execution_no": "JSON_EXTRACT(reference_json, '$.executionNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.executionNo'))=execution_no",
+        "ck_bsesi_ref_task_no": "JSON_EXTRACT(reference_json, '$.taskNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.taskNo'))=task_no",
+        "ck_bsesi_ref_work_order_no": "JSON_EXTRACT(reference_json, '$.workOrderNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.workOrderNo'))=work_order_no",
+        "ck_bsesi_ref_reference_hash": "JSON_EXTRACT(reference_json, '$.referenceHash') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.referenceHash'))=reference_hash",
+        "ck_bsesi_lookup_retention_no": "JSON_EXTRACT(lookup_json, '$.retentionNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(lookup_json, '$.retentionNo'))=retention_no",
+        "ck_bsesi_lookup_request_hash": "JSON_EXTRACT(lookup_json, '$.requestHash') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(lookup_json, '$.requestHash'))=request_hash",
+        "ck_bsesi_ref_fence_no": "JSON_EXTRACT(reference_json, '$.sourceFenceNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.sourceFenceNo'))=fence_no",
+        "ck_bsesi_ref_attempt_no": "JSON_EXTRACT(reference_json, '$.attemptNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.attemptNo'))=attempt_no",
+        "ck_bsesi_ref_binding_hash": "JSON_EXTRACT(reference_json, '$.bindingHash') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.bindingHash'))=binding_hash",
+        "ck_bsesi_ref_source_intent_hash": "JSON_EXTRACT(reference_json, '$.sourceIntentHash') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.sourceIntentHash'))=source_intent_hash",
+        "ck_bsesi_ref_resource_command_no": "JSON_EXTRACT(reference_json, '$.plannedResourceCommandNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.plannedResourceCommandNo'))=resource_command_no",
+        "ck_bsesi_ref_resource_command_hash": "JSON_EXTRACT(reference_json, '$.plannedResourceCommandHash') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.plannedResourceCommandHash'))=resource_command_hash",
+        "ck_bsesi_ref_plan_hash": "JSON_EXTRACT(reference_json, '$.planHash') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.planHash'))=plan_hash",
+        "ck_bsesi_ref_tenant_no": "JSON_EXTRACT(reference_json, '$.scope.tenantNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.scope.tenantNo'))=tenant_no",
+        "ck_bsesi_ref_entity_no": "JSON_EXTRACT(reference_json, '$.scope.entityNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.scope.entityNo'))=entity_no",
+        "ck_bsesi_ref_store_no": "JSON_EXTRACT(reference_json, '$.scope.storeNo') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(reference_json, '$.scope.storeNo'))=store_no",
+        "ck_bsesi_lookup_reference_hash": "JSON_EXTRACT(lookup_json, '$.reference.referenceHash') IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(lookup_json, '$.reference.referenceHash'))=reference_hash",
+        "ck_bsesi_evidence_pair": "(evidence_json IS NULL AND evidence_hash IS NULL AND evidence_observed_at IS NULL) OR (evidence_json IS NOT NULL AND evidence_hash IS NOT NULL AND evidence_observed_at IS NOT NULL)",
+        "ck_bsesi_receipt_pair": "(receipt_json IS NULL AND receipt_hash IS NULL AND receipt_observed_at IS NULL) OR (receipt_json IS NOT NULL AND receipt_hash IS NOT NULL AND receipt_observed_at IS NOT NULL)"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "entity_no",
+        "store_no",
+        "work_order_no",
+        "task_no",
+        "fence_no",
+        "submission_no",
+        "execution_no",
+        "resource_command_no",
+        "attempt_no",
+        "binding_hash",
+        "source_intent_hash",
+        "resource_command_hash",
+        "plan_hash",
+        "reference_hash",
+        "lookup_hash",
+        "retention_no",
+        "request_hash",
+        "reference_json",
+        "lookup_json"
+      ],
+      "comment": "Permanent execution stock original and observation companion"
+    }
+  ]
+}
