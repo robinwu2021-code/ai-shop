@@ -88,8 +88,10 @@ function javaSource(file, root) {
     const prefix = text.slice(previousMethod, m.index);
     previousMethod = end + 1;
     const annotations = [];
-    for (const a of prefix.matchAll(/@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\s*\(/g)) {
-      const at = a.index + a[0].lastIndexOf('('), last = balanced(prefix, at);
+    for (const a of prefix.matchAll(/@(GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\b/g)) {
+      const rest = prefix.slice(a.index + a[0].length);
+      if (!/^\s*\(/.test(rest)) { annotations.push({kind: a[1], expression: '""'}); continue; }
+      const at = a.index + a[0].length + rest.indexOf('('), last = balanced(prefix, at);
       annotations.push({kind: a[1], expression: prefix.slice(at + 1, last)});
     }
     if (/^(?:private|protected|record|class|interface|enum)\b/.test(m[1].trim())) continue;
