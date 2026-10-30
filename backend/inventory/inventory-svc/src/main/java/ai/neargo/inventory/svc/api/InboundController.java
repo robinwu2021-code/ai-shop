@@ -13,7 +13,6 @@ import ai.neargo.inventory.domain.service.PairedTransferService.Received;
 import ai.neargo.inventory.domain.service.PairedTransferService;
 import ai.neargo.inventory.guard.InventoryRequestContext;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -35,27 +34,32 @@ public class InboundController {
     private final DocumentQueryService documents;
     private final CommandService commands;
     private final PairedTransferService paired;
+    private final HostRefs refs;
 
     public InboundController(HostInboundService inbounds, DocumentQueryService documents, CommandService commands,
-                             PairedTransferService paired) {
+                             PairedTransferService paired, HostRefs refs) {
         this.inbounds = inbounds;
         this.documents = documents;
         this.commands = commands;
         this.paired = paired;
+        this.refs = refs;
     }
 
     @PostMapping("/api/inventory/v1/inbounds")
-    public DocNo create(@RequestBody Draft draft) {
+    public DocNo create(@RequestBody Create req) {
         Caller caller = InventoryRequestContext.caller();
-        return commands.execute(caller, "inbound.create", draft, DocNo.class,
-                () -> new DocNo(inbounds.create(caller, draft)));
+        return commands.execute(caller, "inbound.create", req, DocNo.class,
+                () -> new DocNo(inbounds.create(caller, new Draft(
+                        refs.location(caller.ownerId(), req.locationId(), req.locationRef()), req.purpose(),
+                        req.sourceRef(), req.basis(), req.attachmentRefs(), req.remark(),
+                        lines(caller.ownerId(), req.lines())))));
     }
 
     @PatchMapping("/api/inventory/v1/inbounds/{no}")
     public DocNo append(@PathVariable String no, @RequestBody Append req) {
         Caller caller = InventoryRequestContext.caller();
         return commands.execute(caller, "inbound.append", new Keyed(no, req), DocNo.class, () -> {
-            inbounds.append(caller, no, req.lines());
+            inbounds.append(caller, no, lines(caller.ownerId(), req.lines()));
             return new DocNo(no);
         });
     }
@@ -96,7 +100,8 @@ public class InboundController {
         Caller caller = InventoryRequestContext.caller();
         return commands.execute(caller, "inbound.receive", new Keyed(no, req), Receipt.class,
                 () -> new Receipt(no, paired.receive(caller, no, req.lines().stream()
-                        .map(l -> new Received(l.itemId(), l.qty())).toList())));
+                        .map(l -> new Received(refs.item(caller.ownerId(), l.itemId(), l.itemRef()), l.qty()))
+                        .toList())));
     }
 
     @GetMapping("/api/inventory/v1/inbounds/{no}")
@@ -111,13 +116,28 @@ public class InboundController {
         }
     }
 
-    public record Append(List<Line> lines) {
+    private List<Line> lines(String ownerId, List<InLine> lines) {
+        return lines == null ? List.of() : lines.stream().map(l -> new Line(
+                refs.item(ownerId, l.itemId(), l.itemRef()), l.qty(), l.gateRef(), l.serials())).toList();
+    }
+
+    /** 库位、物料都可以给内部号或宿主编号（TDD §2.22） */
+    public record Create(String locationId, String locationRef, String purpose, String sourceRef, String basis,
+                         List<String> attachmentRefs, String remark, List<InLine> lines) {
+    }
+
+    public record InLine(String itemId, String itemRef, Integer qty, String gateRef,
+                         List<HostInboundService.Serial> serials) {
+    }
+
+    public record Append(List<InLine> lines) {
     }
 
     public record Receive(@NotNull @Size(max = 500) List<@Valid ReceivedLine> lines) {
     }
 
-    public record ReceivedLine(@NotBlank String itemId, @NotNull @PositiveOrZero Integer qty) {
+    /** 物料给收货方账本的内部号，或宿主编号（与发货方同一个） */
+    public record ReceivedLine(String itemId, String itemRef, @NotNull @PositiveOrZero Integer qty) {
     }
 
     public record Receipt(String docNo, String pairNo) {

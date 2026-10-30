@@ -54,6 +54,26 @@
 | `Idempotency-Key` | 写操作建议带 | 幂等键，按 `(系统, 账本, 键)` 唯一。同键同参返回原结果；同键不同参返回 `IDEMPOTENCY_CONFLICT` |
 | `X-Trace-Id` | 否 | 链路号，没有就生成 |
 
+### 1.2a 标识：内部号或宿主编号（M12）
+
+宿主接口里凡是要物料或库位的地方，都可以给内部号（`itemId` / `locationId`），也可以给宿主自己的编号（`itemRef` / `locationRef`）。两者都给时以内部号为准。
+- 编号不存在：404，`args` 为 `itemRef:<编号>` 或 `locationRef:<编号>`；
+- 必填却一个都没给：400，`args` 为 `itemId` 或 `locationId`。
+
+| 适用 | 字段 |
+|---|---|
+| 入库 / 出库建单与追加 | `locationRef`；行上 `itemRef` |
+| 调拨 | `fromLocationRef`、`toLocationRef`；行上 `itemRef` |
+| 成对收货 | 行上 `itemRef`：用宿主物料号，与发货方同一个，不需要知道收货方账本里的内部号 |
+| 冻结 | `itemRef`、`locationRef` |
+| 开盘点 | `locationRef`、`itemRefs` |
+| 余额 / 在仓 SN / 流水查询 | 查询参数 `itemRef`、`locationRef`；余额与 SN 的响应同时带内部号和编号 |
+
+- 物料编号：先认物料自己的 `externalRef`，再认商城的 SKU 映射。
+- 库位编号：仓库或门店的 `externalRef`，精确匹配，不会被换成发货源库位。
+
+尚未支持编号的：单据详情、盘点行（路径里的 `{itemId}`）。
+
 ### 1.3 错误
 
 HTTP 状态码 + 统一结构：
@@ -103,7 +123,7 @@ HTTP 状态码 + 统一结构：
 | POST | `/api/inventory/admin/v1/owners/{ownerId}/write-authority/flip` | 灰度切换写入方：置翻转中 → 等在途写入 → 对账 → 平则翻，不平则翻回 |
 | PUT | `/api/inventory/admin/v1/owners/{ownerId}/write-authority` | 强制改写写入方（不对账，只用于排障） |
 | GET | `/api/inventory/admin/v1/owners/{ownerId}/reconciliation` | 只对账不翻 |
-| POST | `/api/inventory/admin/v1/owners/{ownerId}/imports?apply=` | 旧数据导入：先出差异报告，确认后执行 |
+| POST | `/api/inventory/admin/v1/owners/{ownerId}/imports?apply=` | 旧数据导入：先出差异报告，确认后执行。**新增** `pool`：已发出、未签收的件，见下 |
 | POST | `/api/inventory/admin/v1/owners/{ownerId}/events/prune` | 清理已确认事件 |
 
 ### 开账本
@@ -125,6 +145,21 @@ X-Inventory-Actor: OPS:alice
 同一 `(系统, 类型, 编号)` 重复开账本返回 `CONFLICT`。
 
 ---
+
+### 导入「在出库池」的件（M11）
+
+```json
+{"batchId": "MIG-1", "warehouses": [...], "items": [...], "targets": [...], "stock": [...],
+ "pool": [{"warehouseRef": "WH-SZ", "purpose": "ISSUE",
+           "targets": {"MERCHANT": "AG001", "SITE": "ST01", "PERSON": "E1001"},
+           "serials": [{"itemRef": "CAB", "serialNo": "C9", "gateRef": "QC-C9"},
+                       {"itemRef": "PB",  "serialNo": "P9", "parentSerialNo": "C9"}]}]}
+```
+
+- 每个 `pool` 元素对应宿主的一张发货单。执行时先以 `OPENING` 入库（带组装关系与放行凭证；`gateRef` 为空时取 `MIGRATION:<批次号>`），再按 `purpose`（缺省 `ISSUE`）出库进池，待签收、不领取。入了又出，所以余额不变。
+- 已经在池里（待签收或已签收）的 SN 跳过，所以重跑结果为空。
+- SN 当前还在某个仓里报冲突 `<sn>:in_stock`；池行没有 SN 报冲突 `<仓号>:pool.serials_required`。有冲突时执行整批 409。
+- 报告新增 `poolToIssue`（要进池的 SN）、`outboundNos`（生成的出库单）。
 
 ## 3. 主数据
 
@@ -211,7 +246,14 @@ PUT /api/inventory/v1/external-targets/STORE/S3001
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/inventory/v1/console/docs/transfers` | 账本内调拨（经 TRANSIT 库位）：建单 → `ship` → `receive`。**跨账本不走这里**，见 §5 |
+| POST | `/api/inventory/v1/transfers` | **新增**（M11）：建调拨单。`{fromLocationId, toLocationId, lines:[{itemId, qty}], serialNos:[…], remark}`；扫上级件带出它挂着的下级件；数量行和 SN 至少有一样 |
+| GET | `/api/inventory/v1/transfers/{no}` | 详情：状态、出入库单号、逐行物料与 SN |
+| POST | `/api/inventory/v1/transfers/{no}/ship` | 发运：调出仓出库，同一事务进本账本的在途库位。SN 的放行凭证沿用原值，组装关系不拆 |
+| POST | `/api/inventory/v1/transfers/{no}/receive` | 收货：在途出库、进调入仓；组装关系与凭证原样带到调入仓 |
+| POST | `/api/inventory/v1/transfers/{no}/cancel` | 作废，只限草稿；已发运的要收回，开一张反向调拨 |
+| — | `/api/inventory/v1/console/docs/transfers` | 商家后台转发的调拨（商城结构，不支持 SN）。同一张单只应由建它的那一侧推进 |
+
+**跨账本不走调拨**，见 §5。调出、调入的系统用途 `TRANSFER_OUT / TRANSFER_IN` 不需要在档案里登记。
 | GET | `/api/inventory/v1/in-transit` | 「货在外面」的统一视图，见下 |
 
 **`GET /in-transit` 响应**（V27 / M10 起合并三种来源；不再要求出库池能力包，没开就没有 POOL 行）：
@@ -401,6 +443,7 @@ Authorization: Bearer <系统凭证>
 | `CountPosted`、出库池事件等 | 本账本 | 见 TDD §2.12 |
 | **`PairedInboundCreated`** | 收货方账本 | `pairNo`、`inboundNo`、发货方 `ownerRef/ownerType`、`outboundNo` |
 | **`PairedTransferReceived`** | 发货方账本 | `pairNo`、`outboundNo`、逐行 `itemRef/shipped/received/diff` |
+| **`TransferShipped`** / **`TransferReceived`** | 本账本 | 调拨单号；发运带调出、调入库位，收货带在途出库单号、调入入库单号 |
 
 ---
 

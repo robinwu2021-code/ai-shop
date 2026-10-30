@@ -594,6 +594,52 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T10.2 | `replaceLines` + 成对收货改调 | AC-37（M9 的 AC-31 测试原样通过） |
 | T10.3 | `InTransitService` + 控制器 | AC-38 |
 
+### 2.21 上线前补齐：宿主调拨与「在出库池」导入（M11，2026-10-30）
+
+> 档位 1：新增端点、导入批次结构。依据：[评审](进销存-统一逻辑与设计评审.md) §6 U3、U1；[ShareHub 对接方案](进销存独立服务-ShareHub对接方案.md) S5、S3。
+
+| AC | Given | When | Then |
+|---|---|---|---|
+| AC-39 | 账本有仓 A、B；A 有数量物料 5 件、柜 C1（挂着宝 P1）、放行策略为必须带凭证 | `POST /transfers`（A → B：数量 2 件 + 扫柜 C1）→ `ship` | A 在手 −2、C1/P1 离开 A；在途库位 +2、C1/P1 在在途库位且仍组装在一起、放行凭证沿用原值；`GET /in-transit` 有 TRANSFER 行 |
+| AC-40 | AC-39 之后 | `receive` | B 在手 +2、C1/P1 在 B 且仍组装；在途清零；调拨单 RECEIVED；草稿可 `cancel`，已发运不可 |
+| AC-41 | 导入批次带 `pool`：柜 C9 + 宝 P9（挂在 C9 下），目标商家 / 站点 / 接收人 | `imports?apply=false` 再 `apply=true`，再跑一次 `apply=true` | 预演只报告；执行后 C9、P9 在出库池待签收（整套一条主记录 + 一条从属），余额不变（入库后立即出库）；再跑为空、不重复入池 |
+| AC-42 | 批次 `pool` 里的 SN 当前还在某个仓里，或池行没有 SN（数量物料） | 预演 / 执行 | 冲突 `<sn>:in_stock` / `<仓号>:pool.serials_required`；执行时整批 409，什么都不落 |
+
+| 项 | 落点 |
+|---|---|
+| 宿主调拨 | 新 `HostTransferService`（复用 `inv_transfer_order`，不加表）：<br>- `create`：在调出仓建内部出库草稿（用途 `TRANSFER_OUT`，扫上级件带出下级件）；<br>- `ship`：过账出库，同一事务以内部入库（`TRANSFER_IN`）进本账本的在途库位；<br>- `receive`：从在途内部出库，再内部入库到调入仓。<br>SN 的放行凭证取自刚关闭的在库周期，组装关系按单据上的上级件还原；数量物料的放行依据为 `TRANSFER:<调拨单号>`。`TRANSFER_OUT / TRANSFER_IN` 与 `COUNT_LOSS / CORRECTION` 一样是系统用途，不经档案登记 |
+| 端点 | `POST /transfers`、`GET /transfers/{no}`、`POST /transfers/{no}/ship`、`/receive`、`/cancel`（宿主接口，带幂等） |
+| 导入 | `Batch.pool: List<Pool(warehouseRef, purpose, targets, serials: List<PoolSerial(itemRef, serialNo, gateRef, parentSerialNo)>)>`（柜与宝是不同物料，所以按件带物料号）；报告新增 `poolToIssue`、`outboundNos`。只收 SN 物料；先 `OPENING` 入库（带组装关系与放行凭证），再按 `purpose`（缺省 `ISSUE`）出库进池；已在出库池（待签收 / 已签收）的 SN 跳过 |
+| 不做 | 宿主调拨的部分收货与差异；导入数量物料进池（数量行的池记录没有可对账的业务键，宿主有需要再议） |
+
+| # | 任务 | 验收 |
+|---|---|---|
+| T11.1 | `HostTransferService` + 出入库内部方法 + 控制器 | AC-39、40 |
+| T11.2 | 导入批次 `pool` | AC-41、42 |
+
+### 2.22 宿主编号直通（M12，2026-10-30）
+
+> 档位 1：请求与响应字段新增（只加不改）。依据：[评审](进销存-统一逻辑与设计评审.md) A1 / §6 U9。
+>
+> 统一规则：凡是宿主接口里出现 `itemId` / `locationId` 的请求，都可以改给 `itemRef` / `locationRef`（物料或库位的宿主编号）；两者都给时以内部号为准。查询的响应里两者都带。
+
+| AC | Given | When | Then |
+|---|---|---|---|
+| AC-43 | 物料 `SKU-1`、仓 `WH-A`、`WH-B` 都只知道宿主编号 | 用 `itemRef` / `locationRef` 建入库、出库、调拨，查余额与 SN | 都成功，结果与用内部号一致；余额与 SN 的响应带 `itemRef`、`locationRef` |
+| AC-44 | 成对单据待收 | 收货方按自己的宿主物料号（与发货方同一个 `itemRef`）确认 | 成功，不需要知道收货方的内部物料号 |
+| AC-45 | 给了不存在的宿主编号；或物料、库位一个都没给 | 任一请求 | 404 `itemRef:<编号>` / `locationRef:<编号>`；400 `itemId` / `locationId` |
+
+| 项 | 落点 |
+|---|---|
+| 解析 | `HostReferenceService` 增加 `locationIdOf`（按宿主编号精确找库位，**不**落到发货源，与预留用的 `stockLocationOf` 区分）和反查 `itemRefsOf` / `locationRefsOf`；接口层 `HostRefs` 统一做「内部号或宿主编号 → 内部号」。领域服务签名不变 |
+| 请求 | 入库 / 出库（建单、追加）、调拨、成对收货、冻结、开盘点、余额 / SN / 流水查询 |
+| 响应 | 余额、在仓 SN 增加 `itemRef`、`locationRef` |
+| 不做 | 单据详情、盘点行（路径参数 `{itemId}`）的宿主编号；一个物料挂多个 SKU 时反查不唯一，`itemRef` 为空 |
+
+| # | 任务 | 验收 |
+|---|---|---|
+| T12.1 | 解析与反查、`HostRefs`、各接口接入 | AC-43 ~ 45 |
+
 ---
 
 ## §3 选型
@@ -709,6 +755,12 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-36 | `OrgBoundaryPairedTransferFlowTest#purposesAsLongAsTheProfileAllowsCanBePostedEndToEnd`（32 字符入库、出库用途建单过账，单据记下完整用途码） | ✅ 2026-10-30 | M9 时同样的 18 字符用途在 16 字符列上建单即失败（`Value too long for column "purpose"`），即本条的失败复现 |
 | AC-37、38 | `#inTransitListsPairedShipmentsAndInBookTransfersAndZeroReceiptsLeaveTheInbound`（无出库池能力包的账本：两行 PAIRED + 一行 TRANSFER、带单号与目标；梨收 0 → 不在入库单上、已过账；收完只剩 TRANSFER）；M9 的 AC-31 用例原样通过 | ✅ 2026-10-30 | |
 | M10 回归 | `mvn -o -f inventory/pom.xml test`：61 例、0 失败（3 例原生 MySQL 跳过）；V1 ~ V27 在本机 MySQL 9.7.4 空库逐个执行无错，两列为 `varchar(32)` | ✅ 2026-10-30 | |
+| AC-39、40 | `TransferAndPoolImportFlowTest#transferMovesQuantitiesAndWholeKitsThroughTransitKeepingAssemblyAndGates`（数量 2 件 + 扫柜带出宝；发运后 A 少 2、柜宝离开 A、在途有 TRANSFER 行、已发运不能作废；收货后 B 多 2、宝仍挂在柜下且凭证为 `QC-P1`、在途清零、重复收货 409；草稿作废、空单与同库位 400） | ✅ 2026-10-30 | |
+| AC-41、42 | `#importPutsDispatchedButUnclaimedKitsIntoThePoolOnceAndReportsConflicts`（预演只报告、执行后柜与宝待签收挂在商家下、不在仓；再跑为空；在仓 SN 与无 SN 池行报冲突、执行 409 不落） | ✅ 2026-10-30 | |
+| M11 回归 | `mvn -o -f inventory/pom.xml test`：63 例、0 失败（3 例原生 MySQL 跳过）；本批不动表结构 | ✅ 2026-10-30 | |
+| AC-43、45 | `TransferAndPoolImportFlowTest#hostNumbersWorkWhereverInternalIdsDoAndQueriesReturnBoth`（只用宿主编号入库、调拨、冻结、开盘点；余额 / SN / 流水按编号过滤、响应带编号与内部号；不存在的编号 404 带 `locationRef:` / `itemRef:`，库位没给 400 `locationId`） | ✅ 2026-10-30 | |
+| AC-44 | `OrgBoundaryPairedTransferFlowTest#inTransitListsPairedShipmentsAndInBookTransfersAndZeroReceiptsLeaveTheInbound`（收货改为按宿主物料号 `SKU-APPLE` 确认） | ✅ 2026-10-30 | |
+| M12 回归 | `mvn -o -f inventory/pom.xml test`：64 例、0 失败（3 例原生 MySQL 跳过）；本批不动表结构 | ✅ 2026-10-30 | |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -888,6 +940,21 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T10.1 D1 | `V27__purpose_width.sql`；两份 H2 结构重新生成 | — |
 | T10.2 K2 | `HostInboundService.replaceLines`；`PairedTransferServiceImpl.receive` 改为「全 0 作废，否则改写后过账」，去掉对入库单行、单头 Mapper 的直接依赖 | — |
 | T10.3 A3 | `InTransitService(Impl)`、`InTransitController`；`DispatchController` 去掉 `/in-transit` | 响应字段名保留 `rootTargetType / rootTargetRef`，为了不破坏 ShareHub 已有的解析；PAIRED、TRANSFER 行沿用这两个字段名表示「去向」 |
+
+### M11 · 宿主调拨与「在出库池」导入（2026-10-30，T11.1 ~ T11.2）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| T11.1 宿主调拨 | `HostTransferService(Impl)`、`TransferController`；`HostOutboundService.transferDraft/transferOut`、`HostInboundService.transferIn`（系统用途，与盘亏、纠正同一做法，`countLoss` 改为复用同一个内部建单方法）；事件 `TransferShipped` / `TransferReceived` | 与商家后台的调拨共用 `inv_transfer_order`，但宿主调拨的在途是**真实的在途入库单**（SN 随件进在途库位），后台调拨仍按原实现。同一张调拨单只应由建它的那一侧推进。成套数量行（`parentSerialNo` 挂在柜下的数量件）到调入仓后变成普通数量行：入库侧本来就不支持数量行挂上级件（M7 记录） |
+| T11.2 导入进池 | `MigrationImportService.Pool/PoolSerial`；`issue()` 以 `OPENING` 入库后立即按 `purpose`（缺省 `ISSUE`）出库进池；`inPool` 识别已导入 | 池行没有 SN 的报 `pool.serials_required`（TDD 原写 `pool.quantity_unsupported`，按实现改）。出库的业务时间是导入时刻，不是宿主原发货时间 |
+
+### M12 · 宿主编号直通（2026-10-30，T12.1）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| 解析与反查 | `HostReferenceService.locationIdOf / itemRefsOf / locationRefsOf`；接口层 `HostRefs` | — |
+| 请求 | `InboundController`、`OutboundController` 的建单与追加改用接口层请求体（字段与原领域草稿同名，另加 `*Ref`）；`TransferController`、成对收货、冻结、开盘点、余额 / SN / 流水查询 | 原来直接以领域记录 `Draft` 作请求体，现在多一层接口请求体做翻译。JSON 字段只增不改，现有宿主不用改 |
+| 响应 | 余额、在仓 SN 带 `itemRef / locationRef` | 在仓 SN 的响应从领域记录换成接口记录 `Serial`，字段只增 |
 
 
 

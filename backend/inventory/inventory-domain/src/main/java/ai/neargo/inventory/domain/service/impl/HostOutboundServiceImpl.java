@@ -54,6 +54,8 @@ public class HostOutboundServiceImpl implements HostOutboundService {
 
     /** 盘亏：只由盘点过账生成，不走档案的用途登记。 */
     static final String COUNT_LOSS = "COUNT_LOSS";
+    /** 账内调拨调出：只由宿主调拨生成（TDD §2.21），与盘亏一样不经档案登记。 */
+    static final String TRANSFER_OUT = "TRANSFER_OUT";
 
     private final HostDocumentSupport support;
     private final OutboundOrderMapper orderMapper;
@@ -143,24 +145,50 @@ public class HostOutboundServiceImpl implements HostOutboundService {
     @Transactional(transactionManager = "invTransactionManager")
     public String countLoss(Caller caller, String locationId, String countNo, List<Line> lines,
                             List<String> serialNos) {
+        InvOutboundOrder order = systemOrder(caller, locationId, COUNT_LOSS, countNo, "count " + countNo);
+        addLines(caller, order, lines, serialNos, false);
+        post(caller, order.getOutboundNo());
+        return order.getOutboundNo();
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String transferDraft(Caller caller, String locationId, String transferNo, List<Line> lines,
+                                List<String> serialNos) {
+        InvOutboundOrder order = systemOrder(caller, locationId, TRANSFER_OUT, transferNo, "transfer " + transferNo);
+        addLines(caller, order, lines, serialNos, true);
+        return order.getOutboundNo();
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String transferOut(Caller caller, String locationId, String transferNo, List<Line> lines,
+                              List<String> serialNos) {
+        InvOutboundOrder order = systemOrder(caller, locationId, TRANSFER_OUT, transferNo, "transfer " + transferNo);
+        addLines(caller, order, lines, serialNos, false);
+        post(caller, order.getOutboundNo());
+        return order.getOutboundNo();
+    }
+
+    /** 系统生成的出库（盘亏、调拨）：不走档案的用途登记，用途是固定的系统码。 */
+    private InvOutboundOrder systemOrder(Caller caller, String locationId, String purpose, String sourceRef,
+                                         String remark) {
         support.requireActiveLocation(caller.ownerId(), locationId);
         InvOutboundOrder order = new InvOutboundOrder();
         order.setOutboundNo(InvKeys.next(InvKeys.OUTBOUND));
         order.setOwnerId(caller.ownerId());
         order.setLocationId(locationId);
-        order.setPurpose(COUNT_LOSS);
-        order.setSourceRef(countNo);
+        order.setPurpose(purpose);
+        order.setSourceRef(sourceRef);
         order.setProfileVersion(support.profile(caller.ownerId()).version());
         order.setStatus(InvEnums.DocStatus.DRAFT);
         order.setTotalQtyQuantity(BigDecimal.ZERO);
         order.setOccurredAt(LocalDateTime.now());
         order.setOperator(HostDocumentSupport.operator(caller));
-        order.setRemark("count " + countNo);
+        order.setRemark(remark);
         order.setCreatedBy(HostDocumentSupport.operator(caller));
         orderMapper.insert(order);
-        addLines(caller, order, lines, serialNos, false);
-        post(caller, order.getOutboundNo());
-        return order.getOutboundNo();
+        return order;
     }
 
     @Override
@@ -297,7 +325,8 @@ public class HostOutboundServiceImpl implements HostOutboundService {
             s.setSerialId(row.getSerialId());
             docSerialMapper.updateById(s);
         }
-        OutboundPurpose purpose = COUNT_LOSS.equals(order.getPurpose()) ? null
+        OutboundPurpose purpose = COUNT_LOSS.equals(order.getPurpose()) || TRANSFER_OUT.equals(order.getPurpose())
+                ? null
                 : HostDocumentSupport.outboundPurpose(support.profile(caller.ownerId()).profile(), order.getPurpose());
         if (purpose != null && purpose.handover() == BusinessProfile.Handover.POOL) {
             // 同一事务：余额、周期、流水、出库池、事件要么都有、要么都没有（AC-06）

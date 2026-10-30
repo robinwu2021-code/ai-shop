@@ -51,6 +51,8 @@ public class HostInboundServiceImpl implements HostInboundService {
     static final String RETURN = "RETURN";
     /** 盘盈：只由盘点过账生成。 */
     static final String COUNT_GAIN = "COUNT_GAIN";
+    /** 账内调拨调入：只由宿主调拨生成（TDD §2.21）。 */
+    static final String TRANSFER_IN = "TRANSFER_IN";
 
     private final HostDocumentSupport support;
     private final InboundOrderMapper orderMapper;
@@ -120,6 +122,12 @@ public class HostInboundServiceImpl implements HostInboundService {
     @Transactional(transactionManager = "invTransactionManager")
     public String countGain(Caller caller, String locationId, String countNo, List<Line> lines) {
         return systemInbound(caller, locationId, COUNT_GAIN, countNo, lines, "count " + countNo);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String transferIn(Caller caller, String locationId, String transferNo, List<Line> lines) {
+        return systemInbound(caller, locationId, TRANSFER_IN, transferNo, lines, "transfer " + transferNo);
     }
 
     /** 系统生成的入库（撤回纠正、盘盈）：不走档案的用途登记，建单即过账。 */
