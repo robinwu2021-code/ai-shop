@@ -1162,7 +1162,7 @@
     {
       "path": "pages/brand-list/index",
       "style": {
-        "navigationBarTitleText": "品牌管理",
+        "navigationBarTitleText": "连锁管理",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -1174,7 +1174,7 @@
     {
       "path": "pages/brand-edit/index",
       "style": {
-        "navigationBarTitleText": "品牌资料",
+        "navigationBarTitleText": "连锁资料",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -1186,7 +1186,7 @@
     {
       "path": "pages/brand-detail/index",
       "style": {
-        "navigationBarTitleText": "品牌详情",
+        "navigationBarTitleText": "连锁详情",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -1210,7 +1210,7 @@
     {
       "path": "pages/store-brand/index",
       "style": {
-        "navigationBarTitleText": "门店品牌",
+        "navigationBarTitleText": "所属连锁",
         "app-plus": {
           "navigationStyle": "custom"
         },
@@ -1234,7 +1234,7 @@
     {
       "path": "pages/brand-change/index",
       "style": {
-        "navigationBarTitleText": "品牌变更",
+        "navigationBarTitleText": "连锁变更",
         "app-plus": {
           "navigationStyle": "custom"
         },
