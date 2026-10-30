@@ -320,8 +320,8 @@ prd_purchase_note/_item （P2 新增）
 - [x] InventoryDataSourceConfig仅在构造Flyway时使用该适配器；迁移脚本仍原类路径，原始资源参与checksum。
 - [x] schema生成器仅补充mysqlOwnerCollation描述；不改SQL输出。ExecutionStockRetentionSchemaVerifier从引擎选定预期owner排序规则并检查表/列，保留原脚本hash、历史checksum及完整性检查。
 - [x] 补充定向wire测试及原生空库/升级测试；先完成代码并编译，再集中运行这些相关测试。
-- [ ] 从同一云端备份恢复新预演库，以修复后的真实运行包迁移至CORE621/FOOD37/CIM18/INV18，临时SUPER在finally撤销；不复用失败克隆。
-- [ ] 候选包隔离启动、健康及版本验证后，备份生产当前状态，执行正常迁移，集成发布并冒烟；若启动失败恢复原jar/配置，不伪称数据库回滚。新表为空且追加迁移与旧代码兼容为回退边界。
+- [x] 从同一云端备份恢复新预演库，以修复后的真实运行包迁移至CORE621/FOOD37/CIM18/INV18，临时SUPER在finally撤销；不复用失败克隆。
+- [x] 候选包隔离启动、健康及版本验证后，备份生产当前状态，执行正常迁移，集成发布并冒烟；若启动失败恢复原jar/配置，不伪称数据库回滚。新表为空且追加迁移与旧代码兼容为回退边界。
 
 ### 5. 验证记录
 
@@ -332,3 +332,10 @@ prd_purchase_note/_item （P2 新增）
 - `food-inv-portability-green-20261030.log`：仅复测其余受影响12项，12通过、0失败/错误/跳过，BUILD SUCCESS。包含V15升级保留旧历史和owner数据、原生CHECK/索引/列/触发器/打包资源/owner排序规则篡改拒绝。
 - 以上不重复无变化的3个wire与3个原生已通过用例，最终19个不同用例均有通过证据；本轮未执行无关全仓测试。
 - MariaDB路径用wire测试证明不改连接/SQL；本轮未新跑真实MariaDB安装，不将wire证据描述为真实MariaDB升级验收。
+
+
+### 6. 实现与发布对账
+
+修复提交 `446cf77999b9d5fb64e47b0507e1933a9d4b0a2d`，8文件、284插入/8删除，与§2清单一致：新增迁移连接适配器及wire测试，修改Flyway装配、物理校验器、原生测试、生成器/生成描述和本TDD。冻结SQL文件未改。review未发现阻断问题。
+
+干净归档集成package成功（`food-invfix-package-20261030.log`，1m21s），实际云端新克隆从CORE589/FOOD25/INV15迁至CORE621/FOOD37/CIM18/INV18，V17物理结构INSTALLED；真实候选应用开启库存自动迁移启动UP。2026-10-30生产同样迁移成功并发布446cf7799，health/readiness为UP、版本一致；原配置未修改、原jar保留、临时SUPER撤销。没有通过关闭库存迁移绕过V17，也未repair/改写旧历史。详细备份、artifact哈希及发布口径见餐饮验收记录最终发布章节。全量门禁未重跑，沿用户确认的增量验证策略显式ALLOW_GATE_DRIFT=1放行旧记录13528eb1e；不宣称全量门禁通过。
