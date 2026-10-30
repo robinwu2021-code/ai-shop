@@ -45,6 +45,7 @@ class InventoryStockPortRoutingTest {
     InventoryAclService acl;
     ReservationService reservations;
     StockCountService counts;
+    LocationService locations;
     InventoryStockPort port;
     List<String> calls;
     Set<String> failingMerchants;
@@ -54,7 +55,7 @@ class InventoryStockPortRoutingTest {
         acl = Mockito.mock(InventoryAclService.class);
         reservations = Mockito.mock(ReservationService.class);
         counts = Mockito.mock(StockCountService.class);
-        LocationService locations = Mockito.mock(LocationService.class);
+        locations = Mockito.mock(LocationService.class);
         port = new InventoryStockPort(counts, reservations, acl, locations);
         calls = new ArrayList<>();
         failingMerchants = new java.util.HashSet<>();
@@ -68,6 +69,15 @@ class InventoryStockPortRoutingTest {
 
         port.setRemote(new ServiceStockRoute(InventoryReservationClient.of(recording(InventoryReservationApi.class),
                 recording(InventoryStockApi.class), new CircuitBreaker(5, Duration.ofSeconds(10), Clock.systemUTC()))));
+    }
+
+    @Test
+    void settingOnHandForASkuNotYetOnTheBooksIsANoOp() {
+        // 新建商品：商品页写库存时 SKU 还没投影成物料（SkuUpserted 在后面）—— 不能拿空业主去建库位
+        port.setOnHand("SKU-NEW", "STORE-1", 0, null);
+        verify(locations, never()).defaultLocation(any());
+        verify(counts, never()).adjustOne(any(), any(), any(), anyInt(), any(), any());
+        assertThat(calls).isEmpty();
     }
 
     @Test
