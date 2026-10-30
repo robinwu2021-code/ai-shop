@@ -3,6 +3,7 @@ package ai.neargo.inventory.domain.service.impl;
 import ai.neargo.inventory.api.InventoryError;
 import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.domain.config.ConditionalOnInventory;
+import ai.neargo.inventory.domain.entity.InvDispatchItem;
 import ai.neargo.inventory.domain.entity.InvItem;
 import ai.neargo.inventory.domain.entity.InvLocation;
 import ai.neargo.inventory.domain.entity.InvSerial;
@@ -10,6 +11,7 @@ import ai.neargo.inventory.domain.entity.InvStockBalance;
 import ai.neargo.inventory.domain.entity.InvStockEpisode;
 import ai.neargo.inventory.domain.entity.InvTargetRef;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.BalanceMapper;
+import ai.neargo.inventory.domain.mapper.InventoryMappers.DispatchItemMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.LocationMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.SerialMapper;
@@ -20,7 +22,10 @@ import ai.neargo.inventory.domain.service.Caller;
 import ai.neargo.inventory.domain.service.ExternalTargetService;
 import ai.neargo.inventory.domain.service.HostCatalogService;
 import ai.neargo.inventory.domain.service.HostInboundService;
+import ai.neargo.inventory.domain.service.HostOutboundService;
 import ai.neargo.inventory.domain.service.LocationService;
+import ai.neargo.inventory.domain.service.MigrationImportService.Pool;
+import ai.neargo.inventory.domain.service.MigrationImportService.PoolSerial;
 import ai.neargo.inventory.domain.service.MigrationImportService;
 import ai.neargo.inventory.domain.support.InvEnums;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -48,6 +53,8 @@ public class MigrationImportServiceImpl implements MigrationImportService {
     private final HostCatalogService catalog;
     private final ExternalTargetService targets;
     private final HostInboundService inbounds;
+    private final HostOutboundService outbounds;
+    private final DispatchItemMapper dispatchMapper;
     private final AuditService audit;
 
     public MigrationImportServiceImpl(LocationMapper locationMapper, ItemMapper itemMapper,
@@ -55,6 +62,7 @@ public class MigrationImportServiceImpl implements MigrationImportService {
                                       SerialMapper serialMapper, StockEpisodeMapper episodeMapper,
                                       LocationService locations, HostCatalogService catalog,
                                       ExternalTargetService targets, HostInboundService inbounds,
+                                      HostOutboundService outbounds, DispatchItemMapper dispatchMapper,
                                       AuditService audit) {
         this.locationMapper = locationMapper;
         this.itemMapper = itemMapper;
@@ -66,6 +74,8 @@ public class MigrationImportServiceImpl implements MigrationImportService {
         this.catalog = catalog;
         this.targets = targets;
         this.inbounds = inbounds;
+        this.outbounds = outbounds;
+        this.dispatchMapper = dispatchMapper;
         this.audit = audit;
     }
 
@@ -182,6 +192,30 @@ public class MigrationImportServiceImpl implements MigrationImportService {
                 }
             }
         }
+        // ⑤ 已发出未签收：已在池里的跳过（重跑为空），还在某个仓里的算冲突（宿主说发了、账上还在仓）
+        List<String> poolToIssue = new ArrayList<>();
+        List<PendingPool> pendingPools = new ArrayList<>();
+        for (Pool p : nz(batch.pool())) {
+            if (p.serials() == null || p.serials().isEmpty()) {
+                conflicts.add(p.warehouseRef() + ":pool.serials_required");
+                continue;
+            }
+            List<PoolSerial> toIssue = new ArrayList<>();
+            for (PoolSerial serial : p.serials()) {
+                if (inPool(owner, serial.serialNo())) {
+                    continue;
+                }
+                if (inStockAt(owner, serial.serialNo()) != null) {
+                    conflicts.add(serial.serialNo() + ":in_stock");
+                } else {
+                    toIssue.add(serial);
+                }
+            }
+            if (!toIssue.isEmpty()) {
+                toIssue.forEach(serial -> poolToIssue.add(serial.serialNo()));
+                pendingPools.add(new PendingPool(p, toIssue));
+            }
+        }
         if (apply && !conflicts.isEmpty()) {
             // 冲突要人判断：执行时有冲突整批不动（预演照样出完整报告）
             throw InventoryException.of(InventoryError.CONFLICT, conflicts.toArray());
@@ -193,12 +227,65 @@ public class MigrationImportServiceImpl implements MigrationImportService {
             inbounds.post(caller, no);
             inboundNos.add(no);
         }
+        List<String> outboundNos = new ArrayList<>();
+        if (apply) {
+            for (PendingPool pending : pendingPools) {
+                issue(caller, batch.batchId(), pending, locationByRef, itemByRef, inboundNos, outboundNos);
+            }
+        }
         Report report = new Report(batch.batchId(), apply, warehousesToCreate, itemsToCreate, itemsToUpdate,
-                targetsToUpsert, stock, conflicts, inboundNos);
+                targetsToUpsert, stock, poolToIssue, conflicts, inboundNos, outboundNos);
         if (apply) {
             audit.record(caller, "migration.apply", "MIGRATION", batch.batchId(), null, report, null);
         }
         return report;
+    }
+
+    /**
+     * 一张发货单的件：以 {@code OPENING} 入库（组装关系与放行凭证照批次登记）后，立即按交接用途出库进池。
+     * 入与出在同一事务，余额不变；出库只扫上级件，下级件随它带出。
+     */
+    private void issue(Caller caller, String batchId, PendingPool pending, Map<String, String> locationByRef,
+                       Map<String, String> itemByRef, List<String> inboundNos, List<String> outboundNos) {
+        String locationId = locationByRef.computeIfAbsent(pending.pool().warehouseRef(), ref -> locationMapper
+                .selectList(Wrappers.<InvLocation>lambdaQuery()
+                        .eq(InvLocation::getOwnerId, caller.ownerId()).eq(InvLocation::getExternalRef, ref))
+                .stream().map(InvLocation::getLocationId).findFirst()
+                .orElseThrow(() -> InventoryException.of(InventoryError.BAD_REQUEST, "warehouseRef:" + ref)));
+        Map<String, List<HostInboundService.Serial>> byItem = new LinkedHashMap<>();
+        for (PoolSerial serial : pending.serials()) {
+            String itemId = itemByRef.computeIfAbsent(serial.itemRef(), ref -> itemMapper
+                    .selectList(Wrappers.<InvItem>lambdaQuery()
+                            .eq(InvItem::getOwnerId, caller.ownerId()).eq(InvItem::getExternalRef, ref))
+                    .stream().map(InvItem::getItemId).findFirst()
+                    .orElseThrow(() -> InventoryException.of(InventoryError.BAD_REQUEST, "itemRef:" + ref)));
+            byItem.computeIfAbsent(itemId, k -> new ArrayList<>()).add(new HostInboundService.Serial(
+                    serial.serialNo(), serial.gateRef() == null ? "MIGRATION:" + batchId : serial.gateRef(),
+                    serial.parentSerialNo()));
+        }
+        List<HostInboundService.Line> lines = new ArrayList<>();
+        byItem.forEach((item, list) -> lines.add(new HostInboundService.Line(item, null, null, list)));
+        String in = inbounds.create(caller, new HostInboundService.Draft(locationId, "OPENING", batchId, "MIGRATION",
+                List.of("migration:" + batchId), "migration pool", lines));
+        inbounds.post(caller, in);
+        inboundNos.add(in);
+        String purpose = pending.pool().purpose() == null ? "ISSUE" : pending.pool().purpose();
+        String out = outbounds.create(caller, new HostOutboundService.Draft(locationId, purpose, null,
+                pending.pool().targets(), "migration " + batchId, List.of(),
+                pending.serials().stream().filter(s -> s.parentSerialNo() == null).map(PoolSerial::serialNo)
+                        .toList()));
+        outbounds.post(caller, out);
+        outboundNos.add(out);
+    }
+
+    /** 已在出库池里（待签收或已签收）：上一次导入已经处理过 */
+    private boolean inPool(String ownerId, String serialNo) {
+        return dispatchMapper.exists(Wrappers.<InvDispatchItem>lambdaQuery()
+                .eq(InvDispatchItem::getOwnerId, ownerId).eq(InvDispatchItem::getSerialNo, serialNo)
+                .in(InvDispatchItem::getStatus, DispatchPoolStore.AVAILABLE, DispatchPoolStore.CLAIMED));
+    }
+
+    private record PendingPool(Pool pool, List<PoolSerial> serials) {
     }
 
     private String inStockAt(String ownerId, String serialNo) {

@@ -275,8 +275,9 @@ class OrgBoundaryPairedTransferFlowTest {
         String inboundNo = pair.get("to").get("docNo").asString();
         String appleAtB = pair.get("lines").get(0).get("toItemId").asString();
         String pearAtB = pair.get("lines").get(1).get("toItemId").asString();
+        // AC-44：收货方按宿主物料号确认，不需要知道自己账本里的内部号
         write(b, post("/api/inventory/v1/inbounds/" + inboundNo + "/receive")
-                .content("{\"lines\":[{\"itemId\":\"" + appleAtB + "\",\"qty\":3}]}")).andExpect(status().isOk());
+                .content("{\"lines\":[{\"itemRef\":\"SKU-APPLE\",\"qty\":3}]}")).andExpect(status().isOk());
         String inbound = body(read(b, "/api/inventory/v1/inbounds/" + inboundNo));
         assertThat(inbound).contains(appleAtB).doesNotContain(pearAtB).contains("POSTED");
         assertOnHand(b, appleAtB, "3");

@@ -28,6 +28,17 @@ public interface HostOutboundService {
     String countLoss(Caller caller, String locationId, String countNo, List<Line> lines, List<String> serialNos);
 
     /**
+     * 账内调拨的调出草稿（TDD §2.21）：系统用途 {@code TRANSFER_OUT}，不经档案登记；扫上级件带出下级件。
+     * 由 {@code HostTransferService} 建，发运时过账。
+     */
+    String transferDraft(Caller caller, String locationId, String transferNo, List<Line> lines,
+                         List<String> serialNos);
+
+    /** 账内调拨从在途库位调出（收货时）：建单即过账，SN 逐件列出、不再展开。 */
+    String transferOut(Caller caller, String locationId, String transferNo, List<Line> lines,
+                       List<String> serialNos);
+
+    /**
      * @param targets   目标类型 → 目标编号，如 {@code PERSON → E1001}
      * @param lines     数量物料的行
      * @param serialNos 逐件物料：扫到的 SN；上级件自动带出它当前挂着的下级件
