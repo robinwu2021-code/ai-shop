@@ -489,6 +489,8 @@ ShareHub 的接入见 [进销存独立服务-ShareHub对接方案](./进销存�
 
 ## 13. 统一客户端 `InventoryClient`（M13）
 
+> 完整的调用说明（方法一览、命令键约定、错误处理、恢复写法、两种场景示例）见 [进销存独立服务-客户端调用文档](进销存独立服务-客户端调用文档.md)。
+
 ```java
 InventoryClient client = InventoryClient.create(() -> Optional.of(baseUrl), appKey, appSecret,
         Duration.ofSeconds(2), Duration.ofSeconds(5), 5, Duration.ofSeconds(30), "shop.inventory.service");
