@@ -10,6 +10,9 @@ import ai.neargo.shop.food.dto.ProductionContracts.ListQuery;
  * a caller.
  */
 public interface ProductionConsumptionService {
+    java.util.List<ProductionContracts.PendingVO> pending(
+            String entity, String store, String actor, ProductionContracts.PendingQuery query);
+
     /** Execute an original event through its frozen exclusive inventory plan. */
     ConsumptionVO consume(String entity, String store, String actor, String sourceEventNo);
 

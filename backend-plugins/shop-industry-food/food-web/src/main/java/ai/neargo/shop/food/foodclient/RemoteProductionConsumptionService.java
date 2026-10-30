@@ -25,6 +25,12 @@ public class RemoteProductionConsumptionService implements ProductionConsumption
     }
 
     @Override
+    public java.util.List<ProductionContracts.PendingVO> pending(
+            String entity, String store, String actor, ProductionContracts.PendingQuery query) {
+        return call(() -> api.pending(new ProductionConsumptionInternalApi.PendingCommand(entity, store, actor, query)));
+    }
+
+    @Override
     public ConsumptionVO consume(String entity, String store, String actor, String event) {
         return call(() -> api.consume(new Command(entity, store, actor, event)));
     }

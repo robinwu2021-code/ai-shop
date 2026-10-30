@@ -24,6 +24,15 @@ public interface ProductionConsumptionInternalApi {
     @PostExchange("/internal/food/production/list")
     PageData<ConsumptionVO> list(@RequestBody ListCommand command);
 
+    @PostExchange("/internal/food/production/pending")
+    java.util.List<ProductionContracts.PendingVO> pending(@RequestBody PendingCommand command);
+
+    record PendingCommand(
+            @NotBlank @Size(max = 32) String entity,
+            @NotBlank @Size(max = 32) String store,
+            @NotBlank @Size(max = 32) String actor,
+            @Valid @NotNull ProductionContracts.PendingQuery query) {}
+
     record AdjustmentCommand(
             String entity,
             String store,

@@ -290,8 +290,30 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
             var mapper = c.getBean(ServiceEventMapper.class);
             assertThat(mapper.unconsumed(1)).extracting(ServiceEventMapper.ProductionSource::eventNo).containsExactly("EV1");
             assertThat(mapper.unconsumed(10)).extracting(ServiceEventMapper.ProductionSource::storeNo).containsExactly("S", "S2");
+            var pending = mapper.pending("E", "S", 0, 1);
+            assertThat(pending).singleElement().satisfies(v -> {
+                assertThat(v.sourceEventNo()).isEqualTo("EV1");
+                assertThat(v.status()).isEqualTo("NOT_STARTED");
+            });
+            assertThat(mapper.pending("E", "S", pending.getFirst().sourceId(), 100)).isEmpty();
+            assertThat(mapper.pending("OTHER", "S", 0, 100)).isEmpty();
+            assertThat(mapper.pending("E", "OTHER", 0, 100)).isEmpty();
+            assertThat(mapper.pending("E", "S2", 0, 100))
+                    .extracting(ai.neargo.shop.food.dto.ProductionContracts.PendingVO::sourceEventNo)
+                    .containsExactly("EV2");
+
             f.sql.update("INSERT INTO fnb_production_consumption(tenant_no,entity_no,store_no,source_event_no,status,deleted) VALUES ('OTHER','E','S2','EV2','BLOCKED',0),('MAIN','E','WRONG','EV2','BLOCKED',0),('MAIN','E','S','EV1','BLOCKED',0)");
             assertThat(mapper.unconsumed(10)).extracting(ServiceEventMapper.ProductionSource::eventNo).containsExactly("EV2");
+            assertThat(mapper.pending("E", "S", 0, 100))
+                    .extracting(ai.neargo.shop.food.dto.ProductionContracts.PendingVO::status)
+                    .containsExactly("BLOCKED");
+            f.sql.update("UPDATE fnb_order_batch SET status='CANCELLED' WHERE batch_no='B1'");
+            assertThat(mapper.pending("E", "S", 0, 100))
+                    .extracting(ai.neargo.shop.food.dto.ProductionContracts.PendingVO::status)
+                    .containsExactly("BLOCKED");
+            f.sql.update("UPDATE fnb_production_consumption SET status='CONFIRMED' WHERE tenant_no='MAIN' AND store_no='S'");
+            assertThat(mapper.pending("E", "S", 0, 100)).isEmpty();
+
             f.sql.update("UPDATE fnb_order_batch SET status='CANCELLED' WHERE batch_no='B2'");
             assertThat(mapper.unconsumed(10)).isEmpty();
         });

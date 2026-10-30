@@ -24,6 +24,14 @@ public final class ProductionContracts {
             String itemRef,
             String status) {}
 
+    public record PendingQuery(
+            @jakarta.validation.constraints.Min(0) long afterId,
+            @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(100) int limit) {}
+
+    /** sourceId is an exclusive cursor; event identity remains the retry key. */
+    public record PendingVO(long sourceId, String sourceEventNo, String taskNo,
+                            String action, String status) {}
+
     public record AdjustmentReq(Long version, String kind, BigDecimal qty, String reason) {}
 
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)

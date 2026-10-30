@@ -72,6 +72,18 @@ public class BizProductionConsumptionController {
                 new ListQuery(page, size, from, to, skuNo, itemRef, status));
     }
 
+    @GetMapping("/biz/x/food/stores/{storeNo}/production-pending")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    public java.util.List<ProductionContracts.PendingVO> pending(
+            @PathVariable String storeNo,
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.Min(0) long afterId,
+            @RequestParam(defaultValue = "20") @jakarta.validation.constraints.Min(1)
+            @jakarta.validation.constraints.Max(100) int limit, HttpServletRequest request) {
+        var c = scope.path(storeNo, request);
+        return service.pending(c.merchantNo(), storeNo, SecurityUtils.currentUserNo(),
+                new ProductionContracts.PendingQuery(afterId, limit));
+    }
+
     @PostMapping("/biz/x/food/production-events/{eventNo}:consume")
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
     public ConsumptionVO consume(

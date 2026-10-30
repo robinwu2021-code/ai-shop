@@ -43,6 +43,12 @@ public class InternalProductionConsumptionController {
         return service.get(c.entity(), c.store(), c.actor(), c.sourceEventNo());
     }
 
+    @PostMapping("/internal/food/production/pending")
+    public java.util.List<ai.neargo.shop.food.dto.ProductionContracts.PendingVO> pending(
+            @Valid @RequestBody ProductionConsumptionInternalApi.PendingCommand c) {
+        return service.pending(c.entity(), c.store(), c.actor(), c.query());
+    }
+
     @PostMapping("/internal/food/production/list")
     public PageData<ConsumptionVO> list(@Valid @RequestBody ListCommand c) {
         return service.list(c.entity(), c.store(), c.actor(), c.query());

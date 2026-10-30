@@ -436,6 +436,24 @@ public final class FoodMappers {
     public interface ServiceEventMapper extends BaseMapper<FnbServiceEvent> {
         record ProductionSource(String entityNo, String storeNo, String eventNo) {}
 
+        @Select("SELECT e.id AS source_id,e.event_no AS source_event_no,e.task_no,e.action,"
+                + "COALESCE(h.status,'NOT_STARTED') AS status FROM fnb_service_event e "
+                + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no AND t.task_no=e.task_no "
+                + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
+                + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
+                + "LEFT JOIN fnb_production_consumption h ON h.tenant_no=e.tenant_no AND h.entity_no=e.entity_no "
+                + "AND h.store_no=b.store_no AND h.source_event_no=e.event_no AND h.deleted=0 "
+                + "WHERE e.tenant_no='MAIN' AND e.entity_no=#{entity} AND b.store_no=#{store} "
+                + "AND e.deleted=0 AND t.deleted=0 AND k.deleted=0 AND b.deleted=0 "
+                + "AND t.task_role='MAKE' AND (h.id IS NOT NULL OR b.status='ACCEPTED') "
+                + "AND e.action IN ('START','MATERIAL_SUPPLEMENT','MATERIAL_WASTE') "
+                + "AND (h.id IS NULL OR h.status IN ('PREPARED','SUBMITTED','UNKNOWN','REVERSAL_PENDING','BLOCKED','FAILED')) "
+                + "AND e.id>#{afterId} ORDER BY e.id LIMIT #{limit}")
+        List<ai.neargo.shop.food.dto.ProductionContracts.PendingVO> pending(
+                @Param("entity") String entity, @Param("store") String store,
+                @Param("afterId") long afterId, @Param("limit") int limit);
+
+
         @Select("SELECT e.entity_no,b.store_no,e.event_no FROM fnb_service_event e "
                 + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no AND t.task_no=e.task_no "
                 + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "

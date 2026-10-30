@@ -550,6 +550,16 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                 }));
     }
 
+    @Override
+    public List<ai.neargo.shop.food.dto.ProductionContracts.PendingVO> pending(
+            String entity, String store, String actor,
+            ai.neargo.shop.food.dto.ProductionContracts.PendingQuery query) {
+        outside();
+        scope(entity, store, actor);
+        return DataScopeContext.executeWithoutScope(() -> read.execute(tx ->
+                events.pending(entity, store, query.afterId(), query.limit())));
+    }
+
     private boolean invalidFilter(String value, int max) {
         return value != null
                 && (value.isBlank() || value.length() > max || !value.equals(value.trim()));
