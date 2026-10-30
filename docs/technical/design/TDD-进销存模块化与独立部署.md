@@ -339,3 +339,14 @@ prd_purchase_note/_item （P2 新增）
 修复提交 `446cf77999b9d5fb64e47b0507e1933a9d4b0a2d`，8文件、284插入/8删除，与§2清单一致：新增迁移连接适配器及wire测试，修改Flyway装配、物理校验器、原生测试、生成器/生成描述和本TDD。冻结SQL文件未改。review未发现阻断问题。
 
 干净归档集成package成功（`food-invfix-package-20261030.log`，1m21s），实际云端新克隆从CORE589/FOOD25/INV15迁至CORE621/FOOD37/CIM18/INV18，V17物理结构INSTALLED；真实候选应用开启库存自动迁移启动UP。2026-10-30生产同样迁移成功并发布446cf7799，health/readiness为UP、版本一致；原配置未修改、原jar保留、临时SUPER撤销。没有通过关闭库存迁移绕过V17，也未repair/改写旧历史。详细备份、artifact哈希及发布口径见餐饮验收记录最终发布章节。全量门禁未重跑，沿用户确认的增量验证策略显式ALLOW_GATE_DRIFT=1放行旧记录13528eb1e；不宣称全量门禁通过。
+
+
+## 2026-10-30 支持范围收敛：仅MySQL 9
+
+用户明确取消MariaDB支持。本节覆盖此前兼容章节中的持续双引擎支持/验收安排；已完成的历史wire验证保留为事实记录，不再追加MariaDB原生部署验收。统一规范正文见Java规范§二；本地为MySQL9.7.4、127.0.0.1:3308，3306不作为本项目测试目标。
+
+本轮代码仅修改ExecutionRetentionSchemaNativeMysqlTest：入口要求9.x且非MariaDB，CHECK删除直接使用MySQL的DROP CHECK，移除按MariaDB切换方言的测试分支。生产业务、迁移SQL/hash和既有适配不变；保留旧脚本在MySQL执行的适配，不为删除MariaDB字样改写冻结历史。
+
+同步方案已按现有API/实现重整到餐饮统一实施04：明确单向绝对快照、默认OFF、独立镜像、不修改原生余额、同单位、OFF编辑映射、基线捕获与送达状态区别、原回执查回、停用屏障及PAGE_OBSERVED对账边界。没有新增数据库或API。
+
+验证：`food-mysql9-policy-tests-20261030.log`，shop-inventory及依赖编译成功，actualNativeColumnIndexAndCheckDriftAreIndependentlyRejected的3个MySQL9原生用例通过，0失败/错误/跳过、BUILD SUCCESS。只验证本轮调整过的入口与DROP CHECK路径；未重跑全仓测试。文档/记忆更新无需重建或部署生产包。

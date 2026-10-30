@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
@@ -50,7 +49,8 @@ class ExecutionRetentionSchemaNativeMysqlTest {
                 System.getProperty("inventory.lock.test.password",
                         System.getenv().getOrDefault("INVENTORY_LOCK_TEST_PASSWORD", "")));
         admin = new JdbcTemplate(source);
-        assertThat(admin.queryForObject("SELECT VERSION()", String.class)).doesNotContainIgnoringCase("h2");
+        assertThat(admin.queryForObject("SELECT VERSION()", String.class))
+                .startsWith("9.").doesNotContainIgnoringCase("mariadb");
         catalog = "c04ret" + UUID.randomUUID().toString().replace("-", "");
         admin.execute("CREATE DATABASE `" + catalog + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
         isolated = new AbstractDataSource() {
@@ -181,10 +181,7 @@ class ExecutionRetentionSchemaNativeMysqlTest {
                     + " MODIFY component_no VARCHAR(63) COLLATE utf8mb4_bin NOT NULL");
             case "INDEX" -> jdbc.execute("ALTER TABLE inv_execution_retention DROP INDEX idx_ier_component");
             case "CHECK" -> {
-                String version = jdbc.queryForObject("SELECT VERSION()", String.class);
-                String drop = version.toLowerCase(Locale.ROOT).contains("mariadb")
-                        ? " DROP CONSTRAINT " : " DROP CHECK ";
-                jdbc.execute("ALTER TABLE inv_execution_retention" + drop + "ck_ier_positive");
+                jdbc.execute("ALTER TABLE inv_execution_retention DROP CHECK ck_ier_positive");
             }
             default -> throw new IllegalArgumentException(kind);
         }
