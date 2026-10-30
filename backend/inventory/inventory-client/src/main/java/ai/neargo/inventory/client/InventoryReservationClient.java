@@ -36,10 +36,17 @@ public final class InventoryReservationClient {
     private final InventoryReservationApi api;
     private final InventoryStockApi stock;
     private final InventoryConsoleApi consoleApi;
+    private final InventoryProjectionApi projectionApi;
     private final CircuitBreaker breaker;
 
     InventoryReservationClient(InventoryReservationApi api, InventoryStockApi stock, InventoryConsoleApi consoleApi,
                                CircuitBreaker breaker) {
+        this(api,stock,consoleApi,null,breaker);
+    }
+
+    InventoryReservationClient(InventoryReservationApi api,InventoryStockApi stock,InventoryConsoleApi consoleApi,
+            InventoryProjectionApi projectionApi,CircuitBreaker breaker) {
+        this.projectionApi=projectionApi;
         this.api = api;
         this.stock = stock;
         this.consoleApi = consoleApi;
@@ -61,6 +68,7 @@ public final class InventoryReservationClient {
         return new InventoryReservationClient(ServiceClients.create(InventoryReservationApi.class, spec),
                 ServiceClients.create(InventoryStockApi.class, spec),
                 ServiceClients.create(InventoryConsoleApi.class, spec),
+                ServiceClients.create(InventoryProjectionApi.class, spec),
                 new CircuitBreaker(breakerThreshold, breakerOpenFor, Clock.systemUTC()));
     }
 
@@ -78,6 +86,17 @@ public final class InventoryReservationClient {
                                                 InventoryConsoleApi console, CircuitBreaker breaker) {
         return new InventoryReservationClient(api, stock, console, breaker);
     }
+
+    public static InventoryReservationClient of(InventoryReservationApi api,InventoryStockApi stock,
+            InventoryConsoleApi console,InventoryProjectionApi projection,CircuitBreaker breaker) {
+        return new InventoryReservationClient(api,stock,console,projection,breaker);
+    }
+
+    public InventoryProjection projection(String owner,String actor) {
+        return new InventoryProjection(projectionApi,this,owner,actor);
+    }
+
+    <T> T invoke(Supplier<T> invocation) { return call(invocation); }
 
     /** 商家后台转发：这个商家（{@code ownerRef}）、这个操作人 */
     public InventoryConsole console(String ownerRef, String actor) {

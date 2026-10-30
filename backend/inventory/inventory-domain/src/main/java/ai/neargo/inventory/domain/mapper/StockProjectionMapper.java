@@ -1,7 +1,8 @@
-package ai.neargo.shop.inventory.mapper;
+package ai.neargo.inventory.domain.mapper;
 
-import ai.neargo.shop.inventory.config.ConditionalOnInventory;
-import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.*;
+import ai.neargo.inventory.domain.config.ConditionalOnInventory;
+import ai.neargo.inventory.api.projection.StockProjectionContracts.Scope;
+import ai.neargo.inventory.api.projection.StockProjectionContracts.Snapshot;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -12,9 +13,9 @@ import java.util.List;
 /** Inventory-owned projection persistence, intentionally unrelated to inv_stock_balance. */
 @Repository
 @ConditionalOnInventory
-public class FoodStockProjectionMapper {
+public class StockProjectionMapper {
     private final JdbcTemplate db;
-    public FoodStockProjectionMapper(@Qualifier("invDataSource") DataSource dataSource){db=new JdbcTemplate(dataSource);}
+    public StockProjectionMapper(@Qualifier("invDataSource") DataSource dataSource){db=new JdbcTemplate(dataSource);}
     public record Session(long generation,String status){}
     public record StoredReceipt(String hash,String json){}
     public record Projection(long generation,long version,String hash,Snapshot snapshot,LocalDateTime receivedAt){}

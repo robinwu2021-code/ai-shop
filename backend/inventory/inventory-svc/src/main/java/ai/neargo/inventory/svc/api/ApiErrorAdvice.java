@@ -1,5 +1,11 @@
 package ai.neargo.inventory.svc.api;
 
+import org.springframework.validation.BindException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import ai.neargo.inventory.api.InventoryError;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.guard.ErrorBodies;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -28,13 +34,21 @@ public class ApiErrorAdvice {
                 .body(ErrorBodies.body(e));
     }
 
+    @ExceptionHandler({HandlerMethodValidationException.class,BindException.class,
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class})
+    public ResponseEntity<String> onInvalidInput(Exception ignored) {
+        return onInventory(InventoryException.of(InventoryError.BAD_REQUEST));
+    }
+
     /**
      * 领域里的协议状态检查（如原单出库还没确认就回补：{@code STOCK_ORIGINAL_POSTING_UNCONFIRMED}）用
      * {@link IllegalStateException} 表达。对调用方这是「现在不能做」，按冲突回，原因带回去 —— 不是服务坏了。
      */
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<String> onIllegalState(IllegalStateException e) {
-        return onInventory(InventoryException.of(ai.neargo.inventory.api.InventoryError.CONFLICT,
+        return onInventory(InventoryException.of(InventoryError.CONFLICT,
                 e.getMessage() == null ? "state" : e.getMessage()));
     }
 }
