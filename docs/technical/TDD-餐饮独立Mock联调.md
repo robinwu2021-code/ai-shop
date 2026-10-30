@@ -63,10 +63,15 @@ Mock管理HTTP仍是原/admin/fixtures、/admin/orders、/admin/events/emit等�
 - AC1：CommerceMockAutoConfigurationTest的defaultModeStartsEmbeddedPeer、externalModeNeedsNoEmbeddedDirectoryAndCallsExistingHttpContract、externalModeStillRejectsProduction、ordinaryDeploymentHasNoMockBeans，4通过、0跳过。日志/private/tmp/food-mock-targeted.log保留首次测试及后续打包失败记录。
 - AC2/AC3：MockCommerceProcessTest.packagedPeerSeedsOrdersSignsCallbacksAndRetainsUncertainEffectsAfterRestart，1通过、0跳过，日志/private/tmp/food-mock-process-retest.log。第二JVM执行发行包，无Spring/数据库；管理HTTP录入外部订单、回调重复2次、错误签名返回401、菜单/接单先不确定后重启查回确认。回调接收器是用例协议接收端，不代表生产CIM已去重。
 - 初次过程测试发现发行包含旧渠道JAR导致入口ClassNotFound。commerce-server继承执行与匿名执行重复repackage，按food-server既有做法统一execution id=repackage；依赖更新的增量构建用-Dmaven.jar.forceCreation=true生成新包，执行次数由2变1。只复测受影响过程用例，未重复已通过的4项。
-- 当前固定commerce包SHA256：f6a8b5f4964cfe2c38bce53d15458387364016971362372e292d695256f0f424。food包：915078b3dd3e1db61cb439c6804ef2c5dd71c498e171f9ca70bfb9de01a1d4eb。
+- 本批联调固定commerce包SHA256：f6a8b5f4964cfe2c38bce53d15458387364016971362372e292d695256f0f424。food包：915078b3dd3e1db61cb439c6804ef2c5dd71c498e171f9ca70bfb9de01a1d4eb。
 - 代码审查发现测试启动readLine缺实际期限，已加20秒Future期限及失败终止/等待/关闭；审查定向复核通过。
 - AC4：FoodChannelVerticalNativeIT.originalOwnersConserveTheInvoiceAndQueryAnUncertainAcceptanceWithoutSendingAgain，实际原宿主＋独立Mock JVM＋MySQL9副本，1通过、0跳过（116.3秒）。菜单发布/映射、签名回调、共享订单与FOOD准备、正常/不确定接单查回、厨房/打印/履约、取消源落库边界均走原所有者。日志/private/tmp/food-channel-independent-retest.log及/var/folders/bc/zmjk1fl133572z92rysz2_k40000gn/T/food-channel-mock-6vdq9wtt/vertical.log。首次运行失败于夹具recoverDue(1)假设新回执排第一；只读模板确认17条WAITING_OWNER、1条WAITING_CANCELLATION到期记录，改用原100上限后仅复测该方法通过。首次日志保留于food-channel-independent-run.log及food-channel-mock-phg0ihgy/vertical.log。未放宽目标订单快照/源落库断言。
 - AC5：verify-food-standalone-mysql.py实际运行FOOD与CIM两个独立发行包、另一MySQL9副本，通过签名缺失401、越店403、本地物料创建/调整10.123456及幂等查回、CIM现有authority缺失404、FOOD操作系统进程重启后原键/余额保持。日志/private/tmp/food-mock-existing-contracts.log，进程日志food-standalone-wje6s2gh。此合同专项未配置Mock，不与AC4拼接宣称四进程营业闭环。
 - 最终不同JUnit方法6项通过（配置4＋独立Mock过程1＋原营业场景1），独立合同脚本另计1次通过。没有全仓测试或重复运行已通过的无关用例。运行脚本自动停止所建进程并删除UUID测试库；没有生产部署。
 - 剩余边界：独立宿主/FOOD/CIM/Mock四进程完整营业需要的生产合同另行设计，本批按用户确认保留；真实门店期初/启用、真实第三方与资金、后置报表来源不在本批。
 
+
+
+## 6 同步边界
+
+本批业务提交fc764efa6。远端同期新增1726ee1ce、60a614575进销存提交，正常合入为171e66853，没有覆盖或强推。上述原生营业证据的库存副本由INV18迁移到INV25；远端新增INV26/27不属于这份原生验收证据。合入后只编译相关宿主及独立服务，不据此宣称新库存迁移已验证；不重复完整营业专项。推送沿既有授权使用SKIP_COMPILE_GATE=1，仅远端备份，不部署。合并后相关模块package成功（BUILD SUCCESS，/private/tmp/food-mock-merged-build.log）；测试未重复。
