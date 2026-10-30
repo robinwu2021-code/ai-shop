@@ -5,8 +5,8 @@
 ## 地址
 
 - 主地址：https://www.hxmall.top/pos/fnb
-- 备用域名：https://fnb.hxmall.top ，本稿约定其完整API前缀为 https://fnb.hxmall.top/pos/fnb；域名、证书及等价反代尚未核验。
-- 地址来自本次用户要求，不是对现网路由已生效的确认。独立域名是否省略/pos/fnb，待发布配置时统一确认，本稿只使用上述一种路径规则。
+- 餐饮API入口：https://api.hxmall.top/fnb；路由、证书及等价反代尚未核验。
+- 地址来自本次用户要求，不是对现网路由已生效的确认。api.hxmall.top入口直接使用/fnb前缀，不额外拼接/pos/fnb。
 
 ## 调用约定
 

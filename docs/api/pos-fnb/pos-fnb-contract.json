@@ -3,7 +3,7 @@
   "version": "0.1",
   "status": "接口规划，未实现固定URL适配；不得作为线上已开放接口",
   "primaryBase": "https://www.hxmall.top/pos/fnb",
-  "alternateBase": "https://fnb.hxmall.top/pos/fnb",
+  "alternateBase": "https://api.hxmall.top/fnb",
   "alternateVerified": false,
   "apis": [
     {

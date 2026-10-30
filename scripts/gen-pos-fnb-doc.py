@@ -86,7 +86,7 @@ models={
 'ManualAdjustment':'kind:string,value:decimal,reasonCode:string,reason:string',
 'PaymentInput':'method:string,paymentRef?:string,tenderedMinor?:long'
 }
-contract=dict(title='餐饮 POS 固定 URL 对接合同（草案）',version='0.1',status='接口规划，未实现固定URL适配；不得作为线上已开放接口',primaryBase='https://www.hxmall.top/pos/fnb',alternateBase='https://fnb.hxmall.top/pos/fnb',alternateVerified=False,apis=apis,models={k:fields(v) for k,v in models.items()})
+contract=dict(title='餐饮 POS 固定 URL 对接合同（草案）',version='0.1',status='接口规划，未实现固定URL适配；不得作为线上已开放接口',primaryBase='https://www.hxmall.top/pos/fnb',alternateBase='https://api.hxmall.top/fnb',alternateVerified=False,apis=apis,models={k:fields(v) for k,v in models.items()})
 (root/'pos-fnb-contract.json').write_text(json.dumps(contract,ensure_ascii=False,indent=2)+'\n')
 intro="""# 餐饮 POS 对接接口
 
@@ -95,8 +95,8 @@ intro="""# 餐饮 POS 对接接口
 ## 地址
 
 - 主地址：https://www.hxmall.top/pos/fnb
-- 备用域名：https://fnb.hxmall.top ，本稿约定其完整API前缀为 https://fnb.hxmall.top/pos/fnb；域名、证书及等价反代尚未核验。
-- 地址来自本次用户要求，不是对现网路由已生效的确认。独立域名是否省略/pos/fnb，待发布配置时统一确认，本稿只使用上述一种路径规则。
+- 餐饮API入口：https://api.hxmall.top/fnb；路由、证书及等价反代尚未核验。
+- 地址来自本次用户要求，不是对现网路由已生效的确认。api.hxmall.top入口直接使用/fnb前缀，不额外拼接/pos/fnb。
 
 ## 调用约定
 
@@ -136,7 +136,7 @@ md=md.replace('## 后续交付条件','## 导出\n\n运行 `python3 scripts/gen-
 def ht(fs):
  return '<table><thead><tr><th>参数</th><th>类型</th><th>必填</th></tr></thead><tbody>'+''.join('<tr><td>'+html.escape(f['name'])+'</td><td>'+html.escape(f['type'])+'</td><td>'+('是' if f['required'] else '否')+'</td></tr>' for f in fs)+'</tbody></table>'
 nav=''.join(f'<a href="#api{i}">{i}. {html.escape(a["name"])}</a>' for i,a in enumerate(apis,1))
-body='<h1>餐饮 POS 对接文档</h1><p class="notice">合同草案 v0.1 · 固定路由尚未实现，不能直接线上调用。2026-10-30</p><p>主地址：<code>https://www.hxmall.top/pos/fnb</code><br>备用：<code>https://fnb.hxmall.top/pos/fnb</code>（路由及证书未核验）</p><p>GET使用?查询参数；POST使用JSON。Bearer token放Authorization。除登录外POST body需idempotencyKey，重试保持原键与原内容。storeNo须经服务端授权。输出为统一响应data中的结构：<code>{"code":0,"msg":"success","data":{}}</code>。金额Minor为最小单位整数；decimal为十进制字符串。UNKNOWN先查回。真实资金功能尚需专项接入。</p>'
+body='<h1>餐饮 POS 对接文档</h1><p class="notice">合同草案 v0.1 · 固定路由尚未实现，不能直接线上调用。2026-10-30</p><p>主地址：<code>https://www.hxmall.top/pos/fnb</code><br>备用：<code>https://api.hxmall.top/fnb</code>（路由及证书未核验）</p><p>GET使用?查询参数；POST使用JSON。Bearer token放Authorization。除登录外POST body需idempotencyKey，重试保持原键与原内容。storeNo须经服务端授权。输出为统一响应data中的结构：<code>{"code":0,"msg":"success","data":{}}</code>。金额Minor为最小单位整数；decimal为十进制字符串。UNKNOWN先查回。真实资金功能尚需专项接入。</p>'
 for i,a in enumerate(apis,1):
  body+=f'<section id="api{i}"><h2>{i}. {html.escape(a["name"])}</h2><p><strong>{a["method"]}</strong> <code>{html.escape(contract["primaryBase"]+a["path"])}</code></p><h3>{"Query参数" if a["method"]=="GET" else "JSON请求体"}</h3>'+ht(a['input'])+'<h3>data输出</h3>'+ht(a['output'])+'</section>'
 body+='<h2>复用对象</h2>'
