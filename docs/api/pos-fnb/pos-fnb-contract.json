@@ -1,0 +1,2642 @@
+{
+  "title": "餐饮 POS 固定 URL 对接合同（草案）",
+  "version": "0.1",
+  "status": "接口规划，未实现固定URL适配；不得作为线上已开放接口",
+  "primaryBase": "https://www.hxmall.top/pos/fnb",
+  "alternateBase": "https://fnb.hxmall.top/pos/fnb",
+  "alternateVerified": false,
+  "apis": [
+    {
+      "group": "基础",
+      "name": "终端登录",
+      "method": "POST",
+      "path": "/auth/login",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "account",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "terminalNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "accessToken",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "expiresAt",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "staff",
+          "type": "Staff",
+          "required": true
+        },
+        {
+          "name": "stores",
+          "type": "Store[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "基础",
+      "name": "读取门店营业信息",
+      "method": "GET",
+      "path": "/store/info",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "store",
+          "type": "Store",
+          "required": true
+        },
+        {
+          "name": "businessDate",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "payModes",
+          "type": "string[]",
+          "required": true
+        },
+        {
+          "name": "capabilities",
+          "type": "string[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "基础",
+      "name": "当前操作员权限",
+      "method": "GET",
+      "path": "/auth/profile",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "staff",
+          "type": "Staff",
+          "required": true
+        },
+        {
+          "name": "permissions",
+          "type": "string[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "桌台",
+      "name": "桌台列表",
+      "method": "GET",
+      "path": "/table/list",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "areaNo",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "records",
+          "type": "Table[]",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "桌台",
+      "name": "开台",
+      "method": "POST",
+      "path": "/table/open",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "tableNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "guestCount",
+          "type": "int",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "check",
+          "type": "Check",
+          "required": true
+        },
+        {
+          "name": "table",
+          "type": "Table",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "桌台",
+      "name": "账单详情",
+      "method": "GET",
+      "path": "/check/detail",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "check",
+          "type": "Check",
+          "required": true
+        },
+        {
+          "name": "lines",
+          "type": "OrderLine[]",
+          "required": true
+        },
+        {
+          "name": "amounts",
+          "type": "Amounts",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "桌台",
+      "name": "转台",
+      "method": "POST",
+      "path": "/table/transfer",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "targetTableNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "check",
+          "type": "Check",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "桌台",
+      "name": "拼桌",
+      "method": "POST",
+      "path": "/table/combine",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "targetTableNos",
+          "type": "string[]",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "check",
+          "type": "Check",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "桌台",
+      "name": "分单或AA预览",
+      "method": "POST",
+      "path": "/check/split/preview",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "allocations",
+          "type": "Allocation[]",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "plan",
+          "type": "SplitPlan",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "桌台",
+      "name": "确认分单方案",
+      "method": "POST",
+      "path": "/check/split/confirm",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "planNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "plan",
+          "type": "SplitPlan",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "菜品",
+      "name": "可售餐牌列表",
+      "method": "GET",
+      "path": "/menu/list",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "channel",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "at",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "menus",
+          "type": "Menu[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "菜品",
+      "name": "餐牌菜品与分类",
+      "method": "GET",
+      "path": "/menu/detail",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "menuNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "menu",
+          "type": "Menu",
+          "required": true
+        },
+        {
+          "name": "categories",
+          "type": "Category[]",
+          "required": true
+        },
+        {
+          "name": "dishes",
+          "type": "Dish[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "菜品",
+      "name": "菜品规格配料和套餐",
+      "method": "GET",
+      "path": "/dish/detail",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "menuNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "offerNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "dish",
+          "type": "Dish",
+          "required": true
+        },
+        {
+          "name": "groups",
+          "type": "SelectionGroup[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "购物车",
+      "name": "创建购物车",
+      "method": "POST",
+      "path": "/cart/create",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "fulfillment",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "payMode",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "cart",
+          "type": "Cart",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "购物车",
+      "name": "查询购物车",
+      "method": "GET",
+      "path": "/cart/detail",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "cartNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "cart",
+          "type": "Cart",
+          "required": true
+        },
+        {
+          "name": "lines",
+          "type": "CartLine[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "购物车",
+      "name": "新增或修改购物车行",
+      "method": "POST",
+      "path": "/cart/line/save",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "cartNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "lineRef",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "offerNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "skuNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "quantity",
+          "type": "decimal",
+          "required": true
+        },
+        {
+          "name": "selections",
+          "type": "Selection[]",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "cart",
+          "type": "Cart",
+          "required": true
+        },
+        {
+          "name": "lines",
+          "type": "CartLine[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "购物车",
+      "name": "移除购物车行",
+      "method": "POST",
+      "path": "/cart/line/remove",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "cartNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "lineRef",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "cart",
+          "type": "Cart",
+          "required": true
+        },
+        {
+          "name": "lines",
+          "type": "CartLine[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "结账",
+      "name": "金额试算",
+      "method": "POST",
+      "path": "/pricing/quote",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "cartNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        },
+        {
+          "name": "benefits",
+          "type": "BenefitInput",
+          "required": false
+        },
+        {
+          "name": "manualAdjustment",
+          "type": "ManualAdjustment",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "quote",
+          "type": "Quote",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "订单",
+      "name": "提交订单",
+      "method": "POST",
+      "path": "/order/submit",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "cartNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        },
+        {
+          "name": "quoteRef",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "quoteHash",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "batchNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "orderNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "amounts",
+          "type": "Amounts",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "订单",
+      "name": "订单列表",
+      "method": "GET",
+      "path": "/order/list",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "businessDate",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "records",
+          "type": "Order[]",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "订单",
+      "name": "订单详情",
+      "method": "GET",
+      "path": "/order/detail",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "orderNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "order",
+          "type": "Order",
+          "required": true
+        },
+        {
+          "name": "lines",
+          "type": "OrderLine[]",
+          "required": true
+        },
+        {
+          "name": "amounts",
+          "type": "Amounts",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "订单",
+      "name": "取消订单",
+      "method": "POST",
+      "path": "/order/cancel",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "orderNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        },
+        {
+          "name": "reasonCode",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "orderNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "pending",
+          "type": "boolean",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "结账",
+      "name": "结账试算与确认依据",
+      "method": "POST",
+      "path": "/checkout/preview",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        },
+        {
+          "name": "benefits",
+          "type": "BenefitInput",
+          "required": false
+        },
+        {
+          "name": "manualAdjustment",
+          "type": "ManualAdjustment",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "checkoutRef",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "quote",
+          "type": "Quote",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "结账",
+      "name": "提交结账",
+      "method": "POST",
+      "path": "/checkout/confirm",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "checkoutRef",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "quoteHash",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        },
+        {
+          "name": "payment",
+          "type": "PaymentInput",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "operationNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "pending",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "amounts",
+          "type": "Amounts",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "结账",
+      "name": "查询结账结果",
+      "method": "GET",
+      "path": "/checkout/result",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "operationNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "operationNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "pending",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "amounts",
+          "type": "Amounts",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "厨房",
+      "name": "工位任务列表",
+      "method": "GET",
+      "path": "/kitchen/task/list",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "stationNo",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "records",
+          "type": "KitchenTask[]",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "厨房",
+      "name": "任务操作",
+      "method": "POST",
+      "path": "/kitchen/task/action",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "taskNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "action",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "quantity",
+          "type": "decimal",
+          "required": false
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "task",
+          "type": "KitchenTask",
+          "required": true
+        },
+        {
+          "name": "productionPending",
+          "type": "boolean",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "售后",
+      "name": "提交退餐",
+      "method": "POST",
+      "path": "/return/create",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "orderNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "items",
+          "type": "ReturnItem[]",
+          "required": true
+        },
+        {
+          "name": "reasonCode",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "returnNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "financialStatus",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kitchenStatus",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "售后",
+      "name": "退餐详情",
+      "method": "GET",
+      "path": "/return/detail",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "returnNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "returnNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "financialStatus",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kitchenStatus",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "items",
+          "type": "ReturnItem[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "售后",
+      "name": "处理退餐库存",
+      "method": "POST",
+      "path": "/return/stock/apply",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "returnNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "returnItemNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "productionEventNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "quantity",
+          "type": "decimal",
+          "required": true
+        },
+        {
+          "name": "disposition",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reasonCode",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "evidenceRef",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "disposition",
+          "type": "StockDisposition",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "售后",
+      "name": "重试退餐库存",
+      "method": "POST",
+      "path": "/return/stock/retry",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "returnNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "operationNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "disposition",
+          "type": "StockDisposition",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "打印",
+      "name": "申请打印任务",
+      "method": "POST",
+      "path": "/print/create",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "sourceType",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "sourceNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "printerNo",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "templateNo",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "jobNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "打印",
+      "name": "打印任务列表",
+      "method": "GET",
+      "path": "/print/list",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "sourceNo",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "records",
+          "type": "PrintJob[]",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "打印",
+      "name": "重试打印任务",
+      "method": "POST",
+      "path": "/print/retry",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "jobNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "jobNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "库存",
+      "name": "库存余额查询",
+      "method": "GET",
+      "path": "/stock/balance/list",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "itemNo",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "records",
+          "type": "StockBalance[]",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "库存",
+      "name": "出品待处理列表",
+      "method": "GET",
+      "path": "/stock/production/pending",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "afterId",
+          "type": "long",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "items",
+          "type": "PendingProduction[]",
+          "required": true
+        },
+        {
+          "name": "nextAfterId",
+          "type": "long",
+          "required": false
+        }
+      ]
+    },
+    {
+      "group": "库存",
+      "name": "原出品查回或重试",
+      "method": "POST",
+      "path": "/stock/production/retry",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "eventNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "eventNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "pending",
+          "type": "boolean",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "库存",
+      "name": "镜像同步异常查询",
+      "method": "GET",
+      "path": "/stock/sync/list",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "itemNo",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "output": [
+        {
+          "name": "records",
+          "type": "SyncDelivery[]",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "size",
+          "type": "int",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "库存",
+      "name": "重试镜像同步",
+      "method": "POST",
+      "path": "/stock/sync/retry",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "syncNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "syncNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "pending",
+          "type": "boolean",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "营业",
+      "name": "日结预览",
+      "method": "POST",
+      "path": "/close/preview",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "businessDate",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "closeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "amounts",
+          "type": "Amounts",
+          "required": true
+        },
+        {
+          "name": "blockingItems",
+          "type": "BlockingItem[]",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "营业",
+      "name": "日结签署",
+      "method": "POST",
+      "path": "/close/sign",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "closeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "long",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "closeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "signedAt",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "group": "营业",
+      "name": "日结结果查询",
+      "method": "GET",
+      "path": "/close/detail",
+      "status": "待适配，尚非线上可调用接口",
+      "input": [
+        {
+          "name": "storeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "closeNo",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": [
+        {
+          "name": "closeNo",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "amounts",
+          "type": "Amounts",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "models": {
+    "Staff": [
+      {
+        "name": "staffNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "Store": [
+      {
+        "name": "storeNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "timeZone",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "currency",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "Table": [
+      {
+        "name": "tableNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "areaNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "checkNo",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "version",
+        "type": "long",
+        "required": true
+      }
+    ],
+    "Check": [
+      {
+        "name": "checkNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tableNos",
+        "type": "string[]",
+        "required": true
+      },
+      {
+        "name": "guestCount",
+        "type": "int",
+        "required": true
+      },
+      {
+        "name": "payMode",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "long",
+        "required": true
+      }
+    ],
+    "Amounts": [
+      {
+        "name": "currency",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "subtotalMinor",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "discountMinor",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "taxMinor",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "payableMinor",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "paidMinor",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "refundedMinor",
+        "type": "long",
+        "required": true
+      }
+    ],
+    "Menu": [
+      {
+        "name": "menuNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "revision",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "channel",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "Category": [
+      {
+        "name": "categoryNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "sort",
+        "type": "int",
+        "required": true
+      }
+    ],
+    "Dish": [
+      {
+        "name": "offerNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "goodsNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "skuNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "imageUrl",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "priceMinor",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "currency",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "saleStatus",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "SelectionGroup": [
+      {
+        "name": "groupNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "minSelect",
+        "type": "int",
+        "required": true
+      },
+      {
+        "name": "maxSelect",
+        "type": "int",
+        "required": true
+      },
+      {
+        "name": "options",
+        "type": "Option[]",
+        "required": true
+      }
+    ],
+    "Option": [
+      {
+        "name": "optionNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "priceDeltaMinor",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "available",
+        "type": "boolean",
+        "required": true
+      }
+    ],
+    "Selection": [
+      {
+        "name": "groupNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "optionNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "quantity",
+        "type": "decimal",
+        "required": true
+      }
+    ],
+    "Cart": [
+      {
+        "name": "cartNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "checkNo",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "long",
+        "required": true
+      }
+    ],
+    "CartLine": [
+      {
+        "name": "lineRef",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "offerNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "skuNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "quantity",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "selections",
+        "type": "Selection[]",
+        "required": true
+      }
+    ],
+    "OrderLine": [
+      {
+        "name": "lineNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "quantity",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "unit",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "amountMinor",
+        "type": "long",
+        "required": true
+      }
+    ],
+    "Quote": [
+      {
+        "name": "quoteRef",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "quoteHash",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "expiresAt",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "amounts",
+        "type": "Amounts",
+        "required": true
+      },
+      {
+        "name": "warnings",
+        "type": "string[]",
+        "required": true
+      }
+    ],
+    "Order": [
+      {
+        "name": "orderNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "batchNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "checkNo",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "long",
+        "required": true
+      }
+    ],
+    "KitchenTask": [
+      {
+        "name": "taskNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "stationNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "quantity",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "long",
+        "required": true
+      }
+    ],
+    "ReturnItem": [
+      {
+        "name": "lineNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "quantity",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "StockDisposition": [
+      {
+        "name": "operationNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "stockCommandNo",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "lastErrorCode",
+        "type": "string",
+        "required": false
+      }
+    ],
+    "PrintJob": [
+      {
+        "name": "jobNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "sourceNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "lastErrorCode",
+        "type": "string",
+        "required": false
+      }
+    ],
+    "StockBalance": [
+      {
+        "name": "itemNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "baseUnit",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "onHand",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "reservedQty",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "availableQty",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "long",
+        "required": true
+      }
+    ],
+    "PendingProduction": [
+      {
+        "name": "sourceId",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "eventNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "taskNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "action",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "SyncDelivery": [
+      {
+        "name": "syncNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "itemNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "attempts",
+        "type": "int",
+        "required": true
+      },
+      {
+        "name": "lastErrorCode",
+        "type": "string",
+        "required": false
+      }
+    ],
+    "BlockingItem": [
+      {
+        "name": "type",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "referenceNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "Allocation": [
+      {
+        "name": "lineNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "quantity",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "seatNo",
+        "type": "string",
+        "required": false
+      }
+    ],
+    "SplitPlan": [
+      {
+        "name": "planNo",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "status",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "version",
+        "type": "long",
+        "required": true
+      },
+      {
+        "name": "allocations",
+        "type": "Allocation[]",
+        "required": true
+      }
+    ],
+    "BenefitInput": [
+      {
+        "name": "couponNos",
+        "type": "string[]",
+        "required": true
+      },
+      {
+        "name": "pointsToUse",
+        "type": "long",
+        "required": false
+      },
+      {
+        "name": "storedValueToUseMinor",
+        "type": "long",
+        "required": false
+      }
+    ],
+    "ManualAdjustment": [
+      {
+        "name": "kind",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "decimal",
+        "required": true
+      },
+      {
+        "name": "reasonCode",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "required": true
+      }
+    ],
+    "PaymentInput": [
+      {
+        "name": "method",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "paymentRef",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "tenderedMinor",
+        "type": "long",
+        "required": false
+      }
+    ]
+  }
+}
