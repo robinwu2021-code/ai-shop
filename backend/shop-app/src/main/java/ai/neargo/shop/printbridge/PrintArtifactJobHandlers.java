@@ -57,7 +57,7 @@ public class PrintArtifactJobHandlers {
                 "处理隔离模拟、PDF生成、重启恢复及过期清理",
                 "print",
                 "*/10 * * * * *",
-                false,
+                true,
                 60,
                 120,
                 true,

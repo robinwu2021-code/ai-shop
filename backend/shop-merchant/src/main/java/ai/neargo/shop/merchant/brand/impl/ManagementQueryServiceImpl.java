@@ -98,7 +98,7 @@ public class ManagementQueryServiceImpl implements ManagementQueryService {
   if(size<1||size>100)throw BizException.of(ErrorCode.BAD_REQUEST);var scope=hash(a.tenantNo()+a.actorKey()+brand);long before=Long.MAX_VALUE;
   if(cursor!=null){var c=tokens.decode("AUDIT_CURSOR",cursor);if(!scope.equals(c.get("scope")))throw BizException.of(ErrorCode.CONFLICT);before=((Number)c.get("before")).longValue();}
   // All audit reads use the durable source, including unprojected events; no async read-after-write gap.
-  var rows=db.rows("SELECT id,payload,created_at FROM sys_outbox WHERE aggregate_type='MANAGEMENT' AND aggregate_id=? AND (source_system='PLATFORM' OR source_system IS NULL) AND id<? ORDER BY id DESC LIMIT ?",a.tenantNo()+"|"+brand,before,size+1);
+  var rows=db.rows("SELECT id,payload,created_at FROM mch_management_command WHERE tenant_no=? AND aggregate_id=? AND id<? ORDER BY id DESC LIMIT ?",a.tenantNo(),a.tenantNo()+"|"+brand,before,size+1);
   var chosen=rows.stream().limit(size).toList();var items=chosen.stream().map(r->{var payload=db.decode(r.get("payload"));if(!a.tenantNo().equals(payload.get("tenantNo")))throw BizException.of(ErrorCode.FORBIDDEN);return Map.<String,Object>of("action",payload.get("action"),"actorKey",payload.get("actorKey"),"occurredAt",String.valueOf(r.get("created_at")),"result",payload.get("resultSnapshot"));}).toList();
   return new Page(items,rows.size()>size?tokens.encode("AUDIT_CURSOR",Map.of("scope",scope,"before",num(chosen.getLast(),"id")),900):null);
  }

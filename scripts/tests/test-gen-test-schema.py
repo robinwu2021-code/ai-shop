@@ -15,6 +15,11 @@ spec.loader.exec_module(generator)
 
 
 class StatementBoundaryTest(unittest.TestCase):
+    def test_inline_mysql_charset_is_removed_only_from_sql_code(self):
+        self.assertEqual("name VARCHAR(64)  DEFAULT 'CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'",
+                         generator._h2_type("name VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT 'CHARACTER SET utf8mb4 COLLATE utf8mb4_bin'"))
+
+
     def test_actual_inventory_comment_semicolon_preserves_column_widening(self):
         tables, order, seeds, renames, altered = {}, [], [], {}, set()
         inventory = ROOT / 'backend/inventory/inventory-domain/src/main/resources/db/inventory'

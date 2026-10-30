@@ -3,7 +3,8 @@ package ai.neargo.shop.food.service.impl;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.food.entity.*;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
-import ai.neargo.shop.event.outbox.*;
+import java.util.function.BiConsumer;
+import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.spi.food.FoodStockSyncRequested;
 import ai.neargo.shop.spi.food.FoodStockFingerprint;
 import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort;
@@ -19,12 +20,15 @@ public final class FoodStockSyncPublisher {
     private final StockSyncConfigMapper configs;private final StockSyncItemStateMapper states;
     private final StockSyncMappingMapper mappings;private final StockSyncDeliveryMapper deliveries;
     private final StockItemMapper items;private final StockBalanceMapper balances;
-    private final OutboxPublisher outbox;private final ObjectMapper json;
+    private final ObjectMapper json;
+    private BiConsumer<String,String> delivery=(entity,store)->{};
+    public void delivery(BiConsumer<String,String> action){delivery=action;}
+
     public FoodStockSyncPublisher(StockSyncConfigMapper configs,StockSyncItemStateMapper states,
             StockSyncMappingMapper mappings,StockSyncDeliveryMapper deliveries,StockItemMapper items,
-            StockBalanceMapper balances,OutboxPublisher outbox,ObjectMapper json) {
+            StockBalanceMapper balances,ObjectMapper json) {
         this.configs=configs;this.states=states;this.mappings=mappings;this.deliveries=deliveries;
-        this.items=items;this.balances=balances;this.outbox=outbox;this.json=json;
+        this.items=items;this.balances=balances;this.json=json;
     }
     public void capture(String entity,String store,String itemNo) {
         if(!TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Stock events must join source transaction");
@@ -68,7 +72,7 @@ public final class FoodStockSyncPublisher {
     public void retry(FnbStockSyncDelivery delivery) {
         if(delivery.getPayloadSnapshot()==null)throw BizException.of(ErrorCode.CONFLICT);
         var event=json.readValue(delivery.getPayloadSnapshot(),FoodStockSyncRequested.class);
-        outbox.publish(event,new PublishOptions("FOOD_STOCK_SYNC:"+event.storeNo(),1));
+        signal(event.entityNo(),event.storeNo());
     }
     private void enqueue(FoodStockSyncRequested event,String item,long version,boolean blocked) {
         var d=new FnbStockSyncDelivery();audit(d,event.entityNo(),event.storeNo());d.setSyncNo(event.syncNo());
@@ -76,7 +80,10 @@ public final class FoodStockSyncPublisher {
         d.setPayloadHash(event.payloadHash());d.setOperationKey(event.syncNo());d.setPayloadSnapshot(json.writeValueAsString(event));
         d.setStatus(blocked?"BLOCKED_MAPPING":"PENDING");d.setAttempts(0);deliveries.insert(d);
         if(blocked)return;
-        outbox.publish(event,new PublishOptions("FOOD_STOCK_SYNC:"+event.storeNo(),1));
+        signal(event.entityNo(),event.storeNo());
+    }
+    private void signal(String entity,String store) {
+        AfterCommit.run("food-stock-sync "+entity+"/"+store,()->delivery.accept(entity,store));
     }
     private static void audit(BaseEntity row,String entity,String store) {
         row.setTenantNo("MAIN");row.setVersion(0L);row.setDeleted(0);row.setCreatedAt(LocalDateTime.now());row.setUpdatedAt(row.getCreatedAt());row.setCreatedBy("SYSTEM");row.setUpdatedBy("SYSTEM");

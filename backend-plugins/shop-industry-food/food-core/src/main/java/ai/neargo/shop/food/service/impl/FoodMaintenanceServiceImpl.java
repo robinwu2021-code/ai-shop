@@ -34,6 +34,8 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
     public FoodMaintenanceServiceImpl withReturnStock(Supplier<ai.neargo.shop.food.service.FoodReturnStockService> source) {
         this.returnStock=source;return this;
     }
+    private Supplier<FoodStockSyncWorker> stockSync=()->null;
+    public FoodMaintenanceServiceImpl withStockSync(Supplier<FoodStockSyncWorker> source){stockSync=source;return this;}
     @Override
     public Report run(Task task, int limit) {
         if (task == null || limit < 1 || limit > 200) throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -46,7 +48,8 @@ public class FoodMaintenanceServiceImpl implements FoodMaintenanceService {
             case PRODUCTION_RECOVERY -> {
                 int count=require(production,task).recover(limit);var returns=returnStock.get();
                 if(returns!=null)count+=returns.recover(limit);
-                yield new Report(count,0);
+                var sync=stockSync.get();var report=sync==null?new Report(0,0):sync.recover(limit);
+                yield new Report(count+report.processed(),report.pending());
             }
             case RETURN_AMENDMENT_RECOVERY -> new Report(require(amendments, task).recover(limit), 0);
         };

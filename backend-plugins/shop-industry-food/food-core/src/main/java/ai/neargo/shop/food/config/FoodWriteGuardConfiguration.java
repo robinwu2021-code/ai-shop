@@ -1,6 +1,8 @@
 package ai.neargo.shop.food.config;
 
 import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.event.outbox.PublishReceipt;
+import ai.neargo.shop.spi.food.FoodOutboxRouting;
 import ai.neargo.shop.event.outbox.runtime.OutboxTransactions;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.idem.IdempotencyService;
@@ -47,6 +49,10 @@ public class FoodWriteGuardConfiguration {
         OutboxTransactions.register(manager);
         return (event, options) -> {
             UnifiedOutboxFacade facade = facades.getIfAvailable();
+            if (FoodOutboxRouting.ARCHIVE_ONLY.contains("PLATFORM:" + event.eventType())
+                    && (facade == null || !facade.hasDelivery("PLATFORM",event.eventType()))) {
+                return new PublishReceipt(null,false);
+            }
             if (facade == null || !facade.enabled("PLATFORM")) {
                 throw new IllegalStateException("Food requires a registered unified PLATFORM outbox source");
             }

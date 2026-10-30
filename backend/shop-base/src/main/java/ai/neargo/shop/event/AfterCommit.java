@@ -1,6 +1,9 @@
 package ai.neargo.shop.event;
 
 import java.util.ArrayDeque;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -38,11 +41,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <b>这不是把错误藏起来</b> —— 它换了一层兜底：从「让调用方重试」
  * 换成「让巡检发现并修复」，而后者恰好是拆分之后唯一可靠的那一层。
  *
- * <h2>这是通往 Outbox 的一步，不是替代它</h2>
- * 完整形态是把事件写进 {@code sys_outbox}（与业务同事务落库）再异步投递，
- * 那样进程在提交后、执行前崩溃也不会丢。这里的版本在那个窗口里会丢 ——
- * <b>而这正是资金巡检存在的理由</b>：它不看消息只看事实，
- * 丢了照样能发现并补上。
+ * Direct after-commit calls are the final design when an existing business intent and recovery
+ * task cover the commit-to-call crash gap. Outbox is reserved for reliable handoffs without that
+ * existing recovery; do not create a second queue just to wake a recoverable business task.
  */
 public final class AfterCommit {
 
@@ -117,6 +118,13 @@ public final class AfterCommit {
                 runSafely(label, action);
             }
         });
+    }
+
+    /** Fresh local transactions and remote calls must not join already committed source resources. */
+    public static void runOutsideTransaction(String label,PlatformTransactionManager manager,Runnable action) {
+        var outside=new TransactionTemplate(manager);
+        outside.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
+        run(label,()->outside.executeWithoutResult(tx->action.run()));
     }
 
     private static void runSafely(String label, Runnable action) {

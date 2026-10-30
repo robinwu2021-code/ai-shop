@@ -22,6 +22,9 @@ import ai.neargo.shop.food.service.impl.FoodStockManagementServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodStockReconciliationServiceImpl;
 import ai.neargo.shop.food.service.impl.FoodStockSyncDispatcher;
 import ai.neargo.shop.food.service.impl.FoodStockSyncPublisher;
+import ai.neargo.shop.food.service.impl.FoodStockSyncWorker;
+import ai.neargo.shop.food.channel.port.InventoryFoodStockProjectionPortImpl;
+import java.util.concurrent.ScheduledExecutorService;
 import ai.neargo.shop.food.service.impl.FoodStockSyncServiceImpl;
 import ai.neargo.shop.inventory.service.impl.FoodStockProjectionServiceImpl;
 import ai.neargo.shop.spi.food.FoodStockSyncRequested;
@@ -83,10 +86,10 @@ import tools.jackson.databind.json.JsonMapper;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-/** Real FOOD transactions, durable unified outbox, shop adapter and inventory HTTP on two UUID MySQL9 schemas. */
-@EnabledIfEnvironmentVariable(named="FOOD_INVENTORY_OUTBOX_NATIVE",matches="true")
+/** Real FOOD transactions and original business delivery records call the independent inventory JVM; no source outbox. */
+@EnabledIfEnvironmentVariable(named="FOOD_INVENTORY_DIRECT_NATIVE",matches="true")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class FoodInventoryOutboxNativeMysqlTest {
+class FoodInventoryDirectSyncNativeMysqlTest {
     private final String adminUrl=System.getenv("INVENTORY_PROJECTION_TEST_URL");
     private final String user=System.getenv("INVENTORY_PROJECTION_TEST_USER");
     private final String password=System.getenv("INVENTORY_PROJECTION_TEST_PASSWORD");
@@ -97,6 +100,7 @@ class FoodInventoryOutboxNativeMysqlTest {
     private final ObjectMapper json=JsonMapper.builder().build();
     private final AtomicReference<String> target=new AtomicReference<>();
     private final AtomicBoolean unavailable=new AtomicBoolean(),loseNextApply=new AtomicBoolean();
+    private final AtomicReference<String> unavailableStore=new AtomicReference<>();
     private final AtomicReference<String> lostEvent=new AtomicReference<>();
     private final AtomicReference<String> baselineActivation=new AtomicReference<>();
     private final AtomicBoolean holdBaselineResume=new AtomicBoolean(true);
@@ -112,10 +116,12 @@ class FoodInventoryOutboxNativeMysqlTest {
     private FoodStockProjectionServiceImpl receiver;
     private JdbcTemplate sourceDb;
     private FoodStockManagementServiceImpl stock;
+    private FoodStockSyncPublisher captured;
     private FoodStockSyncServiceImpl sync;
     private FoodStockReconciliationServiceImpl reconcile;
     private UnifiedOutboxFacade facade;
-    private OutboxRunner runner;
+    private FoodStockSyncWorker worker;
+    private ScheduledExecutorService deliveryLoop;
     private String owner;
     private record Item(String number,BigDecimal initial){}
 
@@ -125,6 +131,7 @@ class FoodInventoryOutboxNativeMysqlTest {
         @Bean AuditMetaObjectHandler audit(){return new AuditMetaObjectHandler();}
     }
     @BeforeAll void setup() throws Exception {
+        assertThat(adminUrl).startsWith("jdbc:mysql://127.0.0.1:3308/information_schema");
         try(var c=DriverManager.getConnection(adminUrl,user,password);var sql=c.createStatement()) {
             try(var rs=sql.executeQuery("SELECT VERSION()")){rs.next();assertThat(rs.getString(1)).startsWith("9.");}
             for(String name:List.of(foodDb,inventoryDb)) {
@@ -187,7 +194,8 @@ class FoodInventoryOutboxNativeMysqlTest {
                 // Hold subsequent ACTIVATE receipt lookup after page one; source mutations cannot miss BOOTSTRAPPING.
                 boolean baselineHeld=holdBaselineResume.get()&&baselineActivation.get()!=null&&path.endsWith("/receipt")
                         &&baselineActivation.get().equals(json.readTree(body).path("eventNo").asString());
-                if(!unavailable.get()&&!baselineHeld) {
+                boolean storeBlocked=!path.endsWith("/query")&&body.length>0&&json.readTree(body).path("scope").path("storeNo").asString("").equals(unavailableStore.get());
+                if(!unavailable.get()&&!baselineHeld&&!storeBlocked) {
                     var request=HttpRequest.newBuilder(URI.create(target.get()+exchange.getRequestURI())).timeout(Duration.ofSeconds(3));
                     for(String h:List.of("Authorization","X-Inventory-Owner-Ref","X-Inventory-Actor","Idempotency-Key","Content-Type")) {
                         String value=exchange.getRequestHeaders().getFirst(h);if(value!=null)request.header(h,value);
@@ -221,14 +229,14 @@ class FoodInventoryOutboxNativeMysqlTest {
         sourceDb=new JdbcTemplate(ds);
         var clients=new DefaultListableBeanFactory();clients.registerSingleton("client",client);
         receiver=new FoodStockProjectionServiceImpl(clients.getBeanProvider(InventoryReservationClient.class),json);
-        var ports=new DefaultListableBeanFactory();ports.registerSingleton("receiver",receiver);
+        var ports=new DefaultListableBeanFactory();ports.registerSingleton("receiver",new InventoryFoodStockProjectionPortImpl(()->client,json));
         var provider=ports.getBeanProvider(InventoryFoodStockProjectionPort.class);
         facade=new UnifiedOutboxFacade(json);
         var durable=new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM,ds,manager,json);
         var publisher=new PlatformOutboxPublisher(()->facade,manager);
-        var captured=new FoodStockSyncPublisher(mapper(StockSyncConfigMapper.class),mapper(StockSyncItemStateMapper.class),
+        captured=spy(new FoodStockSyncPublisher(mapper(StockSyncConfigMapper.class),mapper(StockSyncItemStateMapper.class),
                 mapper(StockSyncMappingMapper.class),mapper(StockSyncDeliveryMapper.class),mapper(StockItemMapper.class),
-                mapper(StockBalanceMapper.class),publisher,json);
+                mapper(StockBalanceMapper.class),json));
         stock=new FoodStockManagementServiceImpl(mapper(StockItemMapper.class),mapper(StockBalanceMapper.class),mapper(StockCommandMapper.class),
                 mapper(StockMovementMapper.class),mapper(StockReservationItemMapper.class),mock(GoodsCatalogQueryPort.class),json,manager,captured);
         sync=new FoodStockSyncServiceImpl(mapper(StockSyncConfigMapper.class),mapper(StockSyncMappingMapper.class),mapper(StockSyncDeliveryMapper.class),
@@ -238,11 +246,16 @@ class FoodInventoryOutboxNativeMysqlTest {
                 mapper(StockCommandMapper.class),captured,provider,json,manager);
         var dispatcher=new FoodStockSyncDispatcher(mapper(StockSyncConfigMapper.class),mapper(StockSyncDeliveryMapper.class),mapper(StockItemMapper.class),
                 mapper(StockBalanceMapper.class),captured,provider,json,manager,reconcile);
-        facade.register(durable,List.of(dispatcher));
-        var settings=new OutboxProperties();settings.setConcurrency(2);settings.setRecoveryInterval(Duration.ofMillis(100));
-        settings.getRetry().setInitialDelay(Duration.ofSeconds(1));settings.getRetry().setMaxDelay(Duration.ofSeconds(2));settings.getRetry().setMaxAttempts(100);
-        facade.setRetryPolicy(settings.retryPolicy());runner=new OutboxRunner(facade,Clock.systemUTC(),settings);
-        if(run)runner.start();
+        worker=new FoodStockSyncWorker(mapper(StockSyncDeliveryMapper.class),dispatcher,json,manager);
+        captured.delivery(worker::deliver);
+        if(run)startDelivery();
+    }
+    private void startDelivery(){
+        deliveryLoop=Executors.newScheduledThreadPool(2);
+        for(int n=0;n<2;n++)deliveryLoop.scheduleWithFixedDelay(()->worker.recover(100),0,100,TimeUnit.MILLISECONDS);
+    }
+    private void stopDelivery() throws InterruptedException {
+        if(deliveryLoop!=null){deliveryLoop.shutdown();assertThat(deliveryLoop.awaitTermination(10,TimeUnit.SECONDS)).isTrue();}
     }
     private Item item(String name,int quantity) {
         var i=stock.createItem(entity,store,"IT",new FoodStockContracts.CreateItem("MATERIAL",null,name,"KG","TRACKED"),"item-"+name);
@@ -265,14 +278,14 @@ class FoodInventoryOutboxNativeMysqlTest {
     private boolean settled(){return backlog()==0&&sourceDb.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery WHERE status NOT IN ('SENT','WARNING')",Long.class)==0;}
     private BigDecimal mirror(Item item){return receiver.queryProjection(new InventoryFoodStockProjectionPort.Scope(entity,store),List.of(item.number())).getFirst().onHand();}
 
-    @Test void realSourceOutboxAndMicroserviceConvergeAcrossBaselineFaultsAndRestart() throws Exception {
+    @Test void realBusinessJournalAndMicroserviceConvergeAcrossBaselineFaultsAndRestart() throws Exception {
         unavailable.set(true);
         var first=item("FIRST",10);
         for(int n=1;n<101;n++)item("BASE"+n,20);
         assertThat(sync.config(entity,store).status()).isEqualTo("OFF");
         assertThat(requests.get()).isZero();assertThat(sourceDb.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isZero();
         unavailable.set(false);assertThat(sync.preflight(entity,store).allowed()).isTrue();
-        configure(true,"enable-1");runner.start();
+        configure(true,"enable-1");startDelivery();
         await("first baseline page",()->sourceDb.queryForObject("SELECT baseline_cursor>0 AND status='BOOTSTRAPPING' FROM fnb_stock_sync_config",Boolean.class));
         adjust(first,3,"during-baseline");var added=item("AFTER-BOUNDARY",7);
         assertThat(sync.config(entity,store).status()).isEqualTo("BOOTSTRAPPING");
@@ -280,6 +293,15 @@ class FoodInventoryOutboxNativeMysqlTest {
         await("baseline and source deltas delivered",()->"ACTIVE".equals(sync.config(entity,store).status())&&settled());
         assertThat(mirror(first)).isEqualByComparingTo("13");assertThat(mirror(added)).isEqualByComparingTo("7");
         assertThat(receiver.list(new InventoryFoodStockProjectionPort.Scope(entity,store),1,100).total()).isEqualTo(102);
+        long originals=sourceDb.queryForObject("SELECT COUNT(*) FROM fnb_stock_sync_delivery",Long.class);
+        int calls=requests.get();
+        doAnswer(call->{call.callRealMethod();throw new IllegalStateException("rollback");}).when(captured).capture(entity,store,first.number());
+        try {assertThatThrownBy(()->adjust(first,5,"rollback")).hasMessage("rollback");}
+        finally {doCallRealMethod().when(captured).capture(entity,store,first.number());}
+        assertThat(stock.getBalance(entity,store,first.number()).onHand()).isEqualByComparingTo("13");
+        assertThat(sourceDb.queryForObject("SELECT COUNT(*) FROM fnb_stock_sync_delivery",Long.class)).isEqualTo(originals);
+        assertThat(requests.get()).isEqualTo(calls);
+
 
         loseNextApply.set(true);adjust(first,2,"lost-response");
         await("commit happened and proxy discarded response",()->lostEvent.get()!=null);
@@ -290,14 +312,21 @@ class FoodInventoryOutboxNativeMysqlTest {
         var inv=new JdbcTemplate(new DriverManagerDataSource(url(inventoryDb),user,password));
         assertThat(inv.queryForObject("SELECT COUNT(*) FROM inv_food_stock_sync_receipt WHERE event_no=?",Long.class,lost)).isEqualTo(1);
 
-        unavailable.set(true);adjust(first,1,"outage");
+        stopDelivery();unavailable.set(true);adjust(first,1,"outage");
         assertThat(stock.getBalance(entity,store,first.number()).onHand()).isEqualByComparingTo("16");
         await("unavailable is a durable retry",()->sourceDb.queryForObject("SELECT COUNT(*) FROM fnb_stock_sync_delivery WHERE status='RETRYABLE'",Long.class)>0);
+        String retryNo=sourceDb.queryForObject("SELECT sync_no FROM fnb_stock_sync_delivery WHERE status='RETRYABLE' ORDER BY id DESC LIMIT 1",String.class);
         stopInventory();startInventory();unavailable.set(false);
-        await("receiver restart and retry",this::settled);assertThat(mirror(first)).isEqualByComparingTo("16");
+        sync.retry(entity,store,retryNo,"IT","manual-retry");
+        await("receiver restart and direct manual retry",this::settled);assertThat(mirror(first)).isEqualByComparingTo("16");
+        startDelivery();
 
-        runner.close();runner.awaitIdle(Duration.ofSeconds(5));adjust(first,1,"source-restart");
-        assertThat(backlog()).isGreaterThan(0);food.close();startFood(true);
+        stopDelivery();
+        // Persist an original intent while the business worker is unavailable, then rebuild its runtime.
+        unavailable.set(true);adjust(first,1,"source-restart");unavailable.set(false);
+        assertThat(backlog()).isGreaterThan(0);
+        sourceDb.update("UPDATE fnb_stock_sync_delivery SET status='PROCESSING',next_attempt_at=? WHERE status='RETRYABLE'",java.time.LocalDateTime.now().minusSeconds(1));
+        food.close();startFood(true);
         await("source runtime restart recovers SQL queue",this::settled);assertThat(mirror(first)).isEqualByComparingTo("17");
         var task=reconcile.create(entity,store,"IT",List.of(),"reconcile");
         await("paginated reconciliation",()->"COMPLETED".equals(reconcile.get(entity,store,task.reconciliationNo(),1,20).status())&&settled());
@@ -318,11 +347,23 @@ class FoodInventoryOutboxNativeMysqlTest {
         assertThatThrownBy(()->receiver.apply(new InventoryFoodStockProjectionPort.Scope(entity,store),1,"LATE-NEW-EVENT",original.payloadHash(),original.snapshot()))
                 .isInstanceOfSatisfying(BizException.class,e->assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
         inv=new JdbcTemplate(new DriverManagerDataSource(url(inventoryDb),user,password));
+        unavailableStore.set(store);adjust(first,1,"one-store-outage");
+        String otherStore="B"+suffix.substring(0,16);
+        inv.update("INSERT INTO inv_location(owner_id,location_id,name,kind,external_ref,status,is_default) VALUES (?,?,?,'WAREHOUSE',?,'ACTIVE',0)",owner,"LB"+suffix.substring(0,19),"Other store",otherStore);
+        stock.initialize(entity,otherStore,"IT",new FoodStockContracts.Initialize(first.number(),"TRACKED","ACTIVE",BigDecimal.valueOf(4),"INITIAL","Other store count"),"other-init");
+        var other=sync.config(entity,otherStore);
+        sync.configure(entity,otherStore,"IT",new ConfigCommand(true,other.version(),"IT"),"other-enable");
+        await("one failed store does not block another",()->"ACTIVE".equals(sync.config(entity,otherStore).status()));
+        assertThat(receiver.queryProjection(new InventoryFoodStockProjectionPort.Scope(entity,otherStore),List.of(first.number())).getFirst().onHand()).isEqualByComparingTo("4");
+        assertThat(mirror(first)).isEqualByComparingTo("20");assertThat(backlog()).isGreaterThan(0);
+        unavailableStore.set(null);await("failed store recovery",this::settled);
+        assertThat(mirror(first)).isEqualByComparingTo("21");
+        assertThat(sourceDb.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isZero();
         assertThat(inv.queryForObject("SELECT COUNT(*) FROM inv_stock_balance WHERE owner_id=?",Long.class,owner)).isZero();
         assertThat(inv.queryForObject("SELECT COUNT(*) FROM inv_ledger WHERE owner_id=?",Long.class,owner)).isZero();
     }
     @AfterAll void cleanup() throws Exception {
-        if(runner!=null)runner.close();if(food!=null)food.close();stopInventory();
+        stopDelivery();if(food!=null)food.close();stopInventory();
         if(proxy!=null)proxy.stop(0);proxyThreads.shutdownNow();
         try(var c=DriverManager.getConnection(adminUrl,user,password);var sql=c.createStatement()) {
             for(String database:created)sql.execute("DROP DATABASE `"+database+"`");

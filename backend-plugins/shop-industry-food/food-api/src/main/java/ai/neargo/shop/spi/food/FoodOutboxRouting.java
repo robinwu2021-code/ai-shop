@@ -15,7 +15,6 @@ public final class FoodOutboxRouting {
     public static final String PRODUCTION_HANDLER = "food-production-consumption-v1";
     public static final Map<String, Map<String, Boolean>> DELIVERY_TARGETS =
             Map.of(
-                    "FOOD_STOCK_SYNC_REQUESTED", Map.of(STOCK_SYNC_HANDLER, true),
                     "DINING_ORDER_ACCEPTED",
                             Map.of(
                                     KITCHEN_ACCEPTED_HANDLER,

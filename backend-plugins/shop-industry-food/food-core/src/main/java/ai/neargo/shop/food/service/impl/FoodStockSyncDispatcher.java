@@ -45,6 +45,10 @@ public final class FoodStockSyncDispatcher implements OutboxHandler,OutboxRouteC
         if(!"PLATFORM".equals(envelope.sourceSystem())||envelope.schemaVersion()!=1||!supports(envelope.eventType()))throw new IllegalArgumentException("Invalid stock sync envelope");
         var event=json.readValue(envelope.payload(),FoodStockSyncRequested.class);
         if(!"FOOD_STOCK_SYNC".equals(envelope.aggregateType())||!event.syncNo().equals(envelope.aggregateId()))throw new IllegalArgumentException("Invalid stock sync aggregate");
+        return dispatch(event);
+    }
+    /** Original business intent; new delivery does not construct or persist a transport envelope. */
+    public DeliveryResult dispatch(FoodStockSyncRequested event) {
         boolean eligible=Boolean.TRUE.equals(write.execute(tx->{var d=delivery(event);if(d==null||!d.getPayloadSnapshot().equals(json.writeValueAsString(event)))throw new IllegalArgumentException("Missing original sync intent");
             if("COMPLETED".equals(d.getStatus())||"CANCELLED".equals(d.getStatus()))return false;
             var c=config(event,false);if(c==null||c.getGeneration()!=event.generation()||("OFF".equals(c.getStatus())||"DISABLING".equals(c.getStatus()))&&!"DEACTIVATE".equals(event.action())){

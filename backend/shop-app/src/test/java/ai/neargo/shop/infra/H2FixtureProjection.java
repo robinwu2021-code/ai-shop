@@ -286,7 +286,8 @@ public final class H2FixtureProjection {
             commonTables.forEach((name, table) -> {
                 Map<String, String> expected = new TreeMap<>();
                 for (JsonNode c : table.path("columns")) {
-                    String value = column(c).replaceAll(" NULL(?= DEFAULT|$)", "");
+                    String value = column(c).replaceAll(" NULL(?= DEFAULT|$)", "")
+                            .replaceAll("(?i) CHARACTER SET utf8mb4(?: COLLATE utf8mb4_bin)?", "");
                     // Native implicit NULL and explicit NULL have the same fixture meaning.
                     expected.put(text(c, "name"), SchemaDdl.normalized(value));
                 }

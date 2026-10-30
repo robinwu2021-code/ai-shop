@@ -14,6 +14,7 @@ import ai.neargo.shop.food.service.FoodMaintenanceService.Task;
 import ai.neargo.shop.food.service.ProductionConsumptionService;
 import ai.neargo.shop.food.service.ScheduledDiningDispatchService;
 import ai.neargo.shop.food.service.impl.FoodMaintenanceServiceImpl;
+import ai.neargo.shop.food.service.impl.FoodStockSyncWorker;
 import ai.neargo.shop.food.service.impl.QueueNotificationServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -45,6 +46,12 @@ class FoodMaintenanceServiceImplTest {
         verify(amendments).recover(50);
     }
 
+    @Test void existingProductionTaskAlsoRecoversOptionalStockDelivery() {
+        var stock=mock(FoodStockSyncWorker.class);
+        when(production.recover(20)).thenReturn(2);when(stock.recover(20)).thenReturn(new Report(3,1));
+        assertThat(service.withStockSync(()->stock).run(Task.PRODUCTION_RECOVERY,20)).isEqualTo(new Report(5,1));
+        verify(stock).recover(20);
+    }
     @Test
     void missingOwnerFailsOnlyThatTaskAndLimitsAreBounded() {
         var partial = new FoodMaintenanceServiceImpl(() -> dispatch, () -> null, () -> production, () -> amendments);

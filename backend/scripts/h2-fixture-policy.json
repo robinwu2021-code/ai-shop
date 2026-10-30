@@ -51,7 +51,7 @@
       "migration": "backend/inventory/inventory-domain/src/main/resources/db/inventory/V17__execution_stock_retention.sql",
       "sourceSha256": "3725630fc006ad0b15afa55c44054522e16c84cdfba629108e1affb59ecb7ab0",
       "descriptor": "backend/inventory/inventory-domain/src/main/resources/META-INF/shop/inventory-execution-retention-schema.json",
-      "descriptorSha256": "a3b6ec424b6d8360fc5027902e485f25e3897b43a6f0e673e041208a1ad0dac8",
+      "descriptorSha256": "48e5920bfb3989a8df8c7c960db6b011abd0fff6a762e6e968a67f12e7e1d7c1",
       "datasource": "INVENTORY",
       "mode": "NATIVE_OWNER_ABSENT",
       "capability": "inventory-execution-stock-retention",
@@ -77,10 +77,10 @@
       "retainedStatementHashes": []
     },
     {
-      "migration": "backend/shop-app/src/main/resources/db/migration/V607__resource_actual_occupation.sql",
+      "migration": "backend/shop-app/src/main/resources/db/migration/V621__resource_actual_occupation.sql",
       "sourceSha256": "42e51c9ec7bf33cbfdf07e34936b944e62bb223efe893d0c896aa7ff234b8c9d",
       "descriptor": "backend/shop-merchant/src/main/resources/META-INF/shop/resource-actual-occupation-schema.json",
-      "descriptorSha256": "dfc64b4595db561e4ba0e5b4b72f633b9e07d7d4ad3d0d284fe5bd731bdb35d1",
+      "descriptorSha256": "42be14dbf98e39bf379a1c0516a2807591aaa4c37cde3d377fe79f41e15cf5b9",
       "datasource": "PRIMARY",
       "mode": "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS",
       "capability": "resource-actual-occupation",

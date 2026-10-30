@@ -22,14 +22,21 @@ import ai.neargo.shop.printing.center.template.*;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import org.springframework.stereotype.Service;
+import ai.neargo.shop.event.AfterCommit;
+import ai.neargo.shop.printing.center.simulation.SimulationRunner;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.*;
 import java.util.*;
 
 @Service
 public class DefaultPrintSimulationFacade implements PrintSimulationFacade {
-    @org.springframework.beans.factory.annotation.Autowired
-    private ai.neargo.shop.event.OutboxEventBus artifactEvents;
+
+    @Autowired private ObjectProvider<SimulationRunner> artifactWorker;
+    @Autowired @Qualifier("transactionManager") private PlatformTransactionManager transactionManager;
 
     private final PrintExportFacade exports;
     private final PrnSimulationRunMapper simulations;
@@ -192,7 +199,9 @@ public class DefaultPrintSimulationFacade implements PrintSimulationFacade {
                     row.setNextRunAt(now());
                     row.setCreatedBy(a.actorNo());
                     simulations.insert(row);
-                    artifactEvents.publish(new PrintSimulationRequested(scope(a), no));
+                    AfterCommit.runOutsideTransaction("print-artifact "+no,transactionManager,
+                            ()->artifactWorker.getObject().runNext(new PrintWorkerBudget(1,Duration.ofSeconds(5),"print-direct")));
+
                     var exportNos = new ArrayList<String>();
                     if (c.outputOptions() != null && c.outputOptions().pdfEnabled()) {
                         var exported =

@@ -180,6 +180,8 @@ def _h2_type(col: str) -> str:
         r"\1TEXT", col, flags=re.I)
     replacements = []
     mask = _sql_code_mask(col)
+    for match in re.finditer(r"\bCHARACTER\s+SET\s+utf8mb4(?:\s+COLLATE\s+utf8mb4_bin)?\b", mask, re.I):
+        replacements.append((match.start(), match.end(), ""))
     simple = r"([A-Za-z_]\w*)"
     for match in re.finditer(r"\bJSON_VALID\(\s*" + simple + r"\s*\)", mask, re.I):
         replacements.append((match.start(), match.end(), f"({match.group(1)} IS JSON)"))
@@ -426,7 +428,9 @@ def main():
     # 头部说清这份是从哪几个目录重放的：进销存那份只有它自己的 db/inventory，不能写成「再接 db/pay」
     out = [HEADER.replace("{source}", "db/migration/V*.sql、再接 " + "、".join(
         d.relative_to(ROOT).as_posix().split("resources/")[-1] + "/V*.sql" for d in extras) if extras
-                          else src_dir.relative_to(ROOT).as_posix().split("resources/")[-1] + "/V*.sql")]
+                          else src_dir.as_posix().split("resources/")[-1] + "/V*.sql")]
+    if src_dir == MIGRATION_DIR:
+        out.append('CREATE ALIAS IF NOT EXISTS SHA2 FOR "ai.neargo.shop.support.H2HashFunctions.sha2";\n\n')
     for policy in policies.values():
         entry = policy.entry
         if entry["mode"] == "NATIVE_OWNER_ABSENT_WITH_COMMON_ALTERS":

@@ -11,6 +11,21 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 
+import ai.neargo.shop.food.port.FoodStockReportFactsPortAdapter;
+import ai.neargo.shop.food.service.FoodReturnStockService;
+import ai.neargo.shop.food.service.FoodStockSyncService;
+import ai.neargo.shop.food.service.impl.FoodReturnStockServiceImpl;
+import ai.neargo.shop.food.service.impl.FoodStockReconciliationServiceImpl;
+import ai.neargo.shop.food.service.impl.FoodStockReservationServiceImpl;
+import ai.neargo.shop.food.service.impl.FoodStockSyncDispatcher;
+import ai.neargo.shop.food.service.impl.FoodStockSyncPublisher;
+import ai.neargo.shop.food.service.impl.FoodStockSyncServiceImpl;
+import ai.neargo.shop.food.service.impl.FoodStockSyncWorker;
+import ai.neargo.shop.spi.food.FoodLocalStockPort;
+import ai.neargo.shop.spi.food.FoodStockReportFactsPort;
+import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 /** Opt-in only until full owner routing and deployment verification are complete. */
 @AutoConfiguration(after=FoodAutoConfiguration.class)
 @ConditionalOnFoodEnabled
@@ -18,61 +33,68 @@ import tools.jackson.databind.ObjectMapper;
 @ConditionalOnProperty(name="shop.food.local-stock.enabled",havingValue="true")
 public class FoodStockAutoConfiguration {
     @Bean @ConditionalOnProperty(name="shop.food.local-stock.report-source-zone")
-    ai.neargo.shop.spi.food.FoodStockReportFactsPort foodStockReportFactsPort(StockBalanceMapper balances,StockItemMapper items,
+    FoodStockReportFactsPort foodStockReportFactsPort(StockBalanceMapper balances,StockItemMapper items,
             StockMovementMapper movements,StockCommandMapper commands,ObjectMapper json,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
-            @org.springframework.beans.factory.annotation.Value("${shop.food.local-stock.report-source-zone}")String zone) {
-        return new ai.neargo.shop.food.port.FoodStockReportFactsPortAdapter(balances,items,movements,commands,json,manager,zone);
+            @Value("${shop.food.local-stock.report-source-zone}")String zone) {
+        return new FoodStockReportFactsPortAdapter(balances,items,movements,commands,json,manager,zone);
     }
-    @Bean ai.neargo.shop.food.service.FoodReturnStockService foodReturnStockService(ReturnStockDispositionMapper claims,
+    @Bean FoodReturnStockService foodReturnStockService(ReturnStockDispositionMapper claims,
             ReturnMapper returns,ReturnItemMapper returnItems,ProductionConsumptionMapper production,ServiceEventMapper events,
             KitchenTaskMapper tasks,OrderBatchMapper batches,OrderLineMapper lines,StockCommandMapper commands,
-            StockReservationMapper reservations,StockMovementMapper movements,ai.neargo.shop.spi.food.FoodLocalStockPort stock,
+            StockReservationMapper reservations,StockMovementMapper movements,FoodLocalStockPort stock,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new ai.neargo.shop.food.service.impl.FoodReturnStockServiceImpl(claims,returns,returnItems,production,events,tasks,
+        return new FoodReturnStockServiceImpl(claims,returns,returnItems,production,events,tasks,
                 batches,lines,commands,reservations,movements,stock,json,manager);
     }
-    @Bean ai.neargo.shop.food.service.impl.FoodStockReconciliationServiceImpl foodStockReconciliationService(
+    @Bean FoodStockReconciliationServiceImpl foodStockReconciliationService(
             StockSyncReconciliationMapper tasks,StockSyncDifferenceMapper differences,StockSyncConfigMapper configs,
             StockSyncItemStateMapper states,StockBalanceMapper balances,StockItemMapper items,StockCommandMapper commands,
-            ai.neargo.shop.food.service.impl.FoodStockSyncPublisher publisher,
-            org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort> receivers,
+            FoodStockSyncPublisher publisher,
+            ObjectProvider<InventoryFoodStockProjectionPort> receivers,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new ai.neargo.shop.food.service.impl.FoodStockReconciliationServiceImpl(tasks,differences,configs,states,balances,items,commands,publisher,receivers,json,manager);
+        return new FoodStockReconciliationServiceImpl(tasks,differences,configs,states,balances,items,commands,publisher,receivers,json,manager);
     }
-    @Bean ai.neargo.shop.food.service.FoodStockSyncService foodStockSyncService(
+    @Bean FoodStockSyncService foodStockSyncService(
             StockSyncConfigMapper configs,StockSyncMappingMapper mappings,StockSyncDeliveryMapper deliveries,
             StockItemMapper items,StockBalanceMapper balances,StockCommandMapper commands,ActionLogMapper logs,
-            ai.neargo.shop.food.service.impl.FoodStockSyncPublisher publisher,
-            org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort> receivers,
+            FoodStockSyncPublisher publisher,
+            ObjectProvider<InventoryFoodStockProjectionPort> receivers,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new ai.neargo.shop.food.service.impl.FoodStockSyncServiceImpl(configs,mappings,deliveries,items,balances,commands,logs,publisher,receivers,json,manager);
+        return new FoodStockSyncServiceImpl(configs,mappings,deliveries,items,balances,commands,logs,publisher,receivers,json,manager);
     }
-    @Bean ai.neargo.shop.food.service.impl.FoodStockSyncDispatcher foodStockSyncDispatcher(
+    @Bean FoodStockSyncDispatcher foodStockSyncDispatcher(
             StockSyncConfigMapper configs,StockSyncDeliveryMapper deliveries,StockItemMapper items,
-            StockBalanceMapper balances,ai.neargo.shop.food.service.impl.FoodStockSyncPublisher publisher,
-            org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort> receivers,
+            StockBalanceMapper balances,FoodStockSyncPublisher publisher,
+            ObjectProvider<InventoryFoodStockProjectionPort> receivers,
             ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager,
-            ai.neargo.shop.food.service.impl.FoodStockReconciliationServiceImpl reconciliation) {
-        return new ai.neargo.shop.food.service.impl.FoodStockSyncDispatcher(configs,deliveries,items,balances,publisher,receivers,json,manager,reconciliation);
+            FoodStockReconciliationServiceImpl reconciliation) {
+        return new FoodStockSyncDispatcher(configs,deliveries,items,balances,publisher,receivers,json,manager,reconciliation);
     }
-    @Bean ai.neargo.shop.food.service.impl.FoodStockSyncPublisher foodStockSyncPublisher(
+    @Bean FoodStockSyncPublisher foodStockSyncPublisher(
             StockSyncConfigMapper configs,StockSyncItemStateMapper states,StockSyncMappingMapper mappings,
             StockSyncDeliveryMapper deliveries,StockItemMapper items,StockBalanceMapper balances,
-            @Qualifier("foodOutboxPublisher") ai.neargo.shop.event.outbox.OutboxPublisher outbox,ObjectMapper json) {
-        return new ai.neargo.shop.food.service.impl.FoodStockSyncPublisher(configs,states,mappings,deliveries,items,balances,outbox,json);
+            ObjectMapper json,ObjectProvider<FoodStockSyncWorker> workers) {
+        var publisher=new FoodStockSyncPublisher(configs,states,mappings,deliveries,items,balances,json);
+        publisher.delivery((entity,store)->workers.getObject().deliver(entity,store));
+        return publisher;
     }
-    @Bean ai.neargo.shop.spi.food.FoodLocalStockPort foodLocalStockPort(StockItemMapper items,
+    @Bean FoodStockSyncWorker foodStockSyncWorker(
+            StockSyncDeliveryMapper deliveries,FoodStockSyncDispatcher dispatcher,
+            ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager){
+        return new FoodStockSyncWorker(deliveries,dispatcher,json,manager);
+    }
+    @Bean FoodLocalStockPort foodLocalStockPort(StockItemMapper items,
             StockBalanceMapper balances,StockReservationMapper heads,StockReservationItemMapper leaves,
             StockCommandMapper commands,StockMovementMapper movements,ObjectMapper json,
-            ai.neargo.shop.food.service.impl.FoodStockSyncPublisher sync,
+            FoodStockSyncPublisher sync,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new ai.neargo.shop.food.service.impl.FoodStockReservationServiceImpl(items,balances,heads,leaves,commands,movements,json,manager,sync);
+        return new FoodStockReservationServiceImpl(items,balances,heads,leaves,commands,movements,json,manager,sync);
     }
     @Bean FoodStockManagementServiceImpl foodStockManagementService(StockItemMapper items,
             StockBalanceMapper balances,StockCommandMapper commands,StockMovementMapper movements,
             StockReservationItemMapper leaves,GoodsCatalogQueryPort catalog,ObjectMapper json,
-            ai.neargo.shop.food.service.impl.FoodStockSyncPublisher sync,
+            FoodStockSyncPublisher sync,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new FoodStockManagementServiceImpl(items,balances,commands,movements,leaves,catalog,json,manager,sync);
     }

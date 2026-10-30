@@ -10,6 +10,13 @@ import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi;
 import ai.neargo.shop.food.channel.port.CoreInventoryDemandPlanPortImpl;
 import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.inventory.client.InventoryReservationClient;
+import ai.neargo.shop.food.channel.port.InventoryFoodStockProjectionPortImpl;
+import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.env.Environment;
+import java.util.Optional;
+import tools.jackson.databind.ObjectMapper;
 import ai.neargo.shop.svc.ServiceName;
 import java.time.Duration;
 import org.springframework.beans.factory.ObjectProvider;
@@ -30,14 +37,19 @@ public class FoodInventoryClientConfiguration {
             ObjectProvider<ai.neargo.shop.spi.food.FoodProductionStockInternalApi> api) {
         return new ai.neargo.shop.food.channel.port.CoreFoodProductionStockPortImpl(api::getObject);
     }
-    @Bean @Lazy
-    ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionInternalApi inventoryFoodStockProjectionInternalApi(InternalHttp http) {
-        return http.client(ServiceName.PLATFORM,ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionInternalApi.class,Duration.ofSeconds(5));
+    @Bean @ConditionalOnMissingBean(InventoryReservationClient.class)
+    @ConditionalOnProperty(prefix="shop.inventory.service",name="base-url")
+    InventoryReservationClient foodInventoryClient(Environment env){
+        return InventoryReservationClient.create(()->Optional.ofNullable(env.getProperty("shop.inventory.service.base-url")),
+                env.getProperty("shop.inventory.service.app-key"),env.getProperty("shop.inventory.service.app-secret"),
+                Duration.ofMillis(env.getProperty("shop.inventory.service.connect-timeout-ms",Long.class,500L)),
+                Duration.ofMillis(env.getProperty("shop.inventory.service.read-timeout-ms",Long.class,2000L)),
+                env.getProperty("shop.inventory.service.breaker-threshold",Integer.class,5),
+                Duration.ofSeconds(env.getProperty("shop.inventory.service.breaker-open-seconds",Long.class,10L)));
     }
-    @Bean @ConditionalOnMissingBean(ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort.class)
-    ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort coreFoodStockProjectionPort(
-            ObjectProvider<ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionInternalApi> api) {
-        return new ai.neargo.shop.food.channel.port.CoreFoodStockProjectionPortImpl(api::getObject);
+    @Bean @ConditionalOnMissingBean(InventoryFoodStockProjectionPort.class)
+    InventoryFoodStockProjectionPort foodInventoryProjectionPort(ObjectProvider<InventoryReservationClient> clients,ObjectMapper json){
+        return new InventoryFoodStockProjectionPortImpl(clients::getIfAvailable,json);
     }
     @Bean @Lazy
     InventoryDemandPlanInternalApi inventoryDemandPlanInternalApi(InternalHttp http) {

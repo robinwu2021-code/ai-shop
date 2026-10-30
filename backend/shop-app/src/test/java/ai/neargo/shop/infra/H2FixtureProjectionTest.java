@@ -30,10 +30,10 @@ class H2FixtureProjectionTest {
         nativeSchema.putAll(SchemaDdl.createColumns(Files.readString(source.resolve(
                 "V606__execution_retention_route.sql"))));
         nativeSchema.putAll(SchemaDdl.createColumns(Files.readString(source.resolve(
-                "V607__resource_actual_occupation.sql"))));
+                "V621__resource_actual_occupation.sql"))));
         nativeSchema.putAll(SchemaDdl.createColumns(Files.readString(source.resolve(
                 "V595__shared_resource_booking_foundation.sql"))));
-        SchemaDdl.applyCommonAlters(nativeSchema, Files.readString(source.resolve("V607__resource_actual_occupation.sql")));
+        SchemaDdl.applyCommonAlters(nativeSchema, Files.readString(source.resolve("V621__resource_actual_occupation.sql")));
         var corrupt = new LinkedHashMap<>(nativeSchema);
         corrupt.put("ord_service_execution", java.util.Set.of("id"));
         assertThatThrownBy(() -> policy.applyTo(corrupt)).isInstanceOf(IllegalStateException.class);

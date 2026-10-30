@@ -38,17 +38,8 @@ class FoodServerProducerOutboxTest {
                 .withPropertyValues("shop.food.enabled=true","shop.food.deployment=standalone",
                         "shop.outbox.sources.platform.mode=unified","shop.outbox.enabled=false");
     }
-    @Test void standaloneStockIntentTargetsTheOriginalPlatformHandlerWithoutLocalRunner() {
-        runner().run(context -> {
-            assertThat(context).hasNotFailed();
-            assertThat(context.getBeansOfType(OutboxRunner.class)).isEmpty();
-            var tx=new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
-            tx.executeWithoutResult(status -> context.getBean(UnifiedOutboxFacade.class).publisher("PLATFORM").publish(
-                    new Event("SYNC1","FOOD_STOCK_SYNC_REQUESTED"),new PublishOptions("FOOD_STOCK_SYNC:S",1)));
-            var jdbc=new JdbcTemplate(context.getBean(DataSource.class));
-            assertThat(jdbc.queryForList("SELECT handler_id FROM sys_outbox_delivery",String.class))
-                    .containsExactly(FoodOutboxRouting.STOCK_SYNC_HANDLER);
-        });
+    @Test void stockSyncIsNotANewGenericProducerRoute() {
+        assertThat(FoodOutboxRouting.DELIVERY_TARGETS).doesNotContainKey("FOOD_STOCK_SYNC_REQUESTED");
     }
     @Test void actualStandaloneProducerRecordsAcceptedDeliveryForExistingPlatformWorker() {
         runner().run(context -> {
@@ -94,7 +85,7 @@ class FoodServerProducerOutboxTest {
         runner().run(context -> {
             FoodServerProducerAssertions.verify(context);
             assertThat(FoodOutboxRouting.ARCHIVE_ONLY).hasSize(18);
-            assertThat(FoodOutboxRouting.DELIVERY_TARGETS).hasSize(6);
+            assertThat(FoodOutboxRouting.DELIVERY_TARGETS).hasSize(5);
             var facade=context.getBean(UnifiedOutboxFacade.class);
             var tx=new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
             tx.executeWithoutResult(status -> {
@@ -107,7 +98,7 @@ class FoodServerProducerOutboxTest {
                 }
             });
             var jdbc=new JdbcTemplate(context.getBean(DataSource.class));
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isEqualTo(24);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isEqualTo(23);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE status='ARCHIVED'",Long.class))
                     .isEqualTo(18);
             for(String fact:FoodOutboxRouting.ARCHIVE_ONLY) {
@@ -115,7 +106,7 @@ class FoodServerProducerOutboxTest {
                 assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type=?",String.class,type))
                         .isEqualTo("ARCHIVED");
             }
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isEqualTo(8);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isEqualTo(7);
             for(var route:FoodOutboxRouting.DELIVERY_TARGETS.entrySet()) {
                 assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type=?",String.class,route.getKey()))
                         .isEqualTo("PENDING");

@@ -99,3 +99,8 @@
 ## 2026-10-30 M04独立库存同步交接
 
 新增POST `/internal/food/stock-sync/dispatch`，输入entityNo、storeNo、envelope（原OutboxEnvelope全部字段），输出原DeliveryResult(kind/errorCode/detail)。沿内部token及X-Food-Scope签名；外层范围与原payload一致，缺签名401、范围不符403、缺必填输入由MVC Validator返回400。handlerId=food-stock-sync-v1，原事件键/hash/payload不变。无新增公网入口、权限码、表或配置。详见[TDD](../../TDD-餐饮独立库存同步投递.md)。
+
+
+## 2026-10-30 Outbox收缩实施
+
+公网API及权限不变。库存投递可观察状态增加PROCESSING（90秒租约）；retry不能抢占活跃租约，终态返回原结果，映射阻断先修映射。新写由FOOD直接调用inventory-client，原内部dispatch和旧handler仅处理历史Outbox积压。打印、积分API不变；管理审计改读命令账本并保留历史id游标。

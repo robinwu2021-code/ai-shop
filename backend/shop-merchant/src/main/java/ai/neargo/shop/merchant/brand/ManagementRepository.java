@@ -1,7 +1,6 @@
 package ai.neargo.shop.merchant.brand;
 
 import ai.neargo.shop.common.*;
-import ai.neargo.shop.event.outbox.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -21,10 +20,8 @@ public class ManagementRepository {
  final JdbcTemplate jdbc;
  final TransactionTemplate transactions;
  final ObjectMapper json;
- final OutboxIngress events;
- public ManagementRepository(JdbcTemplate jdbc,@Qualifier("transactionManager") PlatformTransactionManager tx,ObjectMapper json,
-        @Qualifier("managementOutboxIngress") OutboxIngress events) {
-  this.jdbc=jdbc;this.transactions=new TransactionTemplate(tx);this.json=json;this.events=events;
+ public ManagementRepository(JdbcTemplate jdbc,@Qualifier("transactionManager") PlatformTransactionManager tx,ObjectMapper json) {
+  this.jdbc=jdbc;this.transactions=new TransactionTemplate(tx);this.json=json;
  }
  public <T> T write(Supplier<T> action) {
   try{return transactions.execute(s->action.get());}
@@ -91,7 +88,7 @@ public class ManagementRepository {
  public static String hash(String value){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
  public String commandId(ManagementModels.Actor a,String target,String action,String key){return hash(a.tenantNo()+"|"+a.actorKey()+"|"+target+"|"+action+"|"+ManagementModels.text(key,64));}
  public Map<String,Object> replay(String id,String commandHash){
-  var row=one("SELECT payload FROM sys_outbox WHERE (source_system='PLATFORM' AND source_event_no=?) OR event_no=?",id,id);
+  var row=one("SELECT payload FROM mch_management_command WHERE command_id=?",id);
   if(row==null)return null;var payload=decode(row.get("payload"));
   if(!Objects.equals(commandHash,payload.get("commandHash")))throw BizException.of(ErrorCode.CONFLICT);
   return decode(encode(payload.get("resultSnapshot")));
@@ -99,6 +96,7 @@ public class ManagementRepository {
  public void emit(ManagementModels.Actor a,String id,String target,String action,String commandHash,Map<String,Object> result){
   var payload=new LinkedHashMap<String,Object>();payload.put("tenantNo",a.tenantNo());payload.put("actorKey",a.actorKey());
   payload.put("action",action);payload.put("target",target);payload.put("commandHash",commandHash);payload.put("resultSnapshot",result);
-  events.accept(new OutboxEnvelope(id,"PLATFORM",id,"MANAGEMENT",a.tenantNo()+"|"+target,"MANAGEMENT_CHANGED",1,"MANAGEMENT:"+a.tenantNo()+":"+target,0,encode(payload),Instant.now()));
+  jdbc.update("INSERT INTO mch_management_command(command_id,tenant_no,aggregate_id,payload,created_at) VALUES(?,?,?,?,?)",
+   id,a.tenantNo(),a.tenantNo()+"|"+target,encode(payload),Timestamp.from(Instant.now()));
  }
 }

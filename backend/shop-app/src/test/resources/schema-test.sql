@@ -24,6 +24,9 @@
 -- 写测试时只声明真正需要的那些。
 
 
+CREATE ALIAS IF NOT EXISTS SHA2 FOR "ai.neargo.shop.support.H2HashFunctions.sha2";
+
+
 -- Native trigger projection: backend/shop-app/src/main/resources/db/migration/V603__counter_campaign_owner_fence.sql | trg_ccf_mkt_campaign_insert,trg_ccf_mkt_campaign_update,trg_ccf_mkt_campaign_delete,trg_ccf_pmt_activity_insert,trg_ccf_pmt_activity_update,trg_ccf_pmt_activity_delete,trg_ccf_pmt_activity_version_insert,trg_ccf_pmt_activity_version_update,trg_ccf_pmt_activity_version_delete,trg_ccf_pmt_activity_goods_insert,trg_ccf_pmt_activity_goods_update,trg_ccf_pmt_activity_goods_delete,trg_ccf_pmt_activity_rule_insert,trg_ccf_pmt_activity_rule_update,trg_ccf_pmt_activity_rule_delete,trg_ccf_pmt_enrollment_insert,trg_ccf_pmt_enrollment_update,trg_ccf_pmt_enrollment_delete,trg_ccf_pmt_enrollment_goods_insert,trg_ccf_pmt_enrollment_goods_update,trg_ccf_pmt_enrollment_goods_delete
 
 -- Native capability absent: backend/shop-app/src/main/resources/db/migration/V604__manual_service_execution_authority.sql | ord_service_execution,ord_service_execution_action,ord_service_execution_unit
@@ -32,7 +35,7 @@
 
 -- Native capability absent: backend/shop-app/src/main/resources/db/migration/V606__execution_retention_route.sql | prd_execution_retention_route
 
--- Native capability unavailable; common contract retained: backend/shop-app/src/main/resources/db/migration/V607__resource_actual_occupation.sql | source=42e51c9ec7bf33cbfdf07e34936b944e62bb223efe893d0c896aa7ff234b8c9d | descriptor=dfc64b4595db561e4ba0e5b4b72f633b9e07d7d4ad3d0d284fe5bd731bdb35d1 | retained=a2bad068da939c35065b86cf2675f8e0778ff3c144a8312d5426ff686837c725,c1a7ee8fd9884ebfe175f5343dc05d7778975c247253a9eb6241c5abedd1068b,a48fd8433ad3a61b56f6951d011c9eef9d8b6db064bcc5da8823856105a6b274,a78a37f08bd452ea08dc8c78303feb892cf42ac6c599b27fc5f61b997e0dff1c,10a25d2b4227b7b72a168fea7ecf8d4cca47a109f59093f7f26d0ed01bb4e0f7,4a033423cad5ffe9c4f28aa4178ab61fa3f286f4b51fe1a980f41fdcfb6669b3,0c38c1ae51fc4b834306c17f4a7c53d2604981cebfaea3dd5610523e41c6eac9,9c4b47435e099c42b32d28d5a0b87e5fb0705b39b4a974f6931c786efb702190,694dbbb8ef0cdc0a90deb703f4cd42a0a3d1f9c4c483f8c58b621ac0910e5c2a,fee8e2cdf0b5aa80356c70e3c687199542c13395f85131776df916d2f8e0fce2,98dd3db3e514bb81d7660c76740897f5608eb26d97d940b6d78732d325d02ec1,534282b5e123f12538286b3192b9dad91e4867aa159a3444c4de5db72758057b,7a9a041df206f7e08091f891fd6a56aad22ced12f58f6c9d5e62e13a1a0d5b34,a4decbe699c301004e59b72ee40c061e5aa4e6b22ed8db27d0f54d3c547bd192,698bbe6f52715aa06a95c31f4ab6283a41b6f7549bb9ae3b9682aa4f410a62e5,8a645193e464b960dad15b93a6cfad769a73c69cd476d24212dcfec663bdc467,3d6eaa54d33c7fcce682bc58ba20211e35b3124588ba3cc735ff9efc796c5190,52b6959fb456e634bbb66c7cadcb0493000a3090821fa8f0995581a57d6d81dd,94ed3000899e07dab794c1fa1114f9d3b9f260dd74d28693276c1c47e27b0aef,2a583d2902eb866f8f4203606ec45e45614e4ed73b76cc170acfae3d16b37596,2da7680578969c724ccbd77a3f5d245206cace874e45ce76ed176babf639c1a8,ffd8ea80243c06ea22b580d90c207b25680896403469c6a03f537c3ee4dc20c2,50741c50b6e5968b6d774bb50354f280383ae949ccbdfd3597fb23b1a26bcc97,88eaca7f2ab7aadd5161c398b15f14868f25fca9e02ba4c337c3b1f7a72e9ab8,7b5fb306a579cfd169a298cbc8211de5ea9cb0e23d66aa158765b337d386b8ce,e498fcee5ca71910fedddd451048270c3515a0591218348b16ae5f26ec8d5f78,71ce07ea9ffe07ac63fa112a8ba90ee6b185c66034d31ae2cd573548de824c05,3db6137cabcc2b58bcfe37c9bc249a6df9133aacce3935dc34b3ba3159d851c2,c8f7d2e16bfef8b004f66770c1d53a3ac354faf38b21eba5f1fa2a9d6929fbba,7098f5fa866627e2a2a6a5b3b5de62b53c92fa3d91c84443678b8f8d1162595c,fdd0fa7a5e4d4966c9f5734640f1bf6ee0654f87f5c1d5a08c665b1ea223e206,e02621c0fe8cbec594ec80084567cbfac3c0c191669375f9f59fea2c51c399e4,32162f65d10e2e5938bb9344644444047df4bbf681da836c9d2efc95d4f97f35,53fd875fcdd5a1f339dca74fd5a1274611261ddf9d5ca265534abe3e2e0e3c4d,002185f5822684bfff2372f78ae1909c389cb4a70d8e1b9c8b0aab5b370b6797,bb84d2c11c742d25be86131a80cfd2d9881b0a6b5d6162d96af339835a16356f,d67625a1824d60a2eacd75c97a4a3c4a71f5dfe8eeba449f1a1cfc9caa984d95,b0f97bea9baf9d079a80180113549456cf55f1f8968853e93dd67aa67b004506,ff1ff07aa7ced53dd4a6decd3517b0b2042b358cfac504702a49e67f2f95d8f0,b499ec636527250db4bf18ef3cb3503f3d05f02af1a3cc2c6f0dfd3d14752424,524c0ee11c65b46d416ee3977079bdc2cc02ac52253cbfd3e225901f1f113192,b3601f613f4cd3069c9a96188e51fe13ae3e84e5824a949d48ec6c5e70ce104a,6a3610150974c17716288e97ff64bf6265f7324229dd5a8126e8c6ee446ec340,0af6bafa3dc5c177a52deb413cddc75531884d2f7c7f39e3d4e94b1eb2a8f159,6443e3c5ca0eb2292a96a0f43c4a739f8aca1941a2306f5712c4a648ae4db920,2caef7c3e9ad2b1967849321cd07fed39b51165b465d58d3cd5273d0a122c5ac,38072ac41951686ceeea36018ba8d44b8b51a62e1859ec9f1d2e13a079c50574,22dd9590806b7e7819c3b88d3750095512fe581f29852d731f1f497e7c48d5e0,30bb3d6121d396c9a46c827df5d9dd0388b6c03ce6c1ad5b3a57264d24c44c94,0a13cf90f94cd206d9827ef9f98d609c843f8e124a57a42009da5018c9feff5c,bfbf8a7e8ec5f648c85ad6916580d14f3facd9c6f2910c4d4fc4f6f062605531,48201990f465a09b8d5380a33240c0288853d54c088e02e9fcebd57fead8fee4,3cdffb446e4c587903794b05112979c72eff40813912ff4af4eac26a9bf3b905
+-- Native capability unavailable; common contract retained: backend/shop-app/src/main/resources/db/migration/V621__resource_actual_occupation.sql | source=42e51c9ec7bf33cbfdf07e34936b944e62bb223efe893d0c896aa7ff234b8c9d | descriptor=42be14dbf98e39bf379a1c0516a2807591aaa4c37cde3d377fe79f41e15cf5b9 | retained=a2bad068da939c35065b86cf2675f8e0778ff3c144a8312d5426ff686837c725,c1a7ee8fd9884ebfe175f5343dc05d7778975c247253a9eb6241c5abedd1068b,a48fd8433ad3a61b56f6951d011c9eef9d8b6db064bcc5da8823856105a6b274,a78a37f08bd452ea08dc8c78303feb892cf42ac6c599b27fc5f61b997e0dff1c,10a25d2b4227b7b72a168fea7ecf8d4cca47a109f59093f7f26d0ed01bb4e0f7,4a033423cad5ffe9c4f28aa4178ab61fa3f286f4b51fe1a980f41fdcfb6669b3,0c38c1ae51fc4b834306c17f4a7c53d2604981cebfaea3dd5610523e41c6eac9,9c4b47435e099c42b32d28d5a0b87e5fb0705b39b4a974f6931c786efb702190,694dbbb8ef0cdc0a90deb703f4cd42a0a3d1f9c4c483f8c58b621ac0910e5c2a,fee8e2cdf0b5aa80356c70e3c687199542c13395f85131776df916d2f8e0fce2,98dd3db3e514bb81d7660c76740897f5608eb26d97d940b6d78732d325d02ec1,534282b5e123f12538286b3192b9dad91e4867aa159a3444c4de5db72758057b,7a9a041df206f7e08091f891fd6a56aad22ced12f58f6c9d5e62e13a1a0d5b34,a4decbe699c301004e59b72ee40c061e5aa4e6b22ed8db27d0f54d3c547bd192,698bbe6f52715aa06a95c31f4ab6283a41b6f7549bb9ae3b9682aa4f410a62e5,8a645193e464b960dad15b93a6cfad769a73c69cd476d24212dcfec663bdc467,3d6eaa54d33c7fcce682bc58ba20211e35b3124588ba3cc735ff9efc796c5190,52b6959fb456e634bbb66c7cadcb0493000a3090821fa8f0995581a57d6d81dd,94ed3000899e07dab794c1fa1114f9d3b9f260dd74d28693276c1c47e27b0aef,2a583d2902eb866f8f4203606ec45e45614e4ed73b76cc170acfae3d16b37596,2da7680578969c724ccbd77a3f5d245206cace874e45ce76ed176babf639c1a8,ffd8ea80243c06ea22b580d90c207b25680896403469c6a03f537c3ee4dc20c2,50741c50b6e5968b6d774bb50354f280383ae949ccbdfd3597fb23b1a26bcc97,88eaca7f2ab7aadd5161c398b15f14868f25fca9e02ba4c337c3b1f7a72e9ab8,7b5fb306a579cfd169a298cbc8211de5ea9cb0e23d66aa158765b337d386b8ce,e498fcee5ca71910fedddd451048270c3515a0591218348b16ae5f26ec8d5f78,71ce07ea9ffe07ac63fa112a8ba90ee6b185c66034d31ae2cd573548de824c05,3db6137cabcc2b58bcfe37c9bc249a6df9133aacce3935dc34b3ba3159d851c2,c8f7d2e16bfef8b004f66770c1d53a3ac354faf38b21eba5f1fa2a9d6929fbba,7098f5fa866627e2a2a6a5b3b5de62b53c92fa3d91c84443678b8f8d1162595c,fdd0fa7a5e4d4966c9f5734640f1bf6ee0654f87f5c1d5a08c665b1ea223e206,e02621c0fe8cbec594ec80084567cbfac3c0c191669375f9f59fea2c51c399e4,32162f65d10e2e5938bb9344644444047df4bbf681da836c9d2efc95d4f97f35,53fd875fcdd5a1f339dca74fd5a1274611261ddf9d5ca265534abe3e2e0e3c4d,002185f5822684bfff2372f78ae1909c389cb4a70d8e1b9c8b0aab5b370b6797,bb84d2c11c742d25be86131a80cfd2d9881b0a6b5d6162d96af339835a16356f,d67625a1824d60a2eacd75c97a4a3c4a71f5dfe8eeba449f1a1cfc9caa984d95,b0f97bea9baf9d079a80180113549456cf55f1f8968853e93dd67aa67b004506,ff1ff07aa7ced53dd4a6decd3517b0b2042b358cfac504702a49e67f2f95d8f0,b499ec636527250db4bf18ef3cb3503f3d05f02af1a3cc2c6f0dfd3d14752424,524c0ee11c65b46d416ee3977079bdc2cc02ac52253cbfd3e225901f1f113192,b3601f613f4cd3069c9a96188e51fe13ae3e84e5824a949d48ec6c5e70ce104a,6a3610150974c17716288e97ff64bf6265f7324229dd5a8126e8c6ee446ec340,0af6bafa3dc5c177a52deb413cddc75531884d2f7c7f39e3d4e94b1eb2a8f159,6443e3c5ca0eb2292a96a0f43c4a739f8aca1941a2306f5712c4a648ae4db920,2caef7c3e9ad2b1967849321cd07fed39b51165b465d58d3cd5273d0a122c5ac,38072ac41951686ceeea36018ba8d44b8b51a62e1859ec9f1d2e13a079c50574,22dd9590806b7e7819c3b88d3750095512fe581f29852d731f1f497e7c48d5e0,30bb3d6121d396c9a46c827df5d9dd0388b6c03ce6c1ad5b3a57264d24c44c94,0a13cf90f94cd206d9827ef9f98d609c843f8e124a57a42009da5018c9feff5c,bfbf8a7e8ec5f648c85ad6916580d14f3facd9c6f2910c4d4fc4f6f062605531,48201990f465a09b8d5380a33240c0288853d54c088e02e9fcebd57fead8fee4,3cdffb446e4c587903794b05112979c72eff40813912ff4af4eac26a9bf3b905
 
 CREATE TABLE IF NOT EXISTS cmt_community
 (
@@ -635,10 +638,11 @@ CREATE TABLE IF NOT EXISTS ord_order
     operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_order_no UNIQUE (order_no),
-    CONSTRAINT ck_order_admission_kind CHECK ((CASE admission_kind WHEN 'LEGACY_FUNDED' THEN TRUE WHEN 'MANUAL_OFFLINE' THEN TRUE ELSE CASE WHEN admission_kind IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_order_manual_provenance CHECK (receipt_provenance IS NULL OR
          (admission_kind='MANUAL_OFFLINE' AND receipt_provenance='MANUAL_DECLARATION'
           AND pay_channel IS NULL AND pay_trade_no IS NULL)),
+    CONSTRAINT ck_order_admission_kind CHECK (((CASE admission_kind WHEN 'LEGACY_FUNDED' THEN TRUE WHEN 'MANUAL_OFFLINE' THEN TRUE ELSE CASE WHEN admission_kind IS NULL THEN NULL ELSE FALSE END END) AND customer_kind <> 'CHANNEL')
+   OR (admission_kind='CHANNEL' AND customer_kind='CHANNEL')),
     CONSTRAINT ck_counter_order_party CHECK (
         (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
          AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
@@ -652,7 +656,11 @@ CREATE TABLE IF NOT EXISTS ord_order
             AND identity_revision IS NOT NULL AND identity_revision>0 AND admission_kind='MANUAL_OFFLINE' AND caller IS NOT NULL AND caller='BEAUTY' AND operation_no IS NOT NULL
         AND entity_no IS NOT NULL AND store_no IS NOT NULL
         AND CHAR_LENGTH(TRIM(operation_no))>0 AND CHAR_LENGTH(TRIM(entity_no))>0
-        AND CHAR_LENGTH(TRIM(store_no))>0))
+        AND CHAR_LENGTH(TRIM(store_no))>0) OR (customer_kind='CHANNEL' AND admission_kind='CHANNEL' AND user_no IS NULL
+        AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL
+        AND (CASE caller WHEN 'FOOD' THEN TRUE WHEN 'RETAIL' THEN TRUE ELSE CASE WHEN caller IS NULL THEN NULL ELSE FALSE END END) AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND operation_no IS NOT NULL AND CHAR_LENGTH(TRIM(entity_no))>0
+        AND CHAR_LENGTH(TRIM(store_no))>0 AND CHAR_LENGTH(TRIM(operation_no))>0))
 );
 
 CREATE TABLE IF NOT EXISTS ord_status_log
@@ -751,10 +759,11 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     CONSTRAINT ck_sub_checkout_authority CHECK (
         (fulfillment_authority IS NULL AND source_operation_no IS NULL)
         OR (fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION' AND source_operation_no IS NOT NULL AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY')),
-    CONSTRAINT ck_sub_manual_kind CHECK (admission_kind='LEGACY_FUNDED' OR
-        (admission_kind='MANUAL_OFFLINE' AND fulfillment_authority IS NOT NULL
-         AND fulfillment_authority='SERVICE_EXECUTION'
-         AND source_operation_no IS NOT NULL AND fulfillment='STORE_VERIFY')),
+    CONSTRAINT ck_sub_manual_kind CHECK ((admission_kind='LEGACY_FUNDED' AND customer_kind <> 'CHANNEL') OR
+   (admission_kind='MANUAL_OFFLINE' AND customer_kind <> 'CHANNEL'
+    AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION'
+    AND source_operation_no IS NOT NULL AND fulfillment='STORE_VERIFY') OR
+   (admission_kind='CHANNEL' AND customer_kind='CHANNEL' AND fulfillment_authority IS NULL)),
     CONSTRAINT ck_counter_sub_party CHECK (
         (customer_kind='USER' AND user_no IS NOT NULL AND CHAR_LENGTH(TRIM(user_no))>0
          AND OCTET_LENGTH(user_no)=OCTET_LENGTH(TRIM(user_no)) AND guest_no IS NULL
@@ -770,7 +779,11 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
         AND store_no IS NOT NULL AND CHAR_LENGTH(TRIM(store_no))>0
         AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(source_operation_no))>0
         AND fulfillment IS NOT NULL AND fulfillment='STORE_VERIFY'
-        AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION'))
+        AND fulfillment_authority IS NOT NULL AND fulfillment_authority='SERVICE_EXECUTION') OR (customer_kind='CHANNEL' AND admission_kind='CHANNEL' AND user_no IS NULL
+        AND guest_no IS NULL AND identity_revision IS NULL AND caller IS NOT NULL
+        AND (CASE caller WHEN 'FOOD' THEN TRUE WHEN 'RETAIL' THEN TRUE ELSE CASE WHEN caller IS NULL THEN NULL ELSE FALSE END END) AND entity_no IS NOT NULL AND store_no IS NOT NULL
+        AND CHAR_LENGTH(TRIM(entity_no))>0 AND CHAR_LENGTH(TRIM(store_no))>0
+        AND fulfillment_authority IS NULL AND source_operation_no IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS prd_category
@@ -5031,6 +5044,7 @@ CREATE TABLE IF NOT EXISTS ord_create_intent
     reservation_state VARCHAR(16) NULL,
     reservation_observation_json LONGTEXT NULL,
     reservation_observation_hash CHAR(64) NULL,
+    inventory_owner VARCHAR(32) NULL,
     CONSTRAINT uk_counter_intent_operation UNIQUE (tenant_no,creation_kind,caller,operation_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_create_pay UNIQUE (pay_no),
@@ -9408,6 +9422,7 @@ CREATE TABLE IF NOT EXISTS ord_industry_order_source
     demand_plan_hash VARCHAR(64) NULL,
     demand_plan_snapshot TEXT NULL,
     delivery_snapshot LONGTEXT NULL,
+    inventory_owner VARCHAR(32) NULL,
     CONSTRAINT uk_industry_order_no UNIQUE (tenant_no, order_no),
     CONSTRAINT uk_industry_source_version UNIQUE (tenant_no, entity_no, store_no, source_system, source_type, source_no, source_version)
 );
@@ -9574,8 +9589,8 @@ CREATE TABLE IF NOT EXISTS prn_device
     deleted TINYINT NOT NULL DEFAULT 0,
     authorization_version BIGINT NOT NULL DEFAULT 0,
     revoke_reason VARCHAR(255) NULL,
-    revoked_by VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    revoke_key VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    revoked_by VARCHAR(64)  NULL,
+    revoke_key VARCHAR(128)  NULL,
     revocation_history MEDIUMTEXT NULL,
     active_job_no VARCHAR(32) NULL,
     active_attempt_no VARCHAR(32) NULL,
@@ -9793,7 +9808,6 @@ CREATE TABLE IF NOT EXISTS ord_industry_fulfillment
     plan_hash VARCHAR(64) NULL,
     command_snapshot TEXT NULL,
     CONSTRAINT uk_industry_fulfillment_no UNIQUE (fulfillment_no),
-    CONSTRAINT uk_industry_fulfillment_sub UNIQUE (tenant_no,sub_order_no),
     CONSTRAINT uk_industry_fulfillment_key UNIQUE (tenant_no,entity_no,store_no,operation_key)
 );
 
@@ -11074,19 +11088,19 @@ CREATE TABLE IF NOT EXISTS mch_booking_owner
     deleted INT NOT NULL DEFAULT 0,
     owner_no VARCHAR(32) NOT NULL,
     store_no VARCHAR(32) NOT NULL,
-    source_type VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    source_type VARCHAR(32)  NOT NULL,
     source_no VARCHAR(64) NOT NULL,
     current_hold_no VARCHAR(32) NULL,
     owner_version BIGINT NOT NULL DEFAULT 0,
     source_revision BIGINT NULL,
-    occupation_association_state VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'UNBOUND',
-    planned_resource_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    planned_resource_command_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    execution_reference_json LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    execution_reference_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    execution_plan_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    initial_start_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    seal_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    occupation_association_state VARCHAR(24)  NOT NULL DEFAULT 'UNBOUND',
+    planned_resource_command_no VARCHAR(32)  NULL,
+    planned_resource_command_hash CHAR(64)  NULL,
+    execution_reference_json LONGTEXT  NULL,
+    execution_reference_hash CHAR(64)  NULL,
+    execution_plan_hash CHAR(64)  NULL,
+    initial_start_command_no VARCHAR(32)  NULL,
+    seal_command_no VARCHAR(32)  NULL,
     CONSTRAINT uk_rco_owner_planned UNIQUE (tenant_no, entity_no, planned_resource_command_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_booking_owner_1 UNIQUE (tenant_no, entity_no, owner_no),
@@ -11121,40 +11135,40 @@ CREATE TABLE IF NOT EXISTS mch_resource_command
     command_no VARCHAR(32) NOT NULL,
     owner_no VARCHAR(32) NOT NULL,
     store_no VARCHAR(32) NOT NULL,
-    action VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    request_key_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    payload_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    action VARCHAR(32)  NOT NULL,
+    request_key_hash CHAR(64)  NOT NULL,
+    payload_hash CHAR(64)  NOT NULL,
     frozen_payload LONGTEXT NOT NULL,
     expected_owner_version BIGINT NOT NULL,
     source_revision BIGINT NOT NULL,
     target_hold_no VARCHAR(32) NULL,
     expected_hold_version BIGINT NULL,
     expected_lease_revision BIGINT NULL,
-    status VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    status VARCHAR(24)  NOT NULL,
     result_payload LONGTEXT NULL,
     rejection_code VARCHAR(64) NULL,
     wait_reason VARCHAR(128) NULL,
     next_retry_at DATETIME(3) NULL,
     initiated_by VARCHAR(64) NOT NULL,
-    command_kind VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT 'BOOKING_V1',
-    payload_schema VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    execution_reference_json LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    execution_reference_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    planned_resource_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    planned_resource_command_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    execution_plan_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    original_start_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    actor_namespace VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    actor_provenance_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    machine_purpose VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    command_kind VARCHAR(24)  NOT NULL DEFAULT 'BOOKING_V1',
+    payload_schema VARCHAR(64)  NULL,
+    execution_reference_json LONGTEXT  NULL,
+    execution_reference_hash CHAR(64)  NULL,
+    planned_resource_command_no VARCHAR(32)  NULL,
+    planned_resource_command_hash CHAR(64)  NULL,
+    execution_plan_hash CHAR(64)  NULL,
+    original_start_command_no VARCHAR(32)  NULL,
+    actor_namespace VARCHAR(24)  NULL,
+    actor_provenance_hash CHAR(64)  NULL,
+    machine_purpose VARCHAR(32)  NULL,
     observation_epoch BIGINT NOT NULL DEFAULT 0,
-    original_result_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    original_result_no VARCHAR(32)  NULL,
     original_result_revision BIGINT NULL,
-    original_result_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    occupation_outcome VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
-    seal_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    original_result_hash CHAR(64)  NULL,
+    occupation_outcome VARCHAR(32)  NULL,
+    seal_no VARCHAR(32)  NULL,
     seal_revision BIGINT NULL,
-    seal_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    seal_hash CHAR(64)  NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_resource_command_1 UNIQUE (tenant_no, entity_no, command_no),
     CONSTRAINT uk_resource_command_2 UNIQUE (tenant_no, entity_no, store_no, action, request_key_hash),
@@ -11244,11 +11258,11 @@ CREATE TABLE IF NOT EXISTS mch_booking_hold
     command_no VARCHAR(32) NOT NULL,
     source_revision BIGINT NOT NULL,
     lease_revision BIGINT NOT NULL,
-    status VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    expiration_policy VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    status VARCHAR(24)  NOT NULL,
+    expiration_policy VARCHAR(32)  NOT NULL,
     expires_at DATETIME(3) NOT NULL,
-    creation_plan_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    current_plan_hash CHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    creation_plan_hash CHAR(64)  NOT NULL,
+    current_plan_hash CHAR(64)  NOT NULL,
     plan_revision BIGINT NOT NULL,
     replaces_hold_no VARCHAR(32) NULL,
     replaced_by_hold_no VARCHAR(32) NULL,
@@ -11296,12 +11310,12 @@ CREATE TABLE IF NOT EXISTS mch_booking_hold_unit
     bucket_no VARCHAR(32) NOT NULL,
     allocation_revision BIGINT NOT NULL,
     qty INT NOT NULL,
-    source_line_ref VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    source_line_ref VARCHAR(128)  NOT NULL,
     released_at DATETIME(3) NULL,
     release_command_no VARCHAR(32) NULL,
-    consume_occupation_unit_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    consume_occupation_unit_no VARCHAR(32)  NULL,
     consumed_at DATETIME(3) NULL,
-    consume_command_no VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    consume_command_no VARCHAR(32)  NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_booking_hold_unit_1 UNIQUE (tenant_no, entity_no, unit_no),
     CONSTRAINT uk_booking_hold_unit_2 UNIQUE (tenant_no, entity_no, hold_no, allocation_revision, bucket_no, source_line_ref),
@@ -11825,12 +11839,424 @@ CREATE TABLE IF NOT EXISTS ord_manual_service_admission_action
 CREATE TABLE IF NOT EXISTS mkt_counter_campaign_fence
 (
     tenant_no VARCHAR(32) NOT NULL,
-    scope_kind VARCHAR(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    scope_kind VARCHAR(16)  NOT NULL,
     scope_no VARCHAR(64) NOT NULL,
     revision BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (tenant_no, scope_kind, scope_no),
     CONSTRAINT ck_mkt_counter_fence_scope CHECK ((CASE scope_kind WHEN 'PLATFORM' THEN TRUE WHEN 'ENTITY' THEN TRUE ELSE CASE WHEN scope_kind IS NULL THEN NULL ELSE FALSE END END)),
     CONSTRAINT ck_mkt_counter_fence_revision CHECK (revision >= 0)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    policy_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    channel_store_key VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    enabled TINYINT NOT NULL DEFAULT 0,
+    allow_platform_collected TINYINT NOT NULL DEFAULT 0,
+    allow_cash_on_delivery TINYINT NOT NULL DEFAULT 0,
+    max_single_minor BIGINT NOT NULL,
+    max_outstanding_minor BIGINT NOT NULL,
+    reserved_minor BIGINT NOT NULL DEFAULT 0,
+    hold_seconds INT NOT NULL,
+    CONSTRAINT uk_ord_channel_policy_no UNIQUE (policy_no),
+    CONSTRAINT uk_ord_channel_policy_scope UNIQUE (tenant_no,entity_no,store_no,channel_store_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_import
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    admission_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    channel_store_key VARCHAR(64) NOT NULL,
+    external_order_key VARCHAR(64) NOT NULL,
+    external_order_ref VARCHAR(128) NOT NULL,
+    fence BIGINT NOT NULL DEFAULT 0,
+    lease_until DATETIME(3) NULL,
+    last_error_code VARCHAR(64) NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    import_ref VARCHAR(32) NOT NULL,
+    quote_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    funding_status VARCHAR(32) NOT NULL,
+    policy_no VARCHAR(32) NULL,
+    policy_snapshot LONGTEXT NULL,
+    reserved_minor BIGINT NOT NULL DEFAULT 0,
+    preparation_no VARCHAR(32) NULL,
+    acceptance_receipt_ref VARCHAR(128) NULL,
+    platform_acceptance_snapshot LONGTEXT NULL,
+    cancellation_receipt_ref VARCHAR(128) NULL,
+    allocations_json LONGTEXT NULL,
+    CONSTRAINT uk_ord_channel_import_no UNIQUE (admission_no),
+    CONSTRAINT uk_ord_channel_import_source UNIQUE (tenant_no,entity_no,store_no,source_system,import_ref),
+    CONSTRAINT uk_ord_channel_import_original UNIQUE (tenant_no,entity_no,store_no,channel_store_key,external_order_key),
+    CONSTRAINT uk_ord_channel_import_business UNIQUE (tenant_no,entity_no,store_no,source_system,source_no,source_version),
+    CONSTRAINT uk_ord_channel_import_order UNIQUE (order_no),
+    CONSTRAINT uk_ord_channel_import_suborder UNIQUE (sub_order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_quote
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    quote_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    merchant_receivable_minor BIGINT NOT NULL,
+    customer_payable_minor BIGINT NOT NULL,
+    source_receipt_ref VARCHAR(256) NOT NULL,
+    retained_order_no VARCHAR(32) NULL,
+    CONSTRAINT uk_ord_channel_quote_no UNIQUE (quote_no),
+    CONSTRAINT uk_ord_channel_quote_admission UNIQUE (admission_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_preparation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    preparation_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    generation BIGINT NOT NULL,
+    reservation_ref VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    plan_snapshot LONGTEXT NULL,
+    plan_hash VARCHAR(64) NULL,
+    inventory_receipt_snapshot LONGTEXT NULL,
+    preparation_receipt_ref VARCHAR(128) NULL,
+    valid_until DATETIME(3) NULL,
+    previous_preparation_no VARCHAR(32) NULL,
+    inventory_owner VARCHAR(32) NULL,
+    CONSTRAINT uk_ord_channel_preparation_no UNIQUE (preparation_no),
+    CONSTRAINT uk_ord_channel_preparation_generation UNIQUE (admission_no,generation),
+    CONSTRAINT uk_ord_channel_preparation_reservation UNIQUE (reservation_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_admission_guard
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    import_ref VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    withdrawal_snapshot LONGTEXT NULL,
+    cancellation_receipt_ref VARCHAR(128) NULL,
+    CONSTRAINT uk_ord_channel_guard UNIQUE (tenant_no,entity_no,store_no,source_system,import_ref)
+);
+
+CREATE TABLE IF NOT EXISTS rtl_channel_selection
+(
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    selection_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    PRIMARY KEY(entity_no,store_no,selection_no)
+);
+
+CREATE TABLE IF NOT EXISTS rtl_channel_selection_revision
+(
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    selection_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL,
+    content_hash VARCHAR(64) NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(entity_no,store_no,selection_no,revision_no)
+);
+
+CREATE TABLE IF NOT EXISTS rtl_channel_selection_draft
+(
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    selection_no VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    PRIMARY KEY(entity_no,store_no,selection_no)
+);
+
+CREATE TABLE IF NOT EXISTS rtl_channel_selection_command
+(
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    action_key VARCHAR(32) NOT NULL,
+    key_hash VARCHAR(64) NOT NULL,
+    actor_no VARCHAR(32) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    result_json LONGTEXT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY(entity_no,store_no,action_key,key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS retail_channel_party
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    party_no VARCHAR(32) NOT NULL,
+    channel_store_key VARCHAR(64) NOT NULL,
+    party_key VARCHAR(64) NOT NULL,
+    external_customer_ref VARCHAR(128) NULL,
+    external_order_ref VARCHAR(128) NOT NULL,
+    display_name VARCHAR(256) NULL,
+    CONSTRAINT uk_retail_channel_party_no UNIQUE (party_no),
+    CONSTRAINT uk_retail_channel_party_identity UNIQUE (tenant_no,entity_no,store_no,channel_store_key,party_key)
+);
+
+CREATE TABLE IF NOT EXISTS retail_channel_import_guard
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    guard_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(32) NOT NULL,
+    original_document_hash VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    withdrawal_snapshot LONGTEXT NULL,
+    cancellation_receipt_ref VARCHAR(128) NULL,
+    CONSTRAINT uk_retail_channel_guard_no UNIQUE (guard_no),
+    CONSTRAINT uk_retail_channel_guard_import UNIQUE (tenant_no,entity_no,store_no,import_no)
+);
+
+CREATE TABLE IF NOT EXISTS retail_channel_order_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    source_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(32) NOT NULL,
+    original_document_hash VARCHAR(64) NOT NULL,
+    financial_hash VARCHAR(64) NOT NULL,
+    channel_store_key VARCHAR(64) NOT NULL,
+    external_order_key VARCHAR(64) NOT NULL,
+    external_order_ref VARCHAR(128) NOT NULL,
+    party_no VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    origin_snapshot LONGTEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    preparation_snapshot LONGTEXT NULL,
+    acceptance_snapshot LONGTEXT NULL,
+    cancellation_snapshot LONGTEXT NULL,
+    acceptance_receipt_ref VARCHAR(128) NULL,
+    cancellation_receipt_ref VARCHAR(128) NULL,
+    CONSTRAINT uk_retail_channel_source_no UNIQUE (source_no),
+    CONSTRAINT uk_retail_channel_source_import UNIQUE (tenant_no,entity_no,store_no,import_no),
+    CONSTRAINT uk_retail_channel_source_external UNIQUE (tenant_no,channel_store_key,external_order_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_after_sale
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    decision_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    order_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    external_case_ref VARCHAR(128) NOT NULL,
+    request_key_hash VARCHAR(64) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    decision_snapshot LONGTEXT NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    refund_ceiling_minor BIGINT NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    funds_status VARCHAR(32) NOT NULL,
+    inventory_status VARCHAR(40) NOT NULL,
+    inventory_receipt_snapshot LONGTEXT NULL,
+    CONSTRAINT uk_ord_channel_after_sale UNIQUE (tenant_no,decision_no),
+    CONSTRAINT uk_ord_channel_after_sale_case UNIQUE (tenant_no,entity_no,store_no,admission_no,external_case_ref),
+    CONSTRAINT uk_ord_channel_after_sale_request UNIQUE (tenant_no,entity_no,store_no,admission_no,request_key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_after_sale_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    decision_no VARCHAR(32) NOT NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    admission_no VARCHAR(32) NOT NULL,
+    source_line_ref VARCHAR(128) NOT NULL,
+    component_ref VARCHAR(64) NOT NULL,
+    physical_quantity DECIMAL(24,6) NOT NULL,
+    refund_ceiling_minor BIGINT NOT NULL,
+    CONSTRAINT uk_ord_channel_after_sale_line UNIQUE (tenant_no,decision_no,source_line_ref,component_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_external_certificate_use
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    created_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_by VARCHAR(32) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    authorization_no VARCHAR(32) NOT NULL,
+    original_authorization_no VARCHAR(32) NULL,
+    purpose VARCHAR(16) NOT NULL DEFAULT 'USE',
+    reversal_ref VARCHAR(32) NULL,
+    entity_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    sub_order_no VARCHAR(32) NOT NULL,
+    order_item_id BIGINT NOT NULL,
+    preview_ref VARCHAR(32) NOT NULL,
+    preview_hash VARCHAR(64) NOT NULL,
+    certificate_identity_hash VARCHAR(64) NOT NULL,
+    source_hash VARCHAR(64) NOT NULL,
+    source_snapshot LONGTEXT NOT NULL,
+    quantity DECIMAL(20,6) NOT NULL,
+    unit VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    decision_ref VARCHAR(32) NULL,
+    original_receipt_ref VARCHAR(256) NULL,
+    CONSTRAINT uk_external_certificate_authorization UNIQUE (authorization_no),
+    CONSTRAINT uk_external_certificate_preview UNIQUE (tenant_no,entity_no,store_no,preview_ref),
+    CONSTRAINT uk_external_certificate_reverse UNIQUE (tenant_no,original_authorization_no,reversal_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_funding_history
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN', entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL, created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL, updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+    history_no VARCHAR(32) NOT NULL, admission_no VARCHAR(32) NOT NULL,
+    previous_collection VARCHAR(32) NULL, admitted_collection VARCHAR(32) NOT NULL,
+    previous_snapshot LONGTEXT NULL, admitted_snapshot LONGTEXT NOT NULL,
+    original_collection_hash VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_ord_channel_funding_history UNIQUE (history_no),
+    CONSTRAINT uk_ord_channel_funding_collection UNIQUE (tenant_no,entity_no,store_no,admission_no,admitted_collection)
+);
+
+CREATE TABLE IF NOT EXISTS ord_channel_fulfillment_evidence
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), created_by VARCHAR(32) NOT NULL,
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_by VARCHAR(32) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0, deleted INT NOT NULL DEFAULT 0,
+    entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL, source_order_ref VARCHAR(64) NOT NULL,
+    order_no VARCHAR(32) NOT NULL, sub_order_no VARCHAR(32) NOT NULL, fulfillment_no VARCHAR(32) NOT NULL,
+    revision_no VARCHAR(32) NOT NULL, receipt_no VARCHAR(32) NOT NULL, stage VARCHAR(24) NOT NULL,
+    source_hash CHAR(64) NOT NULL, request_hash CHAR(64) NOT NULL, plan_hash CHAR(64) NOT NULL,
+    inventory_receipt_hash CHAR(64) NOT NULL, content_hash CHAR(64) NOT NULL,
+    payload_snapshot LONGTEXT NOT NULL, occurred_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_channel_fulfillment_action UNIQUE (tenant_no,fulfillment_no,revision_no),
+    CONSTRAINT uk_channel_fulfillment_receipt UNIQUE (tenant_no,receipt_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_food_stock_bridge_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL, entity_no VARCHAR(32) NOT NULL, store_no VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(32) NOT NULL, action VARCHAR(32) NOT NULL, operation_key VARCHAR(128) NOT NULL,
+    intent_hash CHAR(64) NOT NULL, command_json LONGTEXT NOT NULL, payload_json LONGTEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL, created_by VARCHAR(32) NOT NULL,
+    CONSTRAINT uk_ord_food_stock_bridge_command UNIQUE (tenant_no,entity_no,store_no,plan_no,action,operation_key)
+);
+
+CREATE TABLE IF NOT EXISTS mch_management_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    command_id VARCHAR(64) NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL,
+    aggregate_id VARCHAR(128) NOT NULL,
+    payload TEXT NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    CONSTRAINT uk_management_command UNIQUE (command_id)
 );
 
 CREATE TABLE IF NOT EXISTS pay_channel_product

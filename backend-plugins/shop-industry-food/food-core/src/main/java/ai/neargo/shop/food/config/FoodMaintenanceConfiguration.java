@@ -12,6 +12,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 
+import ai.neargo.shop.food.service.FoodReturnStockService;
+import ai.neargo.shop.food.service.impl.FoodStockSyncWorker;
 /**
  * 后台补偿（预约出餐、叫号重发、耗用恢复、退菜改单恢复）的本地执行者。
  *
@@ -31,8 +33,9 @@ public class FoodMaintenanceConfiguration {
             ObjectProvider<QueueNotificationServiceImpl> notices,
             ObjectProvider<ProductionConsumptionService> production,
             ObjectProvider<BusinessReturnApprovalService> amendments,
-            ObjectProvider<ai.neargo.shop.food.service.FoodReturnStockService> returnStock) {
+            ObjectProvider<FoodReturnStockService> returnStock,
+            ObjectProvider<FoodStockSyncWorker> stockSync) {
         return new FoodMaintenanceServiceImpl(dispatch::getIfAvailable, notices::getIfAvailable,
-                production::getIfAvailable, amendments::getIfAvailable).withReturnStock(returnStock::getIfAvailable);
+                production::getIfAvailable, amendments::getIfAvailable).withReturnStock(returnStock::getIfAvailable).withStockSync(stockSync::getIfAvailable);
     }
 }

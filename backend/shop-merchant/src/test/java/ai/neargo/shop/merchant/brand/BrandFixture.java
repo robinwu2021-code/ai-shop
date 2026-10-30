@@ -22,7 +22,7 @@ class BrandFixture {
         var ds = mysql==null?new DriverManagerDataSource("jdbc:h2:mem:brand-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", ""):new DriverManagerDataSource(mysql,System.getProperty("p1.mysql.user"),Files.readString(Path.of(System.getProperty("p1.mysql.password-file"))).trim());
         jdbc = new JdbcTemplate(ds);
         var ddl = new JdbcTemplate(new org.springframework.jdbc.datasource.SingleConnectionDataSource(ds.getConnection(),true));
-        if(mysql!=null)for(String table:List.of("mch_brand_change","mch_brand_store_binding","mch_brand","mch_management_grant","mch_management_space","core_document_number","sys_sequence","sys_outbox","mch_payment_merchant","mch_store","mch_entity","mch_account"))jdbc.execute("DROP TABLE IF EXISTS "+table);
+        if(mysql!=null)for(String table:List.of("mch_brand_change","mch_brand_store_binding","mch_brand","mch_management_grant","mch_management_space","core_document_number","sys_sequence","sys_outbox","mch_management_command","mch_payment_merchant","mch_store","mch_entity","mch_account"))jdbc.execute("DROP TABLE IF EXISTS "+table);
         var sql=Files.readString(Path.of("../shop-app/src/main/resources/db/migration/V544__brand_management_organization.sql"));
         if(mysql==null)sql=sql.replace("CASE WHEN status IN ('CHECKED','PREPARING') THEN store_no ELSE NULL END", "CASE WHEN status='CHECKED' THEN store_no WHEN status='PREPARING' THEN store_no ELSE NULL END").replace(" STORED", "").replace(" ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci", "");
         sql=sql.replaceAll("(?m)^--.*$", "");
@@ -40,10 +40,8 @@ class BrandFixture {
         jdbc.update("INSERT INTO mch_account VALUES('MAIN','MA1','U1','E1','老板',true,'ACTIVE',0),('MAIN','MA2','U2','E2','另一老板',true,'ACTIVE',0),('MAIN','MA3',NULL,'E1','店员',false,'ACTIVE',0)");
         jdbc.update("INSERT INTO mch_entity(tenant_no,entity_no,name,status,deleted) VALUES('MAIN','E1','甲主体','ACTIVE',0),('MAIN','E2','乙主体','ACTIVE',0)");
         jdbc.update("INSERT INTO mch_store(tenant_no,store_no,entity_no,name,status) VALUES('MAIN','S1','E1','甲店','ACTIVE'),('MAIN','S2','E2','乙店','ACTIVE')");
-        repo = new ManagementRepository(jdbc,new DataSourceTransactionManager(ds),new ObjectMapper(),e->{
-            jdbc.update("INSERT INTO sys_outbox(event_no,source_system,source_event_no,aggregate_type,aggregate_id,event_type,payload,status,created_at) VALUES(?,?,?,?,?,?,?,'SENT',CURRENT_TIMESTAMP)",e.eventNo(),e.sourceSystem(),e.sourceEventNo(),e.aggregateType(),e.aggregateId(),e.eventType(),e.payload());
-            return new ai.neargo.shop.event.outbox.PublishReceipt(e.eventNo(),true);
-        });
+        jdbc.execute("CREATE TABLE mch_management_command(id bigint auto_increment primary key,command_id varchar(64) unique not null,tenant_no varchar(32) not null,aggregate_id varchar(128) not null,payload longtext not null,created_at timestamp not null)");
+        repo = new ManagementRepository(jdbc,new DataSourceTransactionManager(ds),new ObjectMapper());
         scopes = new ManagementScopeServiceImpl(repo);
     }
     ai.neargo.shop.numbering.store.DocumentNumberCoordinator numbers() {

@@ -130,7 +130,7 @@ class PrintOrderSoftwareFlowTest {
         assertEquals(operation, replay);
         String simulation = operation.path("targetNo").asText();
         var budget = new PrintWorkerBudget(20, Duration.ofSeconds(30), "software-acceptance");
-        assertEquals(1, simulations.runNext(budget).succeeded());
+        assertEquals(0, simulations.runNext(budget).succeeded());
         var view = data(get("/biz/print/simulations/" + simulation), owner);
         assertEquals("PASSED", view.path("status").asText());
         assertEquals(before, count("prn_job", "store_no", owner.store()));
@@ -139,7 +139,7 @@ class PrintOrderSoftwareFlowTest {
                         "storeNo", owner.store(), "profile", "ORIGINAL_ROLL",
                         "source", Map.of("type", "SIMULATION", "no", simulation,
                                 "expectedRevision", view.path("revision").asLong())))), owner);
-        assertEquals(1, exports.generateNext(budget).succeeded());
+        assertEquals(0, exports.generateNext(budget).succeeded());
         String exportNo = export.path("targetNo").asText();
         assertEquals("READY", data(get("/biz/print/exports/" + exportNo), owner).path("status").asText());
         var grant = data(post("/biz/print/exports/" + exportNo + "/download-grants"), owner);

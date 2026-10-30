@@ -128,7 +128,9 @@ class SchemaGeneratorTest {
                 var verifier = new ai.neargo.inventory.domain.policy.ExecutionStockRetentionSchemaVerifier(datasource);
                 assertThat(verifier.installation()).isEqualTo(
                         ai.neargo.inventory.domain.policy.ExecutionStockRetentionSchemaVerifier.Installation.ABSENT);
-                assertThatThrownBy(verifier::requireAvailable).isInstanceOf(ai.neargo.shop.common.BizException.class);
+                assertThatThrownBy(verifier::requireAvailable)
+                        .isInstanceOf(ai.neargo.inventory.api.InventoryException.class)
+                        .hasMessage(ai.neargo.inventory.api.InventoryError.DEPENDENCY_UNAVAILABLE.key());
             }
         } finally {
             Files.deleteIfExists(generated);

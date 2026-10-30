@@ -30,7 +30,7 @@ class RemoteFoodStockSyncDispatcherTest {
         assertThat(handler.handle(EVENT)).isSameAs(result);
         assertThat(handler.handlerId()).isEqualTo(FoodOutboxRouting.STOCK_SYNC_HANDLER);
         assertThat(handler.externalWorkflow()).isTrue();
-        assertThat(FoodOutboxRouting.DELIVERY_TARGETS.get(EVENT.eventType())).containsEntry(handler.handlerId(),true);
+        assertThat(FoodOutboxRouting.DELIVERY_TARGETS).doesNotContainKey(EVENT.eventType());
         verify(api).dispatch(command);
     }
     @Test void uncertainTransportRetriesOriginalDurableIntent() {

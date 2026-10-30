@@ -109,6 +109,10 @@ public final class UnifiedOutboxFacade {
         return enabled(source) && (archiveOnly.contains(source + ":" + eventType)
                 || handlers.getOrDefault(source, Map.of()).values().stream().anyMatch(h -> h.supports(eventType)));
     }
+    /** Real consumer targets only; archival intent is not a reason to publish a new event. */
+    public boolean hasDelivery(String source, String eventType) {
+        return enabled(source) && !targets(source,eventType).isEmpty();
+    }
     public OutboxHandler handler(String source, String id) {
         return handlers.getOrDefault(source, Map.of()).get(id);
     }

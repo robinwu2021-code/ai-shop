@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 public class OrderPointsRecoveryJob implements JobHandler {
     private final OrderPointsRecoveryService recovery;
     private final int limit;
-    @Value("${shop.points.order-recovery.enabled:false}")
+    @Value("${shop.points.order-recovery.enabled:true}")
     private boolean initiallyEnabled;
     @Value("${shop.points.order-recovery.cron:0 */2 * * * *}")
     private String cron = "0 */2 * * * *";

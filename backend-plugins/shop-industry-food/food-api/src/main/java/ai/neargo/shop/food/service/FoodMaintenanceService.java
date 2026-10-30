@@ -21,7 +21,7 @@ public interface FoodMaintenanceService {
 
     /**
      * @param processed 本轮推进的条数：预约出餐=完成数；叫号通知=尝试重发数；耗用/改单恢复=到达终态数
-     * @param pending   本轮已领取但仍待重试的条数；只有预约出餐能给出，其余任务恒为 0
+     * @param pending   本轮已领取但仍待重试的条数；预约出餐及本地库存同步可返回未完成数
      */
     record Report(int processed, int pending) {
         public Report {

@@ -24,6 +24,8 @@ import ai.neargo.shop.food.entity.FnbOrderComponent;
 import ai.neargo.shop.food.entity.FnbOrderModifier;
 import ai.neargo.shop.food.entity.FnbStation;
 import ai.neargo.shop.food.entity.FnbStockBalance;
+import ai.neargo.shop.food.entity.FnbStockSyncDelivery;
+import java.time.LocalDateTime;
 import ai.neargo.shop.food.entity.FnbCheckCart;
 import ai.neargo.shop.food.entity.FnbCheckCartItem;
 import ai.neargo.shop.food.entity.FnbSkuStation;
@@ -67,7 +69,6 @@ import ai.neargo.shop.food.entity.FnbTableOccupancy;
 import ai.neargo.shop.food.entity.FnbTableOperation;
 import ai.neargo.shop.food.entity.FnbTableToken;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
 import org.apache.ibatis.annotations.Delete;
@@ -358,7 +359,25 @@ public final class FoodMappers {
     public interface StockSyncConfigMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncConfig> { }
     public interface StockSyncMappingMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncMapping> { }
     public interface StockSyncItemStateMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncItemState> { }
-    public interface StockSyncDeliveryMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncDelivery> { }
+    public interface StockSyncDeliveryMapper extends BaseMapper<FnbStockSyncDelivery> {
+        @Select("""
+            SELECT d.* FROM fnb_stock_sync_delivery d
+            WHERE d.tenant_no='MAIN' AND d.deleted=0
+              AND d.status IN ('PENDING','RETRYABLE','PROCESSING')
+              AND (d.next_attempt_at IS NULL OR d.next_attempt_at<=#{now})
+              AND (#{entity} IS NULL OR d.entity_no=#{entity})
+              AND (#{store} IS NULL OR d.store_no=#{store})
+              AND NOT EXISTS (SELECT 1 FROM fnb_stock_sync_delivery earlier
+                WHERE earlier.tenant_no=d.tenant_no AND earlier.entity_no=d.entity_no
+                  AND earlier.store_no=d.store_no AND earlier.deleted=0 AND earlier.id<d.id
+                  AND earlier.status IN ('PENDING','RETRYABLE','PROCESSING'))
+            ORDER BY d.id LIMIT 1 FOR UPDATE SKIP LOCKED
+            """)
+        FnbStockSyncDelivery nextDelivery(
+                @Param("entity") String entity,
+                @Param("store") String store,
+                @Param("now") LocalDateTime now);
+    }
     public interface StockSyncReconciliationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncReconciliation> { }
     public interface StockSyncDifferenceMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncDifference> { }
     public interface StockItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockItem> { }

@@ -10,6 +10,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.common.PayChannels;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.event.AfterCommit;
+import ai.neargo.shop.trade.order.contract.ContractOrderStatus;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.numbering.DocumentNumberFormatter;
@@ -1630,22 +1631,25 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         var staged = pointsPlacement.inspect(root);
         if (staged == null || !staged.draft().requestHash().equals(pointsRequestHash(userNo, cmd)))
             throw new IllegalArgumentException("POINTS_PLACEMENT_REPLAY_CONFLICT");
-        if (callerTransaction) return initial;
-        try { pointsPlacement.resume(root);
-        } catch (RuntimeException pending) {
-            log.warn(
-                    "[points] placement awaiting recovery order={} cause={}",
-                    root,
-                    pending.getClass().getSimpleName());
-        }
+        if (callerTransaction) {resumePointsAfterCommit(root);return initial;}
+        try {pointsPlacement.resume(root);}
+        catch(RuntimeException pending){log.warn("[points] placement awaiting recovery order={} cause={}",root,pending.getClass().getSimpleName());}
         return detailOf(root, userNo, "MP");
+    }
+
+    private void resumePointsAfterCommit(String orderNo) {
+        AfterCommit.runOutsideTransaction("points-placement "+orderNo,sourceTransactions.getTransactionManager(),
+                ()->pointsPlacement.resume(orderNo));
     }
 
     @Override @Transactional
     public OrderVO createCoreFor(String userNo,CreateOrderCommand cmd,String idempotencyKey,Integer payMinutes) {
         String hash=createRequestHasher.hash(cmd);
-        return idempotency.execute(idempotencyKey,"POST /mp/order",userNo,hash,OrderVO.class,
+        var result=idempotency.execute(idempotencyKey,"POST /mp/order",userNo,hash,OrderVO.class,
                 ()->doCreate(cmd,userNo,payMinutes,idempotencyKey,hash,null));
+        if(ContractOrderStatus.POINTS_PROCESSING.equals(result.status()))
+            resumePointsAfterCommit(result.payOrderNo());
+        return result;
     }
 
     @Override @Transactional(readOnly=true)
@@ -2756,7 +2760,7 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                     pointDecisions, pointLines, pointRules, subOrderNoOf, subOrderNos,
                     nz(order.getPayAmount()));
             pointsPlacement.stage(draft);
-            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(orderNo));
+
         } else {
             eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, order.getPayAmount()));
         }
@@ -3878,7 +3882,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
             }
         }
         cancelPayment(order, reason, Actor.BUYER, order.getUserNo(), "订单已取消");
-        return detail(order.getOrderNo(), null);
+        return DataScopeContext.executeWithoutScope(
+                () -> detailOf(order.getOrderNo(), order.getUserNo(), surfaceOf(null)));
     }
 
     @Override
@@ -3943,7 +3948,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }
         if (pointsIntegrated) {
             pointsPlacement.recordCancellation(order.getOrderNo());
-            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(order.getOrderNo()));
+            resumePointsAfterCommit(order.getOrderNo());
+
         }
     }
 
@@ -3975,7 +3981,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         for (OrdSubOrder s : subs) {
             afterSaleService.systemRefund(s.getSubOrderNo(), "截单前取消", "买家在截单前取消了订单");
         }
-        return detail(order.getOrderNo(), null);
+        return DataScopeContext.executeWithoutScope(
+                () -> detailOf(order.getOrderNo(), order.getUserNo(), surfaceOf(null)));
     }
 
     @Override
@@ -4063,7 +4070,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }
         if (pointsIntegrated) {
             pointsPlacement.recordCancellation(order.getOrderNo());
-            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(order.getOrderNo()));
+            resumePointsAfterCommit(order.getOrderNo());
+
         }
         if (paymentPort != null) {
             // 关到支付这一层（R18 · TDD-支付服务-I3支付单退款流水 S7）：提交之后再关 —— 关单回滚而支付单已关的话，
