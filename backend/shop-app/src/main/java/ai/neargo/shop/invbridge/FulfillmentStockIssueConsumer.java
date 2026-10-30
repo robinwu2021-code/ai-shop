@@ -38,6 +38,10 @@ public class FulfillmentStockIssueConsumer implements OutboxConsumer {
         this.stock=stock; this.json=json; this.children=children; this.parents=parents;
         this.sources=sources; this.items=items; this.inventory=inventory;
     }
+    private ai.neargo.shop.trade.stock.IndustryStockOwnerRouter ownerRouting;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void routeIndustryStock(ai.neargo.shop.trade.stock.IndustryStockOwnerRouter router){this.ownerRouting=router;}
+    @Override public boolean externalWorkflow(){return true;}
     @Override public String handlerId() { return "fulfillment-stock-issue"; }
     @Override public boolean supports(String eventType) {
         return "SUB_ORDER_SHIPPED".equals(eventType) || "SUB_ORDER_COMPLETED".equals(eventType);
@@ -53,18 +57,20 @@ public class FulfillmentStockIssueConsumer implements OutboxConsumer {
         var parent=DataScopeContext.executeWithoutScope(() -> parents.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getTenantNo,sub.getTenantNo()).eq(OrdOrder::getOrderNo,orderNo)));
         if(parent==null) invalid();
+        var exactSource=sub.getEntityNo()==null||sub.getStoreNo()==null?null:DataScopeContext.executeWithoutScope(()->sources.selectOne(
+                Wrappers.<OrdIndustryOrderSource>lambdaQuery().eq(OrdIndustryOrderSource::getTenantNo,sub.getTenantNo())
+                        .eq(OrdIndustryOrderSource::getEntityNo,sub.getEntityNo()).eq(OrdIndustryOrderSource::getStoreNo,sub.getStoreNo())
+                        .eq(OrdIndustryOrderSource::getOrderNo,orderNo).eq(OrdIndustryOrderSource::getSubOrderNo,subNo)));
+        if(exactSource!=null&&("FOOD_LOCAL".equals(exactSource.getInventoryOwner())||exactSource.getDemandPlanSnapshot()!=null)) {
+            acknowledgeExact(exactSource,sub);return;
+        }
         if(!Integer.valueOf(3).equals(sub.getInventoryLifecycleVersion())) {
             if(!OrdOrder.PAID.equals(parent.getStatus())) invalid();
             stock.allocatePaid(orderNo); stock.issue(subNo,orderNo); return;
         }
         if(sub.getEntityNo()==null || sub.getStoreNo()==null || sub.getStatus()==null
                 || !Set.of(OrdSubOrder.FULFILLING,OrdSubOrder.COMPLETED).contains(sub.getStatus())) invalid();
-        var source=DataScopeContext.executeWithoutScope(() -> sources.selectOne(
-                Wrappers.<OrdIndustryOrderSource>lambdaQuery().eq(OrdIndustryOrderSource::getTenantNo,sub.getTenantNo())
-                        .eq(OrdIndustryOrderSource::getEntityNo,sub.getEntityNo())
-                        .eq(OrdIndustryOrderSource::getStoreNo,sub.getStoreNo())
-                        .eq(OrdIndustryOrderSource::getOrderNo,orderNo)
-                        .eq(OrdIndustryOrderSource::getSubOrderNo,subNo)));
+        var source=exactSource;
         if(source==null || !"POSTPAY".equals(source.getOrderMode()) || !"ACCEPTED".equals(source.getStatus())) invalid();
         boolean paid=OrdOrder.PAID.equals(parent.getStatus()) && parent.getPaidAt()!=null;
         if(!paid && (!OrdOrder.WAIT_PAY.equals(parent.getStatus()) || parent.getPaidAt()!=null)) invalid();
@@ -82,6 +88,27 @@ public class FulfillmentStockIssueConsumer implements OutboxConsumer {
         var issued=port.issue(scope,subNo); verify(scope,expected,issued,paid);
         if(issued.paymentAcknowledged()!=paid || (paid?issued.state()!=InventoryReservationPort.State.COMMITTED
                 :issued.state()!=InventoryReservationPort.State.ISSUED_UNPAID)) invalid();
+    }
+    private void acknowledgeExact(OrdIndustryOrderSource source,OrdSubOrder sub) {
+        if(ownerRouting==null||source.getDemandPlanSnapshot()==null||!"ACCEPTED".equals(source.getStatus())
+                ||!Set.of(OrdSubOrder.FULFILLING,OrdSubOrder.COMPLETED).contains(sub.getStatus()))invalid();
+        var plan=ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts.validate(json.readValue(source.getDemandPlanSnapshot(),ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Plan.class));
+        if(!plan.planNo().equals(source.getDemandPlanNo())||!plan.planHash().equals(source.getDemandPlanHash())
+                ||!sub.getTenantNo().equals(plan.scope().tenantNo())||!sub.getEntityNo().equals(plan.scope().entityNo())
+                ||plan.branches().stream().anyMatch(b->!sub.getStoreNo().equals(b.storeNo())||!sub.getSubOrderNo().equals(b.fulfillmentRef())))invalid();
+        int protocol=Set.of("POSTPAY","CHANNEL").contains(source.getOrderMode())?3:2;
+        var proof=ownerRouting.exact(source.getInventoryOwner(),plan,protocol).query(plan.scope());
+        if(proof==null||!plan.scope().equals(proof.scope())||!plan.planNo().equals(proof.planNo())
+                ||!plan.planHash().equals(proof.planHash())||proof.lifecycleVersion()!=protocol
+                ||!Set.of("ACCEPTED_UNPAID","ALLOCATED").contains(proof.status()))invalid();
+        var expected=plan.branches().stream().flatMap(b->b.leaves().stream()).toList();
+        if(proof.lines().size()!=expected.size()||proof.lines().stream().map(ai.neargo.shop.spi.inventory.InventoryDemandPlanPort.Progress::leafRef).distinct().count()!=expected.size())invalid();
+        for(var leaf:expected){var progress=proof.lines().stream().filter(l->leaf.leafRef().equals(l.leafRef())).findFirst().orElseThrow(()->new IllegalStateException("Missing original local leaf"));
+            if(!leaf.itemRef().equals(progress.itemRef())||!leaf.unit().equals(progress.unit())||!leaf.definitionHash().equals(progress.definitionHash())
+                    ||progress.issuedQty()==null||progress.releasedQty()==null||progress.issuedQty().signum()<0||progress.releasedQty().signum()<0
+                    ||progress.issuedQty().add(progress.releasedQty()).compareTo(leaf.quantity())!=0)invalid();
+        }
+        // Exact fulfillment already owns these deductions. This callback verifies; it never posts a second issue.
     }
     private List<InventoryReservationPort.ReservedLine> original(InventoryReservationPort.Scope scope,OrdSubOrder sub) {
         var quantities=new LinkedHashMap<String,Integer>();

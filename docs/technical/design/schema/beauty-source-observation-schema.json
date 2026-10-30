@@ -1,0 +1,200 @@
+{
+  "version": 8,
+  "table": {
+    "name": "bty_source_observation",
+    "fields": [
+      {
+        "name": "id",
+        "type": "bigint",
+        "nullable": false,
+        "description": "Physical key; never public"
+      },
+      {
+        "name": "tenant_no",
+        "type": "varchar(32)",
+        "nullable": false,
+        "description": "Existing tenant",
+        "default": "MAIN"
+      },
+      {
+        "name": "entity_no",
+        "type": "varchar(32)",
+        "nullable": false,
+        "description": "Authorized entity"
+      },
+      {
+        "name": "created_at",
+        "type": "datetime(3)",
+        "nullable": false,
+        "description": "Creation time"
+      },
+      {
+        "name": "created_by",
+        "type": "varchar(64)",
+        "nullable": true,
+        "description": "Actual actor"
+      },
+      {
+        "name": "updated_at",
+        "type": "datetime(3)",
+        "nullable": false,
+        "description": "Observation update time"
+      },
+      {
+        "name": "updated_by",
+        "type": "varchar(64)",
+        "nullable": true,
+        "description": "Actual observing actor"
+      },
+      {
+        "name": "version",
+        "type": "bigint",
+        "nullable": false,
+        "description": "Local compare-and-set version",
+        "default": 0
+      },
+      {
+        "name": "deleted",
+        "type": "int",
+        "nullable": false,
+        "description": "Permanent identity; deletion forbidden",
+        "default": 0
+      },
+      {
+        "name": "store_no",
+        "type": "varchar(32)",
+        "nullable": false,
+        "description": "Canonical owner store"
+      },
+      {
+        "name": "source_kind",
+        "type": "varchar(32)",
+        "nullable": false,
+        "description": "STORE_ORDER only"
+      },
+      {
+        "name": "source_no",
+        "type": "varchar(64)",
+        "nullable": false,
+        "description": "Canonical sub-order number"
+      },
+      {
+        "name": "checkout_caller",
+        "type": "varchar(16)",
+        "nullable": false,
+        "description": "BEAUTY only"
+      },
+      {
+        "name": "checkout_operation_no",
+        "type": "varchar(64)",
+        "nullable": false,
+        "description": "Unique owner revision domain"
+      },
+      {
+        "name": "order_no",
+        "type": "varchar(64)",
+        "nullable": false,
+        "description": "Canonical ordinary payment root"
+      },
+      {
+        "name": "buyer_no",
+        "type": "varchar(64)",
+        "nullable": false,
+        "description": "Verified USER identity"
+      },
+      {
+        "name": "observation_epoch",
+        "type": "bigint",
+        "nullable": false,
+        "description": "Local monotonic source-call fence",
+        "default": 0
+      },
+      {
+        "name": "state",
+        "type": "varchar(16)",
+        "nullable": false,
+        "description": "UNKNOWN or READY or BLOCKED"
+      },
+      {
+        "name": "source_revision",
+        "type": "bigint",
+        "nullable": true,
+        "description": "Highest observed owner revision"
+      },
+      {
+        "name": "source_hash",
+        "type": "char(64)",
+        "nullable": true,
+        "description": "Hash paired with highest owner revision"
+      },
+      {
+        "name": "verified_revision",
+        "type": "bigint",
+        "nullable": true,
+        "description": "Last complete verified owner revision"
+      },
+      {
+        "name": "verified_hash",
+        "type": "char(64)",
+        "nullable": true,
+        "description": "Hash paired with verified lines"
+      },
+      {
+        "name": "verified_lines",
+        "type": "json",
+        "nullable": true,
+        "description": "Last verified identity and quantity lines; no money"
+      },
+      {
+        "name": "verified_at",
+        "type": "datetime(3)",
+        "nullable": true,
+        "description": "Last complete owner observation time"
+      },
+      {
+        "name": "observed_at",
+        "type": "datetime(3)",
+        "nullable": true,
+        "description": "Current epoch completion time; null while reading"
+      },
+      {
+        "name": "failure_code",
+        "type": "varchar(64)",
+        "nullable": true,
+        "description": "Safe current blocking reason"
+      }
+    ],
+    "unique": [
+      [
+        "tenant_no",
+        "entity_no",
+        "source_kind",
+        "source_no"
+      ],
+      [
+        "tenant_no",
+        "entity_no",
+        "checkout_caller",
+        "checkout_operation_no"
+      ]
+    ],
+    "indexes": [
+      [
+        "tenant_no",
+        "entity_no",
+        "store_no",
+        "state"
+      ]
+    ],
+    "checks": [
+      "`version` >= 0 AND `observation_epoch` >= 0",
+      "`deleted` = 0",
+      "`tenant_no` = 'MAIN' AND `source_kind` = 'STORE_ORDER' AND `checkout_caller` = 'BEAUTY'",
+      "`state` IN ('UNKNOWN', 'READY', 'BLOCKED')",
+      "(`source_revision` IS NULL AND `source_hash` IS NULL) OR (`source_revision` IS NOT NULL AND `source_hash` IS NOT NULL AND `source_revision` > 0 AND CHAR_LENGTH(`source_hash`) = 64)",
+      "(`verified_revision` IS NULL AND `verified_hash` IS NULL AND `verified_lines` IS NULL AND `verified_at` IS NULL) OR (`verified_revision` IS NOT NULL AND `verified_hash` IS NOT NULL AND `verified_lines` IS NOT NULL AND `verified_at` IS NOT NULL AND `verified_revision` > 0 AND CHAR_LENGTH(`verified_hash`) = 64 AND JSON_TYPE(`verified_lines`) = 'ARRAY' AND JSON_LENGTH(`verified_lines`) > 0 AND JSON_LENGTH(`verified_lines`) <= 20)",
+      "`verified_revision` IS NULL OR (`source_revision` IS NOT NULL AND `verified_revision` <= `source_revision` AND (`verified_revision` <> `source_revision` OR `verified_hash` = `source_hash`))",
+      "(`state` = 'READY' AND `observation_epoch` > 0 AND `source_revision` IS NOT NULL AND `verified_revision` IS NOT NULL AND `source_revision` = `verified_revision` AND `source_hash` = `verified_hash` AND `observed_at` IS NOT NULL AND `failure_code` IS NULL) OR (`state` IN ('UNKNOWN', 'BLOCKED') AND `failure_code` IS NOT NULL AND CHAR_LENGTH(`failure_code`) > 0)"
+    ]
+  }
+}

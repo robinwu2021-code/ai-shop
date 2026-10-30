@@ -30,6 +30,7 @@ public final class PaymentDraftFactory {
         long total = orders.stream().mapToLong(d -> d.order().getPayAmount()).sum();
 
         OrdOrder payment = new OrdOrder();
+        payment.setIdentityRevision(1L);
         payment.setOrderNo(payNo);
         payment.setUserNo(userNo);
         payment.setCommunityNo(communityNo);

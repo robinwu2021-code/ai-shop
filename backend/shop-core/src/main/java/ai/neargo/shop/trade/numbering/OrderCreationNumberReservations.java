@@ -82,9 +82,15 @@ public class OrderCreationNumberReservations extends DefaultPointcutAdvisor {
     }
     static boolean owns(String type, String method) {
         return type.equals("OrderServiceImpl") && Set.of("create", "createFor", "createCoreFor", "createBound", "cancel").contains(method)
-                || type.equals("PlatformOrderServiceImpl") && method.equals("createProxyOrder");
+                || type.equals("PlatformOrderServiceImpl") && method.equals("createProxyOrder")
+                || type.equals("CheckoutServiceImpl") && method.equals("place")
+                || type.equals("CounterOrderPlacementServiceImpl") && method.equals("place");
     }
     static Map<DocumentType, Integer> creationBudget(String type, Object[] args) {
+        // Confirmed checkout is scoped to one entity/store and freezes exactly one child.
+        if (type.equals("CheckoutServiceImpl") || type.equals("CounterOrderPlacementServiceImpl")) {
+            return Map.of(DocumentType.TRADE_ORDER, 1, DocumentType.TRADE_SUBORDER, 1);
+        }
         int count = 0;
         for (Object argument : args) {
             if (argument instanceof OrderService.CreateOrderCommand command)

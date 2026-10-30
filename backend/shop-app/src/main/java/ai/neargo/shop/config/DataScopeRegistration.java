@@ -252,6 +252,10 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * 那边漏豁免会把货变成「没货」，这边最多是「没享受到本店价」。
          * 这个方向差别正是 prd_store_price 与 prd_store_stock 回退语义相反的延伸。
          */
+        registry.register("prd_store_catalog", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("prd_store_catalog_version", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
         registry.register("prd_store_price", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
 

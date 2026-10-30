@@ -41,7 +41,7 @@ class WechatEcommerceChannelTest {
     @DisplayName("★★★ F12 查单走服务商路径，带 sp_mchid 与这笔交易的 sub_mchid")
     void queryUsesPartnerPath() {
         Rig r = rig(Optional.of("SUB-9"), true);
-        r.peer.script = q -> json(200, "{\"trade_state\":\"SUCCESS\",\"transaction_id\":\"4200001\","
+        r.peer.script = q -> json(200, "{\"out_trade_no\":\"ORD-1\",\"trade_state\":\"SUCCESS\",\"transaction_id\":\"4200001\","
                 + "\"amount\":{\"total\":100,\"currency\":\"CNY\"}}");
 
         var res = r.bridge.query("WECHAT", "ORD-1");
@@ -93,6 +93,7 @@ class WechatEcommerceChannelTest {
 
         assertThat(res.success()).isFalse();
         assertThat(res.message()).contains("尚未实现");
+        assertThat(res.disposition()).isEqualTo(PayGateway.PrepayDisposition.NOT_SENT);
         assertThat(r.peer.requests).isEmpty();
     }
 

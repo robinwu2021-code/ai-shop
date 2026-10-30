@@ -1,0 +1,7 @@
+# Task69 M3 design scoped review R2
+Reviewer /root/review_task69_m3_design, gpt-6-astra/xhigh; sourceHEAD ae4c10cc.
+Spec PASS. Architecture APPROVED. I3 ADDRESSED/I4 ADDRESSED; no newCritical/Important. I1/I2remainclosed; untouchedscope notreopened.
+Design2e33ad2ff0072f322064062e1592b8cbf2e7e11623c9d21fd636c6704fe387e5 andreport1f7578fdaa2a5b73e29585cb6217db2f67d1e6868f1f432c42e0994a29b36076 independentlyverified.
+I3 evidence design158 refresh-onlyinvalidateManual/no suspension;159–160 all3pre-ownercallers;157 uncertaintyvsdefinitivefacts/unchangedADMITTEDcontinuity;165 sameTXgenuineproofproducer;359 real-owner successful/failedrefresh/priorgenuinesuspension scenarios.
+I4 evidence315 explicitcoreServiceExecutionRecoveryJob/beautyServiceExecutionRecoveryJob, distinctdeclarationIDs/logicalnames, beautynoncomponent;319topologymatrix/327concretetype+exactregistration+registryresolutionwithoverridingdisabled.
+Staticdesignapprovalonly, notimplementation/runtimeacceptance. No compilation/tests/JVM/Node/SQL/runtime/network/writes/agents/index; rootpublicationownership retained.

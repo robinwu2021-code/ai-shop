@@ -60,10 +60,11 @@ public interface InventoryStockApi {
     record Target(String itemId, String itemRef, int cumulativeQty) {
     }
 
-    record Restore(String restoreNo, List<InventoryReservationApi.Line> lines) {
+    /** 按原单回补：{@code originalRef} = 原订单号，行给 SKU 号 / 门店号 / 履约单号 */
+    record Restore(String restoreNo, String originalRef, List<InventoryReservationApi.Line> lines) {
     }
 
-    record Restored(String restoreNo, String inboundNo) {
+    record Restored(String restoreNo, String originalRef) {
     }
 
     record OnHand(String itemId, String itemRef, String locationId, String locationRef, int onHand, String reason,

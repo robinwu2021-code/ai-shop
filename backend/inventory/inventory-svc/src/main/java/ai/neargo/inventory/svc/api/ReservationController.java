@@ -7,7 +7,9 @@ import ai.neargo.inventory.domain.service.BusinessProfileService;
 import ai.neargo.inventory.domain.service.Caller;
 import ai.neargo.inventory.domain.service.CommandService;
 import ai.neargo.inventory.domain.service.HostReferenceService;
+import ai.neargo.inventory.domain.service.OriginalReservationRestoreService;
 import ai.neargo.inventory.domain.service.ReservationService;
+import ai.neargo.inventory.domain.support.SourceStock;
 import ai.neargo.inventory.guard.InventoryRequestContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,13 +34,16 @@ public class ReservationController {
     private final BusinessProfileService profiles;
     private final CommandService commands;
     private final HostReferenceService refs;
+    private final OriginalReservationRestoreService originalRestores;
 
     public ReservationController(ReservationService reservations, BusinessProfileService profiles,
-                                 CommandService commands, HostReferenceService refs) {
+                                 CommandService commands, HostReferenceService refs,
+                                 OriginalReservationRestoreService originalRestores) {
         this.reservations = reservations;
         this.profiles = profiles;
         this.commands = commands;
         this.refs = refs;
+        this.originalRestores = originalRestores;
     }
 
     @PostMapping("/api/inventory/v1/reservations")
@@ -49,7 +54,10 @@ public class ReservationController {
         }
         List<ReservationService.Line> lines = req.lines().stream()
                 .map(l -> new ReservationService.Line(itemOf(caller.ownerId(), l), locationOf(caller.ownerId(), l),
-                        l.qty(), l.fulfillmentRef()))
+                        l.qty(), l.fulfillmentRef(),
+                        // 带履约单时冻结宿主来源（SKU / 门店），退货按原单回补靠它 —— 与商城内嵌同一条规则
+                        l.fulfillmentRef() == null ? null : l.itemRef(),
+                        l.fulfillmentRef() == null ? null : l.locationRef()))
                 .toList();
         return commands.execute(caller, "reservation.reserve", req, View.class, () -> {
             reservations.reserve(caller.ownerId(), req.ref(), lines, req.ttlSeconds(),
@@ -113,20 +121,29 @@ public class ReservationController {
                 });
     }
 
-    /** 退货回补：按售后单号回补这些行，生成入库单（同一售后单号幂等）。 */
+    /**
+     * 退货回补：<b>按原单回补</b>（售后单号 + 原订单号 + SKU / 门店 / 履约单），按预留上冻结的来源找回当初扣的
+     * 物料与库位，同一售后单号幂等。不带原单的回补不受理 —— 证明不了它是哪一单的货。
+     */
     @PostMapping("/api/inventory/v1/reservations/restores")
     public Restored restore(@RequestBody Restore req) {
         Caller caller = enabled();
-        if (req.restoreNo() == null || req.lines() == null || req.lines().isEmpty()) {
+        String owner = caller.ownerId();
+        if (req.restoreNo() == null || req.originalRef() == null || req.lines() == null || req.lines().isEmpty()) {
             throw InventoryException.of(InventoryError.BAD_REQUEST, "restore");
         }
-        List<ReservationService.Line> lines = req.lines().stream()
-                .map(l -> new ReservationService.Line(itemOf(caller.ownerId(), l), locationOf(caller.ownerId(), l),
-                        l.qty(), l.fulfillmentRef()))
+        // 原单回补按原订单号跨业主锁来源：先证明这张原单、这些 SKU 都是本商家的（SKU 在宿主平台内唯一）
+        if (reservations.query(owner, req.originalRef()).isEmpty()
+                || req.lines().stream().anyMatch(l -> refs.itemIdOf(owner, l.itemRef()) == null)) {
+            throw InventoryException.of(InventoryError.NOT_FOUND, "original");
+        }
+        List<SourceStock.Qty> items = req.lines().stream()
+                .map(l -> new SourceStock.Qty(l.itemRef(), l.qty(), l.locationRef(), l.fulfillmentRef(), 1))
                 .toList();
-        return commands.execute(caller, "reservation.restore", req, Restored.class, () -> new Restored(
-                req.restoreNo(), reservations.restore(caller.ownerId(), req.restoreNo(), lines,
-                caller.actor() == null ? caller.systemCode() : caller.actor())));
+        return commands.execute(caller, "reservation.restore", req, Restored.class, () -> {
+            originalRestores.restoreSourceSkus(req.restoreNo(), req.originalRef(), items);
+            return new Restored(req.restoreNo(), req.originalRef());
+        });
     }
 
     private View act(String type, String ref, Consumer<String> action) {
@@ -191,10 +208,11 @@ public class ReservationController {
     public record Target(String itemId, String itemRef, int cumulativeQty) {
     }
 
-    public record Restore(String restoreNo, List<Line> lines) {
+    /** @param originalRef 原订单号（预留单号） */
+    public record Restore(String restoreNo, String originalRef, List<Line> lines) {
     }
 
-    public record Restored(String restoreNo, String inboundNo) {
+    public record Restored(String restoreNo, String originalRef) {
     }
 
     public record View(String ref, String reservationId, String status, int lifecycleVersion,

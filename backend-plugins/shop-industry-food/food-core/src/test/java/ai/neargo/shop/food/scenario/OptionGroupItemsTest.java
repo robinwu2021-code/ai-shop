@@ -26,7 +26,7 @@ class OptionGroupItemsTest extends FoodWriteGuardFixture {
         f.sql().execute("CREATE TABLE fnb_dish_option_group(" + common
                 + "goods_no VARCHAR(32),group_no VARCHAR(32),sort_no INT,UNIQUE(goods_no,group_no))");
         f.sql().execute("CREATE TABLE fnb_modifier(" + common + "modifier_no VARCHAR(32),name VARCHAR(64),"
-                + "kind VARCHAR(16),sales_sku_no VARCHAR(32),published_revision_no VARCHAR(32),status VARCHAR(16))");
+                + "kind VARCHAR(16),sales_sku_no VARCHAR(32),inventory_mode VARCHAR(16),published_revision_no VARCHAR(32),status VARCHAR(16))");
         f.sql().update("INSERT INTO fnb_dish(entity_no,goods_no) VALUES('E','G'),('E','X')");
         f.sql().update("INSERT INTO fnb_modifier(entity_no,modifier_no,name,kind,status) "
                 + "VALUES('E','M','珍珠','ADDON','DRAFT'),('OTHER','FOREIGN','外主体','ADDON','ACTIVE')");

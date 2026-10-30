@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="510" viewBox="0 0 1080 510" role="img" aria-labelledby="title desc">
+<title id="title">美业五模块Java依赖设计</title>
+<desc id="desc">web和core使用api，channel使用api，server装配core和channel，web按需使用channel。图由模块设计JSON生成。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#56769b"/></marker></defs>
+<rect width="1080" height="510" fill="#f5f8fc"/>
+<style>text{font-family:"PingFang SC","Noto Sans CJK SC",sans-serif;fill:#24364d;font-size:16px}.sub{font-size:13px;fill:#566b84}.head{font-size:23px;font-weight:700}</style>
+<text x="30" y="36" class="head">美业独立项目：五模块、无环依赖</text>
+<path d="M 925 115 L 635.6451612903226 230.0" stroke="#56769b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M 145 115 L 434.35483870967744 230.0" stroke="#56769b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M 145 115 L 145.0 380.0" stroke="#56769b" stroke-width="2" fill="none" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 145 420 L 431.0 310.0" stroke="#56769b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M 925 420 L 925.0 155.0" stroke="#56769b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<path d="M 925 420 L 250.0 420.0" stroke="#56769b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+<rect x="40" y="75" width="210" height="80" rx="10" fill="white" stroke="#9bb8d7"/><text x="55" y="105">beauty-web</text><text x="55" y="132" class="sub">C / B / 平台接入</text>
+<rect x="820" y="75" width="210" height="80" rx="10" fill="white" stroke="#9bb8d7"/><text x="835" y="105">beauty-core</text><text x="835" y="132" class="sub">业务、持久化、内部入口</text>
+<rect x="430" y="230" width="210" height="80" rx="10" fill="white" stroke="#9bb8d7"/><text x="445" y="260">beauty-api</text><text x="445" y="287" class="sub">Service / Req / VO / 自有SPI</text>
+<rect x="40" y="380" width="210" height="80" rx="10" fill="white" stroke="#9bb8d7"/><text x="55" y="410">beauty-channel</text><text x="55" y="437" class="sub">协议客户端与远程适配</text>
+<rect x="820" y="380" width="210" height="80" rx="10" fill="white" stroke="#9bb8d7"/><text x="835" y="410">beauty-server</text><text x="835" y="437" class="sub">唯一独立业务启动进程</text>
+<text x="310" y="485" class="sub">实线：必须依赖　虚线：按需依赖　平台依赖见模块表</text>
+</svg>

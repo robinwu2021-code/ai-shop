@@ -67,6 +67,25 @@ class InProcessChannelTest {
     }
 
     @Test
+    void explicitUnsentProofSurvivesCurrentBridgeWithoutConflatingSentRejection() {
+        var command = new PayGateway.PrepayCommand("UNSENT-1", 123, "CNY", "s", "JSAPI", null, null);
+        doReturn(PayGateway.PrepayResult.notSent("local precondition")).when(bank).prepay(command);
+        assertThat(bridge.prepay("TEST", command).disposition()).isEqualTo(PayGateway.PrepayDisposition.NOT_SENT);
+        doReturn(PayGateway.PrepayResult.fail("verified channel rejection")).when(bank).prepay(command);
+        assertThat(bridge.prepay("TEST", command).disposition()).isEqualTo(PayGateway.PrepayDisposition.REJECTED);
+    }
+
+    @Test
+    void unknownPrepayNeverBecomesDefinitiveRejectionThroughCurrentBridge() {
+        var command = new PayGateway.PrepayCommand("UNKNOWN-1", 123, "CNY", "s", "JSAPI", null, null);
+        doReturn(PayGateway.PrepayResult.unknown("response lost")).when(bank).prepay(command);
+        var result = bridge.prepay("TEST", command);
+        assertThat(result.success()).isFalse();
+        assertThat(result.disposition()).isEqualTo(PayGateway.PrepayDisposition.UNKNOWN);
+        assertThat(result.definitiveRejection()).isFalse();
+    }
+
+    @Test
     @DisplayName("★★ 零金额不进管线（校验会拒 0 元），直达测试银行：它明确拒绝，原样带回")
     void zeroAmountBypassesPipeline() {
         var res = bridge.prepay("TEST", new PayGateway.PrepayCommand("OUT-0", 0, "CNY", "s", "JSAPI", null, null));

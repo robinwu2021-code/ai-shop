@@ -1,0 +1,47 @@
+-- Incremental common catalog; no prices, inventory or legacy product-store shelf mutations.
+CREATE TABLE prd_store_catalog (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '物理键，不对外',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN' COMMENT '租户',
+    entity_no VARCHAR(64) NOT NULL COMMENT '商品经营主体',
+    store_no VARCHAR(64) NOT NULL COMMENT '当前门店',
+    created_at DATETIME(3) NOT NULL COMMENT '创建时刻',
+    created_by VARCHAR(64) NULL COMMENT '实际操作者',
+    updated_at DATETIME(3) NOT NULL COMMENT '更新时间',
+    updated_by VARCHAR(64) NULL COMMENT '实际操作者',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+    deleted INT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    catalog_no VARCHAR(32) NOT NULL COMMENT '目录业务键',
+    current_version_no VARCHAR(32) NOT NULL COMMENT '最新发布版本，可能尚未生效',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_prd_catalog_scope (tenant_no, entity_no, store_no),
+    UNIQUE KEY uk_prd_catalog_no (tenant_no, entity_no, catalog_no),
+    CONSTRAINT ck_prd_catalog_revision CHECK (version >= 1),
+    CONSTRAINT ck_prd_catalog_deleted CHECK (deleted IN (0,1))
+) ENGINE=InnoDB COMMENT='门店销售目录版本头';
+
+CREATE TABLE prd_store_catalog_version (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '物理键，不对外',
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN' COMMENT '租户',
+    entity_no VARCHAR(64) NOT NULL COMMENT '商品经营主体',
+    store_no VARCHAR(64) NOT NULL COMMENT '当前门店',
+    created_at DATETIME(3) NOT NULL COMMENT '创建时刻',
+    created_by VARCHAR(64) NULL COMMENT '实际操作者',
+    updated_at DATETIME(3) NOT NULL COMMENT '更新时间',
+    updated_by VARCHAR(64) NULL COMMENT '实际操作者',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+    deleted INT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    catalog_version_no VARCHAR(32) NOT NULL COMMENT '不可变版本业务键',
+    catalog_no VARCHAR(32) NOT NULL COMMENT '所属目录',
+    revision_index BIGINT NOT NULL COMMENT '发布修订号',
+    effective_at DATETIME(3) NOT NULL COMMENT 'UTC生效时刻',
+    frozen_payload LONGTEXT NOT NULL COMMENT '规范JSON快照，仅陈列和销售时段',
+    snapshot_hash VARCHAR(64) NOT NULL COMMENT '含生效时刻的规范快照摘要',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_prd_catalog_version_no (tenant_no, entity_no, catalog_version_no),
+    UNIQUE KEY uk_prd_catalog_revision (tenant_no, entity_no, catalog_no, revision_index),
+    KEY idx_prd_catalog_effective (tenant_no, entity_no, store_no, effective_at, revision_index),
+    CONSTRAINT ck_prd_catalog_version_revision CHECK (revision_index >= 1 AND version >= 0),
+    CONSTRAINT ck_prd_catalog_payload CHECK (JSON_VALID(frozen_payload)),
+    CONSTRAINT ck_prd_catalog_hash CHECK (CHAR_LENGTH(snapshot_hash) = 64),
+    CONSTRAINT ck_prd_catalog_version_deleted CHECK (deleted IN (0,1))
+) ENGINE=InnoDB COMMENT='门店销售目录不可变版本';

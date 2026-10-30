@@ -20,6 +20,7 @@ import ai.neargo.inventory.domain.mapper.InventoryMappers.BalanceMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OutboxMapper;
 import ai.neargo.inventory.domain.service.impl.StockPostingServiceImpl;
+import ai.neargo.inventory.domain.policy.ExecutionStockRetentionGuard;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -37,7 +38,7 @@ class ExactStockPostingTest {
         var balances = mock(BalanceMapper.class);
         var ledger = mock(LedgerMapper.class);
         var outbox = mock(OutboxMapper.class);
-        var service = new StockPostingServiceImpl(balances, ledger, outbox);
+        var service = new StockPostingServiceImpl(balances, ledger, outbox, mock(ExecutionStockRetentionGuard.class));
         when(balances.selectCount(any())).thenReturn(1L);
         when(balances.applyExactDelta(eq("O"), eq("I"), eq("L"), eq(new BigDecimal("-0.125"))))
                 .thenReturn(1);
@@ -93,7 +94,7 @@ class ExactStockPostingTest {
         var ledger = mock(LedgerMapper.class);
         var outbox = mock(OutboxMapper.class);
         when(balances.selectCount(any())).thenReturn(1L);
-        var service = new StockPostingServiceImpl(balances, ledger, outbox);
+        var service = new StockPostingServiceImpl(balances, ledger, outbox, mock(ExecutionStockRetentionGuard.class));
         assertThatThrownBy(
                         () ->
                                 service.postExact(

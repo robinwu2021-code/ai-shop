@@ -1,14 +1,16 @@
 package ai.neargo.shop.trade.order.mapper;
 
-import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
-import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
+
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
@@ -27,6 +29,20 @@ public interface RefundExecutionMapper extends BaseMapper<OrdRefundExecution> {
 
     @Update("UPDATE ord_points_refund_execution SET last_attempt_at=#{at} WHERE after_sale_no=#{as}")
     int attempted(@Param("as") String as, @Param("at") long at);
+
+    /** Source identities are immutable; the caller serializes against the current child first. */
+    @Select(
+            "SELECT COUNT(*) FROM ord_order p JOIN ord_after_sale a ON a.order_no=p.order_no"
+                    + " AND a.tenant_no=p.tenant_no AND a.deleted=0"
+                    + " WHERE p.order_no=#{order} AND p.tenant_no=#{tenant} AND p.deleted=0"
+                    + " AND p.admission_kind='LEGACY_FUNDED' AND a.after_sale_no=#{as}"
+                    + " AND a.sub_order_no=#{sub} AND a.entity_no=#{entity}")
+    int fundedSource(
+            @Param("order") String order,
+            @Param("sub") String sub,
+            @Param("as") String afterSale,
+            @Param("tenant") String tenant,
+            @Param("entity") String entity);
 
     @Select("SELECT * FROM ord_sub_order WHERE sub_order_no=#{sub} AND deleted=0 FOR UPDATE")
     OrdSubOrder lockSub(String sub);

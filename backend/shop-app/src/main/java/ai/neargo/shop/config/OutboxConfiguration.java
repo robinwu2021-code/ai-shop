@@ -1,21 +1,24 @@
 package ai.neargo.shop.config;
 
-import ai.neargo.shop.event.outbox.runtime.OutboxTransactions;
-import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.outbox.OutboxEnvelope;
 import ai.neargo.shop.event.outbox.OutboxHandler;
+import ai.neargo.shop.event.outbox.OutboxRouteContribution;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
-import ai.neargo.shop.event.outbox.runtime.OutboxProperties;
 import ai.neargo.shop.event.outbox.runtime.OutboxMigrationService;
+import ai.neargo.shop.event.outbox.runtime.OutboxProperties;
 import ai.neargo.shop.event.outbox.runtime.OutboxRunner;
+import ai.neargo.shop.event.outbox.runtime.OutboxTransactions;
 import ai.neargo.shop.event.outbox.runtime.TransactionalOutboxHandler;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,98 +28,188 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.transaction.PlatformTransactionManager;
+
 import tools.jackson.databind.ObjectMapper;
-import javax.sql.DataSource;
+
 import java.time.Clock;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
+import javax.sql.DataSource;
 
 /** Delayed registration avoids the event-bus / consumer / publisher bean cycle. */
 @Configuration
 @EnableConfigurationProperties(OutboxProperties.class)
 public class OutboxConfiguration {
     @Bean
-    UnifiedOutboxFacade unifiedOutboxFacade(ObjectMapper json) { return new UnifiedOutboxFacade(json); }
+    UnifiedOutboxFacade unifiedOutboxFacade(ObjectMapper json) {
+        return new UnifiedOutboxFacade(json);
+    }
 
     @Bean
-    SmartInitializingSingleton outboxRegistration(UnifiedOutboxFacade facade, OutboxProperties props,
-            ObjectProvider<OutboxConsumer> consumers, ObjectProvider<OutboxHandler> workflows,
-            ObjectMapper json, Environment env,
+    SmartInitializingSingleton outboxRegistration(
+            UnifiedOutboxFacade facade,
+            OutboxProperties props,
+            ObjectProvider<OutboxConsumer> consumers,
+            ObjectProvider<OutboxHandler> workflows,
+            ObjectMapper json,
+            Environment env,
             @Qualifier("dataSource") DataSource platform,
             @Qualifier("transactionManager") PlatformTransactionManager platformTx,
             @Qualifier("invDataSource") ObjectProvider<DataSource> inventory,
-            @Qualifier("invTransactionManager") ObjectProvider<PlatformTransactionManager> inventoryTx,
+            @Qualifier("invTransactionManager")
+                    ObjectProvider<PlatformTransactionManager> inventoryTx,
             ObjectProvider<StoreOrderMapper> subOrders,
-            ObjectProvider<PlatformTransactionManager> allTransactionManagers) {
+            ObjectProvider<PlatformTransactionManager> allTransactionManagers,
+            ObjectProvider<OutboxRouteContribution> routeContributions) {
         return () -> {
             props.validate();
             facade.setMaintenance(props.isMaintenance());
             facade.setRetryPolicy(props.retryPolicy());
-            facade.setArchiveOnly(props.getArchiveOnly());
-            if (!props.unified("PLATFORM") && !props.unified("INVENTORY")) { return; }
-            if (props.unified("INVENTORY") && !props.unified("PLATFORM")) {
-                throw new IllegalStateException("Embedded inventory ingress requires unified platform source");
+            var archive = new HashSet<>(props.getArchiveOnly());
+            routeContributions
+                    .orderedStream()
+                    .forEach(c -> archive.removeAll(c.consumedArchiveRoutes()));
+            facade.setArchiveOnly(archive);
+            if (!props.unified("PLATFORM") && !props.unified("INVENTORY")) {
+                return;
             }
-            if (props.unified("PLATFORM") && env.getProperty("shop.outbox.legacy-scan.enabled", Boolean.class, false)) {
+            if (props.unified("INVENTORY") && !props.unified("PLATFORM")) {
+                throw new IllegalStateException(
+                        "Embedded inventory ingress requires unified platform source");
+            }
+            if (props.unified("PLATFORM")
+                    && env.getProperty("shop.outbox.legacy-scan.enabled", Boolean.class, false)) {
                 throw new IllegalStateException("Unified outbox cannot enable legacy-scan");
             }
             allTransactionManagers.orderedStream().forEach(OutboxTransactions::register);
-            List<OutboxHandler> legacyHandlers = consumers.orderedStream().map(consumer -> {
-                if (!List.of("PLATFORM", "INVENTORY").contains(consumer.targetSource())) {
-                    throw new IllegalStateException("Unknown outbox target source");
-                }
-                boolean inv = "INVENTORY".equals(consumer.targetSource());
-                DataSource ds = inv ? inventory.getObject() : platform;
-                PlatformTransactionManager tx = inv ? inventoryTx.getObject() : platformTx;
-                return (OutboxHandler) new TransactionalOutboxHandler(consumer, ds, tx,
-                        inv ? "inv_event_consumed" : "sys_event_consumed");
-            }).toList();
+            List<OutboxHandler> legacyHandlers =
+                    consumers
+                            .orderedStream()
+                            .map(
+                                    consumer -> {
+                                        if (!List.of("PLATFORM", "INVENTORY")
+                                                .contains(consumer.targetSource())) {
+                                            throw new IllegalStateException(
+                                                    "Unknown outbox target source");
+                                        }
+                                        boolean inv = "INVENTORY".equals(consumer.targetSource());
+                                        DataSource ds = inv ? inventory.getObject() : platform;
+                                        PlatformTransactionManager tx =
+                                                inv ? inventoryTx.getObject() : platformTx;
+                                        return (OutboxHandler)
+                                                new TransactionalOutboxHandler(
+                                                        consumer,
+                                                        ds,
+                                                        tx,
+                                                        inv
+                                                                ? "inv_event_consumed"
+                                                                : "sys_event_consumed");
+                                    })
+                            .toList();
             List<OutboxHandler> handlers = new ArrayList<>(legacyHandlers);
-            workflows.orderedStream().forEach(handler -> {
-                if (!handler.externalWorkflow()) {
-                    throw new IllegalStateException("Direct outbox handlers require a durable external workflow");
-                }
-                handlers.add(handler);
-            });
+            workflows
+                    .orderedStream()
+                    .forEach(
+                            handler -> {
+                                if (!handler.externalWorkflow()) {
+                                    throw new IllegalStateException(
+                                            "Direct outbox handlers require a durable external"
+                                                + " workflow");
+                                }
+                                handlers.add(handler);
+                            });
             if (props.unified("PLATFORM")) {
-                facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, platform, platformTx, json), handlers);
+                facade.register(
+                        new JdbcOutboxStore(
+                                JdbcOutboxStore.Source.PLATFORM, platform, platformTx, json),
+                        handlers);
             }
             if (props.unified("INVENTORY")) {
-                OutboxHandler bridge = new OutboxHandler() {
-                    public String handlerId() { return "inventory-to-platform"; }
-                    public boolean supports(String type) { return true; }
-                    public DeliveryResult handle(OutboxEnvelope e) {
-                        if (e.schemaVersion() == 1) {
-                            facade.acceptInventory(e.sourceEventNo(), e.aggregateId(), e.eventType(), e.payload(), e.occurredAt());
-                            return DeliveryResult.sent();
-                        }
-                        facade.accept("PLATFORM", new OutboxEnvelope(BizKey.next(BizKey.EVENT),
-                                e.sourceSystem(), e.sourceEventNo(), e.aggregateType(), e.aggregateId(),
-                                "INV_" + e.eventType(), e.schemaVersion(), "INVENTORY:" + e.streamKey(), 0,
-                                e.payload(), e.occurredAt()));
-                        return DeliveryResult.sent();
-                    }
-                };
-                facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.INVENTORY,
-                        inventory.getObject(), inventoryTx.getObject(), json), List.of(bridge));
+                OutboxHandler bridge =
+                        new OutboxHandler() {
+                            public String handlerId() {
+                                return "inventory-to-platform";
+                            }
+
+                            public boolean supports(String type) {
+                                return true;
+                            }
+
+                            public DeliveryResult handle(OutboxEnvelope e) {
+                                if (e.schemaVersion() == 1) {
+                                    facade.acceptInventory(
+                                            e.sourceEventNo(),
+                                            e.aggregateId(),
+                                            e.eventType(),
+                                            e.payload(),
+                                            e.occurredAt());
+                                    return DeliveryResult.sent();
+                                }
+                                facade.accept(
+                                        "PLATFORM",
+                                        new OutboxEnvelope(
+                                                BizKey.next(BizKey.EVENT),
+                                                e.sourceSystem(),
+                                                e.sourceEventNo(),
+                                                e.aggregateType(),
+                                                e.aggregateId(),
+                                                "INV_" + e.eventType(),
+                                                e.schemaVersion(),
+                                                "INVENTORY:" + e.streamKey(),
+                                                0,
+                                                e.payload(),
+                                                e.occurredAt()));
+                                return DeliveryResult.sent();
+                            }
+                        };
+                facade.register(
+                        new JdbcOutboxStore(
+                                JdbcOutboxStore.Source.INVENTORY,
+                                inventory.getObject(),
+                                inventoryTx.getObject(),
+                                json),
+                        List.of(bridge));
             }
             if (!props.isMaintenance()) {
                 for (var store : facade.stores()) {
                     if (store.unadoptedCount() > 0) {
-                        throw new IllegalStateException("Outbox source requires reviewed legacy adoption: " + store.source());
+                        throw new IllegalStateException(
+                                "Outbox source requires reviewed legacy adoption: "
+                                        + store.source());
                     }
                 }
             }
-            facade.setExpansion(new OutboxEventRoutes(json, subOrderNo -> {
-                OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> subOrders.getObject().selectOne(
-                        Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1")));
-                return sub == null ? null : sub.getOrderNo();
-            })::expand);
+            facade.setExpansion(
+                    new OutboxEventRoutes(
+                                    json,
+                                    subOrderNo -> {
+                                        OrdSubOrder sub =
+                                                DataScopeContext.executeWithoutScope(
+                                                        () ->
+                                                                subOrders
+                                                                        .getObject()
+                                                                        .selectOne(
+                                                                                Wrappers
+                                                                                        .<OrdSubOrder>
+                                                                                                lambdaQuery()
+                                                                                        .eq(
+                                                                                                OrdSubOrder
+                                                                                                        ::getSubOrderNo,
+                                                                                                subOrderNo)
+                                                                                        .last(
+                                                                                                "limit"
+                                                                                                    + " 1")));
+                                        return sub == null ? null : sub.getOrderNo();
+                                    })
+                            ::expand);
         };
     }
 
     @Bean
-    OutboxMigrationService outboxMigrationService(UnifiedOutboxFacade facade, OutboxProperties props) {
+    OutboxMigrationService outboxMigrationService(
+            UnifiedOutboxFacade facade, OutboxProperties props) {
         return new OutboxMigrationService(facade, props, Clock.systemUTC());
     }
 
@@ -126,13 +219,30 @@ public class OutboxConfiguration {
     }
 
     @Bean
-    SmartLifecycle outboxLifecycle(OutboxRunner runner, OutboxProperties props, UnifiedOutboxFacade facade) {
+    SmartLifecycle outboxLifecycle(
+            OutboxRunner runner, OutboxProperties props, UnifiedOutboxFacade facade) {
         return new SmartLifecycle() {
             private boolean running;
-            public void start() { if (props.isEnabled() && !facade.stores().isEmpty()) { runner.start(); running = true; } }
-            public void stop() { running = false; runner.close(); }
-            public boolean isRunning() { return running; }
-            public int getPhase() { return Integer.MAX_VALUE - 100; }
+
+            public void start() {
+                if (props.isEnabled() && !facade.stores().isEmpty()) {
+                    runner.start();
+                    running = true;
+                }
+            }
+
+            public void stop() {
+                running = false;
+                runner.close();
+            }
+
+            public boolean isRunning() {
+                return running;
+            }
+
+            public int getPhase() {
+                return Integer.MAX_VALUE - 100;
+            }
         };
     }
 }

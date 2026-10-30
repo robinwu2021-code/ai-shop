@@ -1,0 +1,66 @@
+package ai.neargo.shop.commerce.api.biz;
+
+import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.commerce.api.CommerceRequestScope;
+import ai.neargo.shop.commerce.config.ConditionalOnCommerceWebEnabled;
+import ai.neargo.shop.commerce.dto.AvailabilityContracts;
+import ai.neargo.shop.commerce.dto.OperationVO;
+import ai.neargo.shop.commerce.service.ChannelAvailabilityService;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Set;
+
+/**
+ * Availability is a separate authorized original-owner publication; clients cannot report balances.
+ */
+@RestController
+@Profile("api")
+@ConditionalOnCommerceWebEnabled
+@Validated
+@PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+public class BizChannelAvailabilityController {
+    private final ChannelAvailabilityService service;
+    private final CommerceRequestScope scope;
+
+    public BizChannelAvailabilityController(
+            ChannelAvailabilityService service, CommerceRequestScope scope) {
+        this.service = service;
+        this.scope = scope;
+    }
+
+    @PostMapping("/biz/x/commerce/stores/{storeNo}/store-publications")
+    public OperationVO publishStore(
+            @PathVariable @NotBlank @Size(max = 32) String storeNo,
+            @Valid @RequestBody AvailabilityContracts.StorePublish body,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 128) String key,
+            HttpServletRequest request) {
+        CommerceRequestScope.query(request, Set.of());
+        return service.publishStore(
+                scope.store(storeNo, request), storeNo, SecurityUtils.currentUserNo(), body, key);
+    }
+
+    @PostMapping("/biz/x/commerce/stores/{storeNo}/stock-publications")
+    public OperationVO publish(
+            @PathVariable @NotBlank @Size(max = 32) String storeNo,
+            @Valid @RequestBody AvailabilityContracts.Publish body,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 128) String key,
+            HttpServletRequest request) {
+        CommerceRequestScope.query(request, Set.of());
+        return service.publishStock(
+                scope.store(storeNo, request), storeNo, SecurityUtils.currentUserNo(), body, key);
+    }
+}

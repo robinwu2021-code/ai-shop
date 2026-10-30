@@ -1,0 +1,178 @@
+{
+  "scope": "R2 only; historical original/R1 evidence indexes remain unchanged",
+  "report": {
+    "path": ".superpowers/sdd/beauty-backend/task-64-report.md",
+    "bytes": 35774,
+    "sha256": "e2ad4813611389593f874e24e3d6626306b71c9a0fb275cb092d9d3ed21ac3fa"
+  },
+  "candidateInventory": "fix-r2/pre-green/inventory.json",
+  "artifacts": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/after-green-comparison.json",
+      "bytes": 172,
+      "sha256": "24c75206fd7350daf1e4a6b552aa9f94ca7a16ad3ef389fafdf09c29111a2c01"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/final-summary.json",
+      "bytes": 3066,
+      "sha256": "c4f1e899bb040a1a70d7d003e91d2f7a3e5336e7dcee2b9f66a6c02d7397b80c"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/pre-green/inventory.json",
+      "bytes": 83172,
+      "sha256": "55c7db74508320dfd8f884be433e2fa983fff5810dc6aa9deb057ec064264a76"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/pre-green/product-delta.diff",
+      "bytes": 2009,
+      "sha256": "5baa96f1e62b2925dad4e0e4f5e384f792c3a1a19d3cdb5155be46863a0ec67f"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/pre-green/task64-r2-final-product-compile.log",
+      "bytes": 42068,
+      "sha256": "aa47945737ebbe3da23e4d1caaa6488bc8a3dc4d2c49d4a9ea1713e0c33f00b0"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/pre-red/inventory.json",
+      "bytes": 82042,
+      "sha256": "4967701882d8283d4904e00b800d05417b5f1390949407bdba1c66b3ce441bc1"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/pre-red/report-before-r2-tests.md",
+      "bytes": 25502,
+      "sha256": "2d043765e01af4c39b56ba8baa931281eef5061560488829c1ab5838888f4ffe"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/pre-red/task64-r2-frozen-tests-compile.log",
+      "bytes": 38589,
+      "sha256": "9d9fc649cb2162262150698fd7ad9ad60e4bca011a192f224ee098b83e68fce9"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/pre-red/task64-r2-runner-tests.log",
+      "bytes": 633,
+      "sha256": "f5f952d1846ba177cce99c6ca01138d0d7c3f7d1c203adb4eee3af005dfd1327"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/fix-r2/pre-red/task64-r2-tests-compile.log",
+      "bytes": 38589,
+      "sha256": "d105cb6fd10a751a13e64931945bf23e3d37226bdac3c128772876fe1ea8a11a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/admission-phase.java",
+      "bytes": 18137,
+      "sha256": "7ef3a26c6241417e9e5838f431571ecf402942e1af67dc89229cf70dd8a805ac"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/aggregate-pom.xml",
+      "bytes": 459,
+      "sha256": "36376e01c514912620f3438d3284c0060300a66d9fbe9dc0f1f48f3067d1fec8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/ai.neargo.shop.scenario.ManualServiceFinancialIsolationIT.xml",
+      "bytes": 58009,
+      "sha256": "e59ca892a20494c0d3086edf4eb5193a626c9a47b961d82cea6baf23205c51c9"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/cleanup.json",
+      "bytes": 223,
+      "sha256": "ab384eeeb7fddc2c5aeb4cdd0e9d058c8238bdcb3e75810d20291e96595d29e6"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/commands.json",
+      "bytes": 861,
+      "sha256": "dc6020fb80766025370a82b181435740d5c1364bde21aca467e82619e9f9b3bf"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/phase-provenance.json",
+      "bytes": 32214,
+      "sha256": "e0750264dd35f9266921b26db3652adb0b4bfe89826c22c202bc0ae35c35cc6a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/phase-source-class-manifest.json",
+      "bytes": 32214,
+      "sha256": "e0750264dd35f9266921b26db3652adb0b4bfe89826c22c202bc0ae35c35cc6a"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/r2-green.log",
+      "bytes": 49716,
+      "sha256": "a32d0c0db386ed9659cd49d1ead9eea76d9759c8eceb103415464075a177efbc"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/resource.json",
+      "bytes": 242,
+      "sha256": "c4da76ff3ff74b4b072c1b4e0238a31b50065aba9aebd646842eb146a700eca2"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/root-gate.json",
+      "bytes": 72219,
+      "sha256": "2b718e91f199edc0cd13bb8d4f22408c73642c8578362840fc8f07c42aef7bee"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-green-4a0691b6-c2ef-4187-95c0-76770621badb/summary.json",
+      "bytes": 539,
+      "sha256": "f597823fbb0730ecab2dcb59ba3d25d95b40d9d5b975a37947cffc361c37191f"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/admission-phase.java",
+      "bytes": 18137,
+      "sha256": "7ef3a26c6241417e9e5838f431571ecf402942e1af67dc89229cf70dd8a805ac"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/aggregate-pom.xml",
+      "bytes": 459,
+      "sha256": "36376e01c514912620f3438d3284c0060300a66d9fbe9dc0f1f48f3067d1fec8"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/ai.neargo.shop.scenario.ManualServiceFinancialIsolationIT.xml",
+      "bytes": 60726,
+      "sha256": "8c6649fc1797b489808b29bbc378abcda16a259463a314deaf5e559f7c932477"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/cleanup.json",
+      "bytes": 223,
+      "sha256": "1eab2515893e9200e48eddaa43de76f142232908f59581d4f1cdf89266183b49"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/commands.json",
+      "bytes": 794,
+      "sha256": "4c3cf7e6b2e0709ddc618b1ad246393850a188d7c64c9d9db674e9855848c480"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/phase-provenance.json",
+      "bytes": 32214,
+      "sha256": "75ff0781bdad2c6dba90fee6a327a34f77786567f0ae2cea1fc46cdc6b788b48"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/phase-source-class-manifest.json",
+      "bytes": 32214,
+      "sha256": "75ff0781bdad2c6dba90fee6a327a34f77786567f0ae2cea1fc46cdc6b788b48"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/r2-red.log",
+      "bytes": 53858,
+      "sha256": "8ba2a2a679d00d342202d9476aa1f4c30da9f757e07b6fb7e890e78342924d58"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/resource.json",
+      "bytes": 242,
+      "sha256": "4727e4fe7186b56eb687f814c98457439e6790ab9e38e29c2ef79f555d85ca14"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/root-gate.json",
+      "bytes": 72215,
+      "sha256": "52ad05f7d65fcd513efcb9baf95f5e640525463db800c5ff6e2e08402463b613"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-64-evidence/r2-red-8295386e-80a0-49c6-af77-a27562ba3576/summary.json",
+      "bytes": 537,
+      "sha256": "6d9628cc7f15e07cf64e50faefc61ec4f337334a1fcc3413ff167f15326bb36e"
+    }
+  ],
+  "reviewPackage": {
+    "path": "/tmp/task64-r2-review-package-e453a535-7dc8-4a71-b271-3721f1df7d97.diff",
+    "files": 4,
+    "bytes": 32521,
+    "sha256": "3c6356306433dc010c8371b5d2b92904278e4ec1512a3c59842fdebfbfb11f1c",
+    "origin": "Root immutable before80 snapshot; companion .json exact source pins; no duplicate package generated"
+  }
+}

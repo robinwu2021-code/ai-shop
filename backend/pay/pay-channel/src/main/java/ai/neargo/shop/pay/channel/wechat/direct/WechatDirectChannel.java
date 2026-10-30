@@ -113,7 +113,7 @@ public final class WechatDirectChannel implements OnlinePayCapability, Transacti
     public ChannelResult payOnline(Invocation inv, PayCommand c) {
         String missing = missingPrecondition(c);
         if (missing != null) {
-            return new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED, null, missing, false);
+            return new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED, "LOCAL_PAYMENT_NOT_SENT", missing, false);
         }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("appid", appId);
@@ -159,7 +159,7 @@ public final class WechatDirectChannel implements OnlinePayCapability, Transacti
     @Override
     public ChannelResult query(Invocation inv, QueryCommand c) {
         Map<String, Object> resp = client.get(inv, TRANSACTION_BY_OUT_TRADE_NO + c.outTradeNo() + "?mchid=" + mchId);
-        return WechatResults.trade(resp);
+        return WechatResults.trade(c.outTradeNo(), resp);
     }
 
     @Override

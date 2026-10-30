@@ -11,6 +11,8 @@ public class ServiceCallException extends RuntimeException {
     private final CallOutcome outcome;
     private final String service;
     private final int statusCode;
+    private final String remoteErrorCode;
+    private final String requestDigest;
 
     public ServiceCallException(CallOutcome outcome, String service, int statusCode, String message) {
         this(outcome, service, statusCode, message, null);
@@ -18,10 +20,24 @@ public class ServiceCallException extends RuntimeException {
 
     /** @param cause 传输层的原始异常。调用方要它的类名（如 {@code ConnectException}）记进运行记录 */
     public ServiceCallException(CallOutcome outcome, String service, int statusCode, String message, Throwable cause) {
+        this(outcome, service, statusCode, message, cause, null, null);
+    }
+
+    /** Optional validated association metadata; it never becomes diagnostic text. */
+    public ServiceCallException(
+            CallOutcome outcome,
+            String service,
+            int statusCode,
+            String message,
+            Throwable cause,
+            String remoteErrorCode,
+            String requestDigest) {
         super(message, cause);
         this.outcome = outcome;
         this.service = service;
         this.statusCode = statusCode;
+        this.remoteErrorCode = remoteErrorCode;
+        this.requestDigest = requestDigest;
     }
 
     public CallOutcome outcome() {
@@ -44,5 +60,15 @@ public class ServiceCallException extends RuntimeException {
     /** 对方应答的 HTTP 状态码；连不上 / 超时 / 没配地址时为 0 */
     public int statusCode() {
         return statusCode;
+    }
+
+    /** Exact safe enum name supplied by an opt-in internal peer, or null for legacy calls. */
+    public String remoteErrorCode() {
+        return remoteErrorCode;
+    }
+
+    /** Opaque request association value; callers must validate it before using the error code. */
+    public String requestDigest() {
+        return requestDigest;
     }
 }

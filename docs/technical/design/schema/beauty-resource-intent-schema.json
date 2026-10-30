@@ -1,0 +1,224 @@
+{
+  "status": "BM03_A1_STORAGE_ONLY",
+  "baseline": "beauty-database-design.json: original 41-table design and 16-table V1 unchanged",
+  "common_fields": [
+    [
+      "id",
+      "bigint",
+      "物理自增主键，不对外"
+    ],
+    [
+      "tenant_no",
+      "varchar(32)",
+      "沿当前租户上下文；不另启租户体系"
+    ],
+    [
+      "entity_no",
+      "varchar(32)",
+      "商家主体范围；不等于租户"
+    ],
+    [
+      "created_at",
+      "datetime(3)",
+      "创建时刻"
+    ],
+    [
+      "created_by",
+      "varchar(64)",
+      "实际操作者业务引用"
+    ],
+    [
+      "updated_at",
+      "datetime(3)",
+      "更新时间"
+    ],
+    [
+      "updated_by",
+      "varchar(64)",
+      "更新操作者"
+    ],
+    [
+      "version",
+      "bigint",
+      "乐观锁"
+    ],
+    [
+      "deleted",
+      "int",
+      "沿BaseEntity；事实表禁止删除或软删覆盖"
+    ]
+  ],
+  "tables": [
+    {
+      "name": "bty_appointment_resource_intent",
+      "fields": [
+        {
+          "name": "intent_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "意图号"
+        },
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "预约根"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店"
+        },
+        {
+          "name": "command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "共用命令号"
+        },
+        {
+          "name": "source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "description": "来源预约版本"
+        },
+        {
+          "name": "action",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "资源动作"
+        },
+        {
+          "name": "command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "完整命令摘要"
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "description": "原始计划字节摘要"
+        },
+        {
+          "name": "frozen_plan",
+          "type": "longtext",
+          "nullable": false,
+          "description": "保留原始UTF8字节；不能用JSON列归一化"
+        },
+        {
+          "name": "phase_code",
+          "type": "int",
+          "nullable": false,
+          "description": "0准备1许可2拒绝3已对账"
+        },
+        {
+          "name": "initiated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "description": "发起主体"
+        },
+        {
+          "name": "decision_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "来源决定"
+        },
+        {
+          "name": "issued_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "许可起始"
+        },
+        {
+          "name": "valid_until",
+          "type": "datetime(3)",
+          "nullable": true,
+          "description": "许可截止；不是栅栏释放条件"
+        },
+        {
+          "name": "terminal_code",
+          "type": "int",
+          "nullable": true,
+          "description": "1成功2拒绝"
+        },
+        {
+          "name": "terminal_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "description": "权威终态摘要"
+        },
+        {
+          "name": "reason_code",
+          "type": "varchar(64)",
+          "nullable": true,
+          "description": "拒绝安全原因；拒绝不携带许可窗口，终态保留原决定"
+        }
+      ],
+      "unique": [
+        [
+          "intent_no"
+        ],
+        [
+          "command_no"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` IN (0, 1)",
+        "`source_revision` >= 0",
+        "`phase_code` IN (0, 1, 2, 3)",
+        "JSON_VALID(`frozen_plan`) AND OCTET_LENGTH(`frozen_plan`) <= 65536",
+        "(`phase_code` = 0 AND `decision_no` IS NULL AND `reason_code` IS NULL AND `issued_at` IS NULL AND `valid_until` IS NULL) OR (`phase_code` IN (1, 3) AND `decision_no` IS NOT NULL AND `reason_code` IS NULL AND `issued_at` IS NOT NULL AND `valid_until` IS NOT NULL AND `valid_until` > `issued_at`) OR (`phase_code` IN (2, 3) AND `decision_no` IS NOT NULL AND `reason_code` IS NOT NULL AND `issued_at` IS NULL AND `valid_until` IS NULL)",
+        "(`phase_code` IN (0, 1, 2) AND `terminal_code` IS NULL AND `terminal_hash` IS NULL) OR (`phase_code` = 3 AND `terminal_code` IS NOT NULL AND `terminal_code` IN (1, 2) AND `terminal_hash` IS NOT NULL)",
+        "`terminal_code` IS NULL OR `terminal_code` = 2 OR `reason_code` IS NULL"
+      ]
+    },
+    {
+      "name": "bty_appointment_resource_fence",
+      "fields": [
+        {
+          "name": "fence_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "栅栏号"
+        },
+        {
+          "name": "appointment_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "永久唯一预约根"
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "description": "门店"
+        },
+        {
+          "name": "active_intent_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "description": "活动意图；显式置空释放，禁止删行释放"
+        }
+      ],
+      "unique": [
+        [
+          "fence_no"
+        ],
+        [
+          "appointment_no"
+        ],
+        [
+          "active_intent_no"
+        ]
+      ],
+      "indexes": [],
+      "checks": [
+        "`version` >= 0",
+        "`deleted` IN (0, 1)"
+      ]
+    }
+  ]
+}

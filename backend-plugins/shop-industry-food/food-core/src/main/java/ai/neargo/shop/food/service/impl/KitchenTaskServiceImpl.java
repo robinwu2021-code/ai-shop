@@ -55,6 +55,7 @@ import ai.neargo.shop.food.service.KitchenTaskService;
 import ai.neargo.shop.food.service.ServiceSlotService;
 import ai.neargo.shop.idem.IdempotencyService;
 import ai.neargo.shop.spi.food.DiningServiceEvent;
+import ai.neargo.shop.spi.inventory.InventoryDemandPlanFacts;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
 import ai.neargo.shop.spi.trade.IndustryFulfillmentPort;
 import ai.neargo.shop.spi.trade.PricingSourceFactsPort;
@@ -81,6 +82,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -309,7 +311,8 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                                                     .filter(r -> "MAKE".equals(r.taskRole()))
                                                     .toList());
                             for (var part : parts)
-                                if (!"MAIN".equals(part.getComponentKind()))
+                                if (!"MAIN".equals(part.getComponentKind())
+                                        && !isChannelMain(batch, line, part))
                                     addTasks(
                                             entity,
                                             head,
@@ -325,12 +328,14 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                                                             p.getComponentKind() != null
                                                                     && p.getComponentKind()
                                                                             .startsWith("BUNDLE_"));
+                            boolean bundleModifiers = hasBundleModifierDemand(batch, line, parts);
                             var parentRoutes =
                                     routes.routes().stream()
                                             .filter(
                                                     r ->
                                                             r.skuNo().equals(line.getSkuNo())
                                                                     && (!bundled
+                                                                            || bundleModifiers
                                                                             || !"MAKE"
                                                                                     .equals(
                                                                                             r
@@ -987,16 +992,27 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                         .findFirst()
                         .orElseThrow(KitchenTaskServiceImpl::conflict);
         var plan = json.treeToValue(node, InventoryDemandPlanPort.Plan.class);
+        PricingSourceRef sourceReference;
+        if ("CHANNEL".equals(batch.getPayMode())) {
+            var nativeSource =
+                    json.readValue(
+                            batch.getFrozenRequest(), DiningChannelSourceStore.FrozenSource.class);
+            if (nativeSource.schema() != 1
+                    || nativeSource.sourceNo() == null
+                    || !Objects.equals(nativeSource.sourceHash(), batch.getQuoteHash()))
+                throw conflict();
+            sourceReference =
+                    new PricingSourceRef(
+                            "FOOD", "CHANNEL_ORDER", nativeSource.sourceNo(), 1L, null, null);
+        } else {
+            sourceReference =
+                    new PricingSourceRef(
+                            "FOOD", "CART", batch.getCartNo(), batch.getCartVersion(), null, null);
+        }
         var reference =
                 new IndustryFulfillmentPort.Reference(
                         new PricingSourceFactsPort.Scope("MAIN", entity, store),
-                        new PricingSourceRef(
-                                "FOOD",
-                                "CART",
-                                batch.getCartNo(),
-                                batch.getCartVersion(),
-                                null,
-                                null),
+                        sourceReference,
                         selected.orderNo(),
                         selected.storeOrderNo());
         var known = owner.query(reference, actor, key);
@@ -1727,6 +1743,55 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
         if (value != null && value.length() > 255) throw bad();
         if (Set.of("HOLD", "VOID", "LOSS", "REMAKE", "RETURN_DISPOSE").contains(action)
                 && (value == null || value.isBlank())) throw bad();
+    }
+
+    private boolean isChannelMain(FnbOrderBatch batch, FnbOrderLine line, FnbOrderComponent part) {
+        if (!"CHANNEL".equals(batch.getPayMode())) return false;
+        try {
+            var evidence = json.readTree(part.getSelectionSnapshot());
+            if (!"MAIN".equals(evidence.path("externalKind").asString(""))) return false;
+            if (!Objects.equals(line.getSourceLineRef(), evidence.path("sourceLineRef").asString(""))
+                    || !Objects.equals(line.getSkuNo(), evidence.path("skuNo").asString(""))
+                    || !Objects.equals(part.getSkuNo(), line.getSkuNo())
+                    || !Objects.equals(part.getSourceComponentRef(), evidence.path("componentRef").asString("")))
+                throw conflict();
+            return true;
+        } catch (BizException invalid) {
+            throw invalid;
+        } catch (RuntimeException invalid) {
+            throw conflict();
+        }
+    }
+
+    /**
+     * A bundle parent makes only its explicit extra materials, never the bundle SKU or its child
+     * stock twice.
+     */
+    private boolean hasBundleModifierDemand(
+            FnbOrderBatch batch, FnbOrderLine line, List<FnbOrderComponent> parts) {
+        if (!"CHANNEL".equals(batch.getPayMode())) return false;
+        if (parts.stream().noneMatch(part -> part.getComponentKind() != null
+                && part.getComponentKind().startsWith("BUNDLE_"))) return false;
+        var node = json.readTree(batch.getFrozenRequest()).get("inventoryPlan");
+        if (node == null || node.isNull()) return false;
+        var plan = json.treeToValue(node, InventoryDemandPlanPort.Plan.class);
+        try {
+            InventoryDemandPlanFacts.validate(plan);
+        } catch (IllegalArgumentException invalid) {
+            throw conflict();
+        }
+        if (!batch.getEntityNo().equals(plan.scope().entityNo())) throw conflict();
+        var main = parts.stream().filter(part -> "MAIN".equals(part.getComponentKind())).toList();
+        if (main.size() != 1) throw conflict();
+        return plan.branches().stream()
+                .anyMatch(
+                        branch ->
+                                "BUNDLE_MODIFIERS".equals(branch.kind())
+                                        && main.getFirst()
+                                                .getSourceComponentRef()
+                                                .equals(branch.sourceComponentRef())
+                                        && batch.getStoreNo().equals(branch.storeNo())
+                                        && line.getQty().compareTo(branch.quantity()) == 0);
     }
 
     private static void context(String entity, String store) {

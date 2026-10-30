@@ -618,7 +618,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
         if (current == null || current.size() != refs.size()) throw BizException.of(ErrorCode.CONFLICT);
         var facts = new TreeMap<String, MaterialFact>();
         for (var fact : current) {
-            if (!MaterialCatalogFacts.validFact(fact) || !entity.equals(fact.entityNo())
+            if (!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(fact) || !entity.equals(fact.entityNo())
                     || !refs.contains(fact.itemId()) || facts.put(fact.itemId(), fact) != null) throw bad();
         }
         for (var fact : body.materialFacts()) if (!fact.definitionHash().equals(
@@ -706,7 +706,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
             var definition = new ModifierConfigVO(number, row.getKind(), row.getVersion(), row.getStatus(),
                     new ModifierConfigVO.Data(row.getName(), row.getSalesSkuNo(), row.getPublishedRevisionNo(),
                             children.stream().map(p -> new ModifierConfigVO.Component(p.getComponentNo(),
-                                    p.getMemberNo(), p.getQuantity())).toList()));
+                                    p.getMemberNo(), p.getQuantity())).toList(), row.getInventoryMode()));
             return new Candidate(row.getVersion(), definition, null, null, deps, List.copyOf(skuNos),
                     List.of(), null, null, null);
         }
@@ -980,7 +980,7 @@ public class ConfigRevisionServiceImpl implements ConfigRevisionService {
                 if (current == null || current.size() != refs.size()) throw BizException.of(ErrorCode.CONFLICT);
                 var facts = new TreeMap<String, MaterialFact>();
                 for (var fact : current) {
-                    if (!MaterialCatalogFacts.validFact(fact)
+                    if (!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(fact)
                             || !entity.equals(fact.entityNo()) || !refs.contains(fact.itemId())
                             || facts.put(fact.itemId(), fact) != null) throw bad();
                 }

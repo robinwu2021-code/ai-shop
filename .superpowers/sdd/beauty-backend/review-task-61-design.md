@@ -1,0 +1,42 @@
+# Task61 independent design review
+
+## Spec Compliance
+
+- ❌ Issues found: S0's frozen effective-employment predicate omits supported open-ended assignments (I1 below). Fix before releasing S0. The two-file design package otherwise addresses brief answers 1–8 at the requested design depth; S1–S6 remain bounded future slices, not implementation-ready or implemented claims.
+- ⚠️ Design-only review of `/tmp/bm05-task61-design-review.diff` against Task61 brief, reviewer rubric, mainTDD §0.2/§1/§21.3, matrix H02/H04–H07/D05/O01 and resource TDD §6/ACs. No builds, tests, generators, containers, native execution, Git writes or product edits. No broad BM04 re-review. Root reports that all 29 source/migration pins match; I did not repeat that hash audit.
+
+## Strengths
+
+- `.superpowers/sdd/beauty-backend/bm05-design.md:11–13,54–74`: correct separation of shared authority from beauty facts; durable Core/Pay/resource phases, same original operation recovery, live actor checks outside locks, truthful UNKNOWN and unchanged public `canStart=false` until the real chain exists. The purpose-scoped execution query avoids requiring ORDER_VIEW from SELF technicians.
+- `.superpowers/sdd/beauty-backend/bm05-design.md:78–92,96–105`: concrete contrary-writer inventory and coherent journal extension, original appointment/group/unit proof, unchanged confirmed count on handoff, permanent unit consumption, partial-hold protection, all-future OPEN exclusion, multiple overrun causes and failed-amend preservation. Explicit sorted owner roots before commands at line98 is compatible with the current owner→command lock order; this is the controlling detailed lock sequence for line66's shorthand.
+- `.superpowers/sdd/beauty-backend/bm05-design.md:109–115,148–156`: acceptance, actual segments, step CAS, local doneQty, Core ACK, cleanup and closure are distinct; legacy managed completion remains blocked. Later slices have owners, dependencies and named behavioral tests without creating speculative product shells.
+- `.superpowers/sdd/beauty-backend/bm05-design.md:165–197`: S0 names concrete contracts, owner-local account resolution, transport/error semantics, permissions without role grants, exact files, a finite real-SQL test runner and a meaningful restored ablation. No S0 migration is needed. Its only identified substantive first-slice gap is I1.
+
+## Issues
+
+### Critical
+
+- None found in this design-only scope.
+
+### Important
+
+- **I1 — Preserve open-ended effective assignments in the frozen S0 contract.** `.superpowers/sdd/beauty-backend/bm05-design.md:178` explicitly freezes `validFrom<=at<validTo`; lines177/180 also leave nullable interval semantics unspecified in the fact and remote validation. The current authoritative schema allows `mch_personnel_store.valid_to=NULL` (`backend/shop-app/src/main/resources/db/migration/V532__shared_personnel_foundation.sql:63,74`), and the existing owner projection handles it as indefinite employment (`backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/MerchantMappers.java:716`). Implementing the stated predicate literally drops a normal active linked worker and returns UNLINKED; rejecting null in the remote validator would break standalone behavior even if owner SQL were corrected. Freeze `validFrom<=at AND (validTo IS NULL OR at<validTo)`, explicitly allow null `validTo` in the owner/DTO/remote contract, and add a real SQL indefinite-assignment LINKED case plus bound HTTP round-trip/null-end validation. Preserve finite-end expiry and ambiguity cases; no schema change or manufactured far-future date is needed.
+
+### Minor
+
+- None requiring a separate change.
+
+## Named source checks and boundaries
+
+- **Current-account identity / namespace risk:** checked `MerchantOperatorAccessPort.java:16–61`, `MerchantOperatorAccessPortImpl.java:23–38`, `MerchantMappers.java:65–90,698–725`, `DelegatedIdentityContext.java:15–24` and `BoundDelegatedCalls.java:42–58`. Current resolver rejects caller TX, requires exactly one allowed account, distinguishes MCH from USR, and can be reused outside the S0 RR snapshot. New owner-local relationship read is warranted; no account identifier belongs in the exported personnel fact. NULL end semantics produce I1.
+- **Pay refund race / R1 necessity:** checked `RefundPaymentStore.java:48–77`, `PaymentLedgerServiceImpl.java:205–266`, `RefundCapacityLedger.java:25–60,90–108`. Both refund preparation lanes serialize on the successful original payment; neither currently supplies the proposed managed-execution budget fence. Capacity includes legacy rows with null originPaymentNo and late-success safety. Thus a Core-only suborder fence is insufficient. I support R1's Pay-owned protected unit budgets plus permanent managed marker and Core-authorized unserved refunds; R1 remains a root architectural ruling before S1, not a missing S0 implementation.
+- **Core opposite writers / legacy completion risk:** checked `AfterSaleSlotMapper.java:15–23` and `StatusCasMapper.java:19–59`; slot changes and order transitions touch the real suborder root, parent payment CAS is separate, and existing managed COMPLETED CAS rejection is real. The design names these integration points and does not weaken the old completion guard. I did not prove exhaustive runtime reachability of every writer in design §5; S1 must verify that inventory while implementing it.
+- **Source permission / task-unit identity risk:** checked `CheckoutServiceImpl.java:792–796`, `WorkOrderPreparation.java:97–122,135–143,223–227`, `ServiceSubmissionServiceImpl.java:502–515`. Source observation requires ORDER_VIEW; frozen groups use appointment item/requirement/ordinal with capacity1, and normal creation/ADD remain qty1. Rejecting unsupported legacy task shapes and using a purpose-scoped execution authority is justified.
+- **Resource serializing point / partial-hold risk:** checked `ResourceCommandServiceImpl.java:323–336` and `ResourceBookingServiceImpl.java:156–193,328–391`, against resource TDD §6.2–6.5. Existing order is owner→command→personnel/resource roots→hold; executionStartedAt blocks legacy whole-hold mutation. The proposed typed two-owner extension and dedicated group lifecycle are necessary; schemas/journal discriminators still need the S2 implementation tests.
+- **S0 test reachability risk:** read `backend/pom.xml:13–70`, `backend-plugins/shop-industry-beauty/pom.xml:4–19` and current `BeautyMerchantClientConfiguration.java`. An aggregate reactor containing both projects is a reasonable bounded way to build changed shared classes and remote tests together; actual offline model/cache resolution is unverified. The design correctly requires four actual reports and code-source provenance and treats stale cache or model failure as failure, not GREEN.
+- **Future performed-service dispute boundary:** `.superpowers/sdd/beauty-backend/bm05-design.md:58,64,72,114,201` and `task-61-design-report.md:26–28` explicitly close adjudication/post-refund-start extension and preserve historical done/allocation. The current quantity inequality is for unserved quantity refunds. Opening performed-service monetary restitution later must define distinct quantity accounting while preserving fulfilled history and permanent no-reexecution ownership; it cannot simply decrement the same net quantity or erase done/fulfilled to satisfy line72. This is a future S1/BM07 contract gate, not an additional S0 blocker or authorization granted by R1.
+- **Cannot verify:** actual lock races, stale cross-owner proof/release interleavings, restart/lease recovery, pending/actual maintenance enforcement, owner outbox atomicity, complete migration constraints/maxima at first execution, all topology/auth flows, native runner safety and Maven resolution. These are implementation/release checks, not demonstrated by the design. Formal actual JAR/process/HTTP/SQL/device deployment remains after all P1–P4 code/test/review/compile; no missing formal deployment evidence is counted as a Task61 defect.
+
+## Assessment
+
+**Task quality: Needs fixes.** One concrete mismatch in the implementation-ready S0 contract must be corrected and narrowly re-reviewed. The overall owner boundaries, later-slice protocol direction and bounded scope are sound at this gate; root true-source reconciliation and R1 remain explicit prerequisites to their respective coding releases. This review does not mark BM05 business implemented or deployment verified.

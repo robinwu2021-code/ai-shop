@@ -4,7 +4,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 /**
  * 从配置读服务地址 —— <b>今天唯一的实现</b>。
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Component;
  * 它读到的只是一个 URL，是 IP 还是主机名对它没有区别。
  * 所以「引入 DNS 服务发现」在这套结构下是一次运维动作，不是一次发版。
  */
-@Component
 @ConfigurationProperties(prefix = "shop.services")
 public class ConfigServiceLocator implements ServiceLocator {
 

@@ -21,9 +21,32 @@ public interface CatalogPriceSourcePort {
         throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
     }
 
-    /** Market checks must work before a menu has any published SKU; older owners reject explicitly. */
+    /**
+     * Market checks must work before a menu has any published SKU; older owners reject explicitly.
+     */
     default MarketFacts market(MarketScope scope) {
         throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
+
+    /** Original scoped market/tax authority also exists when no sellable SKU remains. */
+    default ScopeFacts scope(MarketScope scope) {
+        throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);
+    }
+
+    record ScopeFacts(
+            @JsonDeserialize(using = CatalogRevisionDeserializer.class) long schemaVersion,
+            @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String purpose,
+            MarketScope scope,
+            Market market,
+            TaxFact tax,
+            Instant verifiedAt,
+            Instant validUntil,
+            @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
+                    String receiptNo) {
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw new IllegalArgumentException("Unknown original catalog scope field");
+        }
     }
 
     record MarketScope(
@@ -42,7 +65,8 @@ public interface CatalogPriceSourcePort {
             Market market,
             Instant verifiedAt,
             Instant validUntil,
-            @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class) String receiptNo) {
+            @JsonDeserialize(using = MaterialCatalogFacts.TextDeserializer.class)
+                    String receiptNo) {
         @JsonAnySetter
         public void rejectUnknown(String key, Object value) {
             throw new IllegalArgumentException("Unknown catalog market fact field");

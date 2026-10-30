@@ -75,7 +75,11 @@ public final class InProcessChannel implements OnlinePayCapability, TransactionC
             throw new ChannelTransportException(ChannelTransportException.Kind.UNPARSEABLE, "下单没有回执");
         }
         if (!r.success()) {
-            return new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED, null, r.message(), false);
+            return r.definitiveRejection()
+                    ? new ChannelResult.Failed(PayErrorCode.CHANNEL_REJECTED,
+                            r.disposition() == PayGateway.PrepayDisposition.NOT_SENT ? "LOCAL_PAYMENT_NOT_SENT" : null,
+                            r.message(), false)
+                    : new ChannelResult.Unknown("PAY_SEND_UNKNOWN");
         }
         PayInstruction instruction = r.params() == null || r.params().isEmpty() ? PayInstruction.none()
                 : new PayInstruction.AppSdkParams(r.params());

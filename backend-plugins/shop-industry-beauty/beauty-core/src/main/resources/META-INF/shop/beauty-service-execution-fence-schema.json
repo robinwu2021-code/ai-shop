@@ -1,0 +1,663 @@
+{
+  "schemaVersion": 1,
+  "owner": "beauty-core/primary",
+  "platformVersion": 10,
+  "migrationScript": "V10__beauty_service_execution_fence.sql",
+  "flywayChecksum": 1472641557,
+  "migrationSha256": "ac143a76acb58de5a805a1d4d436fb0c884457a04cd017c6f38e50e108b489c1",
+  "ownerIdentity": [
+    {
+      "table": "bty_source_observation",
+      "column": "tenant_no",
+      "role": "TENANT",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "bty_source_observation",
+      "column": "entity_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    },
+    {
+      "table": "bty_source_observation",
+      "column": "store_no",
+      "role": "BINARY",
+      "type": "varchar(32)"
+    }
+  ],
+  "tables": [
+    {
+      "name": "bty_service_execution_fence",
+      "tag": "bsef",
+      "engine": "InnoDB",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": "'MAIN'",
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": false
+        },
+        {
+          "name": "version",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "deleted",
+          "type": "int",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "fence_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "work_order_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "task_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "binding_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "submission_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "definition_version_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "order_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_operation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_kind",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_line_no",
+          "type": "varchar(40)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "binding_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "manual_source_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "manual_source_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "initial_task_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "scope_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "unit_ordinal",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "ordered_units",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "attempt_no",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "quantity",
+          "type": "int",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": true
+        },
+        {
+          "name": "uom",
+          "type": "varchar(8)",
+          "nullable": false,
+          "default": "'COUNT'",
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "manual_source_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "source_intent_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "binding_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "payload_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "execution_snapshot_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "resource_command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": true
+        },
+        {
+          "name": "intent_state",
+          "type": "varchar(32)",
+          "nullable": false,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "source_fence_revision",
+          "type": "bigint",
+          "nullable": false,
+          "default": "1",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "observation_epoch",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "next_retry_at",
+          "type": "datetime(3)",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "observed_grant_no",
+          "type": "varchar(32)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "observed_grant_revision",
+          "type": "bigint",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "observed_grant_state",
+          "type": "varchar(32)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "suspension_intent_revision",
+          "type": "bigint",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "suspension_manual_epoch",
+          "type": "bigint",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "suspension_observation_version",
+          "type": "bigint",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "suspension_observed_revision",
+          "type": "bigint",
+          "nullable": true,
+          "default": null,
+          "charset": null,
+          "collation": null,
+          "immutable": false
+        },
+        {
+          "name": "suspension_observed_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "suspension_reason",
+          "type": "varchar(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "suspension_proof_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "default": null,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "immutable": false
+        },
+        {
+          "name": "binding_json",
+          "type": "longtext",
+          "nullable": false,
+          "default": null,
+          "charset": null,
+          "collation": "OWNER_TENANT",
+          "immutable": true
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_bsef_task": [
+          "tenant_no",
+          "entity_no",
+          "task_no"
+        ],
+        "uk_bsef_unit": [
+          "tenant_no",
+          "source_line_no",
+          "unit_ordinal"
+        ],
+        "uk_bsef_execution": [
+          "tenant_no",
+          "execution_no"
+        ],
+        "uk_bsef_fence": [
+          "tenant_no",
+          "fence_no"
+        ]
+      },
+      "indexes": {
+        "idx_bsef_source": [
+          "tenant_no",
+          "entity_no",
+          "store_no",
+          "source_operation_no",
+          "source_no",
+          "execution_no"
+        ],
+        "idx_bsef_recovery": [
+          "tenant_no",
+          "intent_state",
+          "next_retry_at",
+          "id"
+        ]
+      },
+      "checks": {
+        "ck_bsef_base": "tenant_no='MAIN' AND deleted=0 AND version>=0 AND observation_epoch>=0 AND source_kind='STORE_ORDER'",
+        "ck_bsef_unit": "ordered_units BETWEEN 1 AND 999 AND unit_ordinal BETWEEN 1 AND ordered_units AND quantity=1 AND uom='COUNT' AND attempt_no=1",
+        "ck_bsef_revisions": "binding_revision>0 AND manual_source_revision>0 AND manual_source_epoch>0 AND initial_task_revision>=0 AND scope_revision>0 AND source_fence_revision>0",
+        "ck_bsef_state": "intent_state IN ('FROZEN','EXECUTION_PENDING','PREPARED_OBSERVED','REJECTED','SUSPEND_REQUESTED')",
+        "ck_bsef_hashes": "manual_source_hash REGEXP '^[0-9a-f]{64}$' AND source_intent_hash REGEXP '^[0-9a-f]{64}$' AND binding_hash REGEXP '^[0-9a-f]{64}$' AND payload_hash REGEXP '^[0-9a-f]{64}$' AND execution_snapshot_hash REGEXP '^[0-9a-f]{64}$' AND plan_hash REGEXP '^[0-9a-f]{64}$' AND resource_command_hash REGEXP '^[0-9a-f]{64}$'",
+        "ck_bsef_binding": "JSON_VALID(binding_json) AND COALESCE(JSON_TYPE(binding_json)='OBJECT' AND JSON_TYPE(JSON_EXTRACT(binding_json,'$.schema'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.schema'))='MANUAL_EXECUTION_V1' AND JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding'))='OBJECT',0)",
+        "ck_bsef_grant": "(observed_grant_no IS NULL AND observed_grant_revision IS NULL AND observed_grant_state IS NULL) OR (observed_grant_no IS NOT NULL AND observed_grant_revision>0 AND observed_grant_state IN ('PREPARED','SUSPEND_REQUESTED','STARTED','STARTED_SUSPENDED','RELEASING','RELEASED','FULFILLED'))",
+        "ck_bsef_suspension": "(suspension_intent_revision IS NULL AND suspension_manual_epoch IS NULL AND suspension_observation_version IS NULL AND suspension_observed_revision IS NULL AND suspension_observed_hash IS NULL AND suspension_reason IS NULL AND suspension_proof_hash IS NULL AND intent_state<>'SUSPEND_REQUESTED') OR (suspension_intent_revision IS NOT NULL AND suspension_manual_epoch IS NOT NULL AND suspension_observation_version IS NOT NULL AND suspension_reason IS NOT NULL AND suspension_proof_hash IS NOT NULL AND suspension_intent_revision>0 AND suspension_intent_revision<=source_fence_revision AND suspension_manual_epoch>=0 AND suspension_observation_version>=0 AND (suspension_observed_revision IS NULL OR suspension_observed_revision>=0) AND (suspension_observed_hash IS NULL OR suspension_observed_hash REGEXP '^[0-9a-f]{64}$') AND suspension_reason IN ('SOURCE_SUSPENDED','SOURCE_REVISION_CONFLICT','SOURCE_IDENTITY_MISMATCH','SOURCE_QUANTITY_EXCEEDED','TASK_CHANGED','PERMANENT_UNIT_CONFLICT') AND suspension_proof_hash REGEXP '^[0-9a-f]{64}$' AND intent_state='SUSPEND_REQUESTED')",
+        "ck_bsef_json_execution_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.executionNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.executionNo'))=execution_no,0)",
+        "ck_bsef_json_source_operation_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.sourceOperationNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.sourceOperationNo'))=source_operation_no,0)",
+        "ck_bsef_json_order_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.orderNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.orderNo'))=order_no,0)",
+        "ck_bsef_json_source_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.subOrderNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.subOrderNo'))=source_no,0)",
+        "ck_bsef_json_source_line_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.sourceLineNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.sourceLineNo'))=source_line_no,0)",
+        "ck_bsef_json_work_order_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.workOrderNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.workOrderNo'))=work_order_no,0)",
+        "ck_bsef_json_task_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.taskNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.taskNo'))=task_no,0)",
+        "ck_bsef_json_binding_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.bindingNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.bindingNo'))=binding_no,0)",
+        "ck_bsef_json_submission_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.submissionNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.submissionNo'))=submission_no,0)",
+        "ck_bsef_json_fence_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.sourceFenceNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.sourceFenceNo'))=fence_no,0)",
+        "ck_bsef_json_definition_version_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.definitionVersionNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.definitionVersionNo'))=definition_version_no,0)",
+        "ck_bsef_json_manual_source_hash": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.sourceHash'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.sourceHash'))=manual_source_hash,0)",
+        "ck_bsef_json_payload_hash": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.payloadHash'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.payloadHash'))=payload_hash,0)",
+        "ck_bsef_json_plan_hash": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.planHash'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.planHash'))=plan_hash,0)",
+        "ck_bsef_json_execution_snapshot_hash": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.executionSnapshotHash'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.executionSnapshotHash'))=execution_snapshot_hash,0)",
+        "ck_bsef_json_unit_ordinal": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.unitOrdinal'))='INTEGER' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.unitOrdinal'))=unit_ordinal,0)",
+        "ck_bsef_json_attempt_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.attemptNo'))='INTEGER' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.attemptNo'))=attempt_no,0)",
+        "ck_bsef_json_scope_revision": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.scopeRevision'))='INTEGER' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.scopeRevision'))=scope_revision,0)",
+        "ck_bsef_json_initial_task_revision": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.taskRevision'))='INTEGER' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.taskRevision'))=initial_task_revision,0)",
+        "ck_bsef_json_binding_revision": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.bindingRevision'))='INTEGER' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.bindingRevision'))=binding_revision,0)",
+        "ck_bsef_json_manual_source_epoch": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.sourceEpoch'))='INTEGER' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.sourceEpoch'))=manual_source_epoch,0)",
+        "ck_bsef_json_manual_source_revision": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.sourceRevision'))='INTEGER' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.sourceRevision'))=manual_source_revision,0)",
+        "ck_bsef_json_tenant_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.scope.tenantNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.scope.tenantNo'))=tenant_no,0)",
+        "ck_bsef_json_entity_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.scope.entityNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.scope.entityNo'))=entity_no,0)",
+        "ck_bsef_json_store_no": "COALESCE(JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.scope.storeNo'))='STRING' AND JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.scope.storeNo'))=store_no,0)",
+        "ck_bsef_json_constants": "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(binding_json,'$.binding.caller'))='BEAUTY' AND JSON_TYPE(JSON_EXTRACT(binding_json,'$.binding.sourceFenceRevision'))='INTEGER' AND JSON_EXTRACT(binding_json,'$.binding.sourceFenceRevision')=1,0)"
+      },
+      "immutable": [
+        "id",
+        "tenant_no",
+        "created_at",
+        "created_by",
+        "fence_no",
+        "entity_no",
+        "store_no",
+        "work_order_no",
+        "task_no",
+        "binding_no",
+        "execution_no",
+        "submission_no",
+        "definition_version_no",
+        "resource_command_no",
+        "source_no",
+        "order_no",
+        "source_operation_no",
+        "source_kind",
+        "source_line_no",
+        "binding_revision",
+        "manual_source_revision",
+        "manual_source_epoch",
+        "initial_task_revision",
+        "scope_revision",
+        "unit_ordinal",
+        "ordered_units",
+        "attempt_no",
+        "quantity",
+        "uom",
+        "manual_source_hash",
+        "source_intent_hash",
+        "binding_hash",
+        "payload_hash",
+        "execution_snapshot_hash",
+        "plan_hash",
+        "resource_command_hash",
+        "binding_json"
+      ],
+      "comment": "Permanent beauty manual execution source fence"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "trg_bsef_immutable",
+      "table": "bty_service_execution_fence",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (BINARY NEW.id <=> BINARY OLD.id) OR\n        NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.created_at <=> BINARY OLD.created_at) OR\n        NOT (BINARY NEW.created_by <=> BINARY OLD.created_by) OR\n        NOT (BINARY NEW.fence_no <=> BINARY OLD.fence_no) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.store_no <=> BINARY OLD.store_no) OR\n        NOT (BINARY NEW.work_order_no <=> BINARY OLD.work_order_no) OR\n        NOT (BINARY NEW.task_no <=> BINARY OLD.task_no) OR\n        NOT (BINARY NEW.binding_no <=> BINARY OLD.binding_no) OR\n        NOT (BINARY NEW.execution_no <=> BINARY OLD.execution_no) OR\n        NOT (BINARY NEW.submission_no <=> BINARY OLD.submission_no) OR\n        NOT (BINARY NEW.definition_version_no <=> BINARY OLD.definition_version_no) OR\n        NOT (BINARY NEW.resource_command_no <=> BINARY OLD.resource_command_no) OR\n        NOT (BINARY NEW.source_no <=> BINARY OLD.source_no) OR\n        NOT (BINARY NEW.order_no <=> BINARY OLD.order_no) OR\n        NOT (BINARY NEW.source_operation_no <=> BINARY OLD.source_operation_no) OR\n        NOT (BINARY NEW.source_kind <=> BINARY OLD.source_kind) OR\n        NOT (BINARY NEW.source_line_no <=> BINARY OLD.source_line_no) OR\n        NOT (BINARY NEW.binding_revision <=> BINARY OLD.binding_revision) OR\n        NOT (BINARY NEW.manual_source_revision <=> BINARY OLD.manual_source_revision) OR\n        NOT (BINARY NEW.manual_source_epoch <=> BINARY OLD.manual_source_epoch) OR\n        NOT (BINARY NEW.initial_task_revision <=> BINARY OLD.initial_task_revision) OR\n        NOT (BINARY NEW.scope_revision <=> BINARY OLD.scope_revision) OR\n        NOT (BINARY NEW.unit_ordinal <=> BINARY OLD.unit_ordinal) OR\n        NOT (BINARY NEW.ordered_units <=> BINARY OLD.ordered_units) OR\n        NOT (BINARY NEW.attempt_no <=> BINARY OLD.attempt_no) OR\n        NOT (BINARY NEW.quantity <=> BINARY OLD.quantity) OR\n        NOT (BINARY NEW.uom <=> BINARY OLD.uom) OR\n        NOT (BINARY NEW.manual_source_hash <=> BINARY OLD.manual_source_hash) OR\n        NOT (BINARY NEW.source_intent_hash <=> BINARY OLD.source_intent_hash) OR\n        NOT (BINARY NEW.binding_hash <=> BINARY OLD.binding_hash) OR\n        NOT (BINARY NEW.payload_hash <=> BINARY OLD.payload_hash) OR\n        NOT (BINARY NEW.execution_snapshot_hash <=> BINARY OLD.execution_snapshot_hash) OR\n        NOT (BINARY NEW.plan_hash <=> BINARY OLD.plan_hash) OR\n        NOT (BINARY NEW.resource_command_hash <=> BINARY OLD.resource_command_hash) OR\n        NOT (BINARY NEW.binding_json <=> BINARY OLD.binding_json) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Manual execution immutable original';\n    END IF;\n    IF OLD.suspension_intent_revision IS NOT NULL AND (NOT (BINARY NEW.suspension_intent_revision <=> BINARY OLD.suspension_intent_revision) OR NOT (BINARY NEW.suspension_manual_epoch <=> BINARY OLD.suspension_manual_epoch) OR NOT (BINARY NEW.suspension_observation_version <=> BINARY OLD.suspension_observation_version) OR NOT (BINARY NEW.suspension_observed_revision <=> BINARY OLD.suspension_observed_revision) OR NOT (BINARY NEW.suspension_observed_hash <=> BINARY OLD.suspension_observed_hash) OR NOT (BINARY NEW.suspension_reason <=> BINARY OLD.suspension_reason) OR NOT (BINARY NEW.suspension_proof_hash <=> BINARY OLD.suspension_proof_hash)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Beauty execution suspension is sticky';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_bsef_no_delete",
+      "table": "bty_service_execution_fence",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Manual execution history cannot be deleted';\nEND"
+    }
+  ]
+}

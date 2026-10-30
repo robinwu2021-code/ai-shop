@@ -81,9 +81,10 @@ public class FoodOperationsConfiguration {
             FoodMappers.OrderLineMapper orderLines,FoodMappers.KitchenTicketMapper tickets,
             FoodMappers.KitchenTaskMapper tasks,FoodMappers.ServiceEventMapper events,
             FoodMappers.ConfigRevisionMapper revisions,ObjectProvider<StoreCardQueryPort> stores,ObjectProvider<InventoryProductionPort> inventory,
-            ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
+            ObjectProvider<ai.neargo.shop.spi.food.FoodProductionStockPort> stockOwners,ObjectProvider<FoodMappers.ReturnStockDispositionMapper> returnStockClaims,ObjectMapper json,@Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new ProductionConsumptionServiceImpl(heads,lines,batches,orderLines,tickets,tasks,events,
-                revisions,numbers -> stores.getObject().cards(numbers),inventory.getIfAvailable(),json,manager);
+                revisions,numbers -> stores.getObject().cards(numbers),
+                new ai.neargo.shop.food.port.FoodProductionInventoryRouter(stockOwners::getIfUnique,inventory::getIfUnique),json,manager).withReturnStockClaims(returnStockClaims::getIfAvailable);
     }
     @Bean @ConditionalOnMissingBean(KitchenReturnService.class)
     KitchenReturnService kitchenReturnService(FoodMappers.ReturnMapper returns,FoodMappers.ReturnItemMapper items,

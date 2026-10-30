@@ -1,17 +1,20 @@
 package ai.neargo.shop.media;
 
-import org.springframework.context.annotation.Bean;
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;
 import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -91,6 +94,24 @@ public class MediaReconcileJob implements JobHandler {
         int completed = 0;
         int dropped = 0;
         for (SysMediaAsset a : stale) {
+            if (SysMediaAsset.OFFLINE_RECEIPT.equals(a.getBizType())) {
+                // Byte lookup is outside SQL locks. Missing bytes retain the pending owner record.
+                if (mediaStore.exists(a.getAssetKey())) {
+                    completed +=
+                            assetMapper.update(
+                                    null,
+                                    Wrappers.<SysMediaAsset>lambdaUpdate()
+                                            .eq(SysMediaAsset::getId, a.getId())
+                                            .eq(SysMediaAsset::getAssetKey, a.getAssetKey())
+                                            .eq(SysMediaAsset::getStatus, SysMediaAsset.PENDING)
+                                            .eq(
+                                                    SysMediaAsset::getBizType,
+                                                    SysMediaAsset.OFFLINE_RECEIPT)
+                                            .set(SysMediaAsset::getStatus, SysMediaAsset.ACTIVE)
+                                            .set(SysMediaAsset::getUpdatedAt, LocalDateTime.now()));
+                }
+                continue;
+            }
             SysMediaAsset upd = new SysMediaAsset();
             upd.setId(a.getId());
             upd.setUpdatedAt(LocalDateTime.now());

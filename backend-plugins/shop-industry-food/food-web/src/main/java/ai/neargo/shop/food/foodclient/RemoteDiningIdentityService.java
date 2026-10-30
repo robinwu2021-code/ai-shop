@@ -2,6 +2,7 @@ package ai.neargo.shop.food.foodclient;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceCredentialVO;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceSessionReq;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceVO;
@@ -137,6 +138,16 @@ public class RemoteDiningIdentityService implements DiningIdentityService {
                 s,
                 no,
                 call(() -> api.party(new DiningIdentityInternalApi.PartyQuery(e, s, no))));
+    }
+
+    @Override
+    public PartyVO authenticateDeviceSession(String e, String s, CartAccess access) {
+        var result =
+                call(
+                        () ->
+                                api.authenticateDeviceSession(
+                                        new DiningIdentityInternalApi.DeviceAccess(e, s, access)));
+        return party(e, s, access.sessionNo(), result);
     }
 
     @Override

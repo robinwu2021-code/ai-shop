@@ -1,54 +1,49 @@
 package ai.neargo.shop.trade.service.impl;
 
-import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
-import ai.neargo.shop.trade.order.command.OrderActor;
-import ai.neargo.shop.trade.order.command.ShipCommand;
-import ai.neargo.shop.trade.order.service.OrderShippingService;
-import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
-import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
-import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import ai.neargo.shop.trade.order.mapper.PaymentMapper;
-
-import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
-
-import ai.neargo.shop.trade.service.MerchantOrderService;
-import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import ai.neargo.shop.spi.user.UserQueryPort;
-
-import ai.neargo.shop.common.PageData;
-import ai.neargo.shop.spi.logistics.LogisticsPort;
-import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
-import ai.neargo.shop.trade.dto.OrderVO;
-import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.ExpressCompanies;
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.spi.entitlement.PaidCardPaymentGatePort;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
+import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
+import ai.neargo.shop.spi.user.UserQueryPort;
+import ai.neargo.shop.trade.dto.OrderVO;
+import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
-import ai.neargo.shop.trade.service.OrderStateMachine;
-import ai.neargo.shop.trade.service.OrderStatusView;
+import ai.neargo.shop.trade.order.command.OrderActor;
+import ai.neargo.shop.trade.order.command.ShipCommand;
+import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.machine.order.OrderStatus;
-import ai.neargo.shop.trade.order.statemachine.Actor;
-import org.springframework.transaction.annotation.Transactional;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
-import ai.neargo.common.data.scope.DataScopeContext;
-import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
+import ai.neargo.shop.trade.order.service.OrderShippingService;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
+import ai.neargo.shop.trade.order.statemachine.Actor;
+import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.trade.service.OrderStateMachine;
+import ai.neargo.shop.trade.service.OrderStatusView;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -330,6 +325,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
                                      String operator) {
         var sub=require(merchantNo,storeNo,subOrderNo);
+        if (OrdSubOrder.SERVICE_EXECUTION.equals(sub.getFulfillmentAuthority())) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
         var order=DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
                 Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1")));
         if(order==null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
@@ -344,6 +342,13 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         List<OrdSubOrder> siblings = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
                 Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, sub.getOrderNo())));
+        if (siblings.stream()
+                .anyMatch(
+                        row ->
+                                OrdSubOrder.SERVICE_EXECUTION.equals(
+                                        row.getFulfillmentAuthority()))) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
         PaymentImpactPolicy.requireSingleStore(siblings.stream().map(OrdSubOrder::getStoreNo).toList());
         if (siblings.stream().anyMatch(row -> !merchantNo.equals(row.getEntityNo())
                 || !sub.getStoreNo().equals(row.getStoreNo()))) {

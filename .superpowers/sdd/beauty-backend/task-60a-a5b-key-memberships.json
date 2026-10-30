@@ -1,0 +1,72 @@
+{
+  "tablesObserved": 363,
+  "memberships": {
+    "receipt_no": [
+      "stl_payment",
+      "ent_migration_return"
+    ],
+    "source_event_no": [
+      "sys_outbox",
+      "pmt_effect_projection"
+    ],
+    "actor_account_no": [
+      "mch_staff_log",
+      "ord_checkout_payment_request",
+      "stl_payment_operation"
+    ],
+    "execution_no": [
+      "ord_refund_execution",
+      "ord_refund_obligation"
+    ],
+    "entry_no": [
+      "pts_ledger_entry",
+      "ent_ledger"
+    ],
+    "line_no": [
+      "prd_stock_alignment_line",
+      "sv_posting_line"
+    ],
+    "catalog_no": [
+      "prd_store_catalog",
+      "prd_store_catalog_version"
+    ],
+    "buyer_no": [
+      "ord_checkout_operation",
+      "ord_checkout_confirmation",
+      "ord_checkout_payment_request",
+      "stl_payment_operation"
+    ],
+    "confirmation_no": [
+      "ord_checkout_operation",
+      "ord_checkout_confirmation"
+    ],
+    "voucher_no": [
+      "pts_voucher",
+      "pts_ledger_entry",
+      "pts_pool_flow",
+      "sv_voucher",
+      "sv_entry",
+      "sv_posting_line"
+    ],
+    "tier_no": [
+      "pmt_recharge_tier",
+      "pmt_activity_reservation"
+    ],
+    "plan_no": [
+      "pts_topup_plan",
+      "ent_migration_plan",
+      "pmt_migration_decision",
+      "ent_migration_import"
+    ],
+    "source_order_no": [
+      "ent_usage",
+      "ent_legacy_coupon_operation"
+    ],
+    "grant_no": [
+      "ent_grant",
+      "ent_instance",
+      "ent_sale_reservation",
+      "pmt_pay_coupon_projection"
+    ]
+  }
+}

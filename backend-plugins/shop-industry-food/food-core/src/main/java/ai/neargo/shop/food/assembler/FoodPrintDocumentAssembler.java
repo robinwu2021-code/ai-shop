@@ -365,8 +365,38 @@ public class FoodPrintDocumentAssembler {
             if (!line.getGoodsNo().equals(selected.path("goodsNo").asString(""))
                     || !line.getSkuNo().equals(selected.path("skuNo").asString("")))
                 return line.getSkuNo();
+            var frozen = json.readTree(batch.getFrozenRequest());
+            if ("CHANNEL".equals(batch.getPayMode())) {
+                var carts = frozen.path("cartLines");
+                var original = frozen.path("original").path("lines");
+                if (carts.isArray() && original.isArray() && carts.size() == original.size()) {
+                    String title = null;
+                    int matched = 0;
+                    for (int i = 0; i < carts.size(); i++) {
+                        var cart = carts.get(i);
+                        var source = original.get(i);
+                        if (!line.getSourceLineRef().equals(cart.path("sourceLineRef").asString(""))) continue;
+                        if (!line.getGoodsNo().equals(cart.path("goodsNo").asString(""))
+                                || !line.getSkuNo().equals(cart.path("skuNo").asString(""))
+                                || !line.getGoodsNo().equals(source.path("goodsNo").asString(""))
+                                || !line.getSkuNo().equals(source.path("skuNo").asString(""))) return line.getSkuNo();
+                        for (var component : source.path("components")) {
+                            if ("MAIN".equals(component.path("externalKind").asString(""))
+                                    && line.getGoodsNo().equals(component.path("goodsNo").asString(""))
+                                    && line.getSkuNo().equals(component.path("skuNo").asString(""))
+                                    && component.path("title").isString()
+                                    && !component.path("title").asString().isBlank()) {
+                                title = component.path("title").asString();
+                                matched++;
+                            }
+                        }
+                    }
+                    if (matched == 1) return title + " [" + line.getSkuNo() + "]";
+                }
+                return line.getSkuNo();
+            }
             var items =
-                    json.readTree(batch.getFrozenRequest())
+                    frozen
                             .path("facts")
                             .path("payload")
                             .path("composition")

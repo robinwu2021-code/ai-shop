@@ -71,6 +71,12 @@ public class RemoteModifierService implements ModifierService {
                 || v.data().salesSkuNo() != null && !identifier(v.data().salesSkuNo())
                 || v.data().publishedRevisionNo() != null && !identifier(v.data().publishedRevisionNo())) return false;
         if ("ADDON".equals(v.kind()) != v.data().components().isEmpty()) return false;
+        try {
+            ai.neargo.shop.food.policy.ModifierInventoryMode.resolve(
+                    v.kind(), v.data().salesSkuNo(), v.data().inventoryMode());
+        } catch (IllegalArgumentException invalid) {
+            return false;
+        }
         var members = new HashSet<String>();
         var ids = new HashSet<String>();
         for (var c : v.data().components()) {

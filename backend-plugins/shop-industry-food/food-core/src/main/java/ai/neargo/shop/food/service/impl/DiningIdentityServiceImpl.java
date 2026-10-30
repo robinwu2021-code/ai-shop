@@ -7,6 +7,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
+import ai.neargo.shop.food.dto.CartAccess;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceCredentialVO;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceSessionReq;
 import ai.neargo.shop.food.dto.DiningIdentityContracts.DeviceVO;
@@ -336,6 +337,28 @@ public class DiningIdentityServiceImpl implements DiningIdentityService {
                                             || !s.equals(session.getStoreNo())) {
                                         forbidden();
                                     }
+                                    return liveParty(session);
+                                }));
+    }
+
+    @Override
+    public PartyVO authenticateDeviceSession(String e, String s, CartAccess access) {
+        if (access == null || access.buyerNo() != null) {
+            forbidden();
+        }
+        scope(e, s, access.sessionNo());
+        text(access.accessToken(), 128);
+        return scoped(
+                () ->
+                        tx.execute(
+                                t -> {
+                                    var session = session(access.sessionNo(), true);
+                                    if (!e.equals(session.getEntityNo())
+                                            || !s.equals(session.getStoreNo())
+                                            || !scopes(session).contains("CART_DEVICE")
+                                            || !MessageDigest.isEqual(
+                                                    session.getTokenHash(),
+                                                    hash(access.accessToken()))) forbidden();
                                     return liveParty(session);
                                 }));
     }

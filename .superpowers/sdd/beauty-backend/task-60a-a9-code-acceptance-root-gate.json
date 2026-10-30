@@ -1,0 +1,273 @@
+{
+  "base": "ddd3f8b073dc66a40931ecff6aa7a1405bd21b41",
+  "reportSHA": "6acede08a37734c48ec75480ced7147b52b78429c0746683dc73fddf147f4f6d",
+  "productManifestSHA": "96bd1c5ffd6f8b9fa1efdf9dc28d3be22e9671323cd80d3138dbade1d918082a",
+  "evidenceManifestSHA": "404922f06a3cd48dd76f25028adc78189a4e7aeae58611da9787586a996086a7",
+  "evidenceFilesChecked": 106,
+  "products": [
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/arch/BizEndpointPermTest.java",
+      "baseSHA256": "cd8d27b44046d5780e518a6e807e56d63bc998b5d96d1cbceb7f81e20be09a18",
+      "finalSHA256": "d8516fccf7692ff51903464c4dc4a2f880d285c6c0a16a01aad2875328c1d426",
+      "bytes": 51083,
+      "changed": true
+    },
+    {
+      "path": "packages/shared/tests/fixtures/ops-role-endpoint-matrix.json",
+      "baseSHA256": "c48654da414fd70560445c458039694e5358b5f0ea820b7325dc94572577f62c",
+      "finalSHA256": "66393004dbbd7ccdfbc60071d552fd99acaa9d99d4959503211d2f63e1d2d972",
+      "bytes": 48308,
+      "changed": true
+    },
+    {
+      "path": "docs/technical/reference/\u8fd0\u8425\u7aef-\u89d2\u8272\u00d7\u7aef\u70b9\u77e9\u9635.md",
+      "baseSHA256": "615fa160d408d9feed8a802d63f0985080a6f5f010154089e0d91eea80c5efc7",
+      "finalSHA256": "34c13da8ffecaac8bb2e8ef71fa4185961e90002754b59c7abc138f555484012",
+      "bytes": 48672,
+      "changed": true
+    },
+    {
+      "path": "docs/technical/reference/B\u7aef\u529f\u80fd\u70b9-\u6743\u9650\u7801-\u9875\u9762.md",
+      "baseSHA256": "499adb7a14472e93abc1da7d88e2c9bf1eb04a037f9ab55ca736b77791be7409",
+      "finalSHA256": "82b904e0d96522e366c759700b57836783eb6d5d3a44305e21922814e8f8e8d5",
+      "bytes": 60149,
+      "changed": true
+    },
+    {
+      "path": "docs/technical/reference/B\u7aef\u529f\u80fd\u77e9\u9635-\u6309\u89d2\u8272.md",
+      "baseSHA256": "44c80d0cfcf5c7f9421a0280a0e622b776c243a568125a99778519153017cebe",
+      "finalSHA256": "99a860d13f9be7a2c46190eb517be93cf983b71e051efebd25e341a8f570d0b5",
+      "bytes": 15429,
+      "changed": true
+    },
+    {
+      "path": "docs/technical/reference/\u4e09\u7aef\u6743\u9650\u77e9\u9635-\u6309\u4e1a\u52a1\u57df.md",
+      "baseSHA256": "1612addf6753a00a2ebb60744cf6df154a1f4b42152adab7c2c615cadb75f0bf",
+      "finalSHA256": "1612addf6753a00a2ebb60744cf6df154a1f4b42152adab7c2c615cadb75f0bf",
+      "bytes": 15777,
+      "changed": false
+    },
+    {
+      "path": "docs/technical/README.md",
+      "baseSHA256": "46a974b07e17dc74295736c4afe1825504e6b7f9b0207c7a751a4dc9718af2c0",
+      "finalSHA256": "d108d1487e2ba9e08837352f42dbdb0a645cc3bfc7dfa96553fc1587dcad65e8",
+      "bytes": 116478,
+      "changed": true
+    },
+    {
+      "path": "b-app/scripts/gen-openapi.mjs",
+      "baseSHA256": "b2be9b95cb205dbae6e4bfe35a345b85859abd48d379779cc751231ec907f146",
+      "finalSHA256": "457f0947049b0d5d13798d8bf207e535f0efcdd7221f76df99b2987aa0c26b2c",
+      "bytes": 29200,
+      "changed": true
+    },
+    {
+      "path": "b-app/src/api/requests.ts",
+      "baseSHA256": "12bc1e04ad3e6a2b76f976db0ca97dde666e551b1dd61aefd77266aea3704810",
+      "finalSHA256": "d7bb4fe69d2865c715f0594bf6c1f165627c26f649574ee524158a728b7d888c",
+      "bytes": 32821,
+      "changed": true
+    },
+    {
+      "path": "docs/api/openapi-b.yaml",
+      "baseSHA256": "5fbea29294501d74c87452bbc47760ab225bc5237297b52eaab3d8c76df1180a",
+      "finalSHA256": "f1f84e422cad9cf65d208a6217202815ecbb248826a7325f4527ebc31014c8d0",
+      "bytes": 832099,
+      "changed": true
+    },
+    {
+      "path": "b-app/tests/member-code-spec.test.ts",
+      "baseSHA256": null,
+      "finalSHA256": "8be2f44dd88ffdda2fc742018bfdd8e5379e6085cd0594e3f18a9c11f8c79505",
+      "bytes": 2693,
+      "changed": true
+    },
+    {
+      "path": "docs/api/API\u6e05\u5355.md",
+      "baseSHA256": "58e62ccb1db7bb3868d43993916116b84b1672139062312f7d925dfe100181d9",
+      "finalSHA256": "081e74b78882c4e0b40ec261f36b44103fbdfcd873f0066b49d476847fbbfbcd",
+      "bytes": 117749,
+      "changed": true
+    },
+    {
+      "path": "docs/api/API\u8be6\u60c5-B\u7aef.md",
+      "baseSHA256": "0e5220f88d97a7829a33e723dac076f245d93438e523e8f4dd433623289b04c4",
+      "finalSHA256": "af27cab5efc0134cbe88629699b4534bd05e5dbe17f11fefccd88b7eb8ea9c59",
+      "bytes": 750556,
+      "changed": true
+    },
+    {
+      "path": "docs/technical/reference/\u6570\u636e\u5e93\u8868\u6e05\u5355.md",
+      "baseSHA256": "688d98938d5ef744b6432a6c455dbcb71c691f5ca8f32d24b7fa3ebe76ea712b",
+      "finalSHA256": "51f6f954c41e2ce3907bfde5a9710fc46227e37b510901893a5684af4829d390",
+      "bytes": 33283,
+      "changed": true
+    },
+    {
+      "path": "docs/technical/reference/\u4e2d\u82f1\u6587\u5bf9\u7167-\u8bcd\u6761.md",
+      "baseSHA256": "f9520b0cc7606e89481f21ab75f4b4faa2a1751d59db06dc91661e98d3218a29",
+      "finalSHA256": "0eb632f73769cbb8fa31c1e6caf1f3b799879b7e44596791d03eb689c813e21d",
+      "bytes": 568647,
+      "changed": true
+    },
+    {
+      "path": "docs/technical/reference/\u4e2d\u82f1\u6587\u5bf9\u7167-\u5b9e\u4f53\u4e0e\u5b57\u5178.md",
+      "baseSHA256": "8043685b31cc302c9052d7e36b928bf03ee37bd52d9e4aec10a36ca4d5b0f6ea",
+      "finalSHA256": "e81a12073ffae820cdc92b5a0f8fd82784df3b8629a5275365f1f1f12ec00b4e",
+      "bytes": 233831,
+      "changed": true
+    },
+    {
+      "path": "docs/technical/reference/glossary.json",
+      "baseSHA256": "f4a9ffb3c22edbac3209fc30149a23d24db7776216541cb3a160925a318055b4",
+      "finalSHA256": "a54e94a28aa1a8d86e18e13f32d13d2fd4757428545cd2ff64ee87917d6fa54d",
+      "bytes": 1423682,
+      "changed": true
+    },
+    {
+      "path": "scripts/perm-endpoint-map.mjs",
+      "baseSHA256": "4e49087341d58dc71d6f9bbff0bc3ca016e887c5f1d29b7e68c07122ca14b4d9",
+      "finalSHA256": "931d33a270de2fe657b26c80c5d9096712eafe48466cc5fd2afb85b8dc7d6127",
+      "bytes": 48010,
+      "changed": true
+    },
+    {
+      "path": "packages/shared/tests/ops-perm-matrix.test.ts",
+      "baseSHA256": "ffdfc297b5f106d569607fbf11d524c23581c1a9abfbace23ae47b9addc2c488",
+      "finalSHA256": "df91d677e3d9ff87d9901f4ce056399f1d9698f84e378b4a52aa6a792bc90120",
+      "bytes": 9339,
+      "changed": true
+    }
+  ],
+  "xml": {
+    "java-initial-red.xml": {
+      "counts": [
+        4,
+        1,
+        0,
+        0
+      ],
+      "methods": [
+        "noStaleEntries",
+        "allCodesExist",
+        "everyBizEndpointHasADecision",
+        "decisionsAreActuallyEnforced"
+      ]
+    },
+    "java-registration-only-enforcement-red.xml": {
+      "counts": [
+        4,
+        1,
+        0,
+        0
+      ],
+      "methods": [
+        "noStaleEntries",
+        "allCodesExist",
+        "everyBizEndpointHasADecision",
+        "decisionsAreActuallyEnforced"
+      ]
+    },
+    "java-scanner-fixtures-red.xml": {
+      "counts": [
+        8,
+        4,
+        0,
+        0
+      ],
+      "methods": [
+        "guardScannerFindsMultilineAnnotationsBothOrders",
+        "noStaleEntries",
+        "guardScannerFindsAuthorizationBeforeMapping",
+        "allCodesExist",
+        "everyBizEndpointHasADecision",
+        "guardScannerDoesNotBorrowNeighborAuthorization",
+        "guardScannerFindsAuthorizationAfterMapping",
+        "decisionsAreActuallyEnforced"
+      ]
+    },
+    "java-qualified-annotation-red.xml": {
+      "counts": [
+        8,
+        1,
+        0,
+        0
+      ],
+      "methods": [
+        "guardScannerFindsMultilineAnnotationsBothOrders",
+        "noStaleEntries",
+        "guardScannerFindsAuthorizationBeforeMapping",
+        "allCodesExist",
+        "everyBizEndpointHasADecision",
+        "guardScannerDoesNotBorrowNeighborAuthorization",
+        "guardScannerFindsAuthorizationAfterMapping",
+        "decisionsAreActuallyEnforced"
+      ]
+    },
+    "java-mutation-red.xml": {
+      "counts": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "methods": [
+        "everyBizEndpointHasADecision"
+      ]
+    },
+    "java-final-green.xml": {
+      "counts": [
+        10,
+        0,
+        0,
+        0
+      ],
+      "methods": [
+        "guardScannerFindsMultilineAnnotationsBothOrders",
+        "noStaleEntries",
+        "guardScannerRejectsMalformedSource",
+        "guardScannerFindsAuthorizationBeforeMapping",
+        "allCodesExist",
+        "guardScannerIgnoresCommentedAuthorization",
+        "everyBizEndpointHasADecision",
+        "guardScannerDoesNotBorrowNeighborAuthorization",
+        "guardScannerFindsAuthorizationAfterMapping",
+        "decisionsAreActuallyEnforced"
+      ]
+    }
+  },
+  "normal13OutputHashMatch": true,
+  "snapshot7792to7793OnlyHTMLSideEffect": {
+    "docs/technical/design/ui-lib.page.html": {
+      "before": null,
+      "after": "a24a39ddb6929070319b6ab9df10fd4baa10ae609b47694abaf09b486607ec00"
+    }
+  },
+  "snapshot25GeneratorsExit0": true,
+  "opsOnly8Adds": {
+    "FINANCE": {
+      "added": [
+        "GET /ops/points/accounts",
+        "GET /ops/points/stats-period",
+        "GET /ops/points/transactions",
+        "GET /ops/points/transactions/{voucherNo}"
+      ],
+      "removed": []
+    },
+    "SUPER_ADMIN": {
+      "added": [
+        "GET /ops/points/accounts",
+        "GET /ops/points/stats-period",
+        "GET /ops/points/transactions",
+        "GET /ops/points/transactions/{voucherNo}"
+      ],
+      "removed": []
+    }
+  },
+  "reviewPackage": "/tmp/task60a-a9-review-package-339b7553-ebdd-4ab1-9dfc-5fc8441aea91.diff",
+  "reviewPackageSHA": "942ffd1b5d94cecce6a5c9b2d3042de13d8d64ed9faf7f80c6bbddcfda739803",
+  "productCommit": "c07890c3fc9e691f5101d12cd5dc744709a84153",
+  "reviewSHA256": "b3d83a4aa3db887142016dac844efe84588324dda1ea8da2dbe17cd26dd7115b",
+  "spec": "PASS",
+  "quality": "APPROVED"
+}

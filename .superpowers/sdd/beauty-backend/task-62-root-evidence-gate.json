@@ -1,0 +1,338 @@
+{
+  "base": "2b558d4eac7cf311813bbfba6e82374281b839a9",
+  "artifactPinsVerified": 148,
+  "productFilesVerified": 24,
+  "currentTestedSourceClassPinsVerified": 95,
+  "ablationRestorationEntries": 95,
+  "ablationOnlyChangedPaths": [
+    "/Users/robin/.codex/worktrees/beauty-data/ai-shop-codex/backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/MerchantMappers.java",
+    "/Users/robin/.codex/worktrees/beauty-data/ai-shop-codex/backend/shop-merchant/target/classes/ai/neargo/shop/merchant/mapper/MerchantMappers$PersonnelAccountMapper.class"
+  ],
+  "stages": [
+    {
+      "dir": "ablation-21d7e638-1666-4aed-a476-5ed9b1b6f398",
+      "mavenExit": 1,
+      "suites": [
+        {
+          "class": "ai.neargo.shop.svc.BoundInternalProtocolTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorFactsIT",
+          "tests": 12,
+          "failures": 1,
+          "errors": 1,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorProtocolTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.arch.BizRoleSeedTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "ownAssertionFailures": [
+        "expiredAssignmentAndStoppedPersonReturnUnlinked"
+      ]
+    },
+    {
+      "dir": "ablation-94f4de6f-ad32-419f-998a-d6afab8e5477",
+      "mavenExit": 1,
+      "suites": [
+        {
+          "class": "ai.neargo.shop.svc.BoundInternalProtocolTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorFactsIT",
+          "tests": 12,
+          "failures": 1,
+          "errors": 1,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorProtocolTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.arch.BizRoleSeedTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "ownAssertionFailures": [
+        "expiredAssignmentAndStoppedPersonReturnUnlinked"
+      ]
+    },
+    {
+      "dir": "green-35be1c64-fffc-45ea-b75d-eb85248cdc23",
+      "mavenExit": 0,
+      "suites": [
+        {
+          "class": "ai.neargo.shop.svc.BoundInternalProtocolTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorFactsIT",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorProtocolTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.arch.BizRoleSeedTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "ownAssertionFailures": []
+    },
+    {
+      "dir": "green-6be8d5a5-6f11-4ee4-af00-95a63598ce62",
+      "mavenExit": 0,
+      "suites": [
+        {
+          "class": "ai.neargo.shop.svc.BoundInternalProtocolTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorFactsIT",
+          "tests": 13,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorProtocolTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.arch.BizRoleSeedTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "ownAssertionFailures": []
+    },
+    {
+      "dir": "red-08d71328-4c85-4807-98ba-df1fbd01e79f",
+      "mavenExit": 1,
+      "suites": [
+        {
+          "class": "ai.neargo.shop.svc.BoundInternalProtocolTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorFactsIT",
+          "tests": 13,
+          "failures": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorProtocolTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.arch.BizRoleSeedTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "ownAssertionFailures": [
+        "caseVariantParentScopesCannotBorrowPersonnel"
+      ]
+    },
+    {
+      "dir": "red-cafe2e1b-0915-4181-b616-92d304a17f9f",
+      "mavenExit": 1,
+      "suites": [
+        {
+          "class": "ai.neargo.shop.svc.BoundInternalProtocolTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorFactsIT",
+          "tests": 12,
+          "failures": 4,
+          "errors": 6,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorProtocolTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.arch.BizRoleSeedTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest",
+          "tests": 6,
+          "failures": 2,
+          "errors": 2,
+          "skipped": 0
+        }
+      ],
+      "ownAssertionFailures": [
+        "bookingManageAloneDoesNotGrantServiceAction",
+        "foreignScopeAndInactiveAccountAreDenied",
+        "permissionRevokedBetweenSnapshotsIsDenied",
+        "expiredAssignmentAndStoppedPersonReturnUnlinked",
+        "wrongStatusCodeErrorIdentityIsUnavailable",
+        "transportFailureIsNotUnlinked"
+      ]
+    },
+    {
+      "dir": "restored-e89c2635-fef4-43cd-9bfd-a31c4069e487",
+      "mavenExit": 0,
+      "suites": [
+        {
+          "class": "ai.neargo.shop.svc.BoundInternalProtocolTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorFactsIT",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.scenario.PersonnelOperatorProtocolTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.arch.BizRoleSeedTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "ai.neargo.shop.beauty.port.RemotePersonnelOperatorFactsPortTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "ownAssertionFailures": []
+    }
+  ],
+  "originalSQLStatementsUnchanged": 32,
+  "rolePermsExact": true,
+  "foodCompileExit": 0,
+  "reviewPackage": "/tmp/task62-review-package-d1adf364-678a-4f9e-b863-fb5388a1949b.diff",
+  "reviewPackageSha256": "e12a6237c0f391d24acc318c6cd5798339a435abf788cd53037a94bc9d7f0f24",
+  "formalDeploymentExecuted": false,
+  "productCommit": "35e6f0f66dc67b6ca77d2ddcd22960b2e0f2de6f",
+  "review": {
+    "path": ".superpowers/sdd/beauty-backend/review-task-62.md",
+    "sha256": "416db5325c728bbe7cea98791d6a36de04f65d1d3ba0b2fd04f1b9689933c373",
+    "spec": "PASS",
+    "quality": "APPROVED",
+    "critical": 0,
+    "important": 0,
+    "minor": "P3 focused assembly coverage; actual deployed profiles deferred"
+  },
+  "rootDockerLabelQueryEmpty": true,
+  "rootSevenNativeTempDirsAbsent": true
+}

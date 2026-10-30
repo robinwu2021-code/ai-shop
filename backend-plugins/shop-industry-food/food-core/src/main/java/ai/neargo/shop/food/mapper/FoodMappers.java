@@ -23,6 +23,7 @@ import ai.neargo.shop.food.entity.FnbCoreLineAllocation;
 import ai.neargo.shop.food.entity.FnbOrderComponent;
 import ai.neargo.shop.food.entity.FnbOrderModifier;
 import ai.neargo.shop.food.entity.FnbStation;
+import ai.neargo.shop.food.entity.FnbStockBalance;
 import ai.neargo.shop.food.entity.FnbCheckCart;
 import ai.neargo.shop.food.entity.FnbCheckCartItem;
 import ai.neargo.shop.food.entity.FnbSkuStation;
@@ -353,6 +354,35 @@ public final class FoodMappers {
                 @Param("station") String station);
     }
 
+    /** Explicit owner predicates are retained even for internal calls without a request data scope. */
+    public interface StockSyncConfigMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncConfig> { }
+    public interface StockSyncMappingMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncMapping> { }
+    public interface StockSyncItemStateMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncItemState> { }
+    public interface StockSyncDeliveryMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncDelivery> { }
+    public interface StockSyncReconciliationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncReconciliation> { }
+    public interface StockSyncDifferenceMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockSyncDifference> { }
+    public interface StockItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockItem> { }
+    public interface StockReservationMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockReservation> { }
+    public interface StockReservationItemMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockReservationItem> { }
+    public interface StockCommandMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockCommand> { }
+    public interface StockMovementMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbStockMovement> { }
+
+    public interface StockBalanceMapper extends BaseMapper<FnbStockBalance> {
+        @Select("SELECT * FROM fnb_stock_balance WHERE tenant_no='MAIN' AND entity_no=#{entity} "
+                + "AND store_no=#{store} AND item_no=#{item} AND deleted=0 FOR UPDATE")
+        FnbStockBalance lockBalance(@Param("entity") String entity, @Param("store") String store,
+                @Param("item") String item);
+
+        @Update("UPDATE fnb_stock_balance SET on_hand=#{onHand},reserved_qty=#{reserved},version=version+1, "
+                + "updated_at=CURRENT_TIMESTAMP(3),updated_by=#{actor} WHERE tenant_no='MAIN' "
+                + "AND entity_no=#{entity} AND store_no=#{store} AND item_no=#{item} "
+                + "AND version=#{version} AND deleted=0")
+        int replaceLockedBalance(@Param("entity") String entity, @Param("store") String store,
+                @Param("item") String item, @Param("version") long version,
+                @Param("onHand") BigDecimal onHand, @Param("reserved") BigDecimal reserved,
+                @Param("actor") String actor);
+    }
+
     public interface SalesRestrictionMapper extends BaseMapper<FnbSalesRestriction> { }
     public interface SalesQuotaClaimMapper extends BaseMapper<FnbSalesQuotaClaim> { }
     public interface ReturnMapper extends BaseMapper<FnbReturn> { }
@@ -421,4 +451,5 @@ public final class FoodMappers {
     }
     public interface ProductionConsumptionLineMapper extends BaseMapper<FnbProductionConsumptionLine> { }
     public interface QueueTicketMapper extends BaseMapper<FnbQueueTicket> { }
+    public interface ReturnStockDispositionMapper extends BaseMapper<ai.neargo.shop.food.entity.FnbReturnStockDisposition> {}
 }

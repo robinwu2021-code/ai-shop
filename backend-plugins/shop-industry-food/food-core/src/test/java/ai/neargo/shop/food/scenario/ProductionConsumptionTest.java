@@ -410,6 +410,35 @@ class ProductionConsumptionTest {
     }
 
     @Test
+    void disposedConsumptionRetainsRealIssueAndKnownExpenseWithoutRetryingTheInventoryOwner() {
+        var owner=mock(InventoryProductionPort.class);var fixture=new Fixture(owner);var json=new ObjectMapper();
+        var command=json.readValue(fixture.head.getRequestSnapshot(),Command.class);
+        fixture.head.setStatus("DISPOSED");fixture.head.setInventoryOperationRef("LOSS_DOC");
+        fixture.head.setReceiptSnapshot(json.writeValueAsString(new Receipt(command.eventNo(),
+                ProductionConsumptionServiceImpl.fingerprint(command),"DISPOSED","LOSS_DOC",command.lines(),250L,"AED")));
+        fixture.child.setActualQty(new BigDecimal("2"));fixture.child.setCostMinor(250L);
+        fixture.child.setCurrency("AED");fixture.child.setStatus("DISPOSED");
+        var result=fixture.service.consume("E","S","A","EVENT");
+        assertThat(result.status()).isEqualTo("DISPOSED");assertThat(result.consumptionPending()).isFalse();
+        assertThat(result.quantityEvidence()).isEqualTo("INVENTORY_ISSUE_DISPOSED");
+        assertThat(result.lines().getFirst().inventoryIssuedQty()).isEqualByComparingTo("2");
+        assertThat(result.totalCostMinor()).isEqualTo(250L);assertThat(result.costCurrency()).isEqualTo("AED");
+        verifyNoInteractions(owner);
+    }
+
+    @Test
+    void legacyReversalSerializationDoesNotIntroduceNullFieldsIntoOriginalCommandIdentity() {
+        var json=new ObjectMapper();var fixture=new Fixture(mock(InventoryProductionPort.class));
+        var command=json.readValue(fixture.head.getRequestSnapshot(),Command.class);
+        var reverse=new InventoryProductionPort.Reverse(command,"REV","original reason");
+        var node=json.readTree(json.writeValueAsString(reverse));
+        assertThat(node.has("disposition")).isFalse();assertThat(node.has("reasonCode")).isFalse();
+        assertThat(node.has("actorNo")).isFalse();
+        var req=json.readTree(json.writeValueAsString(new ai.neargo.shop.food.dto.ProductionContracts.ReverseReq(0L,"reason")));
+        assertThat(req.has("disposition")).isFalse();assertThat(req.has("reasonCode")).isFalse();
+    }
+
+    @Test
     void strictReceiptGuardRejectsUnmatchedMaterialQuantities() {
         var fixture = new Fixture(mock(InventoryProductionPort.class));
         var command =

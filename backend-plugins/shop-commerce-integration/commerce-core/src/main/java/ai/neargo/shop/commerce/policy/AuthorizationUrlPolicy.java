@@ -15,6 +15,28 @@ public final class AuthorizationUrlPolicy {
     private AuthorizationUrlPolicy() {}
 
     public static void validate(String url, String state, ChannelAuthorizationGateway gateway) {
+        var query = validatedQuery(url, gateway);
+        if (!state.equals(query.get("state")))
+            throw new IllegalArgumentException("Unbound authorization URL");
+    }
+
+    /**
+     * Recovery receives no plaintext state from local storage; the original URL must prove the
+     * saved state digest.
+     */
+    public static void validateStateHash(
+            String url, String stateHash, ChannelAuthorizationGateway gateway) {
+        var query = validatedQuery(url, gateway);
+        var state = query.get("state");
+        if (state == null
+                || !state.matches("[A-Za-z0-9_-]{43}")
+                || stateHash == null
+                || !stateHash.equals(ChannelIdentity.hash(state)))
+            throw new IllegalArgumentException("Unbound recovered authorization URL");
+    }
+
+    private static Map<String, String> validatedQuery(
+            String url, ChannelAuthorizationGateway gateway) {
         if (url == null || url.length() > 8192)
             throw new IllegalArgumentException("Invalid authorization URL");
         URI uri = URI.create(url);
@@ -56,9 +78,9 @@ public final class AuthorizationUrlPolicy {
                 throw new IllegalArgumentException("Unsafe authorization query");
             }
         }
-        if (!state.equals(query.get("state"))
-                || !gateway.callbackUris().contains(query.get("redirect_uri"))) {
+        if (!gateway.callbackUris().contains(query.get("redirect_uri"))) {
             throw new IllegalArgumentException("Unbound authorization URL");
         }
+        return query;
     }
 }

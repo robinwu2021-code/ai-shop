@@ -83,8 +83,8 @@ class ServiceStockRoute {
                 .map(t -> new InventoryStockApi.Target(null, t.skuNo(), t.qty())).toList())));
     }
 
-    void restore(String merchant, String restoreNo, List<SkuQty> items) {
-        translate(() -> client.restore(merchant, ACTOR, new InventoryStockApi.Restore(restoreNo,
+    void restore(String merchant, String restoreNo, String originalRef, List<SkuQty> items) {
+        translate(() -> client.restore(merchant, ACTOR, new InventoryStockApi.Restore(restoreNo, originalRef,
                 items.stream().map(ServiceStockRoute::line).toList())));
     }
 

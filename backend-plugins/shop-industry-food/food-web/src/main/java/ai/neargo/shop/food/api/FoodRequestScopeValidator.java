@@ -1,24 +1,14 @@
 package ai.neargo.shop.food.api;
 
-import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.auth.StoreRequestScopeValidator;
 import java.util.Set;
 
-/** 核对既有鉴权上下文与已读取资源的归属，不创建身份上下文。 */
+/** Keeps the restaurant entry contract while sharing its fact comparison with retail and beauty. */
 public final class FoodRequestScopeValidator {
-    /** 所有 trusted/target 参数由入口从可信上下文和目录事实组装。 */
+    /** Trusted arguments come from existing authentication and the resource owner's facts. */
     public void requireStoreTarget(String trustedEntityNo, String trustedStoreNo, String targetEntityNo,
             String targetStoreNo, String requestedStoreNo, Set<String> authorizedStoreNos) {
-        boolean factsPresent = present(trustedEntityNo) && present(trustedStoreNo)
-                && present(targetEntityNo) && present(targetStoreNo);
-        if (!factsPresent || authorizedStoreNos == null || !authorizedStoreNos.contains(trustedStoreNo)
-                || !trustedEntityNo.equals(targetEntityNo) || !trustedStoreNo.equals(targetStoreNo)
-                || requestedStoreNo != null && !trustedStoreNo.equals(requestedStoreNo)) {
-            throw BizException.of(ErrorCode.FORBIDDEN);
-        }
-    }
-
-    private static boolean present(String value) {
-        return value != null && !value.isBlank();
+        StoreRequestScopeValidator.requireStoreTarget(trustedEntityNo, trustedStoreNo, targetEntityNo,
+                targetStoreNo, requestedStoreNo, authorizedStoreNos);
     }
 }

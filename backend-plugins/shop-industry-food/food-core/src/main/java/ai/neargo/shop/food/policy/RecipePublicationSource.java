@@ -140,7 +140,7 @@ public final class RecipePublicationSource {
         Map<String, MaterialFact> facts = new HashMap<>();
         var requested = captured.recipe().lines().stream().map(RecipeLineVO::itemRef).distinct().toList();
         for (var fact : materials) {
-            if (!MaterialCatalogFacts.validFact(fact) || !entity.equals(fact.entityNo())
+            if (!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(fact) || !entity.equals(fact.entityNo())
                     || !requested.contains(fact.itemId()) || facts.putIfAbsent(fact.itemId(), fact) != null) {
                 throw new IllegalStateException("Invalid recipe material facts");
             }

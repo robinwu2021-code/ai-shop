@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 
 /**
  * 「把字节存下来并记上一笔」—— 上传链路上**唯一**写 {@code sys_media_asset} 的地方。
@@ -62,7 +64,7 @@ public class MediaUploadService {
         int[] wh = ImageProbe.dimensionsOf(src);
         asset.setWidth(wh[0] > 0 ? wh[0] : null);
         asset.setHeight(wh[1] > 0 ? wh[1] : null);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = uploadTime(bizType);
         asset.setCreatedAt(now);
         asset.setUpdatedAt(now);
         assetMapper.insert(asset);
@@ -76,7 +78,13 @@ public class MediaUploadService {
         SysMediaAsset done = new SysMediaAsset();
         done.setId(asset.getId());
         done.setStatus(SysMediaAsset.ACTIVE);
-        done.setUpdatedAt(LocalDateTime.now());
+        done.setUpdatedAt(uploadTime(bizType));
         assetMapper.updateById(done);
+    }
+
+    private static LocalDateTime uploadTime(String bizType) {
+        return SysMediaAsset.OFFLINE_RECEIPT.equals(bizType)
+                ? LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS)
+                : LocalDateTime.now();
     }
 }

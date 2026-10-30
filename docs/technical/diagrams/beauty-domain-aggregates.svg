@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="720" viewBox="0 0 1160 720" role="img" aria-labelledby="title desc">
+<title id="title">美业领域聚合主线与共享对象</title>
+<desc id="desc">预约关联工单，工单管理任务范围，服务任务经提交过程关联共用交易和资产来源。护理档案、疗程计划、业绩提成独立扩展。商品人员资源资金由共用能力所有，箭头是业务关联而非跨库外键。</desc>
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L7 4 L0 8" fill="none" stroke="#62788c" stroke-width="1.5"/></marker><style>text{font-family:system-ui,sans-serif;fill:#20364a}.h{font-size:20px;font-weight:700}.t{font-size:16px}.n{font-size:14px;fill:#566f85}.b{fill:white;stroke:#b9cbd8;stroke-width:1.5}.l{fill:none;stroke:#62788c;stroke-width:2;marker-end:url(#a)}</style></defs>
+<rect width="1160" height="720" fill="#f6f9fc"/>
+<text x="35" y="42" font-size="27" font-weight="700">美业领域对象与聚合主线</text><text x="35" y="71" class="n">逻辑模型草稿 · 2026-10-20 · 配置聚合、值对象和完整关系见正文</text>
+<rect x="35" y="100" width="340" height="100" rx="12" class="b"/><rect x="410" y="100" width="340" height="100" rx="12" class="b"/><rect x="785" y="100" width="340" height="100" rx="12" class="b"/>
+<text x="55" y="135" class="h">共用商品 / 客户 / 人员身份</text><text x="55" y="173" class="t">引用与快照，不复制主数据</text>
+<text x="430" y="135" class="h">共用资源 / 技能 / 班表</text><text x="430" y="173" class="t">hold、现场占用与冲突仲裁</text>
+<text x="805" y="135" class="h">Core成交来源 / Pay资产</text><text x="805" y="173" class="t">价格、授权、余次和账务权威</text>
+<rect x="35" y="270" width="245" height="125" rx="12" fill="#eaf4ef" stroke="#a5c8b6"/><rect x="315" y="270" width="245" height="125" rx="12" fill="#eaf4ef" stroke="#a5c8b6"/><rect x="595" y="270" width="245" height="125" rx="12" fill="#eaf4ef" stroke="#a5c8b6"/><rect x="875" y="270" width="250" height="125" rx="12" fill="#fff4e6" stroke="#d7c5ab"/>
+<text x="55" y="305" class="h">Appointment 预约</text><text x="55" y="341" class="t">约定 / 项目行 / 改约</text><text x="55" y="373" class="n">可以没有交易</text>
+<text x="335" y="305" class="h">WorkOrder 工单</text><text x="335" y="341" class="t">服务范围 / 关闭守卫</text><text x="335" y="373" class="n">直客可以没有预约</text>
+<text x="615" y="305" class="h">ServiceTask 任务</text><text x="615" y="341" class="t">步骤 / 参与 / 完成数量</text><text x="615" y="373" class="n">独立执行，完工反馈工单</text>
+<text x="895" y="305" class="h">Submission 提交</text><text x="895" y="341" class="t">来源分配 / 原号恢复</text><text x="895" y="373" class="n">不冒充支付或资产结果</text>
+<path d="M280 330 H305" class="l"/><path d="M560 330 H585" class="l"/><path d="M840 330 H865" class="l"/>
+<path d="M157 270 V230 H580 V210" class="l"/><path d="M1000 270 V210" class="l"/>
+<text x="295" y="252" class="n">引用共享持有凭证</text>
+<rect x="35" y="480" width="340" height="125" rx="12" class="b"/><rect x="410" y="480" width="340" height="125" rx="12" class="b"/><rect x="785" y="480" width="340" height="125" rx="12" class="b"/>
+<text x="55" y="515" class="h">CustomerCareProfile 护理档案</text><text x="55" y="550" class="t">记录 / 注意事项 / 私密媒体</text><text x="55" y="582" class="n">受权追加与更正，不复制会员</text>
+<text x="430" y="515" class="h">TreatmentPlan 疗程计划</text><text x="430" y="550" class="t">计划次 / 预约 / 实际服务关联</text><text x="430" y="582" class="n">余次由Pay维护，计划不直接扣卡</text>
+<text x="805" y="515" class="h">业绩分配 / 提成政策与计提</text><text x="805" y="550" class="t">产出 / 参与分摊 / 规则版本</text><text x="805" y="582" class="n">冲回追加；已发放事实不可抹除</text>
+<path d="M580 480 V445 H157 V405" class="l"/><path d="M717 395 V445 H955 V470" class="l"/>
+<text x="35" y="652" class="t">营业政策与服务执行定义提供版本化规则；今日排程、接待看板、工单账单与经营报表均为读模型。</text>
+<text x="35" y="690" class="n">箭头表示业务关联或事实依赖；跨聚合按合同、版本和可靠事件协作，不代表一个跨域大事务。</text>
+</svg>

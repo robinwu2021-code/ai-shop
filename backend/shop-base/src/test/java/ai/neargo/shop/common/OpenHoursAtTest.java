@@ -1,6 +1,7 @@
 package ai.neargo.shop.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,12 @@ class OpenHoursAtTest {
         for (String hours : new String[] {"99:00-20:00", "08:99-20:00", "午间营业", "08:00-12:00,18:00-22:00", ""}) {
             assertThat(OpenHours.openAt(hours, LocalTime.NOON)).as(hours).isNull();
         }
+    }
+    @Test void boundaryReaderUsesOriginalSyntaxAndRefusesUnknownHours() {
+        assertThat(OpenHours.boundaryTimes("22:00至02:00"))
+                .containsExactly(LocalTime.of(22, 0), LocalTime.of(2, 0));
+        assertThatThrownBy(() -> OpenHours.boundaryTimes("99:00-20:00"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
     @Test void equalEndpointsStillMeanFullDay() {
         assertThat(OpenHours.openAt("00:00-00:00", LocalTime.NOON)).isTrue();

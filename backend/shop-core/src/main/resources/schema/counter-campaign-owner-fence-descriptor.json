@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "owner": "shared-marketing",
+  "table": {
+    "name": "mkt_counter_campaign_fence",
+    "engine": "InnoDB",
+    "collation": "OWNER_IDENTITY",
+    "columns": [
+      {
+        "name": "tenant_no",
+        "type": "varchar(32)",
+        "nullable": false,
+        "default": null,
+        "collation": "OWNER_IDENTITY",
+        "charset": "OWNER_IDENTITY"
+      },
+      {
+        "name": "scope_kind",
+        "type": "varchar(16)",
+        "nullable": false,
+        "default": null,
+        "collation": "utf8mb4_bin",
+        "charset": "utf8mb4"
+      },
+      {
+        "name": "scope_no",
+        "type": "varchar(64)",
+        "nullable": false,
+        "default": null,
+        "collation": "OWNER_IDENTITY",
+        "charset": "OWNER_IDENTITY"
+      },
+      {
+        "name": "revision",
+        "type": "bigint",
+        "nullable": false,
+        "default": "0",
+        "collation": null,
+        "charset": null
+      }
+    ],
+    "primaryKey": [
+      "tenant_no",
+      "scope_kind",
+      "scope_no"
+    ],
+    "checks": {
+      "ck_mkt_counter_fence_scope": "scope_kind IN ('PLATFORM', 'ENTITY')",
+      "ck_mkt_counter_fence_revision": "revision >= 0"
+    },
+    "charset": "DATABASE_DEFAULT"
+  },
+  "seed": {
+    "tenant": "MAIN",
+    "kind": "PLATFORM",
+    "no": "PLATFORM"
+  },
+  "ownerIdentity": {
+    "charset": "utf8mb4",
+    "bindings": [
+      {
+        "table": "mkt_campaign",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_activity",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_activity_version",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_activity_goods",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_activity_rule",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_enrollment",
+        "column": "tenant_no"
+      },
+      {
+        "table": "pmt_enrollment_goods",
+        "column": "tenant_no"
+      },
+      {
+        "table": "mkt_campaign",
+        "column": "entity_no"
+      },
+      {
+        "table": "pmt_activity",
+        "column": "entity_no"
+      },
+      {
+        "table": "pmt_enrollment",
+        "column": "entity_no"
+      }
+    ]
+  },
+  "triggers": [
+    {
+      "name": "trg_ccf_mkt_campaign_insert",
+      "table": "mkt_campaign",
+      "event": "INSERT",
+      "timing": "BEFORE",
+      "parent": false,
+      "body": "BEGIN\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    IF NEW.entity_no IS NULL OR CHAR_LENGTH(TRIM(NEW.entity_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, 'ENTITY', NEW.entity_no, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_mkt_campaign_update",
+      "table": "mkt_campaign",
+      "event": "UPDATE",
+      "timing": "BEFORE",
+      "parent": false,
+      "body": "BEGIN\n    IF NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.campaign_no <=> BINARY OLD.campaign_no) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign immutable identity';\n    END IF;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    IF NEW.entity_no IS NULL OR CHAR_LENGTH(TRIM(NEW.entity_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, 'ENTITY', NEW.entity_no, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_mkt_campaign_delete",
+      "table": "mkt_campaign",
+      "event": "DELETE",
+      "timing": "BEFORE",
+      "parent": false,
+      "body": "BEGIN\n    IF OLD.tenant_no IS NULL OR CHAR_LENGTH(TRIM(OLD.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    IF OLD.entity_no IS NULL OR CHAR_LENGTH(TRIM(OLD.entity_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (OLD.tenant_no, 'ENTITY', OLD.entity_no, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_insert",
+      "table": "pmt_activity",
+      "event": "INSERT",
+      "timing": "BEFORE",
+      "parent": false,
+      "body": "BEGIN\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    IF NOT (BINARY NEW.owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign owner invalid';\n    END IF;\n    IF BINARY NEW.owner = 'PLATFORM' AND NOT (BINARY NEW.entity_no <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign platform identity invalid';\n    END IF;\n    IF IF(BINARY NEW.owner = 'PLATFORM', 'PLATFORM', NEW.entity_no) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY NEW.owner = 'PLATFORM', 'PLATFORM', NEW.entity_no))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, IF(BINARY NEW.owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY NEW.owner = 'PLATFORM', 'PLATFORM', NEW.entity_no), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_update",
+      "table": "pmt_activity",
+      "event": "UPDATE",
+      "timing": "BEFORE",
+      "parent": false,
+      "body": "BEGIN\n    IF NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.activity_no <=> BINARY OLD.activity_no) OR\n        NOT (BINARY NEW.owner <=> BINARY OLD.owner) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign immutable identity';\n    END IF;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    IF NOT (BINARY NEW.owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign owner invalid';\n    END IF;\n    IF BINARY NEW.owner = 'PLATFORM' AND NOT (BINARY NEW.entity_no <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign platform identity invalid';\n    END IF;\n    IF IF(BINARY NEW.owner = 'PLATFORM', 'PLATFORM', NEW.entity_no) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY NEW.owner = 'PLATFORM', 'PLATFORM', NEW.entity_no))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, IF(BINARY NEW.owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY NEW.owner = 'PLATFORM', 'PLATFORM', NEW.entity_no), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_delete",
+      "table": "pmt_activity",
+      "event": "DELETE",
+      "timing": "BEFORE",
+      "parent": false,
+      "body": "BEGIN\n    IF OLD.tenant_no IS NULL OR CHAR_LENGTH(TRIM(OLD.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    IF NOT (BINARY OLD.owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign owner invalid';\n    END IF;\n    IF BINARY OLD.owner = 'PLATFORM' AND NOT (BINARY OLD.entity_no <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign platform identity invalid';\n    END IF;\n    IF IF(BINARY OLD.owner = 'PLATFORM', 'PLATFORM', OLD.entity_no) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY OLD.owner = 'PLATFORM', 'PLATFORM', OLD.entity_no))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (OLD.tenant_no, IF(BINARY OLD.owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY OLD.owner = 'PLATFORM', 'PLATFORM', OLD.entity_no), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_version_insert",
+      "table": "pmt_activity_version",
+      "event": "INSERT",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = NEW.activity_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY activity_no = BINARY NEW.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_version_update",
+      "table": "pmt_activity_version",
+      "event": "UPDATE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.activity_no <=> BINARY OLD.activity_no) OR\n        NOT (BINARY NEW.version_no <=> BINARY OLD.version_no) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign immutable identity';\n    END IF;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = NEW.activity_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY activity_no = BINARY NEW.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_version_delete",
+      "table": "pmt_activity_version",
+      "event": "DELETE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF OLD.tenant_no IS NULL OR CHAR_LENGTH(TRIM(OLD.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = OLD.activity_no AND tenant_no = OLD.tenant_no\n      AND BINARY tenant_no = BINARY OLD.tenant_no\n      AND BINARY activity_no = BINARY OLD.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (OLD.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_goods_insert",
+      "table": "pmt_activity_goods",
+      "event": "INSERT",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = NEW.activity_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY activity_no = BINARY NEW.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF NOT (BINARY NEW.entity_no <=> BINARY parent_entity) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign child owner mismatch';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_goods_update",
+      "table": "pmt_activity_goods",
+      "event": "UPDATE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.activity_no <=> BINARY OLD.activity_no) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign immutable identity';\n    END IF;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = NEW.activity_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY activity_no = BINARY NEW.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF NOT (BINARY NEW.entity_no <=> BINARY parent_entity) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign child owner mismatch';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_goods_delete",
+      "table": "pmt_activity_goods",
+      "event": "DELETE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF OLD.tenant_no IS NULL OR CHAR_LENGTH(TRIM(OLD.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = OLD.activity_no AND tenant_no = OLD.tenant_no\n      AND BINARY tenant_no = BINARY OLD.tenant_no\n      AND BINARY activity_no = BINARY OLD.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF NOT (BINARY OLD.entity_no <=> BINARY parent_entity) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign child owner mismatch';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (OLD.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_rule_insert",
+      "table": "pmt_activity_rule",
+      "event": "INSERT",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = NEW.activity_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY activity_no = BINARY NEW.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_rule_update",
+      "table": "pmt_activity_rule",
+      "event": "UPDATE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.activity_no <=> BINARY OLD.activity_no) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign immutable identity';\n    END IF;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = NEW.activity_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY activity_no = BINARY NEW.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_activity_rule_delete",
+      "table": "pmt_activity_rule",
+      "event": "DELETE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF OLD.tenant_no IS NULL OR CHAR_LENGTH(TRIM(OLD.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = OLD.activity_no AND tenant_no = OLD.tenant_no\n      AND BINARY tenant_no = BINARY OLD.tenant_no\n      AND BINARY activity_no = BINARY OLD.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner IN ('MERCHANT', 'PLATFORM')) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent owner invalid';\n    END IF;\n    IF BINARY parent_owner = 'PLATFORM' AND NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent identity invalid';\n    END IF;\n    IF IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity) IS NULL OR CHAR_LENGTH(TRIM(IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity))) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (OLD.tenant_no, IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', 'ENTITY'), IF(BINARY parent_owner = 'PLATFORM', 'PLATFORM', parent_entity), 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_enrollment_insert",
+      "table": "pmt_enrollment",
+      "event": "INSERT",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = NEW.activity_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY activity_no = BINARY NEW.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner <=> BINARY 'PLATFORM') OR NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter enrollment parent invalid';\n    END IF;\n    IF NEW.entity_no IS NULL OR CHAR_LENGTH(TRIM(NEW.entity_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, 'ENTITY', NEW.entity_no, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_enrollment_update",
+      "table": "pmt_enrollment",
+      "event": "UPDATE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.entity_no <=> BINARY OLD.entity_no) OR\n        NOT (BINARY NEW.enrollment_no <=> BINARY OLD.enrollment_no) OR\n        NOT (BINARY NEW.activity_no <=> BINARY OLD.activity_no) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign immutable identity';\n    END IF;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = NEW.activity_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY activity_no = BINARY NEW.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner <=> BINARY 'PLATFORM') OR NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter enrollment parent invalid';\n    END IF;\n    IF NEW.entity_no IS NULL OR CHAR_LENGTH(TRIM(NEW.entity_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, 'ENTITY', NEW.entity_no, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_enrollment_delete",
+      "table": "pmt_enrollment",
+      "event": "DELETE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF OLD.tenant_no IS NULL OR CHAR_LENGTH(TRIM(OLD.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no, owner INTO parent_entity, parent_owner FROM pmt_activity\n    WHERE activity_no = OLD.activity_no AND tenant_no = OLD.tenant_no\n      AND BINARY tenant_no = BINARY OLD.tenant_no\n      AND BINARY activity_no = BINARY OLD.activity_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF NOT (BINARY parent_owner <=> BINARY 'PLATFORM') OR NOT (BINARY parent_entity <=> BINARY 'PLATFORM') THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter enrollment parent invalid';\n    END IF;\n    IF OLD.entity_no IS NULL OR CHAR_LENGTH(TRIM(OLD.entity_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (OLD.tenant_no, 'ENTITY', OLD.entity_no, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_enrollment_goods_insert",
+      "table": "pmt_enrollment_goods",
+      "event": "INSERT",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no INTO parent_entity FROM pmt_enrollment\n    WHERE enrollment_no = NEW.enrollment_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY enrollment_no = BINARY NEW.enrollment_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF parent_entity IS NULL OR CHAR_LENGTH(TRIM(parent_entity)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, 'ENTITY', parent_entity, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_enrollment_goods_update",
+      "table": "pmt_enrollment_goods",
+      "event": "UPDATE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF NOT (BINARY NEW.tenant_no <=> BINARY OLD.tenant_no) OR\n        NOT (BINARY NEW.enrollment_no <=> BINARY OLD.enrollment_no) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign immutable identity';\n    END IF;\n    IF NEW.tenant_no IS NULL OR CHAR_LENGTH(TRIM(NEW.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no INTO parent_entity FROM pmt_enrollment\n    WHERE enrollment_no = NEW.enrollment_no AND tenant_no = NEW.tenant_no\n      AND BINARY tenant_no = BINARY NEW.tenant_no\n      AND BINARY enrollment_no = BINARY NEW.enrollment_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF parent_entity IS NULL OR CHAR_LENGTH(TRIM(parent_entity)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (NEW.tenant_no, 'ENTITY', parent_entity, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    },
+    {
+      "name": "trg_ccf_pmt_enrollment_goods_delete",
+      "table": "pmt_enrollment_goods",
+      "event": "DELETE",
+      "timing": "BEFORE",
+      "parent": true,
+      "body": "BEGIN\n    DECLARE parent_entity VARCHAR(64) DEFAULT NULL;\n    DECLARE parent_owner VARCHAR(16) DEFAULT NULL;\n    IF OLD.tenant_no IS NULL OR CHAR_LENGTH(TRIM(OLD.tenant_no)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign tenant missing';\n    END IF;\n    SELECT entity_no INTO parent_entity FROM pmt_enrollment\n    WHERE enrollment_no = OLD.enrollment_no AND tenant_no = OLD.tenant_no\n      AND BINARY tenant_no = BINARY OLD.tenant_no\n      AND BINARY enrollment_no = BINARY OLD.enrollment_no LOCK IN SHARE MODE;\n    IF parent_entity IS NULL THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign parent missing';\n    END IF;\n    IF parent_entity IS NULL OR CHAR_LENGTH(TRIM(parent_entity)) = 0 THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Counter campaign entity missing';\n    END IF;\n    INSERT INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)\n    VALUES (OLD.tenant_no, 'ENTITY', parent_entity, 1)\n    ON DUPLICATE KEY UPDATE revision = revision + 1;\nEND"
+    }
+  ]
+}

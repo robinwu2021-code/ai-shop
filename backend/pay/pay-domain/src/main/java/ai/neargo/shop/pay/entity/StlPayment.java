@@ -1,8 +1,9 @@
 package ai.neargo.shop.pay.entity;
 
 import ai.neargo.shop.common.BaseEntity;
-import com.baomidou.mybatisplus.annotation.TableField;
+
 import com.baomidou.mybatisplus.annotation.TableName;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -44,6 +45,11 @@ public class StlPayment extends BaseEntity {
 
     /** 本方流水号，**幂等键** —— 重试用同一个号，通道按它去重。 */
     private String paymentNo;
+
+    /** Canonical dispatch owner and immutable real receipt identity. */
+    private String initiatingOperationNo;
+
+    private String receiptNo;
 
     private String direction;
 

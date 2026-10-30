@@ -5,6 +5,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
 import ai.neargo.shop.food.dto.StoreCalendarSourceContracts.Facts;
 import ai.neargo.shop.food.dto.StoreCalendarSourceContracts.Query;
+import ai.neargo.shop.food.dto.StoreCalendarSourceContracts.Policy;
 import ai.neargo.shop.spi.user.StoreCardFacts;
 
 import java.time.Instant;
@@ -145,13 +146,35 @@ public final class StoreCalendarSourcePolicy {
      */
     public static boolean acceptsAt(Facts f, Instant at, Instant observedAt) {
         require(f != null && at != null);
-        validate(f.query(), f, observedAt);
-        var selected =
-                f.policies().stream()
-                        .filter(p -> !p.effectiveFrom().isAfter(at))
-                        .reduce((one, two) -> two);
-        if (selected.isEmpty()) return false;
-        var p = selected.get();
+        return acceptsAt(prepare(f.query(), f, observedAt), at);
+    }
+
+    /** Trusted consumers capture and validate original evidence once before evaluating a bounded interval set. */
+    public static Prepared prepare(Query expected, Facts facts, Instant observedAt) {
+        validate(expected, facts, observedAt);
+        return new Prepared(facts);
+    }
+
+    /** A private construction path prevents an unvalidated calendar from acquiring a prepared handle. */
+    public static final class Prepared {
+        private final Facts facts;
+        private Prepared(Facts facts) { this.facts = facts; }
+        /** Boundary discovery must use the same original policy timeline and business-day exceptions. */
+        public Facts facts() { return facts; }
+    }
+
+    /** Original effective-time selection is shared with interval compilers rather than copied downstream. */
+    public static Policy policyAt(Prepared prepared, Instant at) {
+        require(prepared != null && at != null);
+        return prepared.facts().policies().stream().filter(p -> !p.effectiveFrom().isAfter(at))
+                .reduce((one, two) -> two).orElse(null);
+    }
+
+    /** This pure predicate uses already checked facts; callers retain the original short evidence deadline. */
+    public static boolean acceptsAt(Prepared prepared, Instant at) {
+        var f = prepared.facts();
+        var p = policyAt(prepared, at);
+        if (p == null) return false;
         var date = ServiceCalendarPolicy.businessDate(at, p.timezone(), p.cutoverMinute());
         if (date.isBefore(f.query().fromDate()) || date.isAfter(f.query().toDate())) return false;
         var exception =

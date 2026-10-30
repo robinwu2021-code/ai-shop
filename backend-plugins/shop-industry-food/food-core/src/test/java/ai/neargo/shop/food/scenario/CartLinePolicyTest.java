@@ -20,6 +20,11 @@ import ai.neargo.shop.food.dto.DishVO;
 import ai.neargo.shop.food.dto.MeasurementPolicy;
 import ai.neargo.shop.food.dto.OptionGroupConfigVO;
 import ai.neargo.shop.food.dto.OrderLineInput;
+import ai.neargo.shop.food.dto.OptionItemInput;
+import ai.neargo.shop.food.dto.ReplaceOptionGroupItemsReq;
+import ai.neargo.shop.food.dto.SelectionRules;
+import ai.neargo.shop.food.policy.OptionPublicationPolicy;
+import ai.neargo.shop.food.policy.SelectionFeasibility;
 import ai.neargo.shop.food.policy.CartLinePolicy;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -154,6 +159,23 @@ class CartLinePolicyTest {
     private CatalogDependencyVO dep(OptionGroupConfigVO group, BundleConfigVO bundle) {
         return new CatalogDependencyVO("DEP_REV", group == null ? "BUNDLE" : "OPTION_GROUP",
                 group == null ? bundle.configNo() : "GROUP", 99L, "hash", group, null, bundle, null, List.of());
+    }
+
+    @Test void selectionProofMatchesTheOriginalCartForPositiveMicroDependencies() {
+        var rules = Map.<String, Object>of("mutexSets", List.of(), "requires",
+                List.of(Map.of("optionItemNo", "IA", "requiresItemNos", List.of("IB"))));
+        var group = group("0", "0.000001", "0", rules);
+        var request = new ReplaceOptionGroupItemsReq(group.revision(), group.data().items().stream()
+                .map(item -> new OptionItemInput(item.optionItemNo(), item.sourceKind(), item.specValueNo(),
+                        item.modifierNo(), item.minQty(), item.maxQty(), item.defaultQty(), item.sortNo())).toList(),
+                List.of(), json.convertValue(rules, SelectionRules.class));
+        var proof = OptionPublicationPolicy.prove(group.data().minQty(), group.data().maxQty(), request,
+                SelectionFeasibility.Budget.catalog());
+        assertThat(proof.status()).isEqualTo(SelectionFeasibility.Status.UNREACHABLE);
+        assertThat(proof.unreachableItemNos()).containsExactly("IA");
+        rejects(line(List.of(pick("A", "0.000001", 7)), List.of()), options(group));
+        rejects(line(List.of(pick("A", "0.000001", 7), pick("B", "0.000001", 7)), List.of()), options(group));
+        accepts(line(List.of(pick("B", "0.000001", 7)), List.of()), options(group));
     }
 
     private CatalogVO catalog(List<String> groups, List<CatalogDependencyVO> deps, CatalogSkuVO sku, String mode) {

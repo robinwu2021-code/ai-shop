@@ -209,6 +209,8 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
 
             PrdSku row = new PrdSku();
             row.setId(sku.getId());
+            if (sku.getVersion() == null) throw BizException.of(ErrorCode.CONFLICT);
+            row.setVersion(sku.getVersion());
             row.setBarcode(barcode);
             row.setMerchantSkuCode(newCode);
             row.setSaleUnit(unit);
@@ -222,7 +224,8 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
              * 反过来说：不想改的列必须在上面 merge 成「原值」，而不是留 null。
              */
             for (PrdSku row : toWrite) {
-                DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
+                int updated = DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
+                if (updated != 1) throw BizException.of(ErrorCode.CONFLICT);
             }
             /*
              * **写完要发投影事件**。这一步 2026-09-02 之前是缺的：
@@ -266,12 +269,15 @@ public class SkuIdentityServiceImpl implements SkuIdentityService {
 
         PrdSku row = new PrdSku();
         row.setId(target.getId());
+        if (target.getVersion() == null) throw BizException.of(ErrorCode.CONFLICT);
+        row.setVersion(target.getVersion());
         row.setBarcode(code);
         // 另外两列必须回填原值：三列都是 updateStrategy=ALWAYS，
         // 留 null 会把货号和单位一起清空 —— 而商家只是想绑个码
         row.setMerchantSkuCode(target.getMerchantSkuCode());
         row.setSaleUnit(target.getSaleUnit());
-        DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
+        int updated = DataScopeContext.executeWithoutScope(() -> skuMapper.updateById(row));
+        if (updated != 1) throw BizException.of(ErrorCode.CONFLICT);
 
         target.setBarcode(code);
         publishUpserted(merchantNo, List.of(target));

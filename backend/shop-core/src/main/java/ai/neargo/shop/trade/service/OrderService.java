@@ -1,9 +1,9 @@
 package ai.neargo.shop.trade.service;
 
-import ai.neargo.shop.trade.order.contract.CancellationImpact;
-
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.trade.dto.OrderVO;
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
 
 import java.util.List;
 
@@ -79,6 +79,25 @@ public interface OrderService {
     ai.neargo.shop.trade.dto.OrderPayMethodVO payMethods(String orderNo);
 
     PayResult pay(String orderNo, String payChannel);
+
+    /**
+     * Build an online instruction only from the original consumed checkout confirmation and order
+     * facts.
+     */
+    SettlePort.PaymentOpen paymentInstructionForCheckout(
+            String orderNo, String buyerNo, String requestedChannel);
+
+    /**
+     * Authorize a previously accepted, unsent online instruction from current ordinary-order facts.
+     * Requires no caller transaction; does not resolve a new route or change frozen money.
+     */
+    void requireCheckoutPaymentSendAllowed(String orderNo, String buyerNo);
+
+    /**
+     * Preserve an already received offline amount even after the original confirmed order has
+     * closed.
+     */
+    SettlePort.PaymentOpen offlineReceiptInstructionForCheckout(String orderNo, String buyerNo);
 
     /** 支付结果回查（端上轮询用）。 */
     OrderVO payResult(String orderNo);

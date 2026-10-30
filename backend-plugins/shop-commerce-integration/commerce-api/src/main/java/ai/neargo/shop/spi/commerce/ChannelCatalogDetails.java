@@ -7,6 +7,7 @@ import ai.neargo.shop.spi.commerce.ChannelCatalogSourcePort.Section;
 import ai.neargo.shop.spi.product.DishOfferFacts;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import tools.jackson.databind.annotation.JsonDeserialize;
 
@@ -33,7 +34,98 @@ public record ChannelCatalogDetails(
             String name,
             String sectionKey,
             List<Variant> variants,
-            List<Image> images) {
+            List<Image> images,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String originalOfferRef,
+            @JsonInclude(JsonInclude.Include.NON_NULL) Presentation presentation,
+            @JsonInclude(JsonInclude.Include.NON_NULL) Measurement measurement) {
+        public Offer(
+                String offerRef,
+                String sourceRef,
+                String selectionRevision,
+                String goodsRef,
+                String name,
+                String sectionKey,
+                List<Variant> variants,
+                List<Image> images,
+                String originalOfferRef) {
+            this(
+                    offerRef,
+                    sourceRef,
+                    selectionRevision,
+                    goodsRef,
+                    name,
+                    sectionKey,
+                    variants,
+                    images,
+                    originalOfferRef,
+                    null,
+                    null);
+        }
+
+        /**
+         * Legacy JSON and constructor remain unchanged; v3 can preserve the original sale identity
+         * explicitly.
+         */
+        public Offer(
+                String offerRef,
+                String sourceRef,
+                String selectionRevision,
+                String goodsRef,
+                String name,
+                String sectionKey,
+                List<Variant> variants,
+                List<Image> images) {
+            this(
+                    offerRef,
+                    sourceRef,
+                    selectionRevision,
+                    goodsRef,
+                    name,
+                    sectionKey,
+                    variants,
+                    images,
+                    null,
+                    null,
+                    null);
+        }
+
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw unknown();
+        }
+    }
+
+    /**
+     * Localized names and allergen text remain original merchandising facts, usable by every
+     * industry.
+     */
+    public record Presentation(
+            List<LocalizedName> localizedNames,
+            List<String> tags,
+            List<String> allergenNotes,
+            @JsonDeserialize(using = CommerceIntegerDeserializer.class)
+                    Integer preparationSeconds) {
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw unknown();
+        }
+    }
+
+    public record LocalizedName(String locale, String name) {
+        @JsonAnySetter
+        public void rejectUnknown(String key, Object value) {
+            throw unknown();
+        }
+    }
+
+    /**
+     * Physical quantity rules cannot be inferred from an integer billing quantity or a SKU name.
+     */
+    public record Measurement(
+            String unitCode,
+            String mode,
+            @JsonDeserialize(using = CommerceIntegerDeserializer.class) Integer precision,
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String allowedDeviation) {
         @JsonAnySetter
         public void rejectUnknown(String key, Object value) {
             throw unknown();
@@ -128,7 +220,16 @@ public record ChannelCatalogDetails(
     }
 
     public record BundleGroup(
-            String groupRef, String name, QuantityRange quantity, List<BundleMember> choices) {
+            String groupRef,
+            String name,
+            QuantityRange quantity,
+            List<BundleMember> choices,
+            @JsonInclude(JsonInclude.Include.NON_NULL) String baseSkuRef) {
+        public BundleGroup(
+                String groupRef, String name, QuantityRange quantity, List<BundleMember> choices) {
+            this(groupRef, name, quantity, choices, null);
+        }
+
         @JsonAnySetter
         public void rejectUnknown(String key, Object value) {
             throw unknown();

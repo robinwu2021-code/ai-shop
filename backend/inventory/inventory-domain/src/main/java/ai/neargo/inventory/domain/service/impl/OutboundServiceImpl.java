@@ -15,6 +15,7 @@ import ai.neargo.inventory.domain.service.OutboundService;
 import ai.neargo.inventory.domain.service.StockPostingService;
 import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.inventory.domain.support.InvKeys;
+import ai.neargo.inventory.domain.policy.ExecutionStockRetentionGuard;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,16 +35,18 @@ public class OutboundServiceImpl implements OutboundService {
     private final SupplierMapper supplierMapper;
     private final StockPostingService posting;
     private final InventoryMutationGuard mutationGuard;
+    private final ExecutionStockRetentionGuard retention;
 
     public OutboundServiceImpl(OutboundOrderMapper orderMapper, OutboundLineMapper lineMapper,
                                ItemMapper itemMapper, SupplierMapper supplierMapper, StockPostingService posting,
-                               InventoryMutationGuard mutationGuard) {
+                               InventoryMutationGuard mutationGuard, ExecutionStockRetentionGuard retention) {
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
         this.itemMapper = itemMapper;
         this.supplierMapper = supplierMapper;
         this.posting = posting;
         this.mutationGuard = mutationGuard;
+        this.retention = retention;
     }
 
     @Override
@@ -97,7 +100,10 @@ public class OutboundServiceImpl implements OutboundService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void voidOrder(String ownerId, String outboundNo, String operator) {
-        InvOutboundOrder head = mine(ownerId, outboundNo);
+        InvOutboundOrder head = retention.lockReversibleOutbound(ownerId, outboundNo);
+        if (head == null) {
+            throw InventoryException.of(InventoryError.NOT_FOUND);
+        }
         if (InvEnums.DocStatus.VOIDED.equals(head.getStatus())) {
             return;
         }

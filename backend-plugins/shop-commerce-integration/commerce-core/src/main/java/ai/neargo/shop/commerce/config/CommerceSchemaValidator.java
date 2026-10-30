@@ -36,7 +36,28 @@ public final class CommerceSchemaValidator {
                     "cim_sync_run",
                     "cim_sync_run_item",
                     "cim_resource_mapping",
-                    "cim_resource_mapping_revision");
+                    "cim_order_link",
+                    "cim_order_revision",
+                    "cim_order_line_link",
+                    "cim_fulfillment_link",
+                    "cim_fulfillment_line_link",
+                    "cim_availability_publication",
+                    "cim_statement",
+                    "cim_statement_line",
+                    "cim_certificate_handle",
+                    "cim_redemption_preview",
+                    "cim_redemption_link",
+                    "cim_redemption_item",
+                    "cim_redemption_reversal",
+                    "cim_after_sale_link",
+                    "cim_after_sale_revision",
+                    "cim_after_sale_line_link",
+                    "cim_resource_mapping_revision",
+                    "cim_source_notice",
+                    "cim_source_withdrawal",
+                    "cim_tax_source_notice",
+                    "cim_inbound_event",
+                    "cim_inbound_receipt");
 
     private static final Map<String, String> COLUMNS =
             catalogColumns(
@@ -85,6 +106,117 @@ public final class CommerceSchemaValidator {
     private static Map<String, String> catalogColumns(Map<String, String> original) {
         var result = new HashMap<>(original);
         result.put(
+                "cim_redemption_reversal",
+                "reversal_no redemption_no entity_no store_no connection_no"
+                        + " source_authorization_ref source_hash certificate_identity_hash quantity"
+                        + " unit operation_no request_json status original_receipt_ref result_json"
+                        + " source_decision_ref");
+        result.put(
+                "cim_certificate_handle",
+                "handle_no entity_no store_no connection_no account_no profile_no encrypted_blob_id"
+                        + " status");
+        result.put(
+                "cim_redemption_preview",
+                "preview_no entity_no store_no connection_no handle_no business_json operation_no"
+                        + " request_json verification_json preview_hash source_sku_ref"
+                        + " source_authorization_ref authorization_json status");
+        result.put(
+                "cim_redemption_link",
+                "redemption_no entity_no store_no connection_no preview_no source_authorization_ref"
+                    + " source_hash certificate_identity_hash quantity unit operation_no"
+                    + " request_json status original_receipt_ref result_json source_decision_ref");
+        result.put(
+                "cim_redemption_item",
+                "item_no entity_no redemption_no source_hash source_consumption_ref quantity unit");
+        result.put(
+                "cim_after_sale_link",
+                "case_no entity_no store_no connection_no channel_order_no external_case_key"
+                        + " external_case_ref active_revision_no supplier_state type currency"
+                        + " merchant_refund_minor requested_at decision_status source_decision_ref"
+                        + " source_revision source_decision_hash source_decision_snapshot"
+                        + " local_funds_status local_inventory_status operation_no payload_json"
+                        + " connection_revision_no");
+        result.put(
+                "cim_after_sale_revision",
+                "revision_no entity_no case_no external_revision external_sequence"
+                        + " content_hash payload_json original_receipt_ref origin_event_no");
+        result.put(
+                "cim_after_sale_line_link",
+                "link_no entity_no case_no order_line_link_no source_line_ref component_ref"
+                    + " core_item_ref quantity unit refund_ceiling_minor allocation_evidence_ref");
+        result.put(
+                "cim_statement",
+                "statement_no entity_no account_no profile_no statement_ref source_revision"
+                    + " expected_hash document_hash payload_json lookup_json currency period_start"
+                    + " period_end status operation_no original_receipt_ref");
+        result.put(
+                "cim_statement_line",
+                "line_no entity_no statement_no account_no store_no connection_no line_ref kind"
+                        + " external_store_ref external_order_ref external_after_sale_ref currency"
+                        + " difference_code amounts_json");
+        result.put(
+                "cim_availability_publication",
+                "publication_no generation target_scope_key entity_no store_no connection_no"
+                    + " mapping_no mapping_revision_no source_hash payload_json operation_no status"
+                    + " external_evidence_ref availability_kind next_source_check_at");
+        result.put(
+                "cim_fulfillment_link",
+                "link_no entity_no channel_order_no source_owner source_fulfillment_ref"
+                        + " source_revision fulfillment_type stage external_fulfillment_ref"
+                        + " tracking_evidence_ref operation_no status source_hash source_snapshot"
+                        + " payload_json connection_revision_no");
+        result.put(
+                "cim_fulfillment_line_link",
+                "link_no entity_no fulfillment_link_no order_line_link_no quantity unit"
+                        + " source_receipt_ref");
+        result.put(
+                "cim_order_line_link",
+                "link_no entity_no channel_order_no order_revision_no external_line_ref"
+                        + " parent_external_line_ref component_kind component_ref source_line_ref"
+                        + " core_order_ref core_item_ref sale_quantity quantity_unit amount_minor"
+                        + " currency allocation_evidence_ref");
+        result.put(
+                "cim_order_link",
+                "channel_order_no entity_no store_no connection_no channel_store_key"
+                        + " external_order_ref ordered_at external_order_key source_owner"
+                        + " connection_revision_no active_revision_no import_ref source_order_ref"
+                        + " core_order_ref import_status acceptance_status platform_status"
+                        + " fulfillment_status financial_evidence_status import_snapshot"
+                        + " preparation_receipt_ref preparation_valid_until acceptance_receipt_ref"
+                        + " decision_operation_no platform_acceptance_receipt_ref attempt_no fence"
+                        + " lease_until next_attempt_at");
+        result.put(
+                "cim_order_revision",
+                "revision_no entity_no channel_order_no external_revision external_sequence"
+                        + " source_event_no source_operation_no normalized_snapshot_ref"
+                        + " normalized_snapshot raw_receipt_ref original_receipt_ref content_hash"
+                        + " catalog_hash currency captured_at");
+        result.put(
+                "cim_inbound_event",
+                "event_no entity_no store_no connection_no connection_revision_no dedupe_key"
+                    + " provider_event_ref event_type payload_hash original_receipt_no occurred_at"
+                    + " status attempt_no fence lease_until next_attempt_at result_ref"
+                    + " external_order_ref external_revision authorization_no"
+                    + " verification_evidence_ref");
+        result.put(
+                "cim_inbound_receipt",
+                "receipt_no entity_no store_no connection_no event_no received_at payload_ref"
+                    + " payload_hash signature_result classification retention_until payload_base64"
+                    + " authorization_no verification_evidence_ref");
+        result.put(
+                "cim_source_withdrawal",
+                "withdrawal_no entity_no store_no source_owner source_ref previous_revision"
+                        + " withdrawal_revision content_hash proof_snapshot notice_no status");
+        result.put(
+                "cim_tax_source_notice",
+                "notice_no source_event_no entity_no setting_key source_version content_hash"
+                        + " payload_hash effective_at scope_cursor status next_check_at attempts");
+        result.put(
+                "cim_source_notice",
+                "notice_no entity_no store_no source_system source_event_no source_owner source_ref"
+                        + " payload_hash effective_at next_check_at scope_cursor status attempts"
+                        + " error_code notice_kind");
+        result.put(
                 "cim_catalog_scope",
                 "scope_no entity_no store_no connection_no remote_scope_key name"
                         + " desired_snapshot_no last_confirmed_snapshot_no remote_consistency"
@@ -107,7 +239,8 @@ public final class CommerceSchemaValidator {
                 "cim_sync_run",
                 "run_no entity_no store_no connection_no scope_no run_type trigger_type"
                         + " source_event_ref snapshot_no request_hash generation status started_at"
-                        + " finished_at next_recovery_at failure_code operation_no");
+                        + " finished_at next_recovery_at failure_code operation_no"
+                        + " mapping_projection_status");
         result.put(
                 "cim_sync_run_item",
                 "item_no entity_no run_no attempt_no object_type object_key_hash external_ref"
@@ -131,6 +264,116 @@ public final class CommerceSchemaValidator {
     private static Map<String, List<Set<String>>> catalogKeys(
             Map<String, List<Set<String>>> original) {
         var result = new HashMap<>(original);
+        result.put(
+                "cim_redemption_reversal",
+                List.of(
+                        Set.of("reversal_no"),
+                        Set.of("source_authorization_ref"),
+                        Set.of("operation_no"),
+                        Set.of("redemption_no")));
+        result.put(
+                "cim_certificate_handle",
+                List.of(Set.of("handle_no"), Set.of("encrypted_blob_id")));
+        result.put("cim_redemption_preview", List.of(Set.of("preview_no"), Set.of("operation_no")));
+        result.put(
+                "cim_redemption_link",
+                List.of(
+                        Set.of("redemption_no"),
+                        Set.of("source_authorization_ref"),
+                        Set.of("operation_no"),
+                        Set.of("preview_no")));
+        result.put(
+                "cim_redemption_item",
+                List.of(Set.of("item_no"), Set.of("redemption_no", "source_hash")));
+        result.put(
+                "cim_after_sale_link",
+                List.of(
+                        Set.of("tenant_no", "case_no"),
+                        Set.of(
+                                "tenant_no",
+                                "entity_no",
+                                "store_no",
+                                "channel_order_no",
+                                "external_case_key")));
+        result.put(
+                "cim_after_sale_revision",
+                List.of(
+                        Set.of("tenant_no", "revision_no"),
+                        Set.of("tenant_no", "case_no", "external_revision", "content_hash")));
+        result.put(
+                "cim_after_sale_line_link",
+                List.of(Set.of("tenant_no", "case_no", "order_line_link_no")));
+        result.put(
+                "cim_statement",
+                List.of(
+                        Set.of("statement_no"),
+                        Set.of("operation_no"),
+                        Set.of("entity_no", "account_no", "statement_ref", "source_revision")));
+        result.put(
+                "cim_statement_line",
+                List.of(Set.of("line_no"), Set.of("statement_no", "line_ref")));
+        result.put(
+                "cim_availability_publication",
+                List.of(
+                        Set.of("publication_no"),
+                        Set.of("operation_no"),
+                        Set.of("entity_no", "target_scope_key", "generation")));
+        result.put(
+                "cim_fulfillment_link",
+                List.of(
+                        Set.of("link_no"),
+                        Set.of(
+                                "channel_order_no",
+                                "source_owner",
+                                "source_fulfillment_ref",
+                                "source_revision"),
+                        Set.of("operation_no")));
+        result.put(
+                "cim_fulfillment_line_link",
+                List.of(Set.of("link_no"), Set.of("fulfillment_link_no", "order_line_link_no")));
+        result.put(
+                "cim_order_line_link",
+                List.of(
+                        Set.of("link_no"),
+                        Set.of(
+                                "order_revision_no",
+                                "external_line_ref",
+                                "component_ref",
+                                "core_order_ref",
+                                "core_item_ref")));
+        result.put(
+                "cim_order_link",
+                List.of(
+                        Set.of("channel_order_no"),
+                        Set.of("channel_store_key", "external_order_key")));
+        result.put(
+                "cim_order_revision",
+                List.of(Set.of("revision_no"), Set.of("channel_order_no", "content_hash")));
+
+        result.put(
+                "cim_inbound_event",
+                List.of(Set.of("event_no"), Set.of("connection_no", "dedupe_key")));
+        result.put("cim_inbound_receipt", List.of(Set.of("receipt_no")));
+        result.put(
+                "cim_source_withdrawal",
+                List.of(
+                        Set.of("tenant_no", "withdrawal_no"),
+                        Set.of(
+                                "tenant_no",
+                                "entity_no",
+                                "store_no",
+                                "source_owner",
+                                "source_ref",
+                                "previous_revision",
+                                "withdrawal_revision")));
+        result.put(
+                "cim_tax_source_notice",
+                List.of(Set.of("tenant_no", "notice_no"), Set.of("tenant_no", "source_event_no")));
+        result.put(
+                "cim_source_notice",
+                List.of(
+                        Set.of("notice_no"),
+                        Set.of("tenant_no", "source_system", "source_event_no", "source_owner")));
         result.put(
                 "cim_catalog_scope",
                 List.of(Set.of("scope_no"), Set.of("connection_no", "remote_scope_key")));
@@ -201,13 +444,13 @@ public final class CommerceSchemaValidator {
         }
         var current = flyway.info().current();
         if (current == null
-                || !"4".equals(current.getVersion().getVersion())
+                || !"18".equals(current.getVersion().getVersion())
                 || !tables(source).containsAll(TABLES)) {
             throw new IllegalStateException("Commerce schema is incomplete");
         }
         validateColumns(source);
         validateUniqueKeys(source);
-        return new CommerceSchemaReady("4");
+        return new CommerceSchemaReady("18");
     }
 
     private static void validateColumns(DataSource source) {

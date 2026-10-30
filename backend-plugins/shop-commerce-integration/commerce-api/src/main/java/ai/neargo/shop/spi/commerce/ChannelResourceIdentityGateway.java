@@ -21,6 +21,8 @@ public interface ChannelResourceIdentityGateway extends CommerceGateway {
         SKU,
         OPTION_GROUP,
         OPTION,
+        BUNDLE_GROUP,
+        BUNDLE_MEMBER,
         WAREHOUSE,
         INVENTORY_POLICY
     }

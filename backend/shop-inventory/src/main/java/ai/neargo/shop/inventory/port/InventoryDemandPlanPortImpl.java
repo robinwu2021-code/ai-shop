@@ -54,6 +54,98 @@ public class InventoryDemandPlanPortImpl implements InventoryDemandPlanPort {
         this.json = json;
     }
 
+    /**
+     * Cancels only an unaccepted hold, recording a tombstone when its original reserve has not
+     * arrived yet.
+     */
+    @Override
+    public WithdrawalReceipt withdraw(Plan plan, String op, int lifecycle) {
+        try {
+            InventoryDemandPlanFacts.validate(plan);
+        } catch (IllegalArgumentException invalid) {
+            throw bad();
+        }
+        key(op);
+        if (!Set.of(2, 3).contains(lifecycle)) throw bad();
+        String owner = lock(plan.scope());
+        String request =
+                PricingSnapshotHash.of(
+                        List.of(
+                                "DEMAND_WITHDRAWAL_V1",
+                                plan.scope(),
+                                plan.planNo(),
+                                plan.planHash(),
+                                lifecycle,
+                                op));
+        var previous = operation(owner, op);
+        if (previous != null) {
+            if (!"WITHDRAWAL".equals(previous.kind()) || !request.equals(previous.requestHash()))
+                throw conflict();
+            return json.readValue(previous.receiptSnapshot(), WithdrawalReceipt.class);
+        }
+        expire(owner, plan.scope());
+        var head = head(owner, plan.scope());
+        WithdrawalStatus status;
+        if (head == null) {
+            if (!mapper.legacyReservations(owner, plan.scope().externalRef()).isEmpty())
+                throw conflict();
+            mapper.insertPlan(
+                    owner,
+                    plan.scope().externalRef(),
+                    plan.planNo(),
+                    plan.planHash(),
+                    json.writeValueAsString(plan),
+                    lifecycle,
+                    LocalDateTime.now());
+            if (mapper.markWithdrawn(owner, plan.planNo()) != 1) throw conflict();
+            status = WithdrawalStatus.WITHDRAWN_ABSENT;
+        } else {
+            if (!head.planNo().equals(plan.planNo())
+                    || !head.planHash().equals(plan.planHash())
+                    || head.lifecycleVersion() != lifecycle) throw conflict();
+            if ("WITHDRAWN".equals(head.status())) status = WithdrawalStatus.ALREADY_WITHDRAWN;
+            else if ("EXPIRED".equals(head.status())) {
+                if (mapper.markWithdrawn(owner, plan.planNo()) != 1) throw conflict();
+                status = WithdrawalStatus.ALREADY_EXPIRED;
+            } else {
+                if (!Set.of("HELD", "RELEASED").contains(head.status())) throw conflict();
+                var leaves = mapper.leaves(owner, plan.planNo());
+                if (leaves.stream().anyMatch(leaf -> leaf.issuedQty().signum() != 0))
+                    throw conflict();
+                if ("HELD".equals(head.status())) {
+                    String releaseOp =
+                            PricingSnapshotHash.of(List.of("DEMAND_WITHDRAWAL_RELEASE_V1", op));
+                    releaseTo(
+                            plan.scope(),
+                            releaseOp,
+                            plan.planHash(),
+                            leaves.stream()
+                                    .map(leaf -> new Target(leaf.leafRef(), leaf.qty()))
+                                    .toList());
+                }
+                if (mapper.markWithdrawn(owner, plan.planNo()) != 1) throw conflict();
+                status = WithdrawalStatus.WITHDRAWN_RESERVED;
+            }
+        }
+        var receipt =
+                new WithdrawalReceipt(
+                        plan.scope(),
+                        plan.planNo(),
+                        plan.planHash(),
+                        op,
+                        status,
+                        "INV_WITHDRAWAL:" + request);
+        mapper.insertOperation(
+                owner,
+                plan.planNo(),
+                op,
+                request,
+                "WITHDRAWAL",
+                json.writeValueAsString(receipt),
+                "[]");
+        return receipt;
+    }
+
     @Override
     public Receipt reserve(Plan p, long ttl, int lifecycle) {
         try {
@@ -81,8 +173,9 @@ public class InventoryDemandPlanPortImpl implements InventoryDemandPlanPort {
                 expires);
         for (var branch : p.branches())
             for (var leaf : branch.leaves()) {
+                String sourceKind = InventoryDemandPlanFacts.sourceKind(branch, leaf);
                 String item =
-                        "FINISHED_SKU".equals(branch.kind())
+                        "FINISHED_SKU".equals(sourceKind)
                                 ? acl.itemIdOfSku(leaf.itemRef())
                                 : leaf.itemRef();
                 String store = store(branch.fulfillmentRef(), p.scope(), p);
@@ -93,7 +186,7 @@ public class InventoryDemandPlanPortImpl implements InventoryDemandPlanPort {
                         || !leaf.unit().equals(definitions.getFirst().baseUom())
                         || !leaf.definitionHash().equals(definitions.getFirst().definitionHash()))
                     throw conflict();
-                if ("FINISHED_SKU".equals(branch.kind())) {
+                if ("FINISHED_SKU".equals(sourceKind)) {
                     if (!branch.unit().equals(definitions.getFirst().baseUom())
                             || branch.quantity().compareTo(leaf.quantity()) != 0
                             || branch.quantity().stripTrailingZeros().scale() > 0
@@ -108,7 +201,7 @@ public class InventoryDemandPlanPortImpl implements InventoryDemandPlanPort {
                         leaf.leafRef(),
                         branch.sourceComponentRef(),
                         branch.fulfillmentRef(),
-                        branch.kind(),
+                        sourceKind,
                         item,
                         location,
                         leaf.quantity(),
@@ -508,10 +601,15 @@ public class InventoryDemandPlanPortImpl implements InventoryDemandPlanPort {
         if (until.isAfter(LocalDateTime.now())) return;
         for (var row : mapper.leaves(owner, h.planNo())) {
             var remaining = row.qty().subtract(row.issuedQty()).subtract(row.releasedQty());
-            mapper.expireUnreserve(remaining, owner, row.itemId(), row.locationId(), remaining);
-            mapper.expireLeaf(row.id());
+            if (remaining.signum() < 0) throw conflict();
+            if (remaining.signum() > 0) {
+                if (mapper.expireUnreserve(
+                                remaining, owner, row.itemId(), row.locationId(), remaining)
+                        != 1) throw conflict();
+                if (mapper.expireLeaf(row.id()) != 1) throw conflict();
+            }
         }
-        mapper.expirePlan(h.id());
+        if (mapper.expirePlan(h.id()) != 1) throw conflict();
     }
 
     private String lock(Scope scope) {

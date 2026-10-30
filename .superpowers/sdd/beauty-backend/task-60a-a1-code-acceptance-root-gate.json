@@ -1,0 +1,11 @@
+{
+  "status": "A1_A1B_CODE_ACCEPTED_DEPLOYMENT_DEFERRED",
+  "productCommit": "94aa791edb445b56bec9bcd348724ecff4ad803a",
+  "sourceManifestSha256": "14709f28e48a3bda2de0915ff9d4675d794cdb23b90dff1afaa06f7dc8064098",
+  "reviewSha256": "869c51c8724ee36169933b89c709aed72a9745bb05f74e2761ca44786d5e3eb8",
+  "paths": 19,
+  "logicalFiles": 17,
+  "blockingFindings": 0,
+  "next": "A2 runner only",
+  "deployed": false
+}

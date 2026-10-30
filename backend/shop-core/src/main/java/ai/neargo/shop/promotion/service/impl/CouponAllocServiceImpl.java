@@ -1,29 +1,37 @@
 package ai.neargo.shop.promotion.service.impl;
 
-import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
-import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
-
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.common.promotion.CouponCalculation;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.promotion.CouponCalculation;
 import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.entity.PmtCoupon;
+import ai.neargo.shop.promotion.entity.PmtCouponScope;
 import ai.neargo.shop.promotion.entity.PmtUserCoupon;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.CouponMapper;
+import ai.neargo.shop.promotion.mapper.PromotionMappers.CouponScopeMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.UserCouponMapper;
+import ai.neargo.shop.promotion.migration.LegacyCouponSourceFenceService;
 import ai.neargo.shop.promotion.service.CouponAllocService;
+import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.SourceSystem;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
 import java.util.TreeMap;
+
+import javax.sql.DataSource;
 
 /**
  * 新模型的算价与核销。
@@ -43,6 +51,18 @@ import java.util.TreeMap;
 @Service
 public class CouponAllocServiceImpl implements CouponAllocService {
 
+    @Autowired
+    @Qualifier("dataSource")
+    private DataSource checkoutSource;
+
+    private void requireCheckoutTransaction() {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || checkoutSource == null
+                || !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+    }
+
     private final LegacyCouponSourceFenceService sourceFence;
     private final CouponMapper couponMapper;
     private final UserCouponMapper userCouponMapper;
@@ -54,6 +74,69 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         this.couponMapper = couponMapper;
         this.userCouponMapper = userCouponMapper;
         this.applyMapper = applyMapper;
+    }
+
+    @Autowired private CouponScopeMapper checkoutScopes;
+
+    @Override
+    public CouponPort.Allocation quoteOrdinary(
+            String userNo, String userCouponNo, List<CouponPort.MerchantAmount> groups) {
+        if (userCouponNo == null) {
+            return CouponPort.Allocation.none();
+        }
+        var instance = require(userNo, userCouponNo);
+        ordinary(template(instance.getCouponNo()));
+        return allocate(userNo, userCouponNo, groups);
+    }
+
+    @Override
+    public void lockOrdinary(String userNo, String userCouponNo) {
+        requireCheckoutTransaction();
+        var original = require(userNo, userCouponNo);
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    var coupon =
+                            couponMapper.selectOne(
+                                    Wrappers.<PmtCoupon>lambdaQuery()
+                                            .eq(PmtCoupon::getTenantNo, "MAIN")
+                                            .eq(PmtCoupon::getCouponNo, original.getCouponNo())
+                                            .last("FOR UPDATE"));
+                    var instance =
+                            userCouponMapper.selectOne(
+                                    Wrappers.<PmtUserCoupon>lambdaQuery()
+                                            .eq(PmtUserCoupon::getTenantNo, "MAIN")
+                                            .eq(PmtUserCoupon::getUserNo, userNo)
+                                            .eq(PmtUserCoupon::getUserCouponNo, userCouponNo)
+                                            .last("FOR UPDATE"));
+                    if (instance == null
+                            || !original.getCouponNo().equals(instance.getCouponNo())) {
+                        throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
+                    }
+                    ordinary(coupon);
+                    assertUsable(instance, coupon);
+                });
+    }
+
+    private void ordinary(PmtCoupon coupon) {
+        if (coupon == null
+                || !Set.of("CASH", "PERCENT").contains(coupon.getBenefitMode())
+                || !"ORDER".equals(coupon.getRedeemMode())
+                || !"ALL".equals(coupon.getScopeType())
+                || coupon.getTimesTotal() != null && coupon.getTimesTotal() != 1
+                || coupon.getMinQty() != null && coupon.getMinQty() != 0
+                || coupon.getBenefitRef() != null && !coupon.getBenefitRef().isBlank()
+                || !Set.of("PLATFORM", "MERCHANT").contains(coupon.getFunder())
+                || DataScopeContext.executeWithoutScope(
+                                () ->
+                                        checkoutScopes.selectCount(
+                                                Wrappers.<PmtCouponScope>lambdaQuery()
+                                                        .eq(PmtCouponScope::getTenantNo, "MAIN")
+                                                        .eq(
+                                                                PmtCouponScope::getCouponNo,
+                                                                coupon.getCouponNo())))
+                        != 0) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
     }
 
     @Override

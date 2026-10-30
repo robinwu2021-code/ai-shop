@@ -1,0 +1,17 @@
+{
+  "base": "b34e31ba4f10bc75088ccd44d1eef4ef0c5a4ac1",
+  "stagedTree": "20a4801e8f7189dc1453c4d665892c0a78209c70",
+  "ownedCount": 98,
+  "manifestSha256": "c64b65ea73e4cfef8280900ea286d036f2c24b84dc84c7443b61dc08d5839e5d",
+  "reviewPackage": "/tmp/task57-root-review-package.diff",
+  "reviewPackageBytes": 847925,
+  "reviewPackageSha256": "9158fff2ad561c7c78d740b5a5ff9edebb48e68a7c68fda0c490cbb75ce1d405",
+  "frozenOldMigrations": 8,
+  "rootFilesExcluded": [
+    ".superpowers/sdd/beauty-backend/progress.md",
+    ".superpowers/sdd/beauty-backend/task-57-brief.md",
+    "docs/technical/ADR/ADR-047-\u8d44\u91d1\u539f\u53f7\u64cd\u4f5c\u4e0e\u6b63\u5f0f\u7ebf\u4e0b\u5b9e\u6536\u5f52\u5c5e.md",
+    "docs/technical/TDD-\u7f8e\u4e1a\u7cfb\u7edf-\u540e\u7aef\u5f00\u53d1\u8ba1\u5212.md"
+  ],
+  "headMoved": false
+}

@@ -115,6 +115,41 @@ class CatalogMarketGoodsTest {
         });
     }
 
+    @Test void saleUnitEvidenceUsesTheOriginalVersionedSkuAndFailsClosedWhenMissing() {
+        new CatalogPriceSourcePortTest().run((c, sql) -> {
+            sql.update("UPDATE prd_sku SET sale_unit='EA' WHERE market='AE'");
+            var owner = port(c, UnaryOperator.identity());
+            var fact = owner.getCatalogSkuMeasurement(SKU);
+            ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.validate(SKU, fact, CatalogPriceSourcePortTest.NOW);
+            assertThat(fact.unit()).isEqualTo("EA");
+            assertThat(fact.identity().sku().skuNo()).isEqualTo("SKU");
+            var changed = new ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts(
+                    fact.schemaVersion(), fact.identity(), "KG", fact.verifiedAt(), fact.validUntil(), fact.receiptNo());
+            assertThatThrownBy(() -> ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.validate(
+                    SKU, changed, CatalogPriceSourcePortTest.NOW)).isInstanceOf(RuntimeException.class);
+            sql.update("UPDATE prd_sku SET sale_unit=NULL WHERE market='AE'");
+            assertThatThrownBy(() -> owner.getCatalogSkuMeasurement(SKU)).isInstanceOf(RuntimeException.class);
+            assertThatThrownBy(() -> owner.getCatalogSkuMeasurement(new SkuQuery("E", "OTHER", "SKU", "AE")))
+                    .isInstanceOf(RuntimeException.class);
+        });
+    }
+
+    @Test void saleUnitChangeDuringEvidenceReadIsRejectedEvenWithoutVersionIncrement() {
+        new CatalogPriceSourcePortTest().run((c, sql) -> {
+            sql.update("UPDATE prd_sku SET sale_unit='EA' WHERE market='AE'");
+            var calls = new AtomicInteger();
+            var owner = port(c, original -> new CatalogPriceSourcePort() {
+                @Override public MarketFacts market(MarketScope scope) {
+                    var result = original.market(scope);
+                    if (calls.incrementAndGet() == 3)
+                        sql.update("UPDATE prd_sku SET sale_unit='KG' WHERE market='AE'");
+                    return result;
+                }
+            });
+            code(() -> owner.getCatalogSkuMeasurement(SKU), ErrorCode.CONFLICT);
+        });
+    }
+
     @Test void scopeDeletedSkusAndDeletedParentsAreCheckedByOriginalOwners() {
         new CatalogPriceSourcePortTest().run((c, sql) -> {
             var p = port(c, UnaryOperator.identity());

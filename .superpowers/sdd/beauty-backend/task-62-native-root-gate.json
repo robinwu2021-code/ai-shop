@@ -1,0 +1,105 @@
+{
+  "decision": "GO_OWNED_TASK62_NATIVE_PHASES_ONLY",
+  "files": [
+    {
+      "path": "scripts/verify-personnel-operator.mjs",
+      "bytes": 12383,
+      "sha256": "3dafe72b765d37d0d5a1c52203b9d0f45c335e5a3e415f5f6a0f347123c04132"
+    },
+    {
+      "path": "scripts/tests/personnel-operator-runner.test.mjs",
+      "bytes": 3097,
+      "sha256": "927c2ae82fc201e0377ce9f7b7f6ac58b931942fd4591b38d9de46af1d427b06"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/personnel/PersonnelOperatorFactsPort.java",
+      "bytes": 3147,
+      "sha256": "2701469ff3bc71a8a62f902f5947d4b78aa8da74d24b9969bf7f238d6cb5cf5c"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/personnel/PersonnelOperatorInternalApi.java",
+      "bytes": 700,
+      "sha256": "edbcfcfa998dc045f4e91acecc2d87ca57b6fec63f2a399bb2951f9f386260e3"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/PersonnelOperatorFactsPortImpl.java",
+      "bytes": 1200,
+      "sha256": "cace255b28922f4e88133d9cd359c83dc776b943b7b02872145f2bc0e71e2d9a"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/dto/OperatorPersonnelFactRow.java",
+      "bytes": 404,
+      "sha256": "684fdff57304f03bb64d03fe0c4bcbfefcb0d88b449c03e0126927eca45ce0c8"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/internal/InternalPersonnelOperatorController.java",
+      "bytes": 2930,
+      "sha256": "1cbe1bb74757b9b79a58559e2e95c5cc8a464da9e4145717fcbcb8b8590e4677"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemotePersonnelOperatorFactsPort.java",
+      "bytes": 696,
+      "sha256": "1999884b28addc89bbbd72e0948a3423d0472f8227986c4b8e01bd0530d21d52"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PersonnelOperatorFactsIT.java",
+      "bytes": 17789,
+      "sha256": "b54987c2024825ec40254a29fb58647bd40f038dfe6a23bd7e1434bdf86ac412"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PersonnelOperatorProtocolTest.java",
+      "bytes": 6896,
+      "sha256": "5e83226edfe77c7c5d1ad4fb09ed573f8947a8291397b2f22783d01f2ed39d62"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemotePersonnelOperatorFactsPortTest.java",
+      "bytes": 10304,
+      "sha256": "94420606478365e3f2a3a2b34c109c1fa045c2488c9716e7900f65cf5a464d76"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalBindings.java",
+      "bytes": 8131,
+      "sha256": "078252ca3d328303acd6c2672dcd2530e67d14b8e34b181eba6d2d33296eefaf"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplyDeserializer.java",
+      "bytes": 8428,
+      "sha256": "e5f368a188caafe86530d79be8cdca3057ce1003a86d433f41cdf3ae3a963f7d"
+    },
+    {
+      "path": "backend/shop-base/src/test/java/ai/neargo/shop/svc/BoundInternalProtocolTest.java",
+      "bytes": 12029,
+      "sha256": "f393e1bc84ddcb8b74cd09e3018ec69c2b63b324afc63a63b33a3cadb1579830"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V532__shared_personnel_foundation.sql",
+      "bytes": 8333,
+      "sha256": "299c7ed3dc22f7b5a0510949956e685c702d74b88a606b5a92004ca1cb7d579b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V533__shared_resource_identity.sql",
+      "bytes": 2540,
+      "sha256": "2b41485b9b032ffa00b74b5cec31bfaf774a9024f465e3e2d5ec149759c43aff"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/MerchantMappers.java",
+      "bytes": 62119,
+      "sha256": "b894b6f0c849f03be1d88d474ddcc4d438d70b76ef0e49d15e4282c6335394e6"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/config/BeautyMerchantClientConfiguration.java",
+      "bytes": 5326,
+      "sha256": "a34a159324f9a624bdff12063f100cc5f2743205ba6d8e1b5348a5e3fa55e710"
+    }
+  ],
+  "boundaries": [
+    "cached mysql9.7.2 only",
+    "own UUID/schema/loopback/env secrets; no foreign resources",
+    "existing native lock and bounded cleanup",
+    "old V532/V533 unchanged",
+    "owner/remote currently fail-closed scaffolds for disclosed behavioral RED only",
+    "exact expiry assertion ablation, finally exact source restore and compile",
+    "no formal deploy, no start enablement"
+  ],
+  "staticReview": "root read actual runner/SQL fixture/query/contract/scaffold and exact provenance/ablation parser fix; not runtime proof"
+}

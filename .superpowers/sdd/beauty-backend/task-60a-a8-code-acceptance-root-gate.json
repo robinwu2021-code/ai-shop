@@ -1,0 +1,117 @@
+{
+  "base": "1d1610278120b97dbfc0b5eb01e0466f141b6735",
+  "reportSHA": "90b74d447155321206ca36b1424e8f1e9046a87b74c24c85d3192f4358a0c466",
+  "products": [
+    {
+      "path": "b-app/src/i18n/locale/zh-CN.ts",
+      "status": "modified",
+      "base_git_blob": "fbe1f353961f9766379f054e2235c959eaf794ba",
+      "current_git_blob": "8b9997ef2f718f68d985dc1114d7a3c989feca0a",
+      "base_sha256": "b1a2da06beeb7a5dfb9861da41ca6481ce9e63f06e9d0377ff51a46667015e77",
+      "current_sha256": "81324a3690ec6e55b6648babf65198e3be41fbf1389e37ab6aabd6df065ee96a"
+    },
+    {
+      "path": "b-app/src/i18n/locale/en.ts",
+      "status": "modified",
+      "base_git_blob": "4ca936950dfa85a1a8eacdbf6bb46589609d7297",
+      "current_git_blob": "e877dbd83028d9645418d7e841c8025ed1d13ce7",
+      "base_sha256": "7aa6d8eda03834ff331d3098b7bdfb3da187f28941893b7f523abd91b581d39f",
+      "current_sha256": "d73f08cf39c13be202048ca36d0315cb3072f7f19f07847907300a5d4436f9e3"
+    },
+    {
+      "path": "b-app/src/i18n/locale/ar.ts",
+      "status": "modified",
+      "base_git_blob": "95f89d57e173e91bf8c97407a959f7ca155d9248",
+      "current_git_blob": "c2f370b8e757db09b8b8e4f934e443c15784b0eb",
+      "base_sha256": "bea9f5a3cc39d125368ab76598d5d96e08b4f04d7f9a41ce500514fdc3111cfc",
+      "current_sha256": "212205a6267ebdf0ed16fd6f1e82781c890c2dda00ba6cdae1d216ffacc407d7"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/i18n/messages.properties",
+      "status": "modified",
+      "base_git_blob": "12e3cddc2dc91ff0f798a5eb45016763fe98067b",
+      "current_git_blob": "6aa414f2d66509a601652560119d37624fcfea15",
+      "base_sha256": "4a122ec44fd90c2fad329120b2075de5317ee6fe17c427fd63369e28c610ccce",
+      "current_sha256": "5a9d08c8ee8d76ea73d40ab67d30ef4414c31838fd32f395145d8da6c1131eba"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/i18n/messages_en.properties",
+      "status": "modified",
+      "base_git_blob": "15d74ac0e8812dcaa70fc5f05069ad6dbe1a1e66",
+      "current_git_blob": "42faae218a083a61d069dd905499a3076c6f4bc1",
+      "base_sha256": "5ff23a174acb26c0a7111673899b3855c40baa0567c90c63c536d665a5c535ac",
+      "current_sha256": "a09b30f8764f4e253c7cdfc93d9a8d5a520e387bdaca97a0ac47b35d8e8cb8fe"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/i18n/messages_ar.properties",
+      "status": "modified",
+      "base_git_blob": "118fcef8b605c2bf7c8d51e1211e81ba7cf39387",
+      "current_git_blob": "49117530ff52c9b66f4d1ebf44d9e6f47646714a",
+      "base_sha256": "d1a4e744b7fa6ee6eac103eca317753238395c121c5f167cfc928ef2bd2265fb",
+      "current_sha256": "34090df42a7f2a67f8d9edad2779dc8fa6aadd9cbe722230674dc7e05c2c2cd3"
+    },
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+      "status": "modified",
+      "base_git_blob": "6d71701a2c5b7672a12a5da5827e4eb756d914ad",
+      "current_git_blob": "a1209244c530ac885aea379672e34d3521869700",
+      "base_sha256": "e9bd93f582f68a22e3899d199206e7ea3df285f36b33ada1bae0354859d39ab7",
+      "current_sha256": "d8c3c21a0c820a9fbf8c0ee29c8a249fce90ddc5c75d675f6085403be98968cf"
+    },
+    {
+      "path": "packages/shared/tests/biz-perm-label.test.ts",
+      "status": "modified",
+      "base_git_blob": "72eda2607e53311863559b402fa722379ce77b61",
+      "current_git_blob": "249489c72eb0e860406c0b75be9256eb9182953a",
+      "base_sha256": "560df8ba99a644f2bba750aa420e13c0a17c6eeba2039794a2dfc810e4b87786",
+      "current_sha256": "df53e450e6ac22ceb395ddfa3c72a33e9f8a5f8baf468f192d91ca477fa2c8d5"
+    },
+    {
+      "path": "packages/shared/tests/stock-shared-source-label.test.ts",
+      "status": "new",
+      "base_git_blob": null,
+      "current_git_blob": "1a385a993d8a0d171dd6ecafd145d2cab6d69492",
+      "base_sha256": null,
+      "current_sha256": "956c1005e3f22650ed956f4d72b7d6c0a1b6c1b8215f258ecfa713231ec00861"
+    }
+  ],
+  "backendXML": {
+    "path": "backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.arch.BackendI18nParityTest.xml",
+    "attrs": {
+      "{http://www.w3.org/2001/XMLSchema-instance}noNamespaceSchemaLocation": "https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd",
+      "version": "3.0.2",
+      "name": "ai.neargo.shop.arch.BackendI18nParityTest",
+      "time": "0.105",
+      "tests": "6",
+      "errors": "0",
+      "skipped": "0",
+      "failures": "0",
+      "flakes": "0"
+    },
+    "sha256": "38e230e0da13474493312b82c990448bf91ce904dfb8136a385caed236594879",
+    "mtimeUTC": "2026-10-25T06:41:13.995452+00:00",
+    "testcases": [
+      "noEmptyValues",
+      "allLocalesHaveTheSameKeys",
+      "everyMessageBelongsToAnErrorCode",
+      "placeholdersMatchAcrossLocales",
+      "everyErrorCodeHasAMessage",
+      "noDuplicateKeys"
+    ]
+  },
+  "shared24pass": true,
+  "mutationsExactRestore": true,
+  "typecheck": {
+    "status": "FAILED",
+    "twoBASEIdenticalErrors": true,
+    "mandatoryFollowup": "A8b existing member-code client contract/HTTP adapter"
+  },
+  "reviewPackage": "/tmp/task60a-a8-review-package-12167284-65ee-4214-94a6-f93afc1d4c88.diff",
+  "reviewPackageSHA": "c340880a4a59b5fcdb20da5fcd6d73ea33fa4036ad89dad0b775e3d3164a886e",
+  "evidenceArchive": ".superpowers/sdd/beauty-backend/task-60a-a8-evidence",
+  "productCommit": "b31ebd4dd47c1170e30ab8121fc5ec151f24954f",
+  "reviewSHA256": "02e5136f62b1380c69e2115f595675cb55457878fb524eb8765f01f00b728c8c",
+  "scopedSpec": "PASS",
+  "scopedQuality": "APPROVED",
+  "overallTypecheck": "OPEN mandatory A8b"
+}

@@ -570,6 +570,11 @@ public final class Perms {
      */
     public static final String SYSTEM_TESTPHONE_UPDATE = "system:testphone:update";
 
+    /** Scoped channel technical evidence; no merchant funds or recipient payload. */
+    public static final String SYSTEM_COMMERCE_READ = "system:commerce:read";
+    /** Installed protocol metadata/status; merchant operating policy stays merchant-owned. */
+    public static final String SYSTEM_COMMERCE_UPDATE = "system:commerce:update";
+
     public static final String SYSTEM_MEDIA_READ = "system:media:read";
 
     /**

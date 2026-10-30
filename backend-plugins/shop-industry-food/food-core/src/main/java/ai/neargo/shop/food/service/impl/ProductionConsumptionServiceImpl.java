@@ -60,6 +60,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -141,13 +142,17 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
     }
 
+    private java.util.function.Supplier<ai.neargo.shop.food.mapper.FoodMappers.ReturnStockDispositionMapper> returnStockClaims=()->null;
+    public ProductionConsumptionServiceImpl withReturnStockClaims(java.util.function.Supplier<ai.neargo.shop.food.mapper.FoodMappers.ReturnStockDispositionMapper> source) {
+        this.returnStockClaims=source;return this;
+    }
     @Override
     public ConsumptionVO consume(String entity, String store, String actor, String eventNo) {
         outside();
         scope(entity, store, actor);
         key(eventNo);
         var row = transaction(() -> prepare(entity, store, actor, eventNo));
-        if (Set.of("CONFIRMED", "REVERSED", "NOT_REQUIRED").contains(row.getStatus()))
+        if (Set.of("CONFIRMED", "REVERSED", "DISPOSED", "NOT_REQUIRED").contains(row.getStatus()))
             return transaction(() -> view(row));
         if (inventory == null) throw unsupported();
         if ("BLOCKED".equals(row.getStatus())) return transaction(() -> view(row));
@@ -174,6 +179,8 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
             validate(command, receipt);
             // A forward issue confirmation cannot complete a persisted reversal intent.
             if (reversing && "CONFIRMED".equals(receipt.status())) throw conflict();
+            if ("DISPOSED".equals(receipt.status()) && (!reversing || !"LOSS".equals(json.readValue(row.getReversalSnapshot(),InventoryProductionPort.Reverse.class).disposition())))throw conflict();
+            if (reversing && "REVERSED".equals(receipt.status()) && "LOSS".equals(json.readValue(row.getReversalSnapshot(),InventoryProductionPort.Reverse.class).disposition()))throw conflict();
             if (!reversing && "ABSENT".equals(receipt.status())) {
                 receipt = inventory.consume(command);
                 validate(command, receipt);
@@ -184,7 +191,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
             transaction(
                     () -> {
                         var current = find(entity, store, eventNo, true);
-                        if (!Set.of("CONFIRMED", "REVERSED").contains(current.getStatus())) {
+                        if (!Set.of("CONFIRMED", "REVERSED", "DISPOSED").contains(current.getStatus())) {
                             current.setStatus("UNKNOWN");
                             current.setUpdatedBy(actor);
                             heads.updateById(current);
@@ -204,7 +211,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
             Receipt receipt) {
         var row = find(entity, store, event, true);
         validate(command, receipt);
-        if (!Set.of("CONFIRMED", "REVERSED").contains(receipt.status())) {
+        if (!Set.of("CONFIRMED", "REVERSED", "DISPOSED").contains(receipt.status())) {
             row.setStatus("UNKNOWN");
             row.setUpdatedBy(actor);
             heads.updateById(row);
@@ -233,12 +240,13 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                 if (cost != null) cost = Math.addExact(cost, line.costMinor());
                 if (currency == null) currency = line.currency();
             }
-            child.setActualQty(quantity);
+            boolean noStock=!actual.isEmpty()&&actual.stream().allMatch(l->"NOT_TRACKED".equals(l.valuationStatus()));
+            child.setActualQty(noStock?null:quantity);
             child.setCostMinor(cost);
             child.setCurrency(cost == null ? null : currency);
             child.setInventoryReceiptRef(
                     actual.size() == 1 ? actual.getFirst().ledgerRef() : receipt.documentNo());
-            child.setStatus(receipt.status());
+            child.setStatus(noStock?"UNTRACKED":receipt.status());
             child.setUpdatedBy(actor);
             if (lines.updateById(child) != 1) throw conflict();
         }
@@ -389,6 +397,14 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                 || req.reason() == null
                 || req.reason().isBlank()
                 || req.reason().length() > 255) throw BizException.of(ErrorCode.BAD_REQUEST);
+        if(req.disposition()!=null && (!Set.of("RESALE","LOSS").contains(req.disposition())
+                ||req.reasonCode()==null||req.reasonCode().isBlank()||req.reasonCode().length()>32))throw BizException.of(ErrorCode.BAD_REQUEST);
+        if(req.disposition()==null&&req.reasonCode()!=null)throw BizException.of(ErrorCode.BAD_REQUEST);
+        var originalCommand=transaction(()->json.readValue(find(entity,store,event,true).getRequestSnapshot(),Command.class));
+        // Resolve the original owner outside FOOD locks before committing a disposition intent.
+        if(inventory instanceof ai.neargo.shop.food.port.FoodProductionInventoryRouter router)
+            router.validateDisposition(originalCommand,req.disposition(),req.reasonCode(),actor);
+        else if(req.disposition()!=null)throw unsupported();
         String hash =
                 FoodCommandFingerprint.hash(
                         "production-reverse:v1",
@@ -407,10 +423,16 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                     }
                     if (!"CONFIRMED".equals(row.getStatus())
                             || !req.version().equals(row.getVersion())) throw conflict();
+                    var claims=returnStockClaims.get();
+                    if(claims!=null&&claims.selectCount(Wrappers.<ai.neargo.shop.food.entity.FnbReturnStockDisposition>lambdaQuery()
+                            .eq(ai.neargo.shop.food.entity.FnbReturnStockDisposition::getTenantNo,"MAIN")
+                            .eq(ai.neargo.shop.food.entity.FnbReturnStockDisposition::getEntityNo,entity)
+                            .eq(ai.neargo.shop.food.entity.FnbReturnStockDisposition::getStoreNo,store)
+                            .eq(ai.neargo.shop.food.entity.FnbReturnStockDisposition::getProductionEventNo,event))>0)throw conflict();
                     var command = json.readValue(row.getRequestSnapshot(), Command.class);
                     var reversal =
-                            new InventoryProductionPort.Reverse(
-                                    command, BizKey.next("FRVS"), req.reason());
+                            req.disposition()==null?new InventoryProductionPort.Reverse(command,BizKey.next("FRVS"),req.reason())
+                                    :new InventoryProductionPort.Reverse(command,BizKey.next("FRVS"),req.reason(),req.disposition(),req.reasonCode(),actor);
                     row.setReversalEventNo(reversal.reverseEventNo());
                     row.setReversalHash(hash);
                     row.setReversalSnapshot(json.writeValueAsString(reversal));
@@ -489,6 +511,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                         "FAILED",
                                         "BLOCKED",
                                         "REVERSED",
+                                        "DISPOSED",
                                         "NOT_REQUIRED",
                                         "REVERSAL_PENDING")
                                 .contains(query.status()))
@@ -577,35 +600,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                 .eq(FnbOrderLine::getBatchNo, batch.getBatchNo()));
         if (line == null) throw missing();
         var frozen = json.readTree(batch.getFrozenRequest());
-        var facts = json.treeToValue(frozen.get("facts"), DiningPriceFacts.class);
-        if (facts == null || facts.payload() == null || facts.payload().cart() == null)
-            throw conflict();
-        var cart = facts.payload().cart();
-        DiningPriceFactsPolicy.validate(
-                facts, entity, store, cart.cartNo(), cart.version(), facts.payload().subjectNo());
-        var choices =
-                cart.lines().stream()
-                        .filter(c -> line.getSourceLineRef().equals(c.sourceLineRef()))
-                        .toList();
-        if (choices.size() != 1) throw conflict();
-        var choice = choices.getFirst();
-        if (!line.getSkuNo().equals(choice.skuNo())
-                || !line.getGoodsNo().equals(choice.goodsNo())
-                || choice.qty().compareTo(line.getQty()) != 0) throw conflict();
-        var selectedItems =
-                facts.payload().composition().items().stream()
-                        .filter(
-                                i ->
-                                        choice.menuNo().equals(i.menuNo())
-                                                && choice.menuItemNo().equals(i.menuItemNo())
-                                                && choice.goodsNo().equals(i.goodsNo()))
-                        .toList();
-        if (selectedItems.size() != 1
-                || selectedItems.getFirst().dish() == null
-                || selectedItems.getFirst().dish().measurement() == null
-                || !Objects.equals(
-                        line.getUnit(), selectedItems.getFirst().dish().measurement().unit()))
-            throw conflict();
+        var source = plannedSource(batch, line, frozen, entity, store);
         var routes = json.treeToValue(frozen.get("kitchenRoutes"), FrozenRoutes.class);
         if (routes == null
                 || routes.routes().stream()
@@ -632,13 +627,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                     evidence.componentReference(
                             entity, line.getFoodLineNo(), task.getComponentNo());
         } else {
-            var units =
-                    facts.payload().units().stream()
-                            .filter(
-                                    u ->
-                                            choice.sourceLineRef().equals(u.sourceLineNo())
-                                                    && "MAIN".equals(u.kind()))
-                            .toList();
+            var units = source.units().stream().filter(unit -> "MAIN".equals(unit.kind())).toList();
             if (units.size() != 1) throw conflict();
             componentRef = units.getFirst().componentRef();
         }
@@ -653,41 +642,39 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                         .toList();
         if (branches.size() != 1) throw conflict();
         var branch = branches.getFirst();
+        var sourceUnits =
+                source.units().stream()
+                        .filter(unit -> sourceComponent.equals(unit.componentRef()))
+                        .toList();
+        if (sourceUnits.size() != 1) throw conflict();
         var makers =
                 routes.routes().stream()
                         .filter(
-                                r ->
-                                        "MAKE".equals(r.taskRole())
-                                                && r.skuNo()
-                                                        .equals(
-                                                                task.getComponentNo() == null
-                                                                        ? choice.skuNo()
-                                                                        : facts
-                                                                                .payload()
-                                                                                .units()
-                                                                                .stream()
-                                                                                .filter(
-                                                                                        u ->
-                                                                                                sourceComponent
-                                                                                                        .equals(
-                                                                                                                u
-                                                                                                                        .componentRef()))
-                                                                                .findFirst()
-                                                                                .orElseThrow(
-                                                                                        ProductionConsumptionServiceImpl
-                                                                                                ::conflict)
-                                                                                .skuNo()))
+                                route ->
+                                        "MAKE".equals(route.taskRole())
+                                                && sourceUnits
+                                                        .getFirst()
+                                                        .skuNo()
+                                                        .equals(route.skuNo()))
                         .sorted(Comparator.comparing(KitchenContracts.FrozenRoute::stationNo))
                         .toList();
         if (makers.isEmpty()) throw conflict();
         boolean required =
-                "RECIPE_MATERIAL".equals(branch.kind())
+                branch.leaves().stream()
+                                .anyMatch(
+                                        leaf ->
+                                                "RECIPE_MATERIAL"
+                                                        .equals(
+                                                                InventoryDemandPlanFacts.sourceKind(
+                                                                        branch, leaf)))
                         && makers.getFirst().stationNo().equals(task.getStationNo());
         var sourceLeaves = new ArrayList<InventoryProductionPort.SourceLeaf>();
         var materialQty = new TreeMap<String, BigDecimal>();
         var materialDefinitions = new HashMap<String, InventoryDemandPlanPort.Leaf>();
         if (required)
             for (var leaf : branch.leaves()) {
+                if (!"RECIPE_MATERIAL".equals(InventoryDemandPlanFacts.sourceKind(branch, leaf)))
+                    continue;
                 final BigDecimal quantity;
                 try {
                     quantity =
@@ -777,6 +764,97 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
      * Immutable orders predating demand-plan authority retain their original theoretical
      * projection.
      */
+    private record ProductionUnit(String componentRef, String kind, String skuNo) {}
+
+    private record ProductionSource(List<ProductionUnit> units) {}
+
+    /**
+     * Native channel composition is its own immutable source; it never masquerades as an ordinary
+     * price quote.
+     */
+    private ProductionSource plannedSource(
+            FnbOrderBatch batch, FnbOrderLine line, JsonNode frozen, String entity, String store) {
+        if ("CHANNEL".equals(batch.getPayMode())) {
+            var source = json.treeToValue(frozen, DiningChannelSourceStore.FrozenSource.class);
+            if (source.schema() != 1
+                    || !Objects.equals(source.sourceHash(), batch.getQuoteHash())
+                    || source.cartLines().size() != source.original().lines().size())
+                throw conflict();
+            int index = -1;
+            for (int i = 0; i < source.cartLines().size(); i++) {
+                if (line.getSourceLineRef().equals(source.cartLines().get(i).sourceLineRef())) {
+                    if (index >= 0) throw conflict();
+                    index = i;
+                }
+            }
+            if (index < 0) throw conflict();
+            var input = source.cartLines().get(index);
+            var original = source.original().lines().get(index);
+            var main =
+                    original.components().stream()
+                            .filter(component -> "MAIN".equals(component.externalKind()))
+                            .toList();
+            if (main.size() != 1
+                    || !line.getSkuNo().equals(input.skuNo())
+                    || !line.getGoodsNo().equals(input.goodsNo())
+                    || line.getQty().compareTo(input.qty()) != 0
+                    || !line.getSkuNo().equals(original.skuNo())
+                    || !line.getGoodsNo().equals(original.goodsNo())
+                    || line.getQty().compareTo(original.quantity()) != 0
+                    || !line.getUnit().equals(main.getFirst().unit())) throw conflict();
+            return new ProductionSource(
+                    original.components().stream()
+                            .map(
+                                    component ->
+                                            new ProductionUnit(
+                                                    PricingSnapshotHash.of(
+                                                            List.of(
+                                                                    source.sourceNo(),
+                                                                    input.sourceLineRef(),
+                                                                    component.logicalKey())),
+                                                    component.externalKind(),
+                                                    component.skuNo()))
+                            .toList());
+        }
+        var facts = json.treeToValue(frozen.get("facts"), DiningPriceFacts.class);
+        if (facts == null || facts.payload() == null || facts.payload().cart() == null)
+            throw conflict();
+        var cart = facts.payload().cart();
+        DiningPriceFactsPolicy.validate(
+                facts, entity, store, cart.cartNo(), cart.version(), facts.payload().subjectNo());
+        var choices =
+                cart.lines().stream()
+                        .filter(c -> line.getSourceLineRef().equals(c.sourceLineRef()))
+                        .toList();
+        if (choices.size() != 1) throw conflict();
+        var choice = choices.getFirst();
+        if (!line.getSkuNo().equals(choice.skuNo())
+                || !line.getGoodsNo().equals(choice.goodsNo())
+                || choice.qty().compareTo(line.getQty()) != 0) throw conflict();
+        var selectedItems =
+                facts.payload().composition().items().stream()
+                        .filter(
+                                i ->
+                                        choice.menuNo().equals(i.menuNo())
+                                                && choice.menuItemNo().equals(i.menuItemNo())
+                                                && choice.goodsNo().equals(i.goodsNo()))
+                        .toList();
+        if (selectedItems.size() != 1
+                || selectedItems.getFirst().dish() == null
+                || selectedItems.getFirst().dish().measurement() == null
+                || !Objects.equals(
+                        line.getUnit(), selectedItems.getFirst().dish().measurement().unit()))
+            throw conflict();
+        return new ProductionSource(
+                facts.payload().units().stream()
+                        .filter(unit -> choice.sourceLineRef().equals(unit.sourceLineNo()))
+                        .map(
+                                unit ->
+                                        new ProductionUnit(
+                                                unit.componentRef(), unit.kind(), unit.skuNo()))
+                        .toList());
+    }
+
     private FnbProductionConsumption prepareLegacy(
             String entity, String store, String actor, String eventNo) {
         var prior = find(entity, store, eventNo, false);
@@ -1054,7 +1132,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
         if (receipt == null
                 || !command.eventNo().equals(receipt.eventNo())
                 || !fingerprint(command).equals(receipt.requestHash())
-                || !Set.of("ABSENT", "UNKNOWN", "CONFIRMED", "REVERSED").contains(receipt.status())
+                || !Set.of("ABSENT", "UNKNOWN", "CONFIRMED", "REVERSED", "DISPOSED").contains(receipt.status())
                 || (receipt.costMinor() == null) != (receipt.currency() == null)
                 || receipt.currency() != null && !receipt.currency().matches("[A-Z]{3}")
                 || receipt.costMinor() != null && receipt.costMinor() < 0) throw conflict();
@@ -1132,9 +1210,9 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                         ? null
                         : json.readValue(row.getReceiptSnapshot(), Receipt.class);
         boolean confirmed =
-                "CONFIRMED".equals(row.getStatus())
+                Set.of("CONFIRMED","DISPOSED").contains(row.getStatus())
                         && receipt != null
-                        && "CONFIRMED".equals(receipt.status());
+                        && row.getStatus().equals(receipt.status());
         var child =
                 children(row.getEntityNo(), row.getConsumptionNo()).stream()
                         .map(
@@ -1162,7 +1240,9 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                 row.getBusinessDate(),
                 row.getOccurredAt(),
                 child,
-                confirmed
+                !child.isEmpty()&&child.stream().allMatch(l->"UNTRACKED".equals(l.status()))?"WORKFLOW_ONLY_NO_STOCK"
+                        :child.stream().anyMatch(l->"UNTRACKED".equals(l.status()))?"MIXED_STOCK_AND_WORKFLOW"
+                        :"DISPOSED".equals(row.getStatus())?"INVENTORY_ISSUE_DISPOSED":confirmed
                         ? "INVENTORY_ISSUE_ONLY"
                         : "REVERSED".equals(row.getStatus())
                                 ? "INVENTORY_ISSUE_REVERSED"
@@ -1171,7 +1251,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                         : child.isEmpty()
                                                 ? "THEORY_UNAVAILABLE:" + blockedReason(row)
                                                 : "THEORETICAL_ONLY",
-                !Set.of("CONFIRMED", "REVERSED", "NOT_REQUIRED").contains(row.getStatus()),
+                !Set.of("CONFIRMED", "REVERSED", "DISPOSED", "NOT_REQUIRED").contains(row.getStatus()),
                 confirmed ? receipt.costMinor() : null,
                 confirmed ? receipt.currency() : null,
                 row.getVersion());

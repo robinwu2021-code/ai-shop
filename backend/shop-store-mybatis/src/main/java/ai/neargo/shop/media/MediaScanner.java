@@ -1,6 +1,7 @@
 package ai.neargo.shop.media;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,10 +39,12 @@ public class MediaScanner {
     private final int graceHours;
     private final double abnormalRatio;
 
-    public MediaScanner(List<MediaRefSource> sources, MediaRefMapper refMapper,
-                        SysMediaAssetMapper assetMapper,
-                        @Value("${shop.media.scan.grace-hours:72}") int graceHours,
-                        @Value("${shop.media.scan.abnormal-ratio-alert:0.5}") double abnormalRatio) {
+    public MediaScanner(
+            List<MediaRefSource> sources,
+            MediaRefMapper refMapper,
+            SysMediaAssetMapper assetMapper,
+            @Value("${shop.media.scan.grace-hours:72}") int graceHours,
+            @Value("${shop.media.scan.abnormal-ratio-alert:0.5}") double abnormalRatio) {
         this.sources = sources;
         this.refMapper = refMapper;
         this.assetMapper = assetMapper;
@@ -63,6 +66,9 @@ public class MediaScanner {
         int marked = 0;
 
         for (SysMediaAsset a : assets) {
+            if (SysMediaAsset.OFFLINE_RECEIPT.equals(a.getBizType())) {
+                continue;
+            }
             String label = referenced.get(a.getAssetKey());
             if (label != null) {
                 SysMediaAsset upd = new SysMediaAsset();

@@ -31,4 +31,5 @@ public class CimSyncRun extends BaseEntity {
     private LocalDateTime nextRecoveryAt;
     private String failureCode;
     private String operationNo;
+    private String mappingProjectionStatus;
 }

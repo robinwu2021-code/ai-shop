@@ -1,0 +1,93 @@
+{
+  "task": "Task69A1/C03",
+  "status": "DESIGN_STATIC_REVIEWED_CODE_PHASE_RELEASED",
+  "sourceHead": "ae4c10cc124f80925719449da15aada4a97ec1ea",
+  "codingBaseCommit": null,
+  "design": ".superpowers/sdd/beauty-backend/task-69-m3-design.md",
+  "designSha256": "2e33ad2ff0072f322064062e1592b8cbf2e7e11623c9d21fd636c6704fe387e5",
+  "review": ".superpowers/sdd/beauty-backend/review-task-69-m3-design-r2.md",
+  "reviewSha256": "a4b0084130e32a5fef7d2cb21c72e2f1d2e2f42ebe1b84a970778436f97b059a",
+  "modify": [
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalBindings.java",
+      "baselineSha256": "078252ca3d328303acd6c2672dcd2530e67d14b8e34b181eba6d2d33296eefaf"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/InternalReplyDeserializer.java",
+      "baselineSha256": "1a48e6aa81374748746687396f8c841ce28a9ccae50dc41237d2e8bfb88d03d2"
+    },
+    {
+      "path": "packages/shared/tests/entity-alignment.test.ts",
+      "baselineSha256": "51309bb26f30398667775bf7c725a5a8d3cf2f52d3b3d4be6c7568ff3e0a9120"
+    },
+    {
+      "path": "packages/shared/tests/schema-lineage.test.ts",
+      "baselineSha256": "cf9dbe849632b1ae53c7b8d19d21eed612588c5d6ae386584605110c62955b4f"
+    },
+    {
+      "path": "scripts/lib/schema-lineage.mjs",
+      "baselineSha256": "3520fce93c23528278630929e9843fb60f34b5afbf3ceb47cbd1642f057980e1"
+    }
+  ],
+  "create": [
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionPort.java"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourcePort.java"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionContract.java"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionInternalApi.java"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ServiceExecutionSourceInternalApi.java"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ExecutionOriginalProtocol.java"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/svc/ExecutionOriginalCodec.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionUnit.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecution.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdServiceExecutionAction.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/ServiceExecutionMapper.java"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/policy/ServiceExecutionSchemaVerifier.java"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V544__manual_service_execution_authority.sql"
+    },
+    {
+      "path": "docs/technical/design/schema/manual-service-execution-schema.json"
+    },
+    {
+      "path": "scripts/gen-manual-service-execution-schema.mjs"
+    },
+    {
+      "path": "backend/shop-core/src/main/resources/META-INF/shop/manual-service-execution-schema.json"
+    },
+    {
+      "path": "backend/shop-base/src/test/java/ai/neargo/shop/spi/trade/ServiceExecutionContractTest.java"
+    },
+    {
+      "path": "scripts/tests/manual-service-execution-schema.test.mjs"
+    }
+  ],
+  "runtimeTestsAllowed": false,
+  "migrationExecutionAllowed": false,
+  "paymentIntegration": false,
+  "canStart": false,
+  "nextSlices": "A2 source fence and actual observation/startup; A3 real quantity owner; A4 transport; A5 original recovery, each requires its own exact release inventory"
+}

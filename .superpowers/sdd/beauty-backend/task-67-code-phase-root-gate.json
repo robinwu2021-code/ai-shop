@@ -1,0 +1,255 @@
+{
+  "task": 67,
+  "stage": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+  "rootRecordedAtUtc": "2026-10-26T04:24:34.050947+00:00",
+  "base": "2c0708f752d747d88a9eda7478326a964d1984fa",
+  "ownedSourceCount": 51,
+  "files": [
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ManualReceiptSummaryVO.java",
+      "sha256": "4272fd68ab084389ef3b7a2a4c082f8111b2925c2d7e4de03962ce438deca45e"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V9__beauty_manual_source_observation.sql",
+      "sha256": "80eb14c95166709bec87787e7b19c573bd1747759c22d7280eae9a29fd8fdea7"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SubmitServicesReq.java",
+      "sha256": "d23592d4a89b70b5636ddb3696d70b79d0b8b61913be4479762871bb491d824b"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/ServiceSubmissionVO.java",
+      "sha256": "8bdc574af5d01848967df8833d94b5df36f3dc207e88d8cbe17073f1570a8480"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SourceObservationVO.java",
+      "sha256": "31f739604995b837ddba035bb68a1433c2d68b1943058eac6cd1031a6b5870eb"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/SourceBillVO.java",
+      "sha256": "9f4688857239eec9b9f066aa7947e6ea8df586abd93f1f59b0947c6b9b81d48e"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/CurrencyBillVO.java",
+      "sha256": "49a83ea040a9e64e4a1825463ed19560021c4ac129b221f5a34b3787a094937d"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ServiceSubmissionAccess.java",
+      "sha256": "49d941113346551424d1555b3985482be0a8c8bedd85fea1725c217d8ea46f73"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionServiceImpl.java",
+      "sha256": "331d6bb1535198d4e3cdfbdda37f19465f6a10e904c87fc80f9cce210d070377"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionQuery.java",
+      "sha256": "1fbe94cc5837c21596e690b47b2f5074d000972e3a81a45516af62c153c4f3a9"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceObservation.java",
+      "sha256": "4af632c6909714e8d8426f40f0d7e901db438c4f69b465595d4255f04dc78610"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSourceBinding.java",
+      "sha256": "796fb671119748fe82bb1ad79bb62ecd793eafd11943160608816336c0d20ec9"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderBillServiceImpl.java",
+      "sha256": "7a48c44d7123105860fbe40cb2a93d836bcf122079e655c89918d5eabce15952"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderQuery.java",
+      "sha256": "f7655fbe48f042813f9ec74db1cf5544d176d4096aee3c42fe7d7d6885986cd1"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderServiceImpl.java",
+      "sha256": "f753cfc0dbbd8b6fd6b8a79c0b7d144516658d4e2f71513bfafb354fa23a6fdd"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtySourceObservation.java",
+      "sha256": "83fa964081777cd180c17d78a149d6e631e82b28a5599885ed76b39c0c74434d"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtyTradeBinding.java",
+      "sha256": "6bafcfbea4624d3bad3849fdcb614c04ed35513d637c0e1477c744651971f512"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/entity/BtySourceAllocationGuard.java",
+      "sha256": "0c75a7f026598b3e43441cd12bbd5a8f48828505029f7d72a160255ec8708701"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/BeautyMappers.java",
+      "sha256": "704b66e2becadd56ff81fb9c70d782ff93e9bb1fe1d985d0d1e5e87030f76614"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySourceConfiguration.java",
+      "sha256": "63fa5566513a2c0d19c45492c92536c505e513923c2670232a51e79c3d11bf6b"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyReceptionConfiguration.java",
+      "sha256": "83db6375c04ff3abf5100f108be327fd3835fa2bf19ca8e5d0af46510b96601d"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaValidator.java",
+      "sha256": "4575f4cb0a8dd3556da8908d87c540aadb5c94e9afa05eb3efd761645db6f720"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautySchemaReady.java",
+      "sha256": "514709de64b3b1ec2966b0595681adc579c15b7252c2878438c5b0b8a0789e7e"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyPersistenceConfiguration.java",
+      "sha256": "20554dad5279741e05ebeb9283689b129686ec24d5d594ac2ddff08a45e761d8"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyWriteGuardConfiguration.java",
+      "sha256": "004d50b890b132705035ec4ccbda9fea92aa21945f7f16253f40c10c40a661f5"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/trade/ManualServiceAdmissionPort.java",
+      "sha256": "6715281a45b6d9abbac110eb475ad97541e1f7690e56d410239c5aa770eb8cf8"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
+      "sha256": "c2dff79753f935c1137af4925825a3ddc455d8f43bff7e14e122feffe5df956b"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/dto/OrderVO.java",
+      "sha256": "34e81bf6be65331f8ad03ef511db8914052e8c151c8b4e6606f06600aef4beff"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+      "sha256": "ab1f780e1b7e0763b741ac4a1c72919b4c113f6bccd96f24e640043485def23f"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/main/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPort.java",
+      "sha256": "f01c2194eedbddfe7924b101222e992724d7c65b21b0f9c3c5861a6e0aac07b1"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-api/src/main/java/ai/neargo/shop/beauty/dto/OpenWorkOrderReq.java",
+      "sha256": "7be9bbf36e8fdee541aa36312c44a5795625bc7a468e5d5d69e64742452b2c1c"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/policy/ReceptionIdentity.java",
+      "sha256": "51b3f249c504c34e687cd6a1a21bfb2bcac3702ac0f276c4625848951d0c93ea"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderCoordinator.java",
+      "sha256": "69d72b3b729cf909fc3b93e8d9bc76c11a98d6b1c11ad7569fc6b718f6cfc183"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/config/BeautyCheckExpression.java",
+      "sha256": "b4b5bacd2401698a91177ab168e8ba21f0a2faf0b335964d1d5673a46d8c8af7"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceHostFixture.java",
+      "sha256": "b0be6b90ecb39c0f18f3904b70faa93da57e49c7258d9a51954d17af605d7bb6"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceBindingIT.java",
+      "sha256": "058cd57591026580e7bc7dc906b4f0f7b17613006c7fdf61f7854ca907875bfc"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceBillIT.java",
+      "sha256": "19fafdb05161fa29143ce74b255472db4590e385ffa4d9b7865a5a97d9cc601a"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualSourceV8Driver.java",
+      "sha256": "69c2c2bfa9f17a5a38f73d2b03342d84151c2d35fdcd4ba77cf3041fac8b778c"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/ServiceSourceObservationTest.java",
+      "sha256": "a51b3ad907c110bfc3139bf608bd86407f2ed20f1684f33ac180df32a8278ac9"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/service/impl/WorkOrderBillServiceImplTest.java",
+      "sha256": "4268b95d6d97cd07ea708af47ef0a4fadbe4995354bfcac4b289f0e50661ea04"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautySchemaValidatorTest.java",
+      "sha256": "a08c350a26c1389152df99d524b4de140e49c818d9d9a16e512ef3bc351ea3ee"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-channel/src/test/java/ai/neargo/shop/beauty/port/RemoteManualServiceAdmissionPortTest.java",
+      "sha256": "36d7c6b30405a1b30c388b76a1089d28fe3409ae5256a1d283a3332c55915ffc"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyPersistenceWiringTest.java",
+      "sha256": "dea867123b12df3e20d255dd192d8e6485928e848099e68d617e1e0663a37631"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautyWriteGuardHostWiringTest.java",
+      "sha256": "b9cbcc7608602bde3be69e994b2f76553285e373535ce280bd361d65a38271a8"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/scenario/BeautySchemaMigrationIT.java",
+      "sha256": "28d847daf80c4b1a8a79f21e9f97b58e752865a19237da9344bec8998890fcb0"
+    },
+    {
+      "path": "scripts/verify-manual-counter-source.mjs",
+      "sha256": "471cd2cf309a3ca9d6fc827530d49bb9793cc15295ccbf016eccf3819247d38c"
+    },
+    {
+      "path": "scripts/tests/manual-counter-source-runner.test.mjs",
+      "sha256": "07e37527eeff415e91e07082e78bf75d420fbc25d08f08c94ba3c49397648fdc"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/test/java/ai/neargo/shop/beauty/config/BeautyCheckExpressionTest.java",
+      "sha256": "67c706de83f9efc676e047be25248e5bea056c57723c308d661d0c066a0a72de"
+    },
+    {
+      "path": "docs/technical/design/schema/beauty-manual-source-observation-schema.json",
+      "sha256": "643b67470240233eceec9deeed03c6c619d67184f9322e8acf0956597434b9da"
+    },
+    {
+      "path": "scripts/gen-beauty-manual-source-observation-schema.mjs",
+      "sha256": "8240c086c460eaa067090f18c66548bd3f2ed7d6ebed1ae24ce8527a79c5815c"
+    },
+    {
+      "path": "scripts/tests/beauty-manual-source-observation-schema.test.mjs",
+      "sha256": "1eae755254ee2f3c33757904e88e84cc9d6f449c9324edaada1391cfc054b955"
+    }
+  ],
+  "reviews": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-67-r0.md",
+      "sha256": "605f3bf3d529f113c1c7f4f317339d7a10c13710d06731527791aae5838dcdc0"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-67-r1.md",
+      "sha256": "aebb4eb2aa42f052c083e8290a579038cf3493f19536298ee2d3288fe4bf4b28"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-67-compatibility.md",
+      "sha256": "31aa16f55599a2cfba09c957db78e15fb68a713978143045e448530c5869f1f2"
+    }
+  ],
+  "currentCodeFindingsOpen": 0,
+  "compileEvidence": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-67-evidence/compatibility-code-phase/host-channel-compile.log",
+      "sha256": "80d14c2e5962896503b57a5bbda28a69156da971c310d8c75985aa4b8996c861"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-67-evidence/compatibility-code-phase/final-channel-compile.log",
+      "sha256": "6b31d4ec8a00bf1b2ac82713908fdf583c192946a6b927323e956eceea4dc85e"
+    }
+  ],
+  "latestCompile": {
+    "hostChannelModules": 25,
+    "hostTestSourcesCompiled": 749,
+    "seconds": 45.695,
+    "finalChannelModules": 8,
+    "channelTestSourcesCompiled": 17,
+    "secondsFinal": 2.743
+  },
+  "testExecutionThisCodeClosure": false,
+  "newRemoteTestsAuthoredNotExecuted": 7,
+  "historicalEvidence": "R0/R1 reports keep original snapshots, source upgrade, matrix and ablation; not relabeled full current runtime",
+  "operationalCanStart": false,
+  "payIntegrated": false,
+  "deployed": false,
+  "staticDesignGenerators": "API/Java/DB/project/development five --check PASS; no test suite invoked",
+  "notes": "C01 changes overlay prior R1 source chain only reviewed remote branch/tests and same-value native literal splits; full unified testing remains required.",
+  "codeCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9"
+}

@@ -2,6 +2,7 @@ package ai.neargo.shop.food.policy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.food.dto.BundlePublicationSnapshot;
 import ai.neargo.shop.food.dto.ConfigRevisionContentVO;
 import ai.neargo.shop.food.dto.MenuItemInput;
 import ai.neargo.shop.food.dto.MenuPublicationSnapshot;
@@ -35,11 +36,16 @@ public final class MenuSourcePolicy {
                 || !key(q.resourceRef())
                 || q.mode() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         boolean sale = q.kind() != Kind.MENU && q.kind() != Kind.CATEGORY;
+        boolean bundle = q.kind() == Kind.BUNDLE_GROUP || q.kind() == Kind.BUNDLE_MEMBER;
         if (sale && !key(q.salesOfferRef())
                 || !sale && q.salesOfferRef() != null
                 || q.kind() == Kind.OFFER && !q.resourceRef().equals(q.salesOfferRef())
                 || q.kind() == Kind.OPTION && !key(q.optionGroupRef())
-                || q.kind() != Kind.OPTION && q.optionGroupRef() != null)
+                || q.kind() != Kind.OPTION && q.optionGroupRef() != null
+                || bundle && !key(q.variantSkuRef())
+                || !bundle && q.variantSkuRef() != null
+                || q.kind() == Kind.BUNDLE_MEMBER && !key(q.bundleGroupRef())
+                || q.kind() != Kind.BUNDLE_MEMBER && q.bundleGroupRef() != null)
             throw BizException.of(ErrorCode.BAD_REQUEST);
     }
 
@@ -59,8 +65,10 @@ public final class MenuSourcePolicy {
                 || !"EFFECTIVE".equals(meta.status())
                 || !PublicationDocuments.hash(json, source.definitionSnapshot())
                         .equals(meta.contentHash())
-                || !Set.of(4, 6).contains(
-                        MenuPublicationDocuments.validate(json, q.menuNo(), source.definitionSnapshot())))
+                || !Set.of(4, 6)
+                        .contains(
+                                MenuPublicationDocuments.validate(
+                                        json, q.menuNo(), source.definitionSnapshot())))
             throw malformed();
         var body = json.readValue(source.definitionSnapshot(), MenuPublicationSnapshot.class);
         if (!q.entityNo().equals(body.menu().entityNo())
@@ -85,6 +93,7 @@ public final class MenuSourcePolicy {
                         case OFFER -> true;
                         case SKU -> sku(body, item, q.resourceRef());
                         case OPTION_GROUP -> groups(body, item).contains(q.resourceRef());
+                        case BUNDLE_GROUP, BUNDLE_MEMBER -> bundle(json, body, item, q);
                         case OPTION ->
                                 groups(body, item).contains(q.optionGroupRef())
                                         && option(json, body, q);
@@ -92,7 +101,46 @@ public final class MenuSourcePolicy {
                     };
         }
         if (!member) throw BizException.of(ErrorCode.NOT_FOUND);
-        return new Resource(q.kind(), q.resourceRef(), q.salesOfferRef(), q.optionGroupRef());
+        return new Resource(
+                q.kind(),
+                q.resourceRef(),
+                q.salesOfferRef(),
+                q.optionGroupRef(),
+                q.variantSkuRef(),
+                q.bundleGroupRef());
+    }
+
+    private static boolean bundle(
+            ObjectMapper json, MenuPublicationSnapshot body, MenuItemInput item, Query query) {
+        if (!sku(body, item, query.variantSkuRef())
+                || body.menu().dishes().stream()
+                        .noneMatch(
+                                dish ->
+                                        dish.goodsNo().equals(item.goodsNo())
+                                                && "BUNDLE".equals(dish.dishKind()))) return false;
+        var dependency =
+                body.menu().dependencies().stream()
+                        .filter(
+                                d ->
+                                        "BUNDLE".equals(d.configKind())
+                                                && query.variantSkuRef().equals(d.configNo()))
+                        .findFirst()
+                        .orElseThrow(MenuSourcePolicy::malformed);
+        var publication =
+                json.readValue(dependency.definitionSnapshot(), BundlePublicationSnapshot.class);
+        if (!query.variantSkuRef().equals(publication.configNo())
+                || !query.variantSkuRef().equals(publication.bundle().configNo()))
+            throw malformed();
+        var bundle = publication.bundle().data();
+        String group =
+                query.kind() == Kind.BUNDLE_GROUP ? query.resourceRef() : query.bundleGroupRef();
+        if (bundle.groups().stream().noneMatch(g -> group.equals(g.groupNo()))) return false;
+        return query.kind() == Kind.BUNDLE_GROUP
+                || bundle.choices().stream()
+                        .anyMatch(
+                                choice ->
+                                        group.equals(choice.groupNo())
+                                                && query.resourceRef().equals(choice.choiceNo()));
     }
 
     private static boolean sku(MenuPublicationSnapshot body, MenuItemInput item, String number) {

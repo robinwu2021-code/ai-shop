@@ -13,6 +13,8 @@ import ai.neargo.shop.commerce.entity.CimResourceMapping;
 import ai.neargo.shop.commerce.entity.CimResourceMappingRevision;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.ResourceMappingMapper;
 import ai.neargo.shop.commerce.mapper.CommerceMappers.ResourceMappingRevisionMapper;
+import ai.neargo.shop.commerce.policy.CatalogResourceIndex;
+import ai.neargo.shop.commerce.policy.CatalogSourceTransportPolicy;
 import ai.neargo.shop.commerce.policy.ChannelIdentity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -21,9 +23,12 @@ import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway.Identity;
 import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway.ObjectType;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.ReadMode;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.SourceContext;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Validation;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -67,7 +72,65 @@ public final class MappingPersistence {
             String sourceRevision,
             String salesOfferRef,
             Validation sourceProof,
-            ChannelResourceIdentityGateway.Proof externalProof) {}
+            ChannelResourceIdentityGateway.Proof externalProof,
+            @JsonInclude(JsonInclude.Include.NON_NULL) SourceContext sourceContext,
+            @JsonInclude(JsonInclude.Include.NON_NULL) HistoricalEvidence historicalEvidence) {
+        Snapshot(
+                ObjectType objectType,
+                Identity identity,
+                Owner sourceOwner,
+                String sourceRef,
+                String sourceRevision,
+                String salesOfferRef,
+                Validation sourceProof,
+                ChannelResourceIdentityGateway.Proof externalProof,
+                SourceContext sourceContext) {
+            this(
+                    objectType,
+                    identity,
+                    sourceOwner,
+                    sourceRef,
+                    sourceRevision,
+                    salesOfferRef,
+                    sourceProof,
+                    externalProof,
+                    sourceContext,
+                    null);
+        }
+
+        Snapshot(
+                ObjectType objectType,
+                Identity identity,
+                Owner sourceOwner,
+                String sourceRef,
+                String sourceRevision,
+                String salesOfferRef,
+                Validation sourceProof,
+                ChannelResourceIdentityGateway.Proof externalProof) {
+            this(
+                    objectType,
+                    identity,
+                    sourceOwner,
+                    sourceRef,
+                    sourceRevision,
+                    salesOfferRef,
+                    sourceProof,
+                    externalProof,
+                    null,
+                    null);
+        }
+    }
+
+    record HistoricalEvidence(
+            String basis,
+            String catalogHash,
+            String snapshotNo,
+            String runNo,
+            String operationNo,
+            long attemptNo,
+            String attemptReceiptRef,
+            String itemReceiptRef,
+            String itemNo) {}
 
     Context scoped(String entity, String store, String no, boolean lock) {
         text(entity, 32);
@@ -147,6 +210,17 @@ public final class MappingPersistence {
             String ref,
             String rev,
             String offer) {
+        source(c, type, owner, ref, rev, offer, null);
+    }
+
+    void source(
+            CatalogPersistence.Context c,
+            ObjectType type,
+            Owner owner,
+            String ref,
+            String rev,
+            String offer,
+            SourceContext context) {
         require(
                 type != null
                         && "LOCAL".equals(c.revision().getCatalogAuthority())
@@ -156,16 +230,38 @@ public final class MappingPersistence {
         text(rev, 128);
         if (needsOffer(type)) text(offer, 128);
         else require(offer == null);
+        CatalogSourceTransportPolicy.validateSource(
+                new ChannelSourceValidationPort.Source(
+                        c.connection().getEntityNo(),
+                        c.connection().getStoreNo(),
+                        owner,
+                        ChannelSourceValidationPort.Kind.valueOf(type.name()),
+                        ref,
+                        rev,
+                        offer,
+                        context));
+        if (context != null) require(context.mode() == ReadMode.CURRENT);
     }
 
     static boolean needsOffer(ObjectType type) {
         return type == ObjectType.OFFER
                 || type == ObjectType.SKU
                 || type == ObjectType.OPTION_GROUP
-                || type == ObjectType.OPTION;
+                || type == ObjectType.OPTION
+                || type == ObjectType.BUNDLE_GROUP
+                || type == ObjectType.BUNDLE_MEMBER;
+    }
+
+    SourceContext context(CimResourceMappingRevision row) {
+        require(ChannelIdentity.hash(row.getMappingSnapshot()).equals(row.getContentHash()));
+        return db.json.readValue(row.getMappingSnapshot(), Snapshot.class).sourceContext();
     }
 
     Validation validate(Context c, CimResourceMappingRevision row) {
+        return validate(c, row, false);
+    }
+
+    Validation validate(Context c, CimResourceMappingRevision row, boolean historical) {
         var type = ObjectType.valueOf(c.mapping().getObjectType());
         var owner = Owner.valueOf(row.getSourceOwner());
         var frozen =
@@ -185,7 +281,19 @@ public final class MappingPersistence {
                 owner,
                 row.getSourceRef(),
                 row.getSourceRevisionRef(),
-                row.getSalesOfferRef());
+                row.getSalesOfferRef(),
+                context(row));
+        var requested = context(row);
+        if (historical && owner == Owner.FOOD) {
+            require(requested != null || type == ObjectType.MENU);
+            requested =
+                    new SourceContext(
+                            requested == null ? row.getSourceRef() : requested.menuRef(),
+                            requested == null ? null : requested.optionGroupRef(),
+                            ReadMode.HISTORICAL,
+                            requested == null ? null : requested.variantSkuRef(),
+                            requested == null ? null : requested.bundleGroupRef());
+        }
         var port = db.authority.get();
         require(port != null);
         var result =
@@ -197,13 +305,15 @@ public final class MappingPersistence {
                                 ChannelSourceValidationPort.Kind.valueOf(type.name()),
                                 row.getSourceRef(),
                                 row.getSourceRevisionRef(),
-                                row.getSalesOfferRef()));
+                                row.getSalesOfferRef(),
+                                requested));
         require(
                 result != null
                         && result.status() == ChannelSourceValidationPort.Status.VALID
                         && row.getSourceRef().equals(result.canonicalRef())
                         && row.getSourceRevisionRef().equals(result.canonicalRevision())
                         && Objects.equals(row.getSalesOfferRef(), result.canonicalSalesOfferRef())
+                        && Objects.equals(requested, result.canonicalContext())
                         && result.contentHash() != null
                         && result.contentHash().matches("[a-f0-9]{64}")
                         && result.validUntil() != null
@@ -226,16 +336,93 @@ public final class MappingPersistence {
             Validation sourceProof,
             ChannelResourceIdentityGateway.Proof externalProof,
             String actor) {
+        return append(
+                m,
+                sequence,
+                no,
+                owner,
+                ref,
+                sourceRev,
+                offer,
+                sourceProof == null ? null : sourceProof.canonicalContext(),
+                connectionRevision,
+                authorization,
+                reason,
+                sourceProof,
+                externalProof,
+                actor);
+    }
+
+    CimResourceMappingRevision append(
+            CimResourceMapping m,
+            long sequence,
+            String no,
+            Owner owner,
+            String ref,
+            String sourceRev,
+            String offer,
+            SourceContext context,
+            String connectionRevision,
+            String authorization,
+            String reason,
+            Validation sourceProof,
+            ChannelResourceIdentityGateway.Proof externalProof,
+            String actor) {
+        return append(
+                m,
+                sequence,
+                no,
+                owner,
+                ref,
+                sourceRev,
+                offer,
+                context,
+                "IMPORTED",
+                connectionRevision,
+                authorization,
+                reason,
+                sourceProof,
+                externalProof,
+                actor);
+    }
+
+    CimResourceMappingRevision append(
+            CimResourceMapping m,
+            long sequence,
+            String no,
+            Owner owner,
+            String ref,
+            String sourceRev,
+            String offer,
+            SourceContext context,
+            String origin,
+            String connectionRevision,
+            String authorization,
+            String reason,
+            Validation sourceProof,
+            ChannelResourceIdentityGateway.Proof externalProof,
+            String actor) {
+        require("IMPORTED".equals(origin) || "MANAGED".equals(origin));
         var row = audit(new CimResourceMappingRevision(), actor);
         row.setRevisionNo(no);
         row.setEntityNo(m.getEntityNo());
         row.setMappingNo(m.getMappingNo());
-        row.setRevision(sequence);
+        // Callers hold the mapping lock. Historical append-only revisions do not change its latest
+        // working pointer.
+        var last =
+                revisions.selectOne(
+                        Wrappers.<CimResourceMappingRevision>query()
+                                .eq("tenant_no", "MAIN")
+                                .eq("entity_no", m.getEntityNo())
+                                .eq("mapping_no", m.getMappingNo())
+                                .orderByDesc("revision")
+                                .last("LIMIT 1"));
+        row.setRevision(last == null ? 1 : Math.addExact(last.getRevision(), 1));
         row.setSourceOwner(owner.name());
         row.setSourceRef(ref);
         row.setSourceRevisionRef(sourceRev);
         row.setSalesOfferRef(offer);
-        row.setMappingOrigin("IMPORTED");
+        row.setMappingOrigin(origin);
         row.setValidationStatus(sourceProof == null ? "DRAFT" : "VERIFIED");
         row.setConnectionRevisionNo(connectionRevision);
         row.setAuthorizationNo(authorization);
@@ -250,7 +437,8 @@ public final class MappingPersistence {
                                 sourceRev,
                                 offer,
                                 sourceProof,
-                                externalProof)));
+                                externalProof,
+                                context)));
         row.setContentHash(ChannelIdentity.hash(row.getMappingSnapshot()));
         if (sourceProof != null) {
             row.setSourceContentHash(sourceProof.contentHash());
@@ -267,6 +455,58 @@ public final class MappingPersistence {
         return row;
     }
 
+    /**
+     * A committed publication receipt proves past identity; it is never represented as a fresh
+     * platform identity query.
+     */
+    CimResourceMappingRevision appendHistorical(
+            CimResourceMapping mapping,
+            String revisionNo,
+            CatalogResourceIndex.Resource resource,
+            String connectionRevision,
+            Validation proof,
+            HistoricalEvidence evidence) {
+        var row =
+                append(
+                        mapping,
+                        0,
+                        revisionNo,
+                        resource.owner(),
+                        resource.sourceRef(),
+                        resource.revision(),
+                        resource.salesOfferRef(),
+                        resource.context(),
+                        "MANAGED",
+                        connectionRevision,
+                        null,
+                        "HISTORICAL_PUBLICATION:" + evidence.runNo(),
+                        null,
+                        null,
+                        "SYSTEM");
+        row.setMappingSnapshot(
+                db.json.writeValueAsString(
+                        new Snapshot(
+                                resource.key().type(),
+                                identity(mapping),
+                                resource.owner(),
+                                resource.sourceRef(),
+                                resource.revision(),
+                                resource.salesOfferRef(),
+                                proof,
+                                null,
+                                resource.context(),
+                                evidence)));
+        row.setContentHash(ChannelIdentity.hash(row.getMappingSnapshot()));
+        row.setValidationStatus("VERIFIED");
+        row.setSourceContentHash(proof.contentHash());
+        row.setValidationReceiptRef(proof.ownerReceiptNo());
+        row.setExternalEvidenceRef(evidence.itemReceiptRef());
+        row.setEffectiveAt(now());
+        row.setValidationExpiresAt(LocalDateTime.ofInstant(proof.validUntil(), ZoneOffset.UTC));
+        require(revisions.updateById(row) == 1);
+        return row;
+    }
+
     MappingRevisionVO view(CimResourceMappingRevision r) {
         return new MappingRevisionVO(
                 r.getRevisionNo(),
@@ -278,7 +518,8 @@ public final class MappingPersistence {
                 r.getMappingOrigin(),
                 r.getValidationStatus(),
                 r.getContentHash(),
-                r.getEffectiveAt() == null ? null : instant(r.getEffectiveAt()));
+                r.getEffectiveAt() == null ? null : instant(r.getEffectiveAt()),
+                context(r));
     }
 
     ResourceMappingVO view(CimResourceMapping m) {

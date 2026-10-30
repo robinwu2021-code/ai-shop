@@ -146,8 +146,8 @@ class InventoryDualWriteTest {
     }
 
     @Test
-    @DisplayName("★★ 退货：两本账都加回来")
-    void restoreIsMirrored() {
+    @DisplayName("旧 RESTORE 缺真实售后原单时保留待处理事件，不能猜测仓库恢复")
+    void legacyRestoreWithoutSavedAfterSaleOriginalRemainsPending() {
         Fixture f = fixture(10);
         String no = "SO-" + f.seq;
 
@@ -159,7 +159,12 @@ class InventoryDualWriteTest {
         stockPort.restore("AS-" + f.seq, List.of(new StockPort.SkuQty(f.skuNo, 2)));
         dispatcher.dispatchPending();
 
-        assertThat(onHand(f)).as("退货加回来").isEqualTo(7);
+        assertThat(onHand(f)).as("没有真实原单证据，Inventory 不能凭 SKU 所有权猜测恢复").isEqualTo(5);
+        SysOutbox pending = outboxMapper.selectOne(Wrappers.<SysOutbox>lambdaQuery()
+                .eq(SysOutbox::getAggregateId, "AS-" + f.seq)
+                .eq(SysOutbox::getEventType, InvMirrorEvent.RESTORE));
+        assertThat(pending).as("未证实的旧效果仍留在真实队列中重试").isNotNull();
+        assertThat(pending.getStatus()).isEqualTo(SysOutbox.PENDING);
     }
 
     @Test

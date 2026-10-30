@@ -1,9 +1,11 @@
 package ai.neargo.shop.trade.order.mapper;
 
 import ai.neargo.shop.trade.entity.OrdOrder;
+
+import org.apache.ibatis.annotations.*;
+
 import java.util.List;
 import java.util.Map;
-import org.apache.ibatis.annotations.*;
 
 @Mapper
 public interface RefundObligationMapper {
@@ -37,9 +39,14 @@ public interface RefundObligationMapper {
         + " VALUES(#{no},'STOCK',#{source},#{hash},#{payload},#{state},#{proof})")
     int createStock(@Param("no") String no,@Param("source") String source,@Param("hash") String hash,
         @Param("payload") String payload,@Param("state") String state,@Param("proof") String proof);
-    @Select("SELECT SUBSTRING(execution_no,5) FROM ord_refund_obligation WHERE kind='STOCK'"
-        + " AND state NOT IN ('SUCCEEDED','NOT_REQUIRED') AND next_attempt_at<=#{now} ORDER BY next_attempt_at,id LIMIT #{limit}")
-    List<String> pendingStock(@Param("now") long now,@Param("limit") int limit);
+
+    @Select(
+            "SELECT SUBSTRING(execution_no,5) FROM ord_refund_obligation WHERE kind='STOCK'"
+                    + " AND state NOT IN ('SUCCEEDED','NOT_REQUIRED')"
+                    + " AND (error_code IS NULL OR error_code<>'REFUND_EXECUTION_CONFLICT')"
+                    + " AND next_attempt_at<=#{now} ORDER BY next_attempt_at,id LIMIT #{limit}")
+    List<String> pendingStock(@Param("now") long now, @Param("limit") int limit);
+
     @Update("UPDATE ord_after_sale SET stock_restored=1 WHERE after_sale_no=#{as} AND deleted=0")
     int stockRestored(String as);
     @Update("UPDATE ord_refund_obligation SET state=#{state},authority_proof=#{proof},error_code=#{error},"

@@ -57157,7 +57157,7 @@
       {
         "owner": "INVENTORY",
         "version": 14,
-        "file": "backend/shop-inventory/src/main/resources/db/inventory/V14__exact_demand_plan.sql",
+        "file": "backend/inventory/inventory-domain/src/main/resources/db/inventory/V14__exact_demand_plan.sql",
         "status": "SOURCE_AVAILABLE_PENDING_DEPLOYMENT",
         "changes": [
           {
@@ -114309,7 +114309,7 @@
     {
       "owner": "INVENTORY",
       "version": 14,
-      "file": "backend/shop-inventory/src/main/resources/db/inventory/V14__exact_demand_plan.sql",
+      "file": "backend/inventory/inventory-domain/src/main/resources/db/inventory/V14__exact_demand_plan.sql",
       "status": "SOURCE_AVAILABLE_PENDING_DEPLOYMENT",
       "changes": [
         {

@@ -78,4 +78,20 @@ class DomainRuleParityTest {
             return "rejected";
         }
     }
+
+    /** 预留上冻结的来源清单哈希由商城下单时算、库存校验：两份实现差一个字节就是「原单对不上」 */
+    @Test
+    void sourceManifestHashMatchesShopContract() {
+        var shopLines = java.util.List.of(
+                new ai.neargo.shop.spi.product.StockPort.SkuQty("SKU-B", 2, "S1", "F1", 2),
+                new ai.neargo.shop.spi.product.StockPort.SkuQty("SKU-A", 1, null, "F1", 2),
+                new ai.neargo.shop.spi.product.StockPort.SkuQty("SKU-B", 3, "S1", "F1", 2),
+                new ai.neargo.shop.spi.product.StockPort.SkuQty("SK:U|1", 5, "S:2", "F|2", 2));
+        var domainLines = shopLines.stream().map(q -> new ai.neargo.inventory.domain.support.SourceStock.Qty(
+                q.skuNo(), q.qty(), q.storeNo(), q.fulfillmentRef(), q.lifecycleVersion())).toList();
+        assertThat(ai.neargo.inventory.domain.support.SourceStock.manifestHash(
+                ai.neargo.inventory.domain.support.SourceStock.needs(domainLines)))
+                .isEqualTo(ai.neargo.shop.spi.product.StockDispositionContract.manifestHash(
+                        ai.neargo.shop.spi.product.StockDispositionContract.needs(shopLines)));
+    }
 }

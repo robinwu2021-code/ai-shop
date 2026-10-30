@@ -1,0 +1,23 @@
+# Task68C root classpath-export correction — APPROVED after independent review
+Bounded correction to reviewed materialization addendum43/60 only. No A/B business or other C contract change. PhaseA static Maven model/compile inspection, no tests/native/oldbuild/serializer/app. Exact C2script scope retained; root owns this document.
+
+Observed: fully qualified maven-help-plugin3.4.1:evaluate project.testClasspathElements FAILED offline on2026-10-26: the evaluator internally attempted help3.5.1, absent from the pinned cache. Static plugin.xml/class constant-pool inspection confirms EvaluateMojo invokes help:evaluate descriptor resolution, so fully qualifying the outer goal does not pin that nested resolution. Do not use the failed command, fetch/install, patch POM/source/cache metadata or infer classpaths from cached owner jars.
+
+Replacement verified against CURRENT retail reactor:
+env JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2 -f backend/pom.xml -pl shop-app -am test-compile -DskipTests org.apache.maven.plugins:maven-dependency-plugin:3.7.0:build-classpath -DincludeScope=test
+Actual BUILD_SUCCESS21modules2.608s; no test goal/execution. Cached3.7.0 plugin descriptor requires test dependency resolution. Capture full log. Parse ONLY the unique exact module header '--- dependency:3.7.0:build-classpath (default-cli) @ shop-app ---' followed by its Dependencies classpath line; reject missing/duplicate section, empty/wildcard entries or plugin failure. Other modules' lists are not substitute inputs.
+
+The dependency goal emits DEPENDENCIES, excluding the current module's own output roots. Root/current manifest construction prepends, in exact order, actual shop-app/target/test-classes, shop-app/target/classes and shop-core/target/test-classes (for B1), then the emitted ordered dependency entries. Canonicalize paths and reject duplicates rather than silently dedup order. Actual current output209dependency entries all exist; all19 reactor owner dependency entries are current target/classes; zero installed ai.neargo.shop owner jars. This number is observation, not a future hardcoded acceptance count. Pin every class/resource leaf and order using reviewed closure semantics; explicit6artifact runner-tool union remains required and unchanged. Nonselected unrelated test classes are inputs only, not test selection.
+
+For genuine Task66 source materialization, replace ONLY the help:evaluate suffix with the same exact dependency3.7.0:build-classpath -DincludeScope=test goal in the existing offline isolated test-compile reactor session:
+mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2 -f <old-source>/backend/pom.xml -pl :shop-app -am test-compile -DskipTests org.apache.maven.plugins:maven-dependency-plugin:3.7.0:build-classpath -DincludeScope=test
+Construct old owner/fixture classpath as old shop-app/target/test-classes, old shop-app/target/classes, then its own emitted dependency entries. Do NOT append current or old core test-classes merely by analogy: genuine old CheckoutFlowFixture is in old shop-app test output; current compatibility tests belong solely to the current driver closure. Pin plugin3.7.0 jar/POM and all resolved plugin dependency inputs before old build; cached absence fails preparation. Do not edit old POM or use installed/current providers. Preserve all original genuine-old tree/source/class/resource checks and expected-vs-actual origin attestation.
+
+Old source build/classpath remains UNEXECUTED phaseB. Current successful export proves the exporter/current owner paths only, not old compilation/bootstrap. Any failure/installedjar/currentpath in old result fails closed. This ruling changes a build-model tool only and does not permit old/current app/JUnit/serializer/SQL/native execution in phaseA.
+
+Evidence hashes:
+failed help log SHA256 7a58f6882f7c53ce7854f32a2ed3217bc13799e49a063164c237ee051890b3b9
+successful dependency/export log SHA256 294fe104ea4ab8a7424f97ef3bdc1a71512699e1642592da7137bd2dcc79e7d8
+Root source-input fingerprint before/after must match. Add deterministic runner-source cases for exact module parsing, missing/duplicate header/empty entry, own output-prefix order, no installed/current-old mixing, and plugin failure. All Node cases UNEXECUTED now.
+
+Evidence index (reference-only publication addition): failed help /private/tmp/task68c-current-classpath-model.log; successful exporter /private/tmp/task68c-dependency-classpath-model.log. Independent reviewer approved original12bdef936b65c6f1ddd63a19051af9da459e5d06fba3dfd55f46fd5b78b5d94a; this status/index addition does not change the contract.

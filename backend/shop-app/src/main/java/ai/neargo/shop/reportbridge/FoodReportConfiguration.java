@@ -30,8 +30,10 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnProperty(name={"shop.report.enabled","shop.report.food.enabled"},havingValue="true")
 public class FoodReportConfiguration {
     @Bean ReportSourceFactsPort paymentReportFactsPort(ObjectProvider<InternalHttp> http) { return new RemotePaymentReportFactsPort(http); }
-    @Bean ReportSourceCollectionService reportSourceCollectionService(ObjectProvider<ReportSourceFactsPort> ports) {
-        return new ReportSourceCollectionServiceImpl(ports.orderedStream().toList());
+    @Bean ReportSourceCollectionService reportSourceCollectionService(ObjectProvider<ReportSourceFactsPort> ports,
+            ObjectProvider<ai.neargo.shop.spi.food.FoodStockReportFactsPort> local,
+            @org.springframework.beans.factory.annotation.Value("${shop.food.local-stock.enabled:false}")boolean enabled) {
+        return new ReportSourceCollectionServiceImpl(ports.orderedStream().toList(),local.getIfUnique(),enabled);
     }
     @Bean ReportRealtimePortAdapter reportRealtimePortAdapter(ReportRealtimeService service) {return new ReportRealtimePortAdapter(service);}
     @Bean ReportRealtimeService reportRealtimeService(ReportSourceCollectionService sources,ObjectProvider<ReportDayPort> ports,

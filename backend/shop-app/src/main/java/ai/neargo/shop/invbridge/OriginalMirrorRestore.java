@@ -7,6 +7,7 @@ import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.product.port.StockPortImpl;
 import ai.neargo.shop.spi.product.StockPort.RestoreResult;
+import ai.neargo.shop.spi.product.StockDispositionPort.Original;
 import ai.neargo.shop.spi.product.StockPort.SkuQty;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.ArrayList;
@@ -43,8 +44,20 @@ public class OriginalMirrorRestore {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public RestoreResult restore(String purpose, String originalRef, List<SkuQty> items) {
+        return restoreWithPlatform(purpose, originalRef, items, () -> platform.restoreOriginal(purpose,
+            originalRef, items));
+    }
+    /** The new source-aware route keeps the complete frozen tuple through the actual PLATFORM mutation owner. */
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public RestoreResult restore(String purpose, Original original, String confirmationOperationNo,
+        List<SkuQty> items) {
+        return restoreWithPlatform(purpose, original.orderNo(), items,
+                () -> platform.restoreOriginal(purpose, original, confirmationOperationNo, items));
+    }
+    private RestoreResult restoreWithPlatform(String purpose, String originalRef, List<SkuQty> items,
+        Runnable restore) {
         List<SkuQty> mirrored = selectOriginal(originalRef, items);
-        platform.restoreOriginal(purpose, originalRef, items);
+        restore.run();
         if (mirrored.isEmpty()) {
             return RestoreResult.COMPLETED;
         }

@@ -51,6 +51,20 @@ class OwnerWriteGuard {
     }
 
     /**
+     * 这个业主是否由本进程写（且 {@code systemCode} 非空时属于该系统）。给已经加了锁的跨业主结果集做过滤：
+     * 按单号加锁的顺序与留存检查沿用原实现，锁到别的写入方的行只是不碰。
+     */
+    boolean writes(String ownerId, String systemCode) {
+        InvOwner owner = ownerId == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getOwnerId, ownerId).select(InvOwner::getWriteAuthority, InvOwner::getSystemCode));
+        if (owner == null) {
+            return false;
+        }
+        String authority = owner.getWriteAuthority() == null ? InvEnums.WriteAuthority.EMBEDDED : owner.getWriteAuthority();
+        return writeMode.equals(authority) && (systemCode == null || systemCode.equals(owner.getSystemCode()));
+    }
+
+    /**
      * 跨业主批处理的业主子查询：写入方是本进程，{@code systemCode} 非空时再限定系统。
      * 拼进 SQL 的两个值都先收口（写入方只有两个常量，系统码按格式校验）。
      */

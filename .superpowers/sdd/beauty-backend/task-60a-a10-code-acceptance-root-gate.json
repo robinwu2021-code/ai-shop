@@ -1,0 +1,58 @@
+{
+  "base": "01185dcd5ebaddd4376d445ece0070386d8b6068",
+  "products": [
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/BeautyBm04EmbeddedHttpIT.java",
+      "status": "modified",
+      "baseSha256": "7c093c3861f5bb25225d4df5e687d04badf6e6447cc4d31d1ed139ab27108b87",
+      "finalSha256": "74f732a478ea0dbba21a79b5758529af37b27a05544056ae63fa0b3d575bdf13",
+      "bytes": 39561
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/BeautyBm04ConfirmationFixtureTest.java",
+      "status": "new",
+      "baseSha256": null,
+      "finalSha256": "ec2f25bf0172e922e20749d7844754a2eed9195c91fd7b0b1a91784dc0258ae8",
+      "bytes": 3164
+    }
+  ],
+  "reportSHA": "810385e67e39ca1fe2eb8a02fae0d506415efb6af7a579247fc40d0e81f266dc",
+  "evidenceFilesChecked": 29,
+  "ownerSourceFactsChecked": 22,
+  "xml": {
+    "initial-red": [
+      3,
+      3,
+      0,
+      0
+    ],
+    "first-green": [
+      3,
+      0,
+      0,
+      0
+    ],
+    "mutation-red": [
+      3,
+      2,
+      0,
+      0
+    ],
+    "final-green": [
+      3,
+      0,
+      0,
+      0
+    ]
+  },
+  "embeddedTestCompile": true,
+  "exactHelperRestoration": true,
+  "liveHTTPAndSQLAndProductionAblation": "DEFERRED60B notexecuted",
+  "reviewPackage": "/tmp/task60a-a10-review-package-ef06a299-f56f-46f1-9d57-93cd71fbbca0.diff",
+  "reviewPackageSHA": "afed949ec5fb8cb5d2d4438c9cafd854de8d690dd1c7d37e35027f369d18a736",
+  "productCommit": "55e3d1d1fe0d170d06d68569414a6cd5f4821d60",
+  "reviewSHA256": "ac77daa1bba9f4fb555e55a366219b07644373c4a96bd6deab616f350b63d5cf",
+  "spec": "PASS",
+  "quality": "Approved",
+  "liveRuntime": "UNEXECUTED deferred60B"
+}

@@ -11,9 +11,11 @@
 //   积分账 pts_voucher → pts_ledger_entry / pts_pool_flow
 //         ord_points_binding → ord_sub_order；售后决策 → ord_points_refund_binding
 //   旧 pts_user_ledger / stl_points_pool 属于未上线旧方案，保留空表，不参与当前链路
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
+import { readColumnNames, readSchema as readDdlSchema } from "../../../scripts/lib/ddl.mjs";
+// @ts-expect-error -- shared pure JavaScript lineage API
+import { KEY_OWNERS, TABLE_KEY_OWNERS, NAME_COLLISIONS, relations, resolveReference, columnBadge, unclassifiedBusinessKeys, describeRelation } from "../../../scripts/lib/schema-lineage.mjs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -119,367 +121,38 @@ const LINEAGE: Hop[] = [
   },
 ];
 
-/**
- * 业务键的**归属登记**：这个 `xxx_no` 是谁的主键、指向哪张表的哪一列。
- *
- * 为什么要显式登记而不是从表名推断：真实的表名与主键列名经常对不上 ——
- * `stl_bill` 的主键叫 `settle_no`、
- * `cmt_pickup_point` 的叫 `pickup_no`。用「表名去前缀 + _no」去猜，六个键会猜错。
- *
- * 角色化外键（同一张表被引用多次、列名各不相同）用 `col` 指明真正指向的列，
- * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
- */
-const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
-  active_job_no: { table: "prn_job", col: "job_no" },
-  active_attempt_no: { table: "prn_attempt", col: "attempt_no" },
-  agent_no: { table: "prn_agent" },
-  printer_no: { table: "prn_printer" },
-  route_version_no: { table: "prn_route_version" },
-  active_store_no: { table: "mch_store", col: "store_no" },
-  from_brand_no: { table: "mch_brand", col: "brand_no" },
-  to_brand_no: { table: "mch_brand", col: "brand_no" },
-  clearing_no: { table: "sv_clearing_entry" },
-  payer_entity_no: { table: "mch_entity", col: "entity_no" },
-  payee_entity_no: { table: "mch_entity", col: "entity_no" },
-  bill_no: { table: "sv_settlement_bill" },
-  amendment_no: { table: "ord_industry_amendment" },
-  application_no: { table: "ord_pricing_fee_application" },
-  // Current merchant, stored-value, pricing and print migration ownership.
-  first_store_no: { table: "mch_store", col: "store_no" },
-  // Original recharge store remains the same merchant-store identity in lots and clearing entries.
-  recharge_store_no: { table: "mch_store", col: "store_no" },
-  execution_no: { table: "ord_refund_execution" },
-  customer_no: { table: "sv_customer_identity" },
-  issuer_no: { table: "sv_issuer" },
-  scope_member_no: { table: "mbr_scope_member" },
-  issuer_version_no: { table: "sv_issuer_version" },
-  plan_version_no: { table: "sv_recharge_plan_version", col: "version_no" },
-  release_no: { table: "sv_release" },
-  collection_entity_no: { table: "mch_entity", col: "entity_no" },
-  settlement_entity_no: { table: "mch_entity", col: "entity_no" },
-  operating_entity_no: { table: "mch_entity", col: "entity_no" },
-  management_no: { table: "mch_management_space" },
-  brand_no: { table: "mch_brand" },
-  change_no: { table: "mch_brand_change" },
-  config_no: { table: "ord_store_pricing_config" },
-  template_revision_no: { table: "ord_pricing_template_revision", col: "revision_no" },
-  quota_no: { table: "sv_issue_quota" },
-  quote_line_no: { table: "ord_price_quote_line" },
-  device_no: { table: "prn_device" },
-  job_no: { table: "prn_job" },
-
-  build_no: { table: "pts_statement_build" },
-  voucher_no: { table: "pts_voucher" },
-  evidence_no: { table: "pts_fund_evidence" },
-  receivable_no: { table: "pts_receivable" },
-  statement_no: { table: "pts_store_statement", col: "position_no" },
-  cash_payment_no: { table: "stl_payment", col: "payment_no" },
-  origin_payment_no: { table: "stl_payment", col: "payment_no" },
-  pay_no: { table: "ord_create_intent" },
-  tier_no: { table: "pmt_recharge_tier" },
-  grant_no: { table: "ent_grant" },
-  instance_no: { table: "ent_instance" },
-  usage_no: { table: "ent_usage" },
-  source_order_no: { table: "ord_order", col: "order_no" },
-  recharge_no: { table: "sv_recharge" },
-  lot_no: { table: "sv_lot" },
-  exception_no: { table: "pay_ent_exception" },
-  recon_no: { table: "pay_ent_recon_run" },
-  stage_no: { table: "ent_migration_stage" },
-  alias_no: { table: "ent_migration_alias" },
-  checkout_no: { table: "ord_legacy_coupon_checkout" },
-  plan_no: { table: "ent_migration_plan" },
-  import_no: { table: "ent_migration_import" },
-  return_no: { table: "pmt_migration_return" },
-  target_template_no: { table: "ent_template", col: "template_no" },
-  template_version_no: { table: "ent_template_version", col: "version_no" },
-  activity_version_no: { table: "pmt_activity_version", col: "version_no" },
-
-  /*
-   * ── 2026-08-29 补齐的十三个 ──
-   * 归属判据不是靠猜：**看哪张表把它建成了唯一键**（schema-test.sql 里逐个查过），
-   * 只有一张表建唯一键的就是它的主；两张都建的进 NAME_COLLISIONS。
-   */
-  // 商品：标准品库是全平台共享的，prd_goods 引用它
-  std_no: { table: "prd_spu_std" },
-  // 规格：维度与取值两级。七张表引用 dim_no，四张引用 value_no ——
-  // 类目规格、商家自定义规格、商家覆盖都挂在同一套维度上
-  dim_no: { table: "prd_spec_dim" },
-  value_no: { table: "prd_spec_value" },
-  topic_no: { table: "prd_topic" },
-  /*
-   * 事件号：sys_outbox 是主（它建的唯一键），sys_event_consumed 引用它。
-   * 两张表是 Outbox 的一体两面 —— 前者记「发了什么」，后者记「谁处理过」。
-   * **不是同名不同义**：按 event_no join 这两张表是正确用法，
-   * 也正是排查「这个事件到底有没有被消费」时要做的第一件事。
-   */
-  event_no: { table: "sys_outbox" },
-  // 履约：运单与轨迹是一对多
-  shipment_no: { table: "lgs_waybill" },
-  /*
-   * 商户订单号：stl_payment 是主（它建的唯一键），trd_shipping_upload 引用它。
-   * 后者是微信「发货信息录入」的上报台账（V323），一次上报对应一笔支付 ——
-   * **按 out_trade_no join 这两张表是正确用法**，排查「这笔付了但微信说没发货」
-   * 时要做的第一件事就是它。不是同名不同义：两边都是同一个商户订单号，
-   * 传给微信的也是这一个值。
-   */
-  out_trade_no: { table: "stl_payment" },
-  // 商家服务范围。mch_channel_area 引用它 —— 渠道覆盖哪些服务区
-  area_no: { table: "mch_service_area" },
-  // 人档与会员：**两级，别混**。person_no 是跨商家的人，member_no 是他在某一家的会员身份。
-  // 按名字把这两个当一个用，会把「这个人在 A 家的消费」算到 B 家头上
-  person_no: { table: "usr_person" },
-  member_no: { table: "mbr_member" },
-  tag_no: { table: "mbr_tag" },
-  segment_no: { table: "mbr_segment" },
-  // 营销（promotion 这一族）
-  activity_no: { table: "pmt_activity" },
-  fission_no: { table: "mkt_fission_campaign" },
-  // 推送任务。mbr_reach_log 引用它 —— 一次群发对应一条 task，多条 log
-  task_no: { table: "notify_push_task" },
-
-  // 主体（全库重建后 merchant_no → entity_no；merchant 一词只留给支付语境）
-  entity_no: { table: "mch_entity" },
-  // 门店。**与 entity_no 是两级**：钱与信用挂主体，货与人挂门店 —— 按名字
-  // 把 store_no 当成 entity_no 用（或反过来）会在多门店之后连错，且不报错
-  store_no: { table: "mch_store" },
-  // 商家账号（B 端账号池本身，不是"员工附属表"），与平台运营 sys_ops_staff 无关
-  mch_account_no: { table: "mch_account" },
-  // 收款商户号业务键 —— 全库唯一合法的 "merchant" 用法；mch_store 引用它选收款号
-  pay_merchant_no: { table: "mch_payment_merchant" },
-  user_no: { table: "usr_account" },
-  order_no: { table: "ord_order" },
-  sub_order_no: { table: "ord_sub_order" },
-  community_no: { table: "cmt_community" },
-  pickup_no: { table: "cmt_pickup_point" },
-  goods_no: { table: "prd_goods" },
-  sku_no: { table: "prd_sku" },
-  category_no: { table: "prd_category" },
-  coupon_no: { table: "mkt_coupon" },
-  quote_no: { table: "mkt_quote" },
-  group_no: { table: "mkt_group_buy" },
-  // 社区集单的期（V335）：ord_sub_order.period_no 指向 pmt_period
-  period_no: { table: "pmt_period" },
-  // 平台活动报名单（V337）：pmt_enrollment_goods.enrollment_no 指向它
-  enrollment_no: { table: "pmt_enrollment" },
-  review_no: { table: "rvw_review" },
-  staff_no: { table: "sys_ops_staff" },
-  settle_no: { table: "stl_bill" },
-  // 放款单（V391）：stl_payout 的业务键，stl_bill.payout_no 引用它（一笔网银转账一条）
-  payout_no: { table: "stl_payout" },
-  after_sale_no: { table: "ord_after_sale" },
-  payment_no: { table: "stl_payment" },
-  // 用户的 USE 流水。商家进账挂它 —— 一次使用一条进账，见 LINEAGE 里那一跳
-  use_ledger_no: { table: "pts_user_ledger", col: "ledger_no" },
-
-  // 角色化外键：列名带角色前缀，指向的仍是主表的主键
-  inviter_no: { table: "usr_account", col: "user_no" },
-  // ⚠️ 命名欠账：按基准应叫 issuer_entity_no，改它要动积分域 Java 映射，随积分域下次动工时改
-  issuer_merchant_no: { table: "mch_entity", col: "entity_no" },
-
-  /*
-   * 保证金账户与流水都按商家挂，指向的是商家主体。
-   *
-   * ⚠️ 与上面 issuer_merchant_no 同一笔命名欠账：按基准该叫 entity_no。
-   * 建表时沿用了 merchant_no，因为准入这条链上（AdmissionPort、
-   * AdmissionService、两个 VO）从头到尾都叫 merchantNo，
-   * 只在两张表上改名会让读代码的人以为是两个东西。
-   * 要改就连着这条链一起改，单独动表名是净亏。
-   */
-  merchant_no: { table: "mch_entity", col: "entity_no" },
-};
-
-/**
- * 已登记的**同名不同义**列。
- *
- * 这些列名一样但语义完全不同，**不可以按名字 join**。
- * 登记在此是为了让下一个做 schema 分析的人（或脚本）不再连错 ——
- * 我们自己就连错过一次。
- */
-const NAME_COLLISIONS: Record<string, string> = {
-  print_fact_no: "订单支付事实由ord_print_fact持有，退款和充值事实由biz_print_fact持有；完整打印引用按sourceType、租户、主体、门店、场景和版本选择来源，不能仅按同名编号跨表join。",
-  trace_no: "营销归因链路追踪与打印操作审计追踪各自由来源系统产生，不能按同号跨域连接。",
-  receipt_no: "权益迁移返回凭证与打印设备回执是独立证据族，必须按来源表选择所属域。",
-  route_no: "打印管理路由目录与统一投递目标路由是不同层级；管理版本引用catalog，投递路由仍由统一服务持有。",
-  policy_version_no: "储值发行政策版本与打印场景政策版本各自发布，必须结合来源表选择所属版本族。",
-  source_event_no: "来源系统各自产生的事件号；必须结合source_system及原始来源，不能仅按同名跨系统关联。",
-  rule_no: "stl_fee_rule是结算费率规则；ord_price_quote_allocation保存本次试算规则标识，两套规则目录独立。",
-  subject_no: "角色成员与报价/人工改价都使用主体多态编号；需同时核验各自subject_type，不能当成单一外键。",
-  link_no: "会员来源、旧会员迁移关系与储值活动发布/审批各有独立关联记录；编号仅在对应关系族内有效。",
-  attempt_no: "物流订阅尝试与打印投递尝试独立生成，不能混为同一次执行。",
-  entry_no: "pts_ledger_entry积分分录与ent_ledger权益分录是不同账本，不共用分录身份。",
-  binding_no: "订单积分接线与品牌门店有效期绑定是不同聚合，不能按同名连接。",
-  adjustment_no: "积分人工调整与订单人工改价分别有自己的命令/审计身份。",
-  line_no: "库存对齐行与储值过账行只在各自父单据内编号，不能作为全局行身份。",
-  allocation_no: "储值冻结批次分配与报价金额分摊有不同对象、数量和金额语义。",
-  target_no: "权益所有者注册与储值发行政策的目标都是多态范围，必须结合target_type及所属域。",
-  document_no: "Core与Pay分别分配业务展示单号；通知保存来源单号，必须结合来源系统/单据类型，不能假定单一主表。",
-  active_revision_no: "行业模板与门店配置各自引用自己的不可变发布版本，按源表指定目标。",
-  previous_revision_no: "行业模板版本与门店配置版本各自形成历史链，不能跨版本族关联。",
-  draft_revision_no: "储值发布和Core活动审批冻结对应活动的草稿标识，必须连同activity_no及来源版本解释，非全库通用版本键。",
-  policy_no: "SKU定价策略、储值发行管控、人工改价策略是独立政策族，不能按同名跨域关联。",
-  bridge_actor_no: "打印桥接认证主体标识，需结合可信桥接凭证与租户核验；不是用户或运营账号表的通用外键。",
-  voucher_no: "积分凭证与储值凭证是独立账本；须按来源表选择pts_voucher或sv_voucher，禁止跨账本按号猜关联。",
-  quote_no: "营销报价与订单试算快照是独立报价族，须按来源表选择权威报价。",
-  plan_no: "权益迁移计划与储值充值方案是独立计划族；同名不表示相同方案。",
-  grant_no: "权益发放记录与经营管理授权是独立授权族，须按来源表解释。",
-
-  trade_no: "stl_payment 与 ord_payment_resolution 保存渠道交易号快照；该号仅在 pay_channel 范围内唯一，不能脱离渠道直接关联。",
-  source_shipment_no:
-    "lgs_waybill 与 lgs_channel_subscription 保存同一个上游发货身份的快照；更新订阅必须同时匹配 source_shipment_version，不能把历史订阅行当作当前运单主记录。",
-  parent_no: "不同层级树的父节点，必须结合所属树。",
-  provider_no: "通道回执需结合通道、资金方向与原请求。",
-  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
-  revision_no: "商品版本与积分账单版本，各自独立。",
-  holder_no: "积分持有人多态编号，必须结合 holder_type。",
-  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
-  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
-  migration_batch_no: "旧券迁移批次按tenant/sourceSystem/sourceTemplateNo限定，不是全局迁移主键；目标原子导入主键是import_no。",
-  aggregate_no: "订单状态聚合与Pay Outbox的多态聚合号，各自携带聚合类型。",
-  diff_no: "结算差异stl_recon_diff与权益差异pay_ent_recon_diff分别发号。",
-  current_version_no: "pmt_activity指活动版本，ent_template指权益模板版本，须按所属表限定。",
-  biz_no: "通道消息、储值凭证和权益异常各自按biz_type解释的多态业务号。",
-  account_no: "mch_payout_account为银行出款账户；sv_account为储值账户。",
-  version_no: "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
-  resource_no: "幂等结果和对账差异按对应资源类型解释，不是同一实体。",
-  actor_no: "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。",
-  decision_no: "Core订单源决定与旧券迁移永久源决定分别发号。",
-  reservation_no: "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",
-  source_decision_no: "Core订单源决定或迁移源决定，由source协议与purpose限定。",
-  operation_no: "统一使用意图或旧券原操作号，由protocol决定根表，不能仅按号合并。",
-  intent_no: "活动发权益与储值充值协调意图分别发号。",
-  source_template_no: "旧MKT或PMT根号，须同时校验source_system与tenant，禁止同号猜测。",
-  source_instance_no: "原旧券实例号，须同时校验source_system与tenant，禁止跨来源连接。",
-  source_usage_no: "原历史流水号，须同时校验source_system与source_instance_no。",
-
-  parent_no: "cmt_community.parent_no是社区层级，prd_category.parent_no是商品类目层级；各自树内引用，不能按全局名字连线。",
-  waybill_no:
-    "两边是**同一个快递运单号**，但它**不是外键**：运单号只在承运商内唯一，lgs_waybill 按（承运商, 运单号）登记；" +
-    "ord_shipment（订单服务 2.0 发货单，V401）记的是商家录入的号。\n" +
-    "  只按 waybill_no join 会把两家快递撞号的单连到一起 —— 要连必须带上承运商（ord_shipment.carrier = lgs_waybill.carrier）。",
-  flow_no:
-    "stl_points_pool 的是**积分池流水号**（平台自己发号，记池子的每一次增减）；" +
-    "stl_bank_flow 的是**银行给的流水号**（人工从网银导出，是出款对账的外部判据）。\n" +
-    "  两者的发号方不同、值域也不同，按名字 join 会把一笔积分变动连到一笔银行付款上。\n" +
-    "  与银行流水真正对勾的是 stl_bill.payment_ref —— 那一列才是同一个号。",
-  slot_no:
-    "mch_appointment_slot 是**预约时段**（到店服务：周三 14:00–15:00 这一格）；" +
-    "mkt_content_slot 是**内容位**（运营：首页第一屏那个楼层）。\n" +
-    "  两族毫不相干，只是中文都能叫「位」。按名字 join 会把某个商家的预约时段" +
-    "连到一个首页楼层上，而两边都有 slot_no 且都非空 —— 连错了不报错。",
-  sort_no:
-    "两张表各自的**排序序号**，不是任何东西的键：sys_market 是国家/地区在选择器里的顺序，" +
-    "mkt_content_slot 是同类内容位之间的先后。\n" +
-    "  同名同义（都是「小的在前」）但**没有共同的定义域**，按它 join 只会得到笛卡尔积。",
-  message_no:
-    "stl_channel_message 是**渠道报文**（支付：通道推给我方的回调、我方发给通道的调用）；" +
-    "notify_message 是**站内消息**（通知：发给用户看的那条）。\n" +
-    "  两族毫不相干，只是都叫「消息」。按名字 join 会把一条支付回调连到某个用户的收件箱上，" +
-    "而两边都有 message_no 且都非空 —— 连错了不会报错，只会安静地少几行或多几行。",
-  batch_no:
-    "ful_batch 是**到货批次**（履约：一车货到自提点）；" +
-    "sys_media_purge_batch 是**媒体清理批次**（运维：一次对象存储回收）。\n" +
-    "  两族毫不相干，只是都叫「批次」。按名字 join 会把一次清理任务连到一车货上。",
-  user_coupon_no:
-    "mkt_user_coupon 与 pmt_user_coupon 是**两套并行的券模型**：\n" +
-    "  mkt_* 是 marketing 那一族（CouponServiceImpl 用它），" +
-    "pmt_* 是 promotion 那一族（OpsPromotionServiceImpl 用它）。\n" +
-    "  **只有 pmt_* 登记进了数据域**，mkt_* 没有 —— 所以按名字混用两族，" +
-    "除了连错行，还会让一半查询悄悄不受数据域约束。",
-  issue_no:
-    "同 user_coupon_no：mkt_coupon_issue 与 pmt_coupon_issue 各自建了唯一键，是两族。\n" +
-    "  pmt_user_coupon 里的 issue_no 指的是 pmt_coupon_issue —— 同族内是外键，跨族不是。",
-  tax_no:
-    "**它根本不是编号，是纳税人识别号这个业务值**（ord_invoice_request 开票抬头填的、" +
-    "stl_settle_invoice 结算发票上印的）。两张表都没给它建唯一键。\n" +
-    "  同一个纳税人识别号本来就该在多张表里重复出现，按它 join 得到的是笛卡尔积。",
-
-  receiver_no:
-    "notify_message 与 notify_push_token 都是「收件人编号」，但**都是多态的**：\n" +
-    "  真正的含义由同表的 receiver_type 决定 —— USER 时是 usr_user.user_no，" +
-    "STAFF 时是 mch_staff.staff_no（两族编号，取值空间不重叠但也不保证）。\n" +
-    "  所以它不是任何一张表的外键，按名字 join 会把店员的设备连到买家身上：" +
-    "**推送发错人**，而且不报错。要连必须带上 receiver_type 一起连。",
-  request_no:
-    "mkt_request 是求团需求单号；stl_split_log 是分账幂等号；" +
-    "ord_invoice_request 是开票申请单号。**三族**，互不相干。\n" +
-    "  建表时已发现约束名会撞车并加了 uk_split_request_no 前缀，但列名的撞车还在。",
-  invoice_no:
-    "**三个方向的票，这是最危险的一组同名**：\n" +
-    "  stl_purchase_invoice 是**进项**（供应商开给平台，决定平台能不能列支成本）；\n" +
-    "  ord_invoice_request 是**销项·对消费者**（平台开给买家，ADR-017 §3.4 条件 2，" +
-    "决定归集资金模式成不成立）；\n" +
-    "  stl_settle_invoice 是**销项·对商家**（平台开给商家的结算凭证，P-12.2.4）。\n" +
-    "  义务人、方向、法律后果各不相同 —— 按名字 join 出来的「发票」会把进项当销项，" +
-    "而三边都有值、都不报错。",
-  express_no: "ord_sub_order 是发货快递单号；ord_after_sale 是用户退货的快递单号。方向相反。",
-  apply_no:
-    "mch_entity_apply 是商家入驻申请单；cmt_community_apply 是商家提报新社区的单子。\n" +
-    "  两者都是「某人申请某事」，但申请的对象完全不同 —— 按名字 join 会把入驻单连到社区提报上。",
-  ref_no:
-    "stl_points_pool 是积分池指向的业务单据；mch_store_audit 是审核单指向的业务记录" +
-    "（kind=SERVICE_AREA 时是 mch_service_area.area_no）。\n" +
-    "  两者都是「指针列」，但**指向的表由同行的另一列决定**（前者看 pool 类型，后者看 kind）——" +
-    "所以谁都不能登记成外键，按名字 join 必然连错，且不报错。",
-  operator_no: "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
-  template_no:
-    "**同一个列名下有独立的模板族**：notify_template 是消息模板，notify_message.template_no 引用它；" +
-    "prd_spec_template.template_no 是商品规格模板，ent_template/ent_template_version是支付权益模板；三族互不相干。\n" +
-    "  按名字 join 会把「发过哪条推送」连到「用了哪个规格模板」上 —— 两边都有值，不报错。\n" +
-    "  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n" +
-    "  注意 notify_message → notify_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，" +
-    "触达链路断了的后果（推送发不出去）不在这个文件的职责里。",
-  txn_no:
-    "mch_deposit_txn.txn_no 是保证金流水号（平台代管商家资金，将来要退还）；\n" +
-    "  mch_debt_txn.txn_no 是商家欠款流水号（平台垫付后向商家追偿）。\n" +
-    "  两者都是各自表的唯一业务键（各自建了 uk），资金方向相反 ——" +
-    "按名字 join 会把保证金扣款连到欠款追偿上，而两边都有值、不报错。",
-  source_no:
-    "mbr_member_source.source_no 是会员引荐来源码（记录「这个会员从哪个推广渠道来」，建了全局唯一键）；\n" +
-    "  mch_debt_txn.source_no 是欠款来源单号（指向售后单号或结算单号，可为空，由 source_type 决定含义）。\n" +
-    "  两者都是「来源」但完全不同义 —— 按名字 join 会把会员拉新来源连到商家欠款上。",
-  log_no:
-    "mch_staff_log.log_no 是员工操作日志的流水号；\n" +
-    "  pay_risk_shadow_log.log_no 是支付风控影子模式拦截记录的流水号（只记录、不真拦）。\n" +
-    "  两者都是各自表的唯一业务键，所属域完全不同 —— 按名字 join 会把员工操作连到风控影子记录上。",
-};
-
-const SCOPED_KEY_OWNERS = {
-  "prn_route_version.route_no": "prn_route_catalog",
-  "prn_request.policy_version_no": "prn_policy_version",
-  "sv_issue_policy_version.policy_version_no": "sv_issue_policy_version",
-  "prn_receipt.receipt_no": "prn_receipt",
-  "ent_migration_return.receipt_no": "ent_migration_return",
-  "pts_ledger_entry.voucher_no": "pts_voucher",
-  "pts_pool_flow.voucher_no": "pts_voucher",
-  "sv_entry.voucher_no": "sv_voucher",
-  "sv_posting_line.voucher_no": "sv_voucher",
-  "sv_statement.voucher_no": "sv_voucher",
-  "ord_pricing_template.active_revision_no": "ord_pricing_template_revision",
-  "ord_store_pricing_config.active_revision_no": "ord_store_pricing_revision",
-  "ord_pricing_template_revision.previous_revision_no": "ord_pricing_template_revision",
-  "ord_store_pricing_revision.previous_revision_no": "ord_store_pricing_revision",
-  "ord_price_quote_line.quote_no": "ord_price_quote",
-  "ord_price_quote_allocation.quote_no": "ord_price_quote",
-  "sv_recharge_plan_version.plan_no": "sv_recharge_plan",
-  "sv_recharge.plan_no": "sv_recharge_plan",
-  "mch_management_grant.grant_no": "mch_management_grant",
-  "mkt_quote_revision.quote_no": "mkt_quote",
-  "ord_pricing_funding_source.quote_no": "ord_price_quote",
-  "ord_industry_order_source.quote_no": "ord_price_quote",
-  "pts_topup_plan.plan_no": "pts_topup_plan",
-  "pmt_migration_decision.plan_no": "ent_migration_plan",
-  "ent_migration_import.plan_no": "ent_migration_plan",
-  "sv_statement.plan_no": "sv_recharge_plan",
-  "ent_instance.grant_no": "ent_grant",
-  "ent_sale_reservation.grant_no": "ent_grant",
-  "pmt_pay_coupon_projection.grant_no": "ent_grant",
-  "sv_issue_policy_version.policy_no": "sv_issue_policy",
-  "ord_manual_price_adjustment.policy_no": "ord_manual_price_policy"
-};
-
 describe("对账血缘", () => {
   const schema = readSchema();
+  const tables = readDdlSchema(ROOT);
+
+  it("manual execution uses scoped original owner relations without changing existing task/grant owners", () => {
+    const unit = resolveReference(tables, "ord_service_execution", "unit_no");
+    expect(unit?.to).toBe("ord_service_execution_unit");
+    expect(unit?.scope).toEqual([
+      { from: "tenant_no", to: "tenant_no" }, { from: "entity_no", to: "entity_no" },
+      { from: "store_no", to: "store_no" },
+    ]);
+    expect(resolveReference(tables, "ord_service_execution_unit", "source_line_no")?.to)
+      .toBe("ord_checkout_line");
+    expect(resolveReference(tables, "ord_service_execution_action", "execution_no")?.to)
+      .toBe("ord_service_execution");
+    expect(resolveReference(tables, "ord_service_execution_unit", "task_no")).toBeNull();
+    expect(KEY_OWNERS.task_no.table).toBe("notify_push_task");
+    expect(resolveReference(tables, "mbr_reach_log", "task_no")?.to).toBe("notify_push_task");
+    expect(relations(tables).some((r: any) => r.from === "ord_service_execution_unit"
+      && r.to === "notify_push_task")).toBe(false);
+    expect(resolveReference(tables, "ent_sale_reservation", "grant_no")?.to).toBe("ent_grant");
+    expect(resolveReference(tables, "ord_service_execution", "grant_no")).toBeNull();
+  });
+
+  it("共用人员键归属明确且不把账号关联或岗位编号误连到其他业务", () => {
+    expect(KEY_OWNERS.personnel_no).toEqual({ table: "mch_personnel" });
+    expect(KEY_OWNERS.assignment_no).toEqual({ table: "mch_personnel_store" });
+    expect(NAME_COLLISIONS.link_no).toContain("人员");
+    expect(NAME_COLLISIONS.position_no).toContain("岗位");
+    expect(schema.get("mch_personnel_store")?.has("personnel_no")).toBe(true);
+    expect(schema.get("mch_personnel_position")?.has("assignment_no")).toBe(true);
+  });
 
   it("解析到了迁移 —— 解析失效时不能静默通过", () => {
     // 正则解析最坏的失败方式是「一张表都没抽到」却报绿
@@ -509,18 +182,7 @@ describe("对账血缘", () => {
   it("新出现的跨表同名业务键必须被分类", () => {
     if (!schema.size) return;
 
-    const byKey = new Map<string, string[]>();
-    for (const [table, cols] of schema) {
-      for (const c of cols) {
-        if (!c.endsWith("_no") || c === "tenant_no") continue;
-        byKey.set(c, [...(byKey.get(c) ?? []), table]);
-      }
-    }
-
-    const unclassified = [...byKey]
-      .filter(([, ts]) => ts.length >= 2)
-      .filter(([k]) => !(k in KEY_OWNERS) && !(k in NAME_COLLISIONS))
-      .map(([k, ts]) => `${k}（出现在 ${ts.join("、")}）`);
+    const unclassified = unclassifiedBusinessKeys(tables);
 
     expect(
       unclassified,
@@ -541,18 +203,6 @@ describe("对账血缘", () => {
       broken,
       `KEY_OWNERS 里这些归属指向了不存在的表或列：${broken.join("、")}`,
     ).toEqual([]);
-  });
-
-  it("与 gen-erd.mjs 的键归属表一致 —— 两份分叉会让 ER 图连错线", async () => {
-    // ER 图生成器要靠同一份归属画关系。两处各存一份必然漂移，
-    // 而漂移的表现是「图上少了一条线」或「连到了错的表」—— 没人会发现。
-    const gen = (await import("../../../scripts/gen-erd.mjs")) as {
-      KEY_OWNERS: Record<string, string>;
-    };
-    const mine = Object.fromEntries(
-      Object.entries(KEY_OWNERS).map(([k, v]) => [k, v.table]),
-    );
-    expect(gen.KEY_OWNERS, "gen-erd.mjs 与本文件的 KEY_OWNERS 不一致").toEqual(mine);
   });
 
   it("登记的同名冲突仍然存在 —— 解决了要删登记", () => {
@@ -589,11 +239,262 @@ describe("对账血缘", () => {
     const secretHistory = "backend/secret/secret-store/src/main/resources/db/secret";
     const fixtureSchema = readColumnNames(ROOT, ["backend/shop-app/src/main/resources/db/migration", payHistory,
       ...(existsSync(join(ROOT, secretHistory)) ? [secretHistory] : [])]) as Map<string, { cols: string[] }>;
-    const onlyJs = [...fixtureSchema.keys()].filter((t) => !inH2.has(t));
+    // Exact native-owner omissions belong to the shared H2 policy, never an ad hoc table exemption.
+    const projectionPolicy = JSON.parse(readFileSync(join(ROOT, "backend/scripts/h2-fixture-policy.json"), "utf8"));
+    const nativeAbsent = new Set<string>(projectionPolicy.entries
+      .filter((entry: any) => entry.datasource === "PRIMARY" && entry.mode === "NATIVE_OWNER_ABSENT")
+      .flatMap((entry: any) => entry.absentTables));
+    const onlyJs = [...fixtureSchema.keys()].filter((t) => !inH2.has(t) && !nativeAbsent.has(t));
     const onlyPy = [...inH2].filter((t) => !fixtureSchema.has(t));
+    const unexpectedNative = [...nativeAbsent].filter((t) => inH2.has(t));
     expect(
-      { onlyJs, onlyPy },
-      "JS 与 python 解析出的表集合不一致 —— 重跑 npm run gen:erd 与 gen-test-schema.py",
-    ).toEqual({ onlyJs: [], onlyPy: [] });
+      { onlyJs, onlyPy, unexpectedNative },
+      "JS 与 python 解析出的表集合或原生 owner 缺席策略不一致 —— 重跑 npm run gen:erd 与 gen-test-schema.py",
+    ).toEqual({ onlyJs: [], onlyPy: [], unexpectedNative: [] });
+  });
+  const tenant = [{ from: "tenant_no", to: "tenant_no" }];
+  const ref = (from: string, col: string, to: string, toCol = col, scope = tenant) => ({ from, col, to, toCol, scope });
+  const byColumn = (col: string) => relations(tables).filter((r: any) => r.col === col);
+
+  // A global marketing owner would fabricate checkout edges and lose tenant scope.
+  it("quote_no 保留营销、统一定价与结算三族的 tenant 内关系", () => {
+    expect(byColumn("quote_no")).toEqual([
+      ref("mkt_quote_revision", "quote_no", "mkt_quote"),
+      ref("ord_price_quote_line", "quote_no", "ord_price_quote"),
+      ref("ord_price_quote_allocation", "quote_no", "ord_price_quote"),
+      ref("ord_pricing_funding_source", "quote_no", "ord_price_quote"),
+      ref("ord_industry_order_source", "quote_no", "ord_price_quote"),
+      ref("ord_checkout_confirmation", "quote_no", "ord_checkout_quote"),
+    ]);
+  });
+
+  it.each([
+    ["prn_route_version", "route_no", "prn_route_catalog", "route_no"],
+    ["prn_request", "policy_version_no", "prn_policy_version", "policy_version_no"],
+    ["sv_recharge", "plan_no", "sv_recharge_plan", "plan_no"],
+    ["sv_statement", "plan_no", "sv_recharge_plan", "plan_no"],
+    ["ord_pricing_template", "active_revision_no", "ord_pricing_template_revision", "revision_no"],
+    ["ord_store_pricing_config", "active_revision_no", "ord_store_pricing_revision", "revision_no"],
+  ])("统一新增关系 %s.%s 保留真实目标列及 tenant", (from, col, to, toCol) => {
+    expect(resolveReference(tables, from, col)).toEqual(ref(from, col, to, toCol));
+  });
+
+  it("统一打印及品牌角色键归属不因抽取 resolver 而丢失", () => {
+    expect(KEY_OWNERS.active_job_no).toEqual({ table: "prn_job", col: "job_no" });
+    expect(KEY_OWNERS.from_brand_no).toEqual({ table: "mch_brand", col: "brand_no" });
+    expect(KEY_OWNERS.to_brand_no).toEqual({ table: "mch_brand", col: "brand_no" });
+    expect(KEY_OWNERS.collection_entity_no).toEqual({ table: "mch_entity", col: "entity_no" });
+  });
+
+  it("source_line_no 仅包含结算行实际存在的 scope 列", () => {
+    expect(resolveReference(tables, "ord_service_execution_unit", "source_line_no"))
+      .toEqual(ref("ord_service_execution_unit", "source_line_no", "ord_checkout_line", "source_line_no", [
+        ...tenant, { from: "caller", to: "caller" },
+        { from: "source_operation_no", to: "operation_no" },
+        { from: "sub_order_no", to: "sub_order_no" },
+      ]));
+  });
+
+  it("quote_no 两根不连自身或跨族，结算确认不连营销报价", () => {
+    for (const root of ["mkt_quote", "ord_price_quote", "ord_checkout_quote"]) {
+      expect(schema.get(root)?.has("quote_no")).toBe(true);
+      expect(resolveReference(tables, root, "quote_no"), root).toBeNull();
+      expect(byColumn("quote_no").filter((r: any) => r.from === root)).toEqual([]);
+      expect(columnBadge(tables, root, "quote_no")).not.toContain('fk');
+    }
+    expect(byColumn("quote_no").filter((r: any) =>
+      (r.from.startsWith("ord_checkout_") && r.to === "mkt_quote") ||
+      (r.from.startsWith("mkt_") && r.to === "ord_checkout_quote")
+    )).toEqual([]);
+  });
+
+  it("仅 operation.current_quote_no 引用 tenant 内结算报价", () => {
+    const expected = ref("ord_checkout_operation", "current_quote_no", "ord_checkout_quote", "quote_no");
+    expect(byColumn("current_quote_no")).toEqual([expected]);
+    expect(resolveReference(tables, "ord_checkout_operation", "current_quote_no")).toEqual(expected);
+    expect(columnBadge(tables, "ord_checkout_operation", "current_quote_no")).toBe('<i class="k fk">FK</i>');
+    const extended = new Map(tables);
+    extended.set("unreviewed_operation", { cols: [{ name: "current_quote_no" }, { name: "tenant_no" }], uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_operation", "current_quote_no")).toBeNull();
+    expect(columnBadge(extended, "unreviewed_operation", "current_quote_no")).toBe("");
+  });
+
+  it("quote_no 未审计来源表拒绝分类和 FK，保留 UK 优先", () => {
+    const extended = new Map(tables);
+    extended.set("unreviewed_quote", { cols: [{ name: "quote_no" }, { name: "tenant_no" }], uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_quote", "quote_no")).toBeNull();
+    expect(relations(extended).filter((r: any) => r.from === "unreviewed_quote")).toEqual([]);
+    expect(columnBadge(extended, "unreviewed_quote", "quote_no")).toBe("");
+    expect(unclassifiedBusinessKeys(extended).filter((x: string) => x.startsWith("quote_no（"))).toEqual([
+      "quote_no（出现在 mkt_quote、mkt_quote_revision、ord_price_quote、ord_price_quote_line、ord_price_quote_allocation、ord_pricing_funding_source、ord_industry_order_source、ord_pricing_fee_application、ord_pricing_fee_advice、ord_checkout_quote、ord_checkout_confirmation、unreviewed_quote）",
+    ]);
+    extended.get("unreviewed_quote").uniques.add("quote_no");
+    expect(columnBadge(extended, "unreviewed_quote", "quote_no")).toBe('<i class="k uk">UK</i>');
+    expect(resolveReference(extended, "unreviewed_quote", "quote_no")).toBeNull();
+  });
+
+  it("voucher_no 保留积分两条与储值三条同族关系且不跨族、不连根、不 self", () => {
+    expect(byColumn("voucher_no").some((r: any) => r.from.startsWith("sv_") && r.to === "pts_voucher"), "stored-value must never reference points voucher").toBe(false);
+    expect(byColumn("voucher_no").some((r: any) => r.from.startsWith("pts_") && r.to === "sv_voucher"), "points must never reference stored-value voucher").toBe(false);
+    expect(byColumn("voucher_no")).toEqual([
+      ref("pts_ledger_entry", "voucher_no", "pts_voucher", "voucher_no", []),
+      ref("pts_pool_flow", "voucher_no", "pts_voucher", "voucher_no", []),
+      ref("sv_entry", "voucher_no", "sv_voucher"),
+      ref("sv_posting_line", "voucher_no", "sv_voucher"),
+      ref("sv_statement", "voucher_no", "sv_voucher"),
+    ]);
+    for (const t of ["pts_voucher", "sv_voucher"]) {
+      expect(resolveReference(tables, t, "voucher_no")).toBeNull();
+    }
+    expect(relations(tables).some((r: any) => r.from === r.to)).toBe(false);
+  });
+
+  it.each([
+    ["pmt_migration_decision", "plan_no", "ent_migration_plan", "plan_no", tenant],
+    ["ent_migration_import", "plan_no", "ent_migration_plan", "plan_no", tenant],
+    ["ent_legacy_coupon_operation", "source_order_no", "ord_order", "order_no", tenant],
+    ["ent_sale_reservation", "grant_no", "ent_grant", "grant_no", tenant],
+    ["pmt_pay_coupon_projection", "grant_no", "ent_grant", "grant_no", tenant],
+    ["ord_checkout_payment_request", "actor_account_no", "mch_account", "mch_account_no", tenant],
+    ["stl_payment_operation", "actor_account_no", "mch_account", "mch_account_no", tenant],
+    ["pmt_activity_reservation", "tier_no", "pmt_recharge_tier", "tier_no", [...tenant, { from: "version_no", to: "version_no" }]],
+    ["prd_store_catalog_version", "catalog_no", "prd_store_catalog", "catalog_no", [...tenant, { from: "entity_no", to: "entity_no" }]],
+  ])("限定正向关系 %s.%s 保留目标列和全部 scope", (from, col, to, toCol, scope) => {
+    const expected = ref(from as string, col as string, to as string, toCol as string, scope as typeof tenant);
+    expect(resolveReference(tables, from, col)).toEqual(expected);
+    expect(relations(tables)).toContainEqual(expected);
+    const uniqueSource = ["pmt_migration_decision", "ent_migration_import", "prd_store_catalog_version"].includes(from as string);
+    expect(columnBadge(tables, from, col)).toBe(uniqueSource ? '<i class="k uk">UK</i>' : '<i class="k fk">FK</i>');
+    const description = describeRelation(expected);
+    expect(description).toContain(`${from}.${col} → ${to}.${toCol}`);
+    for (const pair of scope as typeof tenant) expect(description).toContain(`${from}.${pair.from} = ${to}.${pair.to}`);
+  });
+
+  it("buyer 角色四表指 user_no；confirmation 与迁移 return 保留 tenant", () => {
+    expect(byColumn("buyer_no")).toEqual([
+      ref("ord_checkout_operation", "buyer_no", "usr_account", "user_no"),
+      ref("ord_checkout_confirmation", "buyer_no", "usr_account", "user_no"),
+      ref("ord_checkout_payment_request", "buyer_no", "usr_account", "user_no"),
+      ref("stl_payment_operation", "buyer_no", "usr_account", "user_no"),
+    ]);
+    expect(byColumn("confirmation_no")).toEqual([
+      ref("ord_checkout_operation", "confirmation_no", "ord_checkout_confirmation"),
+      ref("ord_service_execution", "confirmation_no", "ord_checkout_confirmation"),
+    ]);
+    expect(byColumn("return_no")).toEqual([ref("ent_migration_return", "return_no", "pmt_migration_return")]);
+  });
+
+  it.each([
+    ["ent_ledger", "instance_no", "ent_instance", "instance_no"],
+    ["ent_use_reversal", "usage_no", "ent_usage", "usage_no"],
+    ["sv_lot", "recharge_no", "sv_recharge", "recharge_no"],
+    ["sv_entry", "lot_no", "sv_lot", "lot_no"],
+    ["pay_ent_exception_action", "exception_no", "pay_ent_exception", "exception_no"],
+    ["pay_ent_recon_diff", "recon_no", "pay_ent_recon_run", "recon_no"],
+    ["ent_migration_plan", "stage_no", "ent_migration_stage", "stage_no"],
+    ["ent_migration_plan", "alias_no", "ent_migration_alias", "alias_no"],
+    ["ent_legacy_coupon_operation", "checkout_no", "ord_legacy_coupon_checkout", "checkout_no"],
+    ["ent_migration_asset", "import_no", "ent_migration_import", "import_no"],
+    ["ent_migration_return", "return_no", "pmt_migration_return", "return_no"],
+    ["ent_legacy_coupon_issue", "target_template_no", "ent_template", "template_no"],
+    ["ent_grant", "template_version_no", "ent_template_version", "version_no"],
+    ["sv_recharge", "activity_version_no", "pmt_activity_version", "version_no"],
+  ])("真实普通/角色引用 %s.%s → %s.%s", (from, col, to, toCol) => {
+    expect(resolveReference(tables, from, col)).toEqual(ref(from, col, to, toCol));
+    expect(relations(tables)).toContainEqual(ref(from, col, to, toCol));
+  });
+
+  it("协议/条件/局部键的每个实际源表均无无条件 FK", () => {
+    const negatives: Record<string, string[]> = {
+      receipt_no: ["stl_payment", "ent_migration_return"],
+      source_event_no: ["sys_outbox", "pmt_effect_projection"],
+      entry_no: ["pts_ledger_entry", "ent_ledger"],
+      line_no: ["prd_stock_alignment_line", "sv_posting_line"],
+      execution_no: ["ord_refund_execution", "ord_refund_obligation"],
+      actor_account_no: ["mch_staff_log"],
+      plan_no: ["pts_topup_plan", "ent_migration_plan"],
+      source_order_no: ["ent_usage"],
+      grant_no: ["ent_instance", "ent_grant"],
+      tier_no: ["pmt_recharge_tier"],
+      catalog_no: ["prd_store_catalog"],
+    };
+    for (const [col, sources] of Object.entries(negatives)) for (const from of sources) {
+      expect(schema.get(from)?.has(col), `${from}.${col} really exists`).toBe(true);
+      expect(resolveReference(tables, from, col), `${from}.${col}`).toBeNull();
+      expect(byColumn(col).filter((r: any) => r.from === from), `${from}.${col}`).toEqual([]);
+      expect(columnBadge(tables, from, col), `${from}.${col}`).not.toContain('fk');
+    }
+  });
+
+  const fixture = (source = ["buyer_no", "tenant_no"], target = ["user_no", "tenant_no"], uniques: string[] = []) => new Map([
+    ["fixture_source", { cols: source.map(name => ({ name })), uniques: new Set(uniques) }],
+    ["usr_account", { cols: target.map(name => ({ name })), uniques: new Set() }],
+  ]);
+  it("目标角色列及 scope 双方列必须存在；badge 使用同一真实 resolver", () => {
+    for (const f of [fixture(undefined, ["tenant_no"]), fixture(["buyer_no"]), fixture(undefined, ["user_no"]), fixture(["tenant_no"])]) {
+      expect(relations(f)).toEqual([]);
+      expect(columnBadge(f, "fixture_source", "buyer_no")).toBe("");
+    }
+    expect(relations(fixture())).toEqual([ref("fixture_source", "buyer_no", "usr_account", "user_no")]);
+    expect(columnBadge(fixture(), "fixture_source", "buyer_no")).toBe('<i class="k fk">FK</i>');
+    expect(columnBadge(fixture(undefined, undefined, ["buyer_no"]), "fixture_source", "buyer_no")).toBe('<i class="k uk">UK</i>');
+    expect(columnBadge(fixture(undefined, ["tenant_no"], ["buyer_no"]), "fixture_source", "buyer_no")).toBe('<i class="k uk">UK</i>');
+  });
+
+  it.each(["unit_no", "action_no", "source_line_no", "source_operation_no", "declaration_no",
+    "receipt_no", "source_event_no", "actor_account_no", "execution_no", "entry_no", "line_no", "catalog_no", "voucher_no", "tier_no", "plan_no", "source_order_no", "grant_no"])("审计冲突 %s 未知新成员必须拒绝分类及 edge", col => {
+    const extended = new Map(tables);
+    extended.set("unreviewed_table", { cols: [{ name: col }, { name: "tenant_no" }], uniques: new Set() });
+    expect(resolveReference(extended, "unreviewed_table", col)).toBeNull();
+    expect(columnBadge(extended, "unreviewed_table", col)).toBe("");
+    expect(unclassifiedBusinessKeys(extended).some((x: string) => x.startsWith(`${col}（`) && x.includes("unreviewed_table"))).toBe(true);
+  });
+
+  it("全登记 owner 和限定引用目标及 scope 列真实存在", () => {
+    for (const [from, owners] of Object.entries(TABLE_KEY_OWNERS) as [string, Record<string, any>][]) for (const [col, owner] of Object.entries(owners)) {
+      expect(schema.get(from)?.has(col), `${from}.${col}`).toBe(true);
+      expect(schema.get(owner.table)?.has(owner.col ?? col)).toBe(true);
+      for (const pair of owner.scope ?? []) {
+        expect(schema.get(from)?.has(pair.from)).toBe(true);
+        expect(schema.get(owner.table)?.has(pair.to)).toBe(true);
+      }
+    }
+  });
+
+  it("原两条 points LINEAGE 是实际生产关系", () => {
+    for (const from of ["pts_ledger_entry", "pts_pool_flow"]) expect(relations(tables)).toContainEqual(ref(from, "voucher_no", "pts_voucher", "voucher_no", []));
+  });
+
+  it("条件说明保留真实链路及限定语义", () => {
+    expect(NAME_COLLISIONS.source_order_no).toContain("SERVICE_USE");
+    expect(NAME_COLLISIONS.source_order_no).toContain("ord_sub_order.sub_order_no");
+    expect(NAME_COLLISIONS.grant_no).toContain("MIGRATION_BASELINE");
+    expect(NAME_COLLISIONS.grant_no).toContain("ent_migration_asset.baseline_no");
+    expect(NAME_COLLISIONS.execution_no).toContain("PRF-");
+    expect(NAME_COLLISIONS.execution_no).toContain("ord_points_refund_execution");
+    expect(NAME_COLLISIONS.execution_no).toContain("ord_refund_execution");
+  });
+
+});
+
+// The actual parsed coordination table has a discriminator, never a bare scope_no FK.
+describe("shared marketing counter fence lineage", () => {
+  const tables = readDdlSchema(ROOT);
+  it("keeps ENTITY and PLATFORM scope_no conditional on tenant and scope_kind", () => {
+    const columns = tables.get("mkt_counter_campaign_fence")?.cols.map((c: any) => c.name);
+    expect(columns).toEqual(["tenant_no", "scope_kind", "scope_no", "revision"]);
+    expect(KEY_OWNERS.scope_no).toBeUndefined();
+    expect(resolveReference(tables, "mkt_counter_campaign_fence", "scope_no")).toBeNull();
+    expect(relations(tables).filter((r: any) => r.from === "mkt_counter_campaign_fence")).toEqual([]);
+    expect(NAME_COLLISIONS.scope_no).toContain("tenant_no+scope_kind");
+    expect(NAME_COLLISIONS.scope_no).toContain("ENTITY");
+    expect(NAME_COLLISIONS.scope_no).toContain("PLATFORM");
+  });
+  it("rejects an unknown scope_no source instead of granting a global collision exemption", () => {
+    const unknown = new Map(tables);
+    unknown.set("unreviewed_scope_owner", { cols: [{ name: "scope_no" }], uniques: new Set() });
+    expect(unclassifiedBusinessKeys(unknown).some((key: string) =>
+      key.startsWith("scope_no（") && key.includes("unreviewed_scope_owner"))).toBe(true);
+    expect(resolveReference(unknown, "unreviewed_scope_owner", "scope_no")).toBeNull();
   });
 });

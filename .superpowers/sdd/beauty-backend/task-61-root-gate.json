@@ -1,0 +1,172 @@
+{
+  "designOnly": true,
+  "spec": "PASS_AFTER_I1_FIX",
+  "quality": "APPROVED",
+  "sourcePins": [
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/user/MerchantOperatorAccessPort.java",
+      "expected": "86e711c238413df8ed29d1bb6a183b3f576ad8cf31616bbec7fa8b089f67fb72",
+      "actual": "86e711c238413df8ed29d1bb6a183b3f576ad8cf31616bbec7fa8b089f67fb72"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/port/MerchantOperatorAccessPortImpl.java",
+      "expected": "8b2f6ea2374f5e3609d6d224deb53f395acb4404958bc410823e4eff9403b6ce",
+      "actual": "8b2f6ea2374f5e3609d6d224deb53f395acb4404958bc410823e4eff9403b6ce"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/mapper/MerchantMappers.java",
+      "expected": "c021c3e1f29c533bfeb6e2d0e5a96285d5460ed84afa441512583b20c7c518e7",
+      "actual": "c021c3e1f29c533bfeb6e2d0e5a96285d5460ed84afa441512583b20c7c518e7"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/PersonnelServiceImpl.java",
+      "expected": "5e3a324e0100b8e313ab48cd4ab5e7eb28fb5038b6b4ea10d0061ef0fb2cef06",
+      "actual": "5e3a324e0100b8e313ab48cd4ab5e7eb28fb5038b6b4ea10d0061ef0fb2cef06"
+    },
+    {
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/resource/ResourceSourceAuthorityPort.java",
+      "expected": "39221ac0c4f44f19e6eae126f03271127732e7f880e94797bafe6c0e4f68dd5e",
+      "actual": "39221ac0c4f44f19e6eae126f03271127732e7f880e94797bafe6c0e4f68dd5e"
+    },
+    {
+      "path": "backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/service/impl/ResourceBookingServiceImpl.java",
+      "expected": "ca94743df304b4ce319e62c9759045633f6552b8ed94097d874cb5c12eb66c96",
+      "actual": "ca94743df304b4ce319e62c9759045633f6552b8ed94097d874cb5c12eb66c96"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java",
+      "expected": "d8c13a71b874469abbfa8237fc6ac15dda45a5e14daf5610efc9575f2ad3d672",
+      "actual": "d8c13a71b874469abbfa8237fc6ac15dda45a5e14daf5610efc9575f2ad3d672"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/StatusCasMapper.java",
+      "expected": "605eaaebf15dc6ca300f2f5ef0a84ff87341b31b0a41413a347429ae0c8e5911",
+      "actual": "605eaaebf15dc6ca300f2f5ef0a84ff87341b31b0a41413a347429ae0c8e5911"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/AfterSaleSlotMapper.java",
+      "expected": "562e6ee7735db35606a758f7726845febaab64e2f21f68bf0c9b36d629a25f6b",
+      "actual": "562e6ee7735db35606a758f7726845febaab64e2f21f68bf0c9b36d629a25f6b"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/RefundPaymentStore.java",
+      "expected": "04f57b4d0f6fcf38e50ffa560b4fc062747530faf26287118eb95d77418c9ded",
+      "actual": "04f57b4d0f6fcf38e50ffa560b4fc062747530faf26287118eb95d77418c9ded"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentLedgerServiceImpl.java",
+      "expected": "0de338a430712c6ba0efd15dc280c66ff4d23ed21da7f059ae0b1e0cd157101a",
+      "actual": "0de338a430712c6ba0efd15dc280c66ff4d23ed21da7f059ae0b1e0cd157101a"
+    },
+    {
+      "path": "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/RefundCapacityLedger.java",
+      "expected": "7e6b2f09f809f8a2e80b16c028869a8a69cd4b1e866753447f3ae94815b375c9",
+      "actual": "7e6b2f09f809f8a2e80b16c028869a8a69cd4b1e866753447f3ae94815b375c9"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/WorkOrderPreparation.java",
+      "expected": "2ed9e900773578229ff521e9400700642bb74e9e0ff152d6ca6b1fd199c97aa2",
+      "actual": "2ed9e900773578229ff521e9400700642bb74e9e0ff152d6ca6b1fd199c97aa2"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/service/impl/ServiceSubmissionServiceImpl.java",
+      "expected": "b0a68a54c365ceac3ea128a0a0cab3b7ddb5cca2eafef378678d76e19fc7ca76",
+      "actual": "b0a68a54c365ceac3ea128a0a0cab3b7ddb5cca2eafef378678d76e19fc7ca76"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/java/ai/neargo/shop/beauty/mapper/BeautyMappers.java",
+      "expected": "11577a6d91e727fe03a6b5a7a670ad317d65cc953e4c54d5cd1ecb30b8ec034b",
+      "actual": "11577a6d91e727fe03a6b5a7a670ad317d65cc953e4c54d5cd1ecb30b8ec034b"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V1__beauty_p1_tables.sql",
+      "expected": "ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4",
+      "actual": "ac2a539664c42fdb7e4893f1359879fc5affbe4b24f95aae1809cd25f11061a4"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V2__beauty_appointment_resource_fence.sql",
+      "expected": "5b6768928018b68635c9c081b200a2cb6202d40645c5db62c91c558cc49d4114",
+      "actual": "5b6768928018b68635c9c081b200a2cb6202d40645c5db62c91c558cc49d4114"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V3__beauty_appointment_business.sql",
+      "expected": "c8d54df07cabc5b0903e0dd4fba73e2b7fc4aa75539a148837cc5837deaa8da7",
+      "actual": "c8d54df07cabc5b0903e0dd4fba73e2b7fc4aa75539a148837cc5837deaa8da7"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V4__beauty_appointment_resource_decision.sql",
+      "expected": "7df4e8d2e3aeeb57bf1e704004957d996912a17021c5f58842ac91152e7a003a",
+      "actual": "7df4e8d2e3aeeb57bf1e704004957d996912a17021c5f58842ac91152e7a003a"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V5__beauty_reception_work_order.sql",
+      "expected": "8e9aec144736ee3502fb9c0f9c4c95edf6f4a02c1cecbd597ff0c3b51aa4eab5",
+      "actual": "8e9aec144736ee3502fb9c0f9c4c95edf6f4a02c1cecbd597ff0c3b51aa4eab5"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V6__beauty_reception_identity_guard.sql",
+      "expected": "220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20",
+      "actual": "220ed777c56a77c22cf835f2a5bcc42ccb41cc98a4348831df06e0e404b89f20"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V7__beauty_appointment_assignment_units.sql",
+      "expected": "8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2",
+      "actual": "8894786048bf04ca45eff129a83fa7776da867994d72dff2343a91b215d6d3f2"
+    },
+    {
+      "path": "backend-plugins/shop-industry-beauty/beauty-core/src/main/resources/db/industry/beauty/V8__beauty_source_observation.sql",
+      "expected": "c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343",
+      "actual": "c5b54d574624a5265366cf4bf7897ec949d107bd302f171539c461a89a9d8343"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V532__shared_personnel_foundation.sql",
+      "expected": "299c7ed3dc22f7b5a0510949956e685c702d74b88a606b5a92004ca1cb7d579b",
+      "actual": "299c7ed3dc22f7b5a0510949956e685c702d74b88a606b5a92004ca1cb7d579b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V533__shared_resource_identity.sql",
+      "expected": "2b41485b9b032ffa00b74b5cec31bfaf774a9024f465e3e2d5ec149759c43aff",
+      "actual": "2b41485b9b032ffa00b74b5cec31bfaf774a9024f465e3e2d5ec149759c43aff"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V534__shared_schedule_rules.sql",
+      "expected": "f52c7ee04d31b4d407287e7cf6b200d9a70b308289053ed403996cf25a130997",
+      "actual": "f52c7ee04d31b4d407287e7cf6b200d9a70b308289053ed403996cf25a130997"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V535__shared_resource_booking_foundation.sql",
+      "expected": "0518429c19edf0f411aefb2e1c296c2df6aab72e93137699ccef0fd54a9dd9c0",
+      "actual": "0518429c19edf0f411aefb2e1c296c2df6aab72e93137699ccef0fd54a9dd9c0"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V539__checkout_source_foundation.sql",
+      "expected": "5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a9d8f9e14d3b",
+      "actual": "5a8e346341e5b378403761f2a77555c0558ff6b27a6071584207a9d8f9e14d3b"
+    },
+    {
+      "path": "backend/shop-app/src/main/resources/db/migration/V540__checkout_payment_operation.sql",
+      "expected": "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745",
+      "actual": "ca76b6512cf79c6f25fa71a4441f533e03cc609c6320611a0dcdc9634a10f745"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/bm05-design.md",
+      "sha256": "e1108df7a3eb316fbab941bd8a5364f5750a612486ad373ccbadc322015df314"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-61-design-report.md",
+      "sha256": "fb0f2f2de271c0b3c351ce4126226624272b898cf9c3b319d5499186a7f2262d"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-61-design.md",
+      "sha256": "2684883f579c27de7195ec06c29294cbb963e8966eb435d724b2438b864e01f5"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-61-design-r1.md",
+      "sha256": "ef2d7eab784d7ea9fdce0aedd0e5fd4ccd8e28414728979cc3a5909cc3b2e7e7"
+    }
+  ],
+  "runtimeExecuted": false,
+  "S0ProductImplemented": false
+}

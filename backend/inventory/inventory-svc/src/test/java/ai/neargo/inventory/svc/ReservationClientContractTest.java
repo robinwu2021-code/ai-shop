@@ -183,9 +183,19 @@ class ReservationClientContractTest {
                 .isEqualTo("COMMITTED");
 
         // 退货回补、商品页改库存：按 SKU / 门店
-        InventoryStockApi.Restored restored = client.restore(merchant, "SYSTEM:order", new InventoryStockApi.Restore(
-                "AS-1", List.of(new InventoryReservationApi.Line(null, null, "SKU-9", "STORE-1", 1, null))));
-        assertThat(restored.inboundNo()).isNotBlank();
+        // 退货按原单回补：带原订单号，按预留上冻结的来源（SKU / 门店 / 履约单）。原单出库要先经商城的处置确认
+        // （StockDisposition 协议，服务上尚未开放）—— 现在得到的是明确的冲突与原因，而不是 500
+        assertThatThrownBy(() -> client.restore(merchant, "SYSTEM:order", new InventoryStockApi.Restore("AS-1",
+                "ORD-SYS", List.of(new InventoryReservationApi.Line(null, null, "SKU-9", "STORE-1", 1, "F-1")))))
+                .isInstanceOfSatisfying(InventoryException.class, e -> {
+                    assertThat(e.error()).isEqualTo(InventoryError.CONFLICT);
+                    assertThat(e.args()).containsExactly("STOCK_ORIGINAL_POSTING_UNCONFIRMED");
+                });
+        // 不带原单、或原单不是本商家的：不受理
+        assertThatThrownBy(() -> client.restore(merchant, "SYSTEM:order", new InventoryStockApi.Restore("AS-2",
+                "ORD-NOT-MINE", List.of(new InventoryReservationApi.Line(null, null, "SKU-9", "STORE-1", 1, "F-1")))))
+                .isInstanceOfSatisfying(InventoryException.class,
+                        e -> assertThat(e.error()).isEqualTo(InventoryError.NOT_FOUND));
         client.setOnHand(merchant, "SYSTEM:order",
                 new InventoryStockApi.OnHand(null, "SKU-9", null, "STORE-1", 7, "OTHER", "GOODS_PAGE"));
         assertThat(sql.queryForObject("select on_hand from inv_stock_balance where item_id = ?",

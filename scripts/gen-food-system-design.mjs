@@ -9,7 +9,7 @@ const src='docs/technical/design/schema/food-system-design.json';const s=JSON.pa
 const planFile=path.join(root,'docs/technical/design/schema/food-code-plan.json');
 const plan=JSON.parse(fs.readFileSync(planFile,'utf8'));
 const latestMigration=dir=>Math.max(...fs.readdirSync(path.join(root,dir)).map(n=>Number(/^V(\d+)__/.exec(n)?.[1]||0)));
-s.currentDelivery.sourceSchema={food:latestMigration('backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food'),core:latestMigration('backend/shop-app/src/main/resources/db/migration'),inventory:latestMigration('backend/shop-inventory/src/main/resources/db/inventory')};
+s.currentDelivery.sourceSchema={food:latestMigration('backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food'),core:latestMigration('backend/shop-app/src/main/resources/db/migration'),inventory:latestMigration('backend/inventory/inventory-domain/src/main/resources/db/inventory')};
 const actual=reconcileFoodSource(root,s,plan);
 fs.writeFileSync(path.join(root,src),JSON.stringify(s,null,2)+'\n');
 fs.writeFileSync(planFile,JSON.stringify(plan,null,2)+'\n');

@@ -1,8 +1,9 @@
 package ai.neargo.shop.arch;
 
-import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.domain.JavaClass;
+import ai.neargo.shop.trade.mapper.CheckoutMappers.OperationMapper;
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaClasses;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import tools.jackson.databind.ObjectMapper;
@@ -22,7 +23,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
@@ -84,7 +87,8 @@ class ArchitectureTest {
             // printing owns prn_* configuration and delivery facts; guard it as a business domain.
             "printing",
             // food is an independently packaged industry domain, not shared infrastructure.
-            "food"};
+            "food",
+            "beauty"};
 
     /** {@link #DOMAINS} 的 ArchUnit 包表达式形式（{@code ai.neargo.shop.x..}）。 */
     private static String[] domainPackages() {
@@ -105,6 +109,13 @@ class ArchitectureTest {
         classes = new ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("ai.neargo.shop");
+    }
+
+    @Test
+    @EnabledIfSystemProperty(named = "beauty.arch.required", matches = "true")
+    void embeddedBeautyClassesArePresentWhenRequested() {
+        assertThat(classes.stream().map(javaClass -> javaClass.getName()))
+                .contains("ai.neargo.shop.beauty.service.impl.WorkOrderServiceImpl");
     }
 
     @Test
@@ -390,11 +401,67 @@ class ArchitectureTest {
     @Test
     @DisplayName("Controller 不得直接依赖 Mapper（必须经 Service）")
     void controllersMustNotTouchMappers() {
-        noClasses().that().resideInAPackage("ai.neargo.shop.portal..")
-                .should().dependOnClassesThat(PERSISTENCE_MAPPER)
-                .allowEmptyShould(true)
-                .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过")
+        noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.resideInAPackage("ai.neargo.shop.portal.."))
                 .check(classes);
+    }
+
+    @Test
+    void controllerMapperRuleAllowsJsonCodecButRejectsPersistenceMapper() {
+        JavaClasses fixtures =
+                new ClassFileImporter()
+                        .importClasses(
+                                JsonCodecController.class,
+                                PersistenceMapperController.class,
+                                ObjectMapper.class,
+                                OperationMapper.class);
+        ArchRule jsonRule =
+                noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.type(JsonCodecController.class));
+        ArchRule persistenceRule =
+                noControllerPersistenceMapperDependencies(
+                        JavaClass.Predicates.type(PersistenceMapperController.class));
+
+        assertThat(jsonRule.evaluate(fixtures).hasViolation()).isFalse();
+        var persistenceResult = persistenceRule.evaluate(fixtures);
+        assertThat(persistenceResult.hasViolation()).isTrue();
+        assertThat(persistenceResult.getFailureReport().getDetails())
+                .anySatisfy(
+                        detail ->
+                                assertThat(detail)
+                                        .contains(
+                                                PersistenceMapperController.class.getName(),
+                                                OperationMapper.class.getName()));
+    }
+
+    private static ArchRule noControllerPersistenceMapperDependencies(
+            DescribedPredicate<JavaClass> controllers) {
+        // Keep explicit database classification and the existing name guard; Jackson remains a codec.
+        DescribedPredicate<JavaClass> persistenceMappers = PERSISTENCE_MAPPER.or(
+                JavaClass.Predicates.simpleNameEndingWith("Mapper")
+                        .and(not(JavaClass.Predicates.type(ObjectMapper.class))));
+        return noClasses()
+                .that(controllers)
+                .should()
+                .dependOnClassesThat(persistenceMappers)
+                .allowEmptyShould(true)
+                .because("Controller 直连 Mapper 等于把业务写进 web 层，数据域与状态机都会被绕过");
+    }
+
+    private static final class JsonCodecController {
+        private final ObjectMapper json;
+
+        private JsonCodecController(ObjectMapper json) {
+            this.json = json;
+        }
+    }
+
+    private static final class PersistenceMapperController {
+        private final OperationMapper operations;
+
+        private PersistenceMapperController(OperationMapper operations) {
+            this.operations = operations;
+        }
     }
 
     // ───────────────────────────────────────────────────────────────────────

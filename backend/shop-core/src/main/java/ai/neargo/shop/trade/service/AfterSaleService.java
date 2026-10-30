@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service;
 
 import ai.neargo.shop.trade.dto.AfterSaleVO;
+import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
 
 import java.util.List;
@@ -9,6 +10,9 @@ import java.util.List;
 public interface AfterSaleService {
 
     List<String> reasons();
+
+    /** Exact saved original return reconciliation; never repeats funds and never marks an accepted mirror complete. */
+    StockPort.RestoreResult reconcileReturnedStock(String afterSaleNo);
 
     AfterSaleVO apply(String subOrderNo, ApplyCommand cmd);
 

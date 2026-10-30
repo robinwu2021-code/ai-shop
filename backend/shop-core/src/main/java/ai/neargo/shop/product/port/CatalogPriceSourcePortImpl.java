@@ -107,13 +107,52 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
     public MarketFacts market(MarketScope scope) {
         CatalogPriceSourceFacts.validateMarketScope(scope);
         if (TransactionSynchronizationManager.isActualTransactionActive())
-            throw new IllegalStateException("Catalog market capture requires an outside transaction");
+            throw new IllegalStateException(
+                    "Catalog market capture requires an outside transaction");
         var at = clock.instant();
         var first = storeMarket(scope, false);
         if (!first.equals(storeMarket(scope, false))) throw BizException.of(ErrorCode.CONFLICT);
-        var result = CatalogPriceSourceFacts.sealMarket(new MarketFacts(
-                1, "CATALOG_MARKET", scope, first.market(), at, at.plusSeconds(30), null));
+        var result =
+                CatalogPriceSourceFacts.sealMarket(
+                        new MarketFacts(
+                                1,
+                                "CATALOG_MARKET",
+                                scope,
+                                first.market(),
+                                at,
+                                at.plusSeconds(30),
+                                null));
         CatalogPriceSourceFacts.validateMarketFacts(scope, result, clock.instant());
+        return result;
+    }
+
+    @Override
+    public ScopeFacts scope(MarketScope scope) {
+        CatalogPriceSourceFacts.validateMarketScope(scope);
+        if (TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Catalog scope capture requires no local transaction");
+        var at = clock.instant();
+        var before = storeMarket(scope, false);
+        var taxScope = new PricingTaxSettingPort.Scope("MAIN", scope.entityNo(), scope.storeNo());
+        var tax = taxes.resolve(taxScope);
+        if (tax == null
+                || !"MAIN".equals(tax.tenantNo())
+                || !scope.entityNo().equals(tax.entityNo())
+                || !scope.storeNo().equals(tax.storeNo())) throw unsupported();
+        if (!before.equals(storeMarket(scope, false)) || !tax.equals(taxes.resolve(taxScope)))
+            throw BizException.of(ErrorCode.CONFLICT);
+        var result =
+                CatalogPriceSourceFacts.sealScope(
+                        new ScopeFacts(
+                                1,
+                                "CATALOG_SCOPE",
+                                scope,
+                                before.market(),
+                                CatalogPriceSourceFacts.taxFact(tax),
+                                at,
+                                at.plusSeconds(30),
+                                null));
+        CatalogPriceSourceFacts.validateScopeFacts(scope, result, clock.instant());
         return result;
     }
 
@@ -161,7 +200,9 @@ public class CatalogPriceSourcePortImpl implements CatalogPriceSourcePort {
         if (card == null
                 || !q.storeNo().equals(card.storeNo())
                 || !q.entityNo().equals(card.entityNo())
-                || !(card.active() || !activeRequired && StoreDirectoryPort.STORE_READONLY.equals(card.status())))
+                || !(card.active()
+                        || !activeRequired
+                                && StoreDirectoryPort.STORE_READONLY.equals(card.status())))
             throw BizException.of(ErrorCode.FORBIDDEN);
         String marketCode = merchants.marketOf(q.entityNo());
         if (marketCode == null || !marketCode.matches("[A-Z]{2}")) throw unsupported();

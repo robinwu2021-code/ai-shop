@@ -87,6 +87,9 @@ public final class LegacyChannelBridge {
         return switch (r) {
             case ChannelResult.Pending p -> PayGateway.PrepayResult.ok(p.instruction().asParams(), p.channelTradeNo());
             case ChannelResult.Succeeded s -> PayGateway.PrepayResult.ok(s.extra(), s.channelTradeNo());
+            // This marker comes only from handlers with explicit local unsent proof, never inferred from UNKNOWN.
+            case ChannelResult.Failed f when "LOCAL_PAYMENT_NOT_SENT".equals(f.channelCode()) ->
+                    PayGateway.PrepayResult.notSent(f.channelMessage());
             case ChannelResult.Failed f -> PayGateway.PrepayResult.fail(f.channelMessage() != null ? f.channelMessage()
                     : f.code().name());
             case ChannelResult.Unknown u -> PayGateway.PrepayResult.unknown("PAY_CHANNEL_" + u.reason());

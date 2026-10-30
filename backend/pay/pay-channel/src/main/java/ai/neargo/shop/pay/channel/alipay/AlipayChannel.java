@@ -94,8 +94,12 @@ public final class AlipayChannel implements TransactionCapability, SplitCapabili
         if (!"TRADE_SUCCESS".equals(status) && !"TRADE_FINISHED".equals(status)) {
             return new ChannelResult.Pending(PayInstruction.none(), tradeNo, status == null ? null : String.valueOf(status));
         }
+        if (!c.outTradeNo().equals(resp.get("out_trade_no")) || tradeNo == null || tradeNo.isBlank()) {
+            return new ChannelResult.Unknown("PAYMENT_RECEIPT_MISMATCH");
+        }
         try {
             long minor = new BigDecimal(String.valueOf(resp.get("total_amount"))).movePointRight(2).longValueExact();
+            if (minor < 0) return new ChannelResult.Unknown("PAYMENT_RECEIPT_INVALID_AMOUNT");
             return new ChannelResult.Succeeded(tradeNo, new Money(minor, CURRENCY), null, Map.of());
         } catch (ArithmeticException | NumberFormatException e) {
             return new ChannelResult.Unknown("AMOUNT_UNPARSEABLE: " + resp.get("total_amount"));

@@ -445,8 +445,8 @@ public final class JdbcOutboxStore implements OutboxStore {
         }
         Instant created = rs.getTimestamp("created_at").toInstant();
         String eventType = rs.getString("event_type");
-        String checksum = digest(json.writeValueAsString(List.of(type, aggregate, eventType,
-                canonical(json.readValue(rs.getString("payload"), Object.class)), created.toString())));
+        String checksum = OutboxFingerprint.legacyChecksum(json, type, aggregate, eventType,
+                rs.getString("payload"), created);
         return new LegacyRecord(rs.getString("event_no"), eventType, type, aggregate, checksum, created);
     }
 
@@ -535,26 +535,7 @@ public final class JdbcOutboxStore implements OutboxStore {
     }
 
     private String fingerprint(OutboxEnvelope e) {
-        try {
-            Object value = canonical(json.readValue(e.payload(), Object.class));
-            String content = json.writeValueAsString(List.of(e.sourceSystem(), e.sourceEventNo(), e.eventType(),
-                    e.schemaVersion(), e.aggregateType(), e.aggregateId(), e.streamKey(), e.occurredAt().toString(), value));
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(content.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception ex) {
-            throw new IllegalArgumentException("Invalid outbox JSON", ex);
-        }
-    }
-
-    private Object canonical(Object value) {
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> sorted = new TreeMap<>();
-            map.forEach((key, v) -> sorted.put(key.toString(), canonical(v)));
-            return sorted;
-        }
-        if (value instanceof List<?> list) { return list.stream().map(this::canonical).toList(); }
-        if (value instanceof Number n) { return new BigDecimal(n.toString()).stripTrailingZeros(); }
-        return value;
+        return OutboxFingerprint.fingerprint(json, e);
     }
 
     private OutboxEnvelope envelope(ResultSet rs) throws SQLException {

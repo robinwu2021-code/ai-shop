@@ -62,14 +62,25 @@ test('historical mapping verification and source owner contracts remain explicit
 
 test('coded subset references real migration, routes and source files without claiming full completion',()=>{
  const actual=design.implementation;
- assert.equal(actual.tables.length,17);
- assert.equal(actual.apiIds.length,29);
+ const migratedTables=actual.migrations.flatMap(migration=>[...fs.readFileSync(path.join(root,actual.moduleRoot,migration),'utf8').matchAll(/CREATE TABLE\s+(?:IF NOT EXISTS\s+)?`?(\w+)/gi)].map(match=>match[1]));
+ assert.deepEqual(new Set(actual.tables),new Set(migratedTables));
+ assert.ok(actual.codedInventory.migrations.length>0);
+ assert.equal(new Set(actual.apiIds).size,actual.apiIds.length);
  const modules=path.join(root,actual.moduleRoot);
  assert.ok(actual.migrations.every(migration=>fs.existsSync(path.join(modules,migration))));
  for(const id of actual.apiIds){
   const api=design.apis.find(a=>a.id===id);
-  const controller=path.join(modules,'commerce-web/src/main/java/ai/neargo/shop/commerce/api',api.role==='CALLBACK'?'callback':'biz',api.controller+'.java');
+  const controller=api.codedSource?path.join(root,api.codedSource):path.join(modules,'commerce-web/src/main/java/ai/neargo/shop/commerce/api',api.role==='CALLBACK'?'callback':api.role==='OPS'?'ops':'biz',api.controller+'.java');
   assert.ok(fs.readFileSync(controller,'utf8').includes(api.path),id);
  }
- assert.match(actual.limitations,/未开放/);
+ assert.match(actual.tests,/尚未执行/);
+ assert.match(actual.limitations,/Mock/);
+ for(const source of actual.codedInventory.classes) assert.ok(fs.existsSync(path.join(root,source.source)),source.name);
+ for(const migration of actual.codedInventory.migrations) assert.ok(fs.existsSync(path.join(root,migration.source)),migration.source);
+ for(const route of actual.codedInventory.routes){
+  const text=fs.readFileSync(path.join(root,route.source),'utf8');
+  assert.ok(text.includes(route.path),route.path);
+  assert.ok(text.includes('BizPerms.'+route.permission),route.path);
+  assert.equal(route.status,'CODED_TESTS_PENDING');
+ }
 });

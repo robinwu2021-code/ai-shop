@@ -1,25 +1,34 @@
 package ai.neargo.shop.channel.media.api;
 
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.auth.TokenStores;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.media.ImageProbe;
 import ai.neargo.shop.media.MediaStore;
-import ai.neargo.shop.media.SysMediaAsset;
 import ai.neargo.shop.media.MediaUploadService;
+import ai.neargo.shop.media.SysMediaAsset;
+import ai.neargo.shop.spi.user.MerchantOperatorAccessPort;
+
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.context.annotation.Profile;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -59,25 +68,36 @@ public class BizUploadController {
 
     private final MediaStore mediaStore;
     private final MediaUploadService mediaUpload;
+    private final TokenStores tokens;
+    private final MerchantOperatorAccessPort operators;
 
-    public BizUploadController(MediaStore mediaStore, MediaUploadService mediaUpload) {
+    public BizUploadController(
+            MediaStore mediaStore,
+            MediaUploadService mediaUpload,
+            TokenStores tokens,
+            MerchantOperatorAccessPort operators) {
         this.mediaStore = mediaStore;
         this.mediaUpload = mediaUpload;
+        this.tokens = tokens;
+        this.operators = operators;
     }
 
     /**
-     * 记账与落盘的三步（以及「刻意不用事务」的理由）都在
-     * {@link MediaUploadService#store}。<b>这里不要再抄一份</b> ——
+     * 记账与落盘的三步（以及「刻意不用事务」的理由）都在 {@link MediaUploadService#store}。<b>这里不要再抄一份</b> ——
      * 抄的时候最容易丢的就是那个「不用事务」，而丢了它的症状是查不出来的孤儿文件。
      */
     @PostMapping("/biz/upload/image")
-    public Map<String, String> upload(@RequestParam("file") MultipartFile file,
-                                      @RequestParam(value = "bizType", required = false) String bizType)
+    public Map<String, String> upload(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "bizType", required = false) String bizType)
             throws IOException {
 
         String type = (bizType == null || bizType.isBlank())
                 ? SysMediaAsset.GOODS : bizType.toUpperCase(Locale.ROOT);
-        if (!BIZ_TYPES.contains(type)) {
+        // This dedicated private purpose never enters the generic upload whitelist.
+        var receiptUploader =
+                SysMediaAsset.OFFLINE_RECEIPT.equals(type) ? requireReceiptUploader() : null;
+        if (receiptUploader == null && !BIZ_TYPES.contains(type)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         if (file == null || file.isEmpty() || file.getSize() > MAX_BYTES) {
@@ -101,7 +121,10 @@ public class BizUploadController {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
-        String entityNo = BizContext.requireMerchantNo();
+        String entityNo =
+                receiptUploader == null
+                        ? BizContext.requireMerchantNo()
+                        : receiptUploader.entityNo();
         /*
          * 证件是**主体级**的：营业执照属于经营主体，不属于「文三路店」。
          * 所以它不取当前门店，而落在 _ENTITY 这一档。
@@ -109,8 +132,12 @@ public class BizUploadController {
          * 这同时避开一个真问题：进件阶段商家还没建店，
          * 照搬 requireStoreNo() 会直接 403 —— 传不了证件也就进不了件。
          */
-        String storeNo = SysMediaAsset.QUAL.equals(type)
-                ? SysMediaAsset.ENTITY_SCOPE : BizContext.requireStoreNo();
+        String storeNo =
+                receiptUploader != null
+                        ? receiptUploader.storeNo()
+                        : SysMediaAsset.QUAL.equals(type)
+                                ? SysMediaAsset.ENTITY_SCOPE
+                                : BizContext.requireStoreNo();
 
         /*
          * 四层 key：主体 / 门店 / 用途 / 年月 / 随机名。
@@ -127,8 +154,17 @@ public class BizUploadController {
                 LocalDateTime.now().format(MONTH),
                 java.util.UUID.randomUUID().toString().replace("-", "") + "." + ext);
 
-        mediaUpload.store(key, file::getInputStream, file.getSize(), file.getContentType(),
-                type, entityNo, storeNo, BizContext.current().merchantNo());
+        mediaUpload.store(
+                key,
+                file::getInputStream,
+                file.getSize(),
+                file.getContentType(),
+                type,
+                entityNo,
+                storeNo,
+                receiptUploader == null
+                        ? BizContext.current().merchantNo()
+                        : receiptUploader.accountNo());
 
         /*
          * 返回**稳定的相对路径**，不是签名 URL。
@@ -138,8 +174,60 @@ public class BizUploadController {
          */
         String url = SysMediaAsset.GOODS.equals(type)
                 ? mediaStore.publicUrl(key) : mediaStore.privatePath(key);
-        // Stable identity lets domain extensions verify ownership without parsing provider/CDN URLs.
-        return Map.of("url", url, "assetKey", key);
+        return receiptUploader == null
+                ? Map.of("url", url, "assetKey", key)
+                : Map.of("url", url, "assetKey", key, "evidenceRef", key);
     }
 
+    private ReceiptUploader requireReceiptUploader() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Receipt upload requires no caller transaction");
+        }
+        var current = SecurityUtils.requireUser();
+        if (current.realm() != Realm.MERCHANT
+                || !"MAIN".equals(current.tenantNo())
+                || !(current.subjectKind() == SubjectKind.MCH
+                        || current.subjectKind() == SubjectKind.USR)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        String token =
+                SecurityUtils.currentToken()
+                        .filter(value -> !value.isBlank())
+                        .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED));
+        var session =
+                tokens.of(Realm.MERCHANT)
+                        .get(token)
+                        .orElseThrow(() -> BizException.of(ErrorCode.UNAUTHORIZED))
+                        .user();
+        if (session == null
+                || session.realm() != Realm.MERCHANT
+                || !"MAIN".equals(session.tenantNo())
+                || session.subjectKind() != current.subjectKind()
+                || !Objects.equals(session.userNo(), current.userNo())) {
+            throw BizException.of(ErrorCode.UNAUTHORIZED);
+        }
+        var context = BizContext.current();
+        String entity = BizContext.requireMerchantNo();
+        String store = BizContext.requireStoreNo();
+        if (context.courierOnlyOrderView()
+                || context.allowedStoresOrAll() != null
+                        && !context.allowedStoresOrAll().contains(store)) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        var account =
+                operators
+                        .resolveAuthorizedOperator(
+                                new MerchantOperatorAccessPort.Query(
+                                        "MAIN",
+                                        entity,
+                                        store,
+                                        current.userNo(),
+                                        "MERCHANT",
+                                        current.subjectKind().name(),
+                                        BizPerms.CASH_RECEIVE))
+                        .orElseThrow(() -> BizException.of(ErrorCode.FORBIDDEN));
+        return new ReceiptUploader(entity, store, account.accountNo());
+    }
+
+    private record ReceiptUploader(String entityNo, String storeNo, String accountNo) {}
 }

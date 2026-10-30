@@ -29,8 +29,11 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway;
 import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway.AuthorizationContext;
+import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway.AuthorizationQuery;
 import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway.Grant;
+import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway.RecoveryStatus;
 import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway.RevocationContext;
+import ai.neargo.shop.spi.commerce.ChannelRecoveryPort;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -47,10 +50,12 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /** 原意图先提交，外部调用不持事务；state单次消费和fence阻止重放与晚结果覆盖。 */
-public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationService {
+public class ChannelAuthorizationServiceImpl
+        implements ChannelAuthorizationService, ChannelRecoveryPort {
     private final AccountMapper accounts;
     private final ProductProfileMapper profiles;
     private final ProviderMapper providers;
@@ -327,7 +332,8 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
                                             .set("authorization_url", null)
                                             .set("current_attempt_no", op.getCurrentAttemptNo() + 1)
                                             .set("fence", op.getFence() + 1)
-                                            .set("lease_until", now().plusSeconds(90)));
+                                            .set("lease_until", now().plusSeconds(90))
+                                            .set("next_recovery_at", now().plusSeconds(90)));
                             op.setCallbackConsumedAt(now());
                             op.setCallbackRequestHash(callbackHash);
                             op.setCurrentAttemptNo(op.getCurrentAttemptNo() + 1);
@@ -354,6 +360,10 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
                 () -> {
                     var account = account(sent.getEntityNo(), sent.getAccountNo(), true);
                     var current = operation(sent.getEntityNo(), sent.getOperationNo(), true);
+                    if (!current.getFence().equals(sent.getFence())) {
+                        late(sent, evidence, unknown ? "UNKNOWN" : "SUBMITTED");
+                        return true;
+                    }
                     closeAttempt(sent, unknown ? "UNKNOWN" : "SUBMITTED", evidence);
                     if (current.getFence().equals(sent.getFence())
                             && "SENDING".equals(current.getStatus())) {
@@ -365,6 +375,11 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
                                         .set("authorization_url", url)
                                         .set("original_evidence_ref", evidence)
                                         .set("lease_until", null)
+                                        .set(
+                                                "next_recovery_at",
+                                                unknown
+                                                        ? now().plusSeconds(30)
+                                                        : current.getExpiresAt())
                                         .set(
                                                 "business_revision",
                                                 unknown
@@ -394,7 +409,10 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
                             operation(
                                     account.getEntityNo(), work.operation().getOperationNo(), true);
                     if (!op.getFence().equals(work.operation().getFence())
-                            || !"EXCHANGING".equals(op.getStatus())) conflict();
+                            || !"EXCHANGING".equals(op.getStatus())) {
+                        late(work.operation(), grant == null ? null : grant.receiptRef(), status);
+                        return new AuthorizationCallbackResult(op.getOperationNo(), op.getStatus());
+                    }
                     requireCurrent(account, op);
                     String evidence = null;
                     String authorization = account.getActiveAuthorizationNo();
@@ -433,6 +451,9 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
                             status,
                             Wrappers.<CimOperation>update()
                                     .set("lease_until", null)
+                                    .set(
+                                            "next_recovery_at",
+                                            "UNKNOWN".equals(status) ? now().plusSeconds(30) : null)
                                     .set("original_evidence_ref", evidence)
                                     .set("authorization_url", null)
                                     .set(
@@ -457,8 +478,11 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
                 () -> {
                     var account = account(sent.getEntityNo(), sent.getAccountNo(), true);
                     var op = operation(sent.getEntityNo(), sent.getOperationNo(), true);
-                    if (!op.getFence().equals(sent.getFence()) || !"SENDING".equals(op.getStatus()))
-                        conflict();
+                    if (!op.getFence().equals(sent.getFence())
+                            || !"SENDING".equals(op.getStatus())) {
+                        late(sent, evidence, unknown ? "UNKNOWN" : "SUCCEEDED");
+                        return true;
+                    }
                     requireCurrent(account, op);
                     closeAttempt(sent, unknown ? "UNKNOWN" : "SUCCEEDED", evidence);
                     updateOperation(
@@ -466,6 +490,7 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
                             unknown ? "UNKNOWN" : "SUCCEEDED",
                             Wrappers.<CimOperation>update()
                                     .set("lease_until", null)
+                                    .set("next_recovery_at", unknown ? now().plusSeconds(30) : null)
                                     .set("original_evidence_ref", evidence)
                                     .set(
                                             "business_revision",
@@ -532,6 +557,244 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
                 });
     }
 
+    private record RecoveryWork(CimAccount account, CimOperation operation) {}
+
+    @Override
+    public String workflow() {
+        return "ACCOUNT_AUTHORIZATION";
+    }
+
+    /**
+     * The existing sole recovery job asks for original outcomes. A one-use code or revoke call is
+     * never replayed.
+     */
+    @Override
+    public int recoverDue(int limit) {
+        outsideTransaction();
+        if (limit < 1 || limit > 100) bad();
+        var due =
+                commands.query(
+                        () ->
+                                operations.selectList(
+                                        Wrappers.<CimOperation>query()
+                                                .eq("tenant_no", "MAIN")
+                                                .in("operation_type", "AUTHORIZE", "REVOKE")
+                                                .in(
+                                                        "status",
+                                                        "SENDING",
+                                                        "EXCHANGING",
+                                                        "UNKNOWN",
+                                                        "SUBMITTED")
+                                                .and(
+                                                        q ->
+                                                                q.le("next_recovery_at", now())
+                                                                        .or()
+                                                                        .isNull("next_recovery_at")
+                                                                        .and(
+                                                                                old ->
+                                                                                        old.le(
+                                                                                                        "lease_until",
+                                                                                                        now())
+                                                                                                .or()
+                                                                                                .eq(
+                                                                                                        "status",
+                                                                                                        "UNKNOWN")
+                                                                                                .or()
+                                                                                                .le(
+                                                                                                        "expires_at",
+                                                                                                        now())))
+                                                .orderByAsc("id")
+                                                .last("LIMIT " + limit)));
+        int completed = 0;
+        for (var candidate : due) {
+            var work = commands.atomic(() -> claimRecovery(candidate));
+            if (work == null) continue;
+            try {
+                if ("REVOKE".equals(work.operation().getOperationType())) {
+                    var revision =
+                            commands.query(
+                                    () ->
+                                            revision(
+                                                    candidate.getEntityNo(),
+                                                    candidate.getAccountNo(),
+                                                    candidate.getRequestRef()));
+                    var query =
+                            new RevocationContext(
+                                    candidate.getOperationNo(),
+                                    candidate.getEntityNo(),
+                                    candidate.getAccountNo(),
+                                    candidate.getProfileNo(),
+                                    work.account().getExternalAccountRef(),
+                                    revision.getAuthorizationNo(),
+                                    revision.getCredentialRef());
+                    var result = gateway(candidate.getProfileNo()).queryRevocation(query);
+                    if (result == null
+                            || !query.equals(result.query())
+                            || result.status() != RecoveryStatus.FOUND
+                            || result.revocation() == null
+                            || !result.revocation().confirmed())
+                        throw new IllegalStateException("Revocation remains uncertain");
+                    CommerceValidation.text(result.originalReceiptRef(), 256);
+                    CommerceValidation.text(result.revocation().receiptRef(), 256);
+                    finishRevoke(work.operation(), result.originalReceiptRef(), false);
+                    completed++;
+                } else {
+                    var op = work.operation();
+                    var query =
+                            new AuthorizationQuery(
+                                    op.getOperationNo(),
+                                    op.getEntityNo(),
+                                    op.getAccountNo(),
+                                    op.getProfileNo(),
+                                    work.account().getExternalAccountRef(),
+                                    op.getCreatedBy(),
+                                    op.getReturnTargetCode(),
+                                    op.getCallbackConsumedAt() != null);
+                    var result = gateway(op.getProfileNo()).queryAuthorization(query);
+                    if (result == null
+                            || !query.equals(result.query())
+                            || result.status() == null
+                            || result.status() == RecoveryStatus.UNKNOWN)
+                        throw new IllegalStateException("Authorization remains uncertain");
+                    CommerceValidation.text(result.originalReceiptRef(), 256);
+                    if (result.status() == RecoveryStatus.TERMINAL_FAILED) {
+                        if (result.start() != null || result.grant() != null) conflict();
+                        finishAbandoned(work, result.originalReceiptRef());
+                        completed++;
+                    } else if (query.callbackConsumed()) {
+                        if (result.start() != null) conflict();
+                        validateGrant(work.account(), result.grant());
+                        finishGrant(
+                                new CallbackWork(work.account(), op, true),
+                                result.grant(),
+                                "SUCCEEDED");
+                        completed++;
+                    } else {
+                        if (result.grant() != null
+                                || result.start() == null
+                                || op.getExpiresAt() == null
+                                || !op.getExpiresAt().isAfter(now())) conflict();
+                        AuthorizationUrlPolicy.validateStateHash(
+                                result.start().authorizationUrl(),
+                                op.getCallbackStateHash(),
+                                gateway(op.getProfileNo()));
+                        CommerceValidation.text(result.start().receiptRef(), 256);
+                        finishBegin(
+                                op,
+                                result.start().authorizationUrl(),
+                                result.originalReceiptRef(),
+                                false);
+                    }
+                }
+            } catch (RuntimeException unavailable) {
+                try {
+                    if ("REVOKE".equals(work.operation().getOperationType()))
+                        finishRevoke(work.operation(), null, true);
+                    else if (work.operation().getCallbackConsumedAt() != null)
+                        finishGrant(
+                                new CallbackWork(work.account(), work.operation(), true),
+                                null,
+                                "UNKNOWN");
+                    else finishBegin(work.operation(), null, null, true);
+                } catch (RuntimeException superseded) {
+                    /* A callback/new fence now owns the original operation. */
+                }
+            }
+        }
+        return completed;
+    }
+
+    private RecoveryWork claimRecovery(CimOperation candidate) {
+        var account = account(candidate.getEntityNo(), candidate.getAccountNo(), true);
+        var op = operation(candidate.getEntityNo(), candidate.getOperationNo(), true);
+        if (!Set.of("SENDING", "EXCHANGING", "UNKNOWN", "SUBMITTED").contains(op.getStatus())
+                || op.getLeaseUntil() != null && op.getLeaseUntil().isAfter(now())
+                || op.getNextRecoveryAt() != null && op.getNextRecoveryAt().isAfter(now()))
+            return null;
+        requireCurrent(account, op);
+        attempts.update(
+                Wrappers.<CimOperationAttempt>update()
+                        .eq("tenant_no", "MAIN")
+                        .eq("entity_no", op.getEntityNo())
+                        .eq("operation_no", op.getOperationNo())
+                        .eq("attempt_no", op.getCurrentAttemptNo())
+                        .eq("outcome", "STARTED")
+                        .set("outcome", "UNKNOWN")
+                        .set("finished_at", now())
+                        .set("error_code", "LOCAL_LEASE_EXPIRED"));
+        long attempt = Math.addExact(op.getCurrentAttemptNo(), 1),
+                fence = Math.addExact(op.getFence(), 1);
+        String status =
+                "AUTHORIZE".equals(op.getOperationType()) && op.getCallbackConsumedAt() != null
+                        ? "EXCHANGING"
+                        : "SENDING";
+        updateOperation(
+                op,
+                status,
+                Wrappers.<CimOperation>update()
+                        .set("current_attempt_no", attempt)
+                        .set("fence", fence)
+                        .set("lease_until", now().plusSeconds(90))
+                        .set("next_recovery_at", now().plusSeconds(90)));
+        op.setCurrentAttemptNo(attempt);
+        op.setFence(fence);
+        attempt(op, "QUERY");
+        return new RecoveryWork(account, op);
+    }
+
+    private void finishAbandoned(RecoveryWork work, String evidence) {
+        commands.atomic(
+                () -> {
+                    var account =
+                            account(
+                                    work.account().getEntityNo(),
+                                    work.account().getAccountNo(),
+                                    true);
+                    var op =
+                            operation(
+                                    account.getEntityNo(), work.operation().getOperationNo(), true);
+                    if (!Objects.equals(op.getFence(), work.operation().getFence())) {
+                        late(work.operation(), evidence, "REJECTED");
+                        return false;
+                    }
+                    requireCurrent(account, op);
+                    closeAttempt(work.operation(), "REJECTED", evidence);
+                    updateOperation(
+                            op,
+                            "REJECTED",
+                            Wrappers.<CimOperation>update()
+                                    .set("lease_until", null)
+                                    .set("authorization_url", null)
+                                    .set("next_recovery_at", null)
+                                    .set("original_evidence_ref", evidence)
+                                    .set(
+                                            "business_revision",
+                                            Long.toString(account.getVersion() + 1)));
+                    setAccount(
+                            account,
+                            "AUTH_REJECTED",
+                            null,
+                            account.getActiveAuthorizationNo(),
+                            op.getCreatedBy());
+                    return true;
+                });
+    }
+
+    private void late(CimOperation original, String evidence, String outcome) {
+        if (evidence == null) return;
+        CommerceValidation.text(evidence, 256);
+        attempts.update(
+                Wrappers.<CimOperationAttempt>update()
+                        .eq("tenant_no", "MAIN")
+                        .eq("entity_no", original.getEntityNo())
+                        .eq("operation_no", original.getOperationNo())
+                        .eq("attempt_no", original.getCurrentAttemptNo())
+                        .eq("fence", original.getFence())
+                        .isNull("late_evidence_ref")
+                        .set("late_evidence_ref", evidence)
+                        .set("late_outcome", outcome));
+    }
+
     private CimOperation newOperation(
             CimAccount account, String actor, String number, String type, String request) {
         var op = new CimOperation();
@@ -556,6 +819,7 @@ public class ChannelAuthorizationServiceImpl implements ChannelAuthorizationServ
         op.setFence(1L);
         op.setCurrentAttemptNo(1L);
         op.setLeaseUntil(now().plusSeconds(90));
+        op.setNextRecoveryAt(op.getLeaseUntil());
         return op;
     }
 

@@ -43,22 +43,33 @@ abstract class FoodWriteGuardFixture {
         boolean mysql = "true".equals(System.getenv("FOOD_TEST_DISPOSABLE"));
         if (mysql) {
             String adminUrl = System.getenv("FOOD_TEST_JDBC_URL");
-            assertThat(adminUrl).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/mysql");
+            assertThat(adminUrl).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/(?:mysql|information_schema)");
             String mysqlDatabase = "food_guard_it_" + UUID.randomUUID().toString().replace("-", "");
             admin().execute("CREATE DATABASE " + mysqlDatabase);
             mysqlDatabases.add(mysqlDatabase);
-            url = adminUrl.replace("/mysql", "/" + mysqlDatabase);
+            url = adminUrl.substring(0, adminUrl.lastIndexOf('/') + 1) + mysqlDatabase
+                    + "?allowPublicKeyRetrieval=true&useSSL=false";
         } else {
             url = "jdbc:h2:mem:food_guard_" + UUID.randomUUID() + ";MODE=MySQL;DB_CLOSE_DELAY=-1";
         }
         return new ApplicationContextRunner().withUserConfiguration(Shared.class)
                 .withConfiguration(AutoConfigurations.of(FoodWriteGuardConfiguration.class))
                 .withPropertyValues("shop.food.enabled=true", "spring.datasource.url=" + url,
-                        "spring.datasource.username=" + (mysql ? "root" : "sa"),
-                        "spring.datasource.password=");
+                        "spring.datasource.username=" + (mysql ? mysqlUser() : "sa"),
+                        "spring.datasource.password=" + (mysql ? mysqlPassword() : ""));
     }
     private JdbcTemplate admin() {
-        return new JdbcTemplate(new DriverManagerDataSource(System.getenv("FOOD_TEST_JDBC_URL"), "root", ""));
+        return new JdbcTemplate(new DriverManagerDataSource(System.getenv("FOOD_TEST_JDBC_URL")
+                + "?allowPublicKeyRetrieval=true&useSSL=false", mysqlUser(), mysqlPassword()));
+    }
+    private static String mysqlUser() {
+        return System.getenv().getOrDefault("FOOD_TEST_DB_USER", "root");
+    }
+    private static String mysqlPassword() {
+        String password = System.getenv("FOOD_TEST_DB_PASSWORD");
+        if (!"root".equals(mysqlUser()) && (password == null || password.isBlank()))
+            throw new IllegalArgumentException("Native fixture account requires a password");
+        return password == null ? "" : password;
     }
     @AfterEach void cleanupFixture() {
         SecurityContextHolder.clearContext();

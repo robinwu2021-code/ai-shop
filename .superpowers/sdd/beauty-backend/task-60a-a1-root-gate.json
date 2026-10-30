@@ -1,0 +1,14 @@
+{
+  "status": "A1_IMPLEMENTATION_APPROVED_OTHER_SLICES_CANDIDATE",
+  "designSha256": "22c7ac5df49235da95fc635d4e5ec8ced0dcf600025c880f753be41b6b1687c1",
+  "reportSha256": "6e3b65e7d75f0356a24541ca2a1dcafa4bdf9621d45fed0cacfb70172874480b",
+  "acceptedProduct": "c9d9518798ee74f93d7a1f899d356c4760d57b43",
+  "rootAmendments": [
+    "Use ArchUnit class-name metadata without static beauty-core import in default HOST tests",
+    "Ablation and exact restoration use only ArchitectureTest#topLevelPackagesMustBeRegistered"
+  ],
+  "ownedLogicalFiles": 7,
+  "ownedPaths": 8,
+  "native": false,
+  "deployment": false
+}

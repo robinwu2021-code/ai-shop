@@ -6,6 +6,7 @@ import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Change;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Reference;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Reserve;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Reverse;
+import ai.neargo.shop.spi.inventory.InventoryDemandPlanInternalApi.Withdraw;
 import ai.neargo.shop.spi.inventory.InventoryDemandPlanPort;
 import ai.neargo.shop.spi.inventory.InventoryReservationPort.Scope;
 import ai.neargo.shop.svc.ServiceName;
@@ -28,6 +29,36 @@ public class CoreInventoryDemandPlanPortImpl implements InventoryDemandPlanPort 
     public Receipt reserve(Plan p, long ttl, int version) {
         InventoryDemandPlanFacts.validate(p);
         return call(p.scope(), () -> api.get().reserve(new Reserve(p, ttl, version)));
+    }
+
+    /**
+     * An exact original-owner withdrawal receipt is required; HTTP errors never become cancellation
+     * success.
+     */
+    @Override
+    public WithdrawalReceipt withdraw(Plan plan, String operationRef, int lifecycleVersion) {
+        InventoryDemandPlanFacts.validate(plan);
+        return ServiceCalls.call(
+                ServiceName.PLATFORM,
+                () -> {
+                    var receipt =
+                            api.get().withdraw(new Withdraw(plan, operationRef, lifecycleVersion));
+                    if (receipt == null
+                            || !plan.scope().equals(receipt.scope())
+                            || !plan.planNo().equals(receipt.planNo())
+                            || !plan.planHash().equals(receipt.planHash())
+                            || !operationRef.equals(receipt.operationRef())
+                            || receipt.status() == null
+                            || receipt.receiptRef() == null
+                            || receipt.receiptRef().isBlank()
+                            || receipt.receiptRef().length() > 256)
+                        throw new ServiceCallException(
+                                CallOutcome.REMOTE_ERROR,
+                                ServiceName.PLATFORM,
+                                0,
+                                "Invalid original inventory withdrawal receipt");
+                    return receipt;
+                });
     }
 
     @Override

@@ -10,9 +10,9 @@ import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionStore;
 import ai.neargo.shop.trade.order.refund.service.RefundResourceService;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.util.List;
-import java.util.Objects;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,8 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
+
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.List;
+import java.util.Objects;
 
 /** Cash success remains committed while destination stock and coupon authorities recover independently. */
 @Service
@@ -53,15 +57,24 @@ public class RefundResourceServiceImpl implements RefundResourceService {
 
     @Override
     public void recover(String no) {
+        // This short source transaction commits before the owner-local restore transaction begins.
+        var source = RefundExecutionStore.requireFunded(executions.currentSource(no));
+        if (source == null) {
+            return;
+        }
         try {
-            Boolean restored = independent.execute(tx -> {
-                OrdRefundExecution current = executions.read(no);
-                if (current == null || !OrdRefundExecution.SUCCEEDED.equals(current.getStatus())
-                        || OrdRefundExecution.DONE.equals(current.getResourceStatus())) {
-                    return null;
-                }
-                return restore(current);
-            });
+            Boolean restored =
+                    independent.execute(
+                            tx -> {
+                                OrdRefundExecution current = source;
+                                if (current == null
+                                        || !OrdRefundExecution.SUCCEEDED.equals(current.getStatus())
+                                        || OrdRefundExecution.DONE.equals(
+                                                current.getResourceStatus())) {
+                                    return null;
+                                }
+                                return restore(current);
+                            });
             if (restored != null) {
                 executions.resources(no, restored ? OrdRefundExecution.DONE : OrdRefundExecution.PENDING,
                         restored ? null : "STOCK_RESTORE_PENDING");

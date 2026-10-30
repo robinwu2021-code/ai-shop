@@ -7,6 +7,7 @@ import ai.neargo.shop.trade.order.contract.StoreOrderView;
 import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
 import ai.neargo.shop.trade.order.service.query.StoreOrderAssembler;
 import ai.neargo.shop.trade.order.service.query.StoreOrderMaterial;
+import ai.neargo.shop.trade.order.service.query.CustomerReadScope;
 import ai.neargo.shop.trade.order.service.query.StoreOrderReadStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -20,6 +21,17 @@ public class StoreOrderQueryServiceImpl implements StoreOrderQueryService {
 
     public StoreOrderQueryServiceImpl(StoreOrderReadStore store) {
         this.store = store;
+    }
+
+    @Override
+    public StoreOrderMaterial materialReadable(String no, CustomerReadScope scope) {
+        return store.findReadable(no, scope);
+    }
+
+    @Override
+    public PageData<StoreOrderMaterial> materialsReadable(
+            CustomerReadScope scope, StoreOrderQuery query, long page, long size) {
+        return store.pageReadable(scope, query, page, size);
     }
 
     @Override

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740">
+<title>服务数据库逻辑引用 2</title><desc>从数据库设计JSON生成，展示候选表及图内引用，跨图引用见字段字典；非已执行DDL。</desc>
+<defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#8497a8"/></marker></defs>
+<rect width="100%" height="100%" fill="#f5f8fb"/>
+<text x="45" y="40" font-family="sans-serif" font-size="24">服务 · 目标结构 2</text>
+<path d="M555,297 C600,297 600,142 645,142" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M645,297 C600,297 600,297 555,297" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M85,452 H60 V297 H85" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M85,452 H60 V142 H85" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M645,452 H620 V142 H645" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M555,607 C600,607 600,452 645,452" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M85,607 H60 V297 H85" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="85" y="90" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="118" font-family="sans-serif" font-size="18" font-weight="bold">bty_appointment_assignment</text>
+<text x="99" y="147" font-family="sans-serif" font-size="16">预约确认人员安排历史</text>
+<text x="99" y="175" font-family="sans-serif" font-size="12">planned_assignment_no, appointment_item_no, appointment_revision</text>
+<rect x="645" y="90" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="118" font-family="sans-serif" font-size="18" font-weight="bold">bty_work_order</text>
+<text x="659" y="147" font-family="sans-serif" font-size="16">服务工单</text>
+<text x="659" y="175" font-family="sans-serif" font-size="12">work_order_no, store_no, appointment_no</text>
+<rect x="85" y="245" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="273" font-family="sans-serif" font-size="18" font-weight="bold">bty_service_task</text>
+<text x="99" y="302" font-family="sans-serif" font-size="16">可独立执行服务任务</text>
+<text x="99" y="330" font-family="sans-serif" font-size="12">task_no, work_order_no, scope_revision</text>
+<rect x="645" y="245" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="273" font-family="sans-serif" font-size="18" font-weight="bold">bty_service_step</text>
+<text x="659" y="302" font-family="sans-serif" font-size="16">任务步骤实例</text>
+<text x="659" y="330" font-family="sans-serif" font-size="12">step_no, task_no, step_code</text>
+<rect x="85" y="400" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="428" font-family="sans-serif" font-size="18" font-weight="bold">bty_service_participation</text>
+<text x="99" y="457" font-family="sans-serif" font-size="16">实际服务人员参与段</text>
+<text x="99" y="485" font-family="sans-serif" font-size="12">participation_no, task_no, personnel_no</text>
+<rect x="645" y="400" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="428" font-family="sans-serif" font-size="18" font-weight="bold">bty_service_submission</text>
+<text x="659" y="457" font-family="sans-serif" font-size="16">业务提交与跨域恢复意图</text>
+<text x="659" y="485" font-family="sans-serif" font-size="12">submission_no, store_no, work_order_no</text>
+<rect x="85" y="555" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="583" font-family="sans-serif" font-size="18" font-weight="bold">bty_trade_binding</text>
+<text x="99" y="612" font-family="sans-serif" font-size="16">服务来源行数量分配</text>
+<text x="99" y="640" font-family="sans-serif" font-size="12">binding_no, submission_no, task_no</text>
+</svg>

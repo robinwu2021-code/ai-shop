@@ -1,2 +1,8 @@
 ai.neargo.shop.commerce.config.CommerceWebAutoConfiguration
 ai.neargo.shop.commerce.config.CommerceInternalAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceInboundAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceOpsAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceCertificateCaptureWebAutoConfiguration
+ai.neargo.shop.commerce.config.CommerceExternalCertificateEvidenceWebAutoConfiguration
+
+ai.neargo.shop.commerce.config.CommerceFulfillmentTriggerWebAutoConfiguration

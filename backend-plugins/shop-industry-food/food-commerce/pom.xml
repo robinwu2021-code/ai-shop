@@ -9,6 +9,8 @@
     </parent>
     <artifactId>food-commerce</artifactId>
     <dependencies>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-webmvc</artifactId></dependency>
+        <dependency><groupId>jakarta.servlet</groupId><artifactId>jakarta.servlet-api</artifactId><scope>provided</scope></dependency>
         <dependency>
             <groupId>ai.neargo.shop</groupId><artifactId>food-api</artifactId><version>${project.version}</version>
         </dependency>

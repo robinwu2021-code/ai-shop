@@ -1,0 +1,38 @@
+{
+  "status": "DESIGN_ACCEPTED_NOT_IMPLEMENTED",
+  "baseline": "df39678f30f530388c3c7dbe4e5d0d6557d7755b",
+  "design": {
+    "path": ".superpowers/sdd/beauty-backend/bm05-m2-counter-source-design.md",
+    "sha256": "f9eda33c67b92530bfe5754211a611f4fb47152291589e77d44bd7a4e4a47563"
+  },
+  "review": {
+    "path": ".superpowers/sdd/beauty-backend/review-task-65-r1.md",
+    "sha256": "a98c07ce1a8b1a3a52ac528ae3420516f2842e7e43869522a09862389f463ea4"
+  },
+  "openImportant": 0,
+  "openCritical": 0,
+  "nativeApproved": false,
+  "sourcePinsBound": "108 unique inputs verified at design/R1 freeze; public documentation reconciliation changes subsequent doc bytes, no implementation evidence",
+  "plannedMigrations": [
+    "V542__shared_manual_order_customer_party.sql",
+    "V9__beauty_manual_source_observation.sql"
+  ],
+  "futureRuntimeTests": "A1–A8/B1–B3 including B2a/B2b/C1–C3 remain mandatory and unexecuted",
+  "initialSnapshots": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-65-design-initial-snapshot.md",
+      "sha256": "33559659d148155151669c6f3e65d4fd65832a9a20ff6445322b5da694ed32ae"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/task-65-report-initial-snapshot.md",
+      "sha256": "3ba99527658ba41171c607d7a3827c0a39ceb30dedcb96a3966b351da007d627"
+    }
+  ],
+  "documentationChecks": {
+    "fiveGenerators": "PASS",
+    "generatorAst": "PASS",
+    "pairedPlan": "8 planned routes / 44 planned boundary methods; M1 24 actual methods unchanged",
+    "historicalTarget": "49tasks/160API/118features/41tables unchanged",
+    "docIndex": "executed; one generated main-TDD status date update 2026-10-25→2026-10-26"
+  }
+}

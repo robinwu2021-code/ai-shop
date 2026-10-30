@@ -172,7 +172,7 @@ class WechatDirectChannelTest {
     @DisplayName("查单走 GET，且 ?mchid= 在路径里（它要参与签名）；保留渠道实际币种")
     void 查单走GET带mchid() {
         Rig r = rig();
-        r.peer.script = q -> json(200, "{\"trade_state\":\"SUCCESS\",\"transaction_id\":\"4200001\","
+        r.peer.script = q -> json(200, "{\"out_trade_no\":\"P1\",\"trade_state\":\"SUCCESS\",\"transaction_id\":\"4200001\","
                 + "\"amount\":{\"total\":1,\"currency\":\"USD\"}}");
 
         var res = r.bridge.query("WECHAT", "P1");

@@ -1,0 +1,66 @@
+{
+  "status": "DONE_PENDING_SCOPED_INDEPENDENT_REVIEW",
+  "round": 2,
+  "finding": "R1-N1",
+  "originalFindings": "I1/I2/I3 independently ADDRESSED in R1 review; no task acceptance",
+  "nativeRed": {
+    "path": "r2-red-8295386e-80a0-49c6-af77-a27562ba3576",
+    "tests": 1,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0,
+    "ownFailure": "assertDoesNotThrow after actual terminal states, CHECKOUT_PAYMENT_CONFLICT"
+  },
+  "nativeGreen": {
+    "path": "r2-green-4a0691b6-c2ef-4187-95c0-76770621badb",
+    "tests": 2,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "compile": {
+    "command": "JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home mvn -o -Dmaven.repo.local=/tmp/codex-beauty-bm01-m2 -f /tmp/codex-task64-pre-native-reactor/pom.xml -pl :shop-app,:shop-inventory,:beauty-channel -am test-compile -DskipTests",
+    "result": "23modules BUILD SUCCESS24.918s"
+  },
+  "candidateInventory": "fix-r2/pre-green/inventory.json",
+  "afterGreen": {
+    "candidateInventory": "fix-r2/pre-green/inventory.json",
+    "sourceFixturePins": 94,
+    "compiledClassPins": 211,
+    "mismatches": [],
+    "productTestRunnerFrozen": true
+  },
+  "actualCleanup": {
+    "uuid": "4a0691b6-c2ef-4187-95c0-76770621badb",
+    "name": "codex-manual-service-admission-4a0691b6-c2ef-4187-95c0-76770621badb",
+    "ownedContainerRemoved": true,
+    "temporaryRemoved": true,
+    "admissionRestored": true
+  },
+  "changedPaths": [
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualServiceFinancialIsolationIT.java",
+    "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/impl/PointsRefundResourceServiceImpl.java",
+    "scripts/tests/manual-service-admission-runner.test.mjs",
+    "scripts/verify-manual-service-admission.mjs"
+  ],
+  "proofBounds": "Real legacy checkout/stock and genuine pointsResources.prepare. Explicit SQL paid state, confirmed COMMITTED points/cash/counter/COUPON-policy fixture proof. Actual RefundClosurePolicy and private AfterSaleServiceImpl.settleRefundTerminal via unwrapped real target inside child\u2192afterSale Core TX; no SQL terminal flip, no complete finance orchestration/external money proof.",
+  "remaining": "same original independent reviewer scoped R2 review; no acceptance/commit/deploy; root prepares before80 current4-file package",
+  "unchangedHistoricalEvidence": "original39/filter mutation/restored and R1 RED/GREEN are retained at actual stage; not replayed or relabeled",
+  "rootVerifiedAfterGreen": {
+    "sourcePins": 94,
+    "classPins": 211,
+    "total": 305,
+    "mismatches": 0,
+    "ownedDockerLabelEmpty": true,
+    "ownTempAbsent": true,
+    "sharedLockAbsent": true,
+    "gateConsumed": true
+  },
+  "reviewPackage": {
+    "path": "/tmp/task64-r2-review-package-e453a535-7dc8-4a71-b271-3721f1df7d97.diff",
+    "files": 4,
+    "bytes": 32521,
+    "sha256": "3c6356306433dc010c8371b5d2b92904278e4ec1512a3c59842fdebfbfb11f1c",
+    "origin": "Root immutable before80 snapshot; companion .json exact source pins; no duplicate package generated"
+  }
+}

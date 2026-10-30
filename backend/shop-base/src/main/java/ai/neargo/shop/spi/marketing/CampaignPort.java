@@ -1,6 +1,16 @@
 package ai.neargo.shop.spi.marketing;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.trade.ManualServiceAdmissionPort.CustomerParty;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 
 /**
  * trade → marketing：下单时的**店铺活动**优惠计算。
@@ -16,6 +26,129 @@ import java.util.List;
  * 四层测试全绿，因为测的是「活动能不能建」，没有一条测「建了之后金额有没有变」。
  */
 public interface CampaignPort {
+    /** Freeze the resolved original group choice without borrowing a current owner observation. */
+    record CounterChoice(String entityNo, String storeNo, String mode, String activityNo) {}
+
+    /** Raw owner facts remain separate from canonical order coordinates, including SQL scope aliases. */
+    record CounterRule(
+            String tenantNo, String activityNo, String entityNo, String storeNo,
+            long ruleVersion, String type, String status, int deleted,
+            Long thresholdMinor, Long discountMinor, Long startAt, Long endAt,
+            List<String> goodsNos, long appliedMinor, String funder, long platformMinor) {
+        /** Copy owner scope goods so later row mutations cannot alter frozen rule evidence. */
+        public CounterRule {
+            if (goodsNos == null || goodsNos.stream().anyMatch(Objects::isNull)) {
+                throw new IllegalArgumentException("counter rule goods required");
+            }
+            goodsNos = List.copyOf(goodsNos);
+        }
+    }
+
+    /** Durable owner-produced evidence permits later checks without querying mutable marketing rows. */
+    record CounterActivitySeal(
+            int schema, String policy, CustomerParty party, List<MerchantAmount> groups,
+            Map<String, String> requestedChoices, List<CounterChoice> resolvedChoices,
+            List<CounterRule> selectedRules, String digest) {
+        /** Deep-copy group lines and choices before any digest or durable quote references them. */
+        public CounterActivitySeal {
+            if (groups == null || requestedChoices == null || resolvedChoices == null || selectedRules == null
+                    || groups.stream().anyMatch(Objects::isNull)
+                    || resolvedChoices.stream().anyMatch(Objects::isNull)
+                    || selectedRules.stream().anyMatch(Objects::isNull)
+                    || requestedChoices.entrySet().stream().anyMatch(e -> e.getKey() == null || e.getValue() == null)) {
+                throw new IllegalArgumentException("counter seal collections required");
+            }
+            var copied = new ArrayList<MerchantAmount>();
+            for (MerchantAmount group : groups) {
+                if (group.lines() == null || group.lines().stream().anyMatch(Objects::isNull)) {
+                    throw new IllegalArgumentException("counter group goods required");
+                }
+                copied.add(new MerchantAmount(group.merchantNo(), group.goodsAmount(), group.goodsQty(),
+                        group.storeNo(), List.copyOf(group.lines()), group.pointsRewardsEnabled()));
+            }
+            groups = List.copyOf(copied);
+            requestedChoices = Collections.unmodifiableMap(new TreeMap<>(requestedChoices));
+            resolvedChoices = List.copyOf(resolvedChoices);
+            selectedRules = List.copyOf(selectedRules);
+        }
+    }
+
+    /** Keep selectable display candidates and authoritative selected evidence from the same evaluation. */
+    record CounterCandidates(List<AppliedActivity> candidates, Discount selected, CounterActivitySeal seal) {
+        /** Snapshot every allocation list so display and selection share one immutable evaluation result. */
+        public CounterCandidates {
+            if (candidates == null || selected == null || seal == null || selected.shares() == null
+                    || selected.applied() == null || candidates.stream().anyMatch(Objects::isNull)
+                    || selected.shares().stream().anyMatch(Objects::isNull)
+                    || selected.applied().stream().anyMatch(Objects::isNull)) {
+                throw new IllegalArgumentException("counter evaluation facts required");
+            }
+            candidates = List.copyOf(candidates);
+            selected = new Discount(selected.total(), List.copyOf(selected.shares()), List.copyOf(selected.applied()));
+        }
+    }
+
+    /** Complete counter evaluation cannot fall back to an adapter lacking frozen choice evidence. */
+    default CounterCandidates counterCandidates(
+            CustomerParty party, List<MerchantAmount> groups, Map<String, String> choices) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Recheck original acceptance and owner evidence before a counter writer commits its selected allocation. */
+    default void requireCounterSelection(
+            CustomerParty party, List<MerchantAmount> originalGroups, Map<String, String> originalChoices,
+            CounterActivitySeal originalSeal, Discount originalSelected) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Explicit party capability; adapters must never infer a guest audience from a null user. */
+    default List<AppliedActivity> counterCandidates(
+            CustomerParty party, List<MerchantAmount> groups) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    default void requireCounterSelection(CustomerParty party, Discount selected) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    default Map<String, Long> counterFlashPrices(CustomerParty party, Collection<String> goodsNos) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    default Map<String, GiftRule> counterGiftRules(
+            CustomerParty party, Collection<String> goodsNos) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    default void commitCounter(CustomerParty party, String orderNo, Discount discount) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Recheck the actual selected owner rules and lock local activity roots in a checkout transaction. */
+    default void requireOrdinarySelection(String buyerNo, Discount selected) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Evaluate the explicit buyer audience without borrowing the merchant preparer identity. */
+    default List<AppliedActivity> candidatesFor(String buyerNo, List<MerchantAmount> groups) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Apply existing discount selection with explicit buyer facts; unsupported adapters fail closed. */
+    default Discount autoDiscountFor(
+            String buyerNo, List<MerchantAmount> groups, Map<String, String> choices) {
+        return pick(candidatesFor(buyerNo, groups), choices == null ? Map.of() : choices);
+    }
+
+    /** Use the ordinary price engine with explicit buyer eligibility and reject complex winning triggers. */
+    default Map<String, Long> flashPricesFor(String buyerNo, Collection<String> goodsNos) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
+
+    /** Expose explicit buyer gifts so ordinary checkout can reject unsupported benefits without dropping them. */
+    default Map<String, GiftRule> giftRulesFor(String buyerNo, Collection<String> goodsNos) {
+        throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+    }
 
     /**
      * 按商家算自动优惠（当前只有满减 {@code FULL_CUT}）。

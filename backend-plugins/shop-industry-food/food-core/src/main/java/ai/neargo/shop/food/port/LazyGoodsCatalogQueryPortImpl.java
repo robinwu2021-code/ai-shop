@@ -25,6 +25,12 @@ public final class LazyGoodsCatalogQueryPortImpl implements GoodsCatalogQueryPor
     }
 
     @Override
+    public ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts getCatalogSkuMeasurement(
+            CatalogMarketContracts.SkuQuery query) {
+        return provider.getObject().getCatalogSkuMeasurement(query);
+    }
+
+    @Override
     public CatalogImageContracts.Facts resolveCatalogImages(CatalogImageContracts.Query query) {
         return provider.getObject().resolveCatalogImages(query);
     }

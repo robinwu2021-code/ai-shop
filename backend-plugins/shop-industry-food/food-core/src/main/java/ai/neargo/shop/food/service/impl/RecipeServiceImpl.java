@@ -404,7 +404,7 @@ public class RecipeServiceImpl implements RecipeService {
             throw new IllegalStateException("Invalid material facts");
         var facts = new HashMap<String, MaterialFact>();
         for (var fact : response) {
-            if (!MaterialCatalogFacts.validFact(fact)
+            if (!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(fact)
                     || !entity.equals(fact.entityNo())
                     || !ids.contains(fact.itemId())
                     || facts.putIfAbsent(fact.itemId(), fact) != null) {

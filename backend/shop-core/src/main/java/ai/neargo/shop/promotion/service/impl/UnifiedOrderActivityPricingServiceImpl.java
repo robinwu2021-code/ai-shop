@@ -12,28 +12,29 @@ import ai.neargo.shop.promotion.entity.PmtActivityParticipant;
 import ai.neargo.shop.promotion.entity.PmtActivityVersion;
 import ai.neargo.shop.promotion.entity.PmtApply;
 import ai.neargo.shop.promotion.entity.PmtCoupon;
-import ai.neargo.shop.promotion.mapper.PmtActivityVersionMapper;
 import ai.neargo.shop.promotion.mapper.PmtActivityBudgetMapper;
 import ai.neargo.shop.promotion.mapper.PmtActivityParticipantMapper;
-import ai.neargo.shop.promotion.mapper.UnifiedOrderActivityAccountingMapper;
+import ai.neargo.shop.promotion.mapper.PmtActivityVersionMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ActivityMapper;
 import ai.neargo.shop.promotion.mapper.PromotionMappers.ApplyMapper;
+import ai.neargo.shop.promotion.mapper.UnifiedOrderActivityAccountingMapper;
 import ai.neargo.shop.promotion.service.MarketingEffectProjector;
 import ai.neargo.shop.promotion.service.UnifiedOrderActivityPricingService;
+import ai.neargo.shop.spi.marketing.ActivityOrderFactsPort;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.member.MemberQueryPort;
-import ai.neargo.shop.spi.marketing.ActivityOrderFactsPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Objects;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
+
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /** Unified order discounts use published facts, never mutable drafts or legacy group/flash-price paths. */
 @Service
@@ -156,6 +157,17 @@ public class UnifiedOrderActivityPricingServiceImpl implements UnifiedOrderActiv
             current.setRevertedAt(System.currentTimeMillis()); changed(applies.updateById(current));
             return true;
         });
+    }
+
+    @Override
+    public boolean supportsOrdinarySelection(String activityNo) {
+        return DataScopeContext.executeWithoutScope(
+                () -> {
+                    var current = head(activityNo, false);
+                    return current != null
+                            && current.getCurrentVersionNo() != null
+                            && supportsDefinition(snapshot(current).definition());
+                });
     }
 
     private PmtActivity head(String no,boolean lock) {

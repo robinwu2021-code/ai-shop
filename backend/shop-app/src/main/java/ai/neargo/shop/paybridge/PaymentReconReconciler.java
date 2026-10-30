@@ -1,19 +1,22 @@
 package ai.neargo.shop.paybridge;
 
 import ai.neargo.shop.pay.entity.StlReconDiff;
+import ai.neargo.shop.pay.service.PaymentOperationService;
 import ai.neargo.shop.pay.service.ReconService;
 import ai.neargo.shop.pay.service.RefundExecutionService;
-import ai.neargo.shop.spi.trade.OrderRepairPort;
-import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.trade.OrderRepairPort;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import java.util.Objects;
+import org.springframework.stereotype.Service;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
+import java.util.Objects;
 
 /**
  * <b>收款自查的处置</b>：pay 说通道那边是什么状况，这里决定订单该怎么走。
@@ -52,6 +55,7 @@ public class PaymentReconReconciler {
     /** 退款行的终态写在支付域自己的账上，不经订单域 */
     private final ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
     private RefundExecutionService refunds;
+    @Autowired private PaymentOperationService paymentOperations;
 
     @Autowired
     public void setRefunds(RefundExecutionService refunds) {
@@ -217,7 +221,8 @@ public class PaymentReconReconciler {
                             f.outTradeNo(), f.payChannel(), f.channelTradeNo(),
                             f.channelAmountMinor(), now, f.channelCurrency()));
                     if (!Objects.equals(f.orderNo(), settledOrder) || settledOrder == null) {
-                        throw new IllegalStateException("Original payment receipt could not be claimed");
+                        throw new IllegalStateException(
+                                "Original payment receipt could not be claimed");
                     }
                     orderRepair.markPaid(f.orderNo(), f.payChannel(), f.channelTradeNo());
                     repaired++;
@@ -247,6 +252,9 @@ public class PaymentReconReconciler {
                             "通道 " + f.channelAmountMinor() + " 与我方 "
                                     + f.ourAmountMinor() + " 不符");
                 }
+            } else if (f.notFound() && paymentOperations.protectsUncertainAttempt(f.outTradeNo())) {
+                deferred++;
+                c[3]++;
             } else if (f.notFound()) {
                 orderRepair.closeUnpaid(f.orderNo());
                 closed++;

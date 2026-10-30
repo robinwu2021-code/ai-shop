@@ -31,6 +31,11 @@ import ai.neargo.shop.spi.settle.OrdinaryPaymentPort.Attempt;
  * （覆盖了的话对账查到的成功时刻会一直往后跳）。
  */
 public interface PaymentLedgerService {
+    /**
+     * Bounded proven-unsent close; requires the caller's existing pay transaction and canonical
+     * ticket.
+     */
+    void closeUnsent(String outTradeNo, String canonicalOperationNo);
 
     /**
      * 发起支付，落一行 PENDING。

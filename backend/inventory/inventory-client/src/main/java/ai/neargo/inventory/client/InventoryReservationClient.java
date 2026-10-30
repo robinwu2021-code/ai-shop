@@ -169,8 +169,12 @@ public final class InventoryReservationClient {
             breaker.onSuccess();
             return result;
         } catch (InventoryException business) {
-            // 服务应答了一个业务错误：服务是好的
-            breaker.onSuccess();
+            // 服务应答了一个认得出的错误：4xx 是请求的问题，服务是好的；5xx（如依赖未就绪）照样回原码，但算服务故障
+            if (business.error().httpStatus() >= 500) {
+                breaker.onFailure();
+            } else {
+                breaker.onSuccess();
+            }
             throw business;
         } catch (ServiceCallException transport) {
             breaker.onFailure();
@@ -183,13 +187,13 @@ public final class InventoryReservationClient {
         return "K-" + UUID.randomUUID();
     }
 
-    /** 4xx 且错误体能认出码 → 翻回 {@link InventoryException}；其余交给传输层按 REMOTE_ERROR 处理 */
+    /** 错误体能认出码 → 翻回 {@link InventoryException}（含 5xx，如依赖未就绪）；认不出的交给传输层按 REMOTE_ERROR 处理 */
     public static org.springframework.http.client.ClientHttpResponse decodeErrors(
             org.springframework.http.HttpRequest request, byte[] body,
             org.springframework.http.client.ClientHttpRequestExecution execution) throws java.io.IOException {
         var response = execution.execute(request, body);
         int status = response.getStatusCode().value();
-        if (status < 400 || status >= 500) {
+        if (status < 400) {
             return response;
         }
         InventoryError error = null;

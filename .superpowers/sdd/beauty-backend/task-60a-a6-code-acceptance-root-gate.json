@@ -1,0 +1,43 @@
+{
+  "base": "58024f052053d092b0ffbbf0e3376207fc9d9983",
+  "productsVerified": 2,
+  "files": [
+    {
+      "path": "scripts/check-sql-portability.mjs",
+      "baseSha256": "24ed638672b143fb389d09cea32a0e1328ca3b5f3bba310f735f190f42e60332",
+      "finalSha256": "f743c0c4706a5789541c66f6ddebdeb90d5e49e5e32ace3122f8ed0dfdafef29",
+      "bytes": 12084,
+      "status": "modified"
+    },
+    {
+      "path": "scripts/tests/sql-portability-scope.test.mjs",
+      "baseSha256": null,
+      "finalSha256": "d23561f4b7f66a716e2aee04cee6d374094b85f9c6d91fad63274bf5ecacb48e",
+      "bytes": 8197,
+      "status": "new"
+    }
+  ],
+  "rulesByteIdentical": true,
+  "frozenDependenciesVerified": 2,
+  "exactRestoration": true,
+  "nodeFinal": "9/0/0/0",
+  "actualGate": {
+    "command": "node scripts/check-sql-portability.mjs --check",
+    "exitCode": 0,
+    "hits": 162,
+    "files": 51,
+    "knownCount": 54,
+    "fresh": 0,
+    "stale": 0
+  },
+  "staticJavaBounds": true,
+  "manifestSha256": "7a4aebf53ebf4e9992589747f33b5d81446d8f27015ae44a7c0dcce9b41f7698",
+  "reportSha256": "763ce1c7254190dcc8f8b9afd658d3c13bc4c31723b5e95eb8a30be2f6cbb877",
+  "diff": "/tmp/task60a-a6-review-package-530eeaa5-93c6-4d3e-a722-90ecf19840d5.diff",
+  "diffSha256": "ced5d57405e5320cf6a0ff14d3ad71d4e11d7f2546c27715256dce8fbb18e6c3",
+  "diffBytes": 22188,
+  "productCommit": "9136d67c98ff24a6448cd009511e3685370d2dfb",
+  "productTree": "cea51cfd79a9ffa8dd012cc152f90c69ce6c9c3d",
+  "reviewSha256": "433cefed3dcffd43e1552dc7e7dd9c5b207831437f6817ef41f5c9d185070b2a",
+  "minor": "BareCR Java // end and lineOf; final wholebranch triage"
+}

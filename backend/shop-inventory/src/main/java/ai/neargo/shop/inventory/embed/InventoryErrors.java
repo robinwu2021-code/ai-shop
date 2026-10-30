@@ -35,6 +35,8 @@ public final class InventoryErrors {
                     EVENTS_CURSOR_EXPIRED, COUNT_FROZEN -> ErrorCode.CONFLICT;
             // 库存服务不可用（客户端熔断 / 超时）：拒单而不是放行（Q7）；暂不另设商城码，免得新增三语文案
             case UNAVAILABLE, INTERNAL -> ErrorCode.INTERNAL_ERROR;
+            // 执行留存等运行依赖未就绪：内嵌时期就是这个码，切出来后保持不变
+            case DEPENDENCY_UNAVAILABLE -> ErrorCode.BEAUTY_DEPENDENCY_UNAVAILABLE;
         };
     }
 

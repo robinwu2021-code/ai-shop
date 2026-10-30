@@ -27,4 +27,14 @@ public class ApiErrorAdvice {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(ErrorBodies.body(e));
     }
+
+    /**
+     * 领域里的协议状态检查（如原单出库还没确认就回补：{@code STOCK_ORIGINAL_POSTING_UNCONFIRMED}）用
+     * {@link IllegalStateException} 表达。对调用方这是「现在不能做」，按冲突回，原因带回去 —— 不是服务坏了。
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> onIllegalState(IllegalStateException e) {
+        return onInventory(InventoryException.of(ai.neargo.inventory.api.InventoryError.CONFLICT,
+                e.getMessage() == null ? "state" : e.getMessage()));
+    }
 }

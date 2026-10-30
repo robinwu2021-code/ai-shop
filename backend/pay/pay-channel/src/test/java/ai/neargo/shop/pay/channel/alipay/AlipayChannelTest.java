@@ -67,7 +67,7 @@ class AlipayChannelTest {
     @DisplayName("★★★ 请求按 RSA2 签名：去掉 sign 与空值、按键排序拼串（sign_type 参与签名，与验回调不同）；用应用公钥验得过")
     void requestIsSignedRsa2() throws Exception {
         LegacyChannelBridge bridge = bridge("PLATFORM");
-        peer.script = method -> Map.of("code", "10000", "trade_status", "TRADE_SUCCESS", "trade_no", "2026T1",
+        peer.script = method -> Map.of("code", "10000", "out_trade_no", "OD-1", "trade_status", "TRADE_SUCCESS", "trade_no", "2026T1",
                 "total_amount", "12.34");
 
         var res = bridge.query("ALIPAY", "OD-1");

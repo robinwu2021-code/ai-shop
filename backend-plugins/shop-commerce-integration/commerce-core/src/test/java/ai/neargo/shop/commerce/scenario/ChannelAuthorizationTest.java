@@ -10,6 +10,7 @@ import ai.neargo.shop.commerce.dto.RevokeChannelAuthorizationReq;
 import ai.neargo.shop.commerce.service.ChannelAccountService;
 import ai.neargo.shop.commerce.service.ChannelAuthorizationService;
 import ai.neargo.shop.commerce.service.ChannelOperationService;
+import ai.neargo.shop.commerce.service.impl.ChannelAuthorizationServiceImpl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import ai.neargo.shop.spi.commerce.ChannelAuthorizationGateway;
@@ -64,6 +65,10 @@ class ChannelAuthorizationTest {
         boolean wrongAccount;
         boolean badUrl;
         boolean revokeUnknown;
+        boolean exchangeTimeout, recoveryKnown, recoveryTerminal, wrongRecoveryState;
+        Runnable duringRecovery;
+        Grant originalGrant;
+        int recoveryQueries;
         String extraQuery;
         Runnable earlyCallback;
 
@@ -101,13 +106,60 @@ class ChannelAuthorizationTest {
         public Grant exchange(AuthorizationContext request, String code) {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             exchanges.incrementAndGet();
-            return new Grant(
-                    wrongAccount ? "OTHER" : request.externalAccountRef(),
-                    "vault:opaque-ref",
-                    Set.of("ORDER", "CATALOG"),
-                    Instant.now().minusSeconds(1),
-                    Instant.now().plusSeconds(3600),
-                    "GRANT_RECEIPT");
+            originalGrant =
+                    new Grant(
+                            wrongAccount ? "OTHER" : request.externalAccountRef(),
+                            "vault:opaque-ref",
+                            Set.of("ORDER", "CATALOG"),
+                            Instant.now().minusSeconds(1),
+                            Instant.now().plusSeconds(3600),
+                            "GRANT_RECEIPT");
+            if (exchangeTimeout)
+                throw new IllegalStateException("provider stored grant before timeout");
+            return originalGrant;
+        }
+
+        @Override
+        public AuthorizationRecovery queryAuthorization(AuthorizationQuery query) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(query.operationNo()).isEqualTo(context.operationNo());
+            recoveryQueries++;
+            if (duringRecovery != null) {
+                var hook = duringRecovery;
+                duringRecovery = null;
+                hook.run();
+            }
+            if (recoveryTerminal)
+                return new AuthorizationRecovery(
+                        query,
+                        RecoveryStatus.TERMINAL_FAILED,
+                        null,
+                        null,
+                        "ORIGINAL_TERMINAL_RECEIPT");
+            if (!recoveryKnown)
+                return new AuthorizationRecovery(query, RecoveryStatus.UNKNOWN, null, null, null);
+            if (query.callbackConsumed())
+                return new AuthorizationRecovery(
+                        query, RecoveryStatus.FOUND, null, originalGrant, "ORIGINAL_GRANT_QUERY");
+            var start =
+                    new Start(
+                            "https://auth.example.test/authorize?state="
+                                    + (wrongRecoveryState ? "X".repeat(43) : context.state())
+                                    + "&redirect_uri=https%3A%2F%2Fshop.example.test%2Fcallback%2Fcommerce%2FTEST%2Fauthorization",
+                            "ORIGINAL_START");
+            return new AuthorizationRecovery(
+                    query, RecoveryStatus.FOUND, start, null, "ORIGINAL_START_QUERY");
+        }
+
+        @Override
+        public RevocationRecovery queryRevocation(RevocationContext query) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            recoveryQueries++;
+            return new RevocationRecovery(
+                    query,
+                    recoveryKnown ? RecoveryStatus.FOUND : RecoveryStatus.UNKNOWN,
+                    recoveryKnown ? new Revocation(true, "ORIGINAL_REVOKE") : null,
+                    recoveryKnown ? "ORIGINAL_REVOKE_QUERY" : null);
         }
 
         public Revocation revoke(RevocationContext request) {
@@ -693,9 +745,202 @@ class ChannelAuthorizationTest {
                             assertThat(
                                             sql.queryForObject(
                                                     "SELECT COUNT(*) FROM"
-                                                        + " cim_authorization_revision",
+                                                            + " cim_authorization_revision",
                                                     Long.class))
                                     .isEqualTo(1);
+                        });
+    }
+
+    @Test
+    void readOnlyRecoveryFindsPersistedGrantAndRevocationWithoutRepeatingOriginalWrites() {
+        var gateway = new Gateway();
+        gateway.exchangeTimeout = true;
+        gateway.recoveryKnown = true;
+        runner().withBean(ChannelAuthorizationGateway.class, () -> gateway)
+                .run(
+                        c -> {
+                            assertThat(c).hasNotFailed();
+                            var sql = new JdbcTemplate(c.getBean(DataSource.class));
+                            seed(sql);
+                            var accounts = c.getBean(ChannelAccountService.class);
+                            var service = c.getBean(ChannelAuthorizationServiceImpl.class);
+                            var account =
+                                    accounts.createAccount(
+                                            "E",
+                                            "A",
+                                            new CreateChannelAccountReq("PP", "REMOTE"),
+                                            "create");
+                            var action =
+                                    service.authorize(
+                                            "E",
+                                            account.accountNo(),
+                                            "A",
+                                            new AuthorizeChannelAccountReq(0L, "B_APP"),
+                                            "authorize");
+                            assertThat(
+                                            service.completeAuthorization(
+                                                            "TEST",
+                                                            gateway.context.state(),
+                                                            "CODE",
+                                                            null)
+                                                    .status())
+                                    .isEqualTo("UNKNOWN");
+                            sql.execute(
+                                    "UPDATE cim_operation SET next_recovery_at='2000-01-01"
+                                        + " 00:00:00'");
+                            assertThat(service.recoverDue(10)).isOne();
+                            assertThat(accounts.getAccount("E", account.accountNo()).status())
+                                    .isEqualTo("ACTIVE");
+                            assertThat(gateway.exchanges).hasValue(1);
+                            gateway.revokeUnknown = true;
+                            var active = accounts.getAccount("E", account.accountNo());
+                            service.revoke(
+                                    "E",
+                                    account.accountNo(),
+                                    "A",
+                                    new RevokeChannelAuthorizationReq(
+                                            active.version(), "OWNER_REQUEST", "stop"),
+                                    "revoke");
+                            sql.execute(
+                                    "UPDATE cim_operation SET next_recovery_at='2000-01-01"
+                                        + " 00:00:00' WHERE operation_type='REVOKE'");
+                            assertThat(service.recoverDue(10)).isOne();
+                            assertThat(accounts.getAccount("E", account.accountNo()).status())
+                                    .isEqualTo("REVOKED");
+                            assertThat(gateway.revokes).hasValue(1);
+                            assertThat(
+                                            sql.queryForObject(
+                                                    "SELECT COUNT(*) FROM cim_operation_attempt"
+                                                        + " WHERE attempt_kind='QUERY'",
+                                                    Integer.class))
+                                    .isEqualTo(2);
+                        });
+    }
+
+    @Test
+    void originalStartQueryMustMatchSavedStateAndLocalExpiryAloneCannotClearUnknownGate() {
+        var gateway = new Gateway();
+        gateway.timeout = true;
+        gateway.recoveryKnown = true;
+        gateway.wrongRecoveryState = true;
+        runner().withBean(ChannelAuthorizationGateway.class, () -> gateway)
+                .run(
+                        c -> {
+                            assertThat(c).hasNotFailed();
+                            var sql = new JdbcTemplate(c.getBean(DataSource.class));
+                            seed(sql);
+                            var accounts = c.getBean(ChannelAccountService.class);
+                            var service = c.getBean(ChannelAuthorizationServiceImpl.class);
+                            var account =
+                                    accounts.createAccount(
+                                            "E",
+                                            "A",
+                                            new CreateChannelAccountReq("PP", "REMOTE"),
+                                            "create");
+                            var action =
+                                    service.authorize(
+                                            "E",
+                                            account.accountNo(),
+                                            "A",
+                                            new AuthorizeChannelAccountReq(0L, "B_APP"),
+                                            "authorize");
+                            sql.execute(
+                                    "UPDATE cim_operation SET next_recovery_at='2000-01-01"
+                                        + " 00:00:00'");
+                            service.recoverDue(10);
+                            assertThat(
+                                            c.getBean(ChannelOperationService.class)
+                                                    .getOperation("E", action.operationNo())
+                                                    .status())
+                                    .isEqualTo("UNKNOWN");
+                            gateway.wrongRecoveryState = false;
+                            sql.execute(
+                                    "UPDATE cim_operation SET next_recovery_at='2000-01-01"
+                                        + " 00:00:00'");
+                            service.recoverDue(10);
+                            assertThat(
+                                            c.getBean(ChannelOperationService.class)
+                                                    .getOperation("E", action.operationNo())
+                                                    .authorizationUrl())
+                                    .contains(gateway.context.state());
+                            gateway.recoveryKnown = false;
+                            sql.execute(
+                                    "UPDATE cim_operation SET expires_at='2000-01-01"
+                                        + " 00:00:00',next_recovery_at='2000-01-01 00:00:00'");
+                            service.recoverDue(10);
+                            assertThat(
+                                            sql.queryForObject(
+                                                    "SELECT active_operation_no FROM cim_account"
+                                                        + " WHERE account_no=?",
+                                                    String.class,
+                                                    account.accountNo()))
+                                    .isEqualTo(action.operationNo());
+                            assertThat(gateway.starts).hasValue(1);
+                            assertThat(gateway.exchanges).hasValue(0);
+                            gateway.recoveryTerminal = true;
+                            sql.execute(
+                                    "UPDATE cim_operation SET next_recovery_at='2000-01-01"
+                                        + " 00:00:00'");
+                            service.recoverDue(10);
+                            assertThat(
+                                            sql.queryForObject(
+                                                    "SELECT active_operation_no FROM cim_account"
+                                                        + " WHERE account_no=?",
+                                                    String.class,
+                                                    account.accountNo()))
+                                    .isNull();
+                        });
+    }
+
+    @Test
+    void callbackWinningDuringReadOnlyRecoveryCannotBeOverwrittenByLateUrl() {
+        var gateway = new Gateway();
+        gateway.timeout = true;
+        gateway.recoveryKnown = true;
+        runner().withBean(ChannelAuthorizationGateway.class, () -> gateway)
+                .run(
+                        c -> {
+                            assertThat(c).hasNotFailed();
+                            var sql = new JdbcTemplate(c.getBean(DataSource.class));
+                            seed(sql);
+                            var accounts = c.getBean(ChannelAccountService.class);
+                            var service = c.getBean(ChannelAuthorizationServiceImpl.class);
+                            var account =
+                                    accounts.createAccount(
+                                            "E",
+                                            "A",
+                                            new CreateChannelAccountReq("PP", "REMOTE"),
+                                            "create");
+                            var action =
+                                    service.authorize(
+                                            "E",
+                                            account.accountNo(),
+                                            "A",
+                                            new AuthorizeChannelAccountReq(0L, "B_APP"),
+                                            "authorize");
+                            gateway.duringRecovery =
+                                    () ->
+                                            service.completeAuthorization(
+                                                    "TEST", gateway.context.state(), "CODE", null);
+                            sql.execute(
+                                    "UPDATE cim_operation SET next_recovery_at='2000-01-01"
+                                        + " 00:00:00'");
+                            service.recoverDue(10);
+                            assertThat(accounts.getAccount("E", account.accountNo()).status())
+                                    .isEqualTo("ACTIVE");
+                            assertThat(
+                                            c.getBean(ChannelOperationService.class)
+                                                    .getOperation("E", action.operationNo())
+                                                    .status())
+                                    .isEqualTo("SUCCEEDED");
+                            assertThat(gateway.exchanges).hasValue(1);
+                            assertThat(
+                                            sql.queryForObject(
+                                                    "SELECT COUNT(*) FROM cim_operation_attempt"
+                                                        + " WHERE"
+                                                        + " late_evidence_ref='ORIGINAL_START_QUERY'",
+                                                    Integer.class))
+                                    .isOne();
                         });
     }
 }

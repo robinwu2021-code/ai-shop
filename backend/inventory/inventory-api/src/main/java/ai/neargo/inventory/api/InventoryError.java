@@ -45,6 +45,8 @@ public enum InventoryError {
     EVENTS_CURSOR_EXPIRED("inventory.events.cursor_expired", 410),
     /** 盘点范围内冻结中：开盘到过账 / 作废之间，范围内的物料不许进出（AC-11）。参数是盘点单号。 */
     COUNT_FROZEN("inventory.count.frozen", 409),
+    /** 运行依赖还没就绪（如执行留存的库表没装好）：新流程不开始。参数是缺的那一项 */
+    DEPENDENCY_UNAVAILABLE("inventory.dependency_unavailable", 503),
     /** 调用方一侧：库存服务连不上、超时或熔断中（客户端抛，服务端不抛）。宿主据此拒单而不是放行（Q7）。 */
     UNAVAILABLE("inventory.unavailable", 503),
     INTERNAL("inventory.internal", 500);

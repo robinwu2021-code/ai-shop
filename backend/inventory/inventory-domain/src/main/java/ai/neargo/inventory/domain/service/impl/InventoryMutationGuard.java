@@ -16,12 +16,12 @@ import org.springframework.stereotype.Component;
 /** Prevents physical stock mutations while a count snapshot is open. Paid allocation is non-physical and remains allowed. */
 @Component
 @ConditionalOnInventory
-class InventoryMutationGuard {
+public class InventoryMutationGuard {
     private final StockCountMapper counts;
     private final StockCountLineMapper lines;
     private final LocationMapper locations;
 
-    InventoryMutationGuard(StockCountMapper counts, StockCountLineMapper lines, LocationMapper locations) {
+    public InventoryMutationGuard(StockCountMapper counts, StockCountLineMapper lines, LocationMapper locations) {
         this.counts = counts;
         this.lines = lines;
         this.locations = locations;

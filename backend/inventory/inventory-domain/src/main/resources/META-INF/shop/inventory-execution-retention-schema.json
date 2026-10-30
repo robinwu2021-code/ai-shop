@@ -1,0 +1,1215 @@
+{
+  "schemaVersion": 1,
+  "owner": "shop-inventory/invDataSource",
+  "inventoryVersion": 17,
+  "migrationScript": "V17__execution_stock_retention.sql",
+  "flywayChecksum": -915721551,
+  "migrationSha256": "3725630fc006ad0b15afa55c44054522e16c84cdfba629108e1affb59ecb7ab0",
+  "ownerCollation": "utf8mb4_uca1400_ai_ci",
+  "ownerIdentity": [
+    {
+      "table": "inv_owner",
+      "column": "owner_id",
+      "type": "varchar(32)",
+      "role": "OWNER"
+    },
+    {
+      "table": "inv_reservation",
+      "column": "owner_id",
+      "type": "varchar(32)",
+      "role": "OWNER"
+    }
+  ],
+  "tables": [
+    {
+      "name": "inv_execution_retention_claim",
+      "tag": "ierc",
+      "engine": "InnoDB",
+      "comment": "Permanent native Inventory execution retention identity",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "retention_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "component_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "component_descriptor_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "reference_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "source_tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "source_entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "source_store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "grant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "attempt_no",
+          "type": "int",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "prepared_grant_revision",
+          "type": "bigint",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "reference_schema",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "reference_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "parent_original_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "parent_original_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "parent_manifest_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "component_descriptor_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "component_manifest_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "proof_mode",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "source_confirmation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "external_stock_confirmation_operation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "mirror_proof_json",
+          "type": "longtext",
+          "nullable": true,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "mirror_proof_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "accepted_evidence_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "accepted_authority_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "accepted_authority_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "resource_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "resource_command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "owner_set_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "immutable": false,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "owner_set_count",
+          "type": "int",
+          "nullable": true,
+          "immutable": false,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "state",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "issue_observation_json",
+          "type": "longtext",
+          "nullable": true,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "issue_observation_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "immutable": false,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "no_effect_seal_json",
+          "type": "longtext",
+          "nullable": true,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "no_effect_seal_no",
+          "type": "varchar(64)",
+          "nullable": true,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "no_effect_seal_revision",
+          "type": "bigint",
+          "nullable": true,
+          "immutable": false,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "no_effect_seal_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "immutable": false,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "claim_revision",
+          "type": "bigint",
+          "nullable": false,
+          "immutable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0"
+        },
+        {
+          "name": "owner_set_json",
+          "type": "longtext",
+          "nullable": true,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "immutable": false,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_ierc_component": [
+          "component_no"
+        ],
+        "uk_ierc_execution": [
+          "execution_no",
+          "parent_original_hash"
+        ]
+      },
+      "indexes": {
+        "idx_ierc_request": [
+          "retention_no",
+          "request_hash"
+        ]
+      },
+      "checks": {
+        "ck_ierc_revision": "claim_revision >= 0 AND claim_revision < 9223372036854775807",
+        "ck_ierc_state": "state IN ('ACCEPTED','RETAINED','SEALED_NO_EFFECT')",
+        "ck_ierc_positive": "attempt_no > 0 AND prepared_grant_revision > 0",
+        "ck_ierc_mode": "(proof_mode='NATIVE_CONFIRMATION' AND mirror_proof_json IS NULL AND mirror_proof_hash IS NULL) OR (proof_mode='DUAL_MIRROR' AND mirror_proof_json IS NOT NULL AND mirror_proof_hash IS NOT NULL)",
+        "ck_ierc_observation": "(issue_observation_json IS NULL AND issue_observation_hash IS NULL) OR (issue_observation_json IS NOT NULL AND issue_observation_hash IS NOT NULL)",
+        "ck_ierc_seal": "(state IN ('ACCEPTED','RETAINED') AND no_effect_seal_json IS NULL AND no_effect_seal_no IS NULL AND no_effect_seal_revision IS NULL AND no_effect_seal_hash IS NULL) OR (state IN ('SEALED_NO_EFFECT','RELEASED_NO_EFFECT') AND no_effect_seal_json IS NOT NULL AND no_effect_seal_no IS NOT NULL AND no_effect_seal_revision > 0 AND no_effect_seal_hash IS NOT NULL)",
+        "ck_ierc_6": "component_descriptor_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_7": "request_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_8": "reference_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_9": "parent_original_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_10": "parent_manifest_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_11": "component_manifest_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_12": "mirror_proof_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_13": "accepted_evidence_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_14": "accepted_authority_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_15": "resource_command_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_16": "plan_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_17": "owner_set_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_18": "issue_observation_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_19": "no_effect_seal_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ierc_roster": "(owner_set_hash IS NULL AND owner_set_count IS NULL AND owner_set_json IS NULL AND state IN ('ACCEPTED','SEALED_NO_EFFECT')) OR (owner_set_hash IS NOT NULL AND owner_set_count > 0 AND owner_set_json IS NOT NULL)"
+      },
+      "immutable": [
+        "id",
+        "retention_no",
+        "component_no",
+        "component_descriptor_hash",
+        "request_hash",
+        "reference_hash",
+        "source_tenant_no",
+        "source_entity_no",
+        "source_store_no",
+        "execution_no",
+        "unit_no",
+        "grant_no",
+        "attempt_no",
+        "prepared_grant_revision",
+        "reference_schema",
+        "reference_json",
+        "parent_original_json",
+        "parent_original_hash",
+        "parent_manifest_hash",
+        "component_descriptor_json",
+        "component_manifest_hash",
+        "proof_mode",
+        "source_confirmation_no",
+        "external_stock_confirmation_operation_no",
+        "mirror_proof_json",
+        "mirror_proof_hash",
+        "accepted_evidence_hash",
+        "accepted_authority_json",
+        "accepted_authority_hash",
+        "resource_command_no",
+        "resource_command_hash",
+        "plan_hash",
+        "created_at",
+        "created_by"
+      ],
+      "collation": "utf8mb4_uca1400_ai_ci"
+    },
+    {
+      "name": "inv_execution_retention",
+      "tag": "ier",
+      "engine": "InnoDB",
+      "comment": "Permanent native Inventory execution retention identity",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "retention_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "component_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "component_descriptor_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "reference_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "source_tenant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "source_entity_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "source_store_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "execution_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "unit_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "grant_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "attempt_no",
+          "type": "int",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "prepared_grant_revision",
+          "type": "bigint",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "reference_schema",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "reference_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "parent_original_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "parent_original_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "parent_manifest_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "component_descriptor_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "component_manifest_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "proof_mode",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "source_confirmation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "external_stock_confirmation_operation_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "mirror_proof_json",
+          "type": "longtext",
+          "nullable": true,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "mirror_proof_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "accepted_evidence_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "accepted_authority_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "accepted_authority_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "resource_command_no",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "resource_command_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "plan_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "owner_set_hash",
+          "type": "char(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "owner_set_count",
+          "type": "int",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "state",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "issue_observation_json",
+          "type": "longtext",
+          "nullable": true,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "issue_observation_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "immutable": false,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "no_effect_seal_json",
+          "type": "longtext",
+          "nullable": true,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "no_effect_seal_no",
+          "type": "varchar(64)",
+          "nullable": true,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "no_effect_seal_revision",
+          "type": "bigint",
+          "nullable": true,
+          "immutable": false,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "no_effect_seal_hash",
+          "type": "char(64)",
+          "nullable": true,
+          "immutable": false,
+          "charset": "ascii",
+          "collation": "ascii_bin",
+          "default": null
+        },
+        {
+          "name": "retention_revision",
+          "type": "bigint",
+          "nullable": false,
+          "immutable": false,
+          "charset": null,
+          "collation": null,
+          "default": "0"
+        },
+        {
+          "name": "owner_id",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_uca1400_ai_ci",
+          "default": null
+        },
+        {
+          "name": "reservation_id",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "original_line_id",
+          "type": "bigint",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "original_line_no",
+          "type": "int",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "item_id",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "location_id",
+          "type": "varchar(32)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "source_sku_no",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "fulfillment_ref",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "lifecycle_version",
+          "type": "int",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "original_qty",
+          "type": "int",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "native_confirmation_operation_no",
+          "type": "varchar(64)",
+          "nullable": true,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "retained_disposition_revision",
+          "type": "bigint",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "retained_disposition",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "original_row_json",
+          "type": "longtext",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "immutable": true,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "created_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": true,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime(3)",
+          "nullable": false,
+          "immutable": false,
+          "charset": null,
+          "collation": null,
+          "default": null
+        },
+        {
+          "name": "updated_by",
+          "type": "varchar(64)",
+          "nullable": false,
+          "immutable": false,
+          "charset": "utf8mb4",
+          "collation": "utf8mb4_bin",
+          "default": null
+        }
+      ],
+      "primaryKey": [
+        "id"
+      ],
+      "unique": {
+        "uk_ier_original": [
+          "retention_no",
+          "original_line_id"
+        ],
+        "uk_ier_execution": [
+          "execution_no",
+          "original_line_id"
+        ]
+      },
+      "indexes": {
+        "idx_ier_source": [
+          "owner_id",
+          "reservation_id",
+          "original_line_id",
+          "state"
+        ],
+        "idx_ier_component": [
+          "component_no",
+          "request_hash",
+          "original_line_id"
+        ]
+      },
+      "checks": {
+        "ck_ier_revision": "retention_revision >= 0 AND retention_revision < 9223372036854775807",
+        "ck_ier_state": "state IN ('RETAINED','RELEASED_NO_EFFECT')",
+        "ck_ier_positive": "attempt_no > 0 AND prepared_grant_revision > 0 AND owner_set_count > 0",
+        "ck_ier_mode": "(proof_mode='NATIVE_CONFIRMATION' AND mirror_proof_json IS NULL AND mirror_proof_hash IS NULL) OR (proof_mode='DUAL_MIRROR' AND mirror_proof_json IS NOT NULL AND mirror_proof_hash IS NOT NULL)",
+        "ck_ier_observation": "(issue_observation_json IS NULL AND issue_observation_hash IS NULL) OR (issue_observation_json IS NOT NULL AND issue_observation_hash IS NOT NULL)",
+        "ck_ier_seal": "(state IN ('ACCEPTED','RETAINED') AND no_effect_seal_json IS NULL AND no_effect_seal_no IS NULL AND no_effect_seal_revision IS NULL AND no_effect_seal_hash IS NULL) OR (state IN ('SEALED_NO_EFFECT','RELEASED_NO_EFFECT') AND no_effect_seal_json IS NOT NULL AND no_effect_seal_no IS NOT NULL AND no_effect_seal_revision > 0 AND no_effect_seal_hash IS NOT NULL)",
+        "ck_ier_6": "component_descriptor_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_7": "request_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_8": "reference_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_9": "parent_original_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_10": "parent_manifest_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_11": "component_manifest_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_12": "mirror_proof_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_13": "accepted_evidence_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_14": "accepted_authority_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_15": "resource_command_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_16": "plan_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_17": "owner_set_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_18": "issue_observation_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_19": "no_effect_seal_hash REGEXP '^[a-f0-9]{64}$'",
+        "ck_ier_line": "original_line_id > 0 AND original_line_no > 0 AND original_qty > 0 AND retained_disposition_revision > 0 AND lifecycle_version IN (1,2)",
+        "ck_ier_native": "proof_mode<>'NATIVE_CONFIRMATION' OR native_confirmation_operation_no IS NOT NULL"
+      },
+      "immutable": [
+        "id",
+        "retention_no",
+        "component_no",
+        "component_descriptor_hash",
+        "request_hash",
+        "reference_hash",
+        "source_tenant_no",
+        "source_entity_no",
+        "source_store_no",
+        "execution_no",
+        "unit_no",
+        "grant_no",
+        "attempt_no",
+        "prepared_grant_revision",
+        "reference_schema",
+        "reference_json",
+        "parent_original_json",
+        "parent_original_hash",
+        "parent_manifest_hash",
+        "component_descriptor_json",
+        "component_manifest_hash",
+        "proof_mode",
+        "source_confirmation_no",
+        "external_stock_confirmation_operation_no",
+        "mirror_proof_json",
+        "mirror_proof_hash",
+        "accepted_evidence_hash",
+        "accepted_authority_json",
+        "accepted_authority_hash",
+        "resource_command_no",
+        "resource_command_hash",
+        "plan_hash",
+        "owner_set_hash",
+        "owner_set_count",
+        "owner_id",
+        "reservation_id",
+        "original_line_id",
+        "original_line_no",
+        "item_id",
+        "location_id",
+        "source_sku_no",
+        "fulfillment_ref",
+        "lifecycle_version",
+        "original_qty",
+        "native_confirmation_operation_no",
+        "retained_disposition_revision",
+        "retained_disposition",
+        "original_row_json",
+        "created_at",
+        "created_by"
+      ],
+      "collation": "utf8mb4_uca1400_ai_ci"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "trg_ierc_immutable",
+      "table": "inv_execution_retention_claim",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (BINARY NEW.id <=> BINARY OLD.id) OR\n        NOT (BINARY NEW.retention_no <=> BINARY OLD.retention_no) OR\n        NOT (BINARY NEW.component_no <=> BINARY OLD.component_no) OR\n        NOT (BINARY NEW.component_descriptor_hash <=> BINARY OLD.component_descriptor_hash) OR\n        NOT (BINARY NEW.request_hash <=> BINARY OLD.request_hash) OR\n        NOT (BINARY NEW.reference_hash <=> BINARY OLD.reference_hash) OR\n        NOT (BINARY NEW.source_tenant_no <=> BINARY OLD.source_tenant_no) OR\n        NOT (BINARY NEW.source_entity_no <=> BINARY OLD.source_entity_no) OR\n        NOT (BINARY NEW.source_store_no <=> BINARY OLD.source_store_no) OR\n        NOT (BINARY NEW.execution_no <=> BINARY OLD.execution_no) OR\n        NOT (BINARY NEW.unit_no <=> BINARY OLD.unit_no) OR\n        NOT (BINARY NEW.grant_no <=> BINARY OLD.grant_no) OR\n        NOT (BINARY NEW.attempt_no <=> BINARY OLD.attempt_no) OR\n        NOT (BINARY NEW.prepared_grant_revision <=> BINARY OLD.prepared_grant_revision) OR\n        NOT (BINARY NEW.reference_schema <=> BINARY OLD.reference_schema) OR\n        NOT (BINARY NEW.reference_json <=> BINARY OLD.reference_json) OR\n        NOT (BINARY NEW.parent_original_json <=> BINARY OLD.parent_original_json) OR\n        NOT (BINARY NEW.parent_original_hash <=> BINARY OLD.parent_original_hash) OR\n        NOT (BINARY NEW.parent_manifest_hash <=> BINARY OLD.parent_manifest_hash) OR\n        NOT (BINARY NEW.component_descriptor_json <=> BINARY OLD.component_descriptor_json) OR\n        NOT (BINARY NEW.component_manifest_hash <=> BINARY OLD.component_manifest_hash) OR\n        NOT (BINARY NEW.proof_mode <=> BINARY OLD.proof_mode) OR\n        NOT (BINARY NEW.source_confirmation_no <=> BINARY OLD.source_confirmation_no) OR\n        NOT (BINARY NEW.external_stock_confirmation_operation_no <=> BINARY OLD.external_stock_confirmation_operation_no) OR\n        NOT (BINARY NEW.mirror_proof_json <=> BINARY OLD.mirror_proof_json) OR\n        NOT (BINARY NEW.mirror_proof_hash <=> BINARY OLD.mirror_proof_hash) OR\n        NOT (BINARY NEW.accepted_evidence_hash <=> BINARY OLD.accepted_evidence_hash) OR\n        NOT (BINARY NEW.accepted_authority_json <=> BINARY OLD.accepted_authority_json) OR\n        NOT (BINARY NEW.accepted_authority_hash <=> BINARY OLD.accepted_authority_hash) OR\n        NOT (BINARY NEW.resource_command_no <=> BINARY OLD.resource_command_no) OR\n        NOT (BINARY NEW.resource_command_hash <=> BINARY OLD.resource_command_hash) OR\n        NOT (BINARY NEW.plan_hash <=> BINARY OLD.plan_hash) OR\n        NOT (BINARY NEW.created_at <=> BINARY OLD.created_at) OR\n        NOT (BINARY NEW.created_by <=> BINARY OLD.created_by) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Execution stock retention immutable original';\n    END IF;\n    IF OLD.state IN ('RELEASED_NO_EFFECT','SEALED_NO_EFFECT') AND (NEW.state<>OLD.state OR\n        NOT (BINARY NEW.no_effect_seal_json <=> BINARY OLD.no_effect_seal_json) OR\n        NOT (BINARY NEW.no_effect_seal_no <=> BINARY OLD.no_effect_seal_no) OR\n        NOT (NEW.no_effect_seal_revision <=> OLD.no_effect_seal_revision) OR\n        NOT (BINARY NEW.no_effect_seal_hash <=> BINARY OLD.no_effect_seal_hash)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Retention seal is permanent';\n    END IF;\n    IF OLD.issue_observation_hash IS NOT NULL AND (\n        NOT (BINARY NEW.issue_observation_json <=> BINARY OLD.issue_observation_json) OR\n        NOT (BINARY NEW.issue_observation_hash <=> BINARY OLD.issue_observation_hash)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Retention issue observation is immutable';\n    END IF;\n    IF OLD.owner_set_json IS NOT NULL AND (\n        NOT (BINARY NEW.owner_set_json <=> BINARY OLD.owner_set_json) OR\n        NOT (BINARY NEW.owner_set_hash <=> BINARY OLD.owner_set_hash) OR\n        NOT (NEW.owner_set_count <=> OLD.owner_set_count)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Resolved owner roster is permanent';\n    END IF;\n    IF OLD.state='RETAINED' AND NEW.state='ACCEPTED' THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Retention claim cannot regress';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_ierc_no_delete",
+      "table": "inv_execution_retention_claim",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Execution stock retention history cannot be deleted';\nEND"
+    },
+    {
+      "name": "trg_ier_immutable",
+      "table": "inv_execution_retention",
+      "timing": "BEFORE",
+      "event": "UPDATE",
+      "body": "BEGIN\n    IF NOT (BINARY NEW.id <=> BINARY OLD.id) OR\n        NOT (BINARY NEW.retention_no <=> BINARY OLD.retention_no) OR\n        NOT (BINARY NEW.component_no <=> BINARY OLD.component_no) OR\n        NOT (BINARY NEW.component_descriptor_hash <=> BINARY OLD.component_descriptor_hash) OR\n        NOT (BINARY NEW.request_hash <=> BINARY OLD.request_hash) OR\n        NOT (BINARY NEW.reference_hash <=> BINARY OLD.reference_hash) OR\n        NOT (BINARY NEW.source_tenant_no <=> BINARY OLD.source_tenant_no) OR\n        NOT (BINARY NEW.source_entity_no <=> BINARY OLD.source_entity_no) OR\n        NOT (BINARY NEW.source_store_no <=> BINARY OLD.source_store_no) OR\n        NOT (BINARY NEW.execution_no <=> BINARY OLD.execution_no) OR\n        NOT (BINARY NEW.unit_no <=> BINARY OLD.unit_no) OR\n        NOT (BINARY NEW.grant_no <=> BINARY OLD.grant_no) OR\n        NOT (BINARY NEW.attempt_no <=> BINARY OLD.attempt_no) OR\n        NOT (BINARY NEW.prepared_grant_revision <=> BINARY OLD.prepared_grant_revision) OR\n        NOT (BINARY NEW.reference_schema <=> BINARY OLD.reference_schema) OR\n        NOT (BINARY NEW.reference_json <=> BINARY OLD.reference_json) OR\n        NOT (BINARY NEW.parent_original_json <=> BINARY OLD.parent_original_json) OR\n        NOT (BINARY NEW.parent_original_hash <=> BINARY OLD.parent_original_hash) OR\n        NOT (BINARY NEW.parent_manifest_hash <=> BINARY OLD.parent_manifest_hash) OR\n        NOT (BINARY NEW.component_descriptor_json <=> BINARY OLD.component_descriptor_json) OR\n        NOT (BINARY NEW.component_manifest_hash <=> BINARY OLD.component_manifest_hash) OR\n        NOT (BINARY NEW.proof_mode <=> BINARY OLD.proof_mode) OR\n        NOT (BINARY NEW.source_confirmation_no <=> BINARY OLD.source_confirmation_no) OR\n        NOT (BINARY NEW.external_stock_confirmation_operation_no <=> BINARY OLD.external_stock_confirmation_operation_no) OR\n        NOT (BINARY NEW.mirror_proof_json <=> BINARY OLD.mirror_proof_json) OR\n        NOT (BINARY NEW.mirror_proof_hash <=> BINARY OLD.mirror_proof_hash) OR\n        NOT (BINARY NEW.accepted_evidence_hash <=> BINARY OLD.accepted_evidence_hash) OR\n        NOT (BINARY NEW.accepted_authority_json <=> BINARY OLD.accepted_authority_json) OR\n        NOT (BINARY NEW.accepted_authority_hash <=> BINARY OLD.accepted_authority_hash) OR\n        NOT (BINARY NEW.resource_command_no <=> BINARY OLD.resource_command_no) OR\n        NOT (BINARY NEW.resource_command_hash <=> BINARY OLD.resource_command_hash) OR\n        NOT (BINARY NEW.plan_hash <=> BINARY OLD.plan_hash) OR\n        NOT (BINARY NEW.owner_set_hash <=> BINARY OLD.owner_set_hash) OR\n        NOT (BINARY NEW.owner_set_count <=> BINARY OLD.owner_set_count) OR\n        NOT (BINARY NEW.owner_id <=> BINARY OLD.owner_id) OR\n        NOT (BINARY NEW.reservation_id <=> BINARY OLD.reservation_id) OR\n        NOT (BINARY NEW.original_line_id <=> BINARY OLD.original_line_id) OR\n        NOT (BINARY NEW.original_line_no <=> BINARY OLD.original_line_no) OR\n        NOT (BINARY NEW.item_id <=> BINARY OLD.item_id) OR\n        NOT (BINARY NEW.location_id <=> BINARY OLD.location_id) OR\n        NOT (BINARY NEW.source_sku_no <=> BINARY OLD.source_sku_no) OR\n        NOT (BINARY NEW.fulfillment_ref <=> BINARY OLD.fulfillment_ref) OR\n        NOT (BINARY NEW.lifecycle_version <=> BINARY OLD.lifecycle_version) OR\n        NOT (BINARY NEW.original_qty <=> BINARY OLD.original_qty) OR\n        NOT (BINARY NEW.native_confirmation_operation_no <=> BINARY OLD.native_confirmation_operation_no) OR\n        NOT (BINARY NEW.retained_disposition_revision <=> BINARY OLD.retained_disposition_revision) OR\n        NOT (BINARY NEW.retained_disposition <=> BINARY OLD.retained_disposition) OR\n        NOT (BINARY NEW.original_row_json <=> BINARY OLD.original_row_json) OR\n        NOT (BINARY NEW.created_at <=> BINARY OLD.created_at) OR\n        NOT (BINARY NEW.created_by <=> BINARY OLD.created_by) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Execution stock retention immutable original';\n    END IF;\n    IF OLD.state IN ('RELEASED_NO_EFFECT','SEALED_NO_EFFECT') AND (NEW.state<>OLD.state OR\n        NOT (BINARY NEW.no_effect_seal_json <=> BINARY OLD.no_effect_seal_json) OR\n        NOT (BINARY NEW.no_effect_seal_no <=> BINARY OLD.no_effect_seal_no) OR\n        NOT (NEW.no_effect_seal_revision <=> OLD.no_effect_seal_revision) OR\n        NOT (BINARY NEW.no_effect_seal_hash <=> BINARY OLD.no_effect_seal_hash)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Retention seal is permanent';\n    END IF;\n    IF OLD.issue_observation_hash IS NOT NULL AND (\n        NOT (BINARY NEW.issue_observation_json <=> BINARY OLD.issue_observation_json) OR\n        NOT (BINARY NEW.issue_observation_hash <=> BINARY OLD.issue_observation_hash)) THEN\n        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Retention issue observation is immutable';\n    END IF;\nEND"
+    },
+    {
+      "name": "trg_ier_no_delete",
+      "table": "inv_execution_retention",
+      "timing": "BEFORE",
+      "event": "DELETE",
+      "body": "BEGIN\n    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Execution stock retention history cannot be deleted';\nEND"
+    }
+  ]
+}

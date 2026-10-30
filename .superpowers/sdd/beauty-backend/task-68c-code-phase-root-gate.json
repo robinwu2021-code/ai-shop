@@ -1,0 +1,82 @@
+{
+  "task": "Task68C",
+  "status": "CODE_PARSE_TEMPLATE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+  "base": "97bb97f18f76411acf9a7a5ec7bd57abf55e7100",
+  "codeCommit": "1b222220605d87c2400da144668add9cbb1fc08e",
+  "sourcePins": [
+    {
+      "path": "scripts/verify-manual-counter-source.mjs",
+      "sha256": "c298560e26d5e1d4a030fa5b52c828c755f6746bb65a31386daddb4aa532dbdc",
+      "bytes": 149475
+    },
+    {
+      "path": "scripts/tests/manual-counter-source-runner.test.mjs",
+      "sha256": "698607c4524a751dca53691b49a6d89d75bec845fc1aacbf28d912f021862884",
+      "bytes": 48375
+    }
+  ],
+  "report": {
+    "path": ".superpowers/sdd/beauty-backend/task-68c-report.md",
+    "sha256": "c2e2d3f93414ff8aa40c630de80e51bde0c27188aea439cf24e156923ca83726"
+  },
+  "reviews": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68c-r0.md",
+      "sha256": "c52aee286bc22a01d4949647b03758dfa4e223872fe3c1ab9f5cc8c471a74cd4"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68c-r1.md",
+      "sha256": "b924133c28b6b0d38112f6a6d57f54653cafdf8e34a689bc3081cc3532807582"
+    }
+  ],
+  "parseOnly": {
+    "runner": true,
+    "testSource": true,
+    "diffCheck": true,
+    "testsExecuted": false
+  },
+  "compilation": {
+    "matrix": ".superpowers/sdd/beauty-backend/task-68c-compile-matrix.json",
+    "javaInputFiles": 4935,
+    "inputFreezeUnchanged": true,
+    "finalCurrentTemplates": {
+      "Task68GoldenMain": "a761bed24b31735595c1401536a3230bed78f5b1a3fb0ea295e432f62bf5d5fd",
+      "Task68OldMain": "ad6281b6765dc6c1ee20167e2c3e2373982370aa2cbb445ae586812df6b556d6",
+      "Task68SelectedMain": "653a4477e563c37783ea61565a929dc9ddbb5135e9895d985662edaffef9a7d1"
+    },
+    "jdkOnlyProbeSha256": "3edf7fd4600e4f7b3b1b341e926c3c3907d01292e8f9757bc857d7c98f227080",
+    "unchangedCurrentTemplateLog": {
+      "path": "/private/tmp/task68c-disposable-driver-compile/javac-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "changedShimAndProbeJdkOnlyLog": {
+      "path": "/private/tmp/task68c-fix1-jdk-compile/javac.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runtimeExecution": false
+  },
+  "unexecuted": {
+    "nodeCases": 45,
+    "selectedJUnitMethods": 53,
+    "goldenFiles": 6,
+    "oldPendingProducerRuns": 4,
+    "oldRuntimeBuilt": false,
+    "largerRegressionMatrixStillPending": true
+  },
+  "deferredMinor": [
+    {
+      "id": "M1",
+      "description": "Recorded SKIPPED with started=false is emitted as XML error before skip branch; fails closed and JSON status remains correct",
+      "owner": "C18 final whole-branch review triage before unified testing",
+      "sourceReview": ".superpowers/sdd/beauty-backend/review-task-68c-r0.md"
+    }
+  ],
+  "runtimeMaterializationAccepted": false,
+  "nativeGateCreated": false,
+  "testsExecuted": false,
+  "applicationStarted": false,
+  "migrationExecuted": false,
+  "paymentIntegration": false,
+  "canStart": false,
+  "deploymentExecuted": false
+}

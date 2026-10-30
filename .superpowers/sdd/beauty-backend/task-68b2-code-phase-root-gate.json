@@ -1,0 +1,120 @@
+{
+  "task": "Task68B2",
+  "status": "CODE_COMPILED_STATIC_REVIEWED_UNIFIED_TEST_PENDING",
+  "base": "c13e83533477c80218ec94ec549c823697ead8c5",
+  "codeCommit": "5477210b96ef3339f340ac5d715263d8abf27a19",
+  "sourcePins": [
+    {
+      "path": "backend/shop-app/src/main/java/ai/neargo/shop/portal/port/CampaignPortRouter.java",
+      "sha256": "fb2c388ccccc4325f6a9cd590c4bdc45e5c0d4dd87ced5ac3ab94e7259de851c"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/marketing/port/CampaignPortImpl.java",
+      "sha256": "f4bbe3c72e93f583e25228d376cba0e88af0d1dbf6955f986f88675027d6f121"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/ActivityPricingService.java",
+      "sha256": "949284a691f99d4ac6b843791df1e849c4b6b17e3727309004eb332998b0fa88"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/ActivityPricingServiceImpl.java",
+      "sha256": "a3c873922a53d7d1208f6db265cffd06816045346605b4edf9a5e8d0eca48461"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/product/port/GoodsQueryPortImpl.java",
+      "sha256": "a3ab36af5f70f28b1ba45d68a842dbcdcc2ea16f099dac54e4983d4c9f6976b1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/CheckoutServiceImpl.java",
+      "sha256": "5372d8a2f37a93bfe8767ca2a623bedb75eb562bfac3470d7ade0644377123ae"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/CheckoutOrderWriter.java",
+      "sha256": "92ee35239d22e067d5efc2116b9e4ac950b4f783a0ddc31e06c0bfb43923123c"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/ManualServiceAdmissionServiceImpl.java",
+      "sha256": "5dfc51e4c11278954b07c04c7c0261ab2468da3dfdf013cd5e5dea67dda236b1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+      "sha256": "15f8c7b4b3187c4533a0b1b57442af86b24c90bca8b2957458f8ec690a585637"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutQuoteGuard.java",
+      "sha256": "9d822096ac5c47fff482ca1801ccdde6417e6c2c4e5bfc6773cf34cfc7a4789a"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/CounterOrderPlacementServiceImpl.java",
+      "sha256": "40e7389da9508077813e09dc8fd1825dfbef7181cadb87fcd8c79fd640dfb7a1"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/OrderCreationRecoveryServiceImpl.java",
+      "sha256": "78d408d5c8456a10dd17cdf95f27550f346d29c4f7c167be4a7c216f257f7c0d"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterDiscountIT.java",
+      "sha256": "ae5fa71f0e9398429e118dd83b0bfccc9b83af1caead3a5478f4bf955903744a"
+    },
+    {
+      "path": "backend/shop-app/src/test/java/ai/neargo/shop/scenario/ManualCounterDiscountFixture.java",
+      "sha256": "c99b03a79d3bd01eaa02b02baaa84206550e3421b826b6d1117802598767cd21"
+    }
+  ],
+  "report": {
+    "path": ".superpowers/sdd/beauty-backend/task-68b2-report.md",
+    "sha256": "49a2831ec2ffe7e73d9d641ad42eb3f5cc09aa85e7876290d724886d0d57d433"
+  },
+  "reviews": [
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68b2-r0.md",
+      "sha256": "3c55bd3531b4eab0a7b4c4b4b5ba456d2a02e00b0225e7d7c4c267bc73f01698"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68b2-r1.md",
+      "sha256": "d681aa4df273f49ba33e080d95399fdbab6305b8499518e1eea9e583c936bb97"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68b2-r2.md",
+      "sha256": "9e700ffe6cc611c44d1848c979e4e222419dcdae5295ad3c814eebfdc76e5ec3"
+    },
+    {
+      "path": ".superpowers/sdd/beauty-backend/review-task-68b2-r3.md",
+      "sha256": "32dce9f22e183031a4277b36a654171ff48579fb0bd352fc468da282c2adf745"
+    }
+  ],
+  "build": {
+    "modules": 24,
+    "lastMainSourceFreeze": {
+      "seconds": 31.43,
+      "coreMain": 1070,
+      "coreTestSources": 88,
+      "hostMain": 413,
+      "hostTestSources": 752,
+      "log": "/private/tmp/task-68b2-test-compile-reviewed-freeze.log",
+      "sha256": "4c34cf811cfa693d0c171d71acda766822157afa9e2bd3e4067ecff1586801a2"
+    },
+    "latestTestOnlyFreeze": {
+      "seconds": 18.272,
+      "hostTestSourcesCompiled": 752,
+      "log": "/private/tmp/task68b2-fix3-compile.log",
+      "sha256": "236f5267b4ee319f87edde237394ffbed851c894045bdb2ad2b9d69ec283a391"
+    },
+    "testsExecuted": false,
+    "wholeBeautyFoodRetailCompileMatrixPending": true
+  },
+  "unexecuted": {
+    "scenarioMethods": 17,
+    "oldPendingProducerRuns": 4,
+    "serializerGoldenResources": 6,
+    "oldRuntimeBuilt": false
+  },
+  "stockEvidenceScope": "PLATFORM only for prd_sku stock assertions; INVENTORY/DUAL not established",
+  "runtimeConsumerIntegrationImplemented": true,
+  "pricingRuntimeValidated": false,
+  "migrationExecuted": false,
+  "applicationStarted": false,
+  "paymentIntegration": false,
+  "canStart": false,
+  "deploymentExecuted": false
+}

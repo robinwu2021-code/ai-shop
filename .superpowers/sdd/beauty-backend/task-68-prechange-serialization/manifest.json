@@ -1,0 +1,49 @@
+{
+  "status": "BASELINE_FILES_PINNED_NO_SERIALIZER_EXECUTION",
+  "baselineSourceCommit": "531d2a87b98f1d15e5a002a5100c4545ab6280b9",
+  "baselineDocCommit": "28ebe9f111ede8363194cd0e42d50005de465a39",
+  "files": [
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CheckoutEconomicSnapshot.java",
+      "bytes": 1651,
+      "sha256": "f7efd1585e981c91393a09e2007319c9619d7a847facfb0dfcd856705eb48cae"
+    },
+    {
+      "path": "backend/shop-core/target/classes/ai/neargo/shop/trade/order/service/create/CheckoutEconomicSnapshot$Evidence.class",
+      "bytes": 2686,
+      "sha256": "9cf608ec9bbe34f232b2bc6f71e3dc342092e8a49482f0438661e95fc69fe859"
+    },
+    {
+      "path": "backend/shop-core/target/classes/ai/neargo/shop/trade/order/service/create/CheckoutEconomicSnapshot.class",
+      "bytes": 6645,
+      "sha256": "bf12e58cd2285f53ee385995905cff8281c076b952b8fe281f1c8e7960f5a922"
+    },
+    {
+      "path": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/CounterOrderPlan.java",
+      "bytes": 3461,
+      "sha256": "804eaf59ad03ceb623b9b0a05441a43a22db2b17aea9a0a807be1dc56842eb33"
+    },
+    {
+      "path": "backend/shop-core/target/classes/ai/neargo/shop/trade/order/service/create/CounterOrderPlan$CompensationEvidence.class",
+      "bytes": 3412,
+      "sha256": "09e73fd407fa7825e6fc154490deee67daef24b82216a9dbec3d532badd50d41"
+    },
+    {
+      "path": "backend/shop-core/target/classes/ai/neargo/shop/trade/order/service/create/CounterOrderPlan$PreparedCommand.class",
+      "bytes": 3534,
+      "sha256": "865b2219ef63117da3e6f3e5559ef3925a3977654a3573da336c575ff4102065"
+    },
+    {
+      "path": "backend/shop-core/target/classes/ai/neargo/shop/trade/order/service/create/CounterOrderPlan$SelectorProof.class",
+      "bytes": 2711,
+      "sha256": "e85a8697ce7c1907f719340ec73cce89440a96916ecfcc0c28a2d53bb13da2be"
+    },
+    {
+      "path": "backend/shop-core/target/classes/ai/neargo/shop/trade/order/service/create/CounterOrderPlan.class",
+      "bytes": 5455,
+      "sha256": "4ca1e2c19ddb6dcb3a43440cd9e00b4db24c3cc245466acef709d2e16bdd8134"
+    }
+  ],
+  "ordinaryM1M2aAndPlanJson": "not generated or executed now; actualoldserializer/owner fixtures generated/compared only in unifiedphaseB, may rebuild immutable baseline source in isolatedtempcheckout; no staleinstalledprovider",
+  "currentClassSource": "actual Java21 current-source C01 reactor test-compile, not fetched .m2 artifacts"
+}

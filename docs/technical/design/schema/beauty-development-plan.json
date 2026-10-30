@@ -1,0 +1,888 @@
+{
+  "status": "PLAN_NOT_IMPLEMENTED",
+  "date": "2026-10-20",
+  "scope": "美业独立Java工程与数据优先的后端任务；不继承餐饮实施进度",
+  "tasks": [
+    {
+      "id": "ENG-01",
+      "stage": "M0",
+      "title": "五模块工程与架构边界",
+      "dependencies": [],
+      "acceptance": "五构件构建；仅server可执行；禁止业务实现反向依赖",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": []
+    },
+    {
+      "id": "ENG-02",
+      "stage": "M0",
+      "title": "条件装配、宿主挂载与内部启动",
+      "dependencies": [
+        "ENG-01"
+      ],
+      "acceptance": "默认关闭；用户Web与独立内部业务隔离",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": []
+    },
+    {
+      "id": "DATA-01",
+      "stage": "M0",
+      "title": "数据字典、字段类型与索引审计",
+      "dependencies": [
+        "ENG-01"
+      ],
+      "acceptance": "25私有/14共用分离、版本/审计/事实追加及阶段边界",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": []
+    },
+    {
+      "id": "DATA-02",
+      "stage": "M0",
+      "title": "P1迁移生成与隔离数据库验证",
+      "dependencies": [
+        "DATA-01"
+      ],
+      "acceptance": "仅16项P1 bty结构；独立历史、可重放校验、共享表排除",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": []
+    },
+    {
+      "id": "DATA-03",
+      "stage": "M0",
+      "title": "主库、事务、Mapper与数据域接线",
+      "dependencies": [
+        "ENG-02",
+        "DATA-02"
+      ],
+      "acceptance": "共享主工厂与事务；不注册第二个全局Flyway",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": []
+    },
+    {
+      "id": "ENG-03",
+      "stage": "M0",
+      "title": "可信身份、权限、幂等与审计/outbox",
+      "dependencies": [
+        "DATA-03"
+      ],
+      "acceptance": "商家/顾客/技师/ops范围；不新建认证或错误体系",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-003",
+        "BAPI-017",
+        "BAPI-019",
+        "BAPI-136"
+      ],
+      "tables": []
+    },
+    {
+      "id": "DATA-04",
+      "stage": "P1",
+      "title": "政策与执行定义Entity/Mapper",
+      "dependencies": [
+        "DATA-03"
+      ],
+      "acceptance": "5项政策/定义表；不可变版本与根指针CAS",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": [
+        "bty_store_policy",
+        "bty_store_policy_version",
+        "bty_service_definition",
+        "bty_service_definition_version",
+        "bty_service_requirement"
+      ]
+    },
+    {
+      "id": "DATA-05",
+      "stage": "P1",
+      "title": "预约安排Entity/Mapper",
+      "dependencies": [
+        "DATA-03"
+      ],
+      "acceptance": "3项预约/项目/安排表，指定/确认/实际分离",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": [
+        "bty_appointment",
+        "bty_appointment_item",
+        "bty_appointment_assignment"
+      ]
+    },
+    {
+      "id": "DATA-06",
+      "stage": "P1",
+      "title": "工单与任务参与Entity/Mapper",
+      "dependencies": [
+        "DATA-03"
+      ],
+      "acceptance": "4项工单/任务/步骤/参与表，数量/时间/冻结约束",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": [
+        "bty_work_order",
+        "bty_service_task",
+        "bty_service_step",
+        "bty_service_participation"
+      ]
+    },
+    {
+      "id": "DATA-07",
+      "stage": "P1",
+      "title": "提交意图、来源绑定及分配guard",
+      "dependencies": [
+        "DATA-03"
+      ],
+      "acceptance": "4项意图/绑定/动作/来源guard，原号恢复和分配上限",
+      "status": "NOT_STARTED",
+      "apiIds": [],
+      "tables": [
+        "bty_service_submission",
+        "bty_trade_binding",
+        "bty_action_log",
+        "bty_source_allocation_guard"
+      ]
+    },
+    {
+      "id": "SHR-01",
+      "stage": "P1",
+      "title": "共用人员主档、账号、任职资格和班表",
+      "dependencies": [
+        "ENG-03",
+        "DATA-01"
+      ],
+      "acceptance": "归shop-merchant；无登录业务人员、岗位与权限分离",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-012",
+        "BAPI-013",
+        "BAPI-014",
+        "BAPI-015",
+        "BAPI-016",
+        "BAPI-018"
+      ],
+      "tables": [
+        "mch_personnel",
+        "mch_personnel_account",
+        "mch_personnel_store",
+        "mch_personnel_position",
+        "mch_personnel_skill",
+        "mch_schedule_rule",
+        "mch_schedule_exception",
+        "mch_schedule_change_log"
+      ]
+    },
+    {
+      "id": "SHR-02",
+      "stage": "P1",
+      "title": "规范资源与完整组合占用仲裁",
+      "dependencies": [
+        "SHR-01",
+        "DATA-01"
+      ],
+      "acceptance": "跨店STAFF唯一、hold/occupation、原子替换、开放占用",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-020",
+        "BAPI-021",
+        "BAPI-022",
+        "BAPI-023",
+        "BAPI-024"
+      ],
+      "tables": [
+        "mch_resource",
+        "mch_booking_owner",
+        "mch_resource_command",
+        "mch_resource_bucket",
+        "mch_booking_hold",
+        "mch_booking_hold_unit",
+        "mch_resource_occupation",
+        "mch_appointment_slot"
+      ]
+    },
+    {
+      "id": "SHR-03",
+      "stage": "P1",
+      "title": "商品订单资金及基础服务合同审计",
+      "dependencies": [
+        "ENG-03"
+      ],
+      "acceptance": "核验真实SKU/报价/建单/履约/开工许可/通知打印合同，缺口由权威域补；Task67人工来源/账单编码编译和静态审查完成。C02按主TDD§2.47推进：A/B1/B2真实FULL_CUT报价/封存候选/旧计划恢复/已消费收款均已编码编译和静态复审；C验证材料待完成，测试统一后置；V543占用后M3/M4未建候选顺延V544/V545。全量非Pay编码编译→统一B测试→C部署，未开放执行许可。",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-033"
+      ],
+      "tables": []
+    },
+    {
+      "id": "POL-01",
+      "stage": "P1",
+      "title": "门店政策、版本与公开营业信息",
+      "dependencies": [
+        "DATA-04",
+        "ENG-03"
+      ],
+      "acceptance": "开通与先付规则不越过共用能力验收",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-001",
+        "BAPI-002",
+        "BAPI-144"
+      ],
+      "tables": []
+    },
+    {
+      "id": "DEF-01",
+      "stage": "P1",
+      "title": "商品目录接入与服务执行定义",
+      "dependencies": [
+        "DATA-04",
+        "SHR-03",
+        "POL-01"
+      ],
+      "acceptance": "SKU/门店价复用；时长/缓冲/技能/资源要求冻结",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-005",
+        "BAPI-006",
+        "BAPI-007",
+        "BAPI-008",
+        "BAPI-009",
+        "BAPI-145"
+      ],
+      "tables": []
+    },
+    {
+      "id": "AVL-01",
+      "stage": "P1",
+      "title": "项目可约与人员资源匹配",
+      "dependencies": [
+        "DEF-01",
+        "SHR-01",
+        "SHR-02"
+      ],
+      "acceptance": "候选可约不是资源锁；角色资格/班表完整匹配",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-010",
+        "BAPI-146"
+      ],
+      "tables": []
+    },
+    {
+      "id": "APT-01",
+      "stage": "P1",
+      "title": "预约预览与自助/代约创建",
+      "dependencies": [
+        "DATA-05",
+        "DATA-07",
+        "AVL-01"
+      ],
+      "acceptance": "全部资源确认才成约，无交易预约不造零元已付单",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-038",
+        "BAPI-039",
+        "BAPI-147",
+        "BAPI-148"
+      ],
+      "tables": []
+    },
+    {
+      "id": "APT-02",
+      "stage": "P1",
+      "title": "本人/门店预约列表与详情",
+      "dependencies": [
+        "APT-01"
+      ],
+      "acceptance": "属主过滤、安排版本、来源与任务引用",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-040",
+        "BAPI-041",
+        "BAPI-149",
+        "BAPI-150"
+      ],
+      "tables": []
+    },
+    {
+      "id": "APT-03",
+      "stage": "P1",
+      "title": "改约、取消、爽约及原子资源替换",
+      "dependencies": [
+        "APT-02",
+        "SHR-02"
+      ],
+      "acceptance": "失败保留旧安排；已开工走交接；不自动退款扣次",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-042",
+        "BAPI-043",
+        "BAPI-044",
+        "BAPI-045",
+        "BAPI-151",
+        "BAPI-152",
+        "BAPI-153"
+      ],
+      "tables": []
+    },
+    {
+      "id": "CAL-01",
+      "stage": "P1",
+      "title": "预约工作台与资源日历",
+      "dependencies": [
+        "APT-02",
+        "SHR-02",
+        "TASK-01"
+      ],
+      "acceptance": "人员/工位泳道、不可变快照分页与权限；可先做占用视图，具体任务摘要在TASK-01后联合验收，未通过不标完整工作台完成",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-025",
+        "BAPI-026",
+        "BAPI-117",
+        "BAPI-124"
+      ],
+      "tables": []
+    },
+    {
+      "id": "REC-01",
+      "stage": "P1",
+      "title": "临客认领、到店与直客转工单",
+      "dependencies": [
+        "APT-01",
+        "DATA-06",
+        "ENG-03",
+        "WO-01"
+      ],
+      "acceptance": "身份/签到/工单/核销分离，直客仍核查完整资源",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-031",
+        "BAPI-032",
+        "BAPI-047",
+        "BAPI-048",
+        "BAPI-052",
+        "BAPI-053",
+        "BAPI-154"
+      ],
+      "tables": []
+    },
+    {
+      "id": "WO-01",
+      "stage": "P1",
+      "title": "工单范围、详情及逐来源账单",
+      "dependencies": [
+        "DATA-06",
+        "DATA-07",
+        "DEF-01"
+      ],
+      "acceptance": "工单持任务引用；金额读取正式来源，不自算应收",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-054",
+        "BAPI-055",
+        "BAPI-155",
+        "BAPI-071"
+      ],
+      "tables": []
+    },
+    {
+      "id": "SRC-01",
+      "stage": "P1",
+      "title": "报价、真实来源提交与原号恢复",
+      "dependencies": [
+        "WO-01",
+        "DATA-07",
+        "SHR-03"
+      ],
+      "acceptance": "可信买家/本人确认，原键查单与版本化绑定、数量分配",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-056",
+        "BAPI-068",
+        "BAPI-069",
+        "BAPI-070",
+        "BAPI-072",
+        "BAPI-073",
+        "BAPI-089",
+        "BAPI-137",
+        "BAPI-160"
+      ],
+      "tables": []
+    },
+    {
+      "id": "TASK-01",
+      "stage": "P1",
+      "title": "任务接单、开工、步骤与本人作业",
+      "dependencies": [
+        "WO-01",
+        "SRC-01",
+        "SHR-02"
+      ],
+      "acceptance": "真实来源开工许可及资源资格再校验；步骤CAS",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-057",
+        "BAPI-058",
+        "BAPI-059",
+        "BAPI-060",
+        "BAPI-159"
+      ],
+      "tables": []
+    },
+    {
+      "id": "TASK-02",
+      "stage": "P1",
+      "title": "换人交接、暂停/提前结束与资源延长",
+      "dependencies": [
+        "TASK-01",
+        "APT-03"
+      ],
+      "acceptance": "原指定/安排/实际参与分别保留，超时冲突待办",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-027",
+        "BAPI-028",
+        "BAPI-061",
+        "BAPI-062",
+        "BAPI-063",
+        "BAPI-105"
+      ],
+      "tables": []
+    },
+    {
+      "id": "TASK-03",
+      "stage": "P1",
+      "title": "完工数量、履约确认与工单关闭",
+      "dependencies": [
+        "TASK-01",
+        "SRC-01"
+      ],
+      "acceptance": "服务事实与履约结果分开，回调不重复增量，冻结范围重验",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-064",
+        "BAPI-065",
+        "BAPI-066"
+      ],
+      "tables": []
+    },
+    {
+      "id": "AFTER-01",
+      "stage": "P1",
+      "title": "未开始撤项与普通服务争议/售后",
+      "dependencies": [
+        "TASK-01",
+        "SRC-01"
+      ],
+      "acceptance": "已做事实不抹除，普通售后归Core，资产逆向不借道",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-099",
+        "BAPI-100",
+        "BAPI-101",
+        "BAPI-157"
+      ],
+      "tables": []
+    },
+    {
+      "id": "RECOVER-01",
+      "stage": "P1",
+      "title": "操作追踪、异常待办与受控恢复",
+      "dependencies": [
+        "APT-03",
+        "TASK-03",
+        "SRC-01"
+      ],
+      "acceptance": "UNKNOWN查原号、任务/来源版本围栏、审计与权限",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-125",
+        "BAPI-138",
+        "BAPI-139"
+      ],
+      "tables": []
+    },
+    {
+      "id": "MSG-01",
+      "stage": "P1",
+      "title": "提醒通知、服务单与共享打印接线",
+      "dependencies": [
+        "REC-01",
+        "TASK-03",
+        "SHR-03"
+      ],
+      "acceptance": "本域只组内容/事实，共用送达/打印账，真机另验",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-111",
+        "BAPI-123",
+        "BAPI-129",
+        "BAPI-130",
+        "BAPI-131",
+        "BAPI-132"
+      ],
+      "tables": []
+    },
+    {
+      "id": "HIST-01",
+      "stage": "P1",
+      "title": "本人服务历史与生命周期时间线",
+      "dependencies": [
+        "APT-02",
+        "WO-01",
+        "SRC-01"
+      ],
+      "acceptance": "受权组合投影分页，不按多表各自分页拼假total",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-116",
+        "BAPI-158"
+      ],
+      "tables": []
+    },
+    {
+      "id": "OPS-01",
+      "stage": "P1",
+      "title": "能力就绪、监控与运行收口",
+      "dependencies": [
+        "ENG-02",
+        "RECOVER-01"
+      ],
+      "acceptance": "缺契约fail closed；源/资源/业务事实可关联，无强制成功no-op",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-135",
+        "BAPI-140"
+      ],
+      "tables": []
+    },
+    {
+      "id": "GOODS-01",
+      "stage": "P1",
+      "title": "护肤品实物销售接入",
+      "dependencies": [
+        "SHR-03"
+      ],
+      "acceptance": "复用普通商品库存交付和售后，不占用服务容量",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-094"
+      ],
+      "tables": []
+    },
+    {
+      "id": "ASSET-01",
+      "stage": "P2",
+      "title": "既有储值消费与合格次数权益",
+      "dependencies": [
+        "TASK-03",
+        "SHR-03"
+      ],
+      "acceptance": "独立门店账户、统一会员识别、本次本人同意、未知恢复；不等于售卡",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-030",
+        "BAPI-075",
+        "BAPI-076",
+        "BAPI-077",
+        "BAPI-078",
+        "BAPI-079",
+        "BAPI-080",
+        "BAPI-084",
+        "BAPI-085"
+      ],
+      "tables": []
+    },
+    {
+      "id": "ASSET-02",
+      "stage": "P2",
+      "title": "资产使用争议与财务待办",
+      "dependencies": [
+        "ASSET-01",
+        "AFTER-01"
+      ],
+      "acceptance": "先登记证据与原使用号，不任意改余额/返次",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-103"
+      ],
+      "tables": []
+    },
+    {
+      "id": "CARE-01",
+      "stage": "P3",
+      "title": "护理档案、私有媒体与撤权治理",
+      "dependencies": [
+        "TASK-03"
+      ],
+      "acceptance": "3项护理表，最少必要字段、加密、留存和更正历史",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-034",
+        "BAPI-035",
+        "BAPI-036",
+        "BAPI-037"
+      ],
+      "tables": [
+        "bty_care_profile",
+        "bty_care_note",
+        "bty_care_media"
+      ]
+    },
+    {
+      "id": "QUEUE-01",
+      "stage": "P3",
+      "title": "等候叫号与护理回访",
+      "dependencies": [
+        "REC-01",
+        "CARE-01"
+      ],
+      "acceptance": "等候/回访复用共用所有者，不建同义任务账",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-049",
+        "BAPI-050",
+        "BAPI-051",
+        "BAPI-126",
+        "BAPI-127",
+        "BAPI-128"
+      ],
+      "tables": []
+    },
+    {
+      "id": "PERF-01",
+      "stage": "P3",
+      "title": "业绩分配、提成政策/计提及追加调整",
+      "dependencies": [
+        "TASK-03"
+      ],
+      "acceptance": "4项表，真实参与/产出、版本、分摊守恒，发放不新增代付",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-106",
+        "BAPI-107",
+        "BAPI-108",
+        "BAPI-109",
+        "BAPI-110"
+      ],
+      "tables": [
+        "bty_performance_allocation",
+        "bty_performance_share",
+        "bty_commission_policy",
+        "bty_commission_entry"
+      ]
+    },
+    {
+      "id": "MARKET-01",
+      "stage": "P3",
+      "title": "营销人群与受权触达",
+      "dependencies": [
+        "ASSET-01"
+      ],
+      "acceptance": "共用活动/券/标签及频控，赠次和付费售卡分别验收",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-090",
+        "BAPI-091",
+        "BAPI-092",
+        "BAPI-093"
+      ],
+      "tables": []
+    },
+    {
+      "id": "MAT-01",
+      "stage": "P3",
+      "title": "库存、领耗材与质量处置",
+      "dependencies": [
+        "TASK-03",
+        "GOODS-01"
+      ],
+      "acceptance": "共用库存/BOM来源事实，不在美业记库存账",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-095",
+        "BAPI-096",
+        "BAPI-097"
+      ],
+      "tables": []
+    },
+    {
+      "id": "FIN-01",
+      "stage": "P3",
+      "title": "班次营业日、财务对账与结算查询",
+      "dependencies": [
+        "SRC-01"
+      ],
+      "acceptance": "共用营业与财务合同；资金口径分开，不隐藏未结",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-112",
+        "BAPI-113",
+        "BAPI-114",
+        "BAPI-115"
+      ],
+      "tables": []
+    },
+    {
+      "id": "RPT-01",
+      "stage": "P3",
+      "title": "经营统计、利用率和受权导出",
+      "dependencies": [
+        "TASK-03",
+        "FIN-01",
+        "PERF-01"
+      ],
+      "acceptance": "投影水位、计划/实际分开、权限与币种隔离",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-118",
+        "BAPI-119",
+        "BAPI-120",
+        "BAPI-121",
+        "BAPI-122"
+      ],
+      "tables": []
+    },
+    {
+      "id": "DEVICE-01",
+      "stage": "P3",
+      "title": "终端身份、配置发布及隐私备份治理",
+      "dependencies": [
+        "OPS-01",
+        "CARE-01"
+      ],
+      "acceptance": "共用设备/治理所有者，最小权限与受控恢复",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-133",
+        "BAPI-141"
+      ],
+      "tables": []
+    },
+    {
+      "id": "PLAN-01",
+      "stage": "P4",
+      "title": "疗程分次计划与每次预约/工单",
+      "dependencies": [
+        "ASSET-01",
+        "APT-03",
+        "TASK-03"
+      ],
+      "acceptance": "2项计划表，不提前扣完所有未来次数",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-086",
+        "BAPI-087",
+        "BAPI-156"
+      ],
+      "tables": [
+        "bty_treatment_plan",
+        "bty_treatment_session"
+      ]
+    },
+    {
+      "id": "SALE-01",
+      "stage": "P4",
+      "title": "付费疗程商品、销售与权益发行",
+      "dependencies": [
+        "ASSET-01",
+        "SHR-03"
+      ],
+      "acceptance": "Pay正式规则/售卡/发行合同，收款成功不等于发行成功",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-081",
+        "BAPI-082",
+        "BAPI-083"
+      ],
+      "tables": []
+    },
+    {
+      "id": "ADV-01",
+      "stage": "P4",
+      "title": "高级服务/预约/定金/复杂收银能力",
+      "dependencies": [
+        "TASK-03",
+        "FIN-01"
+      ],
+      "acceptance": "按具体能力先拆合同和政策再细化，非一个可直接编码的大提交",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-004",
+        "BAPI-011",
+        "BAPI-029",
+        "BAPI-046",
+        "BAPI-067",
+        "BAPI-074",
+        "BAPI-102"
+      ],
+      "tables": []
+    },
+    {
+      "id": "ASSET-REV-01",
+      "stage": "P4",
+      "title": "资产逆向、退转卡延期和跨店政策",
+      "dependencies": [
+        "ASSET-01",
+        "AFTER-01"
+      ],
+      "acceptance": "每类原来源/渠道/冲回合同独立验收，未定政策关闭",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-088",
+        "BAPI-104"
+      ],
+      "tables": []
+    },
+    {
+      "id": "MAT-02",
+      "stage": "P4",
+      "title": "项目耗材BOM与复杂成本",
+      "dependencies": [
+        "MAT-01"
+      ],
+      "acceptance": "共用供应链BOM及计量合同，非复制库存数据层",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-098"
+      ],
+      "tables": []
+    },
+    {
+      "id": "EXT-01",
+      "stage": "P4",
+      "title": "第三方预约/订单协议接入",
+      "dependencies": [
+        "RECOVER-01"
+      ],
+      "acceptance": "供应商签名/外部号/乱序冲突去重单独验收",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-142"
+      ],
+      "tables": []
+    },
+    {
+      "id": "EDGE-01",
+      "stage": "P4",
+      "title": "边缘设备、上门终端与断网协作",
+      "dependencies": [
+        "EXT-01",
+        "DEVICE-01"
+      ],
+      "acceptance": "离线许可、认领和单写者合同；不得缓存余额扣资产",
+      "status": "NOT_STARTED",
+      "apiIds": [
+        "BAPI-134",
+        "BAPI-143"
+      ],
+      "tables": []
+    }
+  ]
+}

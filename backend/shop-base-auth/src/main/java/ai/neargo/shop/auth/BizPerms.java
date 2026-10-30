@@ -59,6 +59,15 @@ public final class BizPerms {
 
     /** 订单列表与详情、工作台待办。<b>含金额</b> */
     public static final String ORDER_VIEW = "biz:order:view";
+
+    /** 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替。 */
+    public static final String CASH_RECEIVE = "pay:cash:receive";
+
+    /** 准备报价不授权购买，必须单独显式授予。 */
+    public static final String CHECKOUT_PREPARE = "trade:checkout:prepare";
+
+    /** Merchant declaration approval is separate from existing cash-account authorization. */
+    public static final String MANUAL_CONFIRM = "trade:manual-service:confirm";
     /** 改库存（含门店库存）。高频日常动作，且<b>不出钱</b> —— 与改价是两件事 */
     public static final String STOCK = "biz:stock";
     public static final String REPORT_EXPORT = "biz:report:export";
@@ -107,6 +116,26 @@ public final class BizPerms {
     public static final String ENT_TEMPLATE_PUBLISH = "pay:ent:template:publish";
     /** 调整发行容量，不直接发放实例。 */
     public static final String ENT_ISSUE_MANAGE = "pay:ent:issue:manage";
+
+    /** Cross-industry appointment reading; grants no management capability. */
+    public static final String BOOKING_VIEW = "biz:booking:view";
+    /** Explicit appointment management, independently assignable from fulfillment permissions. */
+    public static final String BOOKING_MANAGE = "biz:booking:manage";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_SELF = "biz:service:task:self";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_VIEW = "biz:service:task:view";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_COORDINATE = "biz:service:task:coordinate";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_APPROVE = "biz:service:task:approve";
+
+    /** Independently assignable service action; no seeded role grant. */
+    public static final String SERVICE_TASK_CLOSE = "biz:service:task:close";
 
     // ---------------------------------------------------------------- 角色
 
@@ -190,10 +219,20 @@ public final class BizPerms {
             Map.entry(PRICING_CONFIG_READ, "查看门店结账规则"),
             Map.entry(PRICING_CONFIG_UPDATE, "编辑门店结账规则草稿"),
             Map.entry(PRICING_CONFIG_PUBLISH, "发布门店结账规则"),
+            Map.entry(SERVICE_TASK_SELF, "操作本人服务任务"),
+            Map.entry(SERVICE_TASK_VIEW, "查看门店服务任务"),
+            Map.entry(SERVICE_TASK_COORDINATE, "协调服务任务"),
+            Map.entry(SERVICE_TASK_APPROVE, "审核服务调整"),
+            Map.entry(SERVICE_TASK_CLOSE, "关闭已结清服务工单"),
+            Map.entry(BOOKING_VIEW, "查看预约"),
+            Map.entry(BOOKING_MANAGE, "创建、调整及取消预约"),
             Map.entry(RECEIVE, "到货登记与分拣"),
             Map.entry(VERIFY, "核销取货"),
             Map.entry(SHIP, "发货与标记送达"),
             Map.entry(ORDER_VIEW, "看订单与金额"),
+            Map.entry(CASH_RECEIVE, "确认线下实收"),
+            Map.entry(CHECKOUT_PREPARE, "准备服务购买报价"),
+            Map.entry(MANUAL_CONFIRM, "人工确认服务收款"),
             Map.entry(STOCK, "看商品、改库存"),
             Map.entry(REPORT_EXPORT, "导出经营报表"),
             Map.entry(GOODS, "建商品、改价、上下架"),

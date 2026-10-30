@@ -125,6 +125,49 @@ public class GoodsCatalogQueryPortImpl implements GoodsCatalogQueryPort {
         return facts;
     }
 
+    @Override
+    public ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts getCatalogSkuMeasurement(
+            CatalogMarketContracts.SkuQuery query) {
+        CatalogMarketFacts.validateQuery(query);
+        marketRequire(read != null && !TransactionSynchronizationManager.isActualTransactionActive());
+        var before = getCatalogSku(query);
+        var first = saleUnit(query, before);
+        var after = getCatalogSku(query);
+        var second = saleUnit(query, after);
+        marketRequire(before.sku().equals(after.sku())
+                && before.goodsVersion().equals(after.goodsVersion())
+                && before.marketFacts().market().equals(after.marketFacts().market())
+                && first.equals(second));
+        var at = clock.instant();
+        var until = minimum(before.validUntil(), after.validUntil());
+        var facts = ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.seal(
+                new ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts(1, after, first,
+                        at, until, null));
+        try { ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.validate(query, facts, at); }
+        catch (IllegalArgumentException | IllegalStateException invalid) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return facts;
+    }
+
+    private String saleUnit(CatalogMarketContracts.SkuQuery query, CatalogMarketContracts.SkuFacts identity) {
+        return DataScopeContext.executeWithoutScope(() -> read.execute(tx -> {
+            var sku = skus.selectOne(Wrappers.<PrdSku>lambdaQuery()
+                    .select(PrdSku::getSkuNo, PrdSku::getGoodsNo, PrdSku::getEntityNo,
+                            PrdSku::getMarket, PrdSku::getVersion, PrdSku::getSaleUnit)
+                    .eq(PrdSku::getEntityNo, query.entityNo()).eq(PrdSku::getSkuNo, query.skuNo())
+                    .eq(PrdSku::getMarket, identity.marketFacts().market().market()));
+            marketRequire(sku != null && query.skuNo().equals(sku.getSkuNo())
+                    && query.entityNo().equals(sku.getEntityNo())
+                    && identity.sku().goodsNo().equals(sku.getGoodsNo())
+                    && identity.marketFacts().market().market().equals(sku.getMarket())
+                    && java.util.Objects.equals(identity.sku().version(), sku.getVersion())
+                    && ai.neargo.shop.spi.inventory.MaterialCatalogFacts.validKey(sku.getSaleUnit(), 16)
+                    && sku.getSaleUnit().chars().noneMatch(Character::isISOControl));
+            return sku.getSaleUnit();
+        }));
+    }
+
     private CatalogPriceSourcePort marketOwner() {
         var owner = markets.get();
         if (owner == null) throw BizException.of(ErrorCode.PRICING_OWNER_UNSUPPORTED);

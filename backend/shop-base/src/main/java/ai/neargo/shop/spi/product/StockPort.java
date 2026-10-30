@@ -16,6 +16,11 @@ public interface StockPort {
     default RestoreResult restoreOriginal(String purposeNo, String originalLockNo, List<SkuQty> items) {
         throw new UnsupportedOperationException("original stock restore unavailable");
     }
+    /** Complete frozen-original returns are checked by the physical owner in the same mutation transaction. */
+    default RestoreResult restoreOriginal(String purposeNo, StockDispositionPort.Original original,
+            String confirmationOperationNo, List<SkuQty> items) {
+        throw new UnsupportedOperationException("checked original stock restore unavailable");
+    }
 
     /** Records goods physically received for a V2 return; quality is independent of refund settlement. */
     default void receiveReturn(String receiptNo, String afterSaleNo, String originalOrderNo,
@@ -29,7 +34,6 @@ public interface StockPort {
     enum ReturnQuality { SALEABLE, UNSALEABLE }
 
     record ReturnLine(String skuNo, int qty, ReturnQuality quality) { }
-
 
     /**
      * 锁定库存（下单时）。全部成功或全部失败，不允许部分锁定 ——
@@ -96,6 +100,11 @@ public interface StockPort {
      * @param restoreNo 售后单号，仅用于日志与将来的流水单号
      */
     void restore(String restoreNo, List<SkuQty> items);
+
+    /** Persisted original order prevents a tracked return from bypassing its owner's permanent claims. */
+    default RestoreResult restore(String restoreNo, String originalOrderNo, List<SkuQty> items) {
+        throw new UnsupportedOperationException("SOURCE_AWARE_RETURN_UNAVAILABLE");
+    }
 
     /**
      * 把库存<b>设成这个数</b>（商家在商品页手改）。

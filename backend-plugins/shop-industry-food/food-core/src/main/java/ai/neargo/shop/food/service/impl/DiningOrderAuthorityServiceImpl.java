@@ -44,6 +44,8 @@ public class DiningOrderAuthorityServiceImpl implements DiningOrderAuthorityServ
     private final ConfigRevisionService revisions;
     private final MaterialCatalogQueryPort materials;
     private final ObjectMapper json;
+    private boolean localStock;
+    public DiningOrderAuthorityServiceImpl localStock(boolean enabled){this.localStock=enabled;return this;}
 
     public DiningOrderAuthorityServiceImpl(
             DiningPricingFactsService facts,
@@ -131,7 +133,7 @@ public class DiningOrderAuthorityServiceImpl implements DiningOrderAuthorityServ
     @Override
     public Plan demandPlan(Command command, String orderNo, String subOrderNo) {
         var result = authorize(command);
-        if (command.mode() != Mode.POSTPAY) return null;
+        if (command.mode() != Mode.POSTPAY&&!localStock) return null;
         var payload = result.payload();
         var id = command.identity();
         var branches = new ArrayList<Branch>();
@@ -194,6 +196,25 @@ public class DiningOrderAuthorityServiceImpl implements DiningOrderAuthorityServ
                 if (unit.skuNo().equals(recipe.recipe().skuNo())) candidates.add(dependency);
             }
             if (candidates.size() > 1) throw forbidden();
+            if("ADDON".equals(unit.kind())) {
+                var selectedModifiers=selected.selections().stream().filter(option->"MODIFIER".equals(option.sourceKind()))
+                        .filter(option->{var key=List.of("OPTION",option.groupNo(),option.sourceNo());return unit.componentRef().equals(PricingSnapshotHash.of(key))
+                                ||unit.componentRef().equals(PricingSnapshotHash.of(List.of(selected.sourceLineRef(),key)));}).toList();
+                if(selectedModifiers.size()!=1)throw forbidden();var option=selectedModifiers.getFirst();
+                var refs=menu.dependencies().stream().filter(d->"MODIFIER".equals(d.kind())&&option.sourceNo().equals(d.configNo())).toList();
+                if(refs.size()!=1)throw forbidden();var definitions=frozenModifierDefinitions(id.entityNo(),id.storeNo(),refs.getFirst());
+                var root=definitions.stream().filter(d->refs.getFirst().revisionNo().equals(d.revisionNo())).findFirst().orElseThrow(DiningOrderAuthorityServiceImpl::forbidden);
+                var composite=DiningChannelModifierDemand.compilePriced(id.entityNo(),id.storeNo(),unit.componentRef(),unit.quantity(),root,definitions,materials,json);
+                if(composite!=null) {
+                    var identities=materials.getSkuMaterials(id.entityNo(),id.storeNo(),List.of(unit.skuNo()));
+                    if(identities==null||identities.size()!=1||!unit.skuNo().equals(identities.getFirst().skuNo())
+                            ||!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(identities.getFirst().material())
+                            ||!id.entityNo().equals(identities.getFirst().material().entityNo()))throw forbidden();
+                    String unitName=identities.getFirst().material().baseUom();
+                    branches.add(new Branch(unit.componentRef(),subOrderNo,id.storeNo(),"RECIPE_MATERIAL",unit.quantity(),unitName,composite));
+                    continue;
+                }
+            }
             List<Leaf> leaves;
             String kind;
             String revisionNo = null;
@@ -249,17 +270,18 @@ public class DiningOrderAuthorityServiceImpl implements DiningOrderAuthorityServ
                         || matching.size() != 1
                         || !unit.skuNo().equals(matching.getFirst().skuNo())) throw forbidden();
                 MaterialFact material = matching.getFirst().material();
-                if (!MaterialCatalogFacts.validFact(material)
+                if (!ai.neargo.shop.food.policy.FoodMaterialFacts.validFact(material)
                         || !id.entityNo().equals(material.entityNo())) throw forbidden();
                 quantityUnit = material.baseUom();
                 leaves =
                         List.of(
                                 new Leaf(
                                         PricingSnapshotHash.of(List.of(unit.componentRef(), "SKU")),
-                                        unit.skuNo(),
+                                        "FOOD_LOCAL".equals(material.dataSource())?material.itemId():unit.skuNo(),
                                         unit.quantity(),
                                         quantityUnit,
-                                        material.definitionHash()));
+                                        material.definitionHash(),null,
+                                        "FOOD_LOCAL".equals(material.dataSource())?unit.skuNo():null));
                 kind = "FINISHED_SKU";
             }
             if ("MAIN".equals(unit.kind())) {
@@ -282,6 +304,21 @@ public class DiningOrderAuthorityServiceImpl implements DiningOrderAuthorityServ
         return new Plan(scope, orderNo, InventoryDemandPlanFacts.hash(plan), branches);
     }
 
+    private List<ai.neargo.shop.food.dto.DiningChannelSourceFacts.Definition> frozenModifierDefinitions(String entity,String store,DiningPriceFacts.DependencyRef root) {
+        var queue=new java.util.ArrayDeque<DiningPriceFacts.DependencyRef>();queue.add(root);
+        var found=new java.util.LinkedHashMap<String,ai.neargo.shop.food.dto.DiningChannelSourceFacts.Definition>();
+        while(!queue.isEmpty()) {
+            var ref=queue.removeFirst();if(found.containsKey(ref.revisionNo()))continue;if(found.size()>=2000)throw forbidden();
+            var revision=revisions.getRevision(entity,store,ref.revisionNo());
+            if(!ref.kind().equals(revision.publication().configKind())||!ref.configNo().equals(revision.publication().configNo())
+                    ||!ref.contentHash().equals(revision.publication().contentHash())
+                    ||!ref.contentHash().equals(PublicationDocuments.hash(json,revision.definitionSnapshot())))throw forbidden();
+            found.put(ref.revisionNo(),new ai.neargo.shop.food.dto.DiningChannelSourceFacts.Definition(ref.kind(),ref.configNo(),ref.revisionNo(),ref.revision(),ref.contentHash(),revision.definitionSnapshot()));
+            var body=json.readValue(revision.definitionSnapshot(),ai.neargo.shop.food.dto.PublicationSnapshot.class);
+            for(var edge:body.dependencies())queue.add(new DiningPriceFacts.DependencyRef(edge.configKind(),edge.configNo(),edge.revisionNo(),edge.revision(),edge.contentHash()));
+        }
+        return List.copyOf(found.values());
+    }
     private static BizException forbidden() {
         return BizException.of(ErrorCode.FORBIDDEN);
     }

@@ -1,4 +1,11 @@
 package ai.neargo.shop.paybridge.impl;
+import ai.neargo.shop.promotion.migration.LegacyCouponOriginRow;
+import java.util.Objects;
+import javax.sql.DataSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import static ai.neargo.shop.spi.entitlement.LegacyCouponFrozenSnapshotPort.MAX_PAYLOAD_BYTES;
 import ai.neargo.shop.spi.entitlement.LegacyCouponMigrationPlan;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -89,6 +96,72 @@ public class LegacyCouponSourceFenceServiceImpl implements LegacyCouponSourceFen
         this.scopes = scopes; this.merchants=merchants; this.merchantFacts=merchantFacts;
         this.orders = orders; this.subs = subs; this.dedup = dedup; this.json = json; this.watermarkKey = watermarkKey;
     }
+
+    @Autowired
+    @Qualifier("dataSource")
+    private DataSource checkoutSource;
+
+    @Override
+    public SourceSystem ordinarySource(String tenant, String buyer, String no) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var origins = ordinaryOrigins(tenant, buyer, no);
+            return origins.promo() != null ? SourceSystem.PMT : SourceSystem.MKT_LEGACY;
+        });
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public SourceSystem lockOrdinarySource(String tenant, String buyer, String no) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(checkoutSource)) {
+            throw BizException.of(ErrorCode.CHECKOUT_DEPENDENCY_UNAVAILABLE);
+        }
+        return DataScopeContext.executeWithoutScope(() -> {
+            var before = ordinaryOrigins(tenant, buyer, no);
+            // Same source owner and same lock order as transition/requireWritable.
+            if (before.legacy() != null) {
+                requireWritable(tenant, SourceSystem.MKT_LEGACY, before.legacy().getTemplateNo(), false);
+            }
+            if (before.promo() != null) {
+                requireWritable(tenant, SourceSystem.PMT, before.promo().getTemplateNo(), false);
+            }
+            var locked = ordinaryOrigins(tenant, buyer, no);
+            return locked.promo() != null ? SourceSystem.PMT : SourceSystem.MKT_LEGACY;
+        });
+    }
+
+    private OrdinaryOrigins ordinaryOrigins(String tenant, String user, String no) {
+        ContractChecks.require("MAIN".equals(tenant));
+        ContractChecks.id(user);
+        ContractChecks.id(no);
+        var pmt = locks.promoOrigin(tenant, user, no);
+        var mkt = locks.legacyOrigin(tenant, user, no);
+        if (pmt == null && mkt == null) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        requireOrdinaryOrigin(pmt);
+        requireOrdinaryOrigin(mkt);
+        if (pmt != null && mkt != null && !Objects.equals(pmt.getEntityNo(), mkt.getEntityNo())) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+        return new OrdinaryOrigins(pmt, mkt);
+    }
+
+    private void requireOrdinaryOrigin(LegacyCouponOriginRow row) {
+        if (row == null) {
+            return;
+        }
+        if (!Boolean.TRUE.equals(row.getRootPresent())
+                || !Integer.valueOf(0).equals(row.getRootDeleted())
+                || !Integer.valueOf(0).equals(row.getInstanceDeleted())
+                || !Set.of("OPEN", "ABORT_DECIDED").contains(row.getRootState())
+                || row.getInstanceEntityNo() != null
+                        && !row.getInstanceEntityNo().equals(row.getEntityNo())) {
+            throw BizException.of(ErrorCode.CHECKOUT_UNSUPPORTED_SELECTION);
+        }
+    }
+
+    private record OrdinaryOrigins(LegacyCouponOriginRow promo, LegacyCouponOriginRow legacy) {}
 
     @Override
     @Transactional(propagation=Propagation.REQUIRES_NEW,isolation=Isolation.REPEATABLE_READ)

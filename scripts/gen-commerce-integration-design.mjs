@@ -30,8 +30,36 @@ const progress=()=>d.implementation ? '## 当前实施进度\n\n'+table(['项','
  ['已编码API子集',d.implementation.apiIds.join(', ')],['限制',d.implementation.limitations],
  ['验证',d.implementation.tests]]) : '';
 
+// Actual source inventory is deliberately separate from the unchanged planned contract rows.
+const coded=d.implementation?.codedInventory;
+const sourceLink=source=>`[${source}](../../../${source})`;
+const codedRoutes=()=>!coded?'':'## 当前源码实际路由（未作为验收通过证据）\n\n'
+ + '下表逐项取自本轮源码；候选编号、候选数量和源码路由集合分别保留。参数是实际 Java 声明，方法/路径相同的读写仍分别列出。权限码不代表账号自动获授权；账户/门店范围仍由原 scope owner 核验。\n\n'
+ + table(['方法 / 实际路径','Controller / 方法','实际参数声明 / 返回','原权限 / 范围依据','源码状态'],coded.routes.map(a=>[`${a.verb} \`${a.path}\``,`${a.controller}#${a.method}`,`${a.signature} → ${a.response}`,`BizPerms.${a.permission}；${a.scopeCalls.join('；')}`,a.status]))
+ + '### 原运营/回调实际源码路由\n\n'
+ + table(['方法 / 实际路径','方法声明 / 返回','原权限或验签要求'],(coded.operationalRoutes??[]).map(c=>[`${c.verb} ${c.path}`,`${c.signature} → ${c.response}`,c.permission]))
+ + '### 原设备 MP 草稿路由（非 B 权限码，不授予离线订单能力）\n\n'
+ + table(['实际方法 / 路径','实际声明 / 返回','原身份与启用条件'],(coded.consumerRoutes??[]).map(c=>[`${c.verb} ${c.path}`,`${c.signature} → ${c.response}`,`${c.permission}；${c.activation}`]))
+ + '### 实际输入及返回 record 声明\n\n'
+ + table(['原契约 / record','原字段声明','源码'],(coded.requestRecords??[]).map(c=>[`${c.container}.${c.name}`,c.declaration,sourceLink(c.source)]))
+ + '### 私有传输及原接口签名\n\n'
+ + table(['原接口','实际声明 / 路由','源码'],coded.interfaces.map(c=>[c.name,c.declarations.join('；'),sourceLink(c.source)]))
+ + table(['内部提供方','实际路由声明','原鉴权依据'],coded.privateControllers.map(c=>[sourceLink(c.source),c.routes.join('；'),c.securityEvidence.join('；')]))
+ + table(['原范围证据','职责'],(coded.scopeEvidenceSources??[]).map(x=>[sourceLink(x.source),x.role]))
+ + coded.scopeAndAudit.map(x=>x+'\n\n').join('');
+const codedDatabase=()=>!coded?'':'## 本轮实际增量迁移源码（执行待验证）\n\n'
+ + 'CORE/FOOD/CIM 均沿各自原迁移历史与表前缀；源码存在不等于数据库已执行。FOOD V31 原 owner 源码已交接，编译、安全注册和集中测试待完成，不计作已验收闭环。下列字段/键按实际迁移源码记录，和后文全量候选表字段分开。\n\n'
+ + coded.migrations.map(m=>`### ${m.owner} V${m.version} · ${m.status}\n\n${sourceLink(m.source)}\n\n`
+   + table(['实际表','字段 / 类型','实际键'],m.tables.map(t=>[t.name,t.fields.map(f=>`${f.name} ${f.definition}`).join('；'),t.keys.join('；')]))
+   + (m.alterations.length?'实际 ALTER：'+m.alterations.join('；')+'\n\n':'')).join('');
+const codedClasses=()=>!coded?'':'## 本轮实际类与装配条件（非测试结果）\n\n'
+ + table(['实际完整类名','类型','源码'],coded.classes.map(c=>[c.name,c.kind,sourceLink(c.source)]))
+ + table(['装配源码','原条件','启用口径'],coded.featureConditions.map(c=>[sourceLink(c.source),c.condition,c.default]))
+ + '原现金、独立资金/退款、已发料退回和 PMS 财务 owner 边界见 API 实际范围；外部 ACK 不关闭本地资金义务。离线 V31 源码已交接，编译和集中测试待完成。\n\n';
+
 let db=header('统一销售渠道接入 数据库设计');
 db+=progress();
+db+=codedDatabase();
 db+='## L1 定位\n\n渠道只拥有授权、同步、事件、接入关联和证据。商品、订单、库存、支付、仓库包裹与权益余额归原owner；餐饮/零售分别提供来源Port。当前同业务库、cim_前缀及独立迁移历史，未来可迁到独立库。\n\n';
 db+=`## L2 表族与关系\n\n候选共${d.tables.length}张表，按业务闭环逐批实施，不能把候选表数当建表进度。\n\n![表族关系](./diagrams/commerce-integration-table-groups.svg)\n\n图为真源表族和逻辑引用的投影，不是跨业务物理外键。最关键的两条关系是稳定连接贯穿订单去重，以及每次外部动作关联原快照和原业务结果。\n\n`;
 db+=table(['表','阶段','职责','Entity'],d.tables.map(t=>[t.name,t.phase,t.purpose,t.entity]));
@@ -42,13 +70,14 @@ db+='## L4 事务与迁移边界\n\n'+d.common.lease+'\n\n原有fnb_menu_channel
 files.set(base+'统一销售渠道接入-数据库设计.md',db);
 let api=header('统一销售渠道接入 API清单');
 api+=progress();
+api+=codedRoutes();
 api+='## L1 定位\n\n一套B端API服务零售、餐饮，C端点餐/购物继续沿原业务API，不另造渠道C端下单入口。OPS只做基础配置和授权支持，回调不使用商家登录认证。下列为完整目标路由，实际已编码子集见实施进度；不是运行中OpenAPI发现结果。\n\n';
 api+=`## L2 分类与公共合同\n\n公开/回调API共${d.apis.length}项；内部业务Port及typed网关合同共${d.ports.length}组，内部方法不算公开API。\n\n`;
 api+=table(['分类','数量'],[...new Set(d.apis.map(a=>a.role))].map(role=>[role,d.apis.filter(a=>a.role===role).length]));
 api+=`B端返回沿原ApiResult包装，列表为PageData<T>，Controller直接返回VO；内部typed与Webhook/授权响应须按原wrapper机制排除，不套业务JSON。${d.common.pagination}\n\n`;
-api+='B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户管理为主体级管理员能力，不把当前门店角色当账号全部权限。OPS显式entityNo/storeNo仅作目标，仍按运营数据域交叉核验。普通GET无外部网络副作用；refresh/recover均POST且返回原动作。\n\n所有写动作需要Idempotency-Key，同键异hash或不兼容操作者冲突。对象修改/状态动作需要version；创建不传version。Req缺失/非法字段BAD_REQUEST，跨域资源按平台统一策略拒绝，旧版本CONFLICT，未获能力明确拒绝；不补假成功。所有枚举错误码需登记原ErrorCode与三语文案，本文不预造数值码。\n\n拟权限组：INTEGRATION/CATALOG/ORDER/FULFILLMENT/AFTER_SALE/FINANCE/ACCOUNT_ADMIN，映射到原BizPerms及授权模型，不能仅凭新增常量就给员工授权。权限实际代码在实施时登记，不建立第二套RBAC。\n\n';
+api+='B端scope由BizContext、当前门店头及原StoreDirectoryPort校验；账户管理为主体级管理员能力，不把当前门店角色当账号全部权限。OPS显式entityNo/storeNo仅作目标，仍按运营数据域交叉核验。普通GET无外部网络副作用；refresh/recover均POST且返回原动作。\n\n所有写动作需要Idempotency-Key，同键异hash或不兼容操作者冲突。对象修改/状态动作需要version；创建不传version。Req缺失/非法字段BAD_REQUEST，跨域资源按平台统一策略拒绝，旧版本CONFLICT，未获能力明确拒绝；不补假成功。所有枚举错误码需登记原ErrorCode与三语文案，本文不预造数值码。\n\n候选权限组仍作为设计分类；已编码路由沿实际 @PreAuthorize/BizPerms（STORE_ADMIN、AFTERSALE、VERIFY 等）及原作用域校验，上方源码清单逐项登记。不新增第二套 RBAC，不因候选组名给员工授权。\n\n';
 api+='### 候选平台与外部协议\n\n'+table(['平台','市场','业务产品','接口合同状态'],d.platforms);
-api+='外部平台接口不包含在70个本系统公开/回调路由计数中。淘宝/抖店、餐饮POS、商超Partner API和生活服务分别按获准协议注册Gateway，不能因同品牌共用未经核验的字段或能力。具体外部HTTP路径及报文字段在适配器合同测试中冻结，未获取的协议不编造端点。\n\n';
+api+='外部平台接口不包含在本系统候选公开/回调路由计数中。淘宝/抖店、餐饮POS、商超Partner API和生活服务分别按获准协议注册Gateway，不能因同品牌共用未经核验的字段或能力。具体外部HTTP路径及报文字段在适配器合同测试中冻结，未获取的协议不编造端点。\n\n';
 api+='## L3 对外路由与输入输出\n\n';
 for(const role of ['B','OPS','CALLBACK']){api+=`### ${role}\n\n`+table(['编号 / 方法路径','输入 / Req','输出','Service方法 / 表 / AC'],d.apis.filter(a=>a.role===role).map(a=>[`${a.id} ${a.verb} \`${a.path}\``,`${a.request}：${a.params}`,a.response,`${a.service}.${a.method}；${a.tables.join(', ')}；${a.ac}；${a.phase}`]));}
 api+='### 原有API复用\n\n餐饮餐牌绑定继续复用/biz/x/food/stores/{storeNo}/menu-channel-bindings及单绑定读写，新增连接校验不新增第二份餐牌定义。原订单、支付、库存、配送、权益接口不复制为commerce CRUD；渠道只公开接入对象与受控业务动作。\n\n### 内部合同及传输\n\n'+table(['Port / 所有者','方法及返回','约束'],d.ports.map(p=>[p.package+'.'+p.name+'；'+p.owner,p.methods,p.purpose]));
@@ -69,6 +98,7 @@ api+='## L4 同步及状态口径\n\n'+d.common.remoteBarrier+'\n\n'+d.common.ro
 files.set(base+'统一销售渠道接入-API清单.md',api);
 let code=header('统一销售渠道接入 代码清单');
 code+=progress();
+code+=codedClasses();
 code+='## L1 定位\n\n以下是目标文件与方法清单，不是已落地源码扫描。遵循[平台Java规范](../../../.claude/skills/ai-shop-dev-standards/references/java.md)的包/命名/Port及BaseEntity规则；实现按闭环增量建类，不先生成全域空壳。\n\n';
 code+='## L2 模块与依赖\n\n'+table(['模块','包/依赖','职责'],[
  ['commerce-api','ai.neargo.shop.commerce.service/dto；ai.neargo.shop.spi.commerce；仅原轻量基础合同','Service、Req/VO、唯一跨域Port及事件'],

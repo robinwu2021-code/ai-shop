@@ -3,6 +3,8 @@ package ai.neargo.shop.trade.entity;
 import ai.neargo.shop.common.BaseEntity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -18,8 +20,29 @@ import lombok.Setter;
 public class OrdOrder extends BaseEntity {
     /** Shared industry business fee, unrelated to platform commission. */
     private Long feeMinor;
+    /** Historical customer identity never changes when the guest later claims an account. */
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String customerKind = "USER";
+
+    @TableField(updateStrategy = FieldStrategy.NEVER)
+    private String guestNo;
+
+    @TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.NEVER)
+    private Long identityRevision;
+
+    private String entityNo;
+    private String storeNo;
+    private String caller;
+    private String operationNo;
 
     public static final String WAIT_PAY = "WAIT_PAY";
+
+    /**
+     * Original channel receivable; no local payment acknowledgement, paidAt or payment trade is
+     * implied.
+     */
+    public static final String WAIT_CHANNEL_PAY = "WAIT_CHANNEL_PAY";
+
     public static final String POINTS_PENDING = "POINTS_PENDING";
     public static final String PAID = "PAID";
 
@@ -35,6 +58,11 @@ public class OrdOrder extends BaseEntity {
 
     public static final String CANCELLED = "CANCELLED";
     public static final String CLOSED = "CLOSED";
+
+    /** Manual declarations never populate financial channel/trade identifiers. */
+    private String admissionKind;
+
+    private String receiptProvenance;
 
     private String orderNo;
     private String userNo;

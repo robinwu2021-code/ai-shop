@@ -55,25 +55,63 @@ class CoreCatalogMarketTest {
                 new GoodsCatalogQueryPort.SkuIdentityFact("SKU", "G", "E", "S", 8), 3L, at, at.plusSeconds(20), null));
     }
 
+    @Test void skuMeasurementRequiresAuthenticUnmodifiedAndFreshOwnerEvidence() {
+        var api = mock(GoodsCatalogInternalApi.class);
+        var port = new CoreGoodsCatalogQueryPortImpl(() -> api);
+        var now = Instant.now().minusSeconds(1);
+        var source = sku(SKU, now);
+        var facts = ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.seal(
+                new ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts(
+                        1, source, "EA", now, source.validUntil(), null));
+        when(api.lookupSkuMeasurement(SKU)).thenReturn(facts);
+        assertThat(port.getCatalogSkuMeasurement(SKU).unit()).isEqualTo("EA");
+        when(api.lookupSkuMeasurement(SKU)).thenReturn(
+                new ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts(
+                        1, source, "KG", now, source.validUntil(), facts.receiptNo()));
+        assertThatThrownBy(() -> port.getCatalogSkuMeasurement(SKU))
+                .isInstanceOf(ServiceCallException.class);
+    }
+
+    @Test void skuMeasurementWireRejectsCoercedUnitAndSchemaTokens() {
+        var json = JsonMapper.builder().build();
+        var at = Instant.now().minusSeconds(1);
+        var identity = sku(SKU, at);
+        var value = ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.seal(
+                new ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts(
+                        1, identity, "EA", at, identity.validUntil(), null));
+        String raw = json.writeValueAsString(value);
+        assertThatThrownBy(() -> json.readValue(raw.replace("\"unit\":\"EA\"", "\"unit\":123"),
+                ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts.class))
+                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> json.readValue(raw.replaceFirst("\"schemaVersion\":1", "\"schemaVersion\":\"1\""),
+                ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts.class))
+                .isInstanceOf(RuntimeException.class);
+    }
+
     @Test void standaloneBothCapabilitiesUseActualTypedPlatformHttpAndOriginalToken() throws Exception {
         var json = JsonMapper.builder().build();
         var calls = new AtomicInteger();
         var now = Instant.now();
         var gf = goods(GOODS, now);
         var sf = sku(SKU, now);
+        var measurement = ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.seal(
+                new ai.neargo.shop.spi.product.CatalogSkuMeasurementFacts.Facts(
+                        1, sf, "EA", now, sf.validUntil(), null));
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/internal/product/catalog/goods/", exchange -> {
             calls.incrementAndGet();
             try {
                 assertThat(exchange.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).isEqualTo("wire");
                 boolean isGoods = exchange.getRequestURI().getPath().equals(GoodsCatalogInternalApi.MARKET_GOODS_PATH);
+                boolean isMeasurement = exchange.getRequestURI().getPath().equals(GoodsCatalogInternalApi.SKU_MEASUREMENT_PATH);
                 String input = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 if (isGoods) assertThat(json.readValue(input, GoodsQuery.class)).isEqualTo(GOODS);
                 else {
-                    assertThat(exchange.getRequestURI().getPath()).isEqualTo(GoodsCatalogInternalApi.MARKET_SKU_PATH);
+                    assertThat(exchange.getRequestURI().getPath()).isEqualTo(isMeasurement
+                            ? GoodsCatalogInternalApi.SKU_MEASUREMENT_PATH : GoodsCatalogInternalApi.MARKET_SKU_PATH);
                     assertThat(json.readValue(input, SkuQuery.class)).isEqualTo(SKU);
                 }
-                byte[] response = json.writeValueAsBytes(isGoods ? gf : sf);
+                byte[] response = json.writeValueAsBytes(isGoods ? gf : isMeasurement ? measurement : sf);
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
                 exchange.sendResponseHeaders(200, response.length);
                 exchange.getResponseBody().write(response);
@@ -89,8 +127,9 @@ class CoreCatalogMarketTest {
                         var port = c.getBean(GoodsCatalogQueryPort.class);
                         assertThat(port.getCatalogGoods(GOODS)).isEqualTo(gf);
                         assertThat(port.getCatalogSku(SKU)).isEqualTo(sf);
+                        assertThat(port.getCatalogSkuMeasurement(SKU)).isEqualTo(measurement);
                     });
-            assertThat(calls.get()).isEqualTo(2);
+            assertThat(calls.get()).isEqualTo(3);
         } finally { server.stop(0); }
     }
 

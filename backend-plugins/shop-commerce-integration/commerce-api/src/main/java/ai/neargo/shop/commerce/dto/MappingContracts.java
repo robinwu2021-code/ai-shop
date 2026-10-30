@@ -3,8 +3,10 @@ package ai.neargo.shop.commerce.dto;
 import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway.Identity;
 import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway.ObjectType;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.SourceContext;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import tools.jackson.databind.annotation.JsonDeserialize;
 
@@ -21,7 +23,27 @@ public final class MappingContracts {
             @JsonDeserialize(using = CommerceOwnerDeserializer.class) Owner sourceOwner,
             @JsonDeserialize(using = CommerceTextDeserializer.class) String sourceRef,
             @JsonDeserialize(using = CommerceTextDeserializer.class) String sourceRevision,
-            @JsonDeserialize(using = CommerceTextDeserializer.class) String salesOfferRef) {
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String salesOfferRef,
+            @JsonInclude(JsonInclude.Include.NON_NULL) SourceContext sourceContext) {
+        public CreateResourceMappingReq(
+                String connectionNo,
+                ObjectType objectType,
+                Identity externalIdentity,
+                Owner sourceOwner,
+                String sourceRef,
+                String sourceRevision,
+                String salesOfferRef) {
+            this(
+                    connectionNo,
+                    objectType,
+                    externalIdentity,
+                    sourceOwner,
+                    sourceRef,
+                    sourceRevision,
+                    salesOfferRef,
+                    null);
+        }
+
         @JsonAnySetter
         public void rejectUnknown(String field, Object value) {
             throw new IllegalArgumentException("Unknown mapping field");
@@ -34,7 +56,18 @@ public final class MappingContracts {
             @JsonDeserialize(using = CommerceTextDeserializer.class) String sourceRef,
             @JsonDeserialize(using = CommerceTextDeserializer.class) String sourceRevision,
             @JsonDeserialize(using = CommerceTextDeserializer.class) String salesOfferRef,
-            @JsonDeserialize(using = CommerceTextDeserializer.class) String reason) {
+            @JsonDeserialize(using = CommerceTextDeserializer.class) String reason,
+            @JsonInclude(JsonInclude.Include.NON_NULL) SourceContext sourceContext) {
+        public ReviseResourceMappingReq(
+                Long version,
+                Owner sourceOwner,
+                String sourceRef,
+                String sourceRevision,
+                String salesOfferRef,
+                String reason) {
+            this(version, sourceOwner, sourceRef, sourceRevision, salesOfferRef, reason, null);
+        }
+
         @JsonAnySetter
         public void rejectUnknown(String field, Object value) {
             throw new IllegalArgumentException("Unknown mapping field");
@@ -51,7 +84,33 @@ public final class MappingContracts {
             String mappingOrigin,
             String validationStatus,
             String contentHash,
-            Instant effectiveAt) {}
+            Instant effectiveAt,
+            @JsonInclude(JsonInclude.Include.NON_NULL) SourceContext sourceContext) {
+        public MappingRevisionVO(
+                String revisionNo,
+                long revision,
+                Owner sourceOwner,
+                String sourceRef,
+                String sourceRevision,
+                String salesOfferRef,
+                String mappingOrigin,
+                String validationStatus,
+                String contentHash,
+                Instant effectiveAt) {
+            this(
+                    revisionNo,
+                    revision,
+                    sourceOwner,
+                    sourceRef,
+                    sourceRevision,
+                    salesOfferRef,
+                    mappingOrigin,
+                    validationStatus,
+                    contentHash,
+                    effectiveAt,
+                    null);
+        }
+    }
 
     public record ResourceMappingVO(
             String mappingNo,

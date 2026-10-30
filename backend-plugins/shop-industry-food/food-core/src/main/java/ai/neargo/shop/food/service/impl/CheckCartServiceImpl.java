@@ -78,7 +78,7 @@ import java.util.function.Supplier;
  * Shared restaurant drafts. Owner locks arbitrate creation; no retail order, amount or inventory is
  * mutated.
  */
-public class CheckCartServiceImpl implements CheckCartService {
+public class CheckCartServiceImpl implements CheckCartService, ai.neargo.shop.food.port.OfflineCartReplayPort {
     private DiningIdentityService diningIdentity;
     private ServiceSlotLifecycle serviceSlots;
 
@@ -413,10 +413,24 @@ public class CheckCartServiceImpl implements CheckCartService {
     @Override
     public CartResultVO customerCreateCart(
             String store, CartAccess access, CreateCustomerCartReq req, String key) {
+        outer();
+        return customerCreateLocal(store,access,req,key);
+    }
+
+    @Override
+    public Supplier<CartResultVO> prepareOfflineCreate(String store,CartAccess access,CreateCustomerCartReq req,String key) {
+        outer();accessInput(access);
+        if(access.sessionNo()==null)throw BizException.of(ErrorCode.BAD_REQUEST);
+        return ()->{
+            offlineTransaction();
+            return customerCreateLocal(store,access,req,key);
+        };
+    }
+
+    private CartResultVO customerCreateLocal(String store,CartAccess access,CreateCustomerCartReq req,String key) {
         CartInputPolicy.key(store);
         accessInput(access);
         CartInputPolicy.replayKey(key);
-        outer();
         if (req == null) bad();
         if (req.sessionNo() != null && !Objects.equals(req.sessionNo(), access.sessionNo()))
             missing();
@@ -535,7 +549,7 @@ public class CheckCartServiceImpl implements CheckCartService {
         outer();
         return scoped(
                 () ->
-                        read.execute(
+                        write.execute(
                                 tx -> {
                                     var row = rawCart(number);
                                     boolean originalBuyerRead =
@@ -617,6 +631,11 @@ public class CheckCartServiceImpl implements CheckCartService {
         var payload = List.of(number, source, req);
         var replay = receipt(operation, entity, store, actor, key, payload, CartVersionVO.class);
         if (replay.isPresent()) return replay.get();
+        validateLineFacts(entity,store,number,access,req);
+        return replaceValidated(entity,store,number,source,actor,req,key,access);
+    }
+
+    private void validateLineFacts(String entity,String store,String number,CartAccess access,ReplaceCartLineReq req) {
         var snapshot = head(entity, store, number, false);
         CartLinePolicy.validate(
                 req.line(),
@@ -630,7 +649,9 @@ public class CheckCartServiceImpl implements CheckCartService {
                                         snapshot.getFulfillment(),
                                         null)),
                 json);
-        if (access != null && !"H5".equals(snapshot.getOrderSource())) {
+        // QR catalog authority belongs to a table session; device carts use their
+        // authenticated device session and the original KIOSK fulfillment catalog above.
+        if (access != null && "QR".equals(snapshot.getOrderSource())) {
             var guestCatalog =
                     catalog.guest(
                             store, access.sessionNo(), access.accessToken(), access.buyerNo());
@@ -641,6 +662,30 @@ public class CheckCartServiceImpl implements CheckCartService {
                             : guestCatalog,
                     json);
         }
+    }
+
+    @Override
+    public Supplier<CartVersionVO> prepareOfflineReplace(String number,String source,CartAccess access,ReplaceCartLineReq req,String key) {
+        outer();lineInput(number,source,req);accessInput(access);CartInputPolicy.replayKey(key);
+        return scoped(()->{
+            var row=rawCart(number);var guest=customer(row,access,false);
+            String entity=row.getEntityNo(),store=row.getStoreNo(),actor=customerActor(guest,access);
+            // All catalog calls are complete before the offline owner locks its lease and progress.
+            validateLineFacts(entity,store,number,access,req);
+            return ()->{offlineTransaction();return scoped(()->replaceValidated(entity,store,number,source,actor,req,key,access));};
+        });
+    }
+
+    private static void offlineTransaction() {
+        if(!TransactionSynchronizationManager.isActualTransactionActive()
+                ||TransactionSynchronizationManager.isCurrentTransactionReadOnly())
+            throw new IllegalStateException("Prepared offline cart command requires its owning write transaction");
+    }
+
+    private CartVersionVO replaceValidated(String entity,String store,String number,String source,String actor,
+            ReplaceCartLineReq req,String key,CartAccess access) {
+        String operation=access==null?"REPLACE_CART_LINE":"C_REPLACE_CART_LINE";
+        var payload=List.of(number,source,req);
         return command(
                 operation,
                 entity,

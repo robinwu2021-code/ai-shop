@@ -309,6 +309,8 @@ public final class ResourceMappingVerificationServiceImpl
                             c.latest().getSourceRef(),
                             c.latest().getSourceRevisionRef(),
                             c.latest().getSalesOfferRef(),
+                            data.context(c.latest()),
+                            c.latest().getMappingOrigin(),
                             c.base().connection().getActiveRevisionNo(),
                             claim.query().authorizationNo(),
                             "TRUSTED_VERIFICATION",

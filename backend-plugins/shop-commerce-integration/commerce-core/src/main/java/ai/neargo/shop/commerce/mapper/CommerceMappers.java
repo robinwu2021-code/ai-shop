@@ -1,21 +1,27 @@
 package ai.neargo.shop.commerce.mapper;
 
-import ai.neargo.shop.commerce.entity.CimAccount;
 import ai.neargo.shop.commerce.dto.ChannelCatalogAuthorityContracts.IdentityQuery;
-
-import java.util.List;
+import ai.neargo.shop.commerce.entity.CimAccount;
 import ai.neargo.shop.commerce.entity.CimAuthorizationRevision;
 import ai.neargo.shop.commerce.entity.CimCatalogScope;
 import ai.neargo.shop.commerce.entity.CimCatalogSnapshot;
 import ai.neargo.shop.commerce.entity.CimCatalogSource;
 import ai.neargo.shop.commerce.entity.CimConnectionRevision;
+import ai.neargo.shop.commerce.entity.CimFulfillmentLineLink;
+import ai.neargo.shop.commerce.entity.CimFulfillmentLink;
+import ai.neargo.shop.commerce.entity.CimInboundEvent;
+import ai.neargo.shop.commerce.entity.CimInboundReceipt;
 import ai.neargo.shop.commerce.entity.CimOperation;
 import ai.neargo.shop.commerce.entity.CimOperationAttempt;
+import ai.neargo.shop.commerce.entity.CimOrderLineLink;
+import ai.neargo.shop.commerce.entity.CimOrderLink;
+import ai.neargo.shop.commerce.entity.CimOrderRevision;
 import ai.neargo.shop.commerce.entity.CimProductProfile;
 import ai.neargo.shop.commerce.entity.CimProvider;
 import ai.neargo.shop.commerce.entity.CimRequestJournal;
 import ai.neargo.shop.commerce.entity.CimResourceMapping;
 import ai.neargo.shop.commerce.entity.CimResourceMappingRevision;
+import ai.neargo.shop.commerce.entity.CimSourceNotice;
 import ai.neargo.shop.commerce.entity.CimStoreConnection;
 import ai.neargo.shop.commerce.entity.CimSyncPolicy;
 import ai.neargo.shop.commerce.entity.CimSyncRun;
@@ -27,9 +33,27 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.List;
+
 /** 只包含本批实际读写资源；保持平台嵌套Mapper规范。 */
 public final class CommerceMappers {
     private CommerceMappers() {}
+
+    public interface FulfillmentLinkMapper extends BaseMapper<CimFulfillmentLink> {}
+
+    public interface FulfillmentLineLinkMapper extends BaseMapper<CimFulfillmentLineLink> {}
+
+    public interface OrderLineLinkMapper extends BaseMapper<CimOrderLineLink> {}
+
+    public interface OrderLinkMapper extends BaseMapper<CimOrderLink> {}
+
+    public interface OrderRevisionMapper extends BaseMapper<CimOrderRevision> {}
+
+    public interface SourceNoticeMapper extends BaseMapper<CimSourceNotice> {}
+
+    public interface InboundEventMapper extends BaseMapper<CimInboundEvent> {}
+
+    public interface InboundReceiptMapper extends BaseMapper<CimInboundReceipt> {}
 
     public interface ProviderMapper extends BaseMapper<CimProvider> {}
 
@@ -38,8 +62,12 @@ public final class CommerceMappers {
     public interface AccountMapper extends BaseMapper<CimAccount> {}
 
     public interface StoreConnectionMapper extends BaseMapper<CimStoreConnection> {
-        /** Two complete matches are enough to reject ambiguity without choosing an arbitrary profile. */
-        @Select("""
+        /**
+         * Two complete matches are enough to reject ambiguity without choosing an arbitrary
+         * profile.
+         */
+        @Select(
+                """
                 SELECT c.connection_no, c.active_revision_no
                 FROM cim_store_connection c
                 JOIN cim_account a ON a.tenant_no=c.tenant_no AND a.account_no=c.account_no

@@ -239,6 +239,98 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 
 窗口滚动沿原唯一CommerceRecoveryJob和cim_sync_policy.next_check_at，最迟horizonEnd前24小时重捕获；不新增每渠道cron。具体接线归S3，未完成前默认不启用自动发布。真实Gateway若不能保证窗口外关闭/有限有效期，不得声明支持v3；人工补发或定时任务在线不是过期保护的替代品。
 
+#### L3 B1 执行计划：v3时间与税依据（2026-10-28）
+
+承接用户“继续”，先交付可独立验收的v3合同、冻结校验及真实原时间编译；B2再组装完整菜项/选择可行性，C接HTTP/worker，S3接通知与窗口滚动。已在用户消息中先输出本批目的、任务、方法和验证。沿既定增量v3方案，不重新确认已选方向。
+
+| 顺序 | 文件/对象 | 实现及验收 |
+| --- | --- | --- |
+| 1 | commerce-api spi.commerce.CatalogAvailability、CatalogTaxBasis；commerce.dto.CommerceInstantDeserializer | 窗口/来源/半开区间；税依据保留原entity/store/Market/TaxFact；新时间字段严格字符串及未知字段拒绝 |
+| 2 | 原ChannelCatalogSourcePort.Document | 末尾追加仅非null序列化availability/taxBases；原8及10参数构造器保留；原1/2格式不得混入新元数据 |
+| 3 | commerce-core policy.CatalogAvailabilityPolicy、CatalogTaxBasisPolicy、CatalogV3Policy | 来源窗口精确覆盖、UTC7天/4096段/边界与有序校验；每个主价/配料价/套餐价的taxBasisRef唯一可解释，统一原scope/market/currency/scale；新3稳定摘要排除刷新回执且排序确定 |
+| 4 | 原CatalogDocumentPolicy、CatalogPublicationServiceImpl、ChannelCatalogGateway | freeze/version/hash/itemCount接纳3；原preview增加税scope与实际调用e/store核对；旧Gateway默认仍仅1，3必须显式完整支持有效期和全部规则，不降级 |
+| 5 | shop-base原OpenHours、CatalogPriceSourceFacts | 只增纯边界读取boundaryTimes及税taxSnapshotForScope(MarketScope,TaxFact)入口，复用原语法/税hash校验；不重写营业判定、不虚构SKU、不增加税计算 |
+| 6 | 原MenuSchedulePolicy移入food-api，同FQN；原StoreCalendarSourcePolicy | 原acceptsAt语义/签名不变；新增prepare与纯已校验判定，避免每个分段重复解析和摘要；旧owner入口仍完整校验证据 |
+| 7 | food-commerce policy.FoodCatalogAvailabilityPolicy.compile(Proof,expectedCalendarQuery,Facts,Clock,ObjectMapper) | 仅原CURRENT/MENU；原餐牌与原日历scope一致；固定捕获日UTC起7天；按原规则边界和全部合法offset、DST跳变、未来政策生效点求交集并合并，返回availability及最短证据期限 |
+| 8 | commerce-core与food-commerce专项、原模块直接回归 | 原编译产物1/2 JSON/hash golden；合法3及各类拒绝、稳定hash、税引用/scope；跨夜切点、双时段、例外、未来时区、DST overlap/gap均与原owner逐边界一致 |
+| 9 | 本TDD、设计真源和生成清单、执行台账 | 执行记录三处对账；一次守卫消融、一次最终独立只读review，重要问题一轮复现修复 |
+
+输入输出与限制：compile接收完整原菜单Proof、显式期望日历Query与原Facts，调用原MenuSourcePolicy/StoreCalendarSourcePolicy校验；不把任意客户端周循环当原事实。输出Compiled(availability,validUntil)，horizon与证据TTL分离。每来源最多4096个有效区间、候选边界最多200000个，超限整份拒绝，不截断；原hours未知或策略未覆盖窗起点拒绝。原日历查询必须覆盖UTC窗两侧各2个日期。每个Zone的所有有效offset和gap/transition均纳入候选，段首仅调用原纯规则；不引入第二套业务判定或分钟轮询。
+
+旧原税/营业helper只增纯读取，合法旧行为与声明签名不变。新TaxBasis显式带原主体/门店并调用原税定义校验；泛型冻结证明同一文档税scope一致，实际preview再绑定调用方e/store。新3窗口必须是UTC午夜起固定7天，冻结允许最多30秒跨UTC日期的捕获/接纳差，防止近午夜合法捕获被误拒；任意旧窗或前移窗拒绝。短期proof/Doc TTL继续最多30秒，最终再次按Clock核验，不以未来营业窗口延长授权。
+
+按用户节奏：先整批生产及测试源码→统一test-compile→集中相关测试（不全仓）→消融RED并恢复GREEN→因MenuSchedulePolicy模块移动执行clean package→一次独立只读review→重要问题一轮定向修复→精确本地提交。无新表/迁移/公开API/定时任务/真实平台，无FOOD完整catalog provider装配或生产开关开启。单独完成B1不能标记B2完整目录、C链路或S3通知已完成。
+
+#### L3 B2.1 执行计划：原选择可行性（2026-10-28）
+
+沿B阶段已确认方案先落地owner纯选择证明，随后B2.2投影完整目录。原OptionPublicationPolicy只证存在组合、搜索超限混为BAD_REQUEST；不复制到bridge。原下单CartInputPolicy实际上允许配料与套餐选择数量均为正、最多六位小数且每项不超过999999；原方案“套餐按整数”与代码不符，本批沿实际原合同，不擅自改下单语义。unitsPerPick是原料/价格倍率，不计入组选择数量求和。
+
+| 顺序 | 文件/对象 | 实施与验收 |
+| --- | --- | --- |
+| 1 | food-api SelectionFeasibility（Result/Status/Budget）及原CartInputPolicy | 结果PROVEN/IMPOSSIBLE/UNREACHABLE/UNPROVEN分开；组预算100000、整批1000000，明确耗尽不当无解；共享原选择数量上限 |
+| 2 | 原OptionSelectionPolicy、OptionPublicationPolicy移food-api，同FQN | 原normalize/validate入口保留；新prove先原normalize再原默认值规则，六位精确BigInteger、依赖闭包/互斥传播、确定性搜索，证明整体及每个max>0选项可达；validate保持原“只证存在”的发布语义，新目录证明严格各项可达 |
+| 3 | 原BundleDefinitionPolicy移food-api，同FQN | 原normalize签名语义保留；新prove复用原校验及同一搜索核，不造金额或库存；每组证明每个成员可选，原unitsPerPick独立 |
+| 4 | food-api MenuSelectionFeasibilityPolicy | 接CURRENT/MENU Proof与Clock/ObjectMapper/shared Budget；前后原证据重验；仅原冻结启用itemOptions及可售SKU对应Bundle依赖；返回按typed kind/configNo的结果，严格拒绝缺失/重复依赖；一次调用共享目录预算，调用方多餐牌继续复用同Budget |
+| 5 | 原food-core专项及新FoodCatalogSelectionFeasibilityTest | 微量数量、强制项、依赖/互斥死分支、无解、默认补选、超限、输入排序、原下单上限/套餐小数、CURRENT证明scope/期限、整批预算；小规模穷举对照精确结果 |
+| 6 | 本TDD/结构化真源/生成清单/台账 | 整批测试与代码→统一编译→集中相关专项→守卫消融RED/GREEN→clean package校验同FQN仅API→一次独立只读review→重要问题一轮定向修复→本地提交 |
+
+原维护/发布normalize与validate入口不增强为强制“所有分支可达”；存在性算法统一使用精确数量网格并遵守原下单单项上限，修正旧算法把多个正数量视为可无限趋零或允许超过下单上限的误判，避免把目录能力扩展变成未授权的原管理行为变更；新prove为完整渠道目录准入使用。搜索结果不是授权/价格/库存凭据，不注册完整目录provider，不启用真实平台。不增新表/迁移/端点/配置。B2.2完整图组装、C跨进程调用及S3事件仍待后续；本批单独交付不标B2全完成。
+
+#### L3 全量后端执行批次（2026-10-28，用户授权）
+
+用户要求一次性完成剩余任务的开发与编译，然后统一测试。沿当前f0bb429ac起点持续实施，不在单个切片结束后停下询问或提前测试。测试源码随实现编写；Java编译必须包含测试源码，使用-DskipTests，全部可实施任务开发与编译完成后才进入集中验证。此安排覆盖此前逐切片运行的节奏，不为适应旧skill而先运行失败专项。
+
+| 顺序 | 执行包 | 代码交付/依赖 | 状态 |
+| --- | --- | --- | --- |
+| ALL-01 | B2.2完整FOOD目录 | FoodCatalogAssembler/SourcePortImpl，原价税/图片/日历/组合证明，捕获前后原事实重验 | Native FOOD source and exact cross-menu historical modifier revision resolution coded/compiled; tests pending |
+| ALL-02 | C集成/远程接线 | 通用typed内部合同、FOOD控制器和远程客户端、本地/远程唯一提供方与关闭条件 | 已编码编译，待集中测试 |
+| ALL-03 | S3通知与滚动 | 原Outbox通知、未来生效唤醒、窗口到期前重捕获，沿唯一恢复任务 | Source notices, rolling refresh, explicit withdrawals, empty replacement and tax notices coded/compiled; tests pending |
+| ALL-04 | 连接及动作恢复 | 连接配置/核验/启停，动作与尝试查询及受控恢复，保留UNKNOWN门禁 | 已编码编译，待集中测试 |
+| ALL-05 | 发布受控映射 | MANAGED发布事实/子资源父语境与历史核验；不开放自报成功 | 单品/配料/套餐历史父语境已编码编译，待集中测试 |
+| ALL-06 | 可售与库存/门店状态 | 原库存及营业证据、增量状态发布与幂等恢复；无owner事实不能发布 | Genuine inventory/store availability, boundary recovery, signed remote and Mock coded/compiled; tests pending |
+| ALL-07 | 回调事件 | 原始字节验签、持久化ACK、重复冲突乱序及重试/查询 | 已编码编译，已补测试源码，尚未执行 |
+| ALL-08 | 外部订单/接拒单 | 原行/金额/数量快照、行业准备与核心导入、平台接单、一次派工 | Native Core admission, FOOD/retail preparation, import/cancellation and collection evidence revision coded/compiled; tests pending; payment execution deferred |
+| ALL-09 | 履约与售后 | 餐饮/零售回传、部分交接、多包裹、取消退餐退货及恢复 | Native custody source, automatic fulfillment bridge and aftersale coded/compiled; tests pending; genuine missing return/funds authority remains explicit waiting |
+| ALL-10 | 零售来源 | 原零售目录/选品及来源核验，复用通用内核、不跨行业猜测 | Optional retail bridge, original selection/catalog/hours/native order coded/compiled; package/mapper alignment completed; tests pending |
+| ALL-11 | 运营/统计 | 同步/接单统计、健康、动作证据与平台基础配置权限 | 技术统计/健康、OPS只读与档案版本管理已编码编译，待集中测试 |
+| ALL-12 | 权益/资金后端 | 原权益核销/撤销及渠道账单/资金证据，依原owner获准合同 | Technical statement evidence, original external certificate use/reversal and Vault bridge coded/compiled; tests pending; no financial reconciliation claim |
+| ALL-13 | 原餐饮收口/扩展 | SSE隔离、图片顺序测试、自助/宴会/寄存/房账、离线持久化及恢复 | SSE isolation, buffet quotas/banquet, custody and offline drafts V31 coded/compiled; tests pending; PMS financial settlement/offline payments/device storage deferred |
+| ALL-14 | 报表缺源及启用准备 | 真实成本费用分摊/余额/事件、独立库与每日任务恢复/导出；生产启用单列 | Genuine kitchen event source and original-event dirty-day bridge coded; reuse independent report database and sole daily task; final compile/tests pending; unknown costs/expenses/historical balance remain unknown |
+| ALL-15 | 统一编译和验收 | 默认/集成/独立编译完成后集中专项；一次全批独立review、重要问题定向复现修复 | Compile76 passed all41 modules and test sources (28.574s); final clean builds, targeted tests and one final review pending |
+| ALL-16 | Mock测试平台 | 显式非生产档案，真实HTTP/原键持久化；目录、回调、订单及后续履约/售后/账单故障场景 | Mock catalog/auth/callback/orders/fulfillment/aftersale/availability/statements/certificates coded/compiled; tests pending; no real vendor connection |
+
+本批平台范围以用户确认为准：暂不接入真实平台，使用显式非生产 Mock HTTP 平台验证完整对接流程；这不替代原核心、支付、库存、餐饮和零售业务方的真实归属与授权。真实 Keeta 等协议与前端仍暂缓。集成新增 `retail-commerce-embedded` profile，组合原三个 profile；默认不加载零售渠道桥接。最新一次整批 `test-compile` 为 71（32.161 秒通过），仅编译生产和测试源码，未执行测试；后续新增代码仍须再次编译。独立批量编码未结束，不据此宣称全部功能通过验收。
+
+原生餐饮渠道引用使用 `FOOD / CHANNEL_ORDER / FCS`，共享核心保留真实原发票、OCQ 来源报价、外部应收与独立库存准备代次；不套用普通扫码访客或普通报价。新增来源 guard 可在尚无真实 cart/batch/core order 时保存原撤单证据，阻止迟到建单。平台取消修订先进入待撤销，原业务方查询返回实际 `COMMITTED` / `ACCEPTED` 时转售后，禁止撤销已成交备单。厨房/耗料从原渠道冻结组成读取；预约单沿原 `ServiceSlotLifecycle` 同库预占、接受时绑定、撤销时释放，并由原到时派厨任务执行，不新增另一套预约调度。
+
+库存补充（编码中）：保留原 `FINISHED_SKU` / `RECIPE_MATERIAL` 两种排他分支，新增显式 `FINISHED_WITH_MODIFIERS`，只用于成品主菜附加有真实物料定义的配料。每个叶子明确原库存阶段：唯一成品叶在交付扣减，附加物料叶在制作扣减；同一主菜不同时展开自身成品和自身配方。物料引用来自冻结配料依赖及原库存定义，不以配料成员号冒充物料号。旧五参数叶构造、未出现新字段的 JSON 和原计划摘要保持；库存原 owner 存储真实叶阶段，Core 与厨房分别核验制作/交付证明。全部数量六位以内精确计算，不截断或补零，最终仍需集中原生库存测试。
+
+收款事实修订补充（编码中）：货到付款变为平台已代收时，不重写原发票、不重复占用商户应收额度。先核对当前真实收款证明及当前商户政策，再保存原准入和新准入的不可变历史（增量主库 V613）。原确认租约有效期间、原单已成交或已撤销时不切换；未获当前政策授权继续阻断。该修订不生成本地已支付或资金到账事实。
+
+本批订单补充：COM-041原始行分页直接投影指定不可变订单修订，禁止跨单/门店取行；正式核心行映射待原owner导入后持久化。COM-045只提交QUERY动作，由原恢复任务事务外读原单，快照记录source_operation_no，不伪造回调事件。COM-046只排程原importRef恢复，不清除CONFLICT或未知接单屏障。原准备回执必须提供validUntil，首次接单前至少覆盖两分钟SEND租约；旧回执可读但不授予新SEND，已发UNKNOWN仍只查回。
+
+历史映射补充（ALL-05/08）：旧目录订单按原catalogHash定位已终结的发布动作及最后一次已确认资源回执，重建精确父子身份；只使用SUCCEEDED/PARTIAL中的成功资源且父资源完整。该历史发布回执证明过去发布事实，不伪造成新的“当前资源查询成功”。再向原owner实时请求HISTORICAL修订证明，核对原内容hash/父语境，追加带TERMINAL_PUBLICATION证据的VERIFIED历史修订；已有current active/latest草稿指针均不回退。新身份只建立历史映射，active为空。修订序列统一在映射锁下取最大序号加一，兼容历史旁路追加。订单查历史修订先按原来源/修订/内容hash筛选，避免正常累计超过100次修订后全部拒绝。
+
+原渠道证据补充：ChannelOrderSourceEvidencePort按原importNo、门店、行业owner和原documentHash定位不可变导入。每次新鲜读取先建立现有CHANNEL_ORDER_REFRESH的QUERY日志和尝试，再读Mock/获准Gateway并持久化原查询回执；原平台版本未变化也保留本次尝试。集成与独立服务复用同一严格校验和原服务令牌，独立客户端显式开启且本地原owner优先。查询结果只提供原平台当前收款/接受/取消证据，不授予本地已付、扣库存或厨房派工。凭据在途失效或换代，旧尝试仍保留实际读取事实，但不返回新的行业准入权威。金额字段必须是显式非负整数；缺失、null、小数、数字字符串及枚举序号均不得被宽松转换成有效金额/状态。原始业务快照不因付款状态修订被重写。
+
+餐饮来源新增私有V26（本批未部署迁移）：`fnb_channel_party`仅保存真实渠道外部顾客或原交易参与方关系，不生成本地账号、访客令牌或会员资产权限；`fnb_channel_order_source`绑定原渠道门店、外部订单、稳定importNo、原订单/财务hash、真实party/cart/batch与核心接单回执，并保存独立恢复围栏。真实CHANNEL购物篮只能由该来源持有和锁定，不能借用普通扫码会话。当前已补表、实体和Mapper及schema校验；原行业业务服务、组成冻结、核心导入与厨房派发仍继续编码，表存在不代表已打通。
+
+原核心与餐饮导入实施细化（ALL-08，继续编码，不以接口存在代表闭环完成）：
+
+1. shop-base新增IndustryChannelOrderPort及IndustryChannelOrderSourcePort，只接受原行业来源引用/版本/hash/importRef；跨内部服务按原SYSTEM签名/服务令牌接线。Core不接收公网自报价格、买家、库存量或“已支付”布尔值。FOOD桥接先在原food owner持久化外部事务来源，核对餐牌历史条目、SKU、套餐/配料归属，沿原组成、配方和物料事实构建物理需求。真实外部顾客/交易参与方单独建来源关系，不能伪造本地userNo、访客会话、购物车授权或PricingQuote编号。
+2. 原核心新增受控渠道订单准入，继续写ord_order/ord_sub_order/ord_item及原行业来源关系；独立的ord_channel_import保存稳定导入/真实编号/准备与恢复状态，ord_channel_quote保存原平台金额和来源报价/分摊，不虚构普通PricingQuote。CHANNEL_RECEIVABLE与本地PREPAY/POSTPAY分开，主单为WAIT_CHANNEL_PAY（渠道应收，保持原status的VARCHAR(16)宽度），不调用markPaid、不发OrderPaid、不写本地支付流水。原平台代收证据、商家应收、消费者应付、平台补贴/手续费/配送费分开保存。
+3. 商家在原主体/门店范围配置渠道应收准入策略（默认关闭，无平台审核），限定渠道身份、币种、平台代收/COD资格和单笔/在途额度。准备时原子预留应收额度；取消经原撤销权威释放。未知平台接受不能因本地时间到而释放额度或宣称撤单成功。政策变更不追改已经明确接受的原业务合同。
+4. 原行业来源提供不可变发票原行与组件、原scope及价格来源证据；Core校验原行总额、币种和组件分摊守恒，不读取当前零售价重新定价，不叠加本地活动/券。确需从原父行分摊时沿共享确定性分摊策略，并标记分摊依据，不能冒充供应商逐组件开价或税额。缺必要来源时保持WAITING_OWNER/FUNDING，不填0。
+5. 原InventoryDemandPlanPort执行真实预留/查询/未收款履约授权。CHANNEL应收履约明确表示本地未收款，不伪装POSTPAY订单。库存代际与渠道原importRef分开：原hold过期可由原owner按同一不可变需求新建真实准备代次，保留旧代次/凭据；已受理、已领料或撤销结果未知不能重建代次。首次平台SEND仍受真实准备validUntil门禁；发送未知后仅查原动作，原业务持续原键恢复。
+6. 平台接单回执在原food来源记录绑定原平台订单/hash后，再由Core查询原source的接受证据并确认渠道应收受理。Food据真实Core接受结果一次性落原FnbOrderBatch/Line/Component/CoreBinding/Allocation，保留完整厨房路由并发原DiningOrderAccepted Outbox，复用原厨房与打印。平台ACK本身不直接写厨房、支付、库存或日结。部分履约继续经原IndustryFulfillment合同增加显式CHANNEL资格分支，不放宽现有PREPAY/POSTPAY守卫。
+7. 开发顺序：共享引用/金额及资金准入合同→原Core持久化、额度与库存准备/确认/撤销/查询→原food来源/组成与两段式接线→真实核心行分摊/厨房打印接入→真实履约事实与自动事件→取消/售后/资金后续。测试源码随编码补齐，全部可实施编码/编译后再集中执行。
+
+
+Mock履约协议补充（ALL-09/16）：共享typed Gateway区分PREPARING、READY、HANDED_OVER、SHIPPED、DELIVERED、PICKED_UP；原业务履约引用/修订/回执、精确原行数量及包裹号一并冻结。Mock模拟平台只核对原平台订单/行及动作身份，不代替本地厨房、库存或售后owner。提交动作后落盘，QUERY查回原键；模拟提交后崩溃并恢复投影。多包裹按包裹累计核验不超原数量，出餐和交接不视为签收，重复与旧阶段不能倒退已确认进度。真实本地发布准入及owner事实桥接继续按ALL-09实现，不因Mock返回成功而标记本地履约/退款成功。
+
+
+用户补充确认本批先不接入真实平台，使用Mock测试平台验证统一渠道方案。Mock沿真实HTTP、签名、原动作和持久化恢复合同运行，默认关闭并限制非生产档案；不据此声明真实Keeta或其他供应商已接入。原订单、支付、库存、厨房与打印等本地owner继续复用真实基础能力，不能以Mock原业务provider充当交付。前端页面继续暂缓。部署/生产迁移、真实资金操作和账号启用与编码完成分开记录。
+
 #### L3 3. 目录组装与完整性校验
 
 | 原对象 | 目录投影 | 要求 |
@@ -262,7 +354,7 @@ S2B2B先补真实连接/授权只读合同（AC01/AC02/AC03/AC15），再装配�
 组合可行性在原FOOD owner补充，不在通用渠道内核重新定义餐饮规则：
 
 - 先沿原校验检查数量范围、默认值、互斥、依赖无环；再证明至少存在一个合法组合，且每个max>0的可展示选项都有可达的合法组合。
-- 以选项是否选择为布尔分支，要求项/依赖闭包/互斥传播后，检查原数量上下界及组总量。选项最多6位小数转BigInteger精确单位，套餐份数按原整数约束，不用double或把小料取整。
+- 以选项是否选择为布尔分支，要求项/依赖闭包/互斥传播后，检查原数量上下界及组总量。选项最多6位小数转BigInteger精确单位，套餐选择数量沿原CartInputPolicy最多六位小数，不用double或把小料取整。
 - 默认值沿原规则校验，可低于组最低量，仍允许顾客补选；不新增“默认值必须直接成单”的要求。
 - 使用确定性的有界搜索/剪枝，不引入任意脚本或通用规则平台。建议每组10万搜索节点、全目录100万节点；超限返回UNPROVEN并阻止发布，不声称规则无解、不放行猜测。该限制是实施建议，可按性能证据调整，不能改变判定语义。
 
@@ -344,7 +436,7 @@ A-C按依赖顺序完成业务与测试源码，统一编译后一次集中受�
 
 #### L3 A2 详细设计与代码对照复核（2026-10-28，A2.1、A2.2a及A2.2b1已实现，其余待实施）
 
-**L1 任务目的。** A1已完成精确渠道身份、原市场及价格政策事实；A2补齐完整目录所需的原图片身份、真实市场商品/SKU及覆盖价、行业来源核验。A2完成仍不等于可以发送完整菜单：目录组装/v3在B，端到端接线在C，自动发布事件在S3。本节保留A2完整设计；原封面身份A2.1及真实市场元数据A2.2a已实施并单独验收；纯币种规则与schema6历史格式A2.2b1已补齐；原FOOD业务写入、发布接线及owner分派仍待实施。
+**L1 任务目的。** A1已完成精确渠道身份、原市场及价格政策事实；A2补齐完整目录所需的原图片身份、真实市场商品/SKU及覆盖价、行业来源核验。A2完成仍不等于可以发送完整菜单：目录组装/v3在B，端到端接线在C，自动发布事件在S3。本节保留A2完整设计；原封面身份A2.1及真实市场元数据A2.2a已实施并单独验收；纯币种规则与schema6历史格式A2.2b1已补齐；原FOOD业务写入、发布接线已由A2.2b2交付，owner分派按A2.3继续。
 
 **L2 复核结论。** 原方向可用，但以下设计缺口必须补齐后再编码；它们不是本轮已复现的新A1生产缺陷。
 
@@ -452,6 +544,44 @@ c. 发布版本与兼容：
 6. FOOD provider配置显式默认false；不要求CIM核心也在FOOD进程中，独立FOOD可只提供其owner能力。通用CIM worker客户端和完整capture仍在C接线，不把A2提供方冒充完整目录Port。
 
 提供方配置须声明在通用registry配置之前；不能仅以类型ConditionalOnBean依赖偶然加载顺序。CatalogPersistence等仍持ObjectProvider/延迟引用，注册表装配不得强迫构造跨域发布环。关闭FOOD/bridge或CIM仍保持原业务默认路径。
+
+**A2.3 执行批次：行业来源统一分派（2026-10-28，已实现并验收，本地）。**
+
+本批沿已确认的 A2 设计，承接已交付的 A2.2b2 原 FOOD 多市场维护/发布，不重新设计商品或订单。先推送已完成提交，再执行以下任务。完整目录 v3 为 B 批，捕获/预览/发送接线为 C 批；A2.3 不能单独声明外送菜单已可同步。备选方案中，CIM 核心直接依赖餐饮会破坏行业隔离；多个同类型 Port 靠 Spring 选主会掩盖错误装配，均不采用。沿已确认的“唯一通用 Port + 行业 Provider”方案。
+
+| 顺序 | 精确文件（相对模块 src/main/java） | 输入与输出/实现 |
+| --- | --- | --- |
+| 1 | commerce-api/ai/neargo/shop/spi/commerce/ChannelSourceValidationProvider.java | owner(): Owner；validate(Source): Validation；不得继承旧 Port，否则 Provider 也被发现为旧 Port，引起混合装配误判 |
+| 2 | commerce-core/ai/neargo/shop/commerce/port/ChannelSourceValidationPortImpl.java | 构造 Provider 列表、Clock；不可变 owner 映射；validate 只按 owner 路由；重复/null owner 拒绝 |
+| 3 | commerce-core/ai/neargo/shop/commerce/config/CommerceSourceValidationAutoConfiguration.java | 排在行业提供方之后、CommerceCoreAutoConfiguration之前；有提供方才注册 Port，无数据库依赖；检查所有旧 Port 与新提供方混合 |
+| 4 | food-commerce/ai/neargo/shop/food/commerce/port/FoodSourceValidationProviderImpl.java | ObjectProvider/Supplier 原 ConfigRevisionService、ObjectMapper、Clock；只 FOOD/MENU；原当前版本与 CURRENT 证明核验 |
+| 5 | food-commerce/ai/neargo/shop/food/commerce/config/FoodSourceValidationAutoConfiguration.java | food.enabled=true 且 shop.food.commerce.source-validation.enabled=true；默认关闭；原餐牌服务和 mapper 可用时才贡献提供方 |
+| 6 | 两模块 META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports | 明确发现与顺序；通用核心只引用行业配置类名，不引入 food-api/core 的依赖 |
+| 7 | 各模块 src/test/java 中专项 | ChannelSourceValidationRegistryTest、SourceValidationWiringTest、FoodSourceValidationTest、FoodSourceValidationWiringTest |
+| 8 | 本 TDD、生成设计清单及执行台账 | 三处对账、真实编译/验收/消融/一次独立只读审查结果 |
+
+Source 保留 entityNo/storeNo/owner/kind/sourceRef/sourceRevision/salesOfferRef，旧六参数构造和 Validation 原字段不变。通用输入按原业务编号边界校验；FOOD/MENU 的菜单与修订编号按原32位合同验证。首批 salesOfferRef 必须为空；SKU/OPTION/OFFER 等不因独立身份合法就被授予 MENU 来源资格。
+
+具体流程：
+
+1. 通用入口先校验输入，再按 owner 选择唯一 Provider。缺行业返回 UNSUPPORTED；不回退其他行业、不兜底成功、不调用外部渠道网关。
+2. FOOD 提供方在本地事务外调用原 resolveRevision(entity,store,MENU,menu,now)，复核返回的主体/门店/原文、kind、摘要及生效口径。能够确认当前修订与请求不同才返回 STALE。
+3. 同修订调用原 verifyMenuResource 的 CURRENT Query，使用 MenuSourcePolicy.validateProof 重新校验完整证明。schema4/6由原解析器解释；新6的实时市场核验由原服务负责，提供方不复制市场规则。
+4. VALID 精确返回 canonicalRef/revision/contentHash/validUntil/ownerReceiptNo。通用入口核对请求身份、非空原摘要/回执、未过期且最长30秒；不能延长原证明期限。远程 Validation 是可信 owner 答复，摘要不是签名，不宣称可从缩减字段重建原快照。
+5. 原404/403、网络故障和无法确认版本变化的 CONFLICT 保留原语义；不把所有异常当 STALE/UNSUPPORTED，也不缓存成功。无价格、税、库存或订单查询副作用。
+
+启动矩阵：无 Provider 不注册默认 Port；FOOD/RETAIL 各一个共存；同 owner 两个、本地与远程同 owner、旧自定义 Port 与新 Provider 混合均启动失败；只有旧 Port 时保持原行为。提供方构造不读取原业务，原服务延迟到调用时解析，防止发布/目录服务循环。独立 FOOD 可以只贡献其原能力，不要求启用 CIM 数据库；独立 CIM 的远程提供方客户端仍在 C 批，当前不假装已具备跨进程完整捕获能力。
+
+存储/API/任务：复用 cim_catalog_source 及原短时 Validation，复用现有消费 Port；本批不加表、迁移、公开 Controller、定时任务或实际平台适配。后续完整捕获仍须复核原证明；证明既不是永久销售权限，也不是资金或履约授权。
+
+执行与验收：
+
+- 先整批完成生产及测试源码，统一 test-compile，再集中执行四类专项与直接相关原目录/映射/装配回归。预期全部通过；默认关闭、无原 owner 与旧 Port 场景必须覆盖。遵从用户批量编码后编译测试的节奏，不先执行全仓回归。
+- 输入反例覆盖跨主体/门店、非法/未知 kind、带 salesOfferRef 的 MENU；输出反例覆盖错原编号/修订/hash、过期/超期、伪造或错范围证明。测试原错误透传、明确旧修订 STALE 与真正未知故障的区分。
+- 装配覆盖无 Provider、双行业、重复行业、旧实现单独/混合、默认关闭、FOOD 独立且无 CIM 数据源；确认配置发现顺序，防止仅凭 ConditionalOnBean 偶然可用。
+- 对明确的一条期限或行业守卫做消融：移除后对应测试必须失败；恢复后专项通过。一次独立只读 review，重要问题一轮修复，以失败复现和相关绿测闭环。
+- 编译验证集成宿主、独立 FOOD 和独立 CIM；无 POM/共享依赖改动时不重复无关默认零售全仓测试。规范检查包括相关架构、生成设计10项、25个生成器、SQL/diff。
+- 精确提交本批文件和文档；不自动开启生产开关、不部署。B 批接完整 v3 目录及时间交集，C 批接捕获/预览/发送，S3接自动滚动重发布；真实 Keeta 等仍需后续获准合同和环境。
 
 **L3 4. 文件与方法落实清单（已实施子集见A2.1/A2.2a，其余待实施）。**
 
@@ -1241,3 +1371,88 @@ v2稳定业务摘要包含真实价格/修订、税依据、库存政策、配�
 - 单次修复后，菜单维护/组成、原发布/来源/价格、币种及旧字节兼容、5项相关架构合计86/86通过（23.434s，0失败/异常/跳过）；包含离线和改币重放正向对照、同键异actor/异payload拒绝，以及新请求仍失败的保护。不二次review，不重复无关业务测试。初轮161项通过和4项原生DB条件跳过仍按原范围记录，不把重复复测累计成新增通过数。
 
 - 修复后集成宿主和独立服务 package PASS30.786s，包含最终生产修改；设计10项、25个生成器、SQL方言和diff检查再次通过。最终改动共25文件，两个本地提交；无新迁移、POM或前端改动，不推送、部署或开启生产开关。
+
+
+### A2.3 行业来源分派交付（2026-10-28，本地）
+
+按 §2 完整计划落地新 Provider SPI、commerce-core 唯一行业路由与装配、food-commerce 原餐牌提供方及默认关闭装配；两个原自动配置发现文件追加注册。原 Source/Validation 记录和构造器不变，无表/迁移/公开API/POM变化，不将 Provider 继承为旧 Port。
+
+| AC/规则 | 实现 | 验收方法 |
+| --- | --- | --- |
+| 同行业唯一、缺行业不回退 | ChannelSourceValidationPortImpl 构造/validate | ChannelSourceValidationRegistryTest.routesBothIndustriesAndNeverFallsBackForAMissingOwner；rejectsDuplicateAndMissingOwnersAtConstruction |
+| 校验输入、原成功身份及期限 | 同 Port.validate | rejectsMalformedInputsBeforeCallingOwner；rejectsWrongIdentityMissingReceiptAndExpiredOrExtendedSuccess；preservesOwnerErrorsAndNonSuccessWithoutCachingThemAsSuccess |
+| 无提供方不造Port、旧实现兼容、混合失败 | CommerceSourceValidationAutoConfiguration 两个Bean | SourceValidationWiringTest 四项，含双行业/无数据库装配与重复、混合启动失败 |
+| 当前原餐牌与scope，旧修订明确STALE | FoodSourceValidationProviderImpl.validate | FoodSourceValidationTest.validatesOriginalMenuAndPreservesOriginalDeadlineHashAndReceipt；explicitDifferentCurrentRevisionIsStaleWithoutGrantingAnyProof |
+| 4/6原格式与受限kind | 同 Provider | acceptsMarketSchemaSixWithoutReinterpretingFrozenCurrency；unsupportedKindsAndSalesOfferCannotMasqueradeAsMenu |
+| 非法输入/过期/错范围/原异常不降级 | 同 Provider | malformedScopeAndOverlongMenuIdentityFailBeforeOriginalRead；expiredAndWrongScopeOriginalProofsAreNotAccepted；notFoundPermissionTransportAndUnconfirmedConflictRetainOriginalMeaning |
+| 两次原读取必须相同内容 | 原resolveRevision后CURRENT完整证明 | changingOriginalContentAtTheSameRevisionCannotMixHashAndReceipt |
+| 明确默认关闭、独立FOOD无CIM数据库 | FoodSourceValidationAutoConfiguration | FoodSourceValidationWiringTest 两项 |
+
+整批 test-compile PASS24.269s。首轮唯一错误为异常透传用例用Mockito.when重设已抛异常的桩，第二次设桩触发旧异常；改为doThrow，未改原业务错误处理。集中专项62/62通过19.388s（0失败/异常/跳过），含新增18项、原绑定与目录/映射回归及3项相关架构。
+
+消融仅删除通用路由的过期下界判断，rejectsWrongIdentityMissingReceiptAndExpiredOrExtendedSuccess 真实失败（应抛异常未抛，3.812s），随后自动恢复原文件。真实零售提供方、跨进程CIM来源客户端、完整目录v3/发送、生产数据库和实际平台不在本批验收范围。
+
+- 守卫恢复后的完整定向62/62再次通过36.537s；受影响集成/独立服务 package PASS22.573s。另补1项SourceValidationWiringTest.enablingBeanOverrideCannotSilentlyReplaceANamedLegacyPort，确认允许Bean覆盖时，同名旧Port混合仍会启动失败；此用例现有实现直接通过，无生产修改，日志虽以override-red命名但不是红灯证据。本批共63个唯一检查通过，不累加重复复测。
+- 设计真源新增Provider合同，生成接口/代码/数据库说明同步；未新增表/API。设计10项、25个生成器、SQL/diff通过；最终只读复核待记录。
+
+- 最终独立只读review对 b048b12df..0236cf872 未发现可执行的P0至P3问题，无新增延后minor、无重要计划偏差；审查未独立运行Maven，验收证据来自执行方。
+- 复核边界决定：完整目录v3/捕获预览发送/事件桥仍按B/C/S3；真实RETAIL提供方及远程CIM来源客户端待后续；生产数据库并发、部署配置和真实渠道行为未联验。紧凑Validation回执是受信owner答复，不是密码学签名，也不能据缩减字段重建完整原文。原CatalogPersistence与映射重试层已有异常翻译保持，不能把本批provider原错误透传解读为已改造全部外层API错误。上批图片排序P3仍单独跟踪。
+- 第一项推送已独立核对远端为 b048b12df6b9250c6661d2a10f2da2551e978b7d；本批A2.3业务提交0236cf872仅本地，审查/验收记录随后提交。本批不部署、不开启默认关闭配置；工作区继续供下一批使用。
+
+
+### B1 v3时间/税合同及原规则编译交付（2026-10-28，本地）
+
+本批落实 §2 B1：新CatalogAvailability/SourceWindow/UtcWindow、CatalogTaxBasis及严格Instant字段；Document仅新3输出两个新增字段，原8/10参数构造仍保留。新3冻结核验来源、UTC午夜7天窗、最多30秒证据/跨日接纳差、合并有序区间、每个价格的原税依据、统一scope/市场/币种精度；原preview再绑定实际调用主体/门店。显式空目录允许空税依据，不凭空制造0税；仍校验币种及预览scope。
+
+| AC/规则 | 实际实现 | 验收方法 |
+| --- | --- | --- |
+| 原1/2 JSON/hash兼容 | Document旧构造器、CatalogDocumentPolicy旧分支 | CatalogV3LegacyCompatibilityTest.priorCompiledArtifactVersionOneAndTwoBytesAndHashesAreUnchanged，基线先由002dbfd旧编译类生成 |
+| 新3字段/有序有限窗口/真实税引用 | CatalogAvailabilityPolicy、CatalogTaxBasisPolicy | CatalogV3PolicyTest：合法3、错scope/缺税/孤立税、丢来源/重叠/未合并/乱序/越界、关闭空区间、旧窗/移位/TTL超限、午夜差、空目录 |
+| 稳定摘要 | CatalogV3Policy；原1/2算法不动 | stableHashIgnoresEvidenceRefreshAndCollectionOrderButTracksWindowsAndTax；twoSourceCollectionsCanBeReorderedWithoutLosingPerSourceWindowsOrPrices |
+| 原scope与网关版本门禁 | CatalogPublicationServiceImpl调用新freeze重载；原supportsDocumentSchema | CatalogV3AdmissionTest三个真实Mapper/恢复器用例：错店税无快照；v2网关拒绝3；显式3网关收完整窗口税依据，submit只排队 |
+| 原规则迁移/纯准备 | 原MenuSchedulePolicy移API；StoreCalendarSourcePolicy.prepare/policyAt | 原MenuSchedulePolicyTest、MenuScheduleServiceTest、StoreCalendarSourceServiceTest、ServiceCalendarPolicyTest/ServiceCalendarServiceTest |
+| 正常/跨夜/例外/双时段 | FoodCatalogAvailabilityPolicy.compile | FoodCatalogAvailabilityTest前三项及futureCutoverPolicyCanCloseAnExceptionAtItsExactEffectiveInstant |
+| DST所有offset与gap | 同编译器，ZoneRules边界与原判定求交 | dstOverlapIncludesBothOffsetsAndGapNeverShiftsTheOriginalBusinessRule；completelyClosedSourceRetainsAnEmptyWindowList |
+| 未来时区、原精度 | 同编译器按原policy时间线 | futureTimezoneAndNanosecondPolicyBoundaryUseStoreClockNotMenuTimezone，另按原owner在边界及间隔1379秒探针验证同义（采样仅在测试） |
+| scope/未知hours/不足覆盖/期限耗尽 | 原证明校验，编译后再次核验 | wrongScopeUnknownHoursAndInsufficientDateCoverageFailRatherThanOpenPermanently；evidenceThatExpiresDuringCompilationCannotBeReturnedAsFresh |
+| 共享helper旧行为 | OpenHours.boundaryTimes；CatalogPriceSourceFacts.taxSnapshotForScope | OpenHoursAtTest、CatalogPriceSourceFactsTest、TaxSettingDefinitionTest；新税方法单独命名，避免旧null参数调用变成重载歧义 |
+
+执行证据：
+
+- 整批test-compile62s，补齐税helper独立命名及真实多来源排序用例后统一test-compile68s；首轮集中111项中110通过、1原生DB条件跳过，25.571s。没有全仓回归。
+- 消融仅将DST合法offset集合截成第一个，重叠测试实际漏掉2026-11-01T06:15Z至06:45Z第二段，真实RED1（4.868s）；自动恢复原文件，后续所有正向时间用例GREEN。
+- 共享helper变更后默认零售test-compile PASS18.540s；集成shop-app、独立food-server/commerce-server clean package PASS约62s。核验food-api jar包含唯一MenuSchedulePolicy.class，food-core jar和target/classes均无残留。清理后集中113项中112通过/1原生条件跳过，22.553s。
+- 新增显式3网关正向用例初次误以为submit会直接发送而失败；查原SyncRunServiceImpl确认submit仅QUEUED，修正测试先断言0发送，再调用原recoverDue，三项相关通过5.635s。未修改生产派发语义；本批共114个唯一检查中113通过/1原生条件跳过，不累加重复复测。
+- 原价/税/原source receipt是可信owner答复而非密码学签名；本纯编译器不增加公开输入端点，B2仍必须从原服务获取并在捕获后重核。7天窗口不承诺未来价格或营业配置不会变化，S3通知仍后置。当前只有合同及可单独调用的时间编译器，无完整FOOD目录提供方/HTTP接线/真实平台启用。
+
+- 最终独立只读复核：本批无可执行Important或新增Minor，不重复复核；既有图片批次顺序P3保持独立待办。复核不代替执行方测试，不覆盖真实平台、生产并发及部署时钟。业务提交58642e6a0；本批仅本地提交，未推送、部署或开启渠道。下一批B2按本节已确认方案组装完整菜项/配料/套餐/媒体/价格及时间证据，并补原选择可行性；C传输接线和S3可靠通知随后执行。
+
+### B2.1 原选择组合可行性交付（2026-10-28，本地）
+
+本批落实§2 B2.1。原OptionSelectionPolicy/OptionPublicationPolicy/BundleDefinitionPolicy同FQN迁入food-api，原入口与定义JSON不变；原选项发布仍只要求一个合法组合，渠道prove额外证明每个max>0选项能出现在至少一个组合。共用SelectionFeasibility搜索核以六位精确BigInteger求区间交，正选择至少一个微量单位，容量与CartInputPolicy原999999上限求交；依赖传播、互斥排除及强制项沿原规则。原搜索把正量无限趋零或忽略下单上限的存在性误判得到修正，不新增“默认值必须满足组最低量”的规则。
+
+| AC/规则 | 实现/验收 |
+| --- | --- |
+| 精确数量/默认补选/整体与每项可达 | FoodCatalogSelectionFeasibilityTest.defaultsCanWaitForCustomerSelectionAndEveryAlternativeRemainsReachable、multiplePositiveMicroSelectionsNeedOneExactUnitEach、mandatoryAndDependentChoicesCanMakeAnOtherwiseVisibleOptionDead |
+| 依赖/互斥/严格输入 | transitiveDependenciesAndOverlappingMutexAreEvaluatedTogether、ownerInputValidationRemainsStrictWithoutTurningMalformedRulesIntoNoSolution、zeroCapacityOptionsDoNotNeedASelectionButCannotBeDependenciesOfReachableOptions |
+| 有界与确定性 | catalogBudgetIsSharedAndExhaustionIsNotImpossible、aSingleHardGroupCannotConsumeTheWholeCatalogBudget、sortingAndEquivalentDecimalsDoNotChangeOutcomeOrBudget；每组10万、整个capture100万节点，超限UNPROVEN，非IMPOSSIBLE |
+| 原下单一致/套餐 | optionCapacitiesCannotExceedTheOriginalCheckoutCeiling、bundleFractionsRemainOwnerQuantitiesAndMultipliersAreNotGroupTotals；CartLinePolicyTest.selectionProofMatchesTheOriginalCartForPositiveMicroDependencies直接调用原购物车验证微量依赖 |
+| 独立结果对照 | smallExactProblemsMatchIndependentEnumeration：180个固定种子小规模问题，每个81个原数量组合独立穷举，验证结果而非复写搜索 |
+| 原冻结餐牌 | MenuSelectionFeasibilityTest：读取原绑定组、死分支、套餐主SKU、跨菜单共享预算、旧schema自洽但错组编号、回执/处理中到期、HISTORICAL及串scope拒绝、简单无配料菜单 |
+| 默认数量 | nonzeroDefaultsMustBeAcceptedByTheOriginalCartQuantityBoundary：非零默认量必须通过原CartInputPolicy；只在新渠道证明入口补此条件，不改变原维护normalize合同 |
+
+MenuSelectionFeasibilityPolicy只读取原CURRENT/MENU Proof并在搜索前后复验；按typed kind/configNo读取原冻结启用菜项的选项组和套餐主SKU依赖，一组多菜项引用只求解一次，跨餐牌由调用方复用同一个Budget。Report保留原组键、四态、实际节点数和原短期截止时间；proven=false不得发布。未证明是返回的明确失败状态，不当成功或推断配置无解。畸形原规则/缺失错身份仍按原错误关闭。该纯能力不授予价格/库存/渠道授权，不替代最终下单校验及完整目录二次读取。
+
+执行证据：
+
+- 已完成代码与测试源码后统一集成/独立test-compile PASS66s。首轮直接相关106项全部通过19.183s；清理后加原购物车正面对照共107项全部通过，集成shop-app、food-server、commerce-server clean package PASS84s。确认三个移动FQN仅存在food-api jar，food-core jar及target/classes均无残留。
+- 正量下界消融把max(min,1微量单位)改成min，对应微量依赖测试实际由UNREACHABLE错为PROVEN，RED1（9.869s）；自动恢复后干净集中验证通过。
+- 核对默认量时新增超过原999999下单上限的复现测试，实际RED1（缺预期异常）；只在新prove入口复用原CartInputPolicy.quantity，修复后选择/原购物车/冻结餐牌直接相关32项全部通过15.073s。本批108个唯一检查全部通过，不累计重复复测；没有后端全仓回归。
+- 原B1已合并远端支付提交并正常推送至2bcb7661a，远端ls-remote已核验；本批B2.1以该合并提交为BASE。未改支付、前端、表/迁移、端点或运行开关；B2.2完整目录投影、C传输接线及S3可靠通知仍待后续。
+
+- 默认量修复后集成shop-app及独立food-server/commerce-server重新编译package PASS32.072s（不重复测试）；设计10项、生成25项、SQL可移植性与diff守卫通过。最终独立复核结论随后补记。
+
+- 独立只读复核发现一项Important：原购物车每行配料选择总数最多100，逐组有解会误放行两组各51必选项，也可能放行基础100但某分支需要101的菜项。两个真实用例均RED（原Report.proven为true）；一轮修复后原相关107项全部GREEN19.523s，不重复复核，无新增Minor。
+- 修复采用同一精确搜索核：对已证明有解的组，按选择项数量上限二分求最少项数m；再求强制任一展示选项的最少项数，取最大w。所有搜索仍共同消耗原组/目录预算，预算不足为UNPROVEN。组结果新增minimumSelections/maxForcedMinSelections；只有完整PROVEN时才给出精确计数，不把首个贪心解误当最优。
+- 菜项按原绑定组合独立组：base=Σm，worst=max(base,max(base−m_g+w_g))。base>100为IMPOSSIBLE；base≤100且worst>100为UNREACHABLE；否则PROVEN。Report新增按menuItemNo/mainSkuNo/selectionKind的ItemResult，proven必须同时满足组与菜项。套餐按每个实际主SKU分别组合，配料与套餐沿原CartInputPolicy分开计数，不跨菜项合并；MAX_SELECTIONS统一复用原购物车常量。
+- 验收：MenuSelectionFeasibilityTest.independentGroupsCannotHideAnItemThatNeeds102CartSelections、eachVisibleBranchMustRemainReachableWithinTheSharedItemCountLimit同时直接调用原CartInputPolicy；minimumCountsUseTheBestCapacityRatherThanTheFirstGreedyWitness验证非贪心最优；原180个穷举对照同步验证m/w。审查修复后最终26项直接相关/架构专项通过，集成及两个独立服务package PASS38.315s；本批共111个唯一检查通过，0失败/跳过，不累加重复复测。最终源码仅做import排序/行宽整理，业务与验证一致。

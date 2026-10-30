@@ -49,7 +49,8 @@ public final class ResourceMappingServiceImpl implements ResourceMappingService 
                             req.sourceOwner(),
                             req.sourceRef(),
                             req.sourceRevision(),
-                            req.salesOfferRef());
+                            req.salesOfferRef(),
+                            req.sourceContext());
                     var hash = data.hash(c, req.objectType(), req.externalIdentity());
                     require(
                             data.mappings.selectCount(
@@ -80,6 +81,7 @@ public final class ResourceMappingServiceImpl implements ResourceMappingService 
                             req.sourceRef(),
                             req.sourceRevision(),
                             req.salesOfferRef(),
+                            req.sourceContext(),
                             c.connection().getActiveRevisionNo(),
                             null,
                             "MANUAL_CREATE",
@@ -117,7 +119,8 @@ public final class ResourceMappingServiceImpl implements ResourceMappingService 
                             req.sourceOwner(),
                             req.sourceRef(),
                             req.sourceRevision(),
-                            req.salesOfferRef());
+                            req.salesOfferRef(),
+                            req.sourceContext());
                     // Proof reads may still be in flight; terminate their local authority before
                     // replacing the draft.
                     if (c.mapping().getVerificationOperationNo() != null) {
@@ -155,6 +158,7 @@ public final class ResourceMappingServiceImpl implements ResourceMappingService 
                                     req.sourceRef(),
                                     req.sourceRevision(),
                                     req.salesOfferRef(),
+                                    req.sourceContext(),
                                     c.base().connection().getActiveRevisionNo(),
                                     null,
                                     req.reason(),

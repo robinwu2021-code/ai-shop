@@ -2,19 +2,21 @@ package ai.neargo.shop.trade.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
+import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.entity.OrdExpressPickup;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
-import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
-import ai.neargo.shop.trade.order.mapper.PaymentMapper;
-import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
-import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
-import ai.neargo.shop.trade.entity.OrdExpressPickup;
 import ai.neargo.shop.trade.order.mapper.ExpressPickupMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -65,6 +67,18 @@ public class SettleSourcePortImpl implements SettleSourcePort {
         if (subOrderNos == null || subOrderNos.isEmpty()) {
             return List.of();
         }
+        var eligible =
+                DataScopeContext.executeWithoutScope(
+                                () ->
+                                        subOrderMapper.selectList(
+                                                Wrappers.<OrdSubOrder>lambdaQuery()
+                                                        .in(OrdSubOrder::getSubOrderNo, subOrderNos)
+                                                        .eq(
+                                                                OrdSubOrder::getAdmissionKind,
+                                                                "LEGACY_FUNDED")))
+                        .stream()
+                        .map(OrdSubOrder::getSubOrderNo)
+                        .collect(Collectors.toSet());
         /*
          * 完成时刻取**状态流水**里进 COMPLETED 那一刻，不取子单的 updated_at ——
          * 后者会被任何一次无关改动（补个备注、改个地址）推后，
@@ -89,6 +103,9 @@ public class SettleSourcePortImpl implements SettleSourcePort {
 
         List<SettleReadiness> out = new java.util.ArrayList<>();
         for (String no : subOrderNos) {
+            if (!eligible.contains(no)) {
+                continue;
+            }
             Long at = completedAt.get(no);
             if (at == null) {
                 // 还没完成 —— **不返回**，让调用方看见「这单不在结果里」而不是收到一个 0
@@ -109,12 +126,16 @@ public class SettleSourcePortImpl implements SettleSourcePort {
      */
     @Override
     public List<PaidSubOrder> paidSubOrdersSince(long since, int limit) {
-        List<OrdOrder> orders = DataScopeContext.executeWithoutScope(() ->
-                orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
-                        .ge(OrdOrder::getPaidAt, since)
-                        .isNotNull(OrdOrder::getPaidAt)
-                        .orderByAsc(OrdOrder::getPaidAt)
-                        .last("limit " + Math.max(1, limit))));
+        List<OrdOrder> orders =
+                DataScopeContext.executeWithoutScope(
+                        () ->
+                                orderMapper.selectList(
+                                        Wrappers.<OrdOrder>lambdaQuery()
+                                                .eq(OrdOrder::getAdmissionKind, "LEGACY_FUNDED")
+                                                .ge(OrdOrder::getPaidAt, since)
+                                                .isNotNull(OrdOrder::getPaidAt)
+                                                .orderByAsc(OrdOrder::getPaidAt)
+                                                .last("limit " + Math.max(1, limit))));
         if (orders.isEmpty()) {
             return List.of();
         }
@@ -145,6 +166,11 @@ public class SettleSourcePortImpl implements SettleSourcePort {
         List<OrdSubOrder> found = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
                         .in(OrdSubOrder::getSubOrderNo, subOrderNos)));
+        var manual =
+                found.stream()
+                        .filter(row -> "MANUAL_OFFLINE".equals(row.getAdmissionKind()))
+                        .map(OrdSubOrder::getSubOrderNo)
+                        .collect(Collectors.toSet());
         Map<String, String> statusOf = found.stream()
                 .collect(Collectors.toMap(OrdSubOrder::getSubOrderNo, OrdSubOrder::getStatus,
                         (a, b) -> a));
@@ -156,10 +182,13 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                  * 写成 `!TRANSACTED.contains(statusOf.get(no))` 的话，
                  * 整个巡检会在遇到第一条孤儿账时炸掉，而不是把它报出来。
                  */
-                .filter(no -> {
-                    String status = statusOf.get(no);
-                    return status == null || !OrdSubOrder.TRANSACTED.contains(status);
-                })
+                .filter(
+                        no -> {
+                            String status = statusOf.get(no);
+                            return manual.contains(no)
+                                    || status == null
+                                    || !OrdSubOrder.TRANSACTED.contains(status);
+                        })
                 .toList();
     }
 
@@ -186,14 +215,22 @@ public class SettleSourcePortImpl implements SettleSourcePort {
         List<OrdOrder> found = DataScopeContext.executeWithoutScope(() ->
                 orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
                         .in(OrdOrder::getOrderNo, orderNos)));
+        var manual =
+                found.stream()
+                        .filter(row -> "MANUAL_OFFLINE".equals(row.getAdmissionKind()))
+                        .map(OrdOrder::getOrderNo)
+                        .collect(Collectors.toSet());
         Map<String, String> statusOf = found.stream()
                 .collect(Collectors.toMap(OrdOrder::getOrderNo, OrdOrder::getStatus, (a, b) -> a));
         return orderNos.stream()
                 // 先判 null 再比，理由同 notPaidAmong
-                .filter(no -> {
-                    String status = statusOf.get(no);
-                    return status == null || !OrdOrder.PAID.equals(status);
-                })
+                .filter(
+                        no -> {
+                            String status = statusOf.get(no);
+                            return manual.contains(no)
+                                    || status == null
+                                    || !OrdOrder.PAID.equals(status);
+                        })
                 .toList();
     }
 
@@ -244,6 +281,9 @@ public class SettleSourcePortImpl implements SettleSourcePort {
         OrdOrder order = DataScopeContext.executeWithoutScope(() ->
                 orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                         .eq(OrdOrder::getOrderNo, orderNo).last("LIMIT 1")));
+        if (order != null && "MANUAL_OFFLINE".equals(order.getAdmissionKind())) {
+            return List.of();
+        }
         String payChannel = order == null ? null : order.getPayChannel();
         String payScene = order == null ? null : order.getPayScene();
 

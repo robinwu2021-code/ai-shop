@@ -1,0 +1,25 @@
+{
+  "task": "Task69_M3_DESIGN",
+  "status": "SPEC_PASS_ARCHITECTURE_APPROVED_A1_RELEASED",
+  "sourceHead": "ae4c10cc124f80925719449da15aada4a97ec1ea",
+  "design": ".superpowers/sdd/beauty-backend/task-69-m3-design.md",
+  "designSha256": "2e33ad2ff0072f322064062e1592b8cbf2e7e11623c9d21fd636c6704fe387e5",
+  "report": ".superpowers/sdd/beauty-backend/task-69-m3-design-report.md",
+  "reportSha256": "1f7578fdaa2a5b73e29585cb6217db2f67d1e6868f1f432c42e0994a29b36076",
+  "reviews": [
+    "review-task-69-m3-design-r0.md",
+    "review-task-69-m3-design-r1.md",
+    "review-task-69-m3-design-r2.md"
+  ],
+  "closedFindings": [
+    "I1 V9/V10 startup/base/capability",
+    "I2 real observation suspension producer",
+    "I3 refresh does not withdraw",
+    "I4 unique owner bean IDs"
+  ],
+  "implementationComplete": false,
+  "testsExecuted": false,
+  "migrationsExecuted": false,
+  "deploymentExecuted": false,
+  "canStart": false
+}

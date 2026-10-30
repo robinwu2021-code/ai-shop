@@ -3,6 +3,9 @@ package ai.neargo.shop.spi.commerce;
 import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway.Identity;
 import ai.neargo.shop.spi.commerce.ChannelResourceIdentityGateway.ObjectType;
 import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.Owner;
+import ai.neargo.shop.spi.commerce.ChannelSourceValidationPort.SourceContext;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 /** 显式历史修订解析；返回原映射与新核验依据，不批准价格、库存、资金或接单。 */
 public interface ChannelResourceMappingPort {
@@ -26,5 +29,33 @@ public interface ChannelResourceMappingPort {
             String salesOfferRef,
             String sourceHash,
             String historicalExternalEvidenceRef,
-            String freshSourceReceiptNo) {}
+            String freshSourceReceiptNo,
+            @JsonInclude(JsonInclude.Include.NON_NULL) SourceContext sourceContext) {
+        public Resolution(
+                String mappingNo,
+                String revisionNo,
+                ObjectType objectType,
+                Identity identity,
+                Owner sourceOwner,
+                String sourceRef,
+                String sourceRevision,
+                String salesOfferRef,
+                String sourceHash,
+                String historicalExternalEvidenceRef,
+                String freshSourceReceiptNo) {
+            this(
+                    mappingNo,
+                    revisionNo,
+                    objectType,
+                    identity,
+                    sourceOwner,
+                    sourceRef,
+                    sourceRevision,
+                    salesOfferRef,
+                    sourceHash,
+                    historicalExternalEvidenceRef,
+                    freshSourceReceiptNo,
+                    null);
+        }
+    }
 }

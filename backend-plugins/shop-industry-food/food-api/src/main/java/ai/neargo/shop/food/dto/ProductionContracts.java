@@ -26,7 +26,10 @@ public final class ProductionContracts {
 
     public record AdjustmentReq(Long version, String kind, BigDecimal qty, String reason) {}
 
-    public record ReverseReq(Long version, String reason) {}
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record ReverseReq(Long version, String reason,String disposition,String reasonCode) {
+        public ReverseReq(Long version,String reason){this(version,reason,null,null);}
+    }
 
     public record LineVO(
             int lineNo,
