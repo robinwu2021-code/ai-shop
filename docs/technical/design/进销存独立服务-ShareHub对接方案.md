@@ -188,6 +188,7 @@ ShareHub 已经用**自写 HTTP 客户端**接上了本服务的内核 + `SERIAL
 | 用途码放宽到 32 个字符（V27） | 档案里可以登记更长的用途码 |
 | 命令记录保留期 ≥ 90 天（S2） | 宿主补偿任务的窗口按 90 天设 |
 | 夹具补 `SUPPLIER`（S4） | 与 `onboard.sh` 一致；开户时装的档案应包含它 |
+| 统一客户端（M13） | `inventory-client` 的 `InventoryClient` 已覆盖 ShareHub 用到的全部端点（含 SERIAL、DISPATCH_POOL、事件、命令查询），J3 的前提成立。发布到 Nexus 之后，宿主可以替换自写的 `HttpInventoryApi`。`self(操作人)` 即账本凭证用法，写操作第一个参数就是 G1 要的稳定命令键 |
 | 宿主编号直通（M12） | 单据、查询都可以直接用宿主的物料号、仓号（`itemRef` / `locationRef`），不必再维护「型号 → itemId」「仓号 → locationId」的对照表。原来的内部号照样可用 |
 
 ### 7.2 出库对象：同一套模型

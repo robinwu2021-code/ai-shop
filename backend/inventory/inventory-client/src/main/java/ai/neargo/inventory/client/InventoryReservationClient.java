@@ -61,15 +61,27 @@ public final class InventoryReservationClient {
                                                     String appSecret, Duration connectTimeout,
                                                     Duration readTimeout, int breakerThreshold,
                                                     Duration breakerOpenFor) {
-        ServiceClientSpec spec = new ServiceClientSpec(SERVICE, s -> baseUrl.get(), "Authorization",
+        return create(spec(baseUrl, appKey, appSecret, connectTimeout, readTimeout, "shop.inventory.service"),
+                new CircuitBreaker(breakerThreshold, breakerOpenFor, Clock.systemUTC()));
+    }
+
+    /**
+     * 连接规格：凭证、超时、错误体翻译。{@code configPrefix} 只用于「没配地址 / 凭证」时报出是哪个配置键。
+     */
+    static ServiceClientSpec spec(Supplier<Optional<String>> baseUrl, String appKey, String appSecret,
+                                  Duration connectTimeout, Duration readTimeout, String configPrefix) {
+        return new ServiceClientSpec(SERVICE, s -> baseUrl.get(), "Authorization",
                 () -> appKey == null || appKey.isBlank() ? null : "Bearer " + appKey + ":" + appSecret, true,
-                connectTimeout, readTimeout, "shop.inventory.service.base-url", "shop.inventory.service.app-key",
+                connectTimeout, readTimeout, configPrefix + ".base-url", configPrefix + ".app-key",
                 List.<ClientHttpRequestInterceptor>of(InventoryReservationClient::decodeErrors));
+    }
+
+    static InventoryReservationClient create(ServiceClientSpec spec, CircuitBreaker breaker) {
         return new InventoryReservationClient(ServiceClients.create(InventoryReservationApi.class, spec),
                 ServiceClients.create(InventoryStockApi.class, spec),
                 ServiceClients.create(InventoryConsoleApi.class, spec),
                 ServiceClients.create(InventoryProjectionApi.class, spec),
-                new CircuitBreaker(breakerThreshold, breakerOpenFor, Clock.systemUTC()));
+                breaker);
     }
 
     /** 测试与自定义传输用：直接给 API 实现 */
