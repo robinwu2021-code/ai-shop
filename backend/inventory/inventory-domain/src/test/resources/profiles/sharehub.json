@@ -4,7 +4,8 @@
   "targetTypes": [
     {"code": "MERCHANT", "nameKey": "inventory.target.merchant", "parentType": null},
     {"code": "SITE", "nameKey": "inventory.target.site", "parentType": "MERCHANT"},
-    {"code": "PERSON", "nameKey": "inventory.target.person", "parentType": null}
+    {"code": "PERSON", "nameKey": "inventory.target.person", "parentType": null},
+    {"code": "SUPPLIER", "nameKey": "inventory.target.supplier", "parentType": null}
   ],
   "inboundPurposes": [
     {"code": "PURCHASE", "basisRequired": false, "attachmentRequired": false},

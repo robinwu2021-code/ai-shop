@@ -35,6 +35,8 @@ public class InventoryAuthFilter extends OncePerRequestFilter {
     public static final String PATH_PREFIX = "/api/inventory/v1/";
     /** 系统凭证指定业主用的请求头：值是业主在宿主里的编号（商城 = 商家号） */
     public static final String OWNER_REF = "X-Inventory-Owner-Ref";
+    /** 同系统里同号有多本账（门店与连锁撞号）时，用它指明账本的宿主组织类型；只有一本时可省 */
+    public static final String OWNER_TYPE = "X-Inventory-Owner-Type";
     /** 系统级接口：宿主只有单号、没有业主时用（商城按订单号释放 / 确认），只认系统凭证 */
     public static final String SYSTEM_PREFIX = PATH_PREFIX + "system/";
     private static final Set<String> SAFE = Set.of("GET", "HEAD", "OPTIONS");
@@ -101,7 +103,8 @@ public class InventoryAuthFilter extends OncePerRequestFilter {
         }
         if (ownerId == null) {
             // 系统凭证：业主由请求头指定，限本系统、限写入方已是独立服务的业主
-            InvOwner owner = platform.ownerByRef(who.systemCode(), header(request, OWNER_REF));
+            InvOwner owner = platform.ownerByRef(who.systemCode(), header(request, OWNER_TYPE),
+                    header(request, OWNER_REF));
             if (owner == null) {
                 throw InventoryException.of(InventoryError.NOT_FOUND, "owner");
             }

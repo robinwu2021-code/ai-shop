@@ -133,7 +133,7 @@ public class MigrationImportServiceImpl implements MigrationImportService {
             targetsToUpsert.add(t.type() + ":" + t.ref());
             if (apply) {
                 targets.upsert(caller, t.type(), t.ref(), t.name(), t.parentRef(), null,
-                        existing == null ? 0L : existing.getSourceVersion());
+                        existing == null ? 0L : existing.getSourceVersion(), null);
             }
         }
         // ④ 在仓：只补不减

@@ -7,7 +7,8 @@ package ai.neargo.inventory.domain.service;
  */
 public interface WarehouseService {
 
-    void update(Caller caller, String locationId, String name, String regionRef);
+    /** 补丁语义：空字段不动。@param holderRef 宿主的持有方标记（TDD §2.19） */
+    void update(Caller caller, String locationId, String name, String regionRef, String holderRef);
 
     /**
      * @throws ai.neargo.inventory.api.InventoryException {@code CONFLICT}，参数是全部不满足的原因

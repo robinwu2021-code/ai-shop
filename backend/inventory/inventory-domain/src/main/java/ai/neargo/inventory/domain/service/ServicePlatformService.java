@@ -17,10 +17,11 @@ public interface ServicePlatformService {
     /**
      * 开通一个业主（一本库存账）。写入方默认是独立服务。
      *
+     * @param externalType 宿主组织类型（STORE / CHAIN / ENTITY / PLATFORM …），服务不解释；空 = 按系统取存量缺省
      * @throws ai.neargo.inventory.api.InventoryException {@code BAD_REQUEST} 系统未登记或已停用；
-     *         {@code CONFLICT} 同系统下这个外部引用已开通
+     *         {@code CONFLICT} 同系统下这个「类型 + 外部引用」已开通
      */
-    String openOwner(String systemCode, String externalRef, String name, String operator);
+    String openOwner(String systemCode, String externalType, String externalRef, String name, String operator);
 
     /**
      * 签发服务凭证。secret 只在返回值里出现这一次。
@@ -37,8 +38,11 @@ public interface ServicePlatformService {
     Issued issueSystemCredential(String systemCode, String name, Set<Capability> capabilities,
                                  LocalDateTime expiresAt, String operator);
 
-    /** @return 本系统下这个外部引用对应的业主；没有为空 */
-    InvOwner ownerByRef(String systemCode, String externalRef);
+    /**
+     * @param externalType 空 = 只按编号找；同号有多本（门店与连锁撞号）时 {@code CONFLICT owner_type_required}
+     * @return 本系统下这个外部引用对应的业主；没有为空
+     */
+    InvOwner ownerByRef(String systemCode, String externalType, String externalRef);
 
     /**
      * 认一把服务凭证。key 不存在、secret 不对、已吊销、已过期、不是服务凭证 ——

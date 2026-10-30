@@ -1,13 +1,23 @@
 package ai.neargo.inventory.svc.api;
 
+import ai.neargo.inventory.api.InventoryError;
+import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.domain.service.Caller;
 import ai.neargo.inventory.domain.service.CommandService;
-import ai.neargo.inventory.domain.service.DocumentQueryService;
 import ai.neargo.inventory.domain.service.DocumentQueryService.Document;
-import ai.neargo.inventory.domain.service.HostInboundService;
+import ai.neargo.inventory.domain.service.DocumentQueryService;
 import ai.neargo.inventory.domain.service.HostInboundService.Draft;
 import ai.neargo.inventory.domain.service.HostInboundService.Line;
+import ai.neargo.inventory.domain.service.HostInboundService;
+import ai.neargo.inventory.domain.service.PairedTransferService.Received;
+import ai.neargo.inventory.domain.service.PairedTransferService;
 import ai.neargo.inventory.guard.InventoryRequestContext;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,11 +34,14 @@ public class InboundController {
     private final HostInboundService inbounds;
     private final DocumentQueryService documents;
     private final CommandService commands;
+    private final PairedTransferService paired;
 
-    public InboundController(HostInboundService inbounds, DocumentQueryService documents, CommandService commands) {
+    public InboundController(HostInboundService inbounds, DocumentQueryService documents, CommandService commands,
+                             PairedTransferService paired) {
         this.inbounds = inbounds;
         this.documents = documents;
         this.commands = commands;
+        this.paired = paired;
     }
 
     @PostMapping("/api/inventory/v1/inbounds")
@@ -51,6 +64,7 @@ public class InboundController {
     public DocNo post(@PathVariable String no) {
         Caller caller = InventoryRequestContext.caller();
         return commands.execute(caller, "inbound.post", no, DocNo.class, () -> {
+            requireUnpaired(caller, no);
             inbounds.post(caller, no);
             return new DocNo(no);
         });
@@ -60,6 +74,7 @@ public class InboundController {
     public DocNo cancel(@PathVariable String no) {
         Caller caller = InventoryRequestContext.caller();
         return commands.execute(caller, "inbound.cancel", no, DocNo.class, () -> {
+            requireUnpaired(caller, no);
             inbounds.cancel(caller, no);
             return new DocNo(no);
         });
@@ -75,12 +90,37 @@ public class InboundController {
         });
     }
 
+    /** 成对入库单确认收货（TDD §2.19）：按实收入账，差异回传发货方。 */
+    @PostMapping("/api/inventory/v1/inbounds/{no}/receive")
+    public Receipt receive(@PathVariable String no, @Validated @RequestBody Receive req) {
+        Caller caller = InventoryRequestContext.caller();
+        return commands.execute(caller, "inbound.receive", new Keyed(no, req), Receipt.class,
+                () -> new Receipt(no, paired.receive(caller, no, req.lines().stream()
+                        .map(l -> new Received(l.itemId(), l.qty())).toList())));
+    }
+
     @GetMapping("/api/inventory/v1/inbounds/{no}")
     public Document view(@PathVariable String no) {
         return documents.inbound(InventoryRequestContext.principal().ownerId(), no);
     }
 
+    /** 成对入库单只能确认收货：直接过账会绕过差异回传，作废会让发货方的货凭空消失 */
+    private void requireUnpaired(Caller caller, String inboundNo) {
+        if (paired.pairedInbound(caller.ownerId(), inboundNo)) {
+            throw InventoryException.of(InventoryError.CONFLICT, "paired_use_receive");
+        }
+    }
+
     public record Append(List<Line> lines) {
+    }
+
+    public record Receive(@NotNull @Size(max = 500) List<@Valid ReceivedLine> lines) {
+    }
+
+    public record ReceivedLine(@NotBlank String itemId, @NotNull @PositiveOrZero Integer qty) {
+    }
+
+    public record Receipt(String docNo, String pairNo) {
     }
 
     record Keyed(String docNo, Object body) {

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -43,9 +44,10 @@ public class WarehouseController {
     }
 
     @GetMapping("/api/inventory/v1/warehouses")
-    public List<Warehouse> list() {
+    public List<Warehouse> list(@RequestParam(required = false) String holderRef) {
         return locations.list(InventoryRequestContext.principal().ownerId()).stream()
                 .filter(l -> InvEnums.LocationKind.WAREHOUSE.equals(l.getKind()))
+                .filter(l -> holderRef == null || holderRef.equals(l.getHolderRef()))
                 .map(Warehouse::of)
                 .toList();
     }
@@ -54,7 +56,8 @@ public class WarehouseController {
     public Created create(@RequestBody CreateWarehouse req) {
         Caller caller = InventoryRequestContext.caller();
         return commands.execute(caller, CREATE, req, Created.class, () -> {
-            String id = locations.createWarehouse(caller.ownerId(), req.name(), caller.actor());
+            String id = locations.createWarehouse(caller.ownerId(), req.name(), req.externalRef(), req.holderRef(),
+                    caller.actor());
             audit.record(caller, CREATE, "WAREHOUSE", id, null, req, null);
             return new Created(id);
         });
@@ -64,7 +67,7 @@ public class WarehouseController {
     public Created update(@PathVariable String locationId, @RequestBody UpdateWarehouse req) {
         Caller caller = InventoryRequestContext.caller();
         return commands.execute(caller, UPDATE, new Patch(locationId, req), Created.class, () -> {
-            warehouses.update(caller, locationId, req.name(), req.regionRef());
+            warehouses.update(caller, locationId, req.name(), req.regionRef(), req.holderRef());
             return new Created(locationId);
         });
     }
@@ -79,10 +82,14 @@ public class WarehouseController {
         });
     }
 
-    public record CreateWarehouse(String name) {
+    /**
+     * @param externalRef 库位在宿主里的编号，本账本内唯一；成对单据按它找收货库位（TDD §2.19）
+     * @param holderRef   宿主的持有方标记，服务只存储、只按它过滤
+     */
+    public record CreateWarehouse(String name, String externalRef, String holderRef) {
     }
 
-    public record UpdateWarehouse(String name, String regionRef) {
+    public record UpdateWarehouse(String name, String regionRef, String holderRef) {
     }
 
     record Patch(String locationId, UpdateWarehouse body) {
@@ -91,9 +98,11 @@ public class WarehouseController {
     public record Created(String locationId) {
     }
 
-    public record Warehouse(String locationId, String name, String regionRef, String status) {
+    public record Warehouse(String locationId, String name, String externalRef, String regionRef, String holderRef,
+                            String status) {
         static Warehouse of(InvLocation l) {
-            return new Warehouse(l.getLocationId(), l.getName(), l.getRegionRef(), l.getStatus());
+            return new Warehouse(l.getLocationId(), l.getName(), l.getExternalRef(), l.getRegionRef(),
+                    l.getHolderRef(), l.getStatus());
         }
     }
 }

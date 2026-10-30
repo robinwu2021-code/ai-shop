@@ -20,6 +20,14 @@ public interface HostInboundService {
     /** 往草稿里分批追加行：一柜几十块宝，一次请求放不下时用。 */
     void append(Caller caller, String inboundNo, List<Line> lines);
 
+    /**
+     * 草稿整单改写：清掉原有行与 SN 明细，按给定行重建、重算总数（TDD §2.20）。
+     * 成对收货按实收改写待收单用它 —— 入库单的行只由本服务写。
+     *
+     * @throws ai.neargo.inventory.api.InventoryException {@code CONFLICT status} 不是草稿
+     */
+    void replaceLines(Caller caller, String inboundNo, List<Line> lines);
+
     void cancel(Caller caller, String inboundNo);
 
     void post(Caller caller, String inboundNo);

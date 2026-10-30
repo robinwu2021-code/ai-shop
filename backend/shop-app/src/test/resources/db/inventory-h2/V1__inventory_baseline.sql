@@ -40,9 +40,10 @@ CREATE TABLE IF NOT EXISTS inv_owner
     system_code VARCHAR(32) NOT NULL DEFAULT 'SHOP',
     write_authority VARCHAR(16) NOT NULL DEFAULT 'EMBEDDED',
     profile_version INT DEFAULT NULL,
+    external_type VARCHAR(32) NOT NULL DEFAULT 'ENTITY',
     PRIMARY KEY (id),
     CONSTRAINT uk_owner UNIQUE (owner_id),
-    CONSTRAINT uk_owner_system_ext UNIQUE (system_code, external_ref)
+    CONSTRAINT uk_owner_system_type_ext UNIQUE (system_code, external_type, external_ref)
 );
 
 CREATE TABLE IF NOT EXISTS inv_location
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS inv_location
     updated_by         VARCHAR(64)  DEFAULT NULL,
     region_ref VARCHAR(64) DEFAULT NULL,
     disabled_at DATETIME DEFAULT NULL,
+    holder_ref VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_loc UNIQUE (owner_id, location_id),
     CONSTRAINT uk_loc_ext UNIQUE (owner_id, external_ref)
@@ -238,7 +240,7 @@ CREATE TABLE IF NOT EXISTS inv_inbound_order
     inbound_no       VARCHAR(32)  NOT NULL,
     owner_id         VARCHAR(32)  NOT NULL,
     location_id      VARCHAR(32)  NOT NULL,
-    source_type VARCHAR(16) NOT NULL,
+    source_type VARCHAR(32) NOT NULL,
     source_ref       VARCHAR(64)  DEFAULT NULL,
     supplier_name    VARCHAR(64)  DEFAULT NULL,
     status           VARCHAR(16)  NOT NULL DEFAULT 'DRAFT',
@@ -288,7 +290,7 @@ CREATE TABLE IF NOT EXISTS inv_outbound_order
     outbound_no      VARCHAR(32)  NOT NULL,
     owner_id         VARCHAR(32)  NOT NULL,
     location_id      VARCHAR(32)  NOT NULL,
-    purpose VARCHAR(16) NOT NULL,
+    purpose VARCHAR(32) NOT NULL,
     source_ref       VARCHAR(64)  DEFAULT NULL,
     reservation_id   VARCHAR(32)  DEFAULT NULL,
     reason_code      VARCHAR(16)  DEFAULT NULL,
@@ -813,6 +815,8 @@ CREATE TABLE IF NOT EXISTS inv_target_ref
     created_by VARCHAR(64) DEFAULT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by VARCHAR(64) DEFAULT NULL,
+    linked_owner_id VARCHAR(32) DEFAULT NULL,
+    linked_location_id VARCHAR(32) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_inv_target_ref UNIQUE (owner_id, system_code, object_type, object_ref)
 );
@@ -1033,6 +1037,31 @@ CREATE TABLE IF NOT EXISTS inv_count_scan
     CONSTRAINT uk_inv_count_scan UNIQUE (owner_id, count_no, serial_no)
 );
 
+CREATE TABLE IF NOT EXISTS inv_paired_transfer
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pair_no VARCHAR(32) NOT NULL,
+    system_code VARCHAR(32) NOT NULL,
+    from_owner_id VARCHAR(32) NOT NULL,
+    outbound_no VARCHAR(32) NOT NULL,
+    from_location_id VARCHAR(32) NOT NULL,
+    to_owner_id VARCHAR(32) NOT NULL,
+    inbound_no VARCHAR(32) NOT NULL,
+    to_location_id VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    line_items TEXT NOT NULL,
+    shipped_at DATETIME NOT NULL,
+    received_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_paired_no UNIQUE (pair_no),
+    CONSTRAINT uk_paired_out UNIQUE (from_owner_id, outbound_no),
+    CONSTRAINT uk_paired_in UNIQUE (to_owner_id, inbound_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PIECE', '件', 0, 10 FROM DUAL
@@ -1061,3 +1090,4 @@ SELECT 'G', '克', 1, 80 FROM DUAL
 INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('SHOP', 'ai-shop', 'MIGRATION');
 INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('SHAREHUB', 'ShareHub', 'MIGRATION');
 INSERT IGNORE INTO inv_client_system (system_code, name, created_by) VALUES ('CHARGING', 'charging', 'MIGRATION');
+UPDATE inv_owner SET external_type = 'PLATFORM' WHERE system_code <> 'SHOP';

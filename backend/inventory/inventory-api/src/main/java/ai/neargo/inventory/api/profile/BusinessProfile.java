@@ -49,11 +49,18 @@ public record BusinessProfile(
      * @param optionalTargets 可以指定的目标类型（须挂在某个必填目标之下，按 parentType 校验）
      * @param handover        {@code POOL} = 过账生成出库池记录；{@code NONE} = 不生成
      */
+    /**
+     * @param receiptPurpose 仅 {@code handover=RECEIPT}：对方账本待收入库单的用途，须是双方档案都登记过的入库用途
+     */
     public record OutboundPurpose(String code, List<String> requiredTargets, List<String> optionalTargets,
-                                  Handover handover) {
+                                  Handover handover, String receiptPurpose) {
     }
 
-    public enum Handover { POOL, NONE }
+    /**
+     * 交接方式：{@code POOL} 过账生成出库池记录；{@code RECEIPT} 发给关联了账本的对象，过账在对方账本生成待收入库单
+     * （TDD §2.19）；{@code NONE} 过账即结束。
+     */
+    public enum Handover { POOL, RECEIPT, NONE }
 
     /** 盘点是否必须复核、复核人是否必须不同于录入人。 */
     public record CountReview(boolean required, boolean reviewerMustDiffer) {

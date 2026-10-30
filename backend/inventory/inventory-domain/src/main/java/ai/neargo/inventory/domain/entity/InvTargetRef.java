@@ -25,4 +25,8 @@ public class InvTargetRef extends InvMutableEntity {
     private String status;
     /** 宿主侧版本；旧版本到达忽略 */
     private Long sourceVersion;
+    /** 对象在同系统内的账本（兄弟门店、加盟店）；非空时发给它的 RECEIPT 出库生成对方待收入库 */
+    private String linkedOwnerId;
+    /** 对方账本中的收货库位，与 {@link #linkedOwnerId} 同时非空 */
+    private String linkedLocationId;
 }

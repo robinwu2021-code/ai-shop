@@ -28,6 +28,7 @@ import ai.neargo.inventory.domain.service.BusinessProfileService.Versioned;
 import ai.neargo.inventory.domain.service.Caller;
 import ai.neargo.inventory.domain.service.HostInboundService;
 import ai.neargo.inventory.domain.service.HostOutboundService;
+import ai.neargo.inventory.domain.service.PairedTransferService;
 import ai.neargo.inventory.domain.service.StockPostingService;
 import ai.neargo.inventory.domain.service.StockPostingService.PostingDoc;
 import ai.neargo.inventory.domain.support.InvEnums;
@@ -67,13 +68,15 @@ public class HostOutboundServiceImpl implements HostOutboundService {
     private final CountFreezeGuard freeze;
     private final StockPostingService posting;
     private final AuditService audit;
+    private final PairedTransferService paired;
 
     public HostOutboundServiceImpl(HostDocumentSupport support, OutboundOrderMapper orderMapper,
                                    OutboundLineMapper lineMapper, DocumentSerialMapper docSerialMapper,
                                    DocumentTargetMapper docTargetMapper,
                                    SerialMapper serialMapper, StockEpisodeMapper episodeMapper,
                                    StockHoldMapper holdMapper, StockPostingService posting, AuditService audit,
-                                   DispatchPoolStore pool, EventPublisher events, CountFreezeGuard freeze) {
+                                   DispatchPoolStore pool, EventPublisher events, CountFreezeGuard freeze,
+                                   PairedTransferService paired) {
         this.support = support;
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
@@ -87,6 +90,7 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         this.freeze = freeze;
         this.posting = posting;
         this.audit = audit;
+        this.paired = paired;
     }
 
     @Override
@@ -101,6 +105,9 @@ public class HostOutboundServiceImpl implements HostOutboundService {
         support.requireActiveLocation(caller.ownerId(), draft.locationId());
         Map<String, InvTargetRef> targets = support.resolveTargets(caller, purpose,
                 draft.targets() == null ? Map.of() : draft.targets());
+        if (purpose.handover() == BusinessProfile.Handover.RECEIPT) {
+            paired.checkShippable(targets.get(purpose.requiredTargets().get(0)), draft.serialNos());
+        }
 
         InvOutboundOrder order = new InvOutboundOrder();
         order.setOutboundNo(InvKeys.next(InvKeys.OUTBOUND));
@@ -302,6 +309,17 @@ public class HostOutboundServiceImpl implements HostOutboundService {
                     .eq(InvDocumentTarget::getDocNo, outboundNo));
             pool.createFromIssue(caller, order, lines, serials, episodeBySerialNo, targets,
                     purpose.requiredTargets().get(0));
+        }
+        if (purpose != null && purpose.handover() == BusinessProfile.Handover.RECEIPT) {
+            // 同一事务：发货方扣在手、收货方待收入库单、成对记录要么都有、要么都没有（AC-30）
+            String type = purpose.requiredTargets().get(0);
+            InvDocumentTarget doc = docTargetMapper.selectOne(Wrappers.<InvDocumentTarget>lambdaQuery()
+                    .eq(InvDocumentTarget::getOwnerId, caller.ownerId())
+                    .eq(InvDocumentTarget::getDocKind, InvEnums.DocKind.OUT)
+                    .eq(InvDocumentTarget::getDocNo, outboundNo)
+                    .eq(InvDocumentTarget::getTargetType, type));
+            paired.ship(caller, order, lines, support.target(caller, type, doc.getTargetRef()),
+                    purpose.receiptPurpose());
         }
         events.publish(caller, "OutboundPosted", "OUTBOUND", outboundNo, 1,
                 Map.of("purpose", order.getPurpose(), "locationId", order.getLocationId()));

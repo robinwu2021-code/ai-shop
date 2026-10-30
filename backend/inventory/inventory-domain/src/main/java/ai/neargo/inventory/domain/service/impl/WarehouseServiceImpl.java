@@ -59,21 +59,26 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
-    public void update(Caller caller, String locationId, String name, String regionRef) {
+    public void update(Caller caller, String locationId, String name, String regionRef, String holderRef) {
         InvLocation location = warehouse(caller.ownerId(), locationId);
         if (name != null && (name.isBlank() || name.length() > 128)
-                || regionRef != null && regionRef.length() > 64) {
+                || regionRef != null && regionRef.length() > 64
+                || holderRef != null && holderRef.length() > 64) {
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         }
-        String before = location.getName() + "|" + location.getRegionRef();
-        if (name != null) {
-            location.setName(name);
-        }
-        location.setRegionRef(regionRef);
-        location.setUpdatedBy(caller.actor());
-        locationMapper.updateById(location);
+        String before = location.getName() + "|" + location.getRegionRef() + "|" + location.getHolderRef();
+        // 补丁语义：没给的字段不动（与此前 updateById 跳过 null 一致）
+        locationMapper.update(null, Wrappers.<InvLocation>lambdaUpdate()
+                .set(name != null, InvLocation::getName, name)
+                .set(regionRef != null, InvLocation::getRegionRef, regionRef)
+                .set(holderRef != null, InvLocation::getHolderRef, holderRef)
+                .set(InvLocation::getUpdatedBy, caller.actor())
+                .eq(InvLocation::getOwnerId, caller.ownerId())
+                .eq(InvLocation::getLocationId, locationId));
         audit.record(caller, "warehouse.update", "WAREHOUSE", locationId, before,
-                location.getName() + "|" + location.getRegionRef(), null);
+                (name != null ? name : location.getName()) + "|"
+                        + (regionRef != null ? regionRef : location.getRegionRef()) + "|"
+                        + (holderRef != null ? holderRef : location.getHolderRef()), null);
     }
 
     @Override

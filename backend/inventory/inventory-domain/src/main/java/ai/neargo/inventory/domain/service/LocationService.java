@@ -13,6 +13,15 @@ public interface LocationService {
     String createWarehouse(String ownerId, String name, String operator);
 
     /**
+     * 建仓并带上宿主的引用（TDD §2.19）。
+     *
+     * @param externalRef 库位在宿主里的编号（门店号、站点号），本账本内唯一；成对单据靠它找收货库位
+     * @param holderRef   宿主的持有方标记，服务只存储、只按它过滤
+     * @throws ai.neargo.inventory.api.InventoryException {@code CONFLICT} 本账本内 externalRef 已被占用
+     */
+    String createWarehouse(String ownerId, String name, String externalRef, String holderRef, String operator);
+
+    /**
      * 设发货源。
      *
      * @throws ai.neargo.inventory.api.InventoryException {@code BAD_REQUEST} —— 目标自己也指着别处时。

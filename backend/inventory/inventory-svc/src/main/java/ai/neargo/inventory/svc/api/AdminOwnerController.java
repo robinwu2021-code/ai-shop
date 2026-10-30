@@ -55,7 +55,8 @@ public class AdminOwnerController {
 
     @PostMapping
     public Map<String, String> open(@RequestBody OpenOwner req, @RequestHeader("X-Inventory-Actor") String operator) {
-        return Map.of("ownerId", platform.openOwner(req.systemCode(), req.externalRef(), req.name(), operator));
+        return Map.of("ownerId", platform.openOwner(req.systemCode(), req.externalType(), req.externalRef(),
+                req.name(), operator));
     }
 
     @PostMapping("/{ownerId}/credentials")
@@ -110,7 +111,8 @@ public class AdminOwnerController {
         return migration.run(new Caller(owner.getSystemCode(), ownerId, operator, null, null), batch, apply);
     }
 
-    public record OpenOwner(String systemCode, String externalRef, String name) {
+    /** @param externalType 宿主组织类型；空 = 按系统取存量缺省（SHOP 为 ENTITY，其他为 PLATFORM） */
+    public record OpenOwner(String systemCode, String externalType, String externalRef, String name) {
     }
 
     public record IssueCredential(String name, Set<Capability> capabilities, LocalDateTime expiresAt) {
