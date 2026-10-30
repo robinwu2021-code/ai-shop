@@ -94,3 +94,8 @@
 内部生命周期增加 `/internal/food/local-stock/issue-delta`：输入 Scope、原 Command、reservationNo、叶增量；在预留头锁内累加并写永久回执。原累计 issue 接口继续保留。
 
 `FoodReturnStockInternalApi` 3 个方法复用上述业务 DTO；`FoodStockReportInternalApi` 1 个 facts 方法接收 SourceQuery（partition scope、营业日证据、actorNo、来源引用和上限）返回 SourceSnapshot。内部令牌与签名主体/门店/操作人全部核验。报表来源未配置或不唯一返回依赖不可用，不能降级读取旧库存或按零生成统计。
+
+
+## 2026-10-30 M04独立库存同步交接
+
+新增POST `/internal/food/stock-sync/dispatch`，输入entityNo、storeNo、envelope（原OutboxEnvelope全部字段），输出原DeliveryResult(kind/errorCode/detail)。沿内部token及X-Food-Scope签名；外层范围与原payload一致，缺签名401、范围不符403、缺必填输入由MVC Validator返回400。handlerId=food-stock-sync-v1，原事件键/hash/payload不变。无新增公网入口、权限码、表或配置。详见[TDD](../../TDD-餐饮独立库存同步投递.md)。

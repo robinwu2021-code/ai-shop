@@ -10,10 +10,12 @@ import java.util.Set;
 public final class FoodOutboxRouting {
     private FoodOutboxRouting() {}
 
+    public static final String STOCK_SYNC_HANDLER = "food-stock-sync-v1";
     public static final String KITCHEN_ACCEPTED_HANDLER = "food-kitchen-accepted-v1";
     public static final String PRODUCTION_HANDLER = "food-production-consumption-v1";
     public static final Map<String, Map<String, Boolean>> DELIVERY_TARGETS =
             Map.of(
+                    "FOOD_STOCK_SYNC_REQUESTED", Map.of(STOCK_SYNC_HANDLER, true),
                     "DINING_ORDER_ACCEPTED",
                             Map.of(
                                     KITCHEN_ACCEPTED_HANDLER,

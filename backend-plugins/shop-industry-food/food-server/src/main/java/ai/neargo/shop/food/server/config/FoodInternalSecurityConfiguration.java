@@ -2,6 +2,7 @@ package ai.neargo.shop.food.server.config;
 
 import ai.neargo.shop.food.scope.FoodScopeCredentials;
 import ai.neargo.shop.svc.InternalHttp;
+import jakarta.servlet.DispatcherType;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +40,7 @@ public class FoodInternalSecurityConfiguration {
                 .exceptionHandling(errors -> errors.authenticationEntryPoint(
                         (request, response, failure) -> response.sendError(401)))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/internal/food/**").access((authentication, context) ->
                                 new AuthorizationDecision(trusted(token,
                                         context.getRequest().getHeader(InternalHttp.TOKEN_HEADER))))

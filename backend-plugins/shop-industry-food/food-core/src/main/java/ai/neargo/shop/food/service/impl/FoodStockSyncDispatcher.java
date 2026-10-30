@@ -5,6 +5,8 @@ import ai.neargo.shop.food.entity.*;
 import ai.neargo.shop.food.mapper.FoodMappers.*;
 import ai.neargo.shop.event.outbox.*;
 import ai.neargo.shop.spi.food.FoodStockSyncRequested;
+import ai.neargo.shop.spi.food.FoodOutboxRouting;
+import ai.neargo.shop.food.service.FoodStockSyncDispatchService;
 import ai.neargo.shop.spi.inventory.InventoryFoodStockProjectionPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
@@ -17,7 +19,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /** Receiver calls stay outside FOOD transactions. Finite baseline pages resume from a durable cursor. */
-public final class FoodStockSyncDispatcher implements OutboxHandler,OutboxRouteContribution {
+public final class FoodStockSyncDispatcher implements OutboxHandler,OutboxRouteContribution,FoodStockSyncDispatchService {
     private final StockSyncConfigMapper configs;private final StockSyncDeliveryMapper deliveries;
     private final StockItemMapper items;private final StockBalanceMapper balances;
     private final FoodStockSyncPublisher publisher;private final ObjectProvider<InventoryFoodStockProjectionPort> receivers;
@@ -30,10 +32,15 @@ public final class FoodStockSyncDispatcher implements OutboxHandler,OutboxRouteC
         this.receivers=receivers;this.json=json;this.reconciliation=reconciliation;write=new TransactionTemplate(manager);
         write.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
-    @Override public String handlerId(){return "food-stock-sync-v1";}
+    @Override public String handlerId(){return FoodOutboxRouting.STOCK_SYNC_HANDLER;}
     @Override public boolean externalWorkflow(){return true;}
     @Override public boolean supports(String type){return "FOOD_STOCK_SYNC_REQUESTED".equals(type);}
     @Override public Set<String> consumedArchiveRoutes(){return Set.of("PLATFORM:FOOD_STOCK_SYNC_REQUESTED");}
+    @Override public DeliveryResult dispatch(String entityNo,String storeNo,OutboxEnvelope envelope) {
+        var original=json.readValue(envelope.payload(),FoodStockSyncRequested.class);
+        if(!original.entityNo().equals(entityNo)||!original.storeNo().equals(storeNo))throw BizException.of(ErrorCode.FORBIDDEN);
+        return handle(envelope);
+    }
     @Override public DeliveryResult handle(OutboxEnvelope envelope) {
         if(!"PLATFORM".equals(envelope.sourceSystem())||envelope.schemaVersion()!=1||!supports(envelope.eventType()))throw new IllegalArgumentException("Invalid stock sync envelope");
         var event=json.readValue(envelope.payload(),FoodStockSyncRequested.class);
