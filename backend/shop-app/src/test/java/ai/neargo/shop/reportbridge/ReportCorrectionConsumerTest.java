@@ -194,6 +194,33 @@ class ReportCorrectionConsumerTest {
     }
 
     @Test
+    void partialDirtyWriteFailureRetriesOriginalEventBeforeAcknowledgingDelivery() {
+        var storage = mock(ReportStorageService.class);
+        var owner = mock(ReportAffectedDaysPort.class);
+        var factory = new StaticListableBeanFactory(); factory.addBean("owner", owner);
+        var scope = new Scope("MAIN", "E1", "S1");
+        var first = LocalDate.of(2020, 1, 1); var second = first.plusDays(20);
+        when(owner.affectedDays(any())).thenReturn(List.of(new ReportAffectedDaysPort.AffectedDay(scope, first),
+                new ReportAffectedDaysPort.AffectedDay(scope, second)));
+        var cursor = mock(CursorRow.class); when(cursor.enabled()).thenReturn(true);
+        when(cursor.firstDate()).thenReturn(first); when(cursor.partition()).thenReturn(new Partition(scope, first, 1));
+        when(storage.scopes(scope)).thenReturn(List.of(cursor));
+        var firstPartition = new Partition(scope, first, 1); var secondPartition = new Partition(scope, second, 1);
+        var at = second.atStartOfDay().toInstant(java.time.ZoneOffset.UTC);
+        org.mockito.Mockito.doThrow(new IllegalStateException("REPORT_STORE_UNAVAILABLE")).doNothing()
+                .when(storage).markDirty(secondPartition, "ORIGINAL", "SOURCE_EVENT", at);
+        var consumer = new ReportCorrectionConsumer(storage, factory.getBeanProvider(ReportAffectedDaysPort.class), JsonMapper.builder().build());
+        var handler = new ai.neargo.shop.event.outbox.runtime.TransactionalOutboxHandler(consumer, mock(javax.sql.DataSource.class),
+                new org.springframework.jdbc.datasource.DataSourceTransactionManager(mock(javax.sql.DataSource.class)), "sys_event_consumed");
+        var event = new ai.neargo.shop.event.outbox.OutboxEnvelope("ORIGINAL", "PLATFORM", "ORIGINAL", "ORDER", "ORDER1",
+                "AFTER_SALE_REFUNDED", 1, "ORDER:ORDER1", 1, "{\"orderNo\":\"ORDER1\"}", at);
+        assertThat(handler.handle(event).kind()).isEqualTo(ai.neargo.shop.event.outbox.DeliveryResult.Kind.RETRYABLE);
+        assertThat(handler.handle(event).kind()).isEqualTo(ai.neargo.shop.event.outbox.DeliveryResult.Kind.SENT);
+        verify(storage, times(2)).markDirty(firstPartition, "ORIGINAL", "SOURCE_EVENT", at);
+        verify(storage, times(2)).markDirty(secondPartition, "ORIGINAL", "SOURCE_EVENT", at);
+    }
+
+    @Test
     void actualUnifiedAdapterPreservesOriginalTimeAndRetriesReadOnlyCorrectionFailure() {
         var storage = mock(ReportStorageService.class);
         var owner = mock(ReportAffectedDaysPort.class);

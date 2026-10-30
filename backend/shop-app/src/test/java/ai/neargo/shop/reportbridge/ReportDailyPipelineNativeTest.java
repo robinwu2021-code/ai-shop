@@ -88,12 +88,20 @@ class ReportDailyPipelineNativeTest {
     }
     @Test void emptyDaysAdvanceOnceAndDirtyDayRebuildsWithoutChangingOtherDays() {
         assertThat(service.runDaily("RUN1",FIRST.plusDays(1)).published()).isEqualTo(2);
+        // A changed owner snapshot is not discovered by the forward-only planning cursor.
+        counts.put(FIRST,3);
         assertThat(service.runDaily("RUN2",FIRST.plusDays(1)).published()).isZero();
+        var unchanged=storage.readDays(scope,FIRST,FIRST.plusDays(1),1).getFirst();
+        assertThat(unchanged.publication().generation()).isEqualTo(1);
+        assertThat(unchanged.facts().stream().filter(f->"ORDER_CREATED_COUNT".equals(f.metricCode()))
+                .map(f->f.value().integerValue()).toList()).containsExactly(0L);
         assertThat(storage.scopes(scope).getFirst().lastPlannedDate()).isEqualTo(FIRST.plusDays(1));
-        counts.put(FIRST,3);storage.markDirty(new Partition(scope,FIRST,1),"EV1","ORDER",FIRST.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC));
+        storage.markDirty(new Partition(scope,FIRST,1),"EV1","ORDER",FIRST.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC));
         assertThat(service.runDaily("RUN3",FIRST.plusDays(1)).published()).isEqualTo(1);
         var days=storage.readDays(scope,FIRST,FIRST.plusDays(2),1);
         assertThat(days.getFirst().publication().generation()).isEqualTo(2);
+        assertThat(days.getFirst().facts().stream().filter(f->"ORDER_CREATED_COUNT".equals(f.metricCode()))
+                .map(f->f.value().integerValue()).toList()).containsExactly(3L);
         assertThat(days.getLast().publication().generation()).isEqualTo(1);
         assertThat(storage.pendingDirty(scope,1,10)).isEmpty();
     }
