@@ -418,7 +418,7 @@
             {
               "app": "b-app",
               "route": "/pages/brand-list/index",
-              "title": "品牌管理",
+              "title": "连锁管理",
               "domain": "其它",
               "tab": false,
               "status": "已实现",
@@ -429,7 +429,7 @@
             {
               "app": "b-app",
               "route": "/pages/brand-edit/index",
-              "title": "品牌资料",
+              "title": "连锁资料",
               "domain": "其它",
               "tab": false,
               "status": "已实现",
@@ -440,7 +440,7 @@
             {
               "app": "b-app",
               "route": "/pages/brand-detail/index",
-              "title": "品牌详情",
+              "title": "连锁详情",
               "domain": "其它",
               "tab": false,
               "status": "已实现",
@@ -462,7 +462,7 @@
             {
               "app": "b-app",
               "route": "/pages/store-brand/index",
-              "title": "门店品牌",
+              "title": "所属连锁",
               "domain": "其它",
               "tab": false,
               "status": "已实现",
@@ -484,7 +484,7 @@
             {
               "app": "b-app",
               "route": "/pages/brand-change/index",
-              "title": "品牌变更",
+              "title": "连锁变更",
               "domain": "其它",
               "tab": false,
               "status": "已实现",
