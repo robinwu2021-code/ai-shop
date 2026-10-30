@@ -5,6 +5,8 @@ import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.event.AfterCommit;
+import ai.neargo.shop.food.service.ProductionConsumptionService;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.food.dto.KitchenContracts.CoreLineScope;
@@ -106,6 +108,13 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
     private final OutboxPublisher outbox;
     private final ObjectMapper json;
     private final TransactionTemplate write;
+    private ObjectProvider<ProductionConsumptionService> production;
+
+    @Autowired
+    public void configureProduction(ObjectProvider<ProductionConsumptionService> production) {
+        this.production = production;
+    }
+
     private ObjectProvider<FoodStationRuntimeService> stationRuntime;
 
     @Autowired
@@ -1646,6 +1655,10 @@ public class KitchenTaskServiceImpl implements KitchenTaskService {
                         actor,
                         Instant.now()),
                 new PublishOptions("FOOD_KITCHEN_TASK:" + task, 1));
+        if (production != null && "MAKE".equals(row.getTaskRole()) && "START".equals(action)) {
+            AfterCommit.runOutsideTransaction("food-production " + event.getEventNo(), write.getTransactionManager(),
+                    () -> production.getObject().consume(entity, batch.getStoreNo(), actor, event.getEventNo()));
+        }
         return event;
     }
 

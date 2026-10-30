@@ -30,3 +30,18 @@
 V622切换前停止旧管理写者及对应运行器，防止迁移后仍写旧审计源。已有被手工禁用的打印artifact维护/积分恢复任务需显式启用，代码默认值不会覆写持久任务定义。旧库存handler仅清历史积压，新写使用原业务记录直接客户端。回滚不能仅换旧JAR：须迁回切换后新增的管理命令并移交未完成库存业务投递，避免读源分裂或恢复缺口。
 
 测试夹具兼容修复仅限H2：生成器删除代码区的MySQL内联charset语法、平台夹具增加真实SHA2实现；V621重命名和已有库存descriptor的投影清单同步，不修改冻结迁移或原生约束。测试中发现取消订单返回详情误用事务外鉴权入口，改为读取已验证属主详情；保留属主查询条件。详07验收记录。
+
+
+## 7 E1生产耗用直接触发实施计划
+
+目标：去掉DINING_SERVICE_EVENT对food-production-consumption-v1的新投递，不改变打印/KDS/渠道/报表的事实交接。复用fnb_service_event与fnb_production_consumption，无DDL、无新增公网API/任务。
+
+- [x] KitchenTaskServiceImpl注入原ProductionConsumptionService；MAKE START提交后在事务外consume原eventNo，回滚不调用，远端失败不改变已提交厨房动作。MATERIAL_SUPPLEMENT/WASTE原入口本已提交后直接consume，继续复用。
+- [x] ServiceEventMapper新增有界未建耗用记录查询，沿同租户/主体的任务、厨单、批次归属取原entity/store/event；仅MAKE且START/补料/损耗、已接单/未删除事实。ProductionConsumptionServiceImpl.recover预留至多半批预算（至少1项）读取首次缺口，已有待确认使用剩余预算；两组先取快照再处理，缺口为空时已有待确认可用满批预算，保留同键幂等、BLOCKED人工处理；不重复投递已建记录。
+- [x] FoodOutboxRouting去掉新生产target；DiningProductionConsumer.supports不再接受新事件，但handle按原类型继续处理已有delivery；运行器按稳定handlerId处理历史记录，无须扩展通用Outbox框架。
+- [x] 集成/独立相关代码统一编译后，集中测试真实Mapper范围/过滤/limit、提交/回滚/故障恢复、原生产算法和旧handler兼容、独立producer。只有失败修复定向复测。
+
+本轮保留：接单消费者同时调用厨房与远程打印；KDS消费者同时本地投影与远程打印；渠道通知跨独立commerce库，报表更正跨独立报表库。它们尚无覆盖首次交接缺口的完整原业务恢复，直接删除会丢事实，后续按原业务任务替代，不为减少数量另造队列。
+
+
+E1复核发现已有未决记录满批会饿死首次缺口。真实MySQL回归先复现失败，再改为预留首次缺口预算，相关复测通过；单批limit=1时优先补首次缺口，无缺口再推进旧记录。原默认任务limit=50时两类均可前进。该修复不引入新状态表或任务。旧BLOCKED仍需人工修复，不计完成；原生事实、金额/库存owner均不改。

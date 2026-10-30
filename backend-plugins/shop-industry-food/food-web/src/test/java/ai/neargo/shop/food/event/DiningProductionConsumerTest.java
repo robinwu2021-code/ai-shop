@@ -42,6 +42,13 @@ class DiningProductionConsumerTest {
     }
 
     @Test
+    void oldDeliveryStillExecutesButNewServiceEventsDoNotSelectThisHandler() {
+        assertThat(consumer.supports("DINING_SERVICE_EVENT")).isFalse();
+        when(production.consume("E1", "S1", "U1", "SEV1")).thenReturn(receipt("CONFIRMED", false));
+        assertThat(consumer.handle(event()).kind()).isEqualTo(DeliveryResult.Kind.SENT);
+    }
+
+    @Test
     void timeoutAndRemote5xxAreRetried() {
         when(production.consume("E1", "S1", "U1", "SEV1"))
                 .thenThrow(new ServiceCallException(CallOutcome.TIMEOUT, "food", 0, "timeout"))

@@ -77,8 +77,8 @@ class FoodServerProducerOutboxTest {
             assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type='DINING_QUEUE_CHANGED'",
                     String.class)).isEqualTo("ARCHIVED");
             assertThat(jdbc.queryForList("SELECT handler_id FROM sys_outbox_delivery",String.class))
-                    .containsExactlyInAnyOrder(FoodOutboxRouting.PRODUCTION_HANDLER, "food-kds-business-events-v1");
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isEqualTo(2);
+                    .containsExactly("food-kds-business-events-v1");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isEqualTo(1);
         });
     }
     @Test void actualProducerPersistsAllEighteenFactRoutesAndBothDeliveryDeclarations() {
@@ -106,7 +106,7 @@ class FoodServerProducerOutboxTest {
                 assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type=?",String.class,type))
                         .isEqualTo("ARCHIVED");
             }
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isEqualTo(7);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isEqualTo(6);
             for(var route:FoodOutboxRouting.DELIVERY_TARGETS.entrySet()) {
                 assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type=?",String.class,route.getKey()))
                         .isEqualTo("PENDING");

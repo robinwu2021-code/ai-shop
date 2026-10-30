@@ -223,6 +223,109 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
         });
     }
 
+    @Test
+    void startConsumesOriginalCommittedEventOutsideTransactionAndReplayDoesNotRepeat() {
+        runner().withUserConfiguration(Mappers.class).run(c -> {
+            var f = kitchen(c);
+            f.batch("B1", "C1", "S", "ACCEPTED"); f.ticket("TICKET", "B1"); f.line("L1", "B1", "SEAT1", null);
+            f.task("T1", "TICKET", "L1", "MAKE", "QUEUED", "1", "0", "0", "0");
+            var owner = org.mockito.Mockito.mock(ai.neargo.shop.food.service.ProductionConsumptionService.class);
+            var factory = new org.springframework.beans.factory.support.DefaultListableBeanFactory();
+            factory.registerSingleton("production", owner);
+            f.service.configureProduction(factory.getBeanProvider(ai.neargo.shop.food.service.ProductionConsumptionService.class));
+            var calls = new java.util.concurrent.atomic.AtomicInteger();
+            org.mockito.Mockito.when(owner.consume(org.mockito.ArgumentMatchers.eq("E"), org.mockito.ArgumentMatchers.eq("S"),
+                    org.mockito.ArgumentMatchers.eq("A"), org.mockito.ArgumentMatchers.anyString())).thenAnswer(i -> {
+                assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+                assertThat(f.sql.queryForObject("SELECT action FROM fnb_service_event WHERE event_no=?", String.class, (String) i.getArgument(3)))
+                        .isEqualTo("START");
+                calls.incrementAndGet(); return null;
+            });
+            var req = new TaskActionReq(0L, "START", BigDecimal.ONE, null);
+            var result = f.service.act("E", "S", "A", "T1", req, "direct-start");
+            assertThat(f.service.act("E", "S", "A", "T1", req, "direct-start")).isEqualTo(result);
+            assertThat(calls).hasValue(1);
+            assertThat(f.count("fnb_service_event")).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void rolledBackStartDoesNotConsumeAndTransportFailureKeepsCommittedSource() {
+        runner().withUserConfiguration(Mappers.class).run(c -> {
+            var f = kitchen(c);
+            f.batch("B1", "C1", "S", "ACCEPTED"); f.ticket("TICKET", "B1"); f.line("L1", "B1", "SEAT1", null);
+            f.task("T1", "TICKET", "L1", "MAKE", "QUEUED", "1", "0", "0", "0");
+            var owner = org.mockito.Mockito.mock(ai.neargo.shop.food.service.ProductionConsumptionService.class);
+            var factory = new org.springframework.beans.factory.support.DefaultListableBeanFactory();
+            factory.registerSingleton("production", owner);
+            f.service.configureProduction(factory.getBeanProvider(ai.neargo.shop.food.service.ProductionConsumptionService.class));
+            var tx = new org.springframework.transaction.support.TransactionTemplate(c.getBean(PlatformTransactionManager.class));
+            tx.executeWithoutResult(status -> {
+                f.service.act("E", "S", "A", "T1", new TaskActionReq(0L, "START", BigDecimal.ONE, null), "rollback-start");
+                status.setRollbackOnly();
+            });
+            org.mockito.Mockito.verifyNoInteractions(owner);
+            assertThat(f.count("fnb_service_event")).isZero();
+            org.mockito.Mockito.when(owner.consume(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString())).thenThrow(new IllegalStateException("transport unavailable"));
+            f.service.act("E", "S", "A", "T1", new TaskActionReq(0L, "START", BigDecimal.ONE, null), "committed-start");
+            assertThat(f.count("fnb_service_event")).isEqualTo(1);
+            assertThat(f.qty("T1", "making_qty")).isEqualByComparingTo("1");
+        });
+    }
+
+    @Test
+    void actualMissingSourceQueryRespectsOriginalScopeRoleActionAndExistingReceipts() {
+        runner().withUserConfiguration(Mappers.class).run(c -> {
+            var f = kitchen(c);
+            table(f.sql, ai.neargo.shop.food.entity.FnbProductionConsumption.class, "fnb_production_consumption");
+            for (String n : List.of("1", "2", "3", "4")) {
+                f.batch("B" + n, "C1", "2".equals(n) ? "S2" : "S", "ACCEPTED");
+                f.ticket("K" + n, "B" + n); f.line("L" + n, "B" + n, "SEAT1", null);
+                f.task("T" + n, "K" + n, "L" + n, "MAKE", "QUEUED", "1", "0", "0", "0");
+                f.sql.update("INSERT INTO fnb_service_event(tenant_no,entity_no,event_no,task_no,action,qty,version,deleted) VALUES('MAIN','E',?,?,'START',1,0,0)", "EV" + n, "T" + n);
+            }
+            f.sql.update("UPDATE fnb_kitchen_task SET task_role='PACK' WHERE task_no='T3'");
+            f.sql.update("UPDATE fnb_service_event SET deleted=1 WHERE event_no='EV4'");
+            var mapper = c.getBean(ServiceEventMapper.class);
+            assertThat(mapper.unconsumed(1)).extracting(ServiceEventMapper.ProductionSource::eventNo).containsExactly("EV1");
+            assertThat(mapper.unconsumed(10)).extracting(ServiceEventMapper.ProductionSource::storeNo).containsExactly("S", "S2");
+            f.sql.update("INSERT INTO fnb_production_consumption(tenant_no,entity_no,store_no,source_event_no,status,deleted) VALUES ('OTHER','E','S2','EV2','BLOCKED',0),('MAIN','E','WRONG','EV2','BLOCKED',0),('MAIN','E','S','EV1','BLOCKED',0)");
+            assertThat(mapper.unconsumed(10)).extracting(ServiceEventMapper.ProductionSource::eventNo).containsExactly("EV2");
+            f.sql.update("UPDATE fnb_order_batch SET status='CANCELLED' WHERE batch_no='B2'");
+            assertThat(mapper.unconsumed(10)).isEmpty();
+        });
+    }
+
+    @Test
+    void unresolvedPendingRowsCannotStarveAnotherStoresFirstConsumption() {
+        runner().withUserConfiguration(Mappers.class).run(c -> {
+            var f = kitchen(c);
+            table(f.sql, ai.neargo.shop.food.entity.FnbProductionConsumption.class, "fnb_production_consumption");
+            f.batch("B1", "C1", "S", "ACCEPTED"); f.ticket("K1", "B1"); f.line("L1", "B1", "SEAT1", null);
+            f.task("T1", "K1", "L1", "MAKE", "QUEUED", "1", "0", "0", "0");
+            f.sql.update("INSERT INTO fnb_service_event(tenant_no,entity_no,event_no,task_no,action,qty,version,deleted) VALUES('MAIN','E','NEW','T1','START',1,0,0)");
+            for (int n = 0; n < 4; n++) f.sql.update("INSERT INTO fnb_production_consumption(tenant_no,entity_no,store_no,source_event_no,status,updated_at,version,deleted) VALUES('MAIN','E','OLD_STORE',?,'UNKNOWN',CURRENT_TIMESTAMP,0,0)", "OLD" + n);
+            var original = new ai.neargo.shop.food.service.impl.ProductionConsumptionServiceImpl(
+                    c.getBean(ProductionConsumptionMapper.class), org.mockito.Mockito.mock(ProductionConsumptionLineMapper.class),
+                    c.getBean(OrderBatchMapper.class), c.getBean(OrderLineMapper.class), c.getBean(KitchenTicketMapper.class),
+                    c.getBean(KitchenTaskMapper.class), c.getBean(ServiceEventMapper.class), c.getBean(ConfigRevisionMapper.class),
+                    org.mockito.Mockito.mock(ai.neargo.shop.spi.user.StoreCardQueryPort.class), null,
+                    c.getBean(ObjectMapper.class), c.getBean(PlatformTransactionManager.class));
+            var service = org.mockito.Mockito.spy(original);
+            var calls = new ArrayList<String>();
+            org.mockito.Mockito.doAnswer(i -> {
+                String event = i.getArgument(3); calls.add(event);
+                var result = org.mockito.Mockito.mock(ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO.class);
+                org.mockito.Mockito.when(result.consumptionPending()).thenReturn(!"NEW".equals(event));
+                return result;
+            }).when(service).consume(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+            assertThat(service.recover(4)).isEqualTo(1);
+            assertThat(calls).contains("NEW").hasSize(4);
+        });
+    }
+
     private Kitchen kitchen(org.springframework.boot.test.context.assertj.AssertableApplicationContext c) {
         var db = prepare(c).sql();
         table(db, FnbCheck.class, "fnb_check"); table(db, FnbOrderBatch.class, "fnb_order_batch");
@@ -289,6 +392,7 @@ class KitchenLifecycleAcceptanceTest extends FoodWriteGuardFixture {
     }
     @Configuration(proxyBeanMethods=false)
     static class Mappers {
+        @Bean MapperFactoryBean<ProductionConsumptionMapper> productionMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(ProductionConsumptionMapper.class,t); }
         @Bean MapperFactoryBean<OrderBatchMapper> batchMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(OrderBatchMapper.class,t); }
         @Bean MapperFactoryBean<OrderLineMapper> lineMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(OrderLineMapper.class,t); }
         @Bean MapperFactoryBean<OrderComponentMapper> componentMapper(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate t) { return mapper(OrderComponentMapper.class,t); }

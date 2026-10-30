@@ -45,12 +45,13 @@ public class DiningProductionConsumer implements OutboxHandler {
 
     @Override
     public boolean supports(String type) {
-        return "DINING_SERVICE_EVENT".equals(type);
+        // New writes call the original service directly; this handler ID drains old deliveries only.
+        return false;
     }
 
     @Override
     public DeliveryResult handle(OutboxEnvelope event) {
-        if (!supports(event.eventType()))
+        if (!"DINING_SERVICE_EVENT".equals(event.eventType()))
             throw new IllegalArgumentException("Unexpected production event");
         var source = json.readValue(event.payload(), DiningServiceEvent.class);
         if (!"FOOD_KITCHEN_TASK".equals(event.aggregateType())

@@ -448,7 +448,10 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
     public int recover(int limit) {
         outside();
         if (limit < 1 || limit > 200) throw BizException.of(ErrorCode.BAD_REQUEST);
-        var pending =
+        // Reserve part of the same budget for the commit-to-first-prepare crash gap.
+        var missed = DataScopeContext.executeWithoutScope(() -> events.unconsumed(Math.max(1, limit / 2)));
+        int pendingBudget = limit - missed.size();
+        var pending = pendingBudget == 0 ? List.<FnbProductionConsumption>of() :
                 DataScopeContext.executeWithoutScope(
                         () ->
                                 heads.selectList(
@@ -461,7 +464,7 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                                                 "UNKNOWN",
                                                                 "REVERSAL_PENDING"))
                                                 .orderByAsc(FnbProductionConsumption::getUpdatedAt)
-                                                .last("LIMIT " + limit)));
+                                                .last("LIMIT " + pendingBudget)));
         int completed = 0;
         for (var row : pending)
             try {
@@ -479,6 +482,15 @@ public class ProductionConsumptionServiceImpl implements ProductionConsumptionSe
                                 row.getSourceEventNo(),
                                 unresolved);
             }
+        for (var source : missed) {
+            try {
+                var result = consume(source.entityNo(), source.storeNo(), "SYSTEM", source.eventNo());
+                if (!result.consumptionPending()) completed++;
+            } catch (RuntimeException unresolved) {
+                LoggerFactory.getLogger(ProductionConsumptionServiceImpl.class)
+                        .warn("Production source recovery remains unresolved: {}", source.eventNo(), unresolved);
+            }
+        }
         return completed;
     }
 

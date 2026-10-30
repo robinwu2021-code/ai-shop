@@ -538,6 +538,51 @@ class ProductionConsumptionTest {
         verifyNoInteractions(fixture.inventory, fixture.revisions);
     }
 
+    @Test
+    void recoveryFindsCommittedSourceBeforeFirstConsumptionWasPrepared() {
+        var f = new NewEventFixture();
+        when(f.heads.selectList(any())).thenReturn(List.of());
+        when(f.events.unconsumed(1)).thenReturn(List.of(
+                new ServiceEventMapper.ProductionSource("E", "S", "EVENT")), List.of());
+        assertThat(f.service.recover(2)).isZero();
+        assertThat(f.stored.get()).isNotNull();
+        assertThat(f.stored.get().getStatus()).isEqualTo("BLOCKED");
+        assertThat(f.stored.get().getSourceEventNo()).isEqualTo("EVENT");
+        assertThat(f.service.recover(2)).isZero();
+        verify(f.heads).insert(any(FnbProductionConsumption.class));
+        verifyNoInteractions(f.inventory);
+    }
+
+    @Test
+    void existingPendingWorkAndMissingSourcesShareOneRecoveryBudget() {
+        var f = new NewEventFixture();
+        var service = org.mockito.Mockito.spy(f.service);
+        var old = new FnbProductionConsumption();
+        old.setEntityNo("E"); old.setStoreNo("S"); old.setSourceEventNo("OLD");
+        when(f.heads.selectList(any())).thenReturn(List.of(old));
+        var done = mock(ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO.class);
+        org.mockito.Mockito.doReturn(done).when(service).consume("E", "S", "SYSTEM", "OLD");
+        org.mockito.Mockito.doReturn(done).when(service).consume("E", "S2", "SYSTEM", "NEW");
+        when(f.events.unconsumed(1)).thenReturn(List.of(new ServiceEventMapper.ProductionSource("E", "S2", "NEW")));
+        assertThat(service.recover(2)).isEqualTo(2);
+        verify(f.events).unconsumed(1);
+        verify(service).consume("E", "S2", "SYSTEM", "NEW");
+    }
+
+    @Test
+    void oneUnresolvedSourceDoesNotStopOtherSourcesInTheRecoveryBatch() {
+        var f = new NewEventFixture();
+        var service = org.mockito.Mockito.spy(f.service);
+        when(f.heads.selectList(any())).thenReturn(List.of());
+        when(f.events.unconsumed(2)).thenReturn(List.of(
+                new ServiceEventMapper.ProductionSource("E", "S", "BAD"),
+                new ServiceEventMapper.ProductionSource("E", "S2", "GOOD")));
+        org.mockito.Mockito.doThrow(new IllegalStateException("unavailable")).when(service).consume("E", "S", "SYSTEM", "BAD");
+        org.mockito.Mockito.doReturn(mock(ai.neargo.shop.food.dto.ProductionContracts.ConsumptionVO.class))
+                .when(service).consume("E", "S2", "SYSTEM", "GOOD");
+        assertThat(service.recover(4)).isEqualTo(1);
+    }
+
     private static class NewEventFixture {
         final ObjectMapper json = new ObjectMapper();
         final InventoryProductionPort inventory = mock(InventoryProductionPort.class);
@@ -546,6 +591,7 @@ class ProductionConsumptionTest {
         final AtomicReference<FnbProductionConsumption> stored = new AtomicReference<>();
         final FnbOrderBatch batch = new FnbOrderBatch();
         final FnbOrderLine line = new FnbOrderLine();
+        final ServiceEventMapper events = mock(ServiceEventMapper.class);
         final ProductionConsumptionServiceImpl service;
 
         NewEventFixture() {
@@ -559,7 +605,6 @@ class ProductionConsumptionTest {
                                 return 1;
                             });
             when(children.selectList(any())).thenReturn(List.of());
-            var events = mock(ServiceEventMapper.class);
             var event = new FnbServiceEvent();
             event.setEntityNo("E");
             event.setEventNo("EVENT");

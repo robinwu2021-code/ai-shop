@@ -104,3 +104,8 @@
 ## 2026-10-30 Outbox收缩实施
 
 公网API及权限不变。库存投递可观察状态增加PROCESSING（90秒租约）；retry不能抢占活跃租约，终态返回原结果，映射阻断先修映射。新写由FOOD直接调用inventory-client，原内部dispatch和旧handler仅处理历史Outbox积压。打印、积分API不变；管理审计改读命令账本并保留历史id游标。
+
+
+## 2026-10-30 E1生产耗用直接调用
+
+E1无新增公网或内部API。KitchenTaskService.act保持输入输出，MAKE START提交后直接调用原ProductionConsumptionService.consume(entity,store,actor,eventNo)。既有PRODUCTION_RECOVERY入口仍调用recover(limit)；首次缺口预留至多半批（至少1）额度，已有未决使用剩余额度，无缺口时旧记录可用满批；总尝试数不超过limit。BLOCKED保持待处理，不冒报耗用完成。

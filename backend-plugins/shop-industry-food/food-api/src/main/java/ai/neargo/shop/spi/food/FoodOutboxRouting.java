@@ -22,7 +22,7 @@ public final class FoodOutboxRouting {
                                     "food-kds-business-events-v1",
                                     true),
                     "DINING_SERVICE_EVENT",
-                            Map.of(PRODUCTION_HANDLER, true, "food-kds-business-events-v1", true),
+                            Map.of("food-kds-business-events-v1", true),
                     "FOOD_CHECK_CHANGED", Map.of("food-kds-business-events-v1", true),
                     "DINING_ORDER_CHANGED", Map.of("food-kds-business-events-v1", true),
                     "DINING_STATION_RUNTIME_CHANGED", Map.of("food-kds-business-events-v1", true));

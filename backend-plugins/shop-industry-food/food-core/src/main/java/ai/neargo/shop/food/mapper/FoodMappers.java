@@ -433,7 +433,21 @@ public final class FoodMappers {
                 + "AND r.status<>'CANCELLED' ORDER BY r.config_no,r.effective_at DESC,r.revision DESC")
         List<FnbConfigRevision> stationPublications(@Param("entity") String entity);
     }
-    public interface ServiceEventMapper extends BaseMapper<FnbServiceEvent> { }
+    public interface ServiceEventMapper extends BaseMapper<FnbServiceEvent> {
+        record ProductionSource(String entityNo, String storeNo, String eventNo) {}
+
+        @Select("SELECT e.entity_no,b.store_no,e.event_no FROM fnb_service_event e "
+                + "JOIN fnb_kitchen_task t ON t.tenant_no=e.tenant_no AND t.entity_no=e.entity_no AND t.task_no=e.task_no "
+                + "JOIN fnb_kitchen_ticket k ON k.tenant_no=t.tenant_no AND k.entity_no=t.entity_no AND k.ticket_no=t.ticket_no "
+                + "JOIN fnb_order_batch b ON b.tenant_no=k.tenant_no AND b.entity_no=k.entity_no AND b.batch_no=k.batch_no "
+                + "WHERE e.tenant_no='MAIN' AND e.deleted=0 AND t.deleted=0 AND k.deleted=0 AND b.deleted=0 "
+                + "AND t.task_role='MAKE' AND b.status='ACCEPTED' "
+                + "AND e.action IN ('START','MATERIAL_SUPPLEMENT','MATERIAL_WASTE') "
+                + "AND NOT EXISTS (SELECT 1 FROM fnb_production_consumption h WHERE h.tenant_no=e.tenant_no "
+                + "AND h.entity_no=e.entity_no AND h.store_no=b.store_no AND h.source_event_no=e.event_no AND h.deleted=0) "
+                + "ORDER BY e.id LIMIT #{limit}")
+        List<ProductionSource> unconsumed(@Param("limit") int limit);
+    }
 
     public interface BusinessDayMapper extends BaseMapper<FnbBusinessDay> { }
     public interface CloseRunMapper extends BaseMapper<FnbCloseRun> { }
