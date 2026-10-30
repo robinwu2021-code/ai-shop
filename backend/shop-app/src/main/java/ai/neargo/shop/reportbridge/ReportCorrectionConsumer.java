@@ -45,7 +45,7 @@ public class ReportCorrectionConsumer implements OutboxConsumer {
                     "AFTER_SALE_REJECTED",
                     "AFTER_SALE_RETURN_WAIT",
                     "AFTER_SALE_REFUNDED",
-                    "DINING_SERVICE_EVENT");
+                    "DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER");
     private final ReportStorageService storage;
     private final ObjectProvider<ReportAffectedDaysPort> owners;
     private final ObjectMapper json;
@@ -102,7 +102,7 @@ public class ReportCorrectionConsumer implements OutboxConsumer {
         if (!supports(event.getEventType()))
             throw new IllegalArgumentException("REPORT_UNSUPPORTED_EVENT");
         var body = json.readTree(event.getPayload());
-        if ("DINING_SERVICE_EVENT".equals(event.getEventType())) {
+        if (Set.of("DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER").contains(event.getEventType())) {
             String task = body.path("taskNo").asString("");
             if (!"PLATFORM".equals(event.getSourceSystem())
                     || !Integer.valueOf(1).equals(event.getSchemaVersion())

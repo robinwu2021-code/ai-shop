@@ -165,6 +165,57 @@ class FoodOutboxWiringTest extends FoodWriteGuardFixture {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(LoginUser.merchant(actor, actor), null, List.of()));
     }
+    @Test void channelSubscribersDoNotCreateDraftOrNonHandoverDeliveries() {
+        runner().withUserConfiguration(ChannelSubscribers.class).run(c -> {
+            var f = prepare(c);
+            var publisher = c.getBean("foodOutboxPublisher", OutboxPublisher.class);
+            var draft = new ai.neargo.shop.spi.food.MenuChanged("E", "S", "M", "UPDATE_MENU", 1, "OP", null);
+            var skipped = f.tx().execute(t -> publisher.publish(draft, new PublishOptions("MENU:M", 1)));
+            assertThat(skipped.created()).isFalse();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Long.class)).isZero();
+            var disabled = new ai.neargo.shop.spi.food.MenuChanged("E", "S", "M", "DISABLE_MENU", 2, "OP2", null);
+            f.tx().executeWithoutResult(t -> publisher.publish(disabled, new PublishOptions("MENU:M", 1)));
+            for (String action : List.of("START", "READY", "CUSTODY_HANDOVER")) {
+                var fact = new ai.neargo.shop.spi.food.DiningServiceEvent(action, "E", "S", "B", "K", "T", "L", null,
+                        "ST", "MAKE", 1, action, java.math.BigDecimal.ONE, null, "A", java.time.Instant.now());
+                f.tx().executeWithoutResult(t -> publisher.publish(fact, new PublishOptions("FOOD_KITCHEN_TASK:T", 1)));
+            }
+            assertThat(f.sql().queryForList("SELECT e.event_type FROM sys_outbox e JOIN sys_outbox_delivery d ON e.event_no=d.event_no WHERE d.handler_id='commerce-food-source-events-v1'", String.class))
+                    .containsExactly("FOOD_MENU_DISABLED");
+            assertThat(f.sql().queryForList("SELECT e.event_type FROM sys_outbox e JOIN sys_outbox_delivery d ON e.event_no=d.event_no WHERE d.handler_id='commerce-food-fulfillment-events-v1'", String.class))
+                    .containsExactly("DINING_CUSTODY_HANDOVER");
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery WHERE handler_id='food-kds-business-events-v1'", Long.class))
+                    .isEqualTo(3);
+            long before = f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Long.class);
+            f.tx().executeWithoutResult(t -> {
+                publisher.publish(disabled, new PublishOptions("MENU:M", 1)); t.setRollbackOnly();
+            });
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Long.class)).isEqualTo(before);
+        });
+    }
+
+    @Configuration(proxyBeanMethods=false)
+    static class ChannelSubscribers {
+        @Bean UnifiedOutboxFacade channelSubscribers(@Qualifier("dataSource") DataSource source,
+                @Qualifier("transactionManager") PlatformTransactionManager manager, ObjectMapper json) {
+            var facade = new UnifiedOutboxFacade(json);
+            var handlers = List.of(
+                    target("commerce-food-source-events-v1", Set.of("FOOD_MENU_DISABLED")),
+                    target("commerce-food-fulfillment-events-v1", Set.of("DINING_CUSTODY_HANDOVER")),
+                    target("food-kds-business-events-v1", Set.of("DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER")));
+            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), handlers);
+            return facade;
+        }
+        private static OutboxHandler target(String id, Set<String> types) {
+            return new OutboxHandler() {
+                public String handlerId() { return id; }
+                public boolean externalWorkflow() { return true; }
+                public boolean supports(String type) { return types.contains(type); }
+                public DeliveryResult handle(OutboxEnvelope event) { return DeliveryResult.sent(); }
+            };
+        }
+    }
+
     @Configuration(proxyBeanMethods=false)
     static class Subscribed {
         @Bean UnifiedOutboxFacade subscribed(@Qualifier("dataSource") DataSource source,

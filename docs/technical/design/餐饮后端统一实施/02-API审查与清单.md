@@ -114,3 +114,8 @@ E1无新增公网或内部API。KitchenTaskService.act保持输入输出，MAKE 
 ## 2026-10-30 E2工位状态与KDS直接写入
 
 E2无新增或改名API、参数、权限。暂停/恢复与语音control/claim/acknowledge返回保持；成功返回时对应KDS事件已一并持久化。STATION_CONTROL/VOICE_CALL事件的stationNo、sourceNo、sourceVersion、payload语义不变，eventNo使用原BizKey事件编号；原请求/完成回执重放不重复追加。KDS订阅/回放/流接口保持。无打印的事件不访问打印owner；READY等仍要求真实打印owner。
+
+
+## 2026-10-30 E3渠道有效事实订阅
+
+E3无新增公网API/字段。内部事件元数据新增FOOD_MENU_DISABLED（仅DISABLE_MENU）、DINING_CUSTODY_HANDOVER（仅CUSTODY_HANDOVER）；其余动作保留原FOOD_MENU_CHANGED/DINING_SERVICE_EVENT。新渠道订阅不再选择草稿/普通厨房动作，旧两类handle仍重放历史payload。KDS和ReportCorrectionConsumer均接收新旧厨房事实。SourceNoticeService.receive及ChannelFulfillmentTriggerPort.record输入输出不变，原业务事件幂等及WAITING_IMPORT/真实意图回执确认保持。

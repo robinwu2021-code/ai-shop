@@ -551,7 +551,9 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                         "SELECT o.event_no FROM fnb_service_event e JOIN fnb_kitchen_task t ON"
                                 + " t.task_no=e.task_no JOIN fnb_kitchen_ticket k ON"
                                 + " k.ticket_no=t.ticket_no JOIN sys_outbox o ON"
-                                + " o.source_system='PLATFORM' AND o.event_type='DINING_SERVICE_EVENT'"
+                                + " o.source_system='PLATFORM' AND o.event_type IN ('DINING_SERVICE_EVENT','DINING_CUSTODY_HANDOVER')"
+                                + " AND EXISTS(SELECT 1 FROM sys_outbox_delivery d WHERE d.event_no=o.event_no"
+                                + " AND d.handler_id='commerce-food-fulfillment-events-v1')"
                                 + " AND JSON_UNQUOTE(JSON_EXTRACT(o.payload, '$.eventNo'))=e.event_no"
                                 + " WHERE k.batch_no=? ORDER BY o.stream_key,o.stream_sequence",
                         String.class,

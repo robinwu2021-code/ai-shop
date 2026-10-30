@@ -58,14 +58,14 @@ public final class FoodChannelFulfillmentEventConsumer implements OutboxHandler 
 
     @Override
     public boolean supports(String type) {
-        return "DINING_SERVICE_EVENT".equals(type);
+        return "DINING_CUSTODY_HANDOVER".equals(type);
     }
 
     @Override
     public DeliveryResult handle(OutboxEnvelope envelope) {
         DiningServiceEvent event;
         try {
-            if (!supports(envelope.eventType())
+            if ((!supports(envelope.eventType()) && !"DINING_SERVICE_EVENT".equals(envelope.eventType()))
                     || !"PLATFORM".equals(envelope.sourceSystem())
                     || envelope.schemaVersion() != 1)
                 return DeliveryResult.failed(
@@ -84,7 +84,10 @@ public final class FoodChannelFulfillmentEventConsumer implements OutboxHandler 
             return DeliveryResult.failed(
                     "FULFILLMENT_EVENT_INVALID", "Invalid original event payload");
         }
-        if (!"CUSTODY_HANDOVER".equals(event.action())) return DeliveryResult.sent();
+        if (!"CUSTODY_HANDOVER".equals(event.action())) {
+            return "DINING_SERVICE_EVENT".equals(envelope.eventType()) ? DeliveryResult.sent()
+                    : DeliveryResult.failed("FULFILLMENT_EVENT_ACTION", "Missing original custody handover");
+        }
         try {
             var signal =
                     DiningChannelFulfillmentSignalPolicy.validate(

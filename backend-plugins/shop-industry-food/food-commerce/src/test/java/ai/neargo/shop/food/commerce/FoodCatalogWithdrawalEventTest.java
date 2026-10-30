@@ -46,6 +46,17 @@ class FoodCatalogWithdrawalEventTest {
     }
 
     @Test
+    void newDisabledFactIsSelectedButLegacyMenuPayloadStillReplays() {
+        assertThat(consumer.supports("FOOD_MENU_CHANGED")).isFalse();
+        assertThat(consumer.supports("FOOD_MENU_DISABLED")).isTrue();
+        var old = envelope("DISABLE_MENU", "DISABLED");
+        var current = new OutboxEnvelope(old.eventNo(), old.sourceSystem(), old.sourceEventNo(), old.aggregateType(), old.aggregateId(),
+                "FOOD_MENU_DISABLED", old.schemaVersion(), old.streamKey(), old.streamSequence(), old.payload(), old.occurredAt());
+        assertThat(consumer.handle(current).kind()).isEqualTo(ai.neargo.shop.event.outbox.DeliveryResult.Kind.SENT);
+        verify(notices).receive(any());
+    }
+
+    @Test
     void onlyActualDisableActionCarriesExplicitWithdrawalHintWithOriginalEventIdentity() {
         consumer.handle(envelope("DISABLE_MENU", "DISABLED"));
         var captured = ArgumentCaptor.forClass(SourceNoticeContracts.Notice.class);

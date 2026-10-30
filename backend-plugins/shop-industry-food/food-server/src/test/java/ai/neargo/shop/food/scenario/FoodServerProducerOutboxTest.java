@@ -84,8 +84,8 @@ class FoodServerProducerOutboxTest {
     @Test void actualProducerPersistsFactAndRemainingDeliveryDeclarations() {
         runner().run(context -> {
             FoodServerProducerAssertions.verify(context);
-            assertThat(FoodOutboxRouting.ARCHIVE_ONLY).hasSize(18);
-            assertThat(FoodOutboxRouting.DELIVERY_TARGETS).hasSize(4)
+            assertThat(FoodOutboxRouting.ARCHIVE_ONLY).hasSize(19);
+            assertThat(FoodOutboxRouting.DELIVERY_TARGETS).hasSize(5)
                     .doesNotContainKey("DINING_STATION_RUNTIME_CHANGED");
             var facade=context.getBean(UnifiedOutboxFacade.class);
             var tx=new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
@@ -99,15 +99,15 @@ class FoodServerProducerOutboxTest {
                 }
             });
             var jdbc=new JdbcTemplate(context.getBean(DataSource.class));
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isEqualTo(22);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isEqualTo(24);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE status='ARCHIVED'",Long.class))
-                    .isEqualTo(18);
+                    .isEqualTo(19);
             for(String fact:FoodOutboxRouting.ARCHIVE_ONLY) {
                 String type=fact.substring("PLATFORM:".length());
                 assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type=?",String.class,type))
                         .isEqualTo("ARCHIVED");
             }
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isEqualTo(5);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isEqualTo(6);
             for(var route:FoodOutboxRouting.DELIVERY_TARGETS.entrySet()) {
                 assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type=?",String.class,route.getKey()))
                         .isEqualTo("PENDING");
@@ -126,6 +126,25 @@ class FoodServerProducerOutboxTest {
         runner().withPropertyValues("shop.outbox.sources.inventory.mode=unified").run(context ->
                 assertThat(context).hasFailed());
     }
+    @Test void channelAndReportProducerTargetsOnlySelectRelevantNewFacts() {
+        runner().withPropertyValues("shop.food.commerce.events.enabled=true", "shop.food.commerce.fulfillment-events.enabled=true",
+                "shop.report.enabled=true", "shop.report.food.enabled=true").run(c -> {
+            var facade = c.getBean(UnifiedOutboxFacade.class);
+            var tx = new TransactionTemplate(c.getBean(PlatformTransactionManager.class));
+            var jdbc = new JdbcTemplate(c.getBean(DataSource.class));
+            tx.executeWithoutResult(t -> {
+                for (String type : java.util.List.of("FOOD_MENU_CHANGED", "FOOD_MENU_DISABLED", "DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER"))
+                    facade.publisher("PLATFORM").publish(new Event(type, type), new PublishOptions(type, 1));
+            });
+            assertThat(jdbc.queryForList("SELECT e.event_type FROM sys_outbox_delivery d JOIN sys_outbox e ON e.event_no=d.event_no WHERE d.handler_id='commerce-food-source-events-v1'", String.class))
+                    .containsExactly("FOOD_MENU_DISABLED");
+            assertThat(jdbc.queryForList("SELECT e.event_type FROM sys_outbox_delivery d JOIN sys_outbox e ON e.event_no=d.event_no WHERE d.handler_id='commerce-food-fulfillment-events-v1'", String.class))
+                    .containsExactly("DINING_CUSTODY_HANDOVER");
+            assertThat(jdbc.queryForList("SELECT e.event_type FROM sys_outbox_delivery d JOIN sys_outbox e ON e.event_no=d.event_no WHERE d.handler_id='food-report-correction-v1'", String.class))
+                    .containsExactlyInAnyOrder("DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER");
+        });
+    }
+
     @Configuration(proxyBeanMethods=false)
     static class Primary {
         @Bean DataSource dataSource() throws Exception {

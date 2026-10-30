@@ -67,7 +67,7 @@ public class FoodServerOutboxConfiguration {
         if (commerceEvents)
             for (String type :
                     List.of(
-                            "FOOD_MENU_CHANGED",
+                            "FOOD_MENU_DISABLED",
                             "FOOD_CONFIG_PUBLISHED",
                             "FOOD_DISH_CHANGED",
                             "FOOD_STORE_POLICY_PUBLISHED",
@@ -76,18 +76,19 @@ public class FoodServerOutboxConfiguration {
                 targets.put(type, Map.of("commerce-food-source-events-v1", true));
             }
         if (fulfillmentEvents) {
-            archive.remove("PLATFORM:DINING_SERVICE_EVENT");
+            archive.remove("PLATFORM:DINING_CUSTODY_HANDOVER");
             var handoverTargets =
-                    new HashMap<>(targets.getOrDefault("DINING_SERVICE_EVENT", Map.of()));
+                    new HashMap<>(targets.getOrDefault("DINING_CUSTODY_HANDOVER", Map.of()));
             handoverTargets.put("commerce-food-fulfillment-events-v1", true);
-            targets.put("DINING_SERVICE_EVENT", Map.copyOf(handoverTargets));
+            targets.put("DINING_CUSTODY_HANDOVER", Map.copyOf(handoverTargets));
         }
         if (reportsEnabled && reportEvents) {
-            archive.remove("PLATFORM:DINING_SERVICE_EVENT");
-            var reportTargets =
-                    new HashMap<>(targets.getOrDefault("DINING_SERVICE_EVENT", Map.of()));
-            reportTargets.put("food-report-correction-v1", true);
-            targets.put("DINING_SERVICE_EVENT", Map.copyOf(reportTargets));
+            for (String type : List.of("DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER")) {
+                archive.remove("PLATFORM:" + type);
+                var reportTargets = new HashMap<>(targets.getOrDefault(type, Map.of()));
+                reportTargets.put("food-report-correction-v1", true);
+                targets.put(type, Map.copyOf(reportTargets));
+            }
         }
         facade.setArchiveOnly(archive);
         facade.registerProducer(

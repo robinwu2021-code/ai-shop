@@ -33,6 +33,24 @@ import java.util.List;
 
 class ReportCorrectionConsumerTest {
     @Test
+    void newCustodyFactKeepsOriginalKitchenDayAndEnvelopeIdentity() {
+        var storage = mock(ReportStorageService.class);
+        var kitchen = mock(ReportKitchenEventDayPort.class);
+        var factory = new StaticListableBeanFactory(); factory.addBean("kitchen", kitchen);
+        var scope = new Scope("MAIN", "E1", "S1");
+        var day = LocalDate.of(2026, 10, 29); var at = Instant.parse("2026-10-29T12:00:00Z");
+        var change = new ReportKitchenEventDayPort.Change(scope, "FSEV1", "TASK", "CUSTODY_HANDOVER", new BigDecimal("1.25"));
+        var evidence = new DayEvidence("DAY", "POLICY", 0, "UTC", 0, at.minusSeconds(43200), at.plusSeconds(43200));
+        when(kitchen.affectedDay(change)).thenReturn(new ReportKitchenEventDayPort.AffectedDay(change, day, evidence, at));
+        when(storage.scopes(scope)).thenReturn(List.of());
+        var consumer = new ReportCorrectionConsumer(storage, factory.getBeanProvider(ReportAffectedDaysPort.class),
+                JsonMapper.builder().build(), factory.getBeanProvider(ReportKitchenEventDayPort.class));
+        var event = kitchenEvent(); event.setEventType("DINING_CUSTODY_HANDOVER");
+        event.setPayload(event.getPayload().replace("READY", "CUSTODY_HANDOVER"));
+        consumer.consume(event); verify(kitchen).affectedDay(change); verify(storage).scopes(scope);
+    }
+
+    @Test
     void kitchenCorrectionUsesExactOriginalSourceDayAndKeepsEnvelopeReplayIdentity() {
         var storage = mock(ReportStorageService.class);
         var kitchen = mock(ReportKitchenEventDayPort.class);

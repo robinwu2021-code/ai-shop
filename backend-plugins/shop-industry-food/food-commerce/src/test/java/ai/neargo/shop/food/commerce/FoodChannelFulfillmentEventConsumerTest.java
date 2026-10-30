@@ -95,6 +95,24 @@ class FoodChannelFulfillmentEventConsumerTest {
     }
 
     @Test
+    void onlyNewHandoverFactsAreSelectedAndOldEnvelopeStillReplays() {
+        var calls = new AtomicInteger();
+        ChannelFulfillmentTriggerPort trigger = request -> {
+            calls.incrementAndGet();
+            return new ChannelFulfillmentTriggerPort.Result(request, ChannelFulfillmentTriggerPort.Status.RECORDED, "OP", "PENDING");
+        };
+        var consumer = new FoodChannelFulfillmentEventConsumer(e -> signal(DiningChannelFulfillmentSignalPort.Status.READY), trigger, json, clock);
+        assertThat(consumer.supports("DINING_SERVICE_EVENT")).isFalse();
+        assertThat(consumer.supports("DINING_CUSTODY_HANDOVER")).isTrue();
+        var old = envelope();
+        var current = new OutboxEnvelope(old.eventNo(), old.sourceSystem(), old.sourceEventNo(), old.aggregateType(), old.aggregateId(),
+                "DINING_CUSTODY_HANDOVER", old.schemaVersion(), old.streamKey(), old.streamSequence(), old.payload(), old.occurredAt());
+        assertThat(consumer.handle(old).kind()).isEqualTo(DeliveryResult.Kind.SENT);
+        assertThat(consumer.handle(current).kind()).isEqualTo(DeliveryResult.Kind.SENT);
+        assertThat(calls).hasValue(2);
+    }
+
+    @Test
     void originalImportPendingRetriesAndOnlyADurableIntentReceiptAcknowledgesTheEvent() {
         var calls = new AtomicInteger();
         ChannelFulfillmentTriggerPort trigger =

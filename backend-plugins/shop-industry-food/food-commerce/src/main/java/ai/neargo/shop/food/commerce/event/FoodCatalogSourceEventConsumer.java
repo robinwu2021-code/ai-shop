@@ -32,7 +32,7 @@ public final class FoodCatalogSourceEventConsumer
                     "FOOD_DISH_CHANGED",
                     "FOOD_STORE_POLICY_PUBLISHED",
                     "FOOD_SERVICE_CALENDAR_SAVED",
-                    "FOOD_MENU_CHANGED");
+                    "FOOD_MENU_DISABLED");
     private final SourceNoticeService service;
     private final ObjectMapper json;
 
@@ -65,15 +65,19 @@ public final class FoodCatalogSourceEventConsumer
     public DeliveryResult handle(OutboxEnvelope envelope) {
         if (!"PLATFORM".equals(envelope.sourceSystem())
                 || envelope.schemaVersion() != 1
-                || !supports(envelope.eventType()))
+                || (!supports(envelope.eventType()) && !"FOOD_MENU_CHANGED".equals(envelope.eventType())))
             throw new IllegalArgumentException("Invalid original source event");
         String entity, store, ref = null, kind = null;
         Instant effective = envelope.occurredAt();
         switch (envelope.eventType()) {
-            case "FOOD_MENU_CHANGED" -> {
+            case "FOOD_MENU_CHANGED", "FOOD_MENU_DISABLED" -> {
                 var event = json.readValue(envelope.payload(), MenuChanged.class);
                 match(envelope, "FOOD_MENU", event.menuNo());
-                if (!"DISABLE_MENU".equals(event.action())) return DeliveryResult.sent();
+                if (!"DISABLE_MENU".equals(event.action())) {
+                    if ("FOOD_MENU_DISABLED".equals(envelope.eventType()))
+                        throw new IllegalArgumentException("Menu disabled fact requires original disable action");
+                    return DeliveryResult.sent();
+                }
                 if (event.after() == null
                         || !"DISABLED".equals(event.after().status())
                         || !event.menuNo().equals(event.after().menuNo())

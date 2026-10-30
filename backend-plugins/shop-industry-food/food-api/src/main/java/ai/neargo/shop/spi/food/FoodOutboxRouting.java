@@ -23,6 +23,7 @@ public final class FoodOutboxRouting {
                                     true),
                     "DINING_SERVICE_EVENT",
                             Map.of("food-kds-business-events-v1", true),
+                    "DINING_CUSTODY_HANDOVER", Map.of("food-kds-business-events-v1", true),
                     "FOOD_CHECK_CHANGED", Map.of("food-kds-business-events-v1", true),
                     "DINING_ORDER_CHANGED", Map.of("food-kds-business-events-v1", true));
     public static final Set<String> ARCHIVE_ONLY =
@@ -31,7 +32,7 @@ public final class FoodOutboxRouting {
                     "PLATFORM:FOOD_STORE_POLICY_PUBLISHED", "PLATFORM:FOOD_OPTION_GROUP_CHANGED",
                     "PLATFORM:FOOD_TABLE_CHANGED", "PLATFORM:FOOD_CONFIG_PUBLISHED",
                     "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_RECIPE_CHANGED",
-                    "PLATFORM:FOOD_MENU_CHANGED", "PLATFORM:FOOD_DINING_DEVICE_CHANGED",
+                    "PLATFORM:FOOD_MENU_CHANGED", "PLATFORM:FOOD_MENU_DISABLED", "PLATFORM:FOOD_DINING_DEVICE_CHANGED",
                     "PLATFORM:FOOD_DINING_SESSION_CHANGED", "PLATFORM:FOOD_STATION_CHANGED",
                     "PLATFORM:FOOD_BUNDLE_CHANGED", "PLATFORM:FOOD_CART_CHANGED",
                     "PLATFORM:FOOD_MODIFIER_CHANGED", "PLATFORM:FOOD_SALES_RESTRICTION_CHANGED",

@@ -128,7 +128,7 @@ class MenuServiceTest extends FoodWriteGuardFixture {
                 if (!template.getConfiguration().hasMapper(type)) template.getConfiguration().addMapper(type);
             }
             var outbox = c.getBean("foodOutboxPublisher", OutboxPublisher.class);
-            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MENU_CHANGED"));
+            c.getBean(UnifiedOutboxFacade.class).setArchiveOnly(Set.of("PLATFORM:FOOD_MENU_CHANGED", "PLATFORM:FOOD_MENU_DISABLED"));
             var fail = new AtomicBoolean();
             GoodsCatalogQueryPort catalog = new GoodsCatalogQueryPort() {
                 @Override public GoodsFact getGoods(String entity, String store, String number) {
@@ -251,7 +251,8 @@ class MenuServiceTest extends FoodWriteGuardFixture {
             assertThat(s.getMenu("E", "A", id).config()).isEqualTo(changed);
             assertThat(f.sql().queryForObject("SELECT published_revision_no FROM fnb_menu", String.class))
                     .isEqualTo("HIST");
-            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(2);
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isZero();
+            assertThat(f.sql().queryForObject("SELECT COUNT(*) FROM fnb_action_log", Integer.class)).isEqualTo(2);
         });
     }
     @Test void replaysBeforePolicyChangesAndRejectsCasAndKeyMutation() {

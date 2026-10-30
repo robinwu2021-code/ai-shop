@@ -65,6 +65,7 @@ public class DiningKdsEventConsumer implements OutboxHandler {
         return Set.of(
                         "DINING_ORDER_ACCEPTED",
                         "DINING_SERVICE_EVENT",
+                        "DINING_CUSTODY_HANDOVER",
                         "FOOD_CHECK_CHANGED",
                         "DINING_ORDER_CHANGED")
                 .contains(type);
@@ -98,7 +99,7 @@ public class DiningKdsEventConsumer implements OutboxHandler {
                                 envelope.streamSequence(),
                                 body);
             }
-            case "DINING_SERVICE_EVENT" -> {
+            case "DINING_SERVICE_EVENT", "DINING_CUSTODY_HANDOVER" -> {
                 var source = json.readValue(envelope.payload(), DiningServiceEvent.class);
                 match(envelope, "FOOD_KITCHEN_TASK", source.taskNo());
                 body.put("batchNo", source.batchNo());

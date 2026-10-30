@@ -10,5 +10,7 @@ public record DiningServiceEvent(String eventNo,String entityNo,String storeNo,S
         String action,BigDecimal qty,String reason,String actorNo,Instant occurredAt) implements DomainEvent {
     @Override public String aggregateType() { return "FOOD_KITCHEN_TASK"; }
     @Override public String aggregateId() { return taskNo; }
-    @Override public String eventType() { return "DINING_SERVICE_EVENT"; }
+    @Override public String eventType() {
+        return "CUSTODY_HANDOVER".equals(action) ? "DINING_CUSTODY_HANDOVER" : "DINING_SERVICE_EVENT";
+    }
 }

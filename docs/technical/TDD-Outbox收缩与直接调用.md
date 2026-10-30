@@ -58,3 +58,18 @@ E1复核发现已有未决记录满批会饿死首次缺口。真实MySQL回归�
 
 
 E2已完成工位/语音本地KDS直接写入；其余厨房/订单/退菜/换台的远程打印交接仍保留，不将必要交付替换成另一套同义队列。原生MySQL与相关接口/路由24项最终通过。工位命令状态APPLIED、工位状态PAUSED/RUNNING与语音真实PLAYED分别保留原语义，游标为本地事件序列，sourceVersion仍是原命令版本。验收与切换见统一实施07。
+
+## 9 E3渠道有效事实订阅
+
+已确认：FoodCatalogSourceEventConsumer对FOOD_MENU_CHANGED仅DISABLE_MENU有作用；FoodChannelFulfillmentEventConsumer对DINING_SERVICE_EVENT仅CUSTODY_HANDOVER有作用。旧方案先为所有草稿/厨房动作创建渠道delivery再空消费；不能用删除首跳替代，因为CIM源通知/履约意图尚未落入独立库前没有原任务可恢复。
+
+本批用最小的事实分类消除空投递，不扩展通用Outbox框架：原MenuChanged的DISABLE_MENU发布FOOD_MENU_DISABLED，其余仍FOOD_MENU_CHANGED；原DiningServiceEvent的CUSTODY_HANDOVER发布DINING_CUSTODY_HANDOVER，其余仍DINING_SERVICE_EVENT。JSON结构、原业务键/范围/stream/schemaVersion保持。新渠道订阅只选择有作用的事实，旧类型handle保持历史重放；KDS/报表订阅新旧厨房类型，避免丢其他原消费者。无新增表、任务或公网API。
+
+- [x] API事件分类及归档/路由声明一致；菜单停用无渠道时沿已有纯归档跳过规则，不造NO_CONSUMER。
+- [x] 渠道新选择仅菜单停用/真实交接，历史处理仍兼容；KDS和报表保持交接事实可达；独立producer与集成真实handler一致。
+- [x] 统一编译embedded/standalone后集中相关测试，覆盖真实SQL投递/事务、草稿0渠道投递、普通厨房0渠道交接、有效事实可靠首跳、旧payload重放与失败重试；仅定向复测失败。
+
+发布须先完成支持新旧事实的消费者升级/退出旧运行器，再开放新producer；同一集成包同步升级。旧数据/handlerId不改，失败不伪造SENT。真实第三方仍不接入，部署不在本批范围。
+
+
+E3验收：33个不同JUnit最终通过，含MySQL9原生路由1项和餐牌9项。实际仍只有一次原业务事件发布；新增事实类型不是为同一动作再发布第二个事件。19项是FoodOutboxRouting的默认归档策略数量，不声称Host手工YAML列表全量一致。完整Mock订单纵向IT只适配了类型/真实delivery查询并编译，本批未执行，不扩张相关测试结论。

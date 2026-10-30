@@ -33,6 +33,21 @@ import java.util.List;
  */
 class DiningKdsEventConsumerTest {
     @Test
+    void newCustodyFactStillProjectsToKdsWithoutAccessingPrintOwner() {
+        var service = mock(FoodKdsService.class); var json = JsonMapper.builder().build();
+        var consumer = new DiningKdsEventConsumer(service, json);
+        var source = new DiningServiceEvent("FSEV", "E", "S", "B", "K", "T", "L", null, "ST", "MAKE", 1,
+                "CUSTODY_HANDOVER", BigDecimal.ONE, null, "A", Instant.parse("2026-10-30T00:00:00Z"));
+        assertThat(source.eventType()).isEqualTo("DINING_CUSTODY_HANDOVER");
+        var envelope = new OutboxEnvelope("O", "PLATFORM", "O", source.aggregateType(), source.aggregateId(), source.eventType(), 1,
+                "FOOD_KITCHEN_TASK:T", 1, json.writeValueAsString(source), source.occurredAt());
+        assertThat(consumer.handle(envelope).kind()).isEqualTo(ai.neargo.shop.event.outbox.DeliveryResult.Kind.SENT);
+        var captured = ArgumentCaptor.forClass(EventDraft.class); verify(service).append(captured.capture());
+        assertThat(captured.getValue().eventType()).isEqualTo("KITCHEN_ACTION");
+        assertThat(json.readTree(captured.getValue().payload()).path("action").asString()).isEqualTo("CUSTODY_HANDOVER");
+    }
+
+    @Test
     void historicalStationDeliveryStillProjectsWithoutSelectingNewEventsOrAccessingPrinting() {
         var service = mock(FoodKdsService.class);
         var json = JsonMapper.builder().build();
