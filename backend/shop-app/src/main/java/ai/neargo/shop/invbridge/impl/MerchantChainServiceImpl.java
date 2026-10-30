@@ -5,6 +5,7 @@ import ai.neargo.shop.invbridge.MerchantChainService;
 import ai.neargo.inventory.domain.entity.InvItemRef;
 import ai.neargo.inventory.domain.entity.InvLedger;
 import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemRefMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
@@ -149,6 +150,7 @@ public class MerchantChainServiceImpl implements MerchantChainService {
         Map<String, String> out = new HashMap<>();
         for (InvOwner o : ownerMapper.selectList(Wrappers.<InvOwner>lambdaQuery()
                 .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
+                .eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
                 .in(InvOwner::getExternalRef, entityNos))) {
             out.put(o.getExternalRef(), o.getOwnerId());
         }

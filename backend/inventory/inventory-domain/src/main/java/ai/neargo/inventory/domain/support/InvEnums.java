@@ -29,6 +29,23 @@ public final class InvEnums {
         }
     }
 
+    /**
+     * 账本的宿主组织类型（{@code inv_owner.external_type}）。服务<b>不解释</b>它，开放集合由宿主取值；
+     * 这里只有两个存量缺省：商城内嵌按经营主体开账（{@code ENTITY}），其他系统是平台运营方一本账（{@code PLATFORM}）。
+     */
+    public static final class OwnerType {
+        public static final String ENTITY = "ENTITY";
+        public static final String PLATFORM = "PLATFORM";
+
+        /** 开账本没给类型时：与 V26 存量回填同一条规则 */
+        public static String defaultFor(String systemCode) {
+            return "SHOP".equals(systemCode) ? ENTITY : PLATFORM;
+        }
+
+        private OwnerType() {
+        }
+    }
+
     public static final class LocationKind {
         public static final String STORE = "STORE";
         public static final String WAREHOUSE = "WAREHOUSE";

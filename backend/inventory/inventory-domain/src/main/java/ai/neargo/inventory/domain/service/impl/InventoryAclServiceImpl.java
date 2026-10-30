@@ -138,6 +138,7 @@ public class InventoryAclServiceImpl implements InventoryAclService {
                 ownerMapper.selectOne(
                         Wrappers.<InvOwner>lambdaQuery()
                                 .eq(InvOwner::getSystemCode, aclSystem)
+                                .eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
                                 .eq(InvOwner::getExternalRef, entityNo));
         if (row != null) {
             return served(row).getOwnerId();
@@ -148,6 +149,7 @@ public class InventoryAclServiceImpl implements InventoryAclService {
         created.setExternalRef(entityNo);
         created.setStatus(InvEnums.MasterStatus.ACTIVE);
         created.setSystemCode(aclSystem);
+        created.setExternalType(InvEnums.OwnerType.ENTITY);
         created.setWriteAuthority(InvEnums.WriteAuthority.EMBEDDED);
         created.setCreatedBy("SYSTEM");
         ownerMapper.insert(created);
@@ -815,7 +817,8 @@ public class InventoryAclServiceImpl implements InventoryAclService {
     @Transactional(transactionManager = "invTransactionManager", readOnly = true)
     public String writeAuthorityOf(String entityNo) {
         InvOwner owner = entityNo == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
-                .eq(InvOwner::getSystemCode, aclSystem).eq(InvOwner::getExternalRef, entityNo));
+                .eq(InvOwner::getSystemCode, aclSystem).eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
+                .eq(InvOwner::getExternalRef, entityNo));
         return owner == null ? null : owner.getWriteAuthority();
     }
 
@@ -927,6 +930,7 @@ public class InventoryAclServiceImpl implements InventoryAclService {
                 : ownerMapper.selectOne(
                         Wrappers.<InvOwner>lambdaQuery()
                                 .eq(InvOwner::getSystemCode, aclSystem)
+                                .eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
                                 .eq(InvOwner::getExternalRef, entityNo));
         return owner == null ? null : served(owner);
     }

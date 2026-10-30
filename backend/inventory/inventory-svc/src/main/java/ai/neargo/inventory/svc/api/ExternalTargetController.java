@@ -4,6 +4,7 @@ import ai.neargo.inventory.domain.entity.InvTargetRef;
 import ai.neargo.inventory.domain.service.Caller;
 import ai.neargo.inventory.domain.service.CommandService;
 import ai.neargo.inventory.domain.service.ExternalTargetService;
+import ai.neargo.inventory.domain.service.ExternalTargetService.Link;
 import ai.neargo.inventory.guard.InventoryRequestContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,7 +34,9 @@ public class ExternalTargetController {
         Caller caller = InventoryRequestContext.caller();
         return commands.execute(caller, UPSERT, new Request(type, ref, req), Target.class,
                 () -> Target.of(targets.upsert(caller, type, ref, req.name(), req.parentRef(), req.status(),
-                        req.sourceVersion() == null ? 0L : req.sourceVersion())));
+                        req.sourceVersion() == null ? 0L : req.sourceVersion(),
+                        req.linkedOwner() == null ? null : new Link(req.linkedOwner().type(),
+                                req.linkedOwner().ref(), req.linkedLocationRef()))));
     }
 
     @GetMapping("/api/inventory/v1/external-targets")
@@ -43,17 +46,25 @@ public class ExternalTargetController {
                 .map(Target::of).toList();
     }
 
-    public record Sync(String name, String parentRef, String status, Long sourceVersion) {
+    /**
+     * @param linkedOwner       对象在同系统里自己的账本（兄弟门店、加盟店）；没给 = 不关联（TDD §2.19）
+     * @param linkedLocationRef 对方账本中收货库位的宿主编号，与 linkedOwner 同时给
+     */
+    public record Sync(String name, String parentRef, String status, Long sourceVersion, OwnerRef linkedOwner,
+                       String linkedLocationRef) {
+    }
+
+    public record OwnerRef(String type, String ref) {
     }
 
     record Request(String type, String ref, Sync sync) {
     }
 
     public record Target(String type, String ref, String name, String parentType, String parentRef, String status,
-                         Long sourceVersion) {
+                         Long sourceVersion, String linkedOwnerId, String linkedLocationId) {
         static Target of(InvTargetRef t) {
             return new Target(t.getObjectType(), t.getObjectRef(), t.getName(), t.getParentType(), t.getParentRef(),
-                    t.getStatus(), t.getSourceVersion());
+                    t.getStatus(), t.getSourceVersion(), t.getLinkedOwnerId(), t.getLinkedLocationId());
         }
     }
 }

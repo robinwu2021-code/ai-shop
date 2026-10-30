@@ -6,6 +6,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.inventory.domain.dto.InventoryVOs.SummaryVO;
 import ai.neargo.inventory.domain.entity.InvLedger;
 import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.LedgerMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.inventory.domain.service.StockQueryService;
@@ -43,6 +44,7 @@ public class MerchantStockDigestServiceImpl implements MerchantStockDigestServic
     public Digest of(String entityNo) {
         InvOwner owner = ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
                 .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
+                .eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
                 .eq(InvOwner::getExternalRef, entityNo)
                 .last("limit 1"));
         if (owner == null) {

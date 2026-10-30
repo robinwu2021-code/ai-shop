@@ -26,6 +26,7 @@ import ai.neargo.inventory.domain.entity.InvOutboundLine;
 import ai.neargo.inventory.domain.entity.InvOutboundOrder;
 import ai.neargo.inventory.domain.entity.InvOutbox;
 import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.entity.InvPairedTransfer;
 import ai.neargo.inventory.domain.entity.InvReservation;
 import ai.neargo.inventory.domain.entity.InvReservationLine;
 import ai.neargo.inventory.domain.entity.InvSerial;
@@ -314,6 +315,9 @@ public final class InventoryMappers {
     public interface StockHoldMapper extends BaseMapper<InvStockHold> {}
 
     public interface TargetRefMapper extends BaseMapper<InvTargetRef> {}
+
+    /** 跨账本成对单据。<b>一条记录横跨两本账</b>：按发货方查带 {@code from_owner_id}，按收货方查带 {@code to_owner_id}。 */
+    public interface PairedTransferMapper extends BaseMapper<InvPairedTransfer> {}
 
     public interface SerialMapper extends BaseMapper<InvSerial> {
         /** 占用一个 SN：只在它当前不在仓时成功（双保险之一；另一道是周期表的生成列唯一索引）。 */

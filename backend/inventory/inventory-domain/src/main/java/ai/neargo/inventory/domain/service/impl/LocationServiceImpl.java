@@ -9,6 +9,7 @@ import ai.neargo.inventory.domain.service.LocationService;
 import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.inventory.domain.support.InvKeys;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,21 @@ public class LocationServiceImpl implements LocationService {
     @Transactional(transactionManager = "invTransactionManager")
     public String createWarehouse(String ownerId, String name, String operator) {
         return create(ownerId, name, InvEnums.LocationKind.WAREHOUSE, false, operator);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String createWarehouse(String ownerId, String name, String externalRef, String holderRef,
+                                  String operator) {
+        InvLocation row = row(ownerId, name, InvEnums.LocationKind.WAREHOUSE, false, operator);
+        row.setExternalRef(externalRef);
+        row.setHolderRef(holderRef);
+        try {
+            locationMapper.insert(row);
+        } catch (DuplicateKeyException taken) {
+            throw InventoryException.of(InventoryError.CONFLICT, "externalRef");
+        }
+        return row.getLocationId();
     }
 
     @Override
@@ -140,6 +156,12 @@ public class LocationServiceImpl implements LocationService {
     }
 
     private String create(String ownerId, String name, String kind, boolean isDefault, String operator) {
+        InvLocation row = row(ownerId, name, kind, isDefault, operator);
+        locationMapper.insert(row);
+        return row.getLocationId();
+    }
+
+    private static InvLocation row(String ownerId, String name, String kind, boolean isDefault, String operator) {
         InvLocation row = new InvLocation();
         row.setLocationId(InvKeys.next(InvKeys.LOCATION));
         row.setOwnerId(ownerId);
@@ -148,8 +170,7 @@ public class LocationServiceImpl implements LocationService {
         row.setIsDefault(isDefault ? 1 : 0);
         row.setStatus(InvEnums.MasterStatus.ACTIVE);
         row.setCreatedBy(operator);
-        locationMapper.insert(row);
-        return row.getLocationId();
+        return row;
     }
 
     private InvLocation require(String ownerId, String locationId) {

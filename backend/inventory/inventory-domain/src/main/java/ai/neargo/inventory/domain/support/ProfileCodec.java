@@ -94,6 +94,17 @@ public final class ProfileCodec {
                     throw invalid("outboundPurposes.handover.requiresTarget:" + op.code());
                 }
             }
+            if (op.handover() == BusinessProfile.Handover.RECEIPT) {
+                // 一出一入：收货方只能是一个，对方入库单的用途要先登记
+                if (nullSafe(op.requiredTargets()).size() != 1) {
+                    throw invalid("outboundPurposes.receipt.requiresOneTarget:" + op.code());
+                }
+                if (!inbound.contains(op.receiptPurpose())) {
+                    throw invalid("outboundPurposes.receipt.purpose:" + op.code());
+                }
+            } else if (op.receiptPurpose() != null) {
+                throw invalid("outboundPurposes.receipt.purpose:" + op.code());
+            }
         }
         Set<String> gates = new HashSet<>();
         for (String g : nullSafe(p.gateRefTypes())) {

@@ -526,6 +526,52 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 
 **规模**：到 ShareHub 上线（M0 ~ M6）约 17.5 周单人 / 两人约 11 周；M7 约 2 周；M8 约 5 周，可在 M6 后与 M7 并行。M1 期间 `shop-inventory` 整体移动，需冻结其他会话对该模块的改动约 2 周。
 
+### 2.19 组织边界与成对单据（M9，2026-10-30）
+
+> 档位 1：动了库表、端点、档案 schema。
+>
+> 依据：
+> - [进销存-库存组织边界与出库对象.md](进销存-库存组织边界与出库对象.md)：用户确认「库存服务只保存最底层、和库存关联的组织，外部关联在业务系统处理；出库对象同步」；
+> - 接口见 [进销存独立服务-API文档.md](进销存独立服务-API文档.md) 标「新增」处。
+>
+> 本节取代 [组织抽象-技术方案与缺口.md](组织抽象-技术方案与缺口.md) §1.4 的 `inv_scope` 设想：管理范围不进库存服务。
+
+**AC**
+
+| AC | Given | When | Then |
+|---|---|---|---|
+| AC-29 | 同系统已有账本 `(SHOP, ENTITY, X1)` | 开账本 `(SHOP, STORE, X1)` | 成功；再开 `(SHOP, STORE, X1)` → 409。系统凭证只带编号 `X1` 时 → 409 `owner_type_required`；带 `X-Inventory-Owner-Type: STORE` 时 → 命中门店账本 |
+| AC-30 | 账本 A、B 同系统、写入方都是 SVC；B 有库位 `externalRef=S3001`；A 同步出库对象 `STORE:S3001`，带 `linkedOwner=B`、`linkedLocationRef=S3001` | A 用 `handover=RECEIPT` 的用途建出库 10 件并过账 | 同一事务：A 在手 −10；B 生成待收入库单（DRAFT、用途 = `receiptPurpose`、库位 S3001、10 件）；成对记录 SHIPPED；B 有事件 `PairedInboundCreated` |
+| AC-31 | AC-30 之后 | B 确认收货 9 件 | B 在手 +9；入库单已过账；成对记录 RECEIVED，行差 −1；A 有事件 `PairedTransferReceived`。B 对该入库单直接 `post` 或 `cancel` → 409 |
+| AC-32 | 出库对象没有 `linkedOwner` / 出库含 SN / 对方写入方不是 SVC | 用 RECEIPT 用途建出库并过账 | 建单 400 `target.not_linked` / 400 `paired.serial_unsupported`；过账 409 `NOT_WRITER`（判的是过账那一刻的事实），发货方在手不动 |
+| AC-33 | 系统凭证；本系统账本 S1（SVC）、S2（EMBEDDED） | 批量余额查 S1、S2、S9 | S1 返回余额；S2 返回 `error=NOT_WRITER`；S9 返回 `error=NOT_FOUND`；带账本凭证调用 → 403 |
+| AC-34 | — | 建仓库带 `externalRef`、`holderRef`；按 `holderRef` 列表 | 只列出该持有方的仓库；同账本内 `externalRef` 重复 → 409 |
+| AC-35 | 档案 | `handover=RECEIPT` 却没有 `receiptPurpose`，或 `receiptPurpose` 未登记，或必填对象不是恰好一个 | 400 `PROFILE_INVALID` |
+
+**设计**
+
+| 项 | 落点 |
+|---|---|
+| 账本外部类型 | `inv_owner.external_type`。唯一键改为 `(system_code, external_type, external_ref)`；存量回填 SHOP=ENTITY，其他系统=PLATFORM。`ServicePlatformService.openOwner` 增加类型参数，`ownerByRef(system, type, ref)` 的 type 可空；同号多本且没给 type 时返回 409 `owner_type_required`。认证过滤器读取 `X-Inventory-Owner-Type`。内嵌商城的 `InventoryAclServiceImpl` 按 ENTITY 查询，行为不变 |
+| 库位持有方 | `inv_location.holder_ref`（可空），带索引 `(owner_id, holder_ref)`。仓库新建和修改接受 `externalRef` / `holderRef`，列表可按它过滤 |
+| 出库对象关联账本 | `inv_target_ref.linked_owner_id`、`linked_location_id`（可空）。同步时由 `linkedOwner{type,ref}` + `linkedLocationRef` 解析，必须同系统 |
+| 档案 | `OutboundPurpose` 增加 `receiptPurpose`，`Handover` 增加 `RECEIPT`；`ProfileCodec` 校验 AC-35 |
+| 成对单据 | 新表 `inv_paired_transfer`（发货方账本、出库单、收货方账本、入库单、状态 SHIPPED/RECEIVED、`lines` JSON）。新服务 `PairedTransferService`：`ship`（由 `HostOutboundServiceImpl.post` 在 RECEIPT 时调用，同一事务）、`receive`、`list`、`get`。B 侧物料按 A 物料的 `externalRef` 匹配，缺失时用 `HostCatalogService.upsert` 建档。`HostInboundServiceImpl.post/cancel` 拒绝成对入库单 |
+| 批量余额 | `SystemBalanceController`：`POST /api/inventory/v1/system/balances/query`，逐账本复用 `BalanceQueryService`，单项错误不影响其他项 |
+| 不做 | 账本归档、并账、拆账（文档 C6，后置）；ai-shop 侧 `StockOrgResolver`（C8，另起任务）；成对单据的 SN 与供货价 |
+
+**计划**
+
+| # | 任务 | 验收 | 规模 |
+|---|---|---|---|
+| T9.1 | V26 迁移：外部类型、持有方、关联账本、成对记录表；重新生成 H2 测试库 | 迁移在 MySQL 9 与 H2 上都能跑 | S |
+| T9.2 | 外部类型：开账本、按引用找账本、类型头 | AC-29 | S |
+| T9.3 | 仓库 `externalRef` / `holderRef` | AC-34 | S |
+| T9.4 | 档案 `RECEIPT` + 出库对象关联账本 | AC-35 | S |
+| T9.5 | 成对单据：发货、收货、查询、事件、入库单守卫 | AC-30 ~ 32 | M |
+| T9.6 | 系统级批量余额 | AC-33 | S |
+| T9.7 | 电商档案夹具 `shop.json` 增加 `STORE` 对象与 `TRANSFER_OUT/SUPPLY_OUT`；API 文档与本节对账 | — | S |
+
 ---
 
 ## §3 选型
@@ -631,6 +677,13 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T6.1 迁移 | `MigrationAndMetricsFlowTest#dryRunReportsThenApplyImportsThenRerunIsANoOp`（预演不落库、执行按 `OPENING` 入库、目标先上级后下级、重复执行报告为空）· `#batchBelowBookIsAConflictNotASilentLoss` | ✅ 2026-10-29 | ✅ 去掉「有冲突整批拒绝」→ 变红 |
 | T6.2 监控 | `#metricsExposeEventBacklogAndErrorsByCode`（积压随拉取清零、未确认随之上升、错误按码计数，均带 `instance` 标签） | ✅ 2026-10-29 | |
 | T6.3 演练 | `ResilienceDrillTest`（回包丢失同键重发只过账一次、失败命令不占键、未确认事件重拉同一批同一序号）；库停与重启为人工演练，步骤见手册 §四 | ✅ 2026-10-29（人工部分待上线前） | |
+| AC-29 | `OrgBoundaryPairedTransferFlowTest#ownersOfDifferentHostLevelsMayShareANumberAndTheTypeHeaderPicksOne`（同号不同类型可开、同类型重复 409；系统凭证只给编号 409 `owner_type_required`，带类型命中） | ✅ 2026-10-30 | |
+| AC-30、31 | `#shippingToALinkedStoreCreatesItsPendingInboundAndReceiptReportsTheDifference`（A 扣在手、B 待收草稿与 `PairedInboundCreated`；直接过账 / 作废 409；收 9 / 5 → B 在手 9 / 5、RECEIVED、A 有 `PairedTransferReceived`；重复收货 409） | ✅ 2026-10-30 | |
+| AC-32 | `#shippingIsRefusedWhenTheStoreIsNotLinkedOrItsBookIsNotServiceWritten`（未关联建单 400；对方 EMBEDDED 过账 409 `not_writer`、A 在手不动） | ✅ 2026-10-30 | |
+| AC-33 | `#systemCredentialReadsBalancesAcrossOwnersAndReportsEachFailureSeparately`（SVC 账本有余额、EMBEDDED 报 `NOT_WRITER`、不存在报 `NOT_FOUND`；账本凭证 403） | ✅ 2026-10-30 | |
+| AC-34 | `#warehousesCarryHostRefsAndFilterByHolder`（按持有方列、编号重复 409、补丁改持有方） | ✅ 2026-10-30 | |
+| AC-35 | `#receiptHandoverNeedsExactlyOneTargetAndARegisteredReceiptPurpose`（收货用途未登记 / 两个必填对象 / 非 RECEIPT 带收货用途 → 400） | ✅ 2026-10-30 | |
+| M9 回归 | `mvn -o -f inventory/pom.xml test`：59 例、0 失败（3 例原生 MySQL 跳过）；V1 ~ V26 在本机 MySQL 9.7.4 空库逐个执行无错（排序规则按适配器改写） | ✅ 2026-10-30 | |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -789,6 +842,19 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T7.2 `CONSUME` | 无代码改动：用途、必填领用人、`NONE` 交接全由档案给；工单号走单头 `reasonCode` | — |
 | T7.3 充电桩档案 + 端到端 | 用领域层夹具 `charging.json` 原文件接入，见 §5 AC-17 | — |
 | 不良品库位（§2.18 M7 行） | **不写代码**：同仓另开一个仓库作不良品库位（§2.5 表「不新增库存状态维度」），坏件退回时直接入它、离开走 `SCRAP` / `RETURN_SUPPLIER` | **在仓发现的坏件从良品仓挪到不良品仓**需要宿主侧移库，宿主 API 目前没有；执行方案 M7 出口要求领域层只多 T7.1、T7.2，故不在 M7 做，列为后续 |
+
+### M9 · 组织边界与成对单据（2026-10-30，T9.1 ~ T9.7）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| T9.1 迁移 | `V26__org_boundary_paired_transfer.sql`；两份 H2 结构重新生成（55 张表） | 成对记录的明细列叫 `line_items`，不叫 `lines`：`LINES` 是 MySQL 保留字。顺带修正 `h2-fixture-policy.json` 中执行留存描述文件的哈希：合并 `450267b3d` 改了描述文件却没同步哈希，生成器在 HEAD 上就跑不动 |
+| T9.2 外部类型 | `ServicePlatformService.openOwner/ownerByRef` 加类型；过滤器读 `X-Inventory-Owner-Type`；内嵌商城 `InventoryAclServiceImpl` 与 `invbridge` 三处按 `ENTITY` 查询 | 开账本**不强制**给类型：不给时按系统取缺省（SHOP=ENTITY、其他=PLATFORM），与存量回填同一规则，现有 12 处开账本调用不用改。档案声明允许的 `ownerTypes`（组织边界文档 §8）未做：服务不解释类型，暂无校验需求 |
+| T9.3 仓库 | `LocationService.createWarehouse` 增加带 `externalRef/holderRef` 的重载；`WarehouseService.update` 增加 `holderRef`，改为补丁语义（与此前 `updateById` 跳过空字段一致） | — |
+| T9.4 档案 | `Handover.RECEIPT` + `OutboundPurpose.receiptPurpose`；`ProfileCodec` 校验；`ExternalTargetService.Link` | 用途码受单据表 16 字符列宽限制（档案正则允许 32，存量问题，本次不改列）：夹具用 `STORE_OUT/STORE_IN`，不用 `STORE_TRANSFER_OUT` |
+| T9.5 成对单据 | `PairedTransferService(Impl)`、`InvPairedTransfer`；`HostOutboundServiceImpl` 建单查结构、过账调 `ship`；`InboundController` 增加 `receive`，并在接口层拒绝直接过账或作废成对入库单；`PairedTransferController` | 在途**不进 TRANSIT 库位**（组织边界文档 §4 原写法）：发货方在手扣掉、收货方未入，「已发未收」由成对记录 `SHIPPED` 表达，少一次库位移动、两本账各自只动一次。收货方物料按 `externalRef` 匹配，缺失时自动建档（数量管理、放行 NONE）；同一物料多行合成一行；B 侧入库不带单价 |
+| T9.6 批量余额 | `BalanceQueryService.acrossOwners` + `SystemBalanceController` | — |
+| T9.7 夹具与文档 | `profiles/shop.json` 增加 `STORE` 对象与 `STORE_OUT/SUPPLY_OUT`；API 文档按实现对齐 | — |
+| 未做 | 账本归档、并账、拆账（C6）；ai-shop 侧 `StockOrgResolver`（C8） | 后置，见组织边界文档 §7 |
 
 
 

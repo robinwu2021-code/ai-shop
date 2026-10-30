@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -47,7 +48,8 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
-    public String openOwner(String systemCode, String externalRef, String name, String operator) {
+    public String openOwner(String systemCode, String externalType, String externalRef, String name,
+                            String operator) {
         if (externalRef == null || externalRef.isBlank() || name == null || name.isBlank()) {
             throw InventoryException.of(InventoryError.BAD_REQUEST);
         }
@@ -59,6 +61,7 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
         InvOwner owner = new InvOwner();
         owner.setOwnerId(InvKeys.next(InvKeys.OWNER));
         owner.setSystemCode(systemCode);
+        owner.setExternalType(externalType == null ? InvEnums.OwnerType.defaultFor(systemCode) : externalType);
         owner.setExternalRef(externalRef);
         owner.setName(name);
         owner.setStatus(InvEnums.MasterStatus.ACTIVE);
@@ -93,9 +96,18 @@ public class ServicePlatformServiceImpl implements ServicePlatformService {
     }
 
     @Override
-    public InvOwner ownerByRef(String systemCode, String externalRef) {
-        return externalRef == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
-                .eq(InvOwner::getSystemCode, systemCode).eq(InvOwner::getExternalRef, externalRef));
+    public InvOwner ownerByRef(String systemCode, String externalType, String externalRef) {
+        if (externalRef == null) {
+            return null;
+        }
+        List<InvOwner> found = ownerMapper.selectList(Wrappers.<InvOwner>lambdaQuery()
+                .eq(InvOwner::getSystemCode, systemCode)
+                .eq(externalType != null, InvOwner::getExternalType, externalType)
+                .eq(InvOwner::getExternalRef, externalRef));
+        if (found.size() > 1) {
+            throw InventoryException.of(InventoryError.CONFLICT, "owner_type_required");
+        }
+        return found.isEmpty() ? null : found.get(0);
     }
 
     private Issued issue(String systemCode, String ownerId, String name, Set<Capability> capabilities,

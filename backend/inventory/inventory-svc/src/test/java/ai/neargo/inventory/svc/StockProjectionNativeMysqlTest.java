@@ -79,7 +79,7 @@ class StockProjectionNativeMysqlTest {
     private Fixture fixture() {
         var platform=context.getBean(ServicePlatformService.class);
         String entity="E"+UUID.randomUUID().toString().replace("-","").substring(0,20);
-        String owner=platform.openOwner("SHOP",entity,"Native mirror","IT");
+        String owner=platform.openOwner("SHOP",null,entity,"Native mirror","IT");
         String location=context.getBean(LocationService.class).createWarehouse(owner,"Store","IT");
         db().update("UPDATE inv_location SET external_ref='STORE' WHERE location_id=?",location);
         var credential=platform.issueSystemCredential("SHOP","mirror",Set.of(),null,"IT");

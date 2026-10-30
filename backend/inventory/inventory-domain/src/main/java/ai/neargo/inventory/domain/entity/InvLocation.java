@@ -37,4 +37,6 @@ public class InvLocation extends InvMutableEntity {
     private String regionRef;
     /** 停用时间；与 status=DISABLED 同时写 */
     private LocalDateTime disabledAt;
+    /** 宿主的持有方标记（如连锁账本里门店所属的主体）：只存储、只按它过滤 */
+    private String holderRef;
 }

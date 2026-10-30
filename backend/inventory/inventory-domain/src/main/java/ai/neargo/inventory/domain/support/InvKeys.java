@@ -49,6 +49,8 @@ public final class InvKeys {
     public static final String DISPATCH = "DSP";
     /** 领取批次 */
     public static final String CLAIM = "CLM";
+    /** 跨账本成对单据 */
+    public static final String PAIRED = "PT";
 
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final AtomicInteger SEQ = new AtomicInteger(0);

@@ -7,6 +7,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.inventory.domain.dto.InventoryVOs.BalanceVO;
 import ai.neargo.inventory.domain.entity.InvItemRef;
 import ai.neargo.inventory.domain.entity.InvOwner;
+import ai.neargo.inventory.domain.support.InvEnums;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemRefMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.OwnerMapper;
 import ai.neargo.inventory.domain.service.StockQueryService;
@@ -82,6 +83,7 @@ public class GoodsChainServiceImpl implements GoodsChainService {
         InvOwner owner = DataScopeContext.executeWithoutScope(() ->
                 ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()
                 .eq(InvOwner::getSystemCode, ShopInventorySystem.CODE)
+                .eq(InvOwner::getExternalType, InvEnums.OwnerType.ENTITY)
                 .eq(InvOwner::getExternalRef, g.getEntityNo())
                         .last("limit 1")));
         if (owner != null && !skuNos.isEmpty()) {
