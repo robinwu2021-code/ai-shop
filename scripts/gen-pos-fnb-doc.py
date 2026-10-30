@@ -130,6 +130,7 @@ md+='''## 后续交付条件
 
 [HTML外发版](POS对接文档.html) · [JSON合同](pos-fnb-contract.json)
 '''
+md=md.replace('## 后续交付条件','## 导出\n\n运行 `python3 scripts/gen-pos-fnb-doc.py` 可重新生成Markdown、JSON与离线HTML；HTML不依赖外部脚本或网络资源，可直接作为评审附件发送。接口仍处草案阶段，外发时须保留状态说明。\n\n## 后续交付条件')
 (root/'POS接口清单.md').write_text(md)
 # Offline HTML with escaped content, semantic tables and navigation. No external dependency.
 def ht(fs):
