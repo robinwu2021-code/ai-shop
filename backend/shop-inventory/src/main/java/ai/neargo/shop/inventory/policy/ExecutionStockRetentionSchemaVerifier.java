@@ -166,7 +166,11 @@ public final class ExecutionStockRetentionSchemaVerifier {
                 require("utf8mb4_bin".equals(collation));
             }
         }
-        require(ownerCollation != null && ownerCollation.equals(contract.path("ownerCollation").asString()));
+        String engine = connection.getMetaData().getDatabaseProductName() + " "
+                + connection.getMetaData().getDatabaseProductVersion();
+        String expectedOwner = contract.path(engine.toLowerCase(Locale.ROOT).contains("mariadb")
+                ? "ownerCollation" : "mysqlOwnerCollation").asString();
+        require(ownerCollation != null && ownerCollation.equals(expectedOwner));
         Set<String> seen = new HashSet<>();
         for (JsonNode table : contract.path("tables")) {
             String name = table.path("name").asString();
@@ -180,7 +184,8 @@ public final class ExecutionStockRetentionSchemaVerifier {
             List<Map<String, Object>> actual = columns(connection, schema, name);
             require(actual.size() == table.path("columns").size());
             for (int i = 0; i < actual.size(); i++) {
-                checkColumn(actual.get(i), table.path("columns").get(i), ownerCollation);
+                checkColumn(actual.get(i), table.path("columns").get(i), ownerCollation,
+                        contract.path("ownerCollation").asString());
             }
             checkKeys(connection, schema, table);
             checkConstraints(connection, schema, table);
@@ -205,13 +210,13 @@ public final class ExecutionStockRetentionSchemaVerifier {
         }
     }
 
-    private static void checkColumn(Map<String, Object> actual, JsonNode expected, String ownerCollation) {
+    private static void checkColumn(Map<String, Object> actual, JsonNode expected, String ownerCollation, String sourceCollation) {
         String name = expected.path("name").asString();
         String type = text(actual, "column_type").toLowerCase(Locale.ROOT)
                 .replaceAll("\\b(bigint|int)\\([0-9]+\\)", "$1");
         String expectedCollation = nullable(expected.get("collation"));
         String expectedCharset = nullable(expected.get("charset"));
-        if ("OWNER_ID".equals(expectedCollation)) {
+        if ("OWNER_ID".equals(expectedCollation) || sourceCollation.equals(expectedCollation)) {
             expectedCollation = ownerCollation;
             expectedCharset = "utf8mb4";
         }
@@ -257,7 +262,7 @@ public final class ExecutionStockRetentionSchemaVerifier {
                         + " AND c.CONSTRAINT_NAME=t.CONSTRAINT_NAME"
                         + " WHERE t.TABLE_SCHEMA=? AND t.TABLE_NAME=? AND t.CONSTRAINT_TYPE='CHECK'",
                 schema, table.path("name").asString())) {
-            require(actual.put(text(row, "constraint_name"), expression(text(row, "check_clause"))) == null);
+            require(actual.put(text(row, "constraint_name"), expression(metadataCheck(text(row, "check_clause")))) == null);
         }
         Map<String, String> expected = new TreeMap<>();
         table.path("checks").properties().forEach(entry ->
@@ -273,6 +278,13 @@ public final class ExecutionStockRetentionSchemaVerifier {
             require(enforced.size() == expected.size()
                     && enforced.stream().allMatch(row -> "YES".equals(text(row, "enforced"))));
         }
+    }
+
+    // MySQL 9.7 CHECK_CLAUSE escapes the delimiters of charset-prefixed literals.
+    // Decode only literal content without quotes/backslashes; never strip SQL punctuation.
+    private static String metadataCheck(String sql) {
+        return sql.replaceAll("(?i)" + Pattern.quote("_utf8mb4\\'")
+                + "([^'\\\\]*)" + Pattern.quote("\\'"), "_utf8mb4'$1'");
     }
 
     private static List<Map<String, Object>> columns(Connection connection, String schema, String table)

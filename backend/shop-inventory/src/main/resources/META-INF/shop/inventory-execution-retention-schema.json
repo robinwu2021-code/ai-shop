@@ -6,6 +6,7 @@
   "flywayChecksum": -915721551,
   "migrationSha256": "3725630fc006ad0b15afa55c44054522e16c84cdfba629108e1affb59ecb7ab0",
   "ownerCollation": "utf8mb4_uca1400_ai_ci",
+  "mysqlOwnerCollation": "utf8mb4_unicode_520_ci",
   "ownerIdentity": [
     {
       "table": "inv_owner",

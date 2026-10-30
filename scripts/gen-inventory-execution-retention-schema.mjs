@@ -133,6 +133,7 @@ export function render(source) {
   const descriptor = JSON.stringify({ schemaVersion: 1, owner: source.owner, inventoryVersion: 17,
     migrationScript: 'V17__execution_stock_retention.sql', flywayChecksum: flywayChecksum(sql),
     migrationSha256: createHash('sha256').update(sql).digest('hex'), ownerCollation: source.ownerCollation,
+    mysqlOwnerCollation: 'utf8mb4_unicode_520_ci',
     ownerIdentity: source.ownerIdentity,
     tables: source.tables, triggers: guards }, null, 2) + '\n';
   return { sql, descriptor };
