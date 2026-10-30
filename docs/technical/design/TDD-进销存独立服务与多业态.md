@@ -792,6 +792,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-47、48 | `#sharehubUsesAnOwnerCredentialWithStableKeysThatReplay` | ✅ 2026-10-30 | 首跑时用例错把「已签收」当在外，服务行为正确（在外只算待签收），已改用例 |
 | M13 回归 | `mvn -o -f inventory/pom.xml test`：66 例、0 失败（3 例原生 MySQL 跳过）；`shop-app` 及依赖编译通过 | ✅ 2026-10-30 | |
 | M13 商城接入 | `InventoryStandaloneCutoverE2ETest`（商城经统一客户端：翻转 → 下单锁货 → 付款确认 → 后台库存页 → 回滚）1 例；`RoutingInventoryReservationPortTest` 3、`InventoryEmbeddedWriterGuardTest` 4、`OpsGoodsChainFlowTest` 2、`OpsMerchantChainFlowTest` 3，全部通过 | ✅ 2026-10-30 | `InventoryEmbeddedWriterGuardTest#embeddedExpirySweepSkipsOwnersWrittenByTheService` 原先失败：夹具造的预留没有行，合并 `586a1f5e5` 后「无行预留回收」按坏数据拒绝；夹具补一行与对应余额后通过（不改业务规则） |
+| M13 本机部署验证 | 本机库存服务（8086，放行 SHAREHUB、SHOP）+ ai-shop（8081，api，`stock-authority=INVENTORY`）：商家后台在内嵌期改数 → 翻到服务（对账平）→ 同一操作落在服务（停服务时商城报错、余额不动，起服务后成功）→ 翻回内嵌照常；ShareHub（8080）同时在线不受影响。`InventoryStockPortRoutingTest#settingOnHandForASkuNotYetOnTheBooksIsANoOp` 通过 | ✅ 2026-10-30 | **发现并修复缺陷**：以进销存为准的商家新建商品整单 500 —— 商品保存先写库存（`InventoryStockPort.setOnHand`），此时新 SKU 尚未由 `SkuUpserted` 投影成物料，空业主被拿去建默认库位。改为 SKU 未上账时不落盘点单 |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 

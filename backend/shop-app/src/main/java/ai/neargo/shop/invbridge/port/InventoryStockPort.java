@@ -340,6 +340,11 @@ public class InventoryStockPort implements StockPort, ReservationOwner {
             return;
         }
         String owner = acl.ownerOfSku(skuNo);
+        if (owner == null) {
+            // 新建的 SKU 还没上账：物料由随后的 SkuUpserted 投影建出来，此时没有可盘的物料。
+            // 不拦这一步 —— 否则「进销存为准」的商家新建商品整单失败（拿空业主去建默认库位）
+            return;
+        }
         String locationId = locations.resolveStockLocation(
                 owner, acl.locationOfStore(owner, storeNo));
         counts.adjustOne(owner, locationId, acl.itemIdOfSku(skuNo), onHand,
