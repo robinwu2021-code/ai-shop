@@ -7,8 +7,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.pricing.PricingSnapshotHash;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
-import ai.neargo.shop.event.outbox.PublishOptions;
+import ai.neargo.shop.food.dto.FoodKdsContracts.EventDraft;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.CommandVO;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.ControlReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.StateVO;
@@ -19,7 +18,6 @@ import ai.neargo.shop.food.mapper.FoodKdsMapper;
 import ai.neargo.shop.food.mapper.FoodStationRuntimeMapper;
 import ai.neargo.shop.food.service.FoodKdsService;
 import ai.neargo.shop.food.service.FoodStationRuntimeService;
-import ai.neargo.shop.spi.food.DiningStationRuntimeChanged;
 import ai.neargo.shop.spi.printing.PrintPort;
 
 import org.springframework.dao.ConcurrencyFailureException;
@@ -32,6 +30,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +44,6 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
     private final FoodKdsMapper kdsMapper;
     private final FoodKdsService kds;
     private final PrintPort printing;
-    private final OutboxPublisher outbox;
     private final TransactionTemplate tx;
     private final Clock clock;
     private final ObjectMapper json;
@@ -55,7 +53,6 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
             FoodKdsMapper kdsMapper,
             FoodKdsService kds,
             PrintPort printing,
-            OutboxPublisher outbox,
             PlatformTransactionManager manager,
             Clock clock,
             ObjectMapper json) {
@@ -63,7 +60,6 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         this.kdsMapper = kdsMapper;
         this.kds = kds;
         this.printing = printing;
-        this.outbox = outbox;
         this.tx = new TransactionTemplate(manager);
         this.clock = clock;
         this.json = json;
@@ -126,6 +122,7 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         String hash = PricingSnapshotHash.of(List.of(station, req));
         return write(
                 () -> {
+                    lockCursor(e, s);
                     mapper.initialize(e, s, station);
                     var state = mapper.state(e, s, station, true);
                     var old = mapper.original(e, s, actor, key);
@@ -162,8 +159,7 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         return write(
                 () -> {
                     var grant = grant(e, s, actor, subscription);
-                    kdsMapper.ensureCursor(e, s);
-                    kdsMapper.head(e, s, true);
+                    lockCursor(e, s);
                     for (var expired : mapper.expired(e, s, grant.deviceNo(), clock.instant())) {
                         String no = text(expired, "command_no");
                         mapper.receipt(e, s, no, "UNKNOWN", "RECEIPT_TIMEOUT");
@@ -209,6 +205,7 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
         return write(
                 () -> {
                     var grant = grant(e, s, actor, subscription);
+                    lockCursor(e, s);
                     var row = mapper.command(e, s, req.commandNo(), true);
                     if (row == null) {
                         throw BizException.of(ErrorCode.NOT_FOUND);
@@ -266,19 +263,21 @@ public class FoodStationRuntimeServiceImpl implements FoodStationRuntimeService 
                 text(row, "reason"));
     }
 
+    private void lockCursor(String e, String s) {
+        kdsMapper.ensureCursor(e, s);
+        kdsMapper.head(e, s, true);
+    }
+
     private void publish(String e, String s, CommandVO cmd) {
-        outbox.publish(
-                new DiningStationRuntimeChanged(
-                        e,
-                        s,
-                        cmd.stationNo(),
-                        cmd.commandNo(),
-                        cmd.action(),
-                        cmd.sourceVersion(),
-                        cmd.status(),
-                        cmd.reason(),
-                        clock.instant()),
-                new PublishOptions("FOOD_STATION:" + cmd.stationNo(), 1));
+        var body = new LinkedHashMap<String, Object>();
+        body.put("stationNo", cmd.stationNo());
+        body.put("commandNo", cmd.commandNo());
+        body.put("action", cmd.action());
+        body.put("status", cmd.status());
+        body.put("reason", cmd.reason());
+        kds.append(new EventDraft(BizKey.next(BizKey.EVENT), e, s, cmd.stationNo(),
+                "CALL".equals(cmd.action()) ? "VOICE_CALL" : "STATION_CONTROL",
+                cmd.commandNo(), cmd.sourceVersion(), json.writeValueAsString(body), clock.instant().toString()));
     }
 
     private <T> T write(Supplier<T> body) {

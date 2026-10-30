@@ -24,8 +24,7 @@ public final class FoodOutboxRouting {
                     "DINING_SERVICE_EVENT",
                             Map.of("food-kds-business-events-v1", true),
                     "FOOD_CHECK_CHANGED", Map.of("food-kds-business-events-v1", true),
-                    "DINING_ORDER_CHANGED", Map.of("food-kds-business-events-v1", true),
-                    "DINING_STATION_RUNTIME_CHANGED", Map.of("food-kds-business-events-v1", true));
+                    "DINING_ORDER_CHANGED", Map.of("food-kds-business-events-v1", true));
     public static final Set<String> ARCHIVE_ONLY =
             Set.of(
                     "PLATFORM:FOOD_DISH_CHANGED", "PLATFORM:FOOD_TABLE_AREA_CHANGED",

@@ -66,14 +66,13 @@ public class DiningKdsEventConsumer implements OutboxHandler {
                         "DINING_ORDER_ACCEPTED",
                         "DINING_SERVICE_EVENT",
                         "FOOD_CHECK_CHANGED",
-                        "DINING_ORDER_CHANGED",
-                        "DINING_STATION_RUNTIME_CHANGED")
+                        "DINING_ORDER_CHANGED")
                 .contains(type);
     }
 
     @Override
     public DeliveryResult handle(OutboxEnvelope envelope) {
-        if (!supports(envelope.eventType())
+        if ((!supports(envelope.eventType()) && !"DINING_STATION_RUNTIME_CHANGED".equals(envelope.eventType()))
                 || envelope.eventNo() == null
                 || envelope.occurredAt() == null) {
             throw new IllegalArgumentException("Invalid KDS original event");
@@ -218,11 +217,6 @@ public class DiningKdsEventConsumer implements OutboxHandler {
     }
 
     private void enqueue(EventDraft event) {
-        var owner = printing.get();
-        var service = documents.get();
-        if (owner == null || service == null) {
-            throw new IllegalStateException("KDS print owner unavailable");
-        }
         String scene =
                 switch (event.eventType()) {
                     case "KITCHEN_ACTION" -> "KITCHEN_CHANGE";
@@ -246,6 +240,11 @@ public class DiningKdsEventConsumer implements OutboxHandler {
         if ("TABLE_CHANGE".equals(scene)
                 && !Set.of("TRANSFER", "COMBINE_TABLES", "MERGE", "SPLIT").contains(action)) {
             return;
+        }
+        var owner = printing.get();
+        var service = documents.get();
+        if (owner == null || service == null) {
+            throw new IllegalStateException("KDS print owner unavailable");
         }
         var scope = new PrintPort.Scope(event.entityNo(), event.storeNo(), "SYSTEM");
         var requests = new LinkedHashSet<PrintDocumentReq>();

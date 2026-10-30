@@ -1,6 +1,5 @@
 package ai.neargo.shop.food.config;
 
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.assembler.FoodEventPrintDocumentAssembler;
 import ai.neargo.shop.food.mapper.FoodKdsMapper;
 import ai.neargo.shop.food.mapper.FoodStationRuntimeMapper;
@@ -45,11 +44,10 @@ public class FoodKdsAutoConfiguration {
             FoodKdsMapper kdsMapper,
             FoodKdsService kds,
             PrintPort printing,
-            @Qualifier("foodOutboxPublisher") OutboxPublisher outbox,
             @Qualifier("transactionManager") PlatformTransactionManager manager,
             ObjectMapper json) {
         return new FoodStationRuntimeServiceImpl(
-                mapper, kdsMapper, kds, printing, outbox, manager, Clock.systemUTC(), json);
+                mapper, kdsMapper, kds, printing, manager, Clock.systemUTC(), json);
     }
 
     @Bean

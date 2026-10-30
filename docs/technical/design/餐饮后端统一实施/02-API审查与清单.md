@@ -109,3 +109,8 @@
 ## 2026-10-30 E1生产耗用直接调用
 
 E1无新增公网或内部API。KitchenTaskService.act保持输入输出，MAKE START提交后直接调用原ProductionConsumptionService.consume(entity,store,actor,eventNo)。既有PRODUCTION_RECOVERY入口仍调用recover(limit)；首次缺口预留至多半批（至少1）额度，已有未决使用剩余额度，无缺口时旧记录可用满批；总尝试数不超过limit。BLOCKED保持待处理，不冒报耗用完成。
+
+
+## 2026-10-30 E2工位状态与KDS直接写入
+
+E2无新增或改名API、参数、权限。暂停/恢复与语音control/claim/acknowledge返回保持；成功返回时对应KDS事件已一并持久化。STATION_CONTROL/VOICE_CALL事件的stationNo、sourceNo、sourceVersion、payload语义不变，eventNo使用原BizKey事件编号；原请求/完成回执重放不重复追加。KDS订阅/回放/流接口保持。无打印的事件不访问打印owner；READY等仍要求真实打印owner。

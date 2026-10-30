@@ -33,6 +33,24 @@ import java.util.List;
  */
 class DiningKdsEventConsumerTest {
     @Test
+    void historicalStationDeliveryStillProjectsWithoutSelectingNewEventsOrAccessingPrinting() {
+        var service = mock(FoodKdsService.class);
+        var json = JsonMapper.builder().build();
+        var source = new ai.neargo.shop.spi.food.DiningStationRuntimeChanged("E", "S", "ST", "CMD", "PAUSE", 3,
+                "PAUSED", "hold", Instant.parse("2026-10-30T00:00:00Z"));
+        var consumer = new DiningKdsEventConsumer(service, json);
+        assertThat(consumer.supports(source.eventType())).isFalse();
+        var envelope = new OutboxEnvelope("OLD", "PLATFORM", "OLD", "FOOD_STATION_RUNTIME", "ST", source.eventType(), 1,
+                "FOOD_STATION:ST", 7, json.writeValueAsString(source), source.occurredAt());
+        assertThat(consumer.handle(envelope).kind()).isEqualTo(ai.neargo.shop.event.outbox.DeliveryResult.Kind.SENT);
+        var captured = ArgumentCaptor.forClass(EventDraft.class);
+        verify(service).append(captured.capture());
+        assertThat(captured.getValue().eventNo()).isEqualTo("OLD");
+        assertThat(captured.getValue().sourceNo()).isEqualTo("CMD");
+        assertThat(captured.getValue().sourceVersion()).isEqualTo(3);
+    }
+
+    @Test
     void projectOriginalKitchenIdentityAndQuantityWithoutInventingCompletion() {
         var service = mock(FoodKdsService.class);
         var printing = mock(PrintPort.class);
@@ -83,6 +101,9 @@ class DiningKdsEventConsumerTest {
         assertThat(body.path("qty").toString()).isEqualTo("0.5");
         assertThat(event.payload()).doesNotContain("PLAYED", "refund", "leaseToken", "buyerPhone");
         verifyNoInteractions(documents);
+        // READY still needs the real print owner for LABEL; only no-print events bypass it.
+        assertThatThrownBy(() -> new DiningKdsEventConsumer(service, json).handle(envelope))
+                .isInstanceOf(IllegalStateException.class).hasMessage("KDS print owner unavailable");
     }
 
     @Test

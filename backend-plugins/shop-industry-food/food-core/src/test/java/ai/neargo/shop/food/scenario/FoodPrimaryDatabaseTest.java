@@ -56,17 +56,21 @@ class FoodPrimaryDatabaseTest {
     @BeforeEach
     void createDatabase() {
         String url = System.getenv("FOOD_TEST_JDBC_URL");
-        assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/mysql");
+        assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/(?:mysql|information_schema)");
         database = "food_it_" + UUID.randomUUID().toString().replace("-", "");
         new JdbcTemplate(admin()).execute("CREATE DATABASE " + database);
-        source = new DriverManagerDataSource(url.replace("/mysql", "/" + database), "root", "");
+        source = new DriverManagerDataSource(url.substring(0, url.lastIndexOf('/') + 1) + database,
+                System.getenv().getOrDefault("FOOD_TEST_DB_USER", "root"),
+                System.getenv().getOrDefault("FOOD_TEST_DB_PASSWORD", ""));
         sql = new JdbcTemplate(source);
         new ResourceDatabasePopulator(new ClassPathResource("food-primary-fixture.sql"))
                 .execute(source);
     }
 
     private DataSource admin() {
-        return new DriverManagerDataSource(System.getenv("FOOD_TEST_JDBC_URL"), "root", "");
+        return new DriverManagerDataSource(System.getenv("FOOD_TEST_JDBC_URL"),
+                System.getenv().getOrDefault("FOOD_TEST_DB_USER", "root"),
+                System.getenv().getOrDefault("FOOD_TEST_DB_PASSWORD", ""));
     }
 
     @AfterEach
@@ -115,8 +119,8 @@ class FoodPrimaryDatabaseTest {
                 .withPropertyValues(
                         "shop.food.enabled=true",
                         "spring.datasource.url=" + ((DriverManagerDataSource) source).getUrl(),
-                        "spring.datasource.username=root",
-                        "spring.datasource.password=");
+                        "spring.datasource.username=" + ((DriverManagerDataSource) source).getUsername(),
+                        "spring.datasource.password=" + ((DriverManagerDataSource) source).getPassword());
     }
 
     @Test
@@ -244,7 +248,7 @@ class FoodPrimaryDatabaseTest {
                                             sql.queryForObject(
                                                     "SELECT COUNT(*) FROM sys_outbox_delivery",
                                                     Integer.class))
-                                    .isEqualTo(2);
+                                    .isEqualTo(1);
                             assertThatThrownBy(
                                             () ->
                                                     kitchen.act(
@@ -279,7 +283,7 @@ class FoodPrimaryDatabaseTest {
                                             sql.queryForObject(
                                                     "SELECT COUNT(*) FROM sys_outbox_delivery",
                                                     Integer.class))
-                                    .isEqualTo(4);
+                                    .isEqualTo(2);
                         });
     }
 
@@ -289,16 +293,13 @@ class FoodPrimaryDatabaseTest {
         ai.neargo.shop.food.service.FoodStationRuntimeService stationRuntime(
                 DataSource source,
                 PlatformTransactionManager manager,
-                ObjectMapper json,
-                @org.springframework.beans.factory.annotation.Qualifier("foodOutboxPublisher")
-                        ai.neargo.shop.event.outbox.OutboxPublisher outbox) {
+                ObjectMapper json) {
             return new ai.neargo.shop.food.service.impl.FoodStationRuntimeServiceImpl(
                     new ai.neargo.shop.food.mapper.FoodStationRuntimeMapper(
                             new JdbcTemplate(source)),
                     new ai.neargo.shop.food.mapper.FoodKdsMapper(new JdbcTemplate(source)),
                     null,
                     null,
-                    outbox,
                     manager,
                     java.time.Clock.systemUTC(),
                     json);

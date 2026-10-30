@@ -7,7 +7,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.BizException;
-import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.dto.FoodKdsContracts.GrantReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.ControlReq;
 import ai.neargo.shop.food.dto.FoodStationRuntimeContracts.VoiceReceipt;
@@ -47,7 +46,6 @@ class FoodStationRuntimeTest {
     FoodKdsMapper kdsMapper;
     PrintPort printing;
     DataSourceTransactionManager transactions;
-    OutboxPublisher outbox;
     String subscription;
     final Clock clock = Clock.fixed(Instant.parse("2026-10-24T00:00:00Z"), ZoneOffset.UTC);
 
@@ -80,7 +78,6 @@ class FoodStationRuntimeTest {
         commands = new FoodStationRuntimeMapper(jdbc);
         kdsMapper = new FoodKdsMapper(jdbc);
         printing = mock(PrintPort.class);
-        outbox = mock(OutboxPublisher.class);
         when(printing.configuration(any()))
                 .thenReturn(
                         new PrintPort.Configuration(
@@ -110,7 +107,6 @@ class FoodStationRuntimeTest {
                 kdsMapper,
                 kds,
                 printing,
-                outbox,
                 transactions,
                 clock,
                 JsonMapper.builder().build());

@@ -45,3 +45,16 @@ V622切换前停止旧管理写者及对应运行器，防止迁移后仍写旧�
 
 
 E1复核发现已有未决记录满批会饿死首次缺口。真实MySQL回归先复现失败，再改为预留首次缺口预算，相关复测通过；单批limit=1时优先补首次缺口，无缺口再推进旧记录。原默认任务limit=50时两类均可前进。该修复不引入新状态表或任务。旧BLOCKED仍需人工修复，不计完成；原生事实、金额/库存owner均不改。
+
+## 8 E2工位与语音状态直接写KDS
+
+需求：暂停/恢复、语音QUEUED/SENT/UNKNOWN/PLAYED等工位状态只更新本库KDS，无纸张动作。沿原command/status/sourceVersion/payload语义，直接调用FoodKdsService.append，同一事务持久化工位命令、真实回执及KDS事件；回滚一起撤销，无提交后窗口。不增加表、任务、权限或公网API。订单/退菜/换台等需要远程打印的交接仍保留，不另造一张打印意图表代替必要Outbox。
+
+- [x] FoodStationRuntimeServiceImpl去掉Outbox依赖，构造原STATION_CONTROL/VOICE_CALL EventDraft；工位控制、领取、回执统一在修改命令前锁原KDS cursor，保持锁顺序，复用原幂等返回。
+- [x] FoodKdsAutoConfiguration移除publisher注入；FoodOutboxRouting不再声明工位新投递；DiningKdsEventConsumer仅对历史工位delivery保留handle，新supports不含工位。非打印事件先返回，不为其访问打印owner。
+- [x] 先统一embedded/standalone编译，再集中原工位/语音、KDS流、旧consumer和producer测试；原生MySQL验证事务回滚、顺序/幂等、真实语音回执及控制/领取并发。只补测失败修复。
+
+切换时暂停工位写入并处理/核对原工位KDS积压后再开放新写，以免旧异步事件在新同步事件之后追加；失败不伪造SENT，尚未收敛的门店暂不切换。旧handle保持可执行。未部署、不改线上开关，完整厨房/订单打印交接与渠道/报表边界仍保留。
+
+
+E2已完成工位/语音本地KDS直接写入；其余厨房/订单/退菜/换台的远程打印交接仍保留，不将必要交付替换成另一套同义队列。原生MySQL与相关接口/路由24项最终通过。工位命令状态APPLIED、工位状态PAUSED/RUNNING与语音真实PLAYED分别保留原语义，游标为本地事件序列，sourceVersion仍是原命令版本。验收与切换见统一实施07。
