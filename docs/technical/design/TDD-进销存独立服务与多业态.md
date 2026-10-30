@@ -791,6 +791,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-46 | `InventoryClientContractTest#ecommerceUsesOneSystemCredentialAcrossBooksWithHostNumbers` | ✅ 2026-10-30 | |
 | AC-47、48 | `#sharehubUsesAnOwnerCredentialWithStableKeysThatReplay` | ✅ 2026-10-30 | 首跑时用例错把「已签收」当在外，服务行为正确（在外只算待签收），已改用例 |
 | M13 回归 | `mvn -o -f inventory/pom.xml test`：66 例、0 失败（3 例原生 MySQL 跳过）；`shop-app` 及依赖编译通过 | ✅ 2026-10-30 | |
+| M13 商城接入 | `InventoryStandaloneCutoverE2ETest`（商城经统一客户端：翻转 → 下单锁货 → 付款确认 → 后台库存页 → 回滚）1 例；`RoutingInventoryReservationPortTest` 3、`InventoryEmbeddedWriterGuardTest` 4、`OpsGoodsChainFlowTest` 2、`OpsMerchantChainFlowTest` 3，全部通过 | ✅ 2026-10-30 | `InventoryEmbeddedWriterGuardTest#embeddedExpirySweepSkipsOwnersWrittenByTheService` 原先失败：夹具造的预留没有行，合并 `586a1f5e5` 后「无行预留回收」按坏数据拒绝；夹具补一行与对应余额后通过（不改业务规则） |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -991,6 +992,7 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 设计 | 实现 | 偏差与原因 |
 |---|---|---|
 | 声明与门面 | `InventoryHostApi`、`InventoryClient(.Session)`；`InventoryReservationClient.spec / create(spec, breaker)` | 单据详情、目标、出库池、成对单据、事件、命令的响应用 `JsonNode`：结构多、宿主各取所需，固化成记录会让每次加字段都要发客户端 |
+| 商城接入 | `InventoryReservationConfiguration` 改为建 `InventoryClient` 一个 Bean，`InventoryReservationClient` 由 `client.reservations()` 派生；预留路由、按单号的系统级动作、镜像消费、商家后台转发都不改调用代码，共用一个连接与熔断器。新功能直接注入 `InventoryClient` | 配置键不变（`shop.inventory.service.*`） |
 
 
 

@@ -1,5 +1,6 @@
 package ai.neargo.shop.invbridge;
 
+import ai.neargo.inventory.client.InventoryClient;
 import ai.neargo.inventory.client.InventoryReservationClient;
 import ai.neargo.shop.invbridge.port.InventoryReservationPortImpl;
 import ai.neargo.shop.invbridge.port.RoutingInventoryReservationPort;
@@ -35,10 +36,14 @@ public class InventoryReservationConfiguration {
                 remote == null ? null : new ServiceInventoryReservationPort(remote));
     }
 
+    /**
+     * 商城访问独立库存服务的唯一客户端（TDD-进销存独立服务与多业态 §2.23）：系统凭证，按商家（账本）切换。
+     * 预留、按单号的系统级动作、商家后台转发都从它派生，共用一个连接与熔断器。
+     */
     @Bean
     @ConditionalOnProperty(prefix = "shop.inventory.service", name = "base-url")
-    InventoryReservationClient inventoryReservationClient(Environment env) {
-        return InventoryReservationClient.create(
+    InventoryClient inventoryClient(Environment env) {
+        return InventoryClient.create(
                 () -> Optional.ofNullable(env.getProperty("shop.inventory.service.base-url")),
                 env.getProperty("shop.inventory.service.app-key"),
                 env.getProperty("shop.inventory.service.app-secret"),
@@ -46,6 +51,13 @@ public class InventoryReservationConfiguration {
                 // 下单路径：同机 RTT 1 ~ 3 ms，2 秒还没回就是服务出事了
                 Duration.ofMillis(env.getProperty("shop.inventory.service.read-timeout-ms", Long.class, 2000L)),
                 env.getProperty("shop.inventory.service.breaker-threshold", Integer.class, 5),
-                Duration.ofSeconds(env.getProperty("shop.inventory.service.breaker-open-seconds", Long.class, 10L)));
+                Duration.ofSeconds(env.getProperty("shop.inventory.service.breaker-open-seconds", Long.class, 10L)),
+                "shop.inventory.service");
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "shop.inventory.service", name = "base-url")
+    InventoryReservationClient inventoryReservationClient(InventoryClient client) {
+        return client.reservations();
     }
 }
