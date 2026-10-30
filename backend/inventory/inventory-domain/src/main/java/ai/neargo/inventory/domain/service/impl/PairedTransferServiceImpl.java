@@ -3,16 +3,12 @@ package ai.neargo.inventory.domain.service.impl;
 import ai.neargo.inventory.api.InventoryError;
 import ai.neargo.inventory.api.InventoryException;
 import ai.neargo.inventory.domain.config.ConditionalOnInventory;
-import ai.neargo.inventory.domain.entity.InvInboundLine;
-import ai.neargo.inventory.domain.entity.InvInboundOrder;
 import ai.neargo.inventory.domain.entity.InvItem;
 import ai.neargo.inventory.domain.entity.InvOutboundLine;
 import ai.neargo.inventory.domain.entity.InvOutboundOrder;
 import ai.neargo.inventory.domain.entity.InvOwner;
 import ai.neargo.inventory.domain.entity.InvPairedTransfer;
 import ai.neargo.inventory.domain.entity.InvTargetRef;
-import ai.neargo.inventory.domain.mapper.InventoryMappers.InboundLineMapper;
-import ai.neargo.inventory.domain.mapper.InventoryMappers.InboundOrderMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.ItemMapper;
 import ai.neargo.inventory.domain.mapper.InventoryMappers.PairedTransferMapper;
 import ai.neargo.inventory.domain.service.AuditService;
@@ -31,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,8 +44,6 @@ public class PairedTransferServiceImpl implements PairedTransferService {
 
     private final PairedTransferMapper pairMapper;
     private final ItemMapper itemMapper;
-    private final InboundOrderMapper inboundOrderMapper;
-    private final InboundLineMapper inboundLineMapper;
     private final HostCatalogService catalog;
     private final HostInboundService inbound;
     private final ServicePlatformService platform;
@@ -58,13 +51,10 @@ public class PairedTransferServiceImpl implements PairedTransferService {
     private final AuditService audit;
 
     public PairedTransferServiceImpl(PairedTransferMapper pairMapper, ItemMapper itemMapper,
-                                     InboundOrderMapper inboundOrderMapper, InboundLineMapper inboundLineMapper,
                                      HostCatalogService catalog, HostInboundService inbound,
                                      ServicePlatformService platform, EventPublisher events, AuditService audit) {
         this.pairMapper = pairMapper;
         this.itemMapper = itemMapper;
-        this.inboundOrderMapper = inboundOrderMapper;
-        this.inboundLineMapper = inboundLineMapper;
         this.catalog = catalog;
         this.inbound = inbound;
         this.platform = platform;
@@ -164,28 +154,16 @@ public class PairedTransferServiceImpl implements PairedTransferService {
             got.merge(r.itemId(), r.qty(), Integer::sum);
         }
 
-        // 待收单按实收改写：收 0 的行删掉，其余改数量；一件没收到就作废
-        int total = 0;
-        for (InvInboundLine row : inboundLineMapper.selectList(Wrappers.<InvInboundLine>lambdaQuery()
-                .eq(InvInboundLine::getOwnerId, caller.ownerId())
-                .eq(InvInboundLine::getInboundNo, inboundNo))) {
-            int qty = got.getOrDefault(row.getItemId(), 0);
-            if (qty == 0) {
-                inboundLineMapper.deleteById(row.getId());
-            } else {
-                row.setQtyQuantity(BigDecimal.valueOf(qty));
-                inboundLineMapper.updateById(row);
-            }
-            total += qty;
-        }
-        inboundOrderMapper.update(null, Wrappers.<InvInboundOrder>lambdaUpdate()
-                .set(InvInboundOrder::getTotalQtyQuantity, BigDecimal.valueOf(total))
-                .eq(InvInboundOrder::getOwnerId, caller.ownerId())
-                .eq(InvInboundOrder::getInboundNo, inboundNo));
-        if (total > 0) {
-            inbound.post(caller, inboundNo);
-        } else {
+        // 待收单按实收改写（行只由入库服务写）：收 0 的物料不上单；一件没收到就作废
+        List<HostInboundService.Line> actual = lines.stream()
+                .filter(l -> got.getOrDefault(l.toItemId(), 0) > 0)
+                .map(l -> new HostInboundService.Line(l.toItemId(), got.get(l.toItemId()), null, null))
+                .toList();
+        if (actual.isEmpty()) {
             inbound.cancel(caller, inboundNo);
+        } else {
+            inbound.replaceLines(caller, inboundNo, actual);
+            inbound.post(caller, inboundNo);
         }
 
         List<Line> settled = lines.stream()

@@ -572,6 +572,28 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T9.6 | 系统级批量余额 | AC-33 | S |
 | T9.7 | 电商档案夹具 `shop.json` 增加 `STORE` 对象与 `TRANSFER_OUT/SUPPLY_OUT`；API 文档与本节对账 | — | S |
 
+### 2.20 评审第一批（M10，2026-10-30）
+
+> 档位 1：动了库表列宽与 `/in-transit` 的响应结构。依据 [进销存-统一逻辑与设计评审.md](进销存-统一逻辑与设计评审.md) §5 ①（D1、K2、A3）。
+
+| AC | Given | When | Then |
+|---|---|---|---|
+| AC-36 | 档案登记 32 字符的出库用途与入库用途 | 用它们建单并过账 | 成功；单据与流水都记下完整用途码（D1） |
+| AC-37 | 成对入库单草稿 | 收货方确认实收（含某物料收 0） | 入库单行由入库服务按实收改写：收 0 的物料不在单上、总数等于实收合计，过账后余额正确；全收 0 时作废（K2，行为与 M9 相同） |
+| AC-38 | 本账本同时有：待签收的出库池记录、已发未收的成对单据、已发运未收货的账内调拨 | `GET /in-transit` | 三种都列出，每条带 `kind`（POOL / PAIRED / TRANSFER）与 `docNo`；没开出库池能力包的账本不再 403，只是没有 POOL 行（A3） |
+
+| 项 | 落点 |
+|---|---|
+| D1 | `V27__purpose_width.sql`：`inv_outbound_order.purpose`、`inv_inbound_order.source_type` 扩到 `VARCHAR(32)`，与 `inv_ledger.reason_code`（V15）和档案正则一致 |
+| K2 | `HostInboundService.replaceLines`（仅草稿：清掉原行与 SN 明细、按新行重建、重算总数）；`PairedTransferServiceImpl.receive` 改调它，不再直接写入库单行 |
+| A3 | 新 `InTransitService` 汇总三种来源；`/in-transit` 从 `DispatchController` 移到 `InTransitController`，响应保留 `rootTargetType / rootTargetRef / itemId / qty`，新增 `kind / docNo`。POOL 按顶层目标 + 物料汇总（同现状）；PAIRED 每张成对单据每个物料一行，目标为收货方账本的宿主类型与编号；TRANSFER 每张调拨每个物料一行，目标类型 `LOCATION`、编号为调入库位 |
+
+| # | 任务 | 验收 |
+|---|---|---|
+| T10.1 | V27 + 两份 H2 重新生成 + MySQL 9 校验 | AC-36 |
+| T10.2 | `replaceLines` + 成对收货改调 | AC-37（M9 的 AC-31 测试原样通过） |
+| T10.3 | `InTransitService` + 控制器 | AC-38 |
+
 ---
 
 ## §3 选型
@@ -684,6 +706,9 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-34 | `#warehousesCarryHostRefsAndFilterByHolder`（按持有方列、编号重复 409、补丁改持有方） | ✅ 2026-10-30 | |
 | AC-35 | `#receiptHandoverNeedsExactlyOneTargetAndARegisteredReceiptPurpose`（收货用途未登记 / 两个必填对象 / 非 RECEIPT 带收货用途 → 400） | ✅ 2026-10-30 | |
 | M9 回归 | `mvn -o -f inventory/pom.xml test`：59 例、0 失败（3 例原生 MySQL 跳过）；V1 ~ V26 在本机 MySQL 9.7.4 空库逐个执行无错（排序规则按适配器改写） | ✅ 2026-10-30 | |
+| AC-36 | `OrgBoundaryPairedTransferFlowTest#purposesAsLongAsTheProfileAllowsCanBePostedEndToEnd`（32 字符入库、出库用途建单过账，单据记下完整用途码） | ✅ 2026-10-30 | M9 时同样的 18 字符用途在 16 字符列上建单即失败（`Value too long for column "purpose"`），即本条的失败复现 |
+| AC-37、38 | `#inTransitListsPairedShipmentsAndInBookTransfersAndZeroReceiptsLeaveTheInbound`（无出库池能力包的账本：两行 PAIRED + 一行 TRANSFER、带单号与目标；梨收 0 → 不在入库单上、已过账；收完只剩 TRANSFER）；M9 的 AC-31 用例原样通过 | ✅ 2026-10-30 | |
+| M10 回归 | `mvn -o -f inventory/pom.xml test`：61 例、0 失败（3 例原生 MySQL 跳过）；V1 ~ V27 在本机 MySQL 9.7.4 空库逐个执行无错，两列为 `varchar(32)` | ✅ 2026-10-30 | |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -855,6 +880,14 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | T9.6 批量余额 | `BalanceQueryService.acrossOwners` + `SystemBalanceController` | — |
 | T9.7 夹具与文档 | `profiles/shop.json` 增加 `STORE` 对象与 `STORE_OUT/SUPPLY_OUT`；API 文档按实现对齐 | — |
 | 未做 | 账本归档、并账、拆账（C6）；ai-shop 侧 `StockOrgResolver`（C8） | 后置，见组织边界文档 §7 |
+
+### M10 · 评审第一批（2026-10-30，T10.1 ~ T10.3）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| T10.1 D1 | `V27__purpose_width.sql`；两份 H2 结构重新生成 | — |
+| T10.2 K2 | `HostInboundService.replaceLines`；`PairedTransferServiceImpl.receive` 改为「全 0 作废，否则改写后过账」，去掉对入库单行、单头 Mapper 的直接依赖 | — |
+| T10.3 A3 | `InTransitService(Impl)`、`InTransitController`；`DispatchController` 去掉 `/in-transit` | 响应字段名保留 `rootTargetType / rootTargetRef`，为了不破坏 ShareHub 已有的解析；PAIRED、TRANSFER 行沿用这两个字段名表示「去向」 |
 
 
 

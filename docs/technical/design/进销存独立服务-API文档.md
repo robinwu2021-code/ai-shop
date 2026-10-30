@@ -88,6 +88,8 @@ HTTP 状态码 + 统一结构：
 |---|---|---|
 | GET | `/api/inventory/v1/commands/{requestId}` | 查询某个幂等键对应命令的结果 |
 
+**保留期（契约）**：命令记录至少保留 **90 天**。现状不清理；将来若加清理任务，保留期不少于 90 天，并提前公告。宿主的补偿窗口按它定：超过 90 天的命令不要再按原键查结果、重发。
+
 ---
 
 ## 2. 平台运维（admin）
@@ -210,7 +212,21 @@ PUT /api/inventory/v1/external-targets/STORE/S3001
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | POST | `/api/inventory/v1/console/docs/transfers` | 账本内调拨（经 TRANSIT 库位）：建单 → `ship` → `receive`。**跨账本不走这里**，见 §5 |
-| GET | `/api/inventory/v1/in-transit` | 出库池的在途情况 |
+| GET | `/api/inventory/v1/in-transit` | 「货在外面」的统一视图，见下 |
+
+**`GET /in-transit` 响应**（V27 / M10 起合并三种来源；不再要求出库池能力包，没开就没有 POOL 行）：
+
+```json
+[{"kind": "POOL",     "rootTargetType": "MERCHANT", "rootTargetRef": "AG001", "itemId": "ITM…", "qty": 9,  "docNo": null},
+ {"kind": "PAIRED",   "rootTargetType": "STORE",    "rootTargetRef": "S3001", "itemId": "ITM…", "qty": 3,  "docNo": "OUT…"},
+ {"kind": "TRANSFER", "rootTargetType": "LOCATION", "rootTargetRef": "LOC…",  "itemId": "ITM…", "qty": 1,  "docNo": "TRF…"}]
+```
+
+| `kind` | 来源 | 目标 | 粒度 |
+|---|---|---|---|
+| `POOL` | 出库池待签收 | 顶层目标（如商家） | 按目标 + 物料汇总 |
+| `PAIRED` | 成对单据已发未收 | 收货方账本的宿主类型与编号 | 每张单每个物料一行，`docNo` 为出库单号 |
+| `TRANSFER` | 账内调拨已发运未收货 | `LOCATION` + 调入库位 | 每张单每个物料一行，`docNo` 为调拨单号 |
 
 ### 4.4 盘点
 
@@ -257,7 +273,7 @@ B 账本：POST /inbounds/{no}/receive {lines:[实收]} ──▶ 入 B 在手�
 ]
 ```
 
-用途码最长 **16 个字符**。档案校验允许 32 个字符，但单据表的用途列只有 16 个字符宽，超长会在建单时失败。
+用途码最长 32 个字符（档案校验、单据表、流水三处一致；V27 起单据表从 16 放宽到 32）。
 
 档案校验规则：
 - `handover = RECEIPT` 必须**恰好一个**必填对象类型，并给出 `receiptPurpose`；
@@ -403,3 +419,24 @@ Authorization: Bearer <系统凭证>
 |---|---|---|---|---|
 | ai-shop | 门店 / 连锁 / 主体（存量） | 系统凭证 + 账本头（+ 类型头） | STORE（兄弟门店、加盟店，关联账本）、SUPPLIER | 外部类型、关联账本、成对单据、批量余额、持有方 |
 | ShareHub | 平台运营方（`PLATFORM`） | 账本凭证 | MERCHANT / SITE / PERSON | 无（存量回填为 `PLATFORM`，开账本不给类型也取这个缺省） |
+
+---
+
+## 12. 电商（ai-shop）接入要点
+
+ShareHub 的接入见 [进销存独立服务-ShareHub对接方案](./进销存独立服务-ShareHub对接方案.md) §七。
+
+| 事项 | 做法 |
+|---|---|
+| 凭证 | 一把**系统凭证**（`SHOP`），每次请求用 `X-Inventory-Owner-Ref` 指定账本；同号有多本时加 `X-Inventory-Owner-Type` |
+| 账本粒度 | 存量：一个经营主体一本（`ENTITY`），不迁移。直营连锁共用总仓：连锁一本（`CHAIN`），门店是库位，库位的 `holderRef` 标出门店所属主体。加盟店、独立进货的门店：一店一本（`STORE`） |
+| 下单 | 预留 → 付款分配 → 按履约单出库（自动生成 `SALE` 出库单）；取消时释放，退货按原单回补。只有单号、不知道账本时，用 `/system/**` 系统级接口 |
+| 门店之间调货 | 同一本账：账内调拨。不同账本：同步 `STORE` 出库对象（带 `linkedOwner` + `linkedLocationRef`），用 `STORE_OUT` / `SUPPLY_OUT` 出库，对方用 `receive` 确认收货 |
+| 连锁看各店 | 由商城按连锁成员组织账本列表，调 `POST /system/balances/query` 后在商城侧汇总 |
+| 在外 | `GET /in-transit`：`PAIRED`（发往兄弟门店、加盟店，未收）和 `TRANSFER`（账内调拨在途） |
+| 商家后台 | 已切到服务的商家，后台请求原样转发到 `/console/**`，返回结构与商城一致 |
+
+**尚未具备**（见 [评审](./进销存-统一逻辑与设计评审.md) §6）：
+- 商城侧「门店 → 账本 + 库位」的统一映射入口（C8）。新的连锁或门店粒度要等它上线才能开账，在那之前只能是主体一本账；
+- 商家后台转发的单据不按档案执行，也不发宿主事件（K1）。
+

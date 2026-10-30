@@ -1,5 +1,6 @@
 package ai.neargo.inventory.svc;
 
+import ai.neargo.inventory.domain.service.TransferService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +56,7 @@ class OrgBoundaryPairedTransferFlowTest {
 
     @Autowired WebApplicationContext context;
     @Autowired List<FilterRegistrationBean<?>> filters;
+    @Autowired TransferService transfers;
 
     MockMvc mvc;
 
@@ -215,16 +217,87 @@ class OrgBoundaryPairedTransferFlowTest {
         }
     }
 
+    @Test
+    void purposesAsLongAsTheProfileAllowsCanBePostedEndToEnd() throws Exception {
+        // AC-36：档案允许 32 字符的用途码，单据与流水都要装得下（评审 D1）
+        String in32 = "PURCHASE_FROM_CENTRAL_KITCHEN_AB";
+        String out32 = "SCRAP_FOR_QUALITY_INSPECTION_AB";
+        assertThat(in32).hasSize(32);
+        String profile = SHOP.replace("{\"code\":\"PURCHASE\",", "{\"code\":\"" + in32 + "\",")
+                .replace("{\"code\":\"SCRAP\",", "{\"code\":\"" + out32 + "\",");
+        Tenant t = tenant("STORE", profile);
+        String loc = warehouse(t, t.ref, null);
+        String item = item(t, "SKU-LONG");
+        String in = JSON.readTree(body(write(t, post("/api/inventory/v1/inbounds").content(
+                "{\"locationId\":\"" + loc + "\",\"purpose\":\"" + in32 + "\",\"lines\":[{\"itemId\":\"" + item
+                        + "\",\"qty\":4}]}")).andExpect(status().isOk()).andReturn())).get("docNo").asString();
+        write(t, post("/api/inventory/v1/inbounds/" + in + "/post")).andExpect(status().isOk());
+        String out = JSON.readTree(body(write(t, post("/api/inventory/v1/outbounds").content(
+                "{\"locationId\":\"" + loc + "\",\"purpose\":\"" + out32 + "\",\"lines\":[{\"itemId\":\"" + item
+                        + "\",\"qty\":1}]}")).andExpect(status().isOk()).andReturn())).get("docNo").asString();
+        write(t, post("/api/inventory/v1/outbounds/" + out + "/post")).andExpect(status().isOk());
+        assertOnHand(t, item, "3");
+        assertThat(body(read(t, "/api/inventory/v1/outbounds/" + out))).contains(out32);
+    }
+
+    @Test
+    void inTransitListsPairedShipmentsAndInBookTransfersAndZeroReceiptsLeaveTheInbound() throws Exception {
+        Tenant a = tenant("CHAIN");
+        Tenant b = tenant("STORE");
+        String hq = warehouse(a, "HQ", null);
+        String backroom = warehouse(a, "BACK", null);
+        warehouse(b, b.ref, null);
+        String apple = item(a, "SKU-APPLE");
+        String pear = item(a, "SKU-PEAR");
+        stockIn(a, hq, apple, 10);
+        stockIn(a, hq, pear, 4);
+        syncStore(a, b, true);
+        String out = outbound(a, hq, b.ref, List.of(apple, pear), List.of(3, 2));
+        write(a, post("/api/inventory/v1/outbounds/" + out + "/post")).andExpect(status().isOk());
+        String transfer = transfers.create(a.owner, hq, backroom, List.of(new TransferService.Line(apple, 1)), "T");
+        transfers.ship(a.owner, transfer, null, null, null, "T");
+
+        // AC-38：没开出库池的账本也能查；成对与调拨各自一类、带单号
+        JsonNode transit = JSON.readTree(body(read(a, "/api/inventory/v1/in-transit")));
+        assertThat(transit.findValuesAsString("kind")).containsExactlyInAnyOrder("PAIRED", "PAIRED", "TRANSFER");
+        assertThat(transit.findValuesAsString("docNo")).contains(out, transfer);
+        for (JsonNode row : transit) {
+            if ("PAIRED".equals(row.get("kind").asString())) {
+                assertThat(row.get("rootTargetType").asString()).isEqualTo("STORE");
+                assertThat(row.get("rootTargetRef").asString()).isEqualTo(b.ref);
+            } else {
+                assertThat(row.get("rootTargetRef").asString()).isEqualTo(backroom);
+            }
+        }
+
+        // AC-37：梨一件没收到 → 不在入库单上，总数 = 实收；收完后不再在途
+        JsonNode pair = JSON.readTree(body(read(b, "/api/inventory/v1/paired-transfers?direction=IN"))).get(0);
+        String inboundNo = pair.get("to").get("docNo").asString();
+        String appleAtB = pair.get("lines").get(0).get("toItemId").asString();
+        String pearAtB = pair.get("lines").get(1).get("toItemId").asString();
+        write(b, post("/api/inventory/v1/inbounds/" + inboundNo + "/receive")
+                .content("{\"lines\":[{\"itemId\":\"" + appleAtB + "\",\"qty\":3}]}")).andExpect(status().isOk());
+        String inbound = body(read(b, "/api/inventory/v1/inbounds/" + inboundNo));
+        assertThat(inbound).contains(appleAtB).doesNotContain(pearAtB).contains("POSTED");
+        assertOnHand(b, appleAtB, "3");
+        assertThat(JSON.readTree(body(read(a, "/api/inventory/v1/in-transit"))).findValuesAsString("kind"))
+                .containsExactly("TRANSFER");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private record Tenant(String owner, String ref, String bearer) {
     }
 
     private Tenant tenant(String type) throws Exception {
+        return tenant(type, SHOP);
+    }
+
+    private Tenant tenant(String type, String profile) throws Exception {
         String ref = type.charAt(0) + UUID.randomUUID().toString().substring(0, 12);
         String owner = ownerId(open("SHOP", type, ref).andExpect(status().isOk()));
         admin(put("/api/inventory/admin/v1/owners/" + owner + "/profile")
-                .content("{\"profile\":" + SHOP + ",\"reason\":\"init\"}")).andExpect(status().isOk());
+                .content("{\"profile\":" + profile + ",\"reason\":\"init\"}")).andExpect(status().isOk());
         JsonNode issued = JSON.readTree(body(admin(post("/api/inventory/admin/v1/owners/" + owner + "/credentials")
                 .content("{\"name\":\"t\"}")).andExpect(status().isOk()).andReturn()));
         return new Tenant(owner, ref,

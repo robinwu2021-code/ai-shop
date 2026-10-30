@@ -7,7 +7,6 @@ import ai.neargo.inventory.domain.service.CommandService;
 import ai.neargo.inventory.domain.service.DispatchService;
 import ai.neargo.inventory.domain.service.DispatchService.Claim;
 import ai.neargo.inventory.domain.service.DispatchService.Filter;
-import ai.neargo.inventory.domain.service.DispatchService.InTransit;
 import ai.neargo.inventory.domain.service.DispatchService.View;
 import ai.neargo.inventory.guard.InventoryRequestContext;
 import ai.neargo.inventory.svc.api.InboundController.DocNo;
@@ -90,11 +89,6 @@ public class DispatchController {
             dispatch.release(caller, claimNo);
             return new DocNo(claimNo);
         });
-    }
-
-    @GetMapping("/api/inventory/v1/in-transit")
-    public List<InTransit> inTransit() {
-        return dispatch.inTransit(enabled());
     }
 
     private String enabled() {

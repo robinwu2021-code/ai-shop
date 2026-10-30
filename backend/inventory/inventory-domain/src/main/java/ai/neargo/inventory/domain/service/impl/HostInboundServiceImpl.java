@@ -156,6 +156,23 @@ public class HostInboundServiceImpl implements HostInboundService {
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
+    public void replaceLines(Caller caller, String inboundNo, List<Line> lines) {
+        InvInboundOrder order = draft(caller, inboundNo);
+        lineMapper.delete(Wrappers.<InvInboundLine>lambdaQuery()
+                .eq(InvInboundLine::getOwnerId, caller.ownerId())
+                .eq(InvInboundLine::getInboundNo, inboundNo));
+        docSerialMapper.delete(Wrappers.<InvDocumentSerial>lambdaQuery()
+                .eq(InvDocumentSerial::getOwnerId, caller.ownerId())
+                .eq(InvDocumentSerial::getDocKind, InvEnums.DocKind.IN)
+                .eq(InvDocumentSerial::getDocNo, inboundNo));
+        order.setTotalQtyQuantity(BigDecimal.ZERO);
+        orderMapper.updateById(order);
+        addLines(caller, order, lines);
+        audit.record(caller, "inbound.replace", "INBOUND", inboundNo, null, lines, null);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
     public void cancel(Caller caller, String inboundNo) {
         int changed = orderMapper.update(null, Wrappers.<InvInboundOrder>lambdaUpdate()
                 .set(InvInboundOrder::getStatus, InvEnums.DocStatus.VOIDED)
