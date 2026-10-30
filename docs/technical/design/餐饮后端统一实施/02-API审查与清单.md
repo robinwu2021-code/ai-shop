@@ -124,3 +124,8 @@ E3无新增公网API/字段。内部事件元数据新增FOOD_MENU_DISABLED（�
 ## 2026-10-30 E4报表更正投递评估收口
 
 E4无API、字段、权限或订阅覆盖调整。ReportCorrectionConsumer保留原handlerId及重试回执；只有所有目标日期的markDirty调用成功，首次交接才返回SENT。既有日报/重建/查询API与营业日口径保持，日报仍按天执行。
+
+
+## 2026-10-30 独立Mock联调增量
+
+保持既有业务/API/权限边界，未新增商家BFF或生产内部指令。新增测试配置shop.commerce.mock.base-url（默认空）：空时内嵌Mock，非空时Gateway连回环HTTP独立Mock；原commerce-mock profile、enabled、禁止生产的约束保持。独立Mock沿用原/mock/v1/admin/fixtures、orders、events/emit等测试合同及Bearer测试token，不作为营业API开放。详[配置及验收](../../TDD-餐饮独立Mock联调.md)。

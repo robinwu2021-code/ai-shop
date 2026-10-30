@@ -2,7 +2,6 @@ package ai.neargo.shop.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import ai.neargo.shop.commerce.channel.mock.MockCommercePlatform;
 import ai.neargo.shop.commerce.channel.mock.MockCommercePlatform.OrderSeed;
 import ai.neargo.shop.commerce.channel.mock.MockCommercePlatform.Scenario;
 import ai.neargo.shop.food.dto.DiningChannelSourceFacts.Key;
@@ -34,20 +33,20 @@ final class FoodChannelVerticalFixture {
 
     private final JdbcTemplate sql;
     private final ObjectMapper json;
-    private final MockCommercePlatform platform;
+    private final String mockBaseUrl;
     private final String token;
     final References references;
 
     FoodChannelVerticalFixture(
             JdbcTemplate sql,
             ObjectMapper json,
-            MockCommercePlatform platform,
+            String mockBaseUrl,
             References references,
             String token)
             throws Exception {
         this.sql = sql;
         this.json = json;
-        this.platform = platform;
+        this.mockBaseUrl = mockBaseUrl;
         this.token = token;
         this.references = references;
         assertThat(references.entityNo()).isNotBlank();
@@ -131,7 +130,7 @@ final class FoodChannelVerticalFixture {
 
     private void post(String path, Object body) throws Exception {
         var request =
-                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + platform.port() + path))
+                HttpRequest.newBuilder(URI.create(mockBaseUrl + path))
                         .timeout(Duration.ofSeconds(10))
                         .header("Authorization", "Bearer " + token)
                         .header("Content-Type", "application/json")

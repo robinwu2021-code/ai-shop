@@ -66,7 +66,7 @@ final class FoodChannelVerticalProvisioning {
 
     private final ApplicationContext context;
     private final ObjectMapper json;
-    private final MockCommercePlatform platform;
+    private final String mockBaseUrl;
     private final MockCommerceGateway gateway;
     private final String token;
     private final int mainQuantity;
@@ -79,7 +79,7 @@ final class FoodChannelVerticalProvisioning {
         this.mainQuantity = mainQuantity;
         this.context = context;
         json = context.getBean(ObjectMapper.class);
-        platform = context.getBean(MockCommercePlatform.class);
+        mockBaseUrl = FoodChannelMockEndpoint.of(context);
         gateway = context.getBean(MockCommerceGateway.class);
         this.token = token;
     }
@@ -270,7 +270,9 @@ final class FoodChannelVerticalProvisioning {
                         ChannelOrderGateway.State.WAITING_ACCEPTANCE,
                         Instant.now().plusSeconds(1800));
         String cancelledNo = callback(entity, store, connection, scheduled, hostPort);
-        context.getBean(ChannelOrderImportService.class).recoverDue(1);
+        // Restored native templates contain earlier due orders; include this new receipt in
+        // the existing bounded recovery batch rather than assuming it is first in the queue.
+        context.getBean(ChannelOrderImportService.class).recoverDue(100);
         assertThat(
                         sql.queryForObject(
                                 "SELECT import_snapshot FROM cim_order_link WHERE"
@@ -548,7 +550,7 @@ final class FoodChannelVerticalProvisioning {
 
     private void post(String path, Object value) throws Exception {
         var request =
-                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + platform.port() + path))
+                HttpRequest.newBuilder(URI.create(mockBaseUrl + path))
                         .timeout(Duration.ofSeconds(10))
                         .header("Authorization", "Bearer " + token)
                         .header("Content-Type", "application/json")

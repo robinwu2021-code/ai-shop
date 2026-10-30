@@ -3,7 +3,6 @@ package ai.neargo.shop.scenario;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ai.neargo.shop.commerce.channel.mock.MockCommerceGateway;
-import ai.neargo.shop.commerce.channel.mock.MockCommercePlatform;
 import ai.neargo.shop.commerce.channel.mock.MockCommercePlatform.Scenario;
 import ai.neargo.shop.commerce.dto.ChannelOrderContracts.Accept;
 import ai.neargo.shop.commerce.dto.ChannelOrderContracts.Recover;
@@ -101,7 +100,6 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
     private static final Path MOCK_DIRECTORY = mockDirectory();
     @LocalServerPort int port;
     @Autowired ObjectMapper json;
-    @Autowired MockCommercePlatform platform;
     @Autowired ChannelOrderService orders;
     @Autowired ChannelOrderImportService imports;
     @Autowired ChannelOrderDecisionService decisions;
@@ -114,6 +112,8 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
     static void mock(DynamicPropertyRegistry properties) {
         properties.add("shop.commerce.mock.directory", () -> MOCK_DIRECTORY.toString());
         properties.add("shop.commerce.mock.token", () -> MOCK_TOKEN);
+        properties.add("shop.commerce.mock.base-url",
+                () -> System.getenv().getOrDefault("FOOD_CHANNEL_VERTICAL_MOCK_BASE_URL", ""));
     }
 
     @Override
@@ -163,7 +163,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                         : json.readValue(
                                 Files.readString(Path.of(configured)),
                                 FoodChannelVerticalFixture.References.class);
-        var fixture = new FoodChannelVerticalFixture(sql, json, platform, references, MOCK_TOKEN);
+        var fixture = new FoodChannelVerticalFixture(sql, json, FoodChannelMockEndpoint.of(context), references, MOCK_TOKEN);
         accept(fixture, fixture.references.happyOrderNo(), false);
         accept(fixture, fixture.references.uncertainOrderNo(), true);
         var cancelled = fixture.references.cancelledOrderNo();
@@ -203,7 +203,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
                     new FoodChannelVerticalProvisioning(context, MOCK_TOKEN).provision(port, kind);
             var fixture =
                     new FoodChannelVerticalFixture(
-                            sql, json, platform, provisioned.references(), MOCK_TOKEN);
+                            sql, json, FoodChannelMockEndpoint.of(context), provisioned.references(), MOCK_TOKEN);
             var acl = context.getBean(ai.neargo.inventory.domain.service.InventoryAclService.class);
             if ("BUNDLE_MODIFIERS".equals(kind))
                 assertThat(acl.itemIdOfSku(provisioned.menu().skuNo())).isNull();
@@ -220,7 +220,7 @@ class FoodChannelVerticalNativeIT extends FoodEmbeddedStartupIT {
     void actualTwoHandoversConserveOriginalQuantityAndReplayWithoutDuplicateSupplierEffects() throws Exception {
         var configured=new FoodChannelVerticalProvisioning(context,MOCK_TOKEN,2)
                 .provision(port,"FINISHED_WITH_MODIFIERS");
-        var fixture=new FoodChannelVerticalFixture(sql,json,platform,configured.references(),MOCK_TOKEN);
+        var fixture=new FoodChannelVerticalFixture(sql,json,FoodChannelMockEndpoint.of(context),configured.references(),MOCK_TOKEN);
         accept(fixture,fixture.references.happyOrderNo(),false,"RECIPE_MATERIAL",true);
     }
 

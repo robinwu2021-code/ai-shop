@@ -1,10 +1,15 @@
 package ai.neargo.shop.commerce.channel.mock;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.core.env.Environment;
 
 import tools.jackson.databind.ObjectMapper;
@@ -26,6 +31,7 @@ import java.nio.file.Path;
 @ConditionalOnProperty(name = "shop.commerce.mock.enabled", havingValue = "true")
 public class CommerceMockAutoConfiguration {
     @Bean(destroyMethod = "close")
+    @Conditional(EmbeddedMock.class)
     MockCommercePlatform mockCommercePlatform(
             ObjectMapper json,
             Environment env,
@@ -41,9 +47,10 @@ public class CommerceMockAutoConfiguration {
 
     @Bean
     MockCommerceGateway mockCommerceGateway(
-            MockCommercePlatform platform,
+            ObjectProvider<MockCommercePlatform> platforms,
             ObjectMapper json,
             Environment env,
+            @Value("${shop.commerce.mock.base-url:}") String baseUrl,
             @Value("${shop.commerce.mock.profile-no:MOCK_PROFILE}") String profile,
             @Value("${shop.commerce.mock.token}") String token,
             @Value("${shop.commerce.mock.market:TW}") String market,
@@ -54,11 +61,17 @@ public class CommerceMockAutoConfiguration {
         rejectProduction(env);
         return new MockCommerceGateway(
                 profile,
-                URI.create("http://localhost:" + platform.port()),
+                baseUrl.isBlank() ? URI.create("http://localhost:" + platforms.getObject().port()) : URI.create(baseUrl),
                 token,
                 json,
                 new MockCommerceGateway.Metadata(
                         market, namespace, product, protocol, accountScoped));
+    }
+
+    static final class EmbeddedMock implements Condition {
+        @Override public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+            return context.getEnvironment().getProperty("shop.commerce.mock.base-url", "").isBlank();
+        }
     }
 
     private static void rejectProduction(Environment env) {
