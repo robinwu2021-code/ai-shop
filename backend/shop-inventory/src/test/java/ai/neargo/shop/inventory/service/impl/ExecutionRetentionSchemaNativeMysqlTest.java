@@ -2,6 +2,7 @@ package ai.neargo.shop.inventory.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ai.neargo.inventory.domain.config.InventoryFlywayDataSource;
 import ai.neargo.inventory.domain.policy.ExecutionStockRetentionSchemaVerifier.Installation;
 import ai.neargo.inventory.domain.policy.ExecutionStockRetentionSchemaVerifier;
 import java.io.IOException;
@@ -16,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
@@ -46,9 +46,11 @@ class ExecutionRetentionSchemaNativeMysqlTest {
     void createAnEmptyNativeCatalog() {
         var source = new DriverManagerDataSource(System.getProperty("inventory.lock.test.url"),
                 System.getProperty("inventory.lock.test.user", "root"),
-                System.getProperty("inventory.lock.test.password", ""));
+                System.getProperty("inventory.lock.test.password",
+                        System.getenv().getOrDefault("INVENTORY_LOCK_TEST_PASSWORD", "")));
         admin = new JdbcTemplate(source);
-        assertThat(admin.queryForObject("SELECT VERSION()", String.class)).doesNotContainIgnoringCase("h2");
+        assertThat(admin.queryForObject("SELECT VERSION()", String.class))
+                .startsWith("9.").doesNotContainIgnoringCase("mariadb");
         catalog = "c04ret" + UUID.randomUUID().toString().replace("-", "");
         admin.execute("CREATE DATABASE `" + catalog + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
         isolated = new AbstractDataSource() {
@@ -84,7 +86,7 @@ class ExecutionRetentionSchemaNativeMysqlTest {
     }
 
     private void migrate(String target) {
-        Flyway.configure().dataSource(isolated).locations("classpath:db/inventory").table("inv_flyway_history")
+        Flyway.configure().dataSource(new InventoryFlywayDataSource(isolated)).locations("classpath:db/inventory").table("inv_flyway_history")
                 .target(target).load().migrate();
     }
 
@@ -97,6 +99,36 @@ class ExecutionRetentionSchemaNativeMysqlTest {
         assertThat(verifier.installation()).isEqualTo(Installation.INSTALLED);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM inv_execution_retention", Long.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM inv_execution_retention_claim", Long.class)).isZero();
+    }
+
+    @Test
+    void freshInstallPreservesOriginalChecksumsAndPhysicalContract() throws Exception {
+        migrate("18");
+        assertThat(verifier.installation()).isEqualTo(Installation.INSTALLED);
+        try (var resource = getClass().getClassLoader().getResourceAsStream(
+                "META-INF/shop/inventory-execution-retention-schema.json")) {
+            var contract = tools.jackson.databind.json.JsonMapper.builder().build().readTree(resource);
+            assertThat(jdbc.queryForObject("SELECT checksum FROM inv_flyway_history WHERE version='17'", Integer.class))
+                    .isEqualTo(contract.path("flywayChecksum").asInt());
+        }
+        assertThat(jdbc.queryForObject("SELECT version FROM inv_flyway_history ORDER BY installed_rank DESC LIMIT 1", String.class))
+                .isEqualTo("18");
+    }
+
+    @Test
+    void version15UpgradePreservesHistoryAndOwnerIdentity() {
+        migrate("15");
+        jdbc.update("INSERT INTO inv_owner(owner_id,name) VALUES ('OWNER_IT','Original owner')");
+        var history = jdbc.queryForList("SELECT version,script,checksum FROM inv_flyway_history ORDER BY installed_rank");
+        migrate("18");
+        assertThat(jdbc.queryForList("SELECT version,script,checksum FROM inv_flyway_history"
+                + " WHERE CAST(version AS UNSIGNED)<=15 ORDER BY installed_rank")).isEqualTo(history);
+        assertThat(jdbc.queryForObject("SELECT name FROM inv_owner WHERE owner_id='OWNER_IT'", String.class))
+                .isEqualTo("Original owner");
+        assertThat(verifier.installation()).isEqualTo(Installation.INSTALLED);
+        jdbc.execute("ALTER TABLE inv_execution_retention MODIFY owner_id VARCHAR(32)"
+                + " CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL");
+        assertThat(verifier.installation()).isEqualTo(Installation.CORRUPT);
     }
 
     @Test
@@ -149,10 +181,7 @@ class ExecutionRetentionSchemaNativeMysqlTest {
                     + " MODIFY component_no VARCHAR(63) COLLATE utf8mb4_bin NOT NULL");
             case "INDEX" -> jdbc.execute("ALTER TABLE inv_execution_retention DROP INDEX idx_ier_component");
             case "CHECK" -> {
-                String version = jdbc.queryForObject("SELECT VERSION()", String.class);
-                String drop = version.toLowerCase(Locale.ROOT).contains("mariadb")
-                        ? " DROP CONSTRAINT " : " DROP CHECK ";
-                jdbc.execute("ALTER TABLE inv_execution_retention" + drop + "ck_ier_positive");
+                jdbc.execute("ALTER TABLE inv_execution_retention DROP CHECK ck_ier_positive");
             }
             default -> throw new IllegalArgumentException(kind);
         }

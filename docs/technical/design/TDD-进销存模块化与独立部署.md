@@ -296,3 +296,58 @@ prd_purchase_note/_item （P2 新增）
 ---
 
 确认记录：待用户确认
+
+
+## 2026-10-30 补充：MySQL 迁移兼容（用户确认先修复再发布）
+
+### 0. 需求与验收
+
+已复现云端 MySQL9.7.2 从 INV15 升级时 V17 报 Unknown collation。MariaDB 的已应用 SQL/checksum 冻结；既有 MySQL owner 列为 utf8mb4_unicode_520_ci。
+
+| AC | 实现 | 验证 |
+| --- | --- | --- |
+| AC-M1：MySQL 空库正常执行原 V1～V18 | InventoryFlywayDataSource 仅在迁移连接转换 COLLATE token | ExecutionRetentionSchemaNativeMysqlTest.freshInstallPreservesOriginalChecksumsAndPhysicalContract |
+| AC-M2：V15 正常升级，保留旧历史与数据 | InventoryDataSourceConfig 在 Flyway 入口装配适配器 | ExecutionRetentionSchemaNativeMysqlTest.version15UpgradePreservesHistoryAndOwnerIdentity |
+| AC-M3：MariaDB 和业务连接保持原行为，字符串/注释不改写 | 仅 MySQL迁移连接装饰 Statement/PreparedStatement/CallableStatement | InventoryFlywayDataSourceTest |
+| AC-M4：V17 物理结构与原生 owner 比较一致，篡改仍拒绝 | 生成器输出 MySQL owner 排序规则；verifier按引擎校验，其余列/键/触发器/hash不变 | 原生测试安装通过后改变 owner 列排序规则，要求CORRUPT |
+
+### 1. 边界
+
+不修改冻结迁移、历史记录和 checksum，不 repair。MySQL只把未引用的 COLLATE utf8mb4_uca1400_ai_ci 转为 utf8mb4_unicode_520_ci，与既有 MySQL owner 一致；MariaDB原样执行。不是两种排序规则语义完全等价的声明。已有 MySQL owner 若采用其他排序规则，V17物理校验仍拒绝，不自动修改业务身份字段。
+
+### 2. 一次性编码与执行计划
+
+- [x] 在 inventory/config 新增 InventoryFlywayDataSource，沿平台已有Flyway连接适配模式，覆盖 statement、prepared、call、batch；只转换SQL token，保留字面量、引号和注释；普通invDataSource不变。
+- [x] InventoryDataSourceConfig仅在构造Flyway时使用该适配器；迁移脚本仍原类路径，原始资源参与checksum。
+- [x] schema生成器仅补充mysqlOwnerCollation描述；不改SQL输出。ExecutionStockRetentionSchemaVerifier从引擎选定预期owner排序规则并检查表/列，保留原脚本hash、历史checksum及完整性检查。
+- [x] 补充定向wire测试及原生空库/升级测试；先完成代码并编译，再集中运行这些相关测试。
+- [x] 从同一云端备份恢复新预演库，以修复后的真实运行包迁移至CORE621/FOOD37/CIM18/INV18，临时SUPER在finally撤销；不复用失败克隆。
+- [x] 候选包隔离启动、健康及版本验证后，备份生产当前状态，执行正常迁移，集成发布并冒烟；若启动失败恢复原jar/配置，不伪称数据库回滚。新表为空且追加迁移与旧代码兼容为回退边界。
+
+### 5. 验证记录
+
+- 原云端失败复现：餐饮发布记录2026-10-30 REM-04。冻结SQL文件无diff，生成器 --check 和git diff --check通过。
+- `food-inv-portability-compile-20261030.log`：shop-inventory及依赖test-compile BUILD SUCCESS。
+- 首轮 `food-inv-portability-tests-20261030.log`：wire3通过；16个原生用例中3通过、13失败，失败原因都是MySQL9.7 CHECK_CLAUSE以转义引号返回charset字面量。保留失败日志，不计为全绿。
+- 定位后仅在CHECK元数据入口解码不含引号/反斜杠内容的 `_utf8mb4\\'...\\'` 形式，继续精确解析内容/布尔分组；移除临时堆栈输出。`food-inv-portability-diagnostic-20261030.log`最终单测freshInstall...通过，完整V1～V18真实执行、原V17checksum与描述一致、物理结构INSTALLED。
+- `food-inv-portability-green-20261030.log`：仅复测其余受影响12项，12通过、0失败/错误/跳过，BUILD SUCCESS。包含V15升级保留旧历史和owner数据、原生CHECK/索引/列/触发器/打包资源/owner排序规则篡改拒绝。
+- 以上不重复无变化的3个wire与3个原生已通过用例，最终19个不同用例均有通过证据；本轮未执行无关全仓测试。
+- MariaDB路径用wire测试证明不改连接/SQL；本轮未新跑真实MariaDB安装，不将wire证据描述为真实MariaDB升级验收。
+
+
+### 6. 实现与发布对账
+
+修复提交 `446cf77999b9d5fb64e47b0507e1933a9d4b0a2d`，8文件、284插入/8删除，与§2清单一致：新增迁移连接适配器及wire测试，修改Flyway装配、物理校验器、原生测试、生成器/生成描述和本TDD。冻结SQL文件未改。review未发现阻断问题。
+
+干净归档集成package成功（`food-invfix-package-20261030.log`，1m21s），实际云端新克隆从CORE589/FOOD25/INV15迁至CORE621/FOOD37/CIM18/INV18，V17物理结构INSTALLED；真实候选应用开启库存自动迁移启动UP。2026-10-30生产同样迁移成功并发布446cf7799，health/readiness为UP、版本一致；原配置未修改、原jar保留、临时SUPER撤销。没有通过关闭库存迁移绕过V17，也未repair/改写旧历史。详细备份、artifact哈希及发布口径见餐饮验收记录最终发布章节。全量门禁未重跑，沿用户确认的增量验证策略显式ALLOW_GATE_DRIFT=1放行旧记录13528eb1e；不宣称全量门禁通过。
+
+
+## 2026-10-30 支持范围收敛：仅MySQL 9
+
+用户明确取消MariaDB支持。本节覆盖此前兼容章节中的持续双引擎支持/验收安排；已完成的历史wire验证保留为事实记录，不再追加MariaDB原生部署验收。统一规范正文见Java规范§二；本地为MySQL9.7.4、127.0.0.1:3308，3306不作为本项目测试目标。
+
+本轮代码仅修改ExecutionRetentionSchemaNativeMysqlTest：入口要求9.x且非MariaDB，CHECK删除直接使用MySQL的DROP CHECK，移除按MariaDB切换方言的测试分支。生产业务、迁移SQL/hash和既有适配不变；保留旧脚本在MySQL执行的适配，不为删除MariaDB字样改写冻结历史。
+
+同步方案已按现有API/实现重整到餐饮统一实施04：明确单向绝对快照、默认OFF、独立镜像、不修改原生余额、同单位、OFF编辑映射、基线捕获与送达状态区别、原回执查回、停用屏障及PAGE_OBSERVED对账边界。没有新增数据库或API。
+
+验证：`food-mysql9-policy-tests-20261030.log`，shop-inventory及依赖编译成功，actualNativeColumnIndexAndCheckDriftAreIndependentlyRejected的3个MySQL9原生用例通过，0失败/错误/跳过、BUILD SUCCESS。只验证本轮调整过的入口与DROP CHECK路径；未重跑全仓测试。文档/记忆更新无需重建或部署生产包。

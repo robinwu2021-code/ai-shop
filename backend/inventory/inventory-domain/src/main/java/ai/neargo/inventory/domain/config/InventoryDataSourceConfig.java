@@ -85,7 +85,7 @@ public class InventoryDataSourceConfig {
     InvMigrated invFlyway(@Qualifier("invDataSource") DataSource invDataSource, InventoryProperties props) {
         mustBeOwnDataSource(invDataSource);
         Flyway flyway = Flyway.configure()
-                .dataSource(invDataSource)
+                .dataSource(new InventoryFlywayDataSource(invDataSource))
                 .locations(props.getFlywayLocations())
                 .table(HISTORY_TABLE)
                 .baselineOnMigrate(true)
