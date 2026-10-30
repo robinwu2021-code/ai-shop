@@ -640,6 +640,33 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 |---|---|---|
 | T12.1 | 解析与反查、`HostRefs`、各接口接入 | AC-43 ~ 45 |
 
+### 2.23 统一客户端（M13，2026-10-30）
+
+> 档位 1：`inventory-client` 新增公开接口（不动服务端点）。依据：评审 U13、ShareHub 对接方案 §二 选项 A / J3。
+>
+> 一个 `InventoryClient` 同时服务两种宿主：
+> - 电商：系统凭证，按账本头切换账本；
+> - ShareHub：账本凭证。
+>
+> 封装的是服务的宿主接口；业态差异仍在档案和同步的数据里，不在客户端里。
+
+| AC | Given | When | Then |
+|---|---|---|---|
+| AC-46 | 电商一把系统凭证；连锁账本与门店账本 | 同一个客户端按 `owner(编号, 类型)` 切换账本，只用宿主编号建仓、入库、发货给关联门店、对方收货、批量查余额、预留 | 全部成功；预留与宿主接口共用一个熔断器 |
+| AC-47 | ShareHub 账本凭证 | 用稳定命令键发货、重发同一键、按键查命令；签收；SN 调拨；拉事件 | 重发回放同一单号；按键查到结果；调拨与事件正常 |
+| AC-48 | — | 同键异参 / 不存在的宿主编号 | 抛回原错误码 `IDEMPOTENCY_CONFLICT` / `NOT_FOUND` |
+
+| 项 | 落点 |
+|---|---|
+| 声明 | `InventoryHostApi`：主数据、入库、出库、调拨、成对单据、出库池、余额 / SN / 在途、事件、命令查询、系统级批量余额；请求与响应记录与服务端同名字段 |
+| 门面 | `InventoryClient`：`owner(ref, type, actor)` / `self(actor)` 得到 `Session`；写操作第一个参数是调用方给的稳定命令键；`reservations()` 返回同一连接与熔断下的预留客户端 |
+| 复用 | 连接规格与错误翻译从 `InventoryReservationClient` 抽出 `spec(...)` / `create(spec, breaker)`，两者共用；原有公开方法不变 |
+| 不做 | 盘点、冻结、档案、报表、运维接口（宿主少用，需要时再加）；发布到 Nexus（U13 另一半） |
+
+| # | 任务 | 验收 |
+|---|---|---|
+| T13.1 | `InventoryHostApi` + `InventoryClient` + 契约测试 | AC-46 ~ 48 |
+
 ---
 
 ## §3 选型
@@ -761,6 +788,10 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | AC-43、45 | `TransferAndPoolImportFlowTest#hostNumbersWorkWhereverInternalIdsDoAndQueriesReturnBoth`（只用宿主编号入库、调拨、冻结、开盘点；余额 / SN / 流水按编号过滤、响应带编号与内部号；不存在的编号 404 带 `locationRef:` / `itemRef:`，库位没给 400 `locationId`） | ✅ 2026-10-30 | |
 | AC-44 | `OrgBoundaryPairedTransferFlowTest#inTransitListsPairedShipmentsAndInBookTransfersAndZeroReceiptsLeaveTheInbound`（收货改为按宿主物料号 `SKU-APPLE` 确认） | ✅ 2026-10-30 | |
 | M12 回归 | `mvn -o -f inventory/pom.xml test`：64 例、0 失败（3 例原生 MySQL 跳过）；本批不动表结构 | ✅ 2026-10-30 | |
+| AC-46 | `InventoryClientContractTest#ecommerceUsesOneSystemCredentialAcrossBooksWithHostNumbers` | ✅ 2026-10-30 | |
+| AC-47、48 | `#sharehubUsesAnOwnerCredentialWithStableKeysThatReplay` | ✅ 2026-10-30 | 首跑时用例错把「已签收」当在外，服务行为正确（在外只算待签收），已改用例 |
+| M13 回归 | `mvn -o -f inventory/pom.xml test`：66 例、0 失败（3 例原生 MySQL 跳过）；`shop-app` 及依赖编译通过 | ✅ 2026-10-30 | |
+| M13 商城接入 | `InventoryStandaloneCutoverE2ETest`（商城经统一客户端：翻转 → 下单锁货 → 付款确认 → 后台库存页 → 回滚）1 例；`RoutingInventoryReservationPortTest` 3、`InventoryEmbeddedWriterGuardTest` 4、`OpsGoodsChainFlowTest` 2、`OpsMerchantChainFlowTest` 3，全部通过 | ✅ 2026-10-30 | `InventoryEmbeddedWriterGuardTest#embeddedExpirySweepSkipsOwnersWrittenByTheService` 原先失败：夹具造的预留没有行，合并 `586a1f5e5` 后「无行预留回收」按坏数据拒绝；夹具补一行与对应余额后通过（不改业务规则） |
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -955,6 +986,13 @@ I1 ~ I4 挂 `.githooks/pre-push`；I5、I6 进后端测试。
 | 解析与反查 | `HostReferenceService.locationIdOf / itemRefsOf / locationRefsOf`；接口层 `HostRefs` | — |
 | 请求 | `InboundController`、`OutboundController` 的建单与追加改用接口层请求体（字段与原领域草稿同名，另加 `*Ref`）；`TransferController`、成对收货、冻结、开盘点、余额 / SN / 流水查询 | 原来直接以领域记录 `Draft` 作请求体，现在多一层接口请求体做翻译。JSON 字段只增不改，现有宿主不用改 |
 | 响应 | 余额、在仓 SN 带 `itemRef / locationRef` | 在仓 SN 的响应从领域记录换成接口记录 `Serial`，字段只增 |
+
+### M13 · 统一客户端（2026-10-30，T13.1）
+
+| 设计 | 实现 | 偏差与原因 |
+|---|---|---|
+| 声明与门面 | `InventoryHostApi`、`InventoryClient(.Session)`；`InventoryReservationClient.spec / create(spec, breaker)` | 单据详情、目标、出库池、成对单据、事件、命令的响应用 `JsonNode`：结构多、宿主各取所需，固化成记录会让每次加字段都要发客户端 |
+| 商城接入 | `InventoryReservationConfiguration` 改为建 `InventoryClient` 一个 Bean，`InventoryReservationClient` 由 `client.reservations()` 派生；预留路由、按单号的系统级动作、镜像消费、商家后台转发都不改调用代码，共用一个连接与熔断器。新功能直接注入 `InventoryClient` | 配置键不变（`shop.inventory.service.*`） |
 
 
 

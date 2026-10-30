@@ -86,11 +86,16 @@ class InventoryEmbeddedWriterGuardTest {
         String owner = acl.ownerIdOf("E-FLIP-EXP-" + System.nanoTime());
         JdbcTemplate sql = new JdbcTemplate(invDataSource);
         String ref = "R-FLIP-" + System.nanoTime();
-        // 造一笔已过期的预留（不经余额：只验回收挑不挑它）
+        // 造一笔已过期的预留：一行、占着 1 件（回收要逐行退回占用；没有行的预留回收会被当成坏数据拒绝）
+        String reservationId = "RS" + System.nanoTime();
         sql.update("insert into inv_reservation (reservation_id, owner_id, external_ref, status, lifecycle_version,"
                         + " expires_at, created_at, updated_at) values (?, ?, ?, 'HELD', 1, ?, ?, ?)",
-                "RS" + System.nanoTime(), owner, ref, LocalDateTime.now().minusMinutes(5), LocalDateTime.now(),
+                reservationId, owner, ref, LocalDateTime.now().minusMinutes(5), LocalDateTime.now(),
                 LocalDateTime.now());
+        sql.update("insert into inv_reservation_line (reservation_id, line_no, owner_id, item_id, location_id, qty)"
+                + " values (?, 1, ?, 'ITEM-EXP', 'LOC-EXP', 1)", reservationId, owner);
+        sql.update("insert into inv_stock_balance (owner_id, item_id, location_id, on_hand, reserved)"
+                + " values (?, 'ITEM-EXP', 'LOC-EXP', 1, 1)", owner);
         sql.update("update inv_owner set write_authority = 'SVC' where owner_id = ?", owner);
         reservations.expireOverdue(1000);
         assertThat(sql.queryForObject("select status from inv_reservation where owner_id = ? and external_ref = ?",

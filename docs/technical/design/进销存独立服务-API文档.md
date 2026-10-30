@@ -6,7 +6,9 @@
 > - [TDD-进销存独立服务与多业态.md](TDD-进销存独立服务与多业态.md)（§2.13 契约、§2.19 组织边界与成对单据）；
 > - [进销存-库存组织边界与出库对象.md](进销存-库存组织边界与出库对象.md)。
 >
-> 标「**新增**」的是本轮补充的能力，其余为现状。客户端：Java 宿主用 `inventory-client`；其他宿主（如 ShareHub）自写 HTTP 客户端。
+> 标「**新增**」的是本轮补充的能力，其余为现状。
+>
+> **客户端**：Java 宿主统一用 `inventory-client` 的 `InventoryClient`（M13），见 §13。非 Java 宿主按本文自写 HTTP 调用。
 
 ## 0. 模型速览
 
@@ -482,4 +484,33 @@ ShareHub 的接入见 [进销存独立服务-ShareHub对接方案](./进销存�
 **尚未具备**（见 [评审](./进销存-统一逻辑与设计评审.md) §6）：
 - 商城侧「门店 → 账本 + 库位」的统一映射入口（C8）。新的连锁或门店粒度要等它上线才能开账，在那之前只能是主体一本账；
 - 商家后台转发的单据不按档案执行，也不发宿主事件（K1）。
+
+---
+
+## 13. 统一客户端 `InventoryClient`（M13）
+
+```java
+InventoryClient client = InventoryClient.create(() -> Optional.of(baseUrl), appKey, appSecret,
+        Duration.ofSeconds(2), Duration.ofSeconds(5), 5, Duration.ofSeconds(30), "shop.inventory.service");
+
+// 电商：系统凭证，按账本切换
+InventoryClient.Session hq = client.owner("CH1001", "CHAIN", "STAFF:" + userNo);
+hq.postOutbound("ship-" + orderNo, hq.createOutbound("out-" + orderNo, new OutboundCreate(
+        null, "HQ", "STORE_OUT", null, Map.of("STORE", "S3001"), null,
+        List.of(new OutLine(null, "SKU-TEA", 4, null)), null)));
+client.balancesAcross(List.of(new OwnerKey("STORE", "S2001"), new OwnerKey("STORE", "S3001")), Set.of("SKU-TEA"));
+client.reservations().reserve(...);   // 下单预留，同一连接与熔断
+
+// ShareHub：账本凭证
+InventoryClient.Session pb = client.self("STAFF:E1");
+String no = pb.createOutbound("issue-" + shipmentNo, ...);   // 回包丢失：同键重发，或 pb.command("issue-" + shipmentNo)
+```
+
+| 约定 | 说明 |
+|---|---|
+| 账本 | `owner(编号, 类型, 操作人)`：系统凭证用，类型只在同号多本时需要；`self(操作人)`：账本凭证用 |
+| 命令键 | 写操作第一个参数。**用业务单号拼动作**，不要用随机数，这样重发和恢复才成立 |
+| 错误 | 业务错误抛 `InventoryException`（原码）；连不上、超时、5xx、熔断中抛 `UNAVAILABLE`；不自动重试 |
+| 标识 | 物料、库位都给宿主编号即可 |
+| 覆盖 | 主数据、入库、出库、调拨、成对单据、出库池（查、签收、撤回）、余额 / SN / 在途、事件、命令、系统级批量余额、预留 |
 
