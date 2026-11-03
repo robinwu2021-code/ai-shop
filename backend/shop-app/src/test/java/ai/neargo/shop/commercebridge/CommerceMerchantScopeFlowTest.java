@@ -126,6 +126,101 @@ class CommerceMerchantScopeFlowTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void legacyOwnerCannotReachNewMerchantThroughSameNumberStaffAccount(boolean enabled)
+            throws Exception {
+        try (var f = new AccessMysqlFixture();
+                var web = new AnnotationConfigWebApplicationContext()) {
+            f.jdbc.update("UPDATE mch_store SET commerce_model=NULL");
+            f.jdbc.update("UPDATE mch_account SET is_primary=0");
+            f.jdbc.update(
+                    "INSERT INTO mch_entity(entity_no,name,created_at,updated_at) VALUES"
+                        + " ('OTHER','private-other',NOW(),NOW())");
+            f.jdbc.update(
+                    "INSERT INTO"
+                        + " mch_account(mch_account_no,user_no,entity_no,is_owner,is_primary,created_at,updated_at)"
+                        + " VALUES ('U','ELSE','OTHER',1,1,NOW(),NOW())");
+            f.jdbc.update(
+                    "INSERT INTO mch_store(entity_no,store_no,created_at,updated_at) VALUES"
+                        + " ('OTHER','N',NOW(),NOW())");
+            var mvc = CommerceAccessSecurityFlowTest.merchantMvc(f, web, enabled);
+            var bearer = bearer(f);
+            var own = get("/biz/entity/M").header("Authorization", bearer);
+            var other = get("/biz/entity/OTHER").header("Authorization", bearer);
+            var preview =
+                    get("/biz/stores/default/fulfillment/EXPRESS/impact")
+                            .header("Authorization", bearer);
+            var entities = web.getBean(MerchantEntityService.class);
+            // The original trusted, bare-number in-process contract has no signed subject kind.
+            assertTrue(SecurityUtils.currentUser().isEmpty());
+            assertEquals(2, entities.myEntities("U").size());
+            when(web.getBean(MerchantService.class).account("M"))
+                    .thenReturn(
+                            new MerchantAccountVO(
+                                    "M", "own", "", "PERSONAL", "SMALL", "ACTIVE", null, null));
+            int forbidden = ai.neargo.shop.common.ErrorCode.FORBIDDEN.code();
+            assertAll(
+                    () -> mvc.perform(own).andExpect(jsonPath("$.entity.entityNo").value("M")),
+                    () ->
+                            mvc.perform(other)
+                                    .andExpect(jsonPath("$.code").value(forbidden))
+                                    .andExpect(jsonPath("$.entity").doesNotExist()),
+                    () ->
+                            mvc.perform(get("/biz/entities").header("Authorization", bearer))
+                                    .andExpect(jsonPath("$.length()").value(1))
+                                    .andExpect(jsonPath("$[0].entityNo").value("M")),
+                    () ->
+                            mvc.perform(
+                                            get("/biz/merchant/payment")
+                                                    .param("entityNo", "OTHER")
+                                                    .header("Authorization", bearer))
+                                    .andExpect(jsonPath("$.code").value(forbidden)),
+                    () -> mvc.perform(preview).andExpect(status().isOk()),
+                    () -> {
+                        // For unregistered handlers the other column can now reach a new-model
+                        // merchant, even though the authenticated USR is purely a legacy owner.
+                        f.jdbc.update(
+                                "UPDATE mch_store SET"
+                                    + " commerce_model='STORE_V1',business_type_code='RETAIL' WHERE"
+                                    + " store_no='N'");
+                        int denial = enabled ? 403 : 503;
+                        assertAll(
+                                () ->
+                                        mvc.perform(other)
+                                                .andExpect(status().is(denial))
+                                                .andExpect(jsonPath("$.entity").doesNotExist()),
+                                () -> mvc.perform(own).andExpect(status().is(denial)),
+                                () -> mvc.perform(preview).andExpect(status().is(denial)),
+                                () ->
+                                        mvc.perform(
+                                                        get("/biz/stores/mine")
+                                                                .header("Authorization", bearer))
+                                                .andExpect(jsonPath("$.length()").value(1))
+                                                .andExpect(
+                                                        jsonPath("$[0].entity.entityNo")
+                                                                .value("M")),
+                                () ->
+                                        mvc.perform(
+                                                        get("/biz/merchant/profile")
+                                                                .header("Authorization", bearer))
+                                                .andExpect(jsonPath("$.merchantNo").value("M")),
+                                () ->
+                                        mvc.perform(
+                                                        get("/biz/merchant/profile")
+                                                                .header("X-Store-No", "S")
+                                                                .header("Authorization", bearer))
+                                                .andExpect(jsonPath("$.merchantNo").value("M")),
+                                () ->
+                                        mvc.perform(
+                                                        get("/biz/merchant/profile")
+                                                                .header("X-Store-No", "N")
+                                                                .header("Authorization", bearer))
+                                                .andExpect(status().is(denial)));
+                    });
+        }
+    }
+
     private static int pickupCount(AccessMysqlFixture f) {
         return f.jdbc.queryForObject(
                 "SELECT COUNT(*) FROM cmt_pickup_point WHERE owner_ref='S'", Integer.class);

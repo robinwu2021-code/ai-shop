@@ -2,6 +2,8 @@ package ai.neargo.shop.merchant.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.EntityStoresVO;
@@ -110,18 +112,19 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
     }
 
     /**
-     * 我在经营侧的全部成员行，<b>默认证照在前</b>（与身份解析同一个排序）。
-     *
-     * <p>两条登录路径都要认（{@code user_no} 或 {@code mch_account_no}）——
-     * 与 {@code BizIdentityResolverImpl} 逐字同一套条件。只认第一条的话，
-     * App 上独立登录的店员打开门店切换器会是空的，而他明明有授权。
+     * 已登录的商家请求按会话中的身份种类读成员。只有没有登录上下文的可信旧调用方
+     * 仍传裸编号，需要兼容历史的两列匹配。
      */
     private List<MchAccount> memberships(String userNo) {
-        if (userNo == null || userNo.isBlank()) {
-            return List.of();
-        }
+        if (userNo == null || userNo.isBlank()) return List.of();
+        var kind = SecurityUtils.currentUser().map(user -> {
+            if (user.realm() != Realm.MERCHANT || !userNo.equals(user.userNo()) || user.subjectKind() == null) {
+                throw BizException.of(ErrorCode.FORBIDDEN);
+            }
+            return user.subjectKind();
+        }).orElse(null);
         return DataScopeContext.executeWithoutScope(() -> accountMapper.selectList(
-                MerchantMemberships.active(userNo, null)));
+                MerchantMemberships.active(userNo, kind)));
     }
 
     /**

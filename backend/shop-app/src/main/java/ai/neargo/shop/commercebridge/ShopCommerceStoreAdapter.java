@@ -4,6 +4,8 @@ import ai.neargo.commerce.api.access.AccessDenied;
 import ai.neargo.commerce.api.access.AccessStatus;
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.port.StoreDirectoryPort;
+import ai.neargo.commerce.starter.security.CommerceRoutePolicy.Lane;
+import ai.neargo.commerce.starter.security.CommerceRoutePolicy.Route;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.LoginUser;
 
@@ -45,9 +47,9 @@ final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
                         Boolean.class));
     }
 
-    boolean affects(LoginUser user, BizContext scope, String... candidates) {
-        return merchantScopeIncludesNewModel(user, scope.merchantNo())
-                || java.util.Arrays.stream(candidates)
+    boolean affects(LoginUser user, BizContext scope, Route route, String requested) {
+        return merchantScopeIncludesNewModel(user, scope.merchantNo(), route.lane())
+                || java.util.stream.Stream.of(requested, scope.currentStoreNo(), route.pathStore())
                         .filter(java.util.Objects::nonNull)
                         .distinct()
                         .anyMatch(
@@ -64,7 +66,7 @@ final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
         if (target == null
                 || !scope.storeNos().contains(target)
                 || requested != null && !requested.isBlank() && !requested.equals(target)
-                || merchantScopeIncludesNewModel(user, scope.merchantNo()))
+                || merchantScopeIncludesNewModel(user, scope.merchantNo(), Lane.LEGACY_PREVIEW))
             throw new AccessDenied(AccessStatus.FORBIDDEN);
         find(new StoreRef(user.tenantNo(), target))
                 .filter(
@@ -77,22 +79,29 @@ final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
 
     // Legacy handlers can use the selected entity's entire store list, including unassigned
     // or suspended siblings. A role limits authority, not the set of possible handler targets.
-    private boolean merchantScopeIncludesNewModel(LoginUser user, String selectedMerchant) {
+    private boolean merchantScopeIncludesNewModel(
+            LoginUser user, String selectedMerchant, Lane lane) {
         String key =
                 switch (user.subjectKind()) {
                     case USR -> "a.user_no";
                     case MCH -> "a.mch_account_no";
                     default -> throw new IllegalArgumentException("Merchant account kind required");
                 };
+        // An unaudited handler may repeat its lookup with just the bare principal. Include
+        // both namespaces when proving legacy fallthrough safe. This query can only deny.
+        String keys =
+                lane == Lane.DENY || lane == Lane.LEGACY_PREVIEW
+                        ? "a.user_no,a.mch_account_no"
+                        : key;
         return Boolean.TRUE.equals(
                 jdbc.queryForObject(
                         """
 SELECT EXISTS(SELECT 1 FROM mch_store s
 WHERE s.tenant_no=? AND s.deleted=0 AND %s
 AND (s.entity_no=? OR EXISTS(SELECT 1 FROM mch_account a
-WHERE a.tenant_no=s.tenant_no AND a.entity_no=s.entity_no AND %s=? AND a.status='ACTIVE' AND a.deleted=0)))
+WHERE a.tenant_no=s.tenant_no AND a.entity_no=s.entity_no AND ? IN (%s) AND a.status='ACTIVE' AND a.deleted=0)))
 """
-                                .formatted(NON_LEGACY_MODEL, key),
+                                .formatted(NON_LEGACY_MODEL, keys),
                         Boolean.class,
                         user.tenantNo(),
                         selectedMerchant,

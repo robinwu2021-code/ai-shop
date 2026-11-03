@@ -96,8 +96,7 @@ public final class ShopCommerceEndContextAdapter
             BizContext.set(stores.legacyPreviewScope(user, legacy, requested, route.pathStore()));
             return;
         }
-        if (!stores.affects(user, legacy, requested, legacy.currentStoreNo(), route.pathStore())
-                && !route.newModelOnly()) return;
+        if (!stores.affects(user, legacy, route, requested) && !route.newModelOnly()) return;
         if (requested == null
                 || requested.isBlank()
                 || route.lane() == CommerceRoutePolicy.Lane.DENY
