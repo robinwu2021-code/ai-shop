@@ -6,9 +6,24 @@
   "physical_dictionary_fields": 609,
   "additional_fields": {
     "commerce_outbox": [
-      "schema_version",
-      "occurred_at",
-      "published_at"
+      {
+        "name": "schema_version",
+        "sql_type": "INT",
+        "nullable": false,
+        "mapping": "CommerceEvent.schemaVersion; wire schema version, not aggregate version"
+      },
+      {
+        "name": "occurred_at",
+        "sql_type": "BIGINT",
+        "nullable": false,
+        "mapping": "CommerceEvent.occurredAt epoch milliseconds"
+      },
+      {
+        "name": "published_at",
+        "sql_type": "BIGINT",
+        "nullable": true,
+        "mapping": "markPublished receipt time epoch milliseconds"
+      }
     ]
   },
   "tables": [
@@ -114,7 +129,8 @@
           "sql_type": "VARCHAR(512)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "sys_business_end",
@@ -246,7 +262,8 @@
           "sql_type": "VARCHAR(128)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "sys_industry_plan",
@@ -357,7 +374,8 @@
           "sql_type": "INT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "sys_industry_plan_version",
@@ -489,7 +507,8 @@
           "sql_type": "VARCHAR(1024)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "sys_plan_version_end",
@@ -579,7 +598,8 @@
           "sql_type": "INT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "mall_product",
@@ -704,7 +724,8 @@
           "sql_type": "INT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "mall_sku",
@@ -808,7 +829,8 @@
           "sql_type": "INT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "mall_sku_version",
@@ -940,7 +962,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "mall_sku_component",
@@ -1086,7 +1109,8 @@
           "sql_type": "VARCHAR(24)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "IN (0,1)"
     },
     {
       "candidate": "mall_sku_stock",
@@ -1392,7 +1416,8 @@
           "sql_type": "VARCHAR(16)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mall_order",
@@ -1615,7 +1640,8 @@
           "sql_type": "VARCHAR(128)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mall_order_item",
@@ -1747,7 +1773,8 @@
           "sql_type": "JSON",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mall_order_component",
@@ -1893,7 +1920,8 @@
           "sql_type": "VARCHAR(16)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mall_payment_ref",
@@ -2018,7 +2046,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mall_fulfillment_task",
@@ -2150,7 +2179,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mall_shipment",
@@ -2275,7 +2305,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mall_refund",
@@ -2428,7 +2459,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mall_refund_item",
@@ -2560,7 +2592,8 @@
           "sql_type": "JSON",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "commerce_event_inbox",
@@ -2678,7 +2711,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_account",
@@ -2789,7 +2823,8 @@
           "sql_type": "VARCHAR(64)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_period",
@@ -3040,7 +3075,8 @@
           "sql_type": "JSON",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_store_end_grant",
@@ -3193,7 +3229,8 @@
           "sql_type": "VARCHAR(512)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_reservation",
@@ -3332,7 +3369,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_conversion",
@@ -3478,7 +3516,8 @@
           "sql_type": "VARCHAR(16)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_conversion_item",
@@ -3582,7 +3621,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_credit_account",
@@ -3672,7 +3712,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_credit_lot",
@@ -3804,7 +3845,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_credit_ledger",
@@ -3957,7 +3999,8 @@
           "sql_type": "VARCHAR(1024)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "commerce_outbox",
@@ -4082,7 +4125,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_subscription_migration_map",
@@ -4214,7 +4258,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "mch_end_schedule_event",
@@ -4353,7 +4398,8 @@
           "sql_type": "VARCHAR(64)",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     },
     {
       "candidate": "commerce_expiry_notice",
@@ -4555,7 +4601,8 @@
           "sql_type": "BIGINT",
           "mapping": "same-named owned column"
         }
-      ]
+      ],
+      "deleted_constraint": "= 0"
     }
   ]
 }

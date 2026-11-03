@@ -15,7 +15,8 @@ CREATE TABLE `sys_business_type` (
   `plan_catalog_version` BIGINT NOT NULL,
   `remark` VARCHAR(512) NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`business_type_code`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `sys_business_end` (
@@ -39,7 +40,8 @@ CREATE TABLE `sys_business_end` (
   `route_policy_ref` VARCHAR(128) NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`end_code`),
   UNIQUE KEY uk_1 (`tenant_no`,`entitlement_code`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `sys_industry_plan` (
@@ -61,7 +63,8 @@ CREATE TABLE `sys_industry_plan` (
   UNIQUE KEY uk_0 (`tenant_no`,`plan_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`business_type_code`,`tier_code`),
   UNIQUE KEY uk_2 (`tenant_no`,`business_type_code`,`rank`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `sys_industry_plan_version` (
@@ -85,7 +88,8 @@ CREATE TABLE `sys_industry_plan_version` (
   `change_note` VARCHAR(1024) NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`plan_version_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`plan_no`,`revision`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `sys_plan_version_end` (
@@ -102,7 +106,8 @@ CREATE TABLE `sys_plan_version_end` (
   `entitlement_code` VARCHAR(64) NOT NULL,
   `sort` INT NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`plan_version_no`,`entitlement_code`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mall_product` (
@@ -124,7 +129,8 @@ CREATE TABLE `mall_product` (
   `sale_status` VARCHAR(16) NOT NULL,
   `sort` INT NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`product_no`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mall_sku` (
@@ -143,7 +149,8 @@ CREATE TABLE `mall_sku` (
   `sale_status` VARCHAR(16) NOT NULL,
   `max_per_order` INT NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`sku_no`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mall_sku_version` (
@@ -167,7 +174,8 @@ CREATE TABLE `mall_sku_version` (
   `published_at` BIGINT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`sku_version_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`sku_no`,`revision`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mall_sku_component` (
@@ -193,5 +201,6 @@ CREATE TABLE `mall_sku_component` (
   `activation_policy` VARCHAR(24) NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`component_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`sku_version_no`,`component_seq`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;

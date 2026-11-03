@@ -64,7 +64,7 @@ class CommerceMigrationStartupTest {
                                 "101",
                                 db.jdbc.queryForObject(
                                         "SELECT version FROM flyway_schema_history ORDER BY"
-                                            + " installed_rank DESC LIMIT 1",
+                                                + " installed_rank DESC LIMIT 1",
                                         String.class));
                     });
         }
@@ -99,15 +99,15 @@ class CommerceMigrationStartupTest {
                                         0,
                                         db.jdbc.queryForObject(
                                                 "SELECT COUNT(*) FROM information_schema.tables"
-                                                    + " WHERE table_schema=? AND"
-                                                    + " table_name='activation_marker'",
+                                                        + " WHERE table_schema=? AND"
+                                                        + " table_name='activation_marker'",
                                                 Integer.class,
                                                 db.name));
                                 assertEquals(
                                         1,
                                         db.jdbc.queryForObject(
                                                 "SELECT COUNT(*) FROM flyway_schema_history WHERE"
-                                                    + " success=1",
+                                                        + " success=1",
                                                 Integer.class));
                             });
         }
@@ -135,8 +135,72 @@ class CommerceMigrationStartupTest {
                                         0,
                                         db.jdbc.queryForObject(
                                                 "SELECT COUNT(*) FROM information_schema.tables"
-                                                    + " WHERE table_schema=? AND"
-                                                    + " table_name='commerce_schema_history'",
+                                                        + " WHERE table_schema=? AND"
+                                                        + " table_name='commerce_schema_history'",
+                                                Integer.class,
+                                                db.name));
+                            });
+        }
+    }
+
+    @Test
+    void explicitEventAdapterReplacesDefaultWriterWithoutDuplicateBean() throws Exception {
+        try (var db = new Database()) {
+            Files.writeString(host.resolve("V100__host.sql"), "CREATE TABLE host_marker(id INT);");
+            var external = new ai.neargo.commerce.persistence.JdbcCommerceEventPersistence(db.ds);
+            new ApplicationContextRunner()
+                    .withConfiguration(
+                            AutoConfigurations.of(FlywayAutoConfiguration.class, commerce()))
+                    .withBean(DataSource.class, () -> db.ds)
+                    .withBean(
+                            org.springframework.transaction.PlatformTransactionManager.class,
+                            () ->
+                                    new org.springframework.jdbc.datasource
+                                            .DataSourceTransactionManager(db.ds))
+                    .withBean(
+                            ai.neargo.commerce.api.port.CommerceEventPersistencePort.class,
+                            () -> external)
+                    .withPropertyValues(
+                            "commerce.enabled=true", "spring.flyway.locations=filesystem:" + host)
+                    .run(
+                            ctx -> {
+                                assertNull(ctx.getStartupFailure());
+                                assertEquals(
+                                        1,
+                                        ctx.getBeansOfType(
+                                                        ai.neargo.commerce.api.port
+                                                                .CommerceEventPersistencePort.class)
+                                                .size());
+                                assertSame(
+                                        external,
+                                        ctx.getBean(
+                                                ai.neargo.commerce.api.port
+                                                        .CommerceEventPersistencePort.class));
+                                assertFalse(ctx.containsBean("commerceEventPersistence"));
+                            });
+        }
+    }
+
+    @Test
+    void missingHostInitializerFailsClosedBeforeCommerceMigration() {
+        try (var db = new Database()) {
+            new ApplicationContextRunner()
+                    .withConfiguration(AutoConfigurations.of(commerce()))
+                    .withBean(DataSource.class, () -> db.ds)
+                    .withBean(
+                            org.springframework.transaction.PlatformTransactionManager.class,
+                            () ->
+                                    new org.springframework.jdbc.datasource
+                                            .DataSourceTransactionManager(db.ds))
+                    .withPropertyValues("commerce.enabled=true")
+                    .run(
+                            ctx -> {
+                                assertNotNull(ctx.getStartupFailure());
+                                assertEquals(
+                                        0,
+                                        db.jdbc.queryForObject(
+                                                "SELECT COUNT(*) FROM information_schema.tables"
+                                                    + " WHERE table_schema=?",
                                                 Integer.class,
                                                 db.name));
                             });
@@ -154,14 +218,14 @@ class CommerceMigrationStartupTest {
                         1,
                         jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM information_schema.tables WHERE"
-                                    + " table_schema=DATABASE() AND table_name='host_marker'",
+                                        + " table_schema=DATABASE() AND table_name='host_marker'",
                                 Integer.class));
                 assertEquals(
                         1,
                         jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM information_schema.tables WHERE"
-                                    + " table_schema=DATABASE() AND"
-                                    + " table_name='mch_subscription_account'",
+                                        + " table_schema=DATABASE() AND"
+                                        + " table_name='mch_subscription_account'",
                                 Integer.class));
                 jdbc.execute("CREATE TABLE IF NOT EXISTS activation_marker(id INT)");
             };

@@ -20,7 +20,7 @@ class CommerceSchemaMysqlTest {
                     0,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE"
-                                + " constraint_schema=?",
+                                    + " constraint_schema=?",
                             Integer.class,
                             db.name));
         }
@@ -54,7 +54,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE mch_subscription_credit_account SET reserved_minor=1"
-                                        + " WHERE tenant_no='A'"));
+                                            + " WHERE tenant_no='A'"));
         }
     }
 
@@ -66,7 +66,7 @@ class CommerceSchemaMysqlTest {
                     14,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "sys_business_type"));
@@ -74,7 +74,7 @@ class CommerceSchemaMysqlTest {
                     18,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "sys_business_end"));
@@ -82,7 +82,7 @@ class CommerceSchemaMysqlTest {
                     15,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "sys_industry_plan"));
@@ -90,7 +90,7 @@ class CommerceSchemaMysqlTest {
                     18,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "sys_industry_plan_version"));
@@ -98,7 +98,7 @@ class CommerceSchemaMysqlTest {
                     12,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "sys_plan_version_end"));
@@ -106,7 +106,7 @@ class CommerceSchemaMysqlTest {
                     17,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_product"));
@@ -114,7 +114,7 @@ class CommerceSchemaMysqlTest {
                     14,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_sku"));
@@ -122,7 +122,7 @@ class CommerceSchemaMysqlTest {
                     18,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_sku_version"));
@@ -130,7 +130,7 @@ class CommerceSchemaMysqlTest {
                     20,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_sku_component"));
@@ -138,7 +138,7 @@ class CommerceSchemaMysqlTest {
                     30,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_quote"));
@@ -146,7 +146,7 @@ class CommerceSchemaMysqlTest {
                     31,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_order"));
@@ -154,7 +154,7 @@ class CommerceSchemaMysqlTest {
                     18,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_order_item"));
@@ -162,7 +162,7 @@ class CommerceSchemaMysqlTest {
                     20,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_order_component"));
@@ -170,7 +170,7 @@ class CommerceSchemaMysqlTest {
                     17,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_payment_ref"));
@@ -178,7 +178,7 @@ class CommerceSchemaMysqlTest {
                     18,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_fulfillment_task"));
@@ -186,7 +186,7 @@ class CommerceSchemaMysqlTest {
                     17,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_shipment"));
@@ -194,7 +194,7 @@ class CommerceSchemaMysqlTest {
                     21,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_refund"));
@@ -202,7 +202,7 @@ class CommerceSchemaMysqlTest {
                     18,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mall_refund_item"));
@@ -210,7 +210,7 @@ class CommerceSchemaMysqlTest {
                     16,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "commerce_event_inbox"));
@@ -218,7 +218,7 @@ class CommerceSchemaMysqlTest {
                     15,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_account"));
@@ -226,7 +226,7 @@ class CommerceSchemaMysqlTest {
                     35,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_period"));
@@ -234,7 +234,7 @@ class CommerceSchemaMysqlTest {
                     21,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_store_end_grant"));
@@ -242,7 +242,7 @@ class CommerceSchemaMysqlTest {
                     19,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_reservation"));
@@ -250,7 +250,7 @@ class CommerceSchemaMysqlTest {
                     20,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_conversion"));
@@ -258,7 +258,7 @@ class CommerceSchemaMysqlTest {
                     14,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_conversion_item"));
@@ -266,7 +266,7 @@ class CommerceSchemaMysqlTest {
                     12,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_credit_account"));
@@ -274,7 +274,7 @@ class CommerceSchemaMysqlTest {
                     18,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_credit_lot"));
@@ -282,7 +282,7 @@ class CommerceSchemaMysqlTest {
                     21,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_credit_ledger"));
@@ -290,7 +290,7 @@ class CommerceSchemaMysqlTest {
                     20,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "commerce_outbox"));
@@ -298,7 +298,7 @@ class CommerceSchemaMysqlTest {
                     18,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_subscription_migration_map"));
@@ -306,7 +306,7 @@ class CommerceSchemaMysqlTest {
                     19,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "mch_end_schedule_event"));
@@ -314,7 +314,7 @@ class CommerceSchemaMysqlTest {
                     28,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
-                                + " AND table_name=?",
+                                    + " AND table_name=?",
                             Integer.class,
                             db.name,
                             "commerce_expiry_notice"));
@@ -339,8 +339,8 @@ class CommerceSchemaMysqlTest {
                 var actual =
                         db.jdbc.queryForObject(
                                 "SELECT CONCAT(column_type,'|',is_nullable,'|',extra) FROM"
-                                    + " information_schema.columns WHERE table_schema=? AND"
-                                    + " table_name=? AND column_name=?",
+                                        + " information_schema.columns WHERE table_schema=? AND"
+                                        + " table_name=? AND column_name=?",
                                 String.class,
                                 db.name,
                                 parts[0],
@@ -367,7 +367,7 @@ class CommerceSchemaMysqlTest {
                     () -> copy(db, "mch_subscription_period", java.util.Map.of("period_no", "p2")));
             db.jdbc.update(
                     "UPDATE mch_subscription_period SET fulfillment_task_no='task1' WHERE"
-                        + " tenant_no='A'");
+                            + " tenant_no='A'");
             assertThrows(
                     org.springframework.dao.DuplicateKeyException.class,
                     () ->
@@ -424,30 +424,185 @@ class CommerceSchemaMysqlTest {
                         + "` WHERE tenant_no='A'",
                 values.toArray());
     }
-    @Test void immutableFactsCannotBeSoftDeleted() {try(var db=new MysqlDatabase()){db.migrate();
-db.jdbc.execute(Rows.mall_quote("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_quote` SET deleted=1 WHERE tenant_no=\"A\""),"mall_quote");
-db.jdbc.execute(Rows.mall_order("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_order` SET deleted=1 WHERE tenant_no=\"A\""),"mall_order");
-db.jdbc.execute(Rows.mall_order_item("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_order_item` SET deleted=1 WHERE tenant_no=\"A\""),"mall_order_item");
-db.jdbc.execute(Rows.mall_order_component("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_order_component` SET deleted=1 WHERE tenant_no=\"A\""),"mall_order_component");
-db.jdbc.execute(Rows.mall_payment_ref("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_payment_ref` SET deleted=1 WHERE tenant_no=\"A\""),"mall_payment_ref");
-db.jdbc.execute(Rows.mall_fulfillment_task("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_fulfillment_task` SET deleted=1 WHERE tenant_no=\"A\""),"mall_fulfillment_task");
-db.jdbc.execute(Rows.mall_shipment("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_shipment` SET deleted=1 WHERE tenant_no=\"A\""),"mall_shipment");
-db.jdbc.execute(Rows.mall_refund("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_refund` SET deleted=1 WHERE tenant_no=\"A\""),"mall_refund");
-db.jdbc.execute(Rows.mall_refund_item("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mall_refund_item` SET deleted=1 WHERE tenant_no=\"A\""),"mall_refund_item");
-db.jdbc.execute(Rows.commerce_event_inbox("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `commerce_event_inbox` SET deleted=1 WHERE tenant_no=\"A\""),"commerce_event_inbox");
-db.jdbc.execute(Rows.mch_subscription_account("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_account` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_account");
-db.jdbc.execute(Rows.mch_subscription_period("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_period` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_period");
-db.jdbc.execute(Rows.mch_store_end_grant("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_store_end_grant` SET deleted=1 WHERE tenant_no=\"A\""),"mch_store_end_grant");
-db.jdbc.execute(Rows.mch_subscription_reservation("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_reservation` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_reservation");
-db.jdbc.execute(Rows.mch_subscription_conversion("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_conversion` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_conversion");
-db.jdbc.execute(Rows.mch_subscription_conversion_item("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_conversion_item` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_conversion_item");
-db.jdbc.execute(Rows.mch_subscription_credit_account("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_credit_account` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_credit_account");
-db.jdbc.execute(Rows.mch_subscription_credit_lot("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_credit_lot` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_credit_lot");
-db.jdbc.execute(Rows.mch_subscription_credit_ledger("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_credit_ledger` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_credit_ledger");
-db.jdbc.execute(Rows.commerce_outbox("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `commerce_outbox` SET deleted=1 WHERE tenant_no=\"A\""),"commerce_outbox");
-db.jdbc.execute(Rows.mch_subscription_migration_map("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_subscription_migration_map` SET deleted=1 WHERE tenant_no=\"A\""),"mch_subscription_migration_map");
-db.jdbc.execute(Rows.mch_end_schedule_event("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `mch_end_schedule_event` SET deleted=1 WHERE tenant_no=\"A\""),"mch_end_schedule_event");
-db.jdbc.execute(Rows.commerce_expiry_notice("A")); assertThrows(org.springframework.dao.DataAccessException.class,()->db.jdbc.update("UPDATE `commerce_expiry_notice` SET deleted=1 WHERE tenant_no=\"A\""),"commerce_expiry_notice");
-    }}
 
+    @Test
+    void immutableFactsCannotBeSoftDeleted() {
+        try (var db = new MysqlDatabase()) {
+            db.migrate();
+            db.jdbc.execute(Rows.mall_quote("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () -> db.jdbc.update("UPDATE `mall_quote` SET deleted=1 WHERE tenant_no=\"A\""),
+                    "mall_quote");
+            db.jdbc.execute(Rows.mall_order("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () -> db.jdbc.update("UPDATE `mall_order` SET deleted=1 WHERE tenant_no=\"A\""),
+                    "mall_order");
+            db.jdbc.execute(Rows.mall_order_item("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mall_order_item` SET deleted=1 WHERE tenant_no=\"A\""),
+                    "mall_order_item");
+            db.jdbc.execute(Rows.mall_order_component("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mall_order_component` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mall_order_component");
+            db.jdbc.execute(Rows.mall_payment_ref("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mall_payment_ref` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mall_payment_ref");
+            db.jdbc.execute(Rows.mall_fulfillment_task("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mall_fulfillment_task` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mall_fulfillment_task");
+            db.jdbc.execute(Rows.mall_shipment("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mall_shipment` SET deleted=1 WHERE tenant_no=\"A\""),
+                    "mall_shipment");
+            db.jdbc.execute(Rows.mall_refund("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mall_refund` SET deleted=1 WHERE tenant_no=\"A\""),
+                    "mall_refund");
+            db.jdbc.execute(Rows.mall_refund_item("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mall_refund_item` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mall_refund_item");
+            db.jdbc.execute(Rows.commerce_event_inbox("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `commerce_event_inbox` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "commerce_event_inbox");
+            db.jdbc.execute(Rows.mch_subscription_account("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_account` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_account");
+            db.jdbc.execute(Rows.mch_subscription_period("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_period` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_period");
+            db.jdbc.execute(Rows.mch_store_end_grant("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_store_end_grant` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_store_end_grant");
+            db.jdbc.execute(Rows.mch_subscription_reservation("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_reservation` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_reservation");
+            db.jdbc.execute(Rows.mch_subscription_conversion("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_conversion` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_conversion");
+            db.jdbc.execute(Rows.mch_subscription_conversion_item("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_conversion_item` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_conversion_item");
+            db.jdbc.execute(Rows.mch_subscription_credit_account("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_credit_account` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_credit_account");
+            db.jdbc.execute(Rows.mch_subscription_credit_lot("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_credit_lot` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_credit_lot");
+            db.jdbc.execute(Rows.mch_subscription_credit_ledger("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_credit_ledger` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_credit_ledger");
+            db.jdbc.execute(Rows.commerce_outbox("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `commerce_outbox` SET deleted=1 WHERE tenant_no=\"A\""),
+                    "commerce_outbox");
+            db.jdbc.execute(Rows.mch_subscription_migration_map("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_subscription_migration_map` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_subscription_migration_map");
+            db.jdbc.execute(Rows.mch_end_schedule_event("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `mch_end_schedule_event` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "mch_end_schedule_event");
+            db.jdbc.execute(Rows.commerce_expiry_notice("A"));
+            assertThrows(
+                    org.springframework.dao.DataAccessException.class,
+                    () ->
+                            db.jdbc.update(
+                                    "UPDATE `commerce_expiry_notice` SET deleted=1 WHERE"
+                                        + " tenant_no=\"A\""),
+                    "commerce_expiry_notice");
+        }
+    }
 }

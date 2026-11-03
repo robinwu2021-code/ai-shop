@@ -16,7 +16,8 @@ CREATE TABLE `mch_subscription_account` (
   `legacy_contract_ref` VARCHAR(64) NULL,
   `migration_batch_no` VARCHAR(64) NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`store_no`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mch_subscription_period` (
@@ -58,7 +59,8 @@ CREATE TABLE `mch_subscription_period` (
   UNIQUE KEY uk_0 (`tenant_no`,`period_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`fulfillment_task_no`),
   UNIQUE KEY uk_2 (`tenant_no`,`source_type`,`source_ref_no`,`stream_key`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mch_store_end_grant` (
@@ -85,7 +87,8 @@ CREATE TABLE `mch_store_end_grant` (
   `reason` VARCHAR(512) NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`grant_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`period_no`,`entitlement_code`,`schedule_revision`,`segment_seq`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mch_subscription_reservation` (
@@ -110,7 +113,8 @@ CREATE TABLE `mch_subscription_reservation` (
   `reserved_credit_minor` BIGINT NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`reservation_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`order_no`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mch_subscription_conversion` (
@@ -136,7 +140,8 @@ CREATE TABLE `mch_subscription_conversion` (
   `status` VARCHAR(16) NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`conversion_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`order_no`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mch_subscription_conversion_item` (
@@ -156,7 +161,8 @@ CREATE TABLE `mch_subscription_conversion_item` (
   `converted_minor` BIGINT NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`conversion_no`,`source_period_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`source_period_no`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mch_subscription_credit_account` (
@@ -174,7 +180,8 @@ CREATE TABLE `mch_subscription_credit_account` (
   `reserved_minor` BIGINT NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`store_no`,`currency`),
   PRIMARY KEY (`id`),
-  CHECK (reserved_minor >= 0 AND balance_minor >= reserved_minor)
+  CHECK (reserved_minor >= 0 AND balance_minor >= reserved_minor),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mch_subscription_credit_lot` (
@@ -199,7 +206,8 @@ CREATE TABLE `mch_subscription_credit_lot` (
   UNIQUE KEY uk_0 (`tenant_no`,`credit_lot_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`source_type`,`source_ref_no`),
   PRIMARY KEY (`id`),
-  CHECK (reserved_minor >= 0 AND remaining_minor >= reserved_minor AND issued_minor >= remaining_minor)
+  CHECK (reserved_minor >= 0 AND remaining_minor >= reserved_minor AND issued_minor >= remaining_minor),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE TABLE `mch_subscription_credit_ledger` (
@@ -226,7 +234,8 @@ CREATE TABLE `mch_subscription_credit_ledger` (
   `reason` VARCHAR(1024) NOT NULL,
   UNIQUE KEY uk_0 (`tenant_no`,`ledger_no`),
   UNIQUE KEY uk_1 (`tenant_no`,`event_type`,`biz_ref_no`,`credit_lot_no`,`event_seq`),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  CHECK (deleted = 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
 
 CREATE INDEX idx_9 ON `mch_subscription_period` (`tenant_no`,`store_no`,`stream_key`,`state`,`effective_start_at`,`effective_end_at`);
