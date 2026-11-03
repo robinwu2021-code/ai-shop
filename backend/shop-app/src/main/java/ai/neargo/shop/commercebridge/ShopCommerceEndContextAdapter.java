@@ -89,7 +89,12 @@ public final class ShopCommerceEndContextAdapter
         var route = policy.match(req.getMethod(), path);
         String requested = req.getHeader(BizContextFilter.STORE_HEADER);
         boolean account = route.lane() == CommerceRoutePolicy.Lane.ACCOUNT;
-        if (account && (requested == null || requested.isBlank())) return;
+        if (policy.allowsAccountRecovery(
+                route, req.getMethod(), path, requested, legacy.currentStoreNo())) return;
+        if (route.lane() == CommerceRoutePolicy.Lane.LEGACY_PREVIEW) {
+            BizContext.set(stores.legacyPreviewScope(user, legacy, requested, route.pathStore()));
+            return;
+        }
         if (!stores.affects(user, requested, legacy.currentStoreNo(), route.pathStore())
                 && !route.newModelOnly()) return;
         if (requested == null

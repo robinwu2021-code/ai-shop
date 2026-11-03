@@ -57,12 +57,16 @@ class DisabledCommerceConfiguration {
             String path = req.getRequestURI().substring(req.getContextPath().length());
             var route = policy.match(req.getMethod(), path);
             String requested = req.getHeader(BizContextFilter.STORE_HEADER);
-            if (route.lane() == CommerceRoutePolicy.Lane.ACCOUNT
-                    && (requested == null
-                            || requested.isBlank()
-                            || !policy.isStoreSelection(req.getMethod(), path)
-                                    && requested.equals(selected.currentStoreNo()))) return true;
+            if (policy.allowsAccountRecovery(
+                    route, req.getMethod(), path, requested, selected.currentStoreNo()))
+                return true;
             try {
+                if (route.lane() == CommerceRoutePolicy.Lane.LEGACY_PREVIEW) {
+                    BizContext.set(
+                            stores.legacyPreviewScope(
+                                    user, selected, requested, route.pathStore()));
+                    return true;
+                }
                 if (!stores.affects(user, requested, selected.currentStoreNo(), route.pathStore()))
                     return true;
             } catch (RuntimeException unavailable) {

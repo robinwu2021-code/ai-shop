@@ -12,6 +12,7 @@ public final class CommerceRoutePolicy {
         ACCOUNT,
         BOOTSTRAP,
         END_PROTECTED,
+        LEGACY_PREVIEW,
         DENY
     }
 
@@ -46,6 +47,14 @@ public final class CommerceRoutePolicy {
     /** Recovery routes may be used without a selection. An explicit selection must be verified. */
     public boolean isStoreSelection(String method, String path) {
         return "GET".equals(method) && Set.of("/biz/context", "/biz/stores/mine").contains(path);
+    }
+
+    public boolean allowsAccountRecovery(
+            Route route, String method, String path, String requested, String selected) {
+        return route.lane() == Lane.ACCOUNT
+                && (requested == null
+                        || requested.isBlank()
+                        || !isStoreSelection(method, path) && requested.equals(selected));
     }
 
     public Route match(String method, String path) {
@@ -94,6 +103,8 @@ public final class CommerceRoutePolicy {
                 return new Route(Lane.BOOTSTRAP, store, null, "biz:store:admin", true);
             // Preserve actual legacy store handlers. A new or unregistered plural route
             // stays closed even when MVC accepts a broader verb (e.g. HEAD for GET).
+            if (Set.of("GET", "HEAD").contains(method) && tail.matches("fulfillment/[^/]+/impact"))
+                return new Route(Lane.LEGACY_PREVIEW, store, null, null);
             boolean legacy =
                     tail.equals("fulfillment") && Set.of("GET", "HEAD", "PUT").contains(method)
                             || tail.equals("appointment-slots")

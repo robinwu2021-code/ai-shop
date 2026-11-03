@@ -1,7 +1,10 @@
 package ai.neargo.shop.commercebridge;
 
+import ai.neargo.commerce.api.access.AccessDenied;
+import ai.neargo.commerce.api.access.AccessStatus;
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.port.StoreDirectoryPort;
+import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.LoginUser;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,6 +50,23 @@ SELECT EXISTS(SELECT 1 FROM mch_store WHERE deleted=0 AND commerce_model IS NOT 
                                         find(new StoreRef(user.tenantNo(), no))
                                                 .map(s -> s.model() != CommerceModel.LEGACY)
                                                 .orElse(false));
+    }
+
+    /** The B-app uses "default" for the existing merchant-scoped preview. */
+    BizContext legacyPreviewScope(
+            LoginUser user, BizContext scope, String requested, String pathStore) {
+        String target = "default".equals(pathStore) ? scope.currentStoreNo() : pathStore;
+        if (target == null
+                || !scope.storeNos().contains(target)
+                || requested != null && !requested.isBlank() && !requested.equals(target)
+                || reachesNewModel(user)) throw new AccessDenied(AccessStatus.FORBIDDEN);
+        find(new StoreRef(user.tenantNo(), target))
+                .filter(
+                        s ->
+                                s.model() == CommerceModel.LEGACY
+                                        && s.merchantNo().equals(scope.merchantNo()))
+                .orElseThrow(() -> new AccessDenied(AccessStatus.FORBIDDEN));
+        return scope.withStore(target);
     }
 
     private boolean reachesNewModel(LoginUser user) {

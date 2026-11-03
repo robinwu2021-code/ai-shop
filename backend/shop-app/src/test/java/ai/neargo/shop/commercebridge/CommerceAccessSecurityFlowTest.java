@@ -24,16 +24,20 @@ import ai.neargo.shop.config.SecurityConfig;
 import ai.neargo.shop.fulfillment.service.PickupService;
 import ai.neargo.shop.merchant.api.biz.BizStorePayController;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
-import ai.neargo.shop.merchant.service.MerchantEntityService;
-import ai.neargo.shop.merchant.service.StoreCodeService;
-import ai.neargo.shop.merchant.service.StoreLinkService;
+import ai.neargo.shop.merchant.service.*;
 import ai.neargo.shop.merchant.service.impl.*;
 import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.message.api.biz.BizMessageController;
+import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.portal.biz.*;
+import ai.neargo.shop.product.api.biz.BizGoodsController;
+import ai.neargo.shop.product.service.*;
 import ai.neargo.shop.spi.platform.PlatformSwitchPort;
+import ai.neargo.shop.spi.product.GoodsVisionPort;
 import ai.neargo.shop.spi.trade.AfterSalePendingQueryPort;
 import ai.neargo.shop.spi.user.*;
+import ai.neargo.shop.user.service.StoreFavoriteService;
+import ai.neargo.shop.user.service.UserService;
 
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 
@@ -156,10 +160,19 @@ class CommerceAccessSecurityFlowTest {
                         assertFalse(guard.admit(user, scope, req, denied));
                         assertEquals(503, denied.getStatus());
                         for (String path : List.of("/biz/stores/mine", "/biz/context")) {
-                            var selection = new org.springframework.mock.web.MockHttpServletRequest("GET", path);
-                            assertTrue(guard.admit(user, scope, selection, new org.springframework.mock.web.MockHttpServletResponse()));
+                            var selection =
+                                    new org.springframework.mock.web.MockHttpServletRequest(
+                                            "GET", path);
+                            assertTrue(
+                                    guard.admit(
+                                            user,
+                                            scope,
+                                            selection,
+                                            new org.springframework.mock.web
+                                                    .MockHttpServletResponse()));
                             selection.addHeader("X-Store-No", "S");
-                            var rejectedSelection = new org.springframework.mock.web.MockHttpServletResponse();
+                            var rejectedSelection =
+                                    new org.springframework.mock.web.MockHttpServletResponse();
                             assertFalse(guard.admit(user, scope, selection, rejectedSelection));
                             assertEquals(503, rejectedSelection.getStatus());
                         }
@@ -244,6 +257,25 @@ class CommerceAccessSecurityFlowTest {
                     b -> {
                         for (var type :
                                 List.of(
+                                        MerchantGoodsService.class,
+                                        SpecLibraryService.class,
+                                        GoodsRevisionService.class,
+                                        CategoryService.class,
+                                        GoodsVisionPort.class,
+                                        SpuStdService.class,
+                                        OpsService.class,
+                                        UserService.class,
+                                        MerchantService.class,
+                                        MerchantStoreService.class,
+                                        MerchantPaymentService.class,
+                                        StoreAdminService.class,
+                                        MerchantStaffService.class,
+                                        CommunityQueryPort.class,
+                                        StoreCategoryService.class,
+                                        MerchantGovernService.class,
+                                        MerchantAdminPort.class,
+                                        DebtService.class,
+                                        StoreFavoriteService.class,
                                         MerchantEntityService.class,
                                         PickupService.class,
                                         StoreCodeService.class,
@@ -269,6 +301,8 @@ class CommerceAccessSecurityFlowTest {
                     CommerceAccessConfiguration.class,
                     CommerceEndController.class,
                     BizEntityController.class,
+                    BizGoodsController.class,
+                    BizMerchantController.class,
                     BizMessageController.class,
                     BizPickupController.class,
                     CommerceAccessErrors.class,
@@ -301,6 +335,9 @@ class CommerceAccessSecurityFlowTest {
                     .andExpect(status().isBadRequest());
             f.jdbc.update("UPDATE mch_store SET commerce_model=NULL WHERE store_no='S'");
             assertRecovery(mvc, bearer, false);
+            assertAll(
+                    () -> assertLegacyImpact(mvc, web.getBean(MerchantGoodsService.class), bearer),
+                    () -> assertApplicantRecovery(mvc, f, web.getBean(OpsService.class), bearer));
             assertEquals(
                     400,
                     mvc.perform(
@@ -511,6 +548,70 @@ class CommerceAccessSecurityFlowTest {
             mvc.perform(get(URI.create("/biz/%73tores/mine")).header("Authorization", bearer))
                     .andExpect(status().isBadRequest());
             verifyNoInteractions(entities);
+        }
+    }
+
+    private static void assertLegacyImpact(
+            org.springframework.test.web.servlet.MockMvc mvc,
+            MerchantGoodsService goods,
+            String bearer)
+            throws Exception {
+        String path = "/biz/stores/{store}/fulfillment/EXPRESS/impact";
+        when(goods.onlyFulfillment("M", "S", "EXPRESS"))
+                .thenReturn(List.of(new MerchantGoodsService.GoodsBrief("G", "preview")));
+        mvc.perform(get(path, "S").header("Authorization", bearer).header("X-Store-No", "S"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].goodsNo").value("G"));
+        mvc.perform(head(path, "S").header("Authorization", bearer).header("X-Store-No", "S"))
+                .andExpect(status().isOk());
+        verify(goods, times(2)).onlyFulfillment("M", "S", "EXPRESS");
+        mvc.perform(get(path, "default").header("Authorization", bearer).header("X-Store-No", "S"))
+                .andExpect(status().isOk());
+        verify(goods).onlyFulfillment("M", null, "EXPRESS");
+        for (String target : List.of("missing", "legacy")) {
+            mvc.perform(get(path, target).header("Authorization", bearer).header("X-Store-No", "S"))
+                    .andExpect(status().isForbidden());
+        }
+        mvc.perform(post(path, "S").header("Authorization", bearer).header("X-Store-No", "S"))
+                .andExpect(status().isForbidden());
+        verifyNoMoreInteractions(goods);
+    }
+
+    private static void assertApplicantRecovery(
+            org.springframework.test.web.servlet.MockMvc mvc,
+            AccessMysqlFixture f,
+            OpsService ops,
+            String bearer)
+            throws Exception {
+        String application = "/biz/merchant/apply";
+        var matching = get(application).header("Authorization", bearer).header("X-Store-No", "S");
+        var picker =
+                get("/biz/stores/mine").header("Authorization", bearer).header("X-Store-No", "S");
+        try {
+            f.jdbc.update(
+                    "UPDATE mch_store SET commerce_model='STORE_V1',status='SUSPENDED' WHERE"
+                        + " store_no='S'");
+            mvc.perform(matching).andExpect(status().isOk());
+            verify(ops).myApply("U");
+            mvc.perform(picker).andExpect(status().isForbidden());
+            mvc.perform(
+                            get(application)
+                                    .header("Authorization", bearer)
+                                    .header("X-Store-No", "missing"))
+                    .andExpect(status().isForbidden());
+            mvc.perform(
+                            get("/biz/stores/legacy/fulfillment/EXPRESS/impact")
+                                    .header("Authorization", bearer)
+                                    .header("X-Store-No", "legacy"))
+                    .andExpect(status().isForbidden());
+            // An unreadable commercial model does not prevent the applicant checking their account.
+            f.jdbc.update("UPDATE mch_store SET commerce_model='UNRECOGNIZED' WHERE store_no='S'");
+            mvc.perform(matching).andExpect(status().isOk());
+            verify(ops, times(2)).myApply("U");
+            mvc.perform(picker).andExpect(status().isServiceUnavailable());
+        } finally {
+            f.jdbc.update(
+                    "UPDATE mch_store SET commerce_model=NULL,status='ACTIVE' WHERE store_no='S'");
         }
     }
 
