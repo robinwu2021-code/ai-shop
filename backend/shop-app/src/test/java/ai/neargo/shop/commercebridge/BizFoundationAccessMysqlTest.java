@@ -323,12 +323,25 @@ class BizFoundationAccessMysqlTest {
                                 post("/biz/merchant/payment/WECHAT/refresh")
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content("{\"storeNo\":\"B\"}"),
-                                post("/biz/merchant/payment/store/S").param("storeNo", "S", "B"),
-                                get("/biz/merchant/payment").param("entityNo", "foreign"))) {
+                                post("/biz/merchant/payment/store/S").param("storeNo", "S", "B"))) {
                     if (!selection.isEmpty()) req.header("X-Store-No", selection);
                     mvc.perform(req.header("Authorization", bearer))
                             .andExpect(status().isForbidden());
                 }
+                var foreign = get("/biz/merchant/payment").param("entityNo", "foreign")
+                        .header("Authorization", bearer);
+                if (!selection.isEmpty()) foreign.header("X-Store-No", selection);
+                // The enabled selection filter rejects first. Legacy admission keeps the original
+                // host ownership error envelope for an explicit foreign entity.
+                var denial = mvc.perform(foreign);
+                if (enabled && !selection.isEmpty()) {
+                    denial.andExpect(status().isForbidden()).andExpect(jsonPath("$.code")
+                            .value(ai.neargo.shop.common.ErrorCode.BIZ_ROLE_FORBIDDEN.code()));
+                } else {
+                    denial.andExpect(status().isOk()).andExpect(jsonPath("$.code")
+                            .value(ai.neargo.shop.common.ErrorCode.FORBIDDEN.code()));
+                }
+                denial.andExpect(jsonPath("$.data[0]").doesNotExist());
                 var read = get("/biz/merchant/payment").header("Authorization", bearer);
                 if (!selection.isEmpty()) read.header("X-Store-No", selection);
                 mvc.perform(read)

@@ -560,7 +560,7 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/payment")
     public List<PaymentApplymentVO> payments(@RequestParam(required = false) String entityNo, HttpServletRequest request) {
-        var target = paymentAccess.require(request, entityNo, null);
+        var target = paymentAccess.require(request, ownedEntity(entityNo), null);
         return paymentService.list(target.entityNo()).stream()
                 .filter(row -> nz(row.storeNo()).isBlank() || target.storeNo().equals(row.storeNo()))
                 .toList();
@@ -602,7 +602,7 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/pay-channel")
     public List<PaymentApplymentVO> payChannels(@RequestParam(required = false) String entityNo, HttpServletRequest request) {
-        return paymentService.availableChannels(paymentAccess.require(request, entityNo, null).entityNo());
+        return paymentService.availableChannels(paymentAccess.require(request, ownedEntity(entityNo), null).entityNo());
     }
 
     /**
@@ -616,7 +616,7 @@ public class BizMerchantController {
     public PaymentApplymentVO submitPayment(@RequestBody PaymentReq req,
             @RequestParam(required = false) String storeNo, HttpServletRequest request) {
         String rowStore = nz(req.storeNo()).isBlank() ? storeNo : req.storeNo();
-        var target = paymentAccess.require(request, req.entityNo(), rowStore);
+        var target = paymentAccess.require(request, ownedEntity(req.entityNo()), rowStore);
         return paymentService.submit(target.entityNo(),
                 new MerchantPaymentService.SubmitCommand(
                         req.payChannel(), req.settleAccountType(), req.settleAccount(),
