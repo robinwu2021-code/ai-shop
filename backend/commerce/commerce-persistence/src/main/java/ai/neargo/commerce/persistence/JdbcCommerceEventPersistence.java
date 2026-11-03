@@ -70,19 +70,7 @@ public final class JdbcCommerceEventPersistence implements CommerceEventPersiste
     public boolean recordInbound(InboundFact f) {
         JdbcWriteGuard.require(ds, f.tenantNo());
         try {
-            jdbc.update(
-                    "INSERT INTO commerce_event_inbox"
-                        + " (tenant_no,created_at,updated_at,version,deleted,source_system,event_id,event_type,aggregate_no,payload_hash,status,received_at)"
-                        + " VALUES (?,?,?,0,0,?,?,?,?,?,'RECEIVED',?)",
-                    f.tenantNo(),
-                    now(),
-                    now(),
-                    f.producer(),
-                    f.factNo(),
-                    f.eventType(),
-                    f.aggregateNo(),
-                    f.payloadDigest(),
-                    f.receivedAt().toEpochMilli());
+            insertInbound(f);
             return true;
         } catch (DuplicateKeyException duplicate) {
             var same =
@@ -102,6 +90,56 @@ public final class JdbcCommerceEventPersistence implements CommerceEventPersiste
             return false;
         }
     }
+
+    private void insertInbound(InboundFact f) {
+        jdbc.update(
+                "INSERT INTO commerce_event_inbox"
+                    + " (tenant_no,created_at,updated_at,version,deleted,source_system,event_id,event_type,aggregate_no,payload_hash,status,received_at)"
+                    + " VALUES (?,?,?,0,0,?,?,?,?,?,'RECEIVED',?)",
+                f.tenantNo(),
+                now(),
+                now(),
+                f.producer(),
+                f.factNo(),
+                f.eventType(),
+                f.aggregateNo(),
+                f.payloadDigest(),
+                f.receivedAt().toEpochMilli());
+    }
+
+    /**
+     * Allocates the host branch number once, before store INSERT, in the same owner transaction.
+     */
+    public Optional<String> reserveStoreCreation(
+            String tenant, String scopeKey, String payloadHash, String proposedStore) {
+        JdbcWriteGuard.require(ds, tenant);
+        try {
+            insertInbound(
+                    new InboundFact(
+                            tenant,
+                            "STORE_CREATION",
+                            scopeKey,
+                            "CREATE_BRANCH",
+                            proposedStore,
+                            payloadHash,
+                            Instant.now()));
+            return Optional.empty();
+        } catch (DuplicateKeyException duplicate) {
+            var existing =
+                    jdbc.queryForList(
+                            "SELECT aggregate_no FROM commerce_event_inbox WHERE tenant_no=? AND"
+                                + " source_system='STORE_CREATION' AND event_id=? AND"
+                                + " event_type='CREATE_BRANCH' AND payload_hash=? FOR UPDATE",
+                            String.class,
+                            tenant,
+                            scopeKey,
+                            payloadHash);
+            if (existing.isEmpty()) throw new StoreCreationConflictException();
+            return Optional.of(existing.getFirst());
+        }
+    }
+
+    public static final class StoreCreationConflictException extends IllegalArgumentException {}
 
     private record Pending(long id, CommerceEvent event) {}
 

@@ -13,10 +13,12 @@ import ai.neargo.shop.merchant.StoreSlugs;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import ai.neargo.shop.merchant.service.StoreAdminService;
+import ai.neargo.shop.merchant.service.StoreCategoryService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,6 +35,8 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(StoreAdminServiceImpl.class);
 
+    private final MerchantStoreCreation commerce;
+    private final StoreCategoryService categories;
     private final MchStoreMapper storeMapper;
     private final MchStoreRoleMapper roleMapper;
     private final MchPaymentMapper paymentMapper;
@@ -54,12 +58,15 @@ public class StoreAdminServiceImpl implements StoreAdminService {
 
     private final ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper;
 
-    public StoreAdminServiceImpl(MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
+    public StoreAdminServiceImpl(MerchantStoreCreation commerce, StoreCategoryService categories,
+                                 MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
                                  MchPaymentMapper paymentMapper,
                                  ai.neargo.shop.merchant.service.MerchantPlanService planService,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper entityMapper,
                                  ai.neargo.shop.merchant.service.StoreLinkService storeLinkService,
                                  ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper serviceAreaMapper) {
+        this.categories = categories;
+        this.commerce = commerce;
         this.serviceAreaMapper = serviceAreaMapper;
         this.entityMapper = entityMapper;
         this.storeMapper = storeMapper;
@@ -84,6 +91,14 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     @Override
     @Transactional
     public StoreVO create(String merchantNo, String name, String address) {
+        return create(merchantNo, new CreateCommand(name, address, null, null, null));
+    }
+
+    @Override
+    @Transactional
+    public StoreVO create(String merchantNo, CreateCommand cmd) {
+        String name = cmd.name();
+        var actor = commerce.actor(null);
         if (name == null || name.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -98,22 +113,37 @@ public class StoreAdminServiceImpl implements StoreAdminService {
          * 这对存量是零行为变化 —— 默认店不能停用（见 setStatus），
          * 而单店商家的唯一一家就是默认店，所以他的 ACTIVE 数恒等于总数。
          */
+        MchStore s = new MchStore();
+        commerce.prepare(s, actor, cmd.businessTypeCode());
+        s.setStoreNo(BizKey.next(BizKey.STORE));
+        var replay = commerce.reserveBranch(actor, merchantNo, cmd, s.getStoreNo());
+        if (replay.isPresent()) {
+            MchStore original = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                    Wrappers.<MchStore>lambdaQuery()
+                            .eq(MchStore::getEntityNo, merchantNo)
+                            .eq(MchStore::getStoreNo, replay.get())
+                            .last("for share")));
+            if (original == null) throw BizException.of(ErrorCode.CONFLICT);
+            return toVO(original, activePayMerchantNos(merchantNo), staffCountOf(original.getStoreNo()));
+        }
         planService.requireStoreQuota(merchantNo,
-                () -> (int) stores(merchantNo).stream()
+                () -> (int) stores(merchantNo, actor != null).stream()
                         .filter(x -> MchStore.ACTIVE.equals(x.getStatus())).count());
         // 数完之后才读列表：第一家店要自动成为默认店，这个判断不能用加锁前的快照
-        List<MchStore> existing = stores(merchantNo);
-
-        MchStore s = new MchStore();
+        List<MchStore> existing = stores(merchantNo, actor != null);
         s.setEntityNo(merchantNo);
-        s.setStoreNo(BizKey.next(BizKey.STORE));
         s.setName(name);
-        s.setAddress(address);
+        s.setAddress(cmd.address());
         // 第一家店自动成为默认店；之后新建的都不是 —— 默认标的转移是显式动作
         s.setIsDefault(existing.isEmpty());
         s.setStatus(MchStore.ACTIVE);
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(s));
+        commerce.inserted(s, actor);
         inheritServiceAreas(merchantNo, existing, s.getStoreNo());
+        if (cmd.categoryNos() != null) {
+            String copyFrom = existing.isEmpty() ? null : existing.getFirst().getStoreNo();
+            categories.initForNewStore(merchantNo, s.getStoreNo(), cmd.categoryNos(), copyFrom);
+        }
         return toVO(s, activePayMerchantNos(merchantNo), Map.of());
     }
 
@@ -282,11 +312,15 @@ public class StoreAdminServiceImpl implements StoreAdminService {
     // ------------------------------------------------------------------ 内部
 
     private List<MchStore> stores(String merchantNo) {
+        return stores(merchantNo, false);
+    }
+
+    private List<MchStore> stores(String merchantNo, boolean current) {
         return DataScopeContext.executeWithoutScope(() ->
                 storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
                         .eq(MchStore::getEntityNo, merchantNo)
                         .orderByDesc(MchStore::getIsDefault)
-                        .orderByAsc(MchStore::getId)));
+                        .orderByAsc(MchStore::getId).last(current, "for share")));
     }
 
     /** 越权保护：门店号对不上主体一律 404，**不要 403** —— 403 等于确认这个号存在。 */

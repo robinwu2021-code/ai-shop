@@ -131,7 +131,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
          * 上一次建到一半失败（比如社区表写失败回滚）时，那条路能把缺口补上；
          * 直接 return 只会把残缺状态原样还回去，而界面显示「成功」。
          */
-        String entityNo = merchantAdminPort.activate(new MerchantAdminPort.ActivateCommand(
+        String entityNo = merchantAdminPort.activateSelfOperated(new MerchantAdminPort.ActivateCommand(
                 ownerUserNo, name, LEGAL_FORM, scope, communities,
                 null, cmd.industry(), cmd.description(),
                 owned == null ? null : owned.getEntityNo()));
@@ -234,6 +234,7 @@ public class SelfOperatedServiceImpl implements SelfOperatedService {
                 !storeMapper.exists(Wrappers.<MchStore>lambdaQuery()
                         .eq(MchStore::getEntityNo, cmd.merchantNo())));
         MchStore st = new MchStore();
+        st.setCommerceModel("LEGACY");
         st.setStoreNo(BizKey.next(BizKey.STORE));
         st.setEntityNo(cmd.merchantNo());
         st.setName(name);

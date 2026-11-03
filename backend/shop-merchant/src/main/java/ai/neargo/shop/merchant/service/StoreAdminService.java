@@ -30,6 +30,14 @@ public interface StoreAdminService {
      */
     StoreVO create(String merchantNo, String name, String address);
 
+    record CreateCommand(String name, String address, String businessTypeCode, String operationNo,
+                         List<String> categoryNos) {
+        public CreateCommand {
+            categoryNos = categoryNos == null ? null : List.copyOf(categoryNos);
+        }
+    }
+    StoreVO create(String merchantNo, CreateCommand command);
+
     /** 改门店名与地址。门面其余部分走 {@link MerchantStoreService}。 */
     StoreVO rename(String merchantNo, String storeNo, String name, String address);
 

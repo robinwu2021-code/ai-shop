@@ -306,7 +306,7 @@ public class BizMerchantController {
     public MerchantProfileVO quickStart(@RequestBody QuickStartReq req) {
         String userNo = SecurityUtils.currentUserNo();
         var created = merchantAdminPort.quickStart(new MerchantAdminPort.QuickStartCommand(
-                userNo, req.storeName(), req.address()));
+                userNo, req.storeName(), req.address(), req.businessTypeCode()));
         /*
          * **不能用 profile()** —— 它读的是 BizContext，而那是过滤器在<b>请求进来那一刻</b>
          * 解析的：那时这个人还没有任何主体，merchantNo 是空的。主体是刚刚在这个请求里
@@ -323,7 +323,7 @@ public class BizMerchantController {
     }
 
     /** @param storeName 店名，必填；<b>同时用作主体名</b>，补证照时再被执照上的正式名称覆盖 */
-    public record QuickStartReq(String storeName, String address) {
+    public record QuickStartReq(String storeName, String address, String businessTypeCode) {
     }
 
     // ---------------------------------------------------------------- 店铺资料
@@ -672,19 +672,9 @@ public class BizMerchantController {
          * 另一张证照下时，撞的是那张的额度 —— 这正是应该的：额度是那张证照买的。
          */
         String merchantNo = ownedEntity(req.entityNo());
-        StoreVO store = storeAdminService.create(merchantNo, req.name(), req.address());
-        /*
-         * 建店时把货架也摆上（TDD-品类约束全链路 §3.2）。
-         *
-         * **一个都不选是合法的** —— 这家店还没想好卖什么，建品时会自动加入。
-         * 不勾时复制默认店的：多门店商家开分店卖的多半是同一批货，从零勾选是纯负担。
-         */
-        String defaultStore = storeAdminService.list(merchantNo).stream()
-                .filter(s -> !s.storeNo().equals(store.storeNo()))
-                .findFirst().map(StoreVO::storeNo).orElse(null);
-        storeCategoryService.initForNewStore(merchantNo, store.storeNo(),
-                req.categoryNos(), defaultStore);
-        return store;
+        return storeAdminService.create(merchantNo, new StoreAdminService.CreateCommand(
+                req.name(), req.address(), req.businessTypeCode(), req.operationNo(),
+                req.categoryNos() == null ? List.of() : req.categoryNos()));
     }
 
     /**
@@ -793,7 +783,7 @@ public class BizMerchantController {
      *                 <b>可空 = 当前证照</b> —— 只有一张证照的账号端上整个不渲染这一步
      */
     public record StoreCreateReq(String name, String address, List<String> categoryNos,
-                                 String entityNo) {
+                                 String entityNo, String businessTypeCode, String operationNo) {
     }
 
     public record StoreCategoriesReq(List<StoreCategoryItemReq> items) {

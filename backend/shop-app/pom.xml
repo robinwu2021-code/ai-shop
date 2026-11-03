@@ -16,6 +16,7 @@
     <description>启动模块：portal(三端 Controller) + config + 装配。单体形态依赖全部 svc。</description>
 
     <dependencies>
+        <dependency><groupId>ai.neargo.commerce</groupId><artifactId>commerce-spring-boot-starter</artifactId></dependency>
 <dependency><groupId>ai.neargo.shop</groupId><artifactId>print-domain</artifactId><version>${project.version}</version></dependency>
 <dependency><groupId>ai.neargo.shop</groupId><artifactId>print-channel</artifactId><version>${project.version}</version></dependency>
 

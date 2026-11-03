@@ -31,6 +31,9 @@ public interface MerchantAdminPort {
      */
     String activate(ActivateCommand cmd);
 
+    /** Platform-owned provisioning, called only by the operator self-operated workflow. */
+    default String activateSelfOperated(ActivateCommand cmd) { return activate(cmd); }
+
     /**
      * 无证照快速开店：<b>不经审核</b>，当场建出一个「待补证照」的主体与它的默认门店。
      *
@@ -68,7 +71,10 @@ public interface MerchantAdminPort {
      * @param storeName   老板填的店名。<b>同时用作主体名</b> —— 补证照时再被执照上的正式名称覆盖
      * @param address     门店地址，可空（之后在店铺资料里补）
      */
-    record QuickStartCommand(String ownerUserNo, String storeName, String address) {
+    record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode) {
+        public QuickStartCommand(String ownerUserNo, String storeName, String address) {
+            this(ownerUserNo, storeName, address, null);
+        }
     }
 
     /**
