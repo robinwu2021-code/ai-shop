@@ -2,6 +2,8 @@
 
 Current status: **T01–T02 accepted**. Task reviews passed; all three Important whole-branch findings were fixed at `de834dc79` and independently re-reviewed with no remaining Critical/Important findings. Controller verification of that committed source passed 48 tests in a fresh commerce-only copy and packaged all 37 host aggregate projects. Business Plan/quote/fulfillment/access/reminder implementations and production host activation remain later tasks. No production database was accessed.
 
+T03 补记（待独立评审）：目录用例、真实 JDBC 发布和 `commerce.catalog.enabled=true` 二次选择启用装配已经实现；现有 `commerce.enabled=true` 默认行为保持。公开目录合同、可信运营／端验收／编号端口、V5 四个附加列以及验证证据见 [commerce-catalog-t03-implementation.md](commerce-catalog-t03-implementation.md)。下文的 T01–T02 数量与 V1–V4 记录保留为当时已验收的历史，不作为 T03 的最新列数或迁移上限。
+
 
 ## 最终验收与实施取舍
 

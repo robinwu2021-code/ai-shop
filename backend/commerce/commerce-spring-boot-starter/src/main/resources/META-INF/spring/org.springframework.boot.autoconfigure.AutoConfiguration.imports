@@ -1,1 +1,2 @@
 ai.neargo.commerce.starter.CommercePersistenceAutoConfiguration
+ai.neargo.commerce.starter.CommerceCatalogAutoConfiguration

@@ -71,7 +71,7 @@ class CommerceSchemaMysqlTest {
                             db.name,
                             "sys_business_type"));
             assertEquals(
-                    18,
+                    20,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
                                     + " AND table_name=?",
@@ -119,7 +119,7 @@ class CommerceSchemaMysqlTest {
                             db.name,
                             "mall_sku"));
             assertEquals(
-                    18,
+                    20,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=?"
                                     + " AND table_name=?",
@@ -480,9 +480,7 @@ class CommerceSchemaMysqlTest {
             db.jdbc.execute(Rows.mall_refund("A"));
             assertThrows(
                     org.springframework.dao.DataAccessException.class,
-                    () ->
-                            db.jdbc.update(
-                                    "UPDATE `mall_refund` SET deleted=1 WHERE tenant_no='A'"),
+                    () -> db.jdbc.update("UPDATE `mall_refund` SET deleted=1 WHERE tenant_no='A'"),
                     "mall_refund");
             db.jdbc.execute(Rows.mall_refund_item("A"));
             assertThrows(

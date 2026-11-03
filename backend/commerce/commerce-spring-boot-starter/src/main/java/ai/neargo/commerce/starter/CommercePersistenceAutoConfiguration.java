@@ -1,6 +1,7 @@
 package ai.neargo.commerce.starter;
 
 import ai.neargo.commerce.api.port.CommerceEventPersistencePort;
+import ai.neargo.commerce.core.catalog.CatalogRepository;
 import ai.neargo.commerce.core.spi.*;
 import ai.neargo.commerce.persistence.*;
 
@@ -34,6 +35,14 @@ public class CommercePersistenceAutoConfiguration {
     @ConditionalOnMissingBean(CommerceEventPersistencePort.class)
     CommerceEventPersistencePort commerceEventPersistence(DataSource ds) {
         return new JdbcCommerceEventPersistence(ds);
+    }
+
+    @Bean
+    @DependsOn("commerceMigrationInitializer")
+    @ConditionalOnProperty(prefix = "commerce.catalog", name = "enabled", havingValue = "true")
+    @ConditionalOnMissingBean(CatalogRepository.class)
+    CatalogRepository commerceCatalogRepository(DataSource ds) {
+        return new JdbcCatalogRepository(ds);
     }
 
     @Bean

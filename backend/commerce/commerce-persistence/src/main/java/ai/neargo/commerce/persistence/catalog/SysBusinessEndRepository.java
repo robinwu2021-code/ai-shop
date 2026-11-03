@@ -24,8 +24,8 @@ public final class SysBusinessEndRepository {
         return JdbcInsert.insert(
                 jdbc,
                 "INSERT INTO `sys_business_end`"
-                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`end_code`,`entitlement_code`,`name`,`scope`,`allowed_business_types`,`release_status`,`sale_enabled`,`bootstrap_required`,`enabled`,`route_policy_ref`)"
-                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`end_code`,`entitlement_code`,`name`,`scope`,`allowed_business_types`,`release_status`,`sale_enabled`,`bootstrap_required`,`enabled`,`route_policy_ref`,`client_id`,`acceptance_ref`)"
+                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row.tenantNo(),
                 row.createdAt(),
                 row.updatedAt(),
@@ -42,7 +42,9 @@ public final class SysBusinessEndRepository {
                 row.saleEnabled(),
                 row.bootstrapRequired(),
                 row.enabled(),
-                row.routePolicyRef());
+                row.routePolicyRef(),
+                row.clientId(),
+                row.acceptanceRef());
     }
 
     public Optional<SysBusinessEndRecord> findById(String tenantNo, long id) {
@@ -69,7 +71,9 @@ public final class SysBusinessEndRepository {
                                         rs.getObject("sale_enabled", Integer.class),
                                         rs.getObject("bootstrap_required", Integer.class),
                                         rs.getObject("enabled", Integer.class),
-                                        rs.getString("route_policy_ref")),
+                                        rs.getString("route_policy_ref"),
+                                        rs.getString("client_id"),
+                                        rs.getString("acceptance_ref")),
                         tenantNo,
                         id)
                 .stream()

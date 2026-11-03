@@ -24,8 +24,8 @@ public final class MallSkuVersionRepository {
         return JdbcInsert.insert(
                 jdbc,
                 "INSERT INTO `mall_sku_version`"
-                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`sku_version_no`,`sku_no`,`revision`,`status`,`currency`,`list_price_minor`,`sale_price_minor`,`allowed_business_types`,`refund_policy_snapshot`,`published_at`)"
-                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`sku_version_no`,`sku_no`,`revision`,`status`,`currency`,`list_price_minor`,`sale_price_minor`,`allowed_business_types`,`refund_policy_snapshot`,`published_at`,`sku_name_snapshot`,`max_per_order_snapshot`)"
+                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row.tenantNo(),
                 row.createdAt(),
                 row.updatedAt(),
@@ -42,7 +42,9 @@ public final class MallSkuVersionRepository {
                 row.salePriceMinor(),
                 row.allowedBusinessTypes(),
                 row.refundPolicySnapshot(),
-                row.publishedAt());
+                row.publishedAt(),
+                row.skuNameSnapshot(),
+                row.maxPerOrderSnapshot());
     }
 
     public Optional<MallSkuVersionRecord> findById(String tenantNo, long id) {
@@ -69,7 +71,9 @@ public final class MallSkuVersionRepository {
                                         rs.getObject("sale_price_minor", Long.class),
                                         rs.getString("allowed_business_types"),
                                         rs.getString("refund_policy_snapshot"),
-                                        rs.getObject("published_at", Long.class)),
+                                        rs.getObject("published_at", Long.class),
+                                        rs.getString("sku_name_snapshot"),
+                                        rs.getObject("max_per_order_snapshot", Integer.class)),
                         tenantNo,
                         id)
                 .stream()

@@ -19,4 +19,6 @@ public record SysBusinessEndRecord(
         Integer saleEnabled,
         Integer bootstrapRequired,
         Integer enabled,
-        String routePolicyRef) {}
+        String routePolicyRef,
+        String clientId,
+        String acceptanceRef) {}

@@ -24,6 +24,34 @@
         "nullable": true,
         "mapping": "markPublished receipt time epoch milliseconds"
       }
+    ],
+    "sys_business_end": [
+      {
+        "name": "client_id",
+        "sql_type": "VARCHAR(128)",
+        "nullable": true,
+        "mapping": "BusinessEndDraft.clientId trusted deployment client reference"
+      },
+      {
+        "name": "acceptance_ref",
+        "sql_type": "VARCHAR(128)",
+        "nullable": true,
+        "mapping": "BusinessEndDraft.acceptanceRef trusted acceptance record reference"
+      }
+    ],
+    "mall_sku_version": [
+      {
+        "name": "sku_name_snapshot",
+        "sql_type": "VARCHAR(128)",
+        "nullable": true,
+        "mapping": "SkuDraft.title immutable version snapshot; null legacy cannot be newly sold"
+      },
+      {
+        "name": "max_per_order_snapshot",
+        "sql_type": "INT",
+        "nullable": true,
+        "mapping": "SkuDraft.maxPerOrder immutable version snapshot; null legacy cannot be newly sold"
+      }
     ]
   },
   "tables": [

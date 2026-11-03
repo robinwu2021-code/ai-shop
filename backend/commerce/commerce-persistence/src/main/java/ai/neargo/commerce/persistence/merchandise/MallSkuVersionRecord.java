@@ -19,4 +19,6 @@ public record MallSkuVersionRecord(
         Long salePriceMinor,
         String allowedBusinessTypes,
         String refundPolicySnapshot,
-        Long publishedAt) {}
+        Long publishedAt,
+        String skuNameSnapshot,
+        Integer maxPerOrderSnapshot) {}

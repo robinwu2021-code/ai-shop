@@ -60,7 +60,9 @@ class CommerceTypedRepositoryTest {
                                 15,
                                 16,
                                 17,
-                                "v17");
+                                "v17",
+                                "client-ref",
+                                "acceptance-ref");
                 var repo =
                         new ai.neargo.commerce.persistence.catalog.SysBusinessEndRepository(db.ds);
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
@@ -245,7 +247,9 @@ class CommerceTypedRepositoryTest {
                                 15L,
                                 "{\"field\": \"allowed_business_types\"}",
                                 "{\"field\": \"refund_policy_snapshot\"}",
-                                18L);
+                                18L,
+                                "sku-title",
+                                5);
                 var repo =
                         new ai.neargo.commerce.persistence.merchandise.MallSkuVersionRepository(
                                 db.ds);
