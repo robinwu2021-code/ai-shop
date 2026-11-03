@@ -114,6 +114,8 @@ class CatalogPublicationMysqlTest {
                             1,
                             f.planTokens("RETAIL"),
                             f.skuTokens("RETAIL"),
+                            f.planDefinitionTokens("RETAIL"),
+                            f.skuDefinitionTokens("RETAIL"),
                             "new policy"));
             var after = f.repo.load("tenant-a", CatalogLockMode.NONE);
             assertEquals(original.planVersions.get("pro-1"), after.planVersions.get("pro-1"));
@@ -310,6 +312,8 @@ class CatalogPublicationMysqlTest {
                                                     0,
                                                     f.planTokens("FOOD"),
                                                     f.skuTokens("FOOD"),
+                                                    f.planDefinitionTokens("FOOD"),
+                                                    f.skuDefinitionTokens("FOOD"),
                                                     "publish"));
                                 });
                 start.countDown();
@@ -628,6 +632,8 @@ class CatalogPublicationMysqlTest {
                                     initial.catalogVersion(),
                                     f.planTokens("RETAIL"),
                                     f.skuTokens("RETAIL"),
+                                    f.planDefinitionTokens("RETAIL"),
+                                    f.skuDefinitionTokens("RETAIL"),
                                     "first publication"));
             var published = api.catalog(f.ops, "RETAIL");
             assertEquals(first.catalogVersion(), published.catalogVersion());
@@ -695,6 +701,8 @@ class CatalogPublicationMysqlTest {
                             published.catalogVersion(),
                             f.planTokens("RETAIL"),
                             f.skuTokens("RETAIL"),
+                            f.planDefinitionTokens("RETAIL"),
+                            f.skuDefinitionTokens("RETAIL"),
                             "second publication"));
             var current = api.catalog(f.ops, "RETAIL");
             assertEquals("第二版", current.skus().getFirst().title());
@@ -788,6 +796,8 @@ class CatalogPublicationMysqlTest {
                             1,
                             f.planTokens("RETAIL"),
                             f.skuTokens("RETAIL"),
+                            f.planDefinitionTokens("RETAIL"),
+                            f.skuDefinitionTokens("RETAIL"),
                             "next generation");
             var paused = new PausingCatalogDataSource(db.ds);
             var manager =
@@ -1045,6 +1055,8 @@ class CatalogPublicationMysqlTest {
                             1,
                             f.planTokens("RETAIL"),
                             f.skuTokens("RETAIL"),
+                            f.planDefinitionTokens("RETAIL"),
+                            f.skuDefinitionTokens("RETAIL"),
                             "replace"));
             assertEquals(
                     oldPlan,
@@ -1136,7 +1148,7 @@ class CatalogPublicationMysqlTest {
                     1,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM commerce_outbox WHERE tenant_no='tenant-a' AND"
-                                + " event_type='SKU_PUBLISHED'",
+                                    + " event_type='SKU_PUBLISHED'",
                             Integer.class));
         }
     }
@@ -1205,7 +1217,7 @@ class CatalogPublicationMysqlTest {
                     0,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM sys_industry_plan_version WHERE"
-                                + " status='PUBLISHED'",
+                                    + " status='PUBLISHED'",
                             Integer.class));
             assertEquals(
                     0,
@@ -1216,7 +1228,7 @@ class CatalogPublicationMysqlTest {
                     0,
                     db.jdbc.queryForObject(
                             "SELECT COUNT(*) FROM sys_industry_plan WHERE current_version_no IS NOT"
-                                + " NULL",
+                                    + " NULL",
                             Integer.class));
             assertEquals(
                     audits,

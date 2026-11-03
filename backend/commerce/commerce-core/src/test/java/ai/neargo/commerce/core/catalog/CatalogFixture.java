@@ -226,6 +226,8 @@ class CatalogFixture {
                 version,
                 planTokens("RETAIL"),
                 skuTokens("RETAIL"),
+                planDefinitionTokens("RETAIL"),
+                skuDefinitionTokens("RETAIL"),
                 "publish");
     }
 
@@ -241,5 +243,15 @@ class CatalogFixture {
                 .collect(
                         java.util.stream.Collectors.toMap(
                                 v -> v.draft().skuVersionNo(), v -> v.version()));
+    }
+
+    Map<String, Long> planDefinitionTokens(String type) {
+        return facade.catalog(ops, type).planDefinitions().stream()
+                .collect(java.util.stream.Collectors.toMap(v -> v.planNo(), v -> v.version()));
+    }
+
+    Map<String, Long> skuDefinitionTokens(String type) {
+        return facade.catalog(ops, type).skuDefinitions().stream()
+                .collect(java.util.stream.Collectors.toMap(v -> v.skuNo(), v -> v.version()));
     }
 }

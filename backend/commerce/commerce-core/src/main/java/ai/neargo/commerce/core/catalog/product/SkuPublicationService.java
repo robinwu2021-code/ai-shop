@@ -239,12 +239,15 @@ public final class SkuPublicationService {
                             d.allowedBusinessTypes().size() == 1
                                     && d.allowedBusinessTypes().contains(p.typeCode()),
                             "Plan/SKU industry mismatch");
-                    if (!packagePlans.contains(c.planVersionNo()))
+                    if (!packagePlans.contains(c.planVersionNo())) {
                         check(
                                 pv.status().equals("PUBLISHED")
                                         && c.planVersionNo().equals(p.currentVersionNo())
                                         && p.saleStatus().equals("ON_SALE"),
                                 "independent SKU needs current published on-sale Plan");
+                        s.planEndsValid(
+                                tenant, state, pv.draft(), s.currentFreeCodes(state, p.typeCode()));
+                    }
                 }
                 case END_PACKAGE -> {
                     check(
@@ -264,7 +267,8 @@ public final class SkuPublicationService {
                                     .findFirst()
                                     .orElseThrow(
                                             () ->
-                                                    new IllegalArgumentException(
+                                                    new CatalogException(
+                                                            CatalogErrorCode.NOT_FOUND,
                                                             "unknown end target"));
                     for (String type : d.allowedBusinessTypes()) {
                         s.endValid(tenant, type, e, true);

@@ -15,10 +15,14 @@ public record IndustryPublicationCommand(
         long expectedCatalogVersion,
         java.util.Map<String, Long> expectedPlanVersions,
         java.util.Map<String, Long> expectedSkuVersions,
+        java.util.Map<String, Long> expectedPlanDefinitionVersions,
+        java.util.Map<String, Long> expectedSkuDefinitionVersions,
         String reason) {
     public IndustryPublicationCommand {
         candidateSkuVersionNos = java.util.List.copyOf(candidateSkuVersionNos);
         expectedPlanVersions = java.util.Map.copyOf(expectedPlanVersions);
         expectedSkuVersions = java.util.Map.copyOf(expectedSkuVersions);
+        expectedPlanDefinitionVersions = java.util.Map.copyOf(expectedPlanDefinitionVersions);
+        expectedSkuDefinitionVersions = java.util.Map.copyOf(expectedSkuDefinitionVersions);
     }
 }

@@ -211,7 +211,49 @@ public final class CatalogSupport {
                         && e.releaseStatus() == ReleaseStatus.VERIFIED
                         && e.allowedBusinessTypes().contains(type),
                 "end not available for type");
-        check(!paid || e.saleEnabled() || e.bootstrapRequired(), "end not sale enabled");
+        check(!paid || e.saleEnabled(), "end not sale enabled");
+        text(e.clientId(), 128, "clientId");
+        text(e.routePolicyRef(), 128, "routePolicyRef");
+        text(e.acceptanceRef(), 128, "acceptanceRef");
         check(readiness.verified(tenant, e), "unverified trusted end references");
+    }
+
+    /**
+     * Fresh validation is shared by industry and independent SKU publication without package
+     * cycles.
+     */
+    public void planEndsValid(
+            String tenant, CatalogState state, PlanDraft plan, Set<String> permanentFreeCodes) {
+        for (String code : plan.entitlementCodes()) {
+            var end =
+                    state.ends.values().stream()
+                            .filter(e -> e.draft().entitlementCode().equals(code))
+                            .findFirst()
+                            .orElseThrow(
+                                    () ->
+                                            new CatalogException(
+                                                    CatalogErrorCode.NOT_FOUND,
+                                                    "unknown Plan end target"));
+            endValid(
+                    tenant,
+                    plan.typeCode(),
+                    end,
+                    plan.tier() != PlanTier.FREE && !permanentFreeCodes.contains(code));
+        }
+    }
+
+    public Set<String> currentFreeCodes(CatalogState state, String type) {
+        var free =
+                state.plans.values().stream()
+                        .filter(p -> p.typeCode().equals(type) && p.tier() == PlanTier.FREE)
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new CatalogException(
+                                                CatalogErrorCode.NOT_FOUND,
+                                                "unknown FREE definition"));
+        var version = require(state.planVersions, free.currentVersionNo());
+        check(version.status().equals("PUBLISHED"), "current FREE must be published");
+        return Set.copyOf(version.draft().entitlementCodes());
     }
 }

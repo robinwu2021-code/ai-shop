@@ -127,6 +127,32 @@ public final class IndustryPublicationService {
                                             .count()
                                     == 3,
                             "exactly three stable Plans required");
+                    // Selected content and every affected live master belong to the same preview.
+                    for (var definition : state.plans.values())
+                        if (definition.typeCode().equals(d.typeCode())) {
+                            check(
+                                    d.expectedPlanDefinitionVersions()
+                                            .containsKey(definition.planNo()),
+                                    "Plan definition row version required");
+                            expected(
+                                    d.expectedPlanDefinitionVersions().get(definition.planNo()),
+                                    definition.version());
+                        }
+                    for (String no : d.candidateSkuVersionNos()) {
+                        var candidate = require(state.skuVersions, no);
+                        var master = require(state.skus, candidate.draft().skuNo());
+                        check(
+                                d.expectedSkuDefinitionVersions().containsKey(master.skuNo()),
+                                "SKU definition row version required");
+                        expected(
+                                d.expectedSkuDefinitionVersions().get(master.skuNo()),
+                                master.version());
+                    }
+                    var freeCodes =
+                            Set.copyOf(
+                                    require(state.planVersions, versions.getFirst())
+                                            .draft()
+                                            .entitlementCodes());
                     Set<String> lower = Set.of();
                     var required = s.readiness.requiredEntitlementCodes(a.tenantNo(), d.typeCode());
                     check(
@@ -159,14 +185,7 @@ public final class IndustryPublicationService {
                                             codes.contains(e.draft().entitlementCode()),
                                             "FREE missing bootstrap end");
                         }
-                        for (String c : codes) {
-                            var e =
-                                    state.ends.values().stream()
-                                            .filter(x -> x.draft().entitlementCode().equals(c))
-                                            .findFirst()
-                                            .orElseThrow();
-                            s.endValid(a.tenantNo(), d.typeCode(), e, i > 0);
-                        }
+                        s.planEndsValid(a.tenantNo(), state, v.draft(), freeCodes);
                         lower = codes;
                     }
                     var packagePlans = new HashSet<>(versions);
@@ -196,8 +215,6 @@ public final class IndustryPublicationService {
                                     currency.equals(sku.draft().price().currency()),
                                     "mixed publication currencies");
                     }
-                    var freeCodes =
-                            state.planVersions.get(versions.getFirst()).draft().entitlementCodes();
                     long now = s.clock.millis();
                     for (String no : versions) {
                         var v = state.planVersions.get(no);

@@ -3,10 +3,12 @@ package ai.neargo.commerce.core.catalog;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.commerce.api.catalog.*;
+import ai.neargo.commerce.api.common.*;
 
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
+import java.util.Map;
 
 class IndustryPublicationTest {
     @Test
@@ -49,6 +51,8 @@ class IndustryPublicationTest {
                                     0,
                                     f.planTokens("RETAIL"),
                                     f.skuTokens("RETAIL"),
+                                    f.planDefinitionTokens("RETAIL"),
+                                    f.skuDefinitionTokens("RETAIL"),
                                     "bad tier")
                             : f.publication(List.of(), 0);
             assertThrows(CatalogException.class, () -> f.facade.publishIndustry(f.ops, c));
@@ -149,6 +153,8 @@ class IndustryPublicationTest {
                         1,
                         f.planTokens("RETAIL"),
                         f.skuTokens("RETAIL"),
+                        f.planDefinitionTokens("RETAIL"),
+                        f.skuDefinitionTokens("RETAIL"),
                         "mismatch");
         assertThrows(CatalogException.class, () -> f.facade.publishIndustry(f.ops, d));
         assertEquals(1, f.facade.catalog(f.ops, "RETAIL").catalogVersion());
@@ -190,6 +196,8 @@ class IndustryPublicationTest {
                         1,
                         f.planTokens("RETAIL"),
                         f.skuTokens("RETAIL"),
+                        f.planDefinitionTokens("RETAIL"),
+                        f.skuDefinitionTokens("RETAIL"),
                         "base expansion"));
         assertTrue(f.facade.catalog(f.ops, "RETAIL").skus().isEmpty());
     }
@@ -256,5 +264,130 @@ class IndustryPublicationTest {
         assertEquals(0, view.catalogVersion());
         assertTrue(view.plans().isEmpty());
         assertTrue(view.skus().isEmpty());
+    }
+
+    @Test
+    void preparedPackageCannotOverwriteStandaloneSkuPublication() {
+        var f = new CatalogFixture();
+        f.setup();
+        f.plans();
+        f.product();
+        f.facade.publishIndustry(f.ops, f.publication(List.of(), 0));
+        var first = f.facade.saveSku(f.ops, f.sku());
+        var second =
+                f.facade.saveSku(
+                        f.ops,
+                        f.sku(
+                                "sku-2",
+                                List.of(
+                                        f.component(
+                                                "second",
+                                                ComponentKind.PLAN,
+                                                "pro-1",
+                                                null,
+                                                null,
+                                                30,
+                                                1,
+                                                100,
+                                                false))));
+        var selected = f.publication(List.of(first.draftVersionNo()), 1);
+        var master = f.facade.catalog(f.ops, "RETAIL").skuDefinitions().getFirst();
+        f.facade.publishSku(
+                f.ops,
+                new SkuPublicationCommand(
+                        null,
+                        second.draftVersionNo(),
+                        second.version(),
+                        master.version(),
+                        "newer standalone"));
+        int audits = f.audits.size();
+        assertEquals(
+                CatalogErrorCode.VERSION_CONFLICT,
+                assertThrows(
+                                CatalogException.class,
+                                () -> f.facade.publishIndustry(f.ops, selected))
+                        .code());
+        assertEquals(
+                second.draftVersionNo(),
+                f.facade.catalog(f.ops, "RETAIL").skus().getFirst().skuVersionNo());
+        assertEquals(audits, f.audits.size());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.EnumSource(SaleTarget.class)
+    void preparedPackageCannotUndoNewerStop(SaleTarget target) {
+        var f = new CatalogFixture();
+        f.setup();
+        f.plans();
+        f.product();
+        f.facade.saveSku(f.ops, f.sku());
+        f.facade.publishIndustry(f.ops, f.publication(List.of("sku-1"), 0));
+        var selected = f.publication(List.of("sku-1"), 1);
+        var view = f.facade.catalog(f.ops, "RETAIL");
+        String no;
+        long version;
+        switch (target) {
+            case PLAN -> {
+                var p =
+                        view.planDefinitions().stream()
+                                .filter(p1 -> p1.tier() == PlanTier.PRO)
+                                .findFirst()
+                                .orElseThrow();
+                no = p.planNo();
+                version = p.version();
+            }
+            case SKU -> {
+                var s = view.skuDefinitions().getFirst();
+                no = s.skuNo();
+                version = s.version();
+            }
+            case PRODUCT -> {
+                var p = view.products().getFirst();
+                no = p.draft().productNo();
+                version = p.version();
+            }
+            default -> throw new AssertionError();
+        }
+        f.facade.stopSale(f.ops, new StopSaleCommand(null, target, no, version, "newer stop"));
+        var stopped = f.facade.catalog(f.ops, "RETAIL");
+        int audits = f.audits.size();
+        assertEquals(
+                CatalogErrorCode.VERSION_CONFLICT,
+                assertThrows(
+                                CatalogException.class,
+                                () -> f.facade.publishIndustry(f.ops, selected))
+                        .code());
+        assertEquals(stopped, f.facade.catalog(f.ops, "RETAIL"));
+        assertEquals(audits, f.audits.size());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void packageRequiresEveryAffectedMasterToken(boolean omitPlan) {
+        var f = new CatalogFixture();
+        f.setup();
+        f.plans();
+        f.product();
+        f.facade.saveSku(f.ops, f.sku());
+        var old = f.publication(List.of("sku-1"), 0);
+        var command =
+                new IndustryPublicationCommand(
+                        old.operationNo(),
+                        old.typeCode(),
+                        old.freePlanVersionNo(),
+                        old.proPlanVersionNo(),
+                        old.chainPlanVersionNo(),
+                        old.candidateSkuVersionNos(),
+                        old.expectedCatalogVersion(),
+                        old.expectedPlanVersions(),
+                        old.expectedSkuVersions(),
+                        omitPlan ? Map.of() : old.expectedPlanDefinitionVersions(),
+                        omitPlan ? old.expectedSkuDefinitionVersions() : Map.of(),
+                        old.reason());
+        assertEquals(
+                CatalogErrorCode.INVALID_ARGUMENT,
+                assertThrows(CatalogException.class, () -> f.facade.publishIndustry(f.ops, command))
+                        .code());
+        assertEquals(0, f.facade.catalog(f.ops, "RETAIL").catalogVersion());
     }
 }
