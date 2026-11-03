@@ -1,8 +1,11 @@
 package ai.neargo.shop.merchant.service;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.StoreVO;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 门店管理（M6 多门店的商家侧）。
@@ -33,6 +36,9 @@ public interface StoreAdminService {
     record CreateCommand(String name, String address, String businessTypeCode, String operationNo,
                          List<String> categoryNos) {
         public CreateCommand {
+            if (categoryNos != null && categoryNos.stream().anyMatch(Objects::isNull)) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
             categoryNos = categoryNos == null ? null : List.copyOf(categoryNos);
         }
     }

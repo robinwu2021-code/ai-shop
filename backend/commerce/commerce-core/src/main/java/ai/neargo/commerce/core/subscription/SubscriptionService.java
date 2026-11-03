@@ -38,6 +38,7 @@ public final class SubscriptionService {
                     || duration <= 0
                     || cash < 0
                     || credit < 0
+                    || planVersion == null && credit > 0
                     || !currency.matches("[A-Z]{3}")
                     || (origin == Origin.GRANT || gift) && (cash != 0 || credit != 0))
                 throw new IllegalArgumentException("invalid source economics or target");

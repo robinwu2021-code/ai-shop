@@ -38,6 +38,37 @@ import java.util.regex.Pattern;
 
 class CommerceStoreCreationFlowTest {
     @Test
+    void nullCategoryReturnsBadRequestForLegacyAndTypedCommands() {
+        assertAll(
+                Arrays.asList(null, "RETAIL").stream()
+                        .<org.junit.jupiter.api.function.Executable>map(
+                                type -> () -> {
+                                    var error = assertThrows(
+                                            BizException.class,
+                                            () -> new StoreAdminService.CreateCommand(
+                                                    "branch", "address", type,
+                                                    type == null ? null : "branch-op",
+                                                    Arrays.asList("CAT210", null)));
+                                    assertEquals(ErrorCode.BAD_REQUEST, error.errorCode());
+                                }));
+    }
+
+    @Test
+    void categoryCommandKeepsAnImmutableOrderedSnapshotAndOptionalListSemantics() {
+        var categories = new ArrayList<>(List.of("CAT220", "CAT210"));
+        var command = new StoreAdminService.CreateCommand(
+                "branch", "address", "RETAIL", "branch-op", categories);
+        categories.clear();
+        assertEquals(List.of("CAT220", "CAT210"), command.categoryNos());
+        assertThrows(UnsupportedOperationException.class,
+                () -> command.categoryNos().add("CAT230"));
+        assertNull(new StoreAdminService.CreateCommand(
+                "branch", "address", null, null, null).categoryNos());
+        assertEquals(List.of(), new StoreAdminService.CreateCommand(
+                "branch", "address", null, null, List.of()).categoryNos());
+    }
+
+    @Test
     void creationCarriesAnExplicitTypeAndRetainsTheLegacyConstructor() {
         assertNull(new QuickStartCommand("user", "store", null).businessTypeCode());
         assertEquals(
