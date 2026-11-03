@@ -16,7 +16,7 @@ class CommerceEventPersistenceTest {
   assertThrows(IllegalStateException.class,()->u.required(()->port.recordInbound(fact("A","changed"))));
   assertThrows(IllegalStateException.class,()->u.required(()->{db.jdbc.execute(Rows.mch_subscription_period("C"));port.append(event("C","{}"));port.recordInbound(fact("C","hash"));throw new IllegalStateException("rollback");}));
   assertEquals(0,db.jdbc.queryForObject("SELECT COUNT(*) FROM commerce_outbox WHERE tenant_no='C'",Integer.class));assertEquals(0,db.jdbc.queryForObject("SELECT COUNT(*) FROM commerce_event_inbox WHERE tenant_no='C'",Integer.class));assertEquals(0,db.jdbc.queryForObject("SELECT COUNT(*) FROM mch_subscription_period WHERE tenant_no='C'",Integer.class));
-  var page=port.pending(new EventQuery("A",null,1));assertEquals(java.util.List.of(event("A","{\"v\":1}")),page.events());assertFalse(page.hasMore());
+  var page=port.pending(new EventQuery("A",null,1));assertEquals(java.util.List.of(event("A","{\"v\": 1}")),page.events());assertFalse(page.hasMore());
   u.required(()->{port.markPublished("A","e1",Instant.ofEpochMilli(555));return null;});assertTrue(port.pending(new EventQuery("A",null,1)).events().isEmpty());assertEquals(1,port.pending(new EventQuery("B",null,1)).events().size());
  }}
 }
