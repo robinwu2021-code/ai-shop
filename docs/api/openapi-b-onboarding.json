@@ -1,0 +1,5668 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "B端注册至进件资料提交 API",
+    "version": "2026-11-04",
+    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "替换为目标环境 API 根地址；若网关有前缀须保留该前缀。"
+    }
+  ],
+  "tags": [
+    {
+      "name": "public"
+    },
+    {
+      "name": "account"
+    },
+    {
+      "name": "store"
+    }
+  ],
+  "paths": {
+    "/biz/auth/otp/send": {
+      "post": {
+        "operationId": "sendRegistrationOtp",
+        "summary": "发送注册/登录短信验证码",
+        "description": "没有单独注册接口；短信验证登录时自动建立个人账号。验证码一次性消费，重复发码受服务端限制。",
+        "tags": [
+          "public"
+        ],
+        "x-scope": "public",
+        "x-role": "有效商家账号",
+        "x-retry": "不要自动循环发码；10450/10451 等待后由用户重试。",
+        "x-business-error-codes": [
+          10400,
+          10450,
+          10451
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpSendRequest"
+              },
+              "example": {
+                "phone": "13800000000"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/login": {
+      "post": {
+        "operationId": "loginForOnboarding",
+        "summary": "注册或登录",
+        "description": "PHONE_OTP 首次登录即注册。个人 USR 可跨 C/B 共享身份，CTK/BTK 会话池独立；没有个人商家主体且匹配员工时可选择 MCH 会话。",
+        "tags": [
+          "public"
+        ],
+        "x-scope": "public",
+        "x-role": "有效商家账号",
+        "x-retry": "超时不能假定验证码未消费；重新获取验证码或重新登录。",
+        "x-business-error-codes": [
+          10400,
+          10454,
+          10455,
+          10456,
+          10457,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OnboardingLoginResponse"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "token": "<BTK>",
+                    "merchant": {
+                      "merchantNo": "",
+                      "name": "",
+                      "logo": "",
+                      "status": "NONE",
+                      "subject": "PERSONAL",
+                      "tier": "SMALL",
+                      "phone": "15965010103",
+                      "isPickupPoint": false,
+                      "pickupNo": null,
+                      "rejectReason": null,
+                      "industry": null,
+                      "description": null,
+                      "fundsMode": null,
+                      "agreementPending": false,
+                      "favoriteCount": 0,
+                      "displayName": "",
+                      "currentStoreNo": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "grantType": "PHONE_OTP",
+                "principal": "13800000000",
+                "credential": "<短信验证码>",
+                "agreed": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/staff-login": {
+      "post": {
+        "operationId": "staffLoginForOnboarding",
+        "summary": "员工 OTP 登录（兼容）",
+        "description": "MCH 员工不能冒充同号个人提交申请或确认协议。",
+        "tags": [
+          "public"
+        ],
+        "x-scope": "public",
+        "x-role": "有效商家账号",
+        "x-retry": "同手机号验证码一次性消费。",
+        "x-business-error-codes": [
+          10400,
+          10403,
+          10454,
+          10455
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OnboardingLoginResponse"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffLoginRequest"
+              },
+              "example": {
+                "phone": "13800000000",
+                "code": "<短信验证码>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/password": {
+      "get": {
+        "operationId": "getPersonalPasswordStatus",
+        "summary": "查询是否设置个人密码",
+        "description": "仅个人 USR，会话有效不代表 MCH 可使用。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "USR",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10401,
+          10402,
+          10403
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/HasPassword"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "setPersonalPassword",
+        "summary": "设置个人密码",
+        "description": "",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "USR",
+        "x-retry": "超时先尝试查询/登录；不要记录密码。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRequest"
+              },
+              "example": {
+                "password": "<至少6位的新密码>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/auth/logout": {
+      "post": {
+        "operationId": "logoutCurrentMerchantSession",
+        "summary": "注销本次商家会话",
+        "description": "不接受目标 token；客户端清本地账号、选店和端证明。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "重复时可能返回会话失效；仍应完成本地清理。",
+        "x-business-error-codes": [
+          10401,
+          10402
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/biz/merchant/profile": {
+      "get": {
+        "operationId": "getOnboardingProfile",
+        "summary": "读取商家档案",
+        "description": "登录已返回同形 merchant；无店也可读。恢复初始档案时不带旧选店头，选店后刷新时带该店头。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OnboardingMerchantProfile"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          }
+        ]
+      }
+    },
+    "/biz/stores/mine": {
+      "get": {
+        "operationId": "getSelectableStores",
+        "summary": "恢复本人可选门店",
+        "description": "按主体分组，只包含可信身份可访问门店。冷启动/切店前读取；空数组表示无可进入门店。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读；废弃上次会话的旧选择。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/EntityStores"
+                          },
+                          "description": ""
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/biz/business-types": {
+      "get": {
+        "operationId": "getOnboardingBusinessTypes",
+        "summary": "选择可建店经营类型",
+        "description": "无需已有门店。仅启用且三档完整发布、FREE 可初始化的经营类型。空数组须显示暂不可建店。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/BusinessType"
+                          },
+                          "description": ""
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": [
+                    {
+                      "businessTypeCode": "RETAIL",
+                      "displayName": "Retail",
+                      "catalogVersion": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/biz/business-types/{typeCode}/plans": {
+      "get": {
+        "operationId": "getOnboardingPlans",
+        "summary": "查看经营类型三档 Plan",
+        "description": "当前三档只读；FREE/PRO/CHAIN 固定顺序，付费档停售仍保留卡片但无价格；全部 purchaseAvailable=false。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OnboardingPlanCatalog"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "businessTypeCode": "RETAIL",
+                    "catalogVersion": 1,
+                    "status": "PUBLISHED",
+                    "plans": [
+                      {
+                        "planNo": "FREE",
+                        "planVersionNo": "FREE-v",
+                        "tier": "FREE",
+                        "displayName": "FREE",
+                        "summary": "summary",
+                        "entitlementCodes": [
+                          "BASE"
+                        ],
+                        "priceOptions": [],
+                        "priceStatus": "INCLUDED",
+                        "purchaseAvailable": false,
+                        "saleStatus": "ON_SALE"
+                      },
+                      {
+                        "planNo": "PRO",
+                        "planVersionNo": "PRO-v",
+                        "tier": "PRO",
+                        "displayName": "PRO",
+                        "summary": "summary",
+                        "entitlementCodes": [
+                          "BASE"
+                        ],
+                        "priceOptions": [],
+                        "priceStatus": "UNCONFIGURED",
+                        "purchaseAvailable": false,
+                        "saleStatus": "ON_SALE"
+                      },
+                      {
+                        "planNo": "CHAIN",
+                        "planVersionNo": "CHAIN-v",
+                        "tier": "CHAIN",
+                        "displayName": "CHAIN",
+                        "summary": "summary",
+                        "entitlementCodes": [
+                          "BASE"
+                        ],
+                        "priceOptions": [],
+                        "priceStatus": "UNCONFIGURED",
+                        "purchaseAvailable": false,
+                        "saleStatus": "ON_SALE"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "typeCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "精确编码；不得百分号编码 /biz 路径。"
+          }
+        ]
+      }
+    },
+    "/biz/merchant/quick-start": {
+      "post": {
+        "operationId": "quickStartOnboardingStore",
+        "summary": "创建首店并初始化 FREE",
+        "description": "门店型模式先选已发布经营类型。建店与 FREE 同事务，成功后精确使用 currentStoreNo；既有待补证店同类型重试复用，不重复赠送。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "USR",
+        "x-retry": "超时同类型原参数重试；改类型拒绝。已有旧店不在重试中自动迁移。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006,
+          10467,
+          70001,
+          70198
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OnboardingMerchantProfile"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "merchantNo": "ENTITY-EXAMPLE",
+                    "name": "Selected pending shop",
+                    "logo": "",
+                    "status": "PENDING_LICENSE",
+                    "subject": null,
+                    "tier": "SMALL",
+                    "phone": "15965010103",
+                    "isPickupPoint": false,
+                    "pickupNo": null,
+                    "rejectReason": null,
+                    "industry": null,
+                    "description": null,
+                    "fundsMode": "AGGREGATED",
+                    "agreementPending": false,
+                    "favoriteCount": 0,
+                    "displayName": "",
+                    "currentStoreNo": "STORE-EXAMPLE"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickStartRequest"
+              },
+              "example": {
+                "storeName": "Selected pending shop",
+                "businessTypeCode": "RETAIL"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/common/master-data": {
+      "get": {
+        "operationId": "getOnboardingMasterData",
+        "summary": "获取证照及收款表单字典",
+        "description": "证照行业 industries 与商业经营类型 business-types 不同；按 microAllowed、needLicense、industryGated、serviceScopes 渲染，不把意向行业直接用于开店。",
+        "tags": [
+          "public"
+        ],
+        "x-scope": "public",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读；以实际返回为准。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/MasterData"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/biz/communities": {
+      "get": {
+        "operationId": "getOnboardingCommunities",
+        "summary": "选择经营覆盖社区",
+        "description": "用于 communityNos；不需要定位参数。",
+        "tags": [
+          "account"
+        ],
+        "x-scope": "account",
+        "x-role": "有效商家账号",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Community"
+                          },
+                          "description": ""
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/biz/upload/image": {
+      "post": {
+        "operationId": "uploadOnboardingCertificate",
+        "summary": "上传证照图片",
+        "description": "multipart/form-data；由网络库自动生成 boundary，不手动设 JSON Content-Type。证照按主体管理，上传不等于保存资质或授予权限。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "owner 或 biz:store 或 biz:finance",
+        "x-retry": "超时可能已生成文件；新上传可能产生另一资源，避免自动无限重传。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/UploadResult"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "真实图片文件，最大 5 MiB。"
+                  },
+                  "bizType": {
+                    "type": "string",
+                    "description": "证照必须传 QUAL；默认 GOODS 不用于证照上传。",
+                    "enum": [
+                      "QUAL"
+                    ]
+                  }
+                },
+                "required": [
+                  "file",
+                  "bizType"
+                ],
+                "description": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/qualifications/recognize": {
+      "post": {
+        "operationId": "recognizeOnboardingCertificate",
+        "summary": "识别证照（可选）",
+        "description": "真实可解码图片最大 12 MiB。recognized=false 是正常结果，允许手填；本接口不提供持久化 imageUrl，仍须调用上传接口。日期 issuedAt/validTo 为识别文本，不能直接当毫秒。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "biz:store",
+        "x-retry": "可按用户操作重试；不自动循环识别。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CertRecognition"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "真实图片，最大 12 MiB。"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "description": ""
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/qualifications": {
+      "get": {
+        "operationId": "getOnboardingQualifications",
+        "summary": "读取已登记资质和授权码",
+        "description": "items 是登记事实；grantedCodes 才是已授类目权限。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "biz:store",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OnboardingQualifications"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          },
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选；必须等于所选店主体。"
+          }
+        ]
+      }
+    },
+    "/biz/qualifications/save": {
+      "post": {
+        "operationId": "saveOnboardingQualification",
+        "summary": "新增或编辑资质",
+        "description": "与申请中的 qualificationItems 是不同写入入口；不要求为提交申请先逐条保存。编辑只能传本主体 qualNo；保存不会自动授码。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "biz:store",
+        "x-retry": "新增无通用幂等键，超时先读列表；编辑带原 qualNo。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/Qualification"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveQualificationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/merchant/apply": {
+      "get": {
+        "operationId": "getLatestOnboardingApplication",
+        "summary": "读取本人最近入驻申请",
+        "description": "无申请返回 data=null。此路径是账号最近申请；切店不会切换申请历史。回填前必须比对 merchantNo 与所选主体。真正未建店的初次恢复可不带选店头。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "USR 本人",
+        "x-retry": "提交超时或驳回后先重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006,
+          10467,
+          70001,
+          70198
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "anyOf": [
+                            {
+                              "$ref": "#/components/schemas/OnboardingApplication"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "applyNo": "APPLY-EXAMPLE",
+                    "merchantNo": "ENTITY-EXAMPLE",
+                    "name": "License shop",
+                    "subject": "ENTERPRISE",
+                    "contactName": "Owner",
+                    "contactPhone": "15965010103",
+                    "category": null,
+                    "desc": null,
+                    "serviceScope": "COMMUNITY",
+                    "communityNos": [
+                      "CM001"
+                    ],
+                    "licenses": [
+                      "example-license"
+                    ],
+                    "asPickupPoint": false,
+                    "industry": "RETAIL",
+                    "industryNote": null,
+                    "status": "PENDING",
+                    "rejectReason": null,
+                    "createdAt": 1793717763000,
+                    "auditedAt": 0,
+                    "qualificationItems": [],
+                    "onBehalf": false,
+                    "agreedAt": 1793717763513,
+                    "referrerPhone": null
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。 新模型已建店的操作须传；真正无店恢复/初次协议除外。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "submitOnboardingApplication",
+        "summary": "提交入驻证照资料",
+        "description": "门店型模式须先建店，绑定所选待补证主体。一个申请人同时只能有一份进行中申请。新 B 端应采集完整结构化资质，不利用旧端省略字段的兼容路径绕过材料校验。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "USR 有效属主",
+        "x-retry": "超时先 GET apply 和 profile，不盲目重提；有进行中申请可返回10409，申请不可编辑可返回10467。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006,
+          10467,
+          70001,
+          70198
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OnboardingMerchantProfile"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "merchantNo": "ENTITY-EXAMPLE",
+                    "name": "Selected pending shop",
+                    "logo": "",
+                    "status": "PENDING_LICENSE",
+                    "subject": null,
+                    "tier": "SMALL",
+                    "phone": "15965010103",
+                    "isPickupPoint": false,
+                    "pickupNo": null,
+                    "rejectReason": null,
+                    "industry": null,
+                    "description": null,
+                    "fundsMode": "AGGREGATED",
+                    "agreementPending": false,
+                    "favoriteCount": 0,
+                    "displayName": "",
+                    "currentStoreNo": "STORE-EXAMPLE"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyRequest"
+              },
+              "example": {
+                "name": "License shop",
+                "industry": "RETAIL",
+                "serviceScope": "COMMUNITY",
+                "communityNos": [
+                  "CM001"
+                ],
+                "licenses": [
+                  "example-license"
+                ],
+                "contactPhone": "15965010103",
+                "contactName": "Owner",
+                "subject": "<subjects.subjectType>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/merchant/agreement/accept": {
+      "post": {
+        "operationId": "acceptOnboardingMerchantAgreement",
+        "summary": "确认商家服务协议",
+        "description": "用户明确确认后调用。必须已有本人最近申请且其主体匹配所选主体；不能因登录 agreed=true 就认定已确认。无主体时只可确认本人 entity_no=NULL 初始申请；MCH 不可代签。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "USR 本人",
+        "x-retry": "同申请重试返回原时刻；0表示无申请，不代表成功签署凭据。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "integer",
+                          "format": "int64",
+                          "description": "首次确认的 UTC epoch 毫秒；无申请为0。"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": 1793717763513
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。 新模型已建店的操作须传；真正无店恢复/初次协议除外。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgreementRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/merchant/pay-channel": {
+      "get": {
+        "operationId": "getOnboardingPaymentChannels",
+        "summary": "读取可用收款进件通道",
+        "description": "含尚未开通通道的 NONE 占位；渠道取实际返回。AGGREGATED 不以独立进件作为建店前置。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "biz:finance",
+        "x-retry": "可重读。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006,
+          70045
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PaymentApplyment"
+                          },
+                          "description": ""
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": [
+                    {
+                      "payChannel": "WECHAT",
+                      "channelName": "微信支付",
+                      "applyStatus": "NONE",
+                      "canReceiveMoney": false,
+                      "payMerchantNo": null,
+                      "subMchidMasked": null,
+                      "settleAccountType": null,
+                      "settleAccountMasked": null,
+                      "rejectReason": null,
+                      "missing": [
+                        "settleAccountType",
+                        "settleAccount",
+                        "licenses"
+                      ],
+                      "submitted": false,
+                      "appliedAt": null,
+                      "activatedAt": null,
+                      "storeNo": ""
+                    },
+                    {
+                      "payChannel": "ALIPAY",
+                      "channelName": "支付宝",
+                      "applyStatus": "NONE",
+                      "canReceiveMoney": false,
+                      "payMerchantNo": null,
+                      "subMchidMasked": null,
+                      "settleAccountType": null,
+                      "settleAccountMasked": null,
+                      "rejectReason": null,
+                      "missing": [
+                        "settleAccountType",
+                        "settleAccount",
+                        "licenses"
+                      ],
+                      "submitted": false,
+                      "appliedAt": null,
+                      "activatedAt": null,
+                      "storeNo": ""
+                    },
+                    {
+                      "payChannel": "TEST",
+                      "channelName": "测试渠道",
+                      "applyStatus": "NONE",
+                      "canReceiveMoney": false,
+                      "payMerchantNo": null,
+                      "subMchidMasked": null,
+                      "settleAccountType": null,
+                      "settleAccountMasked": null,
+                      "rejectReason": null,
+                      "missing": [
+                        "settleAccountType",
+                        "settleAccount",
+                        "licenses"
+                      ],
+                      "submitted": false,
+                      "appliedAt": null,
+                      "activatedAt": null,
+                      "storeNo": ""
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          },
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选；必须等于所选主体。"
+          }
+        ]
+      }
+    },
+    "/biz/merchant/payment": {
+      "get": {
+        "operationId": "getOnboardingPaymentApplications",
+        "summary": "读取进件状态及缺失项",
+        "description": "仅主体默认行和当前授权店行；必须按 storeNo 区分默认与独立结算。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "biz:finance",
+        "x-retry": "提交超时先读此接口，再主动回查。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006,
+          70045
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PaymentApplyment"
+                          },
+                          "description": ""
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          },
+          {
+            "name": "entityNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选；必须等于所选主体。"
+          }
+        ]
+      },
+      "post": {
+        "operationId": "submitOnboardingPaymentMaterials",
+        "summary": "提交收款进件资料",
+        "description": "主体默认进件省略 storeNo；独立结算传所选店号，须存在对应行/按流程先创建。按 missing 补材料。ACTIVE 不接受重复提交；真实结果由通道决定。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "biz:finance",
+        "x-retry": "非幂等：超时先查已有行/refresh，确认未提交再让用户补交；不生成客户端假成功。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006,
+          70045
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/PaymentApplyment"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "payChannel": "WECHAT",
+                    "channelName": "微信支付",
+                    "applyStatus": "ACTIVE",
+                    "canReceiveMoney": true,
+                    "payMerchantNo": "PAY-EXAMPLE",
+                    "subMchidMasked": "****2269",
+                    "settleAccountType": "PERSONAL_BANK_CARD",
+                    "settleAccountMasked": "****9999",
+                    "rejectReason": null,
+                    "missing": [],
+                    "submitted": true,
+                    "appliedAt": 1793717763907,
+                    "activatedAt": 1793717763911,
+                    "storeNo": null
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "兼容参数；推荐只在 body 传，若与 body/头冲突会拒绝。"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingPaymentRequest"
+              },
+              "example": {
+                "payChannel": "<实际可用通道>",
+                "settleAccountType": "PERSONAL_BANK_CARD",
+                "settleAccount": "<真实结算账户>",
+                "contactName": "Test owner",
+                "contactPhone": "15965010103",
+                "licenses": [
+                  "example-license"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/merchant/payment/store/{storeNo}": {
+      "post": {
+        "operationId": "openOnboardingStorePayment",
+        "summary": "创建分店独立收款进件占位（按需）",
+        "description": "仅需要分店独立结算时调用；路径与选店一致。不调用则可使用主体默认收款行。占位不等于提交渠道。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "biz:finance",
+        "x-retry": "重复开户会拒绝；超时先读状态，不自动重复开户。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006,
+          70045
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/PaymentApplyment"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "精确编码；不得百分号编码 /biz 路径。"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenPaymentRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/biz/merchant/payment/{payChannel}/refresh": {
+      "post": {
+        "operationId": "refreshOnboardingPaymentStatus",
+        "summary": "主动回查收款进件结果",
+        "description": "主体默认行不传 storeNo；独立行传所选店号。回查不等于重新提交开户资料。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "biz:finance",
+        "x-retry": "可由用户刷新；不要密集轮询，轮询间隔不是固定服务端合同。",
+        "x-business-error-codes": [
+          10400,
+          10401,
+          10402,
+          10403,
+          10404,
+          10409,
+          10500,
+          70006,
+          70045
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/PaymentApplyment"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所选确切门店号；必须与路径/query/body一致。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选所选主体号；出现时必须属于所选店。"
+          },
+          {
+            "name": "payChannel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "精确编码；不得百分号编码 /biz 路径。"
+          },
+          {
+            "name": "storeNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可选独立结算店号；出现时必须匹配所选店及 body。"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentRefreshRequest"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "商家BTK，不能使用CTK。"
+      }
+    },
+    "schemas": {
+      "AgreementRequest": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选；必须等于所选店主体。省略由可信选店解析。"
+          },
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选目标店；出现时必须等于 X-Store-No。"
+          }
+        },
+        "required": [],
+        "description": ""
+      },
+      "ApplyRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "拟用/执照正式名称；B 端应必填。"
+          },
+          "subject": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经营主体类型，取 subjects.subjectType；是否需执照及小微限制取主数据。"
+          },
+          "contactName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "联系人；B 端应采集。"
+          },
+          "contactPhone": {
+            "type": "string",
+            "description": "联系电话；B 端应必填。"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "主营类目；申请可选。"
+          },
+          "desc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "简介。"
+          },
+          "serviceScope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "取主数据 serviceScopes；省略时服务端使用 COMMUNITY。"
+          },
+          "communityNos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "社区号。"
+            },
+            "description": "COMMUNITY 审核通过时须非空；从 communities 选择。"
+          },
+          "licenses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "上传的证照 URL。"
+            },
+            "description": "兼容纯图片列表；不替代结构化资质。"
+          },
+          "asPickupPoint": {
+            "type": "boolean",
+            "description": "是否申请承接自提点；省略等价 false。"
+          },
+          "industry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证照审核行业，取 industries.industry；不是 businessTypeCode。"
+          },
+          "qualificationItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingQualificationItem"
+            },
+            "description": "新 B 端提交结构化列表；需营业执照的主体必须包含 BUSINESS_LICENSE 且证号/图片齐全。"
+          },
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选；必须等于所选店主体。省略由可信选店解析。"
+          },
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选目标店；出现时必须等于 X-Store-No。"
+          }
+        },
+        "required": [
+          "name",
+          "contactPhone"
+        ],
+        "description": ""
+      },
+      "BusinessType": {
+        "type": "object",
+        "properties": {
+          "businessTypeCode": {
+            "type": "string",
+            "description": "经营类型编码。"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "显示名。"
+          },
+          "catalogVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "当前整包发布版本。"
+          }
+        },
+        "required": [
+          "businessTypeCode",
+          "displayName",
+          "catalogVersion"
+        ],
+        "description": ""
+      },
+      "CertRecognition": {
+        "type": "object",
+        "properties": {
+          "recognized": {
+            "type": "boolean",
+            "description": "false = 模型没开或没认出来。**端上据此让他手填，不要弹错误** —— 识别是锦上添花，没识别出来只是少省一次手打。"
+          },
+          "docType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`BUSINESS_LICENSE` 营业执照 / `ID_CARD` 身份证 / `UNKNOWN` 认不出是什么证"
+          },
+          "side": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "身份证专用：`FRONT` 人像面 / `BACK` 国徽面。其余证件为 null"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "执照上的名称，或身份证上的姓名。**不是「证件名称」那一栏**"
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "统一社会信用代码（执照）或身份证号。\n**回给上传者本人是必要的**（他正要核对这一栏）， 但不要写进日志、不要转给第三方。"
+          },
+          "legalForm": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "执照类型：个体工商户 / 有限责任公司 ……"
+          },
+          "person": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "法定代表人 / 经营者"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "住所、经营场所或住址"
+          },
+          "issuedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "成立日期。`YYYY-MM-DD`"
+          },
+          "validTo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "有效期止。`YYYY-MM-DD`，或字面量 `长期`"
+          },
+          "confidence": {
+            "type": "number",
+            "description": "识别置信度；未识别为 0。"
+          }
+        },
+        "required": [
+          "recognized",
+          "docType",
+          "side",
+          "name",
+          "code",
+          "legalForm",
+          "person",
+          "address",
+          "issuedAt",
+          "validTo",
+          "confidence"
+        ],
+        "description": "证照识别结果，用来**预填**表单。与后端 `BizCertController.CertVO` 同形。"
+      },
+      "Community": {
+        "type": "object",
+        "properties": {
+          "communityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "社区单号"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "社区名（小区名）"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "社区地址"
+          },
+          "cityCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "所属城市。全市范围的商家靠它判定可达"
+          },
+          "regionCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "所属街道/镇（9 位区划码）。商家框范围时「按街道看聚落」靠它 —— 不下发的话端上只能拿到一锅平铺清单，街道视图无从分组。"
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`ESTATE` 小区 / `VILLAGE` 村 / `BUILDING` 楼栋（写字楼）。"
+          },
+          "parentNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "所属聚落（楼栋 → 小区/园区）。**为空 = 顶层聚落**，直接挂 `regionCode`。"
+          },
+          "distance": {
+            "type": "number",
+            "description": "米"
+          },
+          "pickups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Pickup"
+            },
+            "description": "本社区可用的自提点"
+          },
+          "originCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "官方村码，只有 `kind=VILLAGE` 且经官方名录开通的才有。**`regionCode` 是它挂的 街道/镇，不是它自己** —— 经营范围选择器再往下钻一层要用这个码，不能用 regionCode， 否则「牛杜村」会被当成「牛杜镇」去下钻。"
+          },
+          "originName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`originCode` 对应的原始官方名（「景滑村委会」，未清理）——仅供展示/追溯， 判「是不是村委会」不要解析它，用下面的 `rural` 字段（服务端存的，不是端上猜的）。"
+          },
+          "rural": {
+            "type": "boolean",
+            "description": "是不是村委会（`sys_region.rural`，经 origin_code 反查）。只对 kind=VILLAGE 有意义： 村委会到此为止、不再下钻；居委会/社区还能再挑具体小区。"
+          },
+          "latE6": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "官方村名录批量补录过的坐标，可能为空"
+          },
+          "lngE6": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "经度 ×1e6。**全站坐标一律 gcj02**"
+          }
+        },
+        "required": [
+          "communityNo",
+          "name",
+          "address",
+          "cityCode",
+          "distance",
+          "pickups"
+        ]
+      },
+      "Entity": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "商家主体号"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "执照上的名称。**待补证照时它是老板随手填的店名**—— 补齐执照、审核通过后被执照上的正式名称覆盖"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ACTIVE 营业中 / PENDING_LICENSE 待补证照 / SUSPENDED、BANNED 已停业。\n**端上照它给下一步**：待补证照给「去补执照」，已停业给客服入口"
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "平台已认证。待补证照恒为 false —— 这个标是审核给的，不能自己开店就带上"
+          },
+          "legalForm": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "个体户 / 有限公司…… 待补证照时为空，那时还不知道是哪种"
+          },
+          "storeCount": {
+            "type": "number",
+            "description": "这张证照下**我能进**的门店数。老板 = 全部；店员 = 只数被授权到的那几家"
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "description": "默认证照。不带 `X-Store-No` 时后端解析到的就是它"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "我是不是这张证照的持有人。**只有持有人能改资料、交执照、挂收款号**"
+          }
+        },
+        "required": [
+          "entityNo",
+          "name",
+          "status",
+          "verified",
+          "legalForm",
+          "storeCount",
+          "isPrimary",
+          "canManage"
+        ],
+        "description": "一张**证照**（营业执照）。库里叫 `mch_entity`，**对外一律叫「证照」**—— 老板不认识「主体」「实体」这两个词。"
+      },
+      "EntityStores": {
+        "type": "object",
+        "properties": {
+          "entity": {
+            "$ref": "#/components/schemas/Entity",
+            "description": "所属主体（一张证照）"
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Store"
+            },
+            "description": "这张证照下我能进的门店"
+          }
+        },
+        "required": [
+          "entity",
+          "stores"
+        ],
+        "description": "一张证照 + 它下面我能进的门店。门店选择器按这个分组渲染。"
+      },
+      "HasPassword": {
+        "type": "object",
+        "properties": {
+          "hasPassword": {
+            "type": "boolean",
+            "description": "是否已设置个人登录密码。"
+          }
+        },
+        "required": [
+          "hasPassword"
+        ],
+        "description": ""
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "grantType": {
+            "type": "string",
+            "description": "本流程使用 PHONE_OTP；已设个人密码时可用 PASSWORD。其他已有授权方式不作为本轮验收入口。"
+          },
+          "principal": {
+            "type": "string",
+            "description": "PHONE_OTP 为手机号；PASSWORD 为绑定手机号。"
+          },
+          "credential": {
+            "type": "string",
+            "description": "一次性短信验证码或密码；不得记录日志。"
+          },
+          "agreed": {
+            "type": "boolean",
+            "description": "客户端应在用户勾选登录协议与隐私政策后传 true；不等于商家服务协议的落库确认。"
+          }
+        },
+        "required": [
+          "grantType",
+          "principal",
+          "credential",
+          "agreed"
+        ],
+        "description": ""
+      },
+      "MasterData": {
+        "type": "object",
+        "properties": {
+          "industries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MasterDataIndustry"
+            },
+            "description": "可选行业。**决定能不能以小微主体进件**，也是 points_forced 默认值的来源"
+          },
+          "intentIndustries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MasterDataIntentIndustry"
+            },
+            "description": "行业的**意向口径**：`industries` 之外还带上这一期尚未开放的那几档。"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MasterDataSubject"
+            },
+            "description": "可选主体类型（法律形态）。决定资质要求与结算账户形态"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MasterDataChannel"
+            },
+            "description": "可用支付通道与其能力位"
+          },
+          "serviceScopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceScope"
+            },
+            "description": "**这一期开放的经营范围档位**（`SERVICE_SCOPE` 的启用子集，运营在后台配）。"
+          }
+        },
+        "required": [
+          "industries",
+          "intentIndustries",
+          "subjects",
+          "channels",
+          "serviceScopes"
+        ],
+        "description": "平台主数据快照（`GET /common/master-data`）。"
+      },
+      "MasterDataChannel": {
+        "type": "object",
+        "properties": {
+          "payChannel": {
+            "type": "string",
+            "description": "通道码（`sys_pay_channel.pay_channel`），如 WECHAT"
+          },
+          "name": {
+            "type": "string",
+            "description": "展示名"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "通道是否可用。关掉时下单页不给这个支付方式，而不是点了才失败"
+          },
+          "payMethods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "该通道支持的支付方式，如 JSAPI / APP / H5"
+          }
+        },
+        "required": [
+          "payChannel",
+          "name",
+          "enabled",
+          "payMethods"
+        ]
+      },
+      "MasterDataIndustry": {
+        "type": "object",
+        "properties": {
+          "industry": {
+            "type": "string",
+            "description": "行业码（`sys_industry.industry`），提交申请时回传的就是它"
+          },
+          "name": {
+            "type": "string",
+            "description": "展示名。**取服务端的**，不要在端上再维护一份翻译"
+          },
+          "microAllowed": {
+            "type": "boolean",
+            "description": "该行业能否以小微主体进件。**false 时小微选项要禁用**，不是提交后才报错"
+          }
+        },
+        "required": [
+          "industry",
+          "name",
+          "microAllowed"
+        ]
+      },
+      "MasterDataIntentIndustry": {
+        "type": "object",
+        "properties": {
+          "industry": {
+            "type": "string",
+            "description": "行业码（`sys_industry.industry`）"
+          },
+          "name": {
+            "type": "string",
+            "description": "展示名。取服务端的"
+          },
+          "open": {
+            "type": "boolean",
+            "description": "平台这一期是否已开放。"
+          }
+        },
+        "required": [
+          "industry",
+          "name",
+          "open"
+        ]
+      },
+      "MasterDataSubject": {
+        "type": "object",
+        "properties": {
+          "subjectType": {
+            "$ref": "#/components/schemas/MerchantSubject",
+            "description": "主体类型码"
+          },
+          "name": {
+            "type": "string",
+            "description": "展示名"
+          },
+          "needLicense": {
+            "type": "boolean",
+            "description": "要不要传营业执照"
+          },
+          "industryGated": {
+            "type": "boolean",
+            "description": "是否受行业白名单管控（小微受管，其余不受）"
+          },
+          "settleAccountType": {
+            "$ref": "#/components/schemas/SettleAccountType",
+            "description": "该主体默认的结算账户形态：小微打个人，其余打对公"
+          }
+        },
+        "required": [
+          "subjectType",
+          "name",
+          "needLicense",
+          "industryGated",
+          "settleAccountType"
+        ]
+      },
+      "MerchantSubject": {
+        "type": "string",
+        "enum": [
+          "NATURAL_PERSON",
+          "INDIVIDUAL",
+          "ENTERPRISE"
+        ]
+      },
+      "Money": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "description": "币种。"
+          },
+          "minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "该币种最小单位金额。"
+          }
+        },
+        "required": [
+          "currency",
+          "minor"
+        ],
+        "description": ""
+      },
+      "OnboardingApplication": {
+        "type": "object",
+        "properties": {
+          "applyNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "申请业务号。"
+          },
+          "merchantNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "申请关联主体；回填前须与当前所选主体核对；可空。"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "本次提交的店铺/主体名称。"
+          },
+          "subject": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "申请主体类型，可能尚未确定。"
+          },
+          "contactName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "申请联系人。"
+          },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "联系手机号。"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "申请主营类目。"
+          },
+          "desc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "申请简介。"
+          },
+          "serviceScope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "申请经营范围码。"
+          },
+          "industry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "申请证照行业。"
+          },
+          "industryNote": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "其他入口/历史手填行业说明；本 B 端请求不接收。"
+          },
+          "status": {
+            "type": "string",
+            "description": "PENDING/REVIEWING/REJECTED/APPROVED；与 profile.status 区分。"
+          },
+          "rejectReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "审核驳回原因。"
+          },
+          "referrerPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "历史推荐手机号，只可能回显，本 B 端申请不接收。"
+          },
+          "communityNos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "申请覆盖社区号列表。"
+          },
+          "licenses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "申请证照图片 URL 列表。"
+          },
+          "asPickupPoint": {
+            "type": "boolean",
+            "description": "是否申请承接自提点。"
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "创建毫秒时间。"
+          },
+          "auditedAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "审核时间；未审核为 0。"
+          },
+          "qualificationItems": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingQualificationItem"
+            },
+            "description": "申请中的结构化资质，尚不等于已登记并获授权资质。"
+          },
+          "onBehalf": {
+            "type": "boolean",
+            "description": "运营代填标记。"
+          },
+          "agreedAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "协议确认毫秒；未确认为 0。"
+          }
+        },
+        "required": [
+          "applyNo",
+          "merchantNo",
+          "name",
+          "subject",
+          "contactName",
+          "contactPhone",
+          "category",
+          "desc",
+          "serviceScope",
+          "industry",
+          "industryNote",
+          "status",
+          "rejectReason",
+          "referrerPhone",
+          "communityNos",
+          "licenses",
+          "asPickupPoint",
+          "createdAt",
+          "auditedAt",
+          "qualificationItems",
+          "onBehalf",
+          "agreedAt"
+        ],
+        "description": ""
+      },
+      "OnboardingAuthCode": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "类目准入授权码，与业务端权益 code 分开。"
+          },
+          "name": {
+            "type": "string",
+            "description": "授权显示名。"
+          },
+          "requiredQualification": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "该授权要求的证件名称。"
+          },
+          "qualType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "对应资质类型。"
+          },
+          "categoryNames": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "使用该授权的类目显示名列表。"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "requiredQualification",
+          "qualType",
+          "categoryNames"
+        ],
+        "description": ""
+      },
+      "OnboardingError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "非零业务码；不能只判断 HTTP。",
+            "not": {
+              "const": 0
+            }
+          },
+          "msg": {
+            "type": "string",
+            "description": "服务端错误信息，不作为程序分支依据。"
+          },
+          "data": {
+            "description": "通常 null，部分准入错误可能有动作信息。"
+          }
+        },
+        "required": [
+          "code",
+          "msg",
+          "data"
+        ],
+        "description": ""
+      },
+      "OnboardingLoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "MERCHANT 池 BTK；Authorization: Bearer 。"
+          },
+          "merchant": {
+            "$ref": "#/components/schemas/OnboardingMerchantProfile"
+          }
+        },
+        "required": [
+          "token",
+          "merchant"
+        ],
+        "description": ""
+      },
+      "OnboardingMerchantProfile": {
+        "type": "object",
+        "properties": {
+          "merchantNo": {
+            "type": "string",
+            "description": "当前主体号；尚无主体时为空字符串。"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "当前主体/店铺名称。"
+          },
+          "logo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "头像或店铺图 URL；可空。"
+          },
+          "status": {
+            "type": "string",
+            "description": "有主体：PENDING_LICENSE/ACTIVE/SUSPENDED；无主体：NONE/APPLYING/REVIEWING/REJECTED。不是申请单状态。"
+          },
+          "subject": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "主体类型；未确定时可空；以主数据为准。"
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "旧主体分层/额度档位，不能当商业 Plan。"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "登录账号手机号；可空。"
+          },
+          "pickupNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "承接的自提点号；未承接时可空。"
+          },
+          "rejectReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "档案分支的驳回原因；完整申请原因另读 GET apply。"
+          },
+          "industry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证照审核行业，不是 businessTypeCode。"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "店铺简介。"
+          },
+          "fundsMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "AGGREGATED/DIRECT；尚未确定时可空。"
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "当前登录账号显示名；未设置可空。"
+          },
+          "currentStoreNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可信解析的当前店号；quick-start 成功后用它选新店；可空。"
+          },
+          "isPickupPoint": {
+            "type": "boolean",
+            "description": "是否承接自提点。"
+          },
+          "agreementPending": {
+            "type": "boolean",
+            "description": "仅本人最近代填申请未签且主体与当前档案精确匹配时提示。"
+          },
+          "favoriteCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "收藏数。"
+          }
+        },
+        "required": [
+          "merchantNo",
+          "name",
+          "logo",
+          "status",
+          "subject",
+          "tier",
+          "phone",
+          "pickupNo",
+          "rejectReason",
+          "industry",
+          "description",
+          "fundsMode",
+          "displayName",
+          "currentStoreNo",
+          "isPickupPoint",
+          "agreementPending",
+          "favoriteCount"
+        ],
+        "description": ""
+      },
+      "OnboardingPaymentRequest": {
+        "type": "object",
+        "properties": {
+          "payChannel": {
+            "type": "string",
+            "description": "从 pay-channel 返回选择；不要内置测试渠道。"
+          },
+          "settleAccountType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PERSONAL_BANK_CARD/MERCHANT_ID；不传按主体主数据默认；仍须满足 missing。"
+          },
+          "settleAccount": {
+            "type": "string",
+            "description": "本次提交的真实结算账户；不得日志记录或本地持久化，不回显。",
+            "writeOnly": true
+          },
+          "licenses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "证照 URL。"
+            },
+            "description": "非小微提交必需；按 missing 和主体字典补齐。"
+          },
+          "contactName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "渠道联系人。"
+          },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "渠道联系电话。"
+          },
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选；必须等于所选店主体。省略由可信选店解析。"
+          },
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "省略/空代表主体默认收款行；传所选店号代表独立分店行。不得自动把所有请求补成当前店号。"
+          }
+        },
+        "required": [
+          "payChannel",
+          "settleAccount"
+        ],
+        "description": ""
+      },
+      "OnboardingPlanCard": {
+        "type": "object",
+        "properties": {
+          "planNo": {
+            "type": "string",
+            "description": "稳定 Plan 号。"
+          },
+          "planVersionNo": {
+            "type": "string",
+            "description": "不可变版本。"
+          },
+          "tier": {
+            "type": "string",
+            "description": "三档顺序固定。",
+            "enum": [
+              "FREE",
+              "PRO",
+              "CHAIN"
+            ]
+          },
+          "displayName": {
+            "type": "string",
+            "description": "显示名。"
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "简介。"
+          },
+          "entitlementCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "业务端权益编码。"
+            },
+            "description": "该当前发布 Plan 包含的业务端权益编码。"
+          },
+          "saleStatus": {
+            "type": "string",
+            "description": "ON_SALE/OFF_SALE；停售卡片保留。"
+          },
+          "priceOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingPriceOption"
+            },
+            "description": "只读已发布价格；停售时为空。"
+          },
+          "priceStatus": {
+            "type": "string",
+            "description": "INCLUDED/UNCONFIGURED/DISPLAY_ONLY/OFF_SALE。"
+          },
+          "purchaseAvailable": {
+            "type": "boolean",
+            "description": "本轮恒 false。",
+            "const": false
+          }
+        },
+        "required": [
+          "planNo",
+          "planVersionNo",
+          "tier",
+          "displayName",
+          "summary",
+          "entitlementCodes",
+          "saleStatus",
+          "priceOptions",
+          "priceStatus",
+          "purchaseAvailable"
+        ],
+        "description": ""
+      },
+      "OnboardingPlanCatalog": {
+        "type": "object",
+        "properties": {
+          "businessTypeCode": {
+            "type": "string",
+            "description": "经营类型编码。"
+          },
+          "catalogVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "不可用时为 null。"
+          },
+          "status": {
+            "type": "string",
+            "description": "PUBLISHED/UNAVAILABLE。"
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingPlanCard"
+            },
+            "description": "不可用时为空数组，不能补造三档。"
+          }
+        },
+        "required": [
+          "businessTypeCode",
+          "catalogVersion",
+          "status",
+          "plans"
+        ],
+        "description": ""
+      },
+      "OnboardingPriceOption": {
+        "type": "object",
+        "properties": {
+          "skuNo": {
+            "type": "string",
+            "description": "SKU号。"
+          },
+          "skuVersionNo": {
+            "type": "string",
+            "description": "发布版本。"
+          },
+          "title": {
+            "type": "string",
+            "description": "显示名。"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "listPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "periodDays": {
+            "type": "integer",
+            "format": "int64",
+            "description": "周期天数。"
+          },
+          "unitCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "周期份数。"
+          },
+          "gift": {
+            "type": "boolean",
+            "description": "是否赠送。"
+          }
+        },
+        "required": [
+          "skuNo",
+          "skuVersionNo",
+          "title",
+          "price",
+          "listPrice",
+          "periodDays",
+          "unitCount",
+          "gift"
+        ],
+        "description": ""
+      },
+      "OnboardingQualificationItem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "证件类型；营业执照为 BUSINESS_LICENSE，其他取平台资质字典。"
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证件编号。"
+          },
+          "imageUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "上传得到的证照 URL。"
+          },
+          "expireAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "UTC epoch 毫秒；null 为长期有效。"
+          },
+          "issuer": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "发证机关。"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": ""
+      },
+      "OnboardingQualifications": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Qualification"
+            },
+            "description": "已登记资质。"
+          },
+          "grantedCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "已实际授予的类目授权码。"
+            },
+            "description": "实际已授予的类目授权码列表。"
+          },
+          "catalog": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingAuthCode"
+            },
+            "description": "授权与所需证件/类目对应字典。"
+          }
+        },
+        "required": [
+          "items",
+          "grantedCodes",
+          "catalog"
+        ],
+        "description": ""
+      },
+      "OpenPaymentRequest": {
+        "type": "object",
+        "properties": {
+          "payChannel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选；省略由服务端选择默认可用通道。"
+          },
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选；必须等于所选店主体。省略由可信选店解析。"
+          },
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选目标店；出现时必须等于 X-Store-No。"
+          }
+        },
+        "required": [],
+        "description": ""
+      },
+      "OtpSendRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "11 位手机号，字符串，短信发码与消费沿用服务端限制。",
+            "pattern": "^\\d{11}$"
+          }
+        },
+        "required": [
+          "phone"
+        ],
+        "description": ""
+      },
+      "PasswordRequest": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "已登录 USR 设置新密码；不收旧密码。",
+            "minLength": 6
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "description": ""
+      },
+      "PaymentApplyStatus": {
+        "type": "string",
+        "enum": [
+          "NONE",
+          "APPLYING",
+          "ACTIVE",
+          "REJECTED",
+          "FROZEN"
+        ],
+        "description": "支付**进件**状态（`MerchantPayment.applyStatus`）。"
+      },
+      "PaymentApplyment": {
+        "type": "object",
+        "properties": {
+          "payChannel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "通道码，如 WECHAT"
+          },
+          "channelName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "通道展示名。取服务端的，端上不要再维护一份翻译"
+          },
+          "applyStatus": {
+            "$ref": "#/components/schemas/PaymentApplyStatus",
+            "description": "NONE / APPLYING / ACTIVE / REJECTED / FROZEN"
+          },
+          "canReceiveMoney": {
+            "type": "boolean",
+            "description": "这个通道现在能不能收钱。"
+          },
+          "payMerchantNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "收款商户号业务键，通过后才有。门店挂收款号引用的就是它"
+          },
+          "subMchidMasked": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "二级商户号掩码。完整号不回显"
+          },
+          "settleAccountType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "PERSONAL_BANK_CARD/MERCHANT_ID；尚未确定可为null。"
+          },
+          "settleAccountMasked": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "结算账号掩码。**明文永不回显**，包括给商家自己（ADR-002 §5）"
+          },
+          "rejectReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "驳回原因。驳回时必有 —— 没有原因商家只能反复重提"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "还缺的字段名，如 settleAccountType/settleAccount/licenses。"
+            },
+            "description": "还缺的字段名：settleAccountType、settleAccount、licenses 等。"
+          },
+          "submitted": {
+            "type": "boolean",
+            "description": "**有没有真的发给通道过。**"
+          },
+          "appliedAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "提交毫秒时间；可空。"
+          },
+          "activatedAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "激活毫秒时间；可空。"
+          },
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null/空串为主体默认行；其他为门店独立行。"
+          }
+        },
+        "required": [
+          "payChannel",
+          "channelName",
+          "applyStatus",
+          "canReceiveMoney",
+          "payMerchantNo",
+          "subMchidMasked",
+          "settleAccountType",
+          "settleAccountMasked",
+          "rejectReason",
+          "missing",
+          "submitted",
+          "appliedAt",
+          "activatedAt",
+          "storeNo"
+        ],
+        "description": "收款进件状态（每通道一条）。"
+      },
+      "PaymentRefreshRequest": {
+        "type": "object",
+        "properties": {
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选；必须等于所选店主体。省略由可信选店解析。"
+          },
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选目标店；出现时必须等于 X-Store-No。"
+          }
+        },
+        "required": [],
+        "description": ""
+      },
+      "Pickup": {
+        "type": "object",
+        "properties": {
+          "pickupNo": {
+            "type": "string",
+            "description": "自提点单号"
+          },
+          "name": {
+            "type": "string",
+            "description": "自提点名称（通常是承接店铺的店名）"
+          },
+          "address": {
+            "type": "string",
+            "description": "自提点地址"
+          },
+          "distance": {
+            "type": "number",
+            "description": "距当前社区的距离（米），服务端算好下发"
+          },
+          "hostMerchantNo": {
+            "type": "string",
+            "description": "承接这个自提点的商家（ADR-005：PickupPoint.type=STORE，承接方是入驻商家而非团长）"
+          },
+          "hostName": {
+            "type": "string",
+            "description": "承接商家的店名"
+          },
+          "hostAvatar": {
+            "type": "string",
+            "description": "承接商家的头像/门头图"
+          },
+          "openHours": {
+            "type": "string",
+            "description": "营业时间文案，如 `08:00-21:00`。展示用，不参与计算"
+          },
+          "arrivalDesc": {
+            "type": "string",
+            "description": "到货时间说明，如「次日 18:00 后到」。影响用户选不选这个点"
+          },
+          "latE6": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "取货点坐标（gcj02，E6）。**可能为空** —— 存量点是手填地址建的。 买家要拿着它导航过去，没有就只能显示地址文本。"
+          },
+          "lngE6": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "经度 ×1e6。**全站坐标一律 gcj02**"
+          }
+        },
+        "required": [
+          "pickupNo",
+          "name",
+          "address",
+          "distance",
+          "hostMerchantNo",
+          "hostName",
+          "hostAvatar",
+          "openHours",
+          "arrivalDesc"
+        ]
+      },
+      "Qualification": {
+        "type": "object",
+        "properties": {
+          "qualNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "资质记录号"
+          },
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "归属主体。端上其实用不到（只会看自己的），但后端在发 —— 声明出来免得契约守卫把它算成缺口"
+          },
+          "qualType": {
+            "type": "string",
+            "description": "当前资质类型编码；以平台字典为准。"
+          },
+          "qualName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证件名，如「食品经营许可证」。上架校验拿它与类目门槛的文案比对"
+          },
+          "qualNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证件编号，证上印的那一串"
+          },
+          "imageUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证件照地址"
+          },
+          "expireAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "有效期截止（毫秒）。**空 = 长期有效**，与「已过期」是两回事"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "VALID / EXPIRED / REVOKED"
+          }
+        },
+        "required": [
+          "qualNo",
+          "qualType",
+          "qualName",
+          "status"
+        ],
+        "description": "已登记的一张资质（`mch_qualification`）。"
+      },
+      "QuickStartRequest": {
+        "type": "object",
+        "properties": {
+          "storeName": {
+            "type": "string",
+            "description": "必填非空店名；同时作为初始主体名。"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "门店地址，可暂不传。"
+          },
+          "businessTypeCode": {
+            "type": "string",
+            "description": "门店型创建模式必填；取 business-types 返回的精确编码。"
+          }
+        },
+        "required": [
+          "storeName",
+          "businessTypeCode"
+        ],
+        "description": ""
+      },
+      "SaveQualificationRequest": {
+        "type": "object",
+        "properties": {
+          "qualNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "新增省略；编辑必须是当前主体已有资质号。"
+          },
+          "qualType": {
+            "type": "string",
+            "description": "资质类型。"
+          },
+          "qualName": {
+            "type": "string",
+            "description": "证件名称。"
+          },
+          "qualNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证件编号。"
+          },
+          "imageUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "证照 URL。"
+          },
+          "expireAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "毫秒；null 长期有效。"
+          },
+          "entityNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选；必须等于所选店主体。省略由可信选店解析。"
+          },
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "可选目标店；出现时必须等于 X-Store-No。"
+          }
+        },
+        "required": [
+          "qualType",
+          "qualName"
+        ],
+        "description": ""
+      },
+      "ServiceScope": {
+        "type": "string",
+        "enum": [
+          "COMMUNITY",
+          "CITY",
+          "PLATFORM"
+        ]
+      },
+      "SettleAccountType": {
+        "type": "string",
+        "enum": [
+          "PERSONAL_BANK_CARD",
+          "MERCHANT_ID"
+        ],
+        "description": "结算账户形态。个人 openid 收款 / 对公商户号收款（ADR-002 §5）"
+      },
+      "StaffLoginRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "员工绑定手机号。"
+          },
+          "code": {
+            "type": "string",
+            "description": "短信验证码。"
+          }
+        },
+        "required": [
+          "phone",
+          "code"
+        ],
+        "description": ""
+      },
+      "Store": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "门店号。一旦生成不再变 —— 换主体只换归属，不换它"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "门店名"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "门店地址。顾客据此找到取货点，也是履约范围的锚点"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "是否默认店。一个主体**恰好一家** —— 它是「找不到具体门店时去哪」的答案"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ACTIVE 正常营业 / READONLY 已停用（不再接新单，已有单照常履约）"
+          },
+          "payMerchantNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "这家店用哪个收款号。**空 = 用主体的默认收款号**，不是\"没配\""
+          },
+          "payReady": {
+            "type": "boolean",
+            "description": "这家店现在能不能收钱。照它显示，别自己去比状态串"
+          },
+          "staffCount": {
+            "type": "number",
+            "description": "授权到这家店的员工数（不含老板）。0 表示只有老板能管这家店"
+          },
+          "rating": {
+            "type": "number",
+            "description": "门店评分 ×10（V155）。与主体评分是两个数：主体分是各店的合成，反过来推不回去"
+          },
+          "ratingCount": {
+            "type": "number",
+            "description": "计入门店评分的条数。**0 = 暂无评价**，不是 0 分"
+          },
+          "planSuspended": {
+            "type": "boolean",
+            "description": "这家店的只读**是套餐降级压下来的**，不是店主自己停的。"
+          },
+          "businessMode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "经营模式（门店级）。自营门店加经营类目不判资质，「调整经营类目」面板因此不标「需资质」 （TDD-门店经营类目）。老后端不发 —— 端上按「不是自营」处理，宁可多提示不少提示。"
+          },
+          "selfOperated": {
+            "type": "boolean",
+            "description": "所属主体是不是平台自营（mch_entity.self_operated）。后端免资质按它判， 「调整经营类目」面板标不标「需资质」也按它 —— **不要改回读 businessMode**： 那一列每家新店默认都是 SELF_OPERATED，包括第三方商家的店（TDD-门店经营类目 §10）"
+          },
+          "slug": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "门店代码（V357）：店主自己定的那一串，对外链接 `hxmall.top/s/` 里露出来的那一段。"
+          },
+          "shareUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "这家店的对外链接（完整地址，V357）。**后端拼好发下来，端上不自己拼** —— 域名写在端上就会有两处真源，而它已经错过一次：此前后端写死 `shop.example.com`， 商家把那个链接印了贴纸才发现指向一个不存在的地方。"
+          }
+        },
+        "required": [
+          "storeNo",
+          "name",
+          "address",
+          "isDefault",
+          "status",
+          "payMerchantNo",
+          "payReady",
+          "staffCount",
+          "rating",
+          "ratingCount",
+          "planSuspended",
+          "businessMode",
+          "selfOperated",
+          "slug",
+          "shareUrl"
+        ]
+      },
+      "UploadResult": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "后续 licenses/imageUrl 使用该 URL。"
+          },
+          "assetKey": {
+            "type": "string",
+            "description": "媒体资源键。"
+          }
+        },
+        "required": [
+          "url",
+          "assetKey"
+        ],
+        "description": ""
+      }
+    }
+  }
+}
