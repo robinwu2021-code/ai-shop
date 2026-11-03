@@ -45,4 +45,21 @@ class CommerceSchemaMysqlTest {
   assertEquals(28,db.jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=? AND table_name=?",Integer.class,db.name,"commerce_expiry_notice"));
 
  }}
+ @Test void physicalColumnNamesTypesNullabilityAndAutoIdsMatchDictionary() throws Exception {try(var db=new MysqlDatabase()){db.migrate();
+  var lines=new String(getClass().getResourceAsStream("/expected-commerce-columns.tsv").readAllBytes(),java.nio.charset.StandardCharsets.UTF_8).lines().toList();assertEquals(609,lines.size());
+  for(var line:lines){var parts=line.split("\t");var actual=db.jdbc.queryForObject("SELECT CONCAT(column_type,'|',is_nullable,'|',extra) FROM information_schema.columns WHERE table_schema=? AND table_name=? AND column_name=?",String.class,db.name,parts[0],parts[1]);assertEquals(parts[2]+"|"+parts[3]+"|"+(parts[1].equals("id")?"auto_increment":""),actual,line);}
+ }}
+ @Test void separateSourceTaskAndConversionIdentitiesCannotBeReused() {try(var db=new MysqlDatabase()){db.migrate();db.jdbc.execute(Rows.mch_subscription_period("A"));
+  assertThrows(org.springframework.dao.DuplicateKeyException.class,()->copy(db,"mch_subscription_period",java.util.Map.of("period_no","p2")));
+  db.jdbc.update("UPDATE mch_subscription_period SET fulfillment_task_no='task1' WHERE tenant_no='A'");
+  assertThrows(org.springframework.dao.DuplicateKeyException.class,()->copy(db,"mch_subscription_period",java.util.Map.of("period_no","p3","source_ref_no","ref3")));
+  db.jdbc.execute(Rows.mch_subscription_conversion_item("A"));assertThrows(org.springframework.dao.DuplicateKeyException.class,()->copy(db,"mch_subscription_conversion_item",java.util.Map.of("conversion_no","second")));
+  db.jdbc.execute(Rows.commerce_outbox("A"));assertThrows(org.springframework.dao.DuplicateKeyException.class,()->copy(db,"commerce_outbox",java.util.Map.of("event_no","other")));
+ }}
+ static void copy(MysqlDatabase db,String table,java.util.Map<String,String> override){
+  var columns=db.jdbc.queryForList("SELECT column_name FROM information_schema.columns WHERE table_schema=? AND table_name=? AND column_name<>'id' ORDER BY ordinal_position",String.class,db.name,table);var values=new java.util.ArrayList<Object>();
+  String selection=columns.stream().map(c->{if(override.containsKey(c)){values.add(override.get(c));return "?";}return "`"+c+"`";}).collect(java.util.stream.Collectors.joining(","));
+  db.jdbc.update("INSERT INTO `"+table+"` ("+columns.stream().map(c->"`"+c+"`").collect(java.util.stream.Collectors.joining(","))+") SELECT "+selection+" FROM `"+table+"` WHERE tenant_no='A'",values.toArray());
+ }
+
 }
