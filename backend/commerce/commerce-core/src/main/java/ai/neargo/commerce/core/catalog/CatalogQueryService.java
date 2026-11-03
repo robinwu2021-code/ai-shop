@@ -83,7 +83,9 @@ final class CatalogQueryService {
                                                                 state.products
                                                                         .get(s.productNo())
                                                                         .saleStatus()))
-                        .map(s -> state.skuVersions.get(s.currentVersionNo()).draft())
+                        .map(s -> state.skuVersions.get(s.currentVersionNo()))
+                        .filter(v -> v != null && "PUBLISHED".equals(v.status()))
+                        .map(CatalogState.SkuVersion::draft)
                         .filter(
                                 s ->
                                         s.title() != null

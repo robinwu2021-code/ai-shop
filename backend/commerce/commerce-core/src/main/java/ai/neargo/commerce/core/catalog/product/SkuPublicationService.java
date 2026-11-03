@@ -107,7 +107,7 @@ public final class SkuPublicationService {
                 "SKU_DRAFT_SAVED",
                 null,
                 state -> {
-                    validate(a.tenantNo(), state, d, state.planVersions.keySet());
+                    validate(a.tenantNo(), state, d, Set.of(), true);
                     var old = state.skuVersions.get(d.skuVersionNo());
                     check(
                             creating ? old == null : old != null,
@@ -177,7 +177,26 @@ public final class SkuPublicationService {
                 });
     }
 
-    public void validate(String tenant, CatalogState state, SkuDraft d, Set<String> packagePlans) {
+    public void validatePublication(
+            String tenant, CatalogState state, String no, Set<String> packagePlans) {
+        var v = publishableVersion(state, no);
+        validate(tenant, state, v.draft(), packagePlans, false);
+    }
+
+    private CatalogState.SkuVersion publishableVersion(CatalogState state, String no) {
+        var v = require(state.skuVersions, no);
+        check(
+                "DRAFT".equals(v.status()) || "PUBLISHED".equals(v.status()),
+                "invalid SKU publication status");
+        return v;
+    }
+
+    private void validate(
+            String tenant,
+            CatalogState state,
+            SkuDraft d,
+            Set<String> packagePlans,
+            boolean allowDraftPlanReferences) {
         text(d.title(), 128, "SKU version title snapshot");
         var product = require(state.products, d.productNo());
         unique(d.allowedBusinessTypes());
@@ -239,7 +258,9 @@ public final class SkuPublicationService {
                             d.allowedBusinessTypes().size() == 1
                                     && d.allowedBusinessTypes().contains(p.typeCode()),
                             "Plan/SKU industry mismatch");
-                    if (!packagePlans.contains(c.planVersionNo())) {
+                    // Draft editing may reference a not-yet-published Plan. It does not
+                    // select any FREE policy for a future publication package.
+                    if (!allowDraftPlanReferences && !packagePlans.contains(c.planVersionNo())) {
                         check(
                                 pv.status().equals("PUBLISHED")
                                         && c.planVersionNo().equals(p.currentVersionNo())
@@ -288,24 +309,25 @@ public final class SkuPublicationService {
                                                                 && p.tier() == PlanTier.FREE)
                                         .findFirst()
                                         .orElseThrow();
-                        if (free.currentVersionNo() != null)
+                        // A real package selects its after-state FREE policy. Other types
+                        // and independent operations still use their actual current FREE.
+                        String freeVersionNo =
+                                packagePlans.stream()
+                                        .filter(
+                                                no -> {
+                                                    var pv = state.planVersions.get(no);
+                                                    return pv.draft().typeCode().equals(type)
+                                                            && pv.draft().tier() == PlanTier.FREE;
+                                                })
+                                        .findFirst()
+                                        .orElse(free.currentVersionNo());
+                        if (freeVersionNo != null)
                             check(
-                                    !state.planVersions
-                                            .get(free.currentVersionNo())
+                                    !require(state.planVersions, freeVersionNo)
                                             .draft()
                                             .entitlementCodes()
                                             .contains(c.entitlementCode()),
                                     "FREE permanent end cannot be sold");
-                        for (String no : packagePlans) {
-                            var pv = state.planVersions.get(no);
-                            if (pv.draft().typeCode().equals(type)
-                                    && pv.draft().tier() == PlanTier.FREE)
-                                check(
-                                        !pv.draft()
-                                                .entitlementCodes()
-                                                .contains(c.entitlementCode()),
-                                        "candidate FREE permanent end cannot be sold");
-                        }
                     }
                 }
                 case HARDWARE -> {
@@ -369,7 +391,7 @@ public final class SkuPublicationService {
                     var sku = require(state.skus, v.draft().skuNo());
                     expected(d.expectedSkuVersion(), sku.version());
                     check(v.status().equals("DRAFT"), "only draft SKU can publish");
-                    validate(a.tenantNo(), state, v.draft(), Set.of());
+                    validatePublication(a.tenantNo(), state, d.skuVersionNo(), Set.of());
                     publishVersion(state, d.skuVersionNo(), s.clock.millis());
                     return new PublicationResult(
                             s.nextId("catalog-publication"), 0, List.of(d.skuVersionNo()));
@@ -377,7 +399,7 @@ public final class SkuPublicationService {
     }
 
     public void publishVersion(CatalogState state, String no, long now) {
-        var v = require(state.skuVersions, no);
+        var v = publishableVersion(state, no);
         if (v.status().equals("DRAFT"))
             state.skuVersions.put(
                     no,

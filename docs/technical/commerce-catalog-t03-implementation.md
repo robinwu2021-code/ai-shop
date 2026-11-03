@@ -35,7 +35,7 @@ T01 的目录接口是提前给出的占位合同。本次按已批准的领域�
 - 保存返回 `DraftSaveResult(entityNo, draftVersionNo, version)`；新 Plan／SKU 版本的 versionNo 为 null 时由生成器创建，非 null 只允许编辑已存在的草稿。新增组件号同样传 null；显式组件号只能引用该草稿已有的组件，不能移用其他版本的组件号。
 - `StopSaleCommand` 显式区分 PLAN／SKU／PRODUCT。业务稳定 code 和 SPU／SKU 稳定身份可由运营显式提供。类型创建自动建立 `<typeCode>:FREE/PRO/CHAIN` 三个稳定定义，不创建销售价格或假验收数据。
 
-`CatalogView` 同时提供当前展示 `plans/skus` 和类型、端、Plan 定义／版本、SPU、SKU 定义／版本的类型化 metadata。定义上的 `version` 是主数据锁版本；版本视图上的 `version` 是草稿／合同版本锁版本；`catalogVersion` 专指行业三档组合发布版本。三者不得混用。完整历史／草稿可通过运营读接口取得，旧已发布版本一直保留。
+`CatalogView` 同时提供当前展示 `plans/skus` 和类型、端、Plan 定义／版本、SPU、SKU 定义／版本的类型化 metadata。定义上的 `version` 是主数据锁版本；版本视图上的 `version` 是草稿／合同版本锁版本；`catalogVersion` 专指行业三档组合发布版本。三者不得混用。完整历史／草稿可通过运营读接口取得，旧已发布版本一直保留。当前 `skus` 报价展示另要求当前指针所指版本状态恰为 PUBLISHED；ARCHIVED 或未知状态不会因为稳定 SKU／SPU 仍为 ON_SALE 而重新展示，原指针与版本 metadata 仍可读取。
 
 发布选择同时绑定内容行版本：`IndustryPublicationCommand.expectedPlanVersions/expectedSkuVersions` 分别携带每个选中 Plan／SKU 版本的行版本，来自对应公开版本视图。类型分开保存，避免合法同号版本相互混淆；缺少所选项的 token 是无效命令，草稿在预览后被改价／改权益则返回 VERSION_CONFLICT，整包不发布。`expectedCatalogVersion` 继续保护目录当前指针。独立 `SkuPublicationCommand` 同时携带目标草稿的 `expectedVersion` 和来自 `SkuDefinitionView.version` 的 `expectedSkuVersion`，不同草稿不能凭各自有效的草稿 token 静默覆盖同一个旧 SKU 当前指针。
 
@@ -48,13 +48,13 @@ R1 复审修正：行业包还必须携带 `expectedPlanDefinitionVersions`（�
 1. 以 `enabled=false` 创建类型，读取公开 `planDefinitions` 获得恰好三档的稳定 PlanNo；创建时传 true 会被拒绝，发布权限也不能绕过。
 2. 注册真实端元数据。创建／名称／排序编辑需要 edit；类型 enabled 变化需要 publish，同时修改两组字段要同时具备两种能力。类型首次启用前必须已有成功行业发布。
 3. 新建三档 Plan 草稿（versionNo=null、expectedVersion=0）。保留保存结果的 versionNo/version；编辑草稿时原样引用目标号并传回 version。已发布版本不能编辑，只能另建新草稿。
-4. 新建 SPU，再新建 SKU 草稿。Plan 组件可以在草稿中引用同包待发布的 Plan 草稿；使用保存返回的 SKU versionNo。
-5. 调用 `publishIndustry`，传三档版本号、候选 SKU 版本号、所选版本的行版本映射、三个 Plan 及候选 SKU 的主数据版本映射和当前公开 `catalogVersion`。首次发布不要求 SKU 先单独发布，Plan／SKU 的状态与当前指针、目录版本和审计同事务提交。
+4. 新建 SPU，再新建 SKU 草稿。Plan 组件可以在编辑时引用待发布的 Plan 草稿；这只放宽草稿引用，不把租户全部 Plan 版本视为行业包选择。保存仍核验可信必要入口、bootstrap 与真实当前 FREE 永久端；未选中的 FREE 草稿或历史版本不会约束当前合法付费端包。使用保存返回的 SKU versionNo。
+5. 调用 `publishIndustry`，传三档版本号、候选 SKU 版本号、所选版本的行版本映射、三个 Plan 及候选 SKU 的主数据版本映射和当前公开 `catalogVersion`。首次发布不要求 SKU 先单独发布，Plan／SKU 的状态与当前指针、目录版本和审计同事务提交。包内候选 SKU 只接受 DRAFT 与明确重用的 PUBLISHED；共享发布校验拒绝 ARCHIVED／未知状态，且在任何包内指针切换前完成全部候选校验。PUBLISHED 重用保留原合同、行版本与发布时间。
 6. 后续可独立发布只引用当前已发布、仍可售 Plan 的 SKU 草稿，同时传草稿与稳定 SKU 的两个 token。发布会重新核验该 Plan 的全部业务端，历史 Plan 已发布不能替代当前验收。行业包中的 Plan 组件必须引用包内所选版本；每个稳定 SKU 在同包中只能选择一个版本。
 7. 新版本改变 Plan 内容时，仍引用该类型旧 Plan 的在售 SKU 自动停售；FREE 新增永久端时，已有有限端包 SKU 也自动停售。可同时提交匹配的新 SKU 版本。旧版本及原订单／锁价快照不被更新。
 8. 使用公开类型／Plan／SKU／SPU metadata 的主数据 version 进行启停。正常停售只改变当前新售状态并保留原指针；Plan／SPU 停售会停售关联 SKU。FREE 不可停售。紧急关闭未付款单不在 T03 实现。
 
-发布器要求 FREE／PRO／CHAIN 恰好三档且类型匹配、FREE 包含可信必要入口与 bootstrap 端、高档包含低档全部 code。同 code 不允许重复。永久 FREE 端不可另售有限端包；该判断也覆盖尚未首次发布的可信必要入口，不能通过关闭 caller 输入的 bootstrap 标记绕过。
+发布器要求 FREE／PRO／CHAIN 恰好三档且类型匹配、FREE 包含可信必要入口与 bootstrap 端、高档包含低档全部 code。同 code 不允许重复。永久 FREE 端不可另售有限端包；该判断也覆盖尚未首次发布的可信必要入口，不能通过关闭 caller 输入的 bootstrap 标记绕过。真实行业包发布以本次显式选中的同行业 FREE 作为发布后目录依据，不与未选中的旧 current FREE 求并集；其他适用类型未在包内选择 FREE 时仍按其真实 current FREE 判断。冲突时整包目录、状态、指针及审计均不改变；草稿引用许可与此选择集合分别传递。旧 FREE 中的可选端从新选择移除时，允许同包选择合法的有限端包；这不撤销门店既得永久权益，具体门店能否购买仍须后续权威报价校验。
 
 两条发布路径共用 core 根层的 Plan 端校验：每个引用端必须当前 enabled、VERIFIED、STORE、适用于目标类型，持有完整客户端／路由／验收引用且仍经可信 registry 批准。撤回可信验收、停用、RETIRED、付费端关闭 sale_enabled 或旧行缺证明，都会阻止新 Plan 型 SKU 发布。行业包按所选 FREE 版本，独立 SKU 按当前已发布 FREE 版本区分永久与付费端：永久包含的端不要求独立可售；其余付费端必须 sale_enabled，bootstrap 标志不能替代付费销售许可。此校验不修改已发布历史合同。未知 END_PACKAGE 目标统一返回 CatalogException／NOT_FOUND。
 
@@ -144,3 +144,22 @@ R1 仅修正三项发布边界：行业包绑定受影响稳定 Plan／SKU 主�
 | 独立 commerce-only reactor clean verify | 相同 120 通过，零 failure／error／skip | `/private/tmp/t03-review-r1-standalone.log` |
 
 R1 独立拷贝为 `/private/tmp/commerce-t03-r1-source-2rqxyvo2/commerce`，246 个源文件／资源／构建文件与最终工作区逐字节一致。完整验证在改动收敛后各执行一次。预期负向路径与 Flyway/MySQL 兼容提示仍按原记录披露，本轮不改依赖或日志策略；等待限定范围的再次评审。
+
+### 最终两项复审修复验收
+
+本轮限于 FREE 选择上下文与 SKU 生命周期两项 Important。编辑允许引用 Plan 草稿，独立路径使用实际 current FREE；行业包使用本次显式选择的同行业 FREE 发布后状态，不再把未选择的 FREE 草稿、历史版本或旧 current 合并为售卖限制。可信必要入口与 bootstrap 守卫保留。共享 SKU 发布校验只接受 DRAFT／PUBLISHED，当前商品展示只投影 PUBLISHED，归档版本的合同、历史 metadata 与原指针保留。未新增归档接口、schema、依赖或宿主行为。
+
+新增 `CatalogPublicationFinalReviewTest` 与 `CatalogPublicationFinalReviewMysqlTest`，各 9 项，覆盖未选择 FREE 草稿／历史版本、显式冲突 FREE 整包原子拒绝、真实 current FREE 限制、显式选择替换旧 current FREE、ARCHIVED／未知候选拒绝、归档当前指针隐藏但 metadata 可读，以及 PUBLISHED 明确重用。
+
+| 本轮验证 | 结果 | 日志 |
+|---|---|---|
+| 新核心及原生初始 RED | 各 8 项中 3 failure、2 error；error 为合法草稿／历史 FREE 场景被错误拒绝 | `/private/tmp/t03-final-red.log`、`/private/tmp/t03-final-native-red.log` |
+| 显式所选 FREE 发布后状态补充 RED | 核心／原生各 1 error；旧 current FREE 错误否决合法包 | `/private/tmp/t03-final-selected-free-core-red.log`、`/private/tmp/t03-final-selected-free-native-red.log` |
+| 核心三类＋新核心类＋三类原生目录覆盖 | 85 通过（45＋40），零 failure／error／skip | `/private/tmp/t03-final-covering-green-verified.log` |
+| 最终工作区 `clean verify` | 138 通过（API 5／core 47／persistence 77／starter 9） | `/private/tmp/t03-final-settled-reactor.log` |
+| 最终独立 commerce-only `clean verify` | 相同 138 通过，零 failure／error／skip | `/private/tmp/t03-final-settled-standalone.log` |
+| 源码字节比较／`git diff --check` | 248 文件一致／通过 | 提交前执行 |
+
+最终独立副本为 `/private/tmp/commerce-t03-final-settled-source-826bdftv/commerce`，未复制 target 或宿主 parent；JDK 21、专用 MySQL 8.4.13，仅创建／删除本次随机 `commerce_test_%` schema。既有 120 项全部保留。预期负向迁移、锁等待、缺依赖启动日志与 Flyway/MySQL 兼容提示仍按原说明披露。
+
+显式 FREE 补例前曾执行 136 项中间完整验证；最终结果以上述 138 项为准。补例第一次 GREEN 原生断言误把 DRAFT→PUBLISHED 正常递增的 expectedVersion 读视图 token 当成合同变化，改为比较价格与组件后再做覆盖及最终双 reactor 验证。宿主 37 项目打包及选定 27 项回归仍为此前协调会话证据，本轮未重跑，不作宿主全套通过声明。到此停止供一次限定范围复审，不推送、合并、部署或启用销售。

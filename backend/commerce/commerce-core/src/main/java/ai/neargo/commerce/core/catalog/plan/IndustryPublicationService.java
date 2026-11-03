@@ -208,7 +208,7 @@ public final class IndustryPublicationService {
                         check(
                                 sku.draft().allowedBusinessTypes().contains(d.typeCode()),
                                 "candidate SKU outside industry");
-                        skus.validate(a.tenantNo(), state, sku.draft(), packagePlans);
+                        skus.validatePublication(a.tenantNo(), state, no, packagePlans);
                         if (currency == null) currency = sku.draft().price().currency();
                         else
                             check(
