@@ -20,8 +20,13 @@ import ai.neargo.shop.auth.*;
 import ai.neargo.shop.auth.store.DbAccountSessionVerifier;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.GlobalExceptionHandler;
+import ai.neargo.shop.community.mapper.CommunityMappers.*;
+import ai.neargo.shop.community.service.PlaceResolver;
+import ai.neargo.shop.community.service.impl.CommunityServiceImpl;
+import ai.neargo.shop.community.support.MapBreaker;
 import ai.neargo.shop.config.SecurityConfig;
 import ai.neargo.shop.fulfillment.service.PickupService;
+import ai.neargo.shop.member.service.*;
 import ai.neargo.shop.merchant.api.biz.BizStorePayController;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
 import ai.neargo.shop.merchant.service.*;
@@ -32,6 +37,8 @@ import ai.neargo.shop.platform.OpsService;
 import ai.neargo.shop.portal.biz.*;
 import ai.neargo.shop.product.api.biz.BizGoodsController;
 import ai.neargo.shop.product.service.*;
+import ai.neargo.shop.spi.platform.GeoPort;
+import ai.neargo.shop.spi.platform.MasterDataPort;
 import ai.neargo.shop.spi.platform.PlatformSwitchPort;
 import ai.neargo.shop.spi.product.GoodsVisionPort;
 import ai.neargo.shop.spi.trade.AfterSalePendingQueryPort;
@@ -49,6 +56,7 @@ import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -226,92 +234,9 @@ class CommerceAccessSecurityFlowTest {
             var repo = new JdbcSubscriptionRepository(f.ds, ns -> UUID.randomUUID().toString());
             var tx = new TransactionTemplate(f.manager);
             seedSubscriptions(f, ref, repo, tx);
-            var resolver =
-                    new BizIdentityResolverImpl(
-                            f.mybatis.getMapper(MchEntityMapper.class),
-                            mock(PickupQueryPort.class),
-                            f.mybatis.getMapper(MchAccountMapper.class),
-                            f.mybatis.getMapper(MchStoreMapper.class),
-                            f.mybatis.getMapper(MchStoreRoleMapper.class),
-                            f.mybatis.getMapper(MchRoleMapper.class));
-            var sessions = new DbAccountSessionVerifier(f.dao, f.loader, f.clock, f.manager);
-            var qualification = mock(QualificationPort.class);
-            web.setServletContext(new MockServletContext());
-            web.getEnvironment().setActiveProfiles("api", "ops");
-            var key =
-                    Base64.getEncoder()
-                            .encodeToString(new java.security.SecureRandom().generateSeed(32));
-            web.getEnvironment()
-                    .getPropertySources()
-                    .addFirst(
-                            new MapPropertySource(
-                                    "accessTest",
-                                    Map.of(
-                                            "commerce.enabled",
-                                            "true",
-                                            "commerce.access.active-key-id",
-                                            "test",
-                                            "commerce.access.keys.test",
-                                            key)));
-            web.addBeanFactoryPostProcessor(
-                    b -> {
-                        for (var type :
-                                List.of(
-                                        MerchantGoodsService.class,
-                                        SpecLibraryService.class,
-                                        GoodsRevisionService.class,
-                                        CategoryService.class,
-                                        GoodsVisionPort.class,
-                                        SpuStdService.class,
-                                        OpsService.class,
-                                        UserService.class,
-                                        MerchantService.class,
-                                        MerchantStoreService.class,
-                                        MerchantPaymentService.class,
-                                        StoreAdminService.class,
-                                        MerchantStaffService.class,
-                                        CommunityQueryPort.class,
-                                        StoreCategoryService.class,
-                                        MerchantGovernService.class,
-                                        MerchantAdminPort.class,
-                                        DebtService.class,
-                                        StoreFavoriteService.class,
-                                        MerchantEntityService.class,
-                                        PickupService.class,
-                                        StoreCodeService.class,
-                                        StoreLinkService.class,
-                                        MerchantQueryPort.class,
-                                        PlatformSwitchPort.class,
-                                        MessageService.class,
-                                        AfterSalePendingQueryPort.class))
-                            b.registerSingleton(type.getSimpleName(), mock(type));
-                        b.registerSingleton("clock", f.clock);
-                        b.registerSingleton("dataSource", f.ds);
-                        b.registerSingleton("transactionManager", f.manager);
-                        b.registerSingleton("uow", new JdbcCommerceUnitOfWork(f.ds, f.manager));
-                        b.registerSingleton("resolver", resolver);
-                        b.registerSingleton("verifier", sessions);
-                        b.registerSingleton("tokenStore", f.store);
-                        b.registerSingleton("qual", qualification);
-                        b.registerSingleton("stores", f.mybatis.getMapper(MchStoreMapper.class));
-                    });
-            web.register(
-                    Web.class,
-                    SecurityConfig.class,
-                    CommerceAccessConfiguration.class,
-                    CommerceEndController.class,
-                    BizEntityController.class,
-                    BizGoodsController.class,
-                    BizMerchantController.class,
-                    BizMessageController.class,
-                    BizPickupController.class,
-                    CommerceAccessErrors.class,
-                    GlobalExceptionHandler.class,
-                    BizStorePayController.class,
-                    StorePaySettingServiceImpl.class,
-                    PermChecker.class);
-            web.refresh();
-            var mvc = MockMvcBuilders.webAppContextSetup(web).apply(springSecurity()).build();
+            var mvc = merchantMvc(f, web, true);
+            var resolver = web.getBean(BizIdentityResolver.class);
+            var qualification = web.getBean(QualificationPort.class);
             String token =
                     f.store.issue(
                             TokenStore.SessionData.of(LoginUser.merchantByUser("U", "owner")));
@@ -505,6 +430,12 @@ class CommerceAccessSecurityFlowTest {
                                     .header("X-Store-No", "S"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("REVOKED"));
+            mvc.perform(
+                            get("/biz/merchant/profile")
+                                    .header("Authorization", bearer)
+                                    .header("X-Store-No", "S"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").exists());
             f.dao.revoke(
                     ai.neargo.auth.store.TokenHash.of(token),
                     ai.neargo.auth.store.RevokeReason.LOGOUT,
@@ -518,6 +449,123 @@ class CommerceAccessSecurityFlowTest {
                                     .header("X-Store-No", "S"))
                     .andExpect(status().isUnauthorized());
         }
+    }
+
+    static MockMvc merchantMvc(
+            AccessMysqlFixture f, AnnotationConfigWebApplicationContext web, boolean enabled) {
+        var resolver =
+                new BizIdentityResolverImpl(
+                        f.mybatis.getMapper(MchEntityMapper.class),
+                        mock(PickupQueryPort.class),
+                        f.mybatis.getMapper(MchAccountMapper.class),
+                        f.mybatis.getMapper(MchStoreMapper.class),
+                        f.mybatis.getMapper(MchStoreRoleMapper.class),
+                        f.mybatis.getMapper(MchRoleMapper.class));
+        var sessions = new DbAccountSessionVerifier(f.dao, f.loader, f.clock, f.manager);
+        var qualification = mock(QualificationPort.class);
+        web.setServletContext(new MockServletContext());
+        web.getEnvironment().setActiveProfiles("api", "ops");
+        var key =
+                Base64.getEncoder()
+                        .encodeToString(new java.security.SecureRandom().generateSeed(32));
+        web.getEnvironment()
+                .getPropertySources()
+                .addFirst(
+                        new MapPropertySource(
+                                "accessTest",
+                                Map.of(
+                                        "commerce.enabled",
+                                        Boolean.toString(enabled),
+                                        "commerce.access.active-key-id",
+                                        "test",
+                                        "commerce.access.keys.test",
+                                        key)));
+        web.addBeanFactoryPostProcessor(
+                b -> {
+                    for (var type :
+                            List.of(
+                                    PickupQueryPort.class,
+                                    MemberService.class,
+                                    MemberTagService.class,
+                                    MemberSegmentService.class,
+                                    MemberReachService.class,
+                                    MemberAudienceService.class,
+                                    PlaceResolver.class,
+                                    GeoPlaceMapper.class,
+                                    GeoPort.class,
+                                    MasterDataPort.class,
+                                    MapBreaker.class,
+                                    MerchantGoodsService.class,
+                                    SpecLibraryService.class,
+                                    GoodsRevisionService.class,
+                                    CategoryService.class,
+                                    GoodsVisionPort.class,
+                                    SpuStdService.class,
+                                    OpsService.class,
+                                    UserService.class,
+                                    MerchantService.class,
+                                    MerchantStoreService.class,
+                                    MerchantPaymentService.class,
+                                    StoreAdminService.class,
+                                    CommunityQueryPort.class,
+                                    StoreCategoryService.class,
+                                    MerchantGovernService.class,
+                                    MerchantAdminPort.class,
+                                    DebtService.class,
+                                    StoreFavoriteService.class,
+                                    TokenStores.class,
+                                    MchStaffLogMapper.class,
+                                    StaffAuditLogger.class,
+                                    ai.neargo.shop.common.OtpStore.class,
+                                    PickupService.class,
+                                    StoreCodeService.class,
+                                    StoreLinkService.class,
+                                    MerchantQueryPort.class,
+                                    PlatformSwitchPort.class,
+                                    MessageService.class,
+                                    AfterSalePendingQueryPort.class))
+                        b.registerSingleton(type.getSimpleName(), mock(type));
+                    b.registerSingleton("accounts", f.mybatis.getMapper(MchAccountMapper.class));
+                    b.registerSingleton("entityRows", f.mybatis.getMapper(MchEntityMapper.class));
+                    b.registerSingleton("roleRows", f.mybatis.getMapper(MchRoleMapper.class));
+                    b.registerSingleton(
+                            "storeRoleRows", f.mybatis.getMapper(MchStoreRoleMapper.class));
+                    b.registerSingleton("communities", f.mybatis.getMapper(CommunityMapper.class));
+                    b.registerSingleton(
+                            "pickupPoints", f.mybatis.getMapper(PickupPointMapper.class));
+                    b.registerSingleton("clock", f.clock);
+                    b.registerSingleton("dataSource", f.ds);
+                    b.registerSingleton("transactionManager", f.manager);
+                    b.registerSingleton("uow", new JdbcCommerceUnitOfWork(f.ds, f.manager));
+                    b.registerSingleton("resolver", resolver);
+                    b.registerSingleton("verifier", sessions);
+                    b.registerSingleton("tokenStore", f.store);
+                    b.registerSingleton("qual", qualification);
+                    b.registerSingleton("stores", f.mybatis.getMapper(MchStoreMapper.class));
+                });
+        web.register(
+                Web.class,
+                SecurityConfig.class,
+                CommerceAccessConfiguration.class,
+                DisabledCommerceConfiguration.class,
+                MerchantEntityServiceImpl.class,
+                MerchantStaffServiceImpl.class,
+                CommunityServiceImpl.class,
+                BizPickupPointController.class,
+                BizMemberController.class,
+                CommerceEndController.class,
+                BizEntityController.class,
+                BizGoodsController.class,
+                BizMerchantController.class,
+                BizMessageController.class,
+                BizPickupController.class,
+                CommerceAccessErrors.class,
+                GlobalExceptionHandler.class,
+                BizStorePayController.class,
+                StorePaySettingServiceImpl.class,
+                PermChecker.class);
+        web.refresh();
+        return MockMvcBuilders.webAppContextSetup(web).apply(springSecurity()).build();
     }
 
     private static void verifyDisabledEncodedRequests(AccessMysqlFixture f) throws Exception {
@@ -590,7 +638,7 @@ class CommerceAccessSecurityFlowTest {
         try {
             f.jdbc.update(
                     "UPDATE mch_store SET commerce_model='STORE_V1',status='SUSPENDED' WHERE"
-                        + " store_no='S'");
+                            + " store_no='S'");
             mvc.perform(matching).andExpect(status().isOk());
             verify(ops).myApply("U");
             mvc.perform(picker).andExpect(status().isForbidden());

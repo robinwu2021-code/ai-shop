@@ -53,9 +53,9 @@ public final class EndAccessService implements EndAccessFacade {
         try {
             return uow.required(() -> evaluate(c, false).decision());
         } catch (AccessDenied denied) {
-            return denied(c, denied.status());
+            return denied(c, denied);
         } catch (RuntimeException unavailable) {
-            return denied(c, AccessStatus.CHECK_UNAVAILABLE);
+            return denied(c, new AccessDenied(AccessStatus.CHECK_UNAVAILABLE));
         }
     }
 
@@ -139,9 +139,9 @@ public final class EndAccessService implements EndAccessFacade {
         try {
             return uow.required(() -> evaluate(check, true).decision());
         } catch (AccessDenied denied) {
-            return denied(check, denied.status());
+            return denied(check, denied);
         } catch (RuntimeException unavailable) {
-            return denied(check, AccessStatus.CHECK_UNAVAILABLE);
+            return denied(check, new AccessDenied(AccessStatus.CHECK_UNAVAILABLE));
         }
     }
 
@@ -199,7 +199,8 @@ public final class EndAccessService implements EndAccessFacade {
                         coverage.nextBoundaryAt(),
                         status == AccessStatus.ALLOWED
                                 ? Optional.empty()
-                                : Optional.of(status.name()));
+                                : Optional.of(status.name()),
+                        AccessDecision.nextActionFor(status, auth.canProcure()));
         return new Evaluation(decision, auth.sessionExpiry());
     }
 
@@ -220,7 +221,8 @@ public final class EndAccessService implements EndAccessFacade {
                 .isPresent();
     }
 
-    private AccessDecision denied(AccessCheck c, AccessStatus status) {
+    private AccessDecision denied(AccessCheck c, AccessDenied denied) {
+        var status = denied.status();
         return new AccessDecision(
                 status,
                 c.requestedStore(),
@@ -228,11 +230,12 @@ public final class EndAccessService implements EndAccessFacade {
                 0,
                 clock.instant(),
                 Optional.empty(),
-                Optional.of(status.name()));
+                Optional.of(status.name()),
+                denied.nextAction());
     }
 
     private static AccessDecision require(AccessDecision decision) {
-        if (decision.status() != AccessStatus.ALLOWED) throw new AccessDenied(decision.status());
+        if (decision.status() != AccessStatus.ALLOWED) throw new AccessDenied(decision);
         return decision;
     }
 

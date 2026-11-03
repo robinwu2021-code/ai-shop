@@ -1,5 +1,6 @@
 package ai.neargo.shop.merchant.service;
 
+import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.merchant.dto.EntityVO;
 import ai.neargo.shop.merchant.dto.EntityStoresVO;
 
@@ -44,7 +45,7 @@ public interface MerchantEntityService {
      * <p><b>店员也要能调它</b> —— 它就是门店切换器。挂上「管证照」那档权限的话，
      * 「A 店店长 + B 店店员」这种人一家店都切不了，而那正是多门店授权的主要用途。
      */
-    List<EntityStoresVO> myStores(String userNo);
+    List<EntityStoresVO> myStores(LoginUser user);
 
     /**
      * 一张证照的详情（04 屏）。

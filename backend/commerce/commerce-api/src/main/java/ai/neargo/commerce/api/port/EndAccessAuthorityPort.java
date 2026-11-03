@@ -8,7 +8,8 @@ import java.time.Instant;
 
 /** Host-owned primary snapshot of the authenticated session, selected store and required duties. */
 public interface EndAccessAuthorityPort {
-    record Authority(StoreSnapshot store, Instant sessionExpiry, boolean permitted) {}
+    record Authority(
+            StoreSnapshot store, Instant sessionExpiry, boolean permitted, boolean canProcure) {}
 
     Authority verify(
             ActorContext actor, StoreRef store, String entitlement, String capability, Instant now);

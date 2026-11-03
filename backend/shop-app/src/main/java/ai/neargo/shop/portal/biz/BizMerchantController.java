@@ -1,5 +1,6 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
@@ -121,8 +122,14 @@ public class BizMerchantController {
     @GetMapping("/biz/merchant/profile")
     public MerchantProfileVO profile() {
         // 常规请求走 BizContext：过滤器已经按本次 token 解析过，不必再查一次库
-        String principal = SecurityUtils.currentUserNo();
-        return build(principal, BizContext.current(), phoneOf(principal));
+        var user = SecurityUtils.requireUser();
+        var staff = staffService.profileDetails(user);
+        boolean personal = user.subjectKind() == SubjectKind.USR;
+        var consumer = personal ? userService.profileOrNull() : null;
+        String phone = consumer != null && !nz(consumer.phone()).isBlank()
+                ? consumer.phone() : nz(staff.loginPhone());
+        var apply = personal ? opsService.myApply(user.userNo()) : null;
+        return build(BizContext.current(), phone, nz(staff.displayName()), apply);
     }
 
     /**
@@ -181,9 +188,11 @@ public class BizMerchantController {
     }
 
     private MerchantProfileVO build(String userNo, BizContext ctx, String phone) {
-        String displayName = staffService.displayNameOf(userNo);
+        return build(ctx, phone, staffService.displayNameOf(userNo), opsService.myApply(userNo));
+    }
+
+    private MerchantProfileVO build(BizContext ctx, String phone, String displayName, MerchantApplyVO apply) {
         MerchantAccountVO account = merchantService.account(ctx.merchantNo());
-        MerchantApplyVO apply = opsService.myApply(userNo);
         // 自提点作用域与商家作用域正交（一家店可以不做自提点），所以读作用域而不是查商家
         List<String> pickups = List.copyOf(ctx.pickupNos());
 

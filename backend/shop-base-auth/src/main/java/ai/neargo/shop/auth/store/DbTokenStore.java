@@ -175,7 +175,10 @@ public class DbTokenStore implements TokenStore {
      */
     private Optional<LoginUser> identityOf(String userNo, String subjectKind) {
         LoginUser cachedUser = identityCache.get(userNo);
-        if (cachedUser != null) {
+        // MERCHANT has two subject namespaces but invalidation is keyed by bare principal.
+        // A same-number identity from the other namespace is a miss for this session.
+        if (cachedUser != null && (realm != Realm.MERCHANT
+                || cachedUser.subjectKind().name().equals(subjectKind))) {
             return Optional.of(cachedUser);
         }
         /*

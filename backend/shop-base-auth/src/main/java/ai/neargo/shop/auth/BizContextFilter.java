@@ -89,7 +89,7 @@ public class BizContextFilter extends OncePerRequestFilter {
              */
             var user = SecurityUtils.currentUser().filter(u -> u.realm()==Realm.MERCHANT);
             if (user.isPresent()) {
-                var legacy = withRequestedStore(resolver.resolve(user.get().userNo(),req.getHeader(STORE_HEADER)),req);
+                var legacy = withRequestedStore(resolver.resolveAuthenticated(user.get(),req.getHeader(STORE_HEADER)),req);
                 BizContext.set(legacy);
                 if (admission != null && !admission.admit(user.get(),legacy,req,resp)) return;
             }

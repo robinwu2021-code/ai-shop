@@ -19,7 +19,7 @@ class EndAccessTest {
     final StoreRef store = new StoreRef("MAIN", "A"), other = new StoreRef("MAIN", "B");
     final ActorContext actor = new ActorContext("MAIN", SubjectKind.ACCOUNT, "owner", "session");
     Instant expiry = now.plusSeconds(400);
-    boolean permitted = true, revoked;
+    boolean permitted = true, canProcure, revoked;
     long version = 1;
     List<AccessSegment> rows =
             List.of(new AccessSegment("grant", "END_APP_POS", now, now.plusMillis(230)));
@@ -59,7 +59,8 @@ class EndAccessTest {
                                             StoreStatus.ACTIVE,
                                             CommerceModel.STORE_V1),
                                     expiry,
-                                    permitted),
+                                    permitted,
+                                    canProcure),
                     codec,
                     Clock.fixed(now, ZoneOffset.UTC),
                     Duration.ofMinutes(5));
@@ -134,6 +135,11 @@ class EndAccessTest {
         assertEquals(AccessStatus.NOT_STARTED, check(actor, store, store).status());
         rows = List.of();
         assertEquals(AccessStatus.NOT_PURCHASED, check(actor, store, store).status());
+        assertEquals("CONTACT_OWNER", check(actor, store, store).nextAction());
+        canProcure = true;
+        assertEquals("VIEW_SUBSCRIPTION", check(actor, store, store).nextAction());
+        assertEquals(
+                "VIEW_SUBSCRIPTION", assertThrows(AccessDenied.class, this::issue).nextAction());
         revoked = true;
         assertEquals(AccessStatus.REVOKED, check(actor, store, store).status());
     }
@@ -142,6 +148,7 @@ class EndAccessTest {
     void commercialCoverageCannotGrantHostPermission() {
         issue();
         permitted = false;
+        canProcure = true;
         assertEquals(AccessStatus.FORBIDDEN, check(actor, store, store).status());
         assertThrows(AccessDenied.class, this::issue);
     }

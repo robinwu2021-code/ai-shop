@@ -34,10 +34,14 @@ public record AccessDecision(
     }
 
     public static String nextActionFor(AccessStatus status) {
+        return nextActionFor(status, false);
+    }
+
+    public static String nextActionFor(AccessStatus status, boolean canProcure) {
         return switch (status) {
             case ALLOWED -> "ENTER_END";
             case CONTEXT_REFRESH_REQUIRED -> "REFRESH_CONTEXT";
-            case EXPIRED, NOT_PURCHASED -> "VIEW_SUBSCRIPTION";
+            case EXPIRED, NOT_PURCHASED -> canProcure ? "VIEW_SUBSCRIPTION" : "CONTACT_OWNER";
             case NOT_STARTED -> "WAIT_FOR_START";
             case CHECK_UNAVAILABLE -> "RETRY_CHECK";
             case ACCOUNT_INVALID -> "LOGIN";

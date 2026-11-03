@@ -38,9 +38,9 @@ public final class ShopCommerceEndContextAdapter
             select(user, legacy, req);
             return true;
         } catch (AccessDenied denied) {
-            reject(resp, denied.status());
+            reject(resp, denied);
         } catch (RuntimeException unavailable) {
-            reject(resp, AccessStatus.CHECK_UNAVAILABLE);
+            reject(resp, new AccessDenied(AccessStatus.CHECK_UNAVAILABLE));
         }
         return false;
     }
@@ -54,7 +54,8 @@ public final class ShopCommerceEndContextAdapter
         };
     }
 
-    static void reject(HttpServletResponse response, AccessStatus status) throws IOException {
+    static void reject(HttpServletResponse response, AccessDenied denied) throws IOException {
+        var status = denied.status();
         response.setStatus(http(status));
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter()
@@ -64,7 +65,7 @@ public final class ShopCommerceEndContextAdapter
                                 + ",\"msg\":\""
                                 + status.name()
                                 + "\",\"data\":{\"nextAction\":\""
-                                + AccessDecision.nextActionFor(status)
+                                + denied.nextAction()
                                 + "\"}}");
     }
 
@@ -95,7 +96,7 @@ public final class ShopCommerceEndContextAdapter
             BizContext.set(stores.legacyPreviewScope(user, legacy, requested, route.pathStore()));
             return;
         }
-        if (!stores.affects(user, requested, legacy.currentStoreNo(), route.pathStore())
+        if (!stores.affects(user, legacy, requested, legacy.currentStoreNo(), route.pathStore())
                 && !route.newModelOnly()) return;
         if (requested == null
                 || requested.isBlank()

@@ -36,6 +36,11 @@ public interface BizIdentityResolver {
      */
     BizContext resolve(String userNo, String storeNo);
 
+    /** Default/switch scope for an authenticated merchant, using the session's subject kind. */
+    default BizContext resolveAuthenticated(LoginUser user, String storeNo) {
+        return BizContext.NONE;
+    }
+
     /** New-model identity is exact on subject kind, membership, merchant and selected store. */
     default BizContext resolveStrict(LoginUser user, String storeNo) {
         // Adapters must explicitly implement strict selection. A legacy resolver may fall back.

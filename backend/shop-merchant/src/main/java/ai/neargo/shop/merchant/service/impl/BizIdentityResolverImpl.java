@@ -154,7 +154,13 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
 
     @Override
     public BizContext resolve(String userNo, String storeNo) {
-        return resolve(userNo, storeNo, null);
+        return resolve(userNo, storeNo, null, false);
+    }
+
+    @Override
+    public BizContext resolveAuthenticated(LoginUser user, String storeNo) {
+        if (user.realm() != Realm.MERCHANT) return BizContext.NONE;
+        return resolve(user.userNo(), storeNo, user.subjectKind(), false);
     }
 
     @Override
@@ -162,33 +168,17 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
         if (storeNo == null || storeNo.isBlank() || user.realm()!=Realm.MERCHANT
                 || (user.subjectKind()!=SubjectKind.USR && user.subjectKind()!=SubjectKind.MCH))
             return BizContext.NONE;
-        var ctx=resolve(user.userNo(),storeNo,user.subjectKind());
+        var ctx=resolve(user.userNo(), storeNo, user.subjectKind(), true);
         return ctx.storeNos().contains(storeNo) ? ctx.withStore(storeNo) : BizContext.NONE;
     }
 
-    private BizContext resolve(String userNo, String storeNo, SubjectKind kind) {
+    private BizContext resolve(String userNo, String storeNo, SubjectKind kind, boolean strict) {
         /*
          * 我参与的主体，默认主体优先。**排序是确定的**（is_primary 倒序 + id 正序）——
          * 不给排序的 limit 1 会在多主体时随机挑一个，而"今天进的是 A 店、明天是 B 店"
          * 这种故障没人能复现。
          */
-        var memberships = staffMapper.selectList(
-                Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
-                        /*
-                         * **两条登录路径解析到同一条员工记录**：
-                         *   小程序 → C 端账号（user_no）
-                         *   App    → 员工独立登录，principal 是 mch_account_no
-                         * 只认第一条的话，App 上的店员登录后作用域为空，所有 /biz/** 都 403，
-                         * 而他看到的只是「打不开」。
-                         */
-                        .and(kind == null, q -> q.eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNo)
-                                .or().eq(ai.neargo.shop.merchant.entity.MchAccount::getMchAccountNo, userNo))
-                        .eq(kind == SubjectKind.USR, ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNo)
-                        .eq(kind == SubjectKind.MCH, ai.neargo.shop.merchant.entity.MchAccount::getMchAccountNo, userNo)
-                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getStatus,
-                                ai.neargo.shop.merchant.entity.MchAccount.ACTIVE)
-                        .orderByDesc(ai.neargo.shop.merchant.entity.MchAccount::getIsPrimary)
-                        .orderByAsc(ai.neargo.shop.merchant.entity.MchAccount::getId));
+        var memberships = staffMapper.selectList(MerchantMemberships.active(userNo, kind));
         if (memberships.isEmpty()) {
             // 不是商家：空作用域 = 所有 /biz/** 都 403。fail-closed
             return BizContext.NONE;
@@ -208,7 +198,7 @@ public class BizIdentityResolverImpl implements BizIdentityResolver {
          *   而不是那家店的主体。少了这个 filter，伪造一个请求头就能读别人的库存和订单，
          *   且不会有任何报错。
          */
-        var membership = membershipFor(memberships, storeNo, kind != null);
+        var membership = membershipFor(memberships, storeNo, strict);
         if (membership == null) return BizContext.NONE;
         /*
          * **必须解除数据域**（mch_entity/mch_store 于批② 注册进 DataScopeRegistration）。

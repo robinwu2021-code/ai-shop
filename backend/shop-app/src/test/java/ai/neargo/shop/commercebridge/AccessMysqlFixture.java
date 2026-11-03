@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import ai.neargo.auth.store.*;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.auth.store.DbTokenStore;
+import ai.neargo.shop.common.AuditMetaObjectHandler;
+import ai.neargo.shop.community.mapper.CommunityMappers.*;
 import ai.neargo.shop.config.SessionProfiles;
 import ai.neargo.shop.merchant.auth.MerchantIdentityLoader;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
@@ -12,6 +14,7 @@ import ai.neargo.shop.user.auth.ConsumerIdentityLoader;
 import ai.neargo.shop.user.mapper.UserMappers.UserMapper;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 
 import org.mybatis.spring.SqlSessionTemplate;
@@ -53,6 +56,8 @@ final class AccessMysqlFixture implements AutoCloseable {
                 new ClassPathResource("schema-test.sql").getContentAsString(StandardCharsets.UTF_8);
         for (String table :
                 List.of(
+                        "cmt_community",
+                        "cmt_pickup_point",
                         "mch_session",
                         "mch_account",
                         "usr_account",
@@ -82,10 +87,14 @@ final class AccessMysqlFixture implements AutoCloseable {
         var cfg = new MybatisConfiguration();
         var factory = new MybatisSqlSessionFactoryBean();
         factory.setConfiguration(cfg);
+        factory.setGlobalConfig(
+                new GlobalConfig().setMetaObjectHandler(new AuditMetaObjectHandler()));
         factory.setDataSource(ds);
         mybatis = new SqlSessionTemplate(factory.getObject());
         for (var type :
                 List.of(
+                        CommunityMapper.class,
+                        PickupPointMapper.class,
                         UserMapper.class,
                         MchAccountMapper.class,
                         MchEntityMapper.class,

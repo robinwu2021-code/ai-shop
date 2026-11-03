@@ -1,6 +1,7 @@
 package ai.neargo.shop.merchant.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.merchant.dto.EntityStoresVO;
@@ -61,8 +62,10 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
     }
 
     @Override
-    public List<EntityStoresVO> myStores(String userNo) {
-        return assemble(memberships(userNo));
+    public List<EntityStoresVO> myStores(LoginUser user) {
+        var rows = DataScopeContext.executeWithoutScope(() ->
+                accountMapper.selectList(MerchantMemberships.active(user.userNo(), user.subjectKind())));
+        return assemble(rows);
     }
 
     @Override
@@ -118,12 +121,7 @@ public class MerchantEntityServiceImpl implements MerchantEntityService {
             return List.of();
         }
         return DataScopeContext.executeWithoutScope(() -> accountMapper.selectList(
-                Wrappers.<MchAccount>lambdaQuery()
-                        .and(q -> q.eq(MchAccount::getUserNo, userNo)
-                                .or().eq(MchAccount::getMchAccountNo, userNo))
-                        .eq(MchAccount::getStatus, MchAccount.ACTIVE)
-                        .orderByDesc(MchAccount::getIsPrimary)
-                        .orderByAsc(MchAccount::getId)));
+                MerchantMemberships.active(userNo, null)));
     }
 
     /**

@@ -40,7 +40,7 @@ public class CommerceEndController {
         var decision = access.inspect(bridge.command(storeNo, endCode, clientId));
         if (decision.status() == AccessStatus.ACCOUNT_INVALID
                 || decision.status() == AccessStatus.CHECK_UNAVAILABLE)
-            throw new AccessDenied(decision.status());
+            throw new AccessDenied(decision);
         return decision;
     }
 

@@ -17,6 +17,11 @@ import javax.sql.DataSource;
 
 /** Onboarding uses its separate authority to read its own uncommitted rows. */
 final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
+    // Match the exact Java enum spelling under both MySQL and H2 collations. NULL is pre-model
+    // LEGACY. The length check also rejects values with extra padding.
+    private static final String NON_LEGACY_MODEL =
+            "(OCTET_LENGTH(commerce_model) <> 6 OR CAST(commerce_model AS BINARY(6)) <>"
+                + " CAST('LEGACY' AS BINARY(6)))";
     private final JdbcTemplate jdbc;
     private final TransactionTemplate fresh;
 
@@ -34,14 +39,14 @@ final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
     boolean hasPersistedNewStores() {
         return Boolean.TRUE.equals(
                 jdbc.queryForObject(
-                        """
-SELECT EXISTS(SELECT 1 FROM mch_store WHERE deleted=0 AND commerce_model IS NOT NULL AND commerce_model<>'LEGACY')
-""",
+                        "SELECT EXISTS(SELECT 1 FROM mch_store WHERE deleted=0 AND "
+                                + NON_LEGACY_MODEL
+                                + ")",
                         Boolean.class));
     }
 
-    boolean affects(LoginUser user, String... candidates) {
-        return reachesNewModel(user)
+    boolean affects(LoginUser user, BizContext scope, String... candidates) {
+        return merchantScopeIncludesNewModel(user, scope.merchantNo())
                 || java.util.Arrays.stream(candidates)
                         .filter(java.util.Objects::nonNull)
                         .distinct()
@@ -59,7 +64,8 @@ SELECT EXISTS(SELECT 1 FROM mch_store WHERE deleted=0 AND commerce_model IS NOT 
         if (target == null
                 || !scope.storeNos().contains(target)
                 || requested != null && !requested.isBlank() && !requested.equals(target)
-                || reachesNewModel(user)) throw new AccessDenied(AccessStatus.FORBIDDEN);
+                || merchantScopeIncludesNewModel(user, scope.merchantNo()))
+            throw new AccessDenied(AccessStatus.FORBIDDEN);
         find(new StoreRef(user.tenantNo(), target))
                 .filter(
                         s ->
@@ -69,7 +75,9 @@ SELECT EXISTS(SELECT 1 FROM mch_store WHERE deleted=0 AND commerce_model IS NOT 
         return scope.withStore(target);
     }
 
-    private boolean reachesNewModel(LoginUser user) {
+    // Legacy handlers can use the selected entity's entire store list, including unassigned
+    // or suspended siblings. A role limits authority, not the set of possible handler targets.
+    private boolean merchantScopeIncludesNewModel(LoginUser user, String selectedMerchant) {
         String key =
                 switch (user.subjectKind()) {
                     case USR -> "a.user_no";
@@ -79,16 +87,15 @@ SELECT EXISTS(SELECT 1 FROM mch_store WHERE deleted=0 AND commerce_model IS NOT 
         return Boolean.TRUE.equals(
                 jdbc.queryForObject(
                         """
-SELECT EXISTS(SELECT 1 FROM mch_account a JOIN mch_store s
-ON s.tenant_no=a.tenant_no AND s.entity_no=a.entity_no
-WHERE a.tenant_no=? AND %s=? AND a.status='ACTIVE' AND a.deleted=0 AND s.deleted=0
-AND s.commerce_model IS NOT NULL AND s.commerce_model<>'LEGACY'
-AND (a.is_owner=1 OR EXISTS(SELECT 1 FROM mch_store_role r WHERE r.tenant_no=a.tenant_no
-AND r.mch_account_no=a.mch_account_no AND r.store_no=s.store_no AND r.deleted=0)))
+SELECT EXISTS(SELECT 1 FROM mch_store s
+WHERE s.tenant_no=? AND s.deleted=0 AND %s
+AND (s.entity_no=? OR EXISTS(SELECT 1 FROM mch_account a
+WHERE a.tenant_no=s.tenant_no AND a.entity_no=s.entity_no AND %s=? AND a.status='ACTIVE' AND a.deleted=0)))
 """
-                                .formatted(key),
+                                .formatted(NON_LEGACY_MODEL, key),
                         Boolean.class,
                         user.tenantNo(),
+                        selectedMerchant,
                         user.userNo()));
     }
 

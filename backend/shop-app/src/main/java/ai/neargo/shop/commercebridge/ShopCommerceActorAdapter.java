@@ -61,13 +61,19 @@ final class ShopCommerceActorAdapter implements EndAccessAuthorityPort {
                                                     () -> new AccessDenied(AccessStatus.FORBIDDEN));
                             var ctx = resolver.resolveStrict(user, store.storeNo());
                             String entry = CommerceRoutePolicy.entryPermission(entitlement);
-                            boolean allowed =
+                            boolean selected =
                                     facts.merchantNo().equals(ctx.merchantNo())
-                                            && store.storeNo().equals(ctx.currentStoreNo())
+                                            && store.storeNo().equals(ctx.currentStoreNo());
+                            boolean allowed =
+                                    selected
                                             && ctx.can(entry)
                                             && (EndAccessFacade.ENTER_END.equals(capability)
                                                     || ctx.can(capability));
-                            return new Authority(facts, session.expiresAt(), allowed);
+                            return new Authority(
+                                    facts,
+                                    session.expiresAt(),
+                                    allowed,
+                                    selected && ctx.can(CommerceRoutePolicy.PROCUREMENT_DUTY));
                         })
                 .orElseThrow(() -> new AccessDenied(AccessStatus.ACCOUNT_INVALID));
     }

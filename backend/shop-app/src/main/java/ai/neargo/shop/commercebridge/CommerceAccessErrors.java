@@ -21,6 +21,6 @@ class CommerceAccessErrors {
                         new ApiResult<>(
                                 ShopCommerceEndContextAdapter.errorCode(status),
                                 status.name(),
-                                Map.of("nextAction", AccessDecision.nextActionFor(status))));
+                                Map.of("nextAction", failure.nextAction())));
     }
 }

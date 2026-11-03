@@ -35,7 +35,7 @@ public final class CommerceAccessInterceptor {
                         route.capability(),
                         Optional.ofNullable(proof));
         var decision = access.check(check);
-        if (decision.status() != AccessStatus.ALLOWED) throw new AccessDenied(decision.status());
+        if (decision.status() != AccessStatus.ALLOWED) throw new AccessDenied(decision);
         return check;
     }
 }

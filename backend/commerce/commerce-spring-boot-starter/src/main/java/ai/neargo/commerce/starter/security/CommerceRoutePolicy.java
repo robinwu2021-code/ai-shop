@@ -28,6 +28,9 @@ public final class CommerceRoutePolicy {
     }
 
     public static final String BIZ = "END_BIZ_APP", POS = "END_APP_POS";
+    public static final String PROCUREMENT_DUTY = "biz:store:admin";
+    private static final Set<String> SELECTION_READS =
+            Set.of("/biz/context", "/biz/stores/mine", "/biz/store/list", "/biz/merchant/profile");
     private static final Set<String> ACCOUNT =
             Set.of(
                     "POST /biz/auth/login",
@@ -35,7 +38,6 @@ public final class CommerceRoutePolicy {
                     "POST /biz/auth/otp/send",
                     "POST /biz/auth/logout",
                     "GET /biz/auth/context",
-                    "GET /biz/store/list",
                     "GET /biz/merchant/apply",
                     "POST /biz/merchant/apply",
                     "POST /biz/merchant/quick-start",
@@ -46,7 +48,7 @@ public final class CommerceRoutePolicy {
 
     /** Recovery routes may be used without a selection. An explicit selection must be verified. */
     public boolean isStoreSelection(String method, String path) {
-        return "GET".equals(method) && Set.of("/biz/context", "/biz/stores/mine").contains(path);
+        return "GET".equals(method) && SELECTION_READS.contains(path);
     }
 
     public boolean allowsAccountRecovery(
@@ -100,7 +102,7 @@ public final class CommerceRoutePolicy {
                     || method.equals("POST") && tail.equals("end-sessions"))
                 return new Route(Lane.BOOTSTRAP, store, null, null, true);
             if (method.equals("POST") && Set.of("mall/quotes", "mall/orders").contains(tail))
-                return new Route(Lane.BOOTSTRAP, store, null, "biz:store:admin", true);
+                return new Route(Lane.BOOTSTRAP, store, null, PROCUREMENT_DUTY, true);
             // Preserve actual legacy store handlers. A new or unregistered plural route
             // stays closed even when MVC accepts a broader verb (e.g. HEAD for GET).
             if (Set.of("GET", "HEAD").contains(method) && tail.matches("fulfillment/[^/]+/impact"))

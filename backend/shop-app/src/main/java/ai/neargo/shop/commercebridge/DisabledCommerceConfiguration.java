@@ -67,13 +67,15 @@ class DisabledCommerceConfiguration {
                                     user, selected, requested, route.pathStore()));
                     return true;
                 }
-                if (!stores.affects(user, requested, selected.currentStoreNo(), route.pathStore()))
+                if (!stores.affects(
+                        user, selected, requested, selected.currentStoreNo(), route.pathStore()))
                     return true;
             } catch (RuntimeException unavailable) {
                 // Missing model or authority data must never be treated as evidence of a legacy
                 // store.
             }
-            ShopCommerceEndContextAdapter.reject(response, AccessStatus.CHECK_UNAVAILABLE);
+            ShopCommerceEndContextAdapter.reject(
+                    response, new AccessDenied(AccessStatus.CHECK_UNAVAILABLE));
             return false;
         }
 
