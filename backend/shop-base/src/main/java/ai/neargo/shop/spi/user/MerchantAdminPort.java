@@ -66,6 +66,9 @@ public interface MerchantAdminPort {
      */
     java.util.Optional<String> pendingLicenseEntityOf(String userNo);
 
+    /** Lock the exact active owner and pending entity before attaching an application. */
+    void requirePendingLicenseOwner(String userNo, String entityNo);
+
     /**
      * @param ownerUserNo 发起人（当前登录账号）
      * @param storeName   老板填的店名。<b>同时用作主体名</b> —— 补证照时再被执照上的正式名称覆盖

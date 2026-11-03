@@ -20,11 +20,19 @@ public final class ShopCommerceEndContextAdapter
     private final ShopCommerceStoreAdapter stores;
     private final BizIdentityResolver resolver;
     private final EndAccessFacade access;
+    private final AccountSessionVerifier sessions;
+    private final java.time.Clock clock;
     private final CommerceAccessInterceptor interceptor;
     private final CommerceRoutePolicy policy = new CommerceRoutePolicy();
 
     ShopCommerceEndContextAdapter(
-            ShopCommerceStoreAdapter stores, BizIdentityResolver resolver, EndAccessFacade access) {
+            ShopCommerceStoreAdapter stores,
+            BizIdentityResolver resolver,
+            EndAccessFacade access,
+            AccountSessionVerifier sessions,
+            java.time.Clock clock) {
+        this.sessions = sessions;
+        this.clock = clock;
         this.stores = stores;
         this.resolver = resolver;
         this.access = access;
@@ -90,6 +98,12 @@ public final class ShopCommerceEndContextAdapter
         var route = policy.match(req.getMethod(), path);
         String requested = req.getHeader(BizContextFilter.STORE_HEADER);
         boolean account = route.lane() == CommerceRoutePolicy.Lane.ACCOUNT;
+        if (route.foundation()
+                || path.equals("/biz/merchant/quick-start")
+                || path.equals("/biz/auth/password")) {
+            checkFoundationSession(user, legacy, req, route, path, requested);
+            if (route.foundation()) return;
+        }
         if (policy.allowsAccountRecovery(
                 route, req.getMethod(), path, requested, legacy.currentStoreNo())) return;
         if (route.lane() == CommerceRoutePolicy.Lane.LEGACY_PREVIEW) {
@@ -108,16 +122,7 @@ public final class ShopCommerceEndContextAdapter
                 throw new AccessDenied(AccessStatus.FORBIDDEN);
             return;
         }
-        if (facts.model() == CommerceModel.STORE_V1
-                && (facts.businessTypeCode() == null || facts.businessTypeCode().isBlank()))
-            throw new AccessDenied(AccessStatus.CHECK_UNAVAILABLE);
-        if (facts.status() != StoreStatus.ACTIVE)
-            throw new AccessDenied(AccessStatus.STORE_DISABLED);
-        var strict = resolver.resolveStrict(user, requested);
-        if (!requested.equals(strict.currentStoreNo())
-                || !facts.merchantNo().equals(strict.merchantNo())
-                || route.capability() != null && !strict.can(route.capability()))
-            throw new AccessDenied(AccessStatus.FORBIDDEN);
+        var strict = strictScope(user, requested, facts, route);
         BizContext.set(strict);
         if (route.lane() == CommerceRoutePolicy.Lane.END_PROTECTED) {
             var actor = ShopCommerceActorAdapter.current();
@@ -131,6 +136,62 @@ public final class ShopCommerceEndContextAdapter
                             req.getHeader(PROOF));
             req.setAttribute(CHECK, check);
         }
+    }
+
+    private BizContext strictScope(
+            LoginUser user,
+            String requested,
+            StoreSnapshot facts,
+            CommerceRoutePolicy.Route route) {
+        if (facts.model() == CommerceModel.STORE_V1
+                && (facts.businessTypeCode() == null || facts.businessTypeCode().isBlank()))
+            throw new AccessDenied(AccessStatus.CHECK_UNAVAILABLE);
+        if (facts.status() != StoreStatus.ACTIVE)
+            throw new AccessDenied(AccessStatus.STORE_DISABLED);
+        var strict = resolver.resolveStrict(user, requested);
+        if (!requested.equals(strict.currentStoreNo())
+                || !facts.merchantNo().equals(strict.merchantNo())
+                || route.capability() != null && !strict.can(route.capability()))
+            throw new AccessDenied(AccessStatus.FORBIDDEN);
+        return strict;
+    }
+
+    private void checkFoundationSession(
+            LoginUser user,
+            BizContext legacy,
+            HttpServletRequest req,
+            CommerceRoutePolicy.Route route,
+            String path,
+            String requested) {
+        sessions.withFresh(
+                        SecurityUtils.currentToken().orElse(null),
+                        clock.instant(),
+                        session -> {
+                            var fresh = session.user();
+                            if (user.subjectKind() != fresh.subjectKind()
+                                    || !user.userNo().equals(fresh.userNo())
+                                    || !user.tenantNo().equals(fresh.tenantNo()))
+                                throw new AccessDenied(AccessStatus.ACCOUNT_INVALID);
+                            if (!route.foundation()) return true;
+                            boolean affects = stores.affects(fresh, legacy, route, requested);
+                            if (!affects && (requested == null || requested.isBlank())) return true;
+                            if (requested == null
+                                    || requested.isBlank()
+                                    || route.pathStore() != null
+                                            && !requested.equals(route.pathStore()))
+                                throw new AccessDenied(AccessStatus.FORBIDDEN);
+                            var strict =
+                                    strictScope(fresh, requested, store(fresh, requested), route);
+                            if (path.equals("/biz/upload/image")
+                                    && !strict.owner()
+                                    && !strict.can(BizPerms.STORE)
+                                    && !strict.can(BizPerms.FINANCE))
+                                throw new AccessDenied(AccessStatus.FORBIDDEN);
+                            FoundationTarget.bind(req, strict, affects);
+                            BizContext.set(strict);
+                            return true;
+                        })
+                .orElseThrow(() -> new AccessDenied(AccessStatus.ACCOUNT_INVALID));
     }
 
     public void require(String storeNo) {

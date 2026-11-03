@@ -21,7 +21,17 @@ public final class CommerceRoutePolicy {
             String pathStore,
             String entitlement,
             String capability,
-            boolean newModelOnly) {
+            boolean newModelOnly,
+            boolean foundation) {
+        public Route(
+                Lane lane,
+                String pathStore,
+                String entitlement,
+                String capability,
+                boolean newModelOnly) {
+            this(lane, pathStore, entitlement, capability, newModelOnly, false);
+        }
+
         private Route(Lane lane, String pathStore, String entitlement, String capability) {
             this(lane, pathStore, entitlement, capability, false);
         }
@@ -39,9 +49,10 @@ public final class CommerceRoutePolicy {
                     "POST /biz/auth/logout",
                     "GET /biz/auth/context",
                     "GET /biz/merchant/apply",
-                    "POST /biz/merchant/apply",
+                    "GET /biz/auth/password",
+                    "POST /biz/auth/password",
+                    "GET /biz/communities",
                     "POST /biz/merchant/quick-start",
-                    "POST /biz/merchant/agreement/accept",
                     "GET /biz/business-types");
     private static final String ID = "[A-Za-z0-9_-]{1,64}";
     private static final Pattern STORE = Pattern.compile("/biz/(?:store|stores)/([^/]+)/(.+)");
@@ -54,9 +65,20 @@ public final class CommerceRoutePolicy {
     public boolean allowsAccountRecovery(
             Route route, String method, String path, String requested, String selected) {
         return route.lane() == Lane.ACCOUNT
-                && (requested == null
+                && (isSessionEntry(method, path)
+                        || requested == null
                         || requested.isBlank()
                         || !isStoreSelection(method, path) && requested.equals(selected));
+    }
+
+    private boolean isSessionEntry(String method, String path) {
+        return "POST".equals(method)
+                && Set.of(
+                                "/biz/auth/login",
+                                "/biz/auth/staff-login",
+                                "/biz/auth/otp/send",
+                                "/biz/auth/logout")
+                        .contains(path);
     }
 
     public Route match(String method, String path) {
@@ -64,8 +86,41 @@ public final class CommerceRoutePolicy {
                 || ACCOUNT.contains(method + " " + path)
                 || method.equals("GET") && path.matches("/biz/business-types/" + ID + "/plans"))
             return new Route(Lane.ACCOUNT, null, null, null);
-        if (method.equals("POST") && path.equals("/biz/store/create"))
-            return new Route(Lane.BOOTSTRAP, null, null, "biz:store:admin");
+        var foundation =
+                switch (method + " " + path) {
+                    case "POST /biz/store/create" -> "biz:store:admin";
+                    case "GET /biz/merchant/payment",
+                                    "POST /biz/merchant/payment",
+                                    "GET /biz/merchant/pay-channel" ->
+                            "biz:finance";
+                    case "GET /biz/qualifications",
+                                    "POST /biz/qualifications/save",
+                                    "POST /biz/qualifications/recognize" ->
+                            "biz:store";
+                    case "POST /biz/merchant/apply",
+                                    "POST /biz/merchant/agreement/accept",
+                                    "POST /biz/upload/image" ->
+                            "";
+                    default -> null;
+                };
+        if (foundation != null)
+            return new Route(
+                    Lane.BOOTSTRAP,
+                    null,
+                    null,
+                    foundation.isEmpty() ? null : foundation,
+                    false,
+                    true);
+        if (method.equals("POST") && path.matches("/biz/merchant/payment/store/" + ID))
+            return new Route(
+                    Lane.BOOTSTRAP,
+                    path.substring(path.lastIndexOf('/') + 1),
+                    null,
+                    "biz:finance",
+                    false,
+                    true);
+        if (method.equals("POST") && path.matches("/biz/merchant/payment/" + ID + "/refresh"))
+            return new Route(Lane.BOOTSTRAP, null, null, "biz:finance", false, true);
         if (method.equals("GET") && path.matches("/biz/order/" + ID + "/trace"))
             return new Route(Lane.BOOTSTRAP, null, null, "biz:order:view");
         if (method.equals("POST") && path.matches("/biz/order/" + ID + "/delivered"))

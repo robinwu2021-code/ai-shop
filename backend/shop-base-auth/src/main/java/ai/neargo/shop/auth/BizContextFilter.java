@@ -73,6 +73,13 @@ public class BizContextFilter extends OncePerRequestFilter {
             return;
         }
         try {
+            // Credential exchange and revocation only use the account session. A remembered
+            // store, its status or a failing membership lookup cannot select a login identity.
+            if ("POST".equals(req.getMethod()) && java.util.Set.of(
+                    "/biz/auth/login", "/biz/auth/staff-login", "/biz/auth/otp/send", "/biz/auth/logout").contains(path)) {
+                chain.doFilter(req, resp);
+                return;
+            }
             /*
              * **判据是「这是不是 B 端会话」，不是「主体是哪张表的号」。**
              *

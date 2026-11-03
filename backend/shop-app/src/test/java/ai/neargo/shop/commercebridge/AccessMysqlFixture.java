@@ -62,6 +62,7 @@ final class AccessMysqlFixture implements AutoCloseable {
                         "mch_account",
                         "usr_account",
                         "mch_entity",
+                        "mch_qualification",
                         "mch_store",
                         "mch_store_role",
                         "mch_role")) {
@@ -98,6 +99,7 @@ final class AccessMysqlFixture implements AutoCloseable {
                         UserMapper.class,
                         MchAccountMapper.class,
                         MchEntityMapper.class,
+                        QualificationMapper.class,
                         MchStoreMapper.class,
                         MchStoreRoleMapper.class,
                         MchRoleMapper.class)) cfg.addMapper(type);

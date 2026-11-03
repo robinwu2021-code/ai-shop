@@ -31,7 +31,16 @@ class CommerceAccessConfiguration {
 
     @Bean
     ShopCommerceEndContextAdapter commerceAdmission(
-            ShopCommerceStoreAdapter stores, BizIdentityResolver resolver, EndAccessFacade access) {
-        return new ShopCommerceEndContextAdapter(stores, resolver, access);
+            ShopCommerceStoreAdapter stores,
+            BizIdentityResolver resolver,
+            EndAccessFacade access,
+            AccountSessionVerifier sessions,
+            org.springframework.beans.factory.ObjectProvider<java.time.Clock> clocks) {
+        return new ShopCommerceEndContextAdapter(
+                stores,
+                resolver,
+                access,
+                sessions,
+                clocks.getIfAvailable(java.time.Clock::systemUTC));
     }
 }

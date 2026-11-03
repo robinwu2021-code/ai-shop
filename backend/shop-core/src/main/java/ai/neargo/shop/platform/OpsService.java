@@ -150,6 +150,9 @@ public interface OpsService {
     /** C 端提交入驻申请（由 /mp/merchant/apply 调用）。 */
     String createApply(SubmitApplyCommand cmd);
 
+    /** Merchant-selected store. Pin the pending entity in the application write transaction. */
+    String createSelectedApply(SubmitApplyCommand cmd, String pendingEntityNo);
+
     /**
      * <b>运营代商家提交入驻申请</b>（三期）。BD 在店里把执照拍下来、当场替老板填完。
      *
@@ -208,6 +211,8 @@ public interface OpsService {
      * @return 同意的时刻（毫秒）。没有申请单时返回 0 —— 没申请过不是异常
      */
     long acceptAgreement(String userNo);
+
+    long acceptAgreement(String userNo, String selectedEntityNo);
 
     /**
      * 我的入驻申请状态（C 端）。<b>此前提交完就查不到了</b> ——

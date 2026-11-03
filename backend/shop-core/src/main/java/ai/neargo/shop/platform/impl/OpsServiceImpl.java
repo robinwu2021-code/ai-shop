@@ -424,7 +424,14 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public String createApply(SubmitApplyCommand cmd) {
-        return doCreateApply(cmd, null);
+        return doCreateApply(cmd, null, null);
+    }
+
+    @Override
+    @Transactional
+    public String createSelectedApply(SubmitApplyCommand cmd, String pendingEntityNo) {
+        if (!notBlank(pendingEntityNo)) throw BizException.of(ErrorCode.STORE_BUSINESS_TYPE_REQUIRED);
+        return doCreateApply(cmd, null, pendingEntityNo);
     }
 
     @Override
@@ -437,14 +444,14 @@ public class OpsServiceImpl implements OpsService {
              */
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return doCreateApply(cmd, submittedBy);
+        return doCreateApply(cmd, submittedBy, null);
     }
 
     /**
      * 自填与代填共用的那一份。**两条路只在末尾分叉**（submitted_by / agreed_at），
      * 前面的几道闸一字不差 —— 抄一份出来的话，日后加一道闸只会加在其中一条上。
      */
-    private String doCreateApply(SubmitApplyCommand cmd, String submittedBy) {
+    private String doCreateApply(SubmitApplyCommand cmd, String submittedBy, String selectedEntityNo) {
         /*
          * 一人同时只能有一份进行中的申请。
          * 先查是为了给出人话错误；**真正兜底的是 uk_apply_active_owner 唯一键** ——
@@ -506,7 +513,12 @@ public class OpsServiceImpl implements OpsService {
          * 不认领的话会另建一个主体：他补完证照满心欢喜地去看，发现店里空空如也，
          * 而那家有货的店还在另一个看不见的主体下 —— 两家店，他只认得出一家。
          */
-        merchantAdminPort.pendingLicenseEntityOf(cmd.userNo()).ifPresent(apply::setEntityNo);
+        if (selectedEntityNo == null) {
+            merchantAdminPort.pendingLicenseEntityOf(cmd.userNo()).ifPresent(apply::setEntityNo);
+        } else {
+            merchantAdminPort.requirePendingLicenseOwner(cmd.userNo(), selectedEntityNo);
+            apply.setEntityNo(selectedEntityNo);
+        }
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(apply));
         notifyOpsOfNewApply(apply);
         return apply.getApplyNo();
@@ -559,14 +571,22 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public long acceptAgreement(String userNo) {
+        return acceptAgreement(userNo, null);
+    }
+
+    @Override
+    @Transactional
+    public long acceptAgreement(String userNo, String selectedEntityNo) {
         MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->
                 applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
                         .eq(MchEntityApply::getUserNo, userNo)
-                        .orderByDesc(MchEntityApply::getId).last("limit 1")));
+                        .orderByDesc(MchEntityApply::getId).last("limit 1 for update")));
         if (apply == null) {
             // 没申请过不是异常 —— 他可能只是还没走到那一步
             return 0L;
         }
+        if (selectedEntityNo != null && !selectedEntityNo.equals(apply.getEntityNo()))
+            throw BizException.of(ErrorCode.FORBIDDEN);
         if (apply.getAgreedAt() != null) {
             // 幂等：已经勾过就原样返回。刷新成现在会让「他什么时候同意的」
             // 每次打开 App 都换一个答案，而那是这一列唯一的用途

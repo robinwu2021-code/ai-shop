@@ -1086,6 +1086,7 @@ public class MerchantGovernServiceImpl implements MerchantGovernService {
             q.setEntityNo(merchantNo);
         } else {
             q = DataScopeContext.executeWithoutScope(() -> qualificationMapper.selectOne(Wrappers.<MchQualification>lambdaQuery()
+                    .eq(MchQualification::getEntityNo, merchantNo)
                     .eq(MchQualification::getQualNo, cmd.qualNo()).last("limit 1")));
             if (q == null) {
                 throw BizException.of(ErrorCode.NOT_FOUND);

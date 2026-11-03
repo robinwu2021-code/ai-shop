@@ -51,7 +51,7 @@ class BizEndpointPermTest {
             // 写入那条也放这里：它写的是**地图返回的公共事实**，不是商家自己的东西，
             // 而还没建店的申请人正需要它来挑经营范围
             "/biz/geo/estates", "/biz/geo/estates/counts",
-            "/biz/auth/login", "/biz/auth/otp/send", "/biz/auth/staff-login",
+            "/biz/auth/login", "/biz/auth/logout", "/biz/auth/otp/send", "/biz/auth/staff-login",
             // 设/查自己的登录密码：作用对象是**调用者本人**（SecurityUtils.currentUserNo），
             // 拿不到别人的。挂 biz 权限码反而错了 —— 店员也该能给自己设密码，
             // 而他一个 biz:* 都可能没有

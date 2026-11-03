@@ -6,6 +6,7 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.common.BizException;
@@ -1359,6 +1360,22 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     @Override
     public java.util.Optional<String> pendingLicenseEntityOf(String userNo) {
         return pendingLicenseEntityOf(userNo, false);
+    }
+
+    @Override
+    public void requirePendingLicenseOwner(String userNo, String entityNo) {
+        var owned = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
+                Wrappers.<MchAccount>lambdaQuery()
+                        .eq(MchAccount::getEntityNo, entityNo)
+                        .eq(MchAccount::getUserNo, userNo)
+                        .eq(MchAccount::getIsOwner, true)
+                        .eq(MchAccount::getStatus, "ACTIVE")
+                        .last("limit 1 for update")));
+        if (owned.isEmpty()) throw BizException.of(ErrorCode.FORBIDDEN);
+        var pending = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, entityNo)
+                        .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE).last("limit 1 for update")));
+        if (pending == null) throw BizException.of(ErrorCode.FORBIDDEN);
     }
 
     private java.util.Optional<String> pendingLicenseEntityOf(String userNo, boolean current) {

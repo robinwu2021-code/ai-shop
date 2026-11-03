@@ -453,6 +453,11 @@ class CommerceAccessSecurityFlowTest {
 
     static MockMvc merchantMvc(
             AccessMysqlFixture f, AnnotationConfigWebApplicationContext web, boolean enabled) {
+        return merchantMvc(f, web, enabled, Map.of());
+    }
+
+    static MockMvc merchantMvc(AccessMysqlFixture f, AnnotationConfigWebApplicationContext web,
+            boolean enabled, Map<Class<?>, Object> realServices) {
         var resolver =
                 new BizIdentityResolverImpl(
                         f.mybatis.getMapper(MchEntityMapper.class),
@@ -502,6 +507,8 @@ class CommerceAccessSecurityFlowTest {
                                     GoodsVisionPort.class,
                                     SpuStdService.class,
                                     OpsService.class,
+                                    ai.neargo.shop.user.service.AuthService.class,
+                                    LoginAuditor.class,
                                     UserService.class,
                                     MerchantService.class,
                                     MerchantStoreService.class,
@@ -524,7 +531,7 @@ class CommerceAccessSecurityFlowTest {
                                     PlatformSwitchPort.class,
                                     MessageService.class,
                                     AfterSalePendingQueryPort.class))
-                        b.registerSingleton(type.getSimpleName(), mock(type));
+                        b.registerSingleton(type.getSimpleName(), realServices.containsKey(type) ? realServices.get(type) : mock(type));
                     b.registerSingleton("accounts", f.mybatis.getMapper(MchAccountMapper.class));
                     b.registerSingleton("entityRows", f.mybatis.getMapper(MchEntityMapper.class));
                     b.registerSingleton("roleRows", f.mybatis.getMapper(MchRoleMapper.class));
@@ -557,6 +564,7 @@ class CommerceAccessSecurityFlowTest {
                 BizEntityController.class,
                 BizGoodsController.class,
                 BizMerchantController.class,
+                ai.neargo.shop.portal.biz.BizAuthController.class,
                 BizMessageController.class,
                 BizPickupController.class,
                 CommerceAccessErrors.class,
@@ -715,7 +723,7 @@ class CommerceAccessSecurityFlowTest {
                                 .andExpect(mixed ? status().isForbidden() : status().isOk()));
     }
 
-    private static void seedSubscriptions(
+    static void seedSubscriptions(
             AccessMysqlFixture f,
             StoreRef ref,
             JdbcSubscriptionRepository repo,
