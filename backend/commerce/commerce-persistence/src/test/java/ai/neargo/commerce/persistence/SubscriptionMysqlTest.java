@@ -402,6 +402,79 @@ class SubscriptionMysqlTest {
         }
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(
+            strings = {"whole", "prefix", "fixed", "shifted"})
+    void corruptAcceptedScheduleCannotRefillElapsedTime(String corruption) {
+        try (var db = new MysqlDatabase()) {
+            var f = setup(db);
+            var svc = services(db, f, NOV1);
+            f.uow.required(() -> svc.create.initializeFree(OWNER, init()));
+            svc.service.deliver(STORE, "pack-op", List.of(pack("gift")));
+            var cut = NOV1.plus(Duration.ofDays(10));
+            var later = services(db, f, cut);
+            later.service.deliver(STORE, "plan-op", List.of(plan("fixed")));
+            String grants = "UPDATE mch_store_end_grant SET ";
+            String pos = " WHERE entitlement_code='POS' AND state='NORMAL'";
+            int changed =
+                    switch (corruption) {
+                        case "whole" ->
+                                db.jdbc.update(
+                                        grants + "state='SUPERSEDED'" + pos + " AND start_at<>?",
+                                        cut.toEpochMilli());
+                        case "prefix" ->
+                                db.jdbc.update(
+                                        grants + "state='SUPERSEDED'" + pos + " AND start_at=?",
+                                        NOV1.toEpochMilli());
+                        case "fixed" ->
+                                db.jdbc.update(
+                                        grants + "state='SUPERSEDED'" + pos + " AND start_at=?",
+                                        cut.toEpochMilli());
+                        // Move one millisecond from the consumed prefix to the future. Total
+                        // duration remains valid.
+                        case "shifted" ->
+                                db.jdbc.update(
+                                                grants
+                                                        + "start_at=start_at+1"
+                                                        + pos
+                                                        + " AND start_at=?",
+                                                NOV1.toEpochMilli())
+                                        + db.jdbc.update(
+                                                grants
+                                                        + "end_at=end_at+1"
+                                                        + pos
+                                                        + " AND start_at>?",
+                                                cut.toEpochMilli());
+                        default -> throw new AssertionError(corruption);
+                    };
+            assertEquals(Set.of("whole", "shifted").contains(corruption) ? 2 : 1, changed);
+            var baseline = subscriptionState(db);
+            assertThrows(
+                    IllegalStateException.class,
+                    () -> later.schedule.rebuild(STORE, Set.of("POS"), "rebuild", cut));
+            assertEquals(baseline, subscriptionState(db));
+            // The fixed source and the genuinely new delivery have the exact same timestamp.
+            assertThrows(
+                    IllegalStateException.class,
+                    () -> later.service.deliver(STORE, "another", List.of(pack("new-pack"))));
+            assertEquals(baseline, subscriptionState(db));
+        }
+    }
+
+    private Map<String, List<Map<String, Object>>> subscriptionState(MysqlDatabase db) {
+        var state = new TreeMap<String, List<Map<String, Object>>>();
+        for (var table :
+                List.of(
+                        "mch_subscription_period",
+                        "mch_store_end_grant",
+                        "mch_end_schedule_event",
+                        "mch_subscription_account",
+                        "commerce_event_inbox",
+                        "commerce_outbox"))
+            state.put(table, db.jdbc.queryForList("SELECT * FROM " + table + " ORDER BY id"));
+        return state;
+    }
+
     @Test
     void unexplainedExistingGrantCannotBeLostOnRebuild() {
         try (var db = new MysqlDatabase()) {
@@ -411,7 +484,7 @@ class SubscriptionMysqlTest {
             services.service.deliver(STORE, "first", List.of(pack("pack")));
             db.jdbc.update(
                     "update mch_subscription_period set source_policy_snapshot=JSON_OBJECT() where"
-                        + " source_ref_no='pack'");
+                            + " source_ref_no='pack'");
             assertThrows(
                     IllegalStateException.class,
                     () -> services.schedule.rebuild(STORE, Set.of("POS"), "review", NOV1));
@@ -419,7 +492,7 @@ class SubscriptionMysqlTest {
                     1,
                     db.jdbc.queryForObject(
                             "select count(*) from mch_store_end_grant where entitlement_code='POS'"
-                                + " and state='NORMAL'",
+                                    + " and state='NORMAL'",
                             Integer.class));
         }
     }

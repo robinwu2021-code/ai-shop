@@ -1,4 +1,4 @@
-package ai.neargo.commerce.core.subscription;
+package ai.neargo.commerce.core.spi;
 
 import java.util.Map;
 

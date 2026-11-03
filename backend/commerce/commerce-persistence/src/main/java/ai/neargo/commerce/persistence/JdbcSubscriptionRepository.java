@@ -6,7 +6,8 @@ import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.port.CommerceIdGenerator;
 import ai.neargo.commerce.api.subscription.AccessSegment;
 import ai.neargo.commerce.core.spi.AccountSnapshot;
-import ai.neargo.commerce.core.subscription.*;
+import ai.neargo.commerce.core.spi.Period;
+import ai.neargo.commerce.core.spi.SubscriptionRepository;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -97,20 +98,38 @@ SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot
 
     public List<AccessSegment> segments(StoreRef s, String code) {
         requireOuterTransaction(s);
-        return jdbc.query(
-                """
+        var rows =
+                jdbc.query(
+                        """
 SELECT period_no,start_at,end_at FROM mch_store_end_grant WHERE tenant_no=? AND store_no=? AND entitlement_code=?
 AND state='NORMAL' ORDER BY start_at,period_no FOR SHARE
 """,
-                (r, i) ->
-                        new AccessSegment(
-                                r.getString(1),
-                                code,
-                                Instant.ofEpochMilli(r.getLong(2)),
-                                r.getObject(3) == null ? null : Instant.ofEpochMilli(r.getLong(3))),
-                s.tenantNo(),
-                s.storeNo(),
-                code);
+                        (r, i) ->
+                                new AccessSegment(
+                                        r.getString(1),
+                                        code,
+                                        Instant.ofEpochMilli(r.getLong(2)),
+                                        r.getObject(3) == null
+                                                ? null
+                                                : Instant.ofEpochMilli(r.getLong(3))),
+                        s.tenantNo(),
+                        s.storeNo(),
+                        code);
+        var accepted =
+                jdbc.queryForList(
+                        """
+                        SELECT after_snapshot = CAST(? AS JSON) FROM mch_end_schedule_event
+                        WHERE tenant_no=? AND store_no=? AND entitlement_code=?
+                        ORDER BY entitlement_version DESC LIMIT 1 FOR SHARE
+                        """,
+                        Boolean.class,
+                        snapshot(rows),
+                        s.tenantNo(),
+                        s.storeNo(),
+                        code);
+        if (accepted.isEmpty() ? !rows.isEmpty() : !Boolean.TRUE.equals(accepted.getFirst()))
+            throw new IllegalStateException("current schedule differs from accepted history");
+        return rows;
     }
 
     public long lastChange(StoreRef s) {
@@ -118,14 +137,14 @@ AND state='NORMAL' ORDER BY start_at,period_no FOR SHARE
         var cuts =
                 jdbc.queryForList(
                         "SELECT effective_at FROM mch_end_schedule_event WHERE tenant_no=? AND"
-                            + " store_no=? ORDER BY effective_at DESC LIMIT 1 FOR SHARE",
+                                + " store_no=? ORDER BY effective_at DESC LIMIT 1 FOR SHARE",
                         Long.class,
                         s.tenantNo(),
                         s.storeNo());
         var deliveries =
                 jdbc.queryForList(
                         "SELECT delivered_at FROM mch_subscription_period WHERE tenant_no=? AND"
-                            + " store_no=? ORDER BY delivered_at DESC LIMIT 1 FOR SHARE",
+                                + " store_no=? ORDER BY delivered_at DESC LIMIT 1 FOR SHARE",
                         Long.class,
                         s.tenantNo(),
                         s.storeNo());

@@ -3,7 +3,7 @@ package ai.neargo.commerce.core.access;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.neargo.commerce.api.subscription.AccessSegment;
-import ai.neargo.commerce.core.subscription.Period;
+import ai.neargo.commerce.core.spi.Period;
 
 import org.junit.jupiter.api.Test;
 
@@ -43,7 +43,8 @@ class EndScheduleTest {
         var periods = List.of(source("pack", false, 0, 30L), source("plan", true, 10, 30L));
         assertEquals(
                 List.of(s("pack", 0, 10L), s("plan", 10, 40L), s("pack", 40, 60L)),
-                EndScheduleService.calculate("POS", periods, List.of(s("pack", 0, 30L)), 10));
+                EndScheduleService.calculate(
+                        "POS", periods, List.of(s("pack", 0, 30L)), 10, Set.of("plan")));
     }
 
     @Test
@@ -55,7 +56,9 @@ class EndScheduleTest {
                         source("b", false, 0, 4L),
                         source("p", true, 6, 3L),
                         source("q", true, 12, 2L));
-        var result = EndScheduleService.calculate("POS", periods, List.of(), 3);
+        var result =
+                EndScheduleService.calculate(
+                        "POS", periods, List.of(), 3, Set.of("free", "a", "b", "p", "q"));
         assertEquals(
                 List.of(
                         s("free", 0, null),
@@ -72,10 +75,10 @@ class EndScheduleTest {
     void everyInsertionCutConservesBothPacksWithoutChangingElapsedOwnership() {
         for (int cut = 0; cut <= 24; cut++) {
             var packs = List.of(source("a", false, 0, 11L), source("b", false, 0, 9L));
-            var before = EndScheduleService.calculate("POS", packs, List.of(), 0);
+            var before = EndScheduleService.calculate("POS", packs, List.of(), 0, Set.of("a", "b"));
             var periods = new ArrayList<>(packs);
             periods.add(source("plan", true, cut, 7L));
-            var after = EndScheduleService.calculate("POS", periods, before, cut);
+            var after = EndScheduleService.calculate("POS", periods, before, cut, Set.of("plan"));
             for (int t = 0; t < cut; t++) assertEquals(owner(before, t), owner(after, t));
             for (var p : periods)
                 assertEquals(
@@ -91,6 +94,33 @@ class EndScheduleTest {
                 assertFalse(after.get(i).startsAt().isBefore(after.get(i - 1).endsAt()));
             assertEquals(after, EndScheduleService.calculate("POS", periods, after, cut));
         }
+    }
+
+    @Test
+    void anExistingSourceRequiresItsWholeAcceptedSchedule() {
+        var pack = List.of(source("pack", false, 0, 30L));
+        var fixed = List.of(source("plan", true, 0, 30L));
+        assertAll(
+                () ->
+                        assertThrows(
+                                IllegalStateException.class,
+                                () -> EndScheduleService.calculate("POS", pack, List.of(), 10)),
+                () ->
+                        assertThrows(
+                                IllegalStateException.class,
+                                () ->
+                                        EndScheduleService.calculate(
+                                                "POS", pack, List.of(s("pack", 20, 30L)), 25)),
+                () ->
+                        assertThrows(
+                                IllegalStateException.class,
+                                () -> EndScheduleService.calculate("POS", fixed, List.of(), 10)),
+                () ->
+                        assertThrows(
+                                IllegalStateException.class,
+                                () ->
+                                        EndScheduleService.calculate(
+                                                "POS", fixed, List.of(s("plan", 1, 30L)), 10)));
     }
 
     private Optional<String> owner(List<AccessSegment> rows, int at) {

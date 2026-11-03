@@ -417,10 +417,89 @@ class CommerceStoreCreationFlowTest {
             assertEquals(
                     ErrorCode.STORE_COMMERCE_MIGRATION_REQUIRED,
                     assertThrows(BizException.class, () -> port.quickStart(cmd)).errorCode());
+            assertCurrentLicenseQuota(port, jdbc, tx);
         } finally {
             SecurityContextHolder.clearContext();
             admin.execute("DROP DATABASE " + name);
         }
+    }
+
+    private static void assertCurrentLicenseQuota(
+            MerchantAdminPort port, JdbcTemplate jdbc, TransactionTemplate tx) {
+        login("quota-owner");
+        jdbc.update(
+                "INSERT INTO usr_account(user_no,created_at,updated_at) VALUES"
+                    + " ('quota-owner',NOW(),NOW())");
+        for (int i = 1; i <= 4; i++) insertActiveEntity(jdbc, i);
+        var independent = new TransactionTemplate(tx.getTransactionManager());
+        independent.setPropagationBehavior(
+                org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        var baseline =
+                tx.execute(
+                        status -> {
+                            var count =
+                                    "SELECT COUNT(*) FROM mch_account WHERE user_no='quota-owner'"
+                                        + " AND is_owner=1";
+                            assertEquals(4, jdbc.queryForObject(count, Integer.class));
+                            var committed =
+                                    independent.execute(
+                                            inner -> {
+                                                insertActiveEntity(jdbc, 5);
+                                                assertEquals(
+                                                        5,
+                                                        jdbc.queryForObject(count, Integer.class));
+                                                return creationCounts(jdbc);
+                                            });
+                            assertEquals(4, jdbc.queryForObject(count, Integer.class));
+                            assertEquals(
+                                    ErrorCode.ENTITY_QUOTA_EXCEEDED,
+                                    assertThrows(
+                                                    BizException.class,
+                                                    () ->
+                                                            port.quickStart(
+                                                                    new QuickStartCommand(
+                                                                            "quota-owner",
+                                                                            "sixth",
+                                                                            null,
+                                                                            "RETAIL")))
+                                            .errorCode());
+                            status.setRollbackOnly();
+                            return committed;
+                        });
+        assertEquals(baseline, creationCounts(jdbc));
+    }
+
+    private static void insertActiveEntity(JdbcTemplate jdbc, int i) {
+        String no = "quota-entity-" + i;
+        jdbc.update(
+                "INSERT INTO mch_entity(entity_no,name,owner_user_no,status,created_at,updated_at)"
+                    + " VALUES (?,?,'quota-owner','ACTIVE',NOW(),NOW())",
+                no,
+                no);
+        jdbc.update(
+                "INSERT INTO"
+                    + " mch_account(mch_account_no,entity_no,user_no,is_owner,status,created_at,updated_at)"
+                    + " VALUES (?,?,'quota-owner',1,'ACTIVE',NOW(),NOW())",
+                "quota-account-" + i,
+                no);
+    }
+
+    private static Map<String, Integer> creationCounts(JdbcTemplate jdbc) {
+        var counts = new TreeMap<String, Integer>();
+        for (var table :
+                List.of(
+                        "mch_entity",
+                        "mch_account",
+                        "mch_store",
+                        "mch_entity_plan",
+                        "mch_subscription_account",
+                        "mch_subscription_period",
+                        "mch_store_end_grant",
+                        "mch_end_schedule_event",
+                        "commerce_outbox",
+                        "commerce_event_inbox"))
+            counts.put(table, jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class));
+        return counts;
     }
 
     private static void login(String no) {
@@ -434,22 +513,7 @@ class CommerceStoreCreationFlowTest {
     }
 
     private static void assertCounts(JdbcTemplate jdbc, int expected) {
-        for (String table :
-                List.of(
-                        "mch_entity",
-                        "mch_account",
-                        "mch_store",
-                        "mch_entity_plan",
-                        "mch_subscription_account",
-                        "mch_subscription_period",
-                        "mch_store_end_grant",
-                        "mch_end_schedule_event",
-                        "commerce_outbox",
-                        "commerce_event_inbox"))
-            assertEquals(
-                    expected,
-                    jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class),
-                    table);
+        creationCounts(jdbc).forEach((table, count) -> assertEquals(expected, count, table));
     }
 
     private static void seedPublishedCatalog(JdbcTemplate jdbc) {

@@ -1,5 +1,7 @@
 package ai.neargo.commerce.core.subscription;
 
+import static ai.neargo.commerce.core.spi.SubscriptionMutation.*;
+
 import ai.neargo.commerce.api.catalog.*;
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.port.*;
@@ -8,7 +10,8 @@ import ai.neargo.commerce.core.access.*;
 import ai.neargo.commerce.core.catalog.*;
 import ai.neargo.commerce.core.spi.*;
 
-import java.time.*;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.*;
 
 /** Internal delivery boundary. A caller must already own the verified component facts. */
@@ -79,47 +82,6 @@ public final class SubscriptionService {
         this.events = events;
         this.ids = ids;
         this.clock = clock;
-    }
-
-    public static String key(String key) {
-        if (key == null || !key.matches("[A-Za-z0-9_.:-]{1,64}"))
-            throw new IllegalArgumentException("invalid business key");
-        return key;
-    }
-
-    public static boolean claim(
-            CommerceEventPersistencePort events,
-            StoreRef store,
-            String op,
-            String kind,
-            List<String> fields,
-            Instant at) {
-        return claim(events, store, op, kind, fields, at, "SUBSCRIPTION");
-    }
-
-    private static boolean claim(
-            CommerceEventPersistencePort events,
-            StoreRef store,
-            String op,
-            String kind,
-            List<String> fields,
-            Instant at,
-            String producer) {
-        return events.recordInbound(
-                new InboundFact(
-                        store.tenantNo(),
-                        producer,
-                        key(op),
-                        kind,
-                        store.storeNo(),
-                        FactDigest.of(fields),
-                        at));
-    }
-
-    public static void writable(AccountSnapshot account, long watermark, long at) {
-        if (account.pendingChangeOrderNo() != null)
-            throw new IllegalStateException("pending digital change");
-        if (at < watermark) throw new IllegalArgumentException("backdated schedule change");
     }
 
     SubscriptionView initialize(
@@ -201,7 +163,8 @@ public final class SubscriptionService {
                                 period.ends().keySet(),
                                 cmd.operationNo(),
                                 at,
-                                true,
+                                Set.of(period.no()),
+                                Map.of(),
                                 actor.principalNo());
                     } else if (prior.stream().noneMatch(p -> p.duration() == null)) {
                         throw new IllegalStateException("missing initial FREE source");
@@ -219,6 +182,10 @@ public final class SubscriptionService {
                 () -> {
                     var account = repo.lock(store);
                     var at = Instant.ofEpochMilli(clock.millis());
+                    var prior = new ArrayList<>(repo.periods(store));
+                    var previousCodes = new TreeSet<String>();
+                    prior.forEach(p -> previousCodes.addAll(p.ends().keySet()));
+                    var history = schedule.history(store, prior, previousCodes);
                     if (!claim(
                             events,
                             store,
@@ -227,7 +194,6 @@ public final class SubscriptionService {
                             deliveries.stream().flatMap(d -> d.identity().stream()).toList(),
                             at)) return null;
                     writable(account, repo.lastChange(store), at.toEpochMilli());
-                    var prior = new ArrayList<>(repo.periods(store));
                     var free =
                             prior.stream()
                                     .filter(p -> p.duration() == null)
@@ -235,7 +201,7 @@ public final class SubscriptionService {
                                     .orElseThrow();
                     var state = catalog.load(store.tenantNo(), CatalogLockMode.SHARED);
                     var codes = new TreeSet<String>();
-                    boolean inserted = false;
+                    var inserted = new HashSet<String>();
                     for (var d : deliveries) {
                         var existing =
                                 prior.stream()
@@ -274,9 +240,10 @@ public final class SubscriptionService {
                         repo.insert(account, p, Math.incrementExact((long) prior.size()), null);
                         prior.add(p);
                         codes.addAll(p.ends().keySet());
-                        inserted = true;
+                        inserted.add(p.no());
                     }
-                    if (inserted) schedule.persist(account, codes, operationNo, at, true, null);
+                    if (!inserted.isEmpty())
+                        schedule.persist(account, codes, operationNo, at, inserted, history, null);
                     return null;
                 });
     }

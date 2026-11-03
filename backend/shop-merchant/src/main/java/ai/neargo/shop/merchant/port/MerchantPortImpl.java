@@ -1229,7 +1229,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return existing.getEntityNo();
         }
 
-        requireEntityQuota(ownerUserNo);
+        requireEntityQuota(ownerUserNo, false);
 
         MchEntity m = new MchEntity();
         m.setEntityNo(BizKey.next(BizKey.MERCHANT));
@@ -1300,7 +1300,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return new QuickStartResult(shell.get(), row == null ? null : row.getStoreNo());
         }
 
-        requireEntityQuota(ownerUserNo);
+        requireEntityQuota(ownerUserNo, actor != null);
 
         String name = cmd.storeName().trim();
         MchEntity m = new MchEntity();
@@ -1392,14 +1392,15 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      * <p>只数 owner 行 —— 被邀请去别人店里当店员不占自己的名额，
      * 那不是他的证照。
      */
-    private void requireEntityQuota(String ownerUserNo) {
+    private void requireEntityQuota(String ownerUserNo, boolean current) {
         if (ownerUserNo == null || ownerUserNo.isBlank()) {
             return;
         }
         long owned = DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, ownerUserNo)
-                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true)
+                        .last(current, "for share"))
                 .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo)
                 .distinct().count());
         if (owned >= MAX_ENTITIES_PER_ACCOUNT) {

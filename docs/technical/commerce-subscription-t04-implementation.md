@@ -27,9 +27,13 @@ T04 只装配 `StoreProvisioningFacade.initializeFree(actor, command)`。原 `Su
 
 同门店实际永久拥有的 code 从付费 Plan 生成的有限端片中剔除。已由永久 FREE 提供的独立端不再单独发放。每个未结束的 BASE_PLAN 必须与新增 Plan 的稳定定义及档位相同。续期从交付时刻与既有有限 Plan 尾部的较晚者开始。只有固定 Plan 才携带可折价价值，升级、退款、抵扣余额或订单支付流程都需各自后续任务实现。
 
+新模式快速开店取得创建人锁后，对 owner 成员行执行当前读，按不同主体号计算既有证照额度。外层 RR 事务先读到四个主体、另一事务又提交第五个有效主体时，创建返回 ENTITY_QUOTA_EXCEEDED。旧模式的额度读取和计数条件保持原有行为。
+
 ## 排期、覆盖与证据
 
 每次交付取得当前读并以门店为写入串行化边界。内部操作回执使用模块 inbox 的租户、生产者和业务号，校验聚合身份和不可变参数摘要；单来源另有独立回执。相同身份携带冲突参数会回滚。重新执行已接受操作不递增权益版本。独立重建即使以新操作号调用，只要时间片没有变化也不产生新历史、权益版本或 outbox。拒绝早于该店已接受来源或排期历史的切点。
+
+交付在记录回执、写入新来源前校验本店既有来源。重建在记录回执前校验目标端。每端锁定读取的 NORMAL 行须与最后一次已接受事件的 after_snapshot 完全一致。逐既有独立来源校验完整有限时长，逐固定来源校验原始完整日历。缺失整段、缩短已用前缀，或把前缀的一毫秒挪到未来，即使总量相等也会拒绝。只有本事务实际成功插入的 period_no 可以从空排期开始，同一交付时刻不代表同一来源。
 
 1. 对每个受影响的 code 保留固定 Plan 的真实区间和永久片。永久端的 NULL 终点不进入有限尾部计算。
 2. 逐独立来源保留切点前已用前缀，按原始授予量扣除已用时长。按交付顺序把剩余时长排在不早于切点和交付时刻的空档。遇到固定 Plan 时可拆片，跨过后继续排同一来源。
@@ -47,4 +51,4 @@ mvn -f backend/pom.xml -pl shop-app -am -Dtest=CommerceStoreCreationFlowTest -Ds
 mvn -f backend/pom.xml -pl shop-app -am -Dtest=QuickStartFlowTest,ErrorCodeUniqueTest,SchemaDriftTest,StoreCategoryFlowTest,SelfOperatedMerchantFlowTest,MerchantSelfOperatedFlowTest -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
-2026-11-03 验证结果为 commerce 全量 149 项通过（API 5、core 53、persistence 82、starter 9），指定宿主建店 2 项通过，以上六组宿主回归 41 项通过，各组失败、异常、跳过均为 0。并发交付测试在三个独立 JVM 中写同一随机库；宿主场景在不同连接并发重放首次开店及分店创建。对来源策略证据缺失、无法解释既有有效片的门店，排期写入拒绝并保留原记录。
+2026-11-03 验证结果为 commerce 全量 154 项通过（API 5、core 54、persistence 86、starter 9），指定宿主建店 2 项通过，以上六组宿主回归 41 项通过，各组失败、异常、跳过均为 0。并发交付测试在三个独立 JVM 中写同一随机库；宿主场景在不同连接并发重放首次开店及分店创建。生产字节码架构测试按 core 下一级特性包检测循环依赖，共享来源模型、仓储和操作回执约束放在 core.spi。

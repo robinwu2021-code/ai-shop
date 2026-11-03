@@ -1,8 +1,7 @@
-package ai.neargo.commerce.core.subscription;
+package ai.neargo.commerce.core.spi;
 
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.subscription.*;
-import ai.neargo.commerce.core.spi.*;
 
 import java.util.*;
 
@@ -16,6 +15,7 @@ public interface SubscriptionRepository {
 
     List<Period> periods(StoreRef store);
 
+    /** Current ordered NORMAL rows must match the latest accepted event snapshot for this code. */
     List<AccessSegment> segments(StoreRef store, String code);
 
     long lastChange(StoreRef store);

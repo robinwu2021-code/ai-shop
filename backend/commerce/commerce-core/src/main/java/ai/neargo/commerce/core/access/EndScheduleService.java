@@ -1,10 +1,11 @@
 package ai.neargo.commerce.core.access;
 
+import static ai.neargo.commerce.core.spi.SubscriptionMutation.*;
+
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.api.subscription.*;
 import ai.neargo.commerce.core.spi.*;
-import ai.neargo.commerce.core.subscription.*;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -39,14 +40,12 @@ public final class EndScheduleService {
                         throw new IllegalArgumentException("future cut");
                     var identity = new ArrayList<String>();
                     identity.add(effectiveAt.toString());
-                    new TreeSet<>(codes)
-                            .forEach(code -> identity.add(SubscriptionService.key(code)));
-                    if (!SubscriptionService.claim(
-                            events, store, operationNo, "REBUILD", identity, effectiveAt))
+                    new TreeSet<>(codes).forEach(code -> identity.add(key(code)));
+                    var history = history(store, repo.periods(store), codes);
+                    if (!claim(events, store, operationNo, "REBUILD", identity, effectiveAt))
                         return null;
-                    SubscriptionService.writable(
-                            account, repo.lastChange(store), effectiveAt.toEpochMilli());
-                    persist(account, codes, operationNo, effectiveAt, false, null);
+                    writable(account, repo.lastChange(store), effectiveAt.toEpochMilli());
+                    persist(account, codes, operationNo, effectiveAt, Set.of(), history, null);
                     return null;
                 });
     }
@@ -56,30 +55,32 @@ public final class EndScheduleService {
             Set<String> codes,
             String op,
             Instant cut,
-            boolean newSource,
+            Set<String> inserted,
+            Map<String, List<AccessSegment>> history,
             String actor) {
         var store = account.store();
         var periods = repo.periods(store);
         long revision = Math.incrementExact(account.entitlementVersion());
-        boolean changed = newSource;
+        record Change(String code, List<AccessSegment> before, List<AccessSegment> after) {}
+        var changes = new ArrayList<Change>();
         for (String code : new TreeSet<>(codes)) {
-            var before = repo.segments(store, code);
-            var after = calculate(code, periods, before, cut.toEpochMilli());
-            if (!after.equals(before)) {
-                repo.revise(
-                        store,
-                        code,
-                        op,
-                        cut.toEpochMilli(),
-                        revision,
-                        before,
-                        after,
-                        periods,
-                        actor);
-                changed = true;
-            }
+            var before = history.get(code);
+            if (before == null) before = repo.segments(store, code);
+            var after = calculate(code, periods, before, cut.toEpochMilli(), inserted);
+            if (!after.equals(before)) changes.add(new Change(code, before, after));
         }
-        if (changed) {
+        for (var change : changes)
+            repo.revise(
+                    store,
+                    change.code(),
+                    op,
+                    cut.toEpochMilli(),
+                    revision,
+                    change.before(),
+                    change.after(),
+                    periods,
+                    actor);
+        if (!inserted.isEmpty() || !changes.isEmpty()) {
             repo.updateVersion(account, revision, actor);
             events.append(
                     new CommerceEvent(
@@ -105,16 +106,84 @@ public final class EndScheduleService {
                 end == null ? null : Instant.ofEpochMilli(end));
     }
 
+    /** Lock and prove previously accepted rows before claiming a mutation or adding periods. */
+    public Map<String, List<AccessSegment>> history(
+            StoreRef store, List<Period> existing, Set<String> codes) {
+        var history = new HashMap<String, List<AccessSegment>>();
+        for (var code : new TreeSet<>(codes)) {
+            var rows = repo.segments(store, code);
+            verifySources(code, existing, rows, Set.of());
+            history.put(code, rows);
+        }
+        return Map.copyOf(history);
+    }
+
+    private static void verifySources(
+            String code, List<Period> periods, List<AccessSegment> rows, Set<String> inserted) {
+        var bySource = new HashMap<String, List<AccessSegment>>();
+        for (var row : rows) {
+            if (!code.equals(row.entitlementCode()))
+                throw new IllegalStateException("wrong schedule entitlement");
+            bySource.computeIfAbsent(row.sourceNo(), ignored -> new ArrayList<>()).add(row);
+        }
+        for (var period : periods) {
+            if (!period.ends().containsKey(code)) continue;
+            var slices = bySource.remove(period.no());
+            if (inserted.contains(period.no())) {
+                if (slices != null)
+                    throw new IllegalStateException("new source already has a schedule");
+                continue;
+            }
+            if (slices == null) throw new IllegalStateException("missing accepted source schedule");
+            if (period.fixed()) {
+                if (!slices.equals(List.of(segment(period, code, period.start(), period.end()))))
+                    throw new IllegalStateException("fixed source calendar changed");
+            } else {
+                long total = 0;
+                for (var slice : slices) {
+                    long start = slice.startsAt().toEpochMilli();
+                    if (start < period.delivered()
+                            || slice.endsAt() == null
+                            || !slice.endsAt().isAfter(slice.startsAt()))
+                        throw new IllegalStateException("invalid independent source interval");
+                    total =
+                            Math.addExact(
+                                    total,
+                                    Math.subtractExact(slice.endsAt().toEpochMilli(), start));
+                }
+                if (total != period.duration())
+                    throw new IllegalStateException("incomplete accepted source duration");
+            }
+        }
+        if (!bySource.isEmpty())
+            throw new IllegalStateException("active segment lacks matching source evidence");
+        Instant tail = null;
+        for (var row :
+                rows.stream()
+                        .filter(s -> s.endsAt() != null)
+                        .sorted(Comparator.comparing(AccessSegment::startsAt))
+                        .toList()) {
+            if (tail != null && row.startsAt().isBefore(tail))
+                throw new IllegalStateException("overlapping accepted finite intervals");
+            tail = row.endsAt();
+        }
+    }
+
     /** Input periods are ordered by the persisted delivery sequence. */
     public static List<AccessSegment> calculate(
             String code, List<Period> periods, List<AccessSegment> old, long cut) {
+        return calculate(code, periods, old, cut, Set.of());
+    }
+
+    static List<AccessSegment> calculate(
+            String code,
+            List<Period> periods,
+            List<AccessSegment> old,
+            long cut,
+            Set<String> inserted) {
+        verifySources(code, periods, old, inserted);
         var result = new ArrayList<AccessSegment>();
         var fixed = new ArrayList<AccessSegment>();
-        var sources = new HashSet<String>();
-        for (var p : periods) if (p.ends().containsKey(code)) sources.add(p.no());
-        for (var s : old)
-            if (!sources.contains(s.sourceNo()))
-                throw new IllegalStateException("active segment lacks matching source evidence");
         for (var p : periods) {
             if (!p.ends().containsKey(code) || !p.fixed()) continue;
             var block = segment(p, code, p.start(), p.end());
