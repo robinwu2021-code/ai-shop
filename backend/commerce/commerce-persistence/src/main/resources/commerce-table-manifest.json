@@ -1,0 +1,3319 @@
+{
+  "candidates": 33,
+  "physical_tables": 32,
+  "external_models": 1,
+  "dictionary_fields": 621,
+  "physical_dictionary_fields": 609,
+  "additional_fields": {
+    "commerce_outbox": [
+      "schema_version",
+      "occurred_at",
+      "published_at"
+    ]
+  },
+  "tables": [
+    {
+      "candidate": "sys_business_type",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "sort",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "plan_catalog_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "remark",
+          "type": "VARCHAR(512)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "sys_business_end",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "end_code",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "scope",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "allowed_business_types",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "release_status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "sale_enabled",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "bootstrap_required",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "route_policy_ref",
+          "type": "VARCHAR(128)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "sys_industry_plan",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "plan_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "tier_code",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "rank",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "current_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "sale_status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "sort",
+          "type": "INT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "sys_industry_plan_version",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "plan_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "plan_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "revision",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "display_name",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "summary",
+          "type": "VARCHAR(512)",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "published_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "published_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "change_note",
+          "type": "VARCHAR(1024)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "sys_plan_version_end",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "plan_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "end_code",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "sort",
+          "type": "INT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_product",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "product_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "category_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "product_type",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "media",
+          "type": "JSON",
+          "nullable": true
+        },
+        {
+          "name": "allowed_business_types",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "sale_status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "sort",
+          "type": "INT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_sku",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "product_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "sku_name",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "current_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "sale_status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "max_per_order",
+          "type": "INT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_sku_version",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "sku_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "revision",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "list_price_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "sale_price_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "allowed_business_types",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "refund_policy_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "published_at",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mall_sku_component",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "sku_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "component_seq",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "component_type",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "plan_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "hardware_sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "period_days",
+          "type": "INT",
+          "nullable": true
+        },
+        {
+          "name": "unit_count",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "allocation_weight",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "is_gift",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "activation_policy",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_sku_stock",
+      "disposition": "external HardwareInventoryPort -> inv_stock_balance (owner/item/location)",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "hardware_sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "warehouse_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "on_hand_qty",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "reserved_qty",
+          "type": "BIGINT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_quote",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "quote_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "buyer_user_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "intent",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "valuation_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "account_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "credit_account_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "pricing_policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "stacking_policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "request_hash",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "line_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "conversion_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "schedule_preview_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "price_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "new_conversion_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "credit_used_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "cash_due_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_order",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "buyer_user_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "quote_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "intent",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "gross_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "discount_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deal_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "credit_used_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "cash_due_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "cash_paid_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "cash_refunded_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "pay_status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "fulfillment_status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "refund_status",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "pay_deadline",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "paid_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "closed_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "idempotency_key",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "request_hash",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_order_item",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "order_item_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "sku_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "unit_price_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "gross_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "discount_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deal_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "sku_snapshot",
+          "type": "JSON",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_order_component",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "order_component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_item_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "component_type",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "target_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "unit_count",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "allocated_deal_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "allocated_cash_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "allocated_credit_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "eligible_basis_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "is_gift",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "fulfillment_status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mall_payment_ref",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "payment_attempt_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "pay_order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "receiver_account_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "payment_business_type",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "amount_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "provider_paid_at",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mall_fulfillment_task",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "task_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "unit_seq",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "task_type",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "attempt_count",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "next_retry_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "result_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "last_error_code",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "lease_until",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mall_shipment",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "shipment_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "shipment_items",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "address_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "carrier_code",
+          "type": "VARCHAR(32)",
+          "nullable": true
+        },
+        {
+          "name": "tracking_no",
+          "type": "VARCHAR(128)",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "shipped_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "signed_at",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mall_refund",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "refund_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "reason",
+          "type": "VARCHAR(1024)",
+          "nullable": false
+        },
+        {
+          "name": "policy_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "requested_cash_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "approved_cash_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "restore_credit_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "pay_refund_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "idempotency_key",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "reviewed_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "reviewed_at",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mall_refund_item",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "refund_item_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "refund_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_component_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "period_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "quantity",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "cash_refund_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "credit_restore_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "rights_action",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "adjustment_snapshot",
+          "type": "JSON",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "commerce_event_inbox",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "source_system",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "event_id",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "aggregate_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "payload_hash",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "received_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "processed_at",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_account",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "entitlement_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "pending_change_order_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "legacy_contract_ref",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "migration_batch_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_period",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entity_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "business_type_code",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "stream_key",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "source_type",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "source_ref_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "fulfillment_task_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "plan_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "plan_version_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "standalone_entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "tier_code",
+          "type": "VARCHAR(16)",
+          "nullable": true
+        },
+        {
+          "name": "delivered_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "delivery_seq",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "granted_duration_ms",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "revoked_duration_ms",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "original_start_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "original_end_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "effective_start_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "effective_end_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "eligible_basis_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "cash_basis_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "credit_basis_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "state",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "converted_by_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "source_policy_snapshot",
+          "type": "JSON",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mch_store_end_grant",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "grant_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "end_code",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "schedule_revision",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "segment_seq",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "schedule_event_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "start_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "end_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "state",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "revoked_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "reason",
+          "type": "VARCHAR(512)",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_reservation",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "reservation_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "quote_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "subscription_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "credit_account_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "valuation_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "pay_deadline",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "source_periods_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "reserved_credit_minor",
+          "type": "BIGINT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_conversion",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "conversion_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "order_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "valuation_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "effective_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "new_period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "converted_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "credit_consumed_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "cash_paid_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_conversion_item",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "conversion_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "source_period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "basis_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "original_duration_ms",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "remaining_duration_ms",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "converted_minor",
+          "type": "BIGINT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_credit_account",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "balance_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "reserved_minor",
+          "type": "BIGINT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_credit_lot",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "credit_lot_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "source_type",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "source_ref_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "issued_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "remaining_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "reserved_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "parent_provenance",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_credit_ledger",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "ledger_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR(8)",
+          "nullable": false
+        },
+        {
+          "name": "credit_lot_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "biz_ref_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "event_seq",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "amount_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "balance_delta_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "reserved_delta_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "order_component_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "reversal_of_ledger_no",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "reason",
+          "type": "VARCHAR(1024)",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "commerce_outbox",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "event_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "aggregate_type",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "aggregate_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "aggregate_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "payload",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "retry_count",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "next_retry_at",
+          "type": "BIGINT",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "mch_subscription_migration_map",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "migration_batch_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "legacy_entity_plan_id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "legacy_contract_ref",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "new_period_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "allocated_basis_minor",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "evidence_ref",
+          "type": "VARCHAR(256)",
+          "nullable": true
+        },
+        {
+          "name": "legacy_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "validation_status",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "cutover_at",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "candidate": "mch_end_schedule_event",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "schedule_event_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entitlement_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "operation_ref_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "reason_type",
+          "type": "VARCHAR(24)",
+          "nullable": false
+        },
+        {
+          "name": "effective_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "before_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "after_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "duration_check_snapshot",
+          "type": "JSON",
+          "nullable": false
+        },
+        {
+          "name": "stacking_policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "candidate": "commerce_expiry_notice",
+      "disposition": "owned",
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "tenant_no",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "updated_by",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "deleted",
+          "type": "TINYINT",
+          "nullable": false
+        },
+        {
+          "name": "notice_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "entitlement_code",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "coverage_end_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "threshold_code",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "due_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "policy_version",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "observed_entitlement_version",
+          "type": "BIGINT",
+          "nullable": false
+        },
+        {
+          "name": "recipient_type",
+          "type": "VARCHAR(32)",
+          "nullable": false
+        },
+        {
+          "name": "recipient_no",
+          "type": "VARCHAR(64)",
+          "nullable": false
+        },
+        {
+          "name": "channel",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "dedup_key",
+          "type": "VARCHAR(128)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)",
+          "nullable": false
+        },
+        {
+          "name": "attempts",
+          "type": "INT",
+          "nullable": false
+        },
+        {
+          "name": "next_attempt_at",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "lease_until",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "provider_message_no",
+          "type": "VARCHAR(128)",
+          "nullable": true
+        },
+        {
+          "name": "last_error_code",
+          "type": "VARCHAR(64)",
+          "nullable": true
+        },
+        {
+          "name": "sent_at",
+          "type": "BIGINT",
+          "nullable": true
+        }
+      ]
+    }
+  ]
+}
