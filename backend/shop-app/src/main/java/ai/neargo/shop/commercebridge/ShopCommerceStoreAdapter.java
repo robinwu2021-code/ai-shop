@@ -7,6 +7,8 @@ import ai.neargo.commerce.api.port.StoreDirectoryPort;
 import ai.neargo.commerce.starter.security.CommerceRoutePolicy.Lane;
 import ai.neargo.commerce.starter.security.CommerceRoutePolicy.Route;
 import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.BizIdentityResolver;
+import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.LoginUser;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -36,6 +38,30 @@ final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
 
     StoreSnapshot current(StoreRef ref) {
         return fresh.execute(tx -> find(ref).filter(s -> ref.equals(s.store())).orElseThrow());
+    }
+
+    FoundationTarget legacyFinanceTarget(
+            LoginUser user, String currentEntity, String storeNo, BizIdentityResolver resolver) {
+        return fresh.execute(
+                tx -> {
+                    var ref = new StoreRef(user.tenantNo(), storeNo);
+                    var store =
+                            find(ref)
+                                    .filter(
+                                            s ->
+                                                    ref.equals(s.store())
+                                                            && s.model() == CommerceModel.LEGACY
+                                                            && currentEntity.equals(s.merchantNo()))
+                                    .orElseThrow(() -> new AccessDenied(AccessStatus.FORBIDDEN));
+                    if (store.status() != StoreStatus.ACTIVE)
+                        throw new AccessDenied(AccessStatus.STORE_DISABLED);
+                    var scope = resolver.resolveStrict(user, storeNo);
+                    if (!storeNo.equals(scope.currentStoreNo())
+                            || !currentEntity.equals(scope.merchantNo())
+                            || !scope.can(BizPerms.FINANCE))
+                        throw new AccessDenied(AccessStatus.FORBIDDEN);
+                    return new FoundationTarget(scope.merchantNo(), storeNo);
+                });
     }
 
     boolean hasPersistedNewStores() {

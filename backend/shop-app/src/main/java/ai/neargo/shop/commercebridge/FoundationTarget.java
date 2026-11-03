@@ -29,28 +29,34 @@ public record FoundationTarget(String entityNo, String storeNo) {
      */
     public static String applicationEntity(
             HttpServletRequest request, String bodyEntity, String bodyStore) {
+        var requested = request.getHeader(ai.neargo.shop.auth.BizContextFilter.STORE_HEADER);
         var target =
                 current()
                         .orElseGet(
-                                () -> {
-                                    var requested =
-                                            request.getHeader(
-                                                    ai.neargo.shop.auth.BizContextFilter
-                                                            .STORE_HEADER);
-                                    if (requested == null || requested.isBlank())
-                                        return new FoundationTarget(null, null);
-                                    var ctx = BizContext.current();
-                                    if (!requested.equals(ctx.currentStoreNo()))
-                                        throw new AccessDenied(AccessStatus.FORBIDDEN);
-                                    return new FoundationTarget(
-                                            BizContext.requireMerchantNo(), requested);
-                                });
+                                () ->
+                                        requested == null || requested.isBlank()
+                                                ? new FoundationTarget(null, null)
+                                                : resolvedContext());
         target.checkRequest(request);
         target.check(bodyEntity, bodyStore);
         return target.entityNo();
     }
 
-    private void checkRequest(HttpServletRequest request) {
+    /** An existing merchant confirms for the current entity. An initial applicant has none. */
+    public static String agreementEntity(
+            HttpServletRequest request, String bodyEntity, String bodyStore) {
+        var target = current().orElseGet(FoundationTarget::resolvedContext);
+        target.checkRequest(request);
+        target.check(bodyEntity, bodyStore);
+        return target.entityNo();
+    }
+
+    private static FoundationTarget resolvedContext() {
+        var ctx = BizContext.current();
+        return new FoundationTarget(ctx.merchantNo(), ctx.currentStoreNo());
+    }
+
+    void checkRequest(HttpServletRequest request) {
         for (String value : java.util.Collections.list(request.getHeaders("X-Store-No")))
             check(null, value);
         for (String value : java.util.Collections.list(request.getHeaders("X-Entity-No")))
@@ -72,7 +78,7 @@ public record FoundationTarget(String entityNo, String storeNo) {
         current().ifPresent(t -> t.check(entity, store));
     }
 
-    private void check(String entity, String store) {
+    public void check(String entity, String store) {
         if (entity != null && !entity.isBlank() && !entity.equals(entityNo)
                 || store != null && !store.isBlank() && !store.equals(storeNo))
             throw new AccessDenied(AccessStatus.FORBIDDEN);

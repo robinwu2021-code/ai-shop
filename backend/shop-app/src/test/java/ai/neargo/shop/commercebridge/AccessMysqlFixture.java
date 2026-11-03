@@ -69,6 +69,8 @@ final class AccessMysqlFixture implements AutoCloseable {
                         "usr_account",
                         "mch_entity",
                         "mch_qualification",
+                        "mch_payment_merchant",
+                        "sys_audit_log",
                         "mch_entity_apply",
                         "mch_entity_plan",
                         "sys_merchant_plan_def",
@@ -97,6 +99,11 @@ final class AccessMysqlFixture implements AutoCloseable {
         var cfg = new MybatisConfiguration();
         var factory = new MybatisSqlSessionFactoryBean();
         factory.setConfiguration(cfg);
+        var plugin = new com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor();
+        plugin.addInnerInterceptor(
+                new com.baomidou.mybatisplus.extension.plugins.inner
+                        .OptimisticLockerInnerInterceptor());
+        factory.setPlugins(plugin);
         factory.setGlobalConfig(
                 new GlobalConfig().setMetaObjectHandler(new AuditMetaObjectHandler()));
         factory.setDataSource(ds);
@@ -109,6 +116,8 @@ final class AccessMysqlFixture implements AutoCloseable {
                         MchAccountMapper.class,
                         MchEntityMapper.class,
                         QualificationMapper.class,
+                        MchPaymentMapper.class,
+                        ai.neargo.shop.platform.mapper.PlatformMappers.AuditLogMapper.class,
                         EntityPlanMapper.class,
                         PlanDefMapper.class,
                         ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class,

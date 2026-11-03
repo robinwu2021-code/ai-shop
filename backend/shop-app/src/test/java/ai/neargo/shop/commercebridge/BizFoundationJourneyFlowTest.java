@@ -471,6 +471,71 @@ class BizFoundationJourneyFlowTest {
     }
 
     @Test
+    void loginAndSelectedProfilePromptOnlyForTheCurrentEntityWhileApplyRemainsAccountWide()
+            throws Exception {
+        String phone = "15965010110";
+        String user = users.ensureUserByPhone(phone);
+        for (String entity : java.util.List.of("R3_A", "R3_B")) {
+            jdbc.update(
+                    "insert into mch_entity(entity_no,name,status,created_at,updated_at) values"
+                        + " (?,?,'ACTIVE',now(),now())",
+                    entity,
+                    entity);
+            jdbc.update(
+                    "insert into"
+                        + " mch_account(mch_account_no,user_no,entity_no,is_owner,created_at,updated_at)"
+                        + " values (?,?,?,1,now(),now())",
+                    entity,
+                    user,
+                    entity);
+            jdbc.update(
+                    "insert into mch_store(entity_no,store_no,created_at,updated_at) values"
+                        + " (?,?,now(),now())",
+                    entity,
+                    entity + "_S");
+        }
+        jdbc.update(
+                "insert into"
+                    + " mch_entity_apply(apply_no,user_no,entity_no,name,submitted_by,created_at,updated_at)"
+                    + " values ('R3_old',?,'R3_A','A','OPS',now(),now())",
+                user);
+        jdbc.update(
+                "insert into"
+                    + " mch_entity_apply(apply_no,user_no,entity_no,name,submitted_by,created_at,updated_at)"
+                    + " values ('R3_apply',?,'R3_B','B','OPS',now(),now())",
+                user);
+        var login = login(phone);
+        assertEquals("R3_A", login.path("merchant").path("merchantNo").asText());
+        assertFalse(login.path("merchant").path("agreementPending").asBoolean());
+        String bearer = "Bearer " + login.path("token").asText();
+        for (String entity : java.util.List.of("R3_A", "R3_B")) {
+            var profile =
+                    json.readTree(
+                                    mvc.perform(
+                                                    get("/biz/merchant/profile")
+                                                            .header("Authorization", bearer)
+                                                            .header("X-Store-No", entity + "_S"))
+                                            .andReturn()
+                                            .getResponse()
+                                            .getContentAsString())
+                            .path("data");
+            assertEquals(entity, profile.path("merchantNo").asText());
+            assertEquals(entity.equals("R3_B"), profile.path("agreementPending").asBoolean());
+            var apply =
+                    json.readTree(
+                                    mvc.perform(
+                                                    get("/biz/merchant/apply")
+                                                            .header("Authorization", bearer)
+                                                            .header("X-Store-No", entity + "_S"))
+                                            .andReturn()
+                                            .getResponse()
+                                            .getContentAsString())
+                            .path("data");
+            assertEquals("R3_apply", apply.path("applyNo").asText());
+        }
+    }
+
+    @Test
     void sessionEntryNeedsNoMerchantDirectoryEvenWhenAnOldSessionIsPresented() throws Exception {
         var user = LoginUser.merchantByUser("owner", "owner");
         var identity =
@@ -497,12 +562,30 @@ class BizFoundationJourneyFlowTest {
                             "/biz/auth/login",
                             "/biz/auth/staff-login",
                             "/biz/auth/logout")) {
+                var policy = new ai.neargo.commerce.starter.security.CommerceRoutePolicy();
+                assertTrue(
+                        policy.allowsAccountRecovery(
+                                policy.match("POST", path), "POST", path, "old-store", null));
                 var request = new org.springframework.mock.web.MockHttpServletRequest("POST", path);
                 request.addHeader("X-Store-No", "old-store");
                 var chain = new org.springframework.mock.web.MockFilterChain();
                 filter.doFilter(
                         request, new org.springframework.mock.web.MockHttpServletResponse(), chain);
                 assertNotNull(chain.getRequest());
+            }
+            for (String path : java.util.List.of("/biz/auth/password", "/biz/auth/login/extra")) {
+                var policy = new ai.neargo.commerce.starter.security.CommerceRoutePolicy();
+                assertFalse(
+                        policy.allowsAccountRecovery(
+                                policy.match("POST", path), "POST", path, "old-store", null));
+                var request = new org.springframework.mock.web.MockHttpServletRequest("POST", path);
+                assertThrows(
+                        AssertionError.class,
+                        () ->
+                                filter.doFilter(
+                                        request,
+                                        new org.springframework.mock.web.MockHttpServletResponse(),
+                                        new org.springframework.mock.web.MockFilterChain()));
             }
         } finally {
             org.springframework.security.core.context.SecurityContextHolder.clearContext();

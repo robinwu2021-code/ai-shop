@@ -212,6 +212,7 @@ public interface OpsService {
      */
     long acceptAgreement(String userNo);
 
+    /** B 端按当前主体确认；null 只匹配尚未关联主体的本人申请。 */
     long acceptAgreement(String userNo, String selectedEntityNo);
 
     /**

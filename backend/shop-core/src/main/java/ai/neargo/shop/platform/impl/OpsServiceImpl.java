@@ -566,12 +566,16 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public long acceptAgreement(String userNo) {
-        return acceptAgreement(userNo, null);
+        return acceptLatestAgreement(userNo, entity -> true);
     }
 
     @Override
     @Transactional
     public long acceptAgreement(String userNo, String selectedEntityNo) {
+        return acceptLatestAgreement(userNo, entity -> java.util.Objects.equals(selectedEntityNo, entity));
+    }
+
+    private long acceptLatestAgreement(String userNo, java.util.function.Predicate<String> permittedEntity) {
         MchEntityApply apply = DataScopeContext.executeWithoutScope(() ->
                 applyMapper.selectOne(Wrappers.<MchEntityApply>lambdaQuery()
                         .eq(MchEntityApply::getUserNo, userNo)
@@ -580,7 +584,7 @@ public class OpsServiceImpl implements OpsService {
             // 没申请过不是异常 —— 他可能只是还没走到那一步
             return 0L;
         }
-        if (selectedEntityNo != null && !selectedEntityNo.equals(apply.getEntityNo()))
+        if (!permittedEntity.test(apply.getEntityNo()))
             throw BizException.of(ErrorCode.FORBIDDEN);
         if (apply.getAgreedAt() != null) {
             // 幂等：已经勾过就原样返回。刷新成现在会让「他什么时候同意的」

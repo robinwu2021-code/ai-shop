@@ -30,9 +30,13 @@ class DisabledCommerceConfiguration {
     }
 
     @Bean
+    ShopCommerceStoreAdapter legacyStoreDirectory(DataSource ds, PlatformTransactionManager manager) {
+        return new ShopCommerceStoreAdapter(ds, manager);
+    }
+
+    @Bean
     @DependsOnDatabaseInitialization
-    DisabledAdmission disabledCommerceAdmission(DataSource ds, PlatformTransactionManager manager) {
-        var stores = new ShopCommerceStoreAdapter(ds, manager);
+    DisabledAdmission disabledCommerceAdmission(ShopCommerceStoreAdapter stores) {
         if (stores.hasPersistedNewStores())
             throw new IllegalStateException(
                     "STORE_V1 requires commerce.enabled on merchant API instances");

@@ -237,6 +237,237 @@ class BizFoundationAccessMysqlTest {
         }
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void legacyFinanceChecksTheActualStoreBeforeWritingOrCallingTheChannel(boolean enabled)
+            throws Exception {
+        try (var f = new AccessMysqlFixture();
+                var web = new AnnotationConfigWebApplicationContext()) {
+            f.jdbc.update(
+                    "update mch_store set commerce_model='LEGACY',is_default=1 where store_no='S'");
+            f.jdbc.update(
+                    "insert into mch_store(entity_no,store_no,created_at,updated_at) values"
+                        + " ('M','B',now(),now())");
+            f.jdbc.update(
+                    "insert into mch_account(mch_account_no,entity_no,created_at,updated_at) values"
+                        + " ('F','M',now(),now())");
+            f.jdbc.update(
+                    "insert into mch_store_role(mch_account_no,store_no,role,created_at,updated_at)"
+                        + " values ('F','S','FIN',now(),now())");
+            f.jdbc.update(
+                    "insert into mch_role(entity_no,role_code,name,perms,created_at,updated_at)"
+                        + " values ('M','FIN','finance','[\"biz:finance\"]',now(),now())");
+            var gateway = mock(ai.neargo.shop.spi.pay.PayApplymentGateway.class);
+            when(gateway.payChannel()).thenReturn("WECHAT");
+            when(gateway.submit(any())).thenReturn("apply-S");
+            when(gateway.query(any()))
+                    .thenReturn(
+                            new ai.neargo.shop.spi.pay.PayApplymentGateway.ApplymentResult(
+                                    "APPLYING", null, null));
+            var service =
+                    new ai.neargo.shop.merchant.service.impl.MerchantPaymentServiceImpl(
+                            f.mybatis.getMapper(
+                                    ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper
+                                            .class),
+                            f.mybatis.getMapper(MchEntityMapper.class),
+                            mock(ai.neargo.shop.spi.platform.MasterDataPort.class),
+                            mock(ai.neargo.shop.spi.pay.PayChannelMasterPort.class),
+                            new tools.jackson.databind.ObjectMapper(),
+                            f.mybatis.getMapper(MchStoreMapper.class),
+                            java.util.List.of(gateway));
+            var mvc =
+                    CommerceAccessSecurityFlowTest.merchantMvc(
+                            f,
+                            web,
+                            enabled,
+                            java.util.Map.of(MerchantPaymentService.class, service));
+            String bearer =
+                    "Bearer "
+                            + f.store.issue(
+                                    TokenStore.SessionData.of(LoginUser.merchant("F", "finance")));
+            String insert =
+                    "insert into"
+                        + " mch_payment_merchant(entity_no,store_no,pay_channel,channel_apply_no,created_at,updated_at)"
+                        + " values ('M',?,'WECHAT',?,now(),now())";
+            f.jdbc.update(insert, "", null);
+            for (String selection : java.util.List.of("", "S", "B")) {
+                var req =
+                        post("/biz/merchant/payment/store/B")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"payChannel\":\"WECHAT\"}");
+                if (!selection.isEmpty()) req.header("X-Store-No", selection);
+                var opened = mvc.perform(req.header("Authorization", bearer));
+                assertEquals(
+                        0,
+                        f.jdbc.queryForObject(
+                                "select count(*) from mch_payment_merchant where store_no='B'",
+                                Integer.class),
+                        "B must not receive an independent payment row");
+                opened.andExpect(status().isForbidden());
+            }
+            f.jdbc.update(insert, "B", "foreign");
+            // Even with membership at B, a finance role at S cannot authorize a B operation.
+            f.jdbc.update(
+                    "insert into mch_store_role(mch_account_no,store_no,role,created_at,updated_at)"
+                        + " values ('F','B','VIEWER',now(),now())");
+
+            String payload =
+                    "{\"payChannel\":\"WECHAT\",\"settleAccountType\":\"PERSONAL_BANK_CARD\",\"settleAccount\":\"test9999\",\"storeNo\":\"%s\"}";
+            for (String selection : java.util.List.of("", "S")) {
+                for (var req :
+                        java.util.List.of(
+                                post("/biz/merchant/payment")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(payload.formatted("B")),
+                                post("/biz/merchant/payment/WECHAT/refresh").param("storeNo", "B"),
+                                post("/biz/merchant/payment/WECHAT/refresh")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("{\"storeNo\":\"B\"}"),
+                                post("/biz/merchant/payment/store/S").param("storeNo", "S", "B"),
+                                get("/biz/merchant/payment").param("entityNo", "foreign"))) {
+                    if (!selection.isEmpty()) req.header("X-Store-No", selection);
+                    mvc.perform(req.header("Authorization", bearer))
+                            .andExpect(status().isForbidden());
+                }
+                var read = get("/biz/merchant/payment").header("Authorization", bearer);
+                if (!selection.isEmpty()) read.header("X-Store-No", selection);
+                mvc.perform(read)
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.length()").value(1))
+                        .andExpect(jsonPath("$[0].storeNo").doesNotExist());
+            }
+            verify(gateway, never()).submit(any());
+            verify(gateway, never()).query(any());
+            assertEquals(
+                    "foreign",
+                    f.jdbc.queryForObject(
+                            "select channel_apply_no from mch_payment_merchant where store_no='B'",
+                            String.class));
+            mvc.perform(
+                            post("/biz/merchant/payment/store/S")
+                                    .header("Authorization", bearer)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"payChannel\":\"WECHAT\"}"))
+                    .andExpect(status().isOk());
+            mvc.perform(
+                            post("/biz/merchant/payment")
+                                    .header("Authorization", bearer)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(payload.formatted("S")))
+                    .andExpect(status().isOk());
+            verify(gateway).submit(any());
+            verify(gateway).query("apply-S");
+            mvc.perform(get("/biz/merchant/payment").header("Authorization", bearer))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(2))
+                    .andExpect(jsonPath("$[?(@.storeNo == 'S')]").exists())
+                    .andExpect(jsonPath("$[?(@.storeNo == 'B')]").doesNotExist());
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+    void agreementUsesCurrentEntityAndPreservesFirstPersonalAcceptance(boolean enabled)
+            throws Exception {
+        try (var f = new AccessMysqlFixture();
+                var web = new AnnotationConfigWebApplicationContext();
+                var services = new AnnotationConfigApplicationContext()) {
+            f.jdbc.update(
+                    "update mch_store set commerce_model='LEGACY',is_default=1 where store_no='S'");
+            f.jdbc.update(
+                    "insert into mch_entity(entity_no,name,created_at,updated_at) values"
+                        + " ('B','other',now(),now())");
+            f.jdbc.update(
+                    "insert into"
+                        + " mch_account(mch_account_no,user_no,entity_no,is_owner,created_at,updated_at)"
+                        + " values ('MB','U','B',1,now(),now())");
+            f.jdbc.update(
+                    "insert into mch_store(entity_no,store_no,created_at,updated_at) values"
+                        + " ('B','SB',now(),now())");
+            f.jdbc.update(
+                    "insert into"
+                        + " mch_entity_apply(apply_no,user_no,entity_no,name,submitted_by,created_at,updated_at)"
+                        + " values ('earlier','U','M','earlier','OPS',now(),now())");
+            f.jdbc.update(
+                    "insert into"
+                        + " mch_entity_apply(apply_no,user_no,entity_no,name,submitted_by,created_at,updated_at)"
+                        + " values ('latest','U','B','other','OPS',now(),now())");
+            registerApplication(f, services, null, mock(OpsAlertPort.class));
+            services.refresh();
+            var mvc =
+                    CommerceAccessSecurityFlowTest.merchantMvc(
+                            f,
+                            web,
+                            enabled,
+                            java.util.Map.of(OpsService.class, services.getBean(OpsService.class)));
+            String bearer =
+                    "Bearer "
+                            + f.store.issue(
+                                    TokenStore.SessionData.of(
+                                            LoginUser.merchantByUser("U", "owner")));
+            for (String selection : java.util.List.of("S", "")) {
+                var req = post("/biz/merchant/agreement/accept").header("Authorization", bearer);
+                if (!selection.isEmpty()) req.header("X-Store-No", selection);
+                var confirmation = mvc.perform(req);
+                assertNull(
+                        f.jdbc.queryForObject(
+                                "select agreed_at from mch_entity_apply where apply_no='latest'",
+                                Long.class),
+                        "selecting A must not consent for B");
+                assertNull(
+                        f.jdbc.queryForObject(
+                                "select agreed_at from mch_entity_apply where apply_no='earlier'",
+                                Long.class));
+                confirmation.andExpect(
+                        jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.FORBIDDEN.code()));
+            }
+            var accept =
+                    post("/biz/merchant/agreement/accept")
+                            .header("Authorization", bearer)
+                            .header("X-Store-No", "SB");
+            String time = mvc.perform(accept).andReturn().getResponse().getContentAsString();
+            assertTrue(Long.parseLong(time) > 0);
+            mvc.perform(accept).andExpect(content().string(time));
+            assertEquals(
+                    1,
+                    f.jdbc.queryForObject(
+                            "select count(*) from sys_audit_log where target='latest'",
+                            Integer.class));
+            // A USR session survives losing merchant membership, but a bound application cannot
+            // become a personal first application through that loss of scope.
+            f.jdbc.update("update mch_account set status='DISABLED' where user_no='U'");
+            f.jdbc.update("insert into mch_entity_apply(apply_no,user_no,entity_no,name,submitted_by,created_at,updated_at)"
+                    + " values ('revoked','U','B','revoked','OPS',now(),now())");
+            var revokedProfile = mvc.perform(get("/biz/merchant/profile").header("Authorization", bearer));
+            var revokedAccept = mvc.perform(post("/biz/merchant/agreement/accept").header("Authorization", bearer));
+            assertAll(
+                    () -> revokedProfile.andExpect(jsonPath("$.agreementPending").value(false)),
+                    () -> revokedAccept.andExpect(jsonPath("$.code").value(ai.neargo.shop.common.ErrorCode.FORBIDDEN.code())),
+                    () -> assertNull(f.jdbc.queryForObject("select agreed_at from mch_entity_apply where apply_no='revoked'", Long.class)));
+            f.jdbc.update(
+                    "insert into usr_account(user_no,created_at,updated_at) values"
+                        + " ('new',now(),now())");
+            f.jdbc.update(
+                    "insert into"
+                        + " mch_entity_apply(apply_no,user_no,name,submitted_by,created_at,updated_at)"
+                        + " values ('first','new','first','OPS',now(),now())");
+            String first =
+                    "Bearer "
+                            + f.store.issue(
+                                    TokenStore.SessionData.of(
+                                            LoginUser.merchantByUser("new", "new")));
+            var firstProfile = get("/biz/merchant/profile").header("Authorization", first);
+            mvc.perform(firstProfile).andExpect(jsonPath("$.agreementPending").value(true));
+            mvc.perform(post("/biz/merchant/agreement/accept").header("Authorization", first))
+                    .andExpect(status().isOk());
+            mvc.perform(firstProfile).andExpect(jsonPath("$.agreementPending").value(false));
+            assertNotNull(
+                    f.jdbc.queryForObject(
+                            "select agreed_at from mch_entity_apply where apply_no='first'",
+                            Long.class));
+        }
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     @EnableTransactionManagement(proxyTargetClass = true)
     static class ApplyTransactions {}
@@ -353,7 +584,9 @@ class BizFoundationAccessMysqlTest {
                                 null,
                                 null,
                                 null,
-                                null,
+                                f.mybatis.getMapper(
+                                        ai.neargo.shop.platform.mapper.PlatformMappers
+                                                .AuditLogMapper.class),
                                 f.mybatis.getMapper(MerchantApplyMapper.class),
                                 port,
                                 null,

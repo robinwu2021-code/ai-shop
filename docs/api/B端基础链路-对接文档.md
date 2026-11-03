@@ -64,23 +64,25 @@
 | POST /biz/upload/image | multipart/form-data，file 必填，证照传 bizType=QUAL，最多 5 MiB。返回 `{url,assetKey}`。选店需要 owner、biz:store 或 biz:finance |
 | POST /biz/qualifications/recognize | 本店 biz:store，multipart 的 file，最多 12 MiB。返回 recognized、docType、side、name、code、legalForm、person、address、issuedAt、validTo、confidence。日期识别字段为文本。未配置识别器或未识别时 recognized=false，可手填 |
 | POST /biz/merchant/apply | USR 本人。门店型建店先开店，选中本人仍有效持有的待补证主体的门店。name、subject、contactName、contactPhone、industry、serviceScope、communityNos、licenses 按字典和主体校验；可带 category、desc、asPickupPoint、qualificationItems。返回 MerchantProfile |
-| GET /biz/merchant/apply | USR 本人最近申请或 null。显示前校对 merchantNo 与所选主体。含 applyNo、status、rejectReason、agreedAt、qualificationItems 等；MCH 员工不能用此接口恢复同号个人申请 |
-| POST /biz/merchant/agreement/accept | USR，选店时校验最近申请属该主体，通常空 body。返回首次同意的毫秒时间，已有协议仍返回原值，缺申请可为 0。显示补勾提示看 profile.agreementPending |
+| GET /biz/merchant/apply | USR 账号的最近申请或 null。切换门店后仍返回同一份，回填前校对 merchantNo 与所选主体。含 applyNo、status、rejectReason、agreedAt、qualificationItems 等；MCH 员工不能用此接口恢复同号个人申请 |
+| POST /biz/merchant/agreement/accept | USR，通常空 body。已有主体时，确认本人最近申请须匹配当前主体；纯旧店省略选店头时取当前默认主体。无主体的个人只能确认本人尚未关联主体的初始申请。返回首次同意的毫秒时间，重试仍返回原值，无申请返回 0。 |
 | GET /biz/qualifications | 本店 biz:store。返回 `{items,grantedCodes,catalog}`，catalog 含所需证照和类目 |
 | POST /biz/qualifications/save | 本店 biz:store。传 `{qualNo?,qualType,qualName,qualNumber?,imageUrl?,expireAt?,entityNo?,storeNo?}`。编辑传本主体 qualNo，返回保存的资质对象。新增无 qualNo，网络超时先重读列表 |
 
 结构化申请项为 `{type,code,imageUrl,expireAt,issuer}`，长期有效传 null，其他有效期传毫秒。上传、OCR 和保存证件后，实际类目授权仍查 grantedCodes。提交前显示协议与用户确认，适配本人的申请。没有显式选店的旧申请仅在无歧义、有效 owner 的纯旧候选时可认领；无候选且建店开关未开启时保留直接申请。跨主体或混合模型应先让用户选择确切待补证店。
 
+登录返回的档案和刷新档案使用相同的补签规则。本人最近一份申请由运营代填且尚未同意时，无主体的个人仅在该申请尚未关联主体时看到 agreementPending=true。已有主体的档案还要求申请的 merchantNo 匹配当前主体。最近申请属于 B 时，在 A 的档案中该字段为 false，在 A 提交确认会被拒绝，即使 A 有一份更早的申请。
+
 档案已有主体时，profile.status 表达主体经营状态（PENDING_LICENSE、ACTIVE 或 SUSPENDED）。申请的 PENDING、REVIEWING、REJECTED、APPROVED 从 application.status 读取；待补证主体提交后档案可继续为 PENDING_LICENSE。没有主体时档案可为 NONE、APPLYING、REVIEWING、REJECTED。查看驳回原因后按可编辑状态补交。提交或审核超时先读本人申请和当前档案，避免重复提交。FREE 生效不能确认资质获批、允许上架或启用收款。
 
 ## 支付商户进件
 
-所有以下端点要求本店 biz:finance，属主有该权限。资金路径 fundsMode 由平台决定。AGGREGATED 的建店、FREE 和补证没有独立渠道进件前置条件；DIRECT 商户按实际通道资格开户。支付商户进件处理订单款项的收款资格，与 Plan 价格、续费和购买相互独立。
+所有以下端点要求本店 biz:finance，属主有该权限。纯 LEGACY 客户端可省略选店头，此时默认门店须通过原有财务岗位检查。路径、query 或 body 指定分店时，服务器再核对该分店属于当前主体、门店有效且本人拥有该店财务权；省略所有店号时按默认门店授权。传了 X-Store-No 时，以该店为准。选店头、路径、query、body 中的店号和主体有冲突时，开户、提交、回查均在调用进件服务前拒绝。资金路径 fundsMode 由平台决定。AGGREGATED 的建店、FREE 和补证没有独立渠道进件前置条件；DIRECT 商户按实际通道资格开户。支付商户进件处理订单款项的收款资格，与 Plan 价格、续费和购买相互独立。
 
 | 方法和路径 | 请求与结果 |
 |---|---|
 | GET /biz/merchant/pay-channel | 返回主体可选通道列表。尚未开通的实际候选通道以 NONE 占位。不要根据示例猜测线上渠道 |
-| GET /biz/merchant/payment | 读取进件记录。显式选店的返回范围仅含该主体默认和所选店。storeNo 为 null 或空串均代表主体默认 |
+| GET /biz/merchant/payment | 读取进件记录。仅返回该主体默认行和本次授权门店行。storeNo 为 null 或空串均代表主体默认 |
 | POST /biz/merchant/payment/store/{storeNo} | 需要独立结算时，先为所选店创建通道占位。可传 `{"payChannel":"<通道码>"}`。重复开户会拒绝，先重读状态 |
 | POST /biz/merchant/payment | 传 payChannel、settleAccountType、settleAccount、licenses、contactName、contactPhone。主体默认不传 storeNo，独立结算传已选店号。可选 entityNo 必须一致。返回 PaymentApplymentVO |
 | POST /biz/merchant/payment/{payChannel}/refresh | 查询当前通道权威结果，独立结算加 `?storeNo=<selectedStoreNo>`。返回同形对象 |

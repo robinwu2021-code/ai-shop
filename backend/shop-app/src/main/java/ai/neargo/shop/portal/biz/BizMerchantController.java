@@ -4,6 +4,8 @@ import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.commercebridge.FoundationTarget;
+import ai.neargo.shop.commercebridge.FoundationPaymentAccess;
+import jakarta.servlet.http.HttpServletRequest;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,6 +64,7 @@ public class BizMerchantController {
     private final BizIdentityResolver identityResolver;
     private final MerchantStoreService storeService;
     private final MerchantPaymentService paymentService;
+    private final FoundationPaymentAccess paymentAccess;
     private final StoreAdminService storeAdminService;
     /** 门店货架 —— 建店时一并摆上，之后商家自己调 */
     private final StoreCategoryService storeCategoryService;
@@ -89,7 +92,7 @@ public class BizMerchantController {
                                  MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,
                                  MerchantStoreService storeService,
-                                 MerchantPaymentService paymentService,
+                                 MerchantPaymentService paymentService, FoundationPaymentAccess paymentAccess,
                                  StoreAdminService storeAdminService,
                                  MerchantStaffService staffService,
                                  MerchantQueryPort merchantQueryPort,
@@ -111,6 +114,7 @@ public class BizMerchantController {
         this.communityQueryPort = communityQueryPort;
         this.storeService = storeService;
         this.paymentService = paymentService;
+        this.paymentAccess = paymentAccess;
         this.storeAdminService = storeAdminService;
         this.staffService = staffService;
         this.debtService = debtService;
@@ -182,6 +186,8 @@ public class BizMerchantController {
 
     private MerchantProfileVO build(BizContext ctx, String phone, String displayName, MerchantApplyVO apply) {
         MerchantAccountVO account = merchantService.account(ctx.merchantNo());
+        boolean pendingAgreement = agreementPending(apply)
+                && java.util.Objects.equals(ctx.merchantNo(), apply.merchantNo());
         // 自提点作用域与商家作用域正交（一家店可以不做自提点），所以读作用域而不是查商家
         List<String> pickups = List.copyOf(ctx.pickupNos());
 
@@ -199,7 +205,7 @@ public class BizMerchantController {
                     // 猜 AGGREGATED 的话，申请人会在入驻页看到「期望收购价」——
                     // 而他此刻还不知道自己会被分到哪条路径
                     null,
-                    agreementPending(apply),
+                    pendingAgreement,
                     0, displayName, null);   // 还没进件，店都没有，谈不上收藏
         }
         return new MerchantProfileVO(
@@ -208,7 +214,7 @@ public class BizMerchantController {
                 phone, !pickups.isEmpty(), pickups.isEmpty() ? null : pickups.get(0),
                 null, account.industry(), account.description(),
                 merchantQueryPort.fundsModeOf(account.merchantNo()),
-                agreementPending(apply),
+                pendingAgreement,
                 storeFavoriteService.countByMerchant(account.merchantNo()), displayName, ctx.currentStoreNo());
     }
 
@@ -268,11 +274,11 @@ public class BizMerchantController {
      * @return 同意的时刻（毫秒）；没有申请单时 0
      */
     @PostMapping("/biz/merchant/agreement/accept")
-    public long acceptAgreement(@RequestBody(required = false) Target target) {
-        if (target != null) FoundationTarget.requireMatching(target.entityNo(), target.storeNo());
+    public long acceptAgreement(@RequestBody(required = false) Target target, HttpServletRequest request) {
         var user = BizAuthController.personalUser();
-        return opsService.acceptAgreement(user.userNo(), FoundationTarget.current()
-                .map(FoundationTarget::entityNo).orElse(null));
+        String entity = FoundationTarget.agreementEntity(request, target == null ? null : target.entityNo(),
+                target == null ? null : target.storeNo());
+        return opsService.acceptAgreement(user.userNo(), entity);
     }
 
     @PostMapping("/biz/merchant/apply")
@@ -553,11 +559,11 @@ public class BizMerchantController {
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/payment")
-    public List<PaymentApplymentVO> payments(@RequestParam(required = false) String entityNo) {
-        var rows = paymentService.list(ownedEntity(entityNo));
-        return FoundationTarget.current().map(target -> rows.stream()
+    public List<PaymentApplymentVO> payments(@RequestParam(required = false) String entityNo, HttpServletRequest request) {
+        var target = paymentAccess.require(request, entityNo, null);
+        return paymentService.list(target.entityNo()).stream()
                 .filter(row -> nz(row.storeNo()).isBlank() || target.storeNo().equals(row.storeNo()))
-                .toList()).orElse(rows);
+                .toList();
     }
 
     /**
@@ -595,8 +601,8 @@ public class BizMerchantController {
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @GetMapping("/biz/merchant/pay-channel")
-    public List<PaymentApplymentVO> payChannels(@RequestParam(required = false) String entityNo) {
-        return paymentService.availableChannels(ownedEntity(entityNo));
+    public List<PaymentApplymentVO> payChannels(@RequestParam(required = false) String entityNo, HttpServletRequest request) {
+        return paymentService.availableChannels(paymentAccess.require(request, entityNo, null).entityNo());
     }
 
     /**
@@ -608,12 +614,13 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment")
     public PaymentApplymentVO submitPayment(@RequestBody PaymentReq req,
-            @RequestParam(required = false) String storeNo) {
-        FoundationTarget.requireMatching(req.entityNo(), req.storeNo());
-        return paymentService.submit(ownedEntity(req.entityNo()),
+            @RequestParam(required = false) String storeNo, HttpServletRequest request) {
+        String rowStore = nz(req.storeNo()).isBlank() ? storeNo : req.storeNo();
+        var target = paymentAccess.require(request, req.entityNo(), rowStore);
+        return paymentService.submit(target.entityNo(),
                 new MerchantPaymentService.SubmitCommand(
                         req.payChannel(), req.settleAccountType(), req.settleAccount(),
-                        req.licenses(), req.contactName(), req.contactPhone(), paymentStore(req.storeNo(), storeNo, req.storeNo())));
+                        req.licenses(), req.contactName(), req.contactPhone(), rowStore));
     }
 
     /**
@@ -625,9 +632,10 @@ public class BizMerchantController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.FINANCE + "')")
     @PostMapping("/biz/merchant/payment/store/{storeNo}")
     public PaymentApplymentVO openStorePayment(@PathVariable String storeNo,
-                                               @RequestBody(required = false) PaymentReq req) {
-        if (req != null) FoundationTarget.requireMatching(req.entityNo(), req.storeNo());
-        return paymentService.openForStore(BizContext.requireMerchantNo(), storeNo,
+                                               @RequestBody(required = false) PaymentReq req, HttpServletRequest request) {
+        var target = paymentAccess.require(request, null, storeNo);
+        if (req != null) target.check(req.entityNo(), req.storeNo());
+        return paymentService.openForStore(target.entityNo(), storeNo,
                 req == null ? null : req.payChannel());
     }
 
@@ -641,17 +649,11 @@ public class BizMerchantController {
     @PostMapping("/biz/merchant/payment/{payChannel}/refresh")
     public PaymentApplymentVO refreshPayment(@PathVariable String payChannel,
                                              @RequestParam(required = false) String storeNo,
-                                             @RequestBody(required = false) Target target) {
-        if (target != null) FoundationTarget.requireMatching(target.entityNo(), target.storeNo());
-        return paymentService.refresh(BizContext.requireMerchantNo(), payChannel,
-                paymentStore(target == null ? null : target.storeNo(), storeNo, storeNo));
-    }
-
-    private String paymentStore(String body, String query, String legacyTarget) {
-        if (FoundationTarget.current().isEmpty()) return legacyTarget;
-        if (!nz(body).isBlank() && !nz(query).isBlank() && !body.equals(query))
-            throw BizException.of(ErrorCode.FORBIDDEN);
-        return nz(body).isBlank() ? query : body;
+                                             @RequestBody(required = false) Target target,
+                                             HttpServletRequest request) {
+        String rowStore = target == null || nz(target.storeNo()).isBlank() ? storeNo : target.storeNo();
+        var selected = paymentAccess.require(request, target == null ? null : target.entityNo(), rowStore);
+        return paymentService.refresh(selected.entityNo(), payChannel, rowStore);
     }
 
     /**
