@@ -88,8 +88,8 @@ public final class JdbcCommerceEventPersistence implements CommerceEventPersiste
             var same =
                     jdbc.query(
                             "SELECT event_id FROM commerce_event_inbox WHERE tenant_no=? AND"
-                                + " source_system=? AND event_id=? AND event_type=? AND"
-                                + " aggregate_no=? AND payload_hash=? FOR UPDATE",
+                                    + " source_system=? AND event_id=? AND event_type=? AND"
+                                    + " aggregate_no=? AND payload_hash=? FOR UPDATE",
                             (rs, n) -> rs.getString(1),
                             f.tenantNo(),
                             f.producer(),
@@ -114,7 +114,7 @@ public final class JdbcCommerceEventPersistence implements CommerceEventPersiste
         var rows =
                 jdbc.query(
                         "SELECT * FROM commerce_outbox WHERE tenant_no=? AND status='PENDING' AND"
-                            + " id>? ORDER BY id LIMIT ?",
+                                + " id>? ORDER BY id LIMIT ?",
                         (rs, n) ->
                                 new Pending(
                                         rs.getLong("id"),
@@ -143,8 +143,8 @@ public final class JdbcCommerceEventPersistence implements CommerceEventPersiste
         JdbcWriteGuard.require(ds, tenant);
         jdbc.update(
                 "UPDATE commerce_outbox SET"
-                    + " status='PUBLISHED',published_at=?,updated_at=?,version=version+1 WHERE"
-                    + " tenant_no=? AND event_no=? AND status='PENDING'",
+                        + " status='PUBLISHED',published_at=?,updated_at=?,version=version+1 WHERE"
+                        + " tenant_no=? AND event_no=? AND status='PENDING'",
                 publishedAt.toEpochMilli(),
                 now(),
                 tenant,

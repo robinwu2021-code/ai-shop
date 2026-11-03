@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.reliability;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class MchEndScheduleEventRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(MchEndScheduleEventRecord row) {
+    public long insert(MchEndScheduleEventRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `mch_end_schedule_event`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`schedule_event_no`,`store_no`,`entitlement_code`,`entitlement_version`,`operation_ref_no`,`reason_type`,`effective_at`,`before_snapshot`,`after_snapshot`,`duration_check_snapshot`,`stacking_policy_version`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.catalog;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class SysBusinessEndRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(SysBusinessEndRecord row) {
+    public long insert(SysBusinessEndRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `sys_business_end`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`end_code`,`entitlement_code`,`name`,`scope`,`allowed_business_types`,`release_status`,`sale_enabled`,`bootstrap_required`,`enabled`,`route_policy_ref`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

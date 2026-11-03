@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.merchandise;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class MallProductRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(MallProductRecord row) {
+    public long insert(MallProductRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `mall_product`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`product_no`,`category_code`,`product_type`,`name`,`description`,`media`,`allowed_business_types`,`sale_status`,`sort`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

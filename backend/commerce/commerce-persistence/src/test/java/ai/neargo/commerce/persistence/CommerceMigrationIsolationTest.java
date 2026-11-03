@@ -29,7 +29,7 @@ class CommerceMigrationIsolationTest {
             Files.writeString(
                     host.resolve("V100__host.sql"),
                     "CREATE TABLE host_store (id BIGINT PRIMARY KEY); INSERT INTO host_store VALUES"
-                        + " (7);");
+                            + " (7);");
             host(db).migrate();
             migrate(runner(db));
             migrate(runner(db));
@@ -37,7 +37,7 @@ class CommerceMigrationIsolationTest {
                     "4",
                     db.jdbc.queryForObject(
                             "SELECT version FROM commerce_schema_history WHERE success=1 ORDER BY"
-                                + " installed_rank DESC LIMIT 1",
+                                    + " installed_rank DESC LIMIT 1",
                             String.class));
             Files.writeString(
                     host.resolve("V101__host_later.sql"),
@@ -52,7 +52,7 @@ class CommerceMigrationIsolationTest {
                     "101",
                     db.jdbc.queryForObject(
                             "SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC"
-                                + " LIMIT 1",
+                                    + " LIMIT 1",
                             String.class));
             assertEquals(
                     0,

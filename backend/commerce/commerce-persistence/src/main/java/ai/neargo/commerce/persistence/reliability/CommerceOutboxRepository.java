@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.reliability;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class CommerceOutboxRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(CommerceOutboxRecord row) {
+    public long insert(CommerceOutboxRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `commerce_outbox`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`event_no`,`aggregate_type`,`aggregate_no`,`aggregate_version`,`event_type`,`payload`,`status`,`retry_count`,`next_retry_at`,`schema_version`,`occurred_at`,`published_at`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

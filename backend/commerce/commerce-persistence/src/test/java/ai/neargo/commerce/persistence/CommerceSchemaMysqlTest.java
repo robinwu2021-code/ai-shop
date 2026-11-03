@@ -432,19 +432,19 @@ class CommerceSchemaMysqlTest {
             db.jdbc.execute(Rows.mall_quote("A"));
             assertThrows(
                     org.springframework.dao.DataAccessException.class,
-                    () -> db.jdbc.update("UPDATE `mall_quote` SET deleted=1 WHERE tenant_no=\"A\""),
+                    () -> db.jdbc.update("UPDATE `mall_quote` SET deleted=1 WHERE tenant_no='A'"),
                     "mall_quote");
             db.jdbc.execute(Rows.mall_order("A"));
             assertThrows(
                     org.springframework.dao.DataAccessException.class,
-                    () -> db.jdbc.update("UPDATE `mall_order` SET deleted=1 WHERE tenant_no=\"A\""),
+                    () -> db.jdbc.update("UPDATE `mall_order` SET deleted=1 WHERE tenant_no='A'"),
                     "mall_order");
             db.jdbc.execute(Rows.mall_order_item("A"));
             assertThrows(
                     org.springframework.dao.DataAccessException.class,
                     () ->
                             db.jdbc.update(
-                                    "UPDATE `mall_order_item` SET deleted=1 WHERE tenant_no=\"A\""),
+                                    "UPDATE `mall_order_item` SET deleted=1 WHERE tenant_no='A'"),
                     "mall_order_item");
             db.jdbc.execute(Rows.mall_order_component("A"));
             assertThrows(
@@ -452,7 +452,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mall_order_component` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mall_order_component");
             db.jdbc.execute(Rows.mall_payment_ref("A"));
             assertThrows(
@@ -460,7 +460,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mall_payment_ref` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mall_payment_ref");
             db.jdbc.execute(Rows.mall_fulfillment_task("A"));
             assertThrows(
@@ -468,21 +468,21 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mall_fulfillment_task` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mall_fulfillment_task");
             db.jdbc.execute(Rows.mall_shipment("A"));
             assertThrows(
                     org.springframework.dao.DataAccessException.class,
                     () ->
                             db.jdbc.update(
-                                    "UPDATE `mall_shipment` SET deleted=1 WHERE tenant_no=\"A\""),
+                                    "UPDATE `mall_shipment` SET deleted=1 WHERE tenant_no='A'"),
                     "mall_shipment");
             db.jdbc.execute(Rows.mall_refund("A"));
             assertThrows(
                     org.springframework.dao.DataAccessException.class,
                     () ->
                             db.jdbc.update(
-                                    "UPDATE `mall_refund` SET deleted=1 WHERE tenant_no=\"A\""),
+                                    "UPDATE `mall_refund` SET deleted=1 WHERE tenant_no='A'"),
                     "mall_refund");
             db.jdbc.execute(Rows.mall_refund_item("A"));
             assertThrows(
@@ -490,7 +490,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mall_refund_item` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mall_refund_item");
             db.jdbc.execute(Rows.commerce_event_inbox("A"));
             assertThrows(
@@ -498,7 +498,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `commerce_event_inbox` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "commerce_event_inbox");
             db.jdbc.execute(Rows.mch_subscription_account("A"));
             assertThrows(
@@ -506,7 +506,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_account` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_account");
             db.jdbc.execute(Rows.mch_subscription_period("A"));
             assertThrows(
@@ -514,7 +514,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_period` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_period");
             db.jdbc.execute(Rows.mch_store_end_grant("A"));
             assertThrows(
@@ -522,7 +522,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_store_end_grant` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_store_end_grant");
             db.jdbc.execute(Rows.mch_subscription_reservation("A"));
             assertThrows(
@@ -530,7 +530,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_reservation` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_reservation");
             db.jdbc.execute(Rows.mch_subscription_conversion("A"));
             assertThrows(
@@ -538,7 +538,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_conversion` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_conversion");
             db.jdbc.execute(Rows.mch_subscription_conversion_item("A"));
             assertThrows(
@@ -546,7 +546,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_conversion_item` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_conversion_item");
             db.jdbc.execute(Rows.mch_subscription_credit_account("A"));
             assertThrows(
@@ -554,7 +554,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_credit_account` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_credit_account");
             db.jdbc.execute(Rows.mch_subscription_credit_lot("A"));
             assertThrows(
@@ -562,7 +562,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_credit_lot` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_credit_lot");
             db.jdbc.execute(Rows.mch_subscription_credit_ledger("A"));
             assertThrows(
@@ -570,14 +570,14 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_credit_ledger` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_credit_ledger");
             db.jdbc.execute(Rows.commerce_outbox("A"));
             assertThrows(
                     org.springframework.dao.DataAccessException.class,
                     () ->
                             db.jdbc.update(
-                                    "UPDATE `commerce_outbox` SET deleted=1 WHERE tenant_no=\"A\""),
+                                    "UPDATE `commerce_outbox` SET deleted=1 WHERE tenant_no='A'"),
                     "commerce_outbox");
             db.jdbc.execute(Rows.mch_subscription_migration_map("A"));
             assertThrows(
@@ -585,7 +585,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_subscription_migration_map` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_subscription_migration_map");
             db.jdbc.execute(Rows.mch_end_schedule_event("A"));
             assertThrows(
@@ -593,7 +593,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `mch_end_schedule_event` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "mch_end_schedule_event");
             db.jdbc.execute(Rows.commerce_expiry_notice("A"));
             assertThrows(
@@ -601,7 +601,7 @@ class CommerceSchemaMysqlTest {
                     () ->
                             db.jdbc.update(
                                     "UPDATE `commerce_expiry_notice` SET deleted=1 WHERE"
-                                        + " tenant_no=\"A\""),
+                                            + " tenant_no='A'"),
                     "commerce_expiry_notice");
         }
     }

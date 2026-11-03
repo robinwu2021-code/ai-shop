@@ -33,7 +33,7 @@ class CommerceTransactionTest {
                             () ->
                                     db.jdbc.update(
                                             "UPDATE mch_subscription_credit_account SET"
-                                                + " balance_minor=100 WHERE tenant_no='A'"),
+                                                    + " balance_minor=100 WHERE tenant_no='A'"),
                             () -> db.jdbc.execute(Rows.mch_subscription_credit_lot("A")),
                             () -> db.jdbc.execute(Rows.mch_subscription_credit_ledger("A")),
                             () -> db.jdbc.execute(Rows.mch_end_schedule_event("A")),
@@ -57,7 +57,7 @@ class CommerceTransactionTest {
                                                                 if (i + 1 == failAfter)
                                                                     throw new IllegalStateException(
                                                                             "injected delivery"
-                                                                                + " failure at "
+                                                                                    + " failure at "
                                                                                     + failAfter);
                                                             }
                                                             return null;
@@ -79,13 +79,13 @@ class CommerceTransactionTest {
                     0L,
                     db.jdbc.queryForObject(
                             "SELECT balance_minor FROM mch_subscription_credit_account WHERE"
-                                + " tenant_no='A'",
+                                    + " tenant_no='A'",
                             Long.class));
             assertEquals(
                     0L,
                     db.jdbc.queryForObject(
                             "SELECT entitlement_version FROM mch_subscription_account WHERE"
-                                + " tenant_no='A'",
+                                    + " tenant_no='A'",
                             Long.class));
         }
     }
@@ -115,8 +115,8 @@ class CommerceTransactionTest {
                                                     started.countDown();
                                                     db.jdbc.update(
                                                             "UPDATE mch_subscription_account SET"
-                                                                + " entitlement_version=1 WHERE"
-                                                                + " tenant_no='A'");
+                                                                    + " entitlement_version=1 WHERE"
+                                                                    + " tenant_no='A'");
                                                 }));
                                 assertDoesNotThrow(
                                         () ->
@@ -220,14 +220,14 @@ class CommerceTransactionTest {
                                 0L,
                                 db.jdbc.queryForObject(
                                         "SELECT entitlement_version FROM mch_subscription_account"
-                                            + " WHERE tenant_no='A'",
+                                                + " WHERE tenant_no='A'",
                                         Long.class));
                         java.util.concurrent.CompletableFuture.runAsync(
                                         () ->
                                                 db.jdbc.update(
                                                         "UPDATE mch_subscription_account SET"
-                                                            + " entitlement_version=17 WHERE"
-                                                            + " tenant_no='A'"))
+                                                                + " entitlement_version=17 WHERE"
+                                                                + " tenant_no='A'"))
                                 .join();
                         assertEquals(
                                 17L,
@@ -253,15 +253,15 @@ class CommerceTransactionTest {
                                 0L,
                                 db.jdbc.queryForObject(
                                         "SELECT entitlement_version FROM mch_subscription_account"
-                                            + " WHERE tenant_no='A'",
+                                                + " WHERE tenant_no='A'",
                                         Long.class));
                         var future =
                                 java.util.concurrent.CompletableFuture.runAsync(
                                         () ->
                                                 db.jdbc.update(
                                                         "UPDATE mch_subscription_account SET"
-                                                            + " entitlement_version=9 WHERE"
-                                                            + " tenant_no='A'"));
+                                                                + " entitlement_version=9 WHERE"
+                                                                + " tenant_no='A'"));
                         future.join();
                         var repo = new JdbcSubscriptionAccountRepository(db.ds);
                         var snapshot =

@@ -33,7 +33,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "sys_business_type");
@@ -66,7 +66,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "sys_business_end");
@@ -96,7 +96,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "sys_industry_plan");
@@ -130,7 +130,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "sys_industry_plan_version");
@@ -158,7 +158,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "sys_plan_version_end");
@@ -190,7 +190,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_product");
@@ -218,7 +218,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_sku");
@@ -252,7 +252,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_sku_version");
@@ -288,7 +288,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_sku_component");
@@ -332,7 +332,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_quote");
@@ -377,7 +377,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_order");
@@ -409,7 +409,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_order_item");
@@ -445,7 +445,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_order_component");
@@ -476,7 +476,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_payment_ref");
@@ -510,7 +510,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_fulfillment_task");
@@ -541,7 +541,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_shipment");
@@ -576,7 +576,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_refund");
@@ -608,7 +608,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mall_refund_item");
@@ -640,7 +640,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "commerce_event_inbox");
@@ -672,7 +672,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mch_subscription_account");
@@ -723,7 +723,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mch_subscription_period");
@@ -760,7 +760,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mch_store_end_grant");
@@ -796,7 +796,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(
@@ -834,7 +834,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(
@@ -866,7 +866,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(
@@ -898,7 +898,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(
@@ -936,7 +936,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(
@@ -975,7 +975,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(
@@ -1012,7 +1012,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "commerce_outbox");
@@ -1047,7 +1047,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(
@@ -1083,7 +1083,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "mch_end_schedule_event");
@@ -1127,7 +1127,7 @@ class CommerceTypedRepositoryTest {
                 assertThrows(IllegalStateException.class, () -> repo.insert(row));
                 u.required(
                         () -> {
-                            repo.insert(row);
+                            assertEquals(1L, repo.insert(row));
                             return null;
                         });
                 assertEquals(row, repo.findById("A", 1).orElseThrow(), "commerce_expiry_notice");

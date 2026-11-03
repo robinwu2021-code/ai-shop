@@ -20,7 +20,7 @@ public final class JdbcSubscriptionAccountRepository implements SubscriptionAcco
         JdbcWriteGuard.tenant(s.tenantNo());
         return jdbc.queryForObject(
                 "SELECT entitlement_version FROM mch_subscription_account WHERE tenant_no=? AND"
-                    + " store_no=? FOR SHARE",
+                        + " store_no=? FOR SHARE",
                 Long.class,
                 s.tenantNo(),
                 s.storeNo());

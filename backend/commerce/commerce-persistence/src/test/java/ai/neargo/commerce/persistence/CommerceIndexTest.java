@@ -132,7 +132,7 @@ class CommerceIndexTest {
                                     "mch_store_end_grant")
                             .contains("tenant_no,store_no,entitlement_code,state,start_at,end_at"),
                     "mch_store_end_grant"
-                        + " tenant_no,store_no,entitlement_code,state,start_at,end_at");
+                            + " tenant_no,store_no,entitlement_code,state,start_at,end_at");
             assertTrue(
                     db.jdbc
                             .queryForList(
@@ -221,6 +221,38 @@ class CommerceIndexTest {
                                     "commerce_expiry_notice")
                             .contains("tenant_no,status,lease_until"),
                     "commerce_expiry_notice tenant_no,status,lease_until");
+        }
+    }
+
+    @Test
+    void allDeclaredUniqueKeysAreTenantScoped() throws Exception {
+        try (var db = new MysqlDatabase()) {
+            db.migrate();
+            var expected =
+                    new String(
+                                    getClass()
+                                            .getResourceAsStream(
+                                                    "/expected-commerce-unique-keys.tsv")
+                                            .readAllBytes(),
+                                    java.nio.charset.StandardCharsets.UTF_8)
+                            .lines()
+                            .toList();
+            assertEquals(58, expected.size());
+            for (var line : expected) {
+                var parts = line.split("\t");
+                assertTrue(
+                        db.jdbc
+                                .queryForList(
+                                        "SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index)"
+                                            + " FROM information_schema.statistics WHERE"
+                                            + " table_schema=? AND table_name=? AND non_unique=0"
+                                            + " AND index_name<>'PRIMARY' GROUP BY index_name",
+                                        String.class,
+                                        db.name,
+                                        parts[0])
+                                .contains(parts[1]),
+                        line);
+            }
         }
     }
 }

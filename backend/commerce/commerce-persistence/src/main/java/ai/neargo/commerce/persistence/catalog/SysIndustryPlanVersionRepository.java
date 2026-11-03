@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.catalog;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class SysIndustryPlanVersionRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(SysIndustryPlanVersionRecord row) {
+    public long insert(SysIndustryPlanVersionRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `sys_industry_plan_version`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`plan_version_no`,`plan_no`,`revision`,`display_name`,`summary`,`status`,`policy_version`,`published_at`,`published_by`,`change_note`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

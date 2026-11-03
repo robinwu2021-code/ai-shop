@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.reliability;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class MchSubscriptionMigrationMapRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(MchSubscriptionMigrationMapRecord row) {
+    public long insert(MchSubscriptionMigrationMapRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `mch_subscription_migration_map`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`migration_batch_no`,`legacy_entity_plan_id`,`legacy_contract_ref`,`store_no`,`new_period_no`,`allocated_basis_minor`,`evidence_ref`,`legacy_snapshot`,`validation_status`,`cutover_at`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

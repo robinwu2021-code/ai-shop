@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.subscription;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class MchSubscriptionCreditLotRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(MchSubscriptionCreditLotRecord row) {
+    public long insert(MchSubscriptionCreditLotRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `mch_subscription_credit_lot`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`credit_lot_no`,`store_no`,`currency`,`source_type`,`source_ref_no`,`issued_minor`,`remaining_minor`,`reserved_minor`,`parent_provenance`,`expires_at`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

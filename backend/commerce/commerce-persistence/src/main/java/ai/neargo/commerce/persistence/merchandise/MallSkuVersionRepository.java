@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.merchandise;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class MallSkuVersionRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(MallSkuVersionRecord row) {
+    public long insert(MallSkuVersionRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `mall_sku_version`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`sku_version_no`,`sku_no`,`revision`,`status`,`currency`,`list_price_minor`,`sale_price_minor`,`allowed_business_types`,`refund_policy_snapshot`,`published_at`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

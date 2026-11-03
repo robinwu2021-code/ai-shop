@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.subscription;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class MchStoreEndGrantRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(MchStoreEndGrantRecord row) {
+    public long insert(MchStoreEndGrantRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `mch_store_end_grant`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`grant_no`,`store_no`,`period_no`,`end_code`,`entitlement_code`,`schedule_revision`,`segment_seq`,`schedule_event_no`,`start_at`,`end_at`,`state`,`revoked_at`,`reason`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.trade;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class MallPaymentRefRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(MallPaymentRefRecord row) {
+    public long insert(MallPaymentRefRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `mall_payment_ref`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`payment_attempt_no`,`order_no`,`pay_order_no`,`receiver_account_no`,`payment_business_type`,`currency`,`amount_minor`,`status`,`provider_paid_at`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",

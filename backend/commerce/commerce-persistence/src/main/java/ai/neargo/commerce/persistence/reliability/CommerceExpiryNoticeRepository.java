@@ -1,5 +1,6 @@
 package ai.neargo.commerce.persistence.reliability;
 
+import ai.neargo.commerce.persistence.JdbcInsert;
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -18,9 +19,10 @@ public final class CommerceExpiryNoticeRepository {
         jdbc = new JdbcTemplate(ds);
     }
 
-    public void insert(CommerceExpiryNoticeRecord row) {
+    public long insert(CommerceExpiryNoticeRecord row) {
         JdbcWriteGuard.require(dataSource, row.tenantNo());
-        jdbc.update(
+        return JdbcInsert.insert(
+                jdbc,
                 "INSERT INTO `commerce_expiry_notice`"
                     + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`notice_no`,`store_no`,`entitlement_code`,`coverage_end_at`,`threshold_code`,`due_at`,`expires_at`,`policy_version`,`observed_entitlement_version`,`recipient_type`,`recipient_no`,`channel`,`dedup_key`,`status`,`attempts`,`next_attempt_at`,`lease_until`,`provider_message_no`,`last_error_code`,`sent_at`)"
                     + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
