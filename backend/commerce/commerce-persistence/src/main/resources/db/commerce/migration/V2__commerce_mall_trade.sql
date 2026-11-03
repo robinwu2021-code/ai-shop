@@ -261,3 +261,21 @@ CREATE TABLE `commerce_event_inbox` (
   UNIQUE KEY uk_0 (`tenant_no`,`source_system`,`event_id`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
+CREATE INDEX idx_0 ON `mall_quote` (`tenant_no`,`store_no`,`created_at`);
+
+CREATE INDEX idx_1 ON `mall_quote` (`tenant_no`,`status`,`expires_at`);
+
+CREATE INDEX idx_2 ON `mall_order` (`tenant_no`,`store_no`,`created_at`,`id`);
+
+CREATE INDEX idx_3 ON `mall_order` (`tenant_no`,`pay_status`,`pay_deadline`);
+
+CREATE INDEX idx_4 ON `mall_payment_ref` (`tenant_no`,`order_no`,`created_at`);
+
+CREATE INDEX idx_5 ON `mall_fulfillment_task` (`tenant_no`,`status`,`next_retry_at`);
+
+CREATE INDEX idx_6 ON `mall_shipment` (`tenant_no`,`order_no`);
+
+CREATE INDEX idx_7 ON `mall_refund` (`tenant_no`,`status`,`updated_at`);
+
+CREATE INDEX idx_8 ON `mall_refund_item` (`tenant_no`,`order_component_no`,`status`);

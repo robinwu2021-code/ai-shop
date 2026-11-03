@@ -108,3 +108,11 @@ CREATE TABLE `commerce_expiry_notice` (
   UNIQUE KEY uk_1 (`tenant_no`,`dedup_key`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
+CREATE INDEX idx_15 ON `commerce_outbox` (`tenant_no`,`status`,`next_retry_at`);
+
+CREATE INDEX idx_16 ON `commerce_expiry_notice` (`tenant_no`,`status`,`next_attempt_at`);
+
+CREATE INDEX idx_17 ON `commerce_expiry_notice` (`tenant_no`,`store_no`,`entitlement_code`,`coverage_end_at`);
+
+CREATE INDEX idx_18 ON `commerce_expiry_notice` (`tenant_no`,`status`,`lease_until`);

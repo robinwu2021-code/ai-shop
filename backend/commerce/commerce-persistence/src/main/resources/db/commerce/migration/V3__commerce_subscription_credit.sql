@@ -228,3 +228,15 @@ CREATE TABLE `mch_subscription_credit_ledger` (
   UNIQUE KEY uk_1 (`tenant_no`,`event_type`,`biz_ref_no`,`credit_lot_no`,`event_seq`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin;
+
+CREATE INDEX idx_9 ON `mch_subscription_period` (`tenant_no`,`store_no`,`stream_key`,`state`,`effective_start_at`,`effective_end_at`);
+
+CREATE INDEX idx_10 ON `mch_store_end_grant` (`tenant_no`,`store_no`,`entitlement_code`,`state`,`start_at`,`end_at`);
+
+CREATE INDEX idx_11 ON `mch_subscription_reservation` (`tenant_no`,`status`,`pay_deadline`);
+
+CREATE INDEX idx_12 ON `mch_subscription_credit_lot` (`tenant_no`,`store_no`,`currency`,`expires_at`,`id`);
+
+CREATE INDEX idx_13 ON `mch_subscription_credit_ledger` (`tenant_no`,`store_no`,`created_at`,`id`);
+
+CREATE INDEX idx_14 ON `mch_subscription_credit_ledger` (`tenant_no`,`order_component_no`);

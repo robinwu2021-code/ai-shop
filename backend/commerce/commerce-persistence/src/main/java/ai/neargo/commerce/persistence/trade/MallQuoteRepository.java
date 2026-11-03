@@ -1,12 +1,100 @@
 package ai.neargo.commerce.persistence.trade;
-import java.util.*;
-import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
+
 import ai.neargo.commerce.persistence.JdbcWriteGuard;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.util.*;
+
+import javax.sql.DataSource;
+
 /** All operations require a tenant; inserts participate in the caller's local transaction. */
 public final class MallQuoteRepository {
- private final JdbcTemplate jdbc; private final DataSource dataSource;
- public MallQuoteRepository(DataSource ds) { dataSource=ds; jdbc=new JdbcTemplate(ds); }
- public void insert(MallQuoteRecord row) { JdbcWriteGuard.require(dataSource, row.tenantNo()); jdbc.update("INSERT INTO `mall_quote` (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`quote_no`,`store_no`,`entity_no`,`buyer_user_no`,`intent`,`business_type_code`,`currency`,`valuation_at`,`expires_at`,`account_version`,`credit_account_version`,`pricing_policy_version`,`stacking_policy_version`,`request_hash`,`line_snapshot`,`conversion_snapshot`,`schedule_preview_snapshot`,`price_minor`,`new_conversion_minor`,`credit_used_minor`,`cash_due_minor`,`status`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row.tenantNo(),row.createdAt(),row.updatedAt(),row.createdBy(),row.updatedBy(),row.version(),row.deleted(),row.quoteNo(),row.storeNo(),row.entityNo(),row.buyerUserNo(),row.intent(),row.businessTypeCode(),row.currency(),row.valuationAt(),row.expiresAt(),row.accountVersion(),row.creditAccountVersion(),row.pricingPolicyVersion(),row.stackingPolicyVersion(),row.requestHash(),row.lineSnapshot(),row.conversionSnapshot(),row.schedulePreviewSnapshot(),row.priceMinor(),row.newConversionMinor(),row.creditUsedMinor(),row.cashDueMinor(),row.status()); }
- public Optional<MallQuoteRecord> findById(String tenantNo,long id) { JdbcWriteGuard.tenant(tenantNo); return jdbc.query("SELECT * FROM `mall_quote` WHERE tenant_no=? AND id=?",(rs,n)->new MallQuoteRecord(rs.getObject("id", Long.class),rs.getString("tenant_no"),rs.getObject("created_at", java.time.LocalDateTime.class),rs.getObject("updated_at", java.time.LocalDateTime.class),rs.getString("created_by"),rs.getString("updated_by"),rs.getObject("version", Long.class),rs.getObject("deleted", Integer.class),rs.getString("quote_no"),rs.getString("store_no"),rs.getString("entity_no"),rs.getString("buyer_user_no"),rs.getString("intent"),rs.getString("business_type_code"),rs.getString("currency"),rs.getObject("valuation_at", Long.class),rs.getObject("expires_at", Long.class),rs.getObject("account_version", Long.class),rs.getObject("credit_account_version", Long.class),rs.getString("pricing_policy_version"),rs.getString("stacking_policy_version"),rs.getString("request_hash"),rs.getString("line_snapshot"),rs.getString("conversion_snapshot"),rs.getString("schedule_preview_snapshot"),rs.getObject("price_minor", Long.class),rs.getObject("new_conversion_minor", Long.class),rs.getObject("credit_used_minor", Long.class),rs.getObject("cash_due_minor", Long.class),rs.getString("status")),tenantNo,id).stream().findFirst(); }
+    private final JdbcTemplate jdbc;
+    private final DataSource dataSource;
+
+    public MallQuoteRepository(DataSource ds) {
+        dataSource = ds;
+        jdbc = new JdbcTemplate(ds);
+    }
+
+    public void insert(MallQuoteRecord row) {
+        JdbcWriteGuard.require(dataSource, row.tenantNo());
+        jdbc.update(
+                "INSERT INTO `mall_quote`"
+                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`quote_no`,`store_no`,`entity_no`,`buyer_user_no`,`intent`,`business_type_code`,`currency`,`valuation_at`,`expires_at`,`account_version`,`credit_account_version`,`pricing_policy_version`,`stacking_policy_version`,`request_hash`,`line_snapshot`,`conversion_snapshot`,`schedule_preview_snapshot`,`price_minor`,`new_conversion_minor`,`credit_used_minor`,`cash_due_minor`,`status`)"
+                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                row.tenantNo(),
+                row.createdAt(),
+                row.updatedAt(),
+                row.createdBy(),
+                row.updatedBy(),
+                row.version(),
+                row.deleted(),
+                row.quoteNo(),
+                row.storeNo(),
+                row.entityNo(),
+                row.buyerUserNo(),
+                row.intent(),
+                row.businessTypeCode(),
+                row.currency(),
+                row.valuationAt(),
+                row.expiresAt(),
+                row.accountVersion(),
+                row.creditAccountVersion(),
+                row.pricingPolicyVersion(),
+                row.stackingPolicyVersion(),
+                row.requestHash(),
+                row.lineSnapshot(),
+                row.conversionSnapshot(),
+                row.schedulePreviewSnapshot(),
+                row.priceMinor(),
+                row.newConversionMinor(),
+                row.creditUsedMinor(),
+                row.cashDueMinor(),
+                row.status());
+    }
+
+    public Optional<MallQuoteRecord> findById(String tenantNo, long id) {
+        JdbcWriteGuard.tenant(tenantNo);
+        return jdbc
+                .query(
+                        "SELECT * FROM `mall_quote` WHERE tenant_no=? AND id=?",
+                        (rs, n) ->
+                                new MallQuoteRecord(
+                                        rs.getObject("id", Long.class),
+                                        rs.getString("tenant_no"),
+                                        rs.getObject("created_at", java.time.LocalDateTime.class),
+                                        rs.getObject("updated_at", java.time.LocalDateTime.class),
+                                        rs.getString("created_by"),
+                                        rs.getString("updated_by"),
+                                        rs.getObject("version", Long.class),
+                                        rs.getObject("deleted", Integer.class),
+                                        rs.getString("quote_no"),
+                                        rs.getString("store_no"),
+                                        rs.getString("entity_no"),
+                                        rs.getString("buyer_user_no"),
+                                        rs.getString("intent"),
+                                        rs.getString("business_type_code"),
+                                        rs.getString("currency"),
+                                        rs.getObject("valuation_at", Long.class),
+                                        rs.getObject("expires_at", Long.class),
+                                        rs.getObject("account_version", Long.class),
+                                        rs.getObject("credit_account_version", Long.class),
+                                        rs.getString("pricing_policy_version"),
+                                        rs.getString("stacking_policy_version"),
+                                        rs.getString("request_hash"),
+                                        rs.getString("line_snapshot"),
+                                        rs.getString("conversion_snapshot"),
+                                        rs.getString("schedule_preview_snapshot"),
+                                        rs.getObject("price_minor", Long.class),
+                                        rs.getObject("new_conversion_minor", Long.class),
+                                        rs.getObject("credit_used_minor", Long.class),
+                                        rs.getObject("cash_due_minor", Long.class),
+                                        rs.getString("status")),
+                        tenantNo,
+                        id)
+                .stream()
+                .findFirst();
+    }
 }
