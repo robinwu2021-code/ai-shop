@@ -51,4 +51,24 @@ mvn -f backend/pom.xml -pl shop-app -am -Dtest=CommerceStoreCreationFlowTest -Ds
 mvn -f backend/pom.xml -pl shop-app -am -Dtest=QuickStartFlowTest,ErrorCodeUniqueTest,SchemaDriftTest,StoreCategoryFlowTest,SelfOperatedMerchantFlowTest,MerchantSelfOperatedFlowTest -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
-2026-11-03 验证结果为 commerce 全量 154 项通过（API 5、core 54、persistence 86、starter 9），指定宿主建店 2 项通过，以上六组宿主回归 41 项通过，各组失败、异常、跳过均为 0。并发交付测试在三个独立 JVM 中写同一随机库；宿主场景在不同连接并发重放首次开店及分店创建。生产字节码架构测试按 core 下一级特性包检测循环依赖，共享来源模型、仓储和操作回执约束放在 core.spi。
+2026-11-03 首轮修正后的验证结果为 commerce 全量 154 项通过（API 5、core 54、persistence 86、starter 9），指定宿主建店 2 项通过，以上六组宿主回归 41 项通过，各组失败、异常、跳过均为 0。并发交付测试在三个独立 JVM 中写同一随机库；宿主场景在不同连接并发重放首次开店及分店创建。生产字节码架构测试按 core 下一级特性包检测循环依赖，共享来源模型、仓储和操作回执约束放在 core.spi。
+
+### 独立验收与兼容性复核
+
+最终代码提交为 `c24a15104`、`05c3a0771`、`4bdc901f6`、`8ec46d507`。复核者将 `backend/commerce` 拷贝到宿主源码之外，在 JDK 21 和专用 MySQL 环境下执行 `mvn -o -f <独立目录>/pom.xml clean verify`，五个模块构建成功，156 项测试全部通过（API 5、core 56、persistence 86、starter 9），无失败、异常或跳过。逐文件比较确认独立目录的非 target 文件与最终 commerce 源码完全相同。
+
+最后修正后，复核者在宿主根聚合执行 `mvn -o -f backend/pom.xml -Dtest=CommerceStoreCreationFlowTest,QuickStartFlowTest,ErrorCodeUniqueTest,SchemaDriftTest,StoreCategoryFlowTest,SelfOperatedMerchantFlowTest,MerchantSelfOperatedFlowTest -Dsurefire.failIfNoSpecifiedTests=false package`。37 个项目打包成功，宿主建店与契约 4 项（包含真实 MySQL 事务场景）及六组既有回归 41 项全部通过，合计 45 项，失败、异常、跳过均为 0。生成的宿主测试 schema 与提交文件一致，数据库字典检查为 33 张表、621 个展开字段、68 条关系、13 项产物。commerce 的 V1–V5 没有改写，宿主新增 V554。
+
+宿主 `ArchitectureTest` 的 16 项检查仍有 3 项原有失败。对照接入前 `53aabe02a` 的 XML，失败测试名和完整断言消息逐字节一致；本次新增的 commercebridge 包登记与 import 已通过检查。原有 print／printbridge 包和端口位置问题未纳入本任务，因此本记录不表示宿主全量测试已通过。Flyway 的 MySQL 版本提示、Mockito 动态代理提示及预期失败场景日志仍可见，本次不升级依赖。
+
+### 本次实施裁定及后续成本
+
+1. 初始化采用独立 `StoreProvisioningFacade`，补全可信建店和来源身份所需的类型契约，不提前实现广义 grant／revoke。后续消费者需采用该契约；如果提前绑定了旧草案，需要调整接入代码。
+2. 新建店接入默认关闭，历史门店和旧客户端沿用 LEGACY；新模式必须显式提供经营类型，不能顺便迁移旧店。后续 T12 需提供存量切换、回滚和上线配置；在此之前本次交付不会自动改变线上行为。
+3. 有限来源交付暂为可信内部领域边界，不暴露付费赠权 HTTP 接口。后续 T08 必须提供已核验的原始交付身份、价值及订单占用释放；本阶段不能独立完成付费销售。
+
+### 评审闭环
+
+首轮三项问题已修复并复审：缺失或被移动的排期证据会在写入前拒绝，旧 RR 快照下的建店额度通过当前读判断，core 特性包不再循环依赖。整段 T04 评审未发现 Critical 或 Important 问题，另提出两项 Minor，已在 `8ec46d507` 一次修复并通过限定增量复审：类目列表含 null 时返回 BAD_REQUEST，且仍保留有序防御性复制；独立端来源拒绝分摊订阅抵扣，现金购买和 Plan 的合法抵扣输入不受影响。两项均先以测试复现失败，再验证修复。仅剩前述构建工具提示延期处理。
+
+评审划出的后续边界与原计划一致：T05 持续准入、后续提醒／缓存消费者、T08 支付及占用释放、升级／撤销／退款、存量 FREE 变更与迁移、跨库交付、前端和生产切换均未在 T04 实现。本次只提供这些任务依赖的来源、覆盖、版本和 outbox 输入。
