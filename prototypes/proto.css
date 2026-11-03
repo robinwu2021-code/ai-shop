@@ -1070,3 +1070,46 @@ a{color:inherit}
 .pos-v2[data-menu-view="list"] .order-card-caption{grid-column:2;grid-row:1;padding:0 8px 0 0;align-self:end}
 .pos-v2[data-menu-view="list"] .order-card-description{grid-column:2;grid-row:2;padding:6px 8px 0 0;align-self:start}
 @media(max-width:1100px){.pos-v2 .order-screen .floor-workspace{grid-template-columns:minmax(0,1fr) 300px}.pos-v2 .order-screen .order-product-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.pos-v2 .order-add-card{padding:0;height:auto;min-height:184px}.order-menu-categories{gap:2px}.order-menu-categories button{padding:10px}.order-card-price small{display:none}}
+
+/* B 端门店方案商城评审：仅限定本稿，不覆盖其他原型。 */
+.plan-review .plan-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:24px 0 10px}
+.plan-review .plan-controls label{display:grid;gap:5px;color:var(--muted);font-size:12px;font-weight:600}
+.plan-review select,.plan-review input,.plan-review textarea{font:inherit;color:var(--sh-ink);background:var(--sh-card);border:1px solid var(--rule);border-radius:8px;padding:8px;min-width:0}
+.plan-review .plan-controls select{max-width:260px}
+.plan-review .plan-reset{font:inherit;border:0;border-radius:8px;padding:9px 12px;color:var(--ink);background:var(--rule);cursor:pointer}
+.plan-review .plan-note{font-size:13px;color:var(--note);background:var(--note-bg);padding:10px 12px;border-radius:8px}
+.plan-review .plan-map{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0}
+.plan-review .plan-map a{color:var(--ink);font-size:12px;text-decoration:none;border:1px solid var(--rule);padding:5px 8px;border-radius:8px}
+.plan-review .plan-legend{font-size:12px;color:var(--muted);margin:8px 0 24px}
+.plan-review .ph{max-width:340px;aspect-ratio:9/18;min-height:540px}
+.plan-review .scr{overflow:auto;overscroll-behavior:contain}
+.plan-review .nav .bk{border:0;background:none;cursor:pointer;text-align:start;padding:0}
+.plan-review .nav .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plan-review .card,.plan-review .group,.plan-review .note,.plan-review .foot{flex-shrink:0}
+.plan-review .card h3,.plan-review .card p{margin:0}
+.plan-review .card a,.plan-review .group a{color:inherit;text-decoration:none}
+.plan-review .card button,.plan-review .group button,.plan-review .foot button{font:inherit;cursor:pointer}
+.plan-review .plan-link{border:0;background:none;padding:0;color:var(--sh-primary-text);text-align:start;font-weight:600}
+.plan-review .plan-action{border:0;cursor:pointer;line-height:1.3;padding:9px 10px;min-width:0}
+.plan-review .plan-action:disabled{opacity:.45;cursor:not-allowed}
+.plan-review .plan-field{display:grid;gap:4px;padding:8px 0;color:var(--sh-sub)}
+.plan-review .plan-field input,.plan-review .plan-field textarea{width:100%;background:var(--sh-bg);border:0}
+.plan-review .plan-title{font-size:15px;font-weight:700;color:var(--sh-ink)}
+.plan-review .plan-price{font-size:18px;font-weight:700;color:var(--sh-primary-text);font-variant-numeric:tabular-nums}
+.plan-review .plan-row{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--sh-line)}
+.plan-review .plan-row:first-child{border-top:0}.plan-review .plan-row>span:last-child{text-align:end;overflow-wrap:anywhere}
+.plan-review .plan-choice{display:flex;gap:8px;flex-wrap:wrap}.plan-review .plan-choice button{flex:1;min-width:68px}
+.plan-review .plan-selected{box-shadow:inset 0 0 0 2px var(--sh-primary);color:var(--sh-primary-text)}
+.plan-review .plan-danger{color:var(--sh-danger)}.plan-review .plan-sub{color:var(--sh-sub);font-size:10.5px;line-height:1.5}
+.plan-review .plan-bottom{background:var(--sh-card);display:grid;grid-template-columns:repeat(4,1fr);text-align:center;padding:8px 0 12px;color:var(--sh-sub);font-size:10px}
+.plan-review .plan-bottom .on{color:var(--sh-primary-text);font-weight:700}
+.plan-review .plan-preview-label{font-size:9px;color:var(--sh-sub)}
+.plan-review .plan-grid figure{min-width:0}.plan-review .ph [dir="rtl"]{text-align:start}
+:root[data-theme="dark"] .plan-review .ph{--sh-bg:#171719;--sh-card:#252529;--sh-ink:#f4f4f5;--sh-sub:#b5b5ba;--sh-faint:#3a3a3f;--sh-line:#3c3c40;--sh-primary-tint:rgba(225,37,27,.26);--sh-primary-text:#ff8b85}
+@media(max-width:640px){.plan-review.wrap{padding-inline:12px}.plan-review .grid{grid-template-columns:minmax(0,1fr)}.plan-review .ph{max-width:375px;margin-inline:auto}.plan-review .plan-controls select{max-width:100%}}
+.plan-review .plan-screen{height:100%;min-height:0;display:flex;flex-direction:column}
+.plan-review .plan-store{border:0;text-align:start;font:inherit;color:inherit;width:100%;cursor:pointer}
+.plan-review .plan-store .hd{width:100%}.plan-review .plan-store .plan-sub{width:100%}
+.plan-review .plan-screen .nav{direction:inherit}.plan-review .plan-screen .scr{direction:inherit}
+.plan-review .plan-bottom button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:4px}
+.plan-review .plan-bottom button.on{color:var(--sh-primary-text);font-weight:700}

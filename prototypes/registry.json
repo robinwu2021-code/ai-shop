@@ -2756,6 +2756,187 @@
      "client": "ops-web"
     }
    ]
+  },
+  {
+   "slug": "b-store-plan-mall",
+   "file": "b-store-plan-mall.html",
+   "title": "B 端注册开店、行业方案与平台商城",
+   "kind": "pages",
+   "clients": [
+    "b-app"
+   ],
+   "status": "在建",
+   "date": "2026-11-03",
+   "summary": "25 个画面与 16 组演示情景；按门店区分订阅、端权限、商城订单及抵扣余额，模拟数据无真实支付。",
+   "docs": [
+    {
+     "label": "需求总结",
+     "path": "docs/requirements/B端App-注册开店Plan商城-原型需求总结.md"
+    },
+    {
+     "label": "原型需求包",
+     "path": "docs/requirements/B端App-注册开店Plan商城-原型需求包.md"
+    },
+    {
+     "label": "流程与覆盖",
+     "path": "docs/requirements/B端App-注册开店Plan商城-原型覆盖.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "登录与注册",
+     "client": "b-app",
+     "route": "/pages/login/index"
+    },
+    {
+     "id": "s02",
+     "title": "选择与管理门店",
+     "client": "b-app",
+     "route": "/pages/store-pick/index",
+     "relatedRoutes": [
+      "/pages/stores/index"
+     ]
+    },
+    {
+     "id": "s03",
+     "title": "无门店引导",
+     "client": "b-app"
+    },
+    {
+     "id": "s04",
+     "title": "选择经营类型",
+     "client": "b-app",
+     "route": "/pages/store-business-type/index"
+    },
+    {
+     "id": "s05",
+     "title": "填写门店资料",
+     "client": "b-app",
+     "route": "/pages/store-create/index"
+    },
+    {
+     "id": "s06",
+     "title": "选择开店方案",
+     "client": "b-app",
+     "route": "/pages/store-create-plan/index"
+    },
+    {
+     "id": "s07",
+     "title": "门店创建结果",
+     "client": "b-app"
+    },
+    {
+     "id": "s08",
+     "title": "工作台与我的",
+     "client": "b-app",
+     "route": "/pages/home/index",
+     "relatedRoutes": [
+      "/pages/me/index"
+     ]
+    },
+    {
+     "id": "s09",
+     "title": "门店订阅方案",
+     "client": "b-app",
+     "route": "/pages/plan/index"
+    },
+    {
+     "id": "s10",
+     "title": "行业方案比较",
+     "client": "b-app",
+     "route": "/pages/plan-compare/index"
+    },
+    {
+     "id": "s11",
+     "title": "门店权益",
+     "client": "b-app",
+     "route": "/pages/store-entitlements/index"
+    },
+    {
+     "id": "s12",
+     "title": "业务端权益详情",
+     "client": "b-app",
+     "route": "/pages/store-entitlement/index"
+    },
+    {
+     "id": "s13",
+     "title": "业务端访问结果",
+     "client": "b-app"
+    },
+    {
+     "id": "s14",
+     "title": "平台商城",
+     "client": "b-app",
+     "route": "/pages/biz-mall/index"
+    },
+    {
+     "id": "s15",
+     "title": "商城商品详情",
+     "client": "b-app",
+     "route": "/pages/biz-mall-product/index"
+    },
+    {
+     "id": "s16",
+     "title": "确认商城订单",
+     "client": "b-app",
+     "route": "/pages/biz-mall-checkout/index"
+    },
+    {
+     "id": "s17",
+     "title": "升级确认",
+     "client": "b-app",
+     "route": "/pages/plan-upgrade/index"
+    },
+    {
+     "id": "s18",
+     "title": "支付与交付结果",
+     "client": "b-app",
+     "route": "/pages/biz-mall-result/index"
+    },
+    {
+     "id": "s19",
+     "title": "商城订单",
+     "client": "b-app",
+     "route": "/pages/biz-mall-orders/index"
+    },
+    {
+     "id": "s20",
+     "title": "商城订单详情",
+     "client": "b-app",
+     "route": "/pages/biz-mall-order/index"
+    },
+    {
+     "id": "s21",
+     "title": "硬件物流",
+     "client": "b-app",
+     "route": "/pages/biz-mall-shipment/index"
+    },
+    {
+     "id": "s22",
+     "title": "申请商城退款",
+     "client": "b-app",
+     "route": "/pages/biz-mall-refund-apply/index"
+    },
+    {
+     "id": "s23",
+     "title": "商城退款详情",
+     "client": "b-app",
+     "route": "/pages/biz-mall-refund/index"
+    },
+    {
+     "id": "s24",
+     "title": "订阅抵扣余额",
+     "client": "b-app",
+     "route": "/pages/subscription-credit/index"
+    },
+    {
+     "id": "s25",
+     "title": "抵扣流水",
+     "client": "b-app",
+     "route": "/pages/subscription-credit-ledger/index"
+    }
+   ]
   }
  ],
  "index": "https://claude.ai/artifact/B9kA5pc3EQvRo4hoK8YQC9"
