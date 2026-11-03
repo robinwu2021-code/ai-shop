@@ -2,7 +2,6 @@ package ai.neargo.shop.commercebridge;
 
 import ai.neargo.commerce.api.access.*;
 import ai.neargo.commerce.api.common.*;
-import ai.neargo.commerce.core.access.EndAccessService;
 import ai.neargo.commerce.starter.security.*;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.common.ErrorCode;
@@ -20,14 +19,12 @@ public final class ShopCommerceEndContextAdapter
     static final String CLIENT = "X-Client-Id", PROOF = "X-End-Context";
     private final ShopCommerceStoreAdapter stores;
     private final BizIdentityResolver resolver;
-    private final EndAccessService access;
+    private final EndAccessFacade access;
     private final CommerceAccessInterceptor interceptor;
     private final CommerceRoutePolicy policy = new CommerceRoutePolicy();
 
     ShopCommerceEndContextAdapter(
-            ShopCommerceStoreAdapter stores,
-            BizIdentityResolver resolver,
-            EndAccessService access) {
+            ShopCommerceStoreAdapter stores, BizIdentityResolver resolver, EndAccessFacade access) {
         this.stores = stores;
         this.resolver = resolver;
         this.access = access;
@@ -92,25 +89,22 @@ public final class ShopCommerceEndContextAdapter
         var route = policy.match(req.getMethod(), path);
         String requested = req.getHeader(BizContextFilter.STORE_HEADER);
         boolean account = route.lane() == CommerceRoutePolicy.Lane.ACCOUNT;
-        if (account
-                && (requested == null
-                        || requested.isBlank()
-                        || requested.equals(legacy.currentStoreNo()))) return;
+        if (account && (requested == null || requested.isBlank())) return;
         if (!stores.affects(user, requested, legacy.currentStoreNo(), route.pathStore())
-                && !path.startsWith("/biz/stores/")) return;
+                && !route.newModelOnly()) return;
         if (requested == null
                 || requested.isBlank()
-                || account
                 || route.lane() == CommerceRoutePolicy.Lane.DENY
                 || route.pathStore() != null && !requested.equals(route.pathStore()))
             throw new AccessDenied(AccessStatus.FORBIDDEN);
         var facts = store(user, requested);
-        if (facts.model() == CommerceModel.LEGACY) {
-            if (path.startsWith("/biz/stores/") || !requested.equals(legacy.currentStoreNo()))
+        if (facts.model() == CommerceModel.LEGACY && !account) {
+            if (route.newModelOnly() || !requested.equals(legacy.currentStoreNo()))
                 throw new AccessDenied(AccessStatus.FORBIDDEN);
             return;
         }
-        if (facts.businessTypeCode() == null || facts.businessTypeCode().isBlank())
+        if (facts.model() == CommerceModel.STORE_V1
+                && (facts.businessTypeCode() == null || facts.businessTypeCode().isBlank()))
             throw new AccessDenied(AccessStatus.CHECK_UNAVAILABLE);
         if (facts.status() != StoreStatus.ACTIVE)
             throw new AccessDenied(AccessStatus.STORE_DISABLED);
@@ -157,11 +151,8 @@ public final class ShopCommerceEndContextAdapter
         if (end == null || client == null || client.isBlank())
             throw new AccessDenied(AccessStatus.FORBIDDEN);
         String code =
-                switch (end) {
-                    case "BIZ_APP" -> CommerceRoutePolicy.BIZ;
-                    case "APP_POS" -> CommerceRoutePolicy.POS;
-                    default -> throw new AccessDenied(AccessStatus.FORBIDDEN);
-                };
+                CommerceRoutePolicy.entitlementForEnd(end)
+                        .orElseThrow(() -> new AccessDenied(AccessStatus.FORBIDDEN));
         return new IssueEndContextCommand(
                 actor,
                 new StoreRef(actor.tenantNo(), store),
@@ -169,6 +160,6 @@ public final class ShopCommerceEndContextAdapter
                 end,
                 code,
                 client,
-                EndAccessService.AUDIENCE);
+                EndAccessFacade.AUDIENCE);
     }
 }

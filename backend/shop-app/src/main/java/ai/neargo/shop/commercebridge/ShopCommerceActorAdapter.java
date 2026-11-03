@@ -3,13 +3,13 @@ package ai.neargo.shop.commercebridge;
 import ai.neargo.auth.store.TokenHash;
 import ai.neargo.commerce.api.access.*;
 import ai.neargo.commerce.api.common.*;
-import ai.neargo.commerce.core.access.EndAccessService;
+import ai.neargo.commerce.api.port.EndAccessAuthorityPort;
 import ai.neargo.commerce.starter.security.CommerceRoutePolicy;
 import ai.neargo.shop.auth.*;
 
 import java.time.Instant;
 
-final class ShopCommerceActorAdapter implements EndAccessService.Host {
+final class ShopCommerceActorAdapter implements EndAccessAuthorityPort {
     private final AccountSessionVerifier sessions;
     private final BizIdentityResolver resolver;
     private final ShopCommerceStoreAdapter stores;
@@ -36,7 +36,7 @@ final class ShopCommerceActorAdapter implements EndAccessService.Host {
                 .orElseThrow(() -> new AccessDenied(AccessStatus.ACCOUNT_INVALID));
     }
 
-    public EndAccessService.Authority verify(
+    public Authority verify(
             ActorContext actor,
             StoreRef store,
             String entitlement,
@@ -65,10 +65,9 @@ final class ShopCommerceActorAdapter implements EndAccessService.Host {
                                     facts.merchantNo().equals(ctx.merchantNo())
                                             && store.storeNo().equals(ctx.currentStoreNo())
                                             && ctx.can(entry)
-                                            && (EndAccessService.ENTER_END.equals(capability)
+                                            && (EndAccessFacade.ENTER_END.equals(capability)
                                                     || ctx.can(capability));
-                            return new EndAccessService.Authority(
-                                    facts, session.expiresAt(), allowed);
+                            return new Authority(facts, session.expiresAt(), allowed);
                         })
                 .orElseThrow(() -> new AccessDenied(AccessStatus.ACCOUNT_INVALID));
     }

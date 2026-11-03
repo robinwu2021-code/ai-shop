@@ -51,7 +51,7 @@ class EndAccessTest {
                         }
                     },
                     (a, s, code, cap, n) ->
-                            new EndAccessService.Authority(
+                            new EndAccessAuthorityPort.Authority(
                                     new StoreSnapshot(
                                             s,
                                             "M",

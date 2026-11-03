@@ -526,6 +526,7 @@ class BizEndpointPermTest {
         // 地图上点中的小区直接开通：它写的是主数据（建一条聚落），
         // 但触发它的动作就是「设经营范围」—— 与提报同一半，权限也该同一个
         put("/biz/communities/from-map", BizPerms.STORE);
+        put("/biz/stores/{storeNo}/pos/access", BizPerms.RECEIVE);
         put("/biz/store/qrcode", BizPerms.STORE);
         put("/biz/store/share-kit", BizPerms.STORE);
         // 分享海报：与 share-kit 是同一件事的两种载体（一句文案 / 一张图），权限同档
@@ -618,6 +619,9 @@ class BizEndpointPermTest {
      */
     private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
 
+    /** Both routes use the requested end's entry duty; the real method guard and fresh authority enforce it. */
+    private static final Set<String> END_ENTRY_DUTY = Set.of("/biz/stores/{storeNo}/end-sessions","/biz/stores/{storeNo}/end-access");
+
     /**
      * ⚠️ <b>Patch 是 2026-08-25 补进来的</b>：此前这个正则只认 Get/Post/Put/Delete，
      * 于是任何 {@code @PatchMapping} 的 /biz 端点都会**整个绕过权限决策检查** ——
@@ -637,6 +641,7 @@ class BizEndpointPermTest {
 
         Set<String> undecided = new TreeSet<>(endpoints);
         undecided.removeAll(REQUIRED.keySet());
+        undecided.removeAll(END_ENTRY_DUTY);
         undecided.removeAll(ANY_OF);
         undecided.removeAll(PUBLIC);
         assertThat(undecided)
@@ -650,6 +655,7 @@ class BizEndpointPermTest {
     void noStaleEntries() throws IOException {
         Set<String> endpoints = scanBizEndpoints();
         Set<String> stale = new TreeSet<>(REQUIRED.keySet());
+        stale.addAll(END_ENTRY_DUTY);
         stale.removeAll(endpoints);
         assertThat(stale)
                 .as("这些端点已经不存在了，从 REQUIRED 删掉 —— "
@@ -674,6 +680,7 @@ class BizEndpointPermTest {
     void decisionsAreActuallyEnforced() throws IOException {
         Set<String> guarded = scanGuardedEndpoints();
         Set<String> missing = new TreeSet<>(REQUIRED.keySet());
+        missing.addAll(END_ENTRY_DUTY);
         missing.addAll(ANY_OF);   // 「任一」也是决定，同样必须落到注解上
         missing.removeAll(guarded);
         assertThat(missing)

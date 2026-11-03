@@ -10,8 +10,6 @@ import java.time.*;
 import java.util.*;
 
 public final class EndAccessService implements EndAccessFacade {
-    public static final String ENTER_END = "commerce:enter-end";
-    public static final String AUDIENCE = "commerce-merchant-end";
 
     public record State(
             String merchant,
@@ -26,20 +24,9 @@ public final class EndAccessService implements EndAccessFacade {
         State lockAndRead(StoreRef store, String end, String code, String clientId);
     }
 
-    public record Authority(StoreSnapshot store, Instant sessionExpiry, boolean permitted) {}
-
-    public interface Host {
-        Authority verify(
-                ActorContext actor,
-                StoreRef store,
-                String entitlement,
-                String capability,
-                Instant now);
-    }
-
     private final Repository repo;
     private final CommerceUnitOfWork uow;
-    private final Host host;
+    private final EndAccessAuthorityPort host;
     private final EndContextCodecPort codec;
     private final Clock clock;
     private final Duration ttl;
@@ -47,7 +34,7 @@ public final class EndAccessService implements EndAccessFacade {
     public EndAccessService(
             Repository repo,
             CommerceUnitOfWork uow,
-            Host host,
+            EndAccessAuthorityPort host,
             EndContextCodecPort codec,
             Clock clock,
             Duration ttl) {

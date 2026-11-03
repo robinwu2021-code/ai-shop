@@ -1,5 +1,6 @@
 package ai.neargo.shop.auth;
 
+import ai.neargo.shop.common.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,13 +61,17 @@ public class BizContextFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest req) {
-        return !req.getRequestURI().substring(req.getContextPath().length()).startsWith("/biz/");
-    }
-
-    @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse resp, FilterChain chain)
             throws ServletException, IOException {
+        // SecurityConfig installs this filter only inside the merchant chain. Spring matches
+        // decoded path segments. Never skip admission based on a second, raw prefix matcher.
+        String path = req.getRequestURI().substring(req.getContextPath().length());
+        if (path.indexOf('%') >= 0 || !path.startsWith("/biz/")) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.setContentType("application/json;charset=UTF-8");
+            resp.getWriter().write("{\"code\":" + ErrorCode.BAD_REQUEST.code() + ",\"msg\":\"NONCANONICAL_MERCHANT_PATH\",\"data\":null}");
+            return;
+        }
         try {
             /*
              * **判据是「这是不是 B 端会话」，不是「主体是哪张表的号」。**

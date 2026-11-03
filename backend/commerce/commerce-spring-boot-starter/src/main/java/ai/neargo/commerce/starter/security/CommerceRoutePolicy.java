@@ -15,7 +15,16 @@ public final class CommerceRoutePolicy {
         DENY
     }
 
-    public record Route(Lane lane, String pathStore, String entitlement, String capability) {}
+    public record Route(
+            Lane lane,
+            String pathStore,
+            String entitlement,
+            String capability,
+            boolean newModelOnly) {
+        private Route(Lane lane, String pathStore, String entitlement, String capability) {
+            this(lane, pathStore, entitlement, capability, false);
+        }
+    }
 
     public static final String BIZ = "END_BIZ_APP", POS = "END_APP_POS";
     private static final Set<String> ACCOUNT =
@@ -32,10 +41,16 @@ public final class CommerceRoutePolicy {
                     "POST /biz/merchant/agreement/accept",
                     "GET /biz/business-types");
     private static final String ID = "[A-Za-z0-9_-]{1,64}";
-    private static final Pattern STORE = Pattern.compile("/biz/(?:store|stores)/(" + ID + ")/(.+)");
+    private static final Pattern STORE = Pattern.compile("/biz/(?:store|stores)/([^/]+)/(.+)");
+
+    /** Recovery routes may be used without a selection. An explicit selection must be verified. */
+    public boolean isStoreSelection(String method, String path) {
+        return "GET".equals(method) && Set.of("/biz/context", "/biz/stores/mine").contains(path);
+    }
 
     public Route match(String method, String path) {
-        if (ACCOUNT.contains(method + " " + path)
+        if (isStoreSelection(method, path)
+                || ACCOUNT.contains(method + " " + path)
                 || method.equals("GET") && path.matches("/biz/business-types/" + ID + "/plans"))
             return new Route(Lane.ACCOUNT, null, null, null);
         if (method.equals("POST") && path.equals("/biz/store/create"))
@@ -44,8 +59,15 @@ public final class CommerceRoutePolicy {
             return new Route(Lane.BOOTSTRAP, null, null, "biz:order:view");
         if (method.equals("POST") && path.matches("/biz/order/" + ID + "/delivered"))
             return new Route(Lane.BOOTSTRAP, null, null, "biz:ship");
+        if (method.equals("GET")
+                        && Set.of("/biz/message", "/biz/message/unread-count").contains(path)
+                || method.equals("POST")
+                        && (path.equals("/biz/message/read-all")
+                                || path.matches("/biz/message/" + ID + "/read")))
+            return new Route(Lane.BOOTSTRAP, null, null, null);
         var m = STORE.matcher(path);
-        if (!m.matches()) return new Route(Lane.DENY, null, null, null);
+        if (!m.matches())
+            return new Route(Lane.DENY, null, null, null, path.startsWith("/biz/stores/"));
         String store = m.group(1), tail = m.group(2);
         if (path.startsWith("/biz/store/")
                 && tail.equals("pay-setting")
@@ -57,7 +79,7 @@ public final class CommerceRoutePolicy {
                     method.equals("PUT") ? "biz:store:admin" : "biz:store");
         if (path.startsWith("/biz/stores/")) {
             if (method.equals("GET") && tail.equals("pos/access"))
-                return new Route(Lane.END_PROTECTED, store, POS, "biz:receive");
+                return new Route(Lane.END_PROTECTED, store, POS, "biz:receive", true);
             if (method.equals("GET")
                             && Set.of(
                                             "context",
@@ -67,11 +89,31 @@ public final class CommerceRoutePolicy {
                                             "mall/products")
                                     .contains(tail)
                     || method.equals("POST") && tail.equals("end-sessions"))
-                return new Route(Lane.BOOTSTRAP, store, null, null);
+                return new Route(Lane.BOOTSTRAP, store, null, null, true);
             if (method.equals("POST") && Set.of("mall/quotes", "mall/orders").contains(tail))
-                return new Route(Lane.BOOTSTRAP, store, null, "biz:store:admin");
+                return new Route(Lane.BOOTSTRAP, store, null, "biz:store:admin", true);
+            // Preserve actual legacy store handlers. A new or unregistered plural route
+            // stays closed even when MVC accepts a broader verb (e.g. HEAD for GET).
+            boolean legacy =
+                    tail.equals("fulfillment") && Set.of("GET", "HEAD", "PUT").contains(method)
+                            || tail.equals("appointment-slots")
+                                    && Set.of("GET", "HEAD", "POST").contains(method);
+            return new Route(Lane.DENY, store, null, null, !legacy);
         }
         return new Route(Lane.DENY, store, null, null);
+    }
+
+    public static java.util.Optional<String> entitlementForEnd(String end) {
+        return switch (end) {
+            case "BIZ_APP" -> java.util.Optional.of(BIZ);
+            case "APP_POS" -> java.util.Optional.of(POS);
+            case null, default -> java.util.Optional.empty();
+        };
+    }
+
+    /** Used by the host method-security expression. Unknown ends have no usable duty. */
+    public String entryDuty(String end) {
+        return entitlementForEnd(end).map(CommerceRoutePolicy::entryPermission).orElse("");
     }
 
     public static String endCode(String entitlement) {

@@ -54,15 +54,14 @@ class DisabledCommerceConfiguration {
                 HttpServletRequest req,
                 HttpServletResponse response)
                 throws IOException {
-            var route =
-                    policy.match(
-                            req.getMethod(),
-                            req.getRequestURI().substring(req.getContextPath().length()));
+            String path = req.getRequestURI().substring(req.getContextPath().length());
+            var route = policy.match(req.getMethod(), path);
             String requested = req.getHeader(BizContextFilter.STORE_HEADER);
             if (route.lane() == CommerceRoutePolicy.Lane.ACCOUNT
                     && (requested == null
                             || requested.isBlank()
-                            || requested.equals(selected.currentStoreNo()))) return true;
+                            || !policy.isStoreSelection(req.getMethod(), path)
+                                    && requested.equals(selected.currentStoreNo()))) return true;
             try {
                 if (!stores.affects(user, requested, selected.currentStoreNo(), route.pathStore()))
                     return true;

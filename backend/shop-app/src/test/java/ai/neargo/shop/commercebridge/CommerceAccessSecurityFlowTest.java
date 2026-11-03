@@ -2,6 +2,8 @@ package ai.neargo.shop.commercebridge;
 
 import static ai.neargo.commerce.starter.security.CommerceRoutePolicy.Lane.*;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -11,18 +13,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ai.neargo.commerce.api.access.*;
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.subscription.AccessSegment;
-import ai.neargo.commerce.core.access.EndAccessService;
 import ai.neargo.commerce.core.spi.Period;
 import ai.neargo.commerce.persistence.*;
 import ai.neargo.commerce.starter.security.CommerceRoutePolicy;
 import ai.neargo.shop.auth.*;
 import ai.neargo.shop.auth.store.DbAccountSessionVerifier;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.GlobalExceptionHandler;
 import ai.neargo.shop.config.SecurityConfig;
+import ai.neargo.shop.fulfillment.service.PickupService;
 import ai.neargo.shop.merchant.api.biz.BizStorePayController;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.*;
+import ai.neargo.shop.merchant.service.MerchantEntityService;
+import ai.neargo.shop.merchant.service.StoreCodeService;
+import ai.neargo.shop.merchant.service.StoreLinkService;
 import ai.neargo.shop.merchant.service.impl.*;
-import ai.neargo.shop.portal.biz.CommerceEndController;
+import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.message.api.biz.BizMessageController;
+import ai.neargo.shop.portal.biz.*;
+import ai.neargo.shop.spi.platform.PlatformSwitchPort;
+import ai.neargo.shop.spi.trade.AfterSalePendingQueryPort;
 import ai.neargo.shop.spi.user.*;
+
+import com.tngtech.archunit.core.importer.ClassFileImporter;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -39,6 +52,7 @@ import org.springframework.transaction.support.*;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
+import java.net.URI;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -75,6 +89,13 @@ class CommerceAccessSecurityFlowTest {
                                 mock(
                                         org.springframework.transaction.PlatformTransactionManager
                                                 .class))
+                .withPropertyValues(
+                        "commerce.access.active-key-id=t",
+                        "commerce.access.keys.t="
+                                + Base64.getEncoder().encodeToString(new byte[32]))
+                .withBean(
+                        ai.neargo.commerce.core.spi.CommerceUnitOfWork.class,
+                        () -> mock(ai.neargo.commerce.core.spi.CommerceUnitOfWork.class))
                 .withBean(BizIdentityResolver.class, () -> BizIdentityResolver.NONE)
                 .withUserConfiguration(CommerceAccessConfiguration.class)
                 .run(
@@ -113,6 +134,7 @@ class CommerceAccessSecurityFlowTest {
                         assertTrue(failure.getMessage().contains("STORE_V1"), failure.toString());
                     });
             f.jdbc.update("UPDATE mch_store SET commerce_model=NULL");
+            verifyDisabledEncodedRequests(f);
             runner.run(
                     ctx -> {
                         var guard = ctx.getBean(BizContextFilter.Admission.class);
@@ -133,6 +155,14 @@ class CommerceAccessSecurityFlowTest {
                         var denied = new org.springframework.mock.web.MockHttpServletResponse();
                         assertFalse(guard.admit(user, scope, req, denied));
                         assertEquals(503, denied.getStatus());
+                        for (String path : List.of("/biz/stores/mine", "/biz/context")) {
+                            var selection = new org.springframework.mock.web.MockHttpServletRequest("GET", path);
+                            assertTrue(guard.admit(user, scope, selection, new org.springframework.mock.web.MockHttpServletResponse()));
+                            selection.addHeader("X-Store-No", "S");
+                            var rejectedSelection = new org.springframework.mock.web.MockHttpServletResponse();
+                            assertFalse(guard.admit(user, scope, selection, rejectedSelection));
+                            assertEquals(503, rejectedSelection.getStatus());
+                        }
                         req.setRequestURI("/biz/auth/logout");
                         assertTrue(
                                 guard.admit(
@@ -143,6 +173,25 @@ class CommerceAccessSecurityFlowTest {
                                                 .MockHttpServletResponse()));
                     });
         }
+    }
+
+    @Test
+    void accessBridgeUsesOnlyPublicCommerceApiAndStarter() {
+        var classes =
+                new ClassFileImporter()
+                        .importClasses(
+                                CommerceAccessConfiguration.class,
+                                ShopCommerceActorAdapter.class,
+                                ShopCommerceEndContextAdapter.class,
+                                ShopCommerceStoreAdapter.class,
+                                CommerceEndController.class,
+                                DisabledCommerceConfiguration.class,
+                                CommerceAccessErrors.class);
+        noClasses()
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("ai.neargo.commerce.core..", "ai.neargo.commerce.persistence..")
+                .check(classes);
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -193,6 +242,17 @@ class CommerceAccessSecurityFlowTest {
                                             key)));
             web.addBeanFactoryPostProcessor(
                     b -> {
+                        for (var type :
+                                List.of(
+                                        MerchantEntityService.class,
+                                        PickupService.class,
+                                        StoreCodeService.class,
+                                        StoreLinkService.class,
+                                        MerchantQueryPort.class,
+                                        PlatformSwitchPort.class,
+                                        MessageService.class,
+                                        AfterSalePendingQueryPort.class))
+                            b.registerSingleton(type.getSimpleName(), mock(type));
                         b.registerSingleton("clock", f.clock);
                         b.registerSingleton("dataSource", f.ds);
                         b.registerSingleton("transactionManager", f.manager);
@@ -208,7 +268,11 @@ class CommerceAccessSecurityFlowTest {
                     SecurityConfig.class,
                     CommerceAccessConfiguration.class,
                     CommerceEndController.class,
+                    BizEntityController.class,
+                    BizMessageController.class,
+                    BizPickupController.class,
                     CommerceAccessErrors.class,
+                    GlobalExceptionHandler.class,
                     BizStorePayController.class,
                     StorePaySettingServiceImpl.class,
                     PermChecker.class);
@@ -228,6 +292,40 @@ class CommerceAccessSecurityFlowTest {
                         + " mch_account(mch_account_no,user_no,entity_no,is_owner,created_at,updated_at)"
                         + " VALUES ('MA2','U','M2',1,NOW(),NOW())");
             f.jdbc.update("UPDATE mch_store SET entity_no='M2' WHERE store_no='legacy'");
+            var bearer = "Bearer " + token;
+            // All-legacy identity as well as mixed identity: use raw URIs to avoid MockMvc double
+            // encoding.
+            mvc.perform(
+                            get(URI.create("/%62iz/stores/S/pos/access"))
+                                    .header("Authorization", bearer))
+                    .andExpect(status().isBadRequest());
+            f.jdbc.update("UPDATE mch_store SET commerce_model=NULL WHERE store_no='S'");
+            assertRecovery(mvc, bearer, false);
+            assertEquals(
+                    400,
+                    mvc.perform(
+                                    get(URI.create("/biz/%73tores/S/pos/access"))
+                                            .header("Authorization", bearer))
+                            .andReturn()
+                            .getResponse()
+                            .getStatus());
+            // MVC also accepts HEAD for GET handlers and arbitrary non-slash path variables.
+            mvc.perform(
+                            head("/biz/stores/S/pos/access")
+                                    .header("Authorization", bearer)
+                                    .header("X-Store-No", "S"))
+                    .andExpect(status().isForbidden());
+            mvc.perform(
+                            get("/biz/stores/S.dot/pos/access")
+                                    .header("Authorization", bearer)
+                                    .header("X-Store-No", "S"))
+                    .andExpect(status().isForbidden());
+            f.jdbc.update("UPDATE mch_store SET commerce_model='STORE_V1' WHERE store_no='S'");
+            assertRecovery(mvc, bearer, true);
+            mvc.perform(
+                            get(URI.create("/%62iz/stores/S/pos/access"))
+                                    .header("Authorization", bearer))
+                    .andExpect(status().isBadRequest());
             mvc.perform(
                             post("/biz/unknown")
                                     .header("Authorization", "Bearer " + token)
@@ -258,7 +356,7 @@ class CommerceAccessSecurityFlowTest {
                             .get("value")
                             .asString();
             verifyOldSnapshot(
-                    f, ref, repo, tx, resolver, web.getBean(EndAccessService.class), token, proof);
+                    f, ref, repo, tx, resolver, web.getBean(EndAccessFacade.class), token, proof);
             var refreshed =
                     mvc.perform(issue)
                             .andExpect(status().isOk())
@@ -292,7 +390,7 @@ class CommerceAccessSecurityFlowTest {
                                     .header("X-End-Context", proof))
                     .andExpect(status().isConflict());
             mvc.perform(
-                            get("/ops/commerce")
+                            get("/ops/after-sales")
                                     .header("Authorization", "Bearer " + token)
                                     .header("X-End-Context", proof))
                     .andExpect(status().isUnauthorized());
@@ -303,7 +401,6 @@ class CommerceAccessSecurityFlowTest {
                                     .contentType("application/json")
                                     .content("{\"subjectKind\":\"SYSTEM\"}"))
                     .andExpect(status().isForbidden());
-            mvc.perform(get("/callback/nonexistent")).andExpect(status().isNotFound());
             // Business validation after admission rolls back. A legitimate admitted write then
             // holds
             // the exact lock used by entitlement changes until the actual service transaction
@@ -315,6 +412,31 @@ class CommerceAccessSecurityFlowTest {
                     "INSERT INTO mch_role(entity_no,role_code,name,perms,created_at,updated_at)"
                             + " VALUES ('M','VIEWER','view','[\"biz:store\"]',NOW(),NOW())");
             f.jdbc.update("UPDATE mch_account SET is_owner=0 WHERE mch_account_no='MA'");
+            mvc.perform(
+                            post("/biz/stores/S/end-sessions")
+                                    .header("Authorization", bearer)
+                                    .header("X-Store-No", "S")
+                                    .contentType("application/json")
+                                    .content(
+                                            "{\"endCode\":\"APP_POS\",\"clientId\":\"pos-app\",\"actor\":{\"subjectKind\":\"SYSTEM\"}}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(ErrorCode.BIZ_ROLE_FORBIDDEN.code()))
+                    .andExpect(jsonPath("$.value").doesNotExist());
+            mvc.perform(
+                            put("/biz/store/S/pay-setting")
+                                    .header("Authorization", bearer)
+                                    .header("X-Store-No", "S")
+                                    .header("X-Client-Id", "biz-app")
+                                    .header("X-End-Context", proof)
+                                    .contentType("application/json")
+                                    .content(
+                                            "{\"actor\":{\"subjectKind\":\"SYSTEM\",\"principalNo\":\"owner\"},\"offlinePayEnabled\":true}"))
+                    .andExpect(status().isForbidden());
+            assertEquals(
+                    0,
+                    f.jdbc.queryForObject(
+                            "SELECT offline_pay_enabled FROM mch_store WHERE store_no='S'",
+                            Integer.class));
             mvc.perform(write)
                     .andExpect(status().isForbidden())
                     .andExpect(content().string(org.hamcrest.Matchers.containsString("FORBIDDEN")));
@@ -324,7 +446,7 @@ class CommerceAccessSecurityFlowTest {
             when(qualification.hasValidQualification(anyString(), anyString()))
                     .thenReturn(true)
                     .thenThrow(new IllegalStateException("failed after store update"));
-            assertThrows(Exception.class, () -> mvc.perform(write));
+            mvc.perform(write).andExpect(jsonPath("$.code").value(ErrorCode.INTERNAL_ERROR.code()));
             assertEquals(
                     0,
                     f.jdbc.queryForObject(
@@ -359,6 +481,89 @@ class CommerceAccessSecurityFlowTest {
                                     .header("X-Store-No", "S"))
                     .andExpect(status().isUnauthorized());
         }
+    }
+
+    private static void verifyDisabledEncodedRequests(AccessMysqlFixture f) throws Exception {
+        try (var web = new AnnotationConfigWebApplicationContext()) {
+            var entities = mock(MerchantEntityService.class);
+            web.setServletContext(new MockServletContext());
+            web.getEnvironment().setActiveProfiles("api");
+            web.addBeanFactoryPostProcessor(
+                    b -> {
+                        b.registerSingleton("dataSource", f.ds);
+                        b.registerSingleton("transactionManager", f.manager);
+                        b.registerSingleton("resolver", BizIdentityResolver.NONE);
+                        b.registerSingleton("tokenStore", f.store);
+                        b.registerSingleton("entities", entities);
+                    });
+            web.register(
+                    Web.class,
+                    SecurityConfig.class,
+                    DisabledCommerceConfiguration.class,
+                    BizEntityController.class);
+            web.refresh();
+            var mvc = MockMvcBuilders.webAppContextSetup(web).apply(springSecurity()).build();
+            String bearer =
+                    "Bearer "
+                            + f.store.issue(
+                                    TokenStore.SessionData.of(
+                                            LoginUser.merchantByUser("U", "owner")));
+            mvc.perform(get(URI.create("/biz/%73tores/mine")).header("Authorization", bearer))
+                    .andExpect(status().isBadRequest());
+            verifyNoInteractions(entities);
+        }
+    }
+
+    private static void assertRecovery(
+            org.springframework.test.web.servlet.MockMvc mvc, String bearer, boolean mixed)
+            throws Exception {
+        assertAll(
+                () ->
+                        mvc.perform(get("/biz/stores/mine").header("Authorization", bearer))
+                                .andExpect(status().isOk()),
+                () ->
+                        mvc.perform(get("/biz/context").header("Authorization", bearer))
+                                .andExpect(status().isOk()),
+                () ->
+                        mvc.perform(
+                                        get("/biz/context")
+                                                .header("Authorization", bearer)
+                                                .header("X-Store-No", "S"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.currentStoreNo").value("S")),
+                () ->
+                        mvc.perform(
+                                        get("/biz/message")
+                                                .header("Authorization", bearer)
+                                                .header("X-Store-No", "S"))
+                                .andExpect(status().isOk()),
+                () ->
+                        mvc.perform(
+                                        get("/biz/message/unread-count")
+                                                .header("Authorization", bearer)
+                                                .header("X-Store-No", "S"))
+                                .andExpect(status().isOk()),
+                () ->
+                        mvc.perform(
+                                        post("/biz/message/M1/read")
+                                                .header("Authorization", bearer)
+                                                .header("X-Store-No", "S"))
+                                .andExpect(status().isOk()),
+                () ->
+                        mvc.perform(
+                                        post("/biz/message/read-all")
+                                                .header("Authorization", bearer)
+                                                .header("X-Store-No", "S"))
+                                .andExpect(status().isOk()),
+                () ->
+                        mvc.perform(get("/biz/message").header("Authorization", bearer))
+                                .andExpect(mixed ? status().isForbidden() : status().isOk()),
+                () ->
+                        mvc.perform(
+                                        get("/biz/stores/mine")
+                                                .header("Authorization", bearer)
+                                                .header("X-Store-No", "missing"))
+                                .andExpect(mixed ? status().isForbidden() : status().isOk()));
     }
 
     private static void seedSubscriptions(
@@ -428,7 +633,7 @@ VALUES ('MAIN',NOW(),NOW(),1,0,?,?,?,'STORE','["RETAIL"]','VERIFIED',0,0,1,?)
             JdbcSubscriptionRepository repo,
             TransactionTemplate tx,
             BizIdentityResolver resolver,
-            EndAccessService business,
+            EndAccessFacade business,
             String token,
             String proof) {
         // Keep both JDBC and MyBatis stale in a caller transaction. Each fresh host snapshot

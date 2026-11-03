@@ -1,10 +1,12 @@
 package ai.neargo.shop.portal.biz;
 
 import ai.neargo.commerce.api.access.*;
+import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.commercebridge.ShopCommerceEndContextAdapter;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -21,15 +23,17 @@ public class CommerceEndController {
         this.access = access;
     }
 
-    record Enter(String endCode, String clientId) {}
+    public record Enter(String endCode, String clientId) {}
 
+    @PreAuthorize("@perm.canBiz(@commerceRoutePolicy.entryDuty(#body.endCode()))")
     @PostMapping("/biz/stores/{storeNo}/end-sessions")
-    EndContextToken issue(@PathVariable String storeNo, @RequestBody Enter body) {
+    public EndContextToken issue(@PathVariable String storeNo, @RequestBody Enter body) {
         return access.issueEndContext(bridge.command(storeNo, body.endCode(), body.clientId()));
     }
 
+    @PreAuthorize("@perm.canBiz(@commerceRoutePolicy.entryDuty(#endCode))")
     @GetMapping("/biz/stores/{storeNo}/end-access")
-    AccessDecision status(
+    public AccessDecision status(
             @PathVariable String storeNo,
             @RequestParam String endCode,
             @RequestParam String clientId) {
@@ -40,8 +44,9 @@ public class CommerceEndController {
         return decision;
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.RECEIVE + "')")
     @GetMapping("/biz/stores/{storeNo}/pos/access")
-    Map<String, String> pos(@PathVariable String storeNo) {
+    public Map<String, String> pos(@PathVariable String storeNo) {
         return Map.of("storeNo", storeNo, "endCode", "APP_POS");
     }
 }
