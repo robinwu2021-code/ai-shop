@@ -389,6 +389,80 @@ class BizFoundationJourneyFlowTest {
     }
 
     @Test
+    void legacyApplicantCanFileDirectlyButCannotClaimInactiveOrDifferentPendingShop()
+            throws Exception {
+        String token = login("15965010109").path("token").asText();
+        String user = tokens.get(token).orElseThrow().user().userNo();
+        var request =
+                post("/biz/merchant/apply")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"name\":\"Initial"
+                                    + " shop\",\"subject\":\"PERSONAL\",\"contactName\":\"Owner\",\"contactPhone\":\"15965010109\"}");
+        mvc.perform(request)
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                                        "$.code")
+                                .value(0));
+        assertEquals(
+                1,
+                jdbc.queryForObject(
+                        "select count(*) from mch_entity_apply where user_no=? and entity_no is"
+                            + " null",
+                        Integer.class,
+                        user));
+        jdbc.update("delete from mch_entity_apply where user_no=?", user);
+        jdbc.update(
+                "insert into mch_entity(entity_no,name,status,created_at,updated_at) values"
+                    + " ('R1_A','A','ACTIVE',now(),now()),('R1_B','B','PENDING_LICENSE',now(),now())");
+        jdbc.update(
+                "insert into"
+                    + " mch_account(mch_account_no,user_no,entity_no,is_owner,status,created_at,updated_at)"
+                    + " values"
+                    + " ('R1_MA',?,'R1_A',1,'ACTIVE',now(),now()),('R1_MB',?,'R1_B',1,'DISABLED',now(),now())",
+                user,
+                user);
+        jdbc.update(
+                "insert into"
+                    + " mch_store(store_no,entity_no,is_default,commerce_model,business_type_code,created_at,updated_at)"
+                    + " values"
+                    + " ('R1_SA','R1_A',1,'LEGACY',null,now(),now()),('R1_SB','R1_B',1,'STORE_V1','RETAIL',now(),now())");
+        for (String header : java.util.List.of("", "R1_SA")) {
+            var req =
+                    post("/biz/merchant/apply")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"Claim\",\"subject\":\"PERSONAL\"}");
+            if (!header.isBlank()) req.header("X-Store-No", header);
+            var response = mvc.perform(req).andReturn().getResponse();
+            assertEquals(
+                    ai.neargo.shop.common.ErrorCode.FORBIDDEN.code(),
+                    json.readTree(response.getContentAsString()).path("code").asInt(),
+                    header);
+            assertEquals(
+                    0,
+                    jdbc.queryForObject(
+                            "select count(*) from mch_entity_apply where user_no=?",
+                            Integer.class,
+                            user));
+        }
+        jdbc.update("update mch_account set status='ACTIVE' where mch_account_no='R1_MB'");
+        jdbc.update("update mch_store set commerce_model='LEGACY' where store_no='R1_SB'");
+        mvc.perform(request)
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                                        "$.code")
+                                .value(0));
+        assertEquals(
+                "R1_B",
+                jdbc.queryForObject(
+                        "select entity_no from mch_entity_apply where user_no=?",
+                        String.class,
+                        user));
+    }
+
+    @Test
     void sessionEntryNeedsNoMerchantDirectoryEvenWhenAnOldSessionIsPresented() throws Exception {
         var user = LoginUser.merchantByUser("owner", "owner");
         var identity =

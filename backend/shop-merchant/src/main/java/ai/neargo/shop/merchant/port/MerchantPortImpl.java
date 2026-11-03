@@ -1363,7 +1363,38 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
-    public void requirePendingLicenseOwner(String userNo, String entityNo) {
+    public java.util.Optional<String> merchantApplicationEntity(String userNo, String selectedEntityNo) {
+        if (selectedEntityNo != null) {
+            requirePendingLicenseOwner(userNo, selectedEntityNo);
+            return java.util.Optional.of(selectedEntityNo);
+        }
+        return DataScopeContext.executeWithoutScope(() -> legacyApplicationEntity(userNo));
+    }
+
+    private java.util.Optional<String> legacyApplicationEntity(String userNo) {
+        // Current locking reads, including inactive owner rows. Dropping those rows would
+        // silently turn a disabled pending shop into permission to file a new application.
+        var owners = staffMapper.selectList(Wrappers.<MchAccount>lambdaQuery()
+                .eq(MchAccount::getUserNo, userNo).eq(MchAccount::getIsOwner, true)
+                .last("for update"));
+        if (owners.isEmpty()) return java.util.Optional.empty();
+        var pending = merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
+                .in(MchEntity::getEntityNo, owners.stream().map(MchAccount::getEntityNo).toList())
+                .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE).last("for update"));
+        if (pending.isEmpty()) return java.util.Optional.empty();
+        if (pending.size() != 1) throw BizException.of(ErrorCode.FORBIDDEN);
+        String entity = pending.getFirst().getEntityNo();
+        if (owners.stream().noneMatch(a -> entity.equals(a.getEntityNo()) && MchAccount.ACTIVE.equals(a.getStatus())))
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        var stores = storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getEntityNo, entity).last("for update"));
+        if (stores.stream().anyMatch(s -> s.getCommerceModel() != null && !"LEGACY".equals(s.getCommerceModel()))
+                || stores.stream().noneMatch(s -> Boolean.TRUE.equals(s.getIsDefault()) && MchStore.ACTIVE.equals(s.getStatus())))
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        return java.util.Optional.of(entity);
+    }
+
+    private void requirePendingLicenseOwner(String userNo, String entityNo) {
         var owned = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
                 Wrappers.<MchAccount>lambdaQuery()
                         .eq(MchAccount::getEntityNo, entityNo)

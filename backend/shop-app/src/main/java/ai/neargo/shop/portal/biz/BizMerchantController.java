@@ -275,10 +275,12 @@ public class BizMerchantController {
     }
 
     @PostMapping("/biz/merchant/apply")
-    public MerchantProfileVO apply(@RequestBody ApplyReq req) {
-        FoundationTarget.requireMatching(req.entityNo(), req.storeNo());
+    public MerchantProfileVO apply(@RequestBody ApplyReq req, jakarta.servlet.http.HttpServletRequest request) {
+        String applicant = BizAuthController.personalUser().userNo();
+        String entity = FoundationTarget.applicationEntity(request, req.entityNo(), req.storeNo());
+        if (typedCreation && entity == null) throw BizException.of(ErrorCode.STORE_BUSINESS_TYPE_REQUIRED);
         var cmd = new OpsService.SubmitApplyCommand(
-                BizAuthController.personalUser().userNo(), req.name(), req.subject(),
+                applicant, req.name(), req.subject(),
                 // B 端没有推荐人入口（能进 b-app 的人已经是商家了），传 null
                 req.contactName(), req.contactPhone(), null, req.category(), req.desc(),
                 req.serviceScope(), req.communityNos(), req.licenses(),
@@ -286,12 +288,7 @@ public class BizMerchantController {
                 // 手填行业只在 C 端那一屏问（V360）：进到 b-app 的人已经选过行业了
                 null,
                 req.qualificationItems());
-        var selection = FoundationTarget.current();
-        if (typedCreation || selection.map(FoundationTarget::includesNewModel).orElse(false)) {
-            opsService.createSelectedApply(cmd, selection.map(FoundationTarget::entityNo).orElse(null));
-        } else {
-            opsService.createApply(cmd);
-        }
+        opsService.createMerchantApply(cmd, entity);
         return profile();
     }
 

@@ -150,8 +150,8 @@ public interface OpsService {
     /** C 端提交入驻申请（由 /mp/merchant/apply 调用）。 */
     String createApply(SubmitApplyCommand cmd);
 
-    /** Merchant-selected store. Pin the pending entity in the application write transaction. */
-    String createSelectedApply(SubmitApplyCommand cmd, String pendingEntityNo);
+    /** Pin the B-side applicant's selected store or eligible legacy shell in the write transaction. */
+    String createMerchantApply(SubmitApplyCommand cmd, String selectedEntityNo);
 
     /**
      * <b>运营代商家提交入驻申请</b>（三期）。BD 在店里把执照拍下来、当场替老板填完。

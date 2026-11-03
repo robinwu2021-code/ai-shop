@@ -63,6 +63,7 @@ final class AccessMysqlFixture implements AutoCloseable {
                         "usr_account",
                         "mch_entity",
                         "mch_qualification",
+                        "mch_entity_apply",
                         "mch_store",
                         "mch_store_role",
                         "mch_role")) {
@@ -100,6 +101,7 @@ final class AccessMysqlFixture implements AutoCloseable {
                         MchAccountMapper.class,
                         MchEntityMapper.class,
                         QualificationMapper.class,
+                        ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class,
                         MchStoreMapper.class,
                         MchStoreRoleMapper.class,
                         MchRoleMapper.class)) cfg.addMapper(type);

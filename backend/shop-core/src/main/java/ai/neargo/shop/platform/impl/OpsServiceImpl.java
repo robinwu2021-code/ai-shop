@@ -424,14 +424,13 @@ public class OpsServiceImpl implements OpsService {
     @Override
     @Transactional
     public String createApply(SubmitApplyCommand cmd) {
-        return doCreateApply(cmd, null, null);
+        return doCreateApply(cmd, null, merchantAdminPort::pendingLicenseEntityOf);
     }
 
     @Override
     @Transactional
-    public String createSelectedApply(SubmitApplyCommand cmd, String pendingEntityNo) {
-        if (!notBlank(pendingEntityNo)) throw BizException.of(ErrorCode.STORE_BUSINESS_TYPE_REQUIRED);
-        return doCreateApply(cmd, null, pendingEntityNo);
+    public String createMerchantApply(SubmitApplyCommand cmd, String selectedEntityNo) {
+        return doCreateApply(cmd, null, owner -> merchantAdminPort.merchantApplicationEntity(owner, selectedEntityNo));
     }
 
     @Override
@@ -444,14 +443,15 @@ public class OpsServiceImpl implements OpsService {
              */
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return doCreateApply(cmd, submittedBy, null);
+        return doCreateApply(cmd, submittedBy, merchantAdminPort::pendingLicenseEntityOf);
     }
 
     /**
      * 自填与代填共用的那一份。**两条路只在末尾分叉**（submitted_by / agreed_at），
      * 前面的几道闸一字不差 —— 抄一份出来的话，日后加一道闸只会加在其中一条上。
      */
-    private String doCreateApply(SubmitApplyCommand cmd, String submittedBy, String selectedEntityNo) {
+    private String doCreateApply(SubmitApplyCommand cmd, String submittedBy,
+            java.util.function.Function<String, java.util.Optional<String>> applicationEntity) {
         /*
          * 一人同时只能有一份进行中的申请。
          * 先查是为了给出人话错误；**真正兜底的是 uk_apply_active_owner 唯一键** ——
@@ -513,12 +513,7 @@ public class OpsServiceImpl implements OpsService {
          * 不认领的话会另建一个主体：他补完证照满心欢喜地去看，发现店里空空如也，
          * 而那家有货的店还在另一个看不见的主体下 —— 两家店，他只认得出一家。
          */
-        if (selectedEntityNo == null) {
-            merchantAdminPort.pendingLicenseEntityOf(cmd.userNo()).ifPresent(apply::setEntityNo);
-        } else {
-            merchantAdminPort.requirePendingLicenseOwner(cmd.userNo(), selectedEntityNo);
-            apply.setEntityNo(selectedEntityNo);
-        }
+        applicationEntity.apply(cmd.userNo()).ifPresent(apply::setEntityNo);
         DataScopeContext.executeWithoutScope(() -> applyMapper.insert(apply));
         notifyOpsOfNewApply(apply);
         return apply.getApplyNo();

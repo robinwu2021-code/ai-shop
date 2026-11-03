@@ -66,8 +66,9 @@ public interface MerchantAdminPort {
      */
     java.util.Optional<String> pendingLicenseEntityOf(String userNo);
 
-    /** Lock the exact active owner and pending entity before attaching an application. */
-    void requirePendingLicenseOwner(String userNo, String entityNo);
+    /** Resolve the B-side application target inside the application transaction. Only an
+     * unselected legacy applicant may start without a shell. */
+    java.util.Optional<String> merchantApplicationEntity(String userNo, String selectedEntityNo);
 
     /**
      * @param ownerUserNo 发起人（当前登录账号）

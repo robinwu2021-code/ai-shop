@@ -6,11 +6,28 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import ai.neargo.shop.auth.*;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
+import ai.neargo.shop.merchant.port.MerchantPortImpl;
 import ai.neargo.shop.merchant.service.*;
+import ai.neargo.shop.platform.IndustryService;
+import ai.neargo.shop.platform.MasterDataService;
+import ai.neargo.shop.platform.OpsService;
+import ai.neargo.shop.platform.impl.OpsServiceImpl;
+import ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper;
+import ai.neargo.shop.platform.mapper.PlatformMappers.StaffMapper;
+import ai.neargo.shop.spi.notify.OpsAlertPort;
 
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
 @EnabledIfEnvironmentVariable(
@@ -217,6 +234,144 @@ class BizFoundationAccessMysqlTest {
                             "select qual_name from mch_qualification where qual_no='Q'",
                             String.class));
         }
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    @EnableTransactionManagement(proxyTargetClass = true)
+    static class ApplyTransactions {}
+
+    @Test
+    void applicationUsesOnlySelectedOrCurrentlyOwnedLegacyShell() throws Exception {
+        try (var f = new AccessMysqlFixture();
+                var web = new AnnotationConfigWebApplicationContext();
+                var services = new AnnotationConfigApplicationContext()) {
+            var port =
+                    new MerchantPortImpl(
+                            null,
+                            f.mybatis.getMapper(MchEntityMapper.class),
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            f.mybatis.getMapper(MchAccountMapper.class),
+                            f.mybatis.getMapper(MchStoreMapper.class),
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null);
+            var json = new tools.jackson.databind.ObjectMapper();
+            var alerts = mock(OpsAlertPort.class);
+            // Use real transactions + actual application/membership/store rows. The dictionary,
+            // operator recipients and notification hook are independent of target selection.
+            services.register(ApplyTransactions.class);
+            services.registerBean(DataSourceTransactionManager.class, () -> f.manager);
+            services.registerBean(
+                    OpsServiceImpl.class,
+                    () ->
+                            new OpsServiceImpl(
+                                    mock(StaffMapper.class),
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    f.mybatis.getMapper(MerchantApplyMapper.class),
+                                    port,
+                                    null,
+                                    null,
+                                    json,
+                                    json,
+                                    mock(IndustryService.class),
+                                    mock(MasterDataService.class),
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    "mail",
+                                    alerts,
+                                    ""));
+            services.refresh();
+            var mvc =
+                    CommerceAccessSecurityFlowTest.merchantMvc(
+                            f,
+                            web,
+                            true,
+                            java.util.Map.of(OpsService.class, services.getBean(OpsService.class)));
+            String bearer =
+                    "Bearer "
+                            + f.store.issue(
+                                    TokenStore.SessionData.of(
+                                            LoginUser.merchantByUser("U", "owner")));
+            f.jdbc.update(
+                    "update mch_store set commerce_model='LEGACY',is_default=1 where store_no='S'");
+            f.jdbc.update(
+                    "insert into mch_entity(entity_no,name,status,created_at,updated_at) values"
+                        + " ('B','Pending','PENDING_LICENSE',now(),now())");
+            f.jdbc.update(
+                    "insert into"
+                        + " mch_account(mch_account_no,user_no,entity_no,is_owner,status,created_at,updated_at)"
+                        + " values ('AB','U','B',1,'DISABLED',now(),now())");
+            f.jdbc.update(
+                    "insert into"
+                        + " mch_store(entity_no,store_no,is_default,commerce_model,business_type_code,created_at,updated_at)"
+                        + " values ('B','SB',1,'STORE_V1','RETAIL',now(),now())");
+            for (String header : java.util.List.of("S", "")) {
+                var response = submitApplication(mvc, bearer, header);
+                assertEquals(
+                        ai.neargo.shop.common.ErrorCode.FORBIDDEN.code(),
+                        json.readTree(response.getContentAsString()).path("code").asInt(),
+                        header);
+                assertEquals(
+                        0,
+                        f.jdbc.queryForObject(
+                                "select count(*) from mch_entity_apply", Integer.class));
+                verifyNoInteractions(alerts);
+            }
+            f.jdbc.update("update mch_store set commerce_model='LEGACY' where store_no='SB'");
+            f.jdbc.update("update mch_account set status='ACTIVE' where mch_account_no='AB'");
+            var rejected = submitApplication(mvc, bearer, "S");
+            assertEquals(
+                    ai.neargo.shop.common.ErrorCode.FORBIDDEN.code(),
+                    json.readTree(rejected.getContentAsString()).path("code").asInt());
+            assertEquals(
+                    0,
+                    f.jdbc.queryForObject("select count(*) from mch_entity_apply", Integer.class));
+            verifyNoInteractions(alerts);
+            var accepted = submitApplication(mvc, bearer, "SB");
+            // This focused MVC fixture returns the controller VO directly on success.
+            assertEquals(200, accepted.getStatus());
+            assertEquals(
+                    "B",
+                    f.jdbc.queryForObject(
+                            "select entity_no from mch_entity_apply where user_no='U'",
+                            String.class));
+        }
+    }
+
+    private static MockHttpServletResponse submitApplication(
+            MockMvc mvc, String bearer, String store) throws Exception {
+        var request =
+                post("/biz/merchant/apply")
+                        .header("Authorization", bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(
+                                "{\"name\":\"License"
+                                    + " shop\",\"subject\":\"PERSONAL\",\"contactName\":\"Owner\",\"contactPhone\":\"15965010109\"}");
+        if (!store.isBlank()) request.header("X-Store-No", store);
+        return mvc.perform(request).andReturn().getResponse();
     }
 
     private ai.neargo.shop.merchant.dto.PaymentApplymentVO row(String store) {
