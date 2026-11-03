@@ -3,4 +3,5 @@ package ai.neargo.commerce.api.port;
 import java.util.Optional;
 import ai.neargo.commerce.api.common.*;
 
-public record NotificationReceiptQuery(String noticeNo, String deduplicationKey, NotificationRecipient recipient, Optional<String> providerMessageNo) {}
+/** Recovery retains the trusted store identity from the original notification command. */
+public record NotificationReceiptQuery(String noticeNo, String deduplicationKey, StoreRef store, NotificationRecipient recipient, Optional<String> providerMessageNo) {}

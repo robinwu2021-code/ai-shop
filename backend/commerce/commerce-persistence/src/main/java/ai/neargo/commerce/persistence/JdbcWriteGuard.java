@@ -14,8 +14,9 @@ public final class JdbcWriteGuard {
 
     public static void require(DataSource ds, String tenant) {
         tenant(tenant);
+        JdbcTransactionOwnership.rejectForeignTransactions(ds);
         if (!TransactionSynchronizationManager.isActualTransactionActive()
-                || !TransactionSynchronizationManager.hasResource(ds))
+                || !JdbcTransactionOwnership.active(ds))
             throw new IllegalStateException(
                     "Commerce writes require the shared DataSource transaction");
     }

@@ -1,6 +1,6 @@
 # Commerce foundation implementation — T01–T02
 
-Current status: T01 contracts approved at `f50c0902e`; T02 data, shared JDBC transactions and isolated migrations implemented and verified on dedicated MySQL, ready for independent review. Business Plan/quote/fulfillment/access/reminder implementations and production host activation remain later tasks. No production database was accessed.
+Current status: T01 contracts approved at `f50c0902e`; T02 foundation at `2cf99ab5c` received three Important final-review findings. One consolidated fix wave addresses transaction ownership, tenant-scoped operation identities and missing commercial access outcomes, with 48 tests passing on dedicated MySQL; awaiting scoped independent re-review. Business Plan/quote/fulfillment/access/reminder implementations and production host activation remain later tasks. No production database was accessed.
 
 ## Enablement and integration contract
 
@@ -8,9 +8,17 @@ The independent reactor remains `backend/commerce/pom.xml`, Java 21, Boot 4.0.7 
 
 To use the foundation in a host, add `commerce-spring-boot-starter` and explicitly set `commerce.enabled=true`. Disabled/missing property creates no commerce schema or beans. Enabled startup requires the host Boot `FlywayMigrationInitializer`, its primary writable DataSource, and the **same canonical DataSource object** in a JDBC `DataSourceTransactionManager` (including `JdbcTransactionManager` subclasses). Missing host initialization or a mismatched/non-JDBC transaction manager fails assembly. Custom transaction implementations are not claimed supported. Configure the MySQL JDBC/session timezone as UTC; audit timestamps use UTC `LocalDateTime` at millisecond precision, while business instants are epoch-millisecond BIGINT values.
 
-`CommerceUnitOfWork.required(Supplier<T>)` is the core-only contract. Its Spring adapter uses REQUIRED propagation and joins host transactions. Typed repository writes and event writes reject execution without an active transaction bound to their identical DataSource. Repository reads require tenant, including ID lookups; there is no soft-delete filter that could hide historical facts. Inserts ignore the input record's physical id and return the database AUTO_INCREMENT id; stable external business numbers remain independently supplied.
+`CommerceUnitOfWork.required(Supplier<T>)` is the core-only contract. Its Spring adapter uses REQUIRED propagation, starts standalone transactions and joins the same primary JDBC transaction. Entry rejects an active foreign DataSource transaction before invoking the callback, including when the commerce resource remains physically active beneath a second JDBC manager. Typed repository writes, event writes and account `FOR UPDATE` require a physical transaction owned by their identical DataSource and reject any other bound active JDBC DataSource. The persistence-local probe subclasses `DataSourceTransactionManager` solely to call its protected `doGetTransaction()` / `isExistingTransaction()` SPI: this reads Spring's physical transaction flag without obtaining a connection or starting a transaction. Synchronization-only binding from a read, the thread-wide actual-transaction flag and `autoCommit=false` alone are insufficient. Both connection auto-commit defaults are tested. Support is limited to one canonical DataSource/local JDBC manager transaction; arbitrary multi-manager, XA, JPA or custom transaction participation is not claimed. Repository reads require tenant, including ID lookups; there is no soft-delete filter that could hide historical facts. Inserts ignore the input record's physical id and return the database AUTO_INCREMENT id; stable external business numbers remain independently supplied.
 
 `readEntitlementVersion(StoreRef)` uses a current `FOR SHARE` read, including inside an older repeatable-read snapshot. It can retain a shared lock until a surrounding transaction ends; write admission should directly call `lockSubscriptionAccount(StoreRef)`, which uses one `SELECT ... FOR UPDATE` returning the current `AccountSnapshot` and holds that lock through outer host commit. No external payment/inventory/notification calls occur in these adapters.
+
+## Revised public contracts from final review
+
+Trusted payment adapters supply `VerifiedPaymentFact(tenantNo, eventNo, orderNo, paymentNo, platformMerchantNo, paid, paidAt, verificationReference)`. The tenant must come from verified adapter routing, not an unverified callback body. `ReminderFacade.deliver(String tenantNo, String noticeNo)` and `recover(String tenantNo, String noticeNo)` retain the tenant from the persisted notice/event. `NotificationReceiptQuery(noticeNo, deduplicationKey, StoreRef store, recipient, providerMessageNo)` retains the original notification's trusted store/tenant even when the provider message number is unknown. These revise the original foundation signatures; adapters must update their calls. The spec's tenant-composite identities take precedence over the T10 `deliver(String noticeNo)` example. No global-business-number or ambient-tenant convention is required.
+
+The compiled `TenantOperationContractTest` fixture invokes public payment/reminder/notification interfaces for two tenants with identical event/order/payment/merchant/store/notice/dedup/recipient numbers, and queries unknown-provider receipts in reverse tenant order. It proves the contracts can carry independent routing identities; no callback or reminder worker is implemented.
+
+`AccessStatus` now includes `NOT_PURCHASED`, `REVOKED` and `CHECK_UNAVAILABLE`, preserving the existing outcomes. A compiled consumer selects separate actions through `AccessDecision.status()` without parsing optional denial strings. Runtime access policy, authorization and HTTP response mappings remain later work.
 
 ## Owned schema and reuse rulings
 
@@ -46,7 +54,18 @@ python3 scripts/gen-industry-plan-mall-docs.py --check
 
 The URL is an admin connection with no selected database and a query string, as shown; tests append their generated database before the query. This environment used the coordinator's dedicated MySQL 8.4.13 instance on loopback 23317, never a production database. Flyway 11.14.1 emits its known newer-MySQL warning (last vendor-verified version 8.1); all actual MySQL 8.4 tests execute successfully. Expected migration-failure tests deliberately log a DDL error while their assertions pass.
 
-Verified results:
+Current final-fix verification (all commands used the dedicated MySQL/JDK environment above):
+
+- Test-first API contract run: **2 tests / 2 failures / zero errors or skips** on the old signatures/status enum. Log `/private/tmp/commerce-final-fix-api-red.log`.
+- Test-first native transaction run: **10 cases / 7 failures / zero errors or skips**, demonstrating independent commerce commits, surviving writes after synchronization-only reads, false account-lock acceptance and retained commerce holders under a foreign transaction. The three pre-existing supported-path cases passed. Log `/private/tmp/commerce-final-fix-tx-red.log`.
+- Covering `-Dtest=TenantOperationContractTest,CommerceTransactionBoundaryTest,CommerceTransactionTest,CommerceEventPersistenceTest -Dsurefire.failIfNoSpecifiedTests=false` persistence reactor test run: **27 passed**, zero failures/errors/skips. Log `/private/tmp/commerce-final-fix-covering-green.log`.
+- Complete source `mvn -f backend/commerce/pom.xml clean verify`: **48 passed** (API 4, core 2, native persistence 37, native Boot startup 5), zero failures/errors/skips. Log `/private/tmp/commerce-final-fix-reactor.log`.
+- Independent copy of only commerce with no host parent at `/private/tmp/commerce-final-fix-standalone-ctdk4a3u/commerce`, `mvn -f /private/tmp/commerce-final-fix-standalone-ctdk4a3u/commerce/pom.xml clean verify`: **same 48 passed**, zero failures/errors/skips. Log `/private/tmp/commerce-final-fix-standalone.log`.
+- Dictionary/artifact guard remains `CHECK OK: 33 tables; 621 expanded fields; 68 relations; 13 artifacts`; `git diff --check` passes.
+
+The 10 `CommerceTransactionBoundaryTest` cases use two actual MySQL DataSources. They prove entry rejection before work starts, reject typed/outbox/inbox writes after a read binds the other resource for synchronization, reject a falsely scoped account lock, and assert no persisted writes after rollback. Both auto-commit defaults are exercised. Two simultaneous physical holders are rejected even when commerce's outer holder is active. Standalone commit, shared-primary rollback and caught nested REQUIRED failure remain green, alongside the original host lock-lifetime/current-read/atomic-rollback regressions.
+
+Historical T02 verification before the final-fix wave:
 
 - Exact persistence command: **31 tests** (27 native MySQL persistence + 4 API/core), zero failures/errors/skips. Log `/private/tmp/t02-required-command.log`.
 - Clean full reactor verification: **36 tests** (32 native MySQL tests, including 5 Boot contexts, + 4 API/core), zero failures/errors/skips. Log `/private/tmp/t02-final-verify.log`.
@@ -59,9 +78,9 @@ Coverage includes every owned field's SQL type/nullability/AUTO_INCREMENT, all f
 
 ## Host compatibility and remaining boundary
 
-Coordinator evidence: `mvn -f backend/pom.xml -pl shop-app -am -DskipTests package` succeeds for all 24 selected host reactor projects (`/private/tmp/commerce-host-compatibility.log`). Selected existing host regressions run 27 tests: 24 pass and 3 known ArchitectureTest failures (`noFullyQualifiedReferences`, `topLevelPackagesMustBeRegistered`, `portInterfacesOnlyInSpi`) concern existing print code. A clean export of pre-change `53aabe02a` reproduces the same three failures with identical assertion strings (`/private/tmp/commerce-host-baseline.log`, `/private/tmp/commerce-host-regression.log`); they were not repaired in this task. The full host business suite was not claimed run.
+Coordinator evidence before the final-fix wave: `mvn -f backend/pom.xml -DskipTests package` succeeds for all 37 full host aggregate projects (`/private/tmp/commerce-final-host-aggregate.log`). Earlier selected-host packaging also passed for 24 projects (`/private/tmp/commerce-host-compatibility.log`). These host packaging results are retained baseline evidence, not a rerun of the final fix. Selected existing host regressions run 27 tests: 24 pass and 3 known ArchitectureTest failures (`noFullyQualifiedReferences`, `topLevelPackagesMustBeRegistered`, `portInterfacesOnlyInSpi`) concern existing print code. A clean export of pre-change `53aabe02a` reproduces the same three failures with identical assertion strings (`/private/tmp/commerce-host-baseline.log`, `/private/tmp/commerce-host-regression.log`); they were not repaired in this task. The full host business suite was not claimed run.
 
-No business mock implementations, production host bridge, payment/inventory/notification calls, migration of legacy truth, deployment or push was added. Copied design/spec/dictionary/diagram inputs remain untracked intentionally. T02 stops for independent review; later tasks own business invariants beyond these foundational SQL/transaction contracts.
+No business mock implementations, production host bridge, payment/inventory/notification calls, migration of legacy truth, deployment or push was added. Copied design/spec/dictionary/diagram inputs remain untracked intentionally. The final fix wave stops for scoped independent re-review; later tasks own business invariants beyond these foundational SQL/transaction contracts.
 
 ---
 
