@@ -1,6 +1,29 @@
 # Commerce foundation implementation — T01–T02
 
-Current status: T01 contracts approved at `f50c0902e`; T02 foundation at `2cf99ab5c` received three Important final-review findings. One consolidated fix wave addresses transaction ownership, tenant-scoped operation identities and missing commercial access outcomes, with 48 tests passing on dedicated MySQL; awaiting scoped independent re-review. Business Plan/quote/fulfillment/access/reminder implementations and production host activation remain later tasks. No production database was accessed.
+Current status: **T01–T02 accepted**. Task reviews passed; all three Important whole-branch findings were fixed at `de834dc79` and independently re-reviewed with no remaining Critical/Important findings. Controller verification of that committed source passed 48 tests in a fresh commerce-only copy and packaged all 37 host aggregate projects. Business Plan/quote/fulfillment/access/reminder implementations and production host activation remain later tasks. No production database was accessed.
+
+
+## 最终验收与实施取舍
+
+最终源码提交 `de834dc79` 经独立复核，跨数据源事务、租户身份传递和准入状态三项问题全部关闭。控制会话再次从已提交源码复制独立模块到 `/private/tmp/commerce-final-fixed-source`，运行完整 `clean verify`：48 项测试通过，失败／错误／跳过均为 0；日志 `/private/tmp/commerce-controller-final48.log`。最终 `mvn -f backend/pom.xml -DskipTests package`：37 个聚合项目全部成功；日志 `/private/tmp/commerce-controller-host-final.log`。这项打包不代表运行了宿主全量业务测试。
+
+宿主选定回归仍采用前述基线对照结论：27 项中 24 项通过，3 项打印相关架构失败与变更前提交的断言完全一致。代码保存在 `codex/commerce-foundation` 独立工作区，原有脏工作区未混入本次实施。专用临时 MySQL 在验收结束后关闭；后续复现需重新提供文档中的专用测试环境。
+
+| 实施取舍（按作出顺序） | 原因 | 后续成本或边界 |
+|---|---|---|
+| 复用设施必须先证明契约和事务等价，否则允许模块自有实现 | 保持移植后仍只有一份权威数据 | 替换适配器前须补等价性证据，不能并行维护两份账 |
+| 本次严格截止 T02 | 用户限定实施范围 | 业务功能、桥接、认证与提醒仍须后续任务实施 |
+| 在原工作区之外使用独立 native worktree；该路径写入通过工具升级授权执行 | 保留原有未提交修改 | 当前成果保留在独立分支，未混入原工作区 |
+| T01 提前给出类型化的未来门面／命令／结果契约 | 让公开边界可编译、可审查 | 后续用例可能需要兼容扩展或显式版本调整 |
+| API/core 增加最小 JPMS 描述符 | 用构建约束依赖方向 | 将来模块路径／框架接入变更时可能调整描述符 |
+| 独立 parent 自行锁定依赖版本 | 脱离宿主 parent 仍可构建 | 嵌入升级时须核对宿主版本及仓库版本守卫 |
+| 不建 mall_sku_stock；库存仍由现有库存域维护 | 避免第二本库存账 | 后续桥接须核验租户／平台业主／商品／库位映射和数值范围 |
+| 自有 tenant-scoped inbox/outbox，显式替换端口关闭默认写者 | 既有消息设施尚未证明同一中立契约和本地事务 | 未来复用须证明等价，并处理数据迁移与单一写者切换 |
+| 明确事件 aggregateVersion、入站事件／聚合身份及三个 outbox 元数据列 | 唯一性和公开契约需要明确来源，不能猜测 payload | 首批调用者及导出工具须采用修订后的契约／manifest |
+| 租户复合身份优先于计划中 deliver(String) 示例 | 不同租户允许相同业务号 | 后续支付／Job／通知调用者须显式传可信 tenant/store |
+| 用 Spring 物理事务 SPI 检查单一 JDBC 资源，拒绝混合数据源事务 | 线程事务标志和同步绑定无法证明原子性 | Spring JDBC 升级须重跑双数据源原生回归；不承诺 XA/JPA/任意多 manager 原子性 |
+
+非阻断维护项：两个不同宿主 fixture 的实际映射可继续完善；JDK 依赖允许列表可按 module 判定；32 表全字段回读测试可拆分以改善失败隔离。已披露的 Flyway 新版 MySQL 提示及预期失败迁移日志保留，不影响实际用例结论。
 
 ## Enablement and integration contract
 
