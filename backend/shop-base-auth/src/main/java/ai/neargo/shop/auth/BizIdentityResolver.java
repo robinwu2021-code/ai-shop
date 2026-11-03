@@ -36,9 +36,13 @@ public interface BizIdentityResolver {
      */
     BizContext resolve(String userNo, String storeNo);
 
-    /**
-     * 没有门店上下文时的解析 —— 登录接口用（那一刻请求上还没有 {@code X-Store-No}）。
-     */
+    /** New-model identity is exact on subject kind, membership, merchant and selected store. */
+    default BizContext resolveStrict(LoginUser user, String storeNo) {
+        // Adapters must explicitly implement strict selection. A legacy resolver may fall back.
+        return BizContext.NONE;
+    }
+
+    /** Login has no selected store yet. */
     default BizContext resolve(String userNo) {
         return resolve(userNo, null);
     }

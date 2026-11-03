@@ -159,7 +159,8 @@ public class SecurityConfig {
     @Profile("api")
     @Order(1)
     SecurityFilterChain merchantChain(HttpSecurity http, TokenStore tokenStore,
-                                      ObjectProvider<BizIdentityResolver> resolver) throws Exception {
+                                      ObjectProvider<BizIdentityResolver> resolver,
+                                      ObjectProvider<BizContextFilter.Admission> admission) throws Exception {
         return http
                 .securityMatcher("/biz/**")
                 .cors(c -> c.configurationSource(corsSource()))
@@ -190,7 +191,7 @@ public class SecurityConfig {
                 .addFilterBefore(new MerchantTokenAuthFilter(tokenStore),
                         UsernamePasswordAuthenticationFilter.class)
                 // BizContextFilter 必须在认证之后：它要用登录态去解析经营侧作用域
-                .addFilterAfter(new BizContextFilter(resolver.getIfAvailable(() -> BizIdentityResolver.NONE)),
+                .addFilterAfter(new BizContextFilter(resolver.getIfAvailable(() -> BizIdentityResolver.NONE), admission.getIfAvailable()),
                         MerchantTokenAuthFilter.class)
                 .exceptionHandling(e -> e.authenticationEntryPoint(new ApiAuthEntryPoint()))
                 .build();

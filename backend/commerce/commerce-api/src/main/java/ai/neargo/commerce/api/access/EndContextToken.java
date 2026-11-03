@@ -1,6 +1,12 @@
 package ai.neargo.commerce.api.access;
 
-import java.time.Instant;
 import ai.neargo.commerce.api.common.*;
 
-public record EndContextToken(String value, Instant expiresAt, long entitlementVersion) {}
+import java.time.Instant;
+
+public record EndContextToken(String value, Instant expiresAt, long entitlementVersion) {
+    @Override
+    public String toString() {
+        return "EndContextToken[redacted]";
+    }
+}

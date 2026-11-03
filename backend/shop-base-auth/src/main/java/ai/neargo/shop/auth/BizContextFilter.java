@@ -33,10 +33,21 @@ public class BizContextFilter extends OncePerRequestFilter {
     /** 端上带当前门店用这个头。放头里而不是每个接口加参数：它是**整个会话的上下文**，不是某个查询的条件 */
     public static final String STORE_HEADER = "X-Store-No";
 
+    /** Optional merchant admission overlay. It may reject before the business handler is entered. */
+    public interface Admission {
+        boolean admit(LoginUser user, BizContext legacy, HttpServletRequest request, HttpServletResponse response)
+                throws IOException;
+    }
     private final BizIdentityResolver resolver;
+    private final Admission admission;
 
     public BizContextFilter(BizIdentityResolver resolver) {
+        this(resolver,null);
+    }
+
+    public BizContextFilter(BizIdentityResolver resolver, Admission admission) {
         this.resolver = resolver;
+        this.admission = admission;
     }
 
     /** 请求头指定的门店必须在我的权限集合里，否则按默认店处理。 */
@@ -50,7 +61,7 @@ public class BizContextFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
-        return !req.getRequestURI().startsWith("/biz/");
+        return !req.getRequestURI().substring(req.getContextPath().length()).startsWith("/biz/");
     }
 
     @Override
@@ -71,10 +82,12 @@ public class BizContextFilter extends OncePerRequestFilter {
              * 留着它，将来谁把过滤器挂到别处也不会静默放行。
              * 两种主体号 resolve 都认（见 BizIdentityResolverImpl 的 user_no OR mch_account_no）。
              */
-            SecurityUtils.currentUser()
-                    .filter(u -> u.realm() == Realm.MERCHANT)
-                    .ifPresent(u -> BizContext.set(withRequestedStore(
-                            resolver.resolve(u.userNo(), req.getHeader(STORE_HEADER)), req)));
+            var user = SecurityUtils.currentUser().filter(u -> u.realm()==Realm.MERCHANT);
+            if (user.isPresent()) {
+                var legacy = withRequestedStore(resolver.resolve(user.get().userNo(),req.getHeader(STORE_HEADER)),req);
+                BizContext.set(legacy);
+                if (admission != null && !admission.admit(user.get(),legacy,req,resp)) return;
+            }
             chain.doFilter(req, resp);
         } finally {
             BizContext.clear();

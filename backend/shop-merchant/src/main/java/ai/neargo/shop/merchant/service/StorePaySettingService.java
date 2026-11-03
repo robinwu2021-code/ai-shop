@@ -12,6 +12,10 @@ package ai.neargo.shop.merchant.service;
  */
 public interface StorePaySettingService {
 
+    interface WriteAdmission {
+        void require(String storeNo);
+    }
+
     /** 本店的两个开关与主体资质。别家门店 = NOT_FOUND */
     PaySettingVO get(String entityNo, String storeNo);
 
