@@ -237,14 +237,82 @@ INSERT INTO sys_business_end(tenant_no,created_at,updated_at,version,deleted,end
   name,scope,allowed_business_types,release_status,sale_enabled,bootstrap_required,enabled,client_id)
 VALUES ('MAIN',NOW(),NOW(),1,0,'EXTRA','EXTRA','extra','STORE','["RETAIL"]','VERIFIED',1,0,1,'test-client')
 """);
-            var right = get(scope + "/entitlements").header("X-Store-No", store);
+            f.jdbc.update(
+                    "update sys_business_type set enabled=1 where business_type_code='RETAIL'");
+            // A verified registration without publication or store evidence stays private.
             assertEquals(
-                    "CONTACT_OWNER", ok(mvc, right, worker).at("/items/1/nextAction").asText());
+                    1,
+                    ok(mvc, get(scope + "/entitlements").header("X-Store-No", store), worker)
+                            .get("items")
+                            .size());
+            assertEquals(
+                    1,
+                    ok(mvc, get(scope + "/context").header("X-Store-No", store), bearer)
+                            .at("/entitlements/items")
+                            .size());
+
+            f.jdbc.update(
+                    """
+INSERT INTO sys_business_end(tenant_no,created_at,updated_at,version,deleted,end_code,entitlement_code,
+  name,scope,allowed_business_types,release_status,sale_enabled,bootstrap_required,enabled,client_id)
+VALUES ('MAIN',now(),now(),1,0,'OFFERED','OFFERED','published','STORE','["RETAIL"]','VERIFIED',1,0,1,'test-client')
+""");
+            for (var tier : List.of("PRO", "CHAIN")) {
+                f.jdbc.update(
+                        """
+INSERT INTO sys_industry_plan_version(tenant_no,created_at,updated_at,version,deleted,plan_version_no,
+  plan_no,revision,display_name,status,policy_version,published_at)
+VALUES ('MAIN',now(),now(),1,0,?,?,2,'current offer','PUBLISHED','policy',456)
+""",
+                        tier + "-offer",
+                        tier);
+                for (String code : List.of("BASE", "OFFERED")) {
+                    f.jdbc.update(
+                            """
+INSERT INTO sys_plan_version_end(tenant_no,created_at,updated_at,version,deleted,
+  plan_version_no,end_code,entitlement_code,sort)
+VALUES ('MAIN',now(),now(),1,0,?,?,?,?)
+""",
+                            tier + "-offer",
+                            code.equals("BASE") ? "desk" : code,
+                            code,
+                            code.equals("BASE") ? 1 : 2);
+                }
+                f.jdbc.update(
+                        "update sys_industry_plan set current_version_no=? where plan_no=?",
+                        tier + "-offer",
+                        tier);
+            }
+            var offered =
+                    ok(mvc, get(scope + "/entitlements").header("X-Store-No", store), worker)
+                            .get("items");
+            assertEquals(2, offered.size());
+            assertEquals("OFFERED", offered.at("/1/entitlementCode").asText());
+            assertEquals("NOT_PURCHASED", offered.at("/1/commercialStatus").asText());
+            assertEquals("CONTACT_OWNER", offered.at("/1/nextAction").asText());
             assertEquals(
                     "VIEW_SUBSCRIPTION",
                     ok(mvc, get(scope + "/entitlements").header("X-Store-No", store), bearer)
                             .at("/items/1/nextAction")
                             .asText());
+            f.jdbc.update(
+                    "update sys_business_type set enabled=0 where business_type_code='RETAIL'");
+            assertEquals(
+                    1,
+                    ok(mvc, get(scope + "/entitlements").header("X-Store-No", store), worker)
+                            .get("items")
+                            .size());
+            // Re-enable with the earlier package: OFFERED exists in history only.
+            f.jdbc.update(
+                    "update sys_industry_plan set current_version_no=concat(tier_code,'-v') where"
+                        + " tier_code in ('PRO','CHAIN')");
+            f.jdbc.update(
+                    "update sys_business_type set enabled=1 where business_type_code='RETAIL'");
+            assertEquals(
+                    1,
+                    ok(mvc, get(scope + "/entitlements").header("X-Store-No", store), worker)
+                            .get("items")
+                            .size());
             verifyCommittedGrantFromOlderSnapshot(f, mvc, scope, store, worker);
             // Seed an inconsistent partial schedule. The read must not return an invented
             // empty/free fallback.
@@ -302,6 +370,13 @@ VALUES ('MAIN',NOW(),NOW(),1,0,'EXTRA','EXTRA','extra','STORE','["RETAIL"]','VER
                                                                         "CNY",
                                                                         true))))
                                 .get(5, java.util.concurrent.TimeUnit.SECONDS);
+                        pool.submit(
+                                        () ->
+                                                f.jdbc.update(
+                                                        "update sys_business_end set"
+                                                            + " enabled=0,release_status='RETIRED'"
+                                                            + " where entitlement_code='EXTRA'"))
+                                .get(5, java.util.concurrent.TimeUnit.SECONDS);
                         Thread.sleep(2); // the test grant lasts one millisecond
                         // The outer RR read is still old. The HTTP projection must use current
                         // account,
@@ -350,11 +425,11 @@ VALUES ('MAIN',NOW(),NOW(),1,0,'EXTRA','EXTRA','extra','STORE','["RETAIL"]','VER
                             "fixture");
                     f.jdbc.update(
                             "update mch_store_end_grant set state='FROZEN' where store_no=? and"
-                                + " entitlement_code='EXTRA'",
+                                    + " entitlement_code='EXTRA'",
                             store);
                     f.jdbc.update(
                             "update mch_subscription_period set state='FROZEN' where store_no=? and"
-                                + " period_no=?",
+                                    + " period_no=?",
                             store,
                             before.getFirst().sourceNo());
                     repo.updateVersion(account, 3, "fixture");

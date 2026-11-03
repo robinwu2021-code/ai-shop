@@ -6,6 +6,7 @@ import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.commercebridge.FoundationTarget;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizIdentityResolver;
@@ -83,7 +84,7 @@ public class BizMerchantController {
     private final ai.neargo.shop.user.service.StoreFavoriteService storeFavoriteService;
 
     public BizMerchantController(
-                                 @org.springframework.beans.factory.annotation.Value("${commerce.store-creation.enabled:false}") boolean typedCreation,
+                                 @Value("${commerce.store-creation.enabled:false}") boolean typedCreation,
                                  ai.neargo.shop.merchant.service.DebtService debtService,
                                  MerchantService merchantService, OpsService opsService,
                                  UserService userService, BizIdentityResolver identityResolver,

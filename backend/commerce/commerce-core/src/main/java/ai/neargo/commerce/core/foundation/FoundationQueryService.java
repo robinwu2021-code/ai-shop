@@ -122,11 +122,15 @@ public final class FoundationQueryService implements FoundationQueryFacade {
                     var state = catalog.load(store.tenantNo(), CatalogLockMode.SHARED);
                     var grants = repository.grantStates(store);
                     var ends = new TreeMap<String, String>();
+                    var published =
+                            MerchantCatalog.publishedEntitlements(
+                                    state, account.businessTypeCode());
                     state.ends.values().stream()
                             .map(CatalogState.End::draft)
                             .filter(
                                     e ->
-                                            e.enabled()
+                                            published.contains(e.entitlementCode())
+                                                    && e.enabled()
                                                     && e.scope() == EndScope.STORE
                                                     && e.releaseStatus() == ReleaseStatus.VERIFIED
                                                     && e.allowedBusinessTypes()

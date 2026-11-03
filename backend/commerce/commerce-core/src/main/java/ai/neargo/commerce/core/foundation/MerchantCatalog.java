@@ -12,7 +12,7 @@ final class MerchantCatalog {
 
     static List<BusinessType> types(CatalogState state) {
         return state.types.values().stream()
-                .filter(t -> current(state, t).size() == PlanTier.values().length)
+                .filter(t -> !current(state, t).isEmpty())
                 .sorted(
                         Comparator.comparingInt((CatalogState.Type t) -> t.draft().sortOrder())
                                 .thenComparing(t -> t.draft().typeCode()))
@@ -38,14 +38,21 @@ final class MerchantCatalog {
                     || !d.typeCode().equals(p.typeCode())
                     || rows.put(p.tier(), d) != null) return Map.of();
         }
-        return rows;
+        return rows.size() == PlanTier.values().length ? rows : Map.of();
+    }
+
+    static Set<String> publishedEntitlements(CatalogState state, String typeCode) {
+        var codes = new HashSet<String>();
+        current(state, state.types.get(typeCode))
+                .values()
+                .forEach(plan -> codes.addAll(plan.entitlementCodes()));
+        return codes;
     }
 
     static PlanCatalog plans(CatalogState state, String code) {
         var type = state.types.get(code);
         var current = current(state, type);
-        if (current.size() != PlanTier.values().length)
-            return new PlanCatalog(code, null, "UNAVAILABLE", List.of());
+        if (current.isEmpty()) return new PlanCatalog(code, null, "UNAVAILABLE", List.of());
         var cards = new ArrayList<PlanCard>();
         for (var d : current.values()) {
             String sale = state.plans.get(d.planNo()).saleStatus();

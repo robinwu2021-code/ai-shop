@@ -4,7 +4,7 @@
 
 ## 从登录到恢复门店
 
-1. 登录取得 `data.token` 和 `data.merchant`。长期 token 只代表商家账号会话。账号入口和恢复初始档案时清除旧选店头。除登录和公开字典外，请求携带 `Authorization: Bearer <BTK>`。JSON 请求带 `Content-Type: application/json`。
+1. 登录取得 `data.token` 和 `data.merchant`。个人与 C 端共享 USR 身份；B 端登录服务撤销凭据交换时产生的临时 CTK，按身份选择签发 USR 或 MCH 的 BTK。两端会话池独立，token 不通用。长期 BTK 只代表商家账号会话。账号入口和恢复初始档案时清除旧选店头。除登录和公开字典外，请求携带 `Authorization: Bearer <BTK>`。JSON 请求带 `Content-Type: application/json`。
 2. 无店申请人可先读取经营类型和该类型的 Plan 卡片。用选中的 `businessTypeCode` 快速开店，从响应的 `data.currentStoreNo` 取新店号。建店成功时 FREE 已在同一数据库事务内绑定。遇到未配置的空目录应显示暂不可开店。
 3. 冷启动先读 `GET /biz/merchant/profile` 和 `GET /biz/stores/mine`。后者返回 `[{entity,stores}]`，门店列表按可信身份、成员授权裁剪。将上次店号与列表核对，选择本次要进入的确切门店。随后按选店读取 profile、商业 context 和进件。没有商家时使用登录档案或申请恢复，`GET /biz/context` 需已有商家主体。规划中的 `/biz/auth/context` 尚无处理器。
 4. 选店请求都带 `X-Store-No: <selectedStoreNo>`。带路径店号的接口必须使用相同店号。可选 `X-Entity-No`、query/body 中已有的 `entityNo`、`storeNo` 必须指向该店及其主体。三项新的门店查询在 LEGACY 和 STORE_V1 都要求店号。目录查询不需要选店，有显式选店时核对该目标。商家路径要用规范的字面路径，含百分号编码的路径会被拒绝。
@@ -44,7 +44,7 @@
 
 **门店订阅。** free 为首次初始化的永久来源，currentPlan 为服务端当前时刻生效的固定 Plan，有限 Plan 周期以外回到该店已绑定的 FREE。sources 为可读的 NORMAL 父来源，字段为 sourceNo、sourceType（FREE／ORDER／GRANT）、planNo、planVersionNo、tier、displayName、gift、planStartsAt、planEndsAt、grantedDurationMs、entitlementCodes。gift 标记赠送。来源的 entitlementCodes 是这一笔实际贡献的端，可不含已由永久 FREE 覆盖的端。独立端来源的 Plan 字段为空；不可变版本对应的展示名不随当前目录覆盖。暂停销售或停用经营类型不会收回已授来源。采购和普通成员均不返回实付、折价、钱包或订单基数。查看动作是 VIEW_ENTITLEMENTS。
 
-**每端覆盖。** items 每项有 entitlementCode、endCode、commercialStatus、current、future、slices、remainingMs、nextBoundaryAt、nextAction。current 为当前连续区间或 null；future 是有序、已合并的未来区间，两者的字段均为 startsAt、endsAt。slices 通过 sourceNo 指向父来源并列出实际起止。同端重叠或首尾相接才连续，空档保留。remainingMs 是当前与未来覆盖的并集剩余毫秒；无限覆盖返回 null。按来源、按不同端分别处理，不能以某个 Plan 的最长到期日代表全部权益。所有新读接口的时间均为 UTC epoch 毫秒整数；半开区间 [startsAt, endsAt)，null 结束表示永久。serverNow 为服务端裁定时间，nextBoundaryAt 可空。context 外层 nextBoundaryAt 取订阅与各端最近边界的最小值。两个详情分次请求可能跨版本，同屏需要一致快照时读取 context。
+**每端覆盖。** 未持有的端仅在启用类型的当前三档发布卡片列出、且端已启用并通过 STORE 验证时展示。单独登记端或仅有历史 Plan 绑定不会出现在候选列表。店内已有来源、排期或冻结记录的端独立展示，即使类型已停用或端已退役仍返回其实际商业状态。items 每项有 entitlementCode、endCode、commercialStatus、current、future、slices、remainingMs、nextBoundaryAt、nextAction。current 为当前连续区间或 null；future 是有序、已合并的未来区间，两者的字段均为 startsAt、endsAt。slices 通过 sourceNo 指向父来源并列出实际起止。同端重叠或首尾相接才连续，空档保留。remainingMs 是当前与未来覆盖的并集剩余毫秒；无限覆盖返回 null。按来源、按不同端分别处理，不能以某个 Plan 的最长到期日代表全部权益。所有新读接口的时间均为 UTC epoch 毫秒整数；半开区间 [startsAt, endsAt)，null 结束表示永久。serverNow 为服务端裁定时间，nextBoundaryAt 可空。context 外层 nextBoundaryAt 取订阅与各端最近边界的最小值。两个详情分次请求可能跨版本，同屏需要一致快照时读取 context。
 
 | commercialStatus | 端上的动作 |
 |---|---|
