@@ -34,15 +34,20 @@ final class AccessMysqlFixture implements AutoCloseable {
     final JdbcTemplate admin, jdbc;
     final DataSourceTransactionManager manager;
     final SessionDao dao;
+    final LoginLogWriter audit;
     final CompositeIdentityLoader<LoginUser> loader;
     final SqlSessionTemplate mybatis;
     final AuthCache<String, DbTokenStore.CachedSession> sc;
     final AuthCache<String, LoginUser> ic;
-    final Clock clock =
-            Clock.fixed(Instant.parse("2026-10-01T00:00:00Z"), ZoneId.of("Asia/Shanghai"));
+    final Clock clock;
     final DbTokenStore store;
 
     AccessMysqlFixture() throws Exception {
+        this(Clock.fixed(Instant.parse("2026-10-01T00:00:00Z"), ZoneId.of("Asia/Shanghai")));
+    }
+
+    AccessMysqlFixture(Clock clock) throws Exception {
+        this.clock = clock;
         String url = System.getenv("COMMERCE_MYSQL_URL"),
                 user = System.getenv("COMMERCE_MYSQL_USER"),
                 password = System.getenv("COMMERCE_MYSQL_PASSWORD");
@@ -59,11 +64,14 @@ final class AccessMysqlFixture implements AutoCloseable {
                         "cmt_community",
                         "cmt_pickup_point",
                         "mch_session",
+                        "mch_login_log",
                         "mch_account",
                         "usr_account",
                         "mch_entity",
                         "mch_qualification",
                         "mch_entity_apply",
+                        "mch_entity_plan",
+                        "sys_merchant_plan_def",
                         "mch_store",
                         "mch_store_role",
                         "mch_role")) {
@@ -101,6 +109,8 @@ final class AccessMysqlFixture implements AutoCloseable {
                         MchAccountMapper.class,
                         MchEntityMapper.class,
                         QualificationMapper.class,
+                        EntityPlanMapper.class,
+                        PlanDefMapper.class,
                         ai.neargo.shop.platform.mapper.PlatformMappers.MerchantApplyMapper.class,
                         MchStoreMapper.class,
                         MchStoreRoleMapper.class,
@@ -121,10 +131,12 @@ final class AccessMysqlFixture implements AutoCloseable {
         ic =
                 new AuthCache<>(
                         schema + "i", String.class, LoginUser.class, Duration.ofMinutes(10), 100);
-        store = new DbTokenStore(Realm.MERCHANT, profile, dao, loader, sc, ic, null, clock);
+        audit = new LoginLogWriter(new LoginLogDao(JdbcClient.create(ds), profile), profile);
+        store = new DbTokenStore(Realm.MERCHANT, profile, dao, loader, sc, ic, audit, clock);
     }
 
     public void close() {
+        audit.close();
         sc.close();
         ic.close();
         admin.execute("DROP DATABASE " + schema);

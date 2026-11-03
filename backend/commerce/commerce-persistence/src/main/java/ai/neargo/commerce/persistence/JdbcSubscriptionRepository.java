@@ -5,6 +5,7 @@ import static ai.neargo.commerce.core.catalog.CatalogSupport.json;
 import ai.neargo.commerce.api.common.*;
 import ai.neargo.commerce.api.port.CommerceIdGenerator;
 import ai.neargo.commerce.api.subscription.AccessSegment;
+import ai.neargo.commerce.core.foundation.FoundationRepository;
 import ai.neargo.commerce.core.spi.AccountSnapshot;
 import ai.neargo.commerce.core.spi.Period;
 import ai.neargo.commerce.core.spi.SubscriptionRepository;
@@ -17,7 +18,8 @@ import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
-public final class JdbcSubscriptionRepository implements SubscriptionRepository {
+public final class JdbcSubscriptionRepository
+        implements SubscriptionRepository, FoundationRepository {
     private final DataSource ds;
     private final JdbcTemplate jdbc;
     private final JdbcSubscriptionAccountRepository accounts;
@@ -94,6 +96,38 @@ SELECT p.*,p.source_policy_snapshot->>'$.policy' policy,p.source_policy_snapshot
                                 Boolean.parseBoolean(r.getString("gift"))),
                 s.tenantNo(),
                 s.storeNo());
+    }
+
+    public Map<String, GrantState> grantStates(StoreRef s) {
+        requireOuterTransaction(s);
+        var result = new TreeMap<String, GrantState>();
+        jdbc.query(
+                """
+SELECT g.entitlement_code,g.end_code,g.state,
+       (p.id IS NULL OR p.state<>'NORMAL' OR p.deleted=1 OR g.deleted=1) invalid_parent
+FROM mch_store_end_grant g LEFT JOIN mch_subscription_period p
+  ON p.tenant_no=g.tenant_no AND p.store_no=g.store_no AND p.period_no=g.period_no
+WHERE g.tenant_no=? AND g.store_no=? AND g.state IN ('NORMAL','REVOKED','FROZEN')
+ORDER BY g.entitlement_code,g.id FOR SHARE
+""",
+                (org.springframework.jdbc.core.RowCallbackHandler)
+                        r -> {
+                            String code = r.getString(1), end = r.getString(2);
+                            boolean revoked = !"NORMAL".equals(r.getString(3));
+                            if (!revoked && r.getBoolean(4))
+                                throw new IllegalStateException("invalid grant parent");
+                            var previous = result.get(code);
+                            if (previous != null && !previous.endCode().equals(end))
+                                throw new IllegalStateException("conflicting grant end");
+                            result.put(
+                                    code,
+                                    new GrantState(
+                                            end,
+                                            revoked || previous != null && previous.revoked()));
+                        },
+                s.tenantNo(),
+                s.storeNo());
+        return result;
     }
 
     public List<AccessSegment> segments(StoreRef s, String code) {

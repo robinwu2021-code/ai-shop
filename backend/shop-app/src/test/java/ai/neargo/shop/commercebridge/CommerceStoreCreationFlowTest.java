@@ -547,7 +547,7 @@ class CommerceStoreCreationFlowTest {
         creationCounts(jdbc).forEach((table, count) -> assertEquals(expected, count, table));
     }
 
-    private static void seedPublishedCatalog(JdbcTemplate jdbc) {
+    static void seedPublishedCatalog(JdbcTemplate jdbc) {
         String audit = "tenant_no,created_at,updated_at,version,deleted,",
                 values = "'MAIN',NOW(),NOW(),1,0,";
         jdbc.update(

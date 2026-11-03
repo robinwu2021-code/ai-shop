@@ -137,7 +137,8 @@ class BizFoundationAccessMysqlTest {
                             post("/biz/auth/logout")
                                     .header("Authorization", bearer)
                                     .header("X-Store-No", "foreign"))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(""));
             assertTrue(f.store.get(token).isEmpty());
             assertTrue(f.store.get(other).isPresent());
             mvc.perform(protectedRead).andExpect(status().isUnauthorized());
@@ -274,35 +275,7 @@ class BizFoundationAccessMysqlTest {
                             null);
             var json = new tools.jackson.databind.ObjectMapper();
             var alerts = mock(OpsAlertPort.class);
-            // Use real transactions + actual application/membership/store rows. The dictionary,
-            // operator recipients and notification hook are independent of target selection.
-            services.register(ApplyTransactions.class);
-            services.registerBean(DataSourceTransactionManager.class, () -> f.manager);
-            services.registerBean(
-                    OpsServiceImpl.class,
-                    () ->
-                            new OpsServiceImpl(
-                                    mock(StaffMapper.class),
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    f.mybatis.getMapper(MerchantApplyMapper.class),
-                                    port,
-                                    null,
-                                    null,
-                                    json,
-                                    json,
-                                    mock(IndustryService.class),
-                                    mock(MasterDataService.class),
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    "mail",
-                                    alerts,
-                                    ""));
+            registerApplication(f, services, port, alerts);
             services.refresh();
             var mvc =
                     CommerceAccessSecurityFlowTest.merchantMvc(
@@ -319,7 +292,7 @@ class BizFoundationAccessMysqlTest {
                     "update mch_store set commerce_model='LEGACY',is_default=1 where store_no='S'");
             f.jdbc.update(
                     "insert into mch_entity(entity_no,name,status,created_at,updated_at) values"
-                        + " ('B','Pending','PENDING_LICENSE',now(),now())");
+                            + " ('B','Pending','PENDING_LICENSE',now(),now())");
             f.jdbc.update(
                     "insert into"
                         + " mch_account(mch_account_no,user_no,entity_no,is_owner,status,created_at,updated_at)"
@@ -359,6 +332,44 @@ class BizFoundationAccessMysqlTest {
                             "select entity_no from mch_entity_apply where user_no='U'",
                             String.class));
         }
+    }
+
+    static void registerApplication(
+            AccessMysqlFixture f,
+            AnnotationConfigApplicationContext services,
+            ai.neargo.shop.spi.user.MerchantAdminPort port,
+            OpsAlertPort alerts) {
+        var json = new tools.jackson.databind.ObjectMapper();
+
+        // Use real transactions + actual application/membership/store rows. The dictionary,
+        // operator recipients and notification hook are independent of target selection.
+        services.register(ApplyTransactions.class);
+        services.registerBean(DataSourceTransactionManager.class, () -> f.manager);
+        services.registerBean(
+                OpsServiceImpl.class,
+                () ->
+                        new OpsServiceImpl(
+                                mock(StaffMapper.class),
+                                null,
+                                null,
+                                null,
+                                null,
+                                f.mybatis.getMapper(MerchantApplyMapper.class),
+                                port,
+                                null,
+                                null,
+                                json,
+                                json,
+                                mock(IndustryService.class),
+                                mock(MasterDataService.class),
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                "mail",
+                                alerts,
+                                ""));
     }
 
     private static MockHttpServletResponse submitApplication(

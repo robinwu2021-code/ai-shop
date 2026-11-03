@@ -13,6 +13,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public record FoundationTarget(String entityNo, String storeNo) {
     private static final String KEY = FoundationTarget.class.getName();
 
+    static void bindAccount(HttpServletRequest request) {
+        new FoundationTarget(null, null).checkRequest(request);
+    }
+
     static void bind(HttpServletRequest request, BizContext strict) {
         var target = new FoundationTarget(strict.merchantNo(), strict.currentStoreNo());
         target.checkRequest(request);

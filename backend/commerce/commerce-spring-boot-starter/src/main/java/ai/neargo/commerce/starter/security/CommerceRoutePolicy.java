@@ -84,7 +84,8 @@ public final class CommerceRoutePolicy {
     public Route match(String method, String path) {
         if (isStoreSelection(method, path)
                 || ACCOUNT.contains(method + " " + path)
-                || method.equals("GET") && path.matches("/biz/business-types/" + ID + "/plans"))
+                || method.equals("GET")
+                        && path.matches("/biz/business-types/[A-Za-z0-9_.:-]{1,32}/plans"))
             return new Route(Lane.ACCOUNT, null, null, null);
         var foundation =
                 switch (method + " " + path) {
@@ -144,15 +145,14 @@ public final class CommerceRoutePolicy {
                     BIZ,
                     method.equals("PUT") ? "biz:store:admin" : "biz:store");
         if (path.startsWith("/biz/stores/")) {
+            if (method.equals("GET")
+                    && store.matches(ID)
+                    && Set.of("context", "subscription", "entitlements").contains(tail))
+                return new Route(Lane.BOOTSTRAP, store, null, null, false, true);
             if (method.equals("GET") && tail.equals("pos/access"))
                 return new Route(Lane.END_PROTECTED, store, POS, "biz:receive", true);
             if (method.equals("GET")
-                            && Set.of(
-                                            "context",
-                                            "end-access",
-                                            "subscription",
-                                            "mall/categories",
-                                            "mall/products")
+                            && Set.of("end-access", "mall/categories", "mall/products")
                                     .contains(tail)
                     || method.equals("POST") && tail.equals("end-sessions"))
                 return new Route(Lane.BOOTSTRAP, store, null, null, true);

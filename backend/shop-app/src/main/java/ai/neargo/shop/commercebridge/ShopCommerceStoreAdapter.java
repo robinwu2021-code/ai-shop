@@ -23,7 +23,7 @@ final class ShopCommerceStoreAdapter implements StoreDirectoryPort {
     // LEGACY. The length check also rejects values with extra padding.
     private static final String NON_LEGACY_MODEL =
             "(OCTET_LENGTH(commerce_model) <> 6 OR CAST(commerce_model AS BINARY(6)) <>"
-                + " CAST('LEGACY' AS BINARY(6)))";
+                    + " CAST('LEGACY' AS BINARY(6)))";
     private final JdbcTemplate jdbc;
     private final TransactionTemplate fresh;
 
@@ -108,7 +108,13 @@ WHERE a.tenant_no=s.tenant_no AND a.entity_no=s.entity_no AND ? IN (%s) AND a.st
                         user.userNo()));
     }
 
+    record StoreFacts(StoreSnapshot snapshot, String storeStatus, String entityStatus) {}
+
     public Optional<StoreSnapshot> find(StoreRef store) {
+        return details(store).map(StoreFacts::snapshot);
+    }
+
+    Optional<StoreFacts> details(StoreRef store) {
         return jdbc
                 .query(
                         """
@@ -123,14 +129,17 @@ WHERE s.tenant_no=? AND s.store_no=? AND s.deleted=0
                                     "ACTIVE".equals(rs.getString(5))
                                             && ("ACTIVE".equals(rs.getString(6))
                                                     || "PENDING_LICENSE".equals(rs.getString(6)));
-                            return new StoreSnapshot(
-                                    actual,
-                                    rs.getString(2),
-                                    rs.getString(3),
-                                    active ? StoreStatus.ACTIVE : StoreStatus.DISABLED,
-                                    model == null
-                                            ? CommerceModel.LEGACY
-                                            : CommerceModel.valueOf(model));
+                            return new StoreFacts(
+                                    new StoreSnapshot(
+                                            actual,
+                                            rs.getString(2),
+                                            rs.getString(3),
+                                            active ? StoreStatus.ACTIVE : StoreStatus.DISABLED,
+                                            model == null
+                                                    ? CommerceModel.LEGACY
+                                                    : CommerceModel.valueOf(model)),
+                                    rs.getString(5),
+                                    rs.getString(6));
                         },
                         store.tenantNo(),
                         store.storeNo())

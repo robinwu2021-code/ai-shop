@@ -1,5 +1,6 @@
 package ai.neargo.commerce.core.access;
 
+import ai.neargo.commerce.api.access.AccessStatus;
 import ai.neargo.commerce.api.subscription.*;
 
 import java.time.Instant;
@@ -15,6 +16,11 @@ public final class CoverageCalculator {
     }
 
     public static CoverageView evaluate(String code, List<AccessSegment> rows, Instant at) {
+        var merged = intervals(code, rows);
+        return at(code, merged, at);
+    }
+
+    public static List<CoverageInterval> intervals(String code, List<AccessSegment> rows) {
         var merged = new ArrayList<CoverageInterval>();
         for (var s : rows.stream().sorted(Comparator.comparing(AccessSegment::startsAt)).toList()) {
             if (!code.equals(s.entitlementCode())
@@ -28,6 +34,10 @@ public final class CoverageCalculator {
                 merged.set(merged.size() - 1, new CoverageInterval(prev.startsAt(), s.endsAt()));
             }
         }
+        return List.copyOf(merged);
+    }
+
+    public static CoverageView at(String code, List<CoverageInterval> merged, Instant at) {
         CoverageInterval current = null, ended = null;
         Instant next = null;
         for (var interval : merged) {
@@ -45,5 +55,14 @@ public final class CoverageCalculator {
                 Optional.ofNullable(ended),
                 Optional.ofNullable(current == null ? next : current.endsAt()),
                 Optional.ofNullable(next));
+    }
+
+    /** Commercial coverage only. End entry additionally requires host authority and proof. */
+    public static AccessStatus status(CoverageView coverage, boolean revoked) {
+        if (coverage.currentCoverage().isPresent()) return AccessStatus.ALLOWED;
+        if (coverage.nextStartAt().isPresent()) return AccessStatus.NOT_STARTED;
+        if (revoked) return AccessStatus.REVOKED;
+        if (coverage.mostRecentEndedCoverage().isPresent()) return AccessStatus.EXPIRED;
+        return AccessStatus.NOT_PURCHASED;
     }
 }

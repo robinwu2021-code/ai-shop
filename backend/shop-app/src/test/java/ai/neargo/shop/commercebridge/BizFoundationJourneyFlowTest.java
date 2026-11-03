@@ -189,7 +189,9 @@ class BizFoundationJourneyFlowTest {
     @Test
     void selectedPendingOwnerSubmitsLicenseAcceptsAgreementAndReadsPaymentStatus()
             throws Exception {
-        String token = login("15965010103").path("token").asText();
+        var firstLogin = login("15965010103");
+        FoundationHttpExamples.data("login", firstLogin);
+        String token = firstLogin.path("token").asText();
         String bearer = "Bearer " + token;
         var user = tokens.get(token).orElseThrow().user();
         var profile =
@@ -205,6 +207,7 @@ class BizFoundationJourneyFlowTest {
                                         .getResponse()
                                         .getContentAsString())
                         .path("data");
+        FoundationHttpExamples.data("quickStart", profile);
         String entity = profile.path("merchantNo").asText();
         String store = profile.path("currentStoreNo").asText();
         assertFalse(store.isBlank());
@@ -256,6 +259,7 @@ class BizFoundationJourneyFlowTest {
                         "select count(*) from mch_entity_apply where user_no=?",
                         Integer.class,
                         user.userNo()));
+        var examples = java.util.List.of("apply","agreement","application","channels").iterator();
         for (var req :
                 java.util.List.of(
                         post("/biz/merchant/apply")
@@ -270,6 +274,8 @@ class BizFoundationJourneyFlowTest {
                     mvc.perform(req.header("Authorization", bearer).header("X-Store-No", store))
                             .andReturn()
                             .getResponse();
+            if (examples.hasNext())
+                FoundationHttpExamples.data(examples.next(), json.readTree(result.getContentAsString()).get("data"));
             assertEquals(
                     0,
                     json.readTree(result.getContentAsString()).path("code").asInt(),
@@ -324,6 +330,8 @@ class BizFoundationJourneyFlowTest {
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
                                         "$.code")
                                 .value(0))
+                .andDo(result -> FoundationHttpExamples.data("payment",
+                        json.readTree(result.getResponse().getContentAsString()).get("data")))
                 .andExpect(
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
                                         "$.data.submitted")

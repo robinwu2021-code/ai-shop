@@ -73,6 +73,16 @@ public class PermChecker {
         return user.perms();
     }
 
+    public boolean merchantAccount() {
+        return SecurityUtils.currentUser().filter(u -> u.realm() == Realm.MERCHANT).isPresent();
+    }
+
+    public boolean memberOfSelectedStore(String storeNo) {
+        var ctx = BizContext.current();
+        return merchantAccount() && storeNo != null && storeNo.equals(ctx.currentStoreNo())
+                && ctx.storeNos().contains(storeNo);
+    }
+
     /**
      * B 端权限码（{@link BizPerms}），按<b>当前门店</b>上持有的角色判定，取并集。
      *

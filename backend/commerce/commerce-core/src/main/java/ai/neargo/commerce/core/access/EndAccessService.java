@@ -179,16 +179,9 @@ public final class EndAccessService implements EndAccessFacade {
             throw new AccessDenied(AccessStatus.STORE_DISABLED);
         if (!auth.permitted()) throw new AccessDenied(AccessStatus.FORBIDDEN);
         var coverage = CoverageCalculator.evaluate(c.entitlementCode(), state.segments(), now);
-        AccessStatus status;
-        if (coverage.currentCoverage().isPresent()) {
-            status =
-                    issuing || validProof(c, state.version(), now)
-                            ? AccessStatus.ALLOWED
-                            : AccessStatus.CONTEXT_REFRESH_REQUIRED;
-        } else if (coverage.nextStartAt().isPresent()) status = AccessStatus.NOT_STARTED;
-        else if (state.revoked()) status = AccessStatus.REVOKED;
-        else if (coverage.mostRecentEndedCoverage().isPresent()) status = AccessStatus.EXPIRED;
-        else status = AccessStatus.NOT_PURCHASED;
+        var status = CoverageCalculator.status(coverage, state.revoked());
+        if (status == AccessStatus.ALLOWED && !issuing && !validProof(c, state.version(), now))
+            status = AccessStatus.CONTEXT_REFRESH_REQUIRED;
         var decision =
                 new AccessDecision(
                         status,

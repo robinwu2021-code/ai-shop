@@ -620,6 +620,9 @@ class BizEndpointPermTest {
     private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
 
     /** Both routes use the requested end's entry duty; the real method guard and fresh authority enforce it. */
+    private static final Set<String> FOUNDATION_READS = Set.of("/biz/business-types", "/biz/business-types/{typeCode}/plans",
+            "/biz/stores/{storeNo}/context","/biz/stores/{storeNo}/subscription","/biz/stores/{storeNo}/entitlements");
+
     private static final Set<String> END_ENTRY_DUTY = Set.of("/biz/stores/{storeNo}/end-sessions","/biz/stores/{storeNo}/end-access");
 
     /**
@@ -642,6 +645,7 @@ class BizEndpointPermTest {
         Set<String> undecided = new TreeSet<>(endpoints);
         undecided.removeAll(REQUIRED.keySet());
         undecided.removeAll(END_ENTRY_DUTY);
+        undecided.removeAll(FOUNDATION_READS);
         undecided.removeAll(ANY_OF);
         undecided.removeAll(PUBLIC);
         assertThat(undecided)
@@ -656,6 +660,7 @@ class BizEndpointPermTest {
         Set<String> endpoints = scanBizEndpoints();
         Set<String> stale = new TreeSet<>(REQUIRED.keySet());
         stale.addAll(END_ENTRY_DUTY);
+        stale.addAll(FOUNDATION_READS);
         stale.removeAll(endpoints);
         assertThat(stale)
                 .as("这些端点已经不存在了，从 REQUIRED 删掉 —— "
@@ -681,6 +686,7 @@ class BizEndpointPermTest {
         Set<String> guarded = scanGuardedEndpoints();
         Set<String> missing = new TreeSet<>(REQUIRED.keySet());
         missing.addAll(END_ENTRY_DUTY);
+        missing.addAll(FOUNDATION_READS);
         missing.addAll(ANY_OF);   // 「任一」也是决定，同样必须落到注解上
         missing.removeAll(guarded);
         assertThat(missing)
@@ -699,7 +705,7 @@ class BizEndpointPermTest {
             for (Path p : files.filter(f -> f.toString().endsWith(".java"))
                     .filter(f -> !f.toString().contains("/test/")).toList()) {
                 String src = Files.readString(p);
-                if (!src.contains("canBiz") && !src.contains("canAnyBiz")) {
+                if (!src.contains("@perm.")) {
                     continue;
                 }
                 Matcher base = CLASS_BASE.matcher(src);
@@ -720,6 +726,9 @@ class BizEndpointPermTest {
                      *
                      * 停在**空行或上一个方法的结尾**：注解块不会跨过这两者。
                      */
+                    String path = m.group(1);
+                    String full = path.startsWith("/biz/") ? path
+                            : (prefix.startsWith("/biz") ? prefix + path : null);
                     boolean has = false;
                     for (int k = i - 1; k >= 0; k--) {
                         String up = lines[k].trim();
@@ -727,7 +736,12 @@ class BizEndpointPermTest {
                                 || up.startsWith("private ") || up.startsWith("return ")) {
                             break;
                         }
-                        if (up.contains("canBiz") || up.contains("canAnyBiz")) {
+                        boolean allowed = full != null && FOUNDATION_READS.contains(full)
+                                ? up.contains(full.startsWith("/biz/stores/")
+                                        ? "@PreAuthorize(\"@perm.memberOfSelectedStore(#storeNo)\")"
+                                        : "@PreAuthorize(\"@perm.merchantAccount()\")")
+                                : up.contains("canBiz") || up.contains("canAnyBiz");
+                        if (allowed) {
                             has = true;
                             break;
                         }
@@ -735,9 +749,6 @@ class BizEndpointPermTest {
                     if (!has) {
                         continue;
                     }
-                    String path = m.group(1);
-                    String full = path.startsWith("/biz/") ? path
-                            : (prefix.startsWith("/biz") ? prefix + path : null);
                     if (full != null) {
                         out.add(full);
                     }

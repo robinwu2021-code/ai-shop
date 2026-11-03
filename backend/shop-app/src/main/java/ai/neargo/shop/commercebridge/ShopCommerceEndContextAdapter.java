@@ -98,6 +98,14 @@ public final class ShopCommerceEndContextAdapter
         var route = policy.match(req.getMethod(), path);
         String requested = req.getHeader(BizContextFilter.STORE_HEADER);
         boolean account = route.lane() == CommerceRoutePolicy.Lane.ACCOUNT;
+        if (path.equals("/biz/business-types") || path.startsWith("/biz/business-types/")) {
+            if (!account) throw new AccessDenied(AccessStatus.FORBIDDEN);
+            // Catalog has no store target. Validate any explicitly supplied selection before
+            // serving it, even for a legacy account that would normally fall back to its default.
+            if (requested == null || requested.isBlank()) FoundationTarget.bindAccount(req);
+            else checkFoundationSession(user, legacy, req, route, path, requested);
+            return;
+        }
         if (route.foundation()
                 || path.equals("/biz/merchant/quick-start")
                 || path.equals("/biz/auth/password")) {
@@ -172,9 +180,12 @@ public final class ShopCommerceEndContextAdapter
                                     || !user.userNo().equals(fresh.userNo())
                                     || !user.tenantNo().equals(fresh.tenantNo()))
                                 throw new AccessDenied(AccessStatus.ACCOUNT_INVALID);
-                            if (!route.foundation()) return true;
+                            if (!route.foundation() && !path.startsWith("/biz/business-types"))
+                                return true;
                             boolean affects = stores.affects(fresh, legacy, route, requested);
-                            if (!affects && (requested == null || requested.isBlank())) return true;
+                            if (!affects
+                                    && !path.startsWith("/biz/stores/")
+                                    && (requested == null || requested.isBlank())) return true;
                             if (requested == null
                                     || requested.isBlank()
                                     || route.pathStore() != null

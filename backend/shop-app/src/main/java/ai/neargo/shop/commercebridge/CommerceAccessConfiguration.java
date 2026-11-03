@@ -13,7 +13,10 @@ import javax.sql.DataSource;
 @Configuration(proxyBeanMethods = false)
 @Profile("api")
 @ConditionalOnProperty(name = "commerce.enabled", havingValue = "true")
-@Import(CommerceEndAccessConfiguration.class)
+@Import({
+    CommerceEndAccessConfiguration.class,
+    ai.neargo.commerce.starter.CommerceFoundationConfiguration.class
+})
 class CommerceAccessConfiguration {
     @Bean
     ShopCommerceStoreAdapter commerceStoreDirectory(

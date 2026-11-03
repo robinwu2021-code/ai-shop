@@ -206,6 +206,7 @@ class CommerceAccessSecurityFlowTest {
                                 ShopCommerceEndContextAdapter.class,
                                 ShopCommerceStoreAdapter.class,
                                 CommerceEndController.class,
+                                ai.neargo.shop.portal.biz.BizFoundationController.class,
                                 DisabledCommerceConfiguration.class,
                                 CommerceAccessErrors.class);
         noClasses()
@@ -530,8 +531,12 @@ class CommerceAccessSecurityFlowTest {
                                     MerchantQueryPort.class,
                                     PlatformSwitchPort.class,
                                     MessageService.class,
-                                    AfterSalePendingQueryPort.class))
-                        b.registerSingleton(type.getSimpleName(), realServices.containsKey(type) ? realServices.get(type) : mock(type));
+                                    AfterSalePendingQueryPort.class)) {
+                        if (realServices.containsKey(type))
+                            b.registerSingleton(type.getSimpleName(),realServices.get(type));
+                        else if (realServices.values().stream().noneMatch(type::isInstance))
+                            b.registerSingleton(type.getSimpleName(),mock(type));
+                    }
                     b.registerSingleton("accounts", f.mybatis.getMapper(MchAccountMapper.class));
                     b.registerSingleton("entityRows", f.mybatis.getMapper(MchEntityMapper.class));
                     b.registerSingleton("roleRows", f.mybatis.getMapper(MchRoleMapper.class));
