@@ -6,12 +6,15 @@ import ai.neargo.commerce.core.access.EndScheduleService;
 import ai.neargo.commerce.core.spi.CommerceUnitOfWork;
 import ai.neargo.commerce.core.subscription.*;
 import ai.neargo.commerce.persistence.*;
+import ai.neargo.shop.spi.pay.MarketPort;
+import ai.neargo.shop.spi.pay.MarketPort.MarketBrief;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.*;
 
 import java.time.Clock;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
@@ -23,16 +26,12 @@ import javax.sql.DataSource;
 class CommerceStoreCreationConfiguration {
     @Bean
     @DependsOn("commerceMigrationInitializer")
-    HostStoreCreationAuthority hostStoreCreationAuthority(
-            DataSource ds, ai.neargo.shop.spi.pay.MarketPort markets) {
+    HostStoreCreationAuthority hostStoreCreationAuthority(DataSource ds, MarketPort markets) {
         // Market currency is immutable in the host contract. Resolve it before any store
         // transaction.
         var currencies =
                 markets.all().stream()
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        ai.neargo.shop.spi.pay.MarketPort.MarketBrief::market,
-                                        ai.neargo.shop.spi.pay.MarketPort.MarketBrief::currency));
+                        .collect(Collectors.toMap(MarketBrief::market, MarketBrief::currency));
         return new HostStoreCreationAuthority(ds, currencies);
     }
 
