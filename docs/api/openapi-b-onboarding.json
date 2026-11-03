@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "B端注册至进件资料提交 API",
-    "version": "2026-11-04",
-    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。"
+    "version": "2026-11-04.1",
+    "description": "按后端代码6af2d200d及既有HTTP验收响应整理。新模型为主流程，兼容边界见配套Markdown。选择环境时配置实际API基础地址；服务器相对根路径不代表已部署。 补充既有选店岗位及商业权益读取，共29个操作；未新增业务端点。"
   },
   "servers": [
     {
@@ -3748,6 +3748,763 @@
           }
         }
       }
+    },
+    "/biz/context": {
+      "get": {
+        "operationId": "getSelectedStorePermissions",
+        "summary": "读取所选门店岗位权限",
+        "description": "有效所选店成员可读，不需要采购权或端证明。路径店号（如有）必须等于 X-Store-No。无主体阶段不调用。商业资格到期不使账号失效；切店后重读。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "有效所选店成员",
+        "x-retry": "只读可重试；丢弃切店或换账号后的迟到响应。",
+        "x-business-error-codes": [
+          10401,
+          10402,
+          10403,
+          70006,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/SelectedStorePermissions"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "本次精确选店。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "出现时必须属于该店主体。"
+          }
+        ]
+      }
+    },
+    "/biz/stores/{storeNo}/context": {
+      "get": {
+        "operationId": "getSelectedStoreCommercialContext",
+        "summary": "读取所选门店商业与治理汇总",
+        "description": "有效所选店成员可读，不需要采购权或端证明。路径店号（如有）必须等于 X-Store-No。无主体阶段不调用。商业资格到期不使账号失效；切店后重读。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "有效所选店成员",
+        "x-retry": "只读可重试；丢弃切店或换账号后的迟到响应。",
+        "x-business-error-codes": [
+          10401,
+          10402,
+          10403,
+          70006,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CurrentStoreCommercialContext"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "storeNo": "STORE-EXAMPLE",
+                    "entityNo": "ENTITY-EXAMPLE",
+                    "commerceModel": "STORE_V1",
+                    "businessTypeCode": "RETAIL",
+                    "storeStatus": "ACTIVE",
+                    "entityStatus": "PENDING_LICENSE",
+                    "owner": true,
+                    "roles": [
+                      "OWNER"
+                    ],
+                    "canProcure": true,
+                    "subscription": {
+                      "storeNo": "STORE-EXAMPLE",
+                      "commerceModel": "STORE_V1",
+                      "entitlementVersion": 1,
+                      "free": {
+                        "sourceNo": "SOURCE-EXAMPLE",
+                        "sourceType": "FREE",
+                        "planNo": "FREE",
+                        "planVersionNo": "FREE-v",
+                        "tier": "FREE",
+                        "displayName": "FREE",
+                        "planStartsAt": 1793717808348,
+                        "planEndsAt": null,
+                        "grantedDurationMs": null,
+                        "entitlementCodes": [
+                          "BASE"
+                        ],
+                        "gift": false
+                      },
+                      "currentPlan": {
+                        "sourceNo": "SOURCE-EXAMPLE",
+                        "sourceType": "FREE",
+                        "planNo": "FREE",
+                        "planVersionNo": "FREE-v",
+                        "tier": "FREE",
+                        "displayName": "FREE",
+                        "planStartsAt": 1793717808348,
+                        "planEndsAt": null,
+                        "grantedDurationMs": null,
+                        "entitlementCodes": [
+                          "BASE"
+                        ],
+                        "gift": false
+                      },
+                      "sources": [
+                        {
+                          "sourceNo": "SOURCE-EXAMPLE",
+                          "sourceType": "FREE",
+                          "planNo": "FREE",
+                          "planVersionNo": "FREE-v",
+                          "tier": "FREE",
+                          "displayName": "FREE",
+                          "planStartsAt": 1793717808348,
+                          "planEndsAt": null,
+                          "grantedDurationMs": null,
+                          "entitlementCodes": [
+                            "BASE"
+                          ],
+                          "gift": false
+                        }
+                      ],
+                      "serverNow": 1793717808626,
+                      "nextBoundaryAt": null,
+                      "purchaseAvailable": false,
+                      "nextAction": "VIEW_ENTITLEMENTS"
+                    },
+                    "entitlements": {
+                      "storeNo": "STORE-EXAMPLE",
+                      "commerceModel": "STORE_V1",
+                      "entitlementVersion": 1,
+                      "items": [
+                        {
+                          "entitlementCode": "BASE",
+                          "endCode": "desk",
+                          "commercialStatus": "ACTIVE",
+                          "current": {
+                            "startsAt": 1793717808348,
+                            "endsAt": null
+                          },
+                          "future": [],
+                          "slices": [
+                            {
+                              "sourceNo": "SOURCE-EXAMPLE",
+                              "startsAt": 1793717808348,
+                              "endsAt": null
+                            }
+                          ],
+                          "remainingMs": null,
+                          "nextBoundaryAt": null,
+                          "nextAction": "CHECK_END_ACCESS"
+                        }
+                      ],
+                      "serverNow": 1793717808626,
+                      "nextBoundaryAt": null
+                    },
+                    "serverNow": 1793717808626,
+                    "entitlementVersion": 1,
+                    "nextBoundaryAt": null
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "本次精确选店。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "出现时必须属于该店主体。"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "与X-Store-No一致。"
+          }
+        ]
+      }
+    },
+    "/biz/stores/{storeNo}/subscription": {
+      "get": {
+        "operationId": "getSelectedStoreSubscription",
+        "summary": "读取实际 FREE 与当前订阅",
+        "description": "有效所选店成员可读，不需要采购权或端证明。路径店号（如有）必须等于 X-Store-No。无主体阶段不调用。商业资格到期不使账号失效；切店后重读。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "有效所选店成员",
+        "x-retry": "只读可重试；丢弃切店或换账号后的迟到响应。",
+        "x-business-error-codes": [
+          10401,
+          10402,
+          10403,
+          70006,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CurrentStoreSubscription"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "storeNo": "STORE-EXAMPLE",
+                    "commerceModel": "STORE_V1",
+                    "entitlementVersion": 1,
+                    "free": {
+                      "sourceNo": "SOURCE-EXAMPLE",
+                      "sourceType": "FREE",
+                      "planNo": "FREE",
+                      "planVersionNo": "FREE-v",
+                      "tier": "FREE",
+                      "displayName": "FREE",
+                      "planStartsAt": 1793717808348,
+                      "planEndsAt": null,
+                      "grantedDurationMs": null,
+                      "entitlementCodes": [
+                        "BASE"
+                      ],
+                      "gift": false
+                    },
+                    "currentPlan": {
+                      "sourceNo": "SOURCE-EXAMPLE",
+                      "sourceType": "FREE",
+                      "planNo": "FREE",
+                      "planVersionNo": "FREE-v",
+                      "tier": "FREE",
+                      "displayName": "FREE",
+                      "planStartsAt": 1793717808348,
+                      "planEndsAt": null,
+                      "grantedDurationMs": null,
+                      "entitlementCodes": [
+                        "BASE"
+                      ],
+                      "gift": false
+                    },
+                    "sources": [
+                      {
+                        "sourceNo": "SOURCE-EXAMPLE",
+                        "sourceType": "FREE",
+                        "planNo": "FREE",
+                        "planVersionNo": "FREE-v",
+                        "tier": "FREE",
+                        "displayName": "FREE",
+                        "planStartsAt": 1793717808348,
+                        "planEndsAt": null,
+                        "grantedDurationMs": null,
+                        "entitlementCodes": [
+                          "BASE"
+                        ],
+                        "gift": false
+                      }
+                    ],
+                    "serverNow": 1793717808626,
+                    "nextBoundaryAt": null,
+                    "purchaseAvailable": false,
+                    "nextAction": "VIEW_ENTITLEMENTS"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "本次精确选店。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "出现时必须属于该店主体。"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "与X-Store-No一致。"
+          }
+        ]
+      }
+    },
+    "/biz/stores/{storeNo}/entitlements": {
+      "get": {
+        "operationId": "getSelectedStoreEntitlements",
+        "summary": "读取每端实际覆盖与到期状态",
+        "description": "有效所选店成员可读，不需要采购权或端证明。路径店号（如有）必须等于 X-Store-No。无主体阶段不调用。商业资格到期不使账号失效；切店后重读。",
+        "tags": [
+          "store"
+        ],
+        "x-scope": "store",
+        "x-role": "有效所选店成员",
+        "x-retry": "只读可重试；丢弃切店或换账号后的迟到响应。",
+        "x-business-error-codes": [
+          10401,
+          10402,
+          10403,
+          70006,
+          10500
+        ],
+        "responses": {
+          "200": {
+            "description": "成功信封；宿主业务错误也可能使用 HTTP 200，请同时判断 code。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "integer",
+                          "const": 0
+                        },
+                        "msg": {
+                          "type": "string",
+                          "description": "成功文案不作为判断条件。"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/CurrentStoreEntitlements"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "msg",
+                        "data"
+                      ],
+                      "description": ""
+                    },
+                    {
+                      "$ref": "#/components/schemas/OnboardingError"
+                    }
+                  ]
+                },
+                "example": {
+                  "code": 0,
+                  "msg": "success",
+                  "data": {
+                    "storeNo": "STORE-EXAMPLE",
+                    "commerceModel": "STORE_V1",
+                    "entitlementVersion": 1,
+                    "items": [
+                      {
+                        "entitlementCode": "BASE",
+                        "endCode": "desk",
+                        "commercialStatus": "ACTIVE",
+                        "current": {
+                          "startsAt": 1793717808348,
+                          "endsAt": null
+                        },
+                        "future": [],
+                        "slices": [
+                          {
+                            "sourceNo": "SOURCE-EXAMPLE",
+                            "startsAt": 1793717808348,
+                            "endsAt": null
+                          }
+                        ],
+                        "remainingMs": null,
+                        "nextBoundaryAt": null,
+                        "nextAction": "CHECK_END_ACCESS"
+                      }
+                    ],
+                    "serverNow": 1793717808626,
+                    "nextBoundaryAt": null
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求格式/规范路径错误。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "账号会话失效。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "成员、岗位或目标不匹配。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "参数/上下文冲突。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "无法核验或通道暂不可用。 具体 HTTP 形态取决于宿主/门禁，业务码见错误表。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Store-No",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "本次精确选店。"
+          },
+          {
+            "name": "X-Entity-No",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "出现时必须属于该店主体。"
+          },
+          {
+            "name": "storeNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "与X-Store-No一致。"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -5662,6 +6419,529 @@
           "assetKey"
         ],
         "description": ""
+      },
+      "SelectedStorePermissions": {
+        "type": "object",
+        "properties": {
+          "merchantNo": {
+            "type": "string",
+            "description": "当前主体号；未有主体时本接口拒绝。"
+          },
+          "currentStoreNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "当前所选门店号。"
+          },
+          "owner": {
+            "type": "boolean",
+            "description": "当前主体有效属主。"
+          },
+          "storeNos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可操作门店范围。"
+          },
+          "pickupNos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "可核销自提点范围。"
+          },
+          "groupNos": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "所发起团范围。"
+          },
+          "staffRoles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "当前门店的真实角色码；不要自行映射为权限。"
+          },
+          "perms": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "服务端实际权限并集；属主为 [\"*\"]；判断 biz:store/biz:finance 等使用此集合。"
+          },
+          "categoryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "实际已授经营类目授权码，非商业端权益。"
+          },
+          "switches": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "允许商家读取的平台布尔开关；不包含密钥。"
+          }
+        },
+        "required": [
+          "merchantNo",
+          "currentStoreNo",
+          "owner",
+          "storeNos",
+          "pickupNos",
+          "groupNos",
+          "staffRoles",
+          "perms",
+          "categoryCodes",
+          "switches"
+        ]
+      },
+      "StoreEntitlementSource": {
+        "type": "object",
+        "properties": {
+          "sourceNo": {
+            "type": "string",
+            "description": "实际来源号。"
+          },
+          "sourceType": {
+            "type": "string",
+            "description": "FREE/ORDER/GRANT。"
+          },
+          "planNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "来源固定 Plan 号；独立端来源可空。"
+          },
+          "planVersionNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "来源不可变 Plan 版本；可空。"
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "来源固定档位；独立端来源可空。"
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "来源固定发布版本的名称，不取最新目录覆盖。"
+          },
+          "gift": {
+            "type": "boolean",
+            "description": "是否赠送来源。"
+          },
+          "planStartsAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Plan 生效毫秒；独立来源可空。"
+          },
+          "planEndsAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Plan 结束毫秒；永久/独立来源可空。"
+          },
+          "grantedDurationMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "来源贡献时长；永久时可空。"
+          },
+          "entitlementCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "此笔实际贡献的业务端权益编码。"
+          }
+        },
+        "required": [
+          "sourceNo",
+          "sourceType",
+          "planNo",
+          "planVersionNo",
+          "tier",
+          "displayName",
+          "gift",
+          "planStartsAt",
+          "planEndsAt",
+          "grantedDurationMs",
+          "entitlementCodes"
+        ]
+      },
+      "CurrentStoreSubscription": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string",
+            "description": "所选店号。"
+          },
+          "commerceModel": {
+            "type": "string",
+            "description": "LEGACY/STORE_V1。"
+          },
+          "entitlementVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "权益快照版本；LEGACY为空。"
+          },
+          "free": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoreEntitlementSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "首次同事务绑定的 FREE 来源；LEGACY为空，不按最新目录改写。"
+          },
+          "currentPlan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoreEntitlementSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "当前固定 Plan；有限周期结束后回到已绑定FREE；LEGACY为空。"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreEntitlementSource"
+            },
+            "description": "实际可读的 NORMAL 父来源；不包含金额或折算基数。"
+          },
+          "serverNow": {
+            "type": "integer",
+            "format": "int64",
+            "description": "服务端 UTC epoch 毫秒。"
+          },
+          "nextBoundaryAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "下次已知状态边界；没有时为空。"
+          },
+          "purchaseAvailable": {
+            "type": "boolean",
+            "description": "本阶段为 false。",
+            "const": false
+          },
+          "nextAction": {
+            "type": "string",
+            "description": "VIEW_ENTITLEMENTS；LEGACY为VIEW_LEGACY_PROFILE。"
+          }
+        },
+        "required": [
+          "storeNo",
+          "commerceModel",
+          "entitlementVersion",
+          "free",
+          "currentPlan",
+          "sources",
+          "serverNow",
+          "nextBoundaryAt",
+          "purchaseAvailable",
+          "nextAction"
+        ]
+      },
+      "StoreCoverageInterval": {
+        "type": "object",
+        "properties": {
+          "startsAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "区间开始毫秒。"
+          },
+          "endsAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "区间结束毫秒；null为永久。"
+          }
+        },
+        "required": [
+          "startsAt",
+          "endsAt"
+        ]
+      },
+      "StoreCoverageSlice": {
+        "type": "object",
+        "properties": {
+          "sourceNo": {
+            "type": "string",
+            "description": "对应实际来源号。"
+          },
+          "startsAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "开始毫秒。"
+          },
+          "endsAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "结束毫秒；null为永久。"
+          }
+        },
+        "required": [
+          "sourceNo",
+          "startsAt",
+          "endsAt"
+        ]
+      },
+      "StoreBusinessEndRight": {
+        "type": "object",
+        "properties": {
+          "entitlementCode": {
+            "type": "string",
+            "description": "业务端权益code。"
+          },
+          "endCode": {
+            "type": "string",
+            "description": "对应业务端编码。"
+          },
+          "commercialStatus": {
+            "type": "string",
+            "description": "ACTIVE/NOT_STARTED/EXPIRED/NOT_PURCHASED/REVOKED。"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoreCoverageInterval"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "当前连续覆盖；无当前覆盖为空。"
+          },
+          "future": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreCoverageInterval"
+            },
+            "description": "已合并且排序的未来覆盖区间，真实空档保留。"
+          },
+          "slices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreCoverageSlice"
+            },
+            "description": "实际来源时间片。"
+          },
+          "remainingMs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "当前及未来覆盖并集剩余毫秒；永久为null，不能按Plan最大到期替代。"
+          },
+          "nextBoundaryAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "此端下次状态边界；没有时为空。"
+          },
+          "nextAction": {
+            "type": "string",
+            "description": "CHECK_END_ACCESS/WAIT_FOR_START/VIEW_SUBSCRIPTION/CONTACT_OWNER/CONTACT_ADMIN等。"
+          }
+        },
+        "required": [
+          "entitlementCode",
+          "endCode",
+          "commercialStatus",
+          "current",
+          "future",
+          "slices",
+          "remainingMs",
+          "nextBoundaryAt",
+          "nextAction"
+        ]
+      },
+      "CurrentStoreEntitlements": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string",
+            "description": "所选店号。"
+          },
+          "commerceModel": {
+            "type": "string",
+            "description": "LEGACY/STORE_V1。"
+          },
+          "entitlementVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "快照版本；LEGACY为空。"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreBusinessEndRight"
+            },
+            "description": "实际持有证据及当前公开未购买候选；不展示仅内部登记且从未持有的端。LEGACY为空数组。"
+          },
+          "serverNow": {
+            "type": "integer",
+            "format": "int64",
+            "description": "服务端 UTC epoch 毫秒。"
+          },
+          "nextBoundaryAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "最近已知状态边界；没有时为空。"
+          }
+        },
+        "required": [
+          "storeNo",
+          "commerceModel",
+          "entitlementVersion",
+          "items",
+          "serverNow",
+          "nextBoundaryAt"
+        ]
+      },
+      "CurrentStoreCommercialContext": {
+        "type": "object",
+        "properties": {
+          "storeNo": {
+            "type": "string",
+            "description": "所选店号。"
+          },
+          "entityNo": {
+            "type": "string",
+            "description": "该店主体。"
+          },
+          "commerceModel": {
+            "type": "string",
+            "description": "LEGACY/STORE_V1。"
+          },
+          "businessTypeCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "门店商业经营类型；LEGACY可空。"
+          },
+          "storeStatus": {
+            "type": "string",
+            "description": "门店治理状态。"
+          },
+          "entityStatus": {
+            "type": "string",
+            "description": "主体治理状态；PENDING_LICENSE不等于收款获批。"
+          },
+          "owner": {
+            "type": "boolean",
+            "description": "当前有效成员是否属主。"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": ""
+            },
+            "description": "当前店实际角色码；权限并集另读GET /biz/context。"
+          },
+          "canProcure": {
+            "type": "boolean",
+            "description": "是否具备本店 biz:store:admin；不等于付款已开通。"
+          },
+          "serverNow": {
+            "type": "integer",
+            "format": "int64",
+            "description": "一致快照的服务端 UTC epoch 毫秒。"
+          },
+          "entitlementVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "权益版本；LEGACY为空。"
+          },
+          "nextBoundaryAt": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "订阅与各端最近状态边界；没有时为空。"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/CurrentStoreSubscription"
+          },
+          "entitlements": {
+            "$ref": "#/components/schemas/CurrentStoreEntitlements"
+          }
+        },
+        "required": [
+          "storeNo",
+          "entityNo",
+          "commerceModel",
+          "businessTypeCode",
+          "storeStatus",
+          "entityStatus",
+          "owner",
+          "roles",
+          "canProcure",
+          "serverNow",
+          "entitlementVersion",
+          "nextBoundaryAt",
+          "subscription",
+          "entitlements"
+        ]
       }
     }
   }

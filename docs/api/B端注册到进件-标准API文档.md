@@ -1486,3 +1486,132 @@ curl "$API_BASE/biz/merchant/apply" \
   -H 'Content-Type: application/json' \
   --data-binary @application.json
 ```
+
+## 8. 对接补充：可信岗位、当前 FREE 与权益（2026-11-04.1）
+
+本次跟进 Flutter 项目时补入四个已有接口，使机器合同完整覆盖本阶段29个操作。它们不是新增实现。无需调用不存在的 `/biz/auth/session`、`/biz/auth/market`，也不能伪造 actorKey、市场、币种或时区。
+
+选店后可并行读取岗位与商业汇总：`GET /biz/context` 给出服务端实际 `perms`；`GET /biz/stores/{storeNo}/context` 给出同一快照的实际订阅与端权益。两个 context 语义不同。无主体阶段先使用 profile、stores/mine 和建店流程。
+
+| 方法 | 路径 | 成功data | 目的 |
+|---|---|---|---|
+| GET | /biz/context | SelectedStorePermissions | 读取所选门店岗位权限 |
+| GET | /biz/stores/{storeNo}/context | CurrentStoreCommercialContext | 读取所选门店商业与治理汇总 |
+| GET | /biz/stores/{storeNo}/subscription | CurrentStoreSubscription | 读取实际 FREE 与当前订阅 |
+| GET | /biz/stores/{storeNo}/entitlements | CurrentStoreEntitlements | 读取每端实际覆盖与到期状态 |
+
+四项请求均发送 BTK 和确切 X-Store-No；X-Entity-No 可选但须匹配。门店路径参数必须与头一致。均为只读、可刷新；10401/10402 才按账号失效处理，10403/70006 保留账号，10500 暂不可核验则重试。
+
+- 岗位入口按 `perms` 是否包含 `*` 或具体 `biz:store` / `biz:finance` 决定，最终由服务端判权。不要从 staffRoles、roles、canManage、Plan 或手机号推算权限。
+- canManage 在 stores/mine 中是属主提示；canProcure 是店管理/采购岗，均不能替代收款进件财务权限。
+- 实际 FREE 从 subscription.free 读取；不能把最新 FREE 卡片当本店已绑定版本。currentPlan、sources 和每端覆盖分别处理。
+- 全部时间为 UTC epoch 毫秒，区间为 [start,end)。null结束/remaining表示永久，null下一边界表示没有已知边界；真实空档不能填平。
+- 当前端 ACTIVE 的动作是 CHECK_END_ACCESS；该查询不会签发短证明，实际进入受保护业务端仍按原端准入合同处理。
+- LEGACY 不虚构 FREE：订阅对象内 free/currentPlan/entitlementVersion为空，sources为空，nextAction=VIEW_LEGACY_PROFILE；权益items为空。
+
+### 8.1 补充模型字段
+
+#### SelectedStorePermissions
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| merchantNo | string | 当前主体号；未有主体时本接口拒绝。 |
+| currentStoreNo | string | null | 当前所选门店号。 |
+| owner | boolean | 当前主体有效属主。 |
+| storeNos | string[] | 可操作门店范围。 |
+| pickupNos | string[] | 可核销自提点范围。 |
+| groupNos | string[] | 所发起团范围。 |
+| staffRoles | string[] | 当前门店的真实角色码；不要自行映射为权限。 |
+| perms | string[] | 服务端实际权限并集；属主为 ["*"]；判断 biz:store/biz:finance 等使用此集合。 |
+| categoryCodes | string[] | 实际已授经营类目授权码，非商业端权益。 |
+| switches | object | 允许商家读取的平台布尔开关；不包含密钥。 |
+
+#### StoreEntitlementSource
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| sourceNo | string | 实际来源号。 |
+| sourceType | string | FREE/ORDER/GRANT。 |
+| planNo | string | null | 来源固定 Plan 号；独立端来源可空。 |
+| planVersionNo | string | null | 来源不可变 Plan 版本；可空。 |
+| tier | string | null | 来源固定档位；独立端来源可空。 |
+| displayName | string | null | 来源固定发布版本的名称，不取最新目录覆盖。 |
+| gift | boolean | 是否赠送来源。 |
+| planStartsAt | integer | null | Plan 生效毫秒；独立来源可空。 |
+| planEndsAt | integer | null | Plan 结束毫秒；永久/独立来源可空。 |
+| grantedDurationMs | integer | null | 来源贡献时长；永久时可空。 |
+| entitlementCodes | string[] | 此笔实际贡献的业务端权益编码。 |
+
+#### CurrentStoreSubscription
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| storeNo | string | 所选店号。 |
+| commerceModel | string | LEGACY/STORE_V1。 |
+| entitlementVersion | integer | null | 权益快照版本；LEGACY为空。 |
+| free | StoreEntitlementSource | null | 首次同事务绑定的 FREE 来源；LEGACY为空，不按最新目录改写。 |
+| currentPlan | StoreEntitlementSource | null | 当前固定 Plan；有限周期结束后回到已绑定FREE；LEGACY为空。 |
+| sources | StoreEntitlementSource[] | 实际可读的 NORMAL 父来源；不包含金额或折算基数。 |
+| serverNow | integer | 服务端 UTC epoch 毫秒。 |
+| nextBoundaryAt | integer | null | 下次已知状态边界；没有时为空。 |
+| purchaseAvailable | boolean | 本阶段为 false。 |
+| nextAction | string | VIEW_ENTITLEMENTS；LEGACY为VIEW_LEGACY_PROFILE。 |
+
+#### StoreCoverageInterval
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| startsAt | integer | 区间开始毫秒。 |
+| endsAt | integer | null | 区间结束毫秒；null为永久。 |
+
+#### StoreCoverageSlice
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| sourceNo | string | 对应实际来源号。 |
+| startsAt | integer | 开始毫秒。 |
+| endsAt | integer | null | 结束毫秒；null为永久。 |
+
+#### StoreBusinessEndRight
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| entitlementCode | string | 业务端权益code。 |
+| endCode | string | 对应业务端编码。 |
+| commercialStatus | string | ACTIVE/NOT_STARTED/EXPIRED/NOT_PURCHASED/REVOKED。 |
+| current | StoreCoverageInterval | null | 当前连续覆盖；无当前覆盖为空。 |
+| future | StoreCoverageInterval[] | 已合并且排序的未来覆盖区间，真实空档保留。 |
+| slices | StoreCoverageSlice[] | 实际来源时间片。 |
+| remainingMs | integer | null | 当前及未来覆盖并集剩余毫秒；永久为null，不能按Plan最大到期替代。 |
+| nextBoundaryAt | integer | null | 此端下次状态边界；没有时为空。 |
+| nextAction | string | CHECK_END_ACCESS/WAIT_FOR_START/VIEW_SUBSCRIPTION/CONTACT_OWNER/CONTACT_ADMIN等。 |
+
+#### CurrentStoreEntitlements
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| storeNo | string | 所选店号。 |
+| commerceModel | string | LEGACY/STORE_V1。 |
+| entitlementVersion | integer | null | 快照版本；LEGACY为空。 |
+| items | StoreBusinessEndRight[] | 实际持有证据及当前公开未购买候选；不展示仅内部登记且从未持有的端。LEGACY为空数组。 |
+| serverNow | integer | 服务端 UTC epoch 毫秒。 |
+| nextBoundaryAt | integer | null | 最近已知状态边界；没有时为空。 |
+
+#### CurrentStoreCommercialContext
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| storeNo | string | 所选店号。 |
+| entityNo | string | 该店主体。 |
+| commerceModel | string | LEGACY/STORE_V1。 |
+| businessTypeCode | string | null | 门店商业经营类型；LEGACY可空。 |
+| storeStatus | string | 门店治理状态。 |
+| entityStatus | string | 主体治理状态；PENDING_LICENSE不等于收款获批。 |
+| owner | boolean | 当前有效成员是否属主。 |
+| roles | string[] | 当前店实际角色码；权限并集另读GET /biz/context。 |
+| canProcure | boolean | 是否具备本店 biz:store:admin；不等于付款已开通。 |
+| serverNow | integer | 一致快照的服务端 UTC epoch 毫秒。 |
+| entitlementVersion | integer | null | 权益版本；LEGACY为空。 |
+| nextBoundaryAt | integer | null | 订阅与各端最近状态边界；没有时为空。 |
+| subscription | CurrentStoreSubscription | 关联模型，字段均随响应返回。 |
+| entitlements | CurrentStoreEntitlements | 关联模型，字段均随响应返回。 |
