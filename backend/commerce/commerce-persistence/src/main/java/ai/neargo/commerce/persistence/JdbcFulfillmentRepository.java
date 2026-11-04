@@ -10,6 +10,7 @@ import ai.neargo.commerce.core.mall.MallSnapshot.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.util.*;
 
@@ -70,8 +71,12 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                 t,
                 no);
         jdbc.query(
-                "SELECT request_snapshot,outcome_snapshot FROM mall_fulfillment_task WHERE"
-                    + " tenant_no=? AND order_no=? AND task_type<>'DIGITAL' ORDER BY id FOR UPDATE",
+                "SELECT t.request_snapshot,t.outcome_snapshot FROM mall_fulfillment_task t JOIN"
+                    + " mall_order_component c ON c.tenant_no=t.tenant_no AND"
+                    + " c.order_component_no=t.order_component_no JOIN mall_order_item i ON"
+                    + " i.tenant_no=c.tenant_no AND i.order_item_no=c.order_item_no WHERE"
+                    + " t.tenant_no=? AND i.order_no=? AND (t.task_type<>'DIGITAL' OR"
+                    + " t.dispatch_state='LEGACY_UNKNOWN') ORDER BY t.id FOR UPDATE",
                 (org.springframework.jdbc.core.RowCallbackHandler)
                         r -> {
                             if (r.getString(1) == null)
@@ -103,7 +108,11 @@ public final class JdbcFulfillmentRepository implements FulfillmentRepository {
                         op.shipment(),
                         null,
                         null);
-        String request = encode(immutable),
+        var requestTree = json.valueToTree(immutable);
+        // Old V6 commands omitted preparedAt. Preserve their canonical immutable request/hash.
+        if (immutable.payment() != null && immutable.payment().preparedAt() == null)
+            ((ObjectNode) requestTree.get("payment")).remove("preparedAt");
+        String request = encode(requestTree),
                 hash = ai.neargo.commerce.core.spi.FactDigest.of(List.of(request));
         boolean pay = op.kind().equals("PAYMENT");
         String table = pay ? "mall_payment_ref" : "mall_fulfillment_task",

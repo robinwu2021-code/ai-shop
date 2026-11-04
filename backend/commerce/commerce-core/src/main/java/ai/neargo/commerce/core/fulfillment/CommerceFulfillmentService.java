@@ -186,9 +186,11 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         c.orderNo(),
                         o -> {
                             buyer(a, c, o);
+                            var preparedAt = clock.instant();
                             if (o.axes().payment() == Payment.CANCEL_PENDING
                                     || o.axes().payment() == Payment.CLOSED
-                                    || clock.millis() >= o.quote().expiresAt())
+                                    || !preparedAt.isBefore(
+                                            Instant.ofEpochMilli(o.quote().expiresAt())))
                                 throw fail("INVALID_STATE");
                             if (!reserved(o)) throw fail("INVENTORY_PENDING");
                             var prior = payment(o);
@@ -213,7 +215,8 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                             o.quote().buyerNo(),
                                             c.channel(),
                                             c.payMethod(),
-                                            c.payerReference());
+                                            c.payerReference(),
+                                            preparedAt);
                             var op =
                                     new Operation(
                                             attempt,
@@ -236,16 +239,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         || op.paymentResult().status() == AsyncStatus.SUCCEEDED))
             return op.paymentResult();
         PaymentOutcome outcome;
-        if (op.payment().amount().minor() == 0)
-            outcome =
-                    new PaymentOutcome(
-                            op.orderNo(),
-                            Optional.of(id("zero:", op.operationNo())),
-                            recipient,
-                            op.payment().amount(),
-                            AsyncStatus.SUCCEEDED,
-                            Optional.of(clock.instant()),
-                            Optional.empty());
+        if (op.payment().amount().minor() == 0) outcome = zeroPayment(op);
         else
             try {
                 outcome = prepared.fresh() ? payments.create(op.payment()) : queryOrReplay(op);
@@ -255,7 +249,43 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         return applyPayment(a.tenantNo(), op, outcome);
     }
 
+    private Instant zeroPreparedAt(Operation op) {
+        var time = op.payment().preparedAt();
+        if (time == null || !time.isBefore(op.payment().expiresAt()))
+            throw fail("ZERO_PAYMENT_TIME_UNPROVEN");
+        return time;
+    }
+
+    private PaymentOutcome zeroPayment(Operation op) {
+        return new PaymentOutcome(
+                op.orderNo(),
+                Optional.of(id("zero:", op.operationNo())),
+                op.payment().platformMerchantNo(),
+                op.payment().amount(),
+                AsyncStatus.SUCCEEDED,
+                Optional.of(zeroPreparedAt(op)),
+                Optional.empty());
+    }
+
+    private PaymentOutcome closeZeroPayment(Operation op) {
+        zeroPreparedAt(op);
+        // This local fence is the persisted CANCEL_PENDING/CLOSED order state, not provider
+        // evidence.
+        return new PaymentOutcome(
+                op.orderNo(),
+                Optional.empty(),
+                op.payment().platformMerchantNo(),
+                op.payment().amount(),
+                AsyncStatus.PENDING,
+                Optional.empty(),
+                Optional.empty(),
+                Map.of(),
+                true,
+                Optional.of(id("zero-close:", op.operationNo())));
+    }
+
     private PaymentOutcome queryOrReplay(Operation op) {
+        if (op.payment().amount().minor() == 0) return zeroPayment(op);
         var outcome = payments.query(query(op));
         validatePayment(op, outcome);
         if (outcome.status() == AsyncStatus.UNKNOWN
@@ -321,6 +351,15 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                 o -> {
                     var op = payment(o).orElseThrow(() -> fail("PAYMENT_INTENT_REQUIRED"));
                     validatePayment(op, response);
+                    if (op.payment().amount().minor() == 0
+                            && response.status() == AsyncStatus.SUCCEEDED
+                            && (o.axes().payment() == Payment.CANCEL_PENDING
+                                    || o.axes().payment() == Payment.CLOSED)) {
+                        var closed = closeZeroPayment(op);
+                        if (o.axes().payment() != Payment.CLOSED)
+                            repo.save(t, op.paymentResult(closed));
+                        return closed;
+                    }
                     var r = response;
                     if (r.paymentNo().isEmpty()
                             && op.paymentResult() != null
@@ -752,27 +791,28 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         var shipment = op.operation();
         if (!succeeded(shipment)) {
             try {
-                InventoryOutcome response;
-                if (op.fresh()) response = inventory.ship(shipment.inventory());
-                else {
-                    response =
-                            inventory.query(
-                                    new InventoryQuery(
-                                            c.tenantNo(),
-                                            c.orderComponentNo(),
-                                            shipment.inventory().operationNo()));
-                    validateInventory(shipment, response);
-                    if (response.status() == AsyncStatus.UNKNOWN
-                            && response.errorCode().filter("NOT_FOUND"::equals).isPresent())
-                        response = inventory.ship(shipment.inventory());
-                }
-                applyInventory(c.tenantNo(), shipment, response);
+                applyInventory(c.tenantNo(), shipment, shipmentOutcome(shipment, op.fresh()));
             } catch (MallException e) {
                 throw e;
             } catch (RuntimeException ignored) {
             }
         }
         return locked(c.tenantNo(), c.orderNo(), this::result);
+    }
+
+    private InventoryOutcome shipmentOutcome(Operation shipment, boolean fresh) {
+        if (fresh) return inventory.ship(shipment.inventory());
+        var response =
+                inventory.query(
+                        new InventoryQuery(
+                                shipment.inventory().tenantNo(),
+                                shipment.componentNo(),
+                                shipment.inventory().operationNo()));
+        validateInventory(shipment, response);
+        if (response.status() == AsyncStatus.UNKNOWN
+                && response.errorCode().filter("NOT_FOUND"::equals).isPresent())
+            return inventory.ship(shipment.inventory());
+        return response;
     }
 
     public FulfillmentResult recover(FulfillmentQuery q) {
@@ -783,6 +823,19 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                         q.tenantNo(),
                         q.orderNo(),
                         o -> {
+                            // Decide local zero settlement and expiry under this same account lock.
+                            // Explicit preexisting cancellation/closure wins before settlement.
+                            if (o.axes().payment() != Payment.PAID
+                                    && o.axes().payment() != Payment.CANCEL_PENDING
+                                    && o.axes().payment() != Payment.CLOSED) {
+                                var zero =
+                                        payment(o).filter(op -> op.payment().amount().minor() == 0);
+                                if (zero.isPresent()) {
+                                    applyPayment(q.tenantNo(), zero.get(), zeroPayment(zero.get()));
+                                    return orders.order(q.tenantNo(), q.orderNo()).orElseThrow();
+                                }
+                            }
+
                             if (clock.millis() >= o.quote().expiresAt()
                                     && o.axes().payment() != Payment.PAID
                                     && o.axes().payment() != Payment.CLOSED)
@@ -818,14 +871,7 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
                                         .toList());
         for (var op : pending)
             try {
-                applyInventory(
-                        q.tenantNo(),
-                        op,
-                        inventory.query(
-                                new InventoryQuery(
-                                        q.tenantNo(),
-                                        op.componentNo(),
-                                        op.inventory().operationNo())));
+                applyInventory(q.tenantNo(), op, shipmentOutcome(op, false));
             } catch (MallException e) {
                 throw e;
             } catch (RuntimeException ignored) {
@@ -841,7 +887,12 @@ public final class CommerceFulfillmentService implements FulfillmentFacade, Paym
         if (attempt.isPresent()) {
             PaymentOutcome response;
             try {
-                response = payments.close(query(attempt.get()));
+                response =
+                        attempt.get().payment().amount().minor() == 0
+                                ? closeZeroPayment(attempt.get())
+                                : payments.close(query(attempt.get()));
+            } catch (MallException e) {
+                throw e;
             } catch (RuntimeException e) {
                 return locked(q.tenantNo(), q.orderNo(), this::result);
             }

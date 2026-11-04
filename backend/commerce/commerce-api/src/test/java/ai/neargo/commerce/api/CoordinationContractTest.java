@@ -37,6 +37,27 @@ class CoordinationContractTest {
     }
 
     @Test
+    void oldPaymentConstructorsCannotInventZeroPreparationTime() {
+        var five =
+                new PaymentIntentCommand(
+                        "tenant", "order", "platform", new Money("CNY", 0), Instant.EPOCH);
+        var ten =
+                new PaymentIntentCommand(
+                        "tenant",
+                        "order",
+                        "platform",
+                        new Money("CNY", 0),
+                        Instant.EPOCH,
+                        "attempt",
+                        "buyer",
+                        "APP",
+                        "WECHAT",
+                        null);
+        assertNull(five.preparedAt());
+        assertNull(ten.preparedAt());
+    }
+
+    @Test
     void invalidInventoryUnitsAreRejectedBeforeAnyBridgeCanReceiveThem() {
         for (long q :
                 new long[] {Long.MIN_VALUE, -1, 0, (long) Integer.MAX_VALUE + 1, Long.MAX_VALUE})

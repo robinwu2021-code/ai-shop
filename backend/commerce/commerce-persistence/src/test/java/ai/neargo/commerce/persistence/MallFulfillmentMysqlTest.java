@@ -8,6 +8,7 @@ import ai.neargo.commerce.api.mall.*;
 import ai.neargo.commerce.api.port.*;
 import ai.neargo.commerce.core.access.*;
 import ai.neargo.commerce.core.fulfillment.*;
+import ai.neargo.commerce.core.spi.CommerceUnitOfWork;
 import ai.neargo.commerce.core.subscription.*;
 
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,8 @@ class MallFulfillmentMysqlTest {
         PaymentOutcome payment;
         boolean closed;
         boolean unknownInventory;
-        int creates, ships;
+        int creates, ships, queries, closes, reserves, releases, inventoryQueries;
+        boolean shipCrash, inventoryQueryUnknown;
         boolean createThrows;
         InventoryCommand lastShipment;
         final Map<String, InventoryOutcome> operations = new HashMap<>();
@@ -54,6 +56,7 @@ class MallFulfillmentMysqlTest {
 
         public PaymentOutcome query(PaymentQuery q) {
             external();
+            queries++;
             return payment == null
                     ? new PaymentOutcome(
                             q.orderNo(),
@@ -68,6 +71,7 @@ class MallFulfillmentMysqlTest {
 
         public PaymentOutcome close(PaymentQuery q) {
             external();
+            closes++;
             return new PaymentOutcome(
                     q.orderNo(),
                     Optional.of("pay"),
@@ -91,12 +95,14 @@ class MallFulfillmentMysqlTest {
 
         public InventoryOutcome reserve(InventoryCommand c) {
             external();
+            reserves++;
             return inventory(c, false);
         }
 
         public InventoryOutcome ship(InventoryCommand c) {
             external();
             lastShipment = c;
+            if (shipCrash) throw new SimulatedCrash();
             if (!operations.containsKey(c.operationNo())) ships++;
             return inventory(c, true);
         }
@@ -126,6 +132,16 @@ class MallFulfillmentMysqlTest {
 
         public InventoryOutcome query(InventoryQuery q) {
             external();
+            inventoryQueries++;
+            if (inventoryQueryUnknown)
+                return new InventoryOutcome(
+                        q.orderComponentNo(),
+                        AsyncStatus.UNKNOWN,
+                        0,
+                        0,
+                        Optional.empty(),
+                        q.operationNo(),
+                        0);
             return operations.getOrDefault(
                     q.operationNo(),
                     new InventoryOutcome(
@@ -140,6 +156,7 @@ class MallFulfillmentMysqlTest {
 
         public InventoryOutcome release(InventoryQuery q) {
             external();
+            releases++;
             return new InventoryOutcome(
                     q.orderComponentNo(),
                     unknownInventory ? AsyncStatus.UNKNOWN : AsyncStatus.SUCCEEDED,
@@ -173,7 +190,16 @@ class MallFulfillmentMysqlTest {
             boolean hardware,
             List<ai.neargo.commerce.api.catalog.SkuComponent> components,
             java.util.function.Consumer<MallOrderConcurrencyMysqlTest.Fixture> configure) {
-        db.migrate();
+        return setup(db, hardware, components, configure, true);
+    }
+
+    Fixture setup(
+            MysqlDatabase db,
+            boolean hardware,
+            List<ai.neargo.commerce.api.catalog.SkuComponent> components,
+            java.util.function.Consumer<MallOrderConcurrencyMysqlTest.Fixture> configure,
+            boolean migrate) {
+        if (migrate) db.migrate();
         var m = new MallOrderConcurrencyMysqlTest.Fixture(db, hardware, components);
         configure.accept(m);
         var events = new JdbcCommerceEventPersistence(db.ds);
@@ -256,7 +282,7 @@ class MallFulfillmentMysqlTest {
                     "signed",
                     db.jdbc.queryForObject(
                             "select verified_fact_snapshot->>'$.verificationReference' from"
-                                + " mall_payment_ref",
+                                    + " mall_payment_ref",
                             String.class));
             assertEquals(
                     "paid-event",
@@ -591,10 +617,10 @@ class MallFulfillmentMysqlTest {
                             m -> {
                                 db.jdbc.update(
                                         "update mch_subscription_credit_account set"
-                                            + " balance_minor=9000");
+                                                + " balance_minor=9000");
                                 db.jdbc.update(
                                         "update mch_subscription_credit_lot set"
-                                            + " issued_minor=4500,remaining_minor=4500");
+                                                + " issued_minor=4500,remaining_minor=4500");
                             });
             assertEquals(0, f.order.payable().minor());
             var paid = start(f);
@@ -605,7 +631,7 @@ class MallFulfillmentMysqlTest {
                     db.jdbc
                             .queryForObject(
                                     "select verified_fact_snapshot->>'$.verificationReference' from"
-                                        + " mall_payment_ref",
+                                            + " mall_payment_ref",
                                     String.class)
                             .startsWith("INTERNAL_ZERO_PAYMENT:"));
             f.svc.fulfill(new FulfillmentQuery("tenant-a", f.order.orderNo()));
@@ -737,13 +763,480 @@ class MallFulfillmentMysqlTest {
                     count(
                             db,
                             "select count(*) from mall_fulfillment_task where task_type='DIGITAL'"
-                                + " and status='SUCCEEDED'"));
+                                    + " and status='SUCCEEDED'"));
             assertEquals(
                     2,
                     count(
                             db,
                             "select count(*) from mch_subscription_credit_ledger where"
-                                + " event_type='CONSUME'"));
+                                    + " event_type='CONSUME'"));
+        }
+    }
+
+    static class SimulatedCrash extends Error {}
+
+    static class MutableClock extends Clock {
+        Instant now = CLOCK.instant();
+
+        public java.time.ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        public Clock withZone(java.time.ZoneId zone) {
+            return this;
+        }
+
+        public Instant instant() {
+            return now;
+        }
+    }
+
+    CommerceFulfillmentService coordinator(
+            MysqlDatabase db, Fixture f, CommerceUnitOfWork uow, Clock clock) {
+        var events = new JdbcCommerceEventPersistence(db.ds);
+        var subscription = new JdbcSubscriptionRepository(db.ds, f.mall.c.ids);
+        var schedule = new EndScheduleService(subscription, uow, events, f.mall.c.ids, clock);
+        var delivery =
+                new SubscriptionService(
+                        subscription, f.mall.c.repo, uow, schedule, events, f.mall.c.ids, clock);
+        return new CommerceFulfillmentService(
+                new JdbcMallRepository(db.ds, events),
+                new JdbcFulfillmentRepository(db.ds),
+                new JdbcSubscriptionAccountRepository(db.ds),
+                uow,
+                delivery,
+                f.bridge,
+                f.bridge,
+                events,
+                clock,
+                f.mall.c.ids,
+                "platform",
+                Set.of("APP:WECHAT"),
+                (a, s, c) -> new AuthorizationDecision(true, "OWNER", Optional.empty()));
+    }
+
+    Fixture interruptedZero(MysqlDatabase db, MutableClock clock) {
+        var base =
+                setup(
+                        db,
+                        false,
+                        null,
+                        m -> {
+                            db.jdbc.update(
+                                    "update mch_subscription_credit_account set"
+                                            + " balance_minor=9000");
+                            db.jdbc.update(
+                                    "update mch_subscription_credit_lot set"
+                                            + " issued_minor=4500,remaining_minor=4500");
+                        });
+        return interruptZeroAtPreparation(db, clock, base);
+    }
+
+    Fixture interruptZeroAtPreparation(MysqlDatabase db, MutableClock clock, Fixture base) {
+        var interrupted =
+                new CommerceUnitOfWork() {
+                    boolean armed = true;
+
+                    public void requireOutsideTransaction() {
+                        base.mall.c.uow.requireOutsideTransaction();
+                    }
+
+                    public <T> T required(java.util.function.Supplier<T> work) {
+                        T result = base.mall.c.uow.required(work);
+                        if (armed
+                                && !TransactionSynchronizationManager.isActualTransactionActive()
+                                && count(
+                                                db,
+                                                "select count(*) from mall_payment_ref where"
+                                                        + " amount_minor=0 and outcome_snapshot is"
+                                                        + " null")
+                                        > 0) {
+                            armed = false;
+                            throw new SimulatedCrash();
+                        }
+                        return result;
+                    }
+                };
+        var f =
+                new Fixture(
+                        base.mall,
+                        coordinator(db, base, interrupted, clock),
+                        base.bridge,
+                        base.order);
+        assertThrows(SimulatedCrash.class, () -> start(f));
+        assertEquals(
+                "PAYING",
+                db.jdbc.queryForObject("select pay_status from mall_order", String.class));
+        assertEquals(9000, count(db, "select reserved_minor from mch_subscription_credit_account"));
+        return f;
+    }
+
+    int paymentCalls(Bridge b) {
+        return b.creates + b.queries + b.closes;
+    }
+
+    @Test
+    void interruptedZeroPreparationRecoversAfterDeadlineAtOriginalTimeWithoutPaymentPort() {
+        try (var db = new MysqlDatabase()) {
+            var clock = new MutableClock();
+            var f = interruptedZero(db, clock);
+            clock.now = Instant.ofEpochMilli(1_000_000);
+            var q = new FulfillmentQuery("tenant-a", f.order.orderNo());
+            f.svc.recover(q);
+            f.svc.recover(q);
+            assertEquals(0, paymentCalls(f.bridge));
+            assertEquals(
+                    "PAID",
+                    db.jdbc.queryForObject("select pay_status from mall_order", String.class));
+            assertEquals(
+                    "COMPLETED",
+                    db.jdbc.queryForObject(
+                            "select fulfillment_status from mall_order", String.class));
+            assertEquals(
+                    CLOCK.instant().toString(),
+                    db.jdbc.queryForObject(
+                            "select request_snapshot->>'$.payment.preparedAt' from"
+                                    + " mall_payment_ref",
+                            String.class));
+            assertEquals(
+                    CLOCK.instant().toString(),
+                    db.jdbc.queryForObject(
+                            "select verified_fact_snapshot->>'$.paidAt' from mall_payment_ref",
+                            String.class));
+            assertEquals(2, count(db, "select count(*) from mch_subscription_period"));
+            assertEquals(
+                    0, count(db, "select reserved_minor from mch_subscription_credit_account"));
+        }
+    }
+
+    @Test
+    void interruptedZeroExplicitCancellationAndLaterRecoveryCannotIssueRights() {
+        try (var db = new MysqlDatabase()) {
+            var clock = new MutableClock();
+            var f = interruptedZero(db, clock);
+            f.mall.api.cancelOrder(
+                    BUYER,
+                    new CancelOrderCommand(
+                            STORE,
+                            f.order.orderNo(),
+                            "cancel-zero",
+                            "cancel before local zero completion"));
+            clock.now = Instant.ofEpochMilli(1_000_000);
+            var q = new FulfillmentQuery("tenant-a", f.order.orderNo());
+            f.svc.recover(q);
+            f.svc.recover(q);
+            assertEquals(0, paymentCalls(f.bridge));
+            assertEquals(
+                    "CLOSED",
+                    db.jdbc.queryForObject("select pay_status from mall_order", String.class));
+            assertEquals(1, count(db, "select count(*) from mch_subscription_period"));
+            assertEquals(
+                    0, count(db, "select reserved_minor from mch_subscription_credit_account"));
+            assertEquals(
+                    9000, count(db, "select balance_minor from mch_subscription_credit_account"));
+            assertEquals(
+                    0,
+                    count(
+                            db,
+                            "select count(*) from mall_payment_ref where verified_fact_snapshot is"
+                                    + " not null"));
+        }
+    }
+
+    @Test
+    void interruptedZeroWithoutPreparationTimeFailsClosedLocally() {
+        try (var db = new MysqlDatabase()) {
+            var clock = new MutableClock();
+            var f = interruptedZero(db, clock);
+            db.jdbc.update(
+                    "update mall_payment_ref set"
+                        + " request_snapshot=JSON_REMOVE(request_snapshot,'$.payment.preparedAt')");
+            var error =
+                    assertThrows(
+                            MallException.class,
+                            () ->
+                                    f.svc.recover(
+                                            new FulfillmentQuery("tenant-a", f.order.orderNo())));
+            assertEquals("ZERO_PAYMENT_TIME_UNPROVEN", error.code());
+            f.mall.api.cancelOrder(
+                    BUYER,
+                    new CancelOrderCommand(
+                            STORE, f.order.orderNo(), "cancel-unproven-zero", "cancel"));
+            assertEquals(
+                    "ZERO_PAYMENT_TIME_UNPROVEN",
+                    assertThrows(
+                                    MallException.class,
+                                    () ->
+                                            f.svc.recover(
+                                                    new FulfillmentQuery(
+                                                            "tenant-a", f.order.orderNo())))
+                            .code());
+            assertEquals(0, paymentCalls(f.bridge));
+            assertEquals(
+                    9000, count(db, "select reserved_minor from mch_subscription_credit_account"));
+        }
+    }
+
+    @Test
+    void schedulerAloneReplaysNeverReceivedShipmentOnlyAfterExactNotFound() {
+        try (var db = new MysqlDatabase()) {
+            var f = setup(db, true);
+            start(f);
+            f.svc.confirmPayment(paid(f, 9000));
+            String part =
+                    db.jdbc.queryForObject(
+                            "select order_component_no from mall_order_component", String.class);
+            f.bridge.shipCrash = true;
+            assertThrows(
+                    SimulatedCrash.class,
+                    () ->
+                            f.svc.confirmShipment(
+                                    new HardwareShipmentCommand(
+                                            "tenant-a",
+                                            f.order.orderNo(),
+                                            part,
+                                            "dispatch-crash",
+                                            "carrier",
+                                            "tracking",
+                                            2)));
+            var original = f.bridge.lastShipment;
+            f.bridge.shipCrash = false;
+            f.bridge.inventoryQueryUnknown = true;
+            var q = new FulfillmentQuery("tenant-a", f.order.orderNo());
+            f.svc.recover(q);
+            assertEquals(0, f.bridge.ships);
+            f.bridge.inventoryQueryUnknown = false;
+            f.svc.recover(q);
+            f.svc.recover(q);
+            assertEquals(1, f.bridge.ships);
+            assertEquals(original, f.bridge.lastShipment);
+            assertEquals(
+                    "COMPLETED",
+                    db.jdbc.queryForObject(
+                            "select fulfillment_status from mall_order", String.class));
+            assertEquals(1, count(db, "select count(*) from mall_shipment where status='SHIPPED'"));
+            assertEquals(
+                    1,
+                    count(db, "select count(*) from mall_fulfillment_task where task_type='SHIP'"));
+        }
+    }
+
+    void legacyTaskCannotBeIgnored(boolean cancel) {
+        try (var db = new MysqlDatabase()) {
+            org.flywaydb.core.Flyway.configure()
+                    .dataSource(db.ds)
+                    .table("commerce_schema_history")
+                    .locations("classpath:db/commerce/migration")
+                    .target("5")
+                    .load()
+                    .migrate();
+            var components =
+                    List.of(
+                            new ai.neargo.commerce.api.catalog.SkuComponent(
+                                    null,
+                                    ComponentKind.PLAN,
+                                    "pro-1",
+                                    null,
+                                    null,
+                                    30,
+                                    1,
+                                    50,
+                                    false,
+                                    "ON_FULFILLMENT"),
+                            new ai.neargo.commerce.api.catalog.SkuComponent(
+                                    null,
+                                    ComponentKind.HARDWARE,
+                                    null,
+                                    null,
+                                    "device",
+                                    null,
+                                    2,
+                                    50,
+                                    false,
+                                    "ON_FULFILLMENT"));
+            var f = setup(db, true, components, m -> {}, false);
+            String part =
+                    db.jdbc.queryForObject(
+                            "select order_component_no from mall_order_component where"
+                                    + " component_type='HARDWARE'",
+                            String.class);
+            db.jdbc.update(
+                    "INSERT INTO"
+                        + " mall_fulfillment_task(tenant_no,created_at,updated_at,version,deleted,task_no,order_component_no,unit_seq,task_type,status,attempt_count,next_retry_at)"
+                        + " VALUES"
+                        + " ('tenant-a',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),0,0,'legacy-reserve',?,1,'RESERVE','UNKNOWN',1,0)",
+                    part);
+            db.migrate();
+            assertNull(
+                    db.jdbc.queryForObject(
+                            "select order_no from mall_fulfillment_task", String.class));
+            assertEquals(
+                    "LEGACY_UNKNOWN",
+                    db.jdbc.queryForObject(
+                            "select dispatch_state from mall_fulfillment_task", String.class));
+            if (cancel)
+                f.mall.api.cancelOrder(
+                        BUYER,
+                        new CancelOrderCommand(
+                                STORE, f.order.orderNo(), "cancel-legacy", "cancel"));
+            var error =
+                    assertThrows(
+                            MallException.class,
+                            () -> {
+                                if (cancel)
+                                    f.svc.recover(
+                                            new FulfillmentQuery("tenant-a", f.order.orderNo()));
+                                else start(f);
+                            });
+            assertEquals("LEGACY_TASK_UNPROVEN", error.code());
+            assertEquals(
+                    0,
+                    paymentCalls(f.bridge)
+                            + f.bridge.reserves
+                            + f.bridge.releases
+                            + f.bridge.inventoryQueries
+                            + f.bridge.ships);
+            assertEquals(
+                    200, count(db, "select reserved_minor from mch_subscription_credit_account"));
+            assertEquals(
+                    f.order.orderNo(),
+                    db.jdbc.queryForObject(
+                            "select pending_change_order_no from mch_subscription_account",
+                            String.class));
+            assertEquals(
+                    "RESERVED",
+                    db.jdbc.queryForObject(
+                            "select status from mch_subscription_reservation", String.class));
+            assertEquals(1, count(db, "select count(*) from mall_fulfillment_task"));
+            assertEquals(
+                    "LEGACY_UNKNOWN",
+                    db.jdbc.queryForObject(
+                            "select dispatch_state from mall_fulfillment_task", String.class));
+            assertNull(
+                    db.jdbc.queryForObject(
+                            "select request_snapshot from mall_fulfillment_task", String.class));
+        }
+    }
+
+    @Test
+    void migratedLegacyTaskBlocksNewReserveWithoutInventingProof() {
+        legacyTaskCannotBeIgnored(false);
+    }
+
+    @Test
+    void migratedLegacyTaskBlocksCancellationWithoutReleasingHolds() {
+        legacyTaskCannotBeIgnored(true);
+    }
+
+    @Test
+    void preFixNonzeroAttemptWithoutPreparationTimeRetainsItsRequestHash() {
+        try (var db = new MysqlDatabase()) {
+            var f = setup(db, false);
+            f.bridge.createThrows = true;
+            start(f);
+            var p = f.bridge.intent;
+            var legacy =
+                    new PaymentIntentCommand(
+                            p.tenantNo(),
+                            p.orderNo(),
+                            p.platformMerchantNo(),
+                            p.amount(),
+                            p.expiresAt(),
+                            p.paymentAttemptNo(),
+                            p.buyerNo(),
+                            p.channel(),
+                            p.payMethod(),
+                            p.payerReference());
+            var original =
+                    new FulfillmentRepository.Operation(
+                            p.paymentAttemptNo(),
+                            p.orderNo(),
+                            null,
+                            "PAYMENT",
+                            legacy,
+                            null,
+                            null,
+                            null,
+                            null);
+            var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+            var tree = mapper.valueToTree(original);
+            ((tools.jackson.databind.node.ObjectNode) tree.get("payment")).remove("preparedAt");
+            String request = mapper.writeValueAsString(tree);
+            String hash = ai.neargo.commerce.core.spi.FactDigest.of(List.of(request));
+            db.jdbc.update(
+                    "update mall_payment_ref set request_snapshot=?,request_hash=?", request, hash);
+            f.bridge.payment =
+                    new PaymentOutcome(
+                            f.order.orderNo(),
+                            Optional.of("pay"),
+                            "platform",
+                            f.order.payable(),
+                            AsyncStatus.SUCCEEDED,
+                            Optional.of(Instant.ofEpochMilli(2100)),
+                            Optional.empty());
+            f.svc.recover(new FulfillmentQuery("tenant-a", f.order.orderNo()));
+            assertEquals(
+                    hash,
+                    db.jdbc.queryForObject(
+                            "select request_hash from mall_payment_ref", String.class));
+            assertEquals(
+                    "COMPLETED",
+                    db.jdbc.queryForObject(
+                            "select fulfillment_status from mall_order", String.class));
+            assertEquals(1, f.bridge.creates);
+            assertEquals(1, f.bridge.queries);
+        }
+    }
+
+    @Test
+    void zeroIntentCommittedAcrossRecoveryLookupAndDeadlineStillSettlesAtOriginalTime() {
+        try (var db = new MysqlDatabase()) {
+            var clock = new MutableClock();
+            var base =
+                    setup(
+                            db,
+                            false,
+                            null,
+                            m -> {
+                                db.jdbc.update(
+                                        "update mch_subscription_credit_account set"
+                                            + " balance_minor=9000");
+                                db.jdbc.update(
+                                        "update mch_subscription_credit_lot set"
+                                            + " issued_minor=4500,remaining_minor=4500");
+                            });
+            var interleaved =
+                    new CommerceUnitOfWork() {
+                        boolean armed = true;
+
+                        public void requireOutsideTransaction() {
+                            base.mall.c.uow.requireOutsideTransaction();
+                        }
+
+                        public <T> T required(java.util.function.Supplier<T> work) {
+                            T result = base.mall.c.uow.required(work);
+                            if (armed
+                                    && !TransactionSynchronizationManager
+                                            .isActualTransactionActive()) {
+                                armed = false;
+                                interruptZeroAtPreparation(db, clock, base);
+                                clock.now = Instant.ofEpochMilli(1_000_000);
+                            }
+                            return result;
+                        }
+                    };
+            var svc = coordinator(db, base, interleaved, clock);
+            svc.recover(new FulfillmentQuery("tenant-a", base.order.orderNo()));
+            assertEquals(
+                    "PAID",
+                    db.jdbc.queryForObject("select pay_status from mall_order", String.class));
+            assertEquals(
+                    CLOCK.instant().toString(),
+                    db.jdbc.queryForObject(
+                            "select verified_fact_snapshot->>'$.paidAt' from mall_payment_ref",
+                            String.class));
+            assertEquals(0, paymentCalls(base.bridge));
+            assertEquals(2, count(db, "select count(*) from mch_subscription_period"));
         }
     }
 }
