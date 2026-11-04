@@ -167,3 +167,19 @@ ALTER TABLE probe ADD COLUMN following INT COMMENT 'still;read';`, read => {
         ]);
     });
 });
+
+test('escaped quotes in SQL comments cannot hide following columns', () => {
+    const root = mkdtempSync(join(tmpdir(), 'escaped-ddl-'));
+    try {
+        mkdirSync(join(root, 'migrations'));
+        writeFileSync(join(root, 'migrations/V1__test.sql'), String.raw`CREATE TABLE probe (
+ id BIGINT NOT NULL,
+ label VARCHAR(80) COMMENT 'customer\'s, label',
+ business_status VARCHAR(32) COMMENT 'READY / BLOCKED',
+ PRIMARY KEY (id)
+) ENGINE=InnoDB;`);
+        const table = readSchema(root, ['migrations']).get('probe');
+        assert.deepEqual(table.cols.map(c => c.name), ['id', 'label', 'business_status']);
+        assert.equal(table.cols.find(c => c.name === 'business_status').comment, 'READY / BLOCKED');
+    } finally { rmSync(root, {recursive:true, force:true}); }
+});

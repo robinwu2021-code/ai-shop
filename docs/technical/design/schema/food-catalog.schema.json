@@ -535,6 +535,15 @@
           "ref": "fnb_config_revision.revision_no",
           "nullable": true,
           "introducedIn": "V1"
+        },
+        {
+          "name": "inventory_mode",
+          "type": "varchar(16)",
+          "label": "inventory_mode",
+          "nullable": true,
+          "ref": null,
+          "introducedIn": "V32",
+          "sqlDeclaration": "inventory_mode VARCHAR(16) NULL"
         }
       ],
       "unique": [
@@ -1022,7 +1031,8 @@
         "serviceClasses": [
           "ai.neargo.shop.food.service.CatalogService",
           "ai.neargo.shop.food.service.MenuChannelBindingService",
-          "ai.neargo.shop.food.service.MenuService"
+          "ai.neargo.shop.food.service.MenuService",
+          "ai.neargo.shop.food.service.MenuWithdrawalSourceService"
         ],
         "persistenceStyle": "MYBATIS_ENTITY"
       }
@@ -1082,7 +1092,8 @@
         "serviceClasses": [
           "ai.neargo.shop.food.service.CatalogService",
           "ai.neargo.shop.food.service.MenuChannelBindingService",
-          "ai.neargo.shop.food.service.MenuService"
+          "ai.neargo.shop.food.service.MenuService",
+          "ai.neargo.shop.food.service.MenuWithdrawalSourceService"
         ],
         "persistenceStyle": "MYBATIS_ENTITY"
       }
@@ -1870,6 +1881,7 @@
           "ai.neargo.shop.food.mapper.DiningBatchQueryMapper",
           "ai.neargo.shop.food.mapper.FoodBusinessOperationsMapper",
           "ai.neargo.shop.food.mapper.FoodMappers.OrderLineMapper",
+          "ai.neargo.shop.food.mapper.ServiceEntitlementMapper",
           "ai.neargo.shop.food.mapper.ServiceFormMapper"
         ],
         "serviceClasses": [
@@ -1880,6 +1892,7 @@
           "ai.neargo.shop.food.service.CheckBusinessGuardService",
           "ai.neargo.shop.food.service.CheckCollaborationService",
           "ai.neargo.shop.food.service.DiningBatchQueryService",
+          "ai.neargo.shop.food.service.DiningChannelFulfillmentService",
           "ai.neargo.shop.food.service.DiningOrderService",
           "ai.neargo.shop.food.service.DiningPickupVerificationService",
           "ai.neargo.shop.food.service.DiningReturnService",
@@ -1890,6 +1903,7 @@
           "ai.neargo.shop.food.service.QueueNotificationService",
           "ai.neargo.shop.food.service.ReservationPreorderService",
           "ai.neargo.shop.food.service.ScheduledDiningDispatchService",
+          "ai.neargo.shop.food.service.ServiceEntitlementService",
           "ai.neargo.shop.food.service.ServiceFormService",
           "ai.neargo.shop.food.service.ServiceSlotService"
         ],
@@ -2692,6 +2706,7 @@
           "ai.neargo.shop.food.mapper.ServiceFormMapper"
         ],
         "serviceClasses": [
+          "ai.neargo.shop.food.service.ServiceEntitlementService",
           "ai.neargo.shop.food.service.ServiceFormService"
         ],
         "persistenceStyle": "MYBATIS_ENTITY"

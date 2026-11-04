@@ -12,7 +12,7 @@ import { useMerchantStore } from "@/stores/merchant";
 import { confirm } from "@ai-shop/ui/prompt";
 import type { StockAlignMode, StockAlignRow, StockAlignmentBatch } from "@shared/types";
 
-const { t } = useI18n();
+const { t, te } = useI18n();
 const merchant = useMerchantStore();
 
 const rows = ref<StockAlignRow[]>([]);
@@ -53,7 +53,7 @@ async function confirmBatch() {
   const current = batch.value;
   if (!storeNo.value || !current || busy.value || !["PREVIEW", "PARTIAL", "BLOCKED"].includes(current.status)) return;
   if (current.status === "PREVIEW" && current.blocked > 0) {
-    uni.showToast({ title: "请先处理阻断项，再重新预览", icon: "none" });
+    uni.showToast({ title: String(t("stockAlign.blockedFirst")), icon: "none" });
     return;
   }
   const ok = await confirm(current.mode === "MALL"
@@ -75,6 +75,11 @@ async function confirmBatch() {
 }
 
 /** 不参与对齐的行（note 非空）不写差额 —— 写了像是「确认后会调它」，而它不会被动 */
+function lineStatus(status: string): string {
+  const key = `stockAlign.lineStatus.${status}`;
+  return String(t(te(key) ? key : "stockAlign.lineStatus.UNKNOWN"));
+}
+
 function diffText(r: StockAlignRow): string {
   if (r.note || r.diff === null) return "";
   return r.diff === 0 ? String(t("stockAlign.same")) : String(t("stockAlign.diff", { n: r.diff > 0 ? `+${r.diff}` : r.diff }));
@@ -98,17 +103,18 @@ onShow(() => {
     <text class="txt-caption sh-muted intro">{{ $t("stockAlign.intro") }}</text>
     <view v-if="batch" class="sh-card sh-mb-sm">
       <view class="sh-row sh-row--between">
-        <text class="txt-strong">{{ batch.status === "PREVIEW" ? "对齐预览" : "批次处理结果" }}</text>
+        <text class="txt-strong">{{ $t(batch.status === "PREVIEW" ? "stockAlign.previewTitle" : "stockAlign.resultTitle") }}</text>
         <text v-if="batch.documentNo" class="txt-caption sh-muted">{{ batch.documentNo }}</text>
       </view>
-      <text class="txt-caption sh-muted">{{ batch.mode === "MALL" ? "以线上库存为准" : "按已实地盘点" }} · {{ batch.completed }}项完成 · {{ batch.blocked }}项阻断 · {{ batch.waiting }}项等待</text>
+      <text class="txt-caption sh-muted">{{ $t(batch.mode === "MALL" ? "stockAlign.modeMall" : "stockAlign.modeCount") }} · {{ $t("stockAlign.batchSummary", { completed: batch.completed, blocked: batch.blocked, waiting: batch.waiting }) }}</text>
       <view v-for="line in batch.rows" :key="line.skuNo" class="batch-line">
         <text class="txt-body">{{ line.title }}{{ line.spec ? ` · ${line.spec}` : "" }}</text>
-        <text class="txt-caption sh-muted">{{ line.beforeQty ?? "—" }} → {{ line.afterQty ?? "—" }} · {{ line.status }}{{ line.errorCode ? ` (${line.errorCode})` : "" }}</text>
+        <text class="txt-caption sh-muted">{{ line.beforeQty ?? "—" }} → {{ line.afterQty ?? "—" }} · {{ lineStatus(line.status) }}</text>
+        <text v-if="line.errorCode" class="txt-caption sh-muted">{{ $t("stockAlign.diagnostic", { code: line.errorCode }) }}</text>
       </view>
       <view v-if="['PREVIEW', 'PARTIAL', 'BLOCKED'].includes(batch.status)" class="sh-row sh-row--between sh-mt-sm">
-        <text class="sh-btn sh-btn--soft" @tap="batch = null">取消</text>
-        <text class="sh-btn" @tap="confirmBatch">{{ batch.status === "PREVIEW" ? "确认对齐" : "继续处理未完成项" }}</text>
+        <text class="sh-btn sh-btn--soft" @tap="batch = null">{{ $t("common.cancel") }}</text>
+        <text class="sh-btn" @tap="confirmBatch">{{ $t(batch.status === "PREVIEW" ? "stockAlign.confirmBatch" : "stockAlign.continueBatch") }}</text>
       </view>
     </view>
     <sh-empty v-if="!rows.length" :pending="!loaded" :text="String($t('stockAlign.empty'))"></sh-empty>
@@ -124,8 +130,10 @@ onShow(() => {
     </view>
 
     <sh-actionbar v-if="rows.length && merchant.can('biz:store:admin')">
+      <view class="sh-actions">
       <view class="sh-btn sh-btn--soft" @tap="run('COUNT')">{{ $t("stockAlign.byCount") }}</view>
       <view class="sh-btn" @tap="run('MALL')">{{ $t("stockAlign.byMall") }}</view>
+      </view>
     </sh-actionbar>
   </sh-scaffold>
 </template>
@@ -135,5 +143,5 @@ onShow(() => {
   display: block;
   padding: 0 8rpx 16rpx;
 }
-.batch-line { display: flex; flex-direction: column; gap: 4rpx; padding: 16rpx 0; border-top: 1rpx solid var(--sh-line); }
+.batch-line { display: flex; flex-direction: column; gap: 4rpx; padding: 16rpx 0; border-top: var(--sh-hairline); }
 </style>

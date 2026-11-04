@@ -93,7 +93,7 @@ onLoad((q) => {
       <view class="sh-cell sh-row sh-row--between" @tap="sheet = 'activity'">
         <text class="txt-body sh-muted">{{ $t("groupOpen.activity") }}</text>
         <view class="sh-row">
-          <text class="txt-body" :class="{ 'sh-muted': !act }">{{ act?.name || $t("groupOpen.pick") }}</text>
+          <text class="txt-body" :class="{ 'sh-muted': !act }">{{ act?.name || $t("common.choose") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
       </view>
@@ -101,7 +101,7 @@ onLoad((q) => {
         <text class="txt-body sh-muted">{{ $t("groupOpen.goods") }}</text>
         <view class="sh-row">
           <text class="txt-body" :class="{ 'sh-muted': !goodsNo }">
-            {{ goodsNo ? goodsTitle[goodsNo] || goodsNo : $t("groupOpen.pick") }}
+            {{ goodsNo ? goodsTitle[goodsNo] || goodsNo : $t("common.choose") }}
           </text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
@@ -139,7 +139,7 @@ onLoad((q) => {
 
     <sh-actionbar>
       <view class="sh-row bar">
-        <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("groupOpen.cancel") }}</view>
+        <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("common.cancel") }}</view>
         <view class="sh-btn bar__main" :class="{ 'is-disabled': !ready || busy }" @tap="submit">
           {{ $t("groupOpen.submit") }}
         </view>

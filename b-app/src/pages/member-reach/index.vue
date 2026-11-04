@@ -171,7 +171,7 @@ onShow(() => {
     <view class="sh-card sh-mt-sm">
       <text class="field__label">{{ $t("reach.content") }}</text>
       <input maxlength="64" v-model="title" class="field__input mt2" :placeholder="$t('reach.titlePh')" />
-      <textarea v-model="body" class="field__input area" :placeholder="$t('reach.bodyPh')" />
+      <textarea v-model="body" class="field__input area" :placeholder="$t('common.optional')" />
     </view>
 
     <view class="sh-btn send" :class="{ 'is-disabled': !canSend }" @tap="send">

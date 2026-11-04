@@ -56,7 +56,7 @@ async function run(fn: () => Promise<unknown>) {
 async function rename() {
   const tg = tag.value;
   if (!tg) return;
-  const name = ((await prompt({ title: tt("memberTags.rename"), value: tg.name })) ?? "").trim();
+  const name = ((await prompt({ title: tt("common.rename"), value: tg.name })) ?? "").trim();
   if (!name || name === tg.name) return;
   run(() => api.mEditMemberTag(tg.tagNo, { name }));
 }
@@ -138,14 +138,14 @@ onShow(load);
 
       <view class="sh-cells sh-mt-sm">
         <view class="sh-cell sh-row sh-row--between" @tap="rename">
-          <text class="txt-body sh-muted">{{ $t("memberTag.name") }}</text>
+          <text class="txt-body sh-muted">{{ $t("common.name") }}</text>
           <view class="sh-row">
             <text class="txt-body">{{ tag.name }}</text>
             <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
           </view>
         </view>
         <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted">{{ $t("memberTag.status") }}</text>
+          <text class="txt-body sh-muted">{{ $t("common.status") }}</text>
           <text class="sh-chip" :class="{ 'sh-chip--success': tag.status === 'ACTIVE' }">
             {{ tag.status === "ACTIVE" ? $t("memberTag.active") : $t("memberTags.disabled") }}
           </text>
@@ -184,7 +184,7 @@ onShow(load);
         <view class="sh-row bar">
           <view class="sh-btn sh-btn--muted sh-fill" :class="{ 'is-disabled': busy }" @tap="merge">{{ $t("memberTag.merge") }}</view>
           <view class="sh-btn sh-btn--danger sh-fill" :class="{ 'is-disabled': busy }" @tap="toggleEnabled">
-            {{ tag.status === "ACTIVE" ? $t("memberTags.disable") : $t("memberTags.enable") }}
+            {{ tag.status === "ACTIVE" ? $t("common.disable") : $t("common.enable") }}
           </view>
         </view>
       </sh-actionbar>

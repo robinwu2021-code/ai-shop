@@ -103,7 +103,7 @@ async function toggle(c: Category) {
         >
           <text class="txt-sub txt-ink">{{ c.name }}</text>
           <text v-if="countOf(c.categoryNo)" class="txt-caption">
-            {{ t("storeCategories.goodsCount", { n: countOf(c.categoryNo) }) }}
+            {{ t("common.itemCount", { n: countOf(c.categoryNo) }) }}
           </text>
           <text v-if="ungranted(c)" class="txt-caption is-warning">{{ t("storeCategories.needCert") }}</text>
         </sh-option>

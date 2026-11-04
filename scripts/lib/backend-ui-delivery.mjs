@@ -32,11 +32,13 @@ export function readDeferredDelivery(root, file, {app, prefix, handlers, missing
             || data.plan.split('/').includes('..') || !existsSync(join(root, data.plan))) {
         throw new Error('Staged delivery must name an existing frontend task plan');
     }
-    const contracts = data.contracts ?? [contract];
+    // 每份清单用 contracts（数组）或 contract（单份）指明它的条目必须出现在哪些 docs/api 下的 OpenAPI 里
+    // （按域分清单）；都不写则沿用调用方给的默认契约（最早那份权益契约）。
+    const contracts = data.contracts ?? (data.contract !== undefined ? [data.contract] : [contract]);
     if (!Array.isArray(contracts) || !contracts.length || contracts.length > 16
             || new Set(contracts).size !== contracts.length
             || contracts.some(file => typeof file !== 'string'
-                || !/^docs\/api\/[a-z0-9-]+\.openapi\.json$/.test(file)
+                || !/^docs\/api\/[A-Za-z0-9._-]+\.json$/.test(file) || file.split('/').includes('..')
                 || !existsSync(join(root, file)))) {
         throw new Error('Staged delivery requires existing, unique API contracts under docs/api');
     }

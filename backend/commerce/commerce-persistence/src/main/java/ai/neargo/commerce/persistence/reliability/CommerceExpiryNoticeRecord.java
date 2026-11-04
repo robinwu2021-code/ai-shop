@@ -1,0 +1,32 @@
+package ai.neargo.commerce.persistence.reliability;
+
+/** Typed persistence row; UTC audit timestamps, epoch-millisecond business times. */
+public record CommerceExpiryNoticeRecord(
+        Long id,
+        String tenantNo,
+        java.time.LocalDateTime createdAt,
+        java.time.LocalDateTime updatedAt,
+        String createdBy,
+        String updatedBy,
+        Long version,
+        Integer deleted,
+        String noticeNo,
+        String storeNo,
+        String entitlementCode,
+        Long coverageEndAt,
+        String thresholdCode,
+        Long dueAt,
+        Long expiresAt,
+        String policyVersion,
+        Long observedEntitlementVersion,
+        String recipientType,
+        String recipientNo,
+        String channel,
+        String dedupKey,
+        String status,
+        Integer attempts,
+        Long nextAttemptAt,
+        Long leaseUntil,
+        String providerMessageNo,
+        String lastErrorCode,
+        Long sentAt) {}

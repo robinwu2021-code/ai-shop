@@ -71,6 +71,20 @@ export function scanEndpoints(root = ROOT) {
     const marks = [];
     for (let m; (m = re.exec(src)); ) marks.push({ i: m.index, method: m[1].toUpperCase(), path: m[2] });
     /*
+     * 类级 `@RequestMapping("/ops/…")` + 方法级相对路径（或裸 `@GetMapping`）的写法：
+     * 商城 starter 的订单/订阅控制器就是这样。此前只认方法上写全路径，这些端点整条不在矩阵里。
+     */
+    const prefix = /^@RequestMapping\(\s*(?:value\s*=\s*|path\s*=\s*)?"(\/ops[^"]*)"/m.exec(src)?.[1];
+    if (prefix) {
+      const rel = /@(Get|Post|Put|Delete|Patch)Mapping(?:\(\s*(?:value\s*=\s*|path\s*=\s*)?"([^"]*)"[^)]*\)|(?![(\w]))/g;
+      for (let m; (m = rel.exec(src)); ) {
+        const sub = m[2] ?? "";
+        if (sub.startsWith("/ops")) continue;
+        marks.push({ i: m.index, method: m[1].toUpperCase(), path: prefix + (sub && !sub.startsWith("/") ? "/" : "") + sub });
+      }
+      marks.sort((a, b) => a.i - b.i);
+    }
+    /*
      * @PreAuthorize 的位置，**两种写法都要认**：库里多数写在 @XxxMapping 之后，
      * 但 OpsSpuStdController / OpsMemberController / OpsPromotionController 写在前面。
      *
@@ -131,6 +145,19 @@ export function scanEndpoints(root = ROOT) {
           } else if (constants.length === 1) perm = constants[0];
         }
       }
+      /*
+       * 商城可移植 starter 的控制器不挂 @PreAuthorize（不依赖宿主的 Spring Security），
+       * 而是在方法体里调 `context.operator("commerce:…")`：宿主按实时会话与库里的功能点判权，
+       * 判不过直接 403。这里认这一写法，记成字面码（前缀 "="），只读本方法体、撞到下一个
+       * Mapping 就停 —— 与上面同一条「不许借邻居的码」的规矩。
+       */
+      if (perm === null) {
+        for (let k = at + 1; k < lines.length; k++) {
+          if (/@(Get|Post|Put|Delete|Patch)Mapping\(/.test(lines[k])) break;
+          const op = /context\.operator\("([a-z][a-z:_-]*)"\)/.exec(lines[k]);
+          if (op) { perm = "=" + op[1]; break; }
+        }
+      }
       out.push({ method: mk.method, path: mk.path, perm });
     }
   }
@@ -168,6 +195,11 @@ export function permissionAlternatives(perm) {
   return perm ? perm.split("|") : [];
 }
 
+/** 常量名 → 码；"=" 开头的是方法体里直接写的字面码（见 scanEndpoints）。 */
+export function codeFor(codes, p) {
+  return p.startsWith("=") ? p.slice(1) : codes.get(p);
+}
+
 /** 角色 → 可访问端点（"METHOD path"），排序后返回 */
 export function buildMatrix(root = ROOT) {
   const eps = scanEndpoints(root);
@@ -180,7 +212,7 @@ export function buildMatrix(root = ROOT) {
       .filter((e) => {
         // 没挂注解的端点：登录即可用，谁都能访问
         if (!e.perm) return true;
-        return has === null || permissionAlternatives(e.perm).some(p => has.has(codes.get(p) ?? `?${p}`));
+        return has === null || permissionAlternatives(e.perm).some(p => has.has(codeFor(codes, p) ?? `?${p}`));
       })
       .map((e) => `${e.method} ${e.path}`);
   }
@@ -224,7 +256,7 @@ function main() {
   // ── 人看的那份 ──
   const byCode = new Map();
   for (const e of eps) {
-    const c = e.perm ? permissionAlternatives(e.perm).map(p => codes.get(p)).join(" / ") : "（无判权）";
+    const c = e.perm ? permissionAlternatives(e.perm).map(p => codeFor(codes, p)).join(" / ") : "（无判权）";
     if (!byCode.has(c)) byCode.set(c, []);
     byCode.get(c).push(`${e.method} ${e.path}`);
   }

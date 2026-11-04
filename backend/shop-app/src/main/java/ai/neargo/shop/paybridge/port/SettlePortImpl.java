@@ -1,5 +1,7 @@
 package ai.neargo.shop.paybridge.port;
 
+import ai.neargo.shop.spi.pay.PlatformPaymentRecoveryPort;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ai.neargo.shop.pay.SettleService;
@@ -160,6 +162,12 @@ public class SettlePortImpl implements SettlePort {
     public PaymentReceipt paymentByOutTradeNo(String outTradeNo) {
         return paymentLedger.paymentByOutTradeNo(outTradeNo);
     }
+
+    private PlatformPaymentRecoveryPort platformRecovery;
+    @Autowired(required=false)
+    public void setPlatformRecovery(PlatformPaymentRecoveryPort recovery) {this.platformRecovery=recovery;}
+    @Override public String paymentBusiness(String id) { return paymentLedger.paymentBusiness(id); }
+    @Override public boolean reconcilePlatformPayment(String id) { return platformRecovery!=null&&platformRecovery.recover(id); }
 
     @Override
     public String settlePayment(PaymentSettled cmd) {

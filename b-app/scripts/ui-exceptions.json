@@ -1,0 +1,60 @@
+{
+  "literals": [
+    {
+      "file": "b-app/src/App.vue",
+      "kind": "script-string",
+      "text": "[automation] 票据登录失败",
+      "reason": "内部自动化登录日志，不是用户可见界面文案"
+    }
+  ],
+  "layouts": [
+    {
+      "rule": "shared-class-override",
+      "file": "b-app/src/App.vue",
+      "selector": ".field",
+      "property": "margin-top",
+      "value": "20rpx",
+      "reason": "B端全局字段密度的唯一定义；页面不再重定义"
+    },
+    {
+      "rule": "off-grid-spacing",
+      "file": "b-app/src/components/biz/biz-region-picker.vue",
+      "selector": ".chosen__ex",
+      "property": "padding",
+      "value": "2rpx 12rpx",
+      "reason": "小标记的光学内边距，不改变点按目标"
+    },
+    {
+      "rule": "off-grid-spacing",
+      "file": "b-app/src/components/biz/biz-region-picker.vue",
+      "selector": ".chosen__audit",
+      "property": "padding",
+      "value": "2rpx 12rpx",
+      "reason": "审核小标记的光学内边距，不改变点按目标"
+    },
+    {
+      "rule": "custom-fixed",
+      "file": "b-app/src/components/biz/biz-switch-curtain.vue",
+      "selector": ".curtain",
+      "property": "position",
+      "value": "fixed",
+      "reason": "切店的全屏业务幕布，不是底部操作条"
+    },
+    {
+      "rule": "off-grid-spacing",
+      "file": "b-app/src/pages/my-specs/index.vue",
+      "selector": ".ic--grip",
+      "property": "margin-inline-start",
+      "value": "-10rpx",
+      "reason": "拖动手柄的光学补偿，不改变行间距"
+    },
+    {
+      "rule": "custom-fixed",
+      "file": "b-app/src/pages/stock/index.vue",
+      "selector": ".catch",
+      "property": "position",
+      "value": "fixed",
+      "reason": "更多菜单的透明外部点击关闭层，低于既有actionbar"
+    }
+  ]
+}

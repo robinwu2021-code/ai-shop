@@ -143,7 +143,7 @@ onShow(load);
         <text>{{ r.reply }}</text>
       </view>
 
-      <template v-if="replying === r.reviewNo">
+      <view class="field" v-if="replying === r.reviewNo">
         <textarea
           v-model="text"
           class="field__area"
@@ -156,7 +156,7 @@ onShow(load);
           <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="replying = ''">{{ $t("common.cancel") }}</text>
           <text class="sh-btn sh-btn--sm txt-strong btn" @tap="submit(r)">{{ $t("reviews.submit") }}</text>
         </view>
-      </template>
+      </view>
       <!-- 申诉状态：提交后商家能看到进度与裁决说明。
            平台端 P-13.1 的裁决台早就建好了，此前缺的正是这个入口 —— 台子一直空转 -->
       <view v-if="r.appeal" class="appeal" :class="`is-${r.appeal.status}`">
@@ -164,7 +164,7 @@ onShow(load);
         <text class="sh-muted">{{ r.appeal.verdict || $t("reviews.appealWaiting") }}</text>
       </view>
 
-      <template v-if="appealing === r.reviewNo">
+      <view class="field" v-if="appealing === r.reviewNo">
         <textarea
           v-model="appealText"
           class="field__area"
@@ -176,7 +176,7 @@ onShow(load);
           <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="appealing = ''">{{ $t("common.cancel") }}</text>
           <text class="sh-btn sh-btn--sm txt-strong btn" @tap="submitAppeal(r)">{{ $t("reviews.appealSubmit") }}</text>
         </view>
-      </template>
+      </view>
 
       <view v-else-if="replying !== r.reviewNo" class="acts">
         <!-- 已回复的不再给入口：那条路后端是关着的（见 startReply 的注释）。

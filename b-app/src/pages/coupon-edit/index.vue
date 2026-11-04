@@ -229,7 +229,7 @@ onLoad((q) => {
 
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted cell__k">{{ $t("couponEdit.name") }}</text>
+          <text class="txt-body sh-muted cell__k">{{ $t("common.name") }}</text>
           <input v-model="form.title" maxlength="64" class="txt-body cell__input" :placeholder="$t('couponEdit.namePh')" />
         </view>
         <view class="sh-cell sh-row sh-row--between" @tap="showKind = true">
@@ -323,8 +323,8 @@ onLoad((q) => {
 
       <sh-actionbar>
         <view class="sh-row bar">
-          <view class="sh-btn sh-btn--muted sh-fill" @tap="cancel">{{ $t("couponEdit.cancel") }}</view>
-          <view class="sh-btn bar__main" @tap="next">{{ $t("couponEdit.next") }}</view>
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="cancel">{{ $t("common.cancel") }}</view>
+          <view class="sh-btn bar__main" @tap="next">{{ $t("common.next") }}</view>
         </view>
       </sh-actionbar>
     </template>
@@ -337,7 +337,7 @@ onLoad((q) => {
       </view>
       <view class="sh-cells">
         <view class="sh-cell sh-row sh-row--between">
-          <text class="txt-body sh-muted">{{ $t("couponEdit.name") }}</text>
+          <text class="txt-body sh-muted">{{ $t("common.name") }}</text>
           <text class="txt-body">{{ preview.title }}</text>
         </view>
         <view class="sh-cell sh-row sh-row--between">
@@ -369,8 +369,8 @@ onLoad((q) => {
 
       <sh-actionbar>
         <view class="sh-row bar">
-          <view class="sh-btn sh-btn--muted sh-fill" @tap="cancel">{{ $t("couponEdit.back") }}</view>
-          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="save">{{ $t("couponEdit.save") }}</view>
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="cancel">{{ $t("common.previous") }}</view>
+          <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="save">{{ $t("common.save") }}</view>
         </view>
       </sh-actionbar>
     </template>

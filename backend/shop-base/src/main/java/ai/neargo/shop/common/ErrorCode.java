@@ -1144,6 +1144,8 @@ public enum ErrorCode {
      * 他要做的是升套餐（或先停用一家），这两件事之间没有任何关系。
      */
     STORE_QUOTA_EXCEEDED(70020, "err.merchant.store_quota_exceeded"),
+    STORE_BUSINESS_TYPE_REQUIRED(70198, "err.store.business_type_required"),
+    STORE_COMMERCE_MIGRATION_REQUIRED(70199, "err.store.commerce_migration_required"),
 
     /**
      * 门店被平台强制下线，商家的启停操作一律拒绝。

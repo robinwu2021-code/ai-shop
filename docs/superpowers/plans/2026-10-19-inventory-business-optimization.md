@@ -8,7 +8,7 @@
 
 **Tech Stack:** Java/Spring、现有 MyBatis/JDBC 与 Flyway、Vue/uni-app、TypeScript、现有统一 Outbox。
 
-**Spec:** [库存领域与前后端优化方案](../../technical/design/reviews/库存业务与进销存-领域流程与前后端优化方案-2026-10-19.md)
+**设计依据：** [进销存领域模型](../../technical/design/TDD-进销存领域模型.md)与[模块交互契约](../../technical/design/进销存-与其他模块的交互契约.md)。原专项评审稿未入库；本计划中的 Global Constraints、Review Focus 与逐任务验收保留该轮优化约束。
 
 ## Global Constraints
 

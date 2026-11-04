@@ -722,6 +722,8 @@ class ArchitectureTest {
                 "merchantbridge",
                 // App-level points orchestration selects embedded/remote PAY capability; no new ledger owner.
                 "points",
+                // commercebridge：宿主装配独立 commerce 模块，并提供宿主事务内的建店身份适配。
+                "commercebridge",
                 // payclient：controller 与支付域之间的那一层（app service）。
                 // **不是业务域**：它没有自己的表，做的是「解析数据域 → 校验 → 调支付域 → 拼 VO」。
                 // 支付域拆分后 controller 只做 HTTP 的事，业务动作落在这里；

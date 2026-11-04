@@ -236,7 +236,6 @@ export const httpApi: MerchantApi = {
   mSvSubmit:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvSubmit.path,{rechargeNo}),body,{'Idempotency-Key':key}),
   mSvReceive:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvReceive.path,{rechargeNo}),body,{'Idempotency-Key':key}),
   mSvCancel:(rechargeNo,body,key)=>http.post<SV.SvProgress>(buildPath(E.mSvCancel.path,{rechargeNo}),body,{'Idempotency-Key':key}),
-  mResolveMemberCode:(body)=>http.post<SV.SvCustomer>(E.mResolveMemberCode.path,body),
 
   mSendOtp: (phone) => http.post<void>(E.mSendOtp.path, { phone }),
   mSetPassword: (password) => http.post<void>(E.mSetPassword.path, { password }),

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 1095 个接口**：后端已实现 930（85%）· 前端在调 1002
+**合计 1137 个接口**：后端已实现 930（82%）· 前端在调 1002
 
 ---
 
@@ -1135,7 +1135,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **502** 个接口 ｜ 后端已实现 **434**（86%）｜ 前端在调 **411**
+共 **544** 个接口 ｜ 后端已实现 **434**（80%）｜ 前端在调 **411**
 
 ### aftersale（5）
 
@@ -1146,6 +1146,53 @@
 | POST | `/ops/after-sales/{afterSaleNo}/recover` | 仅恢复原执行，不确认资金成功、不新建退款 | — | `AfterSale` | — | ✅ | ✅ |
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
+
+### commerce（42）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| GET | `/ops/biz-mall/catalog` | 目录总览 | — | `MallCatalogOverview` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/claims` | 待审申报队列 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders` | 代客下单 */ | — | `MallOrderView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{orderNo}/claims` | 某订单的买家申报 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline` | 拒绝申报：不等于无款，不释放占用 */ | — | `MallOfflineClaimView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/confirmations` | 核款：录入实际到账 | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/evidence` | 预留一个运营凭证资产键 */ | — | `MallOfflineEvidenceTicket` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/evidence/content` | 上传凭证字节（image/jpeg 或 image/png，≤10MB | — | `MallOfflineEvidenceUploaded` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{orderNo}/evidence/url` | 读凭证（5 分钟签名地址） */ | — | `MallOfflineSignedRead` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/instructions` | 代客发出付款指引（幂等） */ | — | `MallOfflineInstructionsView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/orders/{orderNo}/instructions` | 读已发出的指引 | — | `MallOfflineInstructionsView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts` | 线下退款实际出款确认 */ | — | `MallRefundView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/orders/{orderNo}/voids` | 对账作废：之后来款仍入账并走退款 */ | — | `MallOfflineActionView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/offline/profile` | 收款档案（按币种） | — | `object` | — | ⬜ | ⬜ |
+| PUT | `/ops/biz-mall/offline/profile` | 配置收款档案：每次修改生成新版本，已发出的指引按原版本 */ | — | `MallOfflineCollectionTerms` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/offline/quotes` | 代客报价：买方为 STORE，发起人为真实运营 */ | — | `MallQuoteView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/orders` | 某门店的订单，按 orderNo 游标翻页 */ | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/orders/{orderNo}` | 订单详情：paymentStatus / fulfillmentStatus / refundStatus 三维独立 */ | — | `MallOrderDetailView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/approve` | 批准退款：绑定 reviewQuoteNo + approvalDigest，金额不超预览上限 */ | — | `MallRefundView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/reject` | 拒绝退款：只改变审核请求 | — | `MallRefundView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/review-quotes` | 退款审核报价：基于买家原请求摘要生成独立的 reviewQuoteNo */ | — | `MallRefundReviewQuoteView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/orders/{orderNo}/shipments` | 硬件发货（operationNo 幂等，组件/数量/承运/单号不可变） */ | — | `MallOrderDetailView` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/products` | 商品列表 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/products` | 新建商品（expectedVersion=0） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| PUT | `/ops/biz-mall/products/{productNo}` | 改商品 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/products/{productNo}/skus` | 新建/编辑 SKU 草稿版本 */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/biz-mall/sku-versions/{versionNo}` | 读一个 SKU 版本 */ | — | `MallSkuVersionView` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/sku-versions/{versionNo}/publish` | 发布单个 SKU 版本 */ | — | `MallPublicationResult` | — | ⬜ | ⬜ |
+| POST | `/ops/biz-mall/skus/{skuNo}/off-sale` | SKU 停售（不改写已落单的快照） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/business-ends` | 业务端列表 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/business-ends` | 保存业务端 | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/business-ends/deployment-options` | 部署验收清单（运营从这里选端，**不手填** client/route/acceptance） */ | — | `数组` | — | ⬜ | ⬜ |
+| GET | `/ops/business-types` | 经营类型列表 */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/business-types` | 新建经营类型：expectedVersion=0、enabled=false | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| PUT | `/ops/business-types/{typeCode}` | 改经营类型 | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| POST | `/ops/business-types/{typeCode}/plan-publications` | 行业发布：三档 + 候选 SKU 一起冻结 */ | — | `MallPublicationResult` | — | ⬜ | ⬜ |
+| GET | `/ops/industry-plans` | Plan 定义（每个经营类型三条） */ | — | `数组` | — | ⬜ | ⬜ |
+| POST | `/ops/industry-plans/{planNo}/off-sale` | Plan 停售（不改写已落单的快照） */ | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| POST | `/ops/industry-plans/{planNo}/versions` | 新建/编辑 Plan 草稿版本 | — | `MallDraftSaveResult` | — | ⬜ | ⬜ |
+| GET | `/ops/stores/{storeNo}/subscription` | 门店权益来源与可访问时段 */ | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
+| POST | `/ops/stores/{storeNo}/subscription/grants` | 零金额独立端赠送（有期限 | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
+| POST | `/ops/stores/{storeNo}/subscription/sources/{sourceNo}/revoke` | 撤销零金额来源（付费来源必须走退款） */ | — | `MallSubscriptionView` | — | ⬜ | ⬜ |
 
 ### community（33）
 

@@ -1,6 +1,6 @@
 # 打印中心Java类与方法清单
 
-状态：设计参考；实施与验收进度见对应任务表和验收记录。
+状态：设计参考；实施与验收进度见对应任务表和验收记录；当前软件交付记录见[排版专项验收](../acceptance/print-center/compact-v2.md)。
 
 > 设计稿 · 2026-10-23 · 未生成产品Java源码。真源：[类结构JSON](./schema/print-java-class-design.json)；阅读入口：[Java结构设计](./打印中心-Java类结构设计.md)。
 

@@ -169,7 +169,7 @@ function split(name: string) {
     </view>
 
     <template #foot>
-      <view class="sh-btn" :class="{ 'is-disabled': !canApply }" @tap="apply">
+      <view class="sh-btn scope-text__apply" :class="{ 'is-disabled': !canApply }" @tap="apply">
         {{ t("store.text.apply", { n: picks.length }) }}
       </view>
     </template>
@@ -181,7 +181,7 @@ function split(name: string) {
   margin-top: 16rpx;
 }
 .scope-text__parse.is-disabled,
-.sh-btn.is-disabled {
+.scope-text__apply.is-disabled {
   opacity: 0.5;
 }
 .scope-text__result {

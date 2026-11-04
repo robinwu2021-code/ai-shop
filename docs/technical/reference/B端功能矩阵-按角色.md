@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 50 个权限点 × 480 个受控端点**。
+统计：**6 个角色 × 50 个权限点 × 481 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -34,9 +34,9 @@
 | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
 | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
 | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read, draf | 5 | ✅ | — | — | — | — | — |
+| `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
 | `PRICING_CONFIG_READ` | Shared pricing configuration: read, draf | 4 | ✅ | — | — | — | — | — |
-| `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
@@ -541,6 +541,14 @@
 - `/biz/pricing/fee-rules/{ruleNo}`
 - `/biz/pricing/fee-scopes/{scopeNo}/adjustments/{applicationNo}:apply`
 
+### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
+
+- `/biz/order/{subOrderNo}/confirm-offline-pay`
+- `/biz/pickup/arrived`
+- `/biz/pickup/picking`
+- `/biz/pickup/{orderNo}/report`
+- `/biz/stores/{storeNo}/pos/access`
+
 ### `SV_CONSUME_CREATE`　（OWNER）
 
 - `/biz/stored-value/consumptions`
@@ -555,13 +563,6 @@
 - `/biz/pricing-configs/{no}/preview`
 - `/biz/pricing-configs/{no}/revisions/{revisionNo}`
 - `/biz/pricing/fee-scopes/{scopeNo}/adjustments`
-
-### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
-
-- `/biz/order/{subOrderNo}/confirm-offline-pay`
-- `/biz/pickup/arrived`
-- `/biz/pickup/picking`
-- `/biz/pickup/{orderNo}/report`
 
 ### `ENT_READ`　（OWNER）
 

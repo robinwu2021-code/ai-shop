@@ -52,6 +52,11 @@ class FunctionPointPermAlignmentTest {
     /** 运营端的判权入口只有这两个。 */
     private static final Pattern GUARD = Pattern.compile("@perm\\.can(Any)?\\(");
     private static final Pattern PERMS_REF = Pattern.compile("Perms\\.([A-Z_0-9]+)");
+    /**
+     * 商城可移植 starter 不挂 @PreAuthorize：方法体里 context.operator("commerce:…") 由宿主按实时会话与
+     * 功能点判权（与 OpsEndpointPermTest / gen-perm-endpoint-matrix.mjs 同一规则）。
+     */
+    private static final Pattern OPERATOR_CODE = Pattern.compile("context\\.operator\\(\"([a-z][a-z:_-]*)\"\\)");
 
     /**
      * **已知欠账**，立闸门那天就存在的。只准变短，不准变长。
@@ -142,6 +147,7 @@ class FunctionPointPermAlignmentTest {
         // the external client's permission constants do not constitute handlers.
         for (Path p : sources()) {
             String src = Files.readString(p);
+            for (Matcher op = OPERATOR_CODE.matcher(src); op.find(); ) out.add(op.group(1));
             if (!src.contains("@perm.can")) {
                 continue;
             }

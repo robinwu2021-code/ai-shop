@@ -168,7 +168,7 @@ const missingFields = computed(() => {
   if (!notBlank(form.value.name)) out.push(String(t("apply.name")));
   if (!notBlank(form.value.contactName)) out.push(String(t("apply.contact")));
   // `!!x` 会把 `"   "` 当成填了；`/^\d{11}$/` 会把 `00000000000` 当成手机号
-  if (!isPhone(form.value.contactPhone)) out.push(String(t("apply.phone")));
+  if (!isPhone(form.value.contactPhone)) out.push(String(t("common.phone")));
   if (!scopeReady.value) out.push(String(t("store.scopeCommunities")));
   return out;
 });
@@ -402,7 +402,8 @@ async function submit() {
     -->
     <view class="head">
       <text class="txt-display">{{ isMore ? $t("apply.titleMore") : $t("apply.title") }}</text>
-      <text class="sh-muted sh-mt-xs blk">{{ isMore ? $t("apply.hintMore") : $t("apply.hint") }}</text>
+      <text v-if="isMore" class="sh-muted sh-mt-xs blk">{{ $t("apply.hintMore") }}</text>
+      <biz-rule-help v-else :title="String($t('apply.title'))" :texts="[String($t('apply.hint'))]"></biz-rule-help>
       <text class="txt-caption sh-muted blk sh-mt-xs">{{ $t("apply.secProgress", { n: secDoneCount }) }}</text>
     </view>
 
@@ -512,7 +513,7 @@ async function submit() {
       </view>
 
       <view class="field">
-        <text class="field__label">{{ $t("apply.phone") }}</text>
+        <text class="field__label">{{ $t("common.phone") }}</text>
         <input
           v-model="form.contactPhone"
           class="field__input sh-num"
@@ -660,7 +661,7 @@ async function submit() {
           </view>
           <sh-uploader
             :list="q.imageUrl ? [q.imageUrl] : []"
-            :w="140"
+            :width="140"
             :uploading="uploading"
             @add="addLicense(i)"
             @tap-item="addLicense(i)"
@@ -730,9 +731,6 @@ async function submit() {
 }
 .status {
   background: var(--sh-warning-tint);
-}
-.field + .field {
-  margin-top: 20rpx;
 }
 .chips {
   gap: 16rpx;

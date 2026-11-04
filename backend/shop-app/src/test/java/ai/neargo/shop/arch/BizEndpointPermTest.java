@@ -52,6 +52,8 @@ class BizEndpointPermTest {
                     "/biz/auth/login",
                     "/biz/auth/otp/send",
                     "/biz/auth/staff-login",
+                    // 退出登录：作用对象是当前会话本身
+                    "/biz/auth/logout",
                     // 设/查自己的登录密码：作用对象是**调用者本人**（SecurityUtils.currentUserNo），
                     // 拿不到别人的。挂 biz 权限码反而错了 —— 店员也该能给自己设密码，
                     // 而他一个 biz:* 都可能没有
@@ -596,6 +598,8 @@ class BizEndpointPermTest {
                     put("/biz/store/announcement/recent/remove", BizPerms.STORE);
                     // 门店送货方式（方案 v4）：GET/PUT 同路径同进退，都归门店管理面
                     put("/biz/stores/{storeNo}/fulfillment", BizPerms.STORE);
+                    // POS 端入口：收银岗位（CommerceEndController#pos）
+                    put("/biz/stores/{storeNo}/pos/access", BizPerms.RECEIVE);
                     // 预约排期与送货方式同类：都是「这家店怎么履约」的配置，所以共用 STORE
                     put("/biz/stores/{storeNo}/appointment-slots", BizPerms.STORE);
                     put("/biz/appointment-slots/{slotNo}/close", BizPerms.STORE);
@@ -902,6 +906,57 @@ class BizEndpointPermTest {
      */
     private static final Set<String> ANY_OF = Set.of("/biz/dashboard/todo");
 
+    /*
+     * 注册开店与商城（commerce）。三类判权都不进 REQUIRED，因为它们不是一个固定的 BizPerms 码：
+     *  · FOUNDATION_READS：建店前的账号级读取（@perm.merchantAccount()）与所选店成员读取（@perm.memberOfSelectedStore）
+     *  · END_ENTRY_DUTY：端准入，码随请求的端变化（@perm.canBiz(@commerceRoutePolicy.entryDuty(..))）
+     *  · 商城买家路由（/biz/stores/{storeNo}/mall/**）：可移植 starter 不挂 Spring Security 注解，
+     *    每个方法体内调 context.buyer(store, "commerce:…")，宿主按实时会话与门店岗位判权，判不过 403。
+     * 下面的 commerceDecisionsAreEnforced 逐条核对代码里真的有这道判权。
+     */
+    private static final Map<String, String> FOUNDATION_READS = Map.of(
+            "/biz/merchant/store-setup", "@perm.merchantAccount()",
+            "/biz/business-types", "@perm.merchantAccount()",
+            "/biz/business-types/{typeCode}/plans", "@perm.merchantAccount()",
+            "/biz/stores/{storeNo}/context", "@perm.memberOfSelectedStore(#storeNo)",
+            "/biz/stores/{storeNo}/subscription", "@perm.memberOfSelectedStore(#storeNo)",
+            "/biz/stores/{storeNo}/entitlements", "@perm.memberOfSelectedStore(#storeNo)");
+
+    private static final Set<String> END_ENTRY_DUTY =
+            Set.of("/biz/stores/{storeNo}/end-sessions", "/biz/stores/{storeNo}/end-access");
+
+    private static final String MALL_BUYER_PREFIX = "/biz/stores/{storeNo}/mall/";
+
+    private static boolean commerceDecided(String path) {
+        return FOUNDATION_READS.containsKey(path) || END_ENTRY_DUTY.contains(path)
+                || path.startsWith(MALL_BUYER_PREFIX);
+    }
+
+    @Test
+    @DisplayName("★★★ 商城与建店的判权必须真的落在代码里 —— 注解或方法体内的 context.buyer(..., \"commerce:…\")")
+    void commerceDecisionsAreEnforced() throws IOException {
+        Set<String> missing = new TreeSet<>();
+        Set<String> seen = new TreeSet<>();
+        for (var e : sourceEndpoints()) {
+            String path = e.path();
+            if (!commerceDecided(path)) continue;
+            seen.add(path);
+            String pre = e.method().annotations().getOrDefault("PreAuthorize", "");
+            boolean ok;
+            if (FOUNDATION_READS.containsKey(path)) ok = BizEndpointSource.compact(pre).contains(FOUNDATION_READS.get(path));
+            else if (END_ENTRY_DUTY.contains(path)) ok = BizEndpointSource.compact(pre).contains("@perm.canBiz(@commerceRoutePolicy.entryDuty(");
+            else ok = e.method().calls().stream().anyMatch(c -> c.startsWith("context.buyer(") && c.contains("\"commerce:"));
+            if (!ok) missing.add(path + " " + e.method().owner() + "#" + e.method().name());
+        }
+        Set<String> stale = new TreeSet<>(FOUNDATION_READS.keySet());
+        stale.addAll(END_ENTRY_DUTY);
+        stale.removeAll(seen);
+        assertThat(missing).as("这些商城/建店端点登记了判权方式，代码里却没有对应的判权：").isEmpty();
+        assertThat(stale).as("这些登记的端点已经不存在了：").isEmpty();
+        assertThat(seen.stream().filter(p -> p.startsWith(MALL_BUYER_PREFIX)).count())
+                .as("一条商城买家路由都没扫到 —— starter 不在扫描范围里了？").isGreaterThan(10);
+    }
+
     @Test
     @DisplayName("★★ 每个 /biz 端点都必须明确它要什么权限 —— 没定的直接报出来")
     void everyBizEndpointHasADecision() throws IOException {
@@ -913,6 +968,7 @@ class BizEndpointPermTest {
         undecided.removeAll(ANY_OF);
         undecided.removeAll(PUBLIC);
         undecided.removeAll(BizResourceAuthorization.paths());
+        undecided.removeIf(BizEndpointPermTest::commerceDecided);
         assertThat(undecided)
                 .as("这些 /biz 端点还没决定权限 —— 每一个都是潜在的越权口子。\n" + "把它们加进 REQUIRED（要授权）或 PUBLIC（登录即可）：")
                 .isEmpty();

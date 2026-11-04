@@ -25,6 +25,7 @@ import { riskMock } from "./mocks/risk";
 import { messageMock } from "./mocks/message";
 import { contentMock } from "./mocks/content";
 import { systemMock } from "./mocks/system";
+import { commerceMock } from "./mocks/commerce";
 
 /** 各域 mock 切片。contract.test.ts 用它逐片校验 key 集合、检测重复实现。 */
 export const MOCK_SLICES = {
@@ -52,10 +53,11 @@ export const MOCK_SLICES = {
   message: messageMock,
   content: contentMock,
   system: systemMock,
+  commerce: commerceMock,
 } as const;
 
 export const mockApi: Api = {
   ...printMock, ...dashboardMock, ...merchantMock, ...orderMock, ...paymentMock, ...payOpsMock,
   ...communityMock, ...fulfillmentMock, ...storeMock,
-  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock,
+  ...marketingMock, ...reviewMock, ...afterSaleMock, ...groupMock, ...productMock, ...financeMock, ...iamMock, ...growthMock, ...riskMock, ...messageMock, ...contentMock, ...systemMock, ...memberMock, ...inventoryMock, ...jobMock, ...commerceMock,
 };

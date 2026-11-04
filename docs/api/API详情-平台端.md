@@ -172,6 +172,913 @@ _无字段_
 | `updatedBy` | `string` | 是 | 最后修改人（STAFF 账号） |
 
 
+### commerce
+
+#### GET `/ops/biz-mall/catalog`
+
+目录总览
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallCatalogOverview`](#mallcatalogoverview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `businessTypes` | [`MallBusinessTypeView`](#mallbusinesstypeview)\[\] | 否 | 经营类型 |
+| `businessEnds` | [`MallBusinessEndView`](#mallbusinessendview)\[\] | 否 | 业务端 |
+| `planDefinitions` | [`MallPlanDefinitionView`](#mallplandefinitionview)\[\] | 否 | Plan 定义 |
+| `planVersions` | [`MallPlanVersionView`](#mallplanversionview)\[\] | 否 | Plan 版本 |
+| `products` | [`MallProductView`](#mallproductview)\[\] | 否 | 商品 |
+| `skuDefinitions` | [`MallSkuDefinitionView`](#mallskudefinitionview)\[\] | 否 | SKU 定义 |
+| `skuVersions` | [`MallSkuVersionView`](#mallskuversionview)\[\] | 否 | SKU 版本 |
+
+
+#### GET `/ops/biz-mall/offline/claims`
+
+待审申报队列 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOfflinePendingClaim`](#mallofflinependingclaim)\[\]
+
+
+#### POST `/ops/biz-mall/offline/orders`
+
+代客下单 */
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOrderView`](#mallorderview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 否 | 订单号 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `status` | [`MallOrderStatus`](#mallorderstatus) | 否 | 总状态（概览用） |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `createdAt` | `string` | 否 | 创建时间 |
+
+
+#### GET `/ops/biz-mall/offline/orders/{orderNo}/claims`
+
+某订单的买家申报 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MallOfflineClaimView`](#mallofflineclaimview)\[\]
+
+
+#### POST `/ops/biz-mall/offline/orders/{orderNo}/claims/{claimNo}/decline`
+
+拒绝申报：不等于无款，不释放占用 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+| `claimNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineClaimView`](#mallofflineclaimview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号 |
+| `status` | [`MallOfflineClaimStatus`](#mallofflineclaimstatus) | 是 | 申报状态 |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
+| `declaredPaidAt` | `string` | 是 | 申报的付款时间 |
+| `submittedAt` | `string` | 是 | 提交时间 |
+
+
+#### POST `/ops/biz-mall/offline/orders/{orderNo}/confirmations`
+
+核款：录入实际到账
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineActionView`](#mallofflineactionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | 动作号 |
+| `status` | [`MallOfflineActionStatus`](#mallofflineactionstatus) | 是 | 结果 |
+| `paymentNo` | `string,null` | 是 | 产生的支付号 |
+
+
+#### POST `/ops/biz-mall/offline/orders/{orderNo}/evidence`
+
+预留一个运营凭证资产键 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineEvidenceTicket`](#mallofflineevidenceticket)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键 |
+| `purpose` | `string` | 是 | 用途 |
+
+
+#### POST `/ops/biz-mall/offline/orders/{orderNo}/evidence/content`
+
+上传凭证字节（image/jpeg 或 image/png，≤10MB
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineEvidenceUploaded`](#mallofflineevidenceuploaded)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键 |
+
+
+#### GET `/ops/biz-mall/offline/orders/{orderNo}/evidence/url`
+
+读凭证（5 分钟签名地址） */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MallOfflineSignedRead`](#mallofflinesignedread)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `url` | `string` | 是 | 地址 |
+
+
+#### POST `/ops/biz-mall/offline/orders/{orderNo}/instructions`
+
+代客发出付款指引（幂等） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineInstructionsView`](#mallofflineinstructionsview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
+| `paymentDueAt` | `string` | 是 | 付款截止 |
+| `profileNo` | `string` | 是 | 档案号 |
+| `profileVersion` | `number` | 是 | 档案版本 |
+| `instructions` | [`Record<string,string>`](#recordstringstring) | 是 | 指引内容 |
+
+
+#### GET `/ops/biz-mall/offline/orders/{orderNo}/instructions`
+
+读已发出的指引
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MallOfflineInstructionsView`](#mallofflineinstructionsview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
+| `paymentDueAt` | `string` | 是 | 付款截止 |
+| `profileNo` | `string` | 是 | 档案号 |
+| `profileVersion` | `number` | 是 | 档案版本 |
+| `instructions` | [`Record<string,string>`](#recordstringstring) | 是 | 指引内容 |
+
+
+#### POST `/ops/biz-mall/offline/orders/{orderNo}/refunds/{refundNo}/payouts`
+
+线下退款实际出款确认 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+| `refundNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallRefundView`](#mallrefundview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 否 | 退款号 |
+| `orderNo` | `string` | 否 | 订单号 |
+| `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 否 | 现金退款 |
+| `restoredCredit` | [`MallMoney`](#mallmoney) | 否 | 恢复的抵扣余额 |
+| `reviewStatus` | `string,null` | 否 | 审核状态（REQUESTED / APPROVED / DECLINED） |
+| `requestDigest` | `string,null` | 否 | 买家原始请求摘要 |
+| `reviewQuoteNo` | `string,null` | 否 | 绑定的审核报价 |
+
+
+#### POST `/ops/biz-mall/offline/orders/{orderNo}/voids`
+
+对账作废：之后来款仍入账并走退款 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineActionView`](#mallofflineactionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | 动作号 |
+| `status` | [`MallOfflineActionStatus`](#mallofflineactionstatus) | 是 | 结果 |
+| `paymentNo` | `string,null` | 是 | 产生的支付号 |
+
+
+#### GET `/ops/biz-mall/offline/profile`
+
+收款档案（按币种）
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### PUT `/ops/biz-mall/offline/profile`
+
+配置收款档案：每次修改生成新版本，已发出的指引按原版本 */
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOfflineCollectionTerms`](#mallofflinecollectionterms)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `profileNo` | `string` | 是 | 档案号 |
+| `profileVersion` | `number` | 是 | 档案版本 |
+| `platformMerchantNo` | `string` | 是 | 平台收款主体 |
+| `currency` | `string` | 是 | 币种 |
+| `receivingAccountKey` | `string` | 是 | 收款账户指纹（后端哈希，不是账号本身） |
+| `paymentWindowVersion` | `string` | 是 | 付款窗口版本 |
+| `paymentWindowMs` | `number` | 是 | 付款窗口（毫秒） |
+| `instructions` | [`Record<string,string>`](#recordstringstring) | 是 | 指引内容（bankCode / bankAccount / accountName） |
+
+
+#### POST `/ops/biz-mall/offline/quotes`
+
+代客报价：买方为 STORE，发起人为真实运营 */
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallQuoteView`](#mallquoteview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 否 | 报价号 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `total` | [`MallMoney`](#mallmoney) | 否 | 总额 |
+| `credit` | [`MallMoney`](#mallmoney) | 否 | 抵扣 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `entitlementVersion` | `number` | 否 | 权益版本 |
+| `balanceVersion` | `number` | 否 | 余额版本 |
+| `expiresAt` | `string` | 否 | 过期时间（默认 15 分钟） |
+| `creditBreakdown` | [`MallQuoteCreditView`](#mallquotecreditview) \| `null` | 否 | 升级抵扣明细；普通报价为 null |
+
+
+#### GET `/ops/biz-mall/orders`
+
+某门店的订单，按 orderNo 游标翻页 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallOrderSummary`](#mallordersummary)\[\]
+
+
+#### GET `/ops/biz-mall/orders/{orderNo}`
+
+订单详情：paymentStatus / fulfillmentStatus / refundStatus 三维独立 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MallOrderDetailView`](#mallorderdetailview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
+| `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
+| `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
+| `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
+| `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+
+#### POST `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/approve`
+
+批准退款：绑定 reviewQuoteNo + approvalDigest，金额不超预览上限 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+| `refundNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallRefundView`](#mallrefundview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 否 | 退款号 |
+| `orderNo` | `string` | 否 | 订单号 |
+| `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 否 | 现金退款 |
+| `restoredCredit` | [`MallMoney`](#mallmoney) | 否 | 恢复的抵扣余额 |
+| `reviewStatus` | `string,null` | 否 | 审核状态（REQUESTED / APPROVED / DECLINED） |
+| `requestDigest` | `string,null` | 否 | 买家原始请求摘要 |
+| `reviewQuoteNo` | `string,null` | 否 | 绑定的审核报价 |
+
+
+#### POST `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/reject`
+
+拒绝退款：只改变审核请求
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+| `refundNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallRefundView`](#mallrefundview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 否 | 退款号 |
+| `orderNo` | `string` | 否 | 订单号 |
+| `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 否 | 现金退款 |
+| `restoredCredit` | [`MallMoney`](#mallmoney) | 否 | 恢复的抵扣余额 |
+| `reviewStatus` | `string,null` | 否 | 审核状态（REQUESTED / APPROVED / DECLINED） |
+| `requestDigest` | `string,null` | 否 | 买家原始请求摘要 |
+| `reviewQuoteNo` | `string,null` | 否 | 绑定的审核报价 |
+
+
+#### POST `/ops/biz-mall/orders/{orderNo}/refunds/{refundNo}/review-quotes`
+
+退款审核报价：基于买家原请求摘要生成独立的 reviewQuoteNo */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+| `refundNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallRefundReviewQuoteView`](#mallrefundreviewquoteview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reviewQuoteNo` | `string` | 否 | 审核报价号 |
+| `requestDigest` | `string` | 否 | 原请求摘要 |
+| `preview` | [`MallRefundPreviewView`](#mallrefundpreviewview) | 否 | 预览 |
+
+
+#### POST `/ops/biz-mall/orders/{orderNo}/shipments`
+
+硬件发货（operationNo 幂等，组件/数量/承运/单号不可变） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallOrderDetailView`](#mallorderdetailview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
+| `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
+| `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
+| `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
+| `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+
+#### GET `/ops/biz-mall/products`
+
+商品列表 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallProductView`](#mallproductview)\[\]
+
+
+#### POST `/ops/biz-mall/products`
+
+新建商品（expectedVersion=0） */
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### PUT `/ops/biz-mall/products/{productNo}`
+
+改商品 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `productNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### POST `/ops/biz-mall/products/{productNo}/skus`
+
+新建/编辑 SKU 草稿版本 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `productNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### GET `/ops/biz-mall/sku-versions/{versionNo}`
+
+读一个 SKU 版本 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `versionNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`MallSkuVersionView`](#mallskuversionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `draft` | [`MallSkuDraft`](#mallskudraft) | 否 | 内容 |
+| `status` | `string` | 否 | DRAFT / PUBLISHED |
+| `revision` | `number` | 否 | 修订序号 |
+| `version` | `number` | 否 | 乐观锁版本 |
+
+
+#### POST `/ops/biz-mall/sku-versions/{versionNo}/publish`
+
+发布单个 SKU 版本 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `versionNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallPublicationResult`](#mallpublicationresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `publicationNo` | `string` | 否 | 发布单号（审计用） |
+| `catalogVersion` | `number` | 否 | 发布后的行业目录版本。**运营目录接口不回读它**，只在这里出现一次 |
+| `publishedVersionNos` | `string`\[\] | 否 | 本次被冻结为已发布的版本号 |
+
+
+#### POST `/ops/biz-mall/skus/{skuNo}/off-sale`
+
+SKU 停售（不改写已落单的快照） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `skuNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### GET `/ops/business-ends`
+
+业务端列表 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallBusinessEndView`](#mallbusinessendview)\[\]
+
+
+#### POST `/ops/business-ends`
+
+保存业务端
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### GET `/ops/business-ends/deployment-options`
+
+部署验收清单（运营从这里选端，**不手填** client/route/acceptance） */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallDeploymentOption`](#malldeploymentoption)\[\]
+
+
+#### GET `/ops/business-types`
+
+经营类型列表 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallBusinessTypeView`](#mallbusinesstypeview)\[\]
+
+
+#### POST `/ops/business-types`
+
+新建经营类型：expectedVersion=0、enabled=false
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### PUT `/ops/business-types/{typeCode}`
+
+改经营类型
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### POST `/ops/business-types/{typeCode}/plan-publications`
+
+行业发布：三档 + 候选 SKU 一起冻结 */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallPublicationResult`](#mallpublicationresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `publicationNo` | `string` | 否 | 发布单号（审计用） |
+| `catalogVersion` | `number` | 否 | 发布后的行业目录版本。**运营目录接口不回读它**，只在这里出现一次 |
+| `publishedVersionNos` | `string`\[\] | 否 | 本次被冻结为已发布的版本号 |
+
+
+#### GET `/ops/industry-plans`
+
+Plan 定义（每个经营类型三条） */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`MallPlanDefinitionView`](#mallplandefinitionview)\[\]
+
+
+#### POST `/ops/industry-plans/{planNo}/off-sale`
+
+Plan 停售（不改写已落单的快照） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `planNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### POST `/ops/industry-plans/{planNo}/versions`
+
+新建/编辑 Plan 草稿版本
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `planNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallDraftSaveResult`](#malldraftsaveresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+
+#### GET `/ops/stores/{storeNo}/subscription`
+
+门店权益来源与可访问时段 */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`MallSubscriptionView`](#mallsubscriptionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
+| `sources` | [`MallEntitlementSource`](#mallentitlementsource)\[\] | 否 | 来源 |
+| `segments` | [`MallAccessSegment`](#mallaccesssegment)\[\] | 否 | 时段 |
+
+
+#### POST `/ops/stores/{storeNo}/subscription/grants`
+
+零金额独立端赠送（有期限
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallSubscriptionView`](#mallsubscriptionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
+| `sources` | [`MallEntitlementSource`](#mallentitlementsource)\[\] | 否 | 来源 |
+| `segments` | [`MallAccessSegment`](#mallaccesssegment)\[\] | 否 | 时段 |
+
+
+#### POST `/ops/stores/{storeNo}/subscription/sources/{sourceNo}/revoke`
+
+撤销零金额来源（付费来源必须走退款） */
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `sourceNo` | path | `string` | 是 | — |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`MallSubscriptionView`](#mallsubscriptionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
+| `sources` | [`MallEntitlementSource`](#mallentitlementsource)\[\] | 否 | 来源 |
+| `segments` | [`MallAccessSegment`](#mallaccesssegment)\[\] | 否 | 时段 |
+
+
 ### community
 
 #### GET `/ops/communities`
@@ -13518,6 +14425,645 @@ Delivery state of an inventory/order synchronization event.
 | `capabilities` | [`LogisticsCapability`](#logisticscapability)\[\] | 是 | 每种能力可不可用 |
 | `carriers` | `string`\[\] | 是 | 覆盖的承运商码；`*` = 全覆盖 |
 | `routes` | `string`\[\] | 是 | 出现在哪些路由链里（`subscribe.default#1` 这种） |
+
+### MallAccessSegment
+
+可访问时段
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sourceNo` | `string` | 否 | 来源号 |
+| `entitlementCode` | `string` | 否 | 权益编码 |
+| `startsAt` | `string` | 否 | 起 |
+| `endsAt` | `string` | 否 | 止 |
+
+### MallAsyncStatus
+
+外部异步动作状态
+
+枚举取值：
+
+- `PENDING`
+- `SUCCEEDED`
+- `FAILED`
+- `UNKNOWN`
+
+### MallBusinessEndDraft
+
+业务端草稿（后端保存的形态，含绑定后的 client/route/acceptance）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `code` | `string` | 否 | 业务端编码 |
+| `entitlementCode` | `string` | 否 | 权益编码 |
+| `name` | `string` | 否 | 显示名 |
+| `scope` | [`MallEndScope`](#mallendscope) | 否 | 作用域 |
+| `allowedBusinessTypes` | `string`\[\] | 否 | 允许的经营类型 |
+| `releaseStatus` | [`MallReleaseStatus`](#mallreleasestatus) | 否 | 验收状态 |
+| `saleEnabled` | `boolean` | 否 | 是否可单独售卖 |
+| `bootstrapRequired` | `boolean` | 否 | 门店初始化必需（FREE 必须包含） |
+| `enabled` | `boolean` | 否 | 是否启用 |
+| `clientId` | `string,null` | 否 | 绑定后的客户端 id |
+| `routePolicyRef` | `string,null` | 否 | 绑定后的路由策略 |
+| `acceptanceRef` | `string,null` | 否 | 绑定后的验收引用 |
+| `expectedVersion` | `number` | 否 | 乐观锁 |
+| `reason` | `string` | 否 | 审计原因 |
+
+### MallBusinessEndView
+
+业务端行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `draft` | [`MallBusinessEndDraft`](#mallbusinessenddraft) | 否 | 当前草稿 |
+| `version` | `number` | 否 | 乐观锁版本 |
+
+### MallBusinessTypeDraft
+
+经营类型草稿（新建时 enabled 必须为 false，发布过行业目录才能启用）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 否 | 类型编码，新建后不可改 |
+| `name` | `string` | 否 | 显示名 |
+| `sortOrder` | `number` | 否 | 排序 |
+| `enabled` | `boolean` | 否 | 是否对门店开放（启用属于发布权） |
+| `expectedVersion` | `number` | 否 | 乐观锁：新建传 0 |
+| `reason` | `string` | 否 | 审计原因 |
+
+### MallBusinessTypeView
+
+经营类型行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `draft` | [`MallBusinessTypeDraft`](#mallbusinesstypedraft) | 否 | 当前草稿 |
+| `version` | `number` | 否 | 乐观锁版本 |
+
+### MallCatalogOverview
+
+目录总览（运营端一次读全量）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `businessTypes` | [`MallBusinessTypeView`](#mallbusinesstypeview)\[\] | 否 | 经营类型 |
+| `businessEnds` | [`MallBusinessEndView`](#mallbusinessendview)\[\] | 否 | 业务端 |
+| `planDefinitions` | [`MallPlanDefinitionView`](#mallplandefinitionview)\[\] | 否 | Plan 定义 |
+| `planVersions` | [`MallPlanVersionView`](#mallplanversionview)\[\] | 否 | Plan 版本 |
+| `products` | [`MallProductView`](#mallproductview)\[\] | 否 | 商品 |
+| `skuDefinitions` | [`MallSkuDefinitionView`](#mallskudefinitionview)\[\] | 否 | SKU 定义 |
+| `skuVersions` | [`MallSkuVersionView`](#mallskuversionview)\[\] | 否 | SKU 版本 |
+
+### MallComponentKind
+
+组件种类
+
+枚举取值：
+
+- `PLAN`
+- `END_PACKAGE`
+- `HARDWARE`
+
+### MallDeploymentOption
+
+部署所有者提供的已验收端（运营只能从这里选，不手填 client/route/acceptance）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `deploymentNo` | `string` | 否 | 部署号 |
+| `name` | `string` | 否 | 显示名 |
+| `code` | `string` | 否 | 业务端编码 |
+| `entitlementCode` | `string` | 否 | 对应的权益编码 |
+| `allowedBusinessTypes` | `string`\[\] | 否 | 允许的经营类型 |
+| `clientId` | `string` | 否 | 客户端 id（只读展示） |
+| `routePolicyRef` | `string` | 否 | 路由策略引用（只读展示） |
+| `acceptanceRef` | `string` | 否 | 验收证明引用（只读展示） |
+
+### MallDraftSaveResult
+
+写目录的回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entityNo` | `string` | 否 | 被保存的实体号（typeCode / planNo / productNo / skuNo） |
+| `draftVersionNo` | `string,null` | 否 | 新建或修改的草稿版本号；不涉及版本的实体为 null |
+| `version` | `number` | 否 | 保存后的乐观锁版本 —— 下一次写要带它 |
+
+### MallEndScope
+
+业务端作用域
+
+枚举取值：
+
+- `STORE`
+- `SYSTEM`
+
+### MallEntitlementSource
+
+权益来源
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `sourceNo` | `string` | 否 | 来源号 |
+| `entitlementCode` | `string` | 否 | 权益编码 |
+| `planVersionNo` | `string,null` | 否 | 来自的 Plan 版本 |
+| `originNo` | `string` | 否 | 来源单号（订单/赠送操作号） |
+| `durationMillis` | `number` | 否 | 总时长（毫秒） |
+| `consumedMillis` | `number` | 否 | 已消耗（毫秒） |
+| `valuationBasis` | [`MallMoney`](#mallmoney) | 否 | 估值基数（赠送为 0） |
+| `permanent` | `boolean` | 否 | 永久 |
+| `lifecycle` | `string` | 否 | 生命周期（PURCHASE / GRANT / FREE / REVOKED …） |
+| `revokedDurationMillis` | `number` | 否 | 撤销截断的时长 |
+
+### MallMoney
+
+金额：币种 + 最小单位整数字符串（`^(0\|[1-9][0-9]{0,18})$`）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | `string` | 是 | ISO 4217 三位大写币种 |
+| `minor` | `string` | 是 | 最小货币单位的十进制整数文本；**不是** number，避免超过 2^53 时失真 |
+
+### MallOfflineActionStatus
+
+线下动作结果状态：ACCEPTED 只是受理，资金端未确认
+
+枚举取值：
+
+- `ACCEPTED`
+- `APPLIED`
+- `UNMATCHED`
+- `REJECTED`
+
+### MallOfflineActionView
+
+线下动作结果：ACCEPTED 只是受理，**不等于到账**
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `actionNo` | `string` | 是 | 动作号 |
+| `status` | [`MallOfflineActionStatus`](#mallofflineactionstatus) | 是 | 结果 |
+| `paymentNo` | `string,null` | 是 | 产生的支付号 |
+
+### MallOfflineClaimStatus
+
+申报状态（申报 ≠ 到账）
+
+枚举取值：
+
+- `SUBMITTED`
+- `REVIEWING`
+- `CONFIRMED`
+- `MISMATCHED`
+- `DECLINED`
+
+### MallOfflineClaimView
+
+买家付款申报
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `claimNo` | `string` | 是 | 申报号 |
+| `status` | [`MallOfflineClaimStatus`](#mallofflineclaimstatus) | 是 | 申报状态 |
+| `declaredAmount` | [`MallMoney`](#mallmoney) | 是 | 申报金额 |
+| `declaredPaidAt` | `string` | 是 | 申报的付款时间 |
+| `submittedAt` | `string` | 是 | 提交时间 |
+
+### MallOfflineCollectionTerms
+
+收款档案（按币种；每次修改生成新版本）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `profileNo` | `string` | 是 | 档案号 |
+| `profileVersion` | `number` | 是 | 档案版本 |
+| `platformMerchantNo` | `string` | 是 | 平台收款主体 |
+| `currency` | `string` | 是 | 币种 |
+| `receivingAccountKey` | `string` | 是 | 收款账户指纹（后端哈希，不是账号本身） |
+| `paymentWindowVersion` | `string` | 是 | 付款窗口版本 |
+| `paymentWindowMs` | `number` | 是 | 付款窗口（毫秒） |
+| `instructions` | [`Record<string,string>`](#recordstringstring) | 是 | 指引内容（bankCode / bankAccount / accountName） |
+
+### MallOfflineEvidenceTicket
+
+凭证预留回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键 |
+| `purpose` | `string` | 是 | 用途 |
+
+### MallOfflineEvidenceUploaded
+
+凭证上传回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `assetKey` | `string` | 是 | 资产键 |
+
+### MallOfflineInstructionsView
+
+已发出的付款指引（冻结档案版本）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单号 |
+| `payable` | [`MallMoney`](#mallmoney) | 是 | 应付 |
+| `paymentDueAt` | `string` | 是 | 付款截止 |
+| `profileNo` | `string` | 是 | 档案号 |
+| `profileVersion` | `number` | 是 | 档案版本 |
+| `instructions` | [`Record<string,string>`](#recordstringstring) | 是 | 指引内容 |
+
+### MallOfflinePendingClaim
+
+待审申报队列行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 是 | 门店 |
+| `orderNo` | `string` | 是 | 订单号 |
+| `claim` | [`MallOfflineClaimView`](#mallofflineclaimview) | 是 | 申报 |
+
+### MallOfflineSignedRead
+
+凭证签名读地址（5 分钟）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `url` | `string` | 是 | 地址 |
+
+### MallOrderDetailView
+
+订单详情：三个独立维度 + 冻结报价 + 实际动作
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `summary` | [`MallOrderSummary`](#mallordersummary) | 否 | 概览与三维状态 |
+| `quote` | [`MallQuoteView`](#mallquoteview) | 否 | 冻结报价 |
+| `shippingAddress` | [`MallShippingAddress`](#mallshippingaddress) \| `null` | 否 | 收货地址 |
+| `paymentAttempts` | [`MallPaymentAttempt`](#mallpaymentattempt)\[\] | 否 | 付款尝试 |
+| `shipments` | [`MallShipment`](#mallshipment)\[\] | 否 | 发货 |
+| `refunds` | [`MallRefundView`](#mallrefundview)\[\] | 否 | 退款 |
+
+### MallOrderStatus
+
+订单总状态（**只作概览**：付款/履约/退款三个维度各看各的）
+
+枚举取值：
+
+- `PENDING_INVENTORY`
+- `AWAITING_PAYMENT`
+- `PAYMENT_UNKNOWN`
+- `PAID`
+- `FULFILLING`
+- `COMPLETED`
+- `CANCEL_PENDING`
+- `CLOSED`
+- `REFUNDING`
+- `PARTIALLY_REFUNDED`
+- `REFUNDED`
+
+### MallOrderSummary
+
+订单概览：总状态 + 三个独立维度（列表返回的就是它）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`MallOrderView`](#mallorderview) | 否 | 订单 |
+| `paymentStatus` | `string` | 否 | 资金维度 |
+| `fulfillmentStatus` | `string` | 否 | 权益/履约维度 |
+| `refundStatus` | `string` | 否 | 退款维度 |
+
+### MallOrderView
+
+订单
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 否 | 订单号 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `status` | [`MallOrderStatus`](#mallorderstatus) | 否 | 总状态（概览用） |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `createdAt` | `string` | 否 | 创建时间 |
+
+### MallPaymentAttempt
+
+付款尝试
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `attemptNo` | `string` | 否 | 尝试号 |
+| `channel` | `string` | 否 | 通道 |
+| `payMethod` | `string` | 否 | 方式 |
+| `amount` | [`MallMoney`](#mallmoney) | 否 | 金额 |
+| `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 状态 |
+| `paymentNo` | `string,null` | 否 | 支付号 |
+| `paidAt` | `string,null` | 否 | 付款时间 |
+| `errorCode` | `string,null` | 否 | 错误码 |
+| `paidAtPrecisionMs` | `1` \| `1000` \| `null` | 否 | 付款时间精度（毫秒） |
+
+### MallPlanDefinitionView
+
+Plan 定义（每个经营类型固定三条，新建类型时由后端生成）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 否 | Plan 号（形如 `RETAIL:PRO`） |
+| `typeCode` | `string` | 否 | 所属经营类型 |
+| `tier` | [`MallPlanTier`](#mallplantier) | 否 | 档位 |
+| `currentVersionNo` | `string,null` | 否 | 当前在售版本；未发布为 null |
+| `saleStatus` | `string` | 否 | 售卖状态（DRAFT / ON_SALE / OFF_SALE） |
+| `version` | `number` | 否 | 乐观锁版本 |
+
+### MallPlanDraft
+
+Plan 版本内容
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 否 | Plan 号 |
+| `planVersionNo` | `string` | 否 | 版本号 |
+| `typeCode` | `string` | 否 | 经营类型 |
+| `tier` | [`MallPlanTier`](#mallplantier) | 否 | 档位 |
+| `displayName` | `string` | 否 | 显示名 |
+| `summary` | `string,null` | 否 | 摘要 |
+| `entitlementCodes` | `string`\[\] | 否 | 包含的权益编码（高档必须是低档的超集） |
+| `policyVersion` | `string` | 否 | 政策版本 |
+| `expectedVersion` | `number` | 否 | 乐观锁 |
+| `reason` | `string` | 否 | 审计原因 |
+
+### MallPlanTier
+
+三档
+
+枚举取值：
+
+- `FREE`
+- `PRO`
+- `CHAIN`
+
+### MallPlanVersionView
+
+Plan 版本行；status=PUBLISHED 之后只读
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `draft` | [`MallPlanDraft`](#mallplandraft) | 否 | 内容 |
+| `status` | `string` | 否 | DRAFT / PUBLISHED |
+| `revision` | `number` | 否 | 同一 Plan 下的修订序号 |
+| `version` | `number` | 否 | 乐观锁版本 |
+
+### MallProductDraft
+
+商品草稿
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `productNo` | `string` | 否 | 商品号 |
+| `categoryCode` | `string` | 否 | 类目编码 |
+| `kind` | [`MallProductKind`](#mallproductkind) | 否 | 种类 |
+| `name` | `string` | 否 | 名称 |
+| `description` | `string,null` | 否 | 描述 |
+| `allowedBusinessTypes` | `string`\[\] | 否 | 允许的经营类型 |
+| `sortOrder` | `number` | 否 | 排序 |
+| `expectedVersion` | `number` | 否 | 乐观锁：新建传 0 |
+| `reason` | `string` | 否 | 审计原因 |
+
+### MallProductKind
+
+商品种类
+
+枚举取值：
+
+- `PLAN`
+- `END_ACCESS`
+- `HARDWARE`
+- `BUNDLE`
+
+### MallProductView
+
+商品行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `draft` | [`MallProductDraft`](#mallproductdraft) | 否 | 当前草稿 |
+| `saleStatus` | `string` | 否 | 售卖状态 |
+| `version` | `number` | 否 | 乐观锁版本 |
+
+### MallPublicationResult
+
+发布回执
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `publicationNo` | `string` | 否 | 发布单号（审计用） |
+| `catalogVersion` | `number` | 否 | 发布后的行业目录版本。**运营目录接口不回读它**，只在这里出现一次 |
+| `publishedVersionNos` | `string`\[\] | 否 | 本次被冻结为已发布的版本号 |
+
+### MallQuoteComponent
+
+报价/订单组件（冻结）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `componentNo` | `string` | 否 | 组件号 |
+| `kind` | [`MallComponentKind`](#mallcomponentkind) | 否 | 种类 |
+| `listAmount` | [`MallMoney`](#mallmoney) | 否 | 原价 |
+| `dealAmount` | [`MallMoney`](#mallmoney) | 否 | 成交价 |
+| `creditAmount` | [`MallMoney`](#mallmoney) | 否 | 抵扣部分 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 否 | 现金部分 |
+| `cycleDays` | `number` | 否 | 周期天数 |
+| `quantity` | `number` | 否 | 数量 |
+
+### MallQuoteCreditView
+
+升级抵扣明细
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `newConversion` | [`MallMoney`](#mallmoney) | 否 | 本次旧 Plan 转换出的价值 |
+| `historicalAvailable` | [`MallMoney`](#mallmoney) | 否 | 历史可用余额 |
+| `applied` | [`MallMoney`](#mallmoney) | 否 | 本单实际抵扣 |
+| `reservedHistorical` | [`MallMoney`](#mallmoney) | 否 | 预留的历史余额 |
+| `balanceAfter` | [`MallMoney`](#mallmoney) | 否 | 抵扣后余额 |
+| `valuationAt` | `string` | 否 | 估值时间 |
+
+### MallQuoteView
+
+报价（服务器冻结）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `quoteNo` | `string` | 否 | 报价号 |
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `total` | [`MallMoney`](#mallmoney) | 否 | 总额 |
+| `credit` | [`MallMoney`](#mallmoney) | 否 | 抵扣 |
+| `payable` | [`MallMoney`](#mallmoney) | 否 | 应付 |
+| `components` | [`MallQuoteComponent`](#mallquotecomponent)\[\] | 否 | 组件 |
+| `entitlementVersion` | `number` | 否 | 权益版本 |
+| `balanceVersion` | `number` | 否 | 余额版本 |
+| `expiresAt` | `string` | 否 | 过期时间（默认 15 分钟） |
+| `creditBreakdown` | [`MallQuoteCreditView`](#mallquotecreditview) \| `null` | 否 | 升级抵扣明细；普通报价为 null |
+
+### MallRefundPreviewView
+
+退款预览
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 否 | 退款号 |
+| `orderNo` | `string` | 否 | 订单号 |
+| `cashLimit` | [`MallMoney`](#mallmoney) | 否 | 现金上限 |
+| `creditLimit` | [`MallMoney`](#mallmoney) | 否 | 抵扣恢复上限 |
+| `requiresManualReview` | `boolean` | 否 | 需要人工审核 |
+| `sourcePeriodNos` | `string`\[\] | 否 | 涉及的权益周期 |
+| `expiresAt` | `string` | 否 | 过期时间 |
+| `approvalDigest` | `string` | 否 | 批准摘要 |
+
+### MallRefundReviewQuoteView
+
+退款审核报价
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reviewQuoteNo` | `string` | 否 | 审核报价号 |
+| `requestDigest` | `string` | 否 | 原请求摘要 |
+| `preview` | [`MallRefundPreviewView`](#mallrefundpreviewview) | 否 | 预览 |
+
+### MallRefundView
+
+退款
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundNo` | `string` | 否 | 退款号 |
+| `orderNo` | `string` | 否 | 订单号 |
+| `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 资金动作状态 |
+| `cashAmount` | [`MallMoney`](#mallmoney) | 否 | 现金退款 |
+| `restoredCredit` | [`MallMoney`](#mallmoney) | 否 | 恢复的抵扣余额 |
+| `reviewStatus` | `string,null` | 否 | 审核状态（REQUESTED / APPROVED / DECLINED） |
+| `requestDigest` | `string,null` | 否 | 买家原始请求摘要 |
+| `reviewQuoteNo` | `string,null` | 否 | 绑定的审核报价 |
+
+### MallReleaseStatus
+
+业务端验收状态；VERIFIED 必须绑定部署验收清单里的一项
+
+枚举取值：
+
+- `PLANNED`
+- `VERIFIED`
+- `RETIRED`
+
+### MallShipment
+
+发货
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 否 | 操作号 |
+| `orderComponentNo` | `string` | 否 | 订单组件号 |
+| `carrierCode` | `string` | 否 | 承运商 |
+| `trackingNo` | `string` | 否 | 运单号 |
+| `quantity` | `number` | 否 | 数量 |
+| `status` | [`MallAsyncStatus`](#mallasyncstatus) | 否 | 状态 |
+| `errorCode` | `string,null` | 否 | 错误码 |
+
+### MallShippingAddress
+
+收货地址（含硬件时必填）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `recipient` | `string` | 否 | 收件人 |
+| `phone` | `string` | 否 | 电话 |
+| `countryCode` | `string` | 否 | 国家/地区码 |
+| `region` | `string,null` | 否 | 省/州 |
+| `city` | `string,null` | 否 | 城市 |
+| `addressLine` | `string` | 否 | 地址 |
+| `postalCode` | `string,null` | 否 | 邮编 |
+
+### MallSkuComponent
+
+SKU 组件：PLAN 引用 Plan 版本，END_PACKAGE 引用权益编码，HARDWARE 引用硬件 SKU
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `componentNo` | `string,null` | 否 | 组件号（保存后由后端给） |
+| `kind` | [`MallComponentKind`](#mallcomponentkind) | 否 | 种类 |
+| `planVersionNo` | `string,null` | 否 | PLAN 组件的 Plan 版本 |
+| `entitlementCode` | `string,null` | 否 | END_PACKAGE 组件的权益编码 |
+| `hardwareSkuNo` | `string,null` | 否 | HARDWARE 组件的硬件 SKU 号 |
+| `periodDays` | `number,null` | 否 | 周期天数（数字组件） |
+| `unitCount` | `number` | 否 | 数量 |
+| `allocationWeight` | `number` | 否 | 分摊权重 |
+| `gift` | `boolean` | 否 | 赠送（分摊基数为 0） |
+| `activationPolicy` | `string` | 否 | 生效策略 |
+
+### MallSkuDefinitionView
+
+SKU 定义行
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 否 | SKU 号 |
+| `productNo` | `string` | 否 | 所属商品 |
+| `title` | `string` | 否 | 标题 |
+| `maxPerOrder` | `number` | 否 | 每单上限 |
+| `currentVersionNo` | `string,null` | 否 | 当前在售版本 |
+| `saleStatus` | `string` | 否 | 售卖状态 |
+| `version` | `number` | 否 | 乐观锁版本 |
+
+### MallSkuDraft
+
+SKU 版本内容
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `productNo` | `string` | 否 | 商品号 |
+| `skuNo` | `string` | 否 | SKU 号 |
+| `skuVersionNo` | `string` | 否 | 版本号 |
+| `title` | `string` | 否 | 标题 |
+| `listPrice` | [`MallMoney`](#mallmoney) | 否 | 划线价 |
+| `price` | [`MallMoney`](#mallmoney) | 否 | 售价 |
+| `allowedBusinessTypes` | `string`\[\] | 否 | 允许的经营类型 |
+| `refundPolicySnapshot` | `string` | 否 | 退款政策快照（后端生成的 JSON 文本） |
+| `components` | [`MallSkuComponent`](#mallskucomponent)\[\] | 否 | 组件 |
+| `maxPerOrder` | `number` | 否 | 每单上限 |
+| `expectedVersion` | `number` | 否 | 乐观锁 |
+| `reason` | `string` | 否 | 审计原因 |
+
+### MallSkuVersionView
+
+SKU 版本行；PUBLISHED 之后只读
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `draft` | [`MallSkuDraft`](#mallskudraft) | 否 | 内容 |
+| `status` | `string` | 否 | DRAFT / PUBLISHED |
+| `revision` | `number` | 否 | 修订序号 |
+| `version` | `number` | 否 | 乐观锁版本 |
+
+### MallStoreRef
+
+门店引用；tenant 由后端可信上下文决定，页面只读
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `tenantNo` | `string` | 否 | 租户号（固定 MAIN） |
+| `storeNo` | `string` | 否 | 门店号 |
+
+### MallSubscriptionView
+
+门店订阅视图
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `store` | [`MallStoreRef`](#mallstoreref) | 否 | 门店 |
+| `entitlementVersion` | `number` | 否 | 权益版本（撤销时作乐观锁） |
+| `sources` | [`MallEntitlementSource`](#mallentitlementsource)\[\] | 否 | 来源 |
+| `segments` | [`MallAccessSegment`](#mallaccesssegment)\[\] | 否 | 时段 |
 
 ### MarketConfig
 

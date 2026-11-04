@@ -156,6 +156,10 @@ public interface SettlePort {
     /** Exact initiated channel reference, used by the explicitly enabled development callback. */
     default PaymentReceipt paymentByOutTradeNo(String outTradeNo) { return null; }
 
+    /** Explicit ledger discriminator. Unknown historical rows remain on their legacy route. */
+    default String paymentBusiness(String paymentNoOrOutTradeNo) { return "CONSUMER"; }
+    default boolean reconcilePlatformPayment(String paymentNoOrOutTradeNo) { return false; }
+
     record PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
                           String tradeNo, long amountMinor, String currency, String status, String documentNo) {
         public PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel, String tradeNo, long amountMinor, String currency, String status) { this(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, null); }

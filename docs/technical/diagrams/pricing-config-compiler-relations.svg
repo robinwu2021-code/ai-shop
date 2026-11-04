@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="1186" viewBox="0 0 1320 1186" role="img" aria-labelledby="title desc">
+<title id="title">规则配置编译对象关系</title>
+<desc id="desc">规则配置编译对象关系。每行是一条有向关系；同名框代表同一对象或状态，箭头上的文字表示分支条件。PricingConfigCompiler → SystemConstraints（依赖）；PricingConfigCompiler → PricingCapabilities（依赖）；PricingConfigCompiler → CompilationResult（产出）；SystemConstraints → PricingRuleCatalog（引用）；PricingRuleCatalog → RuleDefinition（定义）；CompilationResult → EffectivePricingConfig（成功时包含）；EffectivePricingConfig → Definition（包含）；EffectivePricingConfig → RuleDefinition（包含）；RuleDefinition → Parameters（使用）；ForbiddenCombination → Parameters（实现 / 继承）；CountLimits → Parameters（实现 / 继承）；FixedPolicyParameters → Parameters（实现 / 继承）</desc>
+<defs><marker id="arrow" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#475569"/></marker></defs>
+<rect width="100%" height="100%" fill="#f8fafc"/>
+<text x="30" y="42" font-size="26" font-family="Arial, sans-serif" fill="#0f172a">规则配置编译对象关系</text>
+<text x="30" y="74" font-size="16" font-family="Arial, sans-serif" fill="#475569">逐条展开有向关系；同名框是同一对象或状态。分支与恢复回路按箭头条件读取。</text>
+<text x="16" y="139" font-size="13" fill="#64748b">01</text>
+<rect x="48" y="106" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="133" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">PricingConfigCompiler</text>
+<rect x="818" y="106" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="133" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">SystemConstraints</text>
+<path d="M 504 148 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="118" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">依赖</text>
+<text x="16" y="227" font-size="13" fill="#64748b">02</text>
+<rect x="48" y="194" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="221" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">PricingConfigCompiler</text>
+<rect x="818" y="194" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="221" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">PricingCapabilities</text>
+<path d="M 504 236 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="206" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">依赖</text>
+<text x="16" y="315" font-size="13" fill="#64748b">03</text>
+<rect x="48" y="282" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="309" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">PricingConfigCompiler</text>
+<rect x="818" y="282" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="309" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">CompilationResult</text>
+<path d="M 504 324 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="294" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">产出</text>
+<text x="16" y="403" font-size="13" fill="#64748b">04</text>
+<rect x="48" y="370" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="397" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">SystemConstraints</text>
+<rect x="818" y="370" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="397" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">PricingRuleCatalog</text>
+<path d="M 504 412 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="382" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">引用</text>
+<text x="16" y="491" font-size="13" fill="#64748b">05</text>
+<rect x="48" y="458" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="485" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">PricingRuleCatalog</text>
+<rect x="818" y="458" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="485" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">RuleDefinition</text>
+<path d="M 504 500 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="470" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">定义</text>
+<text x="16" y="579" font-size="13" fill="#64748b">06</text>
+<rect x="48" y="546" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="573" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">CompilationResult</text>
+<rect x="818" y="546" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="573" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">EffectivePricingConfig</text>
+<path d="M 504 588 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="558" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">成功时包含</text>
+<text x="16" y="667" font-size="13" fill="#64748b">07</text>
+<rect x="48" y="634" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="661" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">EffectivePricingConfig</text>
+<rect x="818" y="634" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="661" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">Definition</text>
+<path d="M 504 676 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="646" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">包含</text>
+<text x="16" y="755" font-size="13" fill="#64748b">08</text>
+<rect x="48" y="722" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="749" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">EffectivePricingConfig</text>
+<rect x="818" y="722" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="749" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">RuleDefinition</text>
+<path d="M 504 764 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="734" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">包含</text>
+<text x="16" y="843" font-size="13" fill="#64748b">09</text>
+<rect x="48" y="810" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="837" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">RuleDefinition</text>
+<rect x="818" y="810" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="837" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">Parameters</text>
+<path d="M 504 852 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="822" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">使用</text>
+<text x="16" y="931" font-size="13" fill="#64748b">10</text>
+<rect x="48" y="898" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="925" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">ForbiddenCombination</text>
+<rect x="818" y="898" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="925" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">Parameters</text>
+<path d="M 504 940 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="910" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">实现 / 继承</text>
+<text x="16" y="1019" font-size="13" fill="#64748b">11</text>
+<rect x="48" y="986" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1013" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">CountLimits</text>
+<rect x="818" y="986" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1013" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">Parameters</text>
+<path d="M 504 1028 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="998" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">实现 / 继承</text>
+<text x="16" y="1107" font-size="13" fill="#64748b">12</text>
+<rect x="48" y="1074" width="450" height="66" rx="8" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="62" y="1101" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">FixedPolicyParameters</text>
+<rect x="818" y="1074" width="450" height="66" rx="8" fill="#ecfdf5" stroke="#94a3b8"/>
+<text x="832" y="1101" font-size="16" font-family="Arial, sans-serif" fill="#0f172a">Parameters</text>
+<path d="M 504 1116 H 810" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="657" y="1086" text-anchor="middle" font-size="15" font-family="Arial, sans-serif" fill="#334155">实现 / 继承</text>
+</svg>

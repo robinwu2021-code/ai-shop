@@ -84,14 +84,25 @@ export function orphans() {
 }
 
 const allRows = orphans();
-const deferred = readDeferredDelivery(ROOT, 'docs/api/backend-ops-ui-delivery.json', {
-  app: 'ops-web', prefix: '/ops', handlers: scanEndpoints(), missing: allRows,
-});
-const pricingDeferred = readDeferredDelivery(ROOT, 'docs/api/pricing-config-ops-ui-delivery.json', {
-  app: 'ops-web', prefix: '/ops', handlers: scanEndpoints(), missing: allRows,
-  contract: 'docs/api/pricing-config.openapi.json',
-});
-for (const entry of pricingDeferred) deferred.add(entry);
+/*
+ * 分阶段清单按域分文件：docs/api/backend-ops-ui-delivery.json（权益）+ backend-ops-ui-delivery-<域>.json，
+ * 再加定价配置那份；每份写明自己的 plan 与 contract(s)。同一端点不许登记在两份里。
+ */
+const deferred = new Set();
+const manifests = [
+  ['docs/api/backend-ops-ui-delivery.json', {}],
+  ...readdirSync(join(ROOT, 'docs/api')).filter((f) => /^backend-ops-ui-delivery-[\w-]+\.json$/.test(f)).sort()
+    .map((f) => [`docs/api/${f}`, {}]),
+  ['docs/api/pricing-config-ops-ui-delivery.json', { contract: 'docs/api/pricing-config.openapi.json' }],
+];
+for (const [file, extra] of manifests) {
+  for (const key of readDeferredDelivery(ROOT, file, {
+    app: 'ops-web', prefix: '/ops', handlers: scanEndpoints(), missing: allRows, ...extra,
+  })) {
+    if (deferred.has(key)) throw new Error(`Staged API listed in two delivery manifests: ${key}`);
+    deferred.add(key);
+  }
+}
 const rows = allRows.filter(row => !deferred.has(`${row.method} ${norm(row.path)}`));
 const check = process.argv.includes("--check");
 const known = existsSync(BASELINE)

@@ -280,17 +280,17 @@ const entries = computed(() =>
   [
     { key: "printing", label: t("printCenter.title"), route: ROUTES.printCenter, perm: "biz:print:read" },
     { key: "notice", label: t("home.noticeEntry"), route: ROUTES.storeNotice, perm: "biz:store" },
-    { key: "scope", label: t("home.scopeEntry"), route: ROUTES.storeScope, perm: "biz:store" },
-    { key: "store", label: t("home.storeEntry"), route: ROUTES.store, perm: "biz:store" },
+    { key: "scope", label: t("store.scopeTitle"), route: ROUTES.storeScope, perm: "biz:store" },
+    { key: "store", label: t("store.title"), route: ROUTES.store, perm: "biz:store" },
     // 发货设置：寄件人、地址、默认快递与重量，一次填好，发货时自动带出（TDD-快递100商家寄件 §7）
-    { key: "ship", label: t("home.shipEntry"), route: ROUTES.shipSettings, perm: "biz:store" },
+    { key: "ship", label: t("shipSetting.title"), route: ROUTES.shipSettings, perm: "biz:store" },
     // 通知设置：来单 / 售后 / 评价各四条通道的开关 + 本店的企微群（TDD-来单四渠道与商家通知设置）
-    { key: "notify", label: t("home.notifyEntry"), route: ROUTES.notifySettings, perm: "biz:store" },
-    { key: "catalog", label: t("home.catalogEntry"), route: ROUTES.storeCategories, perm: "biz:store:admin" },
-    { key: "specs", label: t("home.specsEntry"), route: ROUTES.mySpecs, perm: "biz:goods" },
-    { key: "skuIdentity", label: t("home.skuIdentityEntry"), route: ROUTES.skuIdentity, perm: "biz:goods" },
+    { key: "notify", label: t("notifySetting.title"), route: ROUTES.notifySettings, perm: "biz:store" },
+    { key: "catalog", label: t("storeCategories.title"), route: ROUTES.storeCategories, perm: "biz:store:admin" },
+    { key: "specs", label: t("mySpecs.title"), route: ROUTES.mySpecs, perm: "biz:goods" },
+    { key: "skuIdentity", label: t("skuIdentity.title"), route: ROUTES.skuIdentity, perm: "biz:goods" },
     // 营销是唯一入口：活动 / 优惠券 / 团购都在它下面（2026-09-18 店主）
-    { key: "marketing", label: t("home.marketingEntry"), route: ROUTES.marketing, perm: "biz:campaign" },
+    { key: "marketing", label: t("marketing.title"), route: ROUTES.marketing, perm: "biz:campaign" },
   ].filter((e) => merchant.can(e.perm)));
 
 /**
@@ -501,9 +501,9 @@ onShow(load);
       <view v-if="stockSummary && merchant.can('biz:stock')" class="sh-card inv">
         <!-- 「全部」是按钮不是一行字：药丸底 + 箭头，与卡里其他可点的东西同一个长相 -->
         <view class="sh-card__head" @tap="open(ROUTES.stock)">
-          <text class="txt-title">{{ $t("home.inv.title") }}</text>
+          <text class="txt-title">{{ $t("invMode.label") }}</text>
           <view class="sh-chip sh-chip--primary sh-chip--icon">
-            {{ $t("home.inv.all") }}
+            {{ $t("common.all") }}
             <sh-icon name="chevronRight" :size="22" color="var(--sh-primary-text)"></sh-icon>
           </view>
         </view>

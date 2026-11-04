@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.service.PlatformCollectionService;
+
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
@@ -204,6 +206,8 @@ public class ReconServiceImpl implements ReconService {
     }
 
     private ReconService.Finding checkOne(StlPayment p,String day) {
+        if(PlatformCollectionService.ownsScene(p.getPayScene()))return new ReconService.Finding(p.getPaymentNo(),p.getOrderNo(),p.getPayChannel(),
+                p.getOutTradeNo(),p.getDirection(),p.getAmountMinor(),false,false,false,0,null,day,p.getCurrency(),null,"PLATFORM_RECOVERY_REQUIRED");
         PayQueryPort.Result r;
         ai.neargo.shop.spi.pay.RefundQueryResult.Status status=null;
         String error=null;

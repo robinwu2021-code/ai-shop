@@ -1,6 +1,6 @@
 # 打印中心 Java 类结构设计
 
-状态：设计参考；实施与验收进度见对应任务表和验收记录。
+状态：设计参考；实施与验收进度见对应任务表和验收记录；当前软件交付记录见[排版专项验收](../acceptance/print-center/compact-v2.md)。
 
 > 设计稿 · 2026-10-23 · 本文定义目标类结构，未创建Java产品源码、POM、Controller或迁移。
 > 上游：[完整方案](./打印中心-完整方案与模块封装.md)、[API合同](./打印中心-API设计.md)、[数据库](./打印中心-数据库设计.md)、[16项开发任务](../../superpowers/plans/2026-10-23-print-center-implementation.md)。

@@ -49,7 +49,15 @@ public class PrimaryPersistenceConfiguration {
     @Bean
     @Primary
     DataSource dataSource(DataSourceProperties properties) {
-        return properties.initializeDataSourceBuilder().build();
+        var primary = properties.initializeDataSourceBuilder().build();
+        // Same primary database/configuration, independent bounded capacity. Lazy until fresh auth runs.
+        var fresh = properties.initializeDataSourceBuilder().type(com.zaxxer.hikari.HikariDataSource.class).build();
+        fresh.setPoolName("account-fresh-primary");
+        fresh.setMaximumPoolSize(2);
+        fresh.setMinimumIdle(0);
+        fresh.setConnectionTimeout(500);
+        fresh.setReadOnly(true);
+        return new ai.neargo.shop.auth.store.FreshAccountReadDataSource(primary, fresh);
     }
 
     @Bean

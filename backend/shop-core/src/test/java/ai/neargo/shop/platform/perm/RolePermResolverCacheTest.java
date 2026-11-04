@@ -64,6 +64,31 @@ class RolePermResolverCacheTest {
     }
 
     @Test
+    void strictFreshPermissionsObserveRevocationWithoutChangingLegacyCachePolicy() {
+        RolePointMapper links=mock(RolePointMapper.class);
+        FunctionPointMapper points=mock(FunctionPointMapper.class);
+        RoleMapper roles=mock(RoleMapper.class);
+        var role=new ai.neargo.shop.platform.perm.entity.SysRole();role.setRoleCode("BD");role.setEndCode("OPS");
+        when(roles.selectList(any())).thenReturn(List.of(role));
+        var point=new SysFunctionPoint();point.setPointCode("MALL");point.setPermCode("commerce:catalog:edit");
+        var link=new SysRolePoint();link.setRoleCode("BD");link.setPointCode("MALL");link.setEndCode("OPS");
+        when(points.selectList(any())).thenReturn(List.of(point));
+        when(links.selectList(any())).thenReturn(List.of(link));
+        var resolver=new RolePermResolver(links,points,roles,60000);
+        assertThat(resolver.resolve(List.of("BD"))).containsExactly("commerce:catalog:edit");
+        assertThat(org.junit.jupiter.api.Assertions.assertDoesNotThrow(()->resolver.resolveFresh(List.of("BD")))).containsExactly("commerce:catalog:edit");
+        when(roles.selectList(any())).thenReturn(List.of());
+        assertThat(resolver.resolveFresh(List.of("BD"))).isEmpty();
+        when(roles.selectList(any())).thenReturn(List.of(role));
+        when(links.selectList(any())).thenReturn(List.of());
+        assertThat(resolver.resolveFresh(List.of("BD"))).isEmpty();
+        assertThat(resolver.resolve(List.of("BD"))).containsExactly("commerce:catalog:edit");
+        assertThat(resolver.resolveFresh(List.of("SUPER_ADMIN"))).isEmpty();
+        when(roles.selectList(any())).thenThrow(new IllegalStateException("db down"));
+        assertThatThrownBy(()->resolver.resolveFresh(List.of("BD"))).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     @DisplayName("★★ TTL 之内只查一次库 —— 判权每个请求都走这里，逐次查库等于没缓存")
     void withinTtlItLoadsOnce() {
         RolePermResolver r = resolver(60_000, null);

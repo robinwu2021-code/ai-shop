@@ -1,0 +1,82 @@
+package ai.neargo.commerce.persistence.trade;
+
+import ai.neargo.commerce.persistence.JdbcInsert;
+import ai.neargo.commerce.persistence.JdbcWriteGuard;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.util.*;
+
+import javax.sql.DataSource;
+
+/** All operations require a tenant; inserts participate in the caller's local transaction. */
+public final class MallOrderComponentRepository {
+    private final JdbcTemplate jdbc;
+    private final DataSource dataSource;
+
+    public MallOrderComponentRepository(DataSource ds) {
+        dataSource = ds;
+        jdbc = new JdbcTemplate(ds);
+    }
+
+    public long insert(MallOrderComponentRecord row) {
+        JdbcWriteGuard.require(dataSource, row.tenantNo());
+        return JdbcInsert.insert(
+                jdbc,
+                "INSERT INTO `mall_order_component`"
+                    + " (`tenant_no`,`created_at`,`updated_at`,`created_by`,`updated_by`,`version`,`deleted`,`order_component_no`,`order_item_no`,`component_no`,`component_type`,`target_snapshot`,`unit_count`,`allocated_deal_minor`,`allocated_cash_minor`,`allocated_credit_minor`,`eligible_basis_minor`,`is_gift`,`fulfillment_status`)"
+                    + " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                row.tenantNo(),
+                row.createdAt(),
+                row.updatedAt(),
+                row.createdBy(),
+                row.updatedBy(),
+                row.version(),
+                row.deleted(),
+                row.orderComponentNo(),
+                row.orderItemNo(),
+                row.componentNo(),
+                row.componentType(),
+                row.targetSnapshot(),
+                row.unitCount(),
+                row.allocatedDealMinor(),
+                row.allocatedCashMinor(),
+                row.allocatedCreditMinor(),
+                row.eligibleBasisMinor(),
+                row.isGift(),
+                row.fulfillmentStatus());
+    }
+
+    public Optional<MallOrderComponentRecord> findById(String tenantNo, long id) {
+        JdbcWriteGuard.tenant(tenantNo);
+        return jdbc
+                .query(
+                        "SELECT * FROM `mall_order_component` WHERE tenant_no=? AND id=?",
+                        (rs, n) ->
+                                new MallOrderComponentRecord(
+                                        rs.getObject("id", Long.class),
+                                        rs.getString("tenant_no"),
+                                        rs.getObject("created_at", java.time.LocalDateTime.class),
+                                        rs.getObject("updated_at", java.time.LocalDateTime.class),
+                                        rs.getString("created_by"),
+                                        rs.getString("updated_by"),
+                                        rs.getObject("version", Long.class),
+                                        rs.getObject("deleted", Integer.class),
+                                        rs.getString("order_component_no"),
+                                        rs.getString("order_item_no"),
+                                        rs.getString("component_no"),
+                                        rs.getString("component_type"),
+                                        rs.getString("target_snapshot"),
+                                        rs.getObject("unit_count", Integer.class),
+                                        rs.getObject("allocated_deal_minor", Long.class),
+                                        rs.getObject("allocated_cash_minor", Long.class),
+                                        rs.getObject("allocated_credit_minor", Long.class),
+                                        rs.getObject("eligible_basis_minor", Long.class),
+                                        rs.getObject("is_gift", Integer.class),
+                                        rs.getString("fulfillment_status")),
+                        tenantNo,
+                        id)
+                .stream()
+                .findFirst();
+    }
+}

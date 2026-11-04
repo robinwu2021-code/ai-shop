@@ -1,0 +1,1446 @@
+{
+  "language": "zh-CN",
+  "environment": "local mock",
+  "checks": [
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 411.203125,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 373.671875
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [
+        {
+          "gap": "8.53333px",
+          "gaps": [],
+          "items": [
+            {
+              "bottom": 108.484375,
+              "height": 44.015625,
+              "right": 299.53125,
+              "width": 279.0625,
+              "x": 20.46875,
+              "y": 64.46875
+            }
+          ]
+        },
+        {
+          "gap": "8.53333px",
+          "gaps": [],
+          "items": [
+            {
+              "bottom": 184.875,
+              "height": 15.34375,
+              "right": 299.53125,
+              "width": 279.0625,
+              "x": 20.46875,
+              "y": 169.53125
+            }
+          ]
+        },
+        {
+          "gap": "8.53333px",
+          "gaps": [
+            8.53125
+          ],
+          "items": [
+            {
+              "bottom": 244.5625,
+              "height": 30.6875,
+              "right": 299.53125,
+              "width": 279.0625,
+              "x": 20.46875,
+              "y": 213.875
+            },
+            {
+              "bottom": 297.109375,
+              "height": 44.015625,
+              "right": 299.53125,
+              "width": 279.0625,
+              "x": 20.46875,
+              "y": 253.09375
+            }
+          ]
+        },
+        {
+          "gap": "8.53333px",
+          "gaps": [
+            8.53125,
+            8.53125
+          ],
+          "items": [
+            {
+              "bottom": 342.84375,
+              "height": 16.734375,
+              "right": 299.53125,
+              "width": 279.0625,
+              "x": 20.46875,
+              "y": 326.109375
+            },
+            {
+              "bottom": 411.203125,
+              "height": 59.828125,
+              "right": 299.53125,
+              "width": 279.0625,
+              "x": 20.46875,
+              "y": 351.375
+            },
+            {
+              "bottom": 463.75,
+              "height": 44.015625,
+              "right": 299.53125,
+              "width": 279.0625,
+              "x": 20.46875,
+              "y": 419.734375
+            }
+          ]
+        }
+      ],
+      "url": "http://127.0.0.1:5279/#/pages/marketing-assets/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 474.515625,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 430.515625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [
+        {
+          "gap": "10px",
+          "gaps": [],
+          "items": [
+            {
+              "bottom": 119.59375,
+              "height": 51.59375,
+              "right": 351,
+              "width": 327,
+              "x": 24,
+              "y": 68
+            }
+          ]
+        },
+        {
+          "gap": "10px",
+          "gaps": [],
+          "items": [
+            {
+              "bottom": 209.1875,
+              "height": 18,
+              "right": 351,
+              "width": 327,
+              "x": 24,
+              "y": 191.1875
+            }
+          ]
+        },
+        {
+          "gap": "10px",
+          "gaps": [
+            10
+          ],
+          "items": [
+            {
+              "bottom": 279.1875,
+              "height": 36,
+              "right": 351,
+              "width": 327,
+              "x": 24,
+              "y": 243.1875
+            },
+            {
+              "bottom": 340.78125,
+              "height": 51.59375,
+              "right": 351,
+              "width": 327,
+              "x": 24,
+              "y": 289.1875
+            }
+          ]
+        },
+        {
+          "gap": "10px",
+          "gaps": [
+            10,
+            10
+          ],
+          "items": [
+            {
+              "bottom": 394.375,
+              "height": 19.59375,
+              "right": 351,
+              "width": 327,
+              "x": 24,
+              "y": 374.78125
+            },
+            {
+              "bottom": 474.515625,
+              "height": 70.140625,
+              "right": 351,
+              "width": 327,
+              "x": 24,
+              "y": 404.375
+            },
+            {
+              "bottom": 536.109375,
+              "height": 51.59375,
+              "right": 351,
+              "width": 327,
+              "x": 24,
+              "y": 484.515625
+            }
+          ]
+        }
+      ],
+      "url": "http://127.0.0.1:5279/#/pages/marketing-assets/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 537.4375,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 486.984375
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [
+        {
+          "gap": "11.4667px",
+          "gaps": [],
+          "items": [
+            {
+              "bottom": 130.640625,
+              "height": 59.140625,
+              "right": 402.5,
+              "width": 375,
+              "x": 27.5,
+              "y": 71.5
+            }
+          ]
+        },
+        {
+          "gap": "11.4667px",
+          "gaps": [],
+          "items": [
+            {
+              "bottom": 233.328125,
+              "height": 20.640625,
+              "right": 402.5,
+              "width": 375,
+              "x": 27.5,
+              "y": 212.6875
+            }
+          ]
+        },
+        {
+          "gap": "11.4667px",
+          "gaps": [
+            11.453125
+          ],
+          "items": [
+            {
+              "bottom": 313.5625,
+              "height": 41.28125,
+              "right": 402.5,
+              "width": 375,
+              "x": 27.5,
+              "y": 272.28125
+            },
+            {
+              "bottom": 384.15625,
+              "height": 59.140625,
+              "right": 402.5,
+              "width": 375,
+              "x": 27.5,
+              "y": 325.015625
+            }
+          ]
+        },
+        {
+          "gap": "11.4667px",
+          "gaps": [
+            11.453125,
+            11.453125
+          ],
+          "items": [
+            {
+              "bottom": 445.5625,
+              "height": 22.453125,
+              "right": 402.5,
+              "width": 375,
+              "x": 27.5,
+              "y": 423.109375
+            },
+            {
+              "bottom": 537.4375,
+              "height": 80.421875,
+              "right": 402.5,
+              "width": 375,
+              "x": 27.5,
+              "y": 457.015625
+            },
+            {
+              "bottom": 608.03125,
+              "height": 59.140625,
+              "right": 402.5,
+              "width": 375,
+              "x": 27.5,
+              "y": 548.890625
+            }
+          ]
+        }
+      ],
+      "url": "http://127.0.0.1:5279/#/pages/marketing-assets/index",
+      "width": 430
+    },
+    {
+      "actions": [
+        {
+          "gap": "6.82667px",
+          "items": [
+            {
+              "bottom": 800.0625,
+              "height": 44.015625,
+              "right": 156.59375,
+              "width": 144.65625,
+              "x": 11.9375,
+              "y": 756.046875
+            },
+            {
+              "bottom": 800.0625,
+              "height": 44.015625,
+              "right": 308.0625,
+              "width": 144.65625,
+              "x": 163.40625,
+              "y": 756.046875
+            }
+          ]
+        }
+      ],
+      "fields": [],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/stock-align/index",
+      "width": 320
+    },
+    {
+      "actions": [
+        {
+          "gap": "8px",
+          "items": [
+            {
+              "bottom": 798,
+              "height": 51.59375,
+              "right": 183.5,
+              "width": 169.5,
+              "x": 14,
+              "y": 746.40625
+            },
+            {
+              "bottom": 798,
+              "height": 51.59375,
+              "right": 361,
+              "width": 169.5,
+              "x": 191.5,
+              "y": 746.40625
+            }
+          ]
+        }
+      ],
+      "fields": [],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/stock-align/index",
+      "width": 375
+    },
+    {
+      "actions": [
+        {
+          "gap": "9.17333px",
+          "items": [
+            {
+              "bottom": 795.953125,
+              "height": 59.140625,
+              "right": 210.40625,
+              "width": 194.359375,
+              "x": 16.046875,
+              "y": 736.8125
+            },
+            {
+              "bottom": 795.953125,
+              "height": 59.140625,
+              "right": 413.953125,
+              "width": 194.375,
+              "x": 219.578125,
+              "y": 736.8125
+            }
+          ]
+        }
+      ],
+      "fields": [],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/stock-align/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 514.859375,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 477.328125
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 559.203125,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 521.671875
+          },
+          "parent": "sh-card"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/invoice/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 595.96875,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 551.96875
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 647.96875,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 603.96875
+          },
+          "parent": "sh-card"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/invoice/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 676.71875,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 626.265625
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 736.34375,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 685.890625
+          },
+          "parent": "sh-card"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/invoice/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 270.8125,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 233.28125
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 333.90625,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 296.375
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 378.25,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 340.71875
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 422.59375,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 385.0625
+          },
+          "parent": "sh-card"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/payout-account/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 309.96875,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 265.96875
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 383.96875,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 339.96875
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 435.96875,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 391.96875
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 487.96875,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 443.96875
+          },
+          "parent": "sh-card"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/payout-account/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 348.875,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 298.421875
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 433.71875,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 383.265625
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 493.34375,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 442.890625
+          },
+          "parent": "sh-card"
+        },
+        {
+          "box": {
+            "bottom": 552.96875,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 502.515625
+          },
+          "parent": "sh-card"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/payout-account/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/points-records/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/points-records/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/points-records/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 128.328125,
+            "height": 37.53125,
+            "right": 129.671875,
+            "width": 71.65625,
+            "x": 58.015625,
+            "y": 90.796875
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 172.671875,
+            "height": 37.53125,
+            "right": 119.421875,
+            "width": 71.65625,
+            "x": 47.765625,
+            "y": 135.140625
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 172.671875,
+            "height": 37.53125,
+            "right": 253.140625,
+            "width": 71.65625,
+            "x": 181.484375,
+            "y": 135.140625
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 217.015625,
+            "height": 37.53125,
+            "right": 119.421875,
+            "width": 71.65625,
+            "x": 47.765625,
+            "y": 179.484375
+          },
+          "parent": "sh-row sh-mt-sm"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/schedule/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 142.6875,
+            "height": 44,
+            "right": 152,
+            "width": 84,
+            "x": 68,
+            "y": 98.6875
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 194.6875,
+            "height": 44,
+            "right": 140,
+            "width": 84,
+            "x": 56,
+            "y": 150.6875
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 194.6875,
+            "height": 44,
+            "right": 296.765625,
+            "width": 84,
+            "x": 212.765625,
+            "y": 150.6875
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 246.6875,
+            "height": 44,
+            "right": 140,
+            "width": 84,
+            "x": 56,
+            "y": 202.6875
+          },
+          "parent": "sh-row sh-mt-sm"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/schedule/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 156.984375,
+            "height": 50.453125,
+            "right": 174.25,
+            "width": 96.296875,
+            "x": 77.953125,
+            "y": 106.53125
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 216.609375,
+            "height": 50.453125,
+            "right": 160.5,
+            "width": 96.296875,
+            "x": 64.203125,
+            "y": 166.15625
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 216.609375,
+            "height": 50.453125,
+            "right": 340.21875,
+            "width": 96.296875,
+            "x": 243.921875,
+            "y": 166.15625
+          },
+          "parent": "sh-row sh-mt-sm"
+        },
+        {
+          "box": {
+            "bottom": 276.234375,
+            "height": 50.453125,
+            "right": 160.5,
+            "width": 96.296875,
+            "x": 64.203125,
+            "y": 225.78125
+          },
+          "parent": "sh-row sh-mt-sm"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/schedule/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 124.296875,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 86.765625
+          },
+          "parent": "field member-field"
+        },
+        {
+          "box": {
+            "bottom": 192.65625,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 155.125
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/member-add/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 138.140625,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 94.140625
+          },
+          "parent": "field member-field"
+        },
+        {
+          "box": {
+            "bottom": 218.28125,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 174.28125
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/member-add/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 151.921875,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 101.46875
+          },
+          "parent": "field member-field"
+        },
+        {
+          "box": {
+            "bottom": 243.796875,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 193.34375
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/member-add/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 558.234375,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 520.703125
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 626.59375,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 589.0625
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 694.953125,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 657.421875
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/qualifications/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 646.953125,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 602.953125
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 727.09375,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 683.09375
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 807.234375,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 763.234375
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/qualifications/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 735.15625,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 684.703125
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 827.03125,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 776.578125
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 918.90625,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 868.453125
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/qualifications/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 172.90625,
+            "height": 81.0625,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 91.84375
+          },
+          "parent": "sh-card quick"
+        },
+        {
+          "box": {
+            "bottom": 442.578125,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 405.046875
+          },
+          "parent": "fieldrow sh-row"
+        },
+        {
+          "box": {
+            "bottom": 546.453125,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 508.921875
+          },
+          "parent": "fieldrow sh-row"
+        },
+        {
+          "box": {
+            "bottom": 781.0625,
+            "height": 81.0625,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 700
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/goods-edit/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 195.09375,
+            "height": 95,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 100.09375
+          },
+          "parent": "sh-card quick"
+        },
+        {
+          "box": {
+            "bottom": 511.0625,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 467.0625
+          },
+          "parent": "fieldrow sh-row"
+        },
+        {
+          "box": {
+            "bottom": 632.84375,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 588.84375
+          },
+          "parent": "fieldrow sh-row"
+        },
+        {
+          "box": {
+            "bottom": 907.859375,
+            "height": 95,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 812.859375
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/goods-edit/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 217.203125,
+            "height": 108.90625,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 108.296875
+          },
+          "parent": "sh-card quick"
+        },
+        {
+          "box": {
+            "bottom": 579.234375,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 528.78125
+          },
+          "parent": "fieldrow sh-row"
+        },
+        {
+          "box": {
+            "bottom": 718.828125,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 668.375
+          },
+          "parent": "fieldrow sh-row"
+        },
+        {
+          "box": {
+            "bottom": 1034.0625,
+            "height": 108.90625,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 925.15625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/goods-edit/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 245.25,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 207.71875
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 287.890625,
+            "height": 37.53125,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 250.359375
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/store/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 279.96875,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 235.96875
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 329.96875,
+            "height": 44,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 285.96875
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/store/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 314.515625,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 264.0625
+          },
+          "parent": "field"
+        },
+        {
+          "box": {
+            "bottom": 371.84375,
+            "height": 50.453125,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 321.390625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/store/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 259.28125,
+            "height": 59.71875,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 199.5625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/reviews/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 296.390625,
+            "height": 70,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 226.390625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/reviews/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 333.28125,
+            "height": 80.265625,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 253.015625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/reviews/index",
+      "width": 430
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 259.28125,
+            "height": 59.71875,
+            "right": 299.53125,
+            "width": 279.0625,
+            "x": 20.46875,
+            "y": 199.5625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 320,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/reviews/index",
+      "width": 320
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 296.390625,
+            "height": 70,
+            "right": 351,
+            "width": 327,
+            "x": 24,
+            "y": 226.390625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 375,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/reviews/index",
+      "width": 375
+    },
+    {
+      "actions": [],
+      "fields": [
+        {
+          "box": {
+            "bottom": 333.28125,
+            "height": 80.265625,
+            "right": 402.5,
+            "width": 375,
+            "x": 27.5,
+            "y": 253.015625
+          },
+          "parent": "field"
+        }
+      ],
+      "pageWidth": 430,
+      "stacks": [],
+      "url": "http://127.0.0.1:5279/#/pages/reviews/index",
+      "width": 430
+    }
+  ],
+  "problems": [],
+  "footerCheck": {
+    "page": "goods-edit",
+    "lastCardBottom": 667.078125,
+    "barTop": 747.40625
+  }
+}

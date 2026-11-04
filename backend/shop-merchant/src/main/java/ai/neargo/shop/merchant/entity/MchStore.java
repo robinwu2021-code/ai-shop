@@ -17,6 +17,12 @@ import lombok.Setter;
 @Setter
 @TableName("mch_store")
 public class MchStore extends BaseEntity {
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private String businessTypeCode;
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private String commerceModel;
+    @TableField(updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.NEVER)
+    private Long businessTypeChangedAt;
 
     /**
      * 自营：平台是销售主体。没有 EDI 时只能自营，故为默认值。

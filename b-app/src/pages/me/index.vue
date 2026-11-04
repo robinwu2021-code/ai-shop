@@ -60,7 +60,7 @@ const headActive = computed(() => (merchant.multiStore
 const storeEntry = computed(() => merchant.multiStore || merchant.can("biz:store:admin"));
 
 const storeEntryKey = computed(() => (merchant.multiStore
-  ? "storePick.switch" : "storePick.manage"));
+  ? "me.switchStore" : "store.pickup.manage"));
 
 /**
  * 写成具名方法，不写内联三元。
@@ -202,7 +202,7 @@ onShow(() => {
     -->
     <view v-if="merchant.isLogin" class="sh-cells">
       <view class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.account)">
-        <text class="txt-body cell__label">{{ $t("me.accountEntry") }}</text>
+        <text class="txt-body cell__label">{{ $t("account.title") }}</text>
         <text class="txt-caption cell__value">{{ accountSummary }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
@@ -226,7 +226,7 @@ onShow(() => {
         以那边为准，把这一行删掉就是。有门总比没门强。
       -->
       <view v-if="merchant.can('biz:finance')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.income)">
-        <text class="txt-body cell__label">{{ $t("me.income") }}</text>
+        <text class="txt-body cell__label">{{ $t("income.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view v-if="merchant.can('biz:finance')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.settle)">
@@ -263,12 +263,12 @@ onShow(() => {
         两处都摆一个门就又回到「同一件事三个入口，人记不住走哪个」。
       -->
       <view v-if="merchant.can('biz:store:admin')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.staff)">
-        <text class="txt-body cell__label">{{ $t("me.staff") }}</text>
+        <text class="txt-body cell__label">{{ $t("staff.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!-- 收款设置：商户维度的钱袋子。「我的」本身就是商户视角，不必再造一层「商户」 -->
       <view v-if="merchant.can('biz:finance')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.payment)">
-        <text class="txt-body cell__label">{{ $t("me.payment") }}</text>
+        <text class="txt-body cell__label">{{ $t("payment.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
@@ -277,7 +277,7 @@ onShow(() => {
         一年动一次的执照摆在那儿只会把每天要看的数字往下挤。
       -->
       <view v-if="merchant.can('biz:store')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.qualifications)">
-        <text class="txt-body cell__label">{{ $t("stores.qualEntry") }}</text>
+        <text class="txt-body cell__label">{{ $t("qual.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <!--
@@ -309,14 +309,14 @@ onShow(() => {
         店长看到额度只会去催老板买单，而他不是做这个决定的人。
       -->
       <view v-if="merchant.can('biz:store:admin')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.plan)">
-        <text class="txt-body cell__label">{{ $t("plan.meCell") }}</text>
+        <text class="txt-body cell__label">{{ $t("plan.title") }}</text>
         <text v-if="plan" class="txt-caption cell__value" :class="{ 'is-warning': quotaFull }">
           {{ $t("plan.meSub", { name: plan.planName, used: plan.storeUsed, quota: plan.storeQuota }) }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view v-if="merchant.can('biz:customer')" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.stats)">
-        <text class="txt-body cell__label">{{ $t("me.stats") }}</text>
+        <text class="txt-body cell__label">{{ $t("stats.title") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
     </view>
@@ -324,14 +324,14 @@ onShow(() => {
     <view class="sh-cells">
       <!-- 消息：新订单/售后/评价的落点。红点数与 tabBar 角标同源（30s 轮询） -->
       <view v-if="merchant.isLogin" class="sh-cell sh-row sh-row--between" @tap="go(ROUTES.messages)">
-        <text class="txt-body cell__label">{{ $t("me.messages") }}</text>
+        <text class="txt-body cell__label">{{ $t("message.title") }}</text>
         <text v-if="unreadCount" class="sh-badge-count cell__badge sh-num">
           {{ unreadCount > 99 ? "99+" : unreadCount }}
         </text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="sheetOpen = true">
-        <text class="txt-body cell__label">{{ $t("me.appearance") }}</text>
+        <text class="txt-body cell__label">{{ $t("theme.title") }}</text>
         <text class="txt-caption cell__value">{{ $t("me.appearanceValue") }}</text>
         <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
       </view>

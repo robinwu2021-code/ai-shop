@@ -1203,6 +1203,14 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_recovery_proof LONGTEXT DEFAULT NULL,
     initiating_operation_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
     receipt_no VARCHAR(40) COLLATE utf8mb4_bin NULL,
+    platform_dispatch_at BIGINT DEFAULT NULL,
+    platform_close_fence VARCHAR(128) DEFAULT NULL,
+    platform_receipt_json MEDIUMTEXT DEFAULT NULL,
+    platform_checkout_json MEDIUMTEXT DEFAULT NULL,
+    platform_handoff_state VARCHAR(16) DEFAULT NULL,
+    platform_bank_ref_key VARCHAR(64) DEFAULT NULL,
+    platform_manual_proof MEDIUMTEXT DEFAULT NULL,
+    platform_reconciliation_proof MEDIUMTEXT DEFAULT NULL,
     sub_merchant_id VARCHAR(64) DEFAULT NULL,
     pay_merchant_no VARCHAR(64) DEFAULT NULL,
     pay_order_id BIGINT NULL,
@@ -1214,6 +1222,7 @@ CREATE TABLE IF NOT EXISTS stl_payment
     channel_amount_minor BIGINT NULL,
     channel_currency CHAR(3) NULL,
     CONSTRAINT uk_stl_payment_out_trade_no UNIQUE (out_trade_no),
+    CONSTRAINT uk_platform_bank_reference UNIQUE (platform_bank_ref_key),
     CONSTRAINT uk_payment_receipt_no UNIQUE (tenant_no,receipt_no),
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),
@@ -1736,6 +1745,9 @@ CREATE TABLE IF NOT EXISTS mch_store
     ship_weight_g INT(11) DEFAULT NULL,
     slug VARCHAR(32) DEFAULT NULL,
     banner_url VARCHAR(512) NULL,
+    business_type_code VARCHAR(32) NULL,
+    commerce_model VARCHAR(16) NULL,
+    business_type_changed_at BIGINT NULL,
     CONSTRAINT uk_mch_store_slug UNIQUE (slug),
     CONSTRAINT uk_mch_store_code UNIQUE (store_code),
     PRIMARY KEY (id),
@@ -12259,6 +12271,27 @@ CREATE TABLE IF NOT EXISTS mch_management_command
     CONSTRAINT uk_management_command UNIQUE (command_id)
 );
 
+CREATE TABLE IF NOT EXISTS pay_platform_collection_head
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    profile_no VARCHAR(64) NOT NULL,
+    current_version BIGINT NOT NULL,
+    enabled TINYINT NOT NULL,
+    PRIMARY KEY (tenant_no, profile_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_platform_collection_profile
+(
+    tenant_no VARCHAR(32) NOT NULL,
+    profile_no VARCHAR(64) NOT NULL,
+    profile_version BIGINT NOT NULL,
+    instructions_json MEDIUMTEXT NOT NULL,
+    configured_by VARCHAR(64) NOT NULL,
+    reason VARCHAR(1024) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    PRIMARY KEY (tenant_no, profile_no, profile_version)
+);
+
 CREATE TABLE IF NOT EXISTS pay_channel_product
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -18968,6 +19001,82 @@ UPDATE ord_checkout_confirmation SET authority_namespace_hash=SHA2(CONCAT(
 WHERE authority_namespace_hash IS NULL;
 INSERT IGNORE INTO mkt_counter_campaign_fence (tenant_no, scope_kind, scope_no, revision)
 VALUES ('MAIN', 'PLATFORM', 'PLATFORM', 0);
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_CATALOG_READ','OPS_SYSTEM','商城目录读取','商业商城',NULL,'commerce:catalog:read','commerce:catalog:read','IMPLEMENTED',0,NULL,'ACTION',1100,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_CATALOG_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_CATALOG_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_CATALOG_EDIT','OPS_SYSTEM','商城目录草稿编辑','商业商城',NULL,'commerce:catalog:edit','commerce:catalog:edit','IMPLEMENTED',0,NULL,'ACTION',1101,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_CATALOG_EDIT','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_CATALOG_EDIT' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_CATALOG_PUBLISH','OPS_SYSTEM','商城目录发布与停售','商业商城',NULL,'commerce:catalog:publish','commerce:catalog:publish','IMPLEMENTED',0,NULL,'ACTION',1102,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_CATALOG_PUBLISH','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_CATALOG_PUBLISH' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_ORDER_READ','OPS_SYSTEM','商城订单读取','商业商城',NULL,'commerce:mall:order:read','commerce:mall:order:read','IMPLEMENTED',0,NULL,'ACTION',1103,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_ORDER_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_ORDER_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_SHIPMENT_WRITE','OPS_SYSTEM','商城硬件发货','商业商城',NULL,'commerce:mall:shipment:write','commerce:mall:shipment:write','IMPLEMENTED',0,NULL,'ACTION',1104,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_SHIPMENT_WRITE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_SHIPMENT_WRITE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_REFUND_REVIEW','OPS_SYSTEM','商城退款审核','商业商城',NULL,'commerce:refund:review','commerce:refund:review','IMPLEMENTED',0,NULL,'ACTION',1105,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_REFUND_REVIEW','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_REFUND_REVIEW' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_SOURCE_READ','OPS_SYSTEM','权益来源读取','商业商城',NULL,'commerce:subscription:read','commerce:subscription:read','IMPLEMENTED',0,NULL,'ACTION',1106,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_SOURCE_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_SOURCE_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_SOURCE_GRANT','OPS_SYSTEM','零金额独立端赠送','商业商城',NULL,'commerce:subscription:grant','commerce:subscription:grant','IMPLEMENTED',0,NULL,'ACTION',1107,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_SOURCE_GRANT','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_SOURCE_GRANT' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_SOURCE_REVOKE','OPS_SYSTEM','零金额赠送来源撤销','商业商城',NULL,'commerce:subscription:revoke','commerce:subscription:revoke','IMPLEMENTED',0,NULL,'ACTION',1108,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_SOURCE_REVOKE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_SOURCE_REVOKE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_ASSISTED_PURCHASE','OPS_SYSTEM','商城代客线下购买','商业商城',NULL,'commerce:mall:assisted:purchase','commerce:mall:assisted:purchase','IMPLEMENTED',0,NULL,'ACTION',1109,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_ASSISTED_PURCHASE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_ASSISTED_PURCHASE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_EVIDENCE','OPS_SYSTEM','线下付款凭证读取与平台凭证上传','商业商城',NULL,'commerce:mall:offline:evidence','commerce:mall:offline:evidence','IMPLEMENTED',0,NULL,'ACTION',1110,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_EVIDENCE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_EVIDENCE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_REVIEW','OPS_SYSTEM','线下付款申报拒绝','商业商城',NULL,'commerce:mall:offline:review','commerce:mall:offline:review','IMPLEMENTED',0,NULL,'ACTION',1111,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_REVIEW','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_REVIEW' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_CONFIRM','OPS_SYSTEM','线下实际到账核款','商业商城',NULL,'commerce:mall:offline:confirm','commerce:mall:offline:confirm','IMPLEMENTED',0,NULL,'ACTION',1112,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_CONFIRM','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_CONFIRM' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_VOID','OPS_SYSTEM','线下订单对账作废','商业商城',NULL,'commerce:mall:offline:void','commerce:mall:offline:void','IMPLEMENTED',0,NULL,'ACTION',1113,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_VOID','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_VOID' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_OFFLINE_REFUND_CONFIRM','OPS_SYSTEM','线下退款实际出款确认','商业商城',NULL,'commerce:mall:offline:refund:confirm','commerce:mall:offline:refund:confirm','IMPLEMENTED',0,NULL,'ACTION',1114,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_OFFLINE_REFUND_CONFIRM','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_OFFLINE_REFUND_CONFIRM' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_COLLECTION_PROFILE_READ','OPS_SYSTEM','平台收款档案读取','商业商城',NULL,'commerce:collection:profile:read','commerce:collection:profile:read','IMPLEMENTED',0,NULL,'ACTION',1115,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_COLLECTION_PROFILE_READ','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_COLLECTION_PROFILE_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point(point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__COMMERCE_COLLECTION_PROFILE_WRITE','OPS_SYSTEM','平台收款档案配置','商业商城',NULL,'commerce:collection:profile:write','commerce:collection:profile:write','IMPLEMENTED',0,NULL,'ACTION',1116,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__COMMERCE_COLLECTION_PROFILE_WRITE','OPS',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM DUAL WHERE EXISTS(SELECT 1 FROM sys_role WHERE role_code='SUPER_ADMIN' AND end_code='OPS' AND deleted=0) AND NOT EXISTS(SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__COMMERCE_COLLECTION_PROFILE_WRITE' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE', 'OPS_MERCHANT', '经营类型与套餐', '套餐商城', '/mall', 'commerce:catalog:read', 'commerce:catalog:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 82, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_PRODUCTS', 'OPS_MERCHANT', '商城商品与SKU', '套餐商城', '/mall?tab=products', 'commerce:catalog:read', 'commerce:catalog:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 83, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_PRODUCTS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_PRODUCTS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_PRODUCTS');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_ORDERS', 'OPS_MERCHANT', '商城订单', '套餐商城', '/mall?tab=orders', 'commerce:mall:order:read', 'commerce:mall:order:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 84, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_ORDERS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_ORDERS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_ORDERS');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_CLAIMS', 'OPS_MERCHANT', '线下核款', '套餐商城', '/mall?tab=claims', 'commerce:mall:offline:review', 'commerce:mall:offline:review', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 85, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_CLAIMS');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_CLAIMS', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_CLAIMS');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_COLLECTION', 'OPS_MERCHANT', '平台收款档案', '套餐商城', '/mall?tab=collection', 'commerce:collection:profile:read', 'commerce:collection:profile:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 86, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_COLLECTION');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_COLLECTION', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_COLLECTION');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_ASSISTED', 'OPS_MERCHANT', '代客线下购买', '套餐商城', '/mall?tab=assisted', 'commerce:mall:assisted:purchase', 'commerce:mall:assisted:purchase', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 87, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_ASSISTED');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_ASSISTED', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_ASSISTED');
+INSERT IGNORE INTO sys_function_point (point_code, function_code, name, group_name, href, ui_perm_code, perm_code, backend_status, ui_ready, matrix_code, point_type, sort, created_at, updated_at)
+SELECT 'OPS_COMMERCE__TAB_SOURCES', 'OPS_MERCHANT', '门店权益来源', '套餐商城', '/mall?tab=sources', 'commerce:subscription:read', 'commerce:subscription:read', 'IMPLEMENTED', 1, 'P-11.2', 'MENU', 88, NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_function_point x WHERE x.point_code='OPS_COMMERCE__TAB_SOURCES');
+INSERT IGNORE INTO sys_role_point (role_code, point_code, end_code, created_at, updated_at)
+SELECT 'SUPER_ADMIN', 'OPS_COMMERCE__TAB_SOURCES', 'OPS', NOW(), NOW() FROM DUAL
+ WHERE NOT EXISTS (SELECT 1 FROM sys_role_point x WHERE x.role_code='SUPER_ADMIN' AND x.point_code='OPS_COMMERCE__TAB_SOURCES');
 INSERT IGNORE INTO pay_channel_product (product_code, pay_channel, access_mode, pay_type, pay_method, channel_method,
     allowed_funds_paths, refund_mode, partial_refund, max_partial_refunds, refund_interval_seconds, refund_window_days,
     two_phase, status, sort_no, created_at, updated_at) VALUES

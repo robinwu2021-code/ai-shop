@@ -149,7 +149,7 @@ function goPickStore() {
       <!-- 收款账户 -->
       <view class="sh-card block" @tap="editPayment">
         <view class="block__row sh-row sh-row--between">
-          <text class="txt-strong">{{ $t("entityDetail.payment") }}</text>
+          <text class="txt-strong">{{ $t("payoutAccount.title") }}</text>
           <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
         </view>
         <text class="txt-sub block__val" :class="payReady ? 'txt-ink' : 'txt-quiet'">

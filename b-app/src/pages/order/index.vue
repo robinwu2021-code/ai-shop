@@ -626,7 +626,7 @@ function openPrintCenter(){if(order.value)uni.navigateTo({url:ROUTES.printCenter
 
       <view v-if="alternative && ['EXPRESS', 'MERCHANT_DELIVERY'].includes(order.fulfillment)"
         class="sh-card sh-mt-sm">
-        <text class="txt-title">{{ $t('order.changeFulfillmentTitle') }}</text>
+        <view class="sh-card__head"><text class="txt-title">{{ $t('order.changeFulfillmentTitle') }}</text></view>
         <text class="txt-caption sh-muted blk">
           {{ $t('order.changeFulfillmentTarget') }}{{ $t(`fulfillmentLabel.${alternative.fulfillment}`) }}
         </text>
@@ -746,7 +746,7 @@ function openPrintCenter(){if(order.value)uni.navigateTo({url:ROUTES.printCenter
       <view v-else-if="canShip" class="sh-card sh-mt-sm">
         <view class="sh-row sh-row--between">
           <text class="txt-title">{{ $t("order.ship") }}</text>
-          <sh-go :text="String($t('home.shipEntry'))" @tap="openShipSettings"></sh-go>
+          <sh-go :text="String($t('shipSetting.title'))" @tap="openShipSettings"></sh-go>
         </view>
           <!-- 快递公司：横排可点的胶囊，选一个。picker 也行，但发货是高频动作，少一次弹层 -->
           <view class="sh-wrap sh-mt-sm">

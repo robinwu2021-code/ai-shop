@@ -144,6 +144,12 @@ const KNOWN_BODY_DRIFT: Record<string, string> = {
   "/mp/group-request":
     "求团单两边设计不同：前端有 pickupNo / budgetMinor（预算），后端有 images / days（有效期）。" +
     "不是命名差异，是**需求本身没对齐** → 需要产品拍板求团单到底收哪些信息。",
+  "/biz/store/create":
+    "businessTypeCode / operationNo / storeNo 由 Flutter B 端（ai-shop-bapp，openapi-b-onboarding）发；" +
+    "uni-app b-app 的建店表单不收经营类型。商城开关（commerce）开启的部署里 uni-app 建店会得 70198 " +
+    "STORE_BUSINESS_TYPE_REQUIRED —— 建店入口以 Flutter 为准，uni-app 要么补经营类型选择、要么下线该入口（待定）。",
+  "/biz/store/{storeNo}/rename":
+    "与建店共用 StoreCreateReq，改名只读 name/address/categoryNos，多出的三个字段后端不读，不算漂移。",
 };
 
 describe.each([

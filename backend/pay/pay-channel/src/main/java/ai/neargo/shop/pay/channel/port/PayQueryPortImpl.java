@@ -30,7 +30,7 @@ public class PayQueryPortImpl implements PayQueryPort {
             return new Result(false, false, false, 0, null);
         }
         PayGateway.QueryResult r = channels.query(payChannel, outTradeNo);
-        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo(), r.currency());
+        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo(), r.currency(),r.actualPaidAt(),r.receiverNo(),r.outTradeNo(),r.providerState());
     }
 
     @Override
@@ -40,7 +40,7 @@ public class PayQueryPortImpl implements PayQueryPort {
             return new Result(false, false, false, 0, null);
         }
         PayGateway.QueryResult r = channels.queryRefund(payChannel, outTradeNo);
-        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo(), r.currency());
+        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo(), r.currency(),r.actualPaidAt(),r.receiverNo(),r.outTradeNo(),r.providerState());
     }
 
     @Override

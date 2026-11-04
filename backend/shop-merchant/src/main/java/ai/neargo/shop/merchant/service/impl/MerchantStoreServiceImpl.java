@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
 
 /** {@link MerchantStoreService} 实现。 */
@@ -32,6 +33,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     /** 配送半径默认 3km：「先跑起来再说」，而不是 0（那等于谁都送不到）。 */
     private static final int DEFAULT_RADIUS_M = 3000;
 
+    private final MerchantStoreCreation commerce;
     private final MchStoreMapper storeMapper;
     private final PayMerchantMirror payMirror;
     private final MchEntityMapper merchantMapper;
@@ -54,7 +56,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
     private final ai.neargo.shop.merchant.reach.ServiceAreaCells serviceAreaCells;
     private final ai.neargo.shop.geo.ReachGeoProps geoProps;
 
-    public MerchantStoreServiceImpl(MchStoreMapper storeMapper, MchEntityMapper merchantMapper,
+    public MerchantStoreServiceImpl(MerchantStoreCreation commerce, MchStoreMapper storeMapper, MchEntityMapper merchantMapper,
                                     MchEntityCommunityMapper merchantCommunityMapper,
                                     ObjectMapper json,
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.StoreAuditMapper storeAuditMapper,
@@ -68,6 +70,7 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
                                     ai.neargo.shop.merchant.mapper.MerchantMappers.ChannelAreaMapper channelAreaMapper,
                                     PayMerchantMirror payMirror) {
         this.payMirror = payMirror;
+        this.commerce = commerce;
         this.channelAreaMapper = channelAreaMapper;
         this.communityNamePort = communityNamePort;
         this.serviceAreaMapper = serviceAreaMapper;
@@ -254,7 +257,9 @@ public class MerchantStoreServiceImpl implements MerchantStoreService {
 
         MchStore store = row(merchantNo, storeNo);
         if (store == null) {
+            commerce.requireExplicitCreation();
             store = new MchStore();
+            store.setCommerceModel("LEGACY");
             store.setEntityNo(merchantNo);
         }
         /*

@@ -48,6 +48,8 @@ public interface PaymentLedgerService {
      * @return 实际使用的 {@code out_trade_no}：复用时是已有那笔的，新建时是新生成的。
      *         <b>调用方要拿它去向通道下单</b>，而不是用自己传进来的那个
      */
+    default String paymentBusiness(String paymentNoOrOutTradeNo) { return "CONSUMER"; }
+
     String open(SettlePort.PaymentOpen cmd);
 
     /** Full ordinary PAY coordinates, without synthesizing historical money or ownership. */

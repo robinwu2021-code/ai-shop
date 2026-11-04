@@ -11,8 +11,8 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**50 个权限码 × 6 个角色 × 404 个受控功能点**
-（另有 39 个登录即可、7 个「任一权限即可」）。
+统计：**50 个权限码 × 6 个角色 × 431 个受控功能点**
+（另有 0 个登录即可、16 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -21,49 +21,49 @@
 
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
+| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 64 | ✅ | — | — | — | — | — |
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 51 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 39 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 35 | ✅ | ✅ | — | — | — | — |
-| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 31 | ✅ | — | — | — | — | — |
+| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 30 | ✅ | — | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
-| `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 27 | ✅ | — | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 23 | ✅ | ✅ | — | — | — | — |
+| `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 17 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:read` | `PRINT_READ` | 角色 → 权限码 | 15 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:config` | `PRINT_CONFIG` | 角色 → 权限码 | 15 | ✅ | ✅ | — | — | — | — |
-| `biz:print:resolve` | `PRINT_RESOLVE` | 角色 → 权限码 | 14 | ✅ | ✅ | — | — | — | — |
+| `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 12 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 9 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
-| `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 9 | ✅ | — | — | — | — | — |
-| `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
-| `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 7 | ✅ | — | — | — | — | — |
+| `biz:print:resolve` | `PRINT_RESOLVE` | 角色 → 权限码 | 9 | ✅ | ✅ | — | — | — | — |
 | `biz:print:device` | `PRINT_DEVICE` | 角色 → 权限码 | 6 | ✅ | ✅ | — | — | — | — |
-| `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 5 | ✅ | — | — | — | — | — |
-| `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
-| `biz:pricing:config:read` | `PRICING_CONFIG_READ` | Shared pricing configuration: read | 4 | ✅ | — | — | — | — | — |
-| `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 5 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `pay:sv:account:read` | `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 5 | ✅ | — | — | — | — | — |
+| `biz:pricing:config:publish` | `PRICING_CONFIG_PUBLISH` | Shared pricing configuration: read | 4 | ✅ | — | — | — | — | — |
 | `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
+| `pay:sv:recharge:create` | `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `pay:sv:consume:create` | `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:ent:use` | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `biz:print:export` | `PRINT_EXPORT` | 角色 → 权限码 | 3 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:pricing:tax:update` | `PRICING_TAX_UPDATE` | 修改全主体所有门店的税配置，仅主体属主，不可按门店委派 | 2 | ✅ | — | — | — | — | — |
+| `biz:pricing:config:read` | `PRICING_CONFIG_READ` | Shared pricing configuration: read | 2 | ✅ | — | — | — | — | — |
 | `biz:pricing:config:update` | `PRICING_CONFIG_UPDATE` | Shared pricing configuration: read | 2 | ✅ | — | — | — | — | — |
 | `pay:sv:plan:read` | `SV_PLAN_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:sv:plan:manage` | `SV_PLAN_MANAGE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
-| `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
 | `pay:sv:recharge:read` | `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
-| `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
-| `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
 | `biz:print:reprint` | `PRINT_REPRINT` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:simulate` | `PRINT_SIMULATE` | 角色 → 权限码 | 2 | ✅ | ✅ | ✅ | — | — | — |
 | `pay:cash:receive` | `CASH_RECEIVE` | 确认整笔线下实收；独立收款授权，旧到货登记与订单查看权限不能代替 | 1 | ✅ | — | — | — | — | — |
 | `pay:ent:issue` | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
-| `pay:ent:issue:manage` | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
+| `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 1 | ✅ | — | — | — | — | — |
 | `biz:print:submit` | `PRINT_SUBMIT` | 角色 → 权限码 | 1 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:print:extra` | `PRINT_EXTRA` | 角色 → 权限码 | 1 | ✅ | ✅ | — | — | — | — |
 | `biz:pricing:tax:read` | `PRICING_TAX_READ` | 查看当前授权商家的有效税配置 | 0 | ✅ | — | — | — | — | — |
 | `biz:report:export` | `REPORT_EXPORT` | 改库存（含门店库存） | 0 | ✅ | — | — | — | — | — |
+| `pay:sv:recharge:receive` | `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 | `pay:ent:template:read` | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
+| `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 0 | ✅ | — | — | — | — | — |
+| `pay:ent:issue:manage` | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 0 | ✅ | — | — | — | — | — |
 | `biz:booking:view` | `BOOKING_VIEW` | Cross-industry appointment reading | 0 | ✅ | — | — | — | — | — |
 | `biz:booking:manage` | `BOOKING_MANAGE` | Explicit appointment management, i | 0 | ✅ | — | — | — | — | — |
 | `biz:service:task:self` | `SERVICE_TASK_SELF` | Independently assignable service a | 0 | ✅ | — | — | — | — | — |
@@ -77,6 +77,80 @@
 ## 二、功能点明细（按权限码分组）
 
 「页面」列为空 = **后端有能力、b-app 没有入口**，见 §四。
+
+### `biz:store:admin`　建店、改名、停用、设默认店、挂收款号
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 我名下的证照 | GET | `/biz/entities` | `mEntities` | entities |
+| 一张证照的详情与门店 | GET | `/biz/entity/:entityNo` | `mEntity` | entity-detail |
+| 设发货源 | PUT | `/biz/inventory/locations/:id/source` | `mLocationSetSource` | locations |
+| 会员经营口径 | GET | `/biz/member-settings` | `mMemberSettings` | member-settings |
+| 改口径（店主） | PUT | `/biz/member-settings` | `mSaveMemberSettings` | member-settings |
+| 我的套餐（档位/用量/三档对比） | GET | `/biz/plan` | `mMyPlan` | me、plan、stores |
+| 自助开通试用（一主体一次） | POST | `/biz/plan/trial` | `mStartTrial` | plan、stores |
+| 可勾的权限点 | GET | `/biz/role-perms` | `mRolePerms` | role-detail |
+| 改角色 | POST | `/biz/role/:roleCode` | `mUpdateRole` | role-detail |
+| 删除自定义角色 | POST | `/biz/role/:roleCode/delete` | `mDeleteRole` | role-detail |
+| 角色列表（预置 + 自定义） | GET | `/biz/roles` | `mRoles` | role-detail、staff、staff-detail |
+| 建自定义角色 | POST | `/biz/roles` | `mCreateRole` | role-detail |
+| 员工列表 | GET | `/biz/staff` | `mStaffList` | role-detail、staff、staff-detail |
+| 加员工 | POST | `/biz/staff` | `mAddStaff` | — |
+| 停用/启用员工 | POST | `/biz/staff/:mchAccountNo/status` | `mSetStaffStatus` | staff-detail |
+| 授权到店 | POST | `/biz/staff/:mchAccountNo/store` | `mGrantStore` | staff-detail |
+| 员工与授权变更记录 | GET | `/biz/staff/logs` | `mStaffLogs` | staff、staff-detail |
+| 设为默认店 | POST | `/biz/store/:storeNo/default` | `mSetDefaultStore` | stores |
+| 换门店收款号 | POST | `/biz/store/:storeNo/payment` | `mSetStorePayment` | stores |
+| 改门店名与地址 | POST | `/biz/store/:storeNo/rename` | `mRenameStore` | stores |
+| 设门店代码（对外链接那一段） | POST | `/biz/store/:storeNo/slug` | `mSetStoreSlug` | stores |
+| 停用/启用门店 | POST | `/biz/store/:storeNo/status` | `mSetStoreStatus` | stores |
+| 确认期初对齐（以商城为准 / 已实地盘点） | POST | `/biz/store/:storeNo/stock-alignment/confirm` | `mConfirmAlignment` | — |
+| 预览期初对齐批次 | POST | `/biz/store/:storeNo/stock-alignment/preview` | `mPreviewStockAlignment` | stock-align |
+| 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
+| —（b-app 未接） | — | `/biz/personnel/{}/assignments` | — | — |
+| —（b-app 未接） | — | `/biz/personnel/{}/account-links` | — | — |
+| —（b-app 未接） | — | `/biz/personnel/{}/status-changes` | — | — |
+| —（b-app 未接） | — | `/biz/store/{}/stock-reconcile` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/account-operations` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/catalog-scopes/{}{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/catalog-scopes` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/catalog-scopes/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/accounts` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/accounts/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/accounts/{}{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/connections` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/connections/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/connections/{}{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/operations/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/orders` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/orders/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/orders/{}/revisions` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/orders/{}/lines` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/orders/{}{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/providers` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/providers/{}/profiles` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/redemptions` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/redemptions/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/redemptions/{}{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/accounts/{}/statements` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/statement-lines` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/statistics/sync` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/inbound-events` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/inbound-events/{}/receipts` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/inbound-events/{}{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/resource-mappings` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/resource-mappings/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/resource-mappings` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/operations` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/operations/{}/attempts` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/operations/{}{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/sync-runs` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/sync-runs/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/sync-runs/{}/items` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/sync-runs/{}{}-queued` | — | — |
+| —（b-app 未接） | — | `/biz/stores/{}/channel-order-policies` | — | — |
 
 ### `biz:stock`　改库存（含门店库存）
 
@@ -275,7 +349,6 @@
 | 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
 | 对账单 | GET | `/biz/settle/statement` | `mStatement` | statement |
 | —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-manual-policies/{}/{}/{}` | — | — |
 
 ### `biz:customer`　顾客列表（含累计消费额）、经营数据
 
@@ -316,43 +389,6 @@
 | 按月营收 | GET | `/biz/report/monthly` | `mMonthlyReport` | — |
 | —（b-app 未接） | — | `/biz/inventory/export` | — | — |
 
-### `biz:store:admin`　建店、改名、停用、设默认店、挂收款号
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 我名下的证照 | GET | `/biz/entities` | `mEntities` | entities |
-| 一张证照的详情与门店 | GET | `/biz/entity/:entityNo` | `mEntity` | entity-detail |
-| 设发货源 | PUT | `/biz/inventory/locations/:id/source` | `mLocationSetSource` | locations |
-| 会员经营口径 | GET | `/biz/member-settings` | `mMemberSettings` | member-settings |
-| 改口径（店主） | PUT | `/biz/member-settings` | `mSaveMemberSettings` | member-settings |
-| 我的套餐（档位/用量/三档对比） | GET | `/biz/plan` | `mMyPlan` | me、plan、stores |
-| 自助开通试用（一主体一次） | POST | `/biz/plan/trial` | `mStartTrial` | plan、stores |
-| 可勾的权限点 | GET | `/biz/role-perms` | `mRolePerms` | role-detail |
-| 改角色 | POST | `/biz/role/:roleCode` | `mUpdateRole` | role-detail |
-| 删除自定义角色 | POST | `/biz/role/:roleCode/delete` | `mDeleteRole` | role-detail |
-| 角色列表（预置 + 自定义） | GET | `/biz/roles` | `mRoles` | role-detail、staff、staff-detail |
-| 建自定义角色 | POST | `/biz/roles` | `mCreateRole` | role-detail |
-| 员工列表 | GET | `/biz/staff` | `mStaffList` | role-detail、staff、staff-detail |
-| 加员工 | POST | `/biz/staff` | `mAddStaff` | — |
-| 停用/启用员工 | POST | `/biz/staff/:mchAccountNo/status` | `mSetStaffStatus` | staff-detail |
-| 授权到店 | POST | `/biz/staff/:mchAccountNo/store` | `mGrantStore` | staff-detail |
-| 员工与授权变更记录 | GET | `/biz/staff/logs` | `mStaffLogs` | staff、staff-detail |
-| 设为默认店 | POST | `/biz/store/:storeNo/default` | `mSetDefaultStore` | stores |
-| 换门店收款号 | POST | `/biz/store/:storeNo/payment` | `mSetStorePayment` | stores |
-| 改门店名与地址 | POST | `/biz/store/:storeNo/rename` | `mRenameStore` | stores |
-| 设门店代码（对外链接那一段） | POST | `/biz/store/:storeNo/slug` | `mSetStoreSlug` | stores |
-| 停用/启用门店 | POST | `/biz/store/:storeNo/status` | `mSetStoreStatus` | stores |
-| 确认期初对齐批次 | POST | `/biz/store/:storeNo/stock-alignment/batch/:batchNo/confirm` | `mConfirmStockAlignmentBatch` | stock-align |
-| 确认期初对齐（以商城为准 / 已实地盘点） | POST | `/biz/store/:storeNo/stock-alignment/confirm` | `mConfirmAlignment` | — |
-| 预览期初对齐批次 | POST | `/biz/store/:storeNo/stock-alignment/preview` | `mPreviewStockAlignment` | stock-align |
-| 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
-| —（b-app 未接） | — | `/biz/personnel/{}/assignments` | — | — |
-| —（b-app 未接） | — | `/biz/personnel/{}/account-links` | — | — |
-| —（b-app 未接） | — | `/biz/personnel/{}/status-changes` | — | — |
-| —（b-app 未接） | — | `/biz/store/{}/stock-reconcile` | — | — |
-
 ### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
 
 **可用角色**：老板、店长
@@ -389,6 +425,30 @@
 | 门店送货方式 | GET | `/biz/stores/:storeNo/fulfillment` | `mStoreFulfillment` | goods-edit、store-scope |
 | 保存门店送货方式 | PUT | `/biz/stores/:storeNo/fulfillment` | `mSaveStoreFulfillment` | store-scope |
 | 关掉这一路会影响的在售商品 | GET | `/biz/stores/:storeNo/fulfillment/:channel/impact` | `mFulfillmentImpact` | store-scope |
+
+### `biz:verify`　核销、批量核销、按码搜索
+
+**可用角色**：老板、店长、店员
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 到店核销一次（不可撤销） | POST | `/biz/coupon-redeem` | `mRedeemCoupon` | verify |
+| 先看：这张券能不能核 | GET | `/biz/coupon-redeem/{code}` | `mPeekCouponCode` | verify |
+| 本自提点订单 | GET | `/biz/pickup/orders` | `mPickupOrders` | picking、verify |
+| 自提点履约总览 | GET | `/biz/pickup/overview` | `mPickupOverview` | verify |
+| 核销自提码 | POST | `/biz/pickup/verify` | `mVerify` | verify |
+| 批量核销 | POST | `/biz/pickup/verify/batch` | `mVerifyBatch` | verify |
+| 按取货码片段搜单 | GET | `/biz/pickup/verify/search` | `mVerifySearch` | verify |
+| —（b-app 未接） | — | `/biz/x/food/bottle-custody` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/bottle-custody/{}/withdrawals` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/bottle-custody/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/bottle-custody/{}/movements` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/service-entitlements/grant` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/service-entitlements/consume` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/service-entitlements/extend` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/service-entitlements/banquet-plan` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/service-entitlements/confirm-attendance` | — | — |
+| —（b-app 未接） | — | `/biz/x/food/service-entitlements/list` | — | — |
 
 ### `biz:print:read`　角色 → 权限码
 
@@ -434,26 +494,24 @@
 | —（b-app 未接） | — | `/biz/print/templates` | — | — |
 | —（b-app 未接） | — | `/biz/print/templates/{}/versions` | — | — |
 
-### `biz:print:resolve`　角色 → 权限码
+### `biz:aftersale`　售后同意/驳回/收货
 
-**可用角色**：老板、店长
+**可用角色**：老板、店长、客服
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/print/agents/{}/credential-rotations` | — | — |
-| —（b-app 未接） | — | `/biz/print/agents/{}/revocations` | — | — |
-| —（b-app 未接） | — | `/biz/print/printers/{}/connection-changes` | — | — |
-| —（b-app 未接） | — | `/biz/print/printers/{}/credential-rotations` | — | — |
-| —（b-app 未接） | — | `/biz/print/printers/{}/uncertainty-resolutions` | — | — |
-| —（b-app 未接） | — | `/biz/print/action-logs` | — | — |
-| —（b-app 未接） | — | `/biz/print/incidents` | — | — |
-| —（b-app 未接） | — | `/biz/print/incidents/{}/acknowledgements` | — | — |
-| —（b-app 未接） | — | `/biz/print/jobs/{}/manual-confirmations` | — | — |
-| —（b-app 未接） | — | `/biz/print/jobs/{}/receipts` | — | — |
-| —（b-app 未接） | — | `/biz/print/jobs/{}/result-queries` | — | — |
-| —（b-app 未接） | — | `/biz/print/jobs/{}/retries` | — | — |
-| —（b-app 未接） | — | `/biz/print/jobs/{}/stale-releases` | — | — |
-| —（b-app 未接） | — | `/biz/print/requests/{}/generation-retries` | — | — |
+| 待处理售后 | GET | `/biz/after-sale` | `mAfterSaleList` | — |
+| 售后详情 | GET | `/biz/after-sale/:afterSaleNo` | `mAfterSaleDetail` | after-sale |
+| 同意售后 | POST | `/biz/after-sale/:afterSaleNo/approve` | `mApproveAfterSale` | after-sale |
+| 在途仅退款：商家确认退款 | POST | `/biz/after-sale/:afterSaleNo/confirm-refund` | `mConfirmRefund` | after-sale |
+| 确认收到退货 | POST | `/biz/after-sale/:afterSaleNo/receive` | `mConfirmReturn` | after-sale |
+| 驳回售后 | POST | `/biz/after-sale/:afterSaleNo/reject` | `mRejectAfterSale` | after-sale |
+| 订单的当前售后 | GET | `/biz/after-sale/by-order/:orderNo` | `mActiveAfterSaleForOrder` | order |
+| 分页售后待办 | GET | `/biz/after-sale/worklist` | `mAfterSaleWorklist` | after-sale、messages、orders |
+| —（b-app 未接） | — | `/biz/x/commerce/stores/{}/after-sales` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/after-sales/{}` | — | — |
+| —（b-app 未接） | — | `/biz/x/commerce/after-sales/{}{}-decision` | — | — |
+| —（b-app 未接） | — | `/biz/stores/{}/channel-after-sale-decisions` | — | — |
 
 ### `biz:ship`　发货、标记自送送达
 
@@ -489,64 +547,21 @@
 | —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/{}` | — | — |
 | —（b-app 未接） | — | `/biz/checkout/{}/offline-receipts/lookup` | — | — |
 
-### `pay:sv:recharge:create`　查看主体级权益目录，不授予变更能力
+### `biz:print:resolve`　角色 → 权限码
 
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 按方案办理储值 | POST | `/biz/stored-value/plan-recharges` | `mSvCreateRecharge` | stored-value-recharge |
-| 取消未收款储值 | POST | `/biz/stored-value/plan-recharges/{rechargeNo}/cancel` | `mSvCancel` | stored-value-recharge |
-| 提交储值实收 | POST | `/biz/stored-value/plan-recharges/{rechargeNo}/submit` | `mSvSubmit` | stored-value-recharge |
-| —（b-app 未接） | — | `/biz/stored-value/plan-recharges/resolve` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/plan-recharges/cancel-create` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/recharges` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/cancel` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/submit` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/plan-recharges/confirm-offline` | — | — |
-
-### `biz:aftersale`　售后同意/驳回/收货
-
-**可用角色**：老板、店长、客服
+**可用角色**：老板、店长
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 待处理售后 | GET | `/biz/after-sale` | `mAfterSaleList` | — |
-| 售后详情 | GET | `/biz/after-sale/:afterSaleNo` | `mAfterSaleDetail` | after-sale |
-| 同意售后 | POST | `/biz/after-sale/:afterSaleNo/approve` | `mApproveAfterSale` | after-sale |
-| 在途仅退款：商家确认退款 | POST | `/biz/after-sale/:afterSaleNo/confirm-refund` | `mConfirmRefund` | after-sale |
-| 确认收到退货 | POST | `/biz/after-sale/:afterSaleNo/receive` | `mConfirmReturn` | after-sale |
-| 驳回售后 | POST | `/biz/after-sale/:afterSaleNo/reject` | `mRejectAfterSale` | after-sale |
-| 订单的当前售后 | GET | `/biz/after-sale/by-order/:orderNo` | `mActiveAfterSaleForOrder` | order |
-| 分页售后待办 | GET | `/biz/after-sale/worklist` | `mAfterSaleWorklist` | after-sale、messages、orders |
-
-### `biz:verify`　核销、批量核销、按码搜索
-
-**可用角色**：老板、店长、店员
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 到店核销一次（不可撤销） | POST | `/biz/coupon-redeem` | `mRedeemCoupon` | verify |
-| 先看：这张券能不能核 | GET | `/biz/coupon-redeem/{code}` | `mPeekCouponCode` | verify |
-| 本自提点订单 | GET | `/biz/pickup/orders` | `mPickupOrders` | picking、verify |
-| 自提点履约总览 | GET | `/biz/pickup/overview` | `mPickupOverview` | verify |
-| 核销自提码 | POST | `/biz/pickup/verify` | `mVerify` | verify |
-| 批量核销 | POST | `/biz/pickup/verify/batch` | `mVerifyBatch` | verify |
-| 按取货码片段搜单 | GET | `/biz/pickup/verify/search` | `mVerifySearch` | verify |
-
-### `pay:sv:account:read`　查看主体级权益目录，不授予变更能力
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 门店储值顾客 | GET | `/biz/stored-value/account-directory` | `mSvAccounts` | stored-value |
-| 门店储值账户 | GET | `/biz/stored-value/accounts/{accountRef}` | `mSvAccount` | stored-value-account |
-| Separate local and brand wallets | GET | `/biz/stores/:storeNo/stored-value/customer-selections/:customerRef/accounts` | `mSvWallets` | stored-value-account |
-| Current store records of selected wallet | GET | `/biz/stores/:storeNo/stored-value/customer-selections/:customerRef/records` | `mSvWalletRecords` | stored-value |
-| —（b-app 未接） | — | `/biz/stored-value/records` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/records/{}` | — | — |
-| —（b-app 未接） | — | `/biz/stored-value/accounts` | — | — |
+| —（b-app 未接） | — | `/biz/print/agents/{}/credential-rotations` | — | — |
+| —（b-app 未接） | — | `/biz/print/agents/{}/revocations` | — | — |
+| —（b-app 未接） | — | `/biz/print/action-logs` | — | — |
+| —（b-app 未接） | — | `/biz/print/incidents` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/manual-confirmations` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/receipts` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/result-queries` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/retries` | — | — |
+| —（b-app 未接） | — | `/biz/print/jobs/{}/stale-releases` | — | — |
 
 ### `biz:print:device`　角色 → 权限码
 
@@ -561,41 +576,6 @@
 | —（b-app 未接） | — | `/biz/print/printers/{}/status-changes` | — | — |
 | —（b-app 未接） | — | `/biz/print/printers/{}/test-jobs` | — | — |
 
-### `biz:pricing:config:publish`　Shared pricing configuration: read, draft edit and publication are independent grants.
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/pricing/fee-rules/{}` | — | — |
-| —（b-app 未接） | — | `/biz/pricing/fee-scopes/{}/adjustments/{}{}` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/initialize` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/publish` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/rollback` | — | — |
-
-### `pay:sv:consume:create`　查看主体级权益目录，不授予变更能力
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| Consume using existing consumer confirmation | POST | `/biz/stored-value/consumptions` | `mSvConsume` | stored-value |
-| Merchant original service status | GET | `/biz/stored-value/consumptions/orders/:orderNo` | `mSvConsumptionOrder` | stored-value |
-| Cancel original service without refund | POST | `/biz/stored-value/consumptions/orders/:orderNo/cancel` | `mSvConsumptionCancel` | stored-value |
-| Selected wallet service preview | POST | `/biz/stored-value/consumptions/preview` | `mSvConsumptionPreview` | stored-value |
-| Resolve exact original preview without expired references | POST | `/biz/stored-value/consumptions/resolve` | `mSvConsumptionResolve` | stored-value |
-
-### `biz:pricing:config:read`　Shared pricing configuration: read, draft edit and publication are independent grants.
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/pricing/fee-scopes/{}/adjustments` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/draft` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/preview` | — | — |
-| —（b-app 未接） | — | `/biz/pricing-configs/{}/revisions/{}` | — | — |
-
 ### `biz:receive`　到货登记、分拣单、短少上报
 
 **可用角色**：老板、店长、店员、理货员
@@ -606,6 +586,30 @@
 | 破损短少上报 | POST | `/biz/pickup/:orderNo/report` | `mReportShortage` | picking |
 | 标记到货 | POST | `/biz/pickup/arrived` | `mMarkArrived` | picking |
 | 分拣单 | GET | `/biz/pickup/picking` | `mPickingList` | picking |
+| —（b-app 未接） | — | `/biz/stores/{}/pos/access` | — | — |
+
+### `pay:sv:account:read`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 门店储值顾客 | GET | `/biz/stored-value/account-directory` | `mSvAccounts` | stored-value |
+| 门店储值账户 | GET | `/biz/stored-value/accounts/{accountRef}` | `mSvAccount` | stored-value-account |
+| —（b-app 未接） | — | `/biz/stored-value/records` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/records/{}` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/accounts` | — | — |
+
+### `biz:pricing:config:publish`　Shared pricing configuration: read, draft edit and publication are independent grants.
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/pricing/fee-rules/{}` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/initialize` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/publish` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/rollback` | — | — |
 
 ### `pay:ent:read`　查看主体级权益目录，不授予变更能力
 
@@ -627,6 +631,26 @@
 | 评价列表 | GET | `/biz/review` | `mReviewList` | reviews |
 | 申诉差评 | POST | `/biz/review/:reviewNo/appeal` | `mAppealReview` | reviews |
 | 回复评价 | POST | `/biz/review/:reviewNo/reply` | `mReplyReview` | reviews |
+
+### `pay:sv:recharge:create`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 按方案办理储值 | POST | `/biz/stored-value/plan-recharges` | `mSvCreateRecharge` | stored-value-recharge |
+| —（b-app 未接） | — | `/biz/stored-value/plan-recharges/resolve` | — | — |
+| —（b-app 未接） | — | `/biz/stored-value/recharges` | — | — |
+
+### `pay:sv:consume:create`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| Consume using existing consumer confirmation | POST | `/biz/stored-value/consumptions` | `mSvConsume` | stored-value |
+| Selected wallet service preview | POST | `/biz/stored-value/consumptions/preview` | `mSvConsumptionPreview` | stored-value |
+| Resolve exact original preview without expired references | POST | `/biz/stored-value/consumptions/resolve` | `mSvConsumptionResolve` | stored-value |
 
 ### `pay:ent:use`　查看主体级权益目录，不授予变更能力
 
@@ -657,6 +681,15 @@
 | —（b-app 未接） | — | `/biz/pricing-tax-settings` | — | — |
 | —（b-app 未接） | — | `/biz/pricing-tax-settings/reset` | — | — |
 
+### `biz:pricing:config:read`　Shared pricing configuration: read, draft edit and publication are independent grants.
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/draft` | — | — |
+| —（b-app 未接） | — | `/biz/pricing-configs/{}/preview` | — | — |
+
 ### `biz:pricing:config:update`　Shared pricing configuration: read, draft edit and publication are independent grants.
 
 **可用角色**：老板
@@ -685,15 +718,6 @@
 | 创建门店储值方案 | POST | `/biz/stored-value/plans` | `mSvCreatePlan` | stored-value-plan-edit |
 | 启停门店储值方案 | PUT | `/biz/stored-value/plans/{planNo}/status` | `mSvPlanStatus` | stored-value-plan-detail |
 
-### `pay:sv:recharge:receive`　查看主体级权益目录，不授予变更能力
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 确认储值收款 | POST | `/biz/stored-value/plan-recharges/{rechargeNo}/receive` | `mSvReceive` | stored-value-recharge |
-| —（b-app 未接） | — | `/biz/stored-value/recharges/{}/receive` | — | — |
-
 ### `pay:sv:recharge:read`　查看主体级权益目录，不授予变更能力
 
 **可用角色**：老板
@@ -702,24 +726,6 @@
 |---|---|---|---|---|
 | 独立储值进度 | GET | `/biz/stored-value/plan-recharges/{rechargeNo}` | `mSvRecharge` | stored-value-recharge |
 | —（b-app 未接） | — | `/biz/stored-value/recharges/{}` | — | — |
-
-### `pay:ent:template:write`　编辑权益草稿，不能发布
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/entitlement-templates` | — | — |
-| —（b-app 未接） | — | `/biz/entitlement-templates/{}/draft` | — | — |
-
-### `pay:ent:template:publish`　发布与停发影响全主体，需单独授权
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/entitlement-templates/{}/publish` | — | — |
-| —（b-app 未接） | — | `/biz/entitlement-templates/{}/status` | — | — |
 
 ### `biz:print:reprint`　角色 → 权限码
 
@@ -755,13 +761,13 @@
 |---|---|---|---|---|
 | —（b-app 未接） | — | `/biz/entitlement-issue-batches` | — | — |
 
-### `pay:ent:issue:manage`　调整发行容量，不直接发放实例
+### `pay:ent:template:write`　编辑权益草稿，不能发布
 
 **可用角色**：老板
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/entitlement-templates/{}/issue-policy` | — | — |
+| —（b-app 未接） | — | `/biz/entitlement-templates` | — | — |
 
 ### `biz:print:submit`　角色 → 权限码
 
@@ -873,7 +879,7 @@
 | `stored-value-account` | **无** | `pay:sv:account:read` | 老板、店长、店员、理货员、配送员、客服 | 店长（缺 pay:sv:account:read）　店员（缺 pay:sv:account:read）　理货员（缺 pay:sv:account:read）　配送员（缺 pay:sv:account:read）　客服（缺 pay:sv:account:read） |
 | `stored-value-plan-detail` | `pay:sv:plan:read` | `pay:sv:plan:read`、`pay:sv:plan:manage` | 老板 | — |
 | `stored-value-plan-edit` | `pay:sv:plan:manage` | `pay:sv:plan:read`、`pay:sv:plan:manage` | 老板 | — |
-| `stored-value-recharge` | `pay:sv:recharge:create` | `pay:sv:recharge:create`、`pay:sv:recharge:receive`、`pay:sv:recharge:read`、`pay:sv:plan:manage`、`pay:sv:plan:read`、`biz:customer` | 老板 | — |
+| `stored-value-recharge` | `pay:sv:recharge:create` | `pay:sv:recharge:create`、`pay:sv:recharge:read`、`pay:sv:plan:manage`、`pay:sv:plan:read`、`biz:customer` | 老板 | — |
 | `stores` | `biz:store:admin` | `biz:finance`、`biz:store:admin`、`biz:customer` | 老板 | — |
 | `suppliers` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
 | `transfer` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
@@ -897,10 +903,6 @@
 | `/biz/entitlement-issue-batches` | `pay:ent:issue` | 老板 |
 | `/biz/entitlement-issue-batches/{}` | `pay:ent:read` | 老板 |
 | `/biz/entitlement-templates` | `pay:ent:template:write` | 老板 |
-| `/biz/entitlement-templates/{}/draft` | `pay:ent:template:write` | 老板 |
-| `/biz/entitlement-templates/{}/issue-policy` | `pay:ent:issue:manage` | 老板 |
-| `/biz/entitlement-templates/{}/publish` | `pay:ent:template:publish` | 老板 |
-| `/biz/entitlement-templates/{}/status` | `pay:ent:template:publish` | 老板 |
 | `/biz/entitlement-usage` | `pay:ent:read` | 老板 |
 | `/biz/entitlement-uses` | `pay:ent:use` | 老板 |
 | `/biz/entitlement-uses/preview` | `pay:ent:use` | 老板 |
@@ -926,18 +928,14 @@
 | `/biz/pricing-configs/{}/preview` | `biz:pricing:config:read` | 老板 |
 | `/biz/pricing-configs/{}/publish` | `biz:pricing:config:publish` | 老板 |
 | `/biz/pricing-configs/{}/reset` | `biz:pricing:config:update` | 老板 |
-| `/biz/pricing-configs/{}/revisions/{}` | `biz:pricing:config:read` | 老板 |
 | `/biz/pricing-configs/{}/rollback` | `biz:pricing:config:publish` | 老板 |
 | `/biz/pricing-configs/{}/upgrade` | `biz:pricing:config:update` | 老板 |
 | `/biz/pricing-manual-adjustments` | `biz:campaign` | 老板、店长 |
 | `/biz/pricing-manual-adjustments/{}` | `biz:campaign` | 老板、店长 |
 | `/biz/pricing-manual-adjustments/{}{}` | `biz:campaign` | 老板、店长 |
-| `/biz/pricing-manual-policies/{}/{}/{}` | `biz:finance` | 老板 |
 | `/biz/pricing-tax-settings` | `biz:pricing:tax:update` | 老板 |
 | `/biz/pricing-tax-settings/reset` | `biz:pricing:tax:update` | 老板 |
 | `/biz/pricing/fee-rules/{}` | `biz:pricing:config:publish` | 老板 |
-| `/biz/pricing/fee-scopes/{}/adjustments` | `biz:pricing:config:read` | 老板 |
-| `/biz/pricing/fee-scopes/{}/adjustments/{}{}` | `biz:pricing:config:publish` | 老板 |
 | `/biz/print/action-logs` | `biz:print:resolve` | 老板、店长 |
 | `/biz/print/adapters` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/agents` | `biz:print:device` | 老板、店长 |
@@ -952,7 +950,6 @@
 | `/biz/print/exports/{}/download-grants` | `biz:print:export` | 老板、店长、店员 |
 | `/biz/print/health` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/incidents` | `biz:print:resolve` | 老板、店长 |
-| `/biz/print/incidents/{}/acknowledgements` | `biz:print:resolve` | 老板、店长 |
 | `/biz/print/jobs` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/jobs/{}` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/jobs/{}/attempts` | `biz:print:read` | 老板、店长、店员 |
@@ -969,16 +966,12 @@
 | `/biz/print/orders/{}/summary` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/printers` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/printers/{}` | `biz:print:read` | 老板、店长、店员 |
-| `/biz/print/printers/{}/connection-changes` | `biz:print:resolve` | 老板、店长 |
-| `/biz/print/printers/{}/credential-rotations` | `biz:print:resolve` | 老板、店长 |
 | `/biz/print/printers/{}/probes` | `biz:print:device` | 老板、店长 |
 | `/biz/print/printers/{}/status-changes` | `biz:print:device` | 老板、店长 |
 | `/biz/print/printers/{}/test-jobs` | `biz:print:device` | 老板、店长 |
-| `/biz/print/printers/{}/uncertainty-resolutions` | `biz:print:resolve` | 老板、店长 |
 | `/biz/print/reprints` | `biz:print:reprint` | 老板、店长、店员 |
 | `/biz/print/requests` | `biz:print:read` | 老板、店长、店员 |
 | `/biz/print/requests/{}` | `biz:print:read` | 老板、店长、店员 |
-| `/biz/print/requests/{}/generation-retries` | `biz:print:resolve` | 老板、店长 |
 | `/biz/print/route-versions/{}/dry-run` | `biz:print:config` | 老板、店长 |
 | `/biz/print/route-versions/{}/publish` | `biz:print:config` | 老板、店长 |
 | `/biz/print/routes` | `biz:print:config` | 老板、店长 |
@@ -1003,16 +996,64 @@
 | `/biz/store/{}/stock-reconcile` | `biz:store:admin` | 老板 |
 | `/biz/store/{}/stock-reconcile/{}` | `biz:stock` | 老板、店长、店员、理货员 |
 | `/biz/stored-value/accounts` | `pay:sv:account:read` | 老板 |
-| `/biz/stored-value/plan-recharges/cancel-create` | `pay:sv:recharge:create` | 老板 |
-| `/biz/stored-value/plan-recharges/confirm-offline` | `pay:sv:recharge:create` | 老板 |
 | `/biz/stored-value/plan-recharges/resolve` | `pay:sv:recharge:create` | 老板 |
 | `/biz/stored-value/recharges` | `pay:sv:recharge:create` | 老板 |
 | `/biz/stored-value/recharges/{}` | `pay:sv:recharge:read` | 老板 |
-| `/biz/stored-value/recharges/{}/cancel` | `pay:sv:recharge:create` | 老板 |
-| `/biz/stored-value/recharges/{}/receive` | `pay:sv:recharge:receive` | 老板 |
-| `/biz/stored-value/recharges/{}/submit` | `pay:sv:recharge:create` | 老板 |
 | `/biz/stored-value/records` | `pay:sv:account:read` | 老板 |
 | `/biz/stored-value/records/{}` | `pay:sv:account:read` | 老板 |
+| `/biz/stores/{}/channel-after-sale-decisions` | `biz:aftersale` | 老板、店长、客服 |
+| `/biz/stores/{}/channel-order-policies` | `biz:store:admin` | 老板 |
+| `/biz/stores/{}/pos/access` | `biz:receive` | 老板、店长、店员、理货员 |
+| `/biz/x/commerce/account-operations` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/accounts` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/accounts/{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/accounts/{}/statements` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/accounts/{}{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/after-sales/{}` | `biz:aftersale` | 老板、店长、客服 |
+| `/biz/x/commerce/after-sales/{}{}-decision` | `biz:aftersale` | 老板、店长、客服 |
+| `/biz/x/commerce/catalog-scopes/{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/catalog-scopes/{}{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/connections/{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/connections/{}{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/inbound-events/{}/receipts` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/inbound-events/{}{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/operations/{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/operations/{}/attempts` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/operations/{}{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/orders/{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/orders/{}/lines` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/orders/{}/revisions` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/orders/{}{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/providers` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/providers/{}/profiles` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/redemptions/{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/redemptions/{}{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/resource-mappings` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/resource-mappings/{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/after-sales` | `biz:aftersale` | 老板、店长、客服 |
+| `/biz/x/commerce/stores/{}/catalog-scopes` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/connections` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/inbound-events` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/operations` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/orders` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/redemptions` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/resource-mappings` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/statement-lines` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/statistics/sync` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/stores/{}/sync-runs` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/sync-runs/{}` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/sync-runs/{}/items` | `biz:store:admin` | 老板 |
+| `/biz/x/commerce/sync-runs/{}{}-queued` | `biz:store:admin` | 老板 |
+| `/biz/x/food/bottle-custody` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/bottle-custody/{}` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/bottle-custody/{}/movements` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/bottle-custody/{}/withdrawals` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/service-entitlements/banquet-plan` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/service-entitlements/confirm-attendance` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/service-entitlements/consume` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/service-entitlements/extend` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/service-entitlements/grant` | `biz:verify` | 老板、店长、店员 |
+| `/biz/x/food/service-entitlements/list` | `biz:verify` | 老板、店长、店员 |
 
 > 这些是「写了、测了、没人调用」—— 要么排期接上，要么从 `REQUIRED` 删掉。
 > `noStaleEntries` 只拦已删除的端点，**拦不住「端点还在但没人用」**。
@@ -1065,45 +1106,6 @@
 
 | 端点 | 功能点 |
 |---|---|
-| `/biz/auth/login` | 商家登录 |
-| `/biz/auth/otp/send` | 发送验证码 |
-| `/biz/auth/password` | 设置登录密码 |
-| `/biz/auth/staff-login` | 员工登录 |
-| `/biz/category/tree` | 类目树（选类目） |
-| `/biz/communities` | 可选社区（设经营范围用） |
-| `/biz/context` | 我的作用域与权限 |
-| `/biz/freight-template/list` | 平台在用的运费模板 |
-| `/biz/geo/estates` | 一片地方的小区（服务端读穿透：缓存优先，不够就问地图） |
-| `/biz/geo/estates/counts` | 下辖各片的小区条数（列表预告） |
-| `/biz/geo/geocode` | — |
-| `/biz/geo/reverse` | 坐标转地址（门店地址定位） |
-| `/biz/geo/tips` | 地点输入提示（提报小区按名搜 POI） |
-| `/biz/merchant/agreement/accept` | 本人同意商家服务协议 |
-| `/biz/merchant/apply` | 提交入驻申请 |
-| `/biz/merchant/display-name` | 改用户名 |
-| `/biz/merchant/profile` | 商家资料 |
-| `/biz/merchant/quick-start` | 无证照快速开店 |
-| `/biz/message` | 商家消息列表 |
-| `/biz/message/read-all` | 全部已读 |
-| `/biz/message/subscribe` | 上报订阅消息授权结果（小程序里的商家页面） |
-| `/biz/message/unread-count` | 未读数（红点轮询，只给一个数） |
-| `/biz/message/{}/read` | 标记已读 |
-| `/biz/notify/email` | 改本店的邮件接收地址 |
-| `/biz/notify/setting` | 本店的通知开关与企微群状态 |
-| `/biz/notify/sms-phones` | 改本店的额外短信接收号 |
-| `/biz/notify/wecom` | 录入本店的企业微信群机器人地址 |
-| `/biz/notify/wecom/test` | 往本店的企微群发一条测试 |
-| `/biz/push-token` | 绑定 App 推送设备（登录后） |
-| `/biz/push-token/unregister` | 解绑推送设备（登出前，共用设备换班必须解） |
-| `/biz/regions` | 行政区划下一级（框覆盖范围用） |
-| `/biz/regions/parse` | 经营范围文字录入：一句话识别成范围项（只读） |
-| `/biz/regions/path` | 区划从省到自身的路径 |
-| `/biz/regions/search` | 跨级搜区划与聚落（选择器搜索） |
-| `/biz/regions/villages` | 街道/镇下的官方村名词典（提报村用） |
-| `/biz/store/list` | 我的门店 |
-| `/biz/store/{}/freight-template` | 本店运费模板 |
-| `/biz/stores/mine` | 我能进的所有门店（按证照分组） |
-| `/biz/upload/image` | 上传商品图 |
 
 ## 六、任一权限即可（汇总型端点）
 
@@ -1111,10 +1113,19 @@
 仍然要求「在这家店有角色」——空角色的人一样进不来。
 
 - `/biz/broken`　
+- `/biz/business-types`　
+- `/biz/business-types/{}/plans`　
 - `/biz/dashboard/todo`　工作台待办
 - `/biz/example`　
 - `/biz/example/after`　
 - `/biz/example/before`　
 - `/biz/example/guarded-after`　
 - `/biz/example/guarded-before`　
+- `/biz/merchant/store-setup`　
+- `/biz/stores/{}/context`　
+- `/biz/stores/{}/end-access`　
+- `/biz/stores/{}/end-sessions`　
+- `/biz/stores/{}/entitlements`　
+- `/biz/stores/{}/mall/`　
+- `/biz/stores/{}/subscription`　
 

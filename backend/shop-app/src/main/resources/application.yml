@@ -204,6 +204,10 @@ shop:
       # 三道防线：① 默认空；② 开着时每次启动打一条 ERROR 级横幅；
       # ③ prod profile 下直接拒绝启动（见 FixedOtpGuard）。
       fixed: ${SHOP_OTP_FIXED:}
+  merchant:
+    # 本部署的唯一经营市场（TDD-B端建店默认经营市场）。决定新主体的 market 与 FREE 期币种；
+    # 该市场须在 sys_market 中启用。台湾实例设 TW。
+    default-market: ${SHOP_DEFAULT_MARKET:CN}
   period:
     # 社区集单：未达起订量时商家的处理时限（小时）的**缺省值**。
     # 活动上配了 decide_hours 以活动为准（店主 2026-09-18 定：每个活动单独配置）
@@ -748,6 +752,13 @@ spring:
   config:
     activate:
       on-profile: api
+# 商城 HTTP 按部署面拆：公网 api 只挂 /biz 商家路由，内网 ops 只挂 /ops 运营路由。
+# 两边共用同一套宿主端口（ShopMallConfiguration 在两个 profile 都装配）。
+commerce:
+  mall:
+    http:
+      operator:
+        enabled: false
 
 ---
 spring:
@@ -757,6 +768,11 @@ spring:
 server:
   # 与 api 不同端口：即使误挂到公网，也不会撞上已开放的 8080
   port: 8081
+commerce:
+  mall:
+    http:
+      buyer:
+        enabled: false
 
 ---
 spring:

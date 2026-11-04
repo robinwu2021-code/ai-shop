@@ -145,7 +145,7 @@ onLoad((q) => {
 
       <sh-actionbar>
         <view class="sh-row bar">
-          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("couponSend.cancel") }}</view>
+          <view class="sh-btn sh-btn--muted sh-fill" @tap="back">{{ $t("common.cancel") }}</view>
           <view class="sh-btn bar__main" :class="{ 'is-disabled': busy || !willIssue }" @tap="send">
             {{ $t("couponSend.submitN", { n: willIssue }) }}
           </view>

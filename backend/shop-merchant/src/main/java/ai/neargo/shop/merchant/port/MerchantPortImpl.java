@@ -9,6 +9,7 @@ import ai.neargo.shop.spi.pay.PayMerchantReadSwitch;
 import ai.neargo.shop.spi.user.MerchantAdminPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.common.BizException;
@@ -18,6 +19,7 @@ import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityCommunityMapper;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchPaymentMapper;
+import ai.neargo.shop.merchant.service.MerchantStoreCreation;
 import java.util.List;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.reach.ConsumerProfile;
@@ -60,6 +62,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      */
     private static final int MAX_ENTITIES_PER_ACCOUNT = 5;
 
+    private final MerchantStoreCreation commerce;
     private final MchEntityMapper merchantMapper;
     private final PayMerchantMirror payMirror;
     private final org.springframework.beans.factory.ObjectProvider<PayMerchantReadSwitch> readSwitch;
@@ -102,7 +105,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     private final ai.neargo.shop.geo.ReachGeoProps geoProps;
 
 
-    public MerchantPortImpl(MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
+    public MerchantPortImpl(MerchantStoreCreation commerce, MchEntityMapper merchantMapper, MchEntityCommunityMapper merchantCommunityMapper,
                             MchPaymentMapper merchantPaymentMapper,
                             ai.neargo.shop.merchant.service.MerchantStoreService merchantStoreService,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
@@ -133,6 +136,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         this.payMirror = payMirror;
         this.readSwitch = readSwitch;
         this.payRoutes = payRoutes;
+        this.commerce = commerce;
         this.admissionServiceProvider = admissionServiceProvider;
         this.debtServiceProvider = debtServiceProvider;
         this.fulfillmentChannelMapper = fulfillmentChannelMapper;
@@ -1261,6 +1265,16 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     @Override
     @Transactional
     public String activate(ActivateCommand cmd) {
+        return activate(cmd, false);
+    }
+
+    @Override
+    @Transactional
+    public String activateSelfOperated(ActivateCommand cmd) {
+        return activate(cmd, true);
+    }
+
+    private String activate(ActivateCommand cmd, boolean platformStore) {
         String ownerUserNo = cmd.ownerUserNo();
         String name = cmd.name();
         String type = cmd.subject();
@@ -1312,7 +1326,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             merchantMapper.updateById(existing);
             // 重复点击「通过」是常态：全部按幂等写，不重复插
             ensureOwnerStaff(existing.getEntityNo(), ownerUserNo);
-            ensureDefaultStore(existing.getEntityNo(), name);
+            ensureDefaultStore(existing.getEntityNo(), name, null, null, null, platformStore);
             ensureFreePlan(existing.getEntityNo());
             syncCommunities(existing.getEntityNo(), cmd.communityNos());
             ensurePayment(existing.getEntityNo(), type, cmd.settleAccountType());
@@ -1323,7 +1337,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return existing.getEntityNo();
         }
 
-        requireEntityQuota(ownerUserNo);
+        requireEntityQuota(ownerUserNo, false);
 
         MchEntity m = new MchEntity();
         m.setEntityNo(BizKey.next(BizKey.MERCHANT));
@@ -1363,7 +1377,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          *   分账主体 少了第一笔订单就分不了账（ADR-002）
          */
         ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
-        ensureDefaultStore(m.getEntityNo(), name);
+        ensureDefaultStore(m.getEntityNo(), name, null, null, null, platformStore);
         ensureFreePlan(m.getEntityNo());
         syncCommunities(m.getEntityNo(), cmd.communityNos());
         ensurePayment(m.getEntityNo(), type, cmd.settleAccountType());
@@ -1386,12 +1400,22 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 永远补不齐的占位主体。想在这个占位主体下再开一家店，走正常建店接口
          * （那时 BizContext 已经有了，不需要走这条路）。
          */
-        var shell = pendingLicenseEntityOf(ownerUserNo);
+        var actor = commerce.actor(ownerUserNo);
+        var shell = pendingLicenseEntityOf(ownerUserNo, actor != null);
         if (shell.isPresent()) {
-            return new QuickStartResult(shell.get(), defaultStoreNoOf(shell.get()));
+            // 同一待补证壳的重试必须是同一市场；换了市场不能复用旧壳（它的免费期币种已冻结）
+            if (cmd.market() != null) {
+                MchEntity existing = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                        Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, shell.get()).last("limit 1")));
+                if (existing != null && !cmd.market().equals(existing.getMarket()))
+                    throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            var row = defaultStoreOf(shell.get(), actor != null);
+            commerce.checkReplay(row, cmd.businessTypeCode());
+            return new QuickStartResult(shell.get(), row == null ? null : row.getStoreNo());
         }
 
-        requireEntityQuota(ownerUserNo);
+        requireEntityQuota(ownerUserNo, actor != null);
 
         String name = cmd.storeName().trim();
         MchEntity m = new MchEntity();
@@ -1420,6 +1444,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         m.setJoinedAt(System.currentTimeMillis());
         m.setStatus(MchEntity.PENDING_LICENSE);
         m.setServiceScope(AREA_COMMUNITY);
+        if (cmd.market() != null) m.setMarket(cmd.market());
         merchantMapper.insert(m);
 
         /*
@@ -1429,34 +1454,86 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          *                   显示一条永远推不动的记录
          */
         ensureOwnerStaff(m.getEntityNo(), ownerUserNo);
-        ensureDefaultStore(m.getEntityNo(), name, cmd.address());
+        ensureDefaultStore(m.getEntityNo(), name, cmd.address(), actor, cmd.businessTypeCode(), false);
         ensureFreePlan(m.getEntityNo());
         /*
          * 门店号一并返回。调用方拿它当 X-Store-No 进这家新店 —— 身份解析按门店反查主体，
          * 而这个账号名下可能已经有另一张执照（多证照），按默认主体解析出来的是**旧的那家**。
          */
-        return new QuickStartResult(m.getEntityNo(), defaultStoreNoOf(m.getEntityNo()));
+        return new QuickStartResult(m.getEntityNo(), defaultStoreOf(m.getEntityNo(), actor != null).getStoreNo());
     }
 
     /** 主体的默认门店号。解除数据域的理由同 {@link #ensureDefaultStore} —— 建主体时作用域还不存在。 */
-    private String defaultStoreNoOf(String merchantNo) {
-        var store = DataScopeContext.executeWithoutScope(() ->
+    private MchStore defaultStoreOf(String merchantNo, boolean current) {
+        return DataScopeContext.executeWithoutScope(() ->
                 storeMapper.selectOne(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
-                        .last("limit 1")));
-        return store == null ? null : store.getStoreNo();
+                        .last(current ? "limit 1 for share" : "limit 1")));
     }
 
     @Override
     public java.util.Optional<String> pendingLicenseEntityOf(String userNo) {
+        return pendingLicenseEntityOf(userNo, false);
+    }
+
+    @Override
+    public java.util.Optional<String> merchantApplicationEntity(String userNo, String selectedEntityNo) {
+        if (selectedEntityNo != null) {
+            requirePendingLicenseOwner(userNo, selectedEntityNo);
+            return java.util.Optional.of(selectedEntityNo);
+        }
+        return DataScopeContext.executeWithoutScope(() -> legacyApplicationEntity(userNo));
+    }
+
+    private java.util.Optional<String> legacyApplicationEntity(String userNo) {
+        // Current locking reads, including inactive owner rows. Dropping those rows would
+        // silently turn a disabled pending shop into permission to file a new application.
+        var owners = staffMapper.selectList(Wrappers.<MchAccount>lambdaQuery()
+                .eq(MchAccount::getUserNo, userNo).eq(MchAccount::getIsOwner, true)
+                .last("for update"));
+        if (owners.isEmpty()) return java.util.Optional.empty();
+        var pending = merchantMapper.selectList(Wrappers.<MchEntity>lambdaQuery()
+                .in(MchEntity::getEntityNo, owners.stream().map(MchAccount::getEntityNo).toList())
+                .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE).last("for update"));
+        if (pending.isEmpty()) return java.util.Optional.empty();
+        if (pending.size() != 1) throw BizException.of(ErrorCode.FORBIDDEN);
+        String entity = pending.getFirst().getEntityNo();
+        if (owners.stream().noneMatch(a -> entity.equals(a.getEntityNo()) && MchAccount.ACTIVE.equals(a.getStatus())))
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        var stores = storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getEntityNo, entity).last("for update"));
+        if (stores.stream().anyMatch(s -> s.getCommerceModel() != null && !"LEGACY".equals(s.getCommerceModel()))
+                || stores.stream().noneMatch(s -> Boolean.TRUE.equals(s.getIsDefault()) && MchStore.ACTIVE.equals(s.getStatus())))
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        return java.util.Optional.of(entity);
+    }
+
+    private void requirePendingLicenseOwner(String userNo, String entityNo) {
+        var owned = DataScopeContext.executeWithoutScope(() -> staffMapper.selectList(
+                Wrappers.<MchAccount>lambdaQuery()
+                        .eq(MchAccount::getEntityNo, entityNo)
+                        .eq(MchAccount::getUserNo, userNo)
+                        .eq(MchAccount::getIsOwner, true)
+                        .eq(MchAccount::getStatus, "ACTIVE")
+                        .last("limit 1 for update")));
+        if (owned.isEmpty()) throw BizException.of(ErrorCode.FORBIDDEN);
+        var pending = DataScopeContext.executeWithoutScope(() -> merchantMapper.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getEntityNo, entityNo)
+                        .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE).last("limit 1 for update")));
+        if (pending == null) throw BizException.of(ErrorCode.FORBIDDEN);
+    }
+
+    private java.util.Optional<String> pendingLicenseEntityOf(String userNo, boolean current) {
         if (userNo == null || userNo.isBlank()) {
             return java.util.Optional.empty();
         }
         List<String> ownedEntityNos = DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNo)
-                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true)
+                        .eq(current, ai.neargo.shop.merchant.entity.MchAccount::getStatus, "ACTIVE")
+                        .last(current, "for share"))
                 .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo).toList());
         if (ownedEntityNos.isEmpty()) {
             return java.util.Optional.empty();
@@ -1465,7 +1542,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
                         .in(MchEntity::getEntityNo, ownedEntityNos)
                         .eq(MchEntity::getStatus, MchEntity.PENDING_LICENSE)
-                        .last("limit 1")));
+                        .last(current ? "limit 1 for share" : "limit 1")));
         return java.util.Optional.ofNullable(shell).map(MchEntity::getEntityNo);
     }
 
@@ -1478,14 +1555,15 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
      * <p>只数 owner 行 —— 被邀请去别人店里当店员不占自己的名额，
      * 那不是他的证照。
      */
-    private void requireEntityQuota(String ownerUserNo) {
+    private void requireEntityQuota(String ownerUserNo, boolean current) {
         if (ownerUserNo == null || ownerUserNo.isBlank()) {
             return;
         }
         long owned = DataScopeContext.executeWithoutScope(() ->
                 staffMapper.selectList(Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, ownerUserNo)
-                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true))
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getIsOwner, true)
+                        .last(current, "for share"))
                 .stream().map(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo)
                 .distinct().count());
         if (owned >= MAX_ENTITIES_PER_ACCOUNT) {
@@ -1561,12 +1639,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     /** 建默认门店。一主体恰好一个，删不掉 —— 它是单店商家的全部。 */
-    private void ensureDefaultStore(String merchantNo, String name) {
-        ensureDefaultStore(merchantNo, name, null);
-    }
-
-    /** @param address 门店地址，可空 —— 走审核那条路时地址在店铺资料里单独填，只有快速开店会带进来 */
-    private void ensureDefaultStore(String merchantNo, String name, String address) {
+    private void ensureDefaultStore(String merchantNo, String name, String address,
+            ai.neargo.commerce.api.common.ActorContext actor, String type, boolean platformStore) {
         boolean exists = DataScopeContext.executeWithoutScope(() ->
                 storeMapper.exists(Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
                         .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)));
@@ -1574,6 +1648,8 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return;
         }
         var store = new ai.neargo.shop.merchant.entity.MchStore();
+        if (platformStore) store.setCommerceModel("LEGACY");
+        else commerce.prepare(store, actor, type);
         store.setStoreNo(BizKey.next(BizKey.STORE));
         store.setEntityNo(merchantNo);
         store.setName(name);
@@ -1585,6 +1661,7 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
         store.setFeatured("[]");
         DataScopeContext.executeWithoutScope(() -> storeMapper.insert(store));
         payMirror.changed(merchantNo); // 收款商户双写（I4 S4）：提交后同步新表
+        if (!platformStore) commerce.inserted(store, actor);
     }
 
     /**

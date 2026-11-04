@@ -1,0 +1,619 @@
+{
+  "login": {
+    "method": "POST",
+    "path": "/biz/auth/login",
+    "body": {
+      "grantType": "PHONE_OTP",
+      "principal": "15965010103",
+      "credential": "<once-valid-otp>",
+      "agreed": true
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "token": "<BTK>",
+        "merchant": {
+          "merchantNo": "",
+          "name": "",
+          "logo": "",
+          "status": "NONE",
+          "subject": "PERSONAL",
+          "tier": "SMALL",
+          "phone": "15965010103",
+          "isPickupPoint": false,
+          "pickupNo": null,
+          "rejectReason": null,
+          "industry": null,
+          "description": null,
+          "fundsMode": null,
+          "agreementPending": false,
+          "favoriteCount": 0,
+          "displayName": "",
+          "currentStoreNo": null
+        }
+      }
+    }
+  },
+  "types": {
+    "method": "GET",
+    "path": "/biz/business-types",
+    "headers": {
+      "Authorization": "Bearer <BTK>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": [
+        {
+          "businessTypeCode": "RETAIL",
+          "displayName": "Retail",
+          "catalogVersion": 1
+        }
+      ]
+    }
+  },
+  "plans": {
+    "method": "GET",
+    "path": "/biz/business-types/RETAIL/plans",
+    "headers": {
+      "Authorization": "Bearer <BTK>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "businessTypeCode": "RETAIL",
+        "catalogVersion": 1,
+        "status": "PUBLISHED",
+        "plans": [
+          {
+            "planNo": "FREE",
+            "planVersionNo": "FREE-v",
+            "tier": "FREE",
+            "displayName": "FREE",
+            "summary": "summary",
+            "entitlementCodes": [
+              "BASE"
+            ],
+            "priceOptions": [],
+            "priceStatus": "INCLUDED",
+            "purchaseAvailable": false,
+            "saleStatus": "ON_SALE"
+          },
+          {
+            "planNo": "PRO",
+            "planVersionNo": "PRO-v",
+            "tier": "PRO",
+            "displayName": "PRO",
+            "summary": "summary",
+            "entitlementCodes": [
+              "BASE"
+            ],
+            "priceOptions": [],
+            "priceStatus": "UNCONFIGURED",
+            "purchaseAvailable": false,
+            "saleStatus": "ON_SALE"
+          },
+          {
+            "planNo": "CHAIN",
+            "planVersionNo": "CHAIN-v",
+            "tier": "CHAIN",
+            "displayName": "CHAIN",
+            "summary": "summary",
+            "entitlementCodes": [
+              "BASE"
+            ],
+            "priceOptions": [],
+            "priceStatus": "UNCONFIGURED",
+            "purchaseAvailable": false,
+            "saleStatus": "ON_SALE"
+          }
+        ]
+      }
+    }
+  },
+  "quickStart": {
+    "method": "POST",
+    "path": "/biz/merchant/quick-start",
+    "headers": {
+      "Authorization": "Bearer <BTK>"
+    },
+    "body": {
+      "storeName": "Selected pending shop",
+      "businessTypeCode": "RETAIL"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "merchantNo": "ENTITY-EXAMPLE",
+        "name": "Selected pending shop",
+        "logo": "",
+        "status": "PENDING_LICENSE",
+        "subject": null,
+        "tier": "SMALL",
+        "phone": "15965010103",
+        "isPickupPoint": false,
+        "pickupNo": null,
+        "rejectReason": null,
+        "industry": null,
+        "description": null,
+        "fundsMode": "AGGREGATED",
+        "agreementPending": false,
+        "favoriteCount": 0,
+        "displayName": "",
+        "currentStoreNo": "STORE-EXAMPLE"
+      }
+    }
+  },
+  "context": {
+    "method": "GET",
+    "path": "/biz/stores/{storeNo}/context",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "storeNo": "STORE-EXAMPLE",
+        "entityNo": "ENTITY-EXAMPLE",
+        "commerceModel": "STORE_V1",
+        "businessTypeCode": "RETAIL",
+        "storeStatus": "ACTIVE",
+        "entityStatus": "PENDING_LICENSE",
+        "owner": true,
+        "roles": [
+          "OWNER"
+        ],
+        "canProcure": true,
+        "subscription": {
+          "storeNo": "STORE-EXAMPLE",
+          "commerceModel": "STORE_V1",
+          "entitlementVersion": 1,
+          "free": {
+            "sourceNo": "SOURCE-EXAMPLE",
+            "sourceType": "FREE",
+            "planNo": "FREE",
+            "planVersionNo": "FREE-v",
+            "tier": "FREE",
+            "displayName": "FREE",
+            "planStartsAt": 1793717808348,
+            "planEndsAt": null,
+            "grantedDurationMs": null,
+            "entitlementCodes": [
+              "BASE"
+            ],
+            "gift": false,
+            "lifecycle": "NORMAL",
+            "revokedDurationMs": 0
+          },
+          "currentPlan": {
+            "sourceNo": "SOURCE-EXAMPLE",
+            "sourceType": "FREE",
+            "planNo": "FREE",
+            "planVersionNo": "FREE-v",
+            "tier": "FREE",
+            "displayName": "FREE",
+            "planStartsAt": 1793717808348,
+            "planEndsAt": null,
+            "grantedDurationMs": null,
+            "entitlementCodes": [
+              "BASE"
+            ],
+            "gift": false,
+            "lifecycle": "NORMAL",
+            "revokedDurationMs": 0
+          },
+          "sources": [
+            {
+              "sourceNo": "SOURCE-EXAMPLE",
+              "sourceType": "FREE",
+              "planNo": "FREE",
+              "planVersionNo": "FREE-v",
+              "tier": "FREE",
+              "displayName": "FREE",
+              "planStartsAt": 1793717808348,
+              "planEndsAt": null,
+              "grantedDurationMs": null,
+              "entitlementCodes": [
+                "BASE"
+              ],
+              "gift": false,
+              "lifecycle": "NORMAL",
+              "revokedDurationMs": 0
+            }
+          ],
+          "serverNow": 1793717808626,
+          "nextBoundaryAt": null,
+          "purchaseAvailable": false,
+          "nextAction": "VIEW_ENTITLEMENTS"
+        },
+        "entitlements": {
+          "storeNo": "STORE-EXAMPLE",
+          "commerceModel": "STORE_V1",
+          "entitlementVersion": 1,
+          "items": [
+            {
+              "entitlementCode": "BASE",
+              "endCode": "desk",
+              "commercialStatus": "ACTIVE",
+              "current": {
+                "startsAt": 1793717808348,
+                "endsAt": null
+              },
+              "future": [],
+              "slices": [
+                {
+                  "sourceNo": "SOURCE-EXAMPLE",
+                  "startsAt": 1793717808348,
+                  "endsAt": null
+                }
+              ],
+              "remainingMs": null,
+              "nextBoundaryAt": null,
+              "nextAction": "CHECK_END_ACCESS"
+            }
+          ],
+          "serverNow": 1793717808626,
+          "nextBoundaryAt": null
+        },
+        "serverNow": 1793717808626,
+        "entitlementVersion": 1,
+        "nextBoundaryAt": null
+      }
+    }
+  },
+  "subscription": {
+    "method": "GET",
+    "path": "/biz/stores/{storeNo}/subscription",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "storeNo": "STORE-EXAMPLE",
+        "commerceModel": "STORE_V1",
+        "entitlementVersion": 1,
+        "free": {
+          "sourceNo": "SOURCE-EXAMPLE",
+          "sourceType": "FREE",
+          "planNo": "FREE",
+          "planVersionNo": "FREE-v",
+          "tier": "FREE",
+          "displayName": "FREE",
+          "planStartsAt": 1793717808348,
+          "planEndsAt": null,
+          "grantedDurationMs": null,
+          "entitlementCodes": [
+            "BASE"
+          ],
+          "gift": false,
+          "lifecycle": "NORMAL",
+          "revokedDurationMs": 0
+        },
+        "currentPlan": {
+          "sourceNo": "SOURCE-EXAMPLE",
+          "sourceType": "FREE",
+          "planNo": "FREE",
+          "planVersionNo": "FREE-v",
+          "tier": "FREE",
+          "displayName": "FREE",
+          "planStartsAt": 1793717808348,
+          "planEndsAt": null,
+          "grantedDurationMs": null,
+          "entitlementCodes": [
+            "BASE"
+          ],
+          "gift": false,
+          "lifecycle": "NORMAL",
+          "revokedDurationMs": 0
+        },
+        "sources": [
+          {
+            "sourceNo": "SOURCE-EXAMPLE",
+            "sourceType": "FREE",
+            "planNo": "FREE",
+            "planVersionNo": "FREE-v",
+            "tier": "FREE",
+            "displayName": "FREE",
+            "planStartsAt": 1793717808348,
+            "planEndsAt": null,
+            "grantedDurationMs": null,
+            "entitlementCodes": [
+              "BASE"
+            ],
+            "gift": false,
+            "lifecycle": "NORMAL",
+            "revokedDurationMs": 0
+          }
+        ],
+        "serverNow": 1793717808626,
+        "nextBoundaryAt": null,
+        "purchaseAvailable": false,
+        "nextAction": "VIEW_ENTITLEMENTS"
+      }
+    }
+  },
+  "entitlements": {
+    "method": "GET",
+    "path": "/biz/stores/{storeNo}/entitlements",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "storeNo": "STORE-EXAMPLE",
+        "commerceModel": "STORE_V1",
+        "entitlementVersion": 1,
+        "items": [
+          {
+            "entitlementCode": "BASE",
+            "endCode": "desk",
+            "commercialStatus": "ACTIVE",
+            "current": {
+              "startsAt": 1793717808348,
+              "endsAt": null
+            },
+            "future": [],
+            "slices": [
+              {
+                "sourceNo": "SOURCE-EXAMPLE",
+                "startsAt": 1793717808348,
+                "endsAt": null
+              }
+            ],
+            "remainingMs": null,
+            "nextBoundaryAt": null,
+            "nextAction": "CHECK_END_ACCESS"
+          }
+        ],
+        "serverNow": 1793717808626,
+        "nextBoundaryAt": null
+      }
+    }
+  },
+  "apply": {
+    "method": "POST",
+    "path": "/biz/merchant/apply",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "body": {
+      "name": "License shop",
+      "subject": "ENTERPRISE",
+      "industry": "RETAIL",
+      "serviceScope": "COMMUNITY",
+      "communityNos": [
+        "CM001"
+      ],
+      "licenses": [
+        "example-license"
+      ],
+      "contactPhone": "15965010103",
+      "contactName": "Owner"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "merchantNo": "ENTITY-EXAMPLE",
+        "name": "Selected pending shop",
+        "logo": "",
+        "status": "PENDING_LICENSE",
+        "subject": null,
+        "tier": "SMALL",
+        "phone": "15965010103",
+        "isPickupPoint": false,
+        "pickupNo": null,
+        "rejectReason": null,
+        "industry": null,
+        "description": null,
+        "fundsMode": "AGGREGATED",
+        "agreementPending": false,
+        "favoriteCount": 0,
+        "displayName": "",
+        "currentStoreNo": "STORE-EXAMPLE"
+      }
+    }
+  },
+  "agreement": {
+    "method": "POST",
+    "path": "/biz/merchant/agreement/accept",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": 1793717763513
+    }
+  },
+  "application": {
+    "method": "GET",
+    "path": "/biz/merchant/apply",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "applyNo": "APPLY-EXAMPLE",
+        "merchantNo": "ENTITY-EXAMPLE",
+        "name": "License shop",
+        "subject": "ENTERPRISE",
+        "contactName": "Owner",
+        "contactPhone": "15965010103",
+        "category": null,
+        "desc": null,
+        "serviceScope": "COMMUNITY",
+        "communityNos": [
+          "CM001"
+        ],
+        "licenses": [
+          "example-license"
+        ],
+        "asPickupPoint": false,
+        "industry": "RETAIL",
+        "industryNote": null,
+        "status": "PENDING",
+        "rejectReason": null,
+        "createdAt": 1793717763000,
+        "auditedAt": 0,
+        "qualificationItems": [],
+        "onBehalf": false,
+        "agreedAt": 1793717763513,
+        "referrerPhone": null
+      }
+    }
+  },
+  "channels": {
+    "method": "GET",
+    "path": "/biz/merchant/pay-channel",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": [
+        {
+          "payChannel": "WECHAT",
+          "channelName": "微信支付",
+          "applyStatus": "NONE",
+          "canReceiveMoney": false,
+          "payMerchantNo": null,
+          "subMchidMasked": null,
+          "settleAccountType": null,
+          "settleAccountMasked": null,
+          "rejectReason": null,
+          "missing": [
+            "settleAccountType",
+            "settleAccount",
+            "licenses"
+          ],
+          "submitted": false,
+          "appliedAt": null,
+          "activatedAt": null,
+          "storeNo": ""
+        },
+        {
+          "payChannel": "ALIPAY",
+          "channelName": "支付宝",
+          "applyStatus": "NONE",
+          "canReceiveMoney": false,
+          "payMerchantNo": null,
+          "subMchidMasked": null,
+          "settleAccountType": null,
+          "settleAccountMasked": null,
+          "rejectReason": null,
+          "missing": [
+            "settleAccountType",
+            "settleAccount",
+            "licenses"
+          ],
+          "submitted": false,
+          "appliedAt": null,
+          "activatedAt": null,
+          "storeNo": ""
+        },
+        {
+          "payChannel": "TEST",
+          "channelName": "测试渠道",
+          "applyStatus": "NONE",
+          "canReceiveMoney": false,
+          "payMerchantNo": null,
+          "subMchidMasked": null,
+          "settleAccountType": null,
+          "settleAccountMasked": null,
+          "rejectReason": null,
+          "missing": [
+            "settleAccountType",
+            "settleAccount",
+            "licenses"
+          ],
+          "submitted": false,
+          "appliedAt": null,
+          "activatedAt": null,
+          "storeNo": ""
+        }
+      ]
+    }
+  },
+  "payment": {
+    "method": "POST",
+    "path": "/biz/merchant/payment",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "body": {
+      "payChannel": "WECHAT",
+      "settleAccountType": "PERSONAL_BANK_CARD",
+      "settleAccount": "<test-account>",
+      "contactName": "Test owner",
+      "contactPhone": "15965010103",
+      "licenses": [
+        "example-license"
+      ]
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "payChannel": "WECHAT",
+        "channelName": "微信支付",
+        "applyStatus": "ACTIVE",
+        "canReceiveMoney": true,
+        "payMerchantNo": "PAY-EXAMPLE",
+        "subMchidMasked": "****2269",
+        "settleAccountType": "PERSONAL_BANK_CARD",
+        "settleAccountMasked": "****9999",
+        "rejectReason": null,
+        "missing": [],
+        "submitted": true,
+        "appliedAt": 1793717763907,
+        "activatedAt": 1793717763911,
+        "storeNo": null
+      }
+    }
+  },
+  "endAccess": {
+    "method": "GET",
+    "path": "/biz/stores/{storeNo}/end-access?endCode=BIZ_APP&clientId=biz-app",
+    "headers": {
+      "Authorization": "Bearer <BTK>",
+      "X-Store-No": "<selectedStoreNo>"
+    },
+    "response": {
+      "code": 0,
+      "msg": "success",
+      "data": {
+        "status": "ALLOWED",
+        "store": {
+          "tenantNo": "MAIN",
+          "storeNo": "S"
+        },
+        "entitlementCode": "END_BIZ_APP",
+        "entitlementVersion": 1,
+        "serverNow": "2026-10-01T00:00:00Z",
+        "nextBoundaryAt": null,
+        "denialCode": null,
+        "nextAction": "ENTER_END"
+      }
+    }
+  }
+}

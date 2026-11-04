@@ -1,8 +1,16 @@
 package ai.neargo.shop.portal.biz;
 
+import ai.neargo.auth.store.SubjectKind;
+import ai.neargo.shop.auth.LoginUser;
+import ai.neargo.shop.auth.LoginAuditor;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.community.dto.CommunityVO;
 import ai.neargo.shop.user.service.AuthService;
+import ai.neargo.shop.merchant.service.MerchantStaffService;
 import ai.neargo.shop.community.service.CommunityService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,38 +20,24 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * B 端登录与基础数据（[API 清单 §3.1]）。
- *
- * <p><b>商家账号与 C 端账号是同一套凭据</b>，不是两个账号池。
- * 共享类型 {@code MerchantLoginResp} 的注释说「两套账号、token 不通用」——
- * 那句话描述的是<b>没有实现的设计</b>：库里 {@code mch_entity.owner_user_no}
- * 指向的就是 C 端 userNo，{@code BizContextFilter} 也是靠它解析 merchantNo 的。
- *
- * <p>一套凭据是对的：入驻申请人此刻还只是个普通用户，审核通过后<b>同一个账号</b>
- * 长出了商家身份。分成两套就要回答「入驻通过时给他发个新账号吗、旧账号还能不能买东西」，
- * 而这两个问题在邻里场景下都没有好答案 —— 店主本来就是小区里的买家。
- *
- * <p>真正的隔离在<b>运营池</b>：C 端 token 打 {@code /ops/**} 一律 401（realm 前缀不符），
- * 那才是必须分开的两套。
- */
+/** B 端复用个人登录即注册。返回的商家会话记录主体种类，当前门店由每次请求选择。 */
 @Profile("api")
 @RestController
 public class BizAuthController {
 
     private final AuthService authService;
 
-    private final ai.neargo.shop.auth.LoginAuditor auditor;
+    private final LoginAuditor auditor;
     private final CommunityService communityService;
     private final BizMerchantController merchantController;
-    private final ai.neargo.shop.merchant.service.MerchantStaffService merchantStaffService;
-    private final ai.neargo.shop.auth.TokenStore tokenStore;
+    private final MerchantStaffService merchantStaffService;
+    private final TokenStore tokenStore;
 
     public BizAuthController(AuthService authService,
-                             ai.neargo.shop.auth.LoginAuditor auditor, CommunityService communityService,
+                             LoginAuditor auditor, CommunityService communityService,
                              BizMerchantController merchantController,
-                             ai.neargo.shop.merchant.service.MerchantStaffService merchantStaffService,
-                             ai.neargo.shop.auth.TokenStore tokenStore) {
+                             MerchantStaffService merchantStaffService,
+                             TokenStore tokenStore) {
         this.merchantStaffService = merchantStaffService;
         this.tokenStore = tokenStore;
         this.authService = authService;
@@ -67,7 +61,7 @@ public class BizAuthController {
                     req.grantType(), req.principal(), req.credential(),
                     // B 端登录不做进店归因：店主登录自己的后台，不是"从谁的分享进的店"
                     null, null, req.agreed()));
-        } catch (ai.neargo.shop.common.BizException e) {
+        } catch (BizException e) {
             /*
              * **记进 MERCHANT 池，而不是会话所在的 CONSUMER 池。**
              *
@@ -78,78 +72,36 @@ public class BizAuthController {
              *
              * 只包住 authService.login 这一步：后面查商家档案失败不是登录失败。
              */
-            auditor.failed(ai.neargo.shop.auth.Realm.MERCHANT,
-                    ai.neargo.shop.auth.LoginAuditor.maskPrincipal(req.principal()),
+            auditor.failed(Realm.MERCHANT,
+                    LoginAuditor.maskPrincipal(req.principal()),
                     e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
             throw e;
         }
-        /*
-         * **记进 MERCHANT 池** —— 与上面失败那一侧同一个池，理由见那段注释。
-         */
-        auditor.succeeded(ai.neargo.shop.auth.Realm.MERCHANT, result.user().userNo());
-
-        /*
-         * **A7：换成 B 端令牌。**
-         *
-         * authService.login 顺带签了一个 ctk_（它是 C 端的认证实现，「登录即注册」
-         * 那一步也在里面，绕不开）。而这条链现在只认 btk_ —— 直接把 ctk_ 返回给
-         * b-app 的话，它下一个请求就是 401。
-         *
-         * 主体用 user_no（kind=USR）而不是 mch_account_no：**btk_ 表示「这是 B 端的
-         * 会话」，不表示「这个人是商家」**。还没开店的人正是走这一支 ——
-         * 他要去提交入驻申请，而那时他没有任何 mch_account。
-         *
-         * 顺手把那个 ctk_ 撤掉：留着就是一个没人用、却能通过 /mp/** 鉴权的会话，
-         * 而它的存在不会被任何地方记录成「这个人登录了 C 端」。
-         */
-        String bizToken = tokenStore.issue(ai.neargo.shop.auth.TokenStore.SessionData.of(
-                ai.neargo.shop.auth.LoginUser.merchantByUser(
-                        result.user().userNo(), result.user().nickname())));
+        // The shared login service issued a consumer credential. Retire it before profile
+        // lookups or audit writes, either of which can fail.
         tokenStore.revoke(result.token());
-        // 手机号直接从登录结果取：此刻 SecurityContext 里还没有人
-        // （过滤器跑在发 token 之前），去查 userService.profile() 只会拿到空
-        String phone = result.user().phone();
-        BizMerchantController.MerchantProfileVO owner = merchantController.profileOf(result.user().userNo(), phone);
-        /*
-         * 查员工表要用**请求里那个原始号**，不能用登录结果里的 ——
-         * 后者是打过码的（`185****8359`，B12：完整号码永远不出 UserQueryPort）。
-         * 拿掩码去 `where login_phone = ?` 永远查不到，而表现是「店员登进去
-         * 变成了没开店的新用户」：不报错，只是他的店不见了。
-         */
-        String rawPhone = AuthService.GRANT_PHONE_OTP.equals(req.grantType())
-                ? nz(req.principal()) : "";
-
-        /*
-         * **登录页不问「你是老板还是店员」，后端按身份判**（2026-08-15 拍板）。
-         *
-         * 让人先选身份的问题不在于多点一下，而在于**他可能选错，而选错的表现
-         * 是「验证码错误」或「你不是店员」**——两句都在说谎，真正的原因是他点了另一个 tab。
-         * 店员这个身份还是老板给他的，他自己未必知道自己在系统里算什么。
-         *
-         * 判定顺序 **老板 → 店员 → 新用户**，理由是「自己的店优先」：
-         * 一个人可能既开着自己的店、又被邻居的店加成店员（`mch_account` 里
-         * 老板行的 `login_phone` 是 NULL、店员行才有值，所以这两行能同时存在）。
-         * 那种情况下他打开这个 App 十有八九是要管自己的店。
-         *
-         * 反过来，店员没有主体时 `merchantNo` 为空，走下面这一支拿到员工会话。
-         * 都不是就保持消费者会话——工作台会显示「还没有开店 / 去入驻」，
-         * 这正是「登录即注册」承诺的那一屏。
-         */
-        if (owner != null && !nz(owner.merchantNo()).isBlank()) {
-            return new MerchantLoginResp(bizToken, owner);
+        var personal = LoginUser.merchantByUser(result.user().userNo(), result.user().nickname());
+        var profile = merchantController.profileOf(personal, null, result.user().phone());
+        if (profile.merchantNo().isBlank() && AuthService.GRANT_PHONE_OTP.equals(req.grantType())) {
+            var staffToken = merchantStaffService.issueStaffSession(req.principal());
+            if (staffToken.isPresent()) return staffResponse(staffToken.get());
         }
-        if (rawPhone.isBlank()) {
-            // 微信/Apple 登录拿不到手机号，判不了店员身份 —— 他要走这条路就得先补绑
-            return new MerchantLoginResp(bizToken, owner);
-        }
-        return merchantStaffService.issueStaffSession(rawPhone)
-                .map(token -> new MerchantLoginResp(token,
-                        merchantController.profileOf(principalOf(token), rawPhone)))
-                .orElseGet(() -> new MerchantLoginResp(bizToken, owner));
+        auditor.succeeded(Realm.MERCHANT, personal.userNo());
+        return new MerchantLoginResp(tokenStore.issue(TokenStore.SessionData.of(personal)), profile);
     }
 
-    private static String nz(String s) {
-        return s == null ? "" : s;
+    @PostMapping("/biz/auth/logout")
+    public void logout() {
+        var token = SecurityUtils.currentToken().filter(t -> t.startsWith(Realm.MERCHANT.tokenPrefix()))
+                .orElseThrow(() -> BizException.of(ErrorCode.TOKEN_EXPIRED));
+        tokenStore.revoke(token);
+    }
+
+    static LoginUser personalUser() {
+        var user = SecurityUtils.requireUser();
+        if (user.realm() != Realm.MERCHANT || user.subjectKind() != SubjectKind.USR)
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        return user;
     }
 
     /**
@@ -181,14 +133,14 @@ public class BizAuthController {
      */
     @PostMapping("/biz/auth/password")
     public void setPassword(@RequestBody PasswordReq req) {
-        authService.setPassword(SecurityUtils.currentUserNo(), req.password());
+        authService.setPassword(personalUser().userNo(), req.password());
     }
 
     /** 我设过密码没有 —— 端上据此决定「我的」页里显示「设置密码」还是「修改密码」 */
     @GetMapping("/biz/auth/password")
     public HasPasswordResp hasPassword() {
         return new HasPasswordResp(
-                authService.hasPassword(SecurityUtils.currentUserNo()));
+                authService.hasPassword(personalUser().userNo()));
     }
 
     /** @param password 新密码明文（HTTPS 传输，服务端 bcrypt 存储，**不回显、不入日志**） */
@@ -216,21 +168,27 @@ public class BizAuthController {
         String token;
         try {
             token = merchantStaffService.loginByPhone(req.phone(), req.code());
-        } catch (ai.neargo.shop.common.BizException e) {
-            auditor.failed(ai.neargo.shop.auth.Realm.MERCHANT,
-                    ai.neargo.shop.auth.LoginAuditor.maskPrincipal(req.phone()),
+        } catch (BizException e) {
+            auditor.failed(Realm.MERCHANT,
+                    LoginAuditor.maskPrincipal(req.phone()),
                     e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
             throw e;
         }
-        // 员工可能没有 C 端账号，档案里的 phone 用他的登录号
-        auditor.succeeded(ai.neargo.shop.auth.Realm.MERCHANT, principalOf(token));
-        return new MerchantLoginResp(token,
-                merchantController.profileOf(principalOf(token), req.phone()));
+        return staffResponse(token);
     }
 
-    /** 从刚发的令牌里取回 principal —— 此刻 SecurityContext 里还没有人。 */
-    private String principalOf(String token) {
-        return tokenStore.get(token).map(d -> d.user().userNo()).orElse("");
+    private MerchantLoginResp staffResponse(String token) {
+        try {
+            var user = tokenStore.get(token).map(TokenStore.SessionData::user)
+                    .filter(u -> u.realm() == Realm.MERCHANT && u.subjectKind() == SubjectKind.MCH)
+                    .orElseThrow(() -> BizException.of(ErrorCode.TOKEN_EXPIRED));
+            var profile = merchantController.profileOf(user, null, null);
+            auditor.succeeded(Realm.MERCHANT, user.userNo());
+            return new MerchantLoginResp(token, profile);
+        } catch (RuntimeException failure) {
+            tokenStore.revoke(token);
+            throw failure;
+        }
     }
 
     public record StaffLoginReq(String phone, String code) {

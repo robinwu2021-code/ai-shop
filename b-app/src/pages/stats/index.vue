@@ -110,7 +110,7 @@ onShow(load);
     </template>
     <!-- 多店才有「比」这回事。一家店时这一行是纯噪音 -->
     <view v-if="merchant.multiStore" class="sh-card cmp sh-row sh-row--between" @tap="goCompare">
-      <text class="txt-title">{{ $t("stats.compareEntry") }}</text>
+      <text class="txt-title">{{ $t("crossStore.title") }}</text>
       <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
     </view>
   </sh-scaffold>

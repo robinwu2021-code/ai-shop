@@ -130,34 +130,22 @@ public class MerchantStaffServiceImpl implements MerchantStaffService {
 
     @Override
     public String loginPhoneOf(String principal) {
-        if (principal == null || principal.isBlank()) {
-            return "";
-        }
-        // 绕过数据域：这是「我自己是谁」的自查，而数据域本身就要靠身份才算得出来
-        MchAccount staff = DataScopeContext.executeWithoutScope(() ->
-                staffMapper.selectOne(Wrappers.<MchAccount>lambdaQuery()
-                        .and(q -> q.eq(MchAccount::getUserNo, principal)
-                                .or().eq(MchAccount::getMchAccountNo, principal))
-                        .eq(MchAccount::getStatus, MchAccount.ACTIVE)
-                        .orderByDesc(MchAccount::getIsPrimary)
-                        .orderByAsc(MchAccount::getId)
-                        .last("limit 1")));
+        var staff = currentAccount(principal);
         return staff == null || staff.getLoginPhone() == null ? "" : staff.getLoginPhone();
     }
 
-    /** 按 principal 定位「当前这个人」的 mch_account（user_no 或 mch_account_no 两条路径都认）。 */
+    @Override
+    public ProfileDetails profileDetails(LoginUser user) {
+        var staff = DataScopeContext.executeWithoutScope(() -> staffMapper.selectOne(
+                MerchantMemberships.active(user.userNo(), user.subjectKind()).last("limit 1")));
+        return staff == null ? new ProfileDetails("", "")
+                : new ProfileDetails(staff.getDisplayName(), staff.getLoginPhone());
+    }
+
     private MchAccount currentAccount(String principal) {
-        if (principal == null || principal.isBlank()) {
-            return null;
-        }
-        return DataScopeContext.executeWithoutScope(() ->
-                staffMapper.selectOne(Wrappers.<MchAccount>lambdaQuery()
-                        .and(q -> q.eq(MchAccount::getUserNo, principal)
-                                .or().eq(MchAccount::getMchAccountNo, principal))
-                        .eq(MchAccount::getStatus, MchAccount.ACTIVE)
-                        .orderByDesc(MchAccount::getIsPrimary)
-                        .orderByAsc(MchAccount::getId)
-                        .last("limit 1")));
+        if (principal == null || principal.isBlank()) return null;
+        return DataScopeContext.executeWithoutScope(() -> staffMapper.selectOne(
+                MerchantMemberships.active(principal, null).last("limit 1")));
     }
 
     @Override

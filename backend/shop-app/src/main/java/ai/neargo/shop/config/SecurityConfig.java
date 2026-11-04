@@ -165,6 +165,7 @@ public class SecurityConfig {
     @Order(1)
     SecurityFilterChain merchantChain(HttpSecurity http, TokenStore tokenStore,
                                       ObjectProvider<BizIdentityResolver> resolver,
+                                      ObjectProvider<BizContextFilter.Admission> admission,
                                       GuardFilters portalFilters) throws Exception {
         return http
                 .securityMatcher("/biz/**")
@@ -196,7 +197,7 @@ public class SecurityConfig {
                 .addFilterBefore(new MerchantTokenAuthFilter(tokenStore),
                         UsernamePasswordAuthenticationFilter.class)
                 // BizContextFilter 必须在认证之后：它要用登录态去解析经营侧作用域
-                .addFilterAfter(new BizContextFilter(resolver.getIfAvailable(() -> BizIdentityResolver.NONE)),
+                .addFilterAfter(new BizContextFilter(resolver.getIfAvailable(() -> BizIdentityResolver.NONE), admission.getIfAvailable()),
                         MerchantTokenAuthFilter.class)
                 // 商家端支付（/biz/pay/**，ADR-044 BIZ 面）：复用上面认好的商家会话，接入层只做请求记录与「必须是商家令牌」。
                 // 其它 /biz 路径它不碰（过滤器按入口前缀自判）

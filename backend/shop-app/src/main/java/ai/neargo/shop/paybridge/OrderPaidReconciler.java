@@ -1,5 +1,8 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.spi.pay.PlatformPaymentRecoveryPort;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import ai.neargo.shop.pay.service.FundInvariantService;
 import ai.neargo.shop.pay.service.FundInvariantService.SuccessPayment;
 import ai.neargo.shop.spi.trade.OrderRepairPort;
@@ -65,6 +68,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class OrderPaidReconciler {
 
+    private PlatformPaymentRecoveryPort platformRecovery;
+    @Autowired(required=false)
+    public void setPlatformRecovery(PlatformPaymentRecoveryPort recovery) { this.platformRecovery=recovery; }
+
     private static final Logger log = LoggerFactory.getLogger(OrderPaidReconciler.class);
 
     private final FundInvariantService payInvariants;
@@ -85,18 +92,27 @@ public class OrderPaidReconciler {
     public Result reconcile(long since, int limit) {
         List<SuccessPayment> paid = payInvariants.successPaymentsSince(since, limit);
         if (paid.isEmpty()) {
-            return new Result(0, 0, 0);
+            return new Result(0, 0, 0, 0);
         }
         /*
          * **一次问清楚，不要逐笔查。** 一轮可能有几千笔，
          * 逐笔一个 SELECT 的话这个任务自己会变成数据库上的一次小型压测。
          */
         Set<String> notPaid = Set.copyOf(
-                tradeSource.notPaidOrders(paid.stream().map(SuccessPayment::orderNo).toList()));
+                tradeSource.notPaidOrders(paid.stream().filter(p->!"PLATFORM_MALL".equals(p.paymentBusiness()) && !"MALL_UNMATCHED".equals(p.paymentBusiness())).map(SuccessPayment::orderNo).toList()));
 
         int repaired = 0;
         int failed = 0;
+        int awaitingDisposition = 0;
         for (SuccessPayment p : paid) {
+            // Real money whose amount/order did not match: owned by the operator disposition flow,
+            // not a repair failure. Reported separately so genuine failures stay visible.
+            if("MALL_UNMATCHED".equals(p.paymentBusiness())) { awaitingDisposition++; continue; }
+            if("PLATFORM_MALL".equals(p.paymentBusiness())) {
+                try { if(platformRecovery!=null&&platformRecovery.recover(p.paymentNo()))repaired++;else failed++; }
+                catch(RuntimeException unavailable){failed++;}
+                continue;
+            }
             if (!notPaid.contains(p.orderNo())) {
                 continue;
             }
@@ -119,7 +135,7 @@ public class OrderPaidReconciler {
                 log.error("[I8] 订单 {} 补 PAID 失败，流水 {}", p.orderNo(), p.paymentNo(), e);
             }
         }
-        return new Result(paid.size(), repaired, failed);
+        return new Result(paid.size(), repaired, failed, awaitingDisposition);
     }
 
     /**
@@ -127,7 +143,11 @@ public class OrderPaidReconciler {
      *                 「没有不一致」这句话不成立，那只是「没有在看」
      * @param repaired 补了几个订单
      * @param failed   补不动的。<b>大于 0 要有人看</b>
+     * @param awaitingDisposition 商城线下金额不符的实收（MALL_UNMATCHED），等运营处置，不算失败
      */
-    public record Result(int scanned, int repaired, int failed) {
+    public record Result(int scanned, int repaired, int failed, int awaitingDisposition) {
+        public Result(int scanned, int repaired, int failed) {
+            this(scanned, repaired, failed, 0);
+        }
     }
 }

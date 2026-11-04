@@ -1,0 +1,304 @@
+{
+  "date": "2026-10-26",
+  "scope": "当前混合工作区；本专项未提交或发布。全量失败不视为本轮引入，亦未全部建立改前对照。",
+  "checks": {
+    "bAppTests": {
+      "filesPassed": 54,
+      "passed": 282,
+      "failed": 0
+    },
+    "policyFixtures": {
+      "passed": 29,
+      "failed": 0
+    },
+    "typeCheck": {
+      "bApp": "passed",
+      "cApp": "passed"
+    },
+    "builds": {
+      "h5": "passed",
+      "mp-weixin": "passed",
+      "app": "passed"
+    },
+    "cAppTests": {
+      "passed": 599,
+      "failed": 0
+    },
+    "sharedTests": {
+      "passed": 539,
+      "failed": 27,
+      "failures": [
+        {
+          "file": "packages/shared/tests/api-path-naming.test.ts",
+          "test": "端点路径：资源段的单复数按域一致 ★★ 新端点必须跟随本域的约定（/mp /biz 单数 · /ops 复数）",
+          "messages": [
+            "AssertionError: 这些新端点与本域约定不符（/mp /biz 要单数、/ops 要复数）：\n  /biz/inventory/transfers/{no}/void  transfers\n  /ops/banned-word/{id}/remove  banned-word\n  /ops/merchant/{entityNo}/nudge  merchant\n  /ops/merchant/{entityNo}/stock-doubt  merchant\n  /ops/product/{goodsNo}/chain  product\n\n  要破例就登记进 <仓库根>/known-plural-paths.txt（读它的是本文件 api-path-naming.test.ts）。\n  ⚠️ 另有一份 b-app/scripts/known-plural-paths.txt（同名，另一道闸，判据是「复数+id」） —— 登记一份不够，两道闸各读各的。: expected [ …(5) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/bean-validation-wired.test.ts",
+          "test": "Bean Validation：注解要真的会触发 ★★★ 带约束的 DTO 用作 @RequestBody 时，参数必须有 @Valid —— 少了它规则一次都不跑",
+          "messages": [
+            "AssertionError: 新出现的「注解不会触发」：\n  backend/shop-base/src/main/java/ai/neargo/shop/spi/inventory/MaterialCatalogInternalApi.java BatchLookup\n  backend/shop-base/src/main/java/ai/neargo/shop/spi/media/MediaAssetInternalApi.java BatchLookup\n  backend/shop-base/src/main/java/ai/neargo/shop/spi/product/DishOfferInternalApi.java BatchLookup\n  backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsCatalogInternalApi.java BatchLookup\n  backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsCatalogInternalApi.java Lookup\n  backend/shop-base/src/main/java/ai/neargo/shop/spi/product/GoodsCatalogInternalApi.java SkuLookup\n  backend/shop-base/src/main/java/ai/neargo/shop/spi/product/SpecValueCatalogInternalApi.java BatchLookup\n  backend/shop-base/src/main/java/ai/neargo/shop/spi/user/StoreCardInternalApi.java BatchLookup: expected [ …(8) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/biz-page-perm.test.ts",
+          "test": "B 端页面门禁 ★★★ 页面门禁必须覆盖该页调用所需的权限码 —— 覆盖不到的必须写明为什么",
+          "messages": [
+            "AssertionError: 这些页面会把 70006 变成「整页空白」或一个点不动的按钮。\n两条路二选一：\n  ① 给页面加门禁（:denied=\"!merchant.can('...')\"）—— 整页都要这个码时用\n  ② 页内按 can() 裁那一块 + 调用点单独 catch，然后把这条加进 EXEMPT 并写清楚\n⚠️ 用 can() 决定**发不发请求**时，load() 开头要先 await merchant.ensureScope()：\n   can() 在权限没加载时 fail-closed 返回 false，深链进来就永远不发，且不会重试。\n未说明的有：\n  marketing-assets/pay:ent:template:write　—— 店长进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:read　—— 店长进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:publish　—— 店长进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:account:read　—— 店长进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:recharge:read　—— 店长进得了这一页，但页面里有他打不通的请求\n  marketing-assets/biz:campaign　—— 店员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:write　—— 店员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:read　—— 店员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:publish　—— 店员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/biz:customer　—— 店员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:account:read　—— 店员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:recharge:read　—— 店员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/biz:campaign　—— 理货员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:write　—— 理货员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:read　—— 理货员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:publish　—— 理货员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/biz:customer　—— 理货员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:account:read　—— 理货员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:recharge:read　—— 理货员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/biz:campaign　—— 配送员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:write　—— 配送员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:read　—— 配送员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:publish　—— 配送员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/biz:customer　—— 配送员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:account:read　—— 配送员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:recharge:read　—— 配送员进得了这一页，但页面里有他打不通的请求\n  marketing-assets/biz:campaign　—— 客服进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:write　—— 客服进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:read　—— 客服进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:ent:template:publish　—— 客服进得了这一页，但页面里有他打不通的请求\n  marketing-assets/biz:customer　—— 客服进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:account:read　—— 客服进得了这一页，但页面里有他打不通的请求\n  marketing-assets/pay:sv:recharge:read　—— 客服进得了这一页，但页面里有他打不通的请求: expected [ …(33) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/biz-role-seed.test.ts",
+          "test": "B 端角色种子 ★★★ 预置角色的权限码：代码与种子必须逐条相等",
+          "messages": [
+            "AssertionError: 角色→权限码的两个源对不上 ——\n  运行时读库（mch_role），而回落路径与生成的矩阵文档读代码（BizPerms.ROLE_PERMS）。\n  库改了代码没改：矩阵文档在说谎；代码改了库没改：回落那一刻权限换了一套。\n  两个方向都不报错。改一处就要改两处，或者干脆把其中一个源去掉。\n  CLERK：代码多 [biz:print:read,biz:print:submit,biz:print:reprint,biz:print:simulate,biz:print:export]，种子多 []\n  MANAGER：代码多 [biz:print:read,biz:print:submit,biz:print:reprint,biz:print:extra,biz:print:device,biz:print:config,biz:print:resolve,biz:print:simulate,biz:print:export]，种子多 []: expected [ …(2) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/data-scope-coverage.test.ts",
+          "test": "数据域表册覆盖 ★★★ 带归属列的表要么登记、要么写明为什么不用（棘轮：只许降不许升）",
+          "messages": [
+            "AssertionError: 带归属列却没登记数据域的表：42 张（记录值 41）——\n  没登记 = 这张表**永远不过滤**。表现是「看得见不该看见的」：\n  只配了某社区的运营，打开列表看到全城的数据，而没有任何报错。\n  新增的表不许加入这个缺口：补一行 registry.register(...)，\n  或者确实不需要（字典/配置/审计）就写进 EXEMPT 并说明理由。\n  补完一张把 PENDING 减一。\n  mch_account（entity_no/user_no）\n  mch_appointment_slot（entity_no/store_no）\n  mch_notify_pref（store_no）\n  mch_notify_recipient（store_no）\n  mch_role（entity_no）\n  mch_store_role（store_no）\n  mkt_coupon_issue（user_no）\n  mkt_group_member（user_no）\n  mkt_quote_revision（entity_no）\n  mkt_request_interest（user_no）\n  mkt_request（pickup_no）\n  mkt_user_coupon（user_no）\n  notify_subscribe（user_no）\n  notify_ticket（user_no）\n  ord_create_intent（user_no）\n  ord_invoice_request（user_no）\n  ord_payment_resolution（user_no）\n  ord_store_pricing_config（entity_no/store_no）\n  ord_store_pricing_revision（entity_no/store_no）\n  pay_risk_shadow_log（entity_no）\n  prd_entity_category_inv（entity_no）\n  prd_goods_favorite（user_no）\n  prd_goods_revision（entity_no）\n  prd_sell_rule（store_no）\n  prd_spec_template（entity_no）\n  prd_stock_alignment_batch（entity_no/store_no）\n  prd_stock_lock（store_no）\n  prd_stock_sync_log（store_no）\n  prd_stock_sync_operation（entity_no/store_no）\n  prd_store_goods（entity_no/store_no）\n  prd_store_stock_sync（entity_no/store_no）\n  prd_store_stock（entity_no/store_no）\n  prd_topic_goods（entity_no）\n  rvw_review_like（user_no）\n  stl_payment（entity_no/user_no）\n  trd_cart_item（user_no）\n  usr_account（entity_no/user_no/community_no/pickup_no）\n  usr_address（user_no）\n  usr_identity（user_no）\n  usr_person（user_no）\n  usr_store_favorite（entity_no/user_no/store_no）\n  usr_store_view（entity_no/user_no/store_no）: expected 42 to be less than or equal to 41"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/design-tokens.test.ts",
+          "test": "端差异下沉到 ports/，页面里不写条件编译 pages/ 下没有 #ifdef / #ifndef",
+          "messages": [
+            "AssertionError: 以下页面出现条件编译，应下沉到 ports/：\n/c-app/src/pages/track/index.vue: expected [ '/c-app/src/pages/track/index.vue' ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/doc-standard.test.ts",
+          "test": "文档规范 不使用 mermaid —— 写错一个字符整张图不显示，而且不报错",
+          "messages": [
+            "AssertionError: mermaid 图 21 张，基线 14 —— 只准变少：\n  docs/technical/TDD-订单结账-CKO03规则配置编译.md#1\n  docs/technical/design/TDD-会员与营销-表结构与对象模型.md#1\n  docs/technical/design/TDD-商品域-完整方案.md#1\n  docs/technical/design/TDD-商品域V2-多行业一体化方案.md#1\n  docs/technical/design/TDD-基座与行业应用-总体架构.md#1\n  docs/technical/design/TDD-基座与行业应用-总体架构.md#2\n  docs/technical/design/TDD-基座与行业应用-总体架构.md#3\n  docs/technical/design/TDD-基座与行业应用-总体架构.md#4\n  docs/technical/design/TDD-基座与行业应用-总体架构.md#5\n  docs/technical/design/TDD-基座与行业应用-总体架构.md#6\n  docs/technical/design/TDD-基座与行业应用-总体架构.md#7\n  docs/technical/design/TDD-基座与行业应用-总体架构.md#8\n  docs/technical/design/TDD-基础订单流与行业工作流-组合模型.md#1\n  docs/technical/design/TDD-基础订单流与行业工作流-组合模型.md#2\n  docs/technical/design/TDD-基础订单流与行业工作流-组合模型.md#3\n  docs/technical/design/reviews/库存业务与进销存-领域流程与前后端优化方案-2026-10-19.md#1\n  docs/technical/design/reviews/库存业务与进销存-领域流程与前后端优化方案-2026-10-19.md#2\n  docs/technical/design/reviews/库存业务与进销存-领域流程与前后端优化方案-2026-10-19.md#3\n  docs/technical/订单状态机Review修复-2026-10-19.md#1\n  docs/technical/订单退款结清-M1流程与契约.md#1\n  docs/technical/订单退款结清-M1流程与契约.md#2\n新增请改画 SVG（docs/technical/diagrams/），关系图优先走 scripts/gen-erd.mjs 的专题图 —— 生成的不会漂。: expected 21 to be less than or equal to 14"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/doc-standard.test.ts",
+          "test": "文档规范 每张 svg 都有 title 与 desc —— 图之外要有能读的说明",
+          "messages": [
+            "AssertionError: expected [ …(3) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/doc-standard.test.ts",
+          "test": "文档规范 没有状态行的文档不许再增加（基线只降不升）",
+          "messages": [
+            "AssertionError: 无状态行的文档 36 篇，基线 27 —— 新增文档必须写状态行（文档规范 §四）: expected 36 to be less than or equal to 27"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/entity-alignment.test.ts",
+          "test": "Java 实体与库表对齐 实体不缺列 —— 少一个字段 MyBatis 不报错，只是**读不出那一列**",
+          "messages": [
+            "AssertionError: 实体落后于库表。MyBatis-Plus 不会因此报错，表现是**查出来是 null**，而排查的人会先怀疑数据：\n  ent_migration_alias（backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/migration/entity/EntMigrationAlias.java）缺 1 列：AND\n  prn_action_log（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnActionLog.java）缺 2 列：entityNo、revision\n  prn_agent（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnAgent.java）缺 2 列：entityNo、revision\n  prn_attempt（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnAttempt.java）缺 2 列：entityNo、revision\n  prn_batch（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnBatch.java）缺 2 列：entityNo、revision\n  prn_credential_version（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnCredentialVersion.java）缺 2 列：entityNo、revision\n  prn_export_task（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnExportTask.java）缺 2 列：entityNo、revision\n  prn_incident（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnIncident.java）缺 2 列：entityNo、revision\n  prn_job（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnJob.java）缺 2 列：entityNo、revision\n  prn_operation（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnOperation.java）缺 2 列：entityNo、revision\n  prn_policy_version（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnPolicyVersion.java）缺 2 列：entityNo、revision\n  prn_printer（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnPrinter.java）缺 2 列：entityNo、revision\n  prn_printer_runtime（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnPrinterRuntime.java）缺 2 列：entityNo、revision\n  prn_receipt（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnReceipt.java）缺 2 列：entityNo、revision\n  prn_reconcile_cursor（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnReconcileCursor.java）缺 2 列：entityNo、revision\n  prn_request（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnRequest.java）缺 2 列：entityNo、revision\n  prn_route（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnRoute.java）缺 2 列：entityNo、revision\n  prn_route_version（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnRouteVersion.java）缺 2 列：entityNo、revision\n  prn_scene_policy（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnScenePolicy.java）缺 2 列：entityNo、revision\n  prn_simulation_run（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnSimulationRun.java）缺 2 列：entityNo、revision\n  prn_store_stream（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnStoreStream.java）缺 2 列：entityNo、revision\n  prn_template（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnTemplate.java）缺 2 列：entityNo、revision\n  prn_template_version（backend/print/print-domain/src/main/java/ai/neargo/shop/print/persistence/entity/PrnTemplateVersion.java）缺 2 列：entityNo、revision\n→ 给实体补上字段。: expected [ …(23) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/entity-alignment.test.ts",
+          "test": "Java 实体与库表对齐 每张业务表都有实体，或已登记为「知道欠着」",
+          "messages": [
+            "AssertionError: 这些表没有 Java 实体，也没登记原因：\n  sys_outbox_stream\n  sys_outbox_delivery\n  sys_outbox_operation\n  prd_stock_sync_operation\n  prd_stock_alignment_batch\n  prd_stock_alignment_line\n  ord_refund_coupon_scope\n  ord_refund_obligation\n  inv_outbox_stream\n  inv_outbox_delivery\n  inv_outbox_operation\n  inv_event_consumed\n→ 要么补实体，要么登记进 NO_ENTITY_YET 并写清何时补。\n  留着不管的后果：这张表只能靠手写 SQL 访问，而没人知道它已经建好了。: expected [ 'sys_outbox_stream', …(11) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/enum-fields.test.ts",
+          "test": "枚举对账 · 按字段 取值域提取本身不能坏掉（提不出来要报 fatal，不能静默通过）",
+          "messages": [
+            "AssertionError: 取值域抽取失败：\n  mch_debt_txn · txn_type（数据库取值域）：mch_debt_txn.txn_type 没有列注释，取值域无处可查\n  mch_deposit_txn · txn_type（数据库取值域）：mch_deposit_txn.txn_type 没有列注释，取值域无处可查\n  mch_qualification · qual_type（数据库取值域）：mch_qualification.qual_type 没有列注释，取值域无处可查\n  mch_qualification · status（数据库取值域）：mch_qualification.status 没有列注释，取值域无处可查\n  stl_purchase_invoice · invoice_type（数据库取值域）：stl_purchase_invoice.invoice_type 没有列注释，取值域无处可查\n  stl_purchase_invoice · status（数据库取值域）：stl_purchase_invoice.status 没有列注释，取值域无处可查\n  sys_media_asset · status（数据库取值域）：sys_media_asset.status 没有列注释，取值域无处可查: expected [ …(7) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/enum-fields.test.ts",
+          "test": "枚举对账 · 按字段 ★★ 未判定的取值域列只准变少 —— 新出现的要点名",
+          "messages": [
+            "AssertionError: 这些列在建表注释里枚举了取值，却既没登记进 FIELDS、也没写进 DISMISSED：\n  inv_return_receipt.quality  取值：SALEABLE / UNSALEABLE\n  ord_print_fact.printability  取值：READY / BLOCKED\n  prd_stock_alignment_batch.status  取值：PREVIEW / PROCESSING / PARTIAL / BLOCKED / STALE / EXPIRED / COMPLETED\n  prd_stock_alignment_line.status  取值：PENDING / ADJUSTED / WAITING / FAILED / BLOCKED / SKIPPED / COMPLETED\n  prd_stock_sync_operation.status  取值：PROCESSING / WAITING / FAILED / BLOCKED / COMPLETED\n  prn_agent.platform  取值：WINDOWS / ANDROID / LINUX / MACOS\n  prn_agent.status  取值：PAIRING / ACTIVE / REVOKED\n  prn_attempt.status  取值：PREPARED / SUBMITTING / ACCEPTED / PRINTING / CONFIRMED / NOT_ACCEPTED / UNKNOWN / FAILED / CANCELLED\n  prn_batch.batch_kind  取值：INITIAL / REPRINT / EXTRA / VOID\n  prn_batch.resolved_status  取值：OPEN / RESOLVED / CANCELLED\n  prn_batch.status  取值：PENDING / PROCESSING / PARTIAL / ATTENTION / COMPLETED / CANCELLED\n  prn_credential_version.status  取值：ACTIVE / QUERY_ONLY / REVOKED\n  prn_export_task.artifact_kind  取值：LIVE_EXPORT / SIMULATION_EXPORT\n  prn_export_task.output_profile  取值：ORIGINAL_ROLL / A4_SHEET\n  prn_export_task.source_type  取值：JOB / BATCH / SIMULATION\n  prn_export_task.status  取值：PENDING / GENERATING / READY / FAILED / EXPIRED\n  prn_incident.status  取值：OPEN / ACKNOWLEDGED / RESOLVED\n  prn_job.job_kind  取值：INITIAL / REPRINT / EXTRA / VOID / TEST\n  prn_job.result_evidence  取值：DEVICE_CONFIRMED / PROVIDER_CONFIRMED / MANUAL_CONFIRMED\n  prn_operation.status  取值：PENDING / UNKNOWN / SUCCEEDED / FAILED\n  prn_printer.connection_type  取值：CLOUD / LOCAL\n  prn_printer.status  取值：ACTIVE / PAUSED / RETIRED\n  prn_receipt.source_type  取值：CALLBACK / QUERY / AGENT / MANUAL\n  prn_receipt.status  取值：PENDING / APPLIED / IGNORED / CONFLICT / UNMATCHED\n  prn_request.status  取值：PENDING / BLOCKED / GENERATED / CANCELLED / SKIPPED\n  prn_route.status  取值：ACTIVE / DISABLED\n  prn_route_version.status  取值：DRAFT / PUBLISHED\n  prn_simulation_run.source_type  取值：SAMPLE / JOB / FACT\n  prn_simulation_run.status  取值：PENDING / RUNNING / PASSED / FAILED\n  prn_template.scope_key  取值：PLATFORM / ENTITY\n  prn_template.status  取值：ACTIVE / DISABLED\n  prn_template.variant_code  取值：STANDARD_58 / STANDARD_80\n  prn_template_version.status  取值：DRAFT / PUBLISHED\n\n登记 = 它对应哪个端上类型（于是两侧取值域会被逐字比对）；\n驳回 = 写明这一列不是受限取值域，并给理由。\n两者都不做就把它加进 known-unregistered-value-domains.txt 并说清为什么 —— 但那一档只准变短。: expected [ …(33) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/enum-registry.test.ts",
+          "test": "枚举登记表 规范 §D5 · 不允许在 interface 里内联字面量联合类型",
+          "messages": [
+            "AssertionError: 这些字段内联了字面量联合，要提取成具名类型：\n  shared types/inventory.ts:10  inventoryState\n  shared types/inventory.ts:12  accountingMode\n  shared types/inventory.ts:527  status\n  shared types/inventory.ts:572  status\n  ops-web types/inventory.ts:114  status\n  ops-web types/inventory.ts:116  outboxMode\n  b-app api/response-types.ts:70  status\n  b-app api/response-types.ts:72  outboxMode\n\n内联的枚举对所有工具不可见 —— 登记不到、对账不到、改名必漏。: expected [ …(8) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/inv-doc-table-count.test.ts",
+          "test": "进销存文档 × 迁移 ★★★ 《数据库表结构》里写的「N 张表」必须等于迁移里真实的张数",
+          "messages": [
+            "AssertionError: 《进销存-数据库表结构.md》自称的表数与迁移对不上。迁移里是 27 张，文档里出现了 21。\n  加表时清单和这个数要一起改 —— 只改清单不改数，读的人信的是那个数。: expected [ 21 ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/inv-doc-table-count.test.ts",
+          "test": "进销存文档 × 迁移 ★★★ 文档正文里逐张列出的表 = 迁移里的表（多一张少一张都算）",
+          "messages": [
+            "AssertionError: expected { missing: [ …(6) ], extra: [] } to deeply equal { missing: [], extra: [] }"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/inv-doc-table-count.test.ts",
+          "test": "进销存文档 × 迁移 ★★★ docs/ 里任何一处「N 张 inv_ 表」都必须等于迁移里真实的张数",
+          "messages": [
+            "AssertionError: 迁移里是 27 张。上面这些地方抄了一个旧数字 —— 自称数字会被直接引用到下一份文档、下一次汇报里。: expected [ 'docs/technical/README.md: 21 张' ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/inventory-write-ownership.test.ts",
+          "test": "进销存表的写权 ★★★ shop-inventory 之外的 SQL 注解里不许出现 inv_ 表的写语句",
+          "messages": [
+            "AssertionError: 这些地方用裸 SQL 写了进销存的表：\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:65  sql.update(\"INSERT INTO inv_owner(owner_id,external_ref,name,status) \"\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:67  sql.update(\"INSERT INTO inv_owner(owner_id,external_ref,name,status) \"\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:77  primary.update(\"INSERT INTO inv_item VALUES('PRIMARY_ONLY')\");\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:85  sql.update(\"INSERT INTO inv_item(owner_id,item_id,name,base_uom,weighed,data_source,status,source_on_sale) \"\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:120  sql.update(\"UPDATE inv_item SET status='ARCHIVED' WHERE item_id='ARCHIVED'\");\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:121  sql.update(\"UPDATE inv_item SET retired_at=CURRENT_TIMESTAMP WHERE item_id='RETIRED'\");\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:125  sql.update(\"UPDATE inv_owner SET status='ARCHIVED' WHERE external_ref='E'\");\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:156  sql.update(\"UPDATE inv_item SET default_cost_minor=999,safety_stock=5 \"\n  backend/shop-app/src/test/java/ai/neargo/shop/scenario/MaterialCatalogQueryPortTest.java:159  sql.update(\"UPDATE inv_item SET base_uom='G' WHERE owner_id='O' AND item_id='MILK'\");: expected [ …(9) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/message-placeholder.test.ts",
+          "test": "带占位符的错误文案 ★★ 反向：传了参数的码，文案里必须有 {0} —— 没有的话参数被静默吞掉，用户只看到泛话",
+          "messages": [
+            "AssertionError: 这些地方给没有占位符的文案传了参数 —— 参数被 MessageFormat 静默丢掉，\n  用户看到的是那句泛话，而调用方以为具体原因已经送到了。\n  修：多半该用一个专用错误码（参数是中文业务原因的，尤其是 BAD_REQUEST）；\n  参数与语言无关（SKU、角色名）的，给文案加 {0}；不该给用户看的，写日志后无参抛。\n  backend/shop-app/src/main/java/ai/neargo/shop/invbridge/InventoryWritebackService.java:159 → STOCK_SHARED_SOURCE\n  backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java:156 → STOCK_SHARED_SOURCE: expected [ …(2) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/ops-data-scope.test.ts",
+          "test": "运营端数据域接入 ★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错",
+          "messages": [
+            "AssertionError: 这些 ops 查询走到了 `executeWithoutScope`，而它包住的表**已经注册进数据域**。\nGET /ops/print/health → MerchantScopeFactsPortImpl#storesOwned（mch_store）\nGET /ops/print/incidents → MerchantScopeFactsPortImpl#storesOwned（mch_store）\nGET /ops/print/operations/{operationNo} → MerchantScopeFactsPortImpl#storesOwned（mch_store）\n  后果：给这个运营配的数据域对这条查询完全不生效 —— 配了「只看某商家」的人照样看到全量，\n  而页面上没有任何线索说明这一点。\n  两条路：把这处 `executeWithoutScope` 去掉（查询路径应当接数据域）；\n  或者确认它是「按已授权主键回捞明细」那一类，登记进 SCOPE_BYPASS_OK 并写清楚理由。: expected [ …(3) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/ops-data-scope.test.ts",
+          "test": "运营端数据域接入 ★★★ G4 ops 查询读到的表要么登记数据域，要么写明为什么不该登记",
+          "messages": [
+            "AssertionError: 这些表**有归属列、被运营端查询读到、却没有登记数据域** —— \n  给运营配的「只看某商家/某片区」对这些页面完全不生效，\n  而页面正常渲染、没有报错：他看到的比该看到的多，且不知道。\n  \n  这条与覆盖率闸（data-scope-coverage）的分工：那条问「这张表带不带归属列」，\n  **这条问「运营端到底读不读它」** —— 后者才是越权真正发生的地方。\n  \n  两条路：登记进 DataScopeRegistration（登记的同时要去掉那条查询上的\n  executeWithoutScope，否则登记不产生任何效果）；\n  或者写进 OPS_READS_UNREGISTERED_OK 并说明**为什么不该登记**。\n  ⚠️ 登记之前先跑一遍相关测试 —— 判据符合不等于该登记：\n  sys_media_asset 三条判据全符合，登记后 5 条红（MediaScanner 必须扫全量）。: expected [ …(5) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/ops-perm-matrix.test.ts",
+          "test": "运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条",
+          "messages": [
+            "AssertionError: 这些端点在 scripts/perm-endpoint-map.mjs 里匹配不到任何规则。\n  权限码细化改造会逐个换注解，**没归属的那条只能保持粗码** ——\n  于是它会悄悄成为「还留在大钥匙上」的一条，而没人知道。: expected [ …(21) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/ops-reason-required.test.ts",
+          "test": "运营端写操作的 reason ★★★ 后端要 reason 的端点，ops-web 必须真的发 reason",
+          "messages": [
+            "AssertionError: 这些端点后端要求 reason（停别人的东西要说得出为什么，写进审计），\n  而 ops-web 发过去的 body 里没有它 —— **后端会直接 10400**。\n  失败方式很隐蔽：mock 没有这条校验，所以演示、单测、E2E 全绿，\n  只有运营在真后端上点那个按钮时才会发现按不动：: expected [ '/ops/banned-word/{id}/remove' ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/schema-lineage.test.ts",
+          "test": "对账血缘 新出现的跨表同名业务键必须被分类",
+          "messages": [
+            "AssertionError: 这些列名出现在多张表里，但既没登记归属、也没登记为同名不同义。\n  trace_no（出现在 mkt_attribution_log、prn_action_log）\n  source_event_no（出现在 sys_outbox、pmt_effect_projection、prn_request）\n  execution_no（出现在 ord_refund_execution、ord_refund_obligation）\n  attempt_no（出现在 lgs_kd100_sub_attempt、prn_attempt、prn_receipt）\n  entry_no（出现在 pts_ledger_entry、ent_ledger）\n  line_no（出现在 prd_stock_alignment_line、sv_posting_line）\n  target_no（出现在 ent_owner_registry、prn_operation、prn_incident、prn_action_log）\n  receipt_no（出现在 ent_migration_return、prn_receipt）\n  active_revision_no（出现在 ord_pricing_template、ord_store_pricing_config）\n  previous_revision_no（出现在 ord_pricing_template_revision、ord_store_pricing_revision）\n  config_no（出现在 ord_store_pricing_config、ord_store_pricing_revision）\n  agent_no（出现在 prn_agent、prn_printer、prn_attempt）\n  printer_no（出现在 prn_printer、prn_credential_version、prn_printer_runtime、prn_job、prn_attempt）\n  route_no（出现在 prn_route、prn_route_version）\n  route_version_no（出现在 prn_route_version、prn_batch）\n  policy_no（出现在 prn_scene_policy、prn_policy_version）\n  policy_version_no（出现在 prn_policy_version、prn_request）\n  job_no（出现在 prn_job、prn_attempt）\n→ 它要么是外键（登记进 KEY_OWNERS，写明指向哪张表的哪一列），要么是同名不同义（登记进 NAME_COLLISIONS 并写清差别）。\n  留着不分类的后果：下一个按名字 join 的人会连错，而且连错了不报错。: expected [ …(18) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/schema-lineage.test.ts",
+          "test": "对账血缘 与 gen-erd.mjs 的键归属表一致 —— 两份分叉会让 ER 图连错线",
+          "messages": [
+            "AssertionError: gen-erd.mjs 与本文件的 KEY_OWNERS 不一致: expected { …(50) } to deeply equal { …(68) }"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/spec-completeness.test.ts",
+          "test": "契约完整性 错误码分段表与 ErrorCode.java 一致",
+          "messages": [
+            "AssertionError: 这些错误码在 ErrorCode.java 里有、响应格式规范.md §3 没有（或写法不一致，应为 `code` NAME）: expected [ '82001 PRINT_BLOCKED', …(2) ] to deeply equal []"
+          ]
+        },
+        {
+          "file": "packages/shared/tests/type-alignment.test.ts",
+          "test": "契约四件套：契约 / 端点表 / mock / http 必须一一对应 b-app: 四处齐全",
+          "messages": [
+            "AssertionError: b-app 契约四件套对不上：\nmSaveUnifiedActivity: mock 缺\nmActivityPresets: mock 缺\nmEntitlementTemplates: mock 缺\nmEntitlementUsage: mock 缺\nmStoredValueProgress: mock 缺\nmPublishEntitlementTemplate: mock 缺: expected [ Array(6) ] to deeply equal []"
+          ]
+        }
+      ]
+    }
+  },
+  "browser": {
+    "environment": "本地Mock，无真实提交",
+    "verified": [
+      "375px中文/英文/阿语规则弹层展开、关闭与换行",
+      "320px阿语页面及面板无横向溢出",
+      "1280px下375px应用框与面板居中（DOM几何检查）",
+      "商品标准品搜索、选用回填与关闭，未保存",
+      "320px阿语资质录入表单：三字段均37.53px高（88rpx），页面宽320px无横向溢出",
+      "320px阿语期初对齐页：三种库存差异显示、底部操作可见，页面宽320px无横向溢出"
+    ],
+    "screenshot": "../../../../../output/b-app-ui/qualifications-zh-layout.png",
+    "limits": [
+      "未做96页全量视觉验收",
+      "未做微信/Android/iOS真机、软键盘与安全区验收",
+      "未做真实后端联调",
+      "储值活动编辑裸入口缺少preset参数，呈现加载失败；未计入表单浏览器验收",
+      "打印页面在Mock环境仅显示提示；选项交互使用真实Vue组件回归验证，尚无浏览器数据态验收"
+    ],
+    "followupScreenshots": [
+      "../../../../../output/b-app-ui/qualifications-ar-320.png",
+      "../../../../../output/b-app-ui/stock-align-ar-320.png"
+    ]
+  },
+  "review": {
+    "critical": 0,
+    "importantFound": 2,
+    "importantFixed": 2,
+    "scannerMinorFixed": true
+  },
+  "auditCounts": {
+    "pages": 96,
+    "registeredRoutes": 96,
+    "components": 42,
+    "localeKeys": 3186,
+    "catalogEntries": 3186,
+    "references": 2886,
+    "dynamicReferences": 274,
+    "duplicateGroups": 272,
+    "duplicateKeys": 717,
+    "literalCandidates": 1,
+    "longCopyCandidates": 17,
+    "layoutCandidates": 19
+  },
+  "followup": {
+    "fixedSharedFailures": [
+      "icon-chars.test.ts：打印模板字符勾选迁移共享sh-check",
+      "input-bounds.test.ts：打印账号64、设备序列128、份数2字符；密钥4096字符界面保护上限（非厂商约束）"
+    ],
+    "selectionRegression": "真实共享控件与行点击均验证仅切换一次；必选字段不可取消",
+    "guardEvidence": "两项共享检查先复现失败，修复后4项通过；新增组件回归先失败后通过"
+  },
+  "layoutCorrection": {
+    "trigger": "User identified joined inputs in the previous Arabic screenshot. No overflow alone was insufficient visual acceptance.",
+    "language": "zh-CN",
+    "before": {
+      "viewport": 375,
+      "inputGapsPx": [
+        0,
+        0
+      ]
+    },
+    "after": "Chinese checks at 320/375/430px: positive input, label and button gaps; no horizontal overflow.",
+    "spacingRpx": {
+      "fieldTop": 20,
+      "labelToInput": 12,
+      "hintTop": 8,
+      "actionGap": 16,
+      "actionTop": 24
+    },
+    "uploadSizeAt375Px": {
+      "width": 80,
+      "height": 56
+    },
+    "evidence": "../../../../../output/b-app-ui/qualifications-spacing.json",
+    "screenshots": [
+      "../../../../../output/b-app-ui/qualifications-zh-layout.png",
+      "../../../../../output/b-app-ui/qualifications-zh-layout-full.png"
+    ],
+    "regression": "Uploader binding reproduced fallback width 104 instead of 160, then passed after correcting prop names. Cancel flow passes. CSS declaration scan fixtures reproduced and fixed comment/string false positives."
+  },
+  "layoutContractReview": "./layout-review.json"
+}

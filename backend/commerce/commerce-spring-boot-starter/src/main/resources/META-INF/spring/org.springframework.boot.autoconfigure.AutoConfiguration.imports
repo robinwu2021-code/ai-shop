@@ -1,0 +1,17 @@
+ai.neargo.commerce.starter.CommercePersistenceAutoConfiguration
+ai.neargo.commerce.starter.CommerceCatalogAutoConfiguration
+ai.neargo.commerce.starter.CommerceMallAutoConfiguration
+
+ai.neargo.commerce.starter.CommerceFulfillmentAutoConfiguration
+
+ai.neargo.commerce.starter.CommerceRefundAutoConfiguration
+
+ai.neargo.commerce.starter.CommerceMallHttpAutoConfiguration
+
+ai.neargo.commerce.starter.CommerceMallQueryAutoConfiguration
+
+ai.neargo.commerce.starter.CommerceSourceManagementAutoConfiguration
+
+ai.neargo.commerce.starter.CommerceRecoveryAutoConfiguration
+
+ai.neargo.commerce.starter.CommerceOfflineAutoConfiguration

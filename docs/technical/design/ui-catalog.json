@@ -1892,7 +1892,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 156,
+      "count": 163,
       "domains": [
         {
           "name": "经营看板",
@@ -2116,6 +2116,97 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:3000/merchants?tab=plan-defs"
+            },
+            {
+              "app": "ops-web",
+              "route": "/mall",
+              "title": "经营类型与套餐",
+              "domain": "商家与门店",
+              "group": "套餐商城",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/mall"
+            },
+            {
+              "app": "ops-web",
+              "route": "/mall?tab=products",
+              "title": "商城商品与SKU",
+              "domain": "商家与门店",
+              "group": "套餐商城",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/mall?tab=products"
+            },
+            {
+              "app": "ops-web",
+              "route": "/mall?tab=orders",
+              "title": "商城订单",
+              "domain": "商家与门店",
+              "group": "套餐商城",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/mall?tab=orders"
+            },
+            {
+              "app": "ops-web",
+              "route": "/mall?tab=claims",
+              "title": "线下核款",
+              "domain": "商家与门店",
+              "group": "套餐商城",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/mall?tab=claims"
+            },
+            {
+              "app": "ops-web",
+              "route": "/mall?tab=collection",
+              "title": "平台收款档案",
+              "domain": "商家与门店",
+              "group": "套餐商城",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/mall?tab=collection"
+            },
+            {
+              "app": "ops-web",
+              "route": "/mall?tab=assisted",
+              "title": "代客线下购买",
+              "domain": "商家与门店",
+              "group": "套餐商城",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/mall?tab=assisted"
+            },
+            {
+              "app": "ops-web",
+              "route": "/mall?tab=sources",
+              "title": "门店权益来源",
+              "domain": "商家与门店",
+              "group": "套餐商城",
+              "matrix": "P-11.2",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/mall?tab=sources"
             },
             {
               "app": "ops-web",
@@ -4020,5 +4111,5 @@
       ]
     }
   ],
-  "total": 321
+  "total": 328
 }

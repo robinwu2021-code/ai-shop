@@ -71,6 +71,21 @@ const OPS_DIMS = ["MERCHANT", "COMMUNITY", "PICKUP"] as const;
  */
 const SCOPE_BYPASS_OK: Record<string, string> = {
   /*
+   * 套餐商城运营查询（/ops/biz-mall/**，可移植 commerce starter）。静态调用图从
+   * MallHttpContextPort 进到 ShopMallAuthority，而它的**商家分支**会经 BizIdentityResolver
+   * 解析门店成员；运营分支（operator(...)）只读运营会话与功能点，不解析商家身份。
+   * 商城运营数据本身是平台口径（套餐目录、平台收款、全平台订单），**没有接运营数据域**：
+   * 成立的前提是 commerce:* 功能点只授给 SUPER_ADMIN（V625/V627）。要把这些码授给
+   * 配了数据域的角色，必须先给商城查询接上数据域，并删掉这一条。
+   */
+  "BizIdentityResolverImpl#resolve":
+    "商城运营路由经 ShopMallAuthority 的静态可达；运行时运营分支不解析商家身份。商城运营查询为平台口径，"
+    + "commerce:* 只授 SUPER_ADMIN（V625/V627）；授给有数据域的角色前须先接数据域并删除本条",
+  // 合并进统一主线后，BizIdentityResolverImpl 的门店成员解析落在 membershipFor（理由同上一条）。
+  "BizIdentityResolverImpl#membershipFor":
+    "商城运营路由经 ShopMallAuthority 的静态可达；运行时运营分支不解析商家身份。商城运营查询为平台口径，"
+    + "commerce:* 只授 SUPER_ADMIN（V625/V627）；授给有数据域的角色前须先接数据域并删除本条",
+  /*
    * 供应商收款账户的回捞（ADR-011）。这个方法**同时服务两侧**：
    * B 端商家看自己的账户（那边的会话里没有运营数据域，直查会 SELECT 不到），
    * 和 ops 付款清单按主体取「这家的钱打去哪」。
@@ -1494,9 +1509,21 @@ describe("运营端数据域接入", () => {
     ).toEqual([]);
   });
 
-  it("★★★ G3 每张已注册表都要为运营会话的三个维度备好锚点 —— 缺一个，那类运营整页空白且不报错", () => {
+  it("仅买家收藏登记不要求虚构运营锚点；新增运营读取时仍须检查", () => {
+    const opsReads = new Set(gets.flatMap(e => (classes.get(e.cls)?.methods.get(e.method) ?? [])
+      .flatMap(body => [...tablesIn(e.cls, body)])));
+    expect(registered.has("prd_goods_favorite")).toBe(true);
+    expect(opsReads.has("prd_goods_favorite")).toBe(false);
+  });
+
+  it("★★★ G3 每张被运营读取的已注册表都要为运营会话的三个维度备好锚点 —— 缺一个，那类运营整页空白且不报错", () => {
     const holes: string[] = [];
+    const opsReads = new Set(gets.flatMap(e => (classes.get(e.cls)?.methods.get(e.method) ?? [])
+      .flatMap(body => [...tablesIn(e.cls, body)])));
     for (const [table, anchors] of registry) {
+      // A consumer-only table has no ops page to become blank. Future ops readers
+      // are discovered by the same call graph as G4, so they enter this check.
+      if (!opsReads.has(table)) continue;
       for (const dim of OPS_DIMS) {
         const col = anchors[dim];
         if (col) continue;

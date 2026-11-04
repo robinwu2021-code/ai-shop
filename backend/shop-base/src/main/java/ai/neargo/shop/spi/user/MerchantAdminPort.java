@@ -31,6 +31,9 @@ public interface MerchantAdminPort {
      */
     String activate(ActivateCommand cmd);
 
+    /** Platform-owned provisioning, called only by the operator self-operated workflow. */
+    default String activateSelfOperated(ActivateCommand cmd) { return activate(cmd); }
+
     /**
      * 无证照快速开店：<b>不经审核</b>，当场建出一个「待补证照」的主体与它的默认门店。
      *
@@ -63,12 +66,27 @@ public interface MerchantAdminPort {
      */
     java.util.Optional<String> pendingLicenseEntityOf(String userNo);
 
+    /** Resolve the B-side application target inside the application transaction. Only an
+     * unselected legacy applicant may start without a shell. */
+    java.util.Optional<String> merchantApplicationEntity(String userNo, String selectedEntityNo);
+
     /**
      * @param ownerUserNo 发起人（当前登录账号）
      * @param storeName   老板填的店名。<b>同时用作主体名</b> —— 补证照时再被执照上的正式名称覆盖
      * @param address     门店地址，可空（之后在店铺资料里补）
      */
-    record QuickStartCommand(String ownerUserNo, String storeName, String address) {
+    /**
+     * @param market 经营市场（已由调用方按部署配置校验）；null = 不写，沿用库默认（旧 CN 行为）
+     */
+    record QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode,
+                             String market) {
+        public QuickStartCommand(String ownerUserNo, String storeName, String address, String businessTypeCode) {
+            this(ownerUserNo, storeName, address, businessTypeCode, null);
+        }
+
+        public QuickStartCommand(String ownerUserNo, String storeName, String address) {
+            this(ownerUserNo, storeName, address, null, null);
+        }
     }
 
     /**

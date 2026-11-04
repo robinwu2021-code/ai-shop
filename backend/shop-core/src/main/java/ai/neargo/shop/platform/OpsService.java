@@ -153,6 +153,9 @@ public interface OpsService {
     /** C 端提交入驻申请（由 /mp/merchant/apply 调用）。 */
     String createApply(SubmitApplyCommand cmd);
 
+    /** Pin the B-side applicant's selected store or eligible legacy shell in the write transaction. */
+    String createMerchantApply(SubmitApplyCommand cmd, String selectedEntityNo);
+
     /**
      * <b>运营代商家提交入驻申请</b>（三期）。BD 在店里把执照拍下来、当场替老板填完。
      *
@@ -211,6 +214,9 @@ public interface OpsService {
      * @return 同意的时刻（毫秒）。没有申请单时返回 0 —— 没申请过不是异常
      */
     long acceptAgreement(String userNo);
+
+    /** B 端按当前主体确认；null 只匹配尚未关联主体的本人申请。 */
+    long acceptAgreement(String userNo, String selectedEntityNo);
 
     /**
      * 我的入驻申请状态（C 端）。<b>此前提交完就查不到了</b> ——

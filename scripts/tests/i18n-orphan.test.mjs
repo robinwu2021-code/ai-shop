@@ -13,6 +13,7 @@ function check(source) {
     copyFileSync(new URL("../check-i18n-orphan.mjs", import.meta.url), join(root, "scripts/check-i18n-orphan.mjs"));
     put("scripts/lib/i18n-locale.mjs", "");
     copyFileSync(new URL("../lib/i18n-locale.mjs", import.meta.url), join(root, "scripts/lib/i18n-locale.mjs"));
+    copyFileSync(new URL("../lib/i18n-dynamic-prefixes.mjs", import.meta.url), join(root, "scripts/lib/i18n-dynamic-prefixes.mjs"));
     put("backend/shop-merchant/src/main/java/ai/neargo/shop/merchant/brand/impl/ManagementScopeServiceImpl.java", `private static final Map<String,Set<String>> PERMISSIONS=Map.of(
       "STORE",Set.of("store.read","store.brand.change"),
       "ENTITY",Set.of("payment.merchant.read"));`);

@@ -9,6 +9,9 @@ import ai.neargo.shop.merchant.service.StorePaySettingService;
 import ai.neargo.shop.spi.user.QualificationPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
+import java.util.Optional;
+import ai.neargo.commerce.api.access.AccessDenied;
+import ai.neargo.commerce.api.access.AccessStatus;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -20,7 +23,10 @@ public class StorePaySettingServiceImpl implements StorePaySettingService {
     private final MchStoreMapper storeMapper;
     private final QualificationPort qualificationPort;
 
-    public StorePaySettingServiceImpl(MchStoreMapper storeMapper, QualificationPort qualificationPort) {
+    private final Optional<WriteAdmission> admission;
+
+    public StorePaySettingServiceImpl(MchStoreMapper storeMapper, QualificationPort qualificationPort, Optional<WriteAdmission> admission) {
+        this.admission = admission;
         this.storeMapper = storeMapper;
         this.qualificationPort = qualificationPort;
     }
@@ -34,6 +40,11 @@ public class StorePaySettingServiceImpl implements StorePaySettingService {
     @Transactional
     public PaySettingVO save(String entityNo, String storeNo, Boolean offlinePayEnabled, Boolean codEnabled) {
         MchStore store = owned(entityNo, storeNo);
+        if (admission.isPresent()) {
+            admission.get().require(storeNo);
+        } else if (store.getCommerceModel()!=null && !"LEGACY".equals(store.getCommerceModel())) {
+            throw new AccessDenied(AccessStatus.CHECK_UNAVAILABLE);
+        }
         boolean offline = offlinePayEnabled == null ? isOn(store.getOfflinePayEnabled()) : offlinePayEnabled;
         // 关线下连带关货到付款；没说要改货到付款时沿用原值
         boolean cod = offline && (codEnabled == null ? isOn(store.getCodEnabled()) : codEnabled);

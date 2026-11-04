@@ -90,8 +90,8 @@ onShow(load);
 <template>
   <sh-scaffold title-key="memberAdd.title" :denied="!merchant.can('biz:customer')">
     <view class="sh-card">
-      <view class="field">
-        <text class="field__label">{{ $t("memberAdd.phone") }}</text>
+      <view class="field member-field">
+        <text class="field__label">{{ $t("common.phone") }}</text>
         <input
           v-model="phone"
           class="field__input"
@@ -102,7 +102,7 @@ onShow(load);
       </view>
       <view class="field">
         <text class="field__label">{{ $t("memberAdd.remark") }}</text>
-        <input maxlength="255" v-model="remark" class="field__input" :placeholder="$t('memberAdd.remarkPh')" />
+        <input maxlength="255" v-model="remark" class="field__input" :placeholder="$t('common.optional')" />
       </view>
       <!-- `|| failed` 一起判：拉挂时这一块要**留在原地**说「没能加载出来」，
            而不是整块消失 —— 后者与「这家店还没建过标签」一模一样 -->
@@ -132,10 +132,7 @@ onShow(load);
 </template>
 
 <style scoped>
-.field {
-  margin-top: 20rpx;
-}
-.field:first-child {
+.member-field:first-child {
   margin-top: 0;
 }
 .tags {

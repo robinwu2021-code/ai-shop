@@ -365,7 +365,7 @@ onShow(() => {
 
     <sh-savebar
       :visible="dirty"
-      :text="String($t('store.unsaved'))"
+      :text="String($t('common.unsaved'))"
       :discard-text="String($t('store.discard'))"
       :save-text="String($t('common.save'))"
       @discard="discard"
@@ -377,9 +377,6 @@ onShow(() => {
 <style scoped>
 .blk {
   display: block;
-}
-.field + .field {
-  margin-top: 24rpx;
 }
 .quick {
   margin-top: 12rpx;

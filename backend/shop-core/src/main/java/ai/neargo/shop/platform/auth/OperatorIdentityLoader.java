@@ -49,7 +49,12 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
     }
 
     @Override
-    public Optional<LoginUser> load(String staffNo) {
+    public Optional<LoginUser> load(String staffNo) { return load(staffNo, false); }
+
+    /** Explicit mall authority uses current DB permissions; legacy login/cache semantics remain unchanged. */
+    public Optional<LoginUser> loadFresh(String staffNo) { return load(staffNo, true); }
+
+    private Optional<LoginUser> load(String staffNo, boolean strict) {
         SysOpsStaff staff = staffs.selectOne(Wrappers.<SysOpsStaff>lambdaQuery()
                 .eq(SysOpsStaff::getStaffNo, staffNo)
                 .last("LIMIT 1"));
@@ -57,8 +62,9 @@ public class OperatorIdentityLoader implements IdentityLoader<LoginUser> {
             return Optional.empty();
         }
         List<String> roles = readRoles(staffNo, staff.getRoles());
-        List<String> resolved = perms.resolve(roles);
+        List<String> resolved = strict ? perms.resolveFresh(roles) : perms.resolve(roles);
         if (resolved == null) {
+            if (strict) throw new ai.neargo.shop.auth.store.FreshAccountReadUnavailable();
             // 解析器没装上或解析失败。**宁可给空权限也不要抛** ——
             // 抛出去会让整个运营端 500；给空权限的话，读接口会 403，
             // 而 403 至少指向「权限」，500 指向任何地方

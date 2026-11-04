@@ -47,7 +47,7 @@ public class BizEntityController {
      */
     @GetMapping("/biz/stores/mine")
     public List<EntityStoresVO> myStores() {
-        return entityService.myStores(SecurityUtils.currentUserNo());
+        return entityService.myStores(SecurityUtils.requireUser());
     }
 
     /**

@@ -416,6 +416,7 @@ public class DevSeeder {
 
     private ai.neargo.shop.merchant.entity.MchStore defaultStore(String merchantNo, String name) {
         var s = new ai.neargo.shop.merchant.entity.MchStore();
+        s.setCommerceModel("LEGACY");
         s.setStoreNo("ST-" + merchantNo);
         s.setEntityNo(merchantNo);
         s.setName(name);

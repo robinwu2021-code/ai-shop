@@ -41,6 +41,14 @@ public interface PayGateway {
      */
     QueryResult query(String outTradeNo);
 
+    /** Closing without a matching terminal provider query is not closure evidence. */
+    default QueryResult close(String outTradeNo) { return QueryResult.failed(); }
+
+    /** Local immutable deployment metadata; no gateway/network/database call is permitted here. */
+    default java.util.Optional<PlatformCollectionCapability> platformCollectionCapability() { return java.util.Optional.empty(); }
+    record PlatformCollectionCapability(String merchantNo,String appId,String method,String currency,long maximumMinor) {}
+
+
     /**
      * <b>查退款。与 {@link #query} 是两个接口，不能混用。</b>
      *
@@ -174,13 +182,65 @@ public interface PayGateway {
     /**
      * 查单结果。
      *
-     * @param ok        查询本身是否成功。<b>false 时下面的字段都不可信</b>
-     * @param paid      通道侧是否已支付成功
-     * @param found     通道有没有这笔单
+     * @param ok 查询本身是否成功。<b>false 时下面的字段都不可信</b>
+     * @param paid 通道侧是否已支付成功
+     * @param found 通道有没有这笔单
      * @param amountMinor 通道侧金额（分）—— 与我方不符时是 AMOUNT_DIFF
-     * @param tradeNo   通道流水号
+     * @param tradeNo 通道流水号
      */
-    record QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo, String currency) {
+    record QueryResult(
+            boolean ok,
+            boolean paid,
+            boolean found,
+            long amountMinor,
+            String tradeNo,
+            String currency,
+            Long actualPaidAt,
+            String receiverNo,
+            String outTradeNo,
+            String providerState,
+            Long paidAtPrecisionMs) {
+        public QueryResult {
+            paidAtPrecisionMs = paidAtPrecisionMs == null ? 1L : paidAtPrecisionMs;
+            if (paidAtPrecisionMs != 1 && paidAtPrecisionMs != 1000)
+                throw new IllegalArgumentException("INVALID_PAYMENT_TIME_PRECISION");
+            if (actualPaidAt != null) {
+                try {
+                    Math.addExact(actualPaidAt, paidAtPrecisionMs - 1);
+                } catch (ArithmeticException overflow) {
+                    throw new IllegalArgumentException("INVALID_PAYMENT_TIME_RANGE", overflow);
+                }
+            }
+        }
+
+        public QueryResult(
+                boolean ok,
+                boolean paid,
+                boolean found,
+                long amountMinor,
+                String tradeNo,
+                String currency,
+                Long actualPaidAt,
+                String receiverNo,
+                String outTradeNo,
+                String providerState) {
+            this(
+                    ok,
+                    paid,
+                    found,
+                    amountMinor,
+                    tradeNo,
+                    currency,
+                    actualPaidAt,
+                    receiverNo,
+                    outTradeNo,
+                    providerState,
+                    1L);
+        }
+
+        public QueryResult(boolean ok,boolean paid,boolean found,long amountMinor,String tradeNo,String currency) {
+            this(ok,paid,found,amountMinor,tradeNo,currency,null,null,null,null);
+        }
         public QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
             this(ok, paid, found, amountMinor, tradeNo, "CNY");
         }

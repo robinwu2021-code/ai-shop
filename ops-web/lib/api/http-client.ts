@@ -129,8 +129,15 @@ function makeClient(base: string) {
    * （`gen-openapi` 与 `check-ops-contract`）把带查询串的整串当成路径去比对后端注册，
    * 比不上就报「后端没有这个接口」。**路径要保持字面量**，可变部分交给这里。
    */
-  post: <T>(path: string, data?: unknown, q?: object, extraHeaders?: Record<string, string>) =>
-    req<T>(base, `${path}${qs(q)}`, { method: "POST", body: JSON.stringify(data ?? {}), headers: extraHeaders }),
+  /*
+   * `data` 是 Blob（图片凭证）时**原样发字节**，Content-Type 取 Blob 自己的类型 ——
+   * 商城线下凭证上传 `evidence/content` 收的是 image/jpeg|png 请求体，不是 JSON，
+   * 也不是 multipart。包成 JSON 的话后端拿到的是 `{}`。
+   */
+  post: <T>(path: string, data?: unknown, q?: object, requestHeaders?: Record<string, string>) =>
+    req<T>(base, `${path}${qs(q)}`, data instanceof Blob
+      ? { method: "POST", body: data, headers: { "Content-Type": data.type || "application/octet-stream", ...requestHeaders } }
+      : { method: "POST", body: JSON.stringify(data ?? {}), headers: requestHeaders }),
   put: <T>(path: string, data?: unknown) => req<T>(base, path, { method: "PUT", body: JSON.stringify(data ?? {}) }),
   };
 }

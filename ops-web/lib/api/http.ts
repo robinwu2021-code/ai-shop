@@ -25,6 +25,7 @@ import { paymentHttp } from "./https/payment";
 import { payOpsHttp } from "./https/payops";
 import { contentHttp } from "./https/content";
 import { systemHttp } from "./https/system";
+import { commerceHttp } from "./https/commerce";
 
 /** 各域 http 切片。contract.test.ts 用它逐片校验 key 集合、检测重复实现。 */
 export const HTTP_SLICES = {
@@ -52,10 +53,11 @@ export const HTTP_SLICES = {
   message: messageHttp,
   content: contentHttp,
   system: systemHttp,
+  commerce: commerceHttp,
 } as const;
 
 export const httpApi: Api = {
   ...printHttp, ...dashboardHttp, ...merchantHttp, ...orderHttp, ...paymentHttp, ...payOpsHttp,
   ...communityHttp, ...fulfillmentHttp, ...storeHttp,
-  ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp, ...inventoryHttp, ...jobHttp,
+  ...marketingHttp, ...reviewHttp, ...afterSaleHttp, ...groupHttp, ...productHttp, ...financeHttp, ...iamHttp, ...growthHttp, ...riskHttp, ...messageHttp, ...contentHttp, ...systemHttp, ...memberHttp, ...inventoryHttp, ...jobHttp, ...commerceHttp,
 };

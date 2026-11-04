@@ -55,6 +55,10 @@ const NO_ENTITY_YET: Record<string, string> = {
   inv_outbox_delivery: "库存投递状态由 JdbcOutboxStore 固定 Source.INVENTORY 的 JdbcTemplate 追加、认领和回写，按投递 id 或 event_no/handler_id 查询；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
   inv_outbox_operation: "库存重放/跳过审计由 JdbcOutboxStore 固定 Source.INVENTORY 的 JdbcTemplate 追加，按 request_id 查询幂等操作；采用 source-bound JDBC 适配器，无独立 ORM 实体。",
   inv_event_consumed: "库存消费幂等收件记录由 TransactionalOutboxHandler 的 JdbcTemplate 与消费效果同事务插入，按 event_no/handler 唯一键冲突识别已消费；OutboxConfiguration 为 INVENTORY 选择该收件表和库存事务，无独立 ORM 实体。",
+  pay_platform_collection_head: "平台线下收款档案的当前版本指针，由 PlatformOfflineLedger 经 JdbcTemplate 在行锁内读写，不使用 ORM 实体。",
+  pay_platform_collection_profile: "平台线下收款档案的不可变版本（发出后的指引原样保留），由 PlatformOfflineLedger 经 JdbcTemplate 追加与按版本读取，不使用 ORM 实体。",
+  inv_coordinated_reservation: "商城硬件协调预留（生命周期3），只由 CoordinatedInventoryService 经 JdbcTemplate 在库存事务内读写，旧库存接口不得改写，不使用 ORM 实体。",
+  inv_coordinated_shipment: "商城硬件协调发货证据，只由 CoordinatedInventoryService 经 JdbcTemplate 追加，不使用 ORM 实体。",
   pts_statement_final_fact: "可信终局发生时间与首次就绪序列投影，由PointsConfigurationMapper维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_build: "大账单构建状态及高水位由PointsConfigurationMapper与MybatisStatementBuildStore与不可变record维护，按积分SQL mapper设计无ORM实体。",
   pts_statement_source_history: "大账单来源版本的只增历史由PointsConfigurationMapper与MybatisStatementBuildStore维护，用于分页重建旧修订，不设独立ORM实体。",
@@ -219,6 +223,79 @@ for (const table of sqlOwners) {
   if (!schema.has(table)) throw new Error(`Persistence owner names a missing table: ${table}`);
 }
 
+/** SQL adapters are mappings too: require their real table binding and every business column. */
+const SQL_PERSISTENCE: Record<string, string> = {
+  prd_stock_sync_operation: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java",
+  prd_stock_alignment_batch: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+  prd_stock_alignment_line: "shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java",
+  ord_refund_coupon_scope: "shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+  ord_refund_obligation: "shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/RefundObligationMapper.java",
+  inv_event_consumed: "shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/TransactionalOutboxHandler.java",
+  ...Object.fromEntries(["sys", "inv"].flatMap((prefix) =>
+    ["stream", "delivery", "operation"].map((suffix) => [
+      `${prefix}_outbox_${suffix}`,
+      "shop-store-mybatis/src/main/java/ai/neargo/shop/event/outbox/runtime/JdbcOutboxStore.java",
+    ]))),
+};
+
+const withoutJavaComments = (src: string) => src.replace(
+  /"""[\s\S]*?"""|"(?:\\.|[^"\\])*"|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+  (token) => token.startsWith('"') ? token : " ",
+);
+
+/** Read the first Java call argument, respecting quotes and nested calls. */
+function firstArgument(src: string, start: number): string {
+  let depth = 0;
+  let quoted = false;
+  for (let i = start; i < src.length; i++) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === "\\") i++;
+      else if (ch === '"') quoted = false;
+    } else if (ch === '"') quoted = true;
+    else if (ch === "(") depth++;
+    else if (ch === ")") {
+      if (!depth) return src.slice(start, i);
+      depth--;
+    } else if (ch === "," && !depth) return src.slice(start, i);
+  }
+  return "";
+}
+
+/** Expand string concatenation only; SQL parameters and mapper arguments are never part of SQL. */
+function sqlForTable(src: string, table: string): string[] {
+  const clean = withoutJavaComments(src);
+  const variables = new Map<string, string>();
+  const prefix = table.match(/^(sys|inv)_outbox_/);
+  if (prefix && clean.includes(`("${prefix[1]}")`)) variables.set("source.prefix", prefix[1]!);
+  if (table === "inv_event_consumed" && clean.includes('"inv_event_consumed".equals(inbox)'))
+    variables.set("inbox", table);
+  const expand = (expression: string): string => [...expression.matchAll(/"(?:\\.|[^"\\])*"|\b[a-zA-Z_]\w*(?:\.\w+)*\b/g)]
+    .map((m) => m[0].startsWith('"') ? m[0].slice(1, -1) : variables.get(m[0]) ?? " ").join("");
+  for (const match of clean.matchAll(/(?:String\s+|this\.)(\w+)\s*=\s*([^;]+);/g)) {
+    variables.set(match[1]!, expand(match[2]!));
+  }
+  const sql: string[] = [];
+  for (const match of clean.matchAll(/(?:jdbc\.\w+|@(Select|Insert|Update|Delete))\s*\(/g)) {
+    const expression = firstArgument(clean, match.index! + match[0].length);
+    const text = expand(expression);
+    if (!/^\s*(SELECT|INSERT|UPDATE|DELETE)\b/i.test(text)) continue;
+    if (!new RegExp(`(?:FROM|INTO|UPDATE)\\s+${table}\\b`, "i").test(text)) continue;
+    sql.push(text);
+  }
+  return sql;
+}
+
+function mappedSqlColumns(src: string, table: string): Set<string> {
+  // SQL string values and comments do not prove a column is mapped.
+  const sql = sqlForTable(src, table).join("\n").replace(/'(?:''|\\.|[^'])*'|--[^\n]*|\/\*[\s\S]*?\*\//g, " ");
+  return new Set([...sql.matchAll(/\b[a-z][a-z0-9_]*\b/g)].map((m) => m[0]));
+}
+
+function hasSqlTableBinding(src: string, table: string): boolean {
+  return sqlForTable(src, table).length > 0;
+}
+
 /** 库里的业务列（去掉 BaseEntity 那八列），转成 camelCase */
 const businessCols = (table: string) =>
   (schema.get(table)?.cols ?? [])
@@ -354,6 +431,33 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
     const registrations = Object.assign(Object.create({ [probe]: "继承键不是登记" }), NO_ENTITY_YET);
     expect(unregisteredBusinessTables([probe, "toString"], entities, registrations))
       .toEqual([probe, "toString"]);
+  });
+
+  it("SQL persistence mappings must bind their table and cover every business column", () => {
+    const missing: string[] = [];
+    for (const [table, file] of Object.entries(SQL_PERSISTENCE)) {
+      const src = readFileSync(join(BACKEND, file), "utf8");
+      expect(schema.has(table), `Stale SQL mapping: ${table}`).toBe(true);
+      expect(hasSqlTableBinding(src, table), `No real SQL table binding: ${table} in ${file}`).toBe(true);
+      const mapped = mappedSqlColumns(src, table);
+      for (const col of schema.get(table)?.cols ?? []) {
+        if (!AUDIT.has(col.name) && !mapped.has(col.name)) missing.push(`${table}.${col.name} in ${file}`);
+      }
+    }
+    expect(missing, "SQL mapping misses business columns: " + missing.join(", ")).toEqual([]);
+  });
+
+  it("SQL coverage rejects missing bindings, missing columns and prose-only mentions", () => {
+    const src = 'jdbc.query("SELECT real_column FROM probe", mapper);'
+      + ' // missing_column\n String message = "missing_column";';
+    expect(hasSqlTableBinding(src, "probe")).toBe(true);
+    expect(hasSqlTableBinding(src, "unbound")).toBe(false);
+    expect(hasSqlTableBinding('String error = "Missing FROM probe";', "probe")).toBe(false);
+    expect(mappedSqlColumns('jdbc.query("SELECT real_column FROM probe WHERE id=?", mapper, "missing_column");', "probe").has("missing_column")).toBe(false);
+    expect(mappedSqlColumns(src + 'jdbc.query("SELECT missing_column FROM unrelatedtable", mapper);', "probe").has("missing_column")).toBe(false);
+    expect(mappedSqlColumns(src, "probe").has("real_column")).toBe(true);
+    expect(mappedSqlColumns(src, "probe").has("missing_column")).toBe(false);
+    expect(mappedSqlColumns('/* jdbc.query("SELECT fake FROM probe"); */', "probe").has("fake")).toBe(false);
   });
 
   it("登记的「欠着」确实还欠着 —— 补完要删登记", () => {

@@ -61,6 +61,12 @@ final class TokenStoreSelection {
      * 只要有<b>任意一端</b>要进库，{@code DbSessionConfig} 就得装 ——
      * 哪怕另外两端还在 ehcache 上。这正是分批切换的形态。
      */
+    static class MerchantUsesDb implements Condition {
+        public boolean matches(ConditionContext ctx, AnnotatedTypeMetadata metadata) {
+            return usesDb(ctx.getEnvironment(), Realm.MERCHANT);
+        }
+    }
+
     static class AnyRealmUsesDb implements Condition {
         @Override
         public boolean matches(ConditionContext ctx, AnnotatedTypeMetadata metadata) {

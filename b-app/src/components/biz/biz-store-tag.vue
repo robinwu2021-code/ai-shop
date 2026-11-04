@@ -52,7 +52,7 @@ const show = computed(() =>
 
 /** 一家店的人点进去是「管理」（在那里开第二家），多店的人点进去是「切换」 */
 const actionKey = computed(() =>
-  merchant.multiStore ? "storePick.switch" : "storePick.manage");
+  merchant.multiStore ? "me.switchStore" : "store.pickup.manage");
 
 function go() {
   if (props.readonly) return;

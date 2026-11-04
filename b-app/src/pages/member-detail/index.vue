@@ -199,7 +199,7 @@ onLoad(async (q) => {
 
       <!-- 来源轨迹：谁发的链接、哪个员工录的，都要写出来 -->
       <view class="sh-card sh-mt-sm">
-        <text class="txt-title">{{ $t("memberDetail.sources") }}</text>
+        <view class="sh-card__head"><text class="txt-title">{{ $t("memberDetail.sources") }}</text></view>
         <!--
           一条来源一行：左边「日期 · 怎么来的」，右边「谁带来的 / 在哪家店」。用 sh-kv 两端对齐（与上面「累计」同一个件）。
           不显示内部账号号（U2026…）：商家认不出是谁；手工录入不再补一句「店员录入」—— 来源本身已经说了。
@@ -234,8 +234,8 @@ onLoad(async (q) => {
         <template #foot>
           <text class="txt-caption sh-muted blk foot__hint">{{ $t("memberDetail.tagCount", { n: picked.length, m: MAX_TAGS }) }}</text>
           <view class="sh-row bar">
-            <view class="sh-btn sh-btn--muted sh-fill" @tap="showTags = false">{{ $t("batchTag.cancel") }}</view>
-            <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="saveTags">{{ $t("memberDetail.saveTags") }}</view>
+            <view class="sh-btn sh-btn--muted sh-fill" @tap="showTags = false">{{ $t("common.cancel") }}</view>
+            <view class="sh-btn bar__main" :class="{ 'is-disabled': saving }" @tap="saveTags">{{ $t("common.save") }}</view>
           </view>
         </template>
       </sh-sheet>

@@ -64,6 +64,9 @@ export const KEY_OWNERS = {
   "execution_no": {
     "table": "ord_refund_execution"
   },
+  "profile_no": {
+    "table": "pay_platform_collection_profile"
+  },
   "customer_no": {
     "table": "sv_customer_identity"
   },

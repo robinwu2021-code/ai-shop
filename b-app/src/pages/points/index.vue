@@ -100,7 +100,7 @@ onShow(() => { void load(); });
   <sh-scaffold title-key="points.title" :denied="!canView" :failed="failed" @retry="load">
     <template v-if="pageReady">
     <view class="sh-card">
-      <text class="txt-title">{{ $t("points.storeLedger") }}</text>
+      <view class="sh-card__head"><text class="txt-title">{{ $t("points.storeLedger") }}</text></view>
       <text class="sh-muted">{{ merchant.currentStore?.name ?? merchant.storeNo }}</text>
       <text class="txt-caption sh-muted note">{{ $t("points.storeLedgerHint") }}</text>
     </view>

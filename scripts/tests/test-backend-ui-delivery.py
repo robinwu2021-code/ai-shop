@@ -48,4 +48,10 @@ class DeferredBackendDeliveryTest(unittest.TestCase):
         self.assertEqual(len(missing), 6)
         self.assertEqual(module.read_deferred_delivery(file, 'docs/api/food-business-support.openapi.json', missing), missing)
 
+    def test_extra_manifest_contract_must_be_a_docs_api_file(self):
+        with self.assertRaises(ValueError): module.published_paths('../secrets.json')
+        with self.assertRaises(ValueError): module.published_paths('docs/api/missing.json')
+        self.assertIn(('POST', module.norm('/biz/stores/{storeNo}/mall/offline/quotes')),
+                      module.published_paths('docs/api/commerce-mall-openapi.json'))
+
 if __name__ == '__main__': unittest.main()
