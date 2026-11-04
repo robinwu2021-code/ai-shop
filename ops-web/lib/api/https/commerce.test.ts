@@ -1,0 +1,59 @@
+// 商城 http 层：真实 http-client + 桩 fetch。守三件事：
+//   1. 凭证上传发的是**图片字节**（不是 JSON、不是 multipart），Content-Type 跟着文件走
+//   2. 后端拒绝时原样抛机器原因码，**不回落 mock、不吞成成功**
+//   3. 门店维度接口把 storeNo 放查询串，路径保持字面量（契约闸门按字面量比对）
+import { afterEach, describe, expect, it, vi } from "vitest";
+vi.mock("../../auth", () => ({ currentAuth: () => ({ token: "TOKEN", username: "op" }), scopeOf: () => ({ tenantNo: "MAIN" }), refreshPerms: vi.fn(), useAuth: { getState: () => ({ logout: vi.fn() }) } }));
+vi.mock("../../notify", () => ({ notify: { error: vi.fn() } }));
+vi.mock("../../stores/locale", () => ({ useLocaleStore: { getState: () => ({ locale: "zh" }) } }));
+import { commerceHttp } from "./commerce";
+import { ApiError } from "../error";
+
+afterEach(() => vi.unstubAllGlobals());
+
+const ok = (data: unknown) => vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ code: 0, msg: "success", data }) });
+
+describe("commerce http", () => {
+  it("凭证上传发原始字节，Content-Type=image/png，assetKey 与 storeNo 在查询串", async () => {
+    const fetch = ok({ assetKey: "K1" });
+    vi.stubGlobal("fetch", fetch);
+    const file = new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
+    await commerceHttp.uploadOfflineEvidence("TW-STORE-001", "MO-1", "K1", file);
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toContain("/ops/biz-mall/offline/orders/MO-1/evidence/content?storeNo=TW-STORE-001&assetKey=K1");
+    expect(init.body).toBe(file);
+    expect(init.headers["Content-Type"]).toBe("image/png");
+    expect(init.headers.Authorization).toBe("Bearer TOKEN");
+  });
+
+  it("普通写操作仍是 JSON", async () => {
+    const fetch = ok({ claimNo: "C1", status: "DECLINED" });
+    vi.stubGlobal("fetch", fetch);
+    await commerceHttp.declineOfflineClaim("TW-STORE-001", "MO-1", "C1", "金额对不上");
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toContain("/ops/biz-mall/offline/orders/MO-1/claims/C1/decline?storeNo=TW-STORE-001");
+    expect(init.body).toBe(JSON.stringify({ reason: "金额对不上" }));
+    expect(init.headers["Content-Type"]).toBe("application/json");
+  });
+
+  it("后端拒绝：原因码原样抛出，不变成成功", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 409, json: async () => ({ code: 10409, msg: "OFFLINE_BANK_REFERENCE_CONFLICT", data: null }) }));
+    const err = await commerceHttp.confirmOfflinePayment("TW-STORE-001", "MO-1", {
+      actionNo: "A1", claimNo: null, actualAmount: { currency: "TWD", minor: "69900" }, actualPaidAt: "2026-11-01T00:00:00Z",
+      actualReceiver: "PLT", bankReference: "B1", evidenceKey: "K", historical: false, reason: "r",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.code).toBe(10409);
+    expect(err.message).toBe("OFFLINE_BANK_REFERENCE_CONFLICT");
+  });
+
+  it("接口没装配（开关关着 → 404）时报错，而不是给出空目录", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) }));
+    await expect(commerceHttp.mallCatalog()).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("从未配置的收款档案：data=null 原样返回 null", async () => {
+    vi.stubGlobal("fetch", ok(null));
+    expect(await commerceHttp.offlineProfile("TWD")).toBeNull();
+  });
+});

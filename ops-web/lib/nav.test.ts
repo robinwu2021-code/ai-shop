@@ -140,6 +140,17 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
     "/points?tab=settlements",
     "/points/types",
     "/points/store-access",
+    /*
+     * 套餐商城（2026-11-04，Task 5）。七条全挂后端 V556/V558 预置的 `commerce:*` 码，
+     * 那批码**只给 SUPER_ADMIN**，所以只有超管那一行多出它们，其余十个角色一个字都不变。
+     */
+    "/mall",
+    "/mall?tab=products",
+    "/mall?tab=orders",
+    "/mall?tab=claims",
+    "/mall?tab=collection",
+    "/mall?tab=assisted",
+    "/mall?tab=sources",
 ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {

@@ -146,4 +146,13 @@ export const POINT_CODES: Record<string, string> = {
   "/system?tab=authCode": "OPS_SYSTEM__TAB_AUTHCODE",
   "/system?tab=scope": "OPS_SYSTEM__TAB_SCOPE",
   "/system?tab=testPhone": "OPS_SYSTEM__TAB_TESTPHONE",
+  // 套餐商城（2026-11-04）：手工登记而不是派生 —— /mall 挂在 merchant 下，
+  // 派生出来是 OPS_MERCHANT，正好撞上「入驻审核」那一行（BD 的 merchant:apply:audit 授权会被它顶掉）。
+  "/mall": "OPS_COMMERCE",
+  "/mall?tab=products": "OPS_COMMERCE__TAB_PRODUCTS",
+  "/mall?tab=orders": "OPS_COMMERCE__TAB_ORDERS",
+  "/mall?tab=claims": "OPS_COMMERCE__TAB_CLAIMS",
+  "/mall?tab=collection": "OPS_COMMERCE__TAB_COLLECTION",
+  "/mall?tab=assisted": "OPS_COMMERCE__TAB_ASSISTED",
+  "/mall?tab=sources": "OPS_COMMERCE__TAB_SOURCES",
 };

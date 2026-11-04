@@ -98,8 +98,8 @@ export const NAV: NavSection[] = [
 
   // ── P-11 商家治理（一期 M1-2 的平台侧主角）───────────────────────────────
   {
-    key: "merchant", label: "商家与门店", icon: "Store", modules: ["merchant", "store"], href: "/merchants",
-    match: ["/merchants", "/stores"],
+    key: "merchant", label: "商家与门店", icon: "Store", modules: ["merchant", "store", "commerce"], href: "/merchants",
+    match: ["/merchants", "/stores", "/mall"],
     children: [
       { href: "/merchants", label: "入驻审核", perm: "merchant:apply:audit", group: "入驻与资质", matrix: "P-11.1", ready: true },
       { href: "/merchants?tab=list", label: "商家档案", perm: "merchant:merchant:read", group: "入驻与资质", matrix: "P-11.1", ready: true },
@@ -153,6 +153,24 @@ export const NAV: NavSection[] = [
       // 两条权限也不同：授予走 merchant:merchant:ban，改定义走 system:param:update。
       { href: "/merchants?tab=plans", label: "增值包授予", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" , ready: true },
       { href: "/merchants?tab=plan-defs", label: "档位定义", perm: "merchant:merchant:read", group: "增值包", matrix: "P-11.2" , ready: true },
+      // ── 套餐商城（commerce，平台向门店卖 FREE/PRO/CHAIN 套餐与业务端）────────────────
+      // 紧挨旧「增值包」：那两页是旧的主体额度 Plan（授予/档位），**不被这里取代** ——
+      // 新商城管的是可购买的商业目录与订单、线下核款。两套并存期间放在一起，
+      // 运营能看出它们是两件事，而不是在两个菜单里各找一半。
+      //
+      // 权限码全部是后端 V556/V558 预置的 `commerce:*`（只给 SUPER_ADMIN），
+      // 叶子挂**读**码；写/发布/核款/作废/出款各自的码由页面内部判 —— 编辑权与发布权分开。
+      //
+      // 没有挂 `gated`：这批控制器是 starter 里 @Bean 方法装配的（类上没有 @ConditionalOnProperty），
+      // gated-endpoints.test.ts 的扫描认不出来，登记了反而被判「陈了的登记」。
+      // 开关关着时接口 404，页面显示错误态，不显示空目录。
+      { href: "/mall", label: "经营类型与套餐", perm: "commerce:catalog:read", group: "套餐商城", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=products", label: "商城商品与SKU", perm: "commerce:catalog:read", group: "套餐商城", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=orders", label: "商城订单", perm: "commerce:mall:order:read", group: "套餐商城", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=claims", label: "线下核款", perm: "commerce:mall:offline:review", group: "套餐商城", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=collection", label: "平台收款档案", perm: "commerce:collection:profile:read", group: "套餐商城", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=assisted", label: "代客线下购买", perm: "commerce:mall:assisted:purchase", group: "套餐商城", matrix: "P-11.2", ready: true },
+      { href: "/mall?tab=sources", label: "门店权益来源", perm: "commerce:subscription:read", group: "套餐商城", matrix: "P-11.2", ready: true },
       // ── 经营诊断 ────────────────────────────────────────────────────────
       // 链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账。
       //
